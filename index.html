@@ -3,272 +3,191 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Auto-Cuan | AI Chart Reader</title>
+<title>Auto-Cuan</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://s3.tradingview.com/tv.js"></script>
-<style>
-body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.fade-up{animation:fadeUp .4s ease forwards}
-</style>
 </head>
 <body class="min-h-screen bg-[#0b0e14] text-gray-100 overflow-x-hidden">
 
-<!-- HEADER -->
-<header class="sticky top-0 z-50 backdrop-blur-xl bg-[#0b0e14]/90 border-b border-gray-800/60">
-<div class="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-<div class="flex items-center gap-3 sm:gap-4 min-w-0">
-<div class="shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
-<svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-</div>
+<header class="w-full border-b border-gray-800 px-4 py-3">
+<div class="flex items-center gap-3 w-full min-w-0">
+<div class="w-11 h-11 shrink-0 rounded-xl bg-emerald-500 flex items-center justify-center text-black font-black text-lg">↗</div>
 <div class="min-w-0">
-<h1 class="text-xl sm:text-2xl font-black text-gray-100 truncate">Auto-Cuan</h1>
-<p class="text-xs sm:text-sm text-gray-400 truncate">AI Chart Reader &bull; Smart Money Concepts</p>
-</div>
+<h1 class="text-xl font-black text-gray-100 truncate">Auto-Cuan</h1>
+<p class="text-xs text-gray-400 truncate">AI Chart Reader</p>
 </div>
 </div>
 </header>
 
-<main class="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6">
+<main class="w-full max-w-3xl mx-auto px-4 py-4 space-y-5">
 
-<!-- TABS -->
-<div class="grid grid-cols-2 gap-2 bg-[#111827] border border-gray-800 rounded-2xl p-2 w-full">
-<button onclick="switchTab('chart')" id="tabChart" class="w-full px-2 sm:px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition text-center whitespace-nowrap flex items-center justify-center gap-1 sm:gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 shadow-lg shadow-emerald-500/10">&#128202; Pindai Chart</button>
-<button onclick="switchTab('ticker')" id="tabTicker" class="w-full px-2 sm:px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition text-center whitespace-nowrap flex items-center justify-center gap-1 sm:gap-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800/60">&#128269; Nama Saham</button>
+<!-- Tabs -->
+<div class="grid grid-cols-2 gap-2 w-full bg-[#111827] border border-gray-800 rounded-2xl p-2">
+<button onclick="switchTab('chart')" id="tabChart" class="w-full py-3 rounded-xl text-xs font-bold text-center text-emerald-400 bg-emerald-500/10 border border-emerald-500/30">📊 Pindai</button>
+<button onclick="switchTab('ticker')" id="tabTicker" class="w-full py-3 rounded-xl text-xs font-bold text-center text-gray-400 bg-transparent">🔍 Saham</button>
 </div>
 
-<!-- TAB 1: PINDAI CHART -->
-<section id="panelChart" class="w-full">
-<div class="w-full bg-[#111827]/80 border border-gray-800 rounded-2xl p-4 sm:p-6 shadow-xl">
+<!-- Tab 1: Pindai Chart -->
+<section id="panelChart" class="w-full rounded-2xl border border-gray-800 bg-[#111827] p-4 space-y-4">
+<p class="text-sm font-bold text-gray-100">Unggah Screenshot Chart</p>
+<p class="text-xs text-gray-400">PNG, JPG, WebP • Maks 20MB</p>
 
-<div id="uploadZone" onclick="document.getElementById('fileInput').click()" class="w-full border-2 border-dashed border-gray-700 rounded-2xl p-6 sm:p-10 text-center cursor-pointer hover:border-emerald-500 transition bg-[#0f172a]/60">
-<div id="uploadPrompt">
-<div class="w-14 h-14 mx-auto mb-3 rounded-xl bg-gray-800 flex items-center justify-center">
-<svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-</div>
-<p class="text-sm sm:text-base font-bold text-gray-100">Unggah Screenshot Chart Saham</p>
-<p class="text-xs text-gray-400 mt-2">Klik atau seret file ke sini</p>
-<p class="text-[10px] text-gray-500 mt-1">PNG, JPG, WebP &bull; Maks 20MB</p>
-</div>
-<div id="previewBox" class="hidden">
-<img id="previewImg" class="mt-4 max-h-[220px] sm:max-h-[360px] w-full object-contain rounded-xl border border-gray-800" alt="">
-<p id="previewName" class="mt-2 text-xs text-gray-400 truncate"></p>
-</div>
-</div>
+<input id="fileInput" type="file" accept="image/*" class="hidden" onchange="onFile(event)">
 
-<input id="fileInput" type="file" accept="image/*" class="hidden" onchange="onFileChange(event)">
+<img id="previewImage" class="hidden w-full max-h-[240px] object-contain rounded-xl border border-gray-800">
+<p id="previewName" class="hidden text-xs text-gray-400 truncate"></p>
 
-<div id="chartActions" class="hidden flex flex-col sm:flex-row gap-3 mt-4 w-full items-stretch sm:items-center">
-<label for="fileInput" class="w-full sm:w-auto px-4 py-3 text-sm font-semibold rounded-xl text-center flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-100 cursor-pointer">&#128194; Pilih File Lain</label>
-<button onclick="clearFile()" class="w-full sm:w-auto px-4 py-3 text-sm font-semibold rounded-xl text-center flex items-center justify-center bg-red-500/10 border border-red-500/30 text-red-400">&#10005; Hapus &amp; Unggah Ulang</button>
-<button onclick="doAnalyzeChart()" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm transition shadow-lg shadow-emerald-500/20 flex items-center justify-center">&#9889; Mulai Analisis Chart</button>
-</div>
-
+<div class="flex flex-col gap-3 w-full">
+<label for="fileInput" class="w-full px-4 py-3 rounded-xl bg-gray-800 text-gray-100 font-bold text-sm text-center cursor-pointer">📁 Pilih File</label>
+<button onclick="clearFile()" id="resetBtn" class="hidden w-full px-4 py-3 rounded-xl bg-gray-800 text-red-400 font-bold text-sm text-center">✕ Hapus & Unggah Ulang</button>
+<button onclick="doChart()" id="analyzeChartBtn" class="hidden w-full px-4 py-3 rounded-xl bg-emerald-500 text-black font-black text-sm text-center">⚡ Mulai Analisis Chart</button>
 </div>
 </section>
 
-<!-- TAB 2: NAMA SAHAM -->
-<section id="panelTicker" class="hidden w-full">
-<div class="w-full bg-[#111827]/80 border border-gray-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-<div class="space-y-2">
-<label class="block text-xs sm:text-sm font-bold text-gray-300">Ketik Kode Saham</label>
-<p class="text-[10px] text-gray-400">Contoh: BBRI, BBCA, NAYZ, TLKM</p>
-<input id="tickerInput" type="text" placeholder="BBRI" maxlength="10" class="w-full bg-[#0b0e14] border border-gray-700 focus:border-emerald-500 outline-none rounded-xl px-4 py-3 text-gray-100 placeholder-gray-500 text-sm sm:text-base font-bold uppercase">
-</div>
-<div class="flex flex-col sm:flex-row gap-3 mt-4 w-full items-stretch sm:items-center">
-<button onclick="doAnalyzeTicker()" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-sm transition shadow-lg shadow-emerald-500/20 flex items-center justify-center">&#128269; Cari &amp; Analisis Otomatis</button>
-</div>
-</div>
+<!-- Tab 2: Nama Saham -->
+<section id="panelTicker" class="hidden w-full rounded-2xl border border-gray-800 bg-[#111827] p-4 space-y-4">
+<p class="text-sm font-bold text-gray-100">Ketik Kode Saham</p>
+<p class="text-xs text-gray-400">Contoh: BBRI, BBCA, NAYZ, TLKM</p>
+<input id="tickerInput" type="text" placeholder="BBRI" maxlength="10" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm font-bold uppercase">
+<button onclick="doTicker()" class="w-full px-4 py-3 rounded-xl bg-emerald-500 text-black font-black text-sm text-center">🔍 Cari & Analisis Otomatis</button>
 </section>
 
-<!-- LOADING -->
-<div id="loading" class="hidden mt-6 w-full rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">
-<div class="flex items-center gap-3">
-<div class="w-5 h-5 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin shrink-0"></div>
-<span class="text-xs sm:text-sm font-medium text-emerald-400">AI sedang menganalisis... Mohon tunggu.</span>
-</div>
+<!-- Loading -->
+<div id="loading" class="hidden w-full rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">
+AI sedang menganalisis...
 </div>
 
-<!-- RESULT -->
-<div id="analysis-output-container" class="hidden fade-up mt-6 space-y-6 pb-12">
-<div class="w-full bg-[#111827]/80 border border-gray-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-<div class="flex items-center gap-2 mb-4">
-<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-<h2 class="text-sm sm:text-base font-bold text-gray-100">Hasil Analisis AI</h2>
-</div>
-<div id="resultBox" class="min-w-0"></div>
-</div>
-</div>
+<!-- Result -->
+<div id="analysis-output-container" class="w-full space-y-4 pb-8"></div>
 
-<!-- TRADINGVIEW (ticker only) -->
-<section id="tradingview-section" class="hidden mt-6 w-full bg-[#111827]/80 border border-gray-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-<div>
-<h2 class="text-lg sm:text-xl font-black text-gray-100">&#128200; Chart Live TradingView</h2>
-<p class="text-xs sm:text-sm text-gray-400">Chart otomatis berdasarkan kode saham yang dicari.</p>
-</div>
-<span id="tv-symbol-label" class="text-xs sm:text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 rounded-xl">IDX:BBRI</span>
+<!-- TradingView -->
+<section id="tradingview-section" class="hidden w-full rounded-2xl border border-gray-800 bg-[#111827] p-4 space-y-3">
+<div class="flex flex-col gap-1">
+<h2 class="text-lg font-black text-gray-100">📈 Chart Live TradingView</h2>
+<p id="tv-symbol-label" class="text-xs text-emerald-400 font-bold">IDX:BBRI</p>
 </div>
 <div class="w-full overflow-hidden rounded-xl border border-gray-800 bg-[#0b0e14]">
-<div id="tv-container"><div id="tradingview-widget" class="w-full h-[360px] sm:h-[460px]"></div></div>
+<div id="tv-container"><div id="tradingview-widget" class="w-full h-[340px]"></div></div>
 </div>
 </section>
 
-<!-- ERROR -->
-<div id="errorBox" class="hidden mt-6 w-full bg-[#111827]/80 border border-red-500/30 rounded-2xl p-4 sm:p-6 text-center">
-<p class="text-red-400 font-bold text-sm mb-1">&#9888; Gagal Menganalisis</p>
-<p id="errorMsg" class="text-red-300/70 text-xs mb-3"></p>
-<button onclick="retryLast()" class="w-full sm:w-auto px-5 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-xs font-bold flex items-center justify-center mx-auto">&#8635; Coba Lagi</button>
+<!-- Error -->
+<div id="errorBox" class="hidden w-full rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+<p id="errorMsg"></p>
+<button onclick="retry()" class="mt-3 w-full px-4 py-2 rounded-xl bg-red-500/20 text-red-300 font-bold text-xs text-center">Coba Lagi</button>
 </div>
 
 </main>
 
-<footer class="border-t border-gray-800/60 mt-6">
-<div class="w-full max-w-5xl mx-auto px-4 sm:px-6 py-5 text-center">
-<p class="text-[10px] text-gray-600">Auto-Cuan &copy; 2025 &bull; Smart Money Concepts IDX</p>
-<p class="text-[10px] text-gray-600 mt-0.5">Disclaimer: Bukan saran investasi.</p>
-</div>
+<footer class="w-full border-t border-gray-800 px-4 py-4 text-center">
+<p class="text-[10px] text-gray-600">Auto-Cuan © 2025 • Bukan saran investasi.</p>
 </footer>
 
 <script>
-// === STATE ===
-let imgB64 = null, imgMime = null, lastMode = 'chart';
-const $ = id => document.getElementById(id);
+let imgB64=null, imgMime=null, lastMode='chart';
 
-// === TABS ===
-function switchTab(t) {
-  $('panelChart').classList.toggle('hidden', t !== 'chart');
-  $('panelTicker').classList.toggle('hidden', t !== 'ticker');
-  if (t === 'chart') $('tradingview-section').classList.add('hidden');
-  const on = 'w-full px-2 sm:px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition text-center whitespace-nowrap flex items-center justify-center gap-1 sm:gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 shadow-lg shadow-emerald-500/10';
-  const off = 'w-full px-2 sm:px-4 py-3 rounded-xl text-xs sm:text-sm font-bold transition text-center whitespace-nowrap flex items-center justify-center gap-1 sm:gap-2 text-gray-400 hover:text-gray-200 hover:bg-gray-800/60';
-  $('tabChart').className = t === 'chart' ? on : off;
-  $('tabTicker').className = t === 'ticker' ? on : off;
+function switchTab(t){
+  document.getElementById('panelChart').classList.toggle('hidden',t!=='chart');
+  document.getElementById('panelTicker').classList.toggle('hidden',t!=='ticker');
+  if(t==='chart') document.getElementById('tradingview-section').classList.add('hidden');
+  document.getElementById('tabChart').className='w-full py-3 rounded-xl text-xs font-bold text-center '+(t==='chart'?'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30':'text-gray-400 bg-transparent');
+  document.getElementById('tabTicker').className='w-full py-3 rounded-xl text-xs font-bold text-center '+(t==='ticker'?'text-emerald-400 bg-emerald-500/10 border border-emerald-500/30':'text-gray-400 bg-transparent');
 }
 
-// === FILE UPLOAD ===
-const zone = $('uploadZone');
-['dragenter','dragover','dragleave','drop'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }));
-['dragenter','dragover'].forEach(e => zone.addEventListener(e, () => { zone.classList.add('border-emerald-500'); zone.classList.remove('border-gray-700'); }));
-['dragleave','drop'].forEach(e => zone.addEventListener(e, () => { zone.classList.remove('border-emerald-500'); zone.classList.add('border-gray-700'); }));
-zone.addEventListener('drop', e => { if (e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]); });
-
-function onFileChange(e) { if (e.target.files[0]) loadFile(e.target.files[0]); }
-
-function loadFile(f) {
-  if (!f.type.startsWith('image/')) { alert('Format tidak didukung. Gunakan gambar PNG/JPG/WebP.'); return; }
-  if (f.size > 20*1024*1024) { alert('File terlalu besar. Maksimal 20MB.'); return; }
-  imgMime = f.type;
-  const r = new FileReader();
-  r.onload = e => {
-    imgB64 = e.target.result;
-    $('previewImg').src = imgB64;
-    $('previewName').textContent = f.name + ' (' + (f.size/1024/1024).toFixed(1) + ' MB)';
-    $('uploadPrompt').classList.add('hidden');
-    $('previewBox').classList.remove('hidden');
-    $('chartActions').classList.remove('hidden');
+function onFile(e){
+  const f=e.target.files[0];
+  if(!f)return;
+  if(f.size>20*1024*1024){alert('Maks 20MB');return;}
+  imgMime=f.type;
+  const r=new FileReader();
+  r.onload=function(ev){
+    imgB64=ev.target.result;
+    document.getElementById('previewImage').src=imgB64;
+    document.getElementById('previewImage').classList.remove('hidden');
+    document.getElementById('previewName').textContent=f.name;
+    document.getElementById('previewName').classList.remove('hidden');
+    document.getElementById('resetBtn').classList.remove('hidden');
+    document.getElementById('analyzeChartBtn').classList.remove('hidden');
   };
   r.readAsDataURL(f);
 }
 
-function clearFile() {
-  imgB64 = null; imgMime = null;
-  $('fileInput').value = '';
-  $('uploadPrompt').classList.remove('hidden');
-  $('previewBox').classList.add('hidden');
-  $('chartActions').classList.add('hidden');
-  hideAll();
+function clearFile(){
+  imgB64=null;imgMime=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('previewImage').classList.add('hidden');
+  document.getElementById('previewName').classList.add('hidden');
+  document.getElementById('resetBtn').classList.add('hidden');
+  document.getElementById('analyzeChartBtn').classList.add('hidden');
+  document.getElementById('analysis-output-container').innerHTML='';
 }
 
-// === ANALYZE ===
-function doAnalyzeChart() {
-  if (!imgB64) return;
-  lastMode = 'chart';
-  $('tradingview-section').classList.add('hidden');
-  analyze({ image: imgB64, mimeType: imgMime });
+function doChart(){
+  if(!imgB64)return;
+  lastMode='chart';
+  document.getElementById('tradingview-section').classList.add('hidden');
+  runAI({image:imgB64,mimeType:imgMime});
 }
 
-function doAnalyzeTicker() {
-  const t = $('tickerInput').value.trim().toUpperCase();
-  if (!t) { alert('Masukkan kode saham.'); return; }
-  lastMode = 'ticker';
-  analyze({ ticker: t });
+function doTicker(){
+  var t=document.getElementById('tickerInput').value.trim().toUpperCase();
+  if(!t){alert('Masukkan kode saham');return;}
+  lastMode='ticker';
+  runAI({ticker:t});
 }
 
-function retryLast() { lastMode === 'chart' ? doAnalyzeChart() : doAnalyzeTicker(); }
+function retry(){lastMode==='chart'?doChart():doTicker();}
 
-function hideAll() {
-  $('analysis-output-container').classList.add('hidden');
-  $('errorBox').classList.add('hidden');
-  $('tradingview-section').classList.add('hidden');
-}
+function runAI(body){
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('errorBox').classList.add('hidden');
+  document.getElementById('analysis-output-container').innerHTML='';
+  document.getElementById('tradingview-section').classList.add('hidden');
 
-async function analyze(body) {
-  $('loading').classList.remove('hidden');
-  hideAll();
-
-  try {
-    const res = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      const ct = res.headers.get('content-type') || '';
-      if (ct.includes('application/json')) {
-        const d = await res.json();
-        throw new Error(d.error || 'Error ' + res.status);
-      }
-      throw new Error('Error ' + res.status);
+  fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(res){
+    if(!res.ok){
+      return res.json().then(function(d){throw new Error(d.error||'Error '+res.status);});
     }
-
-    const html = await res.text();
-    $('loading').classList.add('hidden');
-
-    if (!html.trim()) throw new Error('Respons kosong dari AI.');
-
-    $('resultBox').innerHTML = html.replace(/^```html?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
-    $('analysis-output-container').classList.remove('hidden');
-
-    setTimeout(() => $('analysis-output-container').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-
-    if (lastMode === 'ticker' && body.ticker) {
-      loadTradingViewChart(body.ticker);
+    return res.text();
+  })
+  .then(function(html){
+    document.getElementById('loading').classList.add('hidden');
+    if(!html||!html.trim()){throw new Error('Respons kosong');}
+    html=html.replace(/^```html?\s*\n?/i,'').replace(/\n?```\s*$/i,'');
+    document.getElementById('analysis-output-container').innerHTML=html;
+    if(lastMode==='ticker'&&body.ticker){
+      loadTV(body.ticker);
     }
-  } catch (err) {
-    $('loading').classList.add('hidden');
-    $('errorMsg').textContent = err.message;
-    $('errorBox').classList.remove('hidden');
-  }
+  })
+  .catch(function(err){
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('errorMsg').textContent=err.message;
+    document.getElementById('errorBox').classList.remove('hidden');
+  });
 }
 
-// === TRADINGVIEW ===
-function loadTradingViewChart(ticker) {
-  ticker = (ticker || 'BBRI').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const symbol = 'IDX:' + ticker;
-
-  $('tv-symbol-label').textContent = symbol;
-  $('tradingview-section').classList.remove('hidden');
-
-  const c = $('tv-container');
-  c.innerHTML = '<div id="tradingview-widget" class="w-full h-[360px] sm:h-[460px]"></div>';
-
+function loadTV(ticker){
+  ticker=(ticker||'BBRI').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  var symbol='IDX:'+ticker;
+  document.getElementById('tv-symbol-label').textContent=symbol;
+  document.getElementById('tradingview-section').classList.remove('hidden');
+  var c=document.getElementById('tv-container');
+  c.innerHTML='<div id="tradingview-widget" class="w-full h-[340px]"></div>';
   new TradingView.widget({
-    autosize: true,
-    symbol: symbol,
-    interval: 'D',
-    timezone: 'Asia/Jakarta',
-    theme: 'dark',
-    style: '1',
-    locale: 'id',
-    toolbar_bg: '#0b0e14',
-    enable_publishing: false,
-    hide_top_toolbar: false,
-    hide_side_toolbar: window.innerWidth < 640,
-    allow_symbol_change: true,
-    container_id: 'tradingview-widget'
+    autosize:true,
+    symbol:symbol,
+    interval:'D',
+    timezone:'Asia/Jakarta',
+    theme:'dark',
+    style:'1',
+    locale:'id',
+    toolbar_bg:'#0b0e14',
+    enable_publishing:false,
+    hide_top_toolbar:false,
+    hide_side_toolbar:true,
+    allow_symbol_change:true,
+    container_id:'tradingview-widget'
   });
 }
 </script>
