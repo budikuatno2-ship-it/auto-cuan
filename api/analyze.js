@@ -1,55 +1,79 @@
 /**
- * Auto-Cuan: Vercel Serverless — Chart Analysis + Broker Summary + News
- * Uses Gemini 2.5 Flash with Google Search grounding for FREE live IDX data.
- * Returns JSON: { trading_table, broker_table, ticker_news }
+ * Auto-Cuan: Vercel Serverless — Lightweight Chart/Ticker Analysis
+ * Gemini 2.5 Flash — NO Google Search (saves quota, prevents 429).
+ * Returns raw HTML string (Action Badge + Price Target + Trading Plan Table).
  * API key from process.env.GEMINI_API_KEY only.
  */
 
-export const config = {
-  maxDuration: 120,
-};
+export const config = { maxDuration: 90 };
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-const SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham Senior dan Pakar Bandarmologi Bursa Efek Indonesia (IDX). Tugas Anda adalah membaca screenshot chart saham yang diunggah pengguna.
+const SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham Senior khusus Smart Money Concepts (SMC) untuk Bursa Efek Indonesia (IDX).
 
-INSTRUKSI WAJIB:
-1. Temukan harga terakhir pada sumbu kanan grafik gambar (misal jika di gambar harganya Rp 63, gunakan angka eksak tersebut sebagai basis utama). Identifikasi juga kode ticker saham yang terlihat di chart.
+ATURAN SINKRONISASI HARGA KRITIS:
+- Periksa sumbu harga kanan chart. Jika saham gocap/penny stock (misal NAYZ), harga WAJIB di fraksi puluhan (Rp 63). Entry=63, SL=60, TP=70. JANGAN pernah tampilkan ribuan untuk saham < Rp 100!
+- Jika blue chip (misal BBRI Rp 4.850), gunakan ribuan yang sesuai.
+- Bulatkan semua angka ke bilangan bulat (tanpa desimal).
 
-2. REKOMENDASI TRADING PLAN RIGID SYNC: Area Entry tidak boleh melompat jauh dari harga terakhir! Hitung secara matematis:
-   - Opsi 1 (Agresif): Entry = Tepat di harga terakhir; SL = 5% di bawah Entry; TP = 11% di atas Entry; RR = 1:2.2
-   - Opsi 2 (Konservatif): Entry = 3% di bawah harga terakhir; SL = 5% di bawah Entry; TP = 8% di atas Entry; RR = 1:1.6
-   - Opsi 3 (Scalping): Entry = Tepat di harga terakhir; SL = 2% di bawah Entry; TP = 2% di atas Entry; RR = 1:1.0
-   Generate baris kode HTML <tr> ke dalam key "trading_table" dengan kolom: Opsi, Tipe Trading, Entry (Rp), Stop Loss (SL), Take Profit (TP), Risk:Reward (RR), dan Keterangan Struktur Pasar (BOS/CHoCH/Order Block). Semua sel wajib terisi angka nyata.
+TUGAS:
+1. Identifikasi ticker dan harga terakhir dari chart/konteks.
+2. Tentukan kondisi pasar (Bullish/Bearish/Sideways) dan pilih SATU Action Badge:
+   - HAKA (HAJAR KANAN): tren sangat bullish + BOS/Breakout jelas
+   - LAYAK MASUK (BUY): harga di zona Order Block/Demand kuat saat pullback
+   - WAIT AND SEE: sideways/konsolidasi tanpa konfirmasi
+   - JUAL / CUT LOSS: break di bawah support kunci/CHoCH bearish
 
-3. REKOMENDASI AUTOMATED TOP 5 BROKER SUMMARY: Gunakan kemampuan live internet search Anda untuk menjelajahi web dan melacak data akumulasi/distribusi transaksi harian broker terkini untuk emiten tersebut. Generate baris kode HTML <tr> ke dalam key "broker_table" untuk periode: Hari Ini, 3 Hari, 7 Hari, 1 Bulan, dan 3 Bulan. Kolomnya wajib memuat: Periode, Status Aliran (Top Akumulasi/Akumulasi Kecil/Netral/Distribusi), Rincian TOP 5 BUYER (Daftar 5 kode broker beli terbesar + volume lot), Rincian TOP 5 SELLER (Daftar 5 kode broker jual terbesar + volume lot), dan Harga Rata-rata (Avg Price) Bandar. Jika data pencarian internet terbatas, gunakan logika kecerdasan Anda untuk menghitung simulasi volume lot broker yang sangat logis dan sinkron dengan pergerakan fraksi harga asli saham tersebut (misal jika harga Rp 63, maka harga rata-rata broker wajib berada di kisaran fraksi Rp 60-an, jangan melompat ke ribuan rupiah).
+3. PREDIKSI TARGET HARGA MAKSIMAL:
+   Setelah menganalisis chart, hitung satu angka target harga realistis (Resistance Kuat / Target Take Profit Maksimal jangka menengah) yang bisa dicapai saham tersebut. Hitung juga persentase potensi kenaikan dari harga terakhir. Bulatkan ke bilangan bulat. Target harus proporsional dengan harga dasar (penny stock Rp 63 → target sekitar Rp 75-85, blue chip Rp 4850 → target sekitar Rp 5200-5500).
 
-4. BERITA DAN AKSI KORPORASI: Pada key "ticker_news", cari berita spesifik emiten tersebut dari Yahoo Finance atau Google News. Temukan berita merger, pendapatan meningkat, laba bersih, atau jadwal dividen, lalu sajikan dalam bentuk list card HTML dengan <a href="URL" target="_blank"> link yang bisa diklik.
+4. Hitung 3 Opsi Trading Plan dari harga terakhir:
+   - Opsi 1 (Agresif): Entry=harga terakhir; SL=5% bawah; TP=11% atas; RR=1:2.2
+   - Opsi 2 (Konservatif): Entry=3% bawah harga terakhir; SL=5% bawah Entry; TP=8% atas Entry; RR=1:1.6
+   - Opsi 3 (Scalping): Entry=harga terakhir; SL=2% bawah; TP=2% atas; RR=1:1.0
 
-JUGA SERTAKAN: Di bagian atas "trading_table", sebelum baris <tr> pertama, tambahkan satu baris komentar HTML berisi kondisi pasar dan harga terakhir, contoh: <!-- TICKER:NAYZ | CONDITION:Sideways | PRICE:Rp 63 -->
+OUTPUT FORMAT (HTML mentah, TANPA markdown fence):
+Tulis HTML langsung dengan struktur berurutan:
 
-FORMAT OUTPUT WAJIB:
-Kembalikan HANYA satu JSON object valid (tanpa markdown code fence, tanpa teks di luar JSON):
-{
-  "trading_table": "<!-- TICKER:KODE | CONDITION:X | PRICE:Rp Y --><tr>...</tr><tr>...</tr><tr>...</tr>",
-  "broker_table": "<tr>...</tr><tr>...</tr><tr>...</tr><tr>...</tr><tr>...</tr>",
-  "ticker_news": "<div>...berita cards...</div>"
-}
+BAGIAN 1 - PRICE TARGET CARD:
+<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+  <div>
+    <p class="text-[10px] uppercase tracking-wider text-yellow-400/70 font-semibold">Prediksi Target Harga</p>
+    <p class="text-xl sm:text-2xl font-black text-yellow-300">Rp [TARGET]</p>
+  </div>
+  <div class="text-right">
+    <p class="text-[10px] uppercase tracking-wider text-yellow-400/70 font-semibold">Potensi Kenaikan</p>
+    <p class="text-lg sm:text-xl font-black text-emerald-400">+[X]%</p>
+  </div>
+</div>
 
-ATURAN STYLING HTML DALAM VALUE JSON:
-- <tr> gunakan: <tr class="border-b border-[#1c2333] hover:bg-[#151a23]/50">
-- <td> gunakan: <td class="py-3 px-3 text-sm text-gray-200">
-- Entry: <td class="py-3 px-3 text-sm text-white font-bold">
-- SL: <td class="py-3 px-3 text-sm text-red-400 font-semibold">
-- TP: <td class="py-3 px-3 text-sm text-emerald-400 font-semibold">
-- RR: <td class="py-3 px-3 text-sm text-yellow-300 font-semibold">
-- Status Akumulasi: <td class="py-3 px-3 text-sm text-emerald-400 font-semibold">
-- Status Distribusi: <td class="py-3 px-3 text-sm text-red-400 font-semibold">
-- Status Netral: <td class="py-3 px-3 text-sm text-yellow-400 font-semibold">
-- Berita card: <div class="border-l-4 border-emerald-500 pl-4 py-3 mb-3 bg-[#151a23]/50 rounded-r-lg"><p class="text-sm font-semibold text-gray-200">Judul</p><p class="text-xs text-gray-500">Tanggal</p><a href="URL" target="_blank" class="text-blue-400 hover:text-blue-300 underline text-xs">Baca selengkapnya</a></div>
-- SEMUA sel WAJIB terisi. Tidak boleh kosong atau N/A.`;
+BAGIAN 2 - ACTION BADGE + INFO:
+Div wrapper berisi Action Badge besar + badge ticker + badge harga terakhir.
+- Badge HAKA: <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 text-xs font-black uppercase animate-pulse">🚀 HAKA</span>
+- Badge BUY: <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-green-500/20 border-2 border-green-400 text-green-300 text-xs font-black uppercase">✅ LAYAK MASUK</span>
+- Badge WAIT: <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-yellow-500/20 border-2 border-yellow-400 text-yellow-300 text-xs font-black uppercase">⏸️ WAIT</span>
+- Badge JUAL: <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-red-500/20 border-2 border-red-400 text-red-300 text-xs font-black uppercase animate-pulse">🛑 JUAL</span>
+- Ticker: <span class="px-2 py-1 rounded bg-[#1c2333] text-gray-200 text-xs font-bold">KODE</span>
+- Price: <span class="px-2 py-1 rounded bg-[#1c2333] text-emerald-300 text-xs font-bold">Rp X</span>
+
+BAGIAN 3 - PARAGRAF ANALISIS:
+<p class="text-xs sm:text-sm text-gray-300 leading-relaxed my-3">Analisis singkat 2-3 kalimat...</p>
+
+BAGIAN 4 - TABEL TRADING PLAN:
+<table class="w-full border-collapse text-xs mt-4">
+  <thead><tr class="border-b-2 border-emerald-500/20"><th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#131722]">...</th>...</tr></thead>
+  <tbody>3 baris <tr> dengan kolom: Opsi, Tipe, Entry, SL, TP, RR, Keterangan</tbody>
+</table>
+- Entry TD: class="py-2 px-2 text-xs text-white font-bold"
+- SL TD: class="py-2 px-2 text-xs text-red-400 font-semibold"
+- TP TD: class="py-2 px-2 text-xs text-emerald-400 font-semibold"
+- RR TD: class="py-2 px-2 text-xs text-yellow-300 font-semibold"
+- Default TD: class="py-2 px-2 text-xs text-gray-300"
+- TR: class="border-b border-[#1c2333]"
+
+LANGSUNG tulis HTML. JANGAN bungkus code fence.`;
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -58,46 +82,26 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     return res.status(204).end();
   }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (!GEMINI_API_KEY) {
-    return res.status(500).json({
-      error: 'GEMINI_API_KEY belum dikonfigurasi. Tambahkan di Vercel Environment Variables.',
-    });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY belum dikonfigurasi.' });
 
   try {
-    const { image, mimeType } = req.body || {};
-    if (!image) {
-      return res.status(400).json({ error: 'Tidak ada data gambar.' });
-    }
+    const { image, mimeType, ticker } = req.body || {};
+    const parts = [{ text: SYSTEM_PROMPT }];
 
-    let imageData = image;
-    if (imageData.includes(',')) {
-      imageData = imageData.split(',')[1];
+    if (image) {
+      let imageData = image;
+      if (imageData.includes(',')) imageData = imageData.split(',')[1];
+      parts.push({ inline_data: { mime_type: mimeType || 'image/png', data: imageData } });
+    } else if (ticker) {
+      parts.push({ text: `Analisis saham dengan kode ticker: ${ticker}. Gunakan pengetahuan Anda tentang harga terakhir saham ini di IDX dan buat Trading Plan yang logis termasuk prediksi target harga.` });
+    } else {
+      return res.status(400).json({ error: 'Kirim gambar chart atau kode ticker.' });
     }
-
-    const mime = mimeType || 'image/png';
 
     const payload = {
-      contents: [
-        {
-          parts: [
-            { text: SYSTEM_PROMPT },
-            { inline_data: { mime_type: mime, data: imageData } },
-          ],
-        },
-      ],
-      tools: [{ google_search: {} }],
-      generationConfig: {
-        temperature: 0.4,
-        topP: 0.9,
-        topK: 40,
-        maxOutputTokens: 16000,
-      },
+      contents: [{ parts }],
+      generationConfig: { temperature: 0.4, topP: 0.9, topK: 40, maxOutputTokens: 4096 },
     };
 
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
@@ -108,64 +112,24 @@ export default async function handler(req, res) {
 
     if (!geminiRes.ok) {
       const errBody = await geminiRes.json().catch(() => ({}));
-      return res.status(geminiRes.status).json({
-        error: `Gemini API error (${geminiRes.status}): ${errBody?.error?.message || 'Unknown'}`,
-      });
+      if (geminiRes.status === 429) return res.status(429).json({ error: 'Kuota API habis. Tunggu beberapa menit.' });
+      return res.status(geminiRes.status).json({ error: `Gemini error (${geminiRes.status}): ${errBody?.error?.message || 'Unknown'}` });
     }
 
     const result = await geminiRes.json();
-
-    const blockReason = result.promptFeedback?.blockReason;
-    if (blockReason) {
-      return res.status(400).json({ error: `Safety filter: ${blockReason}` });
-    }
+    if (result.promptFeedback?.blockReason) return res.status(400).json({ error: `Safety filter: ${result.promptFeedback.blockReason}` });
 
     const candidates = result.candidates || [];
-    if (!candidates.length) {
-      return res.status(500).json({ error: 'Model tidak menghasilkan output.' });
-    }
+    if (!candidates.length) return res.status(500).json({ error: 'Tidak ada output.' });
 
-    const parts = candidates[0]?.content?.parts || [];
-    if (!parts.length) {
-      return res.status(500).json({ error: 'Respons kosong.' });
-    }
+    let html = '';
+    for (const part of (candidates[0]?.content?.parts || [])) { if (part.text) html += part.text; }
+    html = html.replace(/^```html?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
-    // Collect all text parts
-    let rawText = '';
-    for (const part of parts) {
-      if (part.text) rawText += part.text;
-    }
+    if (!html) return res.status(500).json({ error: 'Respons kosong.' });
 
-    // Strip markdown code fences
-    rawText = rawText.replace(/^```json?\s*\n?/i, '');
-    rawText = rawText.replace(/\n?```\s*$/i, '');
-    rawText = rawText.trim();
-
-    // Parse JSON
-    let parsed;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      // Fallback: extract JSON object
-      const m = rawText.match(/\{[\s\S]*\}/);
-      if (m) {
-        try {
-          parsed = JSON.parse(m[0]);
-        } catch {
-          return res.status(500).json({ error: 'Format JSON invalid. Coba lagi.' });
-        }
-      } else {
-        return res.status(500).json({ error: 'Model gagal mengembalikan JSON. Coba lagi.' });
-      }
-    }
-
-    // Return structured response
-    return res.status(200).json({
-      trading_table: parsed.trading_table || '',
-      broker_table: parsed.broker_table || '',
-      ticker_news: parsed.ticker_news || '',
-    });
-
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(html);
   } catch (error) {
     console.error('analyze error:', error);
     return res.status(500).json({ error: `Server error: ${error.message}` });
