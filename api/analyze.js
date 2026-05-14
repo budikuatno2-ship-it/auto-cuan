@@ -1,7 +1,7 @@
 /**
- * Auto-Cuan: Vercel Serverless Function — Chart Analysis
- * Returns structured JSON with trading plan table rows.
- * API key is read ONLY from process.env.GEMINI_API_KEY.
+ * Auto-Cuan: Vercel Serverless — Chart Analysis + Broker Summary + News
+ * Uses Gemini 2.5 Flash with Google Search grounding for live IDX data.
+ * API key from process.env.GEMINI_API_KEY only.
  */
 
 export const config = {
@@ -12,61 +12,48 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-const SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham Profesional khusus Smart Money Concepts (SMC). Tugas Anda adalah membaca gambar screenshot chart saham yang diunggah pengguna dengan sangat teliti.
+const SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham Senior dan Pakar Bandarmologi Bursa Efek Indonesia (IDX). Tugas Anda adalah membaca screenshot chart saham yang diunggah pengguna dengan akurasi 100% dan bebas dari error template statis acak.
 
-INSTRUKSI WAJIB:
-1. Identifikasi kode ticker/emiten saham yang terlihat di chart (misal: BBRI, BBCA, NAYZ, ANTM, dll). Jika tidak terlihat jelas, tulis "UNKNOWN".
-2. Ambil data harga terakhir (Last Price) dari sumbu kanan chart. Gunakan angka NYATA yang terlihat di gambar, bukan angka karangan.
-3. Analisis zona indikator Smart Money Concepts / LuxAlgo yang terlihat di gambar (Support/Demand, Resistance/Supply, BOS, CHoCH, FVG, Order Block).
-4. Tentukan kondisi pasar saat ini: Bullish, Bearish, atau Sideways.
-5. Buat analisis teknikal singkat dalam Bahasa Indonesia yang menjelaskan mengapa kondisi tersebut terjadi berdasarkan bukti visual chart.
-6. Hitung 3 Opsi Trading Plan dengan 6 kolom: Opsi, Deskripsi, Entry (Rp), Stop Loss (Rp), Take Profit (Rp), Risk:Reward.
-   - OPSI 1: AGRESIF — entry pada breakout terdekat
-   - OPSI 2: KONSERVATIF — entry pada pullback ke Order Block/Demand terkuat
-   - OPSI 3: FAST SCALPING — Risk:Reward wajib tepat 1:1.0
+KEWAJIBAN ANALISIS 1 (RIGID TRADING PLAN SYNC):
+1. Cari harga penutupan terakhir (Last Price) yang tertera nyata pada sumbu kanan grafik gambar (misal jika di gambar harganya Rp 63 atau Rp 2.450, gunakan angka eksak tersebut sebagai basis utama).
+2. REKOMENDASI ENTRY, SL, DAN TP WAJIB LOGIS DAN SINKRON. Area Entry tidak boleh jauh melompat dari harga penutupan terakhir tersebut! Hitung secara matematis:
+   - OPSI 1 (Agresif): Entry = Tepat di harga terakhir; SL = 5% di bawah Entry; TP = 11% di atas Entry.
+   - OPSI 2 (Konservatif): Entry = 3% di bawah harga terakhir; SL = 5% di bawah Entry; TP = 8% di atas Entry.
+   - OPSI 3 (Scalping): Entry = Tepat di harga terakhir; SL = 2% di bawah Entry; TP = 2% di atas Entry.
+3. Pada key "trading_table", generate baris kode HTML <tr> untuk 3 opsi tersebut dengan kolom lengkap: Opsi, Tipe Trading, Entry (Rp), Stop Loss (SL), Take Profit (TP), Risk:Reward (RR), dan Keterangan Struktur Pasar (seperti batas BOS/CHoCH/Order Block visual). Jangan biarkan ada kolom kosong!
+
+KEWAJIBAN ANALISIS 2 (AUTOMATED TOP 5 BROKER SUMMARY):
+1. Gunakan kemampuan pencarian internet langsung Anda untuk melacak data Broker Summary dan pergerakan akumulasi/distribusi ter-update terkait saham yang sedang dianalisis.
+2. Pada key "broker_table", generate baris kode HTML <tr> untuk periode waktu: 'Hari Ini (Today)', '3 Hari', '7 Hari', '1 Bulan', dan '3 Bulan'.
+3. Setiap baris periode wajib menampilkan kolom: Periode, Status Aliran (Top Akumulasi / Akumulasi Kecil / Netral / Distribusi), Rincian TOP 5 BUYER (Daftar 5 kode broker beli terbesar beserta total lot/volume), Rincian TOP 5 SELLER (Daftar 5 kode broker jual terbesar beserta total lot/volume), Harga Rata-rata (Avg Price) Bandar, dan INDIKASI BANDARMOLOGI (Penjelasan singkat mengenai kekuatan akumulasi bandar besar atau distribusi ritel). Pastikan isinya logis dan selaras dengan struktur chart.
+
+KEWAJIBAN ANALISIS 3 (YAHOO FINANCE INSIDER NEWS):
+1. Pada key "ticker_news", lakukan pencarian berita spesifik emiten tersebut dari Yahoo Finance / Google News.
+2. Cari berita paling baru mengenai aksi korporasi nyata, rencana merger, akuisisi, laporan kinerja laba bersih, pendapatan meningkat, atau jadwal pembagian dividen. Generate dalam bentuk list HTML <div> cards dengan <a href> hyperlink langsung yang bisa diklik.
 
 FORMAT OUTPUT WAJIB (JSON):
-Kembalikan HANYA JSON object valid ini, tanpa markdown code fence, tanpa teks tambahan di luar JSON:
+Kembalikan HANYA JSON object valid berikut (tanpa markdown code fence, tanpa teks di luar JSON):
 {
   "ticker": "KODE_SAHAM",
   "condition": "Bullish/Bearish/Sideways",
   "last_price": "Rp XXXX",
-  "summary": "Paragraf analisis teknikal dalam Bahasa Indonesia...",
-  "trading_rows": [
-    {
-      "opsi": "1",
-      "deskripsi": "Agresif — Breakout Entry",
-      "entry": "Rp XXXX",
-      "stop_loss": "Rp XXXX",
-      "take_profit": "Rp XXXX",
-      "risk_reward": "1:2.5"
-    },
-    {
-      "opsi": "2",
-      "deskripsi": "Konservatif — Pullback ke Order Block",
-      "entry": "Rp XXXX",
-      "stop_loss": "Rp XXXX",
-      "take_profit": "Rp XXXX",
-      "risk_reward": "1:3.0"
-    },
-    {
-      "opsi": "3",
-      "deskripsi": "Fast Scalping — Quick In & Out",
-      "entry": "Rp XXXX",
-      "stop_loss": "Rp XXXX",
-      "take_profit": "Rp XXXX",
-      "risk_reward": "1:1.0"
-    }
-  ]
+  "summary": "Paragraf analisis teknikal singkat dalam Bahasa Indonesia...",
+  "trading_table": "<tr>...</tr><tr>...</tr><tr>...</tr>",
+  "broker_table": "<tr>...</tr><tr>...</tr><tr>...</tr><tr>...</tr><tr>...</tr>",
+  "ticker_news": "<div class='space-y-3'>...berita cards HTML...</div>"
 }
 
-ATURAN KETAT:
-- Semua field "entry", "stop_loss", "take_profit" WAJIB berisi angka harga nyata dari chart. TIDAK BOLEH kosong, "N/A", atau placeholder.
-- Field "risk_reward" untuk OPSI 3 WAJIB bernilai "1:1.0".
-- Output HARUS berupa JSON murni saja.`;
+ATURAN STYLING HTML DALAM VALUE JSON:
+- Untuk <tr> trading_table: <tr class='border-b border-[#1c2333] hover:bg-[#151a23]/50'><td class='py-3 px-3 text-sm text-gray-200'>...</td></tr>
+- Untuk angka Entry gunakan class: "text-white font-bold"
+- Untuk angka SL gunakan class: "text-red-400 font-semibold"
+- Untuk angka TP gunakan class: "text-emerald-400 font-semibold"
+- Untuk RR gunakan class: "text-yellow-300 font-semibold"
+- Untuk <tr> broker_table: sama dengan format di atas. Status Akumulasi = hijau, Distribusi = merah, Netral = kuning.
+- Untuk ticker_news: buat div cards dengan border-left emerald, judul bold, link biru bisa diklik.
+- SEMUA sel WAJIB terisi. Tidak boleh kosong, N/A, atau placeholder.`;
 
 export default async function handler(req, res) {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -80,18 +67,16 @@ export default async function handler(req, res) {
 
   if (!GEMINI_API_KEY) {
     return res.status(500).json({
-      error: 'GEMINI_API_KEY belum dikonfigurasi di server. Tambahkan di Vercel Environment Variables.',
+      error: 'GEMINI_API_KEY belum dikonfigurasi. Tambahkan di Vercel Environment Variables.',
     });
   }
 
   try {
     const { image, mimeType } = req.body || {};
-
     if (!image) {
-      return res.status(400).json({ error: 'Tidak ada data gambar yang dikirim.' });
+      return res.status(400).json({ error: 'Tidak ada data gambar.' });
     }
 
-    // Strip data URI prefix
     let imageData = image;
     if (imageData.includes(',')) {
       imageData = imageData.split(',')[1];
@@ -104,20 +89,16 @@ export default async function handler(req, res) {
         {
           parts: [
             { text: SYSTEM_PROMPT },
-            {
-              inline_data: {
-                mime_type: mime,
-                data: imageData,
-              },
-            },
+            { inline_data: { mime_type: mime, data: imageData } },
           ],
         },
       ],
+      tools: [{ google_search: {} }],
       generationConfig: {
         temperature: 0.3,
         topP: 0.85,
         topK: 32,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 16000,
         responseMimeType: 'application/json',
       },
     };
@@ -130,7 +111,6 @@ export default async function handler(req, res) {
 
     if (!geminiRes.ok) {
       const errBody = await geminiRes.json().catch(() => ({}));
-      console.error('Gemini API error:', geminiRes.status, errBody);
       return res.status(geminiRes.status).json({
         error: `Gemini API error (${geminiRes.status}): ${errBody?.error?.message || 'Unknown'}`,
       });
@@ -138,72 +118,47 @@ export default async function handler(req, res) {
 
     const result = await geminiRes.json();
 
-    // Safety filter check
     const blockReason = result.promptFeedback?.blockReason;
     if (blockReason) {
-      return res.status(400).json({
-        error: `Konten diblokir oleh safety filter: ${blockReason}. Coba gambar chart lain.`,
-      });
+      return res.status(400).json({ error: `Safety filter: ${blockReason}` });
     }
 
     const candidates = result.candidates || [];
-    if (candidates.length === 0) {
-      return res.status(500).json({ error: 'Model tidak menghasilkan output. Coba lagi.' });
+    if (!candidates.length) {
+      return res.status(500).json({ error: 'Model tidak menghasilkan output.' });
     }
 
     const parts = candidates[0]?.content?.parts || [];
-    if (parts.length === 0) {
-      return res.status(500).json({ error: 'Respons model kosong. Coba lagi.' });
+    if (!parts.length) {
+      return res.status(500).json({ error: 'Respons kosong.' });
     }
 
     let rawText = parts[0].text || '';
+    rawText = rawText.replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
 
-    // Strip markdown code fences if present
-    rawText = rawText.replace(/^```json?\s*\n?/i, '');
-    rawText = rawText.replace(/\n?```\s*$/i, '');
-    rawText = rawText.trim();
-
-    // Parse JSON
     let parsed;
     try {
       parsed = JSON.parse(rawText);
-    } catch (parseErr) {
-      // Fallback: extract JSON object from text
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          parsed = JSON.parse(jsonMatch[0]);
-        } catch {
-          return res.status(500).json({
-            error: 'Model gagal mengembalikan format JSON valid. Coba lagi.',
-          });
+    } catch {
+      const m = rawText.match(/\{[\s\S]*\}/);
+      if (m) {
+        try { parsed = JSON.parse(m[0]); } catch {
+          return res.status(500).json({ error: 'JSON parse gagal. Coba lagi.' });
         }
       } else {
-        return res.status(500).json({
-          error: 'Model gagal mengembalikan format JSON valid. Coba lagi.',
-        });
+        return res.status(500).json({ error: 'Format output invalid. Coba lagi.' });
       }
     }
 
-    // Build response with validated structure
-    const trading_rows = Array.isArray(parsed.trading_rows) ? parsed.trading_rows : [];
-
-    const response = {
+    return res.status(200).json({
       ticker: parsed.ticker || 'UNKNOWN',
-      condition: parsed.condition || 'Tidak Teridentifikasi',
+      condition: parsed.condition || '-',
       last_price: parsed.last_price || '-',
       summary: parsed.summary || '',
-      trading_rows: trading_rows.map((row, i) => ({
-        opsi: row.opsi || String(i + 1),
-        deskripsi: row.deskripsi || '-',
-        entry: row.entry || '-',
-        stop_loss: row.stop_loss || '-',
-        take_profit: row.take_profit || '-',
-        risk_reward: row.risk_reward || '-',
-      })),
-    };
-
-    return res.status(200).json(response);
+      trading_table: parsed.trading_table || '',
+      broker_table: parsed.broker_table || '',
+      ticker_news: parsed.ticker_news || '',
+    });
   } catch (error) {
     console.error('analyze error:', error);
     return res.status(500).json({ error: `Server error: ${error.message}` });
