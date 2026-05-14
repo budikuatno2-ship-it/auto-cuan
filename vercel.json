@@ -3,27 +3,22 @@
   "buildCommand": "",
   "outputDirectory": "",
   "rewrites": [
-    { "source": "/api/analyze", "destination": "/api/analyze" },
-    { "source": "/api/news", "destination": "/api/news" }
+    { "source": "/api/analyze", "destination": "/api/analyze" }
   ],
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
       ]
     }
   ],
   "functions": {
     "api/analyze.js": {
-      "maxDuration": 120,
+      "maxDuration": 90,
       "memory": 1024
-    },
-    "api/news.js": {
-      "maxDuration": 10,
-      "memory": 256
     }
   }
 }
