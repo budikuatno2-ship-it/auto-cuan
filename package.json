@@ -1,0 +1,15 @@
+{
+  "name": "auto-cuan",
+  "version": "1.0.0",
+  "description": "AI Chart Reader - Smart Money Concepts & LuxAlgo Technical Analysis",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build",
+    "deploy": "vercel --prod"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
