@@ -18,23 +18,11 @@
         @keyframes spin{to{transform:rotate(360deg)}}.spinner{width:48px;height:48px;border:3px solid #242d3d;border-top-color:#10b981;border-radius:50%;animation:spin .8s linear infinite}
         @keyframes pulse-glow{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse-glow{animation:pulse-glow 2s cubic-bezier(.4,0,.6,1) infinite}
         @keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}.fade-in{animation:fadeIn .5s ease forwards}
-        /* Ensure AI-rendered tables look great */
-        #analysis-output-container table{width:100%;border-collapse:collapse;margin-top:.5rem;margin-bottom:1.5rem}
-        #analysis-output-container th{background:#151a23;padding:.75rem .75rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;border-bottom:2px solid rgba(16,185,129,.3)}
-        #analysis-output-container td{padding:.75rem .75rem;border-bottom:1px solid #1c2333;font-size:.85rem;color:#e2e8f0}
-        #analysis-output-container tr:hover td{background:rgba(16,185,129,.04)}
-        #analysis-output-container h2{color:#f1f5f9;margin-top:2rem;margin-bottom:1rem;font-weight:700;font-size:1.15rem;padding-bottom:.5rem;border-bottom:1px solid #1c2333}
-        #analysis-output-container p{color:#cbd5e1;line-height:1.75;margin-bottom:.75rem}
-        #analysis-output-container a{color:#60a5fa;text-decoration:underline}
-        #analysis-output-container a:hover{color:#93c5fd}
-        /* Action Badge animations */
-        #analysis-output-container .animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
 
-    <!-- Header (NO Gemini badge) -->
+    <!-- Header (NO Gemini badge, NO calculator) -->
     <header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center">
             <div class="flex items-center gap-3">
@@ -59,7 +47,7 @@
                         <svg class="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                     </div>
                     <h3 class="text-lg sm:text-xl font-semibold text-gray-200 mb-2">&#128193; Seret &amp; Lepas atau Klik untuk Unggah Screenshot Chart Saham (SMC / LuxAlgo)</h3>
-                    <p class="text-sm text-gray-500 max-w-lg mx-auto">PNG, JPG, WebP &bull; Maks 20MB &bull; Analisis Trading Plan + Broker Summary + Berita</p>
+                    <p class="text-sm text-gray-500 max-w-lg mx-auto">PNG, JPG, WebP &bull; Maks 20MB &bull; Analisis Trading Plan + Broker Summary + Berita Emiten</p>
                 </div>
                 <div id="previewContainer" class="hidden">
                     <img id="imagePreview" class="max-h-[420px] mx-auto rounded-xl shadow-2xl border border-dark-600/50" alt="Preview">
@@ -83,20 +71,65 @@
             <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 p-10 text-center">
                 <div class="spinner mx-auto mb-6"></div>
                 <p class="text-emerald-400 font-medium animate-pulse-glow">&#128260; AI sedang membaca chart, menganalisis SMC, mencari data broker live &amp; berita emiten... Mohon tunggu.</p>
-                <p class="text-xs text-gray-600 mt-3">30-90 detik (termasuk pencarian data live IDX)</p>
+                <p class="text-xs text-gray-600 mt-3">30-90 detik (termasuk pencarian data live IDX via Google Search)</p>
             </div>
         </section>
 
-        <!-- Analysis Output Container (single unified block) -->
-        <section id="resultSection" class="hidden fade-in">
+        <!-- Section A: Trading Plan -->
+        <section id="tradingSection" class="hidden fade-in">
             <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 overflow-hidden">
                 <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
                     <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                    <h2 class="font-semibold text-gray-200">Hasil Analisis AI &mdash; Trading Plan, Broker Summary &amp; Berita</h2>
+                    <h2 class="font-semibold text-gray-200">&#128200; Opsi Trading Plan Manajemen Risiko</h2>
+                    <span id="tickerPill" class="ml-auto px-3 py-1 rounded-full bg-dark-600 text-emerald-300 text-xs font-bold hidden"></span>
                 </div>
-                <div id="analysis-output-container" class="p-6 overflow-x-auto">
-                    <!-- Raw HTML from Gemini injected here -->
+                <div class="p-4 overflow-x-auto">
+                    <table class="w-full border-collapse text-sm min-w-[850px]">
+                        <thead><tr class="border-b-2 border-emerald-500/30">
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Opsi</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Tipe Trading</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Entry (Rp)</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Stop Loss (SL)</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Take Profit (TP)</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Risk:Reward</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Keterangan Struktur</th>
+                        </tr></thead>
+                        <tbody id="tradingTableBody"></tbody>
+                    </table>
                 </div>
+            </div>
+        </section>
+
+        <!-- Section B: Broker Summary -->
+        <section id="brokerSection" class="hidden fade-in">
+            <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 overflow-hidden">
+                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
+                    <span class="text-lg">&#128202;</span>
+                    <h2 class="font-semibold text-gray-200">Rangkuman Multi-Timeframe Broker Summary &amp; Indikasi Bandarmologi</h2>
+                </div>
+                <div class="p-4 overflow-x-auto">
+                    <table class="w-full border-collapse text-sm min-w-[900px]">
+                        <thead><tr class="border-b-2 border-yellow-500/30">
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Periode</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Status Aliran</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Top 5 Buyer (Kode + Lot)</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Top 5 Seller (Kode + Lot)</th>
+                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Avg Price Bandar</th>
+                        </tr></thead>
+                        <tbody id="brokerTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section C: News -->
+        <section id="newsSection" class="hidden fade-in">
+            <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 overflow-hidden">
+                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
+                    <span class="text-lg">&#128240;</span>
+                    <h2 class="font-semibold text-gray-200">Berita Terkini Emiten &amp; Aksi Korporasi</h2>
+                </div>
+                <div id="newsContent" class="p-4 max-h-[500px] overflow-y-auto"></div>
             </div>
         </section>
 
@@ -152,15 +185,18 @@
         $('uploadPrompt').classList.remove('hidden');
         $('previewContainer').classList.add('hidden');
         $('analyzeBtn').disabled = true;
-        $('resultSection').classList.add('hidden');
-        $('errorSection').classList.add('hidden');
+        hideResults();
+    }
+
+    function hideResults() {
+        ['tradingSection','brokerSection','newsSection','errorSection'].forEach(id => $(id).classList.add('hidden'));
+        $('tickerPill').classList.add('hidden');
     }
 
     async function runAnalysis() {
         if (!imageBase64) return;
         $('loadingState').classList.remove('hidden');
-        $('resultSection').classList.add('hidden');
-        $('errorSection').classList.add('hidden');
+        hideResults();
         $('analyzeBtn').disabled = true;
 
         try {
@@ -170,40 +206,41 @@
                 body: JSON.stringify({ image: imageBase64, mimeType: imageMimeType })
             });
 
-            // Check if response is JSON error or HTML success
-            const contentType = res.headers.get('content-type') || '';
-
-            if (!res.ok) {
-                // Error responses are JSON
-                let errMsg = 'Error ' + res.status;
-                try {
-                    const errData = await res.json();
-                    errMsg = errData.error || errMsg;
-                } catch { /* use default */ }
-                throw new Error(errMsg);
-            }
-
-            // Success: read as text (raw HTML)
-            const textData = await res.text();
+            const data = await res.json();
 
             // INSTANTLY hide loading
             $('loadingState').classList.add('hidden');
 
-            if (!textData || textData.trim().length === 0) {
-                throw new Error('AI mengembalikan respons kosong. Coba lagi.');
+            if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+
+            // Extract ticker info from trading_table comment
+            const metaMatch = (data.trading_table || '').match(/<!--\s*TICKER:(\w+)\s*\|\s*CONDITION:(\w+)\s*\|\s*PRICE:([\w\s.]+)\s*-->/i);
+            if (metaMatch) {
+                $('tickerPill').textContent = metaMatch[1] + ' | ' + metaMatch[2] + ' | ' + metaMatch[3];
+                $('tickerPill').classList.remove('hidden');
             }
 
-            // Strip any accidental markdown fences
-            let html = textData;
-            html = html.replace(/^```html?\s*\n?/i, '');
-            html = html.replace(/\n?```\s*$/i, '');
+            // Inject Trading Table
+            if (data.trading_table) {
+                $('tradingTableBody').innerHTML = data.trading_table;
+                $('tradingSection').classList.remove('hidden');
+            }
 
-            // Inject raw HTML into the output container
-            $('analysis-output-container').innerHTML = html;
-            $('resultSection').classList.remove('hidden');
+            // Inject Broker Summary Table
+            if (data.broker_table) {
+                $('brokerTableBody').innerHTML = data.broker_table;
+                $('brokerSection').classList.remove('hidden');
+            }
 
-            // Smooth scroll to results
-            setTimeout(() => $('resultSection').scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+            // Inject News
+            if (data.ticker_news) {
+                $('newsContent').innerHTML = data.ticker_news;
+                $('newsSection').classList.remove('hidden');
+            }
+
+            // Scroll to first result
+            const firstVisible = $('tradingSection').classList.contains('hidden') ? $('brokerSection') : $('tradingSection');
+            setTimeout(() => firstVisible.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
 
         } catch (err) {
             $('loadingState').classList.add('hidden');
