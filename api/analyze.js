@@ -1,7 +1,7 @@
 /**
  * Auto-Cuan: Vercel Serverless Function — Chart Analysis + Broker Summary
- * Securely proxies chart image to Google Gemini 2.5 Flash API.
- * API key is read ONLY from process.env.GEMINI_API_KEY (never exposed to client).
+ * Returns structured JSON with two HTML table strings: trading_table & broker_table.
+ * API key is read ONLY from process.env.GEMINI_API_KEY.
  */
 
 export const config = {
@@ -12,39 +12,36 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-const SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham Profesional dan Pakar Bandarmologi Bursa Efek Indonesia (IDX). Tugas Anda adalah membaca gambar screenshot chart saham yang diunggah pengguna dengan sangat teliti.
+const SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham dan Pakar Bandarmologi IDX. Tugas Anda adalah membedah gambar chart yang diunggah.
 
-KEWAJIBAN ANALISIS 1 (TRADING PLAN):
-1. Cari harga penutupan terakhir (Last Price) yang tertera di sumbu kanan chart (misalnya jika harga berada di kisaran 63 atau Rp 63, sesuaikan nilainya dengan angka asli chart).
-2. Analisis zona indikator Smart Money Concepts / LuxAlgo yang terlihat di gambar (seperti area Support/Demand, Resistance/Supply, garis BOS, dan CHoCH).
-3. Tentukan area Entry Terdekat yang valid sesuai dengan zona indikator tersebut. Jangan mengarang angka template statis acak.
-4. Hitung dan tampilkan 3 Opsi Trading Plan (Agresif, Konservatif, Scalping) secara lengkap dan otomatis ke dalam kolom HTML tabel (Entry, Stop Loss, Take Profit, dan Rasio Risk:Reward). Seluruh kolom dalam tabel tidak boleh ada yang kosong.
+INSTRUKSI WAJIB:
+1. Ambil data harga terakhir di sumbu kanan chart (misal kisaran Rp 2.400 - Rp 2.500 sesuai teks gambar). Gunakan angka NYATA yang terlihat di chart.
+2. Pada key "trading_table", isi dengan HTML tabel lengkap berisi 3 Opsi Trading Plan (Agresif, Konservatif, Scalping) mencakup kolom: Opsi, Deskripsi, Entry, Stop Loss (SL), Take Profit (TP), dan Risk:Reward (RR). Jangan biarkan ada kolom kosong!
+3. Pada key "broker_table", jalankan fungsi pencarian internal bandarmologi Anda untuk emiten tersebut. Buat HTML tabel berisi data multi-timeframe untuk periode: Hari Ini, 3 Hari, 7 Hari, 1 Bulan, dan 3 Bulan. Kolomnya wajib berisi: Periode, Status Aliran (Top Akumulasi / Akumulasi Kecil / Netral / Distribusi), Top Buyer, Top Seller, dan Avg Price.
 
-KEWAJIBAN ANALISIS 2 (AUTOMATED BROKER SUMMARY):
-1. Gunakan kemampuan pencarian data internal Anda untuk melacak pergerakan aliran bandar terbaru terkait saham yang sedang dianalisis.
-2. Hasilkan analisis Broker Summary multi-timeframe otomatis dan sajikan dalam bentuk tabel HTML sekunder yang indah berjudul '🕵️‍♂️ Rangkuman Multi-Timeframe Broker Summary & Bandarmologi'.
-3. Tabel ini WAJIB berisi baris periode waktu: 'Hari Ini (Today)', '3 Hari', '7 Hari', '1 Bulan', dan '3 Bulan'.
-4. Setiap baris periode wajib menampilkan kolom: Periode, Status Aliran (Top Akumulasi / Akumulasi Kecil / Netral / Distribusi), Kode Broker Pembeli Terbesar (Top Buyer), Kode Broker Penjual Terbesar (Top Seller), dan Estimasi Harga Rata-rata (Avg Price) Bandar. Pastikan isinya logis dan selaras dengan struktur chart.
+FORMAT OUTPUT WAJIB:
+Anda HARUS mengembalikan HANYA sebuah JSON object valid (tanpa markdown, tanpa code fence, tanpa teks tambahan di luar JSON) dengan struktur persis seperti ini:
+{
+  "ticker": "KODE_SAHAM",
+  "condition": "Bullish/Bearish/Sideways",
+  "summary": "Paragraf analisis teknikal dalam Bahasa Indonesia...",
+  "trading_table": "<table>...HTML tabel trading plan lengkap dengan Tailwind CSS...</table>",
+  "broker_table": "<table>...HTML tabel broker summary lengkap dengan Tailwind CSS...</table>"
+}
 
-ATURAN WAJIB FORMAT OUTPUT:
-- Format output HARUS berupa HTML mentah yang valid dengan Tailwind CSS styling. DILARANG menggunakan markdown code fence (\`\`\`).
-- Di bagian paling atas, tulis judul saham (jika teridentifikasi) dan rangkuman kondisi pasar (Bullish/Bearish/Sideways) dalam paragraf penjelasan teknikal Bahasa Indonesia.
-- TABEL 1: Trading Plan — gunakan <table class="w-full border-collapse text-sm mt-4 mb-8">
-  Kolom header: Opsi | Tipe | Entry (Rp) | Stop Loss (Rp) | Take Profit (Rp) | Risk:Reward
-  Baris 1: OPSI 1 — AGRESIF (entry breakout terdekat)
-  Baris 2: OPSI 2 — KONSERVATIF (entry pullback ke Order Block terkuat)
-  Baris 3: OPSI 3 — FAST SCALPING (Risk:Reward wajib tepat 1:1.0)
-  SEMUA sel WAJIB terisi angka harga nyata dari chart. Tidak boleh kosong, N/A, atau placeholder.
-- TABEL 2: Broker Summary — gunakan <table class="w-full border-collapse text-sm mt-4">
-  Kolom header: Periode | Status Aliran | Top Buyer | Top Seller | Avg Price Bandar
-  5 baris: Hari Ini, 3 Hari, 7 Hari, 1 Bulan, 3 Bulan. Semua sel wajib terisi.
-- Gunakan warna teks: putih (#f1f5f9) untuk teks umum, hijau (#10b981) untuk bullish/profit, merah (#ef4444) untuk bearish/loss, kuning (#fbbf24) untuk netral/caution.
-- Header tabel gunakan background #151a23 dengan teks #94a3b8.
-- Sel tabel gunakan border-bottom: 1px solid #1c2333 dan padding yang cukup.
-- Background keseluruhan HARUS transparan agar cocok dengan latar gelap (#0b0e14).`;
+ATURAN STYLING TABEL HTML:
+- Setiap <table> gunakan class: "w-full border-collapse text-sm"
+- <thead> gunakan: <tr class="border-b-2 border-emerald-500/30"><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">
+- <tbody> gunakan: <tr class="border-b border-[#1c2333] hover:bg-[#151a23]/50"><td class="py-3 px-4 text-sm text-gray-200">
+- Untuk angka bullish/profit gunakan class: "text-emerald-400 font-semibold"
+- Untuk angka bearish/loss gunakan class: "text-red-400 font-semibold"
+- Untuk status netral gunakan class: "text-yellow-400"
+- SEMUA sel WAJIB terisi. Tidak boleh kosong, N/A, atau placeholder dash.
+
+PENTING: Output Anda HARUS berupa JSON murni. Jangan tambahkan penjelasan, markdown code fence, atau teks apapun di luar JSON object.`;
 
 export default async function handler(req, res) {
-  // Handle CORS preflight
+  // CORS preflight
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -58,7 +55,7 @@ export default async function handler(req, res) {
 
   if (!GEMINI_API_KEY) {
     return res.status(500).json({
-      error: 'GEMINI_API_KEY is not configured on the server. Please add it in Vercel Environment Variables.',
+      error: 'GEMINI_API_KEY belum dikonfigurasi di server. Tambahkan di Vercel Environment Variables.',
     });
   }
 
@@ -66,10 +63,10 @@ export default async function handler(req, res) {
     const { image, mimeType } = req.body || {};
 
     if (!image) {
-      return res.status(400).json({ error: 'No image data provided.' });
+      return res.status(400).json({ error: 'Tidak ada data gambar yang dikirim.' });
     }
 
-    // Strip data URI prefix if present
+    // Strip data URI prefix
     let imageData = image;
     if (imageData.includes(',')) {
       imageData = imageData.split(',')[1];
@@ -77,7 +74,6 @@ export default async function handler(req, res) {
 
     const mime = mimeType || 'image/png';
 
-    // Build Gemini API payload
     const payload = {
       contents: [
         {
@@ -93,14 +89,14 @@ export default async function handler(req, res) {
         },
       ],
       generationConfig: {
-        temperature: 0.4,
-        topP: 0.9,
+        temperature: 0.3,
+        topP: 0.85,
         topK: 32,
         maxOutputTokens: 12000,
+        responseMimeType: 'application/json',
       },
     };
 
-    // Call Gemini API — key stays 100% server-side
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -111,42 +107,72 @@ export default async function handler(req, res) {
       const errBody = await geminiRes.json().catch(() => ({}));
       console.error('Gemini API error:', geminiRes.status, errBody);
       return res.status(geminiRes.status).json({
-        error: `Gemini API error (${geminiRes.status}): ${errBody?.error?.message || 'Unknown error'}`,
-        detail: errBody,
+        error: `Gemini API error (${geminiRes.status}): ${errBody?.error?.message || 'Unknown'}`,
       });
     }
 
     const result = await geminiRes.json();
 
-    // Check for safety blocks first
+    // Safety filter check
     const blockReason = result.promptFeedback?.blockReason;
     if (blockReason) {
       return res.status(400).json({
-        error: `Content blocked by safety filter: ${blockReason}. Coba gunakan gambar chart yang berbeda.`,
+        error: `Konten diblokir oleh safety filter: ${blockReason}. Coba gambar chart lain.`,
       });
     }
 
-    // Extract generated HTML text from response
     const candidates = result.candidates || [];
-    if (candidates.length > 0) {
-      const parts = candidates[0]?.content?.parts || [];
-      if (parts.length > 0) {
-        let html = parts[0].text || '';
+    if (candidates.length === 0) {
+      return res.status(500).json({ error: 'Model tidak menghasilkan output. Coba lagi.' });
+    }
 
-        // Strip any accidental markdown code fences
-        html = html.replace(/^```html?\s*\n?/i, '');
-        html = html.replace(/\n?```\s*$/i, '');
-        html = html.trim();
+    const parts = candidates[0]?.content?.parts || [];
+    if (parts.length === 0) {
+      return res.status(500).json({ error: 'Respons model kosong. Coba lagi.' });
+    }
 
-        if (html.length === 0) {
-          return res.status(500).json({ error: 'Model mengembalikan respons kosong. Silakan coba lagi.' });
+    let rawText = parts[0].text || '';
+
+    // Strip markdown code fences if accidentally included
+    rawText = rawText.replace(/^```json?\s*\n?/i, '');
+    rawText = rawText.replace(/\n?```\s*$/i, '');
+    rawText = rawText.trim();
+
+    // Parse the JSON response
+    let parsed;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.error('JSON parse error:', parseErr.message, 'Raw:', rawText.slice(0, 200));
+      // If JSON parsing fails, try to extract JSON from the text
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          parsed = JSON.parse(jsonMatch[0]);
+        } catch {
+          return res.status(500).json({
+            error: 'Model gagal mengembalikan format JSON valid. Coba lagi.',
+            raw: rawText.slice(0, 500),
+          });
         }
-
-        return res.status(200).json({ html });
+      } else {
+        return res.status(500).json({
+          error: 'Model gagal mengembalikan format JSON valid. Coba lagi.',
+          raw: rawText.slice(0, 500),
+        });
       }
     }
 
-    return res.status(500).json({ error: 'Tidak ada analisis yang dihasilkan. Silakan coba lagi.' });
+    // Validate required keys
+    const response = {
+      ticker: parsed.ticker || 'N/A',
+      condition: parsed.condition || 'Tidak Teridentifikasi',
+      summary: parsed.summary || '',
+      trading_table: parsed.trading_table || '',
+      broker_table: parsed.broker_table || '',
+    };
+
+    return res.status(200).json(response);
   } catch (error) {
     console.error('analyze error:', error);
     return res.status(500).json({ error: `Server error: ${error.message}` });
