@@ -1,6 +1,7 @@
 /**
  * Auto-Cuan: Vercel Serverless — Chart Analysis + Broker Summary + News
  * Uses Gemini 2.5 Flash with Google Search grounding for live IDX data.
+ * Returns raw HTML text (NOT JSON) to avoid responseMimeType conflict with google_search tool.
  * API key from process.env.GEMINI_API_KEY only.
  */
 
@@ -14,44 +15,51 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 
 const SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham Senior dan Pakar Bandarmologi Bursa Efek Indonesia (IDX). Tugas Anda adalah membaca screenshot chart saham yang diunggah pengguna dengan akurasi 100% dan bebas dari error template statis acak.
 
-KEWAJIBAN ANALISIS 1 (RIGID TRADING PLAN SYNC):
-1. Cari harga penutupan terakhir (Last Price) yang tertera nyata pada sumbu kanan grafik gambar (misal jika di gambar harganya Rp 63 atau Rp 2.450, gunakan angka eksak tersebut sebagai basis utama).
-2. REKOMENDASI ENTRY, SL, DAN TP WAJIB LOGIS DAN SINKRON. Area Entry tidak boleh jauh melompat dari harga penutupan terakhir tersebut! Hitung secara matematis:
-   - OPSI 1 (Agresif): Entry = Tepat di harga terakhir; SL = 5% di bawah Entry; TP = 11% di atas Entry.
-   - OPSI 2 (Konservatif): Entry = 3% di bawah harga terakhir; SL = 5% di bawah Entry; TP = 8% di atas Entry.
-   - OPSI 3 (Scalping): Entry = Tepat di harga terakhir; SL = 2% di bawah Entry; TP = 2% di atas Entry.
-3. Pada key "trading_table", generate baris kode HTML <tr> untuk 3 opsi tersebut dengan kolom lengkap: Opsi, Tipe Trading, Entry (Rp), Stop Loss (SL), Take Profit (TP), Risk:Reward (RR), dan Keterangan Struktur Pasar (seperti batas BOS/CHoCH/Order Block visual). Jangan biarkan ada kolom kosong!
+OUTPUT ANDA HARUS berupa SATU blok HTML valid dengan styling Tailwind CSS yang indah. JANGAN gunakan markdown code fence. LANGSUNG tulis HTML mentah.
 
-KEWAJIBAN ANALISIS 2 (AUTOMATED TOP 5 BROKER SUMMARY):
-1. Gunakan kemampuan pencarian internet langsung Anda untuk melacak data Broker Summary dan pergerakan akumulasi/distribusi ter-update terkait saham yang sedang dianalisis.
-2. Pada key "broker_table", generate baris kode HTML <tr> untuk periode waktu: 'Hari Ini (Today)', '3 Hari', '7 Hari', '1 Bulan', dan '3 Bulan'.
-3. Setiap baris periode wajib menampilkan kolom: Periode, Status Aliran (Top Akumulasi / Akumulasi Kecil / Netral / Distribusi), Rincian TOP 5 BUYER (Daftar 5 kode broker beli terbesar beserta total lot/volume), Rincian TOP 5 SELLER (Daftar 5 kode broker jual terbesar beserta total lot/volume), Harga Rata-rata (Avg Price) Bandar, dan INDIKASI BANDARMOLOGI (Penjelasan singkat mengenai kekuatan akumulasi bandar besar atau distribusi ritel). Pastikan isinya logis dan selaras dengan struktur chart.
+BAGIAN 1 — RINGKASAN KONDISI PASAR:
+Tulis satu div berisi badge kondisi (Bullish/Bearish/Sideways), kode ticker saham, harga terakhir, dan paragraf analisis teknikal singkat dalam Bahasa Indonesia. Gunakan warna hijau untuk bullish, merah untuk bearish, kuning untuk sideways.
 
-KEWAJIBAN ANALISIS 3 (YAHOO FINANCE INSIDER NEWS):
-1. Pada key "ticker_news", lakukan pencarian berita spesifik emiten tersebut dari Yahoo Finance / Google News.
-2. Cari berita paling baru mengenai aksi korporasi nyata, rencana merger, akuisisi, laporan kinerja laba bersih, pendapatan meningkat, atau jadwal pembagian dividen. Generate dalam bentuk list HTML <div> cards dengan <a href> hyperlink langsung yang bisa diklik.
+BAGIAN 2 — OPSI TRADING PLAN MANAJEMEN RISIKO:
+Buat heading <h2> bertuliskan "📈 Opsi Trading Plan Manajemen Risiko" lalu tabel HTML lengkap.
+1. Cari harga penutupan terakhir (Last Price) yang tertera nyata pada sumbu kanan grafik gambar. Gunakan angka eksak tersebut sebagai basis utama.
+2. REKOMENDASI ENTRY, SL, DAN TP WAJIB LOGIS DAN SINKRON. Hitung secara matematis:
+   - OPSI 1 (Agresif): Entry = Tepat di harga terakhir; SL = 5% di bawah Entry; TP = 11% di atas Entry; RR = 1:2.2
+   - OPSI 2 (Konservatif): Entry = 3% di bawah harga terakhir; SL = 5% di bawah Entry; TP = 8% di atas Entry; RR = 1:1.6
+   - OPSI 3 (Scalping): Entry = Tepat di harga terakhir; SL = 2% di bawah Entry; TP = 2% di atas Entry; RR = 1:1.0
+3. Kolom tabel: Opsi | Tipe Trading | Entry (Rp) | Stop Loss (SL) | Take Profit (TP) | Risk:Reward | Keterangan Struktur Pasar
+4. SEMUA sel wajib terisi angka nyata. Tidak boleh kosong!
 
-FORMAT OUTPUT WAJIB (JSON):
-Kembalikan HANYA JSON object valid berikut (tanpa markdown code fence, tanpa teks di luar JSON):
-{
-  "ticker": "KODE_SAHAM",
-  "condition": "Bullish/Bearish/Sideways",
-  "last_price": "Rp XXXX",
-  "summary": "Paragraf analisis teknikal singkat dalam Bahasa Indonesia...",
-  "trading_table": "<tr>...</tr><tr>...</tr><tr>...</tr>",
-  "broker_table": "<tr>...</tr><tr>...</tr><tr>...</tr><tr>...</tr><tr>...</tr>",
-  "ticker_news": "<div class='space-y-3'>...berita cards HTML...</div>"
-}
+BAGIAN 3 — RANGKUMAN MULTI-TIMEFRAME BROKER SUMMARY & INDIKASI BANDARMOLOGI:
+Buat heading <h2> bertuliskan "📊 Rangkuman Multi-Timeframe Broker Summary & Indikasi Bandarmologi" lalu tabel HTML.
+1. Gunakan kemampuan pencarian internet Anda untuk melacak data Broker Summary terkini saham ini.
+2. Buat 5 baris untuk periode: Hari Ini (Today), 3 Hari, 7 Hari, 1 Bulan, 3 Bulan.
+3. Kolom: Periode | Status Aliran | Top 5 Buyer Brokers (kode + lot) | Top 5 Seller Brokers (kode + lot) | Avg Price | Indikasi Bandarmologi
+4. Semua sel wajib terisi data logis selaras dengan chart.
 
-ATURAN STYLING HTML DALAM VALUE JSON:
-- Untuk <tr> trading_table: <tr class='border-b border-[#1c2333] hover:bg-[#151a23]/50'><td class='py-3 px-3 text-sm text-gray-200'>...</td></tr>
-- Untuk angka Entry gunakan class: "text-white font-bold"
-- Untuk angka SL gunakan class: "text-red-400 font-semibold"
-- Untuk angka TP gunakan class: "text-emerald-400 font-semibold"
-- Untuk RR gunakan class: "text-yellow-300 font-semibold"
-- Untuk <tr> broker_table: sama dengan format di atas. Status Akumulasi = hijau, Distribusi = merah, Netral = kuning.
-- Untuk ticker_news: buat div cards dengan border-left emerald, judul bold, link biru bisa diklik.
-- SEMUA sel WAJIB terisi. Tidak boleh kosong, N/A, atau placeholder.`;
+BAGIAN 4 — BERITA TERKINI EMITEN & AKSI KORPORASI:
+Buat heading <h2> bertuliskan "📰 Berita Terkini Emiten & Aksi Korporasi" lalu list berita.
+1. Cari berita spesifik emiten ini dari Yahoo Finance / Google News menggunakan kemampuan pencarian internet.
+2. Tampilkan 3-5 berita terbaru mengenai aksi korporasi, dividen, laba bersih, merger, atau sentimen pasar.
+3. Setiap berita harus berupa card div dengan judul bold, tanggal, dan <a href="URL" target="_blank"> link yang bisa diklik.
+
+ATURAN STYLING WAJIB:
+- Background transparan (cocok dengan latar gelap #0b0e14)
+- Tabel: <table class="w-full border-collapse text-sm mb-8">
+- Header tabel: <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">
+- Baris tabel: <tr class="border-b border-[#1c2333] hover:bg-[#151a23]/50">
+- Sel tabel: <td class="py-3 px-3 text-sm text-gray-200">
+- Entry: class="text-white font-bold"
+- SL: class="text-red-400 font-semibold"
+- TP: class="text-emerald-400 font-semibold"
+- RR: class="text-yellow-300 font-semibold"
+- Status Akumulasi: class="text-emerald-400 font-semibold"
+- Status Distribusi: class="text-red-400 font-semibold"
+- Heading: <h2 class="text-lg font-bold text-gray-100 mb-4 mt-8">
+- Berita card: <div class="border-l-4 border-emerald-500 pl-4 py-3 mb-3 bg-[#151a23]/50 rounded-r-lg">
+- Link berita: <a href="URL" target="_blank" class="text-blue-400 hover:text-blue-300 underline text-sm">
+
+JANGAN gunakan markdown. JANGAN bungkus dengan code fence. LANGSUNG tulis HTML.`;
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -95,11 +103,10 @@ export default async function handler(req, res) {
       ],
       tools: [{ google_search: {} }],
       generationConfig: {
-        temperature: 0.3,
-        topP: 0.85,
-        topK: 32,
+        temperature: 0.4,
+        topP: 0.9,
+        topK: 40,
         maxOutputTokens: 16000,
-        responseMimeType: 'application/json',
       },
     };
 
@@ -133,32 +140,27 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Respons kosong.' });
     }
 
-    let rawText = parts[0].text || '';
-    rawText = rawText.replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch {
-      const m = rawText.match(/\{[\s\S]*\}/);
-      if (m) {
-        try { parsed = JSON.parse(m[0]); } catch {
-          return res.status(500).json({ error: 'JSON parse gagal. Coba lagi.' });
-        }
-      } else {
-        return res.status(500).json({ error: 'Format output invalid. Coba lagi.' });
+    // Collect all text parts (model may split response across multiple parts)
+    let htmlOutput = '';
+    for (const part of parts) {
+      if (part.text) {
+        htmlOutput += part.text;
       }
     }
 
-    return res.status(200).json({
-      ticker: parsed.ticker || 'UNKNOWN',
-      condition: parsed.condition || '-',
-      last_price: parsed.last_price || '-',
-      summary: parsed.summary || '',
-      trading_table: parsed.trading_table || '',
-      broker_table: parsed.broker_table || '',
-      ticker_news: parsed.ticker_news || '',
-    });
+    // Strip any accidental markdown code fences
+    htmlOutput = htmlOutput.replace(/^```html?\s*\n?/i, '');
+    htmlOutput = htmlOutput.replace(/\n?```\s*$/i, '');
+    htmlOutput = htmlOutput.trim();
+
+    if (!htmlOutput) {
+      return res.status(500).json({ error: 'Model mengembalikan respons kosong.' });
+    }
+
+    // Return as plain text (NOT JSON)
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(htmlOutput);
+
   } catch (error) {
     console.error('analyze error:', error);
     return res.status(500).json({ error: `Server error: ${error.message}` });

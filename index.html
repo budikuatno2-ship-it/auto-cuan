@@ -18,6 +18,15 @@
         @keyframes spin{to{transform:rotate(360deg)}}.spinner{width:48px;height:48px;border:3px solid #242d3d;border-top-color:#10b981;border-radius:50%;animation:spin .8s linear infinite}
         @keyframes pulse-glow{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse-glow{animation:pulse-glow 2s cubic-bezier(.4,0,.6,1) infinite}
         @keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}.fade-in{animation:fadeIn .5s ease forwards}
+        /* Ensure AI-rendered tables look great */
+        #analysis-output-container table{width:100%;border-collapse:collapse;margin-top:.5rem;margin-bottom:1.5rem}
+        #analysis-output-container th{background:#151a23;padding:.75rem .75rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;border-bottom:2px solid rgba(16,185,129,.3)}
+        #analysis-output-container td{padding:.75rem .75rem;border-bottom:1px solid #1c2333;font-size:.85rem;color:#e2e8f0}
+        #analysis-output-container tr:hover td{background:rgba(16,185,129,.04)}
+        #analysis-output-container h2{color:#f1f5f9;margin-top:2rem;margin-bottom:1rem;font-weight:700;font-size:1.15rem;padding-bottom:.5rem;border-bottom:1px solid #1c2333}
+        #analysis-output-container p{color:#cbd5e1;line-height:1.75;margin-bottom:.75rem}
+        #analysis-output-container a{color:#60a5fa;text-decoration:underline}
+        #analysis-output-container a:hover{color:#93c5fd}
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -47,12 +56,12 @@
                         <svg class="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                     </div>
                     <h3 class="text-lg sm:text-xl font-semibold text-gray-200 mb-2">&#128193; Seret &amp; Lepas atau Klik untuk Unggah Screenshot Chart Saham (SMC / LuxAlgo)</h3>
-                    <p class="text-sm text-gray-500 max-w-lg mx-auto">PNG, JPG, WebP &bull; Maks 20MB</p>
+                    <p class="text-sm text-gray-500 max-w-lg mx-auto">PNG, JPG, WebP &bull; Maks 20MB &bull; Analisis Trading Plan + Broker Summary + Berita</p>
                 </div>
                 <div id="previewContainer" class="hidden">
                     <img id="imagePreview" class="max-h-[420px] mx-auto rounded-xl shadow-2xl border border-dark-600/50" alt="Preview">
                     <p id="fileName" class="mt-4 text-sm text-gray-400"></p>
-                    <button onclick="event.stopPropagation();resetUpload();" class="mt-3 text-xs text-red-400 hover:text-red-300 underline">&#10005; Hapus</button>
+                    <button onclick="event.stopPropagation();resetUpload();" class="mt-3 text-xs text-red-400 hover:text-red-300 underline">&#10005; Hapus &amp; Unggah Ulang</button>
                 </div>
             </div>
             <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="handleFile(event)">
@@ -70,78 +79,21 @@
         <section id="loadingState" class="hidden">
             <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 p-10 text-center">
                 <div class="spinner mx-auto mb-6"></div>
-                <p class="text-emerald-400 font-medium animate-pulse-glow">&#128260; AI sedang membaca chart, menganalisis SMC, mencari data broker &amp; berita emiten... Mohon tunggu.</p>
-                <p class="text-xs text-gray-600 mt-3">Biasanya 30-90 detik (termasuk pencarian data live)</p>
+                <p class="text-emerald-400 font-medium animate-pulse-glow">&#128260; AI sedang membaca chart, menganalisis SMC, mencari data broker live &amp; berita emiten... Mohon tunggu.</p>
+                <p class="text-xs text-gray-600 mt-3">30-90 detik (termasuk pencarian data live IDX)</p>
             </div>
         </section>
 
-        <!-- Summary -->
-        <section id="summarySection" class="hidden fade-in">
-            <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 p-6">
-                <div class="flex flex-wrap items-center gap-3 mb-4">
-                    <span id="conditionBadge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"></span>
-                    <span id="tickerBadge" class="px-3 py-1 rounded-full bg-dark-600 text-gray-300 text-xs font-semibold"></span>
-                    <span id="priceBadge" class="px-3 py-1 rounded-full bg-dark-600 text-emerald-300 text-xs font-semibold"></span>
-                </div>
-                <p id="summaryText" class="text-gray-300 leading-relaxed text-sm"></p>
-            </div>
-        </section>
-
-        <!-- Section A: Trading Plan -->
-        <section id="tradingSection" class="hidden fade-in">
+        <!-- Analysis Output Container (single unified block) -->
+        <section id="resultSection" class="hidden fade-in">
             <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 overflow-hidden">
                 <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
                     <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                    <h2 class="font-semibold text-gray-200">&#128200; Opsi Trading Plan Manajemen Risiko</h2>
+                    <h2 class="font-semibold text-gray-200">Hasil Analisis AI &mdash; Trading Plan, Broker Summary &amp; Berita</h2>
                 </div>
-                <div class="p-4 overflow-x-auto">
-                    <table class="w-full border-collapse text-sm min-w-[850px]">
-                        <thead><tr class="border-b-2 border-emerald-500/30">
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Opsi</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Tipe Trading</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Entry (Rp)</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Stop Loss (SL)</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Take Profit (TP)</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Risk:Reward</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Keterangan Struktur</th>
-                        </tr></thead>
-                        <tbody id="tradingTableBody"></tbody>
-                    </table>
+                <div id="analysis-output-container" class="p-6 overflow-x-auto">
+                    <!-- Raw HTML from Gemini injected here -->
                 </div>
-            </div>
-        </section>
-
-        <!-- Section B: Broker Summary -->
-        <section id="brokerSection" class="hidden fade-in">
-            <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 overflow-hidden">
-                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
-                    <span class="text-lg">&#128202;</span>
-                    <h2 class="font-semibold text-gray-200">Rangkuman Multi-Timeframe Broker Summary &amp; Indikasi Bandarmologi</h2>
-                </div>
-                <div class="p-4 overflow-x-auto">
-                    <table class="w-full border-collapse text-sm min-w-[900px]">
-                        <thead><tr class="border-b-2 border-yellow-500/30">
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Periode</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Status Aliran</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Top 5 Buyer Brokers</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Top 5 Seller Brokers</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Avg Price</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Indikasi</th>
-                        </tr></thead>
-                        <tbody id="brokerTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section C: News -->
-        <section id="newsSection" class="hidden fade-in">
-            <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 overflow-hidden">
-                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
-                    <span class="text-lg">&#128240;</span>
-                    <h2 id="newsTitle" class="font-semibold text-gray-200">Berita Terkini Emiten &amp; Aksi Korporasi (Yahoo Finance Feed)</h2>
-                </div>
-                <div id="newsContent" class="p-4 max-h-[500px] overflow-y-auto"></div>
             </div>
         </section>
 
@@ -197,17 +149,15 @@
         $('uploadPrompt').classList.remove('hidden');
         $('previewContainer').classList.add('hidden');
         $('analyzeBtn').disabled = true;
-        hideResults();
-    }
-
-    function hideResults() {
-        ['summarySection','tradingSection','brokerSection','newsSection','errorSection'].forEach(id => $(id).classList.add('hidden'));
+        $('resultSection').classList.add('hidden');
+        $('errorSection').classList.add('hidden');
     }
 
     async function runAnalysis() {
         if (!imageBase64) return;
         $('loadingState').classList.remove('hidden');
-        hideResults();
+        $('resultSection').classList.add('hidden');
+        $('errorSection').classList.add('hidden');
         $('analyzeBtn').disabled = true;
 
         try {
@@ -216,46 +166,41 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: imageBase64, mimeType: imageMimeType })
             });
-            const data = await res.json();
+
+            // Check if response is JSON error or HTML success
+            const contentType = res.headers.get('content-type') || '';
+
+            if (!res.ok) {
+                // Error responses are JSON
+                let errMsg = 'Error ' + res.status;
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.error || errMsg;
+                } catch { /* use default */ }
+                throw new Error(errMsg);
+            }
+
+            // Success: read as text (raw HTML)
+            const textData = await res.text();
 
             // INSTANTLY hide loading
             $('loadingState').classList.add('hidden');
 
-            if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
-
-            // Summary
-            $('tickerBadge').textContent = data.ticker || 'UNKNOWN';
-            $('priceBadge').textContent = data.last_price || '';
-            const cond = (data.condition || '').toLowerCase();
-            const badge = $('conditionBadge');
-            badge.textContent = data.condition || '-';
-            badge.className = 'px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ' +
-                (cond.includes('bullish') ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                 cond.includes('bearish') ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30');
-            $('summaryText').textContent = data.summary || '';
-            $('summarySection').classList.remove('hidden');
-
-            // Trading table injection
-            if (data.trading_table) {
-                $('tradingTableBody').innerHTML = data.trading_table;
-                $('tradingSection').classList.remove('hidden');
+            if (!textData || textData.trim().length === 0) {
+                throw new Error('AI mengembalikan respons kosong. Coba lagi.');
             }
 
-            // Broker table injection
-            if (data.broker_table) {
-                $('brokerTableBody').innerHTML = data.broker_table;
-                $('brokerSection').classList.remove('hidden');
-            }
+            // Strip any accidental markdown fences
+            let html = textData;
+            html = html.replace(/^```html?\s*\n?/i, '');
+            html = html.replace(/\n?```\s*$/i, '');
 
-            // News injection
-            if (data.ticker_news) {
-                $('newsTitle').innerHTML = '&#128240; Berita Terkini &mdash; <span class="text-emerald-400">' + esc(data.ticker) + '</span>';
-                $('newsContent').innerHTML = data.ticker_news;
-                $('newsSection').classList.remove('hidden');
-            }
+            // Inject raw HTML into the output container
+            $('analysis-output-container').innerHTML = html;
+            $('resultSection').classList.remove('hidden');
 
-            setTimeout(() => $('summarySection').scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+            // Smooth scroll to results
+            setTimeout(() => $('resultSection').scrollIntoView({ behavior:'smooth', block:'start' }), 100);
 
         } catch (err) {
             $('loadingState').classList.add('hidden');
@@ -265,8 +210,6 @@
             $('analyzeBtn').disabled = false;
         }
     }
-
-    function esc(s) { if(!s) return ''; const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
     </script>
 </body>
 </html>
