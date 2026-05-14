@@ -1,6 +1,6 @@
 /**
- * Auto-Cuan: Vercel Serverless Function — Chart Analysis + Broker Summary
- * Returns structured JSON with two HTML table strings: trading_table & broker_table.
+ * Auto-Cuan: Vercel Serverless Function — Chart Analysis
+ * Returns structured JSON with trading plan table rows.
  * API key is read ONLY from process.env.GEMINI_API_KEY.
  */
 
@@ -12,33 +12,58 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-const SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham dan Pakar Bandarmologi IDX. Tugas Anda adalah membedah gambar chart yang diunggah.
+const SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham Profesional khusus Smart Money Concepts (SMC). Tugas Anda adalah membaca gambar screenshot chart saham yang diunggah pengguna dengan sangat teliti.
 
 INSTRUKSI WAJIB:
-1. Ambil data harga terakhir di sumbu kanan chart (misal kisaran Rp 2.400 - Rp 2.500 sesuai teks gambar). Gunakan angka NYATA yang terlihat di chart.
-2. Pada key "trading_table", isi dengan HTML tabel lengkap berisi 3 Opsi Trading Plan (Agresif, Konservatif, Scalping) mencakup kolom: Opsi, Deskripsi, Entry, Stop Loss (SL), Take Profit (TP), dan Risk:Reward (RR). Jangan biarkan ada kolom kosong!
-3. Pada key "broker_table", jalankan fungsi pencarian internal bandarmologi Anda untuk emiten tersebut. Buat HTML tabel berisi data multi-timeframe untuk periode: Hari Ini, 3 Hari, 7 Hari, 1 Bulan, dan 3 Bulan. Kolomnya wajib berisi: Periode, Status Aliran (Top Akumulasi / Akumulasi Kecil / Netral / Distribusi), Top Buyer, Top Seller, dan Avg Price.
+1. Identifikasi kode ticker/emiten saham yang terlihat di chart (misal: BBRI, BBCA, NAYZ, ANTM, dll). Jika tidak terlihat jelas, tulis "UNKNOWN".
+2. Ambil data harga terakhir (Last Price) dari sumbu kanan chart. Gunakan angka NYATA yang terlihat di gambar, bukan angka karangan.
+3. Analisis zona indikator Smart Money Concepts / LuxAlgo yang terlihat di gambar (Support/Demand, Resistance/Supply, BOS, CHoCH, FVG, Order Block).
+4. Tentukan kondisi pasar saat ini: Bullish, Bearish, atau Sideways.
+5. Buat analisis teknikal singkat dalam Bahasa Indonesia yang menjelaskan mengapa kondisi tersebut terjadi berdasarkan bukti visual chart.
+6. Hitung 3 Opsi Trading Plan dengan 6 kolom: Opsi, Deskripsi, Entry (Rp), Stop Loss (Rp), Take Profit (Rp), Risk:Reward.
+   - OPSI 1: AGRESIF — entry pada breakout terdekat
+   - OPSI 2: KONSERVATIF — entry pada pullback ke Order Block/Demand terkuat
+   - OPSI 3: FAST SCALPING — Risk:Reward wajib tepat 1:1.0
 
-FORMAT OUTPUT WAJIB:
-Anda HARUS mengembalikan HANYA sebuah JSON object valid (tanpa markdown, tanpa code fence, tanpa teks tambahan di luar JSON) dengan struktur persis seperti ini:
+FORMAT OUTPUT WAJIB (JSON):
+Kembalikan HANYA JSON object valid ini, tanpa markdown code fence, tanpa teks tambahan di luar JSON:
 {
   "ticker": "KODE_SAHAM",
   "condition": "Bullish/Bearish/Sideways",
+  "last_price": "Rp XXXX",
   "summary": "Paragraf analisis teknikal dalam Bahasa Indonesia...",
-  "trading_table": "<table>...HTML tabel trading plan lengkap dengan Tailwind CSS...</table>",
-  "broker_table": "<table>...HTML tabel broker summary lengkap dengan Tailwind CSS...</table>"
+  "trading_rows": [
+    {
+      "opsi": "1",
+      "deskripsi": "Agresif — Breakout Entry",
+      "entry": "Rp XXXX",
+      "stop_loss": "Rp XXXX",
+      "take_profit": "Rp XXXX",
+      "risk_reward": "1:2.5"
+    },
+    {
+      "opsi": "2",
+      "deskripsi": "Konservatif — Pullback ke Order Block",
+      "entry": "Rp XXXX",
+      "stop_loss": "Rp XXXX",
+      "take_profit": "Rp XXXX",
+      "risk_reward": "1:3.0"
+    },
+    {
+      "opsi": "3",
+      "deskripsi": "Fast Scalping — Quick In & Out",
+      "entry": "Rp XXXX",
+      "stop_loss": "Rp XXXX",
+      "take_profit": "Rp XXXX",
+      "risk_reward": "1:1.0"
+    }
+  ]
 }
 
-ATURAN STYLING TABEL HTML:
-- Setiap <table> gunakan class: "w-full border-collapse text-sm"
-- <thead> gunakan: <tr class="border-b-2 border-emerald-500/30"><th class="py-3 px-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">
-- <tbody> gunakan: <tr class="border-b border-[#1c2333] hover:bg-[#151a23]/50"><td class="py-3 px-4 text-sm text-gray-200">
-- Untuk angka bullish/profit gunakan class: "text-emerald-400 font-semibold"
-- Untuk angka bearish/loss gunakan class: "text-red-400 font-semibold"
-- Untuk status netral gunakan class: "text-yellow-400"
-- SEMUA sel WAJIB terisi. Tidak boleh kosong, N/A, atau placeholder dash.
-
-PENTING: Output Anda HARUS berupa JSON murni. Jangan tambahkan penjelasan, markdown code fence, atau teks apapun di luar JSON object.`;
+ATURAN KETAT:
+- Semua field "entry", "stop_loss", "take_profit" WAJIB berisi angka harga nyata dari chart. TIDAK BOLEH kosong, "N/A", atau placeholder.
+- Field "risk_reward" untuk OPSI 3 WAJIB bernilai "1:1.0".
+- Output HARUS berupa JSON murni saja.`;
 
 export default async function handler(req, res) {
   // CORS preflight
@@ -92,7 +117,7 @@ export default async function handler(req, res) {
         temperature: 0.3,
         topP: 0.85,
         topK: 32,
-        maxOutputTokens: 12000,
+        maxOutputTokens: 8192,
         responseMimeType: 'application/json',
       },
     };
@@ -133,18 +158,17 @@ export default async function handler(req, res) {
 
     let rawText = parts[0].text || '';
 
-    // Strip markdown code fences if accidentally included
+    // Strip markdown code fences if present
     rawText = rawText.replace(/^```json?\s*\n?/i, '');
     rawText = rawText.replace(/\n?```\s*$/i, '');
     rawText = rawText.trim();
 
-    // Parse the JSON response
+    // Parse JSON
     let parsed;
     try {
       parsed = JSON.parse(rawText);
     } catch (parseErr) {
-      console.error('JSON parse error:', parseErr.message, 'Raw:', rawText.slice(0, 200));
-      // If JSON parsing fails, try to extract JSON from the text
+      // Fallback: extract JSON object from text
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
@@ -152,24 +176,31 @@ export default async function handler(req, res) {
         } catch {
           return res.status(500).json({
             error: 'Model gagal mengembalikan format JSON valid. Coba lagi.',
-            raw: rawText.slice(0, 500),
           });
         }
       } else {
         return res.status(500).json({
           error: 'Model gagal mengembalikan format JSON valid. Coba lagi.',
-          raw: rawText.slice(0, 500),
         });
       }
     }
 
-    // Validate required keys
+    // Build response with validated structure
+    const trading_rows = Array.isArray(parsed.trading_rows) ? parsed.trading_rows : [];
+
     const response = {
-      ticker: parsed.ticker || 'N/A',
+      ticker: parsed.ticker || 'UNKNOWN',
       condition: parsed.condition || 'Tidak Teridentifikasi',
+      last_price: parsed.last_price || '-',
       summary: parsed.summary || '',
-      trading_table: parsed.trading_table || '',
-      broker_table: parsed.broker_table || '',
+      trading_rows: trading_rows.map((row, i) => ({
+        opsi: row.opsi || String(i + 1),
+        deskripsi: row.deskripsi || '-',
+        entry: row.entry || '-',
+        stop_loss: row.stop_loss || '-',
+        take_profit: row.take_profit || '-',
+        risk_reward: row.risk_reward || '-',
+      })),
     };
 
     return res.status(200).json(response);
