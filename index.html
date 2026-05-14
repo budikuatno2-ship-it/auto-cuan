@@ -3,96 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto-Cuan | AI Chart Reader — SMC & Bandarmologi</title>
+    <title>Auto-Cuan | AI Chart Reader</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: { extend: { colors: { dark: { 950:'#060810', 900:'#0b0e14', 800:'#0f1319', 700:'#151a23', 600:'#1c2333', 500:'#242d3d' } } } }
-        }
-    </script>
+    <script>tailwind.config={theme:{extend:{colors:{dark:{900:'#0b0e14',800:'#0f1319',700:'#151a23',600:'#1c2333',500:'#242d3d'}}}}}</script>
     <style>
         body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
-        ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0f1319}::-webkit-scrollbar-thumb{background:#242d3d;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#10b981}
-        .glow-emerald{box-shadow:0 0 20px rgba(16,185,129,.3),0 0 60px rgba(16,185,129,.1)}.glow-emerald:hover{box-shadow:0 0 30px rgba(16,185,129,.5),0 0 80px rgba(16,185,129,.2)}
-        .upload-zone{border:2px dashed #242d3d;transition:all .3s ease}.upload-zone:hover,.upload-zone.dragover{border-color:#10b981;background:rgba(16,185,129,.03);box-shadow:inset 0 0 40px rgba(16,185,129,.05)}
-        @keyframes spin{to{transform:rotate(360deg)}}.spinner{width:48px;height:48px;border:3px solid #242d3d;border-top-color:#10b981;border-radius:50%;animation:spin .8s linear infinite}
-        @keyframes pulse-glow{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse-glow{animation:pulse-glow 2s cubic-bezier(.4,0,.6,1) infinite}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}.fade-in{animation:fadeIn .5s ease forwards}
+        ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#242d3d;border-radius:3px}
+        .glow-emerald{box-shadow:0 0 20px rgba(16,185,129,.3),0 0 60px rgba(16,185,129,.1)}
+        .upload-zone{border:2px dashed #242d3d;transition:all .3s}.upload-zone:hover,.upload-zone.dragover{border-color:#10b981;background:rgba(16,185,129,.03)}
+        @keyframes spin{to{transform:rotate(360deg)}}.spinner{width:40px;height:40px;border:3px solid #242d3d;border-top-color:#10b981;border-radius:50%;animation:spin .8s linear infinite}
+        @keyframes pulse-glow{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse-glow{animation:pulse-glow 2s ease-in-out infinite}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.fade-in{animation:fadeIn .4s ease forwards}
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
-
-    <!-- Header (NO Gemini badge, NO calculator) -->
     <header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold text-white tracking-tight">Auto-Cuan</h1>
-                    <p class="text-xs text-gray-500 font-medium">AI Chart Reader &bull; SMC &amp; Bandarmologi IDX</p>
-                </div>
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold text-white leading-tight">Auto-Cuan</h1>
+                <p class="text-[10px] text-gray-500">AI Chart Reader &bull; SMC &amp; Bandarmologi IDX</p>
             </div>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-
-        <!-- Upload -->
-        <section class="fade-in">
-            <div id="uploadZone" class="upload-zone rounded-2xl p-8 sm:p-14 text-center cursor-pointer bg-dark-800/50" onclick="document.getElementById('fileInput').click()">
+    <main class="max-w-4xl mx-auto px-3 sm:px-6 py-6 space-y-6">
+        <!-- Upload Zone -->
+        <section>
+            <div id="uploadZone" class="upload-zone rounded-xl p-4 sm:p-10 text-center cursor-pointer bg-dark-800/50" onclick="document.getElementById('fileInput').click()">
                 <div id="uploadPrompt">
-                    <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-dark-700 flex items-center justify-center">
-                        <svg class="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                    <div class="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 rounded-xl bg-dark-700 flex items-center justify-center">
+                        <svg class="w-7 h-7 sm:w-8 sm:h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                     </div>
-                    <h3 class="text-lg sm:text-xl font-semibold text-gray-200 mb-2">&#128193; Seret &amp; Lepas atau Klik untuk Unggah Screenshot Chart Saham (SMC / LuxAlgo)</h3>
-                    <p class="text-sm text-gray-500 max-w-lg mx-auto">PNG, JPG, WebP &bull; Maks 20MB &bull; Analisis Trading Plan + Broker Summary + Berita Emiten</p>
+                    <p class="text-sm sm:text-base font-semibold text-gray-200 mb-1">&#128193; Unggah Screenshot Chart Saham</p>
+                    <p class="text-xs text-gray-500">PNG, JPG, WebP &bull; Maks 20MB</p>
                 </div>
                 <div id="previewContainer" class="hidden">
-                    <img id="imagePreview" class="max-h-[420px] mx-auto rounded-xl shadow-2xl border border-dark-600/50" alt="Preview">
-                    <p id="fileName" class="mt-4 text-sm text-gray-400"></p>
-                    <button onclick="event.stopPropagation();resetUpload();" class="mt-3 text-xs text-red-400 hover:text-red-300 underline">&#10005; Hapus &amp; Unggah Ulang</button>
+                    <img id="imagePreview" class="max-h-[280px] sm:max-h-[380px] mx-auto rounded-lg border border-dark-600/50" alt="Preview">
+                    <p id="fileName" class="mt-3 text-xs text-gray-400"></p>
                 </div>
             </div>
             <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="handleFile(event)">
-        </section>
 
-        <!-- Button -->
-        <section class="text-center">
-            <button id="analyzeBtn" onclick="runAnalysis()" disabled class="inline-flex items-center gap-3 px-10 py-4 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none hover:scale-[1.02] active:scale-[0.98]">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                Mulai Analisis Chart
-            </button>
+            <!-- Buttons: responsive flex row/col -->
+            <div id="btnGroup" class="flex flex-col sm:flex-row gap-3 mt-4 w-full hidden">
+                <button onclick="resetUpload()" class="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors">&#10005; Hapus &amp; Unggah Ulang</button>
+                <button id="analyzeBtn" onclick="runAnalysis()" class="w-full sm:w-auto flex-1 px-6 py-2.5 rounded-lg font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.01] active:scale-[0.99] transition-all text-sm">&#9889; Mulai Analisis Chart</button>
+            </div>
         </section>
 
         <!-- Loading -->
         <section id="loadingState" class="hidden">
-            <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 p-10 text-center">
-                <div class="spinner mx-auto mb-6"></div>
-                <p class="text-emerald-400 font-medium animate-pulse-glow">&#128260; AI sedang membaca chart, menganalisis SMC, mencari data broker live &amp; berita emiten... Mohon tunggu.</p>
-                <p class="text-xs text-gray-600 mt-3">30-90 detik (termasuk pencarian data live IDX via Google Search)</p>
+            <div class="bg-dark-800/60 rounded-xl border border-dark-600/50 p-6 sm:p-8 text-center">
+                <div class="spinner mx-auto mb-4"></div>
+                <p class="text-emerald-400 text-sm font-medium animate-pulse-glow">&#128260; AI membaca chart + mencari data broker live...</p>
+                <p class="text-[10px] text-gray-600 mt-2">30-90 detik</p>
             </div>
         </section>
 
         <!-- Section A: Trading Plan -->
         <section id="tradingSection" class="hidden fade-in">
-            <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 overflow-hidden">
-                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
-                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                    <h2 class="font-semibold text-gray-200">&#128200; Opsi Trading Plan Manajemen Risiko</h2>
-                    <span id="tickerPill" class="ml-auto px-3 py-1 rounded-full bg-dark-600 text-emerald-300 text-xs font-bold hidden"></span>
+            <div class="bg-dark-800/60 rounded-xl border border-dark-600/50 overflow-hidden">
+                <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <h2 class="text-sm font-semibold text-gray-200">&#128200; Trading Plan</h2>
+                    <span id="tickerPill" class="ml-auto px-2 py-0.5 rounded-full bg-dark-600 text-emerald-300 text-[10px] font-bold hidden"></span>
                 </div>
-                <div class="p-4 overflow-x-auto">
-                    <table class="w-full border-collapse text-sm min-w-[850px]">
+                <div class="w-full overflow-x-auto block border-t border-gray-800">
+                    <table class="w-full border-collapse text-xs min-w-[680px]">
                         <thead><tr class="border-b-2 border-emerald-500/30">
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Opsi</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Tipe Trading</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Entry (Rp)</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Stop Loss (SL)</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Take Profit (TP)</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Risk:Reward</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Keterangan Struktur</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">Opsi</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">Tipe</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">Entry</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">SL</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">TP</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">RR</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">Keterangan</th>
                         </tr></thead>
                         <tbody id="tradingTableBody"></tbody>
                     </table>
@@ -102,19 +90,19 @@
 
         <!-- Section B: Broker Summary -->
         <section id="brokerSection" class="hidden fade-in">
-            <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 overflow-hidden">
-                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
-                    <span class="text-lg">&#128202;</span>
-                    <h2 class="font-semibold text-gray-200">Rangkuman Multi-Timeframe Broker Summary &amp; Indikasi Bandarmologi</h2>
+            <div class="bg-dark-800/60 rounded-xl border border-dark-600/50 overflow-hidden">
+                <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
+                    <span class="text-sm">&#128202;</span>
+                    <h2 class="text-sm font-semibold text-gray-200">Broker Summary &amp; Bandarmologi</h2>
                 </div>
-                <div class="p-4 overflow-x-auto">
-                    <table class="w-full border-collapse text-sm min-w-[900px]">
+                <div class="w-full overflow-x-auto block border-t border-gray-800">
+                    <table class="w-full border-collapse text-xs min-w-[720px]">
                         <thead><tr class="border-b-2 border-yellow-500/30">
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Periode</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Status Aliran</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Top 5 Buyer (Kode + Lot)</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Top 5 Seller (Kode + Lot)</th>
-                            <th class="py-3 px-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-400 bg-[#151a23]">Avg Price Bandar</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">Periode</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">Status</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">Top 5 Buyer</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">Top 5 Seller</th>
+                            <th class="py-2 px-2 text-left text-[10px] font-semibold uppercase text-gray-400 bg-[#151a23]">Avg Price</th>
                         </tr></thead>
                         <tbody id="brokerTableBody"></tbody>
                     </table>
@@ -124,130 +112,103 @@
 
         <!-- Section C: News -->
         <section id="newsSection" class="hidden fade-in">
-            <div class="bg-dark-800/60 rounded-2xl border border-dark-600/50 overflow-hidden">
-                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
-                    <span class="text-lg">&#128240;</span>
-                    <h2 class="font-semibold text-gray-200">Berita Terkini Emiten &amp; Aksi Korporasi</h2>
+            <div class="bg-dark-800/60 rounded-xl border border-dark-600/50 overflow-hidden">
+                <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
+                    <span class="text-sm">&#128240;</span>
+                    <h2 class="text-sm font-semibold text-gray-200">Berita Emiten &amp; Aksi Korporasi</h2>
                 </div>
-                <div id="newsContent" class="p-4 max-h-[500px] overflow-y-auto"></div>
+                <div id="newsContent" class="p-3 max-h-[400px] overflow-y-auto"></div>
             </div>
         </section>
 
         <!-- Error -->
         <section id="errorSection" class="hidden fade-in">
-            <div class="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">
-                <p class="text-red-400 font-semibold mb-2 text-lg">&#9888; Gagal Menganalisis</p>
-                <p id="errorText" class="text-red-300/70 text-sm mb-4"></p>
-                <button onclick="runAnalysis()" class="px-6 py-2.5 rounded-lg bg-red-500/20 text-red-300 text-sm font-medium hover:bg-red-500/30">&#8635; Coba Lagi</button>
+            <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center">
+                <p class="text-red-400 font-semibold text-sm mb-1">&#9888; Gagal</p>
+                <p id="errorText" class="text-red-300/70 text-xs mb-3"></p>
+                <button onclick="runAnalysis()" class="px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium">&#8635; Coba Lagi</button>
             </div>
         </section>
     </main>
 
-    <footer class="border-t border-dark-700/50 mt-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
-            <p class="text-xs text-gray-600">Auto-Cuan &copy; 2025 &bull; AI-Powered Technical Analysis &bull; Smart Money Concepts &amp; Bandarmologi IDX</p>
-            <p class="text-xs text-gray-700 mt-1">Disclaimer: Bukan saran investasi. Gunakan sebagai referensi tambahan.</p>
+    <footer class="border-t border-dark-700/50 mt-10">
+        <div class="max-w-7xl mx-auto px-4 py-4 text-center">
+            <p class="text-[10px] text-gray-600">Auto-Cuan &copy; 2025 &bull; Smart Money Concepts &amp; Bandarmologi IDX</p>
+            <p class="text-[10px] text-gray-700 mt-0.5">Disclaimer: Bukan saran investasi.</p>
         </div>
     </footer>
 
     <script>
-    let imageBase64 = null, imageMimeType = null;
-    const $ = id => document.getElementById(id);
-    const uploadZone = $('uploadZone');
+    let imageBase64=null,imageMimeType=null;
+    const $=id=>document.getElementById(id);
+    const uploadZone=$('uploadZone');
 
-    // Drag & Drop
-    ['dragenter','dragover','dragleave','drop'].forEach(ev => uploadZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
-    ['dragenter','dragover'].forEach(ev => uploadZone.addEventListener(ev, () => uploadZone.classList.add('dragover')));
-    ['dragleave','drop'].forEach(ev => uploadZone.addEventListener(ev, () => uploadZone.classList.remove('dragover')));
-    uploadZone.addEventListener('drop', e => { if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]); });
+    ['dragenter','dragover','dragleave','drop'].forEach(ev=>uploadZone.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation()}));
+    ['dragenter','dragover'].forEach(ev=>uploadZone.addEventListener(ev,()=>uploadZone.classList.add('dragover')));
+    ['dragleave','drop'].forEach(ev=>uploadZone.addEventListener(ev,()=>uploadZone.classList.remove('dragover')));
+    uploadZone.addEventListener('drop',e=>{if(e.dataTransfer.files.length)processFile(e.dataTransfer.files[0])});
 
-    function handleFile(e) { if (e.target.files[0]) processFile(e.target.files[0]); }
+    function handleFile(e){if(e.target.files[0])processFile(e.target.files[0])}
 
-    function processFile(file) {
-        const ok = ['image/png','image/jpeg','image/webp'];
-        if (!ok.includes(file.type)) { alert('Format tidak didukung.'); return; }
-        if (file.size > 20*1024*1024) { alert('Maks 20MB.'); return; }
-        imageMimeType = file.type;
-        const r = new FileReader();
-        r.onload = e => {
-            imageBase64 = e.target.result;
-            $('imagePreview').src = imageBase64;
-            $('fileName').textContent = file.name + ' (' + (file.size/1024/1024).toFixed(2) + ' MB)';
+    function processFile(file){
+        const ok=['image/png','image/jpeg','image/webp'];
+        if(!ok.includes(file.type)){alert('Format tidak didukung.');return}
+        if(file.size>20*1024*1024){alert('Maks 20MB.');return}
+        imageMimeType=file.type;
+        const r=new FileReader();
+        r.onload=e=>{
+            imageBase64=e.target.result;
+            $('imagePreview').src=imageBase64;
+            $('fileName').textContent=file.name+' ('+(file.size/1024/1024).toFixed(2)+' MB)';
             $('uploadPrompt').classList.add('hidden');
             $('previewContainer').classList.remove('hidden');
-            $('analyzeBtn').disabled = false;
+            $('btnGroup').classList.remove('hidden');
         };
         r.readAsDataURL(file);
     }
 
-    function resetUpload() {
-        imageBase64 = null; imageMimeType = null; $('fileInput').value = '';
+    function resetUpload(){
+        imageBase64=null;imageMimeType=null;$('fileInput').value='';
         $('uploadPrompt').classList.remove('hidden');
         $('previewContainer').classList.add('hidden');
-        $('analyzeBtn').disabled = true;
+        $('btnGroup').classList.add('hidden');
         hideResults();
     }
 
-    function hideResults() {
-        ['tradingSection','brokerSection','newsSection','errorSection'].forEach(id => $(id).classList.add('hidden'));
+    function hideResults(){
+        ['tradingSection','brokerSection','newsSection','errorSection'].forEach(id=>$(id).classList.add('hidden'));
         $('tickerPill').classList.add('hidden');
     }
 
-    async function runAnalysis() {
-        if (!imageBase64) return;
+    async function runAnalysis(){
+        if(!imageBase64)return;
         $('loadingState').classList.remove('hidden');
         hideResults();
-        $('analyzeBtn').disabled = true;
 
-        try {
-            const res = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: imageBase64, mimeType: imageMimeType })
+        try{
+            const res=await fetch('/api/analyze',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({image:imageBase64,mimeType:imageMimeType})
             });
-
-            const data = await res.json();
-
-            // INSTANTLY hide loading
+            const data=await res.json();
             $('loadingState').classList.add('hidden');
 
-            if (!res.ok) throw new Error(data.error || 'Error ' + res.status);
+            if(!res.ok)throw new Error(data.error||'Error '+res.status);
 
-            // Extract ticker info from trading_table comment
-            const metaMatch = (data.trading_table || '').match(/<!--\s*TICKER:(\w+)\s*\|\s*CONDITION:(\w+)\s*\|\s*PRICE:([\w\s.]+)\s*-->/i);
-            if (metaMatch) {
-                $('tickerPill').textContent = metaMatch[1] + ' | ' + metaMatch[2] + ' | ' + metaMatch[3];
-                $('tickerPill').classList.remove('hidden');
-            }
+            const meta=(data.trading_table||'').match(/<!--\s*TICKER:(\w+)\s*\|\s*CONDITION:(\w+)\s*\|\s*PRICE:([\w\s.]+)\s*-->/i);
+            if(meta){$('tickerPill').textContent=meta[1]+' | '+meta[2]+' | '+meta[3];$('tickerPill').classList.remove('hidden')}
 
-            // Inject Trading Table
-            if (data.trading_table) {
-                $('tradingTableBody').innerHTML = data.trading_table;
-                $('tradingSection').classList.remove('hidden');
-            }
+            if(data.trading_table){$('tradingTableBody').innerHTML=data.trading_table;$('tradingSection').classList.remove('hidden')}
+            if(data.broker_table){$('brokerTableBody').innerHTML=data.broker_table;$('brokerSection').classList.remove('hidden')}
+            if(data.ticker_news){$('newsContent').innerHTML=data.ticker_news;$('newsSection').classList.remove('hidden')}
 
-            // Inject Broker Summary Table
-            if (data.broker_table) {
-                $('brokerTableBody').innerHTML = data.broker_table;
-                $('brokerSection').classList.remove('hidden');
-            }
-
-            // Inject News
-            if (data.ticker_news) {
-                $('newsContent').innerHTML = data.ticker_news;
-                $('newsSection').classList.remove('hidden');
-            }
-
-            // Scroll to first result
-            const firstVisible = $('tradingSection').classList.contains('hidden') ? $('brokerSection') : $('tradingSection');
-            setTimeout(() => firstVisible.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
-
-        } catch (err) {
+            const first=$('tradingSection').classList.contains('hidden')?$('brokerSection'):$('tradingSection');
+            setTimeout(()=>first.scrollIntoView({behavior:'smooth',block:'start'}),100);
+        }catch(err){
             $('loadingState').classList.add('hidden');
-            $('errorText').textContent = err.message;
+            $('errorText').textContent=err.message;
             $('errorSection').classList.remove('hidden');
-        } finally {
-            $('analyzeBtn').disabled = false;
         }
     }
     </script>
