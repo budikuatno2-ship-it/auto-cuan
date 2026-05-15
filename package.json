@@ -1,9 +1,10 @@
 {
   "name": "auto-cuan",
   "version": "2.0.0",
-  "description": "Auto-Cuan SMC Analysis Platform",
   "private": true,
+  "type": "commonjs",
   "scripts": {
-    "start": "echo 'Deployed on Vercel'"
-  }
+    "start": "vercel dev"
+  },
+  "dependencies": {}
 }
