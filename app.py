@@ -620,6 +620,270 @@ def get_yahoo_news():
         return jsonify({'news': [], 'error': str(e)}), 200
 
 
+# =============================================================================
+# Supabase Admin Logging
+# =============================================================================
+#
+# Tables (already created in Supabase):
+#   login_logs(username, is_guest, is_admin, user_agent, created_at)
+#   search_logs(username, ticker, source, created_at)
+#   ai_analysis_logs(username, ticker, mode, result_summary, full_result_html, created_at)
+#   ai_usage_logs(username, ticker, action, created_at)
+#
+# Secrets are read ONLY from environment variables. They MUST NEVER be
+# hardcoded here or exposed to the frontend.
+
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
+
+
+def _supabase_configured():
+    return bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
+
+
+def _sb_headers(prefer=None):
+    h = {
+        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+        'Authorization': f'Bearer {SUPABASE_SERVICE_ROLE_KEY}',
+        'Content-Type': 'application/json',
+    }
+    if prefer:
+        h['Prefer'] = prefer
+    return h
+
+
+def _sb_insert(table, row):
+    """POST a single row to a Supabase table. Returns (ok, detail).
+    Never raises — logging must not break the app."""
+    if not _supabase_configured():
+        return False, 'supabase_not_configured'
+    try:
+        url = f'{SUPABASE_URL}/rest/v1/{table}'
+        resp = requests.post(
+            url,
+            headers=_sb_headers(prefer='return=minimal'),
+            json=[row],
+            timeout=8,
+        )
+        if 200 <= resp.status_code < 300:
+            return True, None
+        return False, f'status={resp.status_code}'
+    except Exception as e:
+        return False, str(e)
+
+
+def _sb_select(table, params):
+    """GET rows from a Supabase table. params is a dict of PostgREST query
+    args (e.g. {'order': 'created_at.desc', 'limit': 50}).
+    Returns (ok, list_or_error_string)."""
+    if not _supabase_configured():
+        return False, 'supabase_not_configured'
+    try:
+        url = f'{SUPABASE_URL}/rest/v1/{table}'
+        resp = requests.get(
+            url,
+            headers=_sb_headers(),
+            params=params,
+            timeout=10,
+        )
+        if 200 <= resp.status_code < 300:
+            return True, resp.json()
+        return False, f'status={resp.status_code}'
+    except Exception as e:
+        return False, str(e)
+
+
+def _safe_str(value, max_len=None):
+    if value is None:
+        return None
+    s = str(value)
+    if max_len:
+        s = s[:max_len]
+    return s
+
+
+@app.route('/api/log-login', methods=['POST'])
+def log_login():
+    """Log a login event. Body: { username, isGuest, isAdmin, userAgent }."""
+    try:
+        data = request.get_json() or {}
+        if not _supabase_configured():
+            return jsonify({'success': False, 'error': 'Database logging belum dikonfigurasi.'})
+        row = {
+            'username': _safe_str(data.get('username'), 100) or 'Unknown',
+            'is_guest': bool(data.get('isGuest')),
+            'is_admin': bool(data.get('isAdmin')),
+            'user_agent': _safe_str(data.get('userAgent'), 500),
+        }
+        ok, detail = _sb_insert('login_logs', row)
+        if ok:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': detail or 'insert failed'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/log-search', methods=['POST'])
+def log_search():
+    """Log a ticker search. Body: { username, ticker, source }."""
+    try:
+        data = request.get_json() or {}
+        if not _supabase_configured():
+            return jsonify({'success': False, 'error': 'Database logging belum dikonfigurasi.'})
+        row = {
+            'username': _safe_str(data.get('username'), 100) or 'Unknown',
+            'ticker': normalize_ticker(data.get('ticker')) or None,
+            'source': _safe_str(data.get('source'), 60),
+        }
+        ok, detail = _sb_insert('search_logs', row)
+        if ok:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': detail or 'insert failed'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/log-analysis', methods=['POST'])
+def log_analysis():
+    """Log a successful AI analysis result. Body:
+       { username, ticker, mode, resultSummary, fullResultHtml }
+       Never logs passwords / API keys; only the rendered HTML body and a
+       short text summary."""
+    try:
+        data = request.get_json() or {}
+        if not _supabase_configured():
+            return jsonify({'success': False, 'error': 'Database logging belum dikonfigurasi.'})
+        row = {
+            'username': _safe_str(data.get('username'), 100) or 'Unknown',
+            'ticker': normalize_ticker(data.get('ticker')) or None,
+            'mode': _safe_str(data.get('mode'), 30),
+            'result_summary': _safe_str(data.get('resultSummary'), 500),
+            'full_result_html': _safe_str(data.get('fullResultHtml'), 100000),
+        }
+        ok, detail = _sb_insert('ai_analysis_logs', row)
+        if ok:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': detail or 'insert failed'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/log-usage', methods=['POST'])
+def log_usage():
+    """Log AI usage events. Body: { username, ticker, action }.
+       action values: ai_analysis_started, ai_success, ai_error, ai_limit_blocked"""
+    try:
+        data = request.get_json() or {}
+        if not _supabase_configured():
+            return jsonify({'success': False, 'error': 'Database logging belum dikonfigurasi.'})
+        ticker_raw = data.get('ticker')
+        row = {
+            'username': _safe_str(data.get('username'), 100) or 'Unknown',
+            'ticker': normalize_ticker(ticker_raw) if ticker_raw else None,
+            'action': _safe_str(data.get('action'), 60),
+        }
+        ok, detail = _sb_insert('ai_usage_logs', row)
+        if ok:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': detail or 'insert failed'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/admin-logs', methods=['POST'])
+def admin_logs():
+    """Read-only admin dashboard data.
+       Body: { adminName }. Only the user 'budi' (case-insensitive) may read.
+       Returns latest rows from each table + a small summary."""
+    try:
+        data = request.get_json() or {}
+        admin_name = (data.get('adminName') or '').strip().lower()
+        if admin_name != 'budi':
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+        if not _supabase_configured():
+            return jsonify({
+                'success': False,
+                'error': 'Database logging belum dikonfigurasi.'
+            })
+
+        ok_l, login_logs = _sb_select('login_logs', {
+            'select': '*', 'order': 'created_at.desc', 'limit': '50',
+        })
+        ok_s, search_logs = _sb_select('search_logs', {
+            'select': '*', 'order': 'created_at.desc', 'limit': '100',
+        })
+        ok_a, analysis_logs = _sb_select('ai_analysis_logs', {
+            'select': '*', 'order': 'created_at.desc', 'limit': '50',
+        })
+        ok_u, usage_logs = _sb_select('ai_usage_logs', {
+            'select': '*', 'order': 'created_at.desc', 'limit': '100',
+        })
+
+        # If any of the reads failed because Supabase is misconfigured /
+        # unreachable, treat the dashboard as unavailable.
+        if not (ok_l and ok_s and ok_a and ok_u):
+            return jsonify({
+                'success': False,
+                'error': 'Database logging belum dikonfigurasi.'
+            })
+
+        # Summary (cheap, in-memory): use what we just fetched. For total
+        # counts we run head-style requests so the numbers can exceed the
+        # per-table fetch limits above.
+        def _total_count(table):
+            if not _supabase_configured():
+                return None
+            try:
+                url = f'{SUPABASE_URL}/rest/v1/{table}'
+                headers = _sb_headers(prefer='count=exact')
+                # Range 0-0 just to get Content-Range header back cheaply.
+                headers['Range-Unit'] = 'items'
+                headers['Range'] = '0-0'
+                resp = requests.get(url, headers=headers, params={'select': 'created_at'}, timeout=8)
+                cr = resp.headers.get('Content-Range', '')
+                if '/' in cr:
+                    total = cr.split('/', 1)[1]
+                    if total.isdigit():
+                        return int(total)
+            except Exception:
+                return None
+            return None
+
+        total_logins = _total_count('login_logs')
+        total_searches = _total_count('search_logs')
+        total_analyses = _total_count('ai_analysis_logs')
+
+        # Most-searched tickers from the search_logs window we just pulled.
+        most = {}
+        for r in (search_logs or []):
+            t = (r.get('ticker') or '').strip()
+            if not t:
+                continue
+            most[t] = most.get(t, 0) + 1
+        most_searched = sorted(
+            ({'ticker': k, 'count': v} for k, v in most.items()),
+            key=lambda x: x['count'],
+            reverse=True,
+        )[:10]
+
+        return jsonify({
+            'success': True,
+            'summary': {
+                'totalLogins': total_logins,
+                'totalSearches': total_searches,
+                'totalAIAnalyses': total_analyses,
+                'mostSearchedTickers': most_searched,
+            },
+            'loginLogs': login_logs,
+            'searchLogs': search_logs,
+            'aiAnalysisLogs': analysis_logs,
+            'aiUsageLogs': usage_logs,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"\n{'='*50}")

@@ -126,6 +126,83 @@
         </div>
     </header>
 
+    <!-- ===================================================================== -->
+    <!-- Login Overlay (shown when not logged in / not a guest yet)             -->
+    <!-- ===================================================================== -->
+    <div id="loginOverlay" class="hidden fixed inset-0 z-[60] bg-dark-900/95 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl border border-dark-600/50 bg-dark-800/80 p-6 sm:p-8 space-y-5">
+            <div class="text-center space-y-1">
+                <h2 class="text-2xl font-black text-white tracking-tight">Selamat Datang di Auto-Cuan</h2>
+                <p class="text-xs text-gray-400">AI Chart Reader &bull; Smart Money Concepts</p>
+            </div>
+            <div class="space-y-3">
+                <input id="loginUsername" type="text" placeholder="Nama / Username"
+                       autocomplete="off" spellcheck="false"
+                       class="w-full px-4 py-3 rounded-lg bg-dark-700 border border-dark-600 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                       maxlength="40">
+                <input id="loginPassword" type="password" placeholder="Password"
+                       class="w-full px-4 py-3 rounded-lg bg-dark-700 border border-dark-600 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                       maxlength="60">
+                <p id="loginError" class="hidden text-xs text-red-400 font-medium"></p>
+                <button id="loginBtn" type="button" onclick="handleLogin()"
+                        class="w-full px-4 py-3 rounded-lg bg-emerald-500 text-black font-black hover:bg-emerald-400 transition-colors">
+                    Login
+                </button>
+            </div>
+            <div class="relative flex items-center gap-3 text-xs text-gray-500">
+                <span class="flex-1 h-px bg-dark-600"></span>
+                <span>atau</span>
+                <span class="flex-1 h-px bg-dark-600"></span>
+            </div>
+            <div class="space-y-2">
+                <button id="guestBtn" type="button" onclick="handleGuestLogin()"
+                        class="w-full px-4 py-3 rounded-lg bg-dark-700 border border-dark-600 text-gray-200 font-semibold hover:border-emerald-500 hover:text-emerald-300 transition-colors">
+                    Coba Tanpa Login
+                </button>
+                <p class="text-xs text-gray-500 leading-snug">
+                    Mode tanpa login hanya untuk melihat dashboard dan chart. Fitur AI, portfolio, watchlist, dan journal memerlukan login.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- Guest Lock Modal (shown when guest tries a locked feature)             -->
+    <!-- ===================================================================== -->
+    <div id="guestLockModal" class="hidden fixed inset-0 z-[55] bg-dark-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 sm:p-6 text-yellow-300">
+            <h3 class="text-lg font-black text-yellow-400">Login diperlukan</h3>
+            <p class="mt-2 text-sm text-gray-300">
+                Fitur ini hanya tersedia setelah login. Mode tanpa login hanya untuk melihat-lihat dashboard dan chart.
+            </p>
+            <div class="mt-4 flex gap-2">
+                <button type="button" onclick="closeGuestLock()"
+                        class="rounded-xl bg-dark-700 border border-dark-600 px-4 py-3 text-sm text-gray-300 hover:border-gray-500">
+                    Batal
+                </button>
+                <button type="button" onclick="goLoginFromLock()"
+                        class="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black hover:bg-emerald-400">
+                    Login Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- Top-right user bar (rendered once authenticated)                       -->
+    <!-- ===================================================================== -->
+    <div id="userBar" class="hidden fixed top-3 right-3 z-40 flex items-center gap-2">
+        <span id="userBadge" class="text-xs px-3 py-1 rounded-full bg-dark-700/80 border border-dark-600 text-gray-300"></span>
+        <button id="adminPanelBtn" type="button" onclick="openAdminPanel()"
+                class="hidden text-xs px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25">
+            Admin Panel
+        </button>
+        <button type="button" onclick="handleLogout()"
+                class="text-xs px-3 py-1 rounded-full bg-dark-700/80 border border-dark-600 text-gray-300 hover:border-red-500 hover:text-red-300">
+            Logout
+        </button>
+    </div>
+
     <!-- Main Content -->
     <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
@@ -277,7 +354,49 @@
             </div>
         </section>
 
+        <!-- ===================================================================== -->
+        <!-- Admin Panel (visible only for budi)                                    -->
+        <!-- ===================================================================== -->
+        <section id="adminPanelSection" class="hidden fade-in-up">
+            <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-emerald-500/30 overflow-hidden">
+                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <h2 class="font-black text-emerald-300 tracking-tight">Admin Panel &bull; Logs</h2>
+                    </div>
+                    <button type="button" onclick="refreshAdminLogs()"
+                            class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20">
+                        Refresh
+                    </button>
+                </div>
+                <div id="adminPanelBody" class="p-6 space-y-6 text-sm">
+                    <p class="text-gray-400 text-center py-8">Memuat data admin...</p>
+                </div>
+            </div>
+        </section>
+
     </main>
+
+    <!-- ===================================================================== -->
+    <!-- "Lihat Hasil" modal (replays a stored ai_analysis_logs row)            -->
+    <!-- ===================================================================== -->
+    <div id="seeResultModal" class="hidden fixed inset-0 z-[55] bg-dark-900/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl border border-dark-600/50 bg-dark-800/95 p-5 sm:p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 id="seeResultTitle" class="text-lg font-black text-emerald-300">Hasil Analisis Tersimpan</h3>
+                <button type="button" onclick="closeSeeResult()"
+                        class="text-xs px-3 py-1.5 rounded-lg bg-dark-700 border border-dark-600 text-gray-300 hover:border-red-500 hover:text-red-300">
+                    Tutup
+                </button>
+            </div>
+            <div id="seeResultBody" class="prose prose-invert max-w-none text-gray-200">
+                <!-- saved full_result_html injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- temp marker so we can locate the last main close -->
+    <!-- (admin panel section was injected inside main, before its closing tag) -->
 
     <!-- Footer -->
     <footer class="border-t border-dark-700/50 mt-12">
@@ -293,6 +412,405 @@
 
     <!-- JavaScript -->
     <script>
+        // =====================================================================
+        // Auth / Identity (localStorage-based; backend has no auth concept yet)
+        // =====================================================================
+        const AUTH_KEYS = {
+            loggedIn: 'autocuan_logged_in',
+            userName: 'autocuan_user_name',
+            isAdmin: 'autocuan_is_admin',
+        };
+
+        function getAuth() {
+            return {
+                loggedIn: localStorage.getItem(AUTH_KEYS.loggedIn),
+                userName: localStorage.getItem(AUTH_KEYS.userName) || 'Unknown',
+                isAdmin: localStorage.getItem(AUTH_KEYS.isAdmin) === 'true',
+                isGuest: localStorage.getItem(AUTH_KEYS.loggedIn) === 'guest',
+            };
+        }
+
+        function isLoggedIn() {
+            const v = localStorage.getItem(AUTH_KEYS.loggedIn);
+            return v === 'user' || v === 'admin' || v === 'guest';
+        }
+
+        function isGuest() { return localStorage.getItem(AUTH_KEYS.loggedIn) === 'guest'; }
+        function isAdmin() { return localStorage.getItem(AUTH_KEYS.isAdmin) === 'true'; }
+
+        // =====================================================================
+        // Lightweight logging helpers (fire-and-forget; never throw)
+        // =====================================================================
+        async function logLogin(username, isGuestFlag, isAdminFlag) {
+            try {
+                await fetch('/api/log-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        isGuest: !!isGuestFlag,
+                        isAdmin: !!isAdminFlag,
+                        userAgent: navigator.userAgent,
+                    }),
+                });
+            } catch (e) {}
+        }
+
+        async function logSearch(ticker, source) {
+            try {
+                const username = localStorage.getItem(AUTH_KEYS.userName) || 'Unknown';
+                await fetch('/api/log-search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, ticker, source }),
+                });
+            } catch (e) {}
+        }
+
+        async function logAnalysis(ticker, mode, html) {
+            try {
+                const username = localStorage.getItem(AUTH_KEYS.userName) || 'Unknown';
+                const text = (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                const resultSummary = text.slice(0, 500);
+                await fetch('/api/log-analysis', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username, ticker, mode, resultSummary, fullResultHtml: html || '',
+                    }),
+                });
+            } catch (e) {}
+        }
+
+        async function logUsage(ticker, action) {
+            try {
+                const username = localStorage.getItem(AUTH_KEYS.userName) || 'Unknown';
+                await fetch('/api/log-usage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, ticker, action }),
+                });
+            } catch (e) {}
+        }
+
+        // =====================================================================
+        // AI rate limit (2 analyses per 30 minutes for normal users; admin
+        // unlimited; guest blocked entirely).
+        // =====================================================================
+        const AI_LIMIT = { count: 2, windowMs: 30 * 60 * 1000 };
+        const AI_LIMIT_KEY = 'autocuan_ai_limit_window';
+
+        function aiLimitReadWindow() {
+            try {
+                const raw = localStorage.getItem(AI_LIMIT_KEY);
+                if (!raw) return [];
+                const arr = JSON.parse(raw);
+                return Array.isArray(arr) ? arr : [];
+            } catch (e) { return []; }
+        }
+        function aiLimitWriteWindow(arr) {
+            try { localStorage.setItem(AI_LIMIT_KEY, JSON.stringify(arr)); } catch (e) {}
+        }
+        function aiLimitCheckAndConsume() {
+            // Returns { allowed: bool, retryInMin: number, remaining: number }
+            if (isAdmin()) return { allowed: true, retryInMin: 0, remaining: -1 };
+            const now = Date.now();
+            const win = aiLimitReadWindow().filter(t => now - t < AI_LIMIT.windowMs);
+            if (win.length >= AI_LIMIT.count) {
+                const oldest = win[0];
+                const retry = Math.ceil((AI_LIMIT.windowMs - (now - oldest)) / 60000);
+                return { allowed: false, retryInMin: Math.max(1, retry), remaining: 0 };
+            }
+            win.push(now);
+            aiLimitWriteWindow(win);
+            return { allowed: true, retryInMin: 0, remaining: AI_LIMIT.count - win.length };
+        }
+
+        // =====================================================================
+        // Login flow
+        // =====================================================================
+        function showLoginOverlay() {
+            const o = document.getElementById('loginOverlay');
+            if (o) o.classList.remove('hidden');
+            const ub = document.getElementById('userBar');
+            if (ub) ub.classList.add('hidden');
+        }
+        function hideLoginOverlay() {
+            const o = document.getElementById('loginOverlay');
+            if (o) o.classList.add('hidden');
+        }
+        function paintUserBar() {
+            const ub = document.getElementById('userBar');
+            const badge = document.getElementById('userBadge');
+            const adminBtn = document.getElementById('adminPanelBtn');
+            if (!ub || !badge || !adminBtn) return;
+            if (!isLoggedIn()) { ub.classList.add('hidden'); return; }
+            const a = getAuth();
+            let label;
+            if (a.isAdmin) label = `Admin: ${a.userName}`;
+            else if (a.isGuest) label = 'Guest mode (read-only)';
+            else label = `User: ${a.userName}`;
+            badge.textContent = label;
+            ub.classList.remove('hidden');
+            adminBtn.classList.toggle('hidden', !a.isAdmin);
+        }
+
+        function handleLogin() {
+            const errEl = document.getElementById('loginError');
+            errEl.classList.add('hidden');
+            const rawName = (document.getElementById('loginUsername').value || '').trim();
+            const pwd = document.getElementById('loginPassword').value || '';
+            if (!rawName) {
+                errEl.textContent = 'Username wajib diisi.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            const isAdminLogin = rawName.toLowerCase() === 'budi';
+            if (isAdminLogin) {
+                if (pwd !== '.') {
+                    errEl.textContent = 'Password admin salah.';
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                localStorage.setItem(AUTH_KEYS.loggedIn, 'admin');
+                localStorage.setItem(AUTH_KEYS.userName, rawName);
+                localStorage.setItem(AUTH_KEYS.isAdmin, 'true');
+                logLogin(rawName, false, true);
+            } else {
+                if (!pwd) {
+                    errEl.textContent = 'Password wajib diisi.';
+                    errEl.classList.remove('hidden');
+                    return;
+                }
+                localStorage.setItem(AUTH_KEYS.loggedIn, 'user');
+                localStorage.setItem(AUTH_KEYS.userName, rawName);
+                localStorage.setItem(AUTH_KEYS.isAdmin, 'false');
+                logLogin(rawName, false, false);
+            }
+            hideLoginOverlay();
+            paintUserBar();
+        }
+
+        function handleGuestLogin() {
+            localStorage.setItem(AUTH_KEYS.loggedIn, 'guest');
+            localStorage.setItem(AUTH_KEYS.userName, 'Guest');
+            localStorage.setItem(AUTH_KEYS.isAdmin, 'false');
+            logLogin('Guest', true, false);
+            hideLoginOverlay();
+            paintUserBar();
+        }
+
+        function handleLogout() {
+            localStorage.removeItem(AUTH_KEYS.loggedIn);
+            localStorage.removeItem(AUTH_KEYS.userName);
+            localStorage.removeItem(AUTH_KEYS.isAdmin);
+            // Hide admin panel + user bar, show login overlay.
+            const ap = document.getElementById('adminPanelSection');
+            if (ap) ap.classList.add('hidden');
+            paintUserBar();
+            showLoginOverlay();
+        }
+
+        // =====================================================================
+        // Guest lock modal
+        // =====================================================================
+        function showGuestLock() {
+            const m = document.getElementById('guestLockModal');
+            if (m) m.classList.remove('hidden');
+        }
+        function closeGuestLock() {
+            const m = document.getElementById('guestLockModal');
+            if (m) m.classList.add('hidden');
+        }
+        function goLoginFromLock() {
+            closeGuestLock();
+            localStorage.removeItem(AUTH_KEYS.loggedIn);
+            localStorage.removeItem(AUTH_KEYS.userName);
+            localStorage.removeItem(AUTH_KEYS.isAdmin);
+            paintUserBar();
+            showLoginOverlay();
+        }
+
+        // =====================================================================
+        // Admin Panel
+        // =====================================================================
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function fmtDate(s) {
+            if (!s) return '';
+            try { return new Date(s).toLocaleString('id-ID'); } catch (e) { return s; }
+        }
+
+        // Cache full HTML payloads so the "Lihat Hasil" modal doesn't have to
+        // re-fetch and so we never put raw HTML inside an attribute.
+        let lastAdminAnalysisLogs = [];
+
+        async function openAdminPanel() {
+            if (!isAdmin()) return;
+            const sec = document.getElementById('adminPanelSection');
+            if (!sec) return;
+            sec.classList.remove('hidden');
+            sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            await refreshAdminLogs();
+        }
+
+        async function refreshAdminLogs() {
+            const body = document.getElementById('adminPanelBody');
+            if (!body) return;
+            body.innerHTML = '<p class="text-gray-400 text-center py-8">Memuat data admin...</p>';
+            try {
+                const a = getAuth();
+                const resp = await fetch('/api/admin-logs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminName: a.userName }),
+                });
+                const data = await resp.json();
+                if (!resp.ok || !data.success) {
+                    const msg = data && data.error ? data.error : 'Database logging belum dikonfigurasi.';
+                    body.innerHTML = `<div class="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-5 text-yellow-300">
+                        <p class="font-semibold">${escapeHtml(msg)}</p></div>`;
+                    return;
+                }
+                renderAdminPanel(data);
+            } catch (e) {
+                body.innerHTML = `<div class="rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
+                    <p class="font-semibold">Gagal memuat data admin.</p>
+                    <p class="text-xs mt-1">${escapeHtml(e.message || '')}</p></div>`;
+            }
+        }
+
+        function renderAdminPanel(data) {
+            const body = document.getElementById('adminPanelBody');
+            if (!body) return;
+            const s = data.summary || {};
+            const mostList = (s.mostSearchedTickers || []).map(r =>
+                `<li class="flex justify-between"><span class="font-mono text-white">${escapeHtml(r.ticker)}</span><span class="text-gray-400">${r.count}</span></li>`
+            ).join('') || '<li class="text-gray-500">Belum ada data.</li>';
+            const fmtNum = (n) => (n == null ? '-' : Number(n).toLocaleString('id-ID'));
+
+            const summaryHtml = `
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="rounded-xl border border-dark-600/60 bg-dark-700/40 p-4">
+                  <p class="text-xs uppercase tracking-wider text-gray-400">Total Logins</p>
+                  <p class="text-2xl font-black text-white mt-1">${fmtNum(s.totalLogins)}</p>
+                </div>
+                <div class="rounded-xl border border-dark-600/60 bg-dark-700/40 p-4">
+                  <p class="text-xs uppercase tracking-wider text-gray-400">Total Searches</p>
+                  <p class="text-2xl font-black text-white mt-1">${fmtNum(s.totalSearches)}</p>
+                </div>
+                <div class="rounded-xl border border-dark-600/60 bg-dark-700/40 p-4">
+                  <p class="text-xs uppercase tracking-wider text-gray-400">Total AI Analyses</p>
+                  <p class="text-2xl font-black text-white mt-1">${fmtNum(s.totalAIAnalyses)}</p>
+                </div>
+                <div class="rounded-xl border border-dark-600/60 bg-dark-700/40 p-4">
+                  <p class="text-xs uppercase tracking-wider text-gray-400">Most Searched</p>
+                  <ul class="text-sm mt-1 space-y-0.5">${mostList}</ul>
+                </div>
+              </div>`;
+
+            const renderTable = (title, headers, rows) => {
+                const head = headers.map(h => `<th class="px-3 py-2 text-left font-semibold">${h}</th>`).join('');
+                const trs = rows.length ? rows.join('') :
+                    `<tr><td colspan="${headers.length}" class="px-3 py-4 text-center text-gray-500">Belum ada data.</td></tr>`;
+                return `
+                <div class="rounded-xl border border-dark-600/60 bg-dark-800/40 overflow-hidden">
+                  <div class="px-4 py-3 border-b border-dark-600/50 text-emerald-300 font-bold text-sm">${title}</div>
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full text-xs">
+                      <thead class="bg-dark-700/60 text-gray-300 text-xs">
+                        <tr>${head}</tr>
+                      </thead>
+                      <tbody class="divide-y divide-dark-600/40 text-gray-200">${trs}</tbody>
+                    </table>
+                  </div>
+                </div>`;
+            };
+
+            const loginRows = (data.loginLogs || []).map(r => {
+                const status = r.is_admin ? '<span class="text-emerald-300">admin</span>' :
+                              r.is_guest ? '<span class="text-yellow-300">guest</span>' :
+                              '<span class="text-gray-300">user</span>';
+                const ua = (r.user_agent || '').slice(0, 60);
+                return `<tr>
+                  <td class="px-3 py-2 font-mono">${escapeHtml(r.username || '')}</td>
+                  <td class="px-3 py-2">${status}</td>
+                  <td class="px-3 py-2 text-gray-400">${escapeHtml(fmtDate(r.created_at))}</td>
+                  <td class="px-3 py-2 text-gray-400">${escapeHtml(ua)}</td>
+                </tr>`;
+            });
+            const searchRows = (data.searchLogs || []).map(r => `<tr>
+                  <td class="px-3 py-2 font-mono">${escapeHtml(r.username || '')}</td>
+                  <td class="px-3 py-2 font-mono text-white">${escapeHtml(r.ticker || '')}</td>
+                  <td class="px-3 py-2 text-gray-400">${escapeHtml(r.source || '')}</td>
+                  <td class="px-3 py-2 text-gray-400">${escapeHtml(fmtDate(r.created_at))}</td>
+                </tr>`);
+
+            // Cache analysis logs by row index for "Lihat Hasil".
+            lastAdminAnalysisLogs = data.aiAnalysisLogs || [];
+            const analysisRows = lastAdminAnalysisLogs.map((r, idx) => `<tr>
+                  <td class="px-3 py-2 font-mono">${escapeHtml(r.username || '')}</td>
+                  <td class="px-3 py-2 font-mono text-white">${escapeHtml(r.ticker || '')}</td>
+                  <td class="px-3 py-2">${escapeHtml(r.mode || '')}</td>
+                  <td class="px-3 py-2 text-gray-400">${escapeHtml(fmtDate(r.created_at))}</td>
+                  <td class="px-3 py-2"><button type="button" data-idx="${idx}"
+                       class="see-result-btn text-xs px-2 py-1 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25">Lihat Hasil</button></td>
+                </tr>`);
+            const usageRows = (data.aiUsageLogs || []).map(r => `<tr>
+                  <td class="px-3 py-2 font-mono">${escapeHtml(r.username || '')}</td>
+                  <td class="px-3 py-2 font-mono text-white">${escapeHtml(r.ticker || '')}</td>
+                  <td class="px-3 py-2">${escapeHtml(r.action || '')}</td>
+                  <td class="px-3 py-2 text-gray-400">${escapeHtml(fmtDate(r.created_at))}</td>
+                </tr>`);
+
+            body.innerHTML = `
+              ${summaryHtml}
+              ${renderTable('Latest Login Logs', ['User', 'Type', 'Created', 'User-Agent'], loginRows)}
+              ${renderTable('Latest Search Logs', ['User', 'Ticker', 'Source', 'Created'], searchRows)}
+              ${renderTable('Latest AI Analysis Logs', ['User', 'Ticker', 'Mode', 'Created', ''], analysisRows)}
+              ${renderTable('AI Usage Logs', ['User', 'Ticker', 'Action', 'Created'], usageRows)}
+            `;
+
+            // Wire Lihat Hasil buttons (saved HTML, never re-call Gemini).
+            body.querySelectorAll('.see-result-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = Number(btn.getAttribute('data-idx'));
+                    const row = lastAdminAnalysisLogs[idx];
+                    if (!row) return;
+                    document.getElementById('seeResultTitle').textContent =
+                        `Hasil ${row.ticker || ''} - ${row.username || ''}`;
+                    document.getElementById('seeResultBody').innerHTML =
+                        row.full_result_html || '<p class="text-gray-400">(Tidak ada HTML tersimpan)</p>';
+                    document.getElementById('seeResultModal').classList.remove('hidden');
+                });
+            });
+        }
+
+        function closeSeeResult() {
+            const m = document.getElementById('seeResultModal');
+            if (m) m.classList.add('hidden');
+        }
+
+        // =====================================================================
+        // Bootstrap on page load
+        // =====================================================================
+        function bootstrapAuth() {
+            if (!isLoggedIn()) {
+                showLoginOverlay();
+            } else {
+                paintUserBar();
+            }
+        }
+        // Run after DOMContentLoaded so the elements exist.
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bootstrapAuth);
+        } else {
+            bootstrapAuth();
+        }
+
         // --- State ---
         let selectedFile = null;
         let imageBase64 = null;
@@ -453,10 +971,30 @@
 
         // --- Analyze Chart ---
         async function analyzeChart() {
+            // Guest is read-only: AI is locked.
+            if (isGuest()) {
+                showGuestLock();
+                return;
+            }
+
             // Build payload depending on the active mode.
             const ticker = normalizeTicker(tickerInput.value);
             const currentPrice = Number(currentPriceInput.value) || null;
             const selectedAIMode = aiModeSelect.value || 'Swing';
+
+            // Rate limit (admin bypasses).
+            const limit = aiLimitCheckAndConsume();
+            if (!limit.allowed) {
+                logUsage(ticker || null, 'ai_limit_blocked');
+                resultContent.innerHTML = `
+                    <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center">
+                        <p class="text-yellow-300 font-semibold mb-2">Batas Analisis Tercapai</p>
+                        <p class="text-gray-200 text-sm">Maksimal ${AI_LIMIT.count} analisis per ${Math.round(AI_LIMIT.windowMs/60000)} menit. Silakan coba lagi dalam ~${limit.retryInMin} menit.</p>
+                    </div>`;
+                resultSection.classList.remove('hidden');
+                copyPlanBtn.classList.add('hidden');
+                return;
+            }
 
             let payload;
             if (currentMode === 'ai') {
@@ -489,6 +1027,13 @@
             analyzeBtn.disabled = true;
             lastResult = null;
 
+            // Log the search and the AI request start (fire-and-forget).
+            if (ticker) {
+                const source = currentMode === 'ai' ? 'ai_page' : 'chart_page';
+                logSearch(ticker, source);
+            }
+            logUsage(ticker || null, 'ai_analysis_started');
+
             try {
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
@@ -518,8 +1063,13 @@
                     copyPlanLabel.textContent = 'Copy Trading Plan';
                 }
 
+                // Log success + persist saved analysis HTML for admin replay.
+                logUsage(ticker || data.ticker || null, 'ai_success');
+                logAnalysis(ticker || data.ticker || null, selectedAIMode, html);
+
                 loadNews();
             } catch (error) {
+                logUsage(ticker || null, 'ai_error');
                 resultContent.innerHTML = `
                     <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
                         <p class="text-red-400 font-semibold mb-2">Gagal Memanggil Server</p>
