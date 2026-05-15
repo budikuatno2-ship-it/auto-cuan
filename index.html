@@ -49,6 +49,7 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <div class="space-y-2">
 <button onclick="doLogin()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20">Masuk Dashboard</button>
 <button onclick="doGuestLogin()" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-5 py-3 text-sm font-medium text-gray-300 hover:border-emerald-500/50 transition">Coba Tanpa Login</button>
+<p class="text-[10px] text-gray-600 mt-1">Mode tanpa login hanya untuk melihat dashboard dan chart. Fitur AI, portfolio, watchlist, dan journal memerlukan login.</p>
 </div>
 <p class="text-[11px] text-gray-500 text-center">Petunjuk: password adalah angka urutan huruf pertama nama. a=1, b=2, c=3, dst.</p>
 </div>
@@ -81,6 +82,7 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <button onclick="switchPage('watchlist')" data-nav="watchlist" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Watchlist</button>
 <button onclick="switchPage('journal')" data-nav="journal" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Journal</button>
 <button onclick="switchPage('ai')" data-nav="ai" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">AI</button>
+<button onclick="switchPage('admin')" data-nav="admin" id="nav-admin-btn" class="hidden nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Admin</button>
 </nav>
 <div class="flex items-center gap-2">
 <span class="hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium">v1 Beta</span>
@@ -259,6 +261,14 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <div id="ai-output-container" class="w-full space-y-4 pb-8"></div>
 </div>
 
+<!-- ADMIN PAGE (budi only) -->
+<div id="page-admin" class="page hidden space-y-4">
+<h2 class="text-lg font-bold text-white">Admin Panel</h2>
+<div id="admin-panel-content" class="space-y-4">
+<p class="text-sm text-gray-400">Memuat data...</p>
+</div>
+</div>
+
 </main>
 
 <!-- MOBILE BOTTOM NAV -->
@@ -313,6 +323,12 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <script>
 // ===== LOGIN =====
 function getExpectedPassword(name){const clean=name.trim().toLowerCase();if(!clean)return null;if(clean==="budi")return".";const idx="abcdefghijklmnopqrstuvwxyz".indexOf(clean[0]);return idx===-1?null:String(idx+1);}
+function isGuest(){return localStorage.getItem('autocuan_logged_in')==='guest';}
+function showGuestGate(container){
+  const html='<div class="w-full rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 sm:p-6 text-yellow-300"><h3 class="text-lg font-black text-yellow-400">Login diperlukan</h3><p class="mt-2 text-sm text-gray-300">Fitur ini hanya tersedia setelah login. Mode tanpa login hanya untuk melihat-lihat dashboard dan chart.</p><button onclick="doLogout()" class="mt-4 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black hover:bg-emerald-400">Login Sekarang</button></div>';
+  if(container){container.innerHTML=html;}else{alert('Fitur ini memerlukan login.');doLogout();}
+}
+function logToServer(endpoint,data){fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});}
 
 function doLogin(){
   const nameEl=document.getElementById('login-name'),passEl=document.getElementById('login-pass'),errEl=document.getElementById('login-error');
@@ -325,6 +341,7 @@ function doLogin(){
   localStorage.setItem('autocuan_user_name',name);
   localStorage.setItem('autocuan_login_time',Date.now().toString());
   localStorage.setItem('autocuan_is_admin',cleanName==='budi'?'true':'false');
+  logToServer('/api/log-login',{username:name,isGuest:false,isAdmin:cleanName==='budi',userAgent:navigator.userAgent});
   showDashboard();
 }
 
@@ -332,6 +349,7 @@ function doGuestLogin(){
   localStorage.setItem('autocuan_logged_in','guest');
   localStorage.setItem('autocuan_user_name','Guest');
   localStorage.setItem('autocuan_is_admin','false');
+  logToServer('/api/log-login',{username:'Guest',isGuest:true,isAdmin:false,userAgent:navigator.userAgent});
   showDashboard();
 }
 
@@ -351,9 +369,11 @@ function isAdminUser(){
 function showDashboard(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-wrapper').classList.remove('hidden');
-  // Admin badge
+  // Admin badge + nav
   const badge=document.getElementById('admin-badge');
+  const adminNav=document.getElementById('nav-admin-btn');
   if(badge)badge.classList.toggle('hidden',!isAdminUser());
+  if(adminNav)adminNav.classList.toggle('hidden',!isAdminUser());
   // Watermark
   updateWatermark();
   switchPage('home');
@@ -421,7 +441,7 @@ function switchPage(page){
   document.querySelectorAll('.nav-tab').forEach(t=>{t.classList.remove('bg-dark-700','text-white');t.classList.add('text-gray-400');});
   document.querySelectorAll('.mob-nav').forEach(t=>{t.classList.remove('text-emerald-400');t.classList.add('text-gray-500');});
   document.querySelectorAll('[data-nav="'+page+'"]').forEach(t=>{t.classList.add('text-emerald-400','bg-dark-700','text-white');t.classList.remove('text-gray-400','text-gray-500');});
-  if(page==='home')updateHomeSummary();if(page==='portfolio')renderPortfolio();if(page==='watchlist')renderWatchlist();if(page==='journal')renderJournal();
+  if(page==='home')updateHomeSummary();if(page==='portfolio')renderPortfolio();if(page==='watchlist')renderWatchlist();if(page==='journal')renderJournal();if(page==='admin')loadAdminPanel();
 }
 
 // ===== HOME =====
@@ -435,6 +455,7 @@ function openChart(){const t=document.getElementById('chart-ticker-input').value
 function loadTradingViewChart(ticker){
   currentTicker=ticker;const container=document.getElementById('tradingview-widget'),skeleton=document.getElementById('chart-skeleton');
   container.innerHTML='';skeleton.innerHTML='<div class="skeleton w-full h-full rounded-lg"></div>';
+  logToServer('/api/log-search',{username:localStorage.getItem('autocuan_user_name')||'unknown',ticker:ticker,source:isGuest()?'chart_page_guest':'chart_page'});
   const symbol='IDX:'+ticker;
   function createWidget(){skeleton.innerHTML='';container.innerHTML='';try{tvWidget=new TradingView.widget({autosize:true,symbol,interval:'D',timezone:'Asia/Jakarta',theme:'dark',style:'1',locale:'id',toolbar_bg:'#0b0e14',enable_publishing:false,hide_top_toolbar:false,hide_side_toolbar:window.innerWidth<640,allow_symbol_change:true,save_image:false,container_id:'tradingview-widget'});}catch(e){skeleton.innerHTML='<p class="text-sm text-red-400">Gagal memuat chart.</p>';}}
   if(tvScriptLoaded&&window.TradingView){createWidget();}else{const s=document.createElement('script');s.src='https://s3.tradingview.com/tv.js';s.onload=()=>{tvScriptLoaded=true;createWidget();};s.onerror=()=>{skeleton.innerHTML='<p class="text-sm text-red-400">Gagal memuat TradingView.</p>';};document.head.appendChild(s);}
@@ -454,15 +475,15 @@ function renderPortfolio(){
   if(!portfolio.length){list.innerHTML='<p class="text-sm text-gray-500 text-center py-6">Belum ada posisi.</p>';return;}
   list.innerHTML=portfolio.map(item=>`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2 fade-in"><div class="flex items-center justify-between"><span class="text-sm font-bold text-emerald-400">${item.ticker}</span><span class="text-xs text-gray-500">${item.note||''}</span></div><div class="grid grid-cols-3 gap-2 text-xs"><div><span class="text-gray-500">Avg</span><p class="text-white">${formatRupiah(item.avg)}</p></div><div><span class="text-gray-500">Lot</span><p class="text-white">${item.lot}</p></div><div><span class="text-gray-500">Modal</span><p class="text-white">${formatRupiah(item.avg*item.lot*100)}</p></div></div>${item.target||item.stopLoss?'<div class="grid grid-cols-2 gap-2 text-xs">'+(item.target?'<div><span class="text-gray-500">TP</span><p class="text-emerald-400">'+formatRupiah(item.target)+'</p></div>':'')+(item.stopLoss?'<div><span class="text-gray-500">SL</span><p class="text-red-400">'+formatRupiah(item.stopLoss)+'</p></div>':'')+'</div>':''}<div class="flex gap-2 pt-1"><button onclick="portfolioChart('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700">Chart</button><button onclick="portfolioAI('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700">AI</button><button onclick="editPortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700">Edit</button><button onclick="deletePortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700">Hapus</button></div></div>`).join('');
 }
-function showPortfolioForm(){document.getElementById('portfolio-form-container').classList.remove('hidden');['pf-edit-id','pf-ticker','pf-avg','pf-lot','pf-target','pf-sl','pf-note'].forEach(id=>document.getElementById(id).value='');}
+function showPortfolioForm(){if(isGuest()){showGuestGate(document.getElementById('portfolio-list'));return;}document.getElementById('portfolio-form-container').classList.remove('hidden');['pf-edit-id','pf-ticker','pf-avg','pf-lot','pf-target','pf-sl','pf-note'].forEach(id=>document.getElementById(id).value='');}
 function hidePortfolioForm(){document.getElementById('portfolio-form-container').classList.add('hidden');}
-function savePortfolioItem(){const editId=document.getElementById('pf-edit-id').value,ticker=document.getElementById('pf-ticker').value.trim().toUpperCase(),avg=parseFloat(document.getElementById('pf-avg').value)||0,lot=parseInt(document.getElementById('pf-lot').value)||0,target=parseFloat(document.getElementById('pf-target').value)||null,stopLoss=parseFloat(document.getElementById('pf-sl').value)||null,note=document.getElementById('pf-note').value.trim();if(!ticker||!avg||!lot){alert('Kode saham, Avg Price, dan Lot wajib diisi.');return;}let p=loadPortfolio();if(editId){p=p.map(x=>x.id===parseInt(editId)?{...x,ticker,avg,lot,target,stopLoss,note}:x);}else{p.push({id:Date.now(),ticker,avg,lot,target,stopLoss,note,createdAt:new Date().toISOString()});}savePortfolio(p);hidePortfolioForm();renderPortfolio();}
-function editPortfolioItem(id){const item=loadPortfolio().find(p=>p.id===id);if(!item)return;document.getElementById('pf-edit-id').value=item.id;document.getElementById('pf-ticker').value=item.ticker;document.getElementById('pf-avg').value=item.avg;document.getElementById('pf-lot').value=item.lot;document.getElementById('pf-target').value=item.target||'';document.getElementById('pf-sl').value=item.stopLoss||'';document.getElementById('pf-note').value=item.note||'';document.getElementById('portfolio-form-container').classList.remove('hidden');}
-function deletePortfolioItem(id){if(!confirm('Hapus posisi ini?'))return;savePortfolio(loadPortfolio().filter(p=>p.id!==id));renderPortfolio();}
+function savePortfolioItem(){if(isGuest())return;const editId=document.getElementById('pf-edit-id').value,ticker=document.getElementById('pf-ticker').value.trim().toUpperCase(),avg=parseFloat(document.getElementById('pf-avg').value)||0,lot=parseInt(document.getElementById('pf-lot').value)||0,target=parseFloat(document.getElementById('pf-target').value)||null,stopLoss=parseFloat(document.getElementById('pf-sl').value)||null,note=document.getElementById('pf-note').value.trim();if(!ticker||!avg||!lot){alert('Kode saham, Avg Price, dan Lot wajib diisi.');return;}let p=loadPortfolio();if(editId){p=p.map(x=>x.id===parseInt(editId)?{...x,ticker,avg,lot,target,stopLoss,note}:x);}else{p.push({id:Date.now(),ticker,avg,lot,target,stopLoss,note,createdAt:new Date().toISOString()});}savePortfolio(p);hidePortfolioForm();renderPortfolio();}
+function editPortfolioItem(id){if(isGuest()){showGuestGate(document.getElementById('portfolio-list'));return;}const item=loadPortfolio().find(p=>p.id===id);if(!item)return;document.getElementById('pf-edit-id').value=item.id;document.getElementById('pf-ticker').value=item.ticker;document.getElementById('pf-avg').value=item.avg;document.getElementById('pf-lot').value=item.lot;document.getElementById('pf-target').value=item.target||'';document.getElementById('pf-sl').value=item.stopLoss||'';document.getElementById('pf-note').value=item.note||'';document.getElementById('portfolio-form-container').classList.remove('hidden');}
+function deletePortfolioItem(id){if(isGuest())return;if(!confirm('Hapus posisi ini?'))return;savePortfolio(loadPortfolio().filter(p=>p.id!==id));renderPortfolio();}
 function portfolioChart(ticker){document.getElementById('chart-ticker-input').value=ticker;switchPage('chart');loadTradingViewChart(ticker);}
 function portfolioAI(ticker){switchPage('chart');document.getElementById('chart-ticker-input').value=ticker;loadTradingViewChart(ticker);setTimeout(()=>callAI({ticker},document.getElementById('analysis-output-container')),500);}
-function exportPortfolio(){const blob=new Blob([JSON.stringify(loadPortfolio(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='autocuan_portfolio.json';a.click();}
-function importPortfolio(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=(e)=>{try{const d=JSON.parse(e.target.result);if(Array.isArray(d)){savePortfolio(d);renderPortfolio();showToast('Portfolio berhasil di-import!');}else alert('Format tidak valid.');}catch(err){alert('Gagal membaca file.');}};r.readAsText(file);event.target.value='';}
+function exportPortfolio(){if(isGuest())return;const blob=new Blob([JSON.stringify(loadPortfolio(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='autocuan_portfolio.json';a.click();}
+function importPortfolio(event){if(isGuest())return;const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=(e)=>{try{const d=JSON.parse(e.target.result);if(Array.isArray(d)){savePortfolio(d);renderPortfolio();showToast('Portfolio berhasil di-import!');}else alert('Format tidak valid.');}catch(err){alert('Gagal membaca file.');}};r.readAsText(file);event.target.value='';}
 
 
 // ===== WATCHLIST =====
@@ -473,8 +494,8 @@ function renderWatchlist(){
   if(!wl.length){list.innerHTML='<p class="text-sm text-gray-500 text-center py-6">Belum ada saham di watchlist.</p>';return;}
   list.innerHTML=wl.map((ticker,i)=>`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-3 flex items-center justify-between fade-in"><span class="text-sm font-bold text-emerald-400">${ticker}</span><div class="flex gap-2"><button onclick="watchlistChart('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button><button onclick="watchlistAI('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button><button onclick="removeWatchlistItem(${i})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">&#10005;</button></div></div>`).join('');
 }
-function addWatchlistItem(){const input=document.getElementById('watchlist-input'),ticker=input.value.trim().toUpperCase();if(!ticker)return;const wl=loadWatchlist();if(wl.includes(ticker)){alert('Sudah ada.');return;}wl.push(ticker);saveWatchlist(wl);input.value='';renderWatchlist();}
-function removeWatchlistItem(i){const wl=loadWatchlist();wl.splice(i,1);saveWatchlist(wl);renderWatchlist();}
+function addWatchlistItem(){if(isGuest()){showGuestGate(document.getElementById('watchlist-list'));return;}const input=document.getElementById('watchlist-input'),ticker=input.value.trim().toUpperCase();if(!ticker)return;const wl=loadWatchlist();if(wl.includes(ticker)){alert('Sudah ada.');return;}wl.push(ticker);saveWatchlist(wl);input.value='';renderWatchlist();}
+function removeWatchlistItem(i){if(isGuest())return;const wl=loadWatchlist();wl.splice(i,1);saveWatchlist(wl);renderWatchlist();}
 function watchlistChart(ticker){document.getElementById('chart-ticker-input').value=ticker;switchPage('chart');loadTradingViewChart(ticker);}
 function watchlistAI(ticker){switchPage('chart');document.getElementById('chart-ticker-input').value=ticker;loadTradingViewChart(ticker);setTimeout(()=>callAI({ticker},document.getElementById('analysis-output-container')),500);}
 
@@ -493,13 +514,13 @@ function renderJournal(){
   if(!journal.length){list.innerHTML='<p class="text-sm text-gray-500 text-center py-6">Belum ada trade tercatat.</p>';return;}
   list.innerHTML=journal.sort((a,b)=>b.id-a.id).map(item=>{const pl=(item.sell-item.buy)*item.lot*100;const isWin=pl>=0;return`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2 fade-in"><div class="flex items-center justify-between"><span class="text-sm font-bold text-emerald-400">${item.ticker}</span><span class="text-xs ${isWin?'text-emerald-400':'text-red-400'} font-semibold">${isWin?'+':''}${formatRupiah(pl)}</span></div><div class="grid grid-cols-4 gap-2 text-xs"><div><span class="text-gray-500">Buy</span><p class="text-white">${formatRupiah(item.buy)}</p></div><div><span class="text-gray-500">Sell</span><p class="text-white">${formatRupiah(item.sell)}</p></div><div><span class="text-gray-500">Lot</span><p class="text-white">${item.lot}</p></div><div><span class="text-gray-500">Date</span><p class="text-white">${item.date||'-'}</p></div></div>${item.note?'<p class="text-xs text-gray-500">'+item.note+'</p>':''}<div class="flex gap-2 pt-1"><button onclick="editJournalItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700">Edit</button><button onclick="deleteJournalItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700">Hapus</button></div></div>`;}).join('');
 }
-function showJournalForm(){document.getElementById('journal-form-container').classList.remove('hidden');document.getElementById('jn-edit-id').value='';document.getElementById('jn-ticker').value='';document.getElementById('jn-buy').value='';document.getElementById('jn-sell').value='';document.getElementById('jn-lot').value='';document.getElementById('jn-date').value=new Date().toISOString().split('T')[0];document.getElementById('jn-note').value='';}
+function showJournalForm(){if(isGuest()){showGuestGate(document.getElementById('journal-list'));return;}document.getElementById('journal-form-container').classList.remove('hidden');document.getElementById('jn-edit-id').value='';document.getElementById('jn-ticker').value='';document.getElementById('jn-buy').value='';document.getElementById('jn-sell').value='';document.getElementById('jn-lot').value='';document.getElementById('jn-date').value=new Date().toISOString().split('T')[0];document.getElementById('jn-note').value='';}
 function hideJournalForm(){document.getElementById('journal-form-container').classList.add('hidden');}
-function saveJournalItem(){const editId=document.getElementById('jn-edit-id').value,ticker=document.getElementById('jn-ticker').value.trim().toUpperCase(),buy=parseFloat(document.getElementById('jn-buy').value)||0,sell=parseFloat(document.getElementById('jn-sell').value)||0,lot=parseInt(document.getElementById('jn-lot').value)||0,date=document.getElementById('jn-date').value,note=document.getElementById('jn-note').value.trim();if(!ticker||!buy||!sell||!lot){alert('Ticker, Harga Beli, Harga Jual, dan Lot wajib diisi.');return;}let j=loadJournal();if(editId){j=j.map(x=>x.id===parseInt(editId)?{...x,ticker,buy,sell,lot,date,note}:x);}else{j.push({id:Date.now(),ticker,buy,sell,lot,date,note});}saveJournalData(j);hideJournalForm();renderJournal();showToast('Trade berhasil disimpan!');}
-function editJournalItem(id){const item=loadJournal().find(j=>j.id===id);if(!item)return;document.getElementById('jn-edit-id').value=item.id;document.getElementById('jn-ticker').value=item.ticker;document.getElementById('jn-buy').value=item.buy;document.getElementById('jn-sell').value=item.sell;document.getElementById('jn-lot').value=item.lot;document.getElementById('jn-date').value=item.date||'';document.getElementById('jn-note').value=item.note||'';document.getElementById('journal-form-container').classList.remove('hidden');}
-function deleteJournalItem(id){if(!confirm('Hapus trade ini?'))return;saveJournalData(loadJournal().filter(j=>j.id!==id));renderJournal();}
-function exportJournal(){const blob=new Blob([JSON.stringify(loadJournal(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='autocuan_journal.json';a.click();}
-function importJournal(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=(e)=>{try{const d=JSON.parse(e.target.result);if(Array.isArray(d)){saveJournalData(d);renderJournal();showToast('Journal berhasil di-import!');}else alert('Format tidak valid.');}catch(err){alert('Gagal membaca file.');}};r.readAsText(file);event.target.value='';}
+function saveJournalItem(){if(isGuest())return;const editId=document.getElementById('jn-edit-id').value,ticker=document.getElementById('jn-ticker').value.trim().toUpperCase(),buy=parseFloat(document.getElementById('jn-buy').value)||0,sell=parseFloat(document.getElementById('jn-sell').value)||0,lot=parseInt(document.getElementById('jn-lot').value)||0,date=document.getElementById('jn-date').value,note=document.getElementById('jn-note').value.trim();if(!ticker||!buy||!sell||!lot){alert('Ticker, Harga Beli, Harga Jual, dan Lot wajib diisi.');return;}let j=loadJournal();if(editId){j=j.map(x=>x.id===parseInt(editId)?{...x,ticker,buy,sell,lot,date,note}:x);}else{j.push({id:Date.now(),ticker,buy,sell,lot,date,note});}saveJournalData(j);hideJournalForm();renderJournal();showToast('Trade berhasil disimpan!');}
+function editJournalItem(id){if(isGuest())return;const item=loadJournal().find(j=>j.id===id);if(!item)return;document.getElementById('jn-edit-id').value=item.id;document.getElementById('jn-ticker').value=item.ticker;document.getElementById('jn-buy').value=item.buy;document.getElementById('jn-sell').value=item.sell;document.getElementById('jn-lot').value=item.lot;document.getElementById('jn-date').value=item.date||'';document.getElementById('jn-note').value=item.note||'';document.getElementById('journal-form-container').classList.remove('hidden');}
+function deleteJournalItem(id){if(isGuest())return;if(!confirm('Hapus trade ini?'))return;saveJournalData(loadJournal().filter(j=>j.id!==id));renderJournal();}
+function exportJournal(){if(isGuest())return;const blob=new Blob([JSON.stringify(loadJournal(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='autocuan_journal.json';a.click();}
+function importJournal(event){if(isGuest())return;const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=(e)=>{try{const d=JSON.parse(e.target.result);if(Array.isArray(d)){saveJournalData(d);renderJournal();showToast('Journal berhasil di-import!');}else alert('Format tidak valid.');}catch(err){alert('Gagal membaca file.');}};r.readAsText(file);event.target.value='';}
 
 // ===== AI MODE =====
 function setAIMode(mode){aiMode=mode;const c=document.getElementById('ai-mode-cepat'),d=document.getElementById('ai-mode-detail');if(mode==='cepat'){c.classList.add('bg-emerald-600','text-white');c.classList.remove('text-gray-400');d.classList.remove('bg-emerald-600','text-white');d.classList.add('text-gray-400');}else{d.classList.add('bg-emerald-600','text-white');d.classList.remove('text-gray-400');c.classList.remove('bg-emerald-600','text-white');c.classList.add('text-gray-400');}}
@@ -514,8 +535,10 @@ function analyzeByTicker(){const ticker=document.getElementById('ai-ticker-input
 
 // ===== AI FETCH =====
 async function callAI(payload,container){
+  if(isGuest()){showGuestGate(container);return;}
   const aiCheck=canUseAI();
   if(!aiCheck.allowed){
+    logToServer('/api/log-usage',{username:localStorage.getItem('autocuan_user_name')||'unknown',event:'limit_reached',detail:formatWaitTime(aiCheck.waitMs)});
     container.innerHTML='<div class="w-full rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 sm:p-6 text-yellow-300"><h3 class="text-lg font-black text-yellow-400">Limit AI sementara tercapai</h3><p class="mt-2 text-sm text-gray-300">Kamu sudah menggunakan 2 analisis AI dalam 30 menit.</p><p class="mt-3 text-sm font-bold text-yellow-300">AI bisa digunakan lagi dalam: '+formatWaitTime(aiCheck.waitMs)+'</p><p class="mt-2 text-xs text-gray-400">Chart, Portfolio, Watchlist, dan Journal tetap bisa digunakan.</p></div>';
     return;
   }
@@ -526,6 +549,7 @@ async function callAI(payload,container){
     const html=await response.text();
     if(!response.ok){if(response.status===429){container.innerHTML='<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 text-center"><p class="text-yellow-400 font-semibold">Kuota AI sedang habis</p><p class="text-xs text-gray-400 mt-2">Chart TradingView tetap bisa digunakan.</p></div>';}else{container.innerHTML='<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Gagal menganalisis</p><p class="text-xs text-gray-400 mt-2">'+response.status+' error</p></div>';}return;}
     recordAIUsage();
+    logToServer('/api/log-analysis',{username:localStorage.getItem('autocuan_user_name')||'unknown',ticker:payload.ticker||'image',mode:aiMode,source:currentPage});
     const hasValidContent=html.includes('Entry')&&html.includes('Take Profit')&&!html.includes('belum lengkap');
     if(hasValidContent){container.innerHTML='<div id="ai-result-content" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in space-y-4">'+html+'</div><button onclick="copyTradingPlan()" class="w-full mt-3 py-2.5 rounded-xl font-medium text-gray-200 bg-dark-700 border border-gray-700 hover:border-emerald-500/50 text-sm flex items-center justify-center gap-1.5">&#128203; Salin Trading Plan</button>';}
     else{container.innerHTML='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in">'+html+'</div>';}
@@ -534,6 +558,36 @@ async function callAI(payload,container){
 
 // ===== COPY TRADING PLAN =====
 function copyTradingPlan(){const el=document.getElementById('ai-result-content');if(!el){showToast('Tidak ada hasil untuk disalin');return;}const text=el.innerText.trim();if(!text){showToast('Tidak ada hasil untuk disalin');return;}navigator.clipboard.writeText(text).then(()=>showToast('Trading plan berhasil disalin')).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('Trading plan berhasil disalin');});}
+
+// ===== ADMIN PANEL =====
+async function loadAdminPanel(){
+  if(!isAdminUser()){switchPage('home');return;}
+  const panel=document.getElementById('admin-panel-content');
+  panel.innerHTML='<p class="text-sm text-gray-400">Memuat data...</p>';
+  try{
+    const res=await fetch('/api/admin-logs');
+    const data=await res.json();
+    if(!data.configured){panel.innerHTML='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4"><p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p></div>';return;}
+    let html='';
+    html+='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2"><h3 class="text-sm font-bold text-emerald-400">Login Logs ('+data.logins.length+')</h3>';
+    if(data.logins.length){html+='<div class="space-y-1 max-h-48 overflow-y-auto">';data.logins.forEach(l=>{html+='<div class="text-xs text-gray-300 flex justify-between"><span>'+l.username+(l.is_guest?' (guest)':'')+(l.is_admin?' [admin]':'')+'</span><span class="text-gray-500">'+(l.created_at||'').slice(0,16)+'</span></div>';});html+='</div>';}
+    else{html+='<p class="text-xs text-gray-500">Belum ada data.</p>';}
+    html+='</div>';
+    html+='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2"><h3 class="text-sm font-bold text-blue-400">Search Logs ('+data.searches.length+')</h3>';
+    if(data.searches.length){html+='<div class="space-y-1 max-h-48 overflow-y-auto">';data.searches.forEach(s=>{html+='<div class="text-xs text-gray-300 flex justify-between"><span>'+s.username+' &rarr; '+s.ticker+' ('+s.source+')</span><span class="text-gray-500">'+(s.created_at||'').slice(0,16)+'</span></div>';});html+='</div>';}
+    else{html+='<p class="text-xs text-gray-500">Belum ada data.</p>';}
+    html+='</div>';
+    html+='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2"><h3 class="text-sm font-bold text-yellow-400">AI Analysis Logs ('+data.analyses.length+')</h3>';
+    if(data.analyses.length){html+='<div class="space-y-1 max-h-48 overflow-y-auto">';data.analyses.forEach(a=>{html+='<div class="text-xs text-gray-300 flex justify-between"><span>'+a.username+' &rarr; '+a.ticker+' ['+a.mode+']</span><span class="text-gray-500">'+(a.created_at||'').slice(0,16)+'</span></div>';});html+='</div>';}
+    else{html+='<p class="text-xs text-gray-500">Belum ada data.</p>';}
+    html+='</div>';
+    html+='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2"><h3 class="text-sm font-bold text-red-400">Usage/Limit Logs ('+data.usages.length+')</h3>';
+    if(data.usages.length){html+='<div class="space-y-1 max-h-48 overflow-y-auto">';data.usages.forEach(u=>{html+='<div class="text-xs text-gray-300 flex justify-between"><span>'+u.username+' - '+u.event+'</span><span class="text-gray-500">'+(u.created_at||'').slice(0,16)+'</span></div>';});html+='</div>';}
+    else{html+='<p class="text-xs text-gray-500">Belum ada data.</p>';}
+    html+='</div>';
+    panel.innerHTML=html;
+  }catch(e){panel.innerHTML='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4"><p class="text-sm text-red-400">Gagal memuat: '+e.message+'</p></div>';}
+}
 
 // ===== UTILS =====
 function formatRupiah(num){if(!num)return'Rp 0';return'Rp '+new Intl.NumberFormat('id-ID').format(Math.round(num));}
