@@ -1,0 +1,14 @@
+{
+  "name": "auto-cuan",
+  "version": "1.0.0",
+  "description": "Auto-Cuan AI Trading Dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Static site with serverless functions'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

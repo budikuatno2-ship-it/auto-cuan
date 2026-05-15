@@ -1,417 +1,650 @@
 <!DOCTYPE html>
-<html lang="id" class="scroll-smooth">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto-Cuan | AI Chart Reader - Smart Money Concepts</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        dark: {
-                            900: '#0b0e14',
-                            800: '#0f1319',
-                            700: '#151a23',
-                            600: '#1c2333',
-                            500: '#242d3d'
-                        },
-                        emerald: {
-                            400: '#34d399',
-                            500: '#10b981',
-                            600: '#059669'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            background-color: #0b0e14;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0f1319; }
-        ::-webkit-scrollbar-thumb { background: #242d3d; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #34d399; }
-
-        /* Glow effects */
-        .glow-emerald {
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), 0 0 60px rgba(16, 185, 129, 0.1);
-        }
-        .glow-emerald:hover {
-            box-shadow: 0 0 30px rgba(16, 185, 129, 0.5), 0 0 80px rgba(16, 185, 129, 0.2);
-        }
-
-        /* Upload zone animation */
-        .upload-zone {
-            border: 2px dashed #242d3d;
-            transition: all 0.3s ease;
-        }
-        .upload-zone:hover, .upload-zone.dragover {
-            border-color: #10b981;
-            background: rgba(16, 185, 129, 0.03);
-            box-shadow: inset 0 0 30px rgba(16, 185, 129, 0.05);
-        }
-
-        /* Pulse animation for loading */
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .animate-pulse-glow {
-            animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        /* Spinner */
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #242d3d;
-            border-top-color: #10b981;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        /* Fade in animation */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in-up {
-            animation: fadeInUp 0.6s ease forwards;
-        }
-
-        /* News card hover */
-        .news-card {
-            transition: all 0.2s ease;
-        }
-        .news-card:hover {
-            transform: translateX(4px);
-            border-left-color: #10b981;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Auto-Cuan | AI Trading Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        dark: { 900:'#0b0e14', 800:'#0f1319', 700:'#151a23', 600:'#1c2333', 500:'#242d3d' },
+        emerald: { 400:'#34d399', 500:'#10b981', 600:'#059669' }
+      }
+    }
+  }
+}
+</script>
+<style>
+body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#0f1319}::-webkit-scrollbar-thumb{background:#242d3d;border-radius:3px}
+.glow-emerald{box-shadow:0 0 20px rgba(16,185,129,.3)}
+.upload-zone{border:2px dashed #242d3d;transition:all .3s}.upload-zone:hover,.upload-zone.dragover{border-color:#10b981;background:rgba(16,185,129,.03)}
+@keyframes spin{to{transform:rotate(360deg)}}.spinner{width:36px;height:36px;border:3px solid #242d3d;border-top-color:#10b981;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}.fade-in{animation:fadeIn .4s ease forwards}
+@keyframes pulse-glow{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse-glow{animation:pulse-glow 2s ease infinite}
+.skeleton{background:linear-gradient(90deg,#151a23 25%,#1c2333 50%,#151a23 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+</style>
 </head>
-<body class="min-h-screen text-gray-100">
+<body class="min-h-screen bg-[#0b0e14] text-gray-100 overflow-x-hidden">
 
-    <!-- Header -->
-    <header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold text-white tracking-tight">Auto-Cuan</h1>
-                        <p class="text-xs text-gray-500 font-medium">AI Chart Reader &bull; Smart Money Concepts</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span class="text-xs font-medium text-emerald-400">Gemini 2.5 Flash</span>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </header>
+<!-- WELCOME SCREEN -->
+<div id="welcome-screen" class="fixed inset-0 z-[100] bg-[#0b0e14] flex items-center justify-center">
+<div class="w-full max-w-sm mx-auto px-6 text-center space-y-6">
+<div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
+<svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+</div>
+<h1 class="text-2xl font-bold text-white">Auto-Cuan</h1>
+<p class="text-sm text-gray-400">AI Trading Dashboard Pribadi</p>
+<div class="space-y-3 pt-4">
+<button onclick="enterApp()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald">Masuk Dashboard</button>
+<button onclick="enterApp()" class="w-full py-3 rounded-xl font-medium text-gray-300 bg-dark-700 border border-gray-700 hover:border-emerald-500/50">Coba Tanpa Login</button>
+</div>
+<p class="text-xs text-gray-600 pt-2">v1 Beta &bull; Data tersimpan lokal di browser</p>
+</div>
+</div>
 
-    <!-- Main Content -->
-    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+<!-- HEADER -->
+<header id="app-header" class="hidden sticky top-0 z-50 backdrop-blur-xl bg-[#0b0e14]/90 border-b border-gray-800/50">
+<div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+</div>
+<div>
+<h1 class="text-base font-bold text-white leading-tight">Auto-Cuan</h1>
+<p class="text-[10px] text-gray-500 hidden sm:block">AI Trading Dashboard</p>
+</div>
+</div>
+<!-- Desktop Nav -->
+<nav class="hidden sm:flex items-center gap-1">
+<button onclick="switchPage('home')" data-nav="home" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Home</button>
+<button onclick="switchPage('chart')" data-nav="chart" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Chart</button>
+<button onclick="switchPage('portfolio')" data-nav="portfolio" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Portfolio</button>
+<button onclick="switchPage('watchlist')" data-nav="watchlist" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Watchlist</button>
+<button onclick="switchPage('ai')" data-nav="ai" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">AI</button>
+</nav>
+<span class="hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium">v1 Beta</span>
+</div>
+</header>
 
-        <!-- Upload Section -->
-        <section class="fade-in-up">
-            <div id="uploadZone" class="upload-zone rounded-2xl p-8 sm:p-12 text-center cursor-pointer bg-dark-800/50 backdrop-blur-sm"
-                 onclick="document.getElementById('fileInput').click()">
-                
-                <!-- Default State -->
-                <div id="uploadPrompt">
-                    <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-dark-700 flex items-center justify-center">
-                        <svg class="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg sm:text-xl font-semibold text-gray-200 mb-2">
-                        📁 Seret & Lepas atau Klik untuk Unggah Screenshot Chart Saham (SMC / LuxAlgo)
-                    </h3>
-                    <p class="text-sm text-gray-500 max-w-md mx-auto">
-                        Mendukung format PNG, JPG, JPEG, WebP. Maksimal 20MB.
-                    </p>
-                </div>
+<!-- MAIN CONTENT -->
+<main id="app-main" class="hidden w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-24 sm:py-8 space-y-5">
 
-                <!-- Image Preview -->
-                <div id="previewContainer" class="hidden">
-                    <img id="imagePreview" class="max-h-[400px] mx-auto rounded-xl shadow-2xl border border-dark-600/50" alt="Chart Preview">
-                    <p id="fileName" class="mt-4 text-sm text-gray-400 font-medium"></p>
-                    <button onclick="event.stopPropagation(); resetUpload();" 
-                            class="mt-3 text-xs text-red-400 hover:text-red-300 underline underline-offset-2 transition-colors">
-                        Hapus & Unggah Ulang
-                    </button>
-                </div>
-            </div>
+<!-- HOME PAGE -->
+<div id="page-home" class="page space-y-5">
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4">
+<label class="text-xs text-gray-400 font-medium mb-2 block">Cari Saham</label>
+<div class="flex gap-2">
+<input id="home-ticker-input" type="text" placeholder="Ketik kode saham, cth: BBCA" class="flex-1 px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter')homeOpenChart()">
+<button onclick="homeOpenChart()" class="px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 transition-colors whitespace-nowrap">Buka Chart</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4"><p class="text-[10px] text-gray-500 uppercase tracking-wide">Total Posisi</p><p id="home-total-pos" class="text-xl font-bold text-white mt-1">0</p></div>
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4"><p class="text-[10px] text-gray-500 uppercase tracking-wide">Total Lot</p><p id="home-total-lot" class="text-xl font-bold text-white mt-1">0</p></div>
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4"><p class="text-[10px] text-gray-500 uppercase tracking-wide">Estimasi Modal</p><p id="home-total-modal" class="text-lg font-bold text-emerald-400 mt-1">Rp 0</p></div>
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4"><p class="text-[10px] text-gray-500 uppercase tracking-wide">Watchlist</p><p id="home-watchlist-count" class="text-xl font-bold text-white mt-1">0</p></div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+<button onclick="switchPage('chart')" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">📈</span><p class="text-xs text-gray-300 mt-1">Buka Chart</p></button>
+<button onclick="switchPage('portfolio');showPortfolioForm()" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">➕</span><p class="text-xs text-gray-300 mt-1">Tambah Posisi</p></button>
+<button onclick="switchPage('watchlist')" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">⭐</span><p class="text-xs text-gray-300 mt-1">Watchlist</p></button>
+<button onclick="switchPage('ai')" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">🤖</span><p class="text-xs text-gray-300 mt-1">AI Analysis</p></button>
+</div>
+</div>
 
-            <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg,image/webp" class="hidden" onchange="handleFileSelect(event)">
-        </section>
+<!-- CHART PAGE -->
+<div id="page-chart" class="page hidden space-y-4">
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4">
+<div class="flex gap-2">
+<input id="chart-ticker-input" type="text" placeholder="Kode saham, cth: BBRI" class="flex-1 px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter')openChart()">
+<button onclick="openChart()" class="px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 transition-colors whitespace-nowrap">Buka Chart</button>
+</div>
+</div>
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 overflow-hidden">
+<div id="chart-container" class="w-full h-[360px] sm:h-[520px] relative">
+<div id="chart-skeleton" class="absolute inset-0 flex items-center justify-center"><p class="text-sm text-gray-500">Ketik kode saham lalu klik Buka Chart</p></div>
+<div id="tradingview-widget" class="w-full h-full"></div>
+</div>
+</div>
+<div id="chart-ai-section" class="hidden">
+<button onclick="analyzeCurrentTicker()" id="chart-ai-btn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald text-sm flex items-center justify-center gap-2">
+<span>🤖</span> Analisis AI Saham Ini
+</button>
+</div>
+<div id="analysis-output-container" class="w-full space-y-4 pb-8"></div>
+</div>
 
-        <!-- Analyze Button -->
-        <section class="text-center fade-in-up" style="animation-delay: 0.1s;">
-            <button id="analyzeBtn" onclick="analyzeChart()" disabled
-                    class="relative inline-flex items-center gap-3 px-10 py-4 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none hover:scale-[1.02] active:scale-[0.98]">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                </svg>
-                Mulai Analisis Chart
-            </button>
-        </section>
+<!-- PORTFOLIO PAGE -->
+<div id="page-portfolio" class="page hidden space-y-4">
+<div class="flex items-center justify-between">
+<h2 class="text-lg font-bold text-white">Portfolio</h2>
+<div class="flex gap-2">
+<button onclick="exportPortfolio()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Export</button>
+<button onclick="document.getElementById('import-portfolio-input').click()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Import</button>
+<input id="import-portfolio-input" type="file" accept=".json" class="hidden" onchange="importPortfolio(event)">
+</div>
+</div>
+<button onclick="showPortfolioForm()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald text-sm">+ Tambah Saham</button>
+<div id="portfolio-form-container" class="hidden bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-3">
+<input id="pf-ticker" type="text" placeholder="Kode Saham (cth: BBRI)" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+<div class="grid grid-cols-2 gap-3">
+<input id="pf-avg" type="number" placeholder="Avg Price" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+<input id="pf-lot" type="number" placeholder="Lot" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+</div>
+<div class="grid grid-cols-2 gap-3">
+<input id="pf-target" type="number" placeholder="Target Price (opsional)" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+<input id="pf-sl" type="number" placeholder="Stop Loss (opsional)" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+</div>
+<input id="pf-note" type="text" placeholder="Catatan (opsional)" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+<input id="pf-edit-id" type="hidden" value="">
+<div class="flex gap-2">
+<button onclick="savePortfolioItem()" class="flex-1 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold">Simpan</button>
+<button onclick="hidePortfolioForm()" class="px-4 py-2.5 rounded-lg bg-dark-700 text-gray-300 text-sm border border-gray-700">Batal</button>
+</div>
+</div>
+<div id="portfolio-list" class="space-y-3"></div>
+</div>
 
-        <!-- Loading State -->
-        <section id="loadingState" class="hidden">
-            <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 p-8 text-center">
-                <div class="spinner mx-auto mb-5"></div>
-                <p class="text-emerald-400 font-medium animate-pulse-glow">
-                    🔄 AI sedang membaca struktur chart, mendeteksi indikator LuxAlgo, dan merancang trading plan... Mohon tunggu.
-                </p>
-                <p class="text-xs text-gray-600 mt-3">Proses analisis biasanya memakan waktu 15-45 detik</p>
-            </div>
-        </section>
+<!-- WATCHLIST PAGE -->
+<div id="page-watchlist" class="page hidden space-y-4">
+<h2 class="text-lg font-bold text-white">Watchlist</h2>
+<div class="flex gap-2">
+<input id="watchlist-input" type="text" placeholder="Tambah kode saham" class="flex-1 px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter')addWatchlistItem()">
+<button onclick="addWatchlistItem()" class="px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 transition-colors">Tambah</button>
+</div>
+<div id="watchlist-list" class="space-y-2"></div>
+</div>
 
-        <!-- Analysis Result -->
-        <section id="resultSection" class="hidden fade-in-up">
-            <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
-                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
-                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                    <h2 class="font-semibold text-gray-200">Hasil Analisis AI - Smart Money Concepts</h2>
-                </div>
-                <div id="resultContent" class="p-6 prose prose-invert max-w-none">
-                    <!-- Dynamic AI response rendered here -->
-                </div>
-            </div>
-        </section>
+<!-- AI PAGE -->
+<div id="page-ai" class="page hidden space-y-4">
+<div class="flex gap-2 bg-dark-800/60 rounded-xl border border-gray-800/50 p-1">
+<button onclick="switchAITab('scan')" id="ai-tab-scan" class="flex-1 py-2 rounded-lg text-xs font-semibold text-white bg-emerald-600 transition-colors">Pindai Chart</button>
+<button onclick="switchAITab('ticker')" id="ai-tab-ticker" class="flex-1 py-2 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition-colors">Nama Saham</button>
+</div>
+<div id="ai-scan-panel" class="space-y-4">
+<div id="ai-upload-zone" class="upload-zone rounded-xl p-6 text-center cursor-pointer bg-dark-800/60" onclick="document.getElementById('ai-file-input').click()">
+<div id="ai-upload-prompt">
+<div class="w-14 h-14 mx-auto mb-3 rounded-xl bg-dark-700 flex items-center justify-center"><svg class="w-7 h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg></div>
+<p class="text-sm text-gray-300 font-medium">Klik untuk unggah screenshot chart</p>
+<p class="text-xs text-gray-500 mt-1">PNG, JPG, WebP. Maks 20MB</p>
+</div>
+<div id="ai-preview-container" class="hidden">
+<img id="ai-image-preview" class="max-h-[240px] mx-auto rounded-lg border border-gray-700" alt="Preview">
+<button onclick="event.stopPropagation();resetAIUpload()" class="mt-2 text-xs text-red-400 hover:text-red-300 underline">Hapus</button>
+</div>
+</div>
+<input id="ai-file-input" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" class="hidden" onchange="handleAIFile(event)">
+<button onclick="analyzeUploadedChart()" id="ai-scan-btn" disabled class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald text-sm disabled:opacity-40 disabled:cursor-not-allowed">Mulai Analisis Chart</button>
+</div>
+<div id="ai-ticker-panel" class="hidden space-y-4">
+<div class="flex gap-2">
+<input id="ai-ticker-input" type="text" placeholder="Kode saham, cth: TLKM" class="flex-1 px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50" onkeydown="if(event.key==='Enter')analyzeByTicker()">
+<button onclick="analyzeByTicker()" class="px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 transition-colors whitespace-nowrap">Analisis AI</button>
+</div>
+</div>
+<div id="ai-output-container" class="w-full space-y-4 pb-8"></div>
+</div>
 
-        <!-- Yahoo Finance News Feed -->
-        <section id="newsSection" class="hidden fade-in-up">
-            <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
-                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M19 4h-4L7.1 16.63 4.5 12H2L7.1 20 19 4zm-8 0H8l-4.5 8H6l2.5-4.37L11 4z"/>
-                        </svg>
-                        <h2 class="font-semibold text-gray-200">Berita Saham Terkini</h2>
-                    </div>
-                    <span class="text-xs text-gray-500">Powered by Google News</span>
-                </div>
-                <div id="newsContent" class="p-4 space-y-2">
-                    <!-- News items rendered here -->
-                </div>
-            </div>
-        </section>
+</main>
 
-    </main>
+<!-- MOBILE BOTTOM NAV -->
+<nav id="mobile-nav" class="hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0b0e14]/95 backdrop-blur-xl border-t border-gray-800 px-2 py-2 grid grid-cols-5 gap-1 sm:hidden">
+<button onclick="switchPage('home')" data-nav="home" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+<span class="text-[10px]">Home</span>
+</button>
+<button onclick="switchPage('chart')" data-nav="chart" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+<span class="text-[10px]">Chart</span>
+</button>
+<button onclick="switchPage('portfolio')" data-nav="portfolio" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+<span class="text-[10px]">Portfolio</span>
+</button>
+<button onclick="switchPage('watchlist')" data-nav="watchlist" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+<span class="text-[10px]">Watchlist</span>
+</button>
+<button onclick="switchPage('ai')" data-nav="ai" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+<span class="text-[10px]">AI</span>
+</button>
+</nav>
 
-    <!-- Footer -->
-    <footer class="border-t border-dark-700/50 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
-            <p class="text-xs text-gray-600">
-                Auto-Cuan &copy; 2024 &bull; AI-Powered Technical Analysis &bull; Smart Money Concepts & LuxAlgo
-            </p>
-            <p class="text-xs text-gray-700 mt-1">
-                Disclaimer: Bukan merupakan saran investasi. Gunakan analisis ini sebagai referensi tambahan saja.
-            </p>
-        </div>
-    </footer>
 
-    <!-- JavaScript -->
-    <script>
-        // --- State ---
-        let selectedFile = null;
-        let imageBase64 = null;
-        let imageMimeType = null;
+<!-- JAVASCRIPT -->
+<script>
+// ===== STATE =====
+let currentPage = 'home';
+let currentTicker = '';
+let tvScriptLoaded = false;
+let tvWidget = null;
+let aiImageBase64 = null;
+let aiImageMime = null;
 
-        // --- DOM Elements ---
-        const uploadZone = document.getElementById('uploadZone');
-        const uploadPrompt = document.getElementById('uploadPrompt');
-        const previewContainer = document.getElementById('previewContainer');
-        const imagePreview = document.getElementById('imagePreview');
-        const fileName = document.getElementById('fileName');
-        const fileInput = document.getElementById('fileInput');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const loadingState = document.getElementById('loadingState');
-        const resultSection = document.getElementById('resultSection');
-        const resultContent = document.getElementById('resultContent');
-        const newsSection = document.getElementById('newsSection');
-        const newsContent = document.getElementById('newsContent');
+// ===== WELCOME / ENTRY =====
+function enterApp() {
+  localStorage.setItem('autocuan_entered', 'true');
+  document.getElementById('welcome-screen').classList.add('hidden');
+  document.getElementById('app-header').classList.remove('hidden');
+  document.getElementById('app-main').classList.remove('hidden');
+  document.getElementById('mobile-nav').classList.remove('hidden');
+  switchPage('home');
+}
 
-        // --- Drag & Drop ---
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-            });
-        });
+function checkEntry() {
+  if (localStorage.getItem('autocuan_entered') === 'true') {
+    enterApp();
+  }
+}
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, () => {
-                uploadZone.classList.add('dragover');
-            });
-        });
+// ===== NAVIGATION =====
+function switchPage(page) {
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.remove('hidden');
+  // Update nav highlights
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.remove('bg-dark-700', 'text-white');
+    t.classList.add('text-gray-400');
+  });
+  document.querySelectorAll('.mob-nav').forEach(t => {
+    t.classList.remove('text-emerald-400');
+    t.classList.add('text-gray-500');
+  });
+  document.querySelectorAll(`[data-nav="${page}"]`).forEach(t => {
+    t.classList.add('text-emerald-400', 'bg-dark-700', 'text-white');
+    t.classList.remove('text-gray-400', 'text-gray-500');
+  });
+  // Refresh data
+  if (page === 'home') updateHomeSummary();
+  if (page === 'portfolio') renderPortfolio();
+  if (page === 'watchlist') renderWatchlist();
+}
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, () => {
-                uploadZone.classList.remove('dragover');
-            });
-        });
+// ===== HOME =====
+function updateHomeSummary() {
+  const portfolio = loadPortfolio();
+  const watchlist = loadWatchlist();
+  document.getElementById('home-total-pos').textContent = portfolio.length;
+  let totalLot = 0, totalModal = 0;
+  portfolio.forEach(p => { totalLot += (p.lot || 0); totalModal += (p.avg || 0) * (p.lot || 0) * 100; });
+  document.getElementById('home-total-lot').textContent = totalLot;
+  document.getElementById('home-total-modal').textContent = formatRupiah(totalModal);
+  document.getElementById('home-watchlist-count').textContent = watchlist.length;
+}
 
-        uploadZone.addEventListener('drop', (e) => {
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                processFile(files[0]);
-            }
-        });
+function homeOpenChart() {
+  const ticker = document.getElementById('home-ticker-input').value.trim().toUpperCase();
+  if (!ticker) return;
+  document.getElementById('chart-ticker-input').value = ticker;
+  switchPage('chart');
+  loadTradingViewChart(ticker);
+}
 
-        // --- File Handling ---
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                processFile(file);
-            }
-        }
+// ===== CHART =====
+function preloadTradingViewScript() {
+  if (tvScriptLoaded) return;
+  const s = document.createElement('script');
+  s.src = 'https://s3.tradingview.com/tv.js';
+  s.onload = () => { tvScriptLoaded = true; };
+  document.head.appendChild(s);
+}
 
-        function processFile(file) {
-            // Validate file type
-            const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-            if (!validTypes.includes(file.type)) {
-                alert('Format file tidak didukung. Gunakan PNG, JPG, atau WebP.');
-                return;
-            }
+function openChart() {
+  const ticker = document.getElementById('chart-ticker-input').value.trim().toUpperCase();
+  if (!ticker) return;
+  loadTradingViewChart(ticker);
+}
 
-            // Validate file size (20MB)
-            if (file.size > 20 * 1024 * 1024) {
-                alert('Ukuran file terlalu besar. Maksimal 20MB.');
-                return;
-            }
+function loadTradingViewChart(ticker) {
+  currentTicker = ticker;
+  const container = document.getElementById('tradingview-widget');
+  const skeleton = document.getElementById('chart-skeleton');
+  container.innerHTML = '';
+  skeleton.innerHTML = '<div class="skeleton w-full h-full rounded-lg"></div>';
 
-            selectedFile = file;
-            imageMimeType = file.type;
+  const symbol = 'IDX:' + ticker;
 
-            // Read file as base64
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imageBase64 = e.target.result;
-                
-                // Show preview
-                imagePreview.src = imageBase64;
-                fileName.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-                uploadPrompt.classList.add('hidden');
-                previewContainer.classList.remove('hidden');
-                
-                // Enable button
-                analyzeBtn.disabled = false;
-            };
-            reader.readAsDataURL(file);
-        }
+  function createWidget() {
+    skeleton.innerHTML = '';
+    container.innerHTML = '';
+    try {
+      tvWidget = new TradingView.widget({
+        autosize: true,
+        symbol: symbol,
+        interval: 'D',
+        timezone: 'Asia/Jakarta',
+        theme: 'dark',
+        style: '1',
+        locale: 'id',
+        toolbar_bg: '#0b0e14',
+        enable_publishing: false,
+        hide_top_toolbar: false,
+        hide_side_toolbar: window.innerWidth < 640,
+        allow_symbol_change: true,
+        save_image: false,
+        container_id: 'tradingview-widget'
+      });
+    } catch(e) {
+      skeleton.innerHTML = '<p class="text-sm text-red-400">Gagal memuat chart. Coba refresh.</p>';
+    }
+  }
 
-        function resetUpload() {
-            selectedFile = null;
-            imageBase64 = null;
-            imageMimeType = null;
-            fileInput.value = '';
-            uploadPrompt.classList.remove('hidden');
-            previewContainer.classList.add('hidden');
-            analyzeBtn.disabled = true;
-            resultSection.classList.add('hidden');
-            newsSection.classList.add('hidden');
-        }
+  if (tvScriptLoaded && window.TradingView) {
+    createWidget();
+  } else {
+    const s = document.createElement('script');
+    s.src = 'https://s3.tradingview.com/tv.js';
+    s.onload = () => { tvScriptLoaded = true; createWidget(); };
+    s.onerror = () => { skeleton.innerHTML = '<p class="text-sm text-red-400">Gagal memuat TradingView.</p>'; };
+    document.head.appendChild(s);
+  }
 
-        // --- Analyze Chart ---
-        async function analyzeChart() {
-            if (!imageBase64) return;
+  document.getElementById('chart-ai-section').classList.remove('hidden');
+}
 
-            // Show loading, hide results
-            loadingState.classList.remove('hidden');
-            resultSection.classList.add('hidden');
-            newsSection.classList.add('hidden');
-            analyzeBtn.disabled = true;
+function analyzeCurrentTicker() {
+  if (!currentTicker) return;
+  callAI({ ticker: currentTicker }, document.getElementById('analysis-output-container'));
+}
 
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        image: imageBase64,
-                        mimeType: imageMimeType
-                    })
-                });
+// ===== PORTFOLIO =====
+function loadPortfolio() {
+  try { return JSON.parse(localStorage.getItem('autocuan_portfolio')) || []; } catch(e) { return []; }
+}
 
-                const data = await response.json();
+function savePortfolio(data) {
+  localStorage.setItem('autocuan_portfolio', JSON.stringify(data));
+}
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Terjadi kesalahan pada server.');
-                }
+function renderPortfolio() {
+  const list = document.getElementById('portfolio-list');
+  const portfolio = loadPortfolio();
+  if (portfolio.length === 0) {
+    list.innerHTML = '<p class="text-sm text-gray-500 text-center py-6">Belum ada posisi. Tambahkan saham pertamamu.</p>';
+    return;
+  }
+  list.innerHTML = portfolio.map(item => `
+    <div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2 fade-in">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-bold text-emerald-400">${item.ticker}</span>
+        <span class="text-xs text-gray-500">${item.note || ''}</span>
+      </div>
+      <div class="grid grid-cols-3 gap-2 text-xs">
+        <div><span class="text-gray-500">Avg</span><p class="text-white font-medium">${formatRupiah(item.avg)}</p></div>
+        <div><span class="text-gray-500">Lot</span><p class="text-white font-medium">${item.lot}</p></div>
+        <div><span class="text-gray-500">Modal</span><p class="text-emerald-400 font-medium">${formatRupiah(item.avg * item.lot * 100)}</p></div>
+      </div>
+      ${item.target ? `<div class="text-xs"><span class="text-gray-500">Target: </span><span class="text-green-400">${formatRupiah(item.target)}</span></div>` : ''}
+      ${item.stopLoss ? `<div class="text-xs"><span class="text-gray-500">SL: </span><span class="text-red-400">${formatRupiah(item.stopLoss)}</span></div>` : ''}
+      <div class="flex flex-wrap gap-2 pt-2">
+        <button onclick="portfolioChart('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button>
+        <button onclick="portfolioAI('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button>
+        <button onclick="editPortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Edit</button>
+        <button onclick="deletePortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">Hapus</button>
+      </div>
+    </div>
+  `).join('');
+}
 
-                if (data.html) {
-                    // Clean markdown code fences if present
-                    let html = data.html;
-                    html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
-                    
-                    resultContent.innerHTML = html;
-                    resultSection.classList.remove('hidden');
-                    
-                    // Scroll to result
-                    resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function showPortfolioForm() {
+  document.getElementById('portfolio-form-container').classList.remove('hidden');
+  document.getElementById('pf-edit-id').value = '';
+  document.getElementById('pf-ticker').value = '';
+  document.getElementById('pf-avg').value = '';
+  document.getElementById('pf-lot').value = '';
+  document.getElementById('pf-target').value = '';
+  document.getElementById('pf-sl').value = '';
+  document.getElementById('pf-note').value = '';
+}
 
-                    // Load news
-                    loadNews();
-                } else {
-                    throw new Error('Tidak ada hasil analisis dari AI.');
-                }
+function hidePortfolioForm() {
+  document.getElementById('portfolio-form-container').classList.add('hidden');
+}
 
-            } catch (error) {
-                resultContent.innerHTML = `
-                    <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
-                        <p class="text-red-400 font-semibold mb-2">Gagal Menganalisis Chart</p>
-                        <p class="text-red-300/70 text-sm">${error.message}</p>
-                        <button onclick="analyzeChart()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">
-                            Coba Lagi
-                        </button>
-                    </div>
-                `;
-                resultSection.classList.remove('hidden');
-            } finally {
-                loadingState.classList.add('hidden');
-                analyzeBtn.disabled = false;
-            }
-        }
+function savePortfolioItem() {
+  const editId = document.getElementById('pf-edit-id').value;
+  const ticker = document.getElementById('pf-ticker').value.trim().toUpperCase();
+  const avg = parseFloat(document.getElementById('pf-avg').value) || 0;
+  const lot = parseInt(document.getElementById('pf-lot').value) || 0;
+  const target = parseFloat(document.getElementById('pf-target').value) || null;
+  const stopLoss = parseFloat(document.getElementById('pf-sl').value) || null;
+  const note = document.getElementById('pf-note').value.trim();
+  if (!ticker || !avg || !lot) { alert('Kode saham, Avg Price, dan Lot wajib diisi.'); return; }
+  let portfolio = loadPortfolio();
+  if (editId) {
+    portfolio = portfolio.map(p => p.id === parseInt(editId) ? { ...p, ticker, avg, lot, target, stopLoss, note } : p);
+  } else {
+    portfolio.push({ id: Date.now(), ticker, avg, lot, target, stopLoss, note, createdAt: new Date().toISOString() });
+  }
+  savePortfolio(portfolio);
+  hidePortfolioForm();
+  renderPortfolio();
+}
 
-        // --- Yahoo Finance / News Feed ---
-        async function loadNews() {
-            try {
-                const response = await fetch('/api/news?q=saham+indonesia+IHSG');
-                const data = await response.json();
+function editPortfolioItem(id) {
+  const portfolio = loadPortfolio();
+  const item = portfolio.find(p => p.id === id);
+  if (!item) return;
+  document.getElementById('pf-edit-id').value = item.id;
+  document.getElementById('pf-ticker').value = item.ticker;
+  document.getElementById('pf-avg').value = item.avg;
+  document.getElementById('pf-lot').value = item.lot;
+  document.getElementById('pf-target').value = item.target || '';
+  document.getElementById('pf-sl').value = item.stopLoss || '';
+  document.getElementById('pf-note').value = item.note || '';
+  document.getElementById('portfolio-form-container').classList.remove('hidden');
+}
 
-                if (data.news && data.news.length > 0) {
-                    newsContent.innerHTML = data.news.map(item => `
-                        <a href="${item.link}" target="_blank" rel="noopener noreferrer" 
-                           class="news-card block p-3 rounded-lg border-l-2 border-dark-600 hover:bg-dark-700/50 transition-all">
-                            <p class="text-sm text-gray-200 font-medium leading-snug">${item.title}</p>
-                            <p class="text-xs text-gray-500 mt-1">${item.pubDate || ''}</p>
-                        </a>
-                    `).join('');
-                    newsSection.classList.remove('hidden');
-                }
-            } catch (error) {
-                console.log('News fetch failed:', error);
-            }
-        }
-    </script>
+function deletePortfolioItem(id) {
+  if (!confirm('Hapus posisi ini?')) return;
+  let portfolio = loadPortfolio();
+  portfolio = portfolio.filter(p => p.id !== id);
+  savePortfolio(portfolio);
+  renderPortfolio();
+}
+
+function portfolioChart(ticker) {
+  document.getElementById('chart-ticker-input').value = ticker;
+  switchPage('chart');
+  loadTradingViewChart(ticker);
+}
+
+function portfolioAI(ticker) {
+  switchPage('chart');
+  document.getElementById('chart-ticker-input').value = ticker;
+  loadTradingViewChart(ticker);
+  setTimeout(() => callAI({ ticker }, document.getElementById('analysis-output-container')), 500);
+}
+
+function exportPortfolio() {
+  const data = loadPortfolio();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'autocuan_portfolio.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importPortfolio(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (Array.isArray(data)) { savePortfolio(data); renderPortfolio(); alert('Portfolio berhasil di-import!'); }
+      else alert('Format file tidak valid.');
+    } catch(err) { alert('Gagal membaca file.'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ===== WATCHLIST =====
+function loadWatchlist() {
+  try { return JSON.parse(localStorage.getItem('autocuan_watchlist')) || []; } catch(e) { return []; }
+}
+
+function saveWatchlist(data) {
+  localStorage.setItem('autocuan_watchlist', JSON.stringify(data));
+}
+
+function renderWatchlist() {
+  const list = document.getElementById('watchlist-list');
+  const watchlist = loadWatchlist();
+  if (watchlist.length === 0) {
+    list.innerHTML = '<p class="text-sm text-gray-500 text-center py-6">Belum ada saham di watchlist.</p>';
+    return;
+  }
+  list.innerHTML = watchlist.map((ticker, i) => `
+    <div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-3 flex items-center justify-between fade-in">
+      <span class="text-sm font-bold text-emerald-400">${ticker}</span>
+      <div class="flex gap-2">
+        <button onclick="watchlistChart('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button>
+        <button onclick="watchlistAI('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button>
+        <button onclick="removeWatchlistItem(${i})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addWatchlistItem() {
+  const input = document.getElementById('watchlist-input');
+  const ticker = input.value.trim().toUpperCase();
+  if (!ticker) return;
+  const watchlist = loadWatchlist();
+  if (watchlist.includes(ticker)) { alert('Sudah ada di watchlist.'); return; }
+  watchlist.push(ticker);
+  saveWatchlist(watchlist);
+  input.value = '';
+  renderWatchlist();
+}
+
+function removeWatchlistItem(index) {
+  const watchlist = loadWatchlist();
+  watchlist.splice(index, 1);
+  saveWatchlist(watchlist);
+  renderWatchlist();
+}
+
+function watchlistChart(ticker) {
+  document.getElementById('chart-ticker-input').value = ticker;
+  switchPage('chart');
+  loadTradingViewChart(ticker);
+}
+
+function watchlistAI(ticker) {
+  switchPage('chart');
+  document.getElementById('chart-ticker-input').value = ticker;
+  loadTradingViewChart(ticker);
+  setTimeout(() => callAI({ ticker }, document.getElementById('analysis-output-container')), 500);
+}
+
+// ===== AI PAGE =====
+function switchAITab(tab) {
+  if (tab === 'scan') {
+    document.getElementById('ai-scan-panel').classList.remove('hidden');
+    document.getElementById('ai-ticker-panel').classList.add('hidden');
+    document.getElementById('ai-tab-scan').classList.add('bg-emerald-600', 'text-white');
+    document.getElementById('ai-tab-scan').classList.remove('text-gray-400');
+    document.getElementById('ai-tab-ticker').classList.remove('bg-emerald-600', 'text-white');
+    document.getElementById('ai-tab-ticker').classList.add('text-gray-400');
+  } else {
+    document.getElementById('ai-scan-panel').classList.add('hidden');
+    document.getElementById('ai-ticker-panel').classList.remove('hidden');
+    document.getElementById('ai-tab-ticker').classList.add('bg-emerald-600', 'text-white');
+    document.getElementById('ai-tab-ticker').classList.remove('text-gray-400');
+    document.getElementById('ai-tab-scan').classList.remove('bg-emerald-600', 'text-white');
+    document.getElementById('ai-tab-scan').classList.add('text-gray-400');
+  }
+}
+
+function handleAIFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+  if (!validTypes.includes(file.type)) { alert('Format tidak didukung.'); return; }
+  if (file.size > 20 * 1024 * 1024) { alert('Maks 20MB.'); return; }
+  aiImageMime = file.type;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    aiImageBase64 = e.target.result;
+    document.getElementById('ai-image-preview').src = aiImageBase64;
+    document.getElementById('ai-upload-prompt').classList.add('hidden');
+    document.getElementById('ai-preview-container').classList.remove('hidden');
+    document.getElementById('ai-scan-btn').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+function resetAIUpload() {
+  aiImageBase64 = null; aiImageMime = null;
+  document.getElementById('ai-file-input').value = '';
+  document.getElementById('ai-upload-prompt').classList.remove('hidden');
+  document.getElementById('ai-preview-container').classList.add('hidden');
+  document.getElementById('ai-scan-btn').disabled = true;
+}
+
+function analyzeUploadedChart() {
+  if (!aiImageBase64) return;
+  callAI({ image: aiImageBase64, mimeType: aiImageMime }, document.getElementById('ai-output-container'));
+}
+
+function analyzeByTicker() {
+  const ticker = document.getElementById('ai-ticker-input').value.trim().toUpperCase();
+  if (!ticker) return;
+  callAI({ ticker }, document.getElementById('ai-output-container'));
+}
+
+// ===== AI FETCH =====
+async function callAI(payload, container) {
+  container.innerHTML = `
+    <div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-6 text-center">
+      <div class="spinner mx-auto mb-4"></div>
+      <p class="text-emerald-400 text-sm font-medium animate-pulse-glow">AI sedang menganalisis...</p>
+      <p class="text-xs text-gray-600 mt-2">15-45 detik</p>
+    </div>`;
+
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const html = await response.text();
+    if (!response.ok) {
+      if (response.status === 429) {
+        container.innerHTML = `<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 text-center"><p class="text-yellow-400 font-semibold">Kuota AI sedang habis</p><p class="text-xs text-gray-400 mt-2">Gunakan Chart TradingView untuk analisis manual sementara.</p></div>`;
+      } else {
+        container.innerHTML = `<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Gagal menganalisis</p><p class="text-xs text-gray-400 mt-2">${response.status} error</p></div>`;
+      }
+      return;
+    }
+    container.innerHTML = `<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in">${html}</div>`;
+  } catch (err) {
+    container.innerHTML = `<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Koneksi gagal</p><p class="text-xs text-gray-400 mt-2">${err.message}</p></div>`;
+  }
+}
+
+// ===== UTILS =====
+function formatRupiah(num) {
+  if (!num) return 'Rp 0';
+  return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(num));
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  checkEntry();
+  preloadTradingViewScript();
+});
+</script>
 </body>
 </html>

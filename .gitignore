@@ -1,24 +1,13 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-*.egg-info/
-*.egg
-dist/
-build/
-.eggs/
-
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
+# Dependencies
+node_modules/
 
 # Environment variables
 .env
 .env.*
 .env.local
+
+# Vercel
+.vercel/
 
 # OS files
 .DS_Store
@@ -34,8 +23,6 @@ desktop.ini
 
 # Logs
 *.log
-logs/
 
-# Uploads (if any temp files)
-uploads/
+# Temp
 tmp/
