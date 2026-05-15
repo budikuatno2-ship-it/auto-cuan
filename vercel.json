@@ -1,3 +1,6 @@
 {
-  "version": 2
+  "version": 2,
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": ""
 }

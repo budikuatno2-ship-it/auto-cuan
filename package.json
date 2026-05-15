@@ -4,7 +4,14 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "build": "echo 'No build step needed'",
     "start": "vercel dev"
   },
-  "dependencies": {}
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@google/generative-ai": "latest",
+    "@supabase/supabase-js": "latest"
+  }
 }
