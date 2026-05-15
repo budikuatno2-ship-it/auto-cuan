@@ -27,28 +27,42 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 @keyframes pulse-glow{0%,100%{opacity:1}50%{opacity:.5}}.animate-pulse-glow{animation:pulse-glow 2s ease infinite}
 .skeleton{background:linear-gradient(90deg,#151a23 25%,#1c2333 50%,#151a23 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media print{body{display:none !important}}
 </style>
 </head>
 <body class="min-h-screen bg-[#0b0e14] text-gray-100 overflow-x-hidden">
 
-<!-- WELCOME SCREEN -->
-<div id="welcome-screen" class="fixed inset-0 z-[100] bg-[#0b0e14] flex items-center justify-center">
-<div class="w-full max-w-sm mx-auto px-6 text-center space-y-6">
-<div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
-<svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="fixed inset-0 z-[100] bg-[#0b0e14] flex items-center justify-center">
+<div class="w-full max-w-md mx-auto px-4">
+<div class="w-full rounded-3xl border border-gray-800 bg-[#111827]/90 p-6 shadow-2xl space-y-5">
+<div class="text-center">
+<div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500 flex items-center justify-center text-black font-black text-2xl shadow-lg shadow-emerald-500/20">$</div>
+<h1 class="mt-3 text-xl font-black text-white">Auto-Cuan</h1>
+<p class="text-xs text-gray-400 mt-1">AI Trading Dashboard Pribadi</p>
 </div>
-<h1 class="text-2xl font-bold text-white">Auto-Cuan</h1>
-<p class="text-sm text-gray-400">AI Trading Dashboard Pribadi</p>
-<div class="space-y-3 pt-4">
-<button onclick="enterApp()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald">Masuk Dashboard</button>
-<button onclick="enterApp()" class="w-full py-3 rounded-xl font-medium text-gray-300 bg-dark-700 border border-gray-700 hover:border-emerald-500/50">Coba Tanpa Login</button>
+<div class="space-y-3">
+<input id="login-name" type="text" placeholder="Nama" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+<input id="login-pass" type="text" placeholder="Password" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doLogin()">
+<p id="login-error" class="hidden text-xs text-red-400"></p>
 </div>
-<p class="text-xs text-gray-600 pt-2">v1 Beta &bull; Data tersimpan lokal di browser</p>
+<div class="space-y-2">
+<button onclick="doLogin()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20">Masuk Dashboard</button>
+<button onclick="doGuestLogin()" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-5 py-3 text-sm font-medium text-gray-300 hover:border-emerald-500/50 transition">Coba Tanpa Login</button>
+</div>
+<p class="text-[11px] text-gray-500 text-center">Petunjuk: password adalah angka urutan huruf pertama nama. a=1, b=2, c=3, dst.</p>
+</div>
 </div>
 </div>
 
+<!-- APP WRAPPER -->
+<div id="app-wrapper" class="hidden">
+
+<!-- WATERMARK -->
+<div id="watermark" class="pointer-events-none fixed inset-0 z-40 opacity-[0.03] text-gray-100 text-4xl font-black rotate-[-20deg] flex items-center justify-center hidden"></div>
+
 <!-- HEADER -->
-<header id="app-header" class="hidden sticky top-0 z-50 backdrop-blur-xl bg-[#0b0e14]/90 border-b border-gray-800/50">
+<header id="app-header" class="sticky top-0 z-50 backdrop-blur-xl bg-[#0b0e14]/90 border-b border-gray-800/50">
 <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
 <div class="flex items-center gap-2.5">
 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
@@ -68,12 +82,18 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <button onclick="switchPage('journal')" data-nav="journal" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Journal</button>
 <button onclick="switchPage('ai')" data-nav="ai" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">AI</button>
 </nav>
+<div class="flex items-center gap-2">
 <span class="hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium">v1 Beta</span>
+<span id="admin-badge" class="hidden rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-black text-emerald-400">Admin Mode</span>
+<button onclick="togglePrivacyMode()" class="px-2 py-1 rounded-lg text-[10px] text-gray-500 hover:text-emerald-400 border border-gray-800 hover:border-emerald-500/30" title="Privacy Mode">&#128274;</button>
+<button onclick="doLogout()" class="px-2.5 py-1 rounded-lg text-[10px] font-medium text-gray-500 hover:text-red-400 border border-gray-800 hover:border-red-500/30">Keluar</button>
+</div>
 </div>
 </header>
 
+
 <!-- MAIN CONTENT -->
-<main id="app-main" class="hidden w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-24 sm:py-8 space-y-5">
+<main id="app-main" class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-24 sm:py-8 space-y-5">
 
 <!-- HOME PAGE -->
 <div id="page-home" class="page space-y-5">
@@ -91,10 +111,10 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4"><p class="text-[10px] text-gray-500 uppercase tracking-wide">Watchlist</p><p id="home-watchlist-count" class="text-xl font-bold text-white mt-1">0</p></div>
 </div>
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-<button onclick="switchPage('chart')" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">📈</span><p class="text-xs text-gray-300 mt-1">Buka Chart</p></button>
-<button onclick="switchPage('portfolio');showPortfolioForm()" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">➕</span><p class="text-xs text-gray-300 mt-1">Tambah Posisi</p></button>
-<button onclick="switchPage('watchlist')" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">⭐</span><p class="text-xs text-gray-300 mt-1">Watchlist</p></button>
-<button onclick="switchPage('ai')" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">🤖</span><p class="text-xs text-gray-300 mt-1">AI Analysis</p></button>
+<button onclick="switchPage('chart')" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">&#128200;</span><p class="text-xs text-gray-300 mt-1">Buka Chart</p></button>
+<button onclick="switchPage('portfolio');showPortfolioForm()" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">&#10133;</span><p class="text-xs text-gray-300 mt-1">Tambah Posisi</p></button>
+<button onclick="switchPage('watchlist')" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">&#11088;</span><p class="text-xs text-gray-300 mt-1">Watchlist</p></button>
+<button onclick="switchPage('ai')" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 text-center hover:border-emerald-500/30 transition-colors"><span class="text-xl">&#129302;</span><p class="text-xs text-gray-300 mt-1">AI Analysis</p></button>
 </div>
 </div>
 
@@ -114,12 +134,13 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 </div>
 <div id="chart-ai-section" class="hidden space-y-2">
 <div class="flex gap-2">
-<button onclick="openFullscreenChart()" class="flex-1 py-2.5 rounded-xl font-medium text-gray-200 bg-dark-700 border border-gray-700 hover:border-emerald-500/50 text-sm flex items-center justify-center gap-1.5">📱 Fullscreen</button>
-<button onclick="analyzeCurrentTicker()" id="chart-ai-btn" class="flex-1 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald text-sm flex items-center justify-center gap-1.5">🤖 Analisis AI</button>
+<button onclick="openFullscreenChart()" class="flex-1 py-2.5 rounded-xl font-medium text-gray-200 bg-dark-700 border border-gray-700 hover:border-emerald-500/50 text-sm flex items-center justify-center gap-1.5">&#128241; Fullscreen</button>
+<button onclick="analyzeCurrentTicker()" id="chart-ai-btn" class="flex-1 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald text-sm flex items-center justify-center gap-1.5">&#129302; Analisis AI</button>
 </div>
 </div>
 <div id="analysis-output-container" class="w-full space-y-4 pb-8"></div>
 </div>
+
 
 <!-- PORTFOLIO PAGE -->
 <div id="page-portfolio" class="page hidden space-y-4">
@@ -199,6 +220,7 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <div id="journal-list" class="space-y-3"></div>
 </div>
 
+
 <!-- AI PAGE -->
 <div id="page-ai" class="page hidden space-y-4">
 <!-- AI Mode Toggle -->
@@ -240,7 +262,7 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 </main>
 
 <!-- MOBILE BOTTOM NAV -->
-<nav id="mobile-nav" class="hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0b0e14]/95 backdrop-blur-xl border-t border-gray-800 px-2 py-2 grid grid-cols-6 gap-0.5 sm:hidden">
+<nav id="mobile-nav" class="fixed bottom-0 left-0 right-0 z-50 bg-[#0b0e14]/95 backdrop-blur-xl border-t border-gray-800 px-2 py-2 grid grid-cols-6 gap-0.5 sm:hidden">
 <button onclick="switchPage('home')" data-nav="home" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
 <span class="text-[9px]">Home</span>
@@ -271,7 +293,7 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <div id="fullscreen-chart" class="hidden fixed inset-0 z-[90] bg-[#0b0e14] flex flex-col">
 <div class="flex items-center justify-between px-4 py-2 border-b border-gray-800">
 <span id="fullscreen-ticker" class="text-sm font-bold text-emerald-400"></span>
-<button onclick="closeFullscreenChart()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-700 text-gray-300 border border-gray-700">✕ Tutup</button>
+<button onclick="closeFullscreenChart()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-700 text-gray-300 border border-gray-700">&#10005; Tutup</button>
 </div>
 <div id="fullscreen-tv-widget" class="flex-1 w-full"></div>
 </div>
@@ -284,18 +306,112 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 </div>
 </div>
 
+</div><!-- END APP WRAPPER -->
+
 
 <!-- JAVASCRIPT -->
 <script>
+// ===== LOGIN =====
+function getExpectedPassword(name){const clean=name.trim().toLowerCase();if(!clean)return null;if(clean==="budi")return".";const idx="abcdefghijklmnopqrstuvwxyz".indexOf(clean[0]);return idx===-1?null:String(idx+1);}
+
+function doLogin(){
+  const nameEl=document.getElementById('login-name'),passEl=document.getElementById('login-pass'),errEl=document.getElementById('login-error');
+  const name=nameEl.value.trim(),pass=passEl.value;
+  if(!name){errEl.textContent='Masukkan nama.';errEl.classList.remove('hidden');return;}
+  const expected=getExpectedPassword(name);
+  if(expected===null||pass!==expected){errEl.textContent='Password salah. Gunakan angka sesuai huruf pertama nama. Contoh: andi = 1.';errEl.classList.remove('hidden');return;}
+  const cleanName=name.toLowerCase();
+  localStorage.setItem('autocuan_logged_in','true');
+  localStorage.setItem('autocuan_user_name',name);
+  localStorage.setItem('autocuan_login_time',Date.now().toString());
+  localStorage.setItem('autocuan_is_admin',cleanName==='budi'?'true':'false');
+  showDashboard();
+}
+
+function doGuestLogin(){
+  localStorage.setItem('autocuan_logged_in','guest');
+  localStorage.setItem('autocuan_user_name','Guest');
+  localStorage.setItem('autocuan_is_admin','false');
+  showDashboard();
+}
+
+function doLogout(){
+  localStorage.removeItem('autocuan_logged_in');
+  localStorage.removeItem('autocuan_user_name');
+  localStorage.removeItem('autocuan_login_time');
+  localStorage.removeItem('autocuan_is_admin');
+  location.reload();
+}
+
+function isAdminUser(){
+  const name=(localStorage.getItem('autocuan_user_name')||'').trim().toLowerCase();
+  return localStorage.getItem('autocuan_is_admin')==='true'&&name==='budi';
+}
+
+function showDashboard(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-wrapper').classList.remove('hidden');
+  // Admin badge
+  const badge=document.getElementById('admin-badge');
+  if(badge)badge.classList.toggle('hidden',!isAdminUser());
+  // Watermark
+  updateWatermark();
+  switchPage('home');
+}
+
+function checkLogin(){
+  const status=localStorage.getItem('autocuan_logged_in');
+  if(status==='true'||status==='guest')showDashboard();
+}
+
+// ===== AI USAGE LIMIT =====
+const AI_LIMIT_MAX=2,AI_LIMIT_WINDOW=30*60*1000;
+function getAIUsage(){try{return JSON.parse(localStorage.getItem('autocuan_ai_usage'))||null;}catch(e){return null;}}
+function saveAIUsage(data){localStorage.setItem('autocuan_ai_usage',JSON.stringify(data));}
+function canUseAI(){
+  if(isAdminUser())return{allowed:true,remaining:'unlimited',isAdmin:true};
+  const now=Date.now(),usage=getAIUsage();
+  if(!usage||now-usage.windowStart>AI_LIMIT_WINDOW){saveAIUsage({windowStart:now,count:0});return{allowed:true,remaining:AI_LIMIT_MAX};}
+  if(usage.count>=AI_LIMIT_MAX)return{allowed:false,waitMs:AI_LIMIT_WINDOW-(now-usage.windowStart)};
+  return{allowed:true,remaining:AI_LIMIT_MAX-usage.count};
+}
+function recordAIUsage(){
+  if(isAdminUser())return;
+  const now=Date.now();let usage=getAIUsage();
+  if(!usage||now-usage.windowStart>AI_LIMIT_WINDOW){usage={windowStart:now,count:1};}else{usage.count+=1;}
+  saveAIUsage(usage);
+}
+function formatWaitTime(ms){const s=Math.max(0,Math.ceil(ms/1000)),m=Math.floor(s/60);return m+' menit '+(s%60)+' detik';}
+
+// ===== PRIVACY MODE =====
+function isPrivacyModeEnabled(){const v=localStorage.getItem('autocuan_privacy_mode');return v===null||v==='true';}
+function togglePrivacyMode(){
+  const current=isPrivacyModeEnabled();
+  localStorage.setItem('autocuan_privacy_mode',current?'false':'true');
+  updateWatermark();
+  showToast(current?'Privacy Mode dinonaktifkan':'Privacy Mode diaktifkan');
+}
+function updateWatermark(){
+  const wm=document.getElementById('watermark');
+  if(!wm)return;
+  if(isPrivacyModeEnabled()){
+    const name=localStorage.getItem('autocuan_user_name')||'User';
+    wm.textContent='Auto-Cuan \u2022 '+name;
+    wm.classList.remove('hidden');
+  }else{wm.classList.add('hidden');}
+}
+function initPrivacy(){
+  document.addEventListener('visibilitychange',()=>{const w=document.getElementById('app-wrapper');if(!w||!isPrivacyModeEnabled())return;if(document.hidden)w.classList.add('blur-sm');else w.classList.remove('blur-sm');});
+  window.addEventListener('blur',()=>{if(!isPrivacyModeEnabled())return;document.getElementById('app-wrapper')?.classList.add('blur-sm');});
+  window.addEventListener('focus',()=>{document.getElementById('app-wrapper')?.classList.remove('blur-sm');});
+  document.addEventListener('contextmenu',(e)=>{if(isPrivacyModeEnabled())e.preventDefault();});
+}
+
 // ===== STATE =====
 let currentPage='home',currentTicker='',tvScriptLoaded=false,tvWidget=null,aiImageBase64=null,aiImageMime=null,aiMode='cepat';
 
 // ===== TOAST =====
 function showToast(msg){const t=document.getElementById('toast');document.getElementById('toast-msg').textContent=msg;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),2500);}
-
-// ===== WELCOME =====
-function enterApp(){localStorage.setItem('autocuan_entered','true');document.getElementById('welcome-screen').classList.add('hidden');document.getElementById('app-header').classList.remove('hidden');document.getElementById('app-main').classList.remove('hidden');document.getElementById('mobile-nav').classList.remove('hidden');switchPage('home');}
-function checkEntry(){if(localStorage.getItem('autocuan_entered')==='true')enterApp();}
 
 // ===== NAVIGATION =====
 function switchPage(page){
@@ -311,6 +427,7 @@ function switchPage(page){
 // ===== HOME =====
 function updateHomeSummary(){const p=loadPortfolio(),w=loadWatchlist();document.getElementById('home-total-pos').textContent=p.length;let tl=0,tm=0;p.forEach(x=>{tl+=(x.lot||0);tm+=(x.avg||0)*(x.lot||0)*100;});document.getElementById('home-total-lot').textContent=tl;document.getElementById('home-total-modal').textContent=formatRupiah(tm);document.getElementById('home-watchlist-count').textContent=w.length;}
 function homeOpenChart(){const t=document.getElementById('home-ticker-input').value.trim().toUpperCase();if(!t)return;document.getElementById('chart-ticker-input').value=t;switchPage('chart');loadTradingViewChart(t);}
+
 
 // ===== CHART =====
 function preloadTradingViewScript(){if(tvScriptLoaded)return;const s=document.createElement('script');s.src='https://s3.tradingview.com/tv.js';s.onload=()=>{tvScriptLoaded=true;};document.head.appendChild(s);}
@@ -335,7 +452,7 @@ function savePortfolio(data){localStorage.setItem('autocuan_portfolio',JSON.stri
 function renderPortfolio(){
   const list=document.getElementById('portfolio-list'),portfolio=loadPortfolio();
   if(!portfolio.length){list.innerHTML='<p class="text-sm text-gray-500 text-center py-6">Belum ada posisi.</p>';return;}
-  list.innerHTML=portfolio.map(item=>`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2 fade-in"><div class="flex items-center justify-between"><span class="text-sm font-bold text-emerald-400">${item.ticker}</span><span class="text-xs text-gray-500">${item.note||''}</span></div><div class="grid grid-cols-3 gap-2 text-xs"><div><span class="text-gray-500">Avg</span><p class="text-white font-medium">${formatRupiah(item.avg)}</p></div><div><span class="text-gray-500">Lot</span><p class="text-white font-medium">${item.lot}</p></div><div><span class="text-gray-500">Modal</span><p class="text-emerald-400 font-medium">${formatRupiah(item.avg*item.lot*100)}</p></div></div>${item.target?'<div class="text-xs"><span class="text-gray-500">Target: </span><span class="text-green-400">'+formatRupiah(item.target)+'</span></div>':''}${item.stopLoss?'<div class="text-xs"><span class="text-gray-500">SL: </span><span class="text-red-400">'+formatRupiah(item.stopLoss)+'</span></div>':''}<div class="flex flex-wrap gap-2 pt-2"><button onclick="portfolioChart('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button><button onclick="portfolioAI('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button><button onclick="editPortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Edit</button><button onclick="deletePortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">Hapus</button></div></div>`).join('');
+  list.innerHTML=portfolio.map(item=>`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2 fade-in"><div class="flex items-center justify-between"><span class="text-sm font-bold text-emerald-400">${item.ticker}</span><span class="text-xs text-gray-500">${item.note||''}</span></div><div class="grid grid-cols-3 gap-2 text-xs"><div><span class="text-gray-500">Avg</span><p class="text-white">${formatRupiah(item.avg)}</p></div><div><span class="text-gray-500">Lot</span><p class="text-white">${item.lot}</p></div><div><span class="text-gray-500">Modal</span><p class="text-white">${formatRupiah(item.avg*item.lot*100)}</p></div></div>${item.target||item.stopLoss?'<div class="grid grid-cols-2 gap-2 text-xs">'+(item.target?'<div><span class="text-gray-500">TP</span><p class="text-emerald-400">'+formatRupiah(item.target)+'</p></div>':'')+(item.stopLoss?'<div><span class="text-gray-500">SL</span><p class="text-red-400">'+formatRupiah(item.stopLoss)+'</p></div>':'')+'</div>':''}<div class="flex gap-2 pt-1"><button onclick="portfolioChart('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700">Chart</button><button onclick="portfolioAI('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700">AI</button><button onclick="editPortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700">Edit</button><button onclick="deletePortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700">Hapus</button></div></div>`).join('');
 }
 function showPortfolioForm(){document.getElementById('portfolio-form-container').classList.remove('hidden');['pf-edit-id','pf-ticker','pf-avg','pf-lot','pf-target','pf-sl','pf-note'].forEach(id=>document.getElementById(id).value='');}
 function hidePortfolioForm(){document.getElementById('portfolio-form-container').classList.add('hidden');}
@@ -347,13 +464,14 @@ function portfolioAI(ticker){switchPage('chart');document.getElementById('chart-
 function exportPortfolio(){const blob=new Blob([JSON.stringify(loadPortfolio(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='autocuan_portfolio.json';a.click();}
 function importPortfolio(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=(e)=>{try{const d=JSON.parse(e.target.result);if(Array.isArray(d)){savePortfolio(d);renderPortfolio();showToast('Portfolio berhasil di-import!');}else alert('Format tidak valid.');}catch(err){alert('Gagal membaca file.');}};r.readAsText(file);event.target.value='';}
 
+
 // ===== WATCHLIST =====
 function loadWatchlist(){try{return JSON.parse(localStorage.getItem('autocuan_watchlist'))||[];}catch(e){return[];}}
 function saveWatchlist(data){localStorage.setItem('autocuan_watchlist',JSON.stringify(data));}
 function renderWatchlist(){
   const list=document.getElementById('watchlist-list'),wl=loadWatchlist();
   if(!wl.length){list.innerHTML='<p class="text-sm text-gray-500 text-center py-6">Belum ada saham di watchlist.</p>';return;}
-  list.innerHTML=wl.map((ticker,i)=>`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-3 flex items-center justify-between fade-in"><span class="text-sm font-bold text-emerald-400">${ticker}</span><div class="flex gap-2"><button onclick="watchlistChart('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button><button onclick="watchlistAI('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button><button onclick="removeWatchlistItem(${i})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">✕</button></div></div>`).join('');
+  list.innerHTML=wl.map((ticker,i)=>`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-3 flex items-center justify-between fade-in"><span class="text-sm font-bold text-emerald-400">${ticker}</span><div class="flex gap-2"><button onclick="watchlistChart('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button><button onclick="watchlistAI('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button><button onclick="removeWatchlistItem(${i})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">&#10005;</button></div></div>`).join('');
 }
 function addWatchlistItem(){const input=document.getElementById('watchlist-input'),ticker=input.value.trim().toUpperCase();if(!ticker)return;const wl=loadWatchlist();if(wl.includes(ticker)){alert('Sudah ada.');return;}wl.push(ticker);saveWatchlist(wl);input.value='';renderWatchlist();}
 function removeWatchlistItem(i){const wl=loadWatchlist();wl.splice(i,1);saveWatchlist(wl);renderWatchlist();}
@@ -393,16 +511,23 @@ function resetAIUpload(){aiImageBase64=null;aiImageMime=null;document.getElement
 function analyzeUploadedChart(){if(!aiImageBase64)return;callAI({image:aiImageBase64,mimeType:aiImageMime},document.getElementById('ai-output-container'));}
 function analyzeByTicker(){const ticker=document.getElementById('ai-ticker-input').value.trim().toUpperCase();if(!ticker)return;callAI({ticker},document.getElementById('ai-output-container'));}
 
+
 // ===== AI FETCH =====
 async function callAI(payload,container){
+  const aiCheck=canUseAI();
+  if(!aiCheck.allowed){
+    container.innerHTML='<div class="w-full rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 sm:p-6 text-yellow-300"><h3 class="text-lg font-black text-yellow-400">Limit AI sementara tercapai</h3><p class="mt-2 text-sm text-gray-300">Kamu sudah menggunakan 2 analisis AI dalam 30 menit.</p><p class="mt-3 text-sm font-bold text-yellow-300">AI bisa digunakan lagi dalam: '+formatWaitTime(aiCheck.waitMs)+'</p><p class="mt-2 text-xs text-gray-400">Chart, Portfolio, Watchlist, dan Journal tetap bisa digunakan.</p></div>';
+    return;
+  }
   container.innerHTML='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-6 text-center"><div class="spinner mx-auto mb-4"></div><p class="text-emerald-400 text-sm font-medium animate-pulse-glow">AI sedang menganalisis...</p><p class="text-xs text-gray-600 mt-2">15-45 detik</p></div>';
   try{
     payload.mode=aiMode;
     const response=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const html=await response.text();
     if(!response.ok){if(response.status===429){container.innerHTML='<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 text-center"><p class="text-yellow-400 font-semibold">Kuota AI sedang habis</p><p class="text-xs text-gray-400 mt-2">Chart TradingView tetap bisa digunakan.</p></div>';}else{container.innerHTML='<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Gagal menganalisis</p><p class="text-xs text-gray-400 mt-2">'+response.status+' error</p></div>';}return;}
+    recordAIUsage();
     const hasValidContent=html.includes('Entry')&&html.includes('Take Profit')&&!html.includes('belum lengkap');
-    if(hasValidContent){container.innerHTML='<div id="ai-result-content" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in space-y-4">'+html+'</div><button onclick="copyTradingPlan()" class="w-full mt-3 py-2.5 rounded-xl font-medium text-gray-200 bg-dark-700 border border-gray-700 hover:border-emerald-500/50 text-sm flex items-center justify-center gap-1.5">📋 Salin Trading Plan</button>';}
+    if(hasValidContent){container.innerHTML='<div id="ai-result-content" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in space-y-4">'+html+'</div><button onclick="copyTradingPlan()" class="w-full mt-3 py-2.5 rounded-xl font-medium text-gray-200 bg-dark-700 border border-gray-700 hover:border-emerald-500/50 text-sm flex items-center justify-center gap-1.5">&#128203; Salin Trading Plan</button>';}
     else{container.innerHTML='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in">'+html+'</div>';}
   }catch(err){container.innerHTML='<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Koneksi gagal</p><p class="text-xs text-gray-400 mt-2">'+err.message+'</p></div>';}
 }
@@ -414,7 +539,7 @@ function copyTradingPlan(){const el=document.getElementById('ai-result-content')
 function formatRupiah(num){if(!num)return'Rp 0';return'Rp '+new Intl.NumberFormat('id-ID').format(Math.round(num));}
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded',()=>{checkEntry();preloadTradingViewScript();});
+document.addEventListener('DOMContentLoaded',()=>{checkLogin();preloadTradingViewScript();initPrivacy();});
 </script>
 </body>
 </html>
