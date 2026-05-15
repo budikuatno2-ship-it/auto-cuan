@@ -51,198 +51,22 @@
 </head>
 <body class="min-h-screen text-gray-100">
 
-<!-- ===== LOGIN SCREEN ===== -->
-<div id="loginScreen" class="min-h-screen flex items-center justify-center px-4">
-    <div class="w-full max-w-sm fade-in-up">
-        <div class="text-center mb-8">
-            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold text-white">Auto-Cuan</h1>
-            <p class="text-sm text-gray-400 mt-1">SMC Analysis Platform</p>
-        </div>
-        <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl p-6 backdrop-blur-sm">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-                    <input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
-                    <input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" onkeydown="if(event.key==='Enter')doLogin()">
-                </div>
-                <div id="loginError" class="hidden text-sm text-red-400 text-center py-1"></div>
-                <button onclick="doLogin()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
-                    Masuk
-                </button>
-                <button onclick="guestLogin()" class="w-full py-3 rounded-xl font-medium text-gray-400 border border-dark-600/50 hover:border-emerald-500/30 hover:text-emerald-400 transition-all duration-200">
-                    Coba Tanpa Login
-                </button>
-            </div>
-        </div>
-    </div>
+<!-- ===== APP CONTAINER ===== -->
+<div id="app"></div>
+
+<!-- ===== ADMIN BYPASS MODAL ===== -->
+<div id="adminBypassModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+    <h2 class="text-xl font-black text-gray-100">Admin Access</h2>
+    <input id="adminBypassName" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" placeholder="Nama">
+    <input id="adminBypassPassword" type="password" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" placeholder="Password">
+    <p id="adminBypassError" class="hidden text-sm text-red-400">Akses admin salah.</p>
+    <button id="adminBypassLoginBtn" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Masuk Admin</button>
+    <button id="adminBypassCancelBtn" class="w-full rounded-xl bg-gray-800 px-5 py-3 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Batal</button>
+  </div>
 </div>
 
-<!-- ===== DASHBOARD SCREEN ===== -->
-<div id="dashboardScreen" class="hidden">
-
-<!-- HEADER -->
-<header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                    </svg>
-                </div>
-                <div class="min-w-0">
-                    <h1 class="text-lg font-bold text-white leading-tight truncate">Auto-Cuan</h1>
-                    <p class="text-xs text-gray-500">SMC Analysis Platform</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                <span class="hidden sm:inline text-sm text-gray-400">Halo, <span id="headerUsername" class="text-emerald-400 font-medium"></span></span>
-                <button onclick="logout()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/50 hover:border-red-500/40 hover:text-red-400 transition-all">Logout</button>
-            </div>
-        </div>
-    </div>
-</header>
-
-<main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-
-<!-- GUEST BANNER -->
-<div id="guestBanner" class="hidden fade-in-up">
-    <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
-        <p class="text-yellow-300 text-sm font-medium">Mode Tamu - Hanya bisa melihat chart. Login untuk menggunakan fitur AI.</p>
-    </div>
-</div>
-
-<!-- TRADINGVIEW WIDGET -->
-<section id="tvSection" class="fade-in-up">
-    <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl overflow-hidden">
-        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            <h2 class="text-sm font-semibold text-gray-300">Live Chart - TradingView</h2>
-        </div>
-        <div id="tvChartContainer" class="w-full" style="height:400px">
-        </div>
-    </div>
-</section>
-
-<!-- AI ANALYSIS SECTION -->
-<section id="aiSection" class="hidden fade-in-up">
-    <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl overflow-hidden">
-        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
-            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-            </svg>
-            <h2 class="text-sm font-semibold text-gray-300">AI Analysis - Smart Money Concepts</h2>
-        </div>
-        <div class="p-4 sm:p-6 space-y-4">
-            <!-- MODE TABS -->
-            <div class="grid grid-cols-2 gap-2 w-full rounded-2xl border border-gray-800 bg-[#0b0e14] p-2">
-                <button id="tabChart" onclick="switchTab('chart')" class="w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition">📊 Pindai Chart</button>
-                <button id="tabTicker" onclick="switchTab('ticker')" class="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition">🔍 Nama Saham</button>
-            </div>
-
-            <!-- NAMA SAHAM MODE -->
-            <div id="modeTickerPanel" class="space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Ticker Saham</label>
-                        <input type="text" id="tickerInput" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm uppercase">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Harga Sekarang</label>
-                        <input type="number" id="priceInput" placeholder="Contoh: 9250" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
-                    </div>
-                </div>
-                <button id="analyzeBtn" onclick="analyzeChart()" class="w-full sm:w-auto px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                    Mulai Analisis
-                </button>
-            </div>
-
-            <!-- PINDAI CHART MODE -->
-            <div id="modeChartPanel" class="hidden space-y-4">
-                <input id="chartFileInput" type="file" accept="image/*" class="hidden" onchange="handleChartFile(event)">
-                <label for="chartFileInput" id="chartUploadLabel" class="w-full rounded-2xl border-2 border-dashed border-gray-700 bg-[#0b0e14] px-4 py-8 text-center text-gray-300 hover:border-emerald-500 hover:bg-emerald-500/5 transition cursor-pointer flex flex-col items-center justify-center gap-2">
-                    <span class="text-3xl">📊</span>
-                    <span class="text-sm font-black text-gray-100">Pilih Screenshot Chart</span>
-                    <span class="text-xs text-gray-500">PNG, JPG, WebP • Maks 20MB</span>
-                </label>
-                <img id="chartPreviewImage" class="hidden w-full max-h-[280px] sm:max-h-[420px] object-contain rounded-2xl border border-gray-800 bg-[#0b0e14]" alt="Chart Preview">
-                <p class="text-xs text-gray-500">Upload screenshot chart dari TradingView. Jika ingin analisis LuxAlgo/SMC, pastikan indikator sudah terlihat di screenshot.</p>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <button id="resetChartBtn" onclick="resetChartUpload()" class="w-full sm:w-auto rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Hapus & Unggah Ulang</button>
-                    <button id="analyzeChartBtn" onclick="analyzeChartUpload()" class="w-full sm:w-auto rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20">Mulai Analisis Chart</button>
-                </div>
-            </div>
-
-            <div id="limitWarning" class="hidden text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 text-center"></div>
-        </div>
-    </div>
-</section>
-
-<!-- LOADING STATE -->
-<section id="loadingState" class="hidden">
-    <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 p-8 text-center">
-        <div class="spinner mx-auto mb-5"></div>
-        <p class="text-emerald-400 font-medium animate-pulse-glow">AI sedang menganalisis struktur chart dan merancang trading plan...</p>
-        <p class="text-xs text-gray-600 mt-3">Proses analisis biasanya 15-45 detik</p>
-    </div>
-</section>
-
-<!-- ANALYSIS RESULT -->
-<section id="resultSection" class="hidden fade-in-up">
-    <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
-        <div class="px-4 sm:px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-            <h2 class="font-semibold text-gray-200 text-sm sm:text-base">Hasil Analisis AI</h2>
-        </div>
-        <div id="resultContent" class="p-4 sm:p-6 overflow-x-auto">
-        </div>
-    </div>
-</section>
-
-<!-- ADMIN PANEL -->
-<section id="adminPanel" class="hidden fade-in-up">
-    <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
-        <div class="px-4 sm:px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
-            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
-            <h2 class="font-semibold text-gray-200">Admin Panel</h2>
-        </div>
-        <div class="p-4 sm:p-6 space-y-4">
-            <div class="flex flex-wrap gap-2">
-                <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login Logs</button>
-                <button onclick="loadAdminLogs('search')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Search Logs</button>
-                <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">AI Logs</button>
-                <button onclick="loadAdminLogs('usage')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Usage Logs</button>
-                <button onclick="loadAdminLogs(lastAdminLogType || 'login')" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">🔄 Refresh</button>
-            </div>
-            <div id="adminLogsContainer" class="overflow-x-auto">
-                <p class="text-sm text-gray-500">Klik tombol di atas untuk memuat logs.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-</main>
-
-<!-- FOOTER -->
-<footer class="border-t border-dark-700/50 mt-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
-        <p class="text-xs text-gray-500">Auto-Cuan &copy; 2024 &bull; SMC Analysis Platform</p>
-        <p class="text-xs text-gray-600 mt-1">Disclaimer: Bukan merupakan saran investasi. Gunakan analisis ini sebagai referensi tambahan saja.</p>
-    </div>
-</footer>
-
-</div><!-- end dashboardScreen -->
-
-<!-- ADMIN AI DETAIL MODAL -->
+<!-- ===== ADMIN AI DETAIL MODAL ===== -->
 <div id="adminAiModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="w-full max-w-5xl max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-800 bg-[#111827] p-4 sm:p-6 shadow-2xl">
         <div class="flex items-center justify-between mb-4">
@@ -256,192 +80,439 @@
     </div>
 </div>
 
-<!-- MAINTENANCE SCREEN -->
-<div id="maintenanceScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
-    <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
-        <div class="text-5xl">🛠️</div>
-        <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
-        <p class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses pada pukul 22:00–06:00 WIB.</p>
-        <p class="text-sm text-gray-300">Silakan kembali lagi setelah pukul 06:00 WIB.</p>
-        <p class="text-xs text-gray-600 mt-4">Maintenance dilakukan untuk menjaga performa dan menghemat kuota AI.</p>
-    </div>
-</div>
-
-<!-- ADMIN BYPASS MODAL -->
-<div id="adminBypassModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <h3 class="text-base font-bold text-white text-center">Admin Access</h3>
-        <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1.5">Nama</label>
-            <input type="text" id="adminBypassName" placeholder="Nama admin" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1.5">Password</label>
-            <input type="password" id="adminBypassPass" placeholder="Password" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doAdminBypass()">
-        </div>
-        <div id="adminBypassError" class="hidden text-sm text-red-400 text-center"></div>
-        <button onclick="doAdminBypass()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Masuk Admin</button>
-        <button onclick="closeAdminBypassModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
-    </div>
-</div>
-
 <script>
-// ===== MAINTENANCE UTILITIES =====
+// ============================================================
+// PART A: MAINTENANCE SYSTEM
+// ============================================================
+
+// ===== WIB TIME FUNCTIONS =====
 function getWIBHour() {
-    var parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Jakarta',
-        hour: '2-digit',
-        hour12: false
-    }).formatToParts(new Date());
-    var hourPart = parts.find(function(p) { return p.type === 'hour'; });
-    return Number(hourPart ? hourPart.value : 0);
+  var parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Jakarta",
+    hour: "2-digit",
+    hour12: false
+  }).formatToParts(new Date());
+  var hourPart = parts.find(function(part) { return part.type === "hour"; });
+  return Number(hourPart ? hourPart.value : "0");
 }
 
 function isMaintenanceTime() {
-    var hour = getWIBHour();
-    return hour >= 22 || hour < 6;
+  var hour = getWIBHour();
+  return hour >= 22 || hour < 6;
 }
 
 function isAdminUser() {
-    var name = (localStorage.getItem('autocuan_user') || '').trim().toLowerCase();
-    var adminFlag = localStorage.getItem('autocuan_is_admin') === 'true';
-    return adminFlag && name === 'budi';
+  var name = (localStorage.getItem("autocuan_user") || "").trim().toLowerCase();
+  var adminFlag = localStorage.getItem("autocuan_is_admin") === "true";
+  return adminFlag && name === "budi";
 }
 
-// ===== ADMIN BYPASS SHORTCUT (Ctrl+B then K) =====
-var adminShortcutBuffer = [];
-document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey) {
-        adminShortcutBuffer.push(e.key.toLowerCase());
-        if (adminShortcutBuffer.length > 5) adminShortcutBuffer = adminShortcutBuffer.slice(-5);
-        var bufStr = adminShortcutBuffer.join('');
-        if (bufStr.indexOf('bk') !== -1 || bufStr.indexOf('b') !== -1 && adminShortcutBuffer[adminShortcutBuffer.length - 1] === 'k') {
-            adminShortcutBuffer = [];
-            openAdminBypassModal();
-        }
-    } else {
-        adminShortcutBuffer = [];
+// ============================================================
+// PART B: USERNAME SAFETY FILTER & 2-HOUR DEVICE BLOCK
+// ============================================================
+
+function getBlockedUntil() {
+  return Number(localStorage.getItem("autocuan_blocked_until") || "0");
+}
+
+function isDeviceBlocked() {
+  var blockedUntil = getBlockedUntil();
+  return blockedUntil > 0 && Date.now() < blockedUntil;
+}
+
+function normalizeNameForCheck(name) {
+  return (name || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s._-]/g, "");
+}
+
+function isBadUsername(name) {
+  var raw = name || "";
+  var clean = normalizeNameForCheck(raw);
+
+  if (clean.length < 2) return true;
+  if (clean.length > 30) return true;
+
+  // repeated character spam
+  if (/(.)\1{5,}/.test(clean)) return true;
+
+  // urls/spam
+  if (/(http|www\.|\.com|\.net|\.org|\.id)/i.test(clean)) return true;
+
+  var bannedWords = [
+    // animal/abusive
+    "anjing", "babi", "monyet", "bangsat", "kampret", "goblok", "tolol", "idiot",
+    "bajingan", "brengsek", "keparat", "sialan", "bedebah", "kunyuk", "asu",
+    // supernatural/weird fake
+    "alien", "ufo", "iblis", "setan", "dajjal", "tuyul", "pocong", "kuntilanak", "genderuwo", "siluman",
+    // porn/sexual/vulgar
+    "porno", "porn", "sex", "seks", "bokep", "mesum", "ngentot", "kontol", "memek", "pepek", "titit",
+    "ngewe", "colmek", "coli", "jilmek", "toket",
+    // hate/sara/religion insult
+    "kafirhina", "hinaagama", "antiagama"
+  ];
+
+  return bannedWords.some(function(word) { return clean.includes(word); });
+}
+
+function blockDeviceForBadName() {
+  var blockedUntil = Date.now() + (2 * 60 * 60 * 1000);
+  localStorage.setItem("autocuan_blocked_until", String(blockedUntil));
+  console.log("[AutoCuan] Bad username block triggered");
+
+  try {
+    if (typeof logUsage === "function") {
+      logUsage("", "username_blocked");
     }
-});
+  } catch (e) {}
+
+  showBlockedScreen();
+}
+
+// ============================================================
+// MOBILE SECRET ADMIN ACCESS (5 taps)
+// ============================================================
+
+var maintenanceTapCount = 0;
+var maintenanceTapTimer = null;
 
 function openAdminBypassModal() {
-    document.getElementById('adminBypassModal').classList.remove('hidden');
-    document.getElementById('adminBypassName').value = '';
-    document.getElementById('adminBypassPass').value = '';
-    document.getElementById('adminBypassError').classList.add('hidden');
-    document.getElementById('adminBypassName').focus();
+  console.log("[AutoCuan] Admin bypass modal opened");
+  var modal = document.getElementById("adminBypassModal");
+  if (modal) {
+    modal.classList.remove("hidden");
+    var nameInput = document.getElementById("adminBypassName");
+    var passInput = document.getElementById("adminBypassPassword");
+    var errorEl = document.getElementById("adminBypassError");
+    if (nameInput) nameInput.value = "";
+    if (passInput) passInput.value = "";
+    if (errorEl) errorEl.classList.add("hidden");
+    if (nameInput) nameInput.focus();
+  }
 }
 
-function closeAdminBypassModal() {
-    document.getElementById('adminBypassModal').classList.add('hidden');
+function handleMaintenanceSecretTap() {
+  console.log("[AutoCuan] Maintenance logo tapped");
+
+  maintenanceTapCount += 1;
+
+  if (!maintenanceTapTimer) {
+    maintenanceTapTimer = setTimeout(function() {
+      maintenanceTapCount = 0;
+      maintenanceTapTimer = null;
+    }, 3000);
+  }
+
+  if (maintenanceTapCount >= 5) {
+    maintenanceTapCount = 0;
+
+    if (maintenanceTapTimer) {
+      clearTimeout(maintenanceTapTimer);
+      maintenanceTapTimer = null;
+    }
+
+    openAdminBypassModal();
+  }
 }
 
-function doAdminBypass() {
-    var name = document.getElementById('adminBypassName').value.trim();
-    var pass = document.getElementById('adminBypassPass').value;
-    var errorEl = document.getElementById('adminBypassError');
+function bindMaintenanceSecretTap() {
+  var logo = document.getElementById("maintenanceSecretLogo");
 
-    if (name.toLowerCase() === 'budi' && pass === '.') {
-        localStorage.setItem('autocuan_user', 'budi');
-        localStorage.setItem('autocuan_is_admin', 'true');
-        localStorage.setItem('autocuan_login_time', Date.now().toString());
-        // Log admin login silently
-        logLogin('budi', false, true);
-        closeAdminBypassModal();
-        document.getElementById('maintenanceScreen').classList.add('hidden');
-        showDashboard('budi');
-    } else {
-        errorEl.textContent = 'Akses admin salah.';
-        errorEl.classList.remove('hidden');
-    }
+  if (!logo) {
+    console.warn("[AutoCuan] maintenanceSecretLogo not found");
+    return;
+  }
+
+  console.log("[AutoCuan] maintenanceSecretLogo found and bound");
+  logo.removeEventListener("click", handleMaintenanceSecretTap);
+  logo.addEventListener("click", handleMaintenanceSecretTap);
 }
 
-// ===== INITIALIZATION =====
-(function init() {
-    // Check maintenance first
-    if (isMaintenanceTime() && !isAdminUser()) {
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('dashboardScreen').classList.add('hidden');
-        document.getElementById('maintenanceScreen').classList.remove('hidden');
-        return;
-    }
+// ============================================================
+// DESKTOP SECRET ADMIN SHORTCUT (Ctrl + B + K)
+// ============================================================
 
-    // Normal flow
-    document.getElementById('maintenanceScreen').classList.add('hidden');
-    const user = localStorage.getItem('autocuan_user');
-    if (user) {
-        showDashboard(user);
-    } else {
-        document.getElementById('loginScreen').classList.remove('hidden');
-        document.getElementById('dashboardScreen').classList.add('hidden');
-    }
-})();
+var adminShortcutStep = 0;
+document.addEventListener("keydown", function(e) {
+  if (e.ctrlKey && e.key.toLowerCase() === "b") {
+    adminShortcutStep = 1;
+    e.preventDefault();
+    return;
+  }
+  if (adminShortcutStep === 1 && e.key.toLowerCase() === "k") {
+    adminShortcutStep = 0;
+    e.preventDefault();
+    openAdminBypassModal();
+    return;
+  }
+  if (!e.ctrlKey) {
+    adminShortcutStep = 0;
+  }
+});
 
-// ===== LOGIN LOGIC =====
-function doLogin() {
-    const usernameInput = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const errorEl = document.getElementById('loginError');
+// ============================================================
+// ADMIN BYPASS MODAL VALIDATION
+// ============================================================
 
-    if (!usernameInput) {
-        errorEl.textContent = 'Username tidak boleh kosong.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
+function bindAdminBypassModal() {
+  var loginBtn = document.getElementById("adminBypassLoginBtn");
+  var cancelBtn = document.getElementById("adminBypassCancelBtn");
+  var modal = document.getElementById("adminBypassModal");
 
-    const usernameLower = usernameInput.toLowerCase();
-    let isValid = false;
-    let isAdmin = false;
+  if (cancelBtn) {
+    cancelBtn.onclick = function() { modal && modal.classList.add("hidden"); };
+  }
 
-    if (usernameLower === 'budi') {
-        if (password === '.') {
-            isValid = true;
-            isAdmin = true;
-        } else {
-            errorEl.textContent = 'Password salah.';
-            errorEl.classList.remove('hidden');
-            return;
-        }
-    } else {
-        const firstChar = usernameLower.charAt(0);
-        const expectedPass = (firstChar.charCodeAt(0) - 96).toString();
-        if (password === expectedPass) {
-            isValid = true;
-            isAdmin = false;
-        } else {
-            errorEl.textContent = 'Password salah. Hint: posisi huruf pertama di alfabet.';
-            errorEl.classList.remove('hidden');
-            return;
-        }
-    }
+  if (loginBtn) {
+    loginBtn.onclick = function() {
+      var name = document.getElementById("adminBypassName") ? document.getElementById("adminBypassName").value : "";
+      var password = document.getElementById("adminBypassPassword") ? document.getElementById("adminBypassPassword").value : "";
+      var error = document.getElementById("adminBypassError");
 
-    if (isValid) {
-        localStorage.setItem('autocuan_user', usernameLower);
-        localStorage.setItem('autocuan_is_admin', isAdmin ? 'true' : 'false');
-        logLogin(usernameLower, false, isAdmin);
-        showDashboard(usernameLower);
-    }
+      var cleanName = name.trim().toLowerCase();
+
+      if (cleanName === "budi" && password === ".") {
+        localStorage.setItem("autocuan_user", name.trim() || "budi");
+        localStorage.setItem("autocuan_is_admin", "true");
+        localStorage.setItem("autocuan_login_time", Date.now().toString());
+
+        try {
+          logLogin(name.trim() || "budi", false, true);
+        } catch (e) {}
+
+        location.reload();
+      } else {
+        if (error) error.classList.remove("hidden");
+      }
+    };
+  }
 }
 
-function guestLogin() {
-    localStorage.setItem('autocuan_user', 'guest');
-    localStorage.setItem('autocuan_is_admin', 'false');
-    logLogin('Guest', true, false);
-    showDashboard('guest');
+// Bind admin bypass modal on load
+bindAdminBypassModal();
+
+// ============================================================
+// SCREEN RENDERERS
+// ============================================================
+
+function showMaintenanceScreen() {
+  console.log("[AutoCuan] Maintenance screen rendered");
+  var app = document.getElementById("app");
+  app.innerHTML = '<div class="min-h-screen w-full flex items-center justify-center px-4 bg-[#0b0e14] text-gray-100">' +
+    '<div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">' +
+      '<div id="maintenanceSecretLogo" class="mx-auto flex h-16 w-16 cursor-pointer items-center justify-center rounded-2xl bg-yellow-500/10 text-4xl select-none">&#x1F6E0;&#xFE0F;</div>' +
+      '<h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>' +
+      '<p class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses pada pukul 22:00\u201306:00 WIB.</p>' +
+      '<p class="text-sm text-gray-300">Silakan kembali lagi setelah pukul 06:00 WIB.</p>' +
+    '</div>' +
+  '</div>';
+
+  bindMaintenanceSecretTap();
+  bindAdminBypassModal();
 }
 
-// ===== LOGGING FUNCTIONS =====
+function showBlockedScreen() {
+  console.log("[AutoCuan] Blocked screen rendered");
+  var app = document.getElementById("app");
+  var blockedUntil = getBlockedUntil();
+
+  app.innerHTML = '<div class="min-h-screen w-full flex items-center justify-center px-4 bg-[#0b0e14] text-gray-100">' +
+    '<div class="w-full max-w-md rounded-3xl border border-red-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">' +
+      '<div id="maintenanceSecretLogo" class="mx-auto flex h-16 w-16 cursor-pointer items-center justify-center rounded-2xl bg-red-500/10 text-4xl select-none">&#x1F6AB;</div>' +
+      '<h2 class="text-xl font-bold text-white">Akses diblokir sementara</h2>' +
+      '<p class="text-sm text-red-300">Nama yang digunakan tidak sesuai ketentuan. Silakan coba lagi setelah beberapa waktu.</p>' +
+      '<p id="blockedCountdown" class="text-sm text-gray-400 font-mono"></p>' +
+    '</div>' +
+  '</div>';
+
+  bindMaintenanceSecretTap();
+  bindAdminBypassModal();
+
+  // Start countdown
+  var countdownEl = document.getElementById("blockedCountdown");
+  function updateCountdown() {
+    var now = Date.now();
+    var remaining = blockedUntil - now;
+    if (remaining <= 0) {
+      localStorage.removeItem("autocuan_blocked_until");
+      location.reload();
+      return;
+    }
+    var minutes = Math.floor(remaining / 60000);
+    var seconds = Math.floor((remaining % 60000) / 1000);
+    if (countdownEl) {
+      countdownEl.textContent = "Akses dibuka kembali dalam: " + minutes + " menit " + (seconds < 10 ? "0" : "") + seconds + " detik";
+    }
+  }
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+}
+
+function showLoginScreen() {
+  var app = document.getElementById("app");
+  app.innerHTML = '<div id="loginScreen" class="min-h-screen flex items-center justify-center px-4">' +
+    '<div class="w-full max-w-sm fade-in-up">' +
+      '<div class="text-center mb-8">' +
+        '<div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">' +
+          '<svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>' +
+        '</div>' +
+        '<h1 class="text-2xl font-bold text-white">Auto-Cuan</h1>' +
+        '<p class="text-sm text-gray-400 mt-1">SMC Analysis Platform</p>' +
+      '</div>' +
+      '<div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl p-6 backdrop-blur-sm">' +
+        '<div class="space-y-4">' +
+          '<div><label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>' +
+          '<input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm"></div>' +
+          '<div><label class="block text-sm font-medium text-gray-400 mb-1.5">Password</label>' +
+          '<input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" onkeydown="if(event.key===\'Enter\')doLogin()"></div>' +
+          '<div id="loginError" class="hidden text-sm text-red-400 text-center py-1"></div>' +
+          '<button onclick="doLogin()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">Masuk</button>' +
+          '<button onclick="guestLogin()" class="w-full py-3 rounded-xl font-medium text-gray-400 border border-dark-600/50 hover:border-emerald-500/30 hover:text-emerald-400 transition-all duration-200">Coba Tanpa Login</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+</script>
+</body>
+</html>
+
+
+<!-- DASHBOARD TEMPLATE (injected via JS) -->
+<template id="dashboardTemplate">
+<div id="dashboardScreen">
+<header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-lg font-bold text-white leading-tight truncate">Auto-Cuan</h1>
+                    <p class="text-xs text-gray-500">SMC Analysis Platform</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <span class="hidden sm:inline text-sm text-gray-400">Halo, <span id="headerUsername" class="text-emerald-400 font-medium"></span></span>
+                <button onclick="logout()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/50 hover:border-red-500/40 hover:text-red-400 transition-all">Logout</button>
+            </div>
+        </div>
+    </div>
+</header>
+<main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+<div id="guestBanner" class="hidden fade-in-up">
+    <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
+        <p class="text-yellow-300 text-sm font-medium">Mode Tamu - Hanya bisa melihat chart. Login untuk menggunakan fitur AI.</p>
+    </div>
+</div>
+<section id="tvSection" class="fade-in-up">
+    <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <h2 class="text-sm font-semibold text-gray-300">Live Chart - TradingView</h2>
+        </div>
+        <div id="tvChartContainer" class="w-full" style="height:400px"></div>
+    </div>
+</section>
+<section id="aiSection" class="hidden fade-in-up">
+    <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+            <h2 class="text-sm font-semibold text-gray-300">AI Analysis - Smart Money Concepts</h2>
+        </div>
+        <div class="p-4 sm:p-6 space-y-4">
+            <div class="grid grid-cols-2 gap-2 w-full rounded-2xl border border-gray-800 bg-[#0b0e14] p-2">
+                <button id="tabChart" onclick="switchTab('chart')" class="w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition">&#x1F4CA; Pindai Chart</button>
+                <button id="tabTicker" onclick="switchTab('ticker')" class="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition">&#x1F50D; Nama Saham</button>
+            </div>
+            <div id="modeTickerPanel" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Ticker Saham</label><input type="text" id="tickerInput" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm uppercase"></div>
+                    <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Harga Sekarang</label><input type="number" id="priceInput" placeholder="Contoh: 9250" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm"></div>
+                </div>
+                <button id="analyzeBtn" onclick="analyzeChart()" class="w-full sm:w-auto px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    Mulai Analisis
+                </button>
+            </div>
+            <div id="modeChartPanel" class="hidden space-y-4">
+                <input id="chartFileInput" type="file" accept="image/*" class="hidden" onchange="handleChartFile(event)">
+                <label for="chartFileInput" id="chartUploadLabel" class="w-full rounded-2xl border-2 border-dashed border-gray-700 bg-[#0b0e14] px-4 py-8 text-center text-gray-300 hover:border-emerald-500 hover:bg-emerald-500/5 transition cursor-pointer flex flex-col items-center justify-center gap-2">
+                    <span class="text-3xl">&#x1F4CA;</span>
+                    <span class="text-sm font-black text-gray-100">Pilih Screenshot Chart</span>
+                    <span class="text-xs text-gray-500">PNG, JPG, WebP &bull; Maks 20MB</span>
+                </label>
+                <img id="chartPreviewImage" class="hidden w-full max-h-[280px] sm:max-h-[420px] object-contain rounded-2xl border border-gray-800 bg-[#0b0e14]" alt="Chart Preview">
+                <p class="text-xs text-gray-500">Upload screenshot chart dari TradingView.</p>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button id="resetChartBtn" onclick="resetChartUpload()" class="w-full sm:w-auto rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Hapus &amp; Unggah Ulang</button>
+                    <button id="analyzeChartBtn" onclick="analyzeChartUpload()" class="w-full sm:w-auto rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20">Mulai Analisis Chart</button>
+                </div>
+            </div>
+            <div id="limitWarning" class="hidden text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 text-center"></div>
+        </div>
+    </div>
+</section>
+<section id="loadingState" class="hidden">
+    <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 p-8 text-center">
+        <div class="spinner mx-auto mb-5"></div>
+        <p class="text-emerald-400 font-medium animate-pulse-glow">AI sedang menganalisis struktur chart dan merancang trading plan...</p>
+        <p class="text-xs text-gray-600 mt-3">Proses analisis biasanya 15-45 detik</p>
+    </div>
+</section>
+<section id="resultSection" class="hidden fade-in-up">
+    <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
+        <div class="px-4 sm:px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+            <h2 class="font-semibold text-gray-200 text-sm sm:text-base">Hasil Analisis AI</h2>
+        </div>
+        <div id="resultContent" class="p-4 sm:p-6 overflow-x-auto"></div>
+    </div>
+</section>
+<section id="adminPanel" class="hidden fade-in-up">
+    <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
+        <div class="px-4 sm:px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+            <h2 class="font-semibold text-gray-200">Admin Panel</h2>
+        </div>
+        <div class="p-4 sm:p-6 space-y-4">
+            <div class="flex flex-wrap gap-2">
+                <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login Logs</button>
+                <button onclick="loadAdminLogs('search')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Search Logs</button>
+                <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">AI Logs</button>
+                <button onclick="loadAdminLogs('usage')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Usage Logs</button>
+                <button onclick="loadAdminLogs(lastAdminLogType || 'login')" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">&#x1F504; Refresh</button>
+            </div>
+            <div id="adminLogsContainer" class="overflow-x-auto"><p class="text-sm text-gray-500">Klik tombol di atas untuk memuat logs.</p></div>
+        </div>
+    </div>
+</section>
+</main>
+<footer class="border-t border-dark-700/50 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
+        <p class="text-xs text-gray-500">Auto-Cuan &copy; 2024 &bull; SMC Analysis Platform</p>
+        <p class="text-xs text-gray-600 mt-1">Disclaimer: Bukan merupakan saran investasi. Gunakan analisis ini sebagai referensi tambahan saja.</p>
+    </div>
+</footer>
+</div>
+</template>
+
+
+<script>
+// ============================================================
+// LOGGING FUNCTIONS
+// ============================================================
+
 async function logLogin(username, isGuest, isAdmin) {
     try {
         await fetch('/api/log-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: username,
-                isGuest: isGuest,
-                isAdmin: isAdmin,
-                userAgent: navigator.userAgent
-            })
+            body: JSON.stringify({ username: username, isGuest: isGuest, isAdmin: isAdmin, userAgent: navigator.userAgent })
         });
     } catch (e) { console.warn('logLogin failed', e); }
 }
@@ -465,13 +536,7 @@ async function logAnalysisResult(ticker, mode, html) {
         await fetch('/api/log-analysis', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: username,
-                ticker: ticker,
-                mode: mode,
-                resultSummary: resultSummary,
-                fullResultHtml: html
-            })
+            body: JSON.stringify({ username: username, ticker: ticker, mode: mode, resultSummary: resultSummary, fullResultHtml: html })
         });
     } catch (e) { console.warn('logAnalysis failed', e); }
 }
@@ -487,26 +552,93 @@ async function logUsage(ticker, action) {
     } catch (e) { console.warn('logUsage failed', e); }
 }
 
+// ============================================================
+// LOGIN LOGIC
+// ============================================================
+
+function doLogin() {
+    var usernameInput = document.getElementById('loginUsername').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    var errorEl = document.getElementById('loginError');
+
+    if (!usernameInput) {
+        errorEl.textContent = 'Username tidak boleh kosong.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    var usernameLower = usernameInput.toLowerCase();
+
+    // Admin budi bypass - never block budi
+    if (usernameLower === 'budi') {
+        if (password === '.') {
+            localStorage.setItem('autocuan_user', 'budi');
+            localStorage.setItem('autocuan_is_admin', 'true');
+            localStorage.setItem('autocuan_login_time', Date.now().toString());
+            logLogin('budi', false, true);
+            showDashboard('budi');
+        } else {
+            errorEl.textContent = 'Password salah.';
+            errorEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    // Username safety filter - check BEFORE password
+    if (isBadUsername(usernameInput)) {
+        console.log("[AutoCuan] Bad username block triggered on login");
+        blockDeviceForBadName();
+        return;
+    }
+
+    // Normal user password validation
+    var firstChar = usernameLower.charAt(0);
+    var expectedPass = (firstChar.charCodeAt(0) - 96).toString();
+    if (password === expectedPass) {
+        localStorage.setItem('autocuan_user', usernameLower);
+        localStorage.setItem('autocuan_is_admin', 'false');
+        localStorage.setItem('autocuan_login_time', Date.now().toString());
+        logLogin(usernameLower, false, false);
+        showDashboard(usernameLower);
+    } else {
+        errorEl.textContent = 'Password salah. Hint: posisi huruf pertama di alfabet.';
+        errorEl.classList.remove('hidden');
+    }
+}
+
+function guestLogin() {
+    // If device is blocked, guest cannot enter
+    if (isDeviceBlocked()) {
+        showBlockedScreen();
+        return;
+    }
+    localStorage.setItem('autocuan_user', 'guest');
+    localStorage.setItem('autocuan_is_admin', 'false');
+    logLogin('Guest', true, false);
+    showDashboard('guest');
+}
+
 function logout() {
     localStorage.removeItem('autocuan_user');
     localStorage.removeItem('autocuan_is_admin');
-    document.getElementById('dashboardScreen').classList.add('hidden');
-    document.getElementById('loginScreen').classList.remove('hidden');
-    document.getElementById('loginUsername').value = '';
-    document.getElementById('loginPassword').value = '';
-    document.getElementById('loginError').classList.add('hidden');
+    localStorage.removeItem('autocuan_login_time');
+    initApp();
 }
 
-// ===== DASHBOARD =====
+// ============================================================
+// DASHBOARD
+// ============================================================
+
 function showDashboard(username) {
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('dashboardScreen').classList.remove('hidden');
+    var app = document.getElementById('app');
+    var template = document.getElementById('dashboardTemplate');
+    app.innerHTML = template.innerHTML;
+
     document.getElementById('headerUsername').textContent = username;
 
-    const isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
-    const isGuest = (username === 'guest');
+    var isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
+    var isGuest = (username === 'guest');
 
-    // Guest restrictions
     if (isGuest) {
         document.getElementById('guestBanner').classList.remove('hidden');
         document.getElementById('aiSection').classList.add('hidden');
@@ -521,31 +653,26 @@ function showDashboard(username) {
         }
     }
 
-    // Load TradingView
     loadTradingView();
 }
 
-// ===== TRADINGVIEW =====
+// ============================================================
+// TRADINGVIEW
+// ============================================================
+
 function loadTradingView() {
     var container = document.getElementById('tvChartContainer');
+    if (!container) return;
     if (container.querySelector('iframe') || container.querySelector('script')) return;
     var script = document.createElement('script');
     script.type = 'text/javascript';
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.async = true;
     script.innerHTML = JSON.stringify({
-        "autosize": true,
-        "symbol": "IDX:IHSG",
-        "interval": "D",
-        "timezone": "Asia/Jakarta",
-        "theme": "dark",
-        "style": "1",
-        "locale": "id",
-        "backgroundColor": "rgba(15, 19, 25, 1)",
-        "gridColor": "rgba(28, 35, 51, 0.5)",
-        "allow_symbol_change": true,
-        "calendar": false,
-        "support_host": "https://www.tradingview.com"
+        "autosize": true, "symbol": "IDX:IHSG", "interval": "D",
+        "timezone": "Asia/Jakarta", "theme": "dark", "style": "1", "locale": "id",
+        "backgroundColor": "rgba(15, 19, 25, 1)", "gridColor": "rgba(28, 35, 51, 0.5)",
+        "allow_symbol_change": true, "calendar": false, "support_host": "https://www.tradingview.com"
     });
     var widget = document.createElement('div');
     widget.className = 'tradingview-widget-container';
@@ -560,12 +687,14 @@ function loadTradingView() {
     container.appendChild(widget);
 }
 
-// ===== AI ANALYSIS =====
+// ============================================================
+// AI ANALYSIS
+// ============================================================
+
 function getUsageRecords() {
     try {
         var records = JSON.parse(localStorage.getItem('autocuan_usage') || '[]');
         var now = Date.now();
-        // Keep only records within last 30 minutes
         return records.filter(function(t) { return (now - t) < 30 * 60 * 1000; });
     } catch(e) { return []; }
 }
@@ -591,7 +720,6 @@ async function analyzeChart() {
     if (!ticker) { alert('Masukkan ticker saham.'); return; }
     if (!currentPrice) { alert('Masukkan harga sekarang.'); return; }
 
-    // Check usage limit
     if (!checkUsageLimit()) {
         limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
         limitWarning.classList.remove('hidden');
@@ -600,11 +728,9 @@ async function analyzeChart() {
     }
     limitWarning.classList.add('hidden');
 
-    // Log search and usage start
     logSearch(ticker, 'ticker_mode');
     logUsage(ticker, 'ai_analysis_started');
 
-    // Show loading
     document.getElementById('loadingState').classList.remove('hidden');
     document.getElementById('resultSection').classList.add('hidden');
     document.getElementById('analyzeBtn').disabled = true;
@@ -617,10 +743,7 @@ async function analyzeChart() {
         });
 
         var data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Terjadi kesalahan pada server.');
-        }
+        if (!response.ok) throw new Error(data.error || 'Terjadi kesalahan pada server.');
 
         if (data.html) {
             var html = data.html;
@@ -644,171 +767,18 @@ async function analyzeChart() {
     }
 }
 
-// ===== ADMIN LOGS =====
-var lastAdminLogType = 'login';
-var cachedAdminData = null;
+// ============================================================
+// CHART UPLOAD
+// ============================================================
 
-async function loadAdminLogs(type) {
-    lastAdminLogType = type;
-    var container = document.getElementById('adminLogsContainer');
-    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
-
-    try {
-        var adminName = localStorage.getItem('autocuan_user') || '';
-        var response = await fetch('/api/admin-logs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminName: adminName })
-        });
-        if (!response.ok) throw new Error('Fetch failed');
-        var data = await response.json();
-        cachedAdminData = data;
-
-        if (!data.success) {
-            container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Database logging belum dikonfigurasi.') + '</p>';
-            return;
-        }
-
-        // Build summary card
-        var summaryHtml = '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Logins</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalLogins || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Searches</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalSearches || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">AI Analyses</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalAIAnalyses || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Top Ticker</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.mostSearchedTicker || '-') + '</p></div>';
-        summaryHtml += '</div>';
-
-        // Pick which logs to show based on type
-        var logs = [];
-        if (type === 'login') logs = data.loginLogs || [];
-        else if (type === 'search') logs = data.searchLogs || [];
-        else if (type === 'analysis') logs = data.aiAnalysisLogs || [];
-        else logs = data.aiUsageLogs || [];
-
-        if (logs.length === 0) {
-            container.innerHTML = summaryHtml + '<p class="text-sm text-gray-500">Belum ada data log.</p>';
-            return;
-        }
-
-        // Special rendering for AI analysis logs - card format with Lihat Hasil
-        if (type === 'analysis') {
-            var cardsHtml = '<div class="space-y-3">';
-            logs.forEach(function(row, idx) {
-                var summary = row.result_summary || '';
-                if (summary.length > 120) summary = summary.slice(0, 120) + '...';
-                cardsHtml += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333]">';
-                cardsHtml += '<div class="flex flex-wrap items-center gap-2 mb-2">';
-                cardsHtml += '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400">' + (row.ticker || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-500">' + (row.username || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-600">' + (row.mode || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + (row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span>';
-                cardsHtml += '</div>';
-                if (summary) cardsHtml += '<p class="text-xs text-gray-400 mb-3 line-clamp-2">' + summary + '</p>';
-                cardsHtml += '<button onclick="openAdminAiDetail(' + idx + ')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Lihat Hasil</button>';
-                cardsHtml += '</div>';
-            });
-            cardsHtml += '</div>';
-            container.innerHTML = summaryHtml + cardsHtml;
-            return;
-        }
-
-        // Standard table rendering for other log types
-        var excludeCols = ['full_result_html'];
-        var keys = Object.keys(logs[0]).filter(function(k) { return excludeCols.indexOf(k) === -1; });
-        var tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
-        keys.forEach(function(k) {
-            tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>';
-        });
-        tableHtml += '</tr></thead><tbody>';
-        logs.forEach(function(row) {
-            tableHtml += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
-            keys.forEach(function(k) {
-                var val = row[k] || '-';
-                if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...';
-                tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>';
-            });
-            tableHtml += '</tr>';
-        });
-        tableHtml += '</tbody></table></div>';
-
-        container.innerHTML = summaryHtml + tableHtml;
-    } catch(e) {
-        console.error('loadAdminLogs error:', e);
-        container.innerHTML = '<p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p>';
-    }
-}
-
-function openAdminAiDetail(idx) {
-    if (!cachedAdminData || !cachedAdminData.aiAnalysisLogs) return;
-    var log = cachedAdminData.aiAnalysisLogs[idx];
-    if (!log) return;
-
-    var modal = document.getElementById('adminAiModal');
-    var subtitle = document.getElementById('adminAiModalSubtitle');
-    var detail = document.getElementById('adminAiResultDetail');
-
-    subtitle.textContent = (log.ticker || 'N/A') + ' • ' + (log.username || 'N/A') + ' • ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
-
-    if (log.full_result_html && log.full_result_html.length > 50) {
-        detail.innerHTML = log.full_result_html;
-    } else {
-        detail.innerHTML = '<p class="text-sm text-yellow-400">Hasil lengkap tidak tersedia. Kemungkinan analisis lama hanya menyimpan ringkasan.</p>';
-    }
-
-    modal.classList.remove('hidden');
-}
-
-function closeAdminAiModal() {
-    document.getElementById('adminAiModal').classList.add('hidden');
-    document.getElementById('adminAiResultDetail').innerHTML = '';
-}
-
-// ===== RESPONSIVE TV HEIGHT =====
-function updateTvHeight() {
-    var el = document.getElementById('tvChartContainer');
-    if (el) { el.style.height = window.innerWidth < 640 ? '400px' : '500px'; }
-}
-window.addEventListener('resize', updateTvHeight);
-updateTvHeight();
-
-// ===== TAB SWITCHING =====
-var currentTab = 'ticker';
-function switchTab(tab) {
-    currentTab = tab;
-    var tabChart = document.getElementById('tabChart');
-    var tabTicker = document.getElementById('tabTicker');
-    var modeChart = document.getElementById('modeChartPanel');
-    var modeTicker = document.getElementById('modeTickerPanel');
-
-    if (tab === 'chart') {
-        tabChart.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
-        tabTicker.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
-        modeChart.classList.remove('hidden');
-        modeTicker.classList.add('hidden');
-    } else {
-        tabTicker.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
-        tabChart.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
-        modeTicker.classList.remove('hidden');
-        modeChart.classList.add('hidden');
-    }
-}
-
-// ===== CHART UPLOAD =====
 var selectedChartFile = null;
 
 function handleChartFile(event) {
     var file = event.target.files[0];
     if (!file) return;
-
     var validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-        alert('Format file tidak didukung. Gunakan PNG, JPG, atau WebP.');
-        return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-        alert('Ukuran file terlalu besar. Maksimal 20MB.');
-        return;
-    }
-
+    if (!validTypes.includes(file.type)) { alert('Format file tidak didukung.'); return; }
+    if (file.size > 20 * 1024 * 1024) { alert('Ukuran file terlalu besar. Maksimal 20MB.'); return; }
     selectedChartFile = file;
     var preview = document.getElementById('chartPreviewImage');
     preview.src = URL.createObjectURL(file);
@@ -829,14 +799,8 @@ async function analyzeChartUpload() {
     var limitWarning = document.getElementById('limitWarning');
     var user = localStorage.getItem('autocuan_user');
 
-    if (user === 'guest') {
-        alert('Login diperlukan untuk menggunakan fitur AI.');
-        return;
-    }
-    if (!selectedChartFile) {
-        alert('Pilih screenshot chart terlebih dahulu.');
-        return;
-    }
+    if (user === 'guest') { alert('Login diperlukan untuk menggunakan fitur AI.'); return; }
+    if (!selectedChartFile) { alert('Pilih screenshot chart terlebih dahulu.'); return; }
     if (!checkUsageLimit()) {
         limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
         limitWarning.classList.remove('hidden');
@@ -848,32 +812,20 @@ async function analyzeChartUpload() {
     logSearch('CHART_UPLOAD', 'chart_upload');
     logUsage('CHART_UPLOAD', 'ai_analysis_started');
 
-    // Show loading
     document.getElementById('loadingState').classList.remove('hidden');
     document.getElementById('resultSection').classList.add('hidden');
     document.getElementById('analyzeChartBtn').disabled = true;
 
     try {
-        // Convert to base64
         var base64Data = await fileToBase64(selectedChartFile);
-
         var response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                image: base64Data,
-                mimeType: selectedChartFile.type,
-                source: 'chart_upload',
-                username: localStorage.getItem('autocuan_user') || '',
-                isAdmin: localStorage.getItem('autocuan_is_admin') === 'true'
-            })
+            body: JSON.stringify({ image: base64Data, mimeType: selectedChartFile.type, source: 'chart_upload', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' })
         });
 
         var data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Terjadi kesalahan pada server.');
-        }
+        if (!response.ok) throw new Error(data.error || 'Terjadi kesalahan pada server.');
 
         if (data.html) {
             var html = data.html;
@@ -905,6 +857,184 @@ function fileToBase64(file) {
         reader.readAsDataURL(file);
     });
 }
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+
+var currentTab = 'ticker';
+function switchTab(tab) {
+    currentTab = tab;
+    var tabChart = document.getElementById('tabChart');
+    var tabTicker = document.getElementById('tabTicker');
+    var modeChart = document.getElementById('modeChartPanel');
+    var modeTicker = document.getElementById('modeTickerPanel');
+    if (tab === 'chart') {
+        tabChart.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
+        tabTicker.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
+        modeChart.classList.remove('hidden');
+        modeTicker.classList.add('hidden');
+    } else {
+        tabTicker.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
+        tabChart.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
+        modeTicker.classList.remove('hidden');
+        modeChart.classList.add('hidden');
+    }
+}
+
+// ============================================================
+// ADMIN LOGS
+// ============================================================
+
+var lastAdminLogType = 'login';
+var cachedAdminData = null;
+
+async function loadAdminLogs(type) {
+    lastAdminLogType = type;
+    var container = document.getElementById('adminLogsContainer');
+    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
+
+    try {
+        var adminName = localStorage.getItem('autocuan_user') || '';
+        var response = await fetch('/api/admin-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: adminName })
+        });
+        if (!response.ok) throw new Error('Fetch failed');
+        var data = await response.json();
+        cachedAdminData = data;
+
+        if (!data.success) {
+            container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Database logging belum dikonfigurasi.') + '</p>';
+            return;
+        }
+
+        var summaryHtml = '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Logins</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalLogins || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Searches</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalSearches || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">AI Analyses</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalAIAnalyses || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Top Ticker</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.mostSearchedTicker || '-') + '</p></div>';
+        summaryHtml += '</div>';
+
+        var logs = [];
+        if (type === 'login') logs = data.loginLogs || [];
+        else if (type === 'search') logs = data.searchLogs || [];
+        else if (type === 'analysis') logs = data.aiAnalysisLogs || [];
+        else logs = data.aiUsageLogs || [];
+
+        if (logs.length === 0) {
+            container.innerHTML = summaryHtml + '<p class="text-sm text-gray-500">Belum ada data log.</p>';
+            return;
+        }
+
+        if (type === 'analysis') {
+            var cardsHtml = '<div class="space-y-3">';
+            logs.forEach(function(row, idx) {
+                var summary = row.result_summary || '';
+                if (summary.length > 120) summary = summary.slice(0, 120) + '...';
+                cardsHtml += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333]">';
+                cardsHtml += '<div class="flex flex-wrap items-center gap-2 mb-2">';
+                cardsHtml += '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400">' + (row.ticker || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-500">' + (row.username || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-600">' + (row.mode || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + (row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span>';
+                cardsHtml += '</div>';
+                if (summary) cardsHtml += '<p class="text-xs text-gray-400 mb-3 line-clamp-2">' + summary + '</p>';
+                cardsHtml += '<button onclick="openAdminAiDetail(' + idx + ')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Lihat Hasil</button>';
+                cardsHtml += '</div>';
+            });
+            cardsHtml += '</div>';
+            container.innerHTML = summaryHtml + cardsHtml;
+            return;
+        }
+
+        var excludeCols = ['full_result_html'];
+        var keys = Object.keys(logs[0]).filter(function(k) { return excludeCols.indexOf(k) === -1; });
+        var tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
+        keys.forEach(function(k) {
+            tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>';
+        });
+        tableHtml += '</tr></thead><tbody>';
+        logs.forEach(function(row) {
+            tableHtml += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
+            keys.forEach(function(k) {
+                var val = row[k] || '-';
+                if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...';
+                tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>';
+            });
+            tableHtml += '</tr>';
+        });
+        tableHtml += '</tbody></table></div>';
+        container.innerHTML = summaryHtml + tableHtml;
+    } catch(e) {
+        console.error('loadAdminLogs error:', e);
+        container.innerHTML = '<p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p>';
+    }
+}
+
+function openAdminAiDetail(idx) {
+    if (!cachedAdminData || !cachedAdminData.aiAnalysisLogs) return;
+    var log = cachedAdminData.aiAnalysisLogs[idx];
+    if (!log) return;
+    var modal = document.getElementById('adminAiModal');
+    var subtitle = document.getElementById('adminAiModalSubtitle');
+    var detail = document.getElementById('adminAiResultDetail');
+    subtitle.textContent = (log.ticker || 'N/A') + ' \u2022 ' + (log.username || 'N/A') + ' \u2022 ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
+    if (log.full_result_html && log.full_result_html.length > 50) {
+        detail.innerHTML = log.full_result_html;
+    } else {
+        detail.innerHTML = '<p class="text-sm text-yellow-400">Hasil lengkap tidak tersedia.</p>';
+    }
+    modal.classList.remove('hidden');
+}
+
+function closeAdminAiModal() {
+    document.getElementById('adminAiModal').classList.add('hidden');
+    document.getElementById('adminAiResultDetail').innerHTML = '';
+}
+
+// ============================================================
+// RESPONSIVE TV HEIGHT
+// ============================================================
+
+function updateTvHeight() {
+    var el = document.getElementById('tvChartContainer');
+    if (el) { el.style.height = window.innerWidth < 640 ? '400px' : '500px'; }
+}
+window.addEventListener('resize', updateTvHeight);
+
+// ============================================================
+// APP INITIALIZATION
+// ============================================================
+
+function initApp() {
+    console.log("[AutoCuan] initApp called");
+
+    // Priority 1: Device blocked by username safety
+    if (isDeviceBlocked()) {
+        // Admin budi can still bypass via hidden admin modal
+        showBlockedScreen();
+        return;
+    }
+
+    // Priority 2: Maintenance time check
+    if (isMaintenanceTime() && !isAdminUser()) {
+        showMaintenanceScreen();
+        return;
+    }
+
+    // Priority 3: Normal flow
+    var user = localStorage.getItem('autocuan_user');
+    if (user) {
+        showDashboard(user);
+    } else {
+        showLoginScreen();
+    }
+}
+
+// Run on page load
+initApp();
 </script>
 </body>
 </html>
