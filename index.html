@@ -219,6 +219,8 @@
                 <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login Logs</button>
                 <button onclick="loadAdminLogs('search')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Search Logs</button>
                 <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">AI Logs</button>
+                <button onclick="loadAdminLogs('usage')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Usage Logs</button>
+                <button onclick="loadAdminLogs(lastAdminLogType || 'login')" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">🔄 Refresh</button>
             </div>
             <div id="adminLogsContainer" class="overflow-x-auto">
                 <p class="text-sm text-gray-500">Klik tombol di atas untuk memuat logs.</p>
@@ -292,7 +294,7 @@ function doLogin() {
     if (isValid) {
         localStorage.setItem('autocuan_user', usernameLower);
         localStorage.setItem('autocuan_is_admin', isAdmin ? 'true' : 'false');
-        logLogin(usernameLower, isAdmin ? 'admin' : 'user');
+        logLogin(usernameLower, false, isAdmin);
         showDashboard(usernameLower);
     }
 }
@@ -300,18 +302,65 @@ function doLogin() {
 function guestLogin() {
     localStorage.setItem('autocuan_user', 'guest');
     localStorage.setItem('autocuan_is_admin', 'false');
-    logLogin('guest', 'guest');
+    logLogin('Guest', true, false);
     showDashboard('guest');
 }
 
-function logLogin(username, role) {
+// ===== LOGGING FUNCTIONS =====
+async function logLogin(username, isGuest, isAdmin) {
     try {
-        fetch('/api/log-login', {
+        await fetch('/api/log-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username, role: role, timestamp: new Date().toISOString() })
-        }).catch(function(){});
-    } catch(e) {}
+            body: JSON.stringify({
+                username: username,
+                isGuest: isGuest,
+                isAdmin: isAdmin,
+                userAgent: navigator.userAgent
+            })
+        });
+    } catch (e) { console.warn('logLogin failed', e); }
+}
+
+async function logSearch(ticker, source) {
+    try {
+        var username = localStorage.getItem('autocuan_user') || 'Unknown';
+        await fetch('/api/log-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, ticker: ticker, source: source })
+        });
+    } catch (e) { console.warn('logSearch failed', e); }
+}
+
+async function logAnalysisResult(ticker, mode, html) {
+    try {
+        var username = localStorage.getItem('autocuan_user') || 'Unknown';
+        var text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        var resultSummary = text.slice(0, 500);
+        await fetch('/api/log-analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: username,
+                ticker: ticker,
+                mode: mode,
+                resultSummary: resultSummary,
+                fullResultHtml: html
+            })
+        });
+    } catch (e) { console.warn('logAnalysis failed', e); }
+}
+
+async function logUsage(ticker, action) {
+    try {
+        var username = localStorage.getItem('autocuan_user') || 'Unknown';
+        await fetch('/api/log-usage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, ticker: ticker, action: action })
+        });
+    } catch (e) { console.warn('logUsage failed', e); }
 }
 
 function logout() {
@@ -422,9 +471,14 @@ async function analyzeChart() {
     if (!checkUsageLimit()) {
         limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
         limitWarning.classList.remove('hidden');
+        logUsage(ticker, 'ai_limit_blocked');
         return;
     }
     limitWarning.classList.add('hidden');
+
+    // Log search and usage start
+    logSearch(ticker, 'ticker_mode');
+    logUsage(ticker, 'ai_analysis_started');
 
     // Show loading
     document.getElementById('loadingState').classList.remove('hidden');
@@ -432,13 +486,6 @@ async function analyzeChart() {
     document.getElementById('analyzeBtn').disabled = true;
 
     try {
-        // Log search silently
-        fetch('/api/log-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker: ticker, currentPrice: currentPrice, username: localStorage.getItem('autocuan_user'), timestamp: new Date().toISOString() })
-        }).catch(function(){});
-
         var response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -458,10 +505,13 @@ async function analyzeChart() {
             document.getElementById('resultSection').classList.remove('hidden');
             document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
             addUsageRecord();
+            logUsage(ticker, 'ai_success');
+            logAnalysisResult(ticker, 'ticker', html);
         } else {
             throw new Error('Tidak ada hasil analisis dari AI.');
         }
     } catch(error) {
+        logUsage(ticker, 'ai_error');
         document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal Menganalisis</p><p class="text-red-300/70 text-sm">' + error.message + '</p><button onclick="analyzeChart()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">Coba Lagi</button></div>';
         document.getElementById('resultSection').classList.remove('hidden');
     } finally {
@@ -471,36 +521,69 @@ async function analyzeChart() {
 }
 
 // ===== ADMIN LOGS =====
+var lastAdminLogType = 'login';
 async function loadAdminLogs(type) {
+    lastAdminLogType = type;
     var container = document.getElementById('adminLogsContainer');
     container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
 
     try {
-        var response = await fetch('/api/admin-logs?type=' + type);
+        var adminName = localStorage.getItem('autocuan_user') || '';
+        var response = await fetch('/api/admin-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: adminName })
+        });
         if (!response.ok) throw new Error('Fetch failed');
         var data = await response.json();
 
-        if (!data.logs || data.logs.length === 0) {
-            container.innerHTML = '<p class="text-sm text-gray-500">Belum ada data log.</p>';
+        if (!data.success) {
+            container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Database logging belum dikonfigurasi.') + '</p>';
             return;
         }
 
-        var keys = Object.keys(data.logs[0]);
-        var html = '<table class="w-full text-sm border-collapse"><thead><tr>';
+        // Build summary card
+        var summaryHtml = '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Logins</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalLogins || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Searches</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalSearches || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">AI Analyses</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalAIAnalyses || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Top Ticker</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.mostSearchedTicker || '-') + '</p></div>';
+        summaryHtml += '</div>';
+
+        // Pick which logs to show based on type
+        var logs = [];
+        if (type === 'login') logs = data.loginLogs || [];
+        else if (type === 'search') logs = data.searchLogs || [];
+        else if (type === 'analysis') logs = data.aiAnalysisLogs || [];
+        else logs = data.aiUsageLogs || [];
+
+        if (logs.length === 0) {
+            container.innerHTML = summaryHtml + '<p class="text-sm text-gray-500">Belum ada data log.</p>';
+            return;
+        }
+
+        // Exclude large columns from display
+        var excludeCols = ['full_result_html'];
+        var keys = Object.keys(logs[0]).filter(function(k) { return excludeCols.indexOf(k) === -1; });
+        var tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
         keys.forEach(function(k) {
-            html += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700">' + k + '</th>';
+            tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>';
         });
-        html += '</tr></thead><tbody>';
-        data.logs.forEach(function(row) {
-            html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
+        tableHtml += '</tr></thead><tbody>';
+        logs.forEach(function(row) {
+            tableHtml += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
             keys.forEach(function(k) {
-                html += '<td class="px-3 py-2 text-gray-300">' + (row[k] || '-') + '</td>';
+                var val = row[k] || '-';
+                if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...';
+                tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>';
             });
-            html += '</tr>';
+            tableHtml += '</tr>';
         });
-        html += '</tbody></table>';
-        container.innerHTML = html;
+        tableHtml += '</tbody></table></div>';
+
+        container.innerHTML = summaryHtml + tableHtml;
     } catch(e) {
+        console.error('loadAdminLogs error:', e);
         container.innerHTML = '<p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p>';
     }
 }
@@ -583,9 +666,13 @@ async function analyzeChartUpload() {
     if (!checkUsageLimit()) {
         limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
         limitWarning.classList.remove('hidden');
+        logUsage('CHART_UPLOAD', 'ai_limit_blocked');
         return;
     }
     limitWarning.classList.add('hidden');
+
+    logSearch('CHART_UPLOAD', 'chart_upload');
+    logUsage('CHART_UPLOAD', 'ai_analysis_started');
 
     // Show loading
     document.getElementById('loadingState').classList.remove('hidden');
@@ -619,10 +706,13 @@ async function analyzeChartUpload() {
             document.getElementById('resultSection').classList.remove('hidden');
             document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
             addUsageRecord();
+            logUsage('CHART_UPLOAD', 'ai_success');
+            logAnalysisResult('CHART_UPLOAD', 'chart', html);
         } else {
             throw new Error('Tidak ada hasil analisis dari AI.');
         }
     } catch(error) {
+        logUsage('CHART_UPLOAD', 'ai_error');
         document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal Menganalisis Chart</p><p class="text-red-300/70 text-sm">' + error.message + '</p><button onclick="analyzeChartUpload()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">Coba Lagi</button></div>';
         document.getElementById('resultSection').classList.remove('hidden');
     } finally {
