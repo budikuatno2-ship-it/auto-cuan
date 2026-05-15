@@ -4,7 +4,17 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { ticker, currentPrice, image, mimeType, source } = req.body || {};
+    const { ticker, currentPrice, image, mimeType, source, username, isAdmin } = req.body || {};
+
+    // === MAINTENANCE GUARD ===
+    if (isMaintenanceTimeWIB()) {
+      const isAdminBudi = isAdmin === true && typeof username === 'string' && username.trim().toLowerCase() === 'budi';
+      if (!isAdminBudi) {
+        return res.status(200).json({
+          html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center space-y-2"><p class="text-yellow-400 font-semibold text-base">Website sedang maintenance</p><p class="text-yellow-300/70 text-sm">AI tidak tersedia pada pukul 22:00–06:00 WIB.</p><p class="text-xs text-gray-500 mt-2">Silakan kembali setelah pukul 06:00 WIB.</p></div>'
+        });
+      }
+    }
 
     // === CHART UPLOAD MODE ===
     if (source === 'chart_upload' && image) {
@@ -86,6 +96,19 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Server error: ' + error.message });
     }
   }
+}
+
+
+function isMaintenanceTimeWIB() {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jakarta',
+    hour: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(new Date());
+  const hourPart = parts.find(function(p) { return p.type === 'hour'; });
+  const hour = Number(hourPart ? hourPart.value : 0);
+  return hour >= 22 || hour < 6;
 }
 
 

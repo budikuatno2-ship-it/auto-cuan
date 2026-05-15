@@ -256,9 +256,118 @@
     </div>
 </div>
 
+<!-- MAINTENANCE SCREEN -->
+<div id="maintenanceScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
+    <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
+        <div class="text-5xl">🛠️</div>
+        <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
+        <p class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses pada pukul 22:00–06:00 WIB.</p>
+        <p class="text-sm text-gray-300">Silakan kembali lagi setelah pukul 06:00 WIB.</p>
+        <p class="text-xs text-gray-600 mt-4">Maintenance dilakukan untuk menjaga performa dan menghemat kuota AI.</p>
+    </div>
+</div>
+
+<!-- ADMIN BYPASS MODAL -->
+<div id="adminBypassModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <h3 class="text-base font-bold text-white text-center">Admin Access</h3>
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Nama</label>
+            <input type="text" id="adminBypassName" placeholder="Nama admin" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Password</label>
+            <input type="password" id="adminBypassPass" placeholder="Password" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doAdminBypass()">
+        </div>
+        <div id="adminBypassError" class="hidden text-sm text-red-400 text-center"></div>
+        <button onclick="doAdminBypass()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Masuk Admin</button>
+        <button onclick="closeAdminBypassModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
+    </div>
+</div>
+
 <script>
+// ===== MAINTENANCE UTILITIES =====
+function getWIBHour() {
+    var parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        hour12: false
+    }).formatToParts(new Date());
+    var hourPart = parts.find(function(p) { return p.type === 'hour'; });
+    return Number(hourPart ? hourPart.value : 0);
+}
+
+function isMaintenanceTime() {
+    var hour = getWIBHour();
+    return hour >= 22 || hour < 6;
+}
+
+function isAdminUser() {
+    var name = (localStorage.getItem('autocuan_user') || '').trim().toLowerCase();
+    var adminFlag = localStorage.getItem('autocuan_is_admin') === 'true';
+    return adminFlag && name === 'budi';
+}
+
+// ===== ADMIN BYPASS SHORTCUT (Ctrl+B then K) =====
+var adminShortcutBuffer = [];
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey) {
+        adminShortcutBuffer.push(e.key.toLowerCase());
+        if (adminShortcutBuffer.length > 5) adminShortcutBuffer = adminShortcutBuffer.slice(-5);
+        var bufStr = adminShortcutBuffer.join('');
+        if (bufStr.indexOf('bk') !== -1 || bufStr.indexOf('b') !== -1 && adminShortcutBuffer[adminShortcutBuffer.length - 1] === 'k') {
+            adminShortcutBuffer = [];
+            openAdminBypassModal();
+        }
+    } else {
+        adminShortcutBuffer = [];
+    }
+});
+
+function openAdminBypassModal() {
+    document.getElementById('adminBypassModal').classList.remove('hidden');
+    document.getElementById('adminBypassName').value = '';
+    document.getElementById('adminBypassPass').value = '';
+    document.getElementById('adminBypassError').classList.add('hidden');
+    document.getElementById('adminBypassName').focus();
+}
+
+function closeAdminBypassModal() {
+    document.getElementById('adminBypassModal').classList.add('hidden');
+}
+
+function doAdminBypass() {
+    var name = document.getElementById('adminBypassName').value.trim();
+    var pass = document.getElementById('adminBypassPass').value;
+    var errorEl = document.getElementById('adminBypassError');
+
+    if (name.toLowerCase() === 'budi' && pass === '.') {
+        localStorage.setItem('autocuan_user', 'budi');
+        localStorage.setItem('autocuan_is_admin', 'true');
+        localStorage.setItem('autocuan_login_time', Date.now().toString());
+        // Log admin login silently
+        logLogin('budi', false, true);
+        closeAdminBypassModal();
+        document.getElementById('maintenanceScreen').classList.add('hidden');
+        showDashboard('budi');
+    } else {
+        errorEl.textContent = 'Akses admin salah.';
+        errorEl.classList.remove('hidden');
+    }
+}
+
 // ===== INITIALIZATION =====
 (function init() {
+    // Check maintenance first
+    if (isMaintenanceTime() && !isAdminUser()) {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('dashboardScreen').classList.add('hidden');
+        document.getElementById('maintenanceScreen').classList.remove('hidden');
+        return;
+    }
+
+    // Normal flow
+    document.getElementById('maintenanceScreen').classList.add('hidden');
     const user = localStorage.getItem('autocuan_user');
     if (user) {
         showDashboard(user);
@@ -504,7 +613,7 @@ async function analyzeChart() {
         var response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker: ticker, currentPrice: parseFloat(currentPrice) })
+            body: JSON.stringify({ ticker: ticker, currentPrice: parseFloat(currentPrice), username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' })
         });
 
         var data = await response.json();
@@ -754,7 +863,9 @@ async function analyzeChartUpload() {
             body: JSON.stringify({
                 image: base64Data,
                 mimeType: selectedChartFile.type,
-                source: 'chart_upload'
+                source: 'chart_upload',
+                username: localStorage.getItem('autocuan_user') || '',
+                isAdmin: localStorage.getItem('autocuan_is_admin') === 'true'
             })
         });
 
