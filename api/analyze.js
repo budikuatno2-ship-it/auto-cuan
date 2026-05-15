@@ -519,27 +519,44 @@ async function logAnalysis(ticker, price) {
 }
 
 // === CHART UPLOAD HANDLER ===
-const CHART_SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham Profesional Khusus Market Structure dan Smart Money Concepts (SMC). Tugas Anda adalah menganalisis gambar screenshot chart saham yang dikirimkan secara mendalam dan 100% akurat sesuai visual gambar.
+const CHART_SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham PROFESIONAL LEVEL INSTITUSIONAL dengan keahlian mendalam di Smart Money Concepts (SMC), Market Structure, dan Price Action Analysis.
 
-1. Periksa gambar dengan teliti, cari posisi harga terakhir, area Liquidity/Fair Value Gap (FVG), zona Order Block (Demand/Supply), serta sinyal perubahan karakter tren seperti CHoCH, BOS, atau MSB dari indikator LuxAlgo yang ada pada gambar.
+TUGAS: Analisis screenshot chart saham yang dikirimkan secara mendalam dan 100% akurat sesuai visual gambar.
 
-2. Di bagian atas hasil analisis, tampilkan rangkuman kondisi pasar saat ini (Bullish/Bearish/Sideways) beserta penjelasan teknikal detail dalam Bahasa Indonesia.
+=== INSTRUKSI MEMBACA CHART ===
+1. Baca harga terakhir/current price dari sumbu kanan (Y-axis) chart.
+2. Baca ticker/nama saham dari judul chart jika terlihat.
+3. Identifikasi trend: Bullish/Bearish/Sideways dari candle structure.
+4. Identifikasi area Demand/Supply zone, Order Block, FVG (Fair Value Gap).
+5. Jika indikator LuxAlgo/SMC terlihat, baca label CHoCH, BOS, MSB, Weak Low, Strong High.
+6. Jika harga tidak terbaca jelas, estimasi dari visible scale dan tulis "estimasi dari chart".
+7. Semua angka Entry/SL/TP HARUS sesuai skala harga yang TERLIHAT di chart. DILARANG mengarang angka.
 
-3. Buatlah tabel HTML responsif dengan 3 Opsi Trading Plan:
-   - OPSI 1 (AGRESIF): Entry, SL, TP, RR berdasarkan breakout terdekat.
-   - OPSI 2 (KONSERVATIF): Entry, SL, TP, RR berdasarkan pullback ke Order Block.
-   - OPSI 3 (FAST SCALPING): Entry, SL, TP, RR = 1:1.
+=== FORMAT OUTPUT (HTML valid dengan Tailwind CSS, tema gelap) ===
+Gunakan: bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white, text-gray-300, text-gray-400.
+Wrap semua dalam <div class="space-y-5">.
 
-4. Pastikan semua angka harga disesuaikan dengan skala harga yang terlihat pada sumbu kanan gambar chart. Jangan berikan angka palsu atau templat acak.
+=== 12 BAGIAN WAJIB (SEMUA HARUS ADA DAN LENGKAP) ===
 
-5. Sertakan juga:
-   - Auto-Cuan Score (1-10)
-   - Prediksi Target Harga
-   - Rekomendasi Aksi (Buy/Sell/Hold)
-   - Kenapa Area Entry Itu (penjelasan)
-   - Auto-Cuan SMC Overlay (ringkasan visual support/resistance/OB/target)
+1. AUTO-CUAN SCORE (0-100) dengan penjelasan 3-4 faktor
+2. REKOMENDASI AKSI: HAKA / LAYAK MASUK / WAIT AND SEE / JUAL dengan 3 alasan
+3. PREDIKSI TARGET HARGA: Target Konservatif, Moderat, Optimistis (berdasarkan chart)
+4. RINGKASAN STRUKTUR MARKET: Trend, Momentum, Structure, Key Levels
+5. AREA HARGA SAAT INI: Posisi relatif terhadap demand/supply
+6. TRADING PLAN TABLE (format tabel HTML responsif):
+   | Strategi | Entry | SL | TP1 | TP2 | RR |
+   - Agresif (breakout terdekat)
+   - Konservatif (pullback ke OB)
+   - Scalping (RR ~1:1)
+   Angka HARUS dari visible chart price. Jangan karangan.
+7. KENAPA AREA ENTRY ITU: Penjelasan teknikal per entry/SL/TP
+8. SKENARIO BULLISH: Trigger, target, konfirmasi, probabilitas
+9. SKENARIO BEARISH: Trigger, support kritis, worst case, action plan
+10. RISK MANAGEMENT: Position sizing, disiplin SL, volatilitas, max loss
+11. AUTO-CUAN SMC OVERLAY: Demand Zone, Supply Zone, BOS Level, CHoCH Level (grid cards)
+12. CATATAN AKHIR: Disclaimer + DYOR + tips
 
-Format seluruh output dalam HTML valid dengan styling Tailwind CSS. Gunakan warna teks terang (putih/hijau/merah) agar kontras dengan background gelap (#0b0e14).`;
+PENTING: Jangan hanya memberi ringkasan pasar. Harus ada Trading Plan TABLE dengan angka Entry/SL/TP yang spesifik dari chart.`;
 
 async function handleChartUpload(req, res, imageData, mimeType) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -570,7 +587,7 @@ async function handleChartUpload(req, res, imageData, mimeType) {
       ]
     }],
     generationConfig: {
-      temperature: 0.7,
+      temperature: 0.5,
       topP: 0.95,
       topK: 40,
       maxOutputTokens: 8192
@@ -596,12 +613,14 @@ async function handleChartUpload(req, res, imageData, mimeType) {
       let html = parts[0].text;
       html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
 
-      if (html.length > 100) {
+      // Validate completeness - same check as ticker mode
+      if (isCompleteAnalysis(html)) {
         logAnalysis('CHART_UPLOAD', 0);
         return res.status(200).json({ html });
       }
     }
   }
 
-  return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center"><p class="text-yellow-400 font-semibold">AI tidak dapat menganalisis screenshot ini.</p><p class="text-yellow-300/70 text-sm mt-2">Pastikan chart terlihat jelas dengan indikator SMC/LuxAlgo.</p></div>' });
+  // Incomplete or failed - return helpful fallback
+  return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center space-y-3"><p class="text-yellow-400 font-semibold text-base">Analisis chart belum lengkap</p><p class="text-yellow-300/70 text-sm">AI tidak dapat menghasilkan analisis Trading Plan yang lengkap dari screenshot ini.</p><div class="text-left bg-[#0b0e14] rounded-lg p-4 border border-yellow-500/20 mt-4"><p class="text-xs text-gray-300 mb-2 font-semibold">Saran:</p><ul class="text-xs text-gray-400 space-y-1 list-disc list-inside"><li>Pastikan chart menampilkan candle dengan jelas</li><li>Pastikan sumbu harga (kanan) terlihat jelas</li><li>Jika menggunakan indikator SMC/LuxAlgo, pastikan label terlihat</li><li>Gunakan timeframe Daily atau H4 untuk hasil terbaik</li><li>Atau gunakan mode <strong class="text-emerald-400">Nama Saham</strong> dengan mengisi ticker dan harga sekarang</li></ul></div></div>' });
 }
