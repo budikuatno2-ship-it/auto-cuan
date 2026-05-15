@@ -401,12 +401,14 @@ async function callAI(payload,container){
     const response=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const html=await response.text();
     if(!response.ok){if(response.status===429){container.innerHTML='<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 text-center"><p class="text-yellow-400 font-semibold">Kuota AI sedang habis</p><p class="text-xs text-gray-400 mt-2">Chart TradingView tetap bisa digunakan.</p></div>';}else{container.innerHTML='<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Gagal menganalisis</p><p class="text-xs text-gray-400 mt-2">'+response.status+' error</p></div>';}return;}
-    container.innerHTML='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in">'+html+'</div><button onclick="copyTradingPlan(this)" class="w-full mt-3 py-2.5 rounded-xl font-medium text-gray-200 bg-dark-700 border border-gray-700 hover:border-emerald-500/50 text-sm flex items-center justify-center gap-1.5">📋 Salin Trading Plan</button>';
+    const hasValidContent=html.includes('Entry')&&html.includes('Take Profit')&&!html.includes('belum lengkap');
+    if(hasValidContent){container.innerHTML='<div id="ai-result-content" class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in space-y-4">'+html+'</div><button onclick="copyTradingPlan()" class="w-full mt-3 py-2.5 rounded-xl font-medium text-gray-200 bg-dark-700 border border-gray-700 hover:border-emerald-500/50 text-sm flex items-center justify-center gap-1.5">📋 Salin Trading Plan</button>';}
+    else{container.innerHTML='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in">'+html+'</div>';}
   }catch(err){container.innerHTML='<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Koneksi gagal</p><p class="text-xs text-gray-400 mt-2">'+err.message+'</p></div>';}
 }
 
 // ===== COPY TRADING PLAN =====
-function copyTradingPlan(btn){const container=btn?btn.previousElementSibling:null;const text=container?container.innerText.trim():'';if(!text){showToast('Tidak ada hasil untuk disalin');return;}navigator.clipboard.writeText(text).then(()=>showToast('Trading plan berhasil disalin')).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('Trading plan berhasil disalin');});}
+function copyTradingPlan(){const el=document.getElementById('ai-result-content');if(!el){showToast('Tidak ada hasil untuk disalin');return;}const text=el.innerText.trim();if(!text){showToast('Tidak ada hasil untuk disalin');return;}navigator.clipboard.writeText(text).then(()=>showToast('Trading plan berhasil disalin')).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('Trading plan berhasil disalin');});}
 
 // ===== UTILS =====
 function formatRupiah(num){if(!num)return'Rp 0';return'Rp '+new Intl.NumberFormat('id-ID').format(Math.round(num));}
