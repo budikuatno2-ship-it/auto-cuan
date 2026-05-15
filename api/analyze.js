@@ -4,8 +4,14 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { ticker, currentPrice } = req.body;
+    const { ticker, currentPrice, image, mimeType, source } = req.body || {};
 
+    // === CHART UPLOAD MODE ===
+    if (source === 'chart_upload' && image) {
+      return await handleChartUpload(req, res, image, mimeType);
+    }
+
+    // === TICKER MODE ===
     if (!ticker || !currentPrice) {
       return res.status(400).json({ error: 'Ticker dan harga sekarang wajib diisi.' });
     }
@@ -275,4 +281,92 @@ async function logAnalysis(ticker, price) {
       })
     });
   } catch (e) { /* silent */ }
+}
+
+// === CHART UPLOAD HANDLER ===
+const CHART_SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham Profesional Khusus Market Structure dan Smart Money Concepts (SMC). Tugas Anda adalah menganalisis gambar screenshot chart saham yang dikirimkan secara mendalam dan 100% akurat sesuai visual gambar.
+
+1. Periksa gambar dengan teliti, cari posisi harga terakhir, area Liquidity/Fair Value Gap (FVG), zona Order Block (Demand/Supply), serta sinyal perubahan karakter tren seperti CHoCH, BOS, atau MSB dari indikator LuxAlgo yang ada pada gambar.
+
+2. Di bagian atas hasil analisis, tampilkan rangkuman kondisi pasar saat ini (Bullish/Bearish/Sideways) beserta penjelasan teknikal detail dalam Bahasa Indonesia.
+
+3. Buatlah tabel HTML responsif dengan 3 Opsi Trading Plan:
+   - OPSI 1 (AGRESIF): Entry, SL, TP, RR berdasarkan breakout terdekat.
+   - OPSI 2 (KONSERVATIF): Entry, SL, TP, RR berdasarkan pullback ke Order Block.
+   - OPSI 3 (FAST SCALPING): Entry, SL, TP, RR = 1:1.
+
+4. Pastikan semua angka harga disesuaikan dengan skala harga yang terlihat pada sumbu kanan gambar chart. Jangan berikan angka palsu atau templat acak.
+
+5. Sertakan juga:
+   - Auto-Cuan Score (1-10)
+   - Prediksi Target Harga
+   - Rekomendasi Aksi (Buy/Sell/Hold)
+   - Kenapa Area Entry Itu (penjelasan)
+   - Auto-Cuan SMC Overlay (ringkasan visual support/resistance/OB/target)
+
+Format seluruh output dalam HTML valid dengan styling Tailwind CSS. Gunakan warna teks terang (putih/hijau/merah) agar kontras dengan background gelap (#0b0e14).`;
+
+async function handleChartUpload(req, res, imageData, mimeType) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+  if (!GEMINI_API_KEY) {
+    return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center"><p class="text-yellow-400 font-semibold">Gemini API belum dikonfigurasi.</p><p class="text-yellow-300/70 text-sm mt-2">Hubungi admin untuk mengaktifkan fitur analisis chart.</p></div>' });
+  }
+
+  // Strip data URI prefix if present
+  let base64Data = imageData;
+  if (base64Data.includes(',')) {
+    base64Data = base64Data.split(',')[1];
+  }
+
+  const GEMINI_MODEL = 'gemini-2.5-flash';
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+  const payload = {
+    contents: [{
+      parts: [
+        { text: CHART_SYSTEM_PROMPT },
+        {
+          inline_data: {
+            mime_type: mimeType || 'image/png',
+            data: base64Data
+          }
+        }
+      ]
+    }],
+    generationConfig: {
+      temperature: 0.7,
+      topP: 0.95,
+      topK: 40,
+      maxOutputTokens: 8192
+    }
+  };
+
+  const response = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    return res.status(200).json({ html: '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold">Gemini API error.</p><p class="text-red-300/70 text-sm mt-2">Coba lagi dalam beberapa saat.</p></div>' });
+  }
+
+  const result = await response.json();
+  const candidates = result.candidates || [];
+
+  if (candidates.length > 0) {
+    const parts = candidates[0].content?.parts || [];
+    if (parts.length > 0 && parts[0].text) {
+      let html = parts[0].text;
+      html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+
+      if (html.length > 100) {
+        logAnalysis('CHART_UPLOAD', 0);
+        return res.status(200).json({ html });
+      }
+    }
+  }
+
+  return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center"><p class="text-yellow-400 font-semibold">AI tidak dapat menganalisis screenshot ini.</p><p class="text-yellow-300/70 text-sm mt-2">Pastikan chart terlihat jelas dengan indikator SMC/LuxAlgo.</p></div>' });
 }

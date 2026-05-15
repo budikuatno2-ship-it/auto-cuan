@@ -141,21 +141,47 @@
             <h2 class="text-sm font-semibold text-gray-300">AI Analysis - Smart Money Concepts</h2>
         </div>
         <div class="p-4 sm:p-6 space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1.5">Ticker Saham</label>
-                    <input type="text" id="tickerInput" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm uppercase">
+            <!-- MODE TABS -->
+            <div class="grid grid-cols-2 gap-2 w-full rounded-2xl border border-gray-800 bg-[#0b0e14] p-2">
+                <button id="tabChart" onclick="switchTab('chart')" class="w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition">📊 Pindai Chart</button>
+                <button id="tabTicker" onclick="switchTab('ticker')" class="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition">🔍 Nama Saham</button>
+            </div>
+
+            <!-- NAMA SAHAM MODE -->
+            <div id="modeTickerPanel" class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Ticker Saham</label>
+                        <input type="text" id="tickerInput" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Harga Sekarang</label>
+                        <input type="number" id="priceInput" placeholder="Contoh: 9250" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1.5">Harga Sekarang</label>
-                    <input type="number" id="priceInput" placeholder="Contoh: 9250" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
+                <button id="analyzeBtn" onclick="analyzeChart()" class="w-full sm:w-auto px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    Mulai Analisis
+                </button>
+            </div>
+
+            <!-- PINDAI CHART MODE -->
+            <div id="modeChartPanel" class="hidden space-y-4">
+                <input id="chartFileInput" type="file" accept="image/*" class="hidden" onchange="handleChartFile(event)">
+                <label for="chartFileInput" id="chartUploadLabel" class="w-full rounded-2xl border-2 border-dashed border-gray-700 bg-[#0b0e14] px-4 py-8 text-center text-gray-300 hover:border-emerald-500 hover:bg-emerald-500/5 transition cursor-pointer flex flex-col items-center justify-center gap-2">
+                    <span class="text-3xl">📊</span>
+                    <span class="text-sm font-black text-gray-100">Pilih Screenshot Chart</span>
+                    <span class="text-xs text-gray-500">PNG, JPG, WebP • Maks 20MB</span>
+                </label>
+                <img id="chartPreviewImage" class="hidden w-full max-h-[280px] sm:max-h-[420px] object-contain rounded-2xl border border-gray-800 bg-[#0b0e14]" alt="Chart Preview">
+                <p class="text-xs text-gray-500">Upload screenshot chart dari TradingView. Jika ingin analisis LuxAlgo/SMC, pastikan indikator sudah terlihat di screenshot.</p>
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button id="resetChartBtn" onclick="resetChartUpload()" class="w-full sm:w-auto rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Hapus & Unggah Ulang</button>
+                    <button id="analyzeChartBtn" onclick="analyzeChartUpload()" class="w-full sm:w-auto rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20">Mulai Analisis Chart</button>
                 </div>
             </div>
+
             <div id="limitWarning" class="hidden text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 text-center"></div>
-            <button id="analyzeBtn" onclick="analyzeChart()" class="w-full sm:w-auto px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                Mulai Analisis
-            </button>
         </div>
     </div>
 </section>
@@ -486,6 +512,133 @@ function updateTvHeight() {
 }
 window.addEventListener('resize', updateTvHeight);
 updateTvHeight();
+
+// ===== TAB SWITCHING =====
+var currentTab = 'ticker';
+function switchTab(tab) {
+    currentTab = tab;
+    var tabChart = document.getElementById('tabChart');
+    var tabTicker = document.getElementById('tabTicker');
+    var modeChart = document.getElementById('modeChartPanel');
+    var modeTicker = document.getElementById('modeTickerPanel');
+
+    if (tab === 'chart') {
+        tabChart.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
+        tabTicker.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
+        modeChart.classList.remove('hidden');
+        modeTicker.classList.add('hidden');
+    } else {
+        tabTicker.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
+        tabChart.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
+        modeTicker.classList.remove('hidden');
+        modeChart.classList.add('hidden');
+    }
+}
+
+// ===== CHART UPLOAD =====
+var selectedChartFile = null;
+
+function handleChartFile(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    var validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+        alert('Format file tidak didukung. Gunakan PNG, JPG, atau WebP.');
+        return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+        alert('Ukuran file terlalu besar. Maksimal 20MB.');
+        return;
+    }
+
+    selectedChartFile = file;
+    var preview = document.getElementById('chartPreviewImage');
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove('hidden');
+    document.getElementById('chartUploadLabel').classList.add('hidden');
+}
+
+function resetChartUpload() {
+    selectedChartFile = null;
+    var preview = document.getElementById('chartPreviewImage');
+    preview.src = '';
+    preview.classList.add('hidden');
+    document.getElementById('chartUploadLabel').classList.remove('hidden');
+    document.getElementById('chartFileInput').value = '';
+}
+
+async function analyzeChartUpload() {
+    var limitWarning = document.getElementById('limitWarning');
+    var user = localStorage.getItem('autocuan_user');
+
+    if (user === 'guest') {
+        alert('Login diperlukan untuk menggunakan fitur AI.');
+        return;
+    }
+    if (!selectedChartFile) {
+        alert('Pilih screenshot chart terlebih dahulu.');
+        return;
+    }
+    if (!checkUsageLimit()) {
+        limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
+        limitWarning.classList.remove('hidden');
+        return;
+    }
+    limitWarning.classList.add('hidden');
+
+    // Show loading
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('resultSection').classList.add('hidden');
+    document.getElementById('analyzeChartBtn').disabled = true;
+
+    try {
+        // Convert to base64
+        var base64Data = await fileToBase64(selectedChartFile);
+
+        var response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image: base64Data,
+                mimeType: selectedChartFile.type,
+                source: 'chart_upload'
+            })
+        });
+
+        var data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Terjadi kesalahan pada server.');
+        }
+
+        if (data.html) {
+            var html = data.html;
+            html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+            document.getElementById('resultContent').innerHTML = html;
+            document.getElementById('resultSection').classList.remove('hidden');
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            addUsageRecord();
+        } else {
+            throw new Error('Tidak ada hasil analisis dari AI.');
+        }
+    } catch(error) {
+        document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal Menganalisis Chart</p><p class="text-red-300/70 text-sm">' + error.message + '</p><button onclick="analyzeChartUpload()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">Coba Lagi</button></div>';
+        document.getElementById('resultSection').classList.remove('hidden');
+    } finally {
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('analyzeChartBtn').disabled = false;
+    }
+}
+
+function fileToBase64(file) {
+    return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function(e) { resolve(e.target.result); };
+        reader.onerror = function(e) { reject(new Error('Gagal membaca file.')); };
+        reader.readAsDataURL(file);
+    });
+}
 </script>
 </body>
 </html>
