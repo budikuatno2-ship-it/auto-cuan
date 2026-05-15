@@ -65,6 +65,7 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <button onclick="switchPage('chart')" data-nav="chart" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Chart</button>
 <button onclick="switchPage('portfolio')" data-nav="portfolio" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Portfolio</button>
 <button onclick="switchPage('watchlist')" data-nav="watchlist" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Watchlist</button>
+<button onclick="switchPage('journal')" data-nav="journal" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">Journal</button>
 <button onclick="switchPage('ai')" data-nav="ai" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-dark-700 transition-colors">AI</button>
 </nav>
 <span class="hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium">v1 Beta</span>
@@ -111,10 +112,11 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <div id="tradingview-widget" class="w-full h-full"></div>
 </div>
 </div>
-<div id="chart-ai-section" class="hidden">
-<button onclick="analyzeCurrentTicker()" id="chart-ai-btn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald text-sm flex items-center justify-center gap-2">
-<span>🤖</span> Analisis AI Saham Ini
-</button>
+<div id="chart-ai-section" class="hidden space-y-2">
+<div class="flex gap-2">
+<button onclick="openFullscreenChart()" class="flex-1 py-2.5 rounded-xl font-medium text-gray-200 bg-dark-700 border border-gray-700 hover:border-emerald-500/50 text-sm flex items-center justify-center gap-1.5">📱 Fullscreen</button>
+<button onclick="analyzeCurrentTicker()" id="chart-ai-btn" class="flex-1 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald text-sm flex items-center justify-center gap-1.5">🤖 Analisis AI</button>
+</div>
 </div>
 <div id="analysis-output-container" class="w-full space-y-4 pb-8"></div>
 </div>
@@ -160,8 +162,53 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 <div id="watchlist-list" class="space-y-2"></div>
 </div>
 
+<!-- JOURNAL PAGE -->
+<div id="page-journal" class="page hidden space-y-4">
+<div class="flex items-center justify-between">
+<h2 class="text-lg font-bold text-white">Trading Journal</h2>
+<div class="flex gap-2">
+<button onclick="exportJournal()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Export</button>
+<button onclick="document.getElementById('import-journal-input').click()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Import</button>
+<input id="import-journal-input" type="file" accept=".json" class="hidden" onchange="importJournal(event)">
+</div>
+</div>
+<!-- Journal Summary -->
+<div class="grid grid-cols-3 gap-3">
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-3 text-center"><p class="text-[10px] text-gray-500 uppercase">Trades</p><p id="journal-total-trades" class="text-lg font-bold text-white mt-0.5">0</p></div>
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-3 text-center"><p class="text-[10px] text-gray-500 uppercase">Win Rate</p><p id="journal-win-rate" class="text-lg font-bold text-emerald-400 mt-0.5">0%</p></div>
+<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-3 text-center"><p class="text-[10px] text-gray-500 uppercase">Total P/L</p><p id="journal-total-pl" class="text-lg font-bold text-white mt-0.5">Rp 0</p></div>
+</div>
+<button onclick="showJournalForm()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald text-sm">+ Catat Trade</button>
+<div id="journal-form-container" class="hidden bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-3">
+<input id="jn-ticker" type="text" placeholder="Kode Saham" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+<div class="grid grid-cols-2 gap-3">
+<input id="jn-buy" type="number" placeholder="Harga Beli" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+<input id="jn-sell" type="number" placeholder="Harga Jual" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+</div>
+<div class="grid grid-cols-2 gap-3">
+<input id="jn-lot" type="number" placeholder="Lot" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+<input id="jn-date" type="date" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+</div>
+<input id="jn-note" type="text" placeholder="Catatan (opsional)" class="w-full px-3 py-2.5 rounded-lg bg-dark-700 border border-gray-700 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500/50">
+<input id="jn-edit-id" type="hidden" value="">
+<div class="flex gap-2">
+<button onclick="saveJournalItem()" class="flex-1 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold">Simpan</button>
+<button onclick="hideJournalForm()" class="px-4 py-2.5 rounded-lg bg-dark-700 text-gray-300 text-sm border border-gray-700">Batal</button>
+</div>
+</div>
+<div id="journal-list" class="space-y-3"></div>
+</div>
+
 <!-- AI PAGE -->
 <div id="page-ai" class="page hidden space-y-4">
+<!-- AI Mode Toggle -->
+<div class="flex items-center gap-3 bg-dark-800/60 rounded-xl border border-gray-800/50 p-3">
+<span class="text-xs text-gray-400">Mode AI:</span>
+<div class="flex gap-1 flex-1">
+<button onclick="setAIMode('cepat')" id="ai-mode-cepat" class="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white bg-emerald-600 transition-colors">Cepat</button>
+<button onclick="setAIMode('detail')" id="ai-mode-detail" class="flex-1 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition-colors">Detail</button>
+</div>
+</div>
 <div class="flex gap-2 bg-dark-800/60 rounded-xl border border-gray-800/50 p-1">
 <button onclick="switchAITab('scan')" id="ai-tab-scan" class="flex-1 py-2 rounded-lg text-xs font-semibold text-white bg-emerald-600 transition-colors">Pindai Chart</button>
 <button onclick="switchAITab('ticker')" id="ai-tab-ticker" class="flex-1 py-2 rounded-lg text-xs font-semibold text-gray-400 hover:text-white transition-colors">Nama Saham</button>
@@ -193,458 +240,179 @@ body{background:#0b0e14;font-family:'Inter',-apple-system,BlinkMacSystemFont,san
 </main>
 
 <!-- MOBILE BOTTOM NAV -->
-<nav id="mobile-nav" class="hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0b0e14]/95 backdrop-blur-xl border-t border-gray-800 px-2 py-2 grid grid-cols-5 gap-1 sm:hidden">
+<nav id="mobile-nav" class="hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0b0e14]/95 backdrop-blur-xl border-t border-gray-800 px-2 py-2 grid grid-cols-6 gap-0.5 sm:hidden">
 <button onclick="switchPage('home')" data-nav="home" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-<span class="text-[10px]">Home</span>
+<span class="text-[9px]">Home</span>
 </button>
 <button onclick="switchPage('chart')" data-nav="chart" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
-<span class="text-[10px]">Chart</span>
+<span class="text-[9px]">Chart</span>
 </button>
 <button onclick="switchPage('portfolio')" data-nav="portfolio" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-<span class="text-[10px]">Portfolio</span>
+<span class="text-[9px]">Portfolio</span>
 </button>
 <button onclick="switchPage('watchlist')" data-nav="watchlist" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-<span class="text-[10px]">Watchlist</span>
+<span class="text-[9px]">Watch</span>
+</button>
+<button onclick="switchPage('journal')" data-nav="journal" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+<span class="text-[9px]">Journal</span>
 </button>
 <button onclick="switchPage('ai')" data-nav="ai" class="mob-nav flex flex-col items-center gap-0.5 py-1 rounded-lg text-gray-500">
 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-<span class="text-[10px]">AI</span>
+<span class="text-[9px]">AI</span>
 </button>
 </nav>
+
+<!-- FULLSCREEN CHART OVERLAY -->
+<div id="fullscreen-chart" class="hidden fixed inset-0 z-[90] bg-[#0b0e14] flex flex-col">
+<div class="flex items-center justify-between px-4 py-2 border-b border-gray-800">
+<span id="fullscreen-ticker" class="text-sm font-bold text-emerald-400"></span>
+<button onclick="closeFullscreenChart()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-dark-700 text-gray-300 border border-gray-700">✕ Tutup</button>
+</div>
+<div id="fullscreen-tv-widget" class="flex-1 w-full"></div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[200] hidden">
+<div class="bg-emerald-600 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+<span id="toast-msg">Berhasil</span>
+</div>
+</div>
 
 
 <!-- JAVASCRIPT -->
 <script>
 // ===== STATE =====
-let currentPage = 'home';
-let currentTicker = '';
-let tvScriptLoaded = false;
-let tvWidget = null;
-let aiImageBase64 = null;
-let aiImageMime = null;
+let currentPage='home',currentTicker='',tvScriptLoaded=false,tvWidget=null,aiImageBase64=null,aiImageMime=null,aiMode='cepat';
 
-// ===== WELCOME / ENTRY =====
-function enterApp() {
-  localStorage.setItem('autocuan_entered', 'true');
-  document.getElementById('welcome-screen').classList.add('hidden');
-  document.getElementById('app-header').classList.remove('hidden');
-  document.getElementById('app-main').classList.remove('hidden');
-  document.getElementById('mobile-nav').classList.remove('hidden');
-  switchPage('home');
-}
+// ===== TOAST =====
+function showToast(msg){const t=document.getElementById('toast');document.getElementById('toast-msg').textContent=msg;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),2500);}
 
-function checkEntry() {
-  if (localStorage.getItem('autocuan_entered') === 'true') {
-    enterApp();
-  }
-}
+// ===== WELCOME =====
+function enterApp(){localStorage.setItem('autocuan_entered','true');document.getElementById('welcome-screen').classList.add('hidden');document.getElementById('app-header').classList.remove('hidden');document.getElementById('app-main').classList.remove('hidden');document.getElementById('mobile-nav').classList.remove('hidden');switchPage('home');}
+function checkEntry(){if(localStorage.getItem('autocuan_entered')==='true')enterApp();}
 
 // ===== NAVIGATION =====
-function switchPage(page) {
-  currentPage = page;
-  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
-  const target = document.getElementById('page-' + page);
-  if (target) target.classList.remove('hidden');
-  // Update nav highlights
-  document.querySelectorAll('.nav-tab').forEach(t => {
-    t.classList.remove('bg-dark-700', 'text-white');
-    t.classList.add('text-gray-400');
-  });
-  document.querySelectorAll('.mob-nav').forEach(t => {
-    t.classList.remove('text-emerald-400');
-    t.classList.add('text-gray-500');
-  });
-  document.querySelectorAll(`[data-nav="${page}"]`).forEach(t => {
-    t.classList.add('text-emerald-400', 'bg-dark-700', 'text-white');
-    t.classList.remove('text-gray-400', 'text-gray-500');
-  });
-  // Refresh data
-  if (page === 'home') updateHomeSummary();
-  if (page === 'portfolio') renderPortfolio();
-  if (page === 'watchlist') renderWatchlist();
+function switchPage(page){
+  currentPage=page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+  const target=document.getElementById('page-'+page);if(target)target.classList.remove('hidden');
+  document.querySelectorAll('.nav-tab').forEach(t=>{t.classList.remove('bg-dark-700','text-white');t.classList.add('text-gray-400');});
+  document.querySelectorAll('.mob-nav').forEach(t=>{t.classList.remove('text-emerald-400');t.classList.add('text-gray-500');});
+  document.querySelectorAll('[data-nav="'+page+'"]').forEach(t=>{t.classList.add('text-emerald-400','bg-dark-700','text-white');t.classList.remove('text-gray-400','text-gray-500');});
+  if(page==='home')updateHomeSummary();if(page==='portfolio')renderPortfolio();if(page==='watchlist')renderWatchlist();if(page==='journal')renderJournal();
 }
 
 // ===== HOME =====
-function updateHomeSummary() {
-  const portfolio = loadPortfolio();
-  const watchlist = loadWatchlist();
-  document.getElementById('home-total-pos').textContent = portfolio.length;
-  let totalLot = 0, totalModal = 0;
-  portfolio.forEach(p => { totalLot += (p.lot || 0); totalModal += (p.avg || 0) * (p.lot || 0) * 100; });
-  document.getElementById('home-total-lot').textContent = totalLot;
-  document.getElementById('home-total-modal').textContent = formatRupiah(totalModal);
-  document.getElementById('home-watchlist-count').textContent = watchlist.length;
-}
-
-function homeOpenChart() {
-  const ticker = document.getElementById('home-ticker-input').value.trim().toUpperCase();
-  if (!ticker) return;
-  document.getElementById('chart-ticker-input').value = ticker;
-  switchPage('chart');
-  loadTradingViewChart(ticker);
-}
+function updateHomeSummary(){const p=loadPortfolio(),w=loadWatchlist();document.getElementById('home-total-pos').textContent=p.length;let tl=0,tm=0;p.forEach(x=>{tl+=(x.lot||0);tm+=(x.avg||0)*(x.lot||0)*100;});document.getElementById('home-total-lot').textContent=tl;document.getElementById('home-total-modal').textContent=formatRupiah(tm);document.getElementById('home-watchlist-count').textContent=w.length;}
+function homeOpenChart(){const t=document.getElementById('home-ticker-input').value.trim().toUpperCase();if(!t)return;document.getElementById('chart-ticker-input').value=t;switchPage('chart');loadTradingViewChart(t);}
 
 // ===== CHART =====
-function preloadTradingViewScript() {
-  if (tvScriptLoaded) return;
-  const s = document.createElement('script');
-  s.src = 'https://s3.tradingview.com/tv.js';
-  s.onload = () => { tvScriptLoaded = true; };
-  document.head.appendChild(s);
-}
-
-function openChart() {
-  const ticker = document.getElementById('chart-ticker-input').value.trim().toUpperCase();
-  if (!ticker) return;
-  loadTradingViewChart(ticker);
-}
-
-function loadTradingViewChart(ticker) {
-  currentTicker = ticker;
-  const container = document.getElementById('tradingview-widget');
-  const skeleton = document.getElementById('chart-skeleton');
-  container.innerHTML = '';
-  skeleton.innerHTML = '<div class="skeleton w-full h-full rounded-lg"></div>';
-
-  const symbol = 'IDX:' + ticker;
-
-  function createWidget() {
-    skeleton.innerHTML = '';
-    container.innerHTML = '';
-    try {
-      tvWidget = new TradingView.widget({
-        autosize: true,
-        symbol: symbol,
-        interval: 'D',
-        timezone: 'Asia/Jakarta',
-        theme: 'dark',
-        style: '1',
-        locale: 'id',
-        toolbar_bg: '#0b0e14',
-        enable_publishing: false,
-        hide_top_toolbar: false,
-        hide_side_toolbar: window.innerWidth < 640,
-        allow_symbol_change: true,
-        save_image: false,
-        container_id: 'tradingview-widget'
-      });
-    } catch(e) {
-      skeleton.innerHTML = '<p class="text-sm text-red-400">Gagal memuat chart. Coba refresh.</p>';
-    }
-  }
-
-  if (tvScriptLoaded && window.TradingView) {
-    createWidget();
-  } else {
-    const s = document.createElement('script');
-    s.src = 'https://s3.tradingview.com/tv.js';
-    s.onload = () => { tvScriptLoaded = true; createWidget(); };
-    s.onerror = () => { skeleton.innerHTML = '<p class="text-sm text-red-400">Gagal memuat TradingView.</p>'; };
-    document.head.appendChild(s);
-  }
-
+function preloadTradingViewScript(){if(tvScriptLoaded)return;const s=document.createElement('script');s.src='https://s3.tradingview.com/tv.js';s.onload=()=>{tvScriptLoaded=true;};document.head.appendChild(s);}
+function openChart(){const t=document.getElementById('chart-ticker-input').value.trim().toUpperCase();if(!t)return;loadTradingViewChart(t);}
+function loadTradingViewChart(ticker){
+  currentTicker=ticker;const container=document.getElementById('tradingview-widget'),skeleton=document.getElementById('chart-skeleton');
+  container.innerHTML='';skeleton.innerHTML='<div class="skeleton w-full h-full rounded-lg"></div>';
+  const symbol='IDX:'+ticker;
+  function createWidget(){skeleton.innerHTML='';container.innerHTML='';try{tvWidget=new TradingView.widget({autosize:true,symbol,interval:'D',timezone:'Asia/Jakarta',theme:'dark',style:'1',locale:'id',toolbar_bg:'#0b0e14',enable_publishing:false,hide_top_toolbar:false,hide_side_toolbar:window.innerWidth<640,allow_symbol_change:true,save_image:false,container_id:'tradingview-widget'});}catch(e){skeleton.innerHTML='<p class="text-sm text-red-400">Gagal memuat chart.</p>';}}
+  if(tvScriptLoaded&&window.TradingView){createWidget();}else{const s=document.createElement('script');s.src='https://s3.tradingview.com/tv.js';s.onload=()=>{tvScriptLoaded=true;createWidget();};s.onerror=()=>{skeleton.innerHTML='<p class="text-sm text-red-400">Gagal memuat TradingView.</p>';};document.head.appendChild(s);}
   document.getElementById('chart-ai-section').classList.remove('hidden');
 }
+function analyzeCurrentTicker(){if(!currentTicker)return;callAI({ticker:currentTicker},document.getElementById('analysis-output-container'));}
 
-function analyzeCurrentTicker() {
-  if (!currentTicker) return;
-  callAI({ ticker: currentTicker }, document.getElementById('analysis-output-container'));
-}
+// ===== FULLSCREEN CHART =====
+function openFullscreenChart(){if(!currentTicker)return;const o=document.getElementById('fullscreen-chart'),c=document.getElementById('fullscreen-tv-widget');document.getElementById('fullscreen-ticker').textContent='IDX:'+currentTicker;o.classList.remove('hidden');c.innerHTML='';if(tvScriptLoaded&&window.TradingView){new TradingView.widget({autosize:true,symbol:'IDX:'+currentTicker,interval:'D',timezone:'Asia/Jakarta',theme:'dark',style:'1',locale:'id',toolbar_bg:'#0b0e14',enable_publishing:false,hide_top_toolbar:false,hide_side_toolbar:false,allow_symbol_change:true,save_image:false,container_id:'fullscreen-tv-widget'});}}
+function closeFullscreenChart(){document.getElementById('fullscreen-chart').classList.add('hidden');document.getElementById('fullscreen-tv-widget').innerHTML='';}
 
 // ===== PORTFOLIO =====
-function loadPortfolio() {
-  try { return JSON.parse(localStorage.getItem('autocuan_portfolio')) || []; } catch(e) { return []; }
+function loadPortfolio(){try{return JSON.parse(localStorage.getItem('autocuan_portfolio'))||[];}catch(e){return[];}}
+function savePortfolio(data){localStorage.setItem('autocuan_portfolio',JSON.stringify(data));}
+function renderPortfolio(){
+  const list=document.getElementById('portfolio-list'),portfolio=loadPortfolio();
+  if(!portfolio.length){list.innerHTML='<p class="text-sm text-gray-500 text-center py-6">Belum ada posisi.</p>';return;}
+  list.innerHTML=portfolio.map(item=>`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2 fade-in"><div class="flex items-center justify-between"><span class="text-sm font-bold text-emerald-400">${item.ticker}</span><span class="text-xs text-gray-500">${item.note||''}</span></div><div class="grid grid-cols-3 gap-2 text-xs"><div><span class="text-gray-500">Avg</span><p class="text-white font-medium">${formatRupiah(item.avg)}</p></div><div><span class="text-gray-500">Lot</span><p class="text-white font-medium">${item.lot}</p></div><div><span class="text-gray-500">Modal</span><p class="text-emerald-400 font-medium">${formatRupiah(item.avg*item.lot*100)}</p></div></div>${item.target?'<div class="text-xs"><span class="text-gray-500">Target: </span><span class="text-green-400">'+formatRupiah(item.target)+'</span></div>':''}${item.stopLoss?'<div class="text-xs"><span class="text-gray-500">SL: </span><span class="text-red-400">'+formatRupiah(item.stopLoss)+'</span></div>':''}<div class="flex flex-wrap gap-2 pt-2"><button onclick="portfolioChart('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button><button onclick="portfolioAI('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button><button onclick="editPortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Edit</button><button onclick="deletePortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">Hapus</button></div></div>`).join('');
 }
-
-function savePortfolio(data) {
-  localStorage.setItem('autocuan_portfolio', JSON.stringify(data));
-}
-
-function renderPortfolio() {
-  const list = document.getElementById('portfolio-list');
-  const portfolio = loadPortfolio();
-  if (portfolio.length === 0) {
-    list.innerHTML = '<p class="text-sm text-gray-500 text-center py-6">Belum ada posisi. Tambahkan saham pertamamu.</p>';
-    return;
-  }
-  list.innerHTML = portfolio.map(item => `
-    <div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2 fade-in">
-      <div class="flex items-center justify-between">
-        <span class="text-sm font-bold text-emerald-400">${item.ticker}</span>
-        <span class="text-xs text-gray-500">${item.note || ''}</span>
-      </div>
-      <div class="grid grid-cols-3 gap-2 text-xs">
-        <div><span class="text-gray-500">Avg</span><p class="text-white font-medium">${formatRupiah(item.avg)}</p></div>
-        <div><span class="text-gray-500">Lot</span><p class="text-white font-medium">${item.lot}</p></div>
-        <div><span class="text-gray-500">Modal</span><p class="text-emerald-400 font-medium">${formatRupiah(item.avg * item.lot * 100)}</p></div>
-      </div>
-      ${item.target ? `<div class="text-xs"><span class="text-gray-500">Target: </span><span class="text-green-400">${formatRupiah(item.target)}</span></div>` : ''}
-      ${item.stopLoss ? `<div class="text-xs"><span class="text-gray-500">SL: </span><span class="text-red-400">${formatRupiah(item.stopLoss)}</span></div>` : ''}
-      <div class="flex flex-wrap gap-2 pt-2">
-        <button onclick="portfolioChart('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button>
-        <button onclick="portfolioAI('${item.ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button>
-        <button onclick="editPortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Edit</button>
-        <button onclick="deletePortfolioItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">Hapus</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function showPortfolioForm() {
-  document.getElementById('portfolio-form-container').classList.remove('hidden');
-  document.getElementById('pf-edit-id').value = '';
-  document.getElementById('pf-ticker').value = '';
-  document.getElementById('pf-avg').value = '';
-  document.getElementById('pf-lot').value = '';
-  document.getElementById('pf-target').value = '';
-  document.getElementById('pf-sl').value = '';
-  document.getElementById('pf-note').value = '';
-}
-
-function hidePortfolioForm() {
-  document.getElementById('portfolio-form-container').classList.add('hidden');
-}
-
-function savePortfolioItem() {
-  const editId = document.getElementById('pf-edit-id').value;
-  const ticker = document.getElementById('pf-ticker').value.trim().toUpperCase();
-  const avg = parseFloat(document.getElementById('pf-avg').value) || 0;
-  const lot = parseInt(document.getElementById('pf-lot').value) || 0;
-  const target = parseFloat(document.getElementById('pf-target').value) || null;
-  const stopLoss = parseFloat(document.getElementById('pf-sl').value) || null;
-  const note = document.getElementById('pf-note').value.trim();
-  if (!ticker || !avg || !lot) { alert('Kode saham, Avg Price, dan Lot wajib diisi.'); return; }
-  let portfolio = loadPortfolio();
-  if (editId) {
-    portfolio = portfolio.map(p => p.id === parseInt(editId) ? { ...p, ticker, avg, lot, target, stopLoss, note } : p);
-  } else {
-    portfolio.push({ id: Date.now(), ticker, avg, lot, target, stopLoss, note, createdAt: new Date().toISOString() });
-  }
-  savePortfolio(portfolio);
-  hidePortfolioForm();
-  renderPortfolio();
-}
-
-function editPortfolioItem(id) {
-  const portfolio = loadPortfolio();
-  const item = portfolio.find(p => p.id === id);
-  if (!item) return;
-  document.getElementById('pf-edit-id').value = item.id;
-  document.getElementById('pf-ticker').value = item.ticker;
-  document.getElementById('pf-avg').value = item.avg;
-  document.getElementById('pf-lot').value = item.lot;
-  document.getElementById('pf-target').value = item.target || '';
-  document.getElementById('pf-sl').value = item.stopLoss || '';
-  document.getElementById('pf-note').value = item.note || '';
-  document.getElementById('portfolio-form-container').classList.remove('hidden');
-}
-
-function deletePortfolioItem(id) {
-  if (!confirm('Hapus posisi ini?')) return;
-  let portfolio = loadPortfolio();
-  portfolio = portfolio.filter(p => p.id !== id);
-  savePortfolio(portfolio);
-  renderPortfolio();
-}
-
-function portfolioChart(ticker) {
-  document.getElementById('chart-ticker-input').value = ticker;
-  switchPage('chart');
-  loadTradingViewChart(ticker);
-}
-
-function portfolioAI(ticker) {
-  switchPage('chart');
-  document.getElementById('chart-ticker-input').value = ticker;
-  loadTradingViewChart(ticker);
-  setTimeout(() => callAI({ ticker }, document.getElementById('analysis-output-container')), 500);
-}
-
-function exportPortfolio() {
-  const data = loadPortfolio();
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'autocuan_portfolio.json'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-function importPortfolio(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-      if (Array.isArray(data)) { savePortfolio(data); renderPortfolio(); alert('Portfolio berhasil di-import!'); }
-      else alert('Format file tidak valid.');
-    } catch(err) { alert('Gagal membaca file.'); }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
+function showPortfolioForm(){document.getElementById('portfolio-form-container').classList.remove('hidden');['pf-edit-id','pf-ticker','pf-avg','pf-lot','pf-target','pf-sl','pf-note'].forEach(id=>document.getElementById(id).value='');}
+function hidePortfolioForm(){document.getElementById('portfolio-form-container').classList.add('hidden');}
+function savePortfolioItem(){const editId=document.getElementById('pf-edit-id').value,ticker=document.getElementById('pf-ticker').value.trim().toUpperCase(),avg=parseFloat(document.getElementById('pf-avg').value)||0,lot=parseInt(document.getElementById('pf-lot').value)||0,target=parseFloat(document.getElementById('pf-target').value)||null,stopLoss=parseFloat(document.getElementById('pf-sl').value)||null,note=document.getElementById('pf-note').value.trim();if(!ticker||!avg||!lot){alert('Kode saham, Avg Price, dan Lot wajib diisi.');return;}let p=loadPortfolio();if(editId){p=p.map(x=>x.id===parseInt(editId)?{...x,ticker,avg,lot,target,stopLoss,note}:x);}else{p.push({id:Date.now(),ticker,avg,lot,target,stopLoss,note,createdAt:new Date().toISOString()});}savePortfolio(p);hidePortfolioForm();renderPortfolio();}
+function editPortfolioItem(id){const item=loadPortfolio().find(p=>p.id===id);if(!item)return;document.getElementById('pf-edit-id').value=item.id;document.getElementById('pf-ticker').value=item.ticker;document.getElementById('pf-avg').value=item.avg;document.getElementById('pf-lot').value=item.lot;document.getElementById('pf-target').value=item.target||'';document.getElementById('pf-sl').value=item.stopLoss||'';document.getElementById('pf-note').value=item.note||'';document.getElementById('portfolio-form-container').classList.remove('hidden');}
+function deletePortfolioItem(id){if(!confirm('Hapus posisi ini?'))return;savePortfolio(loadPortfolio().filter(p=>p.id!==id));renderPortfolio();}
+function portfolioChart(ticker){document.getElementById('chart-ticker-input').value=ticker;switchPage('chart');loadTradingViewChart(ticker);}
+function portfolioAI(ticker){switchPage('chart');document.getElementById('chart-ticker-input').value=ticker;loadTradingViewChart(ticker);setTimeout(()=>callAI({ticker},document.getElementById('analysis-output-container')),500);}
+function exportPortfolio(){const blob=new Blob([JSON.stringify(loadPortfolio(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='autocuan_portfolio.json';a.click();}
+function importPortfolio(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=(e)=>{try{const d=JSON.parse(e.target.result);if(Array.isArray(d)){savePortfolio(d);renderPortfolio();showToast('Portfolio berhasil di-import!');}else alert('Format tidak valid.');}catch(err){alert('Gagal membaca file.');}};r.readAsText(file);event.target.value='';}
 
 // ===== WATCHLIST =====
-function loadWatchlist() {
-  try { return JSON.parse(localStorage.getItem('autocuan_watchlist')) || []; } catch(e) { return []; }
+function loadWatchlist(){try{return JSON.parse(localStorage.getItem('autocuan_watchlist'))||[];}catch(e){return[];}}
+function saveWatchlist(data){localStorage.setItem('autocuan_watchlist',JSON.stringify(data));}
+function renderWatchlist(){
+  const list=document.getElementById('watchlist-list'),wl=loadWatchlist();
+  if(!wl.length){list.innerHTML='<p class="text-sm text-gray-500 text-center py-6">Belum ada saham di watchlist.</p>';return;}
+  list.innerHTML=wl.map((ticker,i)=>`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-3 flex items-center justify-between fade-in"><span class="text-sm font-bold text-emerald-400">${ticker}</span><div class="flex gap-2"><button onclick="watchlistChart('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button><button onclick="watchlistAI('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button><button onclick="removeWatchlistItem(${i})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">✕</button></div></div>`).join('');
 }
+function addWatchlistItem(){const input=document.getElementById('watchlist-input'),ticker=input.value.trim().toUpperCase();if(!ticker)return;const wl=loadWatchlist();if(wl.includes(ticker)){alert('Sudah ada.');return;}wl.push(ticker);saveWatchlist(wl);input.value='';renderWatchlist();}
+function removeWatchlistItem(i){const wl=loadWatchlist();wl.splice(i,1);saveWatchlist(wl);renderWatchlist();}
+function watchlistChart(ticker){document.getElementById('chart-ticker-input').value=ticker;switchPage('chart');loadTradingViewChart(ticker);}
+function watchlistAI(ticker){switchPage('chart');document.getElementById('chart-ticker-input').value=ticker;loadTradingViewChart(ticker);setTimeout(()=>callAI({ticker},document.getElementById('analysis-output-container')),500);}
 
-function saveWatchlist(data) {
-  localStorage.setItem('autocuan_watchlist', JSON.stringify(data));
+// ===== TRADING JOURNAL =====
+function loadJournal(){try{return JSON.parse(localStorage.getItem('autocuan_journal'))||[];}catch(e){return[];}}
+function saveJournalData(data){localStorage.setItem('autocuan_journal',JSON.stringify(data));}
+function renderJournal(){
+  const journal=loadJournal(),total=journal.length;
+  const wins=journal.filter(j=>(j.sell-j.buy)*j.lot*100>0).length;
+  const winRate=total>0?Math.round((wins/total)*100):0;
+  let totalPL=0;journal.forEach(j=>{totalPL+=(j.sell-j.buy)*j.lot*100;});
+  document.getElementById('journal-total-trades').textContent=total;
+  document.getElementById('journal-win-rate').textContent=winRate+'%';
+  const plEl=document.getElementById('journal-total-pl');plEl.textContent=formatRupiah(totalPL);plEl.className='text-lg font-bold mt-0.5 '+(totalPL>=0?'text-emerald-400':'text-red-400');
+  const list=document.getElementById('journal-list');
+  if(!journal.length){list.innerHTML='<p class="text-sm text-gray-500 text-center py-6">Belum ada trade tercatat.</p>';return;}
+  list.innerHTML=journal.sort((a,b)=>b.id-a.id).map(item=>{const pl=(item.sell-item.buy)*item.lot*100;const isWin=pl>=0;return`<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 space-y-2 fade-in"><div class="flex items-center justify-between"><span class="text-sm font-bold text-emerald-400">${item.ticker}</span><span class="text-xs ${isWin?'text-emerald-400':'text-red-400'} font-semibold">${isWin?'+':''}${formatRupiah(pl)}</span></div><div class="grid grid-cols-4 gap-2 text-xs"><div><span class="text-gray-500">Buy</span><p class="text-white">${formatRupiah(item.buy)}</p></div><div><span class="text-gray-500">Sell</span><p class="text-white">${formatRupiah(item.sell)}</p></div><div><span class="text-gray-500">Lot</span><p class="text-white">${item.lot}</p></div><div><span class="text-gray-500">Date</span><p class="text-white">${item.date||'-'}</p></div></div>${item.note?'<p class="text-xs text-gray-500">'+item.note+'</p>':''}<div class="flex gap-2 pt-1"><button onclick="editJournalItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700">Edit</button><button onclick="deleteJournalItem(${item.id})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700">Hapus</button></div></div>`;}).join('');
 }
+function showJournalForm(){document.getElementById('journal-form-container').classList.remove('hidden');document.getElementById('jn-edit-id').value='';document.getElementById('jn-ticker').value='';document.getElementById('jn-buy').value='';document.getElementById('jn-sell').value='';document.getElementById('jn-lot').value='';document.getElementById('jn-date').value=new Date().toISOString().split('T')[0];document.getElementById('jn-note').value='';}
+function hideJournalForm(){document.getElementById('journal-form-container').classList.add('hidden');}
+function saveJournalItem(){const editId=document.getElementById('jn-edit-id').value,ticker=document.getElementById('jn-ticker').value.trim().toUpperCase(),buy=parseFloat(document.getElementById('jn-buy').value)||0,sell=parseFloat(document.getElementById('jn-sell').value)||0,lot=parseInt(document.getElementById('jn-lot').value)||0,date=document.getElementById('jn-date').value,note=document.getElementById('jn-note').value.trim();if(!ticker||!buy||!sell||!lot){alert('Ticker, Harga Beli, Harga Jual, dan Lot wajib diisi.');return;}let j=loadJournal();if(editId){j=j.map(x=>x.id===parseInt(editId)?{...x,ticker,buy,sell,lot,date,note}:x);}else{j.push({id:Date.now(),ticker,buy,sell,lot,date,note});}saveJournalData(j);hideJournalForm();renderJournal();showToast('Trade berhasil disimpan!');}
+function editJournalItem(id){const item=loadJournal().find(j=>j.id===id);if(!item)return;document.getElementById('jn-edit-id').value=item.id;document.getElementById('jn-ticker').value=item.ticker;document.getElementById('jn-buy').value=item.buy;document.getElementById('jn-sell').value=item.sell;document.getElementById('jn-lot').value=item.lot;document.getElementById('jn-date').value=item.date||'';document.getElementById('jn-note').value=item.note||'';document.getElementById('journal-form-container').classList.remove('hidden');}
+function deleteJournalItem(id){if(!confirm('Hapus trade ini?'))return;saveJournalData(loadJournal().filter(j=>j.id!==id));renderJournal();}
+function exportJournal(){const blob=new Blob([JSON.stringify(loadJournal(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='autocuan_journal.json';a.click();}
+function importJournal(event){const file=event.target.files[0];if(!file)return;const r=new FileReader();r.onload=(e)=>{try{const d=JSON.parse(e.target.result);if(Array.isArray(d)){saveJournalData(d);renderJournal();showToast('Journal berhasil di-import!');}else alert('Format tidak valid.');}catch(err){alert('Gagal membaca file.');}};r.readAsText(file);event.target.value='';}
 
-function renderWatchlist() {
-  const list = document.getElementById('watchlist-list');
-  const watchlist = loadWatchlist();
-  if (watchlist.length === 0) {
-    list.innerHTML = '<p class="text-sm text-gray-500 text-center py-6">Belum ada saham di watchlist.</p>';
-    return;
-  }
-  list.innerHTML = watchlist.map((ticker, i) => `
-    <div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-3 flex items-center justify-between fade-in">
-      <span class="text-sm font-bold text-emerald-400">${ticker}</span>
-      <div class="flex gap-2">
-        <button onclick="watchlistChart('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">Chart</button>
-        <button onclick="watchlistAI('${ticker}')" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-gray-300 border border-gray-700 hover:border-emerald-500/50">AI</button>
-        <button onclick="removeWatchlistItem(${i})" class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-dark-700 text-red-400 border border-gray-700 hover:border-red-500/50">✕</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function addWatchlistItem() {
-  const input = document.getElementById('watchlist-input');
-  const ticker = input.value.trim().toUpperCase();
-  if (!ticker) return;
-  const watchlist = loadWatchlist();
-  if (watchlist.includes(ticker)) { alert('Sudah ada di watchlist.'); return; }
-  watchlist.push(ticker);
-  saveWatchlist(watchlist);
-  input.value = '';
-  renderWatchlist();
-}
-
-function removeWatchlistItem(index) {
-  const watchlist = loadWatchlist();
-  watchlist.splice(index, 1);
-  saveWatchlist(watchlist);
-  renderWatchlist();
-}
-
-function watchlistChart(ticker) {
-  document.getElementById('chart-ticker-input').value = ticker;
-  switchPage('chart');
-  loadTradingViewChart(ticker);
-}
-
-function watchlistAI(ticker) {
-  switchPage('chart');
-  document.getElementById('chart-ticker-input').value = ticker;
-  loadTradingViewChart(ticker);
-  setTimeout(() => callAI({ ticker }, document.getElementById('analysis-output-container')), 500);
-}
+// ===== AI MODE =====
+function setAIMode(mode){aiMode=mode;const c=document.getElementById('ai-mode-cepat'),d=document.getElementById('ai-mode-detail');if(mode==='cepat'){c.classList.add('bg-emerald-600','text-white');c.classList.remove('text-gray-400');d.classList.remove('bg-emerald-600','text-white');d.classList.add('text-gray-400');}else{d.classList.add('bg-emerald-600','text-white');d.classList.remove('text-gray-400');c.classList.remove('bg-emerald-600','text-white');c.classList.add('text-gray-400');}}
 
 // ===== AI PAGE =====
-function switchAITab(tab) {
-  if (tab === 'scan') {
-    document.getElementById('ai-scan-panel').classList.remove('hidden');
-    document.getElementById('ai-ticker-panel').classList.add('hidden');
-    document.getElementById('ai-tab-scan').classList.add('bg-emerald-600', 'text-white');
-    document.getElementById('ai-tab-scan').classList.remove('text-gray-400');
-    document.getElementById('ai-tab-ticker').classList.remove('bg-emerald-600', 'text-white');
-    document.getElementById('ai-tab-ticker').classList.add('text-gray-400');
-  } else {
-    document.getElementById('ai-scan-panel').classList.add('hidden');
-    document.getElementById('ai-ticker-panel').classList.remove('hidden');
-    document.getElementById('ai-tab-ticker').classList.add('bg-emerald-600', 'text-white');
-    document.getElementById('ai-tab-ticker').classList.remove('text-gray-400');
-    document.getElementById('ai-tab-scan').classList.remove('bg-emerald-600', 'text-white');
-    document.getElementById('ai-tab-scan').classList.add('text-gray-400');
-  }
-}
-
-function handleAIFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-  if (!validTypes.includes(file.type)) { alert('Format tidak didukung.'); return; }
-  if (file.size > 20 * 1024 * 1024) { alert('Maks 20MB.'); return; }
-  aiImageMime = file.type;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    aiImageBase64 = e.target.result;
-    document.getElementById('ai-image-preview').src = aiImageBase64;
-    document.getElementById('ai-upload-prompt').classList.add('hidden');
-    document.getElementById('ai-preview-container').classList.remove('hidden');
-    document.getElementById('ai-scan-btn').disabled = false;
-  };
-  reader.readAsDataURL(file);
-}
-
-function resetAIUpload() {
-  aiImageBase64 = null; aiImageMime = null;
-  document.getElementById('ai-file-input').value = '';
-  document.getElementById('ai-upload-prompt').classList.remove('hidden');
-  document.getElementById('ai-preview-container').classList.add('hidden');
-  document.getElementById('ai-scan-btn').disabled = true;
-}
-
-function analyzeUploadedChart() {
-  if (!aiImageBase64) return;
-  callAI({ image: aiImageBase64, mimeType: aiImageMime }, document.getElementById('ai-output-container'));
-}
-
-function analyzeByTicker() {
-  const ticker = document.getElementById('ai-ticker-input').value.trim().toUpperCase();
-  if (!ticker) return;
-  callAI({ ticker }, document.getElementById('ai-output-container'));
-}
+function switchAITab(tab){if(tab==='scan'){document.getElementById('ai-scan-panel').classList.remove('hidden');document.getElementById('ai-ticker-panel').classList.add('hidden');document.getElementById('ai-tab-scan').classList.add('bg-emerald-600','text-white');document.getElementById('ai-tab-scan').classList.remove('text-gray-400');document.getElementById('ai-tab-ticker').classList.remove('bg-emerald-600','text-white');document.getElementById('ai-tab-ticker').classList.add('text-gray-400');}else{document.getElementById('ai-scan-panel').classList.add('hidden');document.getElementById('ai-ticker-panel').classList.remove('hidden');document.getElementById('ai-tab-ticker').classList.add('bg-emerald-600','text-white');document.getElementById('ai-tab-ticker').classList.remove('text-gray-400');document.getElementById('ai-tab-scan').classList.remove('bg-emerald-600','text-white');document.getElementById('ai-tab-scan').classList.add('text-gray-400');}}
+function handleAIFile(event){const file=event.target.files[0];if(!file)return;if(!['image/png','image/jpeg','image/jpg','image/webp'].includes(file.type)){alert('Format tidak didukung.');return;}if(file.size>20*1024*1024){alert('Maks 20MB.');return;}aiImageMime=file.type;const reader=new FileReader();reader.onload=(e)=>{aiImageBase64=e.target.result;document.getElementById('ai-image-preview').src=aiImageBase64;document.getElementById('ai-upload-prompt').classList.add('hidden');document.getElementById('ai-preview-container').classList.remove('hidden');document.getElementById('ai-scan-btn').disabled=false;};reader.readAsDataURL(file);}
+function resetAIUpload(){aiImageBase64=null;aiImageMime=null;document.getElementById('ai-file-input').value='';document.getElementById('ai-upload-prompt').classList.remove('hidden');document.getElementById('ai-preview-container').classList.add('hidden');document.getElementById('ai-scan-btn').disabled=true;}
+function analyzeUploadedChart(){if(!aiImageBase64)return;callAI({image:aiImageBase64,mimeType:aiImageMime},document.getElementById('ai-output-container'));}
+function analyzeByTicker(){const ticker=document.getElementById('ai-ticker-input').value.trim().toUpperCase();if(!ticker)return;callAI({ticker},document.getElementById('ai-output-container'));}
 
 // ===== AI FETCH =====
-async function callAI(payload, container) {
-  container.innerHTML = `
-    <div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-6 text-center">
-      <div class="spinner mx-auto mb-4"></div>
-      <p class="text-emerald-400 text-sm font-medium animate-pulse-glow">AI sedang menganalisis...</p>
-      <p class="text-xs text-gray-600 mt-2">15-45 detik</p>
-    </div>`;
-
-  try {
-    const response = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const html = await response.text();
-    if (!response.ok) {
-      if (response.status === 429) {
-        container.innerHTML = `<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 text-center"><p class="text-yellow-400 font-semibold">Kuota AI sedang habis</p><p class="text-xs text-gray-400 mt-2">Gunakan Chart TradingView untuk analisis manual sementara.</p></div>`;
-      } else {
-        container.innerHTML = `<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Gagal menganalisis</p><p class="text-xs text-gray-400 mt-2">${response.status} error</p></div>`;
-      }
-      return;
-    }
-    container.innerHTML = `<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in">${html}</div>`;
-  } catch (err) {
-    container.innerHTML = `<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Koneksi gagal</p><p class="text-xs text-gray-400 mt-2">${err.message}</p></div>`;
-  }
+async function callAI(payload,container){
+  container.innerHTML='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-6 text-center"><div class="spinner mx-auto mb-4"></div><p class="text-emerald-400 text-sm font-medium animate-pulse-glow">AI sedang menganalisis...</p><p class="text-xs text-gray-600 mt-2">15-45 detik</p></div>';
+  try{
+    payload.mode=aiMode;
+    const response=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const html=await response.text();
+    if(!response.ok){if(response.status===429){container.innerHTML='<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-5 text-center"><p class="text-yellow-400 font-semibold">Kuota AI sedang habis</p><p class="text-xs text-gray-400 mt-2">Chart TradingView tetap bisa digunakan.</p></div>';}else{container.innerHTML='<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Gagal menganalisis</p><p class="text-xs text-gray-400 mt-2">'+response.status+' error</p></div>';}return;}
+    container.innerHTML='<div class="bg-dark-800/60 rounded-xl border border-gray-800/50 p-4 overflow-hidden fade-in">'+html+'</div><button onclick="copyTradingPlan(this)" class="w-full mt-3 py-2.5 rounded-xl font-medium text-gray-200 bg-dark-700 border border-gray-700 hover:border-emerald-500/50 text-sm flex items-center justify-center gap-1.5">📋 Salin Trading Plan</button>';
+  }catch(err){container.innerHTML='<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-5 text-center"><p class="text-red-400 font-semibold">Koneksi gagal</p><p class="text-xs text-gray-400 mt-2">'+err.message+'</p></div>';}
 }
+
+// ===== COPY TRADING PLAN =====
+function copyTradingPlan(btn){const container=btn?btn.previousElementSibling:null;const text=container?container.innerText.trim():'';if(!text){showToast('Tidak ada hasil untuk disalin');return;}navigator.clipboard.writeText(text).then(()=>showToast('Trading plan berhasil disalin')).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);showToast('Trading plan berhasil disalin');});}
 
 // ===== UTILS =====
-function formatRupiah(num) {
-  if (!num) return 'Rp 0';
-  return 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(num));
-}
+function formatRupiah(num){if(!num)return'Rp 0';return'Rp '+new Intl.NumberFormat('id-ID').format(Math.round(num));}
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', () => {
-  checkEntry();
-  preloadTradingViewScript();
-});
+document.addEventListener('DOMContentLoaded',()=>{checkEntry();preloadTradingViewScript();});
 </script>
 </body>
 </html>

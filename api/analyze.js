@@ -1,6 +1,7 @@
 /**
  * Auto-Cuan AI Analysis - Vercel Serverless Function
  * Uses Gemini 2.5 Flash for chart/ticker analysis
+ * Supports mode: 'cepat' (1200 tokens) or 'detail' (2048 tokens)
  * Returns raw HTML string with Content-Type: text/html
  */
 
@@ -8,7 +9,17 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
-const IMAGE_PROMPT = `Anda adalah AI Analis Teknikal Saham Profesional khusus Smart Money Concepts (SMC).
+const SCORE_INSTRUCTION = `
+
+6. Di bagian paling atas output, tampilkan score card:
+<div class="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/30 rounded-xl p-4 mb-4 text-center">
+<p class="text-xs text-gray-400 uppercase tracking-wide">Auto-Cuan Score</p>
+<p class="text-3xl font-bold text-emerald-400 mt-1">XX/100</p>
+<p class="text-xs text-gray-500 mt-1">Semakin tinggi = semakin layak entry</p>
+</div>
+Tentukan skor 0-100 berdasarkan kekuatan sinyal teknikal, konfluensi zona, dan risk:reward ratio.`;
+
+const IMAGE_PROMPT_BASE = `Anda adalah AI Analis Teknikal Saham Profesional khusus Smart Money Concepts (SMC).
 
 Analisis screenshot chart ini secara mendalam dan akurat berdasarkan visual gambar.
 
@@ -40,7 +51,7 @@ Tabel harus di dalam:
 
 Gunakan Rp dan format angka Indonesia. Semua harga harus konsisten dengan skala chart.`;
 
-const TICKER_PROMPT = `Anda adalah AI Analis Teknikal Saham Profesional khusus Smart Money Concepts (SMC).
+const TICKER_PROMPT_BASE = `Anda adalah AI Analis Teknikal Saham Profesional khusus Smart Money Concepts (SMC).
 
 Analisis saham dengan kode ticker yang diberikan. Buat analisis teknikal lengkap.
 
@@ -71,6 +82,8 @@ Tabel harus di dalam:
 
 Gunakan Rp dan format angka Indonesia.`;
 
+const CEPAT_SUFFIX = `\n\nMODE CEPAT: Jawab ringkas dan langsung ke poin utama. Fokus pada Score, Action Badge, dan Trading Plan table saja. Skip penjelasan panjang.`;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Content-Type', 'text/html');
@@ -83,24 +96,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { image, mimeType, ticker } = req.body;
+    const { image, mimeType, ticker, mode } = req.body;
+    const isDetail = mode === 'detail';
+    const maxTokens = isDetail ? 2048 : 1200;
 
     let parts = [];
 
     if (image) {
-      // Image upload mode
       let imageData = image;
       if (imageData.includes(',')) {
         imageData = imageData.split(',')[1];
       }
+      const prompt = IMAGE_PROMPT_BASE + SCORE_INSTRUCTION + (isDetail ? '' : CEPAT_SUFFIX);
       parts = [
-        { text: IMAGE_PROMPT },
+        { text: prompt },
         { inline_data: { mime_type: mimeType || 'image/png', data: imageData } }
       ];
     } else if (ticker) {
-      // Ticker text mode
+      const prompt = TICKER_PROMPT_BASE + SCORE_INSTRUCTION + (isDetail ? '' : CEPAT_SUFFIX) + `\n\nAnalisis saham: ${ticker.toUpperCase()}`;
       parts = [
-        { text: `${TICKER_PROMPT}\n\nAnalisis saham: ${ticker.toUpperCase()}` }
+        { text: prompt }
       ];
     } else {
       res.setHeader('Content-Type', 'text/html');
@@ -111,7 +126,7 @@ export default async function handler(req, res) {
       contents: [{ parts }],
       generationConfig: {
         temperature: 0.25,
-        maxOutputTokens: 2048
+        maxOutputTokens: maxTokens
       }
     };
 
@@ -133,7 +148,6 @@ export default async function handler(req, res) {
     }
 
     if (!response.ok) {
-      const errText = await response.text();
       res.setHeader('Content-Type', 'text/html');
       return res.status(response.status).send(`<p class="text-red-400">Gemini API error: ${response.status}</p>`);
     }
