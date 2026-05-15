@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="id" class="scroll-smooth">
+<html lang="id" style="background-color:#0b0e14">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto-Cuan | AI Chart Reader - Smart Money Concepts</title>
+    <title>Auto-Cuan | SMC Analysis Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -16,11 +16,6 @@
                             700: '#151a23',
                             600: '#1c2333',
                             500: '#242d3d'
-                        },
-                        emerald: {
-                            400: '#34d399',
-                            500: '#10b981',
-                            600: '#059669'
                         }
                     }
                 }
@@ -28,390 +23,469 @@
         }
     </script>
     <style>
-        body {
-            background-color: #0b0e14;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        /* Custom scrollbar */
+        body { background-color: #0b0e14; overflow-x: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f1319; }
         ::-webkit-scrollbar-thumb { background: #242d3d; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #34d399; }
-
-        /* Glow effects */
-        .glow-emerald {
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), 0 0 60px rgba(16, 185, 129, 0.1);
-        }
-        .glow-emerald:hover {
-            box-shadow: 0 0 30px rgba(16, 185, 129, 0.5), 0 0 80px rgba(16, 185, 129, 0.2);
-        }
-
-        /* Upload zone animation */
-        .upload-zone {
-            border: 2px dashed #242d3d;
-            transition: all 0.3s ease;
-        }
-        .upload-zone:hover, .upload-zone.dragover {
-            border-color: #10b981;
-            background: rgba(16, 185, 129, 0.03);
-            box-shadow: inset 0 0 30px rgba(16, 185, 129, 0.05);
-        }
-
-        /* Pulse animation for loading */
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .animate-pulse-glow {
-            animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        /* Spinner */
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #242d3d;
-            border-top-color: #10b981;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        /* Fade in animation */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in-up {
-            animation: fadeInUp 0.6s ease forwards;
-        }
-
-        /* News card hover */
-        .news-card {
-            transition: all 0.2s ease;
-        }
-        .news-card:hover {
-            transform: translateX(4px);
-            border-left-color: #10b981;
-        }
+        .glow-emerald { box-shadow: 0 0 20px rgba(16,185,129,0.3), 0 0 60px rgba(16,185,129,0.1); }
+        .glow-emerald:hover { box-shadow: 0 0 30px rgba(16,185,129,0.5), 0 0 80px rgba(16,185,129,0.2); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { width: 40px; height: 40px; border: 3px solid #242d3d; border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in-up { animation: fadeInUp 0.5s ease forwards; }
+        @keyframes pulseGlow { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        .animate-pulse-glow { animation: pulseGlow 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+        #resultContent table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        #resultContent th, #resultContent td { padding: 0.5rem 0.75rem; border: 1px solid #1c2333; text-align: left; font-size: 0.875rem; }
+        #resultContent th { background: #151a23; color: #34d399; font-weight: 600; }
+        #resultContent td { color: #d1d5db; }
+        #resultContent tr:nth-child(even) td { background: #0f1319; }
+        #resultContent h1,#resultContent h2,#resultContent h3,#resultContent h4 { color: #34d399; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+        #resultContent p { color: #d1d5db; margin-bottom: 0.75rem; line-height: 1.6; }
+        #resultContent ul,#resultContent ol { color: #d1d5db; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+        #resultContent li { margin-bottom: 0.25rem; }
+        #resultContent strong { color: #6ee7b7; }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
 
-    <!-- Header -->
-    <header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-bold text-white tracking-tight">Auto-Cuan</h1>
-                        <p class="text-xs text-gray-500 font-medium">AI Chart Reader &bull; Smart Money Concepts</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <span class="text-xs font-medium text-emerald-400">Gemini 2.5 Flash</span>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-
-        <!-- Upload Section -->
-        <section class="fade-in-up">
-            <div id="uploadZone" class="upload-zone rounded-2xl p-8 sm:p-12 text-center cursor-pointer bg-dark-800/50 backdrop-blur-sm"
-                 onclick="document.getElementById('fileInput').click()">
-                
-                <!-- Default State -->
-                <div id="uploadPrompt">
-                    <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-dark-700 flex items-center justify-center">
-                        <svg class="w-10 h-10 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg sm:text-xl font-semibold text-gray-200 mb-2">
-                        📁 Seret & Lepas atau Klik untuk Unggah Screenshot Chart Saham (SMC / LuxAlgo)
-                    </h3>
-                    <p class="text-sm text-gray-500 max-w-md mx-auto">
-                        Mendukung format PNG, JPG, JPEG, WebP. Maksimal 20MB.
-                    </p>
-                </div>
-
-                <!-- Image Preview -->
-                <div id="previewContainer" class="hidden">
-                    <img id="imagePreview" class="max-h-[400px] mx-auto rounded-xl shadow-2xl border border-dark-600/50" alt="Chart Preview">
-                    <p id="fileName" class="mt-4 text-sm text-gray-400 font-medium"></p>
-                    <button onclick="event.stopPropagation(); resetUpload();" 
-                            class="mt-3 text-xs text-red-400 hover:text-red-300 underline underline-offset-2 transition-colors">
-                        Hapus & Unggah Ulang
-                    </button>
-                </div>
-            </div>
-
-            <input type="file" id="fileInput" accept="image/png,image/jpeg,image/jpg,image/webp" class="hidden" onchange="handleFileSelect(event)">
-        </section>
-
-        <!-- Analyze Button -->
-        <section class="text-center fade-in-up" style="animation-delay: 0.1s;">
-            <button id="analyzeBtn" onclick="analyzeChart()" disabled
-                    class="relative inline-flex items-center gap-3 px-10 py-4 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none hover:scale-[1.02] active:scale-[0.98]">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="loginScreen" class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-sm fade-in-up">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
+                <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
                 </svg>
-                Mulai Analisis Chart
-            </button>
-        </section>
-
-        <!-- Loading State -->
-        <section id="loadingState" class="hidden">
-            <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 p-8 text-center">
-                <div class="spinner mx-auto mb-5"></div>
-                <p class="text-emerald-400 font-medium animate-pulse-glow">
-                    🔄 AI sedang membaca struktur chart, mendeteksi indikator LuxAlgo, dan merancang trading plan... Mohon tunggu.
-                </p>
-                <p class="text-xs text-gray-600 mt-3">Proses analisis biasanya memakan waktu 15-45 detik</p>
             </div>
-        </section>
-
-        <!-- Analysis Result -->
-        <section id="resultSection" class="hidden fade-in-up">
-            <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
-                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
-                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
-                    <h2 class="font-semibold text-gray-200">Hasil Analisis AI - Smart Money Concepts</h2>
-                </div>
-                <div id="resultContent" class="p-6 prose prose-invert max-w-none">
-                    <!-- Dynamic AI response rendered here -->
-                </div>
-            </div>
-        </section>
-
-        <!-- Yahoo Finance News Feed -->
-        <section id="newsSection" class="hidden fade-in-up">
-            <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
-                <div class="px-6 py-4 border-b border-dark-600/50 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M19 4h-4L7.1 16.63 4.5 12H2L7.1 20 19 4zm-8 0H8l-4.5 8H6l2.5-4.37L11 4z"/>
-                        </svg>
-                        <h2 class="font-semibold text-gray-200">Berita Saham Terkini</h2>
-                    </div>
-                    <span class="text-xs text-gray-500">Powered by Google News</span>
-                </div>
-                <div id="newsContent" class="p-4 space-y-2">
-                    <!-- News items rendered here -->
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- Footer -->
-    <footer class="border-t border-dark-700/50 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
-            <p class="text-xs text-gray-600">
-                Auto-Cuan &copy; 2024 &bull; AI-Powered Technical Analysis &bull; Smart Money Concepts & LuxAlgo
-            </p>
-            <p class="text-xs text-gray-700 mt-1">
-                Disclaimer: Bukan merupakan saran investasi. Gunakan analisis ini sebagai referensi tambahan saja.
-            </p>
+            <h1 class="text-2xl font-bold text-white">Auto-Cuan</h1>
+            <p class="text-sm text-gray-400 mt-1">SMC Analysis Platform</p>
         </div>
-    </footer>
+        <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl p-6 backdrop-blur-sm">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
+                    <input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
+                    <input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" onkeydown="if(event.key==='Enter')doLogin()">
+                </div>
+                <div id="loginError" class="hidden text-sm text-red-400 text-center py-1"></div>
+                <button onclick="doLogin()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+                    Masuk
+                </button>
+                <button onclick="guestLogin()" class="w-full py-3 rounded-xl font-medium text-gray-400 border border-dark-600/50 hover:border-emerald-500/30 hover:text-emerald-400 transition-all duration-200">
+                    Coba Tanpa Login
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <!-- JavaScript -->
-    <script>
-        // --- State ---
-        let selectedFile = null;
-        let imageBase64 = null;
-        let imageMimeType = null;
+<!-- ===== DASHBOARD SCREEN ===== -->
+<div id="dashboardScreen" class="hidden">
 
-        // --- DOM Elements ---
-        const uploadZone = document.getElementById('uploadZone');
-        const uploadPrompt = document.getElementById('uploadPrompt');
-        const previewContainer = document.getElementById('previewContainer');
-        const imagePreview = document.getElementById('imagePreview');
-        const fileName = document.getElementById('fileName');
-        const fileInput = document.getElementById('fileInput');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const loadingState = document.getElementById('loadingState');
-        const resultSection = document.getElementById('resultSection');
-        const resultContent = document.getElementById('resultContent');
-        const newsSection = document.getElementById('newsSection');
-        const newsContent = document.getElementById('newsContent');
+<!-- HEADER -->
+<header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                    </svg>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-lg font-bold text-white leading-tight truncate">Auto-Cuan</h1>
+                    <p class="text-xs text-gray-500">SMC Analysis Platform</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <span class="hidden sm:inline text-sm text-gray-400">Halo, <span id="headerUsername" class="text-emerald-400 font-medium"></span></span>
+                <button onclick="logout()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/50 hover:border-red-500/40 hover:text-red-400 transition-all">Logout</button>
+            </div>
+        </div>
+    </div>
+</header>
 
-        // --- Drag & Drop ---
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+<main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+<!-- GUEST BANNER -->
+<div id="guestBanner" class="hidden fade-in-up">
+    <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
+        <p class="text-yellow-300 text-sm font-medium">Mode Tamu - Hanya bisa melihat chart. Login untuk menggunakan fitur AI.</p>
+    </div>
+</div>
+
+<!-- TRADINGVIEW WIDGET -->
+<section id="tvSection" class="fade-in-up">
+    <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <h2 class="text-sm font-semibold text-gray-300">Live Chart - TradingView</h2>
+        </div>
+        <div id="tvChartContainer" class="w-full" style="height:400px">
+        </div>
+    </div>
+</section>
+
+<!-- AI ANALYSIS SECTION -->
+<section id="aiSection" class="hidden fade-in-up">
+    <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+            <h2 class="text-sm font-semibold text-gray-300">AI Analysis - Smart Money Concepts</h2>
+        </div>
+        <div class="p-4 sm:p-6 space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1.5">Ticker Saham</label>
+                    <input type="text" id="tickerInput" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm uppercase">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1.5">Harga Sekarang</label>
+                    <input type="number" id="priceInput" placeholder="Contoh: 9250" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
+                </div>
+            </div>
+            <div id="limitWarning" class="hidden text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 text-center"></div>
+            <button id="analyzeBtn" onclick="analyzeChart()" class="w-full sm:w-auto px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                Mulai Analisis
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- LOADING STATE -->
+<section id="loadingState" class="hidden">
+    <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 p-8 text-center">
+        <div class="spinner mx-auto mb-5"></div>
+        <p class="text-emerald-400 font-medium animate-pulse-glow">AI sedang menganalisis struktur chart dan merancang trading plan...</p>
+        <p class="text-xs text-gray-600 mt-3">Proses analisis biasanya 15-45 detik</p>
+    </div>
+</section>
+
+<!-- ANALYSIS RESULT -->
+<section id="resultSection" class="hidden fade-in-up">
+    <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
+        <div class="px-4 sm:px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+            <h2 class="font-semibold text-gray-200 text-sm sm:text-base">Hasil Analisis AI</h2>
+        </div>
+        <div id="resultContent" class="p-4 sm:p-6 overflow-x-auto">
+        </div>
+    </div>
+</section>
+
+<!-- ADMIN PANEL -->
+<section id="adminPanel" class="hidden fade-in-up">
+    <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
+        <div class="px-4 sm:px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+            <h2 class="font-semibold text-gray-200">Admin Panel</h2>
+        </div>
+        <div class="p-4 sm:p-6 space-y-4">
+            <div class="flex flex-wrap gap-2">
+                <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login Logs</button>
+                <button onclick="loadAdminLogs('search')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Search Logs</button>
+                <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">AI Logs</button>
+            </div>
+            <div id="adminLogsContainer" class="overflow-x-auto">
+                <p class="text-sm text-gray-500">Klik tombol di atas untuk memuat logs.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="border-t border-dark-700/50 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
+        <p class="text-xs text-gray-500">Auto-Cuan &copy; 2024 &bull; SMC Analysis Platform</p>
+        <p class="text-xs text-gray-600 mt-1">Disclaimer: Bukan merupakan saran investasi. Gunakan analisis ini sebagai referensi tambahan saja.</p>
+    </div>
+</footer>
+
+</div><!-- end dashboardScreen -->
+
+<script>
+// ===== INITIALIZATION =====
+(function init() {
+    const user = localStorage.getItem('autocuan_user');
+    if (user) {
+        showDashboard(user);
+    } else {
+        document.getElementById('loginScreen').classList.remove('hidden');
+        document.getElementById('dashboardScreen').classList.add('hidden');
+    }
+})();
+
+// ===== LOGIN LOGIC =====
+function doLogin() {
+    const usernameInput = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorEl = document.getElementById('loginError');
+
+    if (!usernameInput) {
+        errorEl.textContent = 'Username tidak boleh kosong.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    const usernameLower = usernameInput.toLowerCase();
+    let isValid = false;
+    let isAdmin = false;
+
+    if (usernameLower === 'budi') {
+        if (password === '.') {
+            isValid = true;
+            isAdmin = true;
+        } else {
+            errorEl.textContent = 'Password salah.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+    } else {
+        const firstChar = usernameLower.charAt(0);
+        const expectedPass = (firstChar.charCodeAt(0) - 96).toString();
+        if (password === expectedPass) {
+            isValid = true;
+            isAdmin = false;
+        } else {
+            errorEl.textContent = 'Password salah. Hint: posisi huruf pertama di alfabet.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+    }
+
+    if (isValid) {
+        localStorage.setItem('autocuan_user', usernameLower);
+        localStorage.setItem('autocuan_is_admin', isAdmin ? 'true' : 'false');
+        logLogin(usernameLower, isAdmin ? 'admin' : 'user');
+        showDashboard(usernameLower);
+    }
+}
+
+function guestLogin() {
+    localStorage.setItem('autocuan_user', 'guest');
+    localStorage.setItem('autocuan_is_admin', 'false');
+    logLogin('guest', 'guest');
+    showDashboard('guest');
+}
+
+function logLogin(username, role) {
+    try {
+        fetch('/api/log-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, role: role, timestamp: new Date().toISOString() })
+        }).catch(function(){});
+    } catch(e) {}
+}
+
+function logout() {
+    localStorage.removeItem('autocuan_user');
+    localStorage.removeItem('autocuan_is_admin');
+    document.getElementById('dashboardScreen').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginError').classList.add('hidden');
+}
+
+// ===== DASHBOARD =====
+function showDashboard(username) {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('dashboardScreen').classList.remove('hidden');
+    document.getElementById('headerUsername').textContent = username;
+
+    const isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
+    const isGuest = (username === 'guest');
+
+    // Guest restrictions
+    if (isGuest) {
+        document.getElementById('guestBanner').classList.remove('hidden');
+        document.getElementById('aiSection').classList.add('hidden');
+        document.getElementById('adminPanel').classList.add('hidden');
+    } else {
+        document.getElementById('guestBanner').classList.add('hidden');
+        document.getElementById('aiSection').classList.remove('hidden');
+        if (isAdmin) {
+            document.getElementById('adminPanel').classList.remove('hidden');
+        } else {
+            document.getElementById('adminPanel').classList.add('hidden');
+        }
+    }
+
+    // Load TradingView
+    loadTradingView();
+}
+
+// ===== TRADINGVIEW =====
+function loadTradingView() {
+    var container = document.getElementById('tvChartContainer');
+    if (container.querySelector('iframe') || container.querySelector('script')) return;
+    var script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+        "autosize": true,
+        "symbol": "IDX:IHSG",
+        "interval": "D",
+        "timezone": "Asia/Jakarta",
+        "theme": "dark",
+        "style": "1",
+        "locale": "id",
+        "backgroundColor": "rgba(15, 19, 25, 1)",
+        "gridColor": "rgba(28, 35, 51, 0.5)",
+        "allow_symbol_change": true,
+        "calendar": false,
+        "support_host": "https://www.tradingview.com"
+    });
+    var widget = document.createElement('div');
+    widget.className = 'tradingview-widget-container';
+    widget.style.height = '100%';
+    widget.style.width = '100%';
+    var widgetInner = document.createElement('div');
+    widgetInner.className = 'tradingview-widget-container__widget';
+    widgetInner.style.height = '100%';
+    widgetInner.style.width = '100%';
+    widget.appendChild(widgetInner);
+    widget.appendChild(script);
+    container.appendChild(widget);
+}
+
+// ===== AI ANALYSIS =====
+function getUsageRecords() {
+    try {
+        var records = JSON.parse(localStorage.getItem('autocuan_usage') || '[]');
+        var now = Date.now();
+        // Keep only records within last 30 minutes
+        return records.filter(function(t) { return (now - t) < 30 * 60 * 1000; });
+    } catch(e) { return []; }
+}
+
+function addUsageRecord() {
+    var records = getUsageRecords();
+    records.push(Date.now());
+    localStorage.setItem('autocuan_usage', JSON.stringify(records));
+}
+
+function checkUsageLimit() {
+    var isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
+    if (isAdmin) return true;
+    var records = getUsageRecords();
+    return records.length < 2;
+}
+
+async function analyzeChart() {
+    var ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+    var currentPrice = document.getElementById('priceInput').value.trim();
+    var limitWarning = document.getElementById('limitWarning');
+
+    if (!ticker) { alert('Masukkan ticker saham.'); return; }
+    if (!currentPrice) { alert('Masukkan harga sekarang.'); return; }
+
+    // Check usage limit
+    if (!checkUsageLimit()) {
+        limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
+        limitWarning.classList.remove('hidden');
+        return;
+    }
+    limitWarning.classList.add('hidden');
+
+    // Show loading
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('resultSection').classList.add('hidden');
+    document.getElementById('analyzeBtn').disabled = true;
+
+    try {
+        // Log search silently
+        fetch('/api/log-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker: ticker, currentPrice: currentPrice, username: localStorage.getItem('autocuan_user'), timestamp: new Date().toISOString() })
+        }).catch(function(){});
+
+        var response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker: ticker, currentPrice: parseFloat(currentPrice) })
+        });
+
+        var data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Terjadi kesalahan pada server.');
+        }
+
+        if (data.html) {
+            var html = data.html;
+            html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+            document.getElementById('resultContent').innerHTML = html;
+            document.getElementById('resultSection').classList.remove('hidden');
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            addUsageRecord();
+        } else {
+            throw new Error('Tidak ada hasil analisis dari AI.');
+        }
+    } catch(error) {
+        document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal Menganalisis</p><p class="text-red-300/70 text-sm">' + error.message + '</p><button onclick="analyzeChart()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">Coba Lagi</button></div>';
+        document.getElementById('resultSection').classList.remove('hidden');
+    } finally {
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('analyzeBtn').disabled = false;
+    }
+}
+
+// ===== ADMIN LOGS =====
+async function loadAdminLogs(type) {
+    var container = document.getElementById('adminLogsContainer');
+    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
+
+    try {
+        var response = await fetch('/api/admin-logs?type=' + type);
+        if (!response.ok) throw new Error('Fetch failed');
+        var data = await response.json();
+
+        if (!data.logs || data.logs.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-500">Belum ada data log.</p>';
+            return;
+        }
+
+        var keys = Object.keys(data.logs[0]);
+        var html = '<table class="w-full text-sm border-collapse"><thead><tr>';
+        keys.forEach(function(k) {
+            html += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700">' + k + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        data.logs.forEach(function(row) {
+            html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
+            keys.forEach(function(k) {
+                html += '<td class="px-3 py-2 text-gray-300">' + (row[k] || '-') + '</td>';
             });
+            html += '</tr>';
         });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch(e) {
+        container.innerHTML = '<p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p>';
+    }
+}
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, () => {
-                uploadZone.classList.add('dragover');
-            });
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadZone.addEventListener(eventName, () => {
-                uploadZone.classList.remove('dragover');
-            });
-        });
-
-        uploadZone.addEventListener('drop', (e) => {
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                processFile(files[0]);
-            }
-        });
-
-        // --- File Handling ---
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                processFile(file);
-            }
-        }
-
-        function processFile(file) {
-            // Validate file type
-            const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-            if (!validTypes.includes(file.type)) {
-                alert('Format file tidak didukung. Gunakan PNG, JPG, atau WebP.');
-                return;
-            }
-
-            // Validate file size (20MB)
-            if (file.size > 20 * 1024 * 1024) {
-                alert('Ukuran file terlalu besar. Maksimal 20MB.');
-                return;
-            }
-
-            selectedFile = file;
-            imageMimeType = file.type;
-
-            // Read file as base64
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imageBase64 = e.target.result;
-                
-                // Show preview
-                imagePreview.src = imageBase64;
-                fileName.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-                uploadPrompt.classList.add('hidden');
-                previewContainer.classList.remove('hidden');
-                
-                // Enable button
-                analyzeBtn.disabled = false;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function resetUpload() {
-            selectedFile = null;
-            imageBase64 = null;
-            imageMimeType = null;
-            fileInput.value = '';
-            uploadPrompt.classList.remove('hidden');
-            previewContainer.classList.add('hidden');
-            analyzeBtn.disabled = true;
-            resultSection.classList.add('hidden');
-            newsSection.classList.add('hidden');
-        }
-
-        // --- Analyze Chart ---
-        async function analyzeChart() {
-            if (!imageBase64) return;
-
-            // Show loading, hide results
-            loadingState.classList.remove('hidden');
-            resultSection.classList.add('hidden');
-            newsSection.classList.add('hidden');
-            analyzeBtn.disabled = true;
-
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        image: imageBase64,
-                        mimeType: imageMimeType
-                    })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(data.error || 'Terjadi kesalahan pada server.');
-                }
-
-                if (data.html) {
-                    // Clean markdown code fences if present
-                    let html = data.html;
-                    html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
-                    
-                    resultContent.innerHTML = html;
-                    resultSection.classList.remove('hidden');
-                    
-                    // Scroll to result
-                    resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-                    // Load news
-                    loadNews();
-                } else {
-                    throw new Error('Tidak ada hasil analisis dari AI.');
-                }
-
-            } catch (error) {
-                resultContent.innerHTML = `
-                    <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
-                        <p class="text-red-400 font-semibold mb-2">Gagal Menganalisis Chart</p>
-                        <p class="text-red-300/70 text-sm">${error.message}</p>
-                        <button onclick="analyzeChart()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">
-                            Coba Lagi
-                        </button>
-                    </div>
-                `;
-                resultSection.classList.remove('hidden');
-            } finally {
-                loadingState.classList.add('hidden');
-                analyzeBtn.disabled = false;
-            }
-        }
-
-        // --- Yahoo Finance / News Feed ---
-        async function loadNews() {
-            try {
-                const response = await fetch('/api/news?q=saham+indonesia+IHSG');
-                const data = await response.json();
-
-                if (data.news && data.news.length > 0) {
-                    newsContent.innerHTML = data.news.map(item => `
-                        <a href="${item.link}" target="_blank" rel="noopener noreferrer" 
-                           class="news-card block p-3 rounded-lg border-l-2 border-dark-600 hover:bg-dark-700/50 transition-all">
-                            <p class="text-sm text-gray-200 font-medium leading-snug">${item.title}</p>
-                            <p class="text-xs text-gray-500 mt-1">${item.pubDate || ''}</p>
-                        </a>
-                    `).join('');
-                    newsSection.classList.remove('hidden');
-                }
-            } catch (error) {
-                console.log('News fetch failed:', error);
-            }
-        }
-    </script>
+// ===== RESPONSIVE TV HEIGHT =====
+function updateTvHeight() {
+    var el = document.getElementById('tvChartContainer');
+    if (el) { el.style.height = window.innerWidth < 640 ? '400px' : '500px'; }
+}
+window.addEventListener('resize', updateTvHeight);
+updateTvHeight();
+</script>
 </body>
 </html>
