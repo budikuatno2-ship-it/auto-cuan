@@ -125,47 +125,6 @@ def analyze_chart():
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 
-@app.route('/api/news', methods=['GET'])
-def get_yahoo_news():
-    """
-    Proxy endpoint to fetch Yahoo Finance news for Indonesian stocks.
-    Query param: ?q=BBCA (ticker symbol)
-    """
-    query = request.args.get('q', 'IHSG saham indonesia')
-
-    try:
-        # Yahoo Finance RSS feed for news
-        yahoo_url = f'https://news.google.com/rss/search?q={query}+saham+indonesia&hl=id&gl=ID&ceid=ID:id'
-
-        response = requests.get(yahoo_url, timeout=10, headers={
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        })
-
-        if response.status_code == 200:
-            import xml.etree.ElementTree as ET
-            root = ET.fromstring(response.content)
-            channel = root.find('channel')
-            items = channel.findall('item') if channel is not None else []
-
-            news_list = []
-            for item in items[:8]:
-                title = item.find('title')
-                link = item.find('link')
-                pub_date = item.find('pubDate')
-                news_list.append({
-                    'title': title.text if title is not None else '',
-                    'link': link.text if link is not None else '',
-                    'pubDate': pub_date.text if pub_date is not None else ''
-                })
-
-            return jsonify({'news': news_list})
-
-        return jsonify({'news': [], 'error': 'Failed to fetch news'}), 200
-
-    except Exception as e:
-        return jsonify({'news': [], 'error': str(e)}), 200
-
-
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"\n{'='*50}")
