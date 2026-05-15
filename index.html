@@ -37,7 +37,7 @@
         @keyframes pulseGlow { 0%,100%{opacity:1} 50%{opacity:0.5} }
         .animate-pulse-glow { animation: pulseGlow 2s cubic-bezier(0.4,0,0.6,1) infinite; }
         #resultContent table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-        #resultContent th, #resultContent td { padding: 0.5rem 0.75rem; border: 1px solid #1c2333; text-align: left; font-size: 0.875rem; }
+        #resultContent th, #resultContent td { padding: 0.5rem 0.75rem; border: 1px solid #1c2333; text-align: left; font-size: 0.875rem; white-space: nowrap; }
         #resultContent th { background: #151a23; color: #34d399; font-weight: 600; }
         #resultContent td { color: #d1d5db; }
         #resultContent tr:nth-child(even) td { background: #0f1319; }
@@ -46,6 +46,7 @@
         #resultContent ul,#resultContent ol { color: #d1d5db; padding-left: 1.5rem; margin-bottom: 0.75rem; }
         #resultContent li { margin-bottom: 0.25rem; }
         #resultContent strong { color: #6ee7b7; }
+        #resultContent .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -240,6 +241,20 @@
 </footer>
 
 </div><!-- end dashboardScreen -->
+
+<!-- ADMIN AI DETAIL MODAL -->
+<div id="adminAiModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-5xl max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-800 bg-[#111827] p-4 sm:p-6 shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-base font-bold text-white">Hasil Analisis AI</h3>
+                <p id="adminAiModalSubtitle" class="text-xs text-gray-400 mt-0.5"></p>
+            </div>
+            <button onclick="closeAdminAiModal()" class="rounded-xl bg-gray-800 px-3 py-2 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Tutup</button>
+        </div>
+        <div id="adminAiResultDetail" class="mt-4 space-y-4 overflow-x-auto"></div>
+    </div>
+</div>
 
 <script>
 // ===== INITIALIZATION =====
@@ -522,6 +537,8 @@ async function analyzeChart() {
 
 // ===== ADMIN LOGS =====
 var lastAdminLogType = 'login';
+var cachedAdminData = null;
+
 async function loadAdminLogs(type) {
     lastAdminLogType = type;
     var container = document.getElementById('adminLogsContainer');
@@ -536,6 +553,7 @@ async function loadAdminLogs(type) {
         });
         if (!response.ok) throw new Error('Fetch failed');
         var data = await response.json();
+        cachedAdminData = data;
 
         if (!data.success) {
             container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Database logging belum dikonfigurasi.') + '</p>';
@@ -562,7 +580,29 @@ async function loadAdminLogs(type) {
             return;
         }
 
-        // Exclude large columns from display
+        // Special rendering for AI analysis logs - card format with Lihat Hasil
+        if (type === 'analysis') {
+            var cardsHtml = '<div class="space-y-3">';
+            logs.forEach(function(row, idx) {
+                var summary = row.result_summary || '';
+                if (summary.length > 120) summary = summary.slice(0, 120) + '...';
+                cardsHtml += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333]">';
+                cardsHtml += '<div class="flex flex-wrap items-center gap-2 mb-2">';
+                cardsHtml += '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400">' + (row.ticker || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-500">' + (row.username || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-600">' + (row.mode || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + (row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span>';
+                cardsHtml += '</div>';
+                if (summary) cardsHtml += '<p class="text-xs text-gray-400 mb-3 line-clamp-2">' + summary + '</p>';
+                cardsHtml += '<button onclick="openAdminAiDetail(' + idx + ')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Lihat Hasil</button>';
+                cardsHtml += '</div>';
+            });
+            cardsHtml += '</div>';
+            container.innerHTML = summaryHtml + cardsHtml;
+            return;
+        }
+
+        // Standard table rendering for other log types
         var excludeCols = ['full_result_html'];
         var keys = Object.keys(logs[0]).filter(function(k) { return excludeCols.indexOf(k) === -1; });
         var tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
@@ -586,6 +626,31 @@ async function loadAdminLogs(type) {
         console.error('loadAdminLogs error:', e);
         container.innerHTML = '<p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p>';
     }
+}
+
+function openAdminAiDetail(idx) {
+    if (!cachedAdminData || !cachedAdminData.aiAnalysisLogs) return;
+    var log = cachedAdminData.aiAnalysisLogs[idx];
+    if (!log) return;
+
+    var modal = document.getElementById('adminAiModal');
+    var subtitle = document.getElementById('adminAiModalSubtitle');
+    var detail = document.getElementById('adminAiResultDetail');
+
+    subtitle.textContent = (log.ticker || 'N/A') + ' • ' + (log.username || 'N/A') + ' • ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
+
+    if (log.full_result_html && log.full_result_html.length > 50) {
+        detail.innerHTML = log.full_result_html;
+    } else {
+        detail.innerHTML = '<p class="text-sm text-yellow-400">Hasil lengkap tidak tersedia. Kemungkinan analisis lama hanya menyimpan ringkasan.</p>';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeAdminAiModal() {
+    document.getElementById('adminAiModal').classList.add('hidden');
+    document.getElementById('adminAiResultDetail').innerHTML = '';
 }
 
 // ===== RESPONSIVE TV HEIGHT =====

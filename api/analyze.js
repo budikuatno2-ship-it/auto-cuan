@@ -60,7 +60,8 @@ module.exports = async function handler(req, res) {
         let html = parts[0].text;
         html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
 
-        if (html.length < 200 || html.includes('belum lengkap')) {
+        // Validate completeness - must contain key sections
+        if (!isCompleteAnalysis(html)) {
           const fallbackHtml = generateFallback(tickerUpper, price);
           return res.status(200).json({ html: fallbackHtml });
         }
@@ -85,6 +86,28 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: 'Server error: ' + error.message });
     }
   }
+}
+
+
+function isCompleteAnalysis(html) {
+  // Must be substantial length
+  if (!html || html.length < 500) return false;
+  // Must contain key trading plan keywords
+  const requiredKeywords = [
+    'Trading Plan',
+    'Entry',
+    'Agresif',
+    'Konservatif',
+    'Scalping',
+    'Rekomendasi'
+  ];
+  const lowerHtml = html.toLowerCase();
+  let foundCount = 0;
+  for (const kw of requiredKeywords) {
+    if (lowerHtml.includes(kw.toLowerCase())) foundCount++;
+  }
+  // Must have at least 5 of 6 keywords
+  return foundCount >= 5;
 }
 
 
