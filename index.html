@@ -651,52 +651,85 @@ function doAdminBypass() {
     }
 }
 
-// ===== REVIEW ACCESS PARAMETER =====
-var _reviewAutoLogin = false;
-(function handleReviewAccess() {
+// ===== REVIEW MODE DETECTION (runs FIRST) =====
+function isValidReviewMode() {
     var params = new URLSearchParams(window.location.search);
     var pathname = window.location.pathname;
-
-    // === REVIEW ROUTE: /review?token=autocuan-review-2026 ===
     var isReviewPath = (pathname === '/review' || pathname === '/review/');
-    var isReviewMode = params.get('mode') === 'review';
+    var isReviewQuery = params.get('mode') === 'review';
     var token = params.get('token');
+    return (isReviewPath || isReviewQuery) && token === 'autocuan-review-2026';
+}
 
-    if ((isReviewPath || isReviewMode) && token === 'autocuan-review-2026') {
-        // Valid review token - auto-login as review
-        localStorage.removeItem('autocuan_blocked_until');
-        localStorage.removeItem('autocuan_bad_username_attempts');
+async function enterReviewMode() {
+    // Clear all block states immediately
+    localStorage.removeItem('autocuan_blocked_until');
+    localStorage.removeItem('autocuan_bad_username_attempts');
+
+    // Hide all screens, show nothing yet
+    document.getElementById('blockedScreen').classList.add('hidden');
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.add('hidden');
+    document.getElementById('dashboardScreen').classList.add('hidden');
+
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    // Validate token server-side and seed/check review user
+    try {
+        var response = await fetch('/api/review-access', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: 'autocuan-review-2026' })
+        });
+        var data = await response.json();
+
+        if (!data.success) {
+            // Review user is blocked or token invalid
+            document.getElementById('blockedScreen').classList.remove('hidden');
+            document.getElementById('blockedScreen').innerHTML =
+                '<div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">' +
+                '<div class="text-5xl">&#x1F6AB;</div>' +
+                '<h2 class="text-xl font-bold text-white">' + (data.error || 'Akun review sedang diblokir.') + '</h2>' +
+                '<p class="text-sm text-gray-400">Hubungi admin untuk mengaktifkan kembali akses review.</p>' +
+                '</div>';
+            return;
+        }
+
+        // Success - set review state
         localStorage.setItem('autocuan_logged_in', 'true');
         localStorage.setItem('autocuan_user', 'review');
         localStorage.setItem('autocuan_user_name', 'review');
         localStorage.setItem('autocuan_is_admin', 'false');
         localStorage.setItem('autocuan_is_review', 'true');
         localStorage.setItem('autocuan_login_time', Date.now().toString());
-        _reviewAutoLogin = true;
-        // Clean URL
-        window.history.replaceState({}, document.title, pathname);
-        return;
-    }
 
-    // === OLD review_access=1 (manual login helper) ===
-    if (params.get('review_access') === '1') {
-        localStorage.removeItem('autocuan_blocked_until');
-        localStorage.removeItem('autocuan_bad_username_attempts');
-        window.history.replaceState({}, document.title, pathname);
+        // Show dashboard directly
+        showDashboard('review');
+    } catch (e) {
+        // Network error - still try to show dashboard if previously logged in as review
+        if (localStorage.getItem('autocuan_is_review') === 'true' && localStorage.getItem('autocuan_user') === 'review') {
+            showDashboard('review');
+        } else {
+            document.getElementById('loginScreen').classList.remove('hidden');
+        }
     }
-})();
+}
 
 // ===== INITIALIZATION =====
 (async function init() {
-    // If review auto-login just happened, skip blocked check and go straight to dashboard
-    if (_reviewAutoLogin) {
-        // Check maintenance - allow review during maintenance (allowReviewDuringMaintenance = true)
-        await checkMaintenanceStatus();
-        // Review is allowed during maintenance
-        document.getElementById('maintenanceScreen').classList.add('hidden');
-        document.getElementById('blockedScreen').classList.add('hidden');
-        showDashboard('review');
+    // REVIEW MODE DETECTION RUNS FIRST - before any blocked/maintenance checks
+    if (isValidReviewMode()) {
+        await enterReviewMode();
         return;
+    }
+
+    // Also handle ?review_access=1 (manual login helper - just clears blocks)
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('review_access') === '1') {
+        localStorage.removeItem('autocuan_blocked_until');
+        localStorage.removeItem('autocuan_bad_username_attempts');
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
 
     // Check device blocked first
@@ -992,8 +1025,11 @@ function logout() {
 
 // ===== DASHBOARD =====
 function showDashboard(username) {
-    if (isDeviceBlocked()) { showBlockedScreen(); return; }
+    var isReview = localStorage.getItem('autocuan_is_review') === 'true';
+    if (!isReview && isDeviceBlocked()) { showBlockedScreen(); return; }
+    document.getElementById('blockedScreen').classList.add('hidden');
     document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.add('hidden');
     document.getElementById('dashboardScreen').classList.remove('hidden');
     document.getElementById('headerUsername').textContent = username;
 
