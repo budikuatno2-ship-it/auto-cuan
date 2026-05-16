@@ -2,5 +2,8 @@
   "version": 2,
   "framework": null,
   "buildCommand": "",
-  "outputDirectory": ""
+  "outputDirectory": "",
+  "rewrites": [
+    { "source": "/review", "destination": "/" }
+  ]
 }
