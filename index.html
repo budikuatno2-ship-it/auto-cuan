@@ -197,8 +197,8 @@
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
             <h2 class="text-sm font-semibold text-gray-300">Live Chart - TradingView</h2>
         </div>
-        <div id="tvChartContainer" class="w-full" style="height:400px">
-            <div class="flex items-center justify-center h-full text-gray-600 text-sm">Memuat chart...</div>
+        <div id="tvChartContainer" class="w-full" style="min-height:380px;height:400px">
+            <div id="tvPlaceholder" class="flex items-center justify-center h-full text-gray-500 text-sm animate-pulse-glow">Memuat chart IDX Composite...</div>
         </div>
     </div>
 </section>
@@ -235,6 +235,7 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                     Mulai Analisis
                 </button>
+                <div id="aiLimitDisplay" class="text-xs text-gray-400 mt-2"></div>
             </div>
 
             <!-- PINDAI CHART MODE -->
@@ -959,67 +960,165 @@ function showDashboard(username) {
         }
     }
 
-    loadTradingView();
+    // Prioritize chart load - do it first
+    initTradingViewChart("IDX:COMPOSITE");
+    // Update AI limit display
+    updateAILimitDisplay();
 }
 </script>
 
 
 <script>
 // ===== TRADINGVIEW =====
-function loadTradingView() {
-    var container = document.getElementById('tvChartContainer');
-    if (container.querySelector('iframe') || container.querySelector('script')) return;
-    var script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-        "autosize": true,
-        "symbol": "IDX:IHSG",
-        "interval": "D",
-        "timezone": "Asia/Jakarta",
-        "theme": "dark",
-        "style": "1",
-        "locale": "id",
-        "backgroundColor": "rgba(15, 19, 25, 1)",
-        "gridColor": "rgba(28, 35, 51, 0.5)",
-        "allow_symbol_change": true,
-        "calendar": false,
-        "support_host": "https://www.tradingview.com"
+var tradingViewWidgetLoaded = false;
+var currentTradingViewSymbol = "";
+
+function normalizeTradingViewSymbol(input) {
+    var raw = String(input || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!raw || raw === "IHSG" || raw === "COMPOSITE" || raw === "IDX" || raw === "IDXCOMPOSITE") {
+        return "IDX:COMPOSITE";
+    }
+    return "IDX:" + raw;
+}
+
+function loadTradingViewScriptOnce() {
+    return new Promise(function(resolve, reject) {
+        if (window.TradingView) return resolve();
+        var existing = document.querySelector('script[src*="tradingview.com/tv.js"]');
+        if (existing) {
+            existing.addEventListener("load", resolve, { once: true });
+            existing.addEventListener("error", reject, { once: true });
+            return;
+        }
+        var script = document.createElement("script");
+        script.src = "https://s3.tradingview.com/tv.js";
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
     });
-    var widget = document.createElement('div');
-    widget.className = 'tradingview-widget-container';
-    widget.style.height = '100%';
-    widget.style.width = '100%';
-    var widgetInner = document.createElement('div');
-    widgetInner.className = 'tradingview-widget-container__widget';
-    widgetInner.style.height = '100%';
-    widgetInner.style.width = '100%';
-    widget.appendChild(widgetInner);
-    widget.appendChild(script);
-    container.appendChild(widget);
 }
 
-// ===== AI ANALYSIS =====
-function getUsageRecords() {
-    try {
-        var records = JSON.parse(localStorage.getItem('autocuan_usage') || '[]');
-        var now = Date.now();
-        return records.filter(function(t) { return (now - t) < 30 * 60 * 1000; });
-    } catch(e) { return []; }
+function initTradingViewChart(symbol) {
+    symbol = normalizeTradingViewSymbol(symbol);
+    if (tradingViewWidgetLoaded && currentTradingViewSymbol === symbol) return;
+
+    var container = document.getElementById('tvChartContainer');
+    var placeholder = document.getElementById('tvPlaceholder');
+
+    loadTradingViewScriptOnce().then(function() {
+        if (placeholder) placeholder.remove();
+        container.innerHTML = '<div id="tradingview_chart" style="width:100%;height:100%"></div>';
+        new TradingView.widget({
+            autosize: true,
+            symbol: symbol,
+            interval: "D",
+            timezone: "Asia/Jakarta",
+            theme: "dark",
+            style: "1",
+            locale: "id",
+            toolbar_bg: "#0b0e14",
+            enable_publishing: false,
+            hide_side_toolbar: false,
+            allow_symbol_change: true,
+            container_id: "tradingview_chart",
+            studies: [],
+            withdateranges: false,
+            hide_volume: true
+        });
+        tradingViewWidgetLoaded = true;
+        currentTradingViewSymbol = symbol;
+    }).catch(function() {
+        if (placeholder) {
+            placeholder.textContent = "Chart gagal dimuat. Periksa koneksi atau coba refresh.";
+            placeholder.classList.remove('animate-pulse-glow');
+            placeholder.classList.add('text-red-400');
+        } else {
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-red-400 text-sm">Chart gagal dimuat. Periksa koneksi atau coba refresh.</div>';
+        }
+    });
 }
 
-function addUsageRecord() {
-    var records = getUsageRecords();
-    records.push(Date.now());
-    localStorage.setItem('autocuan_usage', JSON.stringify(records));
+function loadTradingView() {
+    initTradingViewChart("IDX:COMPOSITE");
+}
+
+// ===== AI ANALYSIS — DAILY LIMIT (5/day WIB) =====
+function getTodayWIBDateKey() {
+    return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+    }).format(new Date());
+}
+
+function getDailyAIUsage() {
+    var today = getTodayWIBDateKey();
+    var raw = localStorage.getItem("autocuan_ai_usage_daily");
+    var data = null;
+    try { data = raw ? JSON.parse(raw) : null; } catch(e) { data = null; }
+    if (!data || data.date !== today) {
+        data = { date: today, count: 0 };
+        localStorage.setItem("autocuan_ai_usage_daily", JSON.stringify(data));
+    }
+    return data;
+}
+
+function canUseAI() {
+    var username = (localStorage.getItem("autocuan_user") || "").trim().toLowerCase();
+    var isAdmin = localStorage.getItem("autocuan_is_admin") === "true";
+    if (username === "budi" && isAdmin) return true;
+    var isGuest = (username === "guest");
+    if (isGuest) return false;
+    var usage = getDailyAIUsage();
+    return usage.count < 5;
+}
+
+function incrementAIUsage() {
+    var username = (localStorage.getItem("autocuan_user") || "").trim().toLowerCase();
+    var isAdmin = localStorage.getItem("autocuan_is_admin") === "true";
+    if (username === "budi" && isAdmin) return;
+    var usage = getDailyAIUsage();
+    usage.count += 1;
+    localStorage.setItem("autocuan_ai_usage_daily", JSON.stringify(usage));
+}
+
+function getRemainingAIUsage() {
+    var username = (localStorage.getItem("autocuan_user") || "").trim().toLowerCase();
+    var isAdmin = localStorage.getItem("autocuan_is_admin") === "true";
+    if (username === "budi" && isAdmin) return "Unlimited";
+    var usage = getDailyAIUsage();
+    return Math.max(0, 5 - usage.count);
 }
 
 function checkUsageLimit() {
-    var isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
-    if (isAdmin) return true;
-    var records = getUsageRecords();
-    return records.length < 2;
+    return canUseAI();
+}
+
+function addUsageRecord() {
+    incrementAIUsage();
+    updateAILimitDisplay();
+}
+
+function updateAILimitDisplay() {
+    var el = document.getElementById('aiLimitDisplay');
+    if (!el) return;
+    var username = (localStorage.getItem("autocuan_user") || "").trim().toLowerCase();
+    var isAdmin = localStorage.getItem("autocuan_is_admin") === "true";
+    if (username === "budi" && isAdmin) {
+        el.textContent = "Admin AI Unlimited";
+        el.className = "text-xs text-emerald-400 mt-2";
+    } else if (username === "guest") {
+        el.textContent = "Login diperlukan untuk menggunakan AI";
+        el.className = "text-xs text-yellow-400 mt-2";
+    } else {
+        var remaining = getRemainingAIUsage();
+        el.textContent = "Sisa analisis AI hari ini: " + remaining + "/5";
+        el.className = "text-xs text-gray-400 mt-2";
+        if (remaining <= 1) el.className = "text-xs text-yellow-400 mt-2";
+        if (remaining === 0) el.className = "text-xs text-red-400 mt-2";
+    }
 }
 
 async function analyzeChart() {
@@ -1031,7 +1130,7 @@ async function analyzeChart() {
     if (!currentPrice) { alert('Masukkan harga sekarang.'); return; }
 
     if (!checkUsageLimit()) {
-        limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
+        limitWarning.innerHTML = '<div class="space-y-2"><p class="font-semibold text-yellow-300">Limit AI harian tercapai</p><p>Kamu sudah menggunakan 5 analisis AI hari ini. Silakan coba lagi besok.</p><p class="text-xs text-gray-500">Chart, portfolio, watchlist, dan journal tetap bisa digunakan.</p></div>';
         limitWarning.classList.remove('hidden');
         logUsage(ticker, 'ai_limit_blocked');
         return;
@@ -1148,7 +1247,7 @@ async function analyzeChartUpload() {
         return;
     }
     if (!checkUsageLimit()) {
-        limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
+        limitWarning.innerHTML = '<div class="space-y-2"><p class="font-semibold text-yellow-300">Limit AI harian tercapai</p><p>Kamu sudah menggunakan 5 analisis AI hari ini. Silakan coba lagi besok.</p><p class="text-xs text-gray-500">Chart, portfolio, watchlist, dan journal tetap bisa digunakan.</p></div>';
         limitWarning.classList.remove('hidden');
         logUsage('CHART_UPLOAD', 'ai_limit_blocked');
         return;
@@ -1217,7 +1316,15 @@ function fileToBase64(file) {
 // ===== RESPONSIVE TV HEIGHT =====
 function updateTvHeight() {
     var el = document.getElementById('tvChartContainer');
-    if (el) { el.style.height = window.innerWidth < 640 ? '400px' : '500px'; }
+    if (el) {
+        if (window.innerWidth < 640) {
+            el.style.height = '400px';
+            el.style.minHeight = '380px';
+        } else {
+            el.style.height = '520px';
+            el.style.minHeight = '520px';
+        }
+    }
 }
 window.addEventListener('resize', updateTvHeight);
 updateTvHeight();
