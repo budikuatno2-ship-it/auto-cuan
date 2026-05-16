@@ -32,10 +32,36 @@
         .glow-emerald:hover { box-shadow: 0 0 30px rgba(16,185,129,0.5), 0 0 80px rgba(16,185,129,0.2); }
         @keyframes spin { to { transform: rotate(360deg); } }
         .spinner { width: 40px; height: 40px; border: 3px solid #242d3d; border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .spinner-sm { width: 16px; height: 16px; border: 2px solid #242d3d; border-top-color: #10b981; border-radius: 50%; animation: spin 0.6s linear infinite; display: inline-block; vertical-align: middle; margin-right: 6px; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in-up { animation: fadeInUp 0.5s ease forwards; }
+        .fade-in-up { animation: fadeInUp 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .fade-in { animation: fadeIn 0.2s ease-out forwards; }
         @keyframes pulseGlow { 0%,100%{opacity:1} 50%{opacity:0.5} }
         .animate-pulse-glow { animation: pulseGlow 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+        @keyframes slideInRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+        @keyframes slideOutRight { from { opacity:1; transform:translateX(0); } to { opacity:0; transform:translateX(20px); } }
+        /* Toast */
+        #toastContainer { position: fixed; top: 1rem; right: 1rem; z-index: 99999; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; max-width: 360px; }
+        @media (max-width: 640px) { #toastContainer { top: auto; bottom: 1rem; right: 0.5rem; left: 0.5rem; max-width: 100%; align-items: center; } }
+        .toast { pointer-events: auto; padding: 0.75rem 1rem; border-radius: 0.75rem; font-size: 0.8125rem; font-weight: 500; animation: slideInRight 0.3s ease-out forwards; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.05); }
+        .toast-exit { animation: slideOutRight 0.25s ease-in forwards; }
+        .toast-success { background: rgba(16,185,129,0.15); color: #6ee7b7; border-color: rgba(16,185,129,0.3); }
+        .toast-error { background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.3); }
+        .toast-warning { background: rgba(245,158,11,0.15); color: #fcd34d; border-color: rgba(245,158,11,0.3); }
+        /* Skeleton */
+        .skeleton { background: linear-gradient(90deg, #151a23 25%, #1c2333 50%, #151a23 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 0.5rem; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        /* Buttons */
+        button, [role="button"] { transition: all 0.15s ease-out; }
+        button:active:not(:disabled) { transform: scale(0.97); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        /* Modal backdrop */
+        .modal-backdrop { transition: opacity 0.2s ease-out; }
+        body.modal-open { overflow: hidden; }
+        /* Inputs */
+        input:focus, textarea:focus { transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out; }
+        /* Result content */
         #resultContent table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
         #resultContent th, #resultContent td { padding: 0.5rem 0.75rem; border: 1px solid #1c2333; text-align: left; font-size: 0.875rem; white-space: nowrap; }
         #resultContent th { background: #151a23; color: #34d399; font-weight: 600; }
@@ -50,6 +76,7 @@
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
+<div id="toastContainer"></div>
 
 <!-- ===== BLOCKED SCREEN ===== -->
 <div id="blockedScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
@@ -171,6 +198,7 @@
             <h2 class="text-sm font-semibold text-gray-300">Live Chart - TradingView</h2>
         </div>
         <div id="tvChartContainer" class="w-full" style="height:400px">
+            <div class="flex items-center justify-center h-full text-gray-600 text-sm">Memuat chart...</div>
         </div>
     </div>
 </section>
@@ -700,7 +728,7 @@ async function doLogin() {
 
     // Hash password and call API
     loginBtn.disabled = true;
-    loginBtn.textContent = 'Memproses...';
+    loginBtn.innerHTML = '<span class="spinner-sm"></span>Masuk...';
 
     try {
         var passwordHash = await hashPassword(password);
@@ -735,7 +763,7 @@ async function doLogin() {
         errorEl.classList.remove('hidden');
     } finally {
         loginBtn.disabled = false;
-        loginBtn.textContent = 'Masuk';
+        loginBtn.innerHTML = 'Masuk';
     }
 }
 
@@ -789,7 +817,7 @@ async function doRegister() {
 
     // Call API
     registerBtn.disabled = true;
-    registerBtn.textContent = 'Memproses...';
+    registerBtn.innerHTML = '<span class="spinner-sm"></span>Mendaftar...';
 
     try {
         var passwordHash = await hashPassword(password);
@@ -825,7 +853,7 @@ async function doRegister() {
         errorEl.classList.remove('hidden');
     } finally {
         registerBtn.disabled = false;
-        registerBtn.textContent = 'Daftar';
+        registerBtn.innerHTML = 'Daftar';
     }
 }
 
@@ -1204,7 +1232,7 @@ var cachedAdminData = null;
 async function loadAdminLogs(type) {
     lastAdminLogType = type;
     var container = document.getElementById('adminLogsContainer');
-    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
+    container.innerHTML = '<div class="space-y-2">' + skeletonRows(5) + '</div>';
 
     try {
         var adminName = localStorage.getItem('autocuan_user') || '';
@@ -1316,7 +1344,7 @@ var cachedUsers = [];
 
 async function loadAdminUsers() {
     var container = document.getElementById('adminLogsContainer');
-    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
+    container.innerHTML = '<div class="space-y-2">' + skeletonRows(4) + '</div>';
 
     try {
         var adminName = localStorage.getItem('autocuan_user') || '';
@@ -1578,7 +1606,7 @@ async function doResetPassword() {
 // ===== WEBSITE SETTINGS =====
 async function loadWebsiteSettings() {
     var container = document.getElementById('adminLogsContainer');
-    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
+    container.innerHTML = '<div class="space-y-3">' + skeletonRows(3) + '</div>';
 
     try {
         var response = await fetch('/api/maintenance-settings', {
@@ -1663,6 +1691,66 @@ function testMaintenanceScreen() {
     var previewMsg = msgEl ? msgEl.value.trim() : 'Auto-Cuan sedang tidak dapat diakses sementara.';
     document.getElementById('maintenancePreviewMsg').textContent = previewMsg;
     document.getElementById('maintenancePreviewModal').classList.remove('hidden');
+}
+</script>
+
+<script>
+// ===== TOAST SYSTEM =====
+function showToast(message, type) {
+    type = type || 'success';
+    var container = document.getElementById('toastContainer');
+    if (!container) return;
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(function() {
+        toast.classList.add('toast-exit');
+        setTimeout(function() { toast.remove(); }, 250);
+    }, 3000);
+}
+
+// ===== MODAL UTILITIES =====
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        var modals = ['selfResetModal', 'resetPasswordModal', 'maintenancePreviewModal', 'adminAiModal', 'adminBypassModal'];
+        for (var i = 0; i < modals.length; i++) {
+            var el = document.getElementById(modals[i]);
+            if (el && !el.classList.contains('hidden')) {
+                el.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+                return;
+            }
+        }
+    }
+});
+
+// Close modals on overlay click
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('fixed') && e.target.classList.contains('bg-black/70')) {
+        e.target.classList.add('hidden');
+        document.body.classList.remove('modal-open');
+    }
+});
+
+// ===== REPLACE ALERTS WITH TOASTS =====
+var _origAlert = window.alert;
+window.alert = function(msg) {
+    if (!msg) return;
+    var type = 'success';
+    var m = String(msg).toLowerCase();
+    if (m.indexOf('gagal') !== -1 || m.indexOf('error') !== -1 || m.indexOf('salah') !== -1) type = 'error';
+    else if (m.indexOf('tidak') !== -1 || m.indexOf('warning') !== -1) type = 'warning';
+    showToast(msg, type);
+};
+
+// ===== SKELETON GENERATOR =====
+function skeletonRows(count) {
+    var html = '';
+    for (var i = 0; i < (count || 4); i++) {
+        html += '<div class="skeleton h-10 w-full mb-2"></div>';
+    }
+    return html;
 }
 </script>
 </body>
