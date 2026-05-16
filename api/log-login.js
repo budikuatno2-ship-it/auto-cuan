@@ -1,11 +1,18 @@
 const { createClient } = require('@supabase/supabase-js');
 
-// Bad name filter - do not store offensive usernames
-const BAD_NAMES = ['admin', 'root', 'hack', 'inject', 'script', 'drop', 'delete'];
+// Bad name filter - strong normalization
+function normalizeNameForCheck(name) {
+  return String(name || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[@]/g, "a").replace(/[4]/g, "a").replace(/[!1|]/g, "i").replace(/[0]/g, "o")
+    .replace(/[3]/g, "e").replace(/[5]/g, "s").replace(/[7]/g, "t").replace(/\$/g, "s")
+    .replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
+}
+const BAD_NAMES = ["anjing","anjir","anjay","asu","asw","babi","babik","bangsat","bangsad","bajingan","brengsek","kampret","keparat","laknat","sialan","goblok","goblog","tolol","kontol","kntl","memek","mmk","ngentot","ngntot","ngewe","perek","lonte","jancok","jancuk","mampus","modar","ajg","anjg","bgst","bgsd","gblk","bbi","bbai","babiq","babii","b4bi","kont0l","ngent0t"];
 function isBadUsername(name) {
   if (!name) return false;
-  const lower = name.toLowerCase();
-  return BAD_NAMES.some(bad => lower.includes(bad));
+  var clean = normalizeNameForCheck(name);
+  if (!clean || clean.length < 2) return false;
+  return BAD_NAMES.some(function(word) { return clean.includes(normalizeNameForCheck(word)); });
 }
 
 module.exports = async function handler(req, res) {

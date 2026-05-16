@@ -73,11 +73,21 @@ async function getMaintenanceConfig() {
 }
 
 // === BAD NAME FILTER ===
-const BAD_NAMES = ['admin', 'root', 'hack', 'inject', 'script', 'drop', 'delete'];
+function normalizeNameForCheck(name) {
+  return String(name || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[@]/g, "a").replace(/[4]/g, "a").replace(/[!1|]/g, "i").replace(/[0]/g, "o")
+    .replace(/[3]/g, "e").replace(/[5]/g, "s").replace(/[7]/g, "t").replace(/\$/g, "s")
+    .replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
+}
+const BAD_NAMES = ["anjing","anjir","anjay","anjrit","anjrot","anjeng","anjink","asu","asw","babi","babik","bangsat","bangsad","bajingan","brengsek","kampret","keparat","laknat","sialan","bangke","bangkai","tai","taik","tahi","goblok","goblog","goblk","tolol","tlol","bodoh","bego","dungu","idiot","edan","gila","sinting","koplak","koplok","pekok","bloon","bacot","cupu","najis","hina","sampah","busuk","parasit","kampungan","norak","alay","rese","songong","sokap","kontol","kntl","kontl","memek","mmk","meki","peler","titit","tetek","ngentot","ngntot","entot","ngewe","perek","lonte","pelacur","jablay","cabul","mesum","jancok","jancuk","cuk","cok","dancok","dancuk","kirik","ndasmu","raimu","matamu","gathel","gatel","celeng","wedhus","jangkrik","asem","ndlogok","gendeng","ndableg","bunuh","dibunuh","kubunuh","takbunuh","hajar","bacok","gorok","bakar","serang","habisi","mampus","modar","matilu","matilo","matikau","ngebom","ledakkan","rusuh","jarah","amuk","keroyok","gebuk","pukul","tusuk","sembelih","ajg","anjg","anj","anjng","bgst","bgsd","bngsat","bngst","bajingn","gblk","gblg","goblogg","tll","bbi","bbai","babiq","babii","baabi","b4bi","asuww","asuu","kirikk","jancokk","jancukkk","kntol","kont0l","memk","ngentod","ngent0t"];
 function isBadUsername(name) {
   if (!name) return false;
-  const lower = name.toLowerCase();
-  return BAD_NAMES.some(bad => lower.includes(bad));
+  var clean = normalizeNameForCheck(name);
+  if (!clean || clean.length < 2) return true;
+  if (clean.length > 30) return true;
+  if (/(.)\1{5,}/.test(clean)) return true;
+  if (/(http|www|com|net|org)/i.test(clean)) return true;
+  return BAD_NAMES.some(function(word) { return clean.includes(normalizeNameForCheck(word)); });
 }
 
 // === MAIN HANDLER ===

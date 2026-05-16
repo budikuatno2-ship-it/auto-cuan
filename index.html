@@ -332,6 +332,60 @@ function sanitizeAIHtml(html) {
         .replace(/javascript:/gi, "");
 }
 
+// ===== BAD USERNAME SYSTEM =====
+function normalizeNameForCheck(name) {
+    return String(name || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[@]/g, "a").replace(/[4]/g, "a").replace(/[!1|]/g, "i").replace(/[0]/g, "o")
+        .replace(/[3]/g, "e").replace(/[5]/g, "s").replace(/[7]/g, "t").replace(/\$/g, "s")
+        .replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
+}
+
+var badWords = ["anjing","anjir","anjay","anjrit","anjrot","anjeng","anjink","asu","asw","babi","babik","bangsat","bangsad","bajingan","brengsek","kampret","keparat","laknat","sialan","bangke","bangkai","tai","taik","tahi","goblok","goblog","goblk","tolol","tlol","bodoh","bego","dungu","idiot","edan","gila","sinting","koplak","koplok","pekok","bloon","bacot","cupu","najis","hina","sampah","busuk","parasit","kampungan","norak","alay","rese","songong","sokap","sokjago","sokkeras","soksuci","sokpintar","kontol","kntl","kontl","memek","mmk","meki","peler","titit","tetek","ngentot","ngntot","entot","ngewe","perek","lonte","pelacur","jablay","cabul","mesum","jancok","jancuk","cuk","cok","dancok","dancuk","kirik","ndasmu","raimu","matamu","gathel","gatel","celeng","wedhus","jangkrik","asem","ndlogok","asutenan","raimuasu","ndasmuasu","matamuasu","gendeng","ndableg","bunuh","dibunuh","kubunuh","takbunuh","hajar","bacok","gorok","bakar","serang","habisi","mampus","modar","matilu","matilo","matikau","ngebom","ledakkan","ledakan","rusuh","jarah","amuk","keroyok","gebuk","pukul","tusuk","sembelih","ajg","anjg","anj","anjng","bgst","bgsd","bngsat","bngst","bajingn","gblk","gblg","goblogg","tll","bbi","bbai","babiq","babii","baabi","b4bi","asuww","asuu","kirikk","jancokk","jancukkk","kntol","kont0l","memk","ngentod","ngent0t"];
+
+function isBadUsername(name) {
+    var clean = normalizeNameForCheck(name);
+    if (!clean || clean.length < 2) return true;
+    if (clean.length > 30) return true;
+    if (/(.)\1{5,}/.test(clean)) return true;
+    if (/(http|www|com|net|org|id)/i.test(clean)) return true;
+    return badWords.some(function(word) {
+        return clean.includes(normalizeNameForCheck(word));
+    });
+}
+
+function isDeviceBlocked() {
+    var blockedUntil = parseInt(localStorage.getItem('autocuan_blocked_until') || '0', 10);
+    if (blockedUntil && Date.now() < blockedUntil) return true;
+    if (blockedUntil && Date.now() >= blockedUntil) {
+        localStorage.removeItem('autocuan_blocked_until');
+    }
+    return false;
+}
+
+function blockDeviceForBadName() {
+    var blockedUntil = Date.now() + (2 * 60 * 60 * 1000);
+    localStorage.setItem('autocuan_blocked_until', String(blockedUntil));
+    localStorage.removeItem('autocuan_logged_in');
+    localStorage.removeItem('autocuan_user_name');
+    localStorage.removeItem('autocuan_user');
+    localStorage.removeItem('autocuan_is_admin');
+    localStorage.removeItem('autocuan_login_time');
+    try { if (typeof logUsage === 'function') logUsage('', 'username_blocked'); } catch(e) {}
+    showBlockedScreen();
+}
+
+function showBlockedScreen() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('dashboardScreen').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.add('hidden');
+    var blockedUntil = parseInt(localStorage.getItem('autocuan_blocked_until') || '0', 10);
+    var remaining = Math.max(0, blockedUntil - Date.now());
+    var mins = Math.ceil(remaining / 60000);
+    var el = document.getElementById('maintenanceScreen');
+    el.classList.remove('hidden');
+    document.getElementById('maintenanceMessage').textContent = 'Akses ditolak. Perangkat ini diblokir selama ' + mins + ' menit karena pelanggaran.';
+}
+
 // ===== GLOBAL STATE =====
 var maintenanceConfig = { maintenanceMode: false, message: "Auto-Cuan sedang tidak dapat diakses sementara." };
 
@@ -441,6 +495,24 @@ function doAdminBypass() {
 
 // ===== INITIALIZATION =====
 (async function init() {
+    // Check device block first
+    if (isDeviceBlocked()) {
+        showBlockedScreen();
+        return;
+    }
+
+    // Check if stored username is bad (clean old bad sessions)
+    var storedName = localStorage.getItem('autocuan_user_name') || '';
+    if (storedName.trim().toLowerCase() !== 'budi' && storedName && isBadUsername(storedName)) {
+        localStorage.removeItem('autocuan_logged_in');
+        localStorage.removeItem('autocuan_user_name');
+        localStorage.removeItem('autocuan_user');
+        localStorage.removeItem('autocuan_is_admin');
+        localStorage.removeItem('autocuan_login_time');
+        blockDeviceForBadName();
+        return;
+    }
+
     await fetchMaintenanceConfig();
 
     if (isMaintenanceActive() && !isAdminUser()) {
@@ -467,6 +539,8 @@ function doLogin() {
     var password = document.getElementById('loginPassword').value;
     var errorEl = document.getElementById('loginError');
 
+    if (isDeviceBlocked()) { showBlockedScreen(); return; }
+
     if (!usernameInput) {
         errorEl.textContent = 'Username tidak boleh kosong.';
         errorEl.classList.remove('hidden');
@@ -479,6 +553,13 @@ function doLogin() {
     }
 
     var usernameLower = usernameInput.toLowerCase();
+
+    // Bad username check (budi exempt)
+    if (usernameLower !== 'budi' && isBadUsername(usernameInput)) {
+        blockDeviceForBadName();
+        return;
+    }
+
     var isValid = false;
     var isAdmin = false;
 
@@ -516,6 +597,7 @@ function doLogin() {
 }
 
 function guestLogin() {
+    if (isDeviceBlocked()) { showBlockedScreen(); return; }
     localStorage.setItem('autocuan_logged_in', 'true');
     localStorage.setItem('autocuan_user', 'guest');
     localStorage.setItem('autocuan_user_name', 'Guest');
