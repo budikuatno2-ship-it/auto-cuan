@@ -47,9 +47,21 @@
         #resultContent li { margin-bottom: 0.25rem; }
         #resultContent strong { color: #6ee7b7; }
         #resultContent .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 99999; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; }
+        .toast { pointer-events: auto; padding: 0.75rem 1.25rem; border-radius: 0.75rem; font-size: 0.875rem; font-weight: 500; color: #fff; backdrop-filter: blur(12px); animation: fadeInUp 0.3s ease; transition: opacity 0.3s; }
+        .toast-success { background: rgba(16,185,129,0.9); border: 1px solid rgba(16,185,129,0.5); }
+        .toast-error { background: rgba(239,68,68,0.9); border: 1px solid rgba(239,68,68,0.5); }
+        .toast-info { background: rgba(59,130,246,0.9); border: 1px solid rgba(59,130,246,0.5); }
+        .toggle-switch { position: relative; width: 48px; height: 26px; background: #374151; border-radius: 13px; cursor: pointer; transition: background 0.3s; flex-shrink: 0; }
+        .toggle-switch.active { background: #10b981; }
+        .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: white; border-radius: 50%; transition: transform 0.3s; }
+        .toggle-switch.active::after { transform: translateX(22px); }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
+
+<!-- TOAST CONTAINER -->
+<div id="toastContainer" class="toast-container"></div>
 
 <!-- ===== LOGIN SCREEN ===== -->
 <div id="loginScreen" class="min-h-screen flex items-center justify-center px-4">
@@ -127,8 +139,7 @@
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
             <h2 class="text-sm font-semibold text-gray-300">Live Chart - TradingView</h2>
         </div>
-        <div id="tvChartContainer" class="w-full" style="height:400px">
-        </div>
+        <div id="tvChartContainer" class="w-full" style="height:400px"></div>
     </div>
 </section>
 
@@ -153,11 +164,11 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-400 mb-1.5">Ticker Saham</label>
-                        <input type="text" id="tickerInput" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm uppercase">
+                        <input type="text" id="tickerInput" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm uppercase" maxlength="10">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-400 mb-1.5">Harga Sekarang</label>
-                        <input type="number" id="priceInput" placeholder="Contoh: 9250" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
+                        <input type="number" id="priceInput" placeholder="Contoh: 9250" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" min="1">
                     </div>
                 </div>
                 <button id="analyzeBtn" onclick="analyzeChart()" class="w-full sm:w-auto px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
@@ -168,14 +179,14 @@
 
             <!-- PINDAI CHART MODE -->
             <div id="modeChartPanel" class="hidden space-y-4">
-                <input id="chartFileInput" type="file" accept="image/*" class="hidden" onchange="handleChartFile(event)">
+                <input id="chartFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="handleChartFile(event)">
                 <label for="chartFileInput" id="chartUploadLabel" class="w-full rounded-2xl border-2 border-dashed border-gray-700 bg-[#0b0e14] px-4 py-8 text-center text-gray-300 hover:border-emerald-500 hover:bg-emerald-500/5 transition cursor-pointer flex flex-col items-center justify-center gap-2">
                     <span class="text-3xl">📊</span>
                     <span class="text-sm font-black text-gray-100">Pilih Screenshot Chart</span>
-                    <span class="text-xs text-gray-500">PNG, JPG, WebP • Maks 20MB</span>
+                    <span class="text-xs text-gray-500">PNG, JPG, WebP • Maks 8MB</span>
                 </label>
                 <img id="chartPreviewImage" class="hidden w-full max-h-[280px] sm:max-h-[420px] object-contain rounded-2xl border border-gray-800 bg-[#0b0e14]" alt="Chart Preview">
-                <p class="text-xs text-gray-500">Upload screenshot chart dari TradingView. Jika ingin analisis LuxAlgo/SMC, pastikan indikator sudah terlihat di screenshot.</p>
+                <p class="text-xs text-gray-500">Upload screenshot chart dari TradingView.</p>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <button id="resetChartBtn" onclick="resetChartUpload()" class="w-full sm:w-auto rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Hapus & Unggah Ulang</button>
                     <button id="analyzeChartBtn" onclick="analyzeChartUpload()" class="w-full sm:w-auto rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20">Mulai Analisis Chart</button>
@@ -191,7 +202,7 @@
 <section id="loadingState" class="hidden">
     <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 p-8 text-center">
         <div class="spinner mx-auto mb-5"></div>
-        <p class="text-emerald-400 font-medium animate-pulse-glow">AI sedang menganalisis struktur chart dan merancang trading plan...</p>
+        <p class="text-emerald-400 font-medium animate-pulse-glow">AI sedang menganalisis...</p>
         <p class="text-xs text-gray-600 mt-3">Proses analisis biasanya 15-45 detik</p>
     </div>
 </section>
@@ -203,8 +214,7 @@
             <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
             <h2 class="font-semibold text-gray-200 text-sm sm:text-base">Hasil Analisis AI</h2>
         </div>
-        <div id="resultContent" class="p-4 sm:p-6 overflow-x-auto">
-        </div>
+        <div id="resultContent" class="p-4 sm:p-6 overflow-x-auto"></div>
     </div>
 </section>
 
@@ -230,13 +240,17 @@
     </div>
 </section>
 
+<!-- ADMIN CONTROL CENTER -->
+<section id="adminControlCenter" class="hidden fade-in-up space-y-4">
+</section>
+
 </main>
 
 <!-- FOOTER -->
 <footer class="border-t border-dark-700/50 mt-12">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center">
         <p class="text-xs text-gray-500">Auto-Cuan &copy; 2024 &bull; SMC Analysis Platform</p>
-        <p class="text-xs text-gray-600 mt-1">Disclaimer: Bukan merupakan saran investasi. Gunakan analisis ini sebagai referensi tambahan saja.</p>
+        <p class="text-xs text-gray-600 mt-1">Disclaimer: Bukan merupakan saran investasi.</p>
     </div>
 </footer>
 
@@ -259,11 +273,22 @@
 <!-- MAINTENANCE SCREEN -->
 <div id="maintenanceScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
     <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
+        <div id="maintenanceIcon" class="text-5xl cursor-default select-none">🛠️</div>
+        <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
+        <p id="maintenanceMessage" class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses sementara.</p>
+        <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
+    </div>
+</div>
+
+<!-- TEST MAINTENANCE MODAL -->
+<div id="testMaintenanceModal" class="hidden fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
         <div class="text-5xl">🛠️</div>
         <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
-        <p class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses pada pukul 22:00–06:00 WIB.</p>
-        <p class="text-sm text-gray-300">Silakan kembali lagi setelah pukul 06:00 WIB.</p>
-        <p class="text-xs text-gray-600 mt-4">Maintenance dilakukan untuk menjaga performa dan menghemat kuota AI.</p>
+        <p id="testMaintenanceMsg" class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses sementara.</p>
+        <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
+        <p class="text-xs text-blue-400 mt-4">(Preview saja - maintenance TIDAK diaktifkan)</p>
+        <button onclick="document.getElementById('testMaintenanceModal').classList.add('hidden')" class="mt-4 px-6 py-2 rounded-xl bg-gray-800 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Tutup Preview</button>
     </div>
 </div>
 
@@ -285,42 +310,153 @@
     </div>
 </div>
 
+
 <script>
-// ===== MAINTENANCE UTILITIES =====
-function getWIBHour() {
-    var parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Jakarta',
-        hour: '2-digit',
-        hour12: false
-    }).formatToParts(new Date());
-    var hourPart = parts.find(function(p) { return p.type === 'hour'; });
-    return Number(hourPart ? hourPart.value : 0);
+// ===== TOAST SYSTEM =====
+function showToast(message, type) {
+    type = type || 'success';
+    var container = document.getElementById('toastContainer');
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(function() { toast.style.opacity = '0'; setTimeout(function() { toast.remove(); }, 300); }, 3000);
 }
 
-function isMaintenanceTime() {
-    var hour = getWIBHour();
-    return hour >= 22 || hour < 6;
+// ===== AI HTML SANITIZER =====
+function sanitizeAIHtml(html) {
+    return String(html || "")
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+        .replace(/\son\w+="[^"]*"/gi, "")
+        .replace(/\son\w+='[^']*'/gi, "")
+        .replace(/javascript:/gi, "");
 }
 
+// ===== BAD USERNAME SYSTEM =====
+function normalizeNameForCheck(name) {
+    return String(name || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[@]/g, "a").replace(/[4]/g, "a").replace(/[!1|]/g, "i").replace(/[0]/g, "o")
+        .replace(/[3]/g, "e").replace(/[5]/g, "s").replace(/[7]/g, "t").replace(/\$/g, "s")
+        .replace(/\s+/g, "").replace(/[^a-z0-9]/g, "");
+}
+
+var badWords = ["anjing","anjir","anjay","anjrit","anjrot","anjeng","anjink","asu","asw","babi","babik","bangsat","bangsad","bajingan","brengsek","kampret","keparat","laknat","sialan","bangke","bangkai","tai","taik","tahi","goblok","goblog","goblk","tolol","tlol","bodoh","bego","dungu","idiot","edan","gila","sinting","koplak","koplok","pekok","bloon","bacot","cupu","najis","hina","sampah","busuk","parasit","kampungan","norak","alay","rese","songong","sokap","sokjago","sokkeras","soksuci","sokpintar","kontol","kntl","kontl","memek","mmk","meki","peler","titit","tetek","ngentot","ngntot","entot","ngewe","perek","lonte","pelacur","jablay","cabul","mesum","jancok","jancuk","cuk","cok","dancok","dancuk","kirik","ndasmu","raimu","matamu","gathel","gatel","celeng","wedhus","jangkrik","asem","ndlogok","asutenan","raimuasu","ndasmuasu","matamuasu","gendeng","ndableg","bunuh","dibunuh","kubunuh","takbunuh","hajar","bacok","gorok","bakar","serang","habisi","mampus","modar","matilu","matilo","matikau","ngebom","ledakkan","ledakan","rusuh","jarah","amuk","keroyok","gebuk","pukul","tusuk","sembelih","ajg","anjg","anj","anjng","bgst","bgsd","bngsat","bngst","bajingn","gblk","gblg","goblogg","tll","bbi","bbai","babiq","babii","baabi","b4bi","asuww","asuu","kirikk","jancokk","jancukkk","kntol","kont0l","memk","ngentod","ngent0t"];
+
+function isBadUsername(name) {
+    var clean = normalizeNameForCheck(name);
+    if (!clean || clean.length < 2) return true;
+    if (clean.length > 30) return true;
+    if (/(.)\1{5,}/.test(clean)) return true;
+    if (/(http|www|com|net|org|id)/i.test(clean)) return true;
+    return badWords.some(function(word) {
+        return clean.includes(normalizeNameForCheck(word));
+    });
+}
+
+function isDeviceBlocked() {
+    var blockedUntil = parseInt(localStorage.getItem('autocuan_blocked_until') || '0', 10);
+    if (blockedUntil && Date.now() < blockedUntil) return true;
+    if (blockedUntil && Date.now() >= blockedUntil) {
+        localStorage.removeItem('autocuan_blocked_until');
+    }
+    return false;
+}
+
+function blockDeviceForBadName() {
+    var blockedUntil = Date.now() + (2 * 60 * 60 * 1000);
+    localStorage.setItem('autocuan_blocked_until', String(blockedUntil));
+    localStorage.removeItem('autocuan_logged_in');
+    localStorage.removeItem('autocuan_user_name');
+    localStorage.removeItem('autocuan_user');
+    localStorage.removeItem('autocuan_is_admin');
+    localStorage.removeItem('autocuan_login_time');
+    try { if (typeof logUsage === 'function') logUsage('', 'username_blocked'); } catch(e) {}
+    showBlockedScreen();
+}
+
+function showBlockedScreen() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('dashboardScreen').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.add('hidden');
+    var blockedUntil = parseInt(localStorage.getItem('autocuan_blocked_until') || '0', 10);
+    var remaining = Math.max(0, blockedUntil - Date.now());
+    var mins = Math.ceil(remaining / 60000);
+    var el = document.getElementById('maintenanceScreen');
+    el.classList.remove('hidden');
+    document.getElementById('maintenanceMessage').textContent = 'Akses ditolak. Perangkat ini diblokir selama ' + mins + ' menit karena pelanggaran.';
+}
+
+// ===== GLOBAL STATE =====
+var maintenanceConfig = { maintenanceMode: false, message: "Auto-Cuan sedang tidak dapat diakses sementara." };
+
+// ===== ADMIN CHECK =====
 function isAdminUser() {
-    var name = (localStorage.getItem('autocuan_user') || '').trim().toLowerCase();
+    var name = (localStorage.getItem('autocuan_user_name') || localStorage.getItem('autocuan_user') || '').trim().toLowerCase();
     var adminFlag = localStorage.getItem('autocuan_is_admin') === 'true';
     return adminFlag && name === 'budi';
 }
 
-// ===== ADMIN BYPASS SHORTCUT (Ctrl+B then K) =====
-var adminShortcutBuffer = [];
+function isLoggedIn() {
+    return localStorage.getItem('autocuan_logged_in') === 'true' || !!localStorage.getItem('autocuan_user');
+}
+
+function getCurrentUsername() {
+    return localStorage.getItem('autocuan_user_name') || localStorage.getItem('autocuan_user') || '';
+}
+
+// ===== FETCH MAINTENANCE CONFIG =====
+async function fetchMaintenanceConfig() {
+    try {
+        var response = await fetch('/api/maintenance-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get' })
+        });
+        var data = await response.json();
+        if (data.success && data.config) {
+            maintenanceConfig = data.config;
+        }
+    } catch (e) {
+        maintenanceConfig = { maintenanceMode: false, message: "Auto-Cuan sedang tidak dapat diakses sementara." };
+    }
+    return maintenanceConfig;
+}
+
+// ===== MAINTENANCE CHECK =====
+function isMaintenanceActive() {
+    return maintenanceConfig.maintenanceMode === true;
+}
+
+// ===== HIDDEN ADMIN ACCESS - DESKTOP: Ctrl+B+K =====
+var adminKeyBuffer = [];
 document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey) {
-        adminShortcutBuffer.push(e.key.toLowerCase());
-        if (adminShortcutBuffer.length > 5) adminShortcutBuffer = adminShortcutBuffer.slice(-5);
-        var bufStr = adminShortcutBuffer.join('');
-        if (bufStr.indexOf('bk') !== -1 || bufStr.indexOf('b') !== -1 && adminShortcutBuffer[adminShortcutBuffer.length - 1] === 'k') {
-            adminShortcutBuffer = [];
+    if (e.ctrlKey && (e.key === 'b' || e.key === 'B')) {
+        adminKeyBuffer.push('b');
+    } else if (e.ctrlKey && (e.key === 'k' || e.key === 'K')) {
+        if (adminKeyBuffer.includes('b')) {
+            adminKeyBuffer = [];
+            e.preventDefault();
             openAdminBypassModal();
         }
-    } else {
-        adminShortcutBuffer = [];
+    } else if (!e.ctrlKey) {
+        adminKeyBuffer = [];
+    }
+});
+
+// ===== HIDDEN ADMIN ACCESS - MOBILE: Tap icon 5 times in 3 seconds =====
+var mobileTapTimes = [];
+document.addEventListener('DOMContentLoaded', function() {
+    var icon = document.getElementById('maintenanceIcon');
+    if (icon) {
+        icon.addEventListener('click', function() {
+            var now = Date.now();
+            mobileTapTimes.push(now);
+            mobileTapTimes = mobileTapTimes.filter(function(t) { return (now - t) < 3000; });
+            if (mobileTapTimes.length >= 5) {
+                mobileTapTimes = [];
+                openAdminBypassModal();
+            }
+        });
     }
 });
 
@@ -342,14 +478,15 @@ function doAdminBypass() {
     var errorEl = document.getElementById('adminBypassError');
 
     if (name.toLowerCase() === 'budi' && pass === '.') {
-        localStorage.setItem('autocuan_user', 'budi');
+        localStorage.setItem('autocuan_logged_in', 'true');
+        localStorage.setItem('autocuan_user_name', name);
+        localStorage.setItem('autocuan_user', name.toLowerCase());
         localStorage.setItem('autocuan_is_admin', 'true');
         localStorage.setItem('autocuan_login_time', Date.now().toString());
-        // Log admin login silently
-        logLogin('budi', false, true);
+        logLogin(name, false, true);
         closeAdminBypassModal();
         document.getElementById('maintenanceScreen').classList.add('hidden');
-        showDashboard('budi');
+        showDashboard(name.toLowerCase());
     } else {
         errorEl.textContent = 'Akses admin salah.';
         errorEl.classList.remove('hidden');
@@ -357,19 +494,38 @@ function doAdminBypass() {
 }
 
 // ===== INITIALIZATION =====
-(function init() {
-    // Check maintenance first
-    if (isMaintenanceTime() && !isAdminUser()) {
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('dashboardScreen').classList.add('hidden');
-        document.getElementById('maintenanceScreen').classList.remove('hidden');
+(async function init() {
+    // Check device block first
+    if (isDeviceBlocked()) {
+        showBlockedScreen();
         return;
     }
 
-    // Normal flow
+    // Check if stored username is bad (clean old bad sessions)
+    var storedName = localStorage.getItem('autocuan_user_name') || '';
+    if (storedName.trim().toLowerCase() !== 'budi' && storedName && isBadUsername(storedName)) {
+        localStorage.removeItem('autocuan_logged_in');
+        localStorage.removeItem('autocuan_user_name');
+        localStorage.removeItem('autocuan_user');
+        localStorage.removeItem('autocuan_is_admin');
+        localStorage.removeItem('autocuan_login_time');
+        blockDeviceForBadName();
+        return;
+    }
+
+    await fetchMaintenanceConfig();
+
+    if (isMaintenanceActive() && !isAdminUser()) {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('dashboardScreen').classList.add('hidden');
+        document.getElementById('maintenanceScreen').classList.remove('hidden');
+        document.getElementById('maintenanceMessage').textContent = maintenanceConfig.message || "Auto-Cuan sedang tidak dapat diakses sementara.";
+        return;
+    }
+
     document.getElementById('maintenanceScreen').classList.add('hidden');
-    const user = localStorage.getItem('autocuan_user');
-    if (user) {
+    var user = getCurrentUsername();
+    if (user && isLoggedIn()) {
         showDashboard(user);
     } else {
         document.getElementById('loginScreen').classList.remove('hidden');
@@ -379,19 +535,33 @@ function doAdminBypass() {
 
 // ===== LOGIN LOGIC =====
 function doLogin() {
-    const usernameInput = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const errorEl = document.getElementById('loginError');
+    var usernameInput = document.getElementById('loginUsername').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    var errorEl = document.getElementById('loginError');
+
+    if (isDeviceBlocked()) { showBlockedScreen(); return; }
 
     if (!usernameInput) {
         errorEl.textContent = 'Username tidak boleh kosong.';
         errorEl.classList.remove('hidden');
         return;
     }
+    if (usernameInput.length > 30) {
+        errorEl.textContent = 'Username terlalu panjang.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
 
-    const usernameLower = usernameInput.toLowerCase();
-    let isValid = false;
-    let isAdmin = false;
+    var usernameLower = usernameInput.toLowerCase();
+
+    // Bad username check (budi exempt)
+    if (usernameLower !== 'budi' && isBadUsername(usernameInput)) {
+        blockDeviceForBadName();
+        return;
+    }
+
+    var isValid = false;
+    var isAdmin = false;
 
     if (usernameLower === 'budi') {
         if (password === '.') {
@@ -403,8 +573,8 @@ function doLogin() {
             return;
         }
     } else {
-        const firstChar = usernameLower.charAt(0);
-        const expectedPass = (firstChar.charCodeAt(0) - 96).toString();
+        var firstChar = usernameLower.charAt(0);
+        var expectedPass = (firstChar.charCodeAt(0) - 96).toString();
         if (password === expectedPass) {
             isValid = true;
             isAdmin = false;
@@ -416,16 +586,23 @@ function doLogin() {
     }
 
     if (isValid) {
+        localStorage.setItem('autocuan_logged_in', 'true');
         localStorage.setItem('autocuan_user', usernameLower);
+        localStorage.setItem('autocuan_user_name', usernameInput);
         localStorage.setItem('autocuan_is_admin', isAdmin ? 'true' : 'false');
+        localStorage.setItem('autocuan_login_time', Date.now().toString());
         logLogin(usernameLower, false, isAdmin);
         showDashboard(usernameLower);
     }
 }
 
 function guestLogin() {
+    if (isDeviceBlocked()) { showBlockedScreen(); return; }
+    localStorage.setItem('autocuan_logged_in', 'true');
     localStorage.setItem('autocuan_user', 'guest');
+    localStorage.setItem('autocuan_user_name', 'Guest');
     localStorage.setItem('autocuan_is_admin', 'false');
+    localStorage.setItem('autocuan_login_time', Date.now().toString());
     logLogin('Guest', true, false);
     showDashboard('guest');
 }
@@ -436,60 +613,52 @@ async function logLogin(username, isGuest, isAdmin) {
         await fetch('/api/log-login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: username,
-                isGuest: isGuest,
-                isAdmin: isAdmin,
-                userAgent: navigator.userAgent
-            })
+            body: JSON.stringify({ username: username, isGuest: isGuest, isAdmin: isAdmin, userAgent: navigator.userAgent })
         });
-    } catch (e) { console.warn('logLogin failed', e); }
+    } catch (e) { /* silent */ }
 }
 
 async function logSearch(ticker, source) {
     try {
-        var username = localStorage.getItem('autocuan_user') || 'Unknown';
+        var username = getCurrentUsername() || 'Unknown';
         await fetch('/api/log-search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: username, ticker: ticker, source: source })
         });
-    } catch (e) { console.warn('logSearch failed', e); }
+    } catch (e) { /* silent */ }
 }
 
 async function logAnalysisResult(ticker, mode, html) {
     try {
-        var username = localStorage.getItem('autocuan_user') || 'Unknown';
+        var username = getCurrentUsername() || 'Unknown';
         var text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
         var resultSummary = text.slice(0, 500);
         await fetch('/api/log-analysis', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: username,
-                ticker: ticker,
-                mode: mode,
-                resultSummary: resultSummary,
-                fullResultHtml: html
-            })
+            body: JSON.stringify({ username: username, ticker: ticker, mode: mode, resultSummary: resultSummary, fullResultHtml: html })
         });
-    } catch (e) { console.warn('logAnalysis failed', e); }
+    } catch (e) { /* silent */ }
 }
 
 async function logUsage(ticker, action) {
     try {
-        var username = localStorage.getItem('autocuan_user') || 'Unknown';
+        var username = getCurrentUsername() || 'Unknown';
         await fetch('/api/log-usage', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: username, ticker: ticker, action: action })
         });
-    } catch (e) { console.warn('logUsage failed', e); }
+    } catch (e) { /* silent */ }
 }
 
 function logout() {
+    localStorage.removeItem('autocuan_logged_in');
     localStorage.removeItem('autocuan_user');
+    localStorage.removeItem('autocuan_user_name');
     localStorage.removeItem('autocuan_is_admin');
+    localStorage.removeItem('autocuan_login_time');
     document.getElementById('dashboardScreen').classList.add('hidden');
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('loginUsername').value = '';
@@ -500,28 +669,31 @@ function logout() {
 // ===== DASHBOARD =====
 function showDashboard(username) {
     document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.add('hidden');
     document.getElementById('dashboardScreen').classList.remove('hidden');
     document.getElementById('headerUsername').textContent = username;
 
-    const isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
-    const isGuest = (username === 'guest');
+    var isAdmin = isAdminUser();
+    var isGuest = (username === 'guest');
 
-    // Guest restrictions
     if (isGuest) {
         document.getElementById('guestBanner').classList.remove('hidden');
         document.getElementById('aiSection').classList.add('hidden');
         document.getElementById('adminPanel').classList.add('hidden');
+        document.getElementById('adminControlCenter').classList.add('hidden');
     } else {
         document.getElementById('guestBanner').classList.add('hidden');
         document.getElementById('aiSection').classList.remove('hidden');
         if (isAdmin) {
             document.getElementById('adminPanel').classList.remove('hidden');
+            document.getElementById('adminControlCenter').classList.remove('hidden');
+            renderAdminControlCenter();
         } else {
             document.getElementById('adminPanel').classList.add('hidden');
+            document.getElementById('adminControlCenter').classList.add('hidden');
         }
     }
 
-    // Load TradingView
     loadTradingView();
 }
 
@@ -534,18 +706,10 @@ function loadTradingView() {
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.async = true;
     script.innerHTML = JSON.stringify({
-        "autosize": true,
-        "symbol": "IDX:IHSG",
-        "interval": "D",
-        "timezone": "Asia/Jakarta",
-        "theme": "dark",
-        "style": "1",
-        "locale": "id",
-        "backgroundColor": "rgba(15, 19, 25, 1)",
-        "gridColor": "rgba(28, 35, 51, 0.5)",
-        "allow_symbol_change": true,
-        "calendar": false,
-        "support_host": "https://www.tradingview.com"
+        "autosize": true, "symbol": "IDX:IHSG", "interval": "D", "timezone": "Asia/Jakarta",
+        "theme": "dark", "style": "1", "locale": "id",
+        "backgroundColor": "rgba(15, 19, 25, 1)", "gridColor": "rgba(28, 35, 51, 0.5)",
+        "allow_symbol_change": true, "calendar": false, "support_host": "https://www.tradingview.com"
     });
     var widget = document.createElement('div');
     widget.className = 'tradingview-widget-container';
@@ -560,12 +724,11 @@ function loadTradingView() {
     container.appendChild(widget);
 }
 
-// ===== AI ANALYSIS =====
+// ===== AI USAGE =====
 function getUsageRecords() {
     try {
-        var records = JSON.parse(localStorage.getItem('autocuan_usage') || '[]');
+        var records = JSON.parse(localStorage.getItem('autocuan_ai_usage') || '[]');
         var now = Date.now();
-        // Keep only records within last 30 minutes
         return records.filter(function(t) { return (now - t) < 30 * 60 * 1000; });
     } catch(e) { return []; }
 }
@@ -573,25 +736,25 @@ function getUsageRecords() {
 function addUsageRecord() {
     var records = getUsageRecords();
     records.push(Date.now());
-    localStorage.setItem('autocuan_usage', JSON.stringify(records));
+    localStorage.setItem('autocuan_ai_usage', JSON.stringify(records));
 }
 
 function checkUsageLimit() {
-    var isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
-    if (isAdmin) return true;
+    if (isAdminUser()) return true;
     var records = getUsageRecords();
     return records.length < 2;
 }
 
+// ===== ANALYZE TICKER =====
 async function analyzeChart() {
-    var ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+    var tickerRaw = document.getElementById('tickerInput').value.trim();
+    var ticker = tickerRaw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
     var currentPrice = document.getElementById('priceInput').value.trim();
     var limitWarning = document.getElementById('limitWarning');
 
     if (!ticker) { alert('Masukkan ticker saham.'); return; }
-    if (!currentPrice) { alert('Masukkan harga sekarang.'); return; }
+    if (!currentPrice || parseFloat(currentPrice) <= 0) { alert('Masukkan harga yang valid.'); return; }
 
-    // Check usage limit
     if (!checkUsageLimit()) {
         limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
         limitWarning.classList.remove('hidden');
@@ -600,11 +763,9 @@ async function analyzeChart() {
     }
     limitWarning.classList.add('hidden');
 
-    // Log search and usage start
-    logSearch(ticker, 'ticker_mode');
+    logSearch(ticker, 'ticker');
     logUsage(ticker, 'ai_analysis_started');
 
-    // Show loading
     document.getElementById('loadingState').classList.remove('hidden');
     document.getElementById('resultSection').classList.add('hidden');
     document.getElementById('analyzeBtn').disabled = true;
@@ -613,35 +774,133 @@ async function analyzeChart() {
         var response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker: ticker, currentPrice: parseFloat(currentPrice), username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' })
+            body: JSON.stringify({ ticker: ticker, currentPrice: parseFloat(currentPrice), source: 'ticker', username: getCurrentUsername(), isAdmin: isAdminUser() })
         });
-
         var data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Terjadi kesalahan pada server.');
-        }
-
+        if (!response.ok) throw new Error(data.error || 'Terjadi kesalahan pada server.');
         if (data.html) {
-            var html = data.html;
-            html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+            var html = sanitizeAIHtml(data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''));
             document.getElementById('resultContent').innerHTML = html;
             document.getElementById('resultSection').classList.remove('hidden');
             document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
             addUsageRecord();
             logUsage(ticker, 'ai_success');
-            logAnalysisResult(ticker, 'ticker', html);
+            logAnalysisResult(ticker, 'ticker', data.html);
         } else {
             throw new Error('Tidak ada hasil analisis dari AI.');
         }
     } catch(error) {
         logUsage(ticker, 'ai_error');
-        document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal Menganalisis</p><p class="text-red-300/70 text-sm">' + error.message + '</p><button onclick="analyzeChart()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">Coba Lagi</button></div>';
+        document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal Menganalisis</p><p class="text-red-300/70 text-sm">' + error.message + '</p></div>';
         document.getElementById('resultSection').classList.remove('hidden');
     } finally {
         document.getElementById('loadingState').classList.add('hidden');
         document.getElementById('analyzeBtn').disabled = false;
     }
+}
+</script>
+
+
+<script>
+// ===== CHART UPLOAD =====
+var selectedChartFile = null;
+var currentTab = 'ticker';
+
+function switchTab(tab) {
+    currentTab = tab;
+    var tabChart = document.getElementById('tabChart');
+    var tabTicker = document.getElementById('tabTicker');
+    var modeChart = document.getElementById('modeChartPanel');
+    var modeTicker = document.getElementById('modeTickerPanel');
+    if (tab === 'chart') {
+        tabChart.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
+        tabTicker.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
+        modeChart.classList.remove('hidden');
+        modeTicker.classList.add('hidden');
+    } else {
+        tabTicker.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
+        tabChart.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
+        modeTicker.classList.remove('hidden');
+        modeChart.classList.add('hidden');
+    }
+}
+
+function handleChartFile(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!validTypes.includes(file.type)) { alert('Format tidak didukung. Gunakan PNG, JPG, atau WebP.'); return; }
+    if (file.size > 8 * 1024 * 1024) { alert('File terlalu besar. Maksimal 8MB.'); return; }
+    selectedChartFile = file;
+    var preview = document.getElementById('chartPreviewImage');
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove('hidden');
+    document.getElementById('chartUploadLabel').classList.add('hidden');
+}
+
+function resetChartUpload() {
+    selectedChartFile = null;
+    var preview = document.getElementById('chartPreviewImage');
+    preview.src = '';
+    preview.classList.add('hidden');
+    document.getElementById('chartUploadLabel').classList.remove('hidden');
+    document.getElementById('chartFileInput').value = '';
+}
+
+async function analyzeChartUpload() {
+    var limitWarning = document.getElementById('limitWarning');
+    var user = getCurrentUsername();
+    if (user === 'guest' || user === 'Guest') { alert('Login diperlukan untuk menggunakan fitur AI.'); return; }
+    if (!selectedChartFile) { alert('Pilih screenshot chart terlebih dahulu.'); return; }
+    if (!checkUsageLimit()) {
+        limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
+        limitWarning.classList.remove('hidden');
+        logUsage('CHART_UPLOAD', 'ai_limit_blocked');
+        return;
+    }
+    limitWarning.classList.add('hidden');
+    logSearch('CHART_UPLOAD', 'chart_upload');
+    logUsage('CHART_UPLOAD', 'ai_analysis_started');
+
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('resultSection').classList.add('hidden');
+    document.getElementById('analyzeChartBtn').disabled = true;
+
+    try {
+        var base64Data = await fileToBase64(selectedChartFile);
+        var response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Data, mimeType: selectedChartFile.type, source: 'chart_upload', username: getCurrentUsername(), isAdmin: isAdminUser() })
+        });
+        var data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Terjadi kesalahan pada server.');
+        if (data.html) {
+            var html = sanitizeAIHtml(data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''));
+            document.getElementById('resultContent').innerHTML = html;
+            document.getElementById('resultSection').classList.remove('hidden');
+            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            addUsageRecord();
+            logUsage('CHART_UPLOAD', 'ai_success');
+            logAnalysisResult('CHART_UPLOAD', 'chart', data.html);
+        } else { throw new Error('Tidak ada hasil analisis dari AI.'); }
+    } catch(error) {
+        logUsage('CHART_UPLOAD', 'ai_error');
+        document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal</p><p class="text-red-300/70 text-sm">' + error.message + '</p></div>';
+        document.getElementById('resultSection').classList.remove('hidden');
+    } finally {
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('analyzeChartBtn').disabled = false;
+    }
+}
+
+function fileToBase64(file) {
+    return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function(e) { resolve(e.target.result); };
+        reader.onerror = function() { reject(new Error('Gagal membaca file.')); };
+        reader.readAsDataURL(file);
+    });
 }
 
 // ===== ADMIN LOGS =====
@@ -654,42 +913,32 @@ async function loadAdminLogs(type) {
     container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
 
     try {
-        var adminName = localStorage.getItem('autocuan_user') || '';
+        var adminName = getCurrentUsername();
         var response = await fetch('/api/admin-logs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ adminName: adminName })
         });
-        if (!response.ok) throw new Error('Fetch failed');
+        if (!response.ok && response.status === 403) { container.innerHTML = '<p class="text-sm text-red-400">Unauthorized.</p>'; return; }
         var data = await response.json();
         cachedAdminData = data;
+        if (!data.success) { container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Database belum dikonfigurasi.') + '</p>'; return; }
 
-        if (!data.success) {
-            container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Database logging belum dikonfigurasi.') + '</p>';
-            return;
-        }
-
-        // Build summary card
         var summaryHtml = '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Logins</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalLogins || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Searches</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalSearches || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">AI Analyses</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalAIAnalyses || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Logins</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalLogins || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Searches</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalSearches || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">AI</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalAIAnalyses || 0) + '</p></div>';
         summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Top Ticker</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.mostSearchedTicker || '-') + '</p></div>';
         summaryHtml += '</div>';
 
-        // Pick which logs to show based on type
         var logs = [];
         if (type === 'login') logs = data.loginLogs || [];
         else if (type === 'search') logs = data.searchLogs || [];
         else if (type === 'analysis') logs = data.aiAnalysisLogs || [];
         else logs = data.aiUsageLogs || [];
 
-        if (logs.length === 0) {
-            container.innerHTML = summaryHtml + '<p class="text-sm text-gray-500">Belum ada data log.</p>';
-            return;
-        }
+        if (logs.length === 0) { container.innerHTML = summaryHtml + '<p class="text-sm text-gray-500">Belum ada data log.</p>'; return; }
 
-        // Special rendering for AI analysis logs - card format with Lihat Hasil
         if (type === 'analysis') {
             var cardsHtml = '<div class="space-y-3">';
             logs.forEach(function(row, idx) {
@@ -711,28 +960,19 @@ async function loadAdminLogs(type) {
             return;
         }
 
-        // Standard table rendering for other log types
         var excludeCols = ['full_result_html'];
         var keys = Object.keys(logs[0]).filter(function(k) { return excludeCols.indexOf(k) === -1; });
         var tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
-        keys.forEach(function(k) {
-            tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>';
-        });
+        keys.forEach(function(k) { tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>'; });
         tableHtml += '</tr></thead><tbody>';
         logs.forEach(function(row) {
             tableHtml += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
-            keys.forEach(function(k) {
-                var val = row[k] || '-';
-                if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...';
-                tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>';
-            });
+            keys.forEach(function(k) { var val = row[k] || '-'; if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...'; tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>'; });
             tableHtml += '</tr>';
         });
         tableHtml += '</tbody></table></div>';
-
         container.innerHTML = summaryHtml + tableHtml;
     } catch(e) {
-        console.error('loadAdminLogs error:', e);
         container.innerHTML = '<p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p>';
     }
 }
@@ -741,19 +981,15 @@ function openAdminAiDetail(idx) {
     if (!cachedAdminData || !cachedAdminData.aiAnalysisLogs) return;
     var log = cachedAdminData.aiAnalysisLogs[idx];
     if (!log) return;
-
     var modal = document.getElementById('adminAiModal');
     var subtitle = document.getElementById('adminAiModalSubtitle');
     var detail = document.getElementById('adminAiResultDetail');
-
-    subtitle.textContent = (log.ticker || 'N/A') + ' • ' + (log.username || 'N/A') + ' • ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
-
+    subtitle.textContent = (log.ticker || 'N/A') + ' \u2022 ' + (log.username || 'N/A') + ' \u2022 ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
     if (log.full_result_html && log.full_result_html.length > 50) {
-        detail.innerHTML = log.full_result_html;
+        detail.innerHTML = sanitizeAIHtml(log.full_result_html);
     } else {
         detail.innerHTML = '<p class="text-sm text-yellow-400">Hasil lengkap tidak tersedia. Kemungkinan analisis lama hanya menyimpan ringkasan.</p>';
     }
-
     modal.classList.remove('hidden');
 }
 
@@ -761,150 +997,253 @@ function closeAdminAiModal() {
     document.getElementById('adminAiModal').classList.add('hidden');
     document.getElementById('adminAiResultDetail').innerHTML = '';
 }
+</script>
+
+
+<script>
+// ===== ADMIN CONTROL CENTER (Collapsible Sections) =====
+var accOpenPanel = null;
+
+function toggleAccPanel(panelId) {
+    var panel = document.getElementById(panelId);
+    if (!panel) return;
+    if (accOpenPanel && accOpenPanel !== panelId) {
+        var prev = document.getElementById(accOpenPanel);
+        if (prev) prev.classList.add('hidden');
+    }
+    panel.classList.toggle('hidden');
+    accOpenPanel = panel.classList.contains('hidden') ? null : panelId;
+}
+
+function renderAdminControlCenter() {
+    var section = document.getElementById('adminControlCenter');
+    var mc = maintenanceConfig;
+
+    var statusBadge = mc.maintenanceMode
+        ? '<span class="px-3 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Maintenance Aktif</span>'
+        : '<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Normal</span>';
+
+    section.innerHTML = '<div class="w-full rounded-2xl border border-gray-800 bg-[#111827]/90 p-4 sm:p-6 shadow-xl space-y-3">' +
+        '<div class="flex flex-wrap items-center justify-between gap-3">' +
+            '<h3 class="text-base font-bold text-white">Admin Control Center</h3>' + statusBadge +
+        '</div>' +
+
+        '<button onclick="toggleAccPanel(\'accPanelWebsite\')" class="w-full rounded-2xl border border-gray-700 bg-[#1f2937] px-4 py-4 text-left font-black text-gray-100 hover:border-emerald-500 hover:bg-emerald-500/10 transition">Pengaturan Website</button>' +
+        '<div id="accPanelWebsite" class="hidden rounded-2xl border border-gray-800 bg-[#0b0e14] p-4 sm:p-5 space-y-4">' +
+            '<div class="flex items-center justify-between gap-4 p-3 rounded-xl bg-[#151a23] border border-[#1c2333]">' +
+                '<div><p class="text-sm font-medium text-white">Maintenance Mode</p><p class="text-xs text-gray-500">Aktifkan untuk menutup akses user biasa dan guest.</p></div>' +
+                '<div id="toggleMaintenanceMode" class="toggle-switch ' + (mc.maintenanceMode ? 'active' : '') + '" onclick="toggleMaintenanceMode()"></div>' +
+            '</div>' +
+            '<div class="p-3 rounded-xl bg-[#151a23] border border-[#1c2333]">' +
+                '<label class="block text-xs font-medium text-gray-400 mb-1.5">Pesan Maintenance</label>' +
+                '<textarea id="maintenanceMessageInput" rows="2" class="w-full px-3 py-2 rounded-lg bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm resize-none">' + (mc.message || 'Auto-Cuan sedang tidak dapat diakses sementara.') + '</textarea>' +
+            '</div>' +
+            '<div class="flex flex-col sm:flex-row gap-2">' +
+                '<button onclick="saveMaintenanceSettings()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition text-sm">Simpan Pengaturan</button>' +
+                '<button onclick="testMaintenanceScreen()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition text-sm">Test Maintenance Screen</button>' +
+            '</div>' +
+        '</div>' +
+
+        '<button onclick="toggleAccPanel(\'accPanelLogs\')" class="w-full rounded-2xl border border-gray-700 bg-[#1f2937] px-4 py-4 text-left font-black text-gray-100 hover:border-emerald-500 hover:bg-emerald-500/10 transition">Logs & Aktivitas</button>' +
+        '<div id="accPanelLogs" class="hidden rounded-2xl border border-gray-800 bg-[#0b0e14] p-4 sm:p-5 space-y-4">' +
+            '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">' +
+                '<button onclick="loadAdminLogs(lastAdminLogType||\'login\');showToast(\'Logs refreshed\',\'success\')" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Refresh Logs</button>' +
+                '<button onclick="exportLogs()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Export Logs</button>' +
+                '<button onclick="clearLocalAdminCache()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Clear Local Cache</button>' +
+            '</div>' +
+            '<p class="text-xs text-gray-500">Log tabs tersedia di Admin Panel di atas.</p>' +
+        '</div>' +
+
+        '<button onclick="toggleAccPanel(\'accPanelTools\')" class="w-full rounded-2xl border border-gray-700 bg-[#1f2937] px-4 py-4 text-left font-black text-gray-100 hover:border-emerald-500 hover:bg-emerald-500/10 transition">Tools Admin</button>' +
+        '<div id="accPanelTools" class="hidden rounded-2xl border border-gray-800 bg-[#0b0e14] p-4 sm:p-5 space-y-4">' +
+            '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">' +
+                '<button onclick="clearAILimit()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Clear AI Limit</button>' +
+                '<button onclick="showAIUsageStatus()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">AI Usage Status</button>' +
+                '<button onclick="exportAppData()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Export App Data</button>' +
+                '<button onclick="importAppData()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Import App Data</button>' +
+                '<button onclick="clearLocalAppData()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 bg-gray-800 hover:bg-gray-700 border border-red-500/30 transition">Clear Local App Data</button>' +
+                '<button onclick="logoutDevice()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Logout Device Ini</button>' +
+                '<button onclick="clearLocalBlock()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Clear Local Block</button>' +
+            '</div>' +
+            '<div id="aiToolsInfo" class="hidden p-3 rounded-xl bg-[#151a23] border border-[#1c2333] text-xs text-gray-300 space-y-1"></div>' +
+        '</div>' +
+
+        '<button onclick="toggleAccPanel(\'accPanelSecurity\')" class="w-full rounded-2xl border border-gray-700 bg-[#1f2937] px-4 py-4 text-left font-black text-gray-100 hover:border-emerald-500 hover:bg-emerald-500/10 transition">Keamanan</button>' +
+        '<div id="accPanelSecurity" class="hidden rounded-2xl border border-gray-800 bg-[#0b0e14] p-4 sm:p-5 space-y-4">' +
+            '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">' +
+                '<button onclick="refreshSecurityStatus()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Refresh Security Status</button>' +
+                '<button onclick="testAIGuard()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Test AI Guard</button>' +
+            '</div>' +
+            '<div id="securityStatusPanel" class="hidden p-3 rounded-xl bg-[#151a23] border border-[#1c2333] text-xs text-gray-300 space-y-1"></div>' +
+        '</div>' +
+    '</div>';
+}
+
+// ===== MAINTENANCE TOGGLE =====
+function toggleMaintenanceMode() {
+    maintenanceConfig.maintenanceMode = !maintenanceConfig.maintenanceMode;
+    var el = document.getElementById('toggleMaintenanceMode');
+    if (el) el.classList.toggle('active', maintenanceConfig.maintenanceMode);
+}
+
+async function saveMaintenanceSettings() {
+    var msg = document.getElementById('maintenanceMessageInput').value.trim();
+    var config = {
+        maintenanceMode: maintenanceConfig.maintenanceMode,
+        message: msg || 'Auto-Cuan sedang tidak dapat diakses sementara.'
+    };
+    try {
+        var response = await fetch('/api/maintenance-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: getCurrentUsername(), action: 'save', config: config })
+        });
+        var data = await response.json();
+        if (data.success) {
+            maintenanceConfig = data.config || config;
+            showToast('Pengaturan maintenance berhasil disimpan', 'success');
+            renderAdminControlCenter();
+        } else {
+            showToast('Gagal: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('Error menyimpan pengaturan', 'error');
+    }
+}
+
+function testMaintenanceScreen() {
+    var msg = document.getElementById('maintenanceMessageInput') ? document.getElementById('maintenanceMessageInput').value : maintenanceConfig.message;
+    document.getElementById('testMaintenanceMsg').textContent = msg || 'Auto-Cuan sedang tidak dapat diakses sementara.';
+    document.getElementById('testMaintenanceModal').classList.remove('hidden');
+}
+
+function logoutDevice() {
+    localStorage.removeItem('autocuan_logged_in');
+    localStorage.removeItem('autocuan_user_name');
+    localStorage.removeItem('autocuan_is_admin');
+    localStorage.removeItem('autocuan_login_time');
+    localStorage.removeItem('autocuan_user');
+    showToast('Logout berhasil', 'success');
+    setTimeout(function() { location.reload(); }, 500);
+}
+
+function clearLocalBlock() {
+    localStorage.removeItem('autocuan_blocked_until');
+    showToast('Local block berhasil dihapus', 'success');
+}
+
+function exportLogs() {
+    if (!cachedAdminData || !cachedAdminData.success) { showToast('Tidak ada data logs', 'error'); return; }
+    var exportData = {
+        loginLogs: cachedAdminData.loginLogs || [],
+        searchLogs: cachedAdminData.searchLogs || [],
+        aiAnalysisLogs: (cachedAdminData.aiAnalysisLogs || []).map(function(l) { var c = Object.assign({}, l); delete c.full_result_html; return c; }),
+        aiUsageLogs: cachedAdminData.aiUsageLogs || [],
+        summary: cachedAdminData.summary || {},
+        exportedAt: new Date().toISOString()
+    };
+    var blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'autocuan-admin-logs-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('Logs berhasil diexport', 'success');
+}
+
+function clearLocalAdminCache() {
+    cachedAdminData = null;
+    document.getElementById('adminLogsContainer').innerHTML = '<p class="text-sm text-gray-500">Cache dihapus. Klik refresh.</p>';
+    showToast('Cache dihapus', 'success');
+}
+
+function clearAILimit() {
+    localStorage.removeItem('autocuan_ai_usage');
+    showToast('Limit AI lokal berhasil direset', 'success');
+}
+
+function testAIGuard() {
+    var panel = document.getElementById('securityStatusPanel');
+    var blocked = maintenanceConfig.maintenanceMode;
+    panel.innerHTML = '<p><strong class="text-white">AI Guard:</strong></p>' +
+        '<p>Maintenance: ' + (blocked ? '<span class="text-red-400">Aktif</span>' : '<span class="text-emerald-400">Tidak aktif</span>') + '</p>' +
+        '<p>Users: ' + (blocked ? '<span class="text-red-400">Diblokir</span>' : '<span class="text-emerald-400">Bisa akses AI</span>') + '</p>' +
+        '<p>Admin budi: <span class="text-emerald-400">Unlimited</span></p>';
+    panel.classList.remove('hidden');
+}
+
+function showAIUsageStatus() {
+    var info = document.getElementById('aiToolsInfo');
+    var records = getUsageRecords();
+    var remaining = Math.max(0, 2 - records.length);
+    var resetTime = records.length > 0 ? new Date(records[0] + 30 * 60 * 1000).toLocaleTimeString('id-ID') : '-';
+    info.innerHTML = '<p><strong class="text-white">AI Usage:</strong></p>' +
+        '<p>Pakai: <span class="text-emerald-400">' + records.length + '/2</span> (30 menit)</p>' +
+        '<p>Sisa: <span class="text-emerald-400">' + remaining + '</span> | Reset: ' + resetTime + '</p>' +
+        '<p>Admin: <span class="text-emerald-400">Unlimited</span></p>';
+    info.classList.remove('hidden');
+}
+
+function exportAppData() {
+    var keys = ['autocuan_portfolio', 'autocuan_watchlist', 'autocuan_journal', 'autocuan_analysis_history', 'autocuan_ai_usage', 'autocuan_privacy_mode'];
+    var data = {};
+    keys.forEach(function(k) { var v = localStorage.getItem(k); if (v) data[k] = v; });
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'autocuan-local-data-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+    URL.revokeObjectURL(url);
+    showToast('App data diexport', 'success');
+}
+
+function importAppData() {
+    var input = document.createElement('input');
+    input.type = 'file'; input.accept = '.json';
+    input.onchange = function(e) {
+        var file = e.target.files[0]; if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+            try {
+                var data = JSON.parse(ev.target.result);
+                if (typeof data !== 'object') throw new Error('Invalid');
+                var allowed = ['autocuan_portfolio', 'autocuan_watchlist', 'autocuan_journal', 'autocuan_analysis_history', 'autocuan_ai_usage', 'autocuan_privacy_mode'];
+                Object.keys(data).forEach(function(k) { if (allowed.includes(k)) localStorage.setItem(k, data[k]); });
+                showToast('Data diimport', 'success');
+            } catch (err) { showToast('File tidak valid', 'error'); }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function clearLocalAppData() {
+    if (!confirm('Yakin hapus data lokal device ini?')) return;
+    localStorage.removeItem('autocuan_portfolio');
+    localStorage.removeItem('autocuan_watchlist');
+    localStorage.removeItem('autocuan_journal');
+    localStorage.removeItem('autocuan_analysis_history');
+    showToast('Data lokal dihapus', 'success');
+}
+
+function refreshSecurityStatus() {
+    var panel = document.getElementById('securityStatusPanel');
+    var src = maintenanceConfig.updatedBy ? 'Supabase' : 'Fallback';
+    panel.innerHTML = '<p><strong class="text-white">Security:</strong></p>' +
+        '<p>API keys: <span class="text-emerald-400">Server-side only</span></p>' +
+        '<p>Admin: <span class="text-emerald-400">Active</span></p>' +
+        '<p>Config: <span class="text-emerald-400">' + src + '</span></p>' +
+        '<p>Logs: <span class="text-emerald-400">' + (cachedAdminData ? 'OK' : 'Belum') + '</span></p>' +
+        '<p>Rate limit: <span class="text-emerald-400">10/30min</span></p>';
+    panel.classList.remove('hidden');
+    showToast('Security status refreshed', 'success');
+}
 
 // ===== RESPONSIVE TV HEIGHT =====
 function updateTvHeight() {
     var el = document.getElementById('tvChartContainer');
-    if (el) { el.style.height = window.innerWidth < 640 ? '400px' : '500px'; }
+    if (el) el.style.height = window.innerWidth < 640 ? '400px' : '500px';
 }
 window.addEventListener('resize', updateTvHeight);
 updateTvHeight();
-
-// ===== TAB SWITCHING =====
-var currentTab = 'ticker';
-function switchTab(tab) {
-    currentTab = tab;
-    var tabChart = document.getElementById('tabChart');
-    var tabTicker = document.getElementById('tabTicker');
-    var modeChart = document.getElementById('modeChartPanel');
-    var modeTicker = document.getElementById('modeTickerPanel');
-
-    if (tab === 'chart') {
-        tabChart.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
-        tabTicker.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
-        modeChart.classList.remove('hidden');
-        modeTicker.classList.add('hidden');
-    } else {
-        tabTicker.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
-        tabChart.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
-        modeTicker.classList.remove('hidden');
-        modeChart.classList.add('hidden');
-    }
-}
-
-// ===== CHART UPLOAD =====
-var selectedChartFile = null;
-
-function handleChartFile(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-
-    var validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-        alert('Format file tidak didukung. Gunakan PNG, JPG, atau WebP.');
-        return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-        alert('Ukuran file terlalu besar. Maksimal 20MB.');
-        return;
-    }
-
-    selectedChartFile = file;
-    var preview = document.getElementById('chartPreviewImage');
-    preview.src = URL.createObjectURL(file);
-    preview.classList.remove('hidden');
-    document.getElementById('chartUploadLabel').classList.add('hidden');
-}
-
-function resetChartUpload() {
-    selectedChartFile = null;
-    var preview = document.getElementById('chartPreviewImage');
-    preview.src = '';
-    preview.classList.add('hidden');
-    document.getElementById('chartUploadLabel').classList.remove('hidden');
-    document.getElementById('chartFileInput').value = '';
-}
-
-async function analyzeChartUpload() {
-    var limitWarning = document.getElementById('limitWarning');
-    var user = localStorage.getItem('autocuan_user');
-
-    if (user === 'guest') {
-        alert('Login diperlukan untuk menggunakan fitur AI.');
-        return;
-    }
-    if (!selectedChartFile) {
-        alert('Pilih screenshot chart terlebih dahulu.');
-        return;
-    }
-    if (!checkUsageLimit()) {
-        limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
-        limitWarning.classList.remove('hidden');
-        logUsage('CHART_UPLOAD', 'ai_limit_blocked');
-        return;
-    }
-    limitWarning.classList.add('hidden');
-
-    logSearch('CHART_UPLOAD', 'chart_upload');
-    logUsage('CHART_UPLOAD', 'ai_analysis_started');
-
-    // Show loading
-    document.getElementById('loadingState').classList.remove('hidden');
-    document.getElementById('resultSection').classList.add('hidden');
-    document.getElementById('analyzeChartBtn').disabled = true;
-
-    try {
-        // Convert to base64
-        var base64Data = await fileToBase64(selectedChartFile);
-
-        var response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                image: base64Data,
-                mimeType: selectedChartFile.type,
-                source: 'chart_upload',
-                username: localStorage.getItem('autocuan_user') || '',
-                isAdmin: localStorage.getItem('autocuan_is_admin') === 'true'
-            })
-        });
-
-        var data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Terjadi kesalahan pada server.');
-        }
-
-        if (data.html) {
-            var html = data.html;
-            html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
-            document.getElementById('resultContent').innerHTML = html;
-            document.getElementById('resultSection').classList.remove('hidden');
-            document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            addUsageRecord();
-            logUsage('CHART_UPLOAD', 'ai_success');
-            logAnalysisResult('CHART_UPLOAD', 'chart', html);
-        } else {
-            throw new Error('Tidak ada hasil analisis dari AI.');
-        }
-    } catch(error) {
-        logUsage('CHART_UPLOAD', 'ai_error');
-        document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal Menganalisis Chart</p><p class="text-red-300/70 text-sm">' + error.message + '</p><button onclick="analyzeChartUpload()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">Coba Lagi</button></div>';
-        document.getElementById('resultSection').classList.remove('hidden');
-    } finally {
-        document.getElementById('loadingState').classList.add('hidden');
-        document.getElementById('analyzeChartBtn').disabled = false;
-    }
-}
-
-function fileToBase64(file) {
-    return new Promise(function(resolve, reject) {
-        var reader = new FileReader();
-        reader.onload = function(e) { resolve(e.target.result); };
-        reader.onerror = function(e) { reject(new Error('Gagal membaca file.')); };
-        reader.readAsDataURL(file);
-    });
-}
 </script>
 </body>
 </html>

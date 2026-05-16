@@ -6,10 +6,11 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { adminName } = req.body || {};
+    const { adminName, logType } = req.body || {};
 
+    // === BACKEND ADMIN VALIDATION ===
     if (!adminName || adminName.trim().toLowerCase() !== 'budi') {
-      return res.status(403).json({ success: false, error: 'Unauthorized. Admin only.' });
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -25,7 +26,7 @@ module.exports = async function handler(req, res) {
     const [loginRes, searchRes, analysisRes, usageRes] = await Promise.all([
       supabase.from('login_logs').select('*').order('created_at', { ascending: false }).limit(50),
       supabase.from('search_logs').select('*').order('created_at', { ascending: false }).limit(100),
-      supabase.from('ai_analysis_logs').select('id, username, ticker, mode, result_summary, created_at').order('created_at', { ascending: false }).limit(50),
+      supabase.from('ai_analysis_logs').select('id, username, ticker, mode, result_summary, full_result_html, created_at').order('created_at', { ascending: false }).limit(50),
       supabase.from('ai_usage_logs').select('*').order('created_at', { ascending: false }).limit(100)
     ]);
 
@@ -45,7 +46,6 @@ module.exports = async function handler(req, res) {
     const totalSearches = searchLogs.length;
     const totalAIAnalyses = aiAnalysisLogs.length;
 
-    // Most searched ticker
     const tickerCounts = {};
     searchLogs.forEach(function(row) {
       if (row.ticker) {
