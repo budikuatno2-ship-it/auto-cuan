@@ -1,9 +1,5 @@
 {
-  "version": 2,
-  "framework": null,
-  "buildCommand": "",
-  "outputDirectory": "",
   "rewrites": [
-    { "source": "/review", "destination": "/" }
+    { "source": "/review", "destination": "/index.html" }
   ]
 }

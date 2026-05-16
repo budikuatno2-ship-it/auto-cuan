@@ -1065,38 +1065,84 @@ function showDashboard(username) {
 
 <script>
 // ===== TRADINGVIEW =====
-function loadTradingView() {
-    var container = document.getElementById('tvChartContainer');
-    if (container.querySelector('iframe') || container.querySelector('script')) return;
-    var script = document.createElement('script');
-    script.type = 'text/javascript';
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.async = true;
-    script.innerHTML = JSON.stringify({
-        "autosize": true,
-        "symbol": "IDX:IHSG",
-        "interval": "D",
-        "timezone": "Asia/Jakarta",
-        "theme": "dark",
-        "style": "1",
-        "locale": "id",
-        "backgroundColor": "rgba(15, 19, 25, 1)",
-        "gridColor": "rgba(28, 35, 51, 0.5)",
-        "allow_symbol_change": true,
-        "calendar": false,
-        "support_host": "https://www.tradingview.com"
+var _tvScriptPromise = null;
+var _tvCurrentSymbol = null;
+
+function loadTradingViewScript() {
+    if (window.TradingView) return Promise.resolve();
+    if (_tvScriptPromise) return _tvScriptPromise;
+
+    _tvScriptPromise = new Promise(function(resolve, reject) {
+        var existing = document.querySelector('script[src*="s3.tradingview.com/tv.js"]');
+        if (existing) {
+            if (window.TradingView) { resolve(); return; }
+            existing.addEventListener('load', resolve);
+            existing.addEventListener('error', reject);
+            return;
+        }
+        var script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
     });
-    var widget = document.createElement('div');
-    widget.className = 'tradingview-widget-container';
-    widget.style.height = '100%';
-    widget.style.width = '100%';
-    var widgetInner = document.createElement('div');
-    widgetInner.className = 'tradingview-widget-container__widget';
-    widgetInner.style.height = '100%';
-    widgetInner.style.width = '100%';
-    widget.appendChild(widgetInner);
-    widget.appendChild(script);
-    container.appendChild(widget);
+
+    return _tvScriptPromise;
+}
+
+function normalizeTvSymbol(input) {
+    var raw = String(input || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!raw || raw === 'IHSG' || raw === 'COMPOSITE' || raw === 'IDX' || raw === 'IDXCOMPOSITE' || raw === 'IDX:IHSG') {
+        return 'IDX:COMPOSITE';
+    }
+    if (raw.startsWith('IDX:')) return raw;
+    return 'IDX:' + raw;
+}
+
+function loadTradingView(symbolInput) {
+    var symbol = normalizeTvSymbol(symbolInput || 'IDX:COMPOSITE');
+    var container = document.getElementById('tvChartContainer');
+    if (!container) return;
+
+    // Don't recreate if same symbol already loaded
+    if (_tvCurrentSymbol === symbol && container.querySelector('iframe')) return;
+
+    _tvCurrentSymbol = symbol;
+    container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-sm">Memuat chart...</div>';
+
+    loadTradingViewScript().then(function() {
+        if (!window.TradingView) {
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-red-400 text-sm">Chart TradingView gagal dimuat. Silakan refresh halaman.</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        var widgetDiv = document.createElement('div');
+        widgetDiv.id = 'tv_widget_inner';
+        widgetDiv.style.height = '100%';
+        widgetDiv.style.width = '100%';
+        container.appendChild(widgetDiv);
+
+        new window.TradingView.widget({
+            autosize: true,
+            symbol: symbol,
+            interval: 'D',
+            timezone: 'Asia/Jakarta',
+            theme: 'dark',
+            style: '1',
+            locale: 'id',
+            toolbar_bg: '#0b1117',
+            enable_publishing: false,
+            allow_symbol_change: true,
+            container_id: 'tv_widget_inner',
+            backgroundColor: 'rgba(15, 19, 25, 1)',
+            gridColor: 'rgba(28, 35, 51, 0.5)'
+        });
+    }).catch(function(err) {
+        console.error('TradingView failed to load:', err);
+        container.innerHTML = '<div class="flex items-center justify-center h-full text-red-400 text-sm p-4 text-center">Chart TradingView gagal dimuat. Silakan refresh halaman atau coba ticker lain.</div>';
+    });
 }
 
 // ===== AI ANALYSIS =====
