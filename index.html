@@ -715,8 +715,11 @@ async function doLogin() {
         return;
     }
 
+    // === REVIEW ACCOUNT: skip bad username check ===
+    var isReviewAccount = (usernameLower === 'review');
+
     // === NORMAL USER: check bad username ===
-    if (isBadUsername(usernameInput)) {
+    if (!isReviewAccount && isBadUsername(usernameInput)) {
         blockDeviceForBadName();
         return;
     }
@@ -753,6 +756,11 @@ async function doLogin() {
             localStorage.setItem('autocuan_is_admin', 'false');
             localStorage.setItem('autocuan_logged_in', 'true');
             localStorage.setItem('autocuan_login_time', Date.now().toString());
+            if (data.isReview) {
+                localStorage.setItem('autocuan_is_review', 'true');
+            } else {
+                localStorage.removeItem('autocuan_is_review');
+            }
             logLogin(data.username, false, false);
             showDashboard(data.username);
         } else {
@@ -790,8 +798,8 @@ async function doRegister() {
 
     var usernameLower = usernameInput.toLowerCase();
 
-    // Block budi registration
-    if (usernameLower === 'budi') {
+    // Block budi and review registration
+    if (usernameLower === 'budi' || usernameLower === 'review') {
         errorEl.textContent = 'Username tidak tersedia.';
         errorEl.classList.remove('hidden');
         return;
@@ -929,6 +937,7 @@ function logout() {
     localStorage.removeItem('autocuan_is_admin');
     localStorage.removeItem('autocuan_logged_in');
     localStorage.removeItem('autocuan_login_time');
+    localStorage.removeItem('autocuan_is_review');
     document.getElementById('dashboardScreen').classList.add('hidden');
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('loginUsername').value = '';

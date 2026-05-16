@@ -55,6 +55,26 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Password salah.' });
     }
 
+    // Review account: bypass device binding completely
+    const isReviewUser = usernameLower === 'review';
+    if (isReviewUser) {
+      // Update last_login_at only, no device check
+      await supabase
+        .from('app_users')
+        .update({
+          last_login_at: new Date().toISOString(),
+          user_agent: userAgent || ''
+        })
+        .eq('id', user.id);
+
+      return res.status(200).json({
+        success: true,
+        username: usernameLower,
+        isAdmin: false,
+        isReview: true
+      });
+    }
+
     // Device binding check
     // If device_id is null or starts with RESET_PENDING_ => bind new device
     if (!user.device_id || user.device_id.startsWith('RESET_PENDING_')) {
