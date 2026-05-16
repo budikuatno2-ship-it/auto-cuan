@@ -1,5 +1,13 @@
 const { createClient } = require('@supabase/supabase-js');
 
+// Bad name filter - do not store offensive usernames
+const BAD_NAMES = ['admin', 'root', 'hack', 'inject', 'script', 'drop', 'delete'];
+function isBadUsername(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return BAD_NAMES.some(bad => lower.includes(bad));
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -15,15 +23,30 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: false, error: 'Database logging belum dikonfigurasi.' });
     }
 
+    // Sanitize username
+    const cleanUsername = String(username || 'unknown').trim().slice(0, 30);
+
+    // Block bad usernames from being stored
+    if (isBadUsername(cleanUsername)) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+      await supabase.from('login_logs').insert({
+        username: 'username_blocked',
+        is_guest: Boolean(isGuest),
+        is_admin: false,
+        user_agent: String(userAgent || '').slice(0, 500)
+      });
+      return res.status(200).json({ success: true });
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const { data, error } = await supabase
       .from('login_logs')
       .insert({
-        username: username || 'unknown',
+        username: cleanUsername,
         is_guest: Boolean(isGuest),
         is_admin: Boolean(isAdmin),
-        user_agent: userAgent || ''
+        user_agent: String(userAgent || '').slice(0, 500)
       })
       .select();
 
