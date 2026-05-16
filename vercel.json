@@ -1,4 +1,6 @@
 {
+  "buildCommand": "echo done",
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/review", "destination": "/index.html" }
   ]
