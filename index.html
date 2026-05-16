@@ -494,8 +494,13 @@ function getBlockedUntil() {
 }
 
 function isDeviceBlocked() {
-    var blockedUntil = getBlockedUntil();
-    return blockedUntil && Date.now() < blockedUntil;
+    var blockedUntil = Number(localStorage.getItem('autocuan_blocked_until') || '0');
+    if (!blockedUntil) return false;
+    if (Date.now() >= blockedUntil) {
+        localStorage.removeItem('autocuan_blocked_until');
+        return false;
+    }
+    return true;
 }
 
 function blockDeviceForBadName() {
@@ -514,6 +519,12 @@ function showBlockedScreen() {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('dashboardScreen').classList.add('hidden');
     document.getElementById('maintenanceScreen').classList.add('hidden');
+    // Hide all modals
+    var modals = ['selfResetModal','resetPasswordModal','maintenancePreviewModal','adminAiModal','adminBypassModal'];
+    for (var i = 0; i < modals.length; i++) {
+        var m = document.getElementById(modals[i]);
+        if (m) m.classList.add('hidden');
+    }
     updateBlockedCountdown();
 }
 
@@ -653,6 +664,12 @@ function doAdminBypass() {
 
 // ===== INITIALIZATION =====
 (async function init() {
+    // Review access: clear block if URL param present
+    if (new URLSearchParams(location.search).get("review_access") === "1") {
+        localStorage.removeItem("autocuan_blocked_until");
+        history.replaceState({}, document.title, location.pathname);
+    }
+
     // Check device blocked first
     if (isDeviceBlocked()) {
         showBlockedScreen();
