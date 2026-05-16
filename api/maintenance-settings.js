@@ -15,7 +15,10 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Database belum dikonfigurasi.' });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      realtime: { autoConnect: false }
+    });
 
     // === GET ===
     if (action === 'get') {

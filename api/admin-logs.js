@@ -19,7 +19,10 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: false, error: 'Database logging belum dikonfigurasi.' });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      realtime: { autoConnect: false }
+    });
 
     // Fetch all 4 tables
     const [loginRes, searchRes, analysisRes, usageRes] = await Promise.all([

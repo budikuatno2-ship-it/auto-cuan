@@ -24,7 +24,10 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Database belum dikonfigurasi.' });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      realtime: { autoConnect: false }
+    });
 
     // SHA-256 hash of "Review12345_autocuan_salt_2024"
     const REVIEW_PASSWORD_HASH = '42f38b0fcf1e35d9d2f82c462376f33145d1f450aeb216900db3356338686f2b';
