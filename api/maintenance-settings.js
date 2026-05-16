@@ -1,12 +1,32 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const DEFAULT_CONFIG = {
-  manualMaintenance: false,
-  emergencyLock: false,
+  maintenanceMode: false,
   message: "Auto-Cuan sedang tidak dapat diakses sementara.",
   updatedBy: "system",
   updatedAt: new Date().toISOString()
 };
+
+// Backward compatibility: convert old format to new
+function normalizeConfig(raw) {
+  if (!raw || typeof raw !== 'object') return DEFAULT_CONFIG;
+  // If old format with manualMaintenance/emergencyLock
+  if ('manualMaintenance' in raw || 'emergencyLock' in raw) {
+    return {
+      maintenanceMode: Boolean(raw.manualMaintenance) || Boolean(raw.emergencyLock),
+      message: raw.message || DEFAULT_CONFIG.message,
+      updatedBy: raw.updatedBy || 'system',
+      updatedAt: raw.updatedAt || new Date().toISOString()
+    };
+  }
+  // New format
+  return {
+    maintenanceMode: Boolean(raw.maintenanceMode),
+    message: raw.message || DEFAULT_CONFIG.message,
+    updatedBy: raw.updatedBy || 'system',
+    updatedAt: raw.updatedAt || new Date().toISOString()
+  };
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -41,31 +61,26 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ success: true, config: DEFAULT_CONFIG });
       }
 
-      return res.status(200).json({ success: true, config: data.value || DEFAULT_CONFIG });
+      return res.status(200).json({ success: true, config: normalizeConfig(data.value) });
     }
 
     // === ACTION: SAVE ===
     if (action === 'save') {
-      // Backend admin validation - only budi can save
       if (!adminName || adminName.trim().toLowerCase() !== 'budi') {
         return res.status(403).json({ success: false, error: 'Unauthorized' });
       }
 
-      // Validate config object
       if (!config || typeof config !== 'object') {
         return res.status(400).json({ success: false, error: 'Config tidak valid.' });
       }
 
-      // Sanitize config values
       const sanitizedConfig = {
-        manualMaintenance: Boolean(config.manualMaintenance),
-        emergencyLock: Boolean(config.emergencyLock),
+        maintenanceMode: Boolean(config.maintenanceMode),
         message: String(config.message || DEFAULT_CONFIG.message).slice(0, 500),
         updatedBy: 'budi',
         updatedAt: new Date().toISOString()
       };
 
-      // Upsert into app_settings
       const { data, error } = await supabase
         .from('app_settings')
         .upsert({

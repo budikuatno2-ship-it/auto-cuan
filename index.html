@@ -333,7 +333,7 @@ function sanitizeAIHtml(html) {
 }
 
 // ===== GLOBAL STATE =====
-var maintenanceConfig = { manualMaintenance: false, emergencyLock: false, message: "Auto-Cuan sedang tidak dapat diakses sementara." };
+var maintenanceConfig = { maintenanceMode: false, message: "Auto-Cuan sedang tidak dapat diakses sementara." };
 
 // ===== ADMIN CHECK =====
 function isAdminUser() {
@@ -363,14 +363,14 @@ async function fetchMaintenanceConfig() {
             maintenanceConfig = data.config;
         }
     } catch (e) {
-        maintenanceConfig = { manualMaintenance: false, emergencyLock: false, message: "Auto-Cuan sedang tidak dapat diakses sementara." };
+        maintenanceConfig = { maintenanceMode: false, message: "Auto-Cuan sedang tidak dapat diakses sementara." };
     }
     return maintenanceConfig;
 }
 
 // ===== MAINTENANCE CHECK =====
 function isMaintenanceActive() {
-    return maintenanceConfig.manualMaintenance === true || maintenanceConfig.emergencyLock === true;
+    return maintenanceConfig.maintenanceMode === true;
 }
 
 // ===== HIDDEN ADMIN ACCESS - DESKTOP: Ctrl+B+K =====
@@ -919,121 +919,95 @@ function closeAdminAiModal() {
 
 
 <script>
-// ===== ADMIN CONTROL CENTER =====
+// ===== ADMIN CONTROL CENTER (Collapsible Sections) =====
+var accOpenPanel = null;
+
+function toggleAccPanel(panelId) {
+    var panel = document.getElementById(panelId);
+    if (!panel) return;
+    if (accOpenPanel && accOpenPanel !== panelId) {
+        var prev = document.getElementById(accOpenPanel);
+        if (prev) prev.classList.add('hidden');
+    }
+    panel.classList.toggle('hidden');
+    accOpenPanel = panel.classList.contains('hidden') ? null : panelId;
+}
+
 function renderAdminControlCenter() {
     var section = document.getElementById('adminControlCenter');
     var mc = maintenanceConfig;
 
-    var statusBadge = '';
-    if (mc.emergencyLock) statusBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30">Emergency Lock Aktif</span>';
-    else if (mc.manualMaintenance) statusBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Maintenance Aktif</span>';
-    else statusBadge = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Normal</span>';
+    var statusBadge = mc.maintenanceMode
+        ? '<span class="px-3 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Maintenance Aktif</span>'
+        : '<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Normal</span>';
 
-    section.innerHTML = `
-    <!-- ADMIN CONTROL CENTER HEADER -->
-    <div class="w-full rounded-2xl border border-gray-800 bg-[#111827]/90 p-4 sm:p-6 shadow-xl">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h3 class="text-base font-bold text-white">Admin Control Center</h3>
-            ${statusBadge}
-        </div>
+    section.innerHTML = '<div class="w-full rounded-2xl border border-gray-800 bg-[#111827]/90 p-4 sm:p-6 shadow-xl space-y-3">' +
+        '<div class="flex flex-wrap items-center justify-between gap-3">' +
+            '<h3 class="text-base font-bold text-white">Admin Control Center</h3>' + statusBadge +
+        '</div>' +
 
-        <!-- A. MAINTENANCE CONTROL -->
-        <div class="space-y-4 mb-6">
-            <h4 class="text-sm font-semibold text-emerald-400">A. Maintenance Control</h4>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between gap-4 p-3 rounded-xl bg-[#0b0e14] border border-[#1c2333]">
-                    <div>
-                        <p class="text-sm font-medium text-white">Manual Maintenance</p>
-                        <p class="text-xs text-gray-500">Aktifkan maintenance untuk menutup akses user biasa dan guest.</p>
-                    </div>
-                    <div id="toggleManualMaintenance" class="toggle-switch ${mc.manualMaintenance ? 'active' : ''}" onclick="toggleMaintenance('manual')"></div>
-                </div>
-                <div class="flex items-center justify-between gap-4 p-3 rounded-xl bg-[#0b0e14] border border-[#1c2333]">
-                    <div>
-                        <p class="text-sm font-medium text-white">Emergency Lock</p>
-                        <p class="text-xs text-gray-500">Kunci darurat untuk menutup akses semua user non-admin.</p>
-                    </div>
-                    <div id="toggleEmergencyLock" class="toggle-switch ${mc.emergencyLock ? 'active' : ''}" onclick="toggleMaintenance('emergency')"></div>
-                </div>
-                <div class="p-3 rounded-xl bg-[#0b0e14] border border-[#1c2333]">
-                    <label class="block text-xs font-medium text-gray-400 mb-1.5">Pesan Maintenance</label>
-                    <textarea id="maintenanceMessageInput" rows="2" class="w-full px-3 py-2 rounded-lg bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm resize-none">${mc.message || 'Auto-Cuan sedang tidak dapat diakses sementara.'}</textarea>
-                </div>
-                <button onclick="saveMaintenanceSettings()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition text-sm">Simpan Pengaturan</button>
-            </div>
-        </div>
+        '<button onclick="toggleAccPanel(\'accPanelWebsite\')" class="w-full rounded-2xl border border-gray-700 bg-[#1f2937] px-4 py-4 text-left font-black text-gray-100 hover:border-emerald-500 hover:bg-emerald-500/10 transition">Pengaturan Website</button>' +
+        '<div id="accPanelWebsite" class="hidden rounded-2xl border border-gray-800 bg-[#0b0e14] p-4 sm:p-5 space-y-4">' +
+            '<div class="flex items-center justify-between gap-4 p-3 rounded-xl bg-[#151a23] border border-[#1c2333]">' +
+                '<div><p class="text-sm font-medium text-white">Maintenance Mode</p><p class="text-xs text-gray-500">Aktifkan untuk menutup akses user biasa dan guest.</p></div>' +
+                '<div id="toggleMaintenanceMode" class="toggle-switch ' + (mc.maintenanceMode ? 'active' : '') + '" onclick="toggleMaintenanceMode()"></div>' +
+            '</div>' +
+            '<div class="p-3 rounded-xl bg-[#151a23] border border-[#1c2333]">' +
+                '<label class="block text-xs font-medium text-gray-400 mb-1.5">Pesan Maintenance</label>' +
+                '<textarea id="maintenanceMessageInput" rows="2" class="w-full px-3 py-2 rounded-lg bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm resize-none">' + (mc.message || 'Auto-Cuan sedang tidak dapat diakses sementara.') + '</textarea>' +
+            '</div>' +
+            '<div class="flex flex-col sm:flex-row gap-2">' +
+                '<button onclick="saveMaintenanceSettings()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition text-sm">Simpan Pengaturan</button>' +
+                '<button onclick="testMaintenanceScreen()" class="w-full sm:w-auto px-6 py-2.5 rounded-xl font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition text-sm">Test Maintenance Screen</button>' +
+            '</div>' +
+        '</div>' +
 
-        <!-- B. EMERGENCY TOOLS -->
-        <div class="space-y-3 mb-6">
-            <h4 class="text-sm font-semibold text-emerald-400">B. Emergency Tools</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button onclick="testMaintenanceScreen()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Test Maintenance Screen</button>
-                <button onclick="logoutDevice()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Logout Device Ini</button>
-                <button onclick="clearLocalBlock()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Clear Local Block</button>
-            </div>
-        </div>
+        '<button onclick="toggleAccPanel(\'accPanelLogs\')" class="w-full rounded-2xl border border-gray-700 bg-[#1f2937] px-4 py-4 text-left font-black text-gray-100 hover:border-emerald-500 hover:bg-emerald-500/10 transition">Logs & Aktivitas</button>' +
+        '<div id="accPanelLogs" class="hidden rounded-2xl border border-gray-800 bg-[#0b0e14] p-4 sm:p-5 space-y-4">' +
+            '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">' +
+                '<button onclick="loadAdminLogs(lastAdminLogType||\'login\');showToast(\'Logs refreshed\',\'success\')" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Refresh Logs</button>' +
+                '<button onclick="exportLogs()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Export Logs</button>' +
+                '<button onclick="clearLocalAdminCache()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Clear Local Cache</button>' +
+            '</div>' +
+            '<p class="text-xs text-gray-500">Log tabs tersedia di Admin Panel di atas.</p>' +
+        '</div>' +
 
-        <!-- C. LOGS TOOLS -->
-        <div class="space-y-3 mb-6">
-            <h4 class="text-sm font-semibold text-emerald-400">C. Logs Tools</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button onclick="loadAdminLogs(lastAdminLogType||'login');showToast('Logs berhasil di-refresh','success')" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Refresh Logs</button>
-                <button onclick="exportLogs()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Export Logs</button>
-                <button onclick="clearLocalAdminCache()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Clear Local Admin Cache</button>
-            </div>
-        </div>
+        '<button onclick="toggleAccPanel(\'accPanelTools\')" class="w-full rounded-2xl border border-gray-700 bg-[#1f2937] px-4 py-4 text-left font-black text-gray-100 hover:border-emerald-500 hover:bg-emerald-500/10 transition">Tools Admin</button>' +
+        '<div id="accPanelTools" class="hidden rounded-2xl border border-gray-800 bg-[#0b0e14] p-4 sm:p-5 space-y-4">' +
+            '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">' +
+                '<button onclick="clearAILimit()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Clear AI Limit</button>' +
+                '<button onclick="showAIUsageStatus()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">AI Usage Status</button>' +
+                '<button onclick="exportAppData()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Export App Data</button>' +
+                '<button onclick="importAppData()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Import App Data</button>' +
+                '<button onclick="clearLocalAppData()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 bg-gray-800 hover:bg-gray-700 border border-red-500/30 transition">Clear Local App Data</button>' +
+                '<button onclick="logoutDevice()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Logout Device Ini</button>' +
+                '<button onclick="clearLocalBlock()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Clear Local Block</button>' +
+            '</div>' +
+            '<div id="aiToolsInfo" class="hidden p-3 rounded-xl bg-[#151a23] border border-[#1c2333] text-xs text-gray-300 space-y-1"></div>' +
+        '</div>' +
 
-        <!-- D. AI TOOLS -->
-        <div class="space-y-3 mb-6">
-            <h4 class="text-sm font-semibold text-emerald-400">D. AI Tools</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button onclick="clearAILimit()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Clear AI Limit Device Ini</button>
-                <button onclick="testAIGuard()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Test AI Guard</button>
-                <button onclick="showAIUsageStatus()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">AI Usage Status</button>
-            </div>
-            <div id="aiToolsInfo" class="hidden p-3 rounded-xl bg-[#0b0e14] border border-[#1c2333] text-xs text-gray-300 space-y-1"></div>
-        </div>
-
-        <!-- E. APP TOOLS -->
-        <div class="space-y-3 mb-6">
-            <h4 class="text-sm font-semibold text-emerald-400">E. App Tools</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <button onclick="exportAppData()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Export App Data</button>
-                <button onclick="importAppData()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Import App Data</button>
-                <button onclick="clearLocalAppData()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-red-400 bg-gray-800 hover:bg-gray-700 border border-red-500/30 transition">Clear Local App Data</button>
-            </div>
-        </div>
-
-        <!-- F. SECURITY TOOLS -->
-        <div class="space-y-3">
-            <h4 class="text-sm font-semibold text-emerald-400">F. Security Tools</h4>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button onclick="refreshSecurityStatus()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Refresh Security Status</button>
-                <button onclick="logoutDevice()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Logout Device Ini</button>
-            </div>
-            <div id="securityStatusPanel" class="hidden p-3 rounded-xl bg-[#0b0e14] border border-[#1c2333] text-xs text-gray-300 space-y-1"></div>
-        </div>
-    </div>`;
+        '<button onclick="toggleAccPanel(\'accPanelSecurity\')" class="w-full rounded-2xl border border-gray-700 bg-[#1f2937] px-4 py-4 text-left font-black text-gray-100 hover:border-emerald-500 hover:bg-emerald-500/10 transition">Keamanan</button>' +
+        '<div id="accPanelSecurity" class="hidden rounded-2xl border border-gray-800 bg-[#0b0e14] p-4 sm:p-5 space-y-4">' +
+            '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">' +
+                '<button onclick="refreshSecurityStatus()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Refresh Security Status</button>' +
+                '<button onclick="testAIGuard()" class="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-gray-100 bg-gray-800 hover:bg-gray-700 border border-gray-700 transition">Test AI Guard</button>' +
+            '</div>' +
+            '<div id="securityStatusPanel" class="hidden p-3 rounded-xl bg-[#151a23] border border-[#1c2333] text-xs text-gray-300 space-y-1"></div>' +
+        '</div>' +
+    '</div>';
 }
 
 // ===== MAINTENANCE TOGGLE =====
-function toggleMaintenance(type) {
-    if (type === 'manual') {
-        maintenanceConfig.manualMaintenance = !maintenanceConfig.manualMaintenance;
-        var el = document.getElementById('toggleManualMaintenance');
-        if (el) el.classList.toggle('active', maintenanceConfig.manualMaintenance);
-    } else {
-        maintenanceConfig.emergencyLock = !maintenanceConfig.emergencyLock;
-        var el2 = document.getElementById('toggleEmergencyLock');
-        if (el2) el2.classList.toggle('active', maintenanceConfig.emergencyLock);
-    }
+function toggleMaintenanceMode() {
+    maintenanceConfig.maintenanceMode = !maintenanceConfig.maintenanceMode;
+    var el = document.getElementById('toggleMaintenanceMode');
+    if (el) el.classList.toggle('active', maintenanceConfig.maintenanceMode);
 }
 
 async function saveMaintenanceSettings() {
     var msg = document.getElementById('maintenanceMessageInput').value.trim();
     var config = {
-        manualMaintenance: maintenanceConfig.manualMaintenance,
-        emergencyLock: maintenanceConfig.emergencyLock,
+        maintenanceMode: maintenanceConfig.maintenanceMode,
         message: msg || 'Auto-Cuan sedang tidak dapat diakses sementara.'
     };
     try {
@@ -1055,7 +1029,6 @@ async function saveMaintenanceSettings() {
     }
 }
 
-// ===== EMERGENCY TOOLS =====
 function testMaintenanceScreen() {
     var msg = document.getElementById('maintenanceMessageInput') ? document.getElementById('maintenanceMessageInput').value : maintenanceConfig.message;
     document.getElementById('testMaintenanceMsg').textContent = msg || 'Auto-Cuan sedang tidak dapat diakses sementara.';
@@ -1077,9 +1050,8 @@ function clearLocalBlock() {
     showToast('Local block berhasil dihapus', 'success');
 }
 
-// ===== LOGS TOOLS =====
 function exportLogs() {
-    if (!cachedAdminData || !cachedAdminData.success) { showToast('Tidak ada data logs untuk diexport', 'error'); return; }
+    if (!cachedAdminData || !cachedAdminData.success) { showToast('Tidak ada data logs', 'error'); return; }
     var exportData = {
         loginLogs: cachedAdminData.loginLogs || [],
         searchLogs: cachedAdminData.searchLogs || [],
@@ -1091,32 +1063,30 @@ function exportLogs() {
     var blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    var d = new Date().toISOString().slice(0, 10);
-    a.href = url; a.download = 'autocuan-admin-logs-' + d + '.json'; a.click();
+    a.href = url; a.download = 'autocuan-admin-logs-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
     URL.revokeObjectURL(url);
     showToast('Logs berhasil diexport', 'success');
 }
 
 function clearLocalAdminCache() {
     cachedAdminData = null;
-    document.getElementById('adminLogsContainer').innerHTML = '<p class="text-sm text-gray-500">Cache lokal dihapus. Klik refresh untuk memuat ulang.</p>';
-    showToast('Local admin cache dihapus', 'success');
+    document.getElementById('adminLogsContainer').innerHTML = '<p class="text-sm text-gray-500">Cache dihapus. Klik refresh.</p>';
+    showToast('Cache dihapus', 'success');
 }
 
-// ===== AI TOOLS =====
 function clearAILimit() {
     localStorage.removeItem('autocuan_ai_usage');
     showToast('Limit AI lokal berhasil direset', 'success');
 }
 
 function testAIGuard() {
-    var info = document.getElementById('aiToolsInfo');
-    var blocked = maintenanceConfig.manualMaintenance || maintenanceConfig.emergencyLock;
-    info.innerHTML = '<p><strong class="text-white">AI Guard Status:</strong></p>' +
-        '<p>Maintenance aktif: ' + (blocked ? '<span class="text-red-400">Ya</span>' : '<span class="text-emerald-400">Tidak</span>') + '</p>' +
-        '<p>Normal users ' + (blocked ? '<span class="text-red-400">DIBLOKIR</span> dari AI' : '<span class="text-emerald-400">BISA</span> menggunakan AI') + '</p>' +
-        '<p>Admin budi: <span class="text-emerald-400">Selalu bisa menggunakan AI</span></p>';
-    info.classList.remove('hidden');
+    var panel = document.getElementById('securityStatusPanel');
+    var blocked = maintenanceConfig.maintenanceMode;
+    panel.innerHTML = '<p><strong class="text-white">AI Guard:</strong></p>' +
+        '<p>Maintenance: ' + (blocked ? '<span class="text-red-400">Aktif</span>' : '<span class="text-emerald-400">Tidak aktif</span>') + '</p>' +
+        '<p>Users: ' + (blocked ? '<span class="text-red-400">Diblokir</span>' : '<span class="text-emerald-400">Bisa akses AI</span>') + '</p>' +
+        '<p>Admin budi: <span class="text-emerald-400">Unlimited</span></p>';
+    panel.classList.remove('hidden');
 }
 
 function showAIUsageStatus() {
@@ -1124,15 +1094,13 @@ function showAIUsageStatus() {
     var records = getUsageRecords();
     var remaining = Math.max(0, 2 - records.length);
     var resetTime = records.length > 0 ? new Date(records[0] + 30 * 60 * 1000).toLocaleTimeString('id-ID') : '-';
-    info.innerHTML = '<p><strong class="text-white">AI Usage Status:</strong></p>' +
-        '<p>Penggunaan saat ini: <span class="text-emerald-400">' + records.length + '</span>/2 (30 menit)</p>' +
-        '<p>Sisa: <span class="text-emerald-400">' + remaining + '</span></p>' +
-        '<p>Reset pada: ' + resetTime + '</p>' +
-        '<p>Status admin: <span class="text-emerald-400">Admin AI Unlimited</span></p>';
+    info.innerHTML = '<p><strong class="text-white">AI Usage:</strong></p>' +
+        '<p>Pakai: <span class="text-emerald-400">' + records.length + '/2</span> (30 menit)</p>' +
+        '<p>Sisa: <span class="text-emerald-400">' + remaining + '</span> | Reset: ' + resetTime + '</p>' +
+        '<p>Admin: <span class="text-emerald-400">Unlimited</span></p>';
     info.classList.remove('hidden');
 }
 
-// ===== APP TOOLS =====
 function exportAppData() {
     var keys = ['autocuan_portfolio', 'autocuan_watchlist', 'autocuan_journal', 'autocuan_analysis_history', 'autocuan_ai_usage', 'autocuan_privacy_mode'];
     var data = {};
@@ -1140,32 +1108,25 @@ function exportAppData() {
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    var d = new Date().toISOString().slice(0, 10);
-    a.href = url; a.download = 'autocuan-local-data-' + d + '.json'; a.click();
+    a.href = url; a.download = 'autocuan-local-data-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
     URL.revokeObjectURL(url);
-    showToast('App data berhasil diexport', 'success');
+    showToast('App data diexport', 'success');
 }
 
 function importAppData() {
     var input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
+    input.type = 'file'; input.accept = '.json';
     input.onchange = function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
+        var file = e.target.files[0]; if (!file) return;
         var reader = new FileReader();
         reader.onload = function(ev) {
             try {
                 var data = JSON.parse(ev.target.result);
                 if (typeof data !== 'object') throw new Error('Invalid');
-                var allowedKeys = ['autocuan_portfolio', 'autocuan_watchlist', 'autocuan_journal', 'autocuan_analysis_history', 'autocuan_ai_usage', 'autocuan_privacy_mode'];
-                Object.keys(data).forEach(function(k) {
-                    if (allowedKeys.includes(k)) localStorage.setItem(k, data[k]);
-                });
-                showToast('App data berhasil diimport', 'success');
-            } catch (err) {
-                showToast('File JSON tidak valid', 'error');
-            }
+                var allowed = ['autocuan_portfolio', 'autocuan_watchlist', 'autocuan_journal', 'autocuan_analysis_history', 'autocuan_ai_usage', 'autocuan_privacy_mode'];
+                Object.keys(data).forEach(function(k) { if (allowed.includes(k)) localStorage.setItem(k, data[k]); });
+                showToast('Data diimport', 'success');
+            } catch (err) { showToast('File tidak valid', 'error'); }
         };
         reader.readAsText(file);
     };
@@ -1178,20 +1139,18 @@ function clearLocalAppData() {
     localStorage.removeItem('autocuan_watchlist');
     localStorage.removeItem('autocuan_journal');
     localStorage.removeItem('autocuan_analysis_history');
-    showToast('Data lokal berhasil dihapus', 'success');
+    showToast('Data lokal dihapus', 'success');
 }
 
-// ===== SECURITY TOOLS =====
 function refreshSecurityStatus() {
     var panel = document.getElementById('securityStatusPanel');
-    var configSource = maintenanceConfig.updatedBy ? 'Supabase' : 'Fallback';
-    panel.innerHTML = '<p><strong class="text-white">Security Status:</strong></p>' +
+    var src = maintenanceConfig.updatedBy ? 'Supabase' : 'Fallback';
+    panel.innerHTML = '<p><strong class="text-white">Security:</strong></p>' +
         '<p>API keys: <span class="text-emerald-400">Server-side only</span></p>' +
-        '<p>Admin mode: <span class="text-emerald-400">Active</span></p>' +
-        '<p>Maintenance config source: <span class="text-emerald-400">' + configSource + '</span></p>' +
-        '<p>Last log fetch: <span class="text-emerald-400">' + (cachedAdminData ? 'OK' : 'Belum') + '</span></p>' +
-        '<p>Backend admin validation: <span class="text-emerald-400">Enabled</span></p>' +
-        '<p>Rate limiting: <span class="text-emerald-400">10 req/30min per IP</span></p>';
+        '<p>Admin: <span class="text-emerald-400">Active</span></p>' +
+        '<p>Config: <span class="text-emerald-400">' + src + '</span></p>' +
+        '<p>Logs: <span class="text-emerald-400">' + (cachedAdminData ? 'OK' : 'Belum') + '</span></p>' +
+        '<p>Rate limit: <span class="text-emerald-400">10/30min</span></p>';
     panel.classList.remove('hidden');
     showToast('Security status refreshed', 'success');
 }

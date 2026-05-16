@@ -52,7 +52,7 @@ async function getMaintenanceConfig() {
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-      return { manualMaintenance: false, emergencyLock: false };
+      return { maintenanceMode: false };
     }
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     const { data, error } = await supabase
@@ -60,10 +60,15 @@ async function getMaintenanceConfig() {
       .select('value')
       .eq('key', 'maintenance_config')
       .single();
-    if (error || !data) return { manualMaintenance: false, emergencyLock: false };
-    return data.value || { manualMaintenance: false, emergencyLock: false };
+    if (error || !data || !data.value) return { maintenanceMode: false };
+    const raw = data.value;
+    // Backward compat: old format had manualMaintenance/emergencyLock
+    if ('manualMaintenance' in raw || 'emergencyLock' in raw) {
+      return { maintenanceMode: Boolean(raw.manualMaintenance) || Boolean(raw.emergencyLock), message: raw.message || '' };
+    }
+    return { maintenanceMode: Boolean(raw.maintenanceMode), message: raw.message || '' };
   } catch (e) {
-    return { manualMaintenance: false, emergencyLock: false };
+    return { maintenanceMode: false };
   }
 }
 
@@ -119,7 +124,7 @@ module.exports = async function handler(req, res) {
 
     // === MAINTENANCE GUARD (Supabase-based) ===
     const maintenanceConfig = await getMaintenanceConfig();
-    if ((maintenanceConfig.manualMaintenance || maintenanceConfig.emergencyLock) && !isAdminBudi) {
+    if (maintenanceConfig.maintenanceMode && !isAdminBudi) {
       const msg = maintenanceConfig.message || 'Auto-Cuan sedang tidak dapat diakses sementara.';
       return res.status(200).json({
         html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center space-y-2"><p class="text-yellow-400 font-semibold text-base">Website sedang maintenance</p><p class="text-yellow-300/70 text-sm">' + msg.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</p><p class="text-xs text-gray-500 mt-2">Silakan kembali lagi nanti.</p></div>'
