@@ -955,10 +955,11 @@ function guestLogin() {
 // ===== LOGGING FUNCTIONS =====
 async function logLogin(username, isGuest, isAdmin) {
     try {
-        await fetch('/api/log-login', {
+        await fetch('/api/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                action: 'login',
                 username: username,
                 isGuest: isGuest,
                 isAdmin: isAdmin,
@@ -971,10 +972,10 @@ async function logLogin(username, isGuest, isAdmin) {
 async function logSearch(ticker, source) {
     try {
         var username = localStorage.getItem('autocuan_user') || 'Unknown';
-        await fetch('/api/log-search', {
+        await fetch('/api/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username, ticker: ticker, source: source })
+            body: JSON.stringify({ action: 'search', username: username, ticker: ticker, source: source })
         });
     } catch (e) { console.warn('logSearch failed', e); }
 }
@@ -984,10 +985,11 @@ async function logAnalysisResult(ticker, mode, html) {
         var username = localStorage.getItem('autocuan_user') || 'Unknown';
         var text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
         var resultSummary = text.slice(0, 500);
-        await fetch('/api/log-analysis', {
+        await fetch('/api/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                action: 'analysis',
                 username: username,
                 ticker: ticker,
                 mode: mode,
@@ -1001,10 +1003,10 @@ async function logAnalysisResult(ticker, mode, html) {
 async function logUsage(ticker, action) {
     try {
         var username = localStorage.getItem('autocuan_user') || 'Unknown';
-        await fetch('/api/log-usage', {
+        await fetch('/api/log', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username, ticker: ticker, action: action })
+            body: JSON.stringify({ action: 'usage', username: username, ticker: ticker, usageAction: action })
         });
     } catch (e) { console.warn('logUsage failed', e); }
 }
