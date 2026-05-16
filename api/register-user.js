@@ -23,8 +23,8 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Username maksimal 30 karakter.' });
     }
 
-    // Reject budi
-    if (usernameLower === 'budi') {
+    // Reject reserved usernames
+    if (usernameLower === 'budi' || usernameLower === 'review') {
       return res.status(400).json({ success: false, error: 'Username tidak tersedia.' });
     }
 

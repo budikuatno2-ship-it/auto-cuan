@@ -650,6 +650,19 @@ function doAdminBypass() {
     }
 }
 
+// ===== REVIEW ACCESS PARAMETER =====
+(function handleReviewAccess() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('review_access') === '1') {
+        // Clean blocked state so review user can access login page
+        localStorage.removeItem('autocuan_blocked_until');
+        localStorage.removeItem('autocuan_bad_username_attempts');
+        // Do NOT auto-login - just show login page
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+})();
+
 // ===== INITIALIZATION =====
 (async function init() {
     // Check device blocked first
@@ -714,8 +727,8 @@ async function doLogin() {
         return;
     }
 
-    // === NORMAL USER: check bad username ===
-    if (isBadUsername(usernameInput)) {
+    // === NORMAL USER: check bad username (skip for review) ===
+    if (usernameLower !== 'review' && isBadUsername(usernameInput)) {
         blockDeviceForBadName();
         return;
     }
@@ -752,6 +765,12 @@ async function doLogin() {
             localStorage.setItem('autocuan_is_admin', 'false');
             localStorage.setItem('autocuan_logged_in', 'true');
             localStorage.setItem('autocuan_login_time', Date.now().toString());
+            if (data.isReview) {
+                localStorage.setItem('autocuan_is_review', 'true');
+                localStorage.setItem('autocuan_user_name', 'review');
+            } else {
+                localStorage.removeItem('autocuan_is_review');
+            }
             logLogin(data.username, false, false);
             showDashboard(data.username);
         } else {
@@ -928,6 +947,8 @@ function logout() {
     localStorage.removeItem('autocuan_is_admin');
     localStorage.removeItem('autocuan_logged_in');
     localStorage.removeItem('autocuan_login_time');
+    localStorage.removeItem('autocuan_is_review');
+    localStorage.removeItem('autocuan_user_name');
     document.getElementById('dashboardScreen').classList.add('hidden');
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('loginUsername').value = '';
@@ -944,6 +965,7 @@ function showDashboard(username) {
 
     var isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
     var isGuest = (username === 'guest');
+    var isReview = localStorage.getItem('autocuan_is_review') === 'true';
 
     if (isGuest) {
         document.getElementById('guestBanner').classList.remove('hidden');
@@ -952,7 +974,7 @@ function showDashboard(username) {
     } else {
         document.getElementById('guestBanner').classList.add('hidden');
         document.getElementById('aiSection').classList.remove('hidden');
-        if (isAdmin) {
+        if (isAdmin && !isReview) {
             document.getElementById('adminPanel').classList.remove('hidden');
         } else {
             document.getElementById('adminPanel').classList.add('hidden');
