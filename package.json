@@ -8,10 +8,10 @@
     "start": "vercel dev"
   },
   "engines": {
-    "node": ">=18"
+    "node": "20.x"
   },
   "dependencies": {
-    "@google/generative-ai": "latest",
-    "@supabase/supabase-js": "latest"
+    "@google/generative-ai": "^0.21.0",
+    "@supabase/supabase-js": "^2.49.1"
   }
 }
