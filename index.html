@@ -51,6 +51,17 @@
 </head>
 <body class="min-h-screen text-gray-100">
 
+<!-- ===== BLOCKED SCREEN ===== -->
+<div id="blockedScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
+    <div class="w-full max-w-md rounded-3xl border border-red-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
+        <div class="text-5xl">🚫</div>
+        <h2 class="text-xl font-bold text-white">Akses diblokir sementara</h2>
+        <p class="text-sm text-red-300">Nama yang digunakan tidak sesuai ketentuan. Silakan coba lagi setelah beberapa waktu.</p>
+        <p id="blockedCountdown" class="text-sm text-gray-400 font-mono"></p>
+        <p class="text-xs text-gray-600 mt-4">Pelanggaran berulang dapat mengakibatkan pemblokiran permanen.</p>
+    </div>
+</div>
+
 <!-- ===== LOGIN SCREEN ===== -->
 <div id="loginScreen" class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-sm fade-in-up">
@@ -64,7 +75,14 @@
             <p class="text-sm text-gray-400 mt-1">SMC Analysis Platform</p>
         </div>
         <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl p-6 backdrop-blur-sm">
-            <div class="space-y-4">
+            <!-- LOGIN/REGISTER TABS -->
+            <div class="grid grid-cols-2 gap-2 mb-5 rounded-xl border border-gray-800 bg-[#0b0e14] p-1.5">
+                <button id="authTabLogin" onclick="switchAuthTab('login')" class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-black transition">Masuk</button>
+                <button id="authTabRegister" onclick="switchAuthTab('register')" class="rounded-lg bg-transparent px-4 py-2 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition">Daftar</button>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <div id="loginForm" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
                     <input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
@@ -74,16 +92,38 @@
                     <input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" onkeydown="if(event.key==='Enter')doLogin()">
                 </div>
                 <div id="loginError" class="hidden text-sm text-red-400 text-center py-1"></div>
-                <button onclick="doLogin()" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+                <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
                     Masuk
                 </button>
                 <button onclick="guestLogin()" class="w-full py-3 rounded-xl font-medium text-gray-400 border border-dark-600/50 hover:border-emerald-500/30 hover:text-emerald-400 transition-all duration-200">
                     Coba Tanpa Login
                 </button>
             </div>
+
+            <!-- REGISTER FORM -->
+            <div id="registerForm" class="hidden space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
+                    <input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
+                    <input type="password" id="regPassword" placeholder="Minimal 8 karakter (huruf + angka)" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Konfirmasi Password</label>
+                    <input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" onkeydown="if(event.key==='Enter')doRegister()">
+                </div>
+                <div id="registerError" class="hidden text-sm text-red-400 text-center py-1"></div>
+                <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1"></div>
+                <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
+                    Daftar
+                </button>
+            </div>
         </div>
     </div>
 </div>
+
 
 <!-- ===== DASHBOARD SCREEN ===== -->
 <div id="dashboardScreen" class="hidden">
@@ -221,6 +261,7 @@
                 <button onclick="loadAdminLogs('search')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Search Logs</button>
                 <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">AI Logs</button>
                 <button onclick="loadAdminLogs('usage')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Usage Logs</button>
+                <button onclick="loadAdminUsers()" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">User Management</button>
                 <button onclick="loadAdminLogs(lastAdminLogType || 'login')" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">🔄 Refresh</button>
             </div>
             <div id="adminLogsContainer" class="overflow-x-auto">
@@ -285,7 +326,145 @@
     </div>
 </div>
 
+
 <script>
+// ===== DEVICE ID =====
+function getOrCreateDeviceId() {
+    var id = localStorage.getItem('autocuan_device_id');
+    if (!id) {
+        id = 'dev_' + crypto.randomUUID();
+        localStorage.setItem('autocuan_device_id', id);
+    }
+    return id;
+}
+
+// ===== USERNAME NORMALIZATION =====
+function normalizeNameForCheck(name) {
+    return String(name || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[@]/g, 'a')
+        .replace(/[4]/g, 'a')
+        .replace(/[!1|]/g, 'i')
+        .replace(/[0]/g, 'o')
+        .replace(/[3]/g, 'e')
+        .replace(/[5]/g, 's')
+        .replace(/[7]/g, 't')
+        .replace(/\$/g, 's')
+        .replace(/\s+/g, '')
+        .replace(/[^a-z0-9]/g, '');
+}
+
+// ===== BAD WORDS LIST =====
+var badWords = [
+    "anjing","anjir","anjay","anjrit","anjrot","anjeng","anjink",
+    "asu","asw","babi","babik","bangsat","bangsad","bajingan",
+    "brengsek","kampret","keparat","laknat","sialan","bangke",
+    "bangkai","tai","taik","tahi","goblok","goblog","goblk",
+    "tolol","tlol","bodoh","bego","dungu","idiot","edan",
+    "gila","sinting","koplak","koplok","pekok","bloon",
+    "bacot","cupu","najis","hina","sampah","busuk","parasit",
+    "kampungan","norak","alay","rese","songong","sokap",
+    "sokjago","sokkeras","soksuci","sokpintar",
+    "kontol","kntl","kontl","memek","mmk","meki","peler",
+    "titit","tetek","ngentot","ngntot","entot","ngewe",
+    "perek","lonte","pelacur","jablay","cabul","mesum",
+    "jancok","jancuk","cuk","cok","dancok","dancuk",
+    "kirik","ndasmu","raimu","matamu","gathel","gatel",
+    "celeng","wedhus","jangkrik","asem","ndlogok",
+    "asutenan","raimuasu","ndasmuasu","matamuasu",
+    "gendeng","ndableg",
+    "bunuh","dibunuh","kubunuh","takbunuh",
+    "hajar","bacok","gorok","bakar","serang","habisi",
+    "mampus","modar","matilu","matilo","matikau",
+    "ngebom","ledakkan","ledakan","rusuh","jarah",
+    "amuk","keroyok","gebuk","pukul","tusuk","sembelih",
+    "ajg","anjg","anj","anjng","bgst","bgsd","bngsat",
+    "bngst","bajingn","gblk","gblg","goblogg","tll",
+    "bbi","bbai","babiq","babii","baabi","b4bi",
+    "asuww","asuu","kirikk","jancokk","jancukkk",
+    "kntol","kont0l","memk","ngentod","ngent0t"
+];
+
+// ===== BAD USERNAME CHECK =====
+function isBadUsername(name) {
+    var clean = normalizeNameForCheck(name);
+    if (!clean || clean.length < 2) return true;
+    if (clean.length > 30) return true;
+    if (/(.)\1{5,}/.test(clean)) return true;
+    if (/(http|www|com|net|org|id)/i.test(clean)) return true;
+    return badWords.some(function(word) {
+        var cleanWord = normalizeNameForCheck(word);
+        return clean.includes(cleanWord);
+    });
+}
+
+// ===== DEVICE BLOCKING =====
+function getBlockedUntil() {
+    return Number(localStorage.getItem('autocuan_blocked_until') || '0');
+}
+
+function isDeviceBlocked() {
+    var blockedUntil = getBlockedUntil();
+    return blockedUntil && Date.now() < blockedUntil;
+}
+
+function blockDeviceForBadName() {
+    var blockedUntil = Date.now() + (2 * 60 * 60 * 1000);
+    localStorage.setItem('autocuan_blocked_until', String(blockedUntil));
+    localStorage.removeItem('autocuan_logged_in');
+    localStorage.removeItem('autocuan_user');
+    localStorage.removeItem('autocuan_is_admin');
+    localStorage.removeItem('autocuan_login_time');
+    try { logUsage('', 'username_blocked'); } catch(e) {}
+    showBlockedScreen();
+}
+
+function showBlockedScreen() {
+    document.getElementById('blockedScreen').classList.remove('hidden');
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('dashboardScreen').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.add('hidden');
+    updateBlockedCountdown();
+}
+
+var blockedInterval = null;
+function updateBlockedCountdown() {
+    if (blockedInterval) clearInterval(blockedInterval);
+    blockedInterval = setInterval(function() {
+        var remaining = getBlockedUntil() - Date.now();
+        if (remaining <= 0) {
+            clearInterval(blockedInterval);
+            localStorage.removeItem('autocuan_blocked_until');
+            location.reload();
+            return;
+        }
+        var mins = Math.floor(remaining / 60000);
+        var secs = Math.floor((remaining % 60000) / 1000);
+        document.getElementById('blockedCountdown').textContent =
+            'Akses dibuka kembali dalam: ' + mins + ' menit ' + secs + ' detik';
+    }, 1000);
+}
+
+// ===== PASSWORD HASHING (SHA-256) =====
+async function hashPassword(password) {
+    var encoder = new TextEncoder();
+    var data = encoder.encode(password + '_autocuan_salt_2024');
+    var hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    var hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+// ===== PASSWORD VALIDATION =====
+function isValidPassword(password) {
+    if (!password || password.length < 8) return false;
+    if (!/[a-zA-Z]/.test(password)) return false;
+    if (!/[0-9]/.test(password)) return false;
+    return true;
+}
+
 // ===== MAINTENANCE UTILITIES =====
 function getWIBHour() {
     var parts = new Intl.DateTimeFormat('en-US', {
@@ -306,6 +485,30 @@ function isAdminUser() {
     var name = (localStorage.getItem('autocuan_user') || '').trim().toLowerCase();
     var adminFlag = localStorage.getItem('autocuan_is_admin') === 'true';
     return adminFlag && name === 'budi';
+}
+
+// ===== AUTH TAB SWITCHING =====
+function switchAuthTab(tab) {
+    var tabLogin = document.getElementById('authTabLogin');
+    var tabRegister = document.getElementById('authTabRegister');
+    var loginForm = document.getElementById('loginForm');
+    var registerForm = document.getElementById('registerForm');
+
+    if (tab === 'login') {
+        tabLogin.className = 'rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-black transition';
+        tabRegister.className = 'rounded-lg bg-transparent px-4 py-2 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+    } else {
+        tabRegister.className = 'rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-black transition';
+        tabLogin.className = 'rounded-lg bg-transparent px-4 py-2 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
+        registerForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
+    }
+    // Clear errors
+    document.getElementById('loginError').classList.add('hidden');
+    document.getElementById('registerError').classList.add('hidden');
+    document.getElementById('registerSuccess').classList.add('hidden');
 }
 
 // ===== ADMIN BYPASS SHORTCUT (Ctrl+B then K) =====
@@ -345,7 +548,6 @@ function doAdminBypass() {
         localStorage.setItem('autocuan_user', 'budi');
         localStorage.setItem('autocuan_is_admin', 'true');
         localStorage.setItem('autocuan_login_time', Date.now().toString());
-        // Log admin login silently
         logLogin('budi', false, true);
         closeAdminBypassModal();
         document.getElementById('maintenanceScreen').classList.add('hidden');
@@ -358,7 +560,13 @@ function doAdminBypass() {
 
 // ===== INITIALIZATION =====
 (function init() {
-    // Check maintenance first
+    // Check device blocked first
+    if (isDeviceBlocked()) {
+        showBlockedScreen();
+        return;
+    }
+
+    // Check maintenance
     if (isMaintenanceTime() && !isAdminUser()) {
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('dashboardScreen').classList.add('hidden');
@@ -368,7 +576,7 @@ function doAdminBypass() {
 
     // Normal flow
     document.getElementById('maintenanceScreen').classList.add('hidden');
-    const user = localStorage.getItem('autocuan_user');
+    var user = localStorage.getItem('autocuan_user');
     if (user) {
         showDashboard(user);
     } else {
@@ -378,10 +586,15 @@ function doAdminBypass() {
 })();
 
 // ===== LOGIN LOGIC =====
-function doLogin() {
-    const usernameInput = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const errorEl = document.getElementById('loginError');
+async function doLogin() {
+    if (isDeviceBlocked()) { showBlockedScreen(); return; }
+
+    var usernameInput = document.getElementById('loginUsername').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    var errorEl = document.getElementById('loginError');
+    var loginBtn = document.getElementById('loginBtn');
+
+    errorEl.classList.add('hidden');
 
     if (!usernameInput) {
         errorEl.textContent = 'Username tidak boleh kosong.';
@@ -389,41 +602,169 @@ function doLogin() {
         return;
     }
 
-    const usernameLower = usernameInput.toLowerCase();
-    let isValid = false;
-    let isAdmin = false;
+    var usernameLower = usernameInput.toLowerCase();
 
+    // === ADMIN SPECIAL LOGIN ===
     if (usernameLower === 'budi') {
         if (password === '.') {
-            isValid = true;
-            isAdmin = true;
+            localStorage.setItem('autocuan_user', 'budi');
+            localStorage.setItem('autocuan_is_admin', 'true');
+            localStorage.setItem('autocuan_login_time', Date.now().toString());
+            logLogin('budi', false, true);
+            showDashboard('budi');
         } else {
             errorEl.textContent = 'Password salah.';
             errorEl.classList.remove('hidden');
-            return;
         }
-    } else {
-        const firstChar = usernameLower.charAt(0);
-        const expectedPass = (firstChar.charCodeAt(0) - 96).toString();
-        if (password === expectedPass) {
-            isValid = true;
-            isAdmin = false;
-        } else {
-            errorEl.textContent = 'Password salah. Hint: posisi huruf pertama di alfabet.';
-            errorEl.classList.remove('hidden');
-            return;
-        }
+        return;
     }
 
-    if (isValid) {
-        localStorage.setItem('autocuan_user', usernameLower);
-        localStorage.setItem('autocuan_is_admin', isAdmin ? 'true' : 'false');
-        logLogin(usernameLower, false, isAdmin);
-        showDashboard(usernameLower);
+    // === NORMAL USER: check bad username ===
+    if (isBadUsername(usernameInput)) {
+        blockDeviceForBadName();
+        return;
+    }
+
+    if (!password) {
+        errorEl.textContent = 'Password tidak boleh kosong.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    // Hash password and call API
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Memproses...';
+
+    try {
+        var passwordHash = await hashPassword(password);
+        var deviceId = getOrCreateDeviceId();
+
+        var response = await fetch('/api/login-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: usernameLower,
+                passwordHash: passwordHash,
+                deviceId: deviceId,
+                userAgent: navigator.userAgent
+            })
+        });
+
+        var data = await response.json();
+
+        if (data.success) {
+            localStorage.setItem('autocuan_user', data.username);
+            localStorage.setItem('autocuan_is_admin', 'false');
+            localStorage.setItem('autocuan_logged_in', 'true');
+            localStorage.setItem('autocuan_login_time', Date.now().toString());
+            logLogin(data.username, false, false);
+            showDashboard(data.username);
+        } else {
+            errorEl.textContent = data.error || 'Login gagal.';
+            errorEl.classList.remove('hidden');
+        }
+    } catch(e) {
+        errorEl.textContent = 'Koneksi gagal. Coba lagi.';
+        errorEl.classList.remove('hidden');
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Masuk';
     }
 }
 
+// ===== REGISTER LOGIC =====
+async function doRegister() {
+    if (isDeviceBlocked()) { showBlockedScreen(); return; }
+
+    var usernameInput = document.getElementById('regUsername').value.trim();
+    var password = document.getElementById('regPassword').value;
+    var passwordConfirm = document.getElementById('regPasswordConfirm').value;
+    var errorEl = document.getElementById('registerError');
+    var successEl = document.getElementById('registerSuccess');
+    var registerBtn = document.getElementById('registerBtn');
+
+    errorEl.classList.add('hidden');
+    successEl.classList.add('hidden');
+
+    if (!usernameInput) {
+        errorEl.textContent = 'Username tidak boleh kosong.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    var usernameLower = usernameInput.toLowerCase();
+
+    // Block budi registration
+    if (usernameLower === 'budi') {
+        errorEl.textContent = 'Username tidak tersedia.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    // Check bad username
+    if (isBadUsername(usernameInput)) {
+        blockDeviceForBadName();
+        return;
+    }
+
+    // Password validation
+    if (!isValidPassword(password)) {
+        errorEl.textContent = 'Password minimal 8 karakter dan harus mengandung huruf serta angka.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    if (password !== passwordConfirm) {
+        errorEl.textContent = 'Konfirmasi password tidak sama.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    // Call API
+    registerBtn.disabled = true;
+    registerBtn.textContent = 'Memproses...';
+
+    try {
+        var passwordHash = await hashPassword(password);
+        var deviceId = getOrCreateDeviceId();
+
+        var response = await fetch('/api/register-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: usernameLower,
+                passwordHash: passwordHash,
+                deviceId: deviceId,
+                userAgent: navigator.userAgent
+            })
+        });
+
+        var data = await response.json();
+
+        if (data.success) {
+            successEl.textContent = 'Akun berhasil dibuat. Silakan masuk.';
+            successEl.classList.remove('hidden');
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regPasswordConfirm').value = '';
+            // Switch to login tab after short delay
+            setTimeout(function() { switchAuthTab('login'); }, 1500);
+        } else {
+            errorEl.textContent = data.error || 'Registrasi gagal.';
+            errorEl.classList.remove('hidden');
+        }
+    } catch(e) {
+        errorEl.textContent = 'Koneksi gagal. Coba lagi.';
+        errorEl.classList.remove('hidden');
+    } finally {
+        registerBtn.disabled = false;
+        registerBtn.textContent = 'Daftar';
+    }
+}
+
+// ===== GUEST LOGIN =====
 function guestLogin() {
+    if (isDeviceBlocked()) { showBlockedScreen(); return; }
     localStorage.setItem('autocuan_user', 'guest');
     localStorage.setItem('autocuan_is_admin', 'false');
     logLogin('Guest', true, false);
@@ -490,6 +831,8 @@ async function logUsage(ticker, action) {
 function logout() {
     localStorage.removeItem('autocuan_user');
     localStorage.removeItem('autocuan_is_admin');
+    localStorage.removeItem('autocuan_logged_in');
+    localStorage.removeItem('autocuan_login_time');
     document.getElementById('dashboardScreen').classList.add('hidden');
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('loginUsername').value = '';
@@ -499,14 +842,14 @@ function logout() {
 
 // ===== DASHBOARD =====
 function showDashboard(username) {
+    if (isDeviceBlocked()) { showBlockedScreen(); return; }
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('dashboardScreen').classList.remove('hidden');
     document.getElementById('headerUsername').textContent = username;
 
-    const isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
-    const isGuest = (username === 'guest');
+    var isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
+    var isGuest = (username === 'guest');
 
-    // Guest restrictions
     if (isGuest) {
         document.getElementById('guestBanner').classList.remove('hidden');
         document.getElementById('aiSection').classList.add('hidden');
@@ -521,10 +864,12 @@ function showDashboard(username) {
         }
     }
 
-    // Load TradingView
     loadTradingView();
 }
+</script>
 
+
+<script>
 // ===== TRADINGVIEW =====
 function loadTradingView() {
     var container = document.getElementById('tvChartContainer');
@@ -565,7 +910,6 @@ function getUsageRecords() {
     try {
         var records = JSON.parse(localStorage.getItem('autocuan_usage') || '[]');
         var now = Date.now();
-        // Keep only records within last 30 minutes
         return records.filter(function(t) { return (now - t) < 30 * 60 * 1000; });
     } catch(e) { return []; }
 }
@@ -591,7 +935,6 @@ async function analyzeChart() {
     if (!ticker) { alert('Masukkan ticker saham.'); return; }
     if (!currentPrice) { alert('Masukkan harga sekarang.'); return; }
 
-    // Check usage limit
     if (!checkUsageLimit()) {
         limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
         limitWarning.classList.remove('hidden');
@@ -600,11 +943,9 @@ async function analyzeChart() {
     }
     limitWarning.classList.add('hidden');
 
-    // Log search and usage start
     logSearch(ticker, 'ticker_mode');
     logUsage(ticker, 'ai_analysis_started');
 
-    // Show loading
     document.getElementById('loadingState').classList.remove('hidden');
     document.getElementById('resultSection').classList.add('hidden');
     document.getElementById('analyzeBtn').disabled = true;
@@ -644,133 +985,7 @@ async function analyzeChart() {
     }
 }
 
-// ===== ADMIN LOGS =====
-var lastAdminLogType = 'login';
-var cachedAdminData = null;
-
-async function loadAdminLogs(type) {
-    lastAdminLogType = type;
-    var container = document.getElementById('adminLogsContainer');
-    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
-
-    try {
-        var adminName = localStorage.getItem('autocuan_user') || '';
-        var response = await fetch('/api/admin-logs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminName: adminName })
-        });
-        if (!response.ok) throw new Error('Fetch failed');
-        var data = await response.json();
-        cachedAdminData = data;
-
-        if (!data.success) {
-            container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Database logging belum dikonfigurasi.') + '</p>';
-            return;
-        }
-
-        // Build summary card
-        var summaryHtml = '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Logins</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalLogins || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Searches</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalSearches || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">AI Analyses</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalAIAnalyses || 0) + '</p></div>';
-        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Top Ticker</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.mostSearchedTicker || '-') + '</p></div>';
-        summaryHtml += '</div>';
-
-        // Pick which logs to show based on type
-        var logs = [];
-        if (type === 'login') logs = data.loginLogs || [];
-        else if (type === 'search') logs = data.searchLogs || [];
-        else if (type === 'analysis') logs = data.aiAnalysisLogs || [];
-        else logs = data.aiUsageLogs || [];
-
-        if (logs.length === 0) {
-            container.innerHTML = summaryHtml + '<p class="text-sm text-gray-500">Belum ada data log.</p>';
-            return;
-        }
-
-        // Special rendering for AI analysis logs - card format with Lihat Hasil
-        if (type === 'analysis') {
-            var cardsHtml = '<div class="space-y-3">';
-            logs.forEach(function(row, idx) {
-                var summary = row.result_summary || '';
-                if (summary.length > 120) summary = summary.slice(0, 120) + '...';
-                cardsHtml += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333]">';
-                cardsHtml += '<div class="flex flex-wrap items-center gap-2 mb-2">';
-                cardsHtml += '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400">' + (row.ticker || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-500">' + (row.username || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-600">' + (row.mode || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + (row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span>';
-                cardsHtml += '</div>';
-                if (summary) cardsHtml += '<p class="text-xs text-gray-400 mb-3 line-clamp-2">' + summary + '</p>';
-                cardsHtml += '<button onclick="openAdminAiDetail(' + idx + ')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Lihat Hasil</button>';
-                cardsHtml += '</div>';
-            });
-            cardsHtml += '</div>';
-            container.innerHTML = summaryHtml + cardsHtml;
-            return;
-        }
-
-        // Standard table rendering for other log types
-        var excludeCols = ['full_result_html'];
-        var keys = Object.keys(logs[0]).filter(function(k) { return excludeCols.indexOf(k) === -1; });
-        var tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
-        keys.forEach(function(k) {
-            tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>';
-        });
-        tableHtml += '</tr></thead><tbody>';
-        logs.forEach(function(row) {
-            tableHtml += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
-            keys.forEach(function(k) {
-                var val = row[k] || '-';
-                if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...';
-                tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>';
-            });
-            tableHtml += '</tr>';
-        });
-        tableHtml += '</tbody></table></div>';
-
-        container.innerHTML = summaryHtml + tableHtml;
-    } catch(e) {
-        console.error('loadAdminLogs error:', e);
-        container.innerHTML = '<p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p>';
-    }
-}
-
-function openAdminAiDetail(idx) {
-    if (!cachedAdminData || !cachedAdminData.aiAnalysisLogs) return;
-    var log = cachedAdminData.aiAnalysisLogs[idx];
-    if (!log) return;
-
-    var modal = document.getElementById('adminAiModal');
-    var subtitle = document.getElementById('adminAiModalSubtitle');
-    var detail = document.getElementById('adminAiResultDetail');
-
-    subtitle.textContent = (log.ticker || 'N/A') + ' • ' + (log.username || 'N/A') + ' • ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
-
-    if (log.full_result_html && log.full_result_html.length > 50) {
-        detail.innerHTML = log.full_result_html;
-    } else {
-        detail.innerHTML = '<p class="text-sm text-yellow-400">Hasil lengkap tidak tersedia. Kemungkinan analisis lama hanya menyimpan ringkasan.</p>';
-    }
-
-    modal.classList.remove('hidden');
-}
-
-function closeAdminAiModal() {
-    document.getElementById('adminAiModal').classList.add('hidden');
-    document.getElementById('adminAiResultDetail').innerHTML = '';
-}
-
-// ===== RESPONSIVE TV HEIGHT =====
-function updateTvHeight() {
-    var el = document.getElementById('tvChartContainer');
-    if (el) { el.style.height = window.innerWidth < 640 ? '400px' : '500px'; }
-}
-window.addEventListener('resize', updateTvHeight);
-updateTvHeight();
-
-// ===== TAB SWITCHING =====
+// ===== TAB SWITCHING (Chart/Ticker) =====
 var currentTab = 'ticker';
 function switchTab(tab) {
     currentTab = tab;
@@ -848,13 +1063,11 @@ async function analyzeChartUpload() {
     logSearch('CHART_UPLOAD', 'chart_upload');
     logUsage('CHART_UPLOAD', 'ai_analysis_started');
 
-    // Show loading
     document.getElementById('loadingState').classList.remove('hidden');
     document.getElementById('resultSection').classList.add('hidden');
     document.getElementById('analyzeChartBtn').disabled = true;
 
     try {
-        // Convert to base64
         var base64Data = await fileToBase64(selectedChartFile);
 
         var response = await fetch('/api/analyze', {
@@ -904,6 +1117,251 @@ function fileToBase64(file) {
         reader.onerror = function(e) { reject(new Error('Gagal membaca file.')); };
         reader.readAsDataURL(file);
     });
+}
+
+// ===== RESPONSIVE TV HEIGHT =====
+function updateTvHeight() {
+    var el = document.getElementById('tvChartContainer');
+    if (el) { el.style.height = window.innerWidth < 640 ? '400px' : '500px'; }
+}
+window.addEventListener('resize', updateTvHeight);
+updateTvHeight();
+</script>
+
+
+<script>
+// ===== ADMIN LOGS =====
+var lastAdminLogType = 'login';
+var cachedAdminData = null;
+
+async function loadAdminLogs(type) {
+    lastAdminLogType = type;
+    var container = document.getElementById('adminLogsContainer');
+    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
+
+    try {
+        var adminName = localStorage.getItem('autocuan_user') || '';
+        var response = await fetch('/api/admin-logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: adminName })
+        });
+        if (!response.ok) throw new Error('Fetch failed');
+        var data = await response.json();
+        cachedAdminData = data;
+
+        if (!data.success) {
+            container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Database logging belum dikonfigurasi.') + '</p>';
+            return;
+        }
+
+        var summaryHtml = '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Logins</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalLogins || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Searches</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalSearches || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">AI Analyses</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalAIAnalyses || 0) + '</p></div>';
+        summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Top Ticker</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.mostSearchedTicker || '-') + '</p></div>';
+        summaryHtml += '</div>';
+
+        var logs = [];
+        if (type === 'login') logs = data.loginLogs || [];
+        else if (type === 'search') logs = data.searchLogs || [];
+        else if (type === 'analysis') logs = data.aiAnalysisLogs || [];
+        else logs = data.aiUsageLogs || [];
+
+        if (logs.length === 0) {
+            container.innerHTML = summaryHtml + '<p class="text-sm text-gray-500">Belum ada data log.</p>';
+            return;
+        }
+
+        if (type === 'analysis') {
+            var cardsHtml = '<div class="space-y-3">';
+            logs.forEach(function(row, idx) {
+                var summary = row.result_summary || '';
+                if (summary.length > 120) summary = summary.slice(0, 120) + '...';
+                cardsHtml += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333]">';
+                cardsHtml += '<div class="flex flex-wrap items-center gap-2 mb-2">';
+                cardsHtml += '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400">' + (row.ticker || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-500">' + (row.username || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-600">' + (row.mode || '-') + '</span>';
+                cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + (row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span>';
+                cardsHtml += '</div>';
+                if (summary) cardsHtml += '<p class="text-xs text-gray-400 mb-3 line-clamp-2">' + summary + '</p>';
+                cardsHtml += '<button onclick="openAdminAiDetail(' + idx + ')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Lihat Hasil</button>';
+                cardsHtml += '</div>';
+            });
+            cardsHtml += '</div>';
+            container.innerHTML = summaryHtml + cardsHtml;
+            return;
+        }
+
+        var excludeCols = ['full_result_html'];
+        var keys = Object.keys(logs[0]).filter(function(k) { return excludeCols.indexOf(k) === -1; });
+        var tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
+        keys.forEach(function(k) {
+            tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>';
+        });
+        tableHtml += '</tr></thead><tbody>';
+        logs.forEach(function(row) {
+            tableHtml += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
+            keys.forEach(function(k) {
+                var val = row[k] || '-';
+                if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...';
+                tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>';
+            });
+            tableHtml += '</tr>';
+        });
+        tableHtml += '</tbody></table></div>';
+
+        container.innerHTML = summaryHtml + tableHtml;
+    } catch(e) {
+        console.error('loadAdminLogs error:', e);
+        container.innerHTML = '<p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p>';
+    }
+}
+
+function openAdminAiDetail(idx) {
+    if (!cachedAdminData || !cachedAdminData.aiAnalysisLogs) return;
+    var log = cachedAdminData.aiAnalysisLogs[idx];
+    if (!log) return;
+
+    var modal = document.getElementById('adminAiModal');
+    var subtitle = document.getElementById('adminAiModalSubtitle');
+    var detail = document.getElementById('adminAiResultDetail');
+
+    subtitle.textContent = (log.ticker || 'N/A') + ' \u2022 ' + (log.username || 'N/A') + ' \u2022 ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
+
+    if (log.full_result_html && log.full_result_html.length > 50) {
+        detail.innerHTML = log.full_result_html;
+    } else {
+        detail.innerHTML = '<p class="text-sm text-yellow-400">Hasil lengkap tidak tersedia. Kemungkinan analisis lama hanya menyimpan ringkasan.</p>';
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeAdminAiModal() {
+    document.getElementById('adminAiModal').classList.add('hidden');
+    document.getElementById('adminAiResultDetail').innerHTML = '';
+}
+
+// ===== ADMIN USER MANAGEMENT =====
+var cachedUsers = [];
+
+async function loadAdminUsers() {
+    var container = document.getElementById('adminLogsContainer');
+    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
+
+    try {
+        var adminName = localStorage.getItem('autocuan_user') || '';
+        var response = await fetch('/api/admin-users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: adminName, action: 'list' })
+        });
+
+        var data = await response.json();
+
+        if (!data.success) {
+            container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Gagal memuat users.') + '</p>';
+            return;
+        }
+
+        cachedUsers = data.users || [];
+
+        if (cachedUsers.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-500">Belum ada user terdaftar.</p>';
+            return;
+        }
+
+        var html = '<div class="mb-3 flex flex-wrap gap-2">';
+        html += '<button onclick="loadAdminUsers()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">🔄 Refresh Users</button>';
+        html += '<button onclick="exportUsers()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">📋 Export Users</button>';
+        html += '</div>';
+
+        html += '<div class="text-xs text-gray-500 mb-2">Total: ' + cachedUsers.length + ' user terdaftar</div>';
+
+        html += '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
+        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Username</th>';
+        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Device ID</th>';
+        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Created</th>';
+        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Last Login</th>';
+        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Status</th>';
+        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Actions</th>';
+        html += '</tr></thead><tbody>';
+
+        cachedUsers.forEach(function(user) {
+            var deviceShort = user.device_id ? user.device_id.slice(0, 16) + '...' : '-';
+            var created = user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : '-';
+            var lastLogin = user.last_login_at ? new Date(user.last_login_at).toLocaleString('id-ID') : '-';
+            var statusBadge = user.is_blocked
+                ? '<span class="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">Blocked</span>'
+                : '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Active</span>';
+
+            html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
+            html += '<td class="px-3 py-2 text-white font-medium">' + user.username + '</td>';
+            html += '<td class="px-3 py-2 text-gray-400 text-xs font-mono">' + deviceShort + '</td>';
+            html += '<td class="px-3 py-2 text-gray-400">' + created + '</td>';
+            html += '<td class="px-3 py-2 text-gray-400">' + lastLogin + '</td>';
+            html += '<td class="px-3 py-2">' + statusBadge + '</td>';
+            html += '<td class="px-3 py-2">';
+            if (user.is_blocked) {
+                html += '<button onclick="adminUserAction(\'unblock\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>';
+            } else {
+                html += '<button onclick="adminUserAction(\'block\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>';
+            }
+            html += '<button onclick="adminUserAction(\'reset_device\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10">Reset Device</button>';
+            html += '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch(e) {
+        console.error('loadAdminUsers error:', e);
+        container.innerHTML = '<p class="text-sm text-yellow-400">Gagal memuat user management.</p>';
+    }
+}
+
+async function adminUserAction(action, username) {
+    if (!confirm('Konfirmasi: ' + action + ' untuk user "' + username + '"?')) return;
+
+    try {
+        var adminName = localStorage.getItem('autocuan_user') || '';
+        var response = await fetch('/api/admin-users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: adminName, action: action, username: username })
+        });
+
+        var data = await response.json();
+
+        if (data.success) {
+            alert(data.message || 'Berhasil.');
+            loadAdminUsers();
+        } else {
+            alert('Gagal: ' + (data.error || 'Unknown error'));
+        }
+    } catch(e) {
+        alert('Koneksi gagal.');
+    }
+}
+
+function exportUsers() {
+    if (!cachedUsers || cachedUsers.length === 0) {
+        alert('Tidak ada data user.');
+        return;
+    }
+    var csv = 'username,device_id,created_at,last_login_at,is_blocked,user_agent\n';
+    cachedUsers.forEach(function(u) {
+        csv += '"' + (u.username||'') + '","' + (u.device_id||'') + '","' + (u.created_at||'') + '","' + (u.last_login_at||'') + '","' + (u.is_blocked||false) + '","' + (u.user_agent||'').replace(/"/g,'""') + '"\n';
+    });
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'autocuan_users_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
 }
 </script>
 </body>
