@@ -98,6 +98,9 @@
                 <button onclick="guestLogin()" class="w-full py-3 rounded-xl font-medium text-gray-400 border border-dark-600/50 hover:border-emerald-500/30 hover:text-emerald-400 transition-all duration-200">
                     Coba Tanpa Login
                 </button>
+                <div class="text-center pt-1">
+                    <button type="button" onclick="openSelfResetModal()" class="text-xs text-blue-400 hover:underline hover:text-blue-300 transition-colors">Lupa / Reset Password?</button>
+                </div>
             </div>
 
             <!-- REGISTER FORM -->
@@ -336,6 +339,30 @@
         <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
         <p class="text-xs text-gray-500 mt-4 italic">(Ini hanya preview, bukan maintenance sungguhan)</p>
         <button onclick="document.getElementById('maintenancePreviewModal').classList.add('hidden')" class="mt-4 px-5 py-2 rounded-xl bg-gray-700 text-sm font-medium text-gray-200 hover:bg-gray-600 transition">Tutup Preview</button>
+    </div>
+</div>
+
+<!-- SELF-SERVICE RESET PASSWORD MODAL -->
+<div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <h3 class="text-base font-bold text-white text-center">Reset Password</h3>
+        <p class="text-xs text-gray-500 text-center">Masukkan username dan password baru. Reset hanya bisa dilakukan dari perangkat yang terdaftar.</p>
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Username</label>
+            <input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label>
+            <input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label>
+            <input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()">
+        </div>
+        <div id="selfResetError" class="hidden text-sm text-red-400 text-center"></div>
+        <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center"></div>
+        <button onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
+        <button onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
     </div>
 </div>
 
@@ -1402,6 +1429,87 @@ function exportUsers() {
     a.download = 'autocuan_users_' + new Date().toISOString().slice(0,10) + '.csv';
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ===== SELF-SERVICE RESET PASSWORD =====
+function openSelfResetModal() {
+    document.getElementById('selfResetModal').classList.remove('hidden');
+    document.getElementById('selfResetUsername').value = '';
+    document.getElementById('selfResetPw').value = '';
+    document.getElementById('selfResetPwConfirm').value = '';
+    document.getElementById('selfResetError').classList.add('hidden');
+    document.getElementById('selfResetSuccess').classList.add('hidden');
+    document.getElementById('selfResetUsername').focus();
+}
+
+function closeSelfResetModal() {
+    document.getElementById('selfResetModal').classList.add('hidden');
+}
+
+async function doSelfResetPassword() {
+    var username = document.getElementById('selfResetUsername').value.trim();
+    var pw = document.getElementById('selfResetPw').value;
+    var pwConfirm = document.getElementById('selfResetPwConfirm').value;
+    var errorEl = document.getElementById('selfResetError');
+    var successEl = document.getElementById('selfResetSuccess');
+
+    errorEl.classList.add('hidden');
+    successEl.classList.add('hidden');
+
+    if (!username) {
+        errorEl.textContent = 'Username tidak boleh kosong.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    if (username.toLowerCase() === 'budi') {
+        errorEl.textContent = 'Akun admin tidak bisa direset dari halaman ini.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    if (!isValidPassword(pw)) {
+        errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    if (pw !== pwConfirm) {
+        errorEl.textContent = 'Konfirmasi password tidak sama.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        var newPasswordHash = await hashPassword(pw);
+        var deviceId = getOrCreateDeviceId();
+
+        var response = await fetch('/api/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: username.toLowerCase(),
+                newPasswordHash: newPasswordHash,
+                deviceId: deviceId
+            })
+        });
+
+        var data = await response.json();
+
+        if (data.success) {
+            successEl.textContent = 'Password berhasil direset. Silakan masuk.';
+            successEl.classList.remove('hidden');
+            document.getElementById('selfResetPw').value = '';
+            document.getElementById('selfResetPwConfirm').value = '';
+            setTimeout(function() { closeSelfResetModal(); }, 2000);
+        } else {
+            errorEl.textContent = data.error || 'Gagal mereset password.';
+            errorEl.classList.remove('hidden');
+        }
+    } catch(e) {
+        errorEl.textContent = 'Koneksi gagal. Coba lagi.';
+        errorEl.classList.remove('hidden');
+    }
 }
 
 // ===== RESET PASSWORD MODAL =====
