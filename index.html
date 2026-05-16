@@ -262,6 +262,7 @@
                 <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">AI Logs</button>
                 <button onclick="loadAdminLogs('usage')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Usage Logs</button>
                 <button onclick="loadAdminUsers()" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">User Management</button>
+                <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
                 <button onclick="loadAdminLogs(lastAdminLogType || 'login')" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">🔄 Refresh</button>
             </div>
             <div id="adminLogsContainer" class="overflow-x-auto">
@@ -302,9 +303,39 @@
     <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
         <div class="text-5xl">🛠️</div>
         <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
-        <p class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses pada pukul 22:00–06:00 WIB.</p>
-        <p class="text-sm text-gray-300">Silakan kembali lagi setelah pukul 06:00 WIB.</p>
-        <p class="text-xs text-gray-600 mt-4">Maintenance dilakukan untuk menjaga performa dan menghemat kuota AI.</p>
+        <p id="maintenanceMessage" class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses sementara.</p>
+        <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
+    </div>
+</div>
+
+<!-- RESET PASSWORD MODAL -->
+<div id="resetPasswordModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <h3 class="text-base font-bold text-white text-center">Reset Password User</h3>
+        <p id="resetPasswordTarget" class="text-sm text-gray-400 text-center"></p>
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label>
+            <input type="password" id="resetPwInput" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label>
+            <input type="password" id="resetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doResetPassword()">
+        </div>
+        <div id="resetPwError" class="hidden text-sm text-red-400 text-center"></div>
+        <button onclick="doResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
+        <button onclick="closeResetPasswordModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
+    </div>
+</div>
+
+<!-- MAINTENANCE PREVIEW MODAL -->
+<div id="maintenancePreviewModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
+        <div class="text-5xl">🛠️</div>
+        <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
+        <p id="maintenancePreviewMsg" class="text-sm text-yellow-300"></p>
+        <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
+        <p class="text-xs text-gray-500 mt-4 italic">(Ini hanya preview, bukan maintenance sungguhan)</p>
+        <button onclick="document.getElementById('maintenancePreviewModal').classList.add('hidden')" class="mt-4 px-5 py-2 rounded-xl bg-gray-700 text-sm font-medium text-gray-200 hover:bg-gray-600 transition">Tutup Preview</button>
     </div>
 </div>
 
@@ -458,27 +489,33 @@ async function hashPassword(password) {
 }
 
 // ===== PASSWORD VALIDATION =====
+var WEAK_PASSWORDS = ['password123','admin123','qwerty123','12345678','123456789','nama123','user1234','agus123','budi123','cuan123','saham123'];
+
 function isValidPassword(password) {
     if (!password || password.length < 8) return false;
-    if (!/[a-zA-Z]/.test(password)) return false;
+    if (!/[A-Z]/.test(password)) return false;
+    if (!/[a-z]/.test(password)) return false;
     if (!/[0-9]/.test(password)) return false;
+    if (WEAK_PASSWORDS.indexOf(password.toLowerCase()) !== -1) return false;
     return true;
 }
 
-// ===== MAINTENANCE UTILITIES =====
-function getWIBHour() {
-    var parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Jakarta',
-        hour: '2-digit',
-        hour12: false
-    }).formatToParts(new Date());
-    var hourPart = parts.find(function(p) { return p.type === 'hour'; });
-    return Number(hourPart ? hourPart.value : 0);
-}
+// ===== MAINTENANCE CHECK (Supabase-driven) =====
+var maintenanceConfig = { maintenanceMode: false, message: '' };
 
-function isMaintenanceTime() {
-    var hour = getWIBHour();
-    return hour >= 22 || hour < 6;
+async function checkMaintenanceStatus() {
+    try {
+        var response = await fetch('/api/maintenance-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get' })
+        });
+        var data = await response.json();
+        if (data.success && data.config) {
+            maintenanceConfig = data.config;
+        }
+    } catch(e) { /* silent */ }
+    return maintenanceConfig;
 }
 
 function isAdminUser() {
@@ -559,17 +596,20 @@ function doAdminBypass() {
 }
 
 // ===== INITIALIZATION =====
-(function init() {
+(async function init() {
     // Check device blocked first
     if (isDeviceBlocked()) {
         showBlockedScreen();
         return;
     }
 
-    // Check maintenance
-    if (isMaintenanceTime() && !isAdminUser()) {
+    // Check maintenance from Supabase
+    await checkMaintenanceStatus();
+    if (maintenanceConfig.maintenanceMode && !isAdminUser()) {
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('dashboardScreen').classList.add('hidden');
+        var msgEl = document.getElementById('maintenanceMessage');
+        if (msgEl && maintenanceConfig.message) msgEl.textContent = maintenanceConfig.message;
         document.getElementById('maintenanceScreen').classList.remove('hidden');
         return;
     }
@@ -709,7 +749,7 @@ async function doRegister() {
 
     // Password validation
     if (!isValidPassword(password)) {
-        errorEl.textContent = 'Password minimal 8 karakter dan harus mengandung huruf serta angka.';
+        errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka.';
         errorEl.classList.remove('hidden');
         return;
     }
@@ -1309,7 +1349,7 @@ async function loadAdminUsers() {
             } else {
                 html += '<button onclick="adminUserAction(\'block\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>';
             }
-            html += '<button onclick="adminUserAction(\'reset_device\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10">Reset Device</button>';
+            html += '<button onclick="openResetPasswordModal(\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10">Reset Password</button>';
             html += '</td>';
             html += '</tr>';
         });
@@ -1362,6 +1402,159 @@ function exportUsers() {
     a.download = 'autocuan_users_' + new Date().toISOString().slice(0,10) + '.csv';
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ===== RESET PASSWORD MODAL =====
+var resetPasswordUsername = '';
+
+function openResetPasswordModal(username) {
+    resetPasswordUsername = username;
+    document.getElementById('resetPasswordTarget').textContent = 'User: ' + username;
+    document.getElementById('resetPwInput').value = '';
+    document.getElementById('resetPwConfirm').value = '';
+    document.getElementById('resetPwError').classList.add('hidden');
+    document.getElementById('resetPasswordModal').classList.remove('hidden');
+    document.getElementById('resetPwInput').focus();
+}
+
+function closeResetPasswordModal() {
+    document.getElementById('resetPasswordModal').classList.add('hidden');
+    resetPasswordUsername = '';
+}
+
+async function doResetPassword() {
+    var pw = document.getElementById('resetPwInput').value;
+    var pwConfirm = document.getElementById('resetPwConfirm').value;
+    var errorEl = document.getElementById('resetPwError');
+    errorEl.classList.add('hidden');
+
+    if (!isValidPassword(pw)) {
+        errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    if (pw !== pwConfirm) {
+        errorEl.textContent = 'Konfirmasi password tidak sama.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        var newPasswordHash = await hashPassword(pw);
+        var adminName = localStorage.getItem('autocuan_user') || '';
+        var response = await fetch('/api/admin-users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                adminName: adminName,
+                action: 'reset_password',
+                username: resetPasswordUsername,
+                newPasswordHash: newPasswordHash
+            })
+        });
+        var data = await response.json();
+        if (data.success) {
+            alert('Password user berhasil direset.');
+            closeResetPasswordModal();
+        } else {
+            errorEl.textContent = data.error || 'Gagal mereset password.';
+            errorEl.classList.remove('hidden');
+        }
+    } catch(e) {
+        errorEl.textContent = 'Koneksi gagal.';
+        errorEl.classList.remove('hidden');
+    }
+}
+
+// ===== WEBSITE SETTINGS =====
+async function loadWebsiteSettings() {
+    var container = document.getElementById('adminLogsContainer');
+    container.innerHTML = '<div class="flex justify-center py-4"><div class="spinner"></div></div>';
+
+    try {
+        var response = await fetch('/api/maintenance-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get' })
+        });
+        var data = await response.json();
+
+        var config = (data.success && data.config) ? data.config : { maintenanceMode: false, message: 'Auto-Cuan sedang tidak dapat diakses sementara.' };
+
+        var html = '<div class="space-y-5">';
+        html += '<h3 class="text-base font-bold text-purple-400">Website Settings</h3>';
+
+        // Maintenance Mode toggle
+        html += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333] space-y-3">';
+        html += '<div class="flex items-center justify-between">';
+        html += '<div><p class="text-sm font-semibold text-white">Maintenance Mode</p>';
+        html += '<p class="text-xs text-gray-500">Jika aktif, user biasa dan guest akan melihat halaman maintenance.</p></div>';
+        html += '<label class="relative inline-flex items-center cursor-pointer">';
+        html += '<input type="checkbox" id="settingsMaintenanceToggle" class="sr-only peer" ' + (config.maintenanceMode ? 'checked' : '') + '>';
+        html += '<div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>';
+        html += '</label>';
+        html += '</div>';
+        html += '</div>';
+
+        // Maintenance message
+        html += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333] space-y-2">';
+        html += '<label class="text-sm font-semibold text-white">Pesan Maintenance</label>';
+        html += '<textarea id="settingsMaintenanceMsg" rows="3" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-purple-500 text-sm resize-none">' + (config.message || '') + '</textarea>';
+        html += '</div>';
+
+        // Last updated info
+        if (config.updatedAt) {
+            html += '<p class="text-xs text-gray-600">Terakhir diperbarui: ' + new Date(config.updatedAt).toLocaleString('id-ID') + ' oleh ' + (config.updatedBy || '-') + '</p>';
+        }
+
+        // Buttons
+        html += '<div class="flex flex-wrap gap-3">';
+        html += '<button onclick="saveWebsiteSettings()" class="px-5 py-2.5 rounded-xl bg-purple-500 text-sm font-bold text-white hover:bg-purple-400 transition">Simpan Pengaturan</button>';
+        html += '<button onclick="testMaintenanceScreen()" class="px-5 py-2.5 rounded-xl border border-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-700/50 transition">Test Maintenance Screen</button>';
+        html += '</div>';
+
+        html += '</div>';
+        container.innerHTML = html;
+    } catch(e) {
+        container.innerHTML = '<p class="text-sm text-yellow-400">Gagal memuat pengaturan.</p>';
+    }
+}
+
+async function saveWebsiteSettings() {
+    var toggle = document.getElementById('settingsMaintenanceToggle');
+    var msgEl = document.getElementById('settingsMaintenanceMsg');
+
+    var config = {
+        maintenanceMode: toggle ? toggle.checked : false,
+        message: msgEl ? msgEl.value.trim() : 'Auto-Cuan sedang tidak dapat diakses sementara.'
+    };
+
+    try {
+        var adminName = localStorage.getItem('autocuan_user') || '';
+        var response = await fetch('/api/maintenance-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: adminName, action: 'save', config: config })
+        });
+        var data = await response.json();
+        if (data.success) {
+            maintenanceConfig = data.config;
+            alert('Pengaturan berhasil disimpan.');
+            loadWebsiteSettings();
+        } else {
+            alert('Gagal: ' + (data.error || 'Unknown error'));
+        }
+    } catch(e) {
+        alert('Koneksi gagal.');
+    }
+}
+
+function testMaintenanceScreen() {
+    var msgEl = document.getElementById('settingsMaintenanceMsg');
+    var previewMsg = msgEl ? msgEl.value.trim() : 'Auto-Cuan sedang tidak dapat diakses sementara.';
+    document.getElementById('maintenancePreviewMsg').textContent = previewMsg;
+    document.getElementById('maintenancePreviewModal').classList.remove('hidden');
 }
 </script>
 </body>

@@ -85,20 +85,26 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'User ' + targetUser + ' berhasil di-unblock.' });
     }
 
-    // === RESET DEVICE BINDING ===
-    if (action === 'reset_device') {
+    // === RESET PASSWORD ===
+    if (action === 'reset_password') {
+      const { newPasswordHash } = req.body || {};
+
       if (!username) {
         return res.status(400).json({ success: false, error: 'Username diperlukan.' });
       }
 
-      const targetUser = String(username).trim().toLowerCase();
-
-      // Cannot reset budi
-      if (targetUser === 'budi') {
-        return res.status(400).json({ success: false, error: 'Tidak dapat mereset device admin.' });
+      if (!newPasswordHash) {
+        return res.status(400).json({ success: false, error: 'Password hash diperlukan.' });
       }
 
-      // Find user first to get their id
+      const targetUser = String(username).trim().toLowerCase();
+
+      // Cannot reset budi password
+      if (targetUser === 'budi') {
+        return res.status(400).json({ success: false, error: 'Tidak dapat mereset password admin.' });
+      }
+
+      // Find user
       const { data: user, error: findError } = await supabase
         .from('app_users')
         .select('id')
@@ -106,7 +112,7 @@ module.exports = async function handler(req, res) {
         .maybeSingle();
 
       if (findError) {
-        console.error('admin-users reset_device find error:', findError);
+        console.error('admin-users reset_password find error:', findError);
         return res.status(500).json({ success: false, error: 'Gagal mencari user.' });
       }
 
@@ -114,20 +120,18 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ success: false, error: 'Username tidak ditemukan.' });
       }
 
-      // Set device_id to RESET_PENDING_ + user id
-      const resetValue = 'RESET_PENDING_' + user.id;
-
+      // Update password_hash
       const { error: updateError } = await supabase
         .from('app_users')
-        .update({ device_id: resetValue })
+        .update({ password_hash: newPasswordHash })
         .eq('id', user.id);
 
       if (updateError) {
-        console.error('admin-users reset_device update error:', updateError);
-        return res.status(500).json({ success: false, error: 'Gagal mereset device: ' + updateError.message });
+        console.error('admin-users reset_password update error:', updateError);
+        return res.status(500).json({ success: false, error: 'Gagal mereset password: ' + updateError.message });
       }
 
-      return res.status(200).json({ success: true, message: 'Device binding untuk ' + targetUser + ' berhasil direset.' });
+      return res.status(200).json({ success: true, message: 'Password user ' + targetUser + ' berhasil direset.' });
     }
 
     // Unknown action
