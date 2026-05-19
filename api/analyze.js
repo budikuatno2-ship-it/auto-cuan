@@ -4,16 +4,13 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { ticker, currentPrice, image, mimeType, source, username, isAdmin } = req.body || {};
+    const { ticker, currentPrice, image, mimeType, source, username, isAdmin, chatMessage } = req.body || {};
 
-    // === MAINTENANCE GUARD ===
-    if (isMaintenanceTimeWIB()) {
-      const isAdminBudi = isAdmin === true && typeof username === 'string' && username.trim().toLowerCase() === 'budi';
-      if (!isAdminBudi) {
-        return res.status(200).json({
-          html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center space-y-2"><p class="text-yellow-400 font-semibold text-base">Website sedang maintenance</p><p class="text-yellow-300/70 text-sm">AI tidak tersedia pada pukul 22:00–06:00 WIB.</p><p class="text-xs text-gray-500 mt-2">Silakan kembali setelah pukul 06:00 WIB.</p></div>'
-        });
-      }
+    // === MAINTENANCE GUARD (removed automatic 22:00-06:00 block - now manual only) ===
+
+    // === CHAT MODE ===
+    if (source === 'chat_mode' && chatMessage) {
+      return await handleChatMode(req, res, chatMessage);
     }
 
     // === CHART UPLOAD MODE ===
@@ -99,17 +96,7 @@ module.exports = async function handler(req, res) {
 }
 
 
-function isMaintenanceTimeWIB() {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Jakarta',
-    hour: '2-digit',
-    hour12: false
-  });
-  const parts = formatter.formatToParts(new Date());
-  const hourPart = parts.find(function(p) { return p.type === 'hour'; });
-  const hour = Number(hourPart ? hourPart.value : 0);
-  return hour >= 22 || hour < 6;
-}
+// Maintenance is now manual only via app_settings (no automatic time-based block)
 
 
 function isCompleteAnalysis(html) {
@@ -646,4 +633,73 @@ async function handleChartUpload(req, res, imageData, mimeType) {
 
   // Incomplete or failed - return helpful fallback
   return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center space-y-3"><p class="text-yellow-400 font-semibold text-base">Analisis chart belum lengkap</p><p class="text-yellow-300/70 text-sm">AI tidak dapat menghasilkan analisis Trading Plan yang lengkap dari screenshot ini.</p><div class="text-left bg-[#0b0e14] rounded-lg p-4 border border-yellow-500/20 mt-4"><p class="text-xs text-gray-300 mb-2 font-semibold">Saran:</p><ul class="text-xs text-gray-400 space-y-1 list-disc list-inside"><li>Pastikan chart menampilkan candle dengan jelas</li><li>Pastikan sumbu harga (kanan) terlihat jelas</li><li>Jika menggunakan indikator SMC/LuxAlgo, pastikan label terlihat</li><li>Gunakan timeframe Daily atau H4 untuk hasil terbaik</li><li>Atau gunakan mode <strong class="text-emerald-400">Nama Saham</strong> dengan mengisi ticker dan harga sekarang</li></ul></div></div>' });
+}
+
+
+
+// === CHAT MODE HANDLER ===
+async function handleChatMode(req, res, message) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+  if (!GEMINI_API_KEY) {
+    return res.status(200).json({ html: '<p class="text-sm text-yellow-400">Gemini API belum dikonfigurasi. Hubungi admin.</p>' });
+  }
+
+  const GEMINI_MODEL = 'gemini-2.5-flash';
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+  const chatSystemPrompt = `Anda adalah Auto-Cuan AI, asisten saham Indonesia yang ahli di Smart Money Concepts (SMC), analisis teknikal, dan pasar saham IDX.
+
+ATURAN:
+- Jawab dalam Bahasa Indonesia yang natural dan mudah dipahami.
+- Jika user bertanya tentang saham tertentu tanpa menyebut harga, berikan penjelasan umum dan sarankan mereka menggunakan mode "Nama Saham" untuk analisis lengkap.
+- Jangan berikan analisis trading plan lengkap dengan tabel di mode chat, kecuali user memang meminta.
+- Untuk pertanyaan umum tentang konsep trading (support resistance, SMC, dll), jelaskan dengan ringkas dan jelas.
+- Format jawaban dalam HTML sederhana menggunakan tag <p>, <strong>, <ul>, <li>.
+- Gunakan class text-sm text-gray-300 untuk paragraf biasa.
+- Gunakan class text-emerald-400 untuk kata kunci penting.
+- Jangan gunakan heading besar (h1/h2). Boleh pakai <strong>.
+- Jawab singkat dan to the point (3-8 paragraf maks).
+- Jangan pernah memberi saran investasi pasti. Selalu ingatkan DYOR.
+
+Pertanyaan user: ${message}`;
+
+  const payload = {
+    contents: [{ parts: [{ text: chatSystemPrompt }] }],
+    generationConfig: {
+      temperature: 0.7,
+      topP: 0.9,
+      topK: 40,
+      maxOutputTokens: 2048
+    }
+  };
+
+  try {
+    const response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      return res.status(200).json({ html: '<p class="text-sm text-red-400">Maaf, AI sedang tidak tersedia. Coba lagi nanti.</p>' });
+    }
+
+    const result = await response.json();
+    const candidates = result.candidates || [];
+
+    if (candidates.length > 0) {
+      const parts = candidates[0].content?.parts || [];
+      if (parts.length > 0 && parts[0].text) {
+        let html = parts[0].text;
+        html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+        return res.status(200).json({ html });
+      }
+    }
+
+    return res.status(200).json({ html: '<p class="text-sm text-gray-400">Maaf, saya tidak bisa menjawab pertanyaan itu saat ini. Coba tanya dengan cara lain.</p>' });
+  } catch (e) {
+    console.error('chat mode error:', e);
+    return res.status(200).json({ html: '<p class="text-sm text-red-400">Terjadi kesalahan. Coba lagi.</p>' });
+  }
 }
