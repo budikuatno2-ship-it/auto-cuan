@@ -57,6 +57,9 @@
         .chat-messages { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
         .attachment-preview { position: relative; display: inline-block; }
         .attachment-preview .remove-btn { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; color: white; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid #0b0e14; }
+        .copy-btn { opacity: 0; transition: opacity 0.15s ease-out; }
+        .flex.gap-3:hover .copy-btn, .copy-btn:focus { opacity: 1; }
+        @media (max-width: 640px) { .copy-btn { opacity: 0.7; } }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -125,7 +128,7 @@
             </div>
             <div class="flex items-center gap-3">
                 <span id="usageCounter" class="text-xs text-gray-500"></span>
-                <button onclick="clearChat()" class="text-xs text-gray-500 hover:text-gray-300 transition" title="Hapus Chat">&#x1F5D1;</button>
+                <button onclick="clearChat()" class="text-xs text-gray-500 hover:text-red-400 transition px-2 py-1 rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/20" title="Hapus Chat">Hapus</button>
             </div>
         </div>
 
@@ -670,26 +673,137 @@ function fileToBase64(file) {
 }
 
 
-// ===== AUTO MODE DETECTION =====
+// ===== TICKER STOPWORDS =====
+var TICKER_STOPWORDS = [
+    'TAPI','INI','ITU','DAN','YANG','SAHAM','HARGA','SEKARANG','BISA','SAMPAI',
+    'KALAU','KARENA','DENGAN','UNTUK','DARI','SUDAH','BELUM','AKU','SAYA','KAMU',
+    'DIA','MEREKA','KITA','BUKAN','JANGAN','CEK','ANALISIS','BANTU','TOLONG',
+    'NAIK','TURUN','BELI','JUAL','ENTRY','SUPPORT','RESISTANCE','RESISTEN',
+    'AREA','ZONA','PAPAN','AKSELERASI','UTAMA','PENGEMBANGAN',
+    'MANA','BARU','LAMA','UDAH','GITU','GINI','DONG','DULU','TERUS','JADI',
+    'JADINYA','SOAL','SOALNYA','SAAT','MASIH','PASTI','BANGET','JUGA','LAGI',
+    'TRUS','GIMANA','KAPAN','KENAPA','DIMANA','SIAPA','APAKAH','BAGAIMANA',
+    'NTAR','NANTI','HABIS','ABIS','BARU','DULU','MUNGKIN','KAYAK','KAYA',
+    'COBA','LIKE','THIS','THAT','HAVE','WHAT','WHEN','WHERE','FROM','AKAN',
+    'BIAR','AGAR','ATAS','BAWAH','LALU','SAJA','CUMA','DOANG','UDAH','BAIK'
+];
+function isTickerStopword(word) {
+    return TICKER_STOPWORDS.indexOf(String(word).toUpperCase()) !== -1;
+}
+function isValidTicker(word) {
+    var ticker = String(word).toUpperCase().trim();
+    if (ticker.length !== 4) return false;
+    if (!/^[A-Z]{4}$/.test(ticker)) return false;
+    if (isTickerStopword(ticker)) return false;
+    if (window.IDX_TICKERS && window.IDX_TICKERS[ticker]) return true;
+    return false;
+}
+
+// ===== ACTIVE TICKER CONTEXT =====
+var activeTicker = null;
+var activeCompanyName = null;
+var pendingAnalysisRequest = null;
+
+function setActiveTicker(ticker) {
+    if (!ticker) return;
+    var t = String(ticker).toUpperCase().trim();
+    if (isValidTicker(t)) {
+        activeTicker = t;
+        activeCompanyName = getCompanyName(t);
+    }
+}
+
+// ===== PRICE DETECTION =====
+function detectPrice(message) {
+    var msg = String(message);
+    var lower = msg.toLowerCase();
+    // Priority 1: "harga sekarang" + number
+    var m = lower.match(/harga\s*sekarang\s*(?:tuh|itu|nya|adalah|di|=|:)?\s*(?:rp\.?\s*)?(\d[\d.,]*)/i);
+    if (m) return parseCleanPrice(m[1]);
+    // Priority 2: "harganya" + number
+    m = lower.match(/harganya\s*(?:tuh|itu|adalah|di|=|:)?\s*(?:rp\.?\s*)?(\d[\d.,]*)/i);
+    if (m) return parseCleanPrice(m[1]);
+    // Priority 3: "harga" + number (but not "harga target")
+    m = lower.match(/(?<!target\s)harga\s*(?:tuh|itu|nya|adalah|=|:)?\s*(?:rp\.?\s*)?(\d[\d.,]*)/i);
+    if (m) return parseCleanPrice(m[1]);
+    // Priority 4: "di harga" + number
+    m = lower.match(/di\s*harga\s*(?:rp\.?\s*)?(\d[\d.,]*)/i);
+    if (m) return parseCleanPrice(m[1]);
+    // Priority 5: "sekarang" + number
+    m = lower.match(/sekarang\s*(?:tuh|itu|di|=|:)?\s*(?:rp\.?\s*)?(\d[\d.,]*)/i);
+    if (m) return parseCleanPrice(m[1]);
+    // Priority 6: "current price" + number
+    m = lower.match(/current\s*price\s*(?:is|=|:)?\s*(?:rp\.?\s*)?(\d[\d.,]*)/i);
+    if (m) return parseCleanPrice(m[1]);
+    // Priority 7: valid ticker followed by number (e.g. "NAYZ 57", "BBCA 9250")
+    var tickerPricePattern = msg.match(/\b([A-Z]{4})\s+(\d[\d.,]*)\b/);
+    if (tickerPricePattern && isValidTicker(tickerPricePattern[1])) {
+        return parseCleanPrice(tickerPricePattern[2]);
+    }
+    return null;
+}
+function parseCleanPrice(str) {
+    // Remove trailing non-numeric like ":)" or other punctuation
+    var cleaned = String(str).replace(/[.,](\d{3})/g, '$1').replace(/[^0-9.]/g, '');
+    var price = parseFloat(cleaned);
+    if (isNaN(price) || price <= 0 || price > 999999) return null;
+    return price;
+}
+
+// ===== TICKER DETECTION FROM MESSAGE =====
+function detectTicker(message) {
+    var msg = String(message);
+    var upper = msg.toUpperCase();
+    // Find all 4-letter uppercase words
+    var matches = upper.match(/\b[A-Z]{4}\b/g);
+    if (!matches) return null;
+    // Filter: must be valid ticker (in IDX_TICKERS and not stopword)
+    for (var i = 0; i < matches.length; i++) {
+        if (isValidTicker(matches[i])) return matches[i];
+    }
+    return null;
+}
+
+// ===== AUTO MODE DETECTION (IMPROVED) =====
 function detectIntent(message) {
     var msg = message.trim();
-    var upper = msg.toUpperCase();
-    // Pattern: TICKER + NUMBER (e.g. "BBCA 9250", "analisis DSSA harga 1035")
-    var tickerPriceMatch = upper.match(/\b([A-Z]{4})\b[\s\S]*?(\d+[\d.,]*)/);
-    if (tickerPriceMatch) {
-        var ticker = tickerPriceMatch[1];
-        var priceStr = tickerPriceMatch[2].replace(/[.,]/g, '');
-        var price = parseFloat(priceStr);
-        if (price > 0 && price < 999999) {
-            // Verify it looks like a ticker (4 uppercase letters found in IDX or at least plausible)
-            return { type: 'analysis', ticker: ticker, price: price };
+    var detectedTicker = detectTicker(msg);
+    var detectedPrice = detectPrice(msg);
+
+    // Case 1: Valid ticker + price found → full analysis
+    if (detectedTicker && detectedPrice) {
+        setActiveTicker(detectedTicker);
+        return { type: 'analysis', ticker: detectedTicker, price: detectedPrice };
+    }
+
+    // Case 2: Valid ticker found but no price → ticker question (ask for price)
+    if (detectedTicker && !detectedPrice) {
+        setActiveTicker(detectedTicker);
+        return { type: 'ticker_question', ticker: detectedTicker };
+    }
+
+    // Case 3: No new ticker but price found → use activeTicker context
+    if (!detectedTicker && detectedPrice && activeTicker) {
+        return { type: 'analysis', ticker: activeTicker, price: detectedPrice };
+    }
+
+    // Case 4: No ticker, no price, but we have pending request and context mentions price-like info
+    if (!detectedTicker && !detectedPrice && pendingAnalysisRequest && activeTicker) {
+        // Try simple number extraction as last resort (first standalone number in message)
+        var simpleNum = msg.match(/\b(\d{2,6})\b/);
+        if (simpleNum) {
+            var p = parseFloat(simpleNum[1]);
+            if (p > 0 && p < 999999) {
+                return { type: 'analysis', ticker: activeTicker, price: p };
+            }
         }
     }
-    // Pattern: just a ticker mention like "saham BBCA" or "NAYZ gimana"
-    var tickerOnlyMatch = upper.match(/\b([A-Z]{4})\b/);
-    if (tickerOnlyMatch && /saham|analisis|gimana|bagaimana|review|cek/i.test(msg)) {
-        return { type: 'ticker_question', ticker: tickerOnlyMatch[1] };
+
+    // Case 5: No ticker and asking about something → use activeTicker context if available
+    if (!detectedTicker && activeTicker && /gimana|bagaimana|review|cek|analisis|ini/i.test(msg)) {
+        return { type: 'ticker_question', ticker: activeTicker };
     }
+
     // Default: chat
     return { type: 'chat' };
 }
@@ -740,26 +854,56 @@ async function handleAnalysis(msg, intent) {
 
     if (intent.type === 'force_analysis') {
         // Parse from raw input in ticker mode
-        var upper = msg.toUpperCase();
-        var match = upper.match(/\b([A-Z]{4})\b[\s\S]*?(\d+[\d.,]*)/);
-        if (!match) {
-            var tickerOnly = upper.match(/\b([A-Z]{4})\b/);
+        var detectedT = detectTicker(msg);
+        var detectedP = detectPrice(msg);
+        if (!detectedT && !detectedP) {
+            // Try simple pattern: TICKER NUMBER
+            var upper = msg.toUpperCase();
+            var match = upper.match(/\b([A-Z]{4})\b[\s\S]*?(\d+[\d.,]*)/);
+            if (match && isValidTicker(match[1])) {
+                detectedT = match[1];
+                detectedP = parseCleanPrice(match[2]);
+            }
+        }
+        if (!detectedT && activeTicker) { detectedT = activeTicker; }
+        if (!detectedT) {
+            // Check if it's just a ticker without price
+            var tickerOnly = detectTicker(msg);
             if (tickerOnly) {
-                var company = getCompanyName(tickerOnly[1]);
-                var label = company ? tickerOnly[1] + ' (' + company + ')' : tickerOnly[1];
+                var company = getCompanyName(tickerOnly);
+                var label = company ? tickerOnly + ' (' + company + ')' : tickerOnly;
                 addUserBubble(msg);
-                addAIBubble('<p class="text-sm text-gray-300">' + label + ' — masukkan harga sekarang juga ya biar analisisnya akurat. Contoh: <strong class="text-white">' + tickerOnly[1] + ' 1000</strong></p>');
+                setActiveTicker(tickerOnly);
+                pendingAnalysisRequest = { type: 'stock-analysis', ticker: tickerOnly, companyName: company };
+                addAIBubble('<p class="text-sm text-gray-300">' + label + ' — masukkan harga sekarang juga ya biar analisisnya akurat. Contoh: <strong class="text-white">' + tickerOnly + ' 1000</strong></p>');
                 saveChatHistory(); return;
             }
             showToast('Format: TICKER HARGA, contoh: BBCA 9250', 'warning'); return;
         }
-        ticker = match[1]; price = parseFloat(match[2].replace(/[.,]/g, ''));
+        if (!detectedP) {
+            var company = getCompanyName(detectedT);
+            var label = company ? detectedT + ' (' + company + ')' : detectedT;
+            addUserBubble(msg);
+            setActiveTicker(detectedT);
+            pendingAnalysisRequest = { type: 'stock-analysis', ticker: detectedT, companyName: company };
+            addAIBubble('<p class="text-sm text-gray-300">' + label + ' — masukkan harga sekarang juga ya biar analisisnya akurat. Contoh: <strong class="text-white">' + detectedT + ' 1000</strong></p>');
+            saveChatHistory(); return;
+        }
+        ticker = detectedT; price = detectedP;
     } else {
         ticker = intent.ticker; price = intent.price;
     }
 
+    // Final validation
+    if (!isValidTicker(ticker)) {
+        if (activeTicker) { ticker = activeTicker; }
+        else { addUserBubble(msg); addAIBubble('<p class="text-sm text-gray-300">Ticker tidak dikenali. Pastikan menggunakan kode saham yang terdaftar di BEI (contoh: BBCA, NAYZ, ANTM).</p>'); saveChatHistory(); return; }
+    }
+
     if (!canAnalyze()) { limitWarning.textContent = getAnalysisLimitMsg(); limitWarning.classList.remove('hidden'); logUsage(ticker, 'ai_limit_blocked'); return; }
 
+    setActiveTicker(ticker);
+    pendingAnalysisRequest = null; // Clear pending since we're executing
     var company = getCompanyName(ticker);
     var displayTicker = company ? ticker + ' (' + company + ')' : ticker;
     addUserBubble(msg || ticker + ' ' + price);
@@ -767,7 +911,7 @@ async function handleAnalysis(msg, intent) {
     disableSend();
     clearInput();
     logSearch(ticker, 'auto_analysis'); logUsage(ticker, 'ai_analysis_started');
-    loadTradingView(ticker);
+    updateTradingViewSafe(ticker);
 
     try {
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -777,7 +921,7 @@ async function handleAnalysis(msg, intent) {
         if (!response.ok) throw new Error(data.error || 'Server error.');
         if (data.html) {
             var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
-            addAIBubble(html);
+            addAIBubble(html, true);
             incrementAnalysisUsage(); updateUsageCounter();
             logUsage(ticker, 'ai_success'); logAnalysisResult(ticker, 'ticker', html);
         } else { throw new Error('Tidak ada hasil.'); }
@@ -788,11 +932,16 @@ async function handleAnalysis(msg, intent) {
 // ===== TICKER QUESTION HANDLER (casual) =====
 async function handleTickerQuestion(msg, ticker) {
     if (!canChat()) { document.getElementById('limitWarning').textContent = getChatLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
+    // Validate ticker
+    if (!isValidTicker(ticker) && activeTicker) { ticker = activeTicker; }
+    if (!isValidTicker(ticker)) { addUserBubble(msg); addAIBubble('<p class="text-sm text-gray-300">Ticker tidak dikenali. Pastikan menggunakan kode saham yang terdaftar di BEI.</p>'); saveChatHistory(); return; }
+    setActiveTicker(ticker);
+    pendingAnalysisRequest = { type: 'stock-analysis', ticker: ticker, companyName: getCompanyName(ticker) };
     addUserBubble(msg);
     addLoadingBubble();
     disableSend(); clearInput();
     logUsage(ticker, 'chat_started');
-    loadTradingView(ticker);
+    updateTradingViewSafe(ticker);
     try {
         var company = getCompanyName(ticker);
         var enrichedMsg = msg + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
@@ -814,8 +963,14 @@ async function handleChat(msg) {
     disableSend(); clearInput();
     logUsage('CHAT', 'chat_started');
     try {
+        // Enrich with active ticker context if available
+        var enrichedMsg = msg;
+        if (activeTicker) {
+            var company = getCompanyName(activeTicker);
+            enrichedMsg += '\n[Konteks: User sedang membahas saham ' + activeTicker + (company ? ' (' + company + ')' : '') + ']';
+        }
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatMessage: msg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
         var data = await response.json();
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
@@ -828,6 +983,11 @@ async function handleChat(msg) {
 async function handleChartUpload(msg) {
     if (!selectedFile) { showToast('Upload screenshot chart dulu ya.', 'warning'); return; }
     if (!canAnalyze()) { document.getElementById('limitWarning').textContent = getAnalysisLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
+    // If msg contains a valid ticker, use it
+    if (msg) {
+        var chartTicker = detectTicker(msg);
+        if (chartTicker) { setActiveTicker(chartTicker); updateTradingViewSafe(chartTicker); }
+    }
     var fileName = selectedFile.name;
     addUserBubble((msg ? msg + '\n' : '') + '[Chart: ' + fileName + ']');
     addLoadingBubble();
@@ -840,7 +1000,7 @@ async function handleChartUpload(msg) {
             body: JSON.stringify({ image: base64Data, mimeType: selectedFile ? selectedFile.type : 'image/png', source: 'chart_upload', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
         else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); removeAttachment(); addAIError('Gagal: ' + e.message); logUsage('CHART_UPLOAD', 'ai_error'); }
     finally { enableSend(); saveChatHistory(); }
@@ -870,19 +1030,42 @@ function addLoadingBubble() {
     container.scrollTop = container.scrollHeight;
 }
 function removeLoadingBubble() { var el = document.getElementById('loadingBubble'); if (el) el.remove(); }
-function addAIBubble(html) {
+function addAIBubble(html, isStructured) {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up';
-    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] overflow-x-auto">' + html + '</div>';
+    var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
+    var copyBtnHtml = '<div class="mt-2 flex justify-end"><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
+    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] overflow-x-auto"><div class="ai-content">' + html + '</div>' + copyBtnHtml + '</div>';
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
 function addAIError(msg) { addAIBubble('<p class="text-sm text-red-400">' + escapeHtml(msg) + '</p>'); }
 
+// ===== COPY BUTTON =====
+function copyBubbleContent(btn) {
+    var bubble = btn.closest('.bg-dark-700\\/50') || btn.parentElement.parentElement;
+    var contentEl = bubble.querySelector('.ai-content');
+    var text = contentEl ? contentEl.innerText : bubble.innerText;
+    navigator.clipboard.writeText(text).then(function() {
+        var originalText = btn.textContent;
+        btn.textContent = 'Disalin!';
+        btn.classList.add('text-emerald-400');
+        setTimeout(function() { btn.textContent = originalText; btn.classList.remove('text-emerald-400'); }, 2000);
+    }).catch(function() {
+        // Fallback for older browsers
+        var textarea = document.createElement('textarea');
+        textarea.value = text; textarea.style.position = 'fixed'; textarea.style.opacity = '0';
+        document.body.appendChild(textarea); textarea.select();
+        try { document.execCommand('copy'); btn.textContent = 'Disalin!'; btn.classList.add('text-emerald-400'); setTimeout(function() { btn.textContent = 'Salin'; btn.classList.remove('text-emerald-400'); }, 2000); } catch(e) {}
+        document.body.removeChild(textarea);
+    });
+}
+
 // ===== CHAT HISTORY (localStorage) =====
 var CHAT_HISTORY_KEY = 'autocuan_chat_history';
-var MAX_HISTORY = 30;
+var CHAT_CONTEXT_KEY = 'autocuan_chat_context';
+var MAX_HISTORY = 50;
 
 function saveChatHistory() {
     try {
@@ -895,26 +1078,53 @@ function saveChatHistory() {
             history.push(el.outerHTML);
         });
         localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
+        // Save context
+        var context = { activeTicker: activeTicker, activeCompanyName: activeCompanyName, pendingAnalysisRequest: pendingAnalysisRequest, savedAt: new Date().toISOString() };
+        localStorage.setItem(CHAT_CONTEXT_KEY, JSON.stringify(context));
     } catch(e) {}
 }
 function loadChatHistory() {
     try {
         var raw = localStorage.getItem(CHAT_HISTORY_KEY);
-        if (!raw) return;
-        var history = JSON.parse(raw);
-        if (!Array.isArray(history) || history.length === 0) return;
-        var container = document.getElementById('chatMessages');
-        history.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
-        container.scrollTop = container.scrollHeight;
+        if (raw) {
+            var history = JSON.parse(raw);
+            if (Array.isArray(history) && history.length > 0) {
+                var container = document.getElementById('chatMessages');
+                history.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+        // Restore context
+        var ctxRaw = localStorage.getItem(CHAT_CONTEXT_KEY);
+        if (ctxRaw) {
+            var ctx = JSON.parse(ctxRaw);
+            if (ctx.activeTicker && isValidTicker(ctx.activeTicker)) {
+                activeTicker = ctx.activeTicker;
+                activeCompanyName = ctx.activeCompanyName || getCompanyName(ctx.activeTicker);
+                pendingAnalysisRequest = ctx.pendingAnalysisRequest || null;
+            }
+        }
     } catch(e) {}
 }
 function clearChat() {
     if (!confirm('Hapus semua riwayat chat?')) return;
     localStorage.removeItem(CHAT_HISTORY_KEY);
+    localStorage.removeItem(CHAT_CONTEXT_KEY);
+    activeTicker = null; activeCompanyName = null; pendingAnalysisRequest = null;
     var container = document.getElementById('chatMessages');
     // Keep only first child (welcome message)
     while (container.children.length > 1) { container.removeChild(container.lastChild); }
     showToast('Chat dihapus.', 'success');
+}
+
+
+// ===== TRADINGVIEW (SAFE UPDATE) =====
+function updateTradingViewSafe(ticker) {
+    // Only update if ticker is valid in IDX_TICKERS
+    if (!ticker) return;
+    var t = String(ticker).toUpperCase().trim();
+    if (!isValidTicker(t)) return;
+    loadTradingView(t);
 }
 
 
