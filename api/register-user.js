@@ -37,8 +37,7 @@ module.exports = async function handler(req, res) {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      realtime: { autoConnect: false }
+      auth: { persistSession: false, autoRefreshToken: false }
     });
 
     // Check if username already exists

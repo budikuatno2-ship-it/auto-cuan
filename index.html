@@ -10,13 +10,7 @@
             theme: {
                 extend: {
                     colors: {
-                        dark: {
-                            900: '#0b0e14',
-                            800: '#0f1319',
-                            700: '#151a23',
-                            600: '#1c2333',
-                            500: '#242d3d'
-                        }
+                        dark: { 900: '#0b0e14', 800: '#0f1319', 700: '#151a23', 600: '#1c2333', 500: '#242d3d' }
                     }
                 }
             }
@@ -41,7 +35,6 @@
         .animate-pulse-glow { animation: pulseGlow 2s cubic-bezier(0.4,0,0.6,1) infinite; }
         @keyframes slideInRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
         @keyframes slideOutRight { from { opacity:1; transform:translateX(0); } to { opacity:0; transform:translateX(20px); } }
-        /* Toast */
         #toastContainer { position: fixed; top: 1rem; right: 1rem; z-index: 99999; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; max-width: 360px; }
         @media (max-width: 640px) { #toastContainer { top: auto; bottom: 1rem; right: 0.5rem; left: 0.5rem; max-width: 100%; align-items: center; } }
         .toast { pointer-events: auto; padding: 0.75rem 1rem; border-radius: 0.75rem; font-size: 0.8125rem; font-weight: 500; animation: slideInRight 0.3s ease-out forwards; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.05); }
@@ -49,19 +42,12 @@
         .toast-success { background: rgba(16,185,129,0.15); color: #6ee7b7; border-color: rgba(16,185,129,0.3); }
         .toast-error { background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.3); }
         .toast-warning { background: rgba(245,158,11,0.15); color: #fcd34d; border-color: rgba(245,158,11,0.3); }
-        /* Skeleton */
         .skeleton { background: linear-gradient(90deg, #151a23 25%, #1c2333 50%, #151a23 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 0.5rem; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        /* Buttons */
         button, [role="button"] { transition: all 0.15s ease-out; }
         button:active:not(:disabled) { transform: scale(0.97); }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
-        /* Modal backdrop */
-        .modal-backdrop { transition: opacity 0.2s ease-out; }
-        body.modal-open { overflow: hidden; }
-        /* Inputs */
         input:focus, textarea:focus { transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out; }
-        /* Result content */
         #resultContent table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
         #resultContent th, #resultContent td { padding: 0.5rem 0.75rem; border: 1px solid #1c2333; text-align: left; font-size: 0.875rem; white-space: nowrap; }
         #resultContent th { background: #151a23; color: #34d399; font-weight: 600; }
@@ -78,10 +64,11 @@
 <body class="min-h-screen text-gray-100">
 <div id="toastContainer"></div>
 
+
 <!-- ===== BLOCKED SCREEN ===== -->
 <div id="blockedScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
     <div class="w-full max-w-md rounded-3xl border border-red-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
-        <div class="text-5xl">🚫</div>
+        <div class="text-5xl">&#x1F6AB;</div>
         <h2 class="text-xl font-bold text-white">Akses diblokir sementara</h2>
         <p class="text-sm text-red-300">Nama yang digunakan tidak sesuai ketentuan. Silakan coba lagi setelah beberapa waktu.</p>
         <p id="blockedCountdown" class="text-sm text-gray-400 font-mono"></p>
@@ -94,79 +81,47 @@
     <div class="w-full max-w-sm fade-in-up">
         <div class="text-center mb-8">
             <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg">
-                <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                </svg>
+                <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
             </div>
             <h1 class="text-2xl font-bold text-white">Auto-Cuan</h1>
             <p class="text-sm text-gray-400 mt-1">SMC Analysis Platform</p>
         </div>
         <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl p-6 backdrop-blur-sm">
-            <!-- LOGIN/REGISTER TABS -->
             <div class="grid grid-cols-2 gap-2 mb-5 rounded-xl border border-gray-800 bg-[#0b0e14] p-1.5">
                 <button id="authTabLogin" onclick="switchAuthTab('login')" class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-black transition">Masuk</button>
                 <button id="authTabRegister" onclick="switchAuthTab('register')" class="rounded-lg bg-transparent px-4 py-2 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition">Daftar</button>
             </div>
-
-            <!-- LOGIN FORM -->
             <div id="loginForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-                    <input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
-                    <input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" onkeydown="if(event.key==='Enter')doLogin()">
-                </div>
+                <div><label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm"></div>
+                <div><label class="block text-sm font-medium text-gray-400 mb-1.5">Password</label><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" onkeydown="if(event.key==='Enter')doLogin()"></div>
                 <div id="loginError" class="hidden text-sm text-red-400 text-center py-1"></div>
-                <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
-                    Masuk
-                </button>
-                <button onclick="guestLogin()" class="w-full py-3 rounded-xl font-medium text-gray-400 border border-dark-600/50 hover:border-emerald-500/30 hover:text-emerald-400 transition-all duration-200">
-                    Coba Tanpa Login
-                </button>
-                <div class="text-center pt-1">
-                    <button type="button" onclick="openSelfResetModal()" class="text-xs text-blue-400 hover:underline hover:text-blue-300 transition-colors">Lupa / Reset Password?</button>
-                </div>
+                <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">Masuk</button>
+                <button onclick="guestAccess()" class="w-full py-3 rounded-xl font-medium text-gray-400 border border-dark-600/50 hover:border-emerald-500/30 hover:text-emerald-400 transition-all duration-200">Coba Tanpa Login (2 analisis/hari)</button>
+                <div class="text-center pt-1"><button type="button" onclick="openSelfResetModal()" class="text-xs text-blue-400 hover:underline hover:text-blue-300 transition-colors">Lupa / Reset Password?</button></div>
             </div>
-
-            <!-- REGISTER FORM -->
             <div id="registerForm" class="hidden space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-                    <input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
-                    <input type="password" id="regPassword" placeholder="Minimal 8 karakter (huruf + angka)" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1.5">Konfirmasi Password</label>
-                    <input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" onkeydown="if(event.key==='Enter')doRegister()">
-                </div>
+                <div><label class="block text-sm font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm"></div>
+                <div><label class="block text-sm font-medium text-gray-400 mb-1.5">Password</label><input type="password" id="regPassword" placeholder="Minimal 8 karakter (huruf + angka)" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm"></div>
+                <div><label class="block text-sm font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm" onkeydown="if(event.key==='Enter')doRegister()"></div>
                 <div id="registerError" class="hidden text-sm text-red-400 text-center py-1"></div>
                 <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1"></div>
-                <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">
-                    Daftar
-                </button>
+                <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200">Daftar</button>
             </div>
         </div>
     </div>
 </div>
 
 
-<!-- ===== DASHBOARD SCREEN ===== -->
+<!-- ===== DASHBOARD SCREEN (ChatGPT-style) ===== -->
 <div id="dashboardScreen" class="hidden">
 
 <!-- HEADER -->
 <header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                    </svg>
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                 </div>
                 <div class="min-w-0">
                     <h1 class="text-lg font-bold text-white leading-tight truncate">Auto-Cuan</h1>
@@ -175,8 +130,10 @@
             </div>
             <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 <span id="reviewBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">Review Mode</span>
+                <span id="guestBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Guest</span>
                 <span class="hidden sm:inline text-sm text-gray-400">Halo, <span id="headerUsername" class="text-emerald-400 font-medium"></span></span>
-                <button onclick="logout()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/50 hover:border-red-500/40 hover:text-red-400 transition-all">Logout</button>
+                <button id="loginFromGuestBtn" onclick="goToLogin()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login</button>
+                <button id="logoutBtn" onclick="logout()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/50 hover:border-red-500/40 hover:text-red-400 transition-all">Logout</button>
             </div>
         </div>
     </div>
@@ -184,53 +141,28 @@
 
 <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-<!-- GUEST BANNER -->
-<div id="guestBanner" class="hidden fade-in-up">
-    <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 text-center">
-        <p class="text-yellow-300 text-sm font-medium">Mode Tamu - Hanya bisa melihat chart. Login untuk menggunakan fitur AI.</p>
-    </div>
-</div>
-
-<!-- TRADINGVIEW WIDGET -->
-<section id="tvSection" class="fade-in-up">
+<!-- AI CHAT PANEL (ChatGPT-style - always visible) -->
+<section id="aiSection" class="fade-in-up">
     <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl overflow-hidden">
-        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            <h2 class="text-sm font-semibold text-gray-300">Live Chart - TradingView</h2>
-        </div>
-        <div id="tvChartContainer" class="w-full" style="height:400px">
-            <div class="flex items-center justify-center h-full text-gray-600 text-sm">Memuat chart...</div>
-        </div>
-    </div>
-</section>
-
-<!-- AI ANALYSIS SECTION -->
-<section id="aiSection" class="hidden fade-in-up">
-    <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl overflow-hidden">
-        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
-            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-            </svg>
-            <h2 class="text-sm font-semibold text-gray-300">AI Analysis - Smart Money Concepts</h2>
+        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                <h2 class="text-sm font-semibold text-gray-300">AI Analysis - Smart Money Concepts</h2>
+            </div>
+            <span id="usageCounter" class="text-xs text-gray-500"></span>
         </div>
         <div class="p-4 sm:p-6 space-y-4">
             <!-- MODE TABS -->
             <div class="grid grid-cols-2 gap-2 w-full rounded-2xl border border-gray-800 bg-[#0b0e14] p-2">
-                <button id="tabChart" onclick="switchTab('chart')" class="w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition">📊 Pindai Chart</button>
-                <button id="tabTicker" onclick="switchTab('ticker')" class="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition">🔍 Nama Saham</button>
+                <button id="tabChart" onclick="switchTab('chart')" class="w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition">&#x1F4CA; Pindai Chart</button>
+                <button id="tabTicker" onclick="switchTab('ticker')" class="w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition">&#x1F50D; Nama Saham</button>
             </div>
 
             <!-- NAMA SAHAM MODE -->
             <div id="modeTickerPanel" class="space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Ticker Saham</label>
-                        <input type="text" id="tickerInput" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm uppercase">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-400 mb-1.5">Harga Sekarang</label>
-                        <input type="number" id="priceInput" placeholder="Contoh: 9250" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm">
-                    </div>
+                    <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Ticker Saham</label><input type="text" id="tickerInput" placeholder="Contoh: BBCA" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm uppercase"></div>
+                    <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Harga Sekarang</label><input type="number" id="priceInput" placeholder="Contoh: 9250" class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all text-sm"></div>
                 </div>
                 <button id="analyzeBtn" onclick="analyzeChart()" class="w-full sm:w-auto px-8 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
@@ -242,14 +174,14 @@
             <div id="modeChartPanel" class="hidden space-y-4">
                 <input id="chartFileInput" type="file" accept="image/*" class="hidden" onchange="handleChartFile(event)">
                 <label for="chartFileInput" id="chartUploadLabel" class="w-full rounded-2xl border-2 border-dashed border-gray-700 bg-[#0b0e14] px-4 py-8 text-center text-gray-300 hover:border-emerald-500 hover:bg-emerald-500/5 transition cursor-pointer flex flex-col items-center justify-center gap-2">
-                    <span class="text-3xl">📊</span>
+                    <span class="text-3xl">&#x1F4CA;</span>
                     <span class="text-sm font-black text-gray-100">Pilih Screenshot Chart</span>
-                    <span class="text-xs text-gray-500">PNG, JPG, WebP • Maks 20MB</span>
+                    <span class="text-xs text-gray-500">PNG, JPG, WebP - Maks 20MB</span>
                 </label>
                 <img id="chartPreviewImage" class="hidden w-full max-h-[280px] sm:max-h-[420px] object-contain rounded-2xl border border-gray-800 bg-[#0b0e14]" alt="Chart Preview">
                 <p class="text-xs text-gray-500">Upload screenshot chart dari TradingView. Jika ingin analisis LuxAlgo/SMC, pastikan indikator sudah terlihat di screenshot.</p>
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <button id="resetChartBtn" onclick="resetChartUpload()" class="w-full sm:w-auto rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Hapus & Unggah Ulang</button>
+                    <button id="resetChartBtn" onclick="resetChartUpload()" class="w-full sm:w-auto rounded-xl bg-gray-800 px-4 py-3 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Hapus &amp; Unggah Ulang</button>
                     <button id="analyzeChartBtn" onclick="analyzeChartUpload()" class="w-full sm:w-auto rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20">Mulai Analisis Chart</button>
                 </div>
             </div>
@@ -275,12 +207,25 @@
             <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
             <h2 class="font-semibold text-gray-200 text-sm sm:text-base">Hasil Analisis AI</h2>
         </div>
-        <div id="resultContent" class="p-4 sm:p-6 overflow-x-auto">
+        <div id="resultContent" class="p-4 sm:p-6 overflow-x-auto"></div>
+    </div>
+</section>
+
+
+<!-- TRADINGVIEW WIDGET (below AI Chat) -->
+<section id="tvSection" class="fade-in-up">
+    <div class="bg-dark-800/60 border border-dark-600/50 rounded-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-dark-600/50 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            <h2 class="text-sm font-semibold text-gray-300">Live Chart - TradingView</h2>
+        </div>
+        <div id="tvChartContainer" class="w-full" style="height:450px">
+            <div class="flex items-center justify-center h-full text-gray-600 text-sm">Memuat chart...</div>
         </div>
     </div>
 </section>
 
-<!-- ADMIN PANEL -->
+<!-- ADMIN PANEL (only for budi) -->
 <section id="adminPanel" class="hidden fade-in-up">
     <div class="bg-dark-800/60 backdrop-blur-sm rounded-2xl border border-dark-600/50 overflow-hidden">
         <div class="px-4 sm:px-6 py-4 border-b border-dark-600/50 flex items-center gap-2">
@@ -295,7 +240,7 @@
                 <button onclick="loadAdminLogs('usage')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Usage Logs</button>
                 <button onclick="loadAdminUsers()" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">User Management</button>
                 <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
-                <button onclick="loadAdminLogs(lastAdminLogType || 'login')" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">🔄 Refresh</button>
+                <button onclick="loadAdminLogs(lastAdminLogType || 'login')" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">&#x1F504; Refresh</button>
             </div>
             <div id="adminLogsContainer" class="overflow-x-auto">
                 <p class="text-sm text-gray-500">Klik tombol di atas untuk memuat logs.</p>
@@ -316,14 +261,12 @@
 
 </div><!-- end dashboardScreen -->
 
+
 <!-- ADMIN AI DETAIL MODAL -->
 <div id="adminAiModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="w-full max-w-5xl max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-800 bg-[#111827] p-4 sm:p-6 shadow-2xl">
         <div class="flex items-center justify-between mb-4">
-            <div>
-                <h3 class="text-base font-bold text-white">Hasil Analisis AI</h3>
-                <p id="adminAiModalSubtitle" class="text-xs text-gray-400 mt-0.5"></p>
-            </div>
+            <div><h3 class="text-base font-bold text-white">Hasil Analisis AI</h3><p id="adminAiModalSubtitle" class="text-xs text-gray-400 mt-0.5"></p></div>
             <button onclick="closeAdminAiModal()" class="rounded-xl bg-gray-800 px-3 py-2 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Tutup</button>
         </div>
         <div id="adminAiResultDetail" class="mt-4 space-y-4 overflow-x-auto"></div>
@@ -333,7 +276,7 @@
 <!-- MAINTENANCE SCREEN -->
 <div id="maintenanceScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
     <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
-        <div class="text-5xl">🛠️</div>
+        <div class="text-5xl">&#x1F6E0;&#xFE0F;</div>
         <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
         <p id="maintenanceMessage" class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses sementara.</p>
         <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
@@ -345,14 +288,8 @@
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
         <h3 class="text-base font-bold text-white text-center">Reset Password User</h3>
         <p id="resetPasswordTarget" class="text-sm text-gray-400 text-center"></p>
-        <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label>
-            <input type="password" id="resetPwInput" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label>
-            <input type="password" id="resetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doResetPassword()">
-        </div>
+        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="resetPwInput" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="resetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
         <div id="resetPwError" class="hidden text-sm text-red-400 text-center"></div>
         <button onclick="doResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
         <button onclick="closeResetPasswordModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
@@ -362,7 +299,7 @@
 <!-- MAINTENANCE PREVIEW MODAL -->
 <div id="maintenancePreviewModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
-        <div class="text-5xl">🛠️</div>
+        <div class="text-5xl">&#x1F6E0;&#xFE0F;</div>
         <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
         <p id="maintenancePreviewMsg" class="text-sm text-yellow-300"></p>
         <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
@@ -376,40 +313,13 @@
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
         <h3 class="text-base font-bold text-white text-center">Reset Password</h3>
         <p class="text-xs text-gray-500 text-center">Masukkan username dan password baru. Reset hanya bisa dilakukan dari perangkat yang terdaftar.</p>
-        <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1.5">Username</label>
-            <input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label>
-            <input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label>
-            <input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()">
-        </div>
+        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()"></div>
         <div id="selfResetError" class="hidden text-sm text-red-400 text-center"></div>
         <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center"></div>
         <button onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
         <button onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
-    </div>
-</div>
-
-<!-- ADMIN BYPASS MODAL -->
-<div id="adminBypassModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <h3 class="text-base font-bold text-white text-center">Admin Access</h3>
-        <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1.5">Nama</label>
-            <input type="text" id="adminBypassName" placeholder="Nama admin" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-400 mb-1.5">Password</label>
-            <input type="password" id="adminBypassPass" placeholder="Password" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doAdminBypass()">
-        </div>
-        <div id="adminBypassError" class="hidden text-sm text-red-400 text-center"></div>
-        <button onclick="doAdminBypass()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Masuk Admin</button>
-        <button onclick="closeAdminBypassModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
     </div>
 </div>
 
@@ -418,97 +328,37 @@
 // ===== DEVICE ID =====
 function getOrCreateDeviceId() {
     var id = localStorage.getItem('autocuan_device_id');
-    if (!id) {
-        id = 'dev_' + crypto.randomUUID();
-        localStorage.setItem('autocuan_device_id', id);
-    }
+    if (!id) { id = 'dev_' + crypto.randomUUID(); localStorage.setItem('autocuan_device_id', id); }
     return id;
 }
 
 // ===== USERNAME NORMALIZATION =====
 function normalizeNameForCheck(name) {
-    return String(name || '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[@]/g, 'a')
-        .replace(/[4]/g, 'a')
-        .replace(/[!1|]/g, 'i')
-        .replace(/[0]/g, 'o')
-        .replace(/[3]/g, 'e')
-        .replace(/[5]/g, 's')
-        .replace(/[7]/g, 't')
-        .replace(/\$/g, 's')
-        .replace(/\s+/g, '')
-        .replace(/[^a-z0-9]/g, '');
+    return String(name || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[@]/g, 'a').replace(/[4]/g, 'a').replace(/[!1|]/g, 'i').replace(/[0]/g, 'o')
+        .replace(/[3]/g, 'e').replace(/[5]/g, 's').replace(/[7]/g, 't').replace(/\$/g, 's')
+        .replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 }
 
-// ===== BAD WORDS LIST =====
-var badWords = [
-    "anjing","anjir","anjay","anjrit","anjrot","anjeng","anjink",
-    "asu","asw","babi","babik","bangsat","bangsad","bajingan",
-    "brengsek","kampret","keparat","laknat","sialan","bangke",
-    "bangkai","tai","taik","tahi","goblok","goblog","goblk",
-    "tolol","tlol","bodoh","bego","dungu","idiot","edan",
-    "gila","sinting","koplak","koplok","pekok","bloon",
-    "bacot","cupu","najis","hina","sampah","busuk","parasit",
-    "kampungan","norak","alay","rese","songong","sokap",
-    "sokjago","sokkeras","soksuci","sokpintar",
-    "kontol","kntl","kontl","memek","mmk","meki","peler",
-    "titit","tetek","ngentot","ngntot","entot","ngewe",
-    "perek","lonte","pelacur","jablay","cabul","mesum",
-    "jancok","jancuk","cuk","cok","dancok","dancuk",
-    "kirik","ndasmu","raimu","matamu","gathel","gatel",
-    "celeng","wedhus","jangkrik","asem","ndlogok",
-    "asutenan","raimuasu","ndasmuasu","matamuasu",
-    "gendeng","ndableg",
-    "bunuh","dibunuh","kubunuh","takbunuh",
-    "hajar","bacok","gorok","bakar","serang","habisi",
-    "mampus","modar","matilu","matilo","matikau",
-    "ngebom","ledakkan","ledakan","rusuh","jarah",
-    "amuk","keroyok","gebuk","pukul","tusuk","sembelih",
-    "ajg","anjg","anj","anjng","bgst","bgsd","bngsat",
-    "bngst","bajingn","gblk","gblg","goblogg","tll",
-    "bbi","bbai","babiq","babii","baabi","b4bi",
-    "asuww","asuu","kirikk","jancokk","jancukkk",
-    "kntol","kont0l","memk","ngentod","ngent0t"
-];
+var badWords = ["anjing","anjir","anjay","anjrit","asu","asw","babi","bangsat","bajingan","brengsek","kampret","keparat","sialan","bangke","tai","goblok","goblog","tolol","bodoh","bego","idiot","edan","gila","kontol","memek","ngentot","jancok","jancuk","bunuh","mampus","modar","ajg","anjg","bgst","gblk","kntol"];
 
-// ===== BAD USERNAME CHECK =====
 function isBadUsername(name) {
     var clean = normalizeNameForCheck(name);
-    if (!clean || clean.length < 2) return true;
-    if (clean.length > 30) return true;
+    if (!clean || clean.length < 2 || clean.length > 30) return true;
     if (/(.)\1{5,}/.test(clean)) return true;
     if (/(http|www|com|net|org|id)/i.test(clean)) return true;
-    return badWords.some(function(word) {
-        var cleanWord = normalizeNameForCheck(word);
-        return clean.includes(cleanWord);
-    });
+    return badWords.some(function(word) { return clean.includes(normalizeNameForCheck(word)); });
 }
 
 // ===== DEVICE BLOCKING =====
-function getBlockedUntil() {
-    return Number(localStorage.getItem('autocuan_blocked_until') || '0');
-}
-
-function isDeviceBlocked() {
-    var blockedUntil = getBlockedUntil();
-    return blockedUntil && Date.now() < blockedUntil;
-}
-
+function getBlockedUntil() { return Number(localStorage.getItem('autocuan_blocked_until') || '0'); }
+function isDeviceBlocked() { var b = getBlockedUntil(); return b && Date.now() < b; }
 function blockDeviceForBadName() {
-    var blockedUntil = Date.now() + (2 * 60 * 60 * 1000);
-    localStorage.setItem('autocuan_blocked_until', String(blockedUntil));
-    localStorage.removeItem('autocuan_logged_in');
-    localStorage.removeItem('autocuan_user');
-    localStorage.removeItem('autocuan_is_admin');
-    localStorage.removeItem('autocuan_login_time');
-    try { logUsage('', 'username_blocked'); } catch(e) {}
+    localStorage.setItem('autocuan_blocked_until', String(Date.now() + 2*60*60*1000));
+    localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_user');
+    localStorage.removeItem('autocuan_is_admin'); localStorage.removeItem('autocuan_login_time');
     showBlockedScreen();
 }
-
 function showBlockedScreen() {
     document.getElementById('blockedScreen').classList.remove('hidden');
     document.getElementById('loginScreen').classList.add('hidden');
@@ -516,142 +366,107 @@ function showBlockedScreen() {
     document.getElementById('maintenanceScreen').classList.add('hidden');
     updateBlockedCountdown();
 }
-
 var blockedInterval = null;
 function updateBlockedCountdown() {
     if (blockedInterval) clearInterval(blockedInterval);
     blockedInterval = setInterval(function() {
         var remaining = getBlockedUntil() - Date.now();
-        if (remaining <= 0) {
-            clearInterval(blockedInterval);
-            localStorage.removeItem('autocuan_blocked_until');
-            location.reload();
-            return;
-        }
-        var mins = Math.floor(remaining / 60000);
-        var secs = Math.floor((remaining % 60000) / 1000);
-        document.getElementById('blockedCountdown').textContent =
-            'Akses dibuka kembali dalam: ' + mins + ' menit ' + secs + ' detik';
+        if (remaining <= 0) { clearInterval(blockedInterval); localStorage.removeItem('autocuan_blocked_until'); location.reload(); return; }
+        var mins = Math.floor(remaining / 60000); var secs = Math.floor((remaining % 60000) / 1000);
+        document.getElementById('blockedCountdown').textContent = 'Akses dibuka kembali dalam: ' + mins + ' menit ' + secs + ' detik';
     }, 1000);
 }
 
-// ===== PASSWORD HASHING (SHA-256) =====
+// ===== PASSWORD HASHING =====
 async function hashPassword(password) {
     var encoder = new TextEncoder();
     var data = encoder.encode(password + '_autocuan_salt_2024');
     var hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    var hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    return Array.from(new Uint8Array(hashBuffer)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 }
 
-// ===== PASSWORD VALIDATION =====
-var WEAK_PASSWORDS = ['password123','admin123','qwerty123','12345678','123456789','nama123','user1234','agus123','budi123','cuan123','saham123'];
-
+var WEAK_PASSWORDS = ['password123','admin123','qwerty123','12345678','123456789','nama123','user1234','budi123','cuan123','saham123'];
 function isValidPassword(password) {
     if (!password || password.length < 8) return false;
-    if (!/[A-Z]/.test(password)) return false;
-    if (!/[a-z]/.test(password)) return false;
-    if (!/[0-9]/.test(password)) return false;
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) return false;
     if (WEAK_PASSWORDS.indexOf(password.toLowerCase()) !== -1) return false;
     return true;
 }
 
-// ===== MAINTENANCE CHECK (Supabase-driven) =====
+// ===== MAINTENANCE CHECK =====
 var maintenanceConfig = { maintenanceMode: false, message: '' };
-
 async function checkMaintenanceStatus() {
     try {
-        var response = await fetch('/api/maintenance-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'get' })
-        });
+        var response = await fetch('/api/maintenance-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get' }) });
         var data = await response.json();
-        if (data.success && data.config) {
-            maintenanceConfig = data.config;
-        }
-    } catch(e) { /* silent */ }
+        if (data.success && data.config) maintenanceConfig = data.config;
+    } catch(e) {}
     return maintenanceConfig;
 }
-
 function isAdminUser() {
     var name = (localStorage.getItem('autocuan_user') || '').trim().toLowerCase();
-    var adminFlag = localStorage.getItem('autocuan_is_admin') === 'true';
-    return adminFlag && name === 'budi';
+    return localStorage.getItem('autocuan_is_admin') === 'true' && name === 'budi';
+}
+
+
+// ===== DAILY USAGE LIMIT SYSTEM =====
+function getDailyUsageKey() {
+    var today = new Date().toISOString().slice(0, 10);
+    var user = localStorage.getItem('autocuan_user') || 'guest';
+    return 'autocuan_daily_' + user + '_' + today;
+}
+function getDailyUsageCount() {
+    try { return parseInt(localStorage.getItem(getDailyUsageKey()) || '0', 10); } catch(e) { return 0; }
+}
+function incrementDailyUsage() {
+    var key = getDailyUsageKey();
+    var count = getDailyUsageCount();
+    localStorage.setItem(key, String(count + 1));
+}
+function getDailyLimit() {
+    var user = (localStorage.getItem('autocuan_user') || 'guest').toLowerCase();
+    if (user === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true') return Infinity;
+    if (user === 'guest') return 2;
+    return 10; // logged-in normal user or review user
+}
+function checkDailyLimit() {
+    return getDailyUsageCount() < getDailyLimit();
+}
+function getLimitMessage() {
+    var user = (localStorage.getItem('autocuan_user') || 'guest').toLowerCase();
+    if (user === 'guest') return 'Limit guest hari ini sudah habis. Login atau daftar untuk mendapatkan 10 analisis per hari.';
+    return 'Limit analisis harian Anda sudah habis. Silakan coba lagi besok.';
+}
+function updateUsageCounter() {
+    var el = document.getElementById('usageCounter');
+    if (!el) return;
+    var limit = getDailyLimit();
+    var used = getDailyUsageCount();
+    if (limit === Infinity) { el.textContent = 'Unlimited'; return; }
+    el.textContent = used + '/' + limit + ' hari ini';
 }
 
 // ===== AUTH TAB SWITCHING =====
 function switchAuthTab(tab) {
     var tabLogin = document.getElementById('authTabLogin');
     var tabRegister = document.getElementById('authTabRegister');
-    var loginForm = document.getElementById('loginForm');
-    var registerForm = document.getElementById('registerForm');
-
     if (tab === 'login') {
         tabLogin.className = 'rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-black transition';
         tabRegister.className = 'rounded-lg bg-transparent px-4 py-2 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
-        loginForm.classList.remove('hidden');
-        registerForm.classList.add('hidden');
+        document.getElementById('loginForm').classList.remove('hidden');
+        document.getElementById('registerForm').classList.add('hidden');
     } else {
         tabRegister.className = 'rounded-lg bg-emerald-500 px-4 py-2 text-sm font-bold text-black transition';
         tabLogin.className = 'rounded-lg bg-transparent px-4 py-2 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
-        registerForm.classList.remove('hidden');
-        loginForm.classList.add('hidden');
+        document.getElementById('registerForm').classList.remove('hidden');
+        document.getElementById('loginForm').classList.add('hidden');
     }
-    // Clear errors
     document.getElementById('loginError').classList.add('hidden');
     document.getElementById('registerError').classList.add('hidden');
     document.getElementById('registerSuccess').classList.add('hidden');
 }
 
-// ===== ADMIN BYPASS SHORTCUT (Ctrl+B then K) =====
-var adminShortcutBuffer = [];
-document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey) {
-        adminShortcutBuffer.push(e.key.toLowerCase());
-        if (adminShortcutBuffer.length > 5) adminShortcutBuffer = adminShortcutBuffer.slice(-5);
-        var bufStr = adminShortcutBuffer.join('');
-        if (bufStr.indexOf('bk') !== -1 || bufStr.indexOf('b') !== -1 && adminShortcutBuffer[adminShortcutBuffer.length - 1] === 'k') {
-            adminShortcutBuffer = [];
-            openAdminBypassModal();
-        }
-    } else {
-        adminShortcutBuffer = [];
-    }
-});
-
-function openAdminBypassModal() {
-    document.getElementById('adminBypassModal').classList.remove('hidden');
-    document.getElementById('adminBypassName').value = '';
-    document.getElementById('adminBypassPass').value = '';
-    document.getElementById('adminBypassError').classList.add('hidden');
-    document.getElementById('adminBypassName').focus();
-}
-
-function closeAdminBypassModal() {
-    document.getElementById('adminBypassModal').classList.add('hidden');
-}
-
-function doAdminBypass() {
-    var name = document.getElementById('adminBypassName').value.trim();
-    var pass = document.getElementById('adminBypassPass').value;
-    var errorEl = document.getElementById('adminBypassError');
-
-    if (name.toLowerCase() === 'budi' && pass === '.') {
-        localStorage.setItem('autocuan_user', 'budi');
-        localStorage.setItem('autocuan_is_admin', 'true');
-        localStorage.setItem('autocuan_login_time', Date.now().toString());
-        logLogin('budi', false, true);
-        closeAdminBypassModal();
-        document.getElementById('maintenanceScreen').classList.add('hidden');
-        showDashboard('budi');
-    } else {
-        errorEl.textContent = 'Akses admin salah.';
-        errorEl.classList.remove('hidden');
-    }
-}
-
-// ===== REVIEW MODE DETECTION (runs FIRST) =====
+// ===== REVIEW MODE =====
 function isValidReviewMode() {
     var params = new URLSearchParams(window.location.search);
     var pathname = window.location.pathname;
@@ -662,83 +477,42 @@ function isValidReviewMode() {
 }
 
 async function enterReviewMode() {
-    // Clear all block states immediately
     localStorage.removeItem('autocuan_blocked_until');
-    localStorage.removeItem('autocuan_bad_username_attempts');
-
-    // Hide all screens, show nothing yet
     document.getElementById('blockedScreen').classList.add('hidden');
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('maintenanceScreen').classList.add('hidden');
     document.getElementById('dashboardScreen').classList.add('hidden');
-
-    // Clean URL
     window.history.replaceState({}, document.title, window.location.pathname);
-
-    // Validate token server-side and seed/check review user
     try {
-        var response = await fetch('/api/review-access', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: 'autocuan-review-2026' })
-        });
+        var response = await fetch('/api/review-access', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: 'autocuan-review-2026' }) });
         var data = await response.json();
-
         if (!data.success) {
-            // Review user is blocked or token invalid
             document.getElementById('blockedScreen').classList.remove('hidden');
-            document.getElementById('blockedScreen').innerHTML =
-                '<div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">' +
-                '<div class="text-5xl">&#x1F6AB;</div>' +
-                '<h2 class="text-xl font-bold text-white">' + (data.error || 'Akun review sedang diblokir.') + '</h2>' +
-                '<p class="text-sm text-gray-400">Hubungi admin untuk mengaktifkan kembali akses review.</p>' +
-                '</div>';
+            document.getElementById('blockedScreen').innerHTML = '<div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5"><div class="text-5xl">&#x1F6AB;</div><h2 class="text-xl font-bold text-white">' + (data.error || 'Akun review sedang diblokir.') + '</h2><p class="text-sm text-gray-400">Hubungi admin untuk mengaktifkan kembali akses review.</p></div>';
             return;
         }
-
-        // Success - set review state
         localStorage.setItem('autocuan_logged_in', 'true');
         localStorage.setItem('autocuan_user', 'review');
-        localStorage.setItem('autocuan_user_name', 'review');
         localStorage.setItem('autocuan_is_admin', 'false');
         localStorage.setItem('autocuan_is_review', 'true');
         localStorage.setItem('autocuan_login_time', Date.now().toString());
-
-        // Show dashboard directly
         showDashboard('review');
     } catch (e) {
-        // Network error - still try to show dashboard if previously logged in as review
-        if (localStorage.getItem('autocuan_is_review') === 'true' && localStorage.getItem('autocuan_user') === 'review') {
-            showDashboard('review');
-        } else {
-            document.getElementById('loginScreen').classList.remove('hidden');
-        }
+        if (localStorage.getItem('autocuan_is_review') === 'true') { showDashboard('review'); }
+        else { document.getElementById('loginScreen').classList.remove('hidden'); }
     }
 }
 
+
 // ===== INITIALIZATION =====
 (async function init() {
-    // REVIEW MODE DETECTION RUNS FIRST - before any blocked/maintenance checks
-    if (isValidReviewMode()) {
-        await enterReviewMode();
-        return;
-    }
-
-    // Also handle ?review_access=1 (manual login helper - just clears blocks)
+    if (isValidReviewMode()) { await enterReviewMode(); return; }
     var params = new URLSearchParams(window.location.search);
     if (params.get('review_access') === '1') {
         localStorage.removeItem('autocuan_blocked_until');
-        localStorage.removeItem('autocuan_bad_username_attempts');
         window.history.replaceState({}, document.title, window.location.pathname);
     }
-
-    // Check device blocked first
-    if (isDeviceBlocked()) {
-        showBlockedScreen();
-        return;
-    }
-
-    // Check maintenance from Supabase
+    if (isDeviceBlocked()) { showBlockedScreen(); return; }
     await checkMaintenanceStatus();
     if (maintenanceConfig.maintenanceMode && !isAdminUser()) {
         document.getElementById('loginScreen').classList.add('hidden');
@@ -748,38 +522,23 @@ async function enterReviewMode() {
         document.getElementById('maintenanceScreen').classList.remove('hidden');
         return;
     }
-
-    // Normal flow
     document.getElementById('maintenanceScreen').classList.add('hidden');
     var user = localStorage.getItem('autocuan_user');
-    if (user) {
-        showDashboard(user);
-    } else {
-        document.getElementById('loginScreen').classList.remove('hidden');
-        document.getElementById('dashboardScreen').classList.add('hidden');
-    }
+    if (user) { showDashboard(user); }
+    else { document.getElementById('loginScreen').classList.remove('hidden'); document.getElementById('dashboardScreen').classList.add('hidden'); }
 })();
 
-// ===== LOGIN LOGIC =====
+// ===== LOGIN =====
 async function doLogin() {
     if (isDeviceBlocked()) { showBlockedScreen(); return; }
-
     var usernameInput = document.getElementById('loginUsername').value.trim();
     var password = document.getElementById('loginPassword').value;
     var errorEl = document.getElementById('loginError');
     var loginBtn = document.getElementById('loginBtn');
-
     errorEl.classList.add('hidden');
-
-    if (!usernameInput) {
-        errorEl.textContent = 'Username tidak boleh kosong.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
+    if (!usernameInput) { errorEl.textContent = 'Username tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
     var usernameLower = usernameInput.toLowerCase();
-
-    // === ADMIN SPECIAL LOGIN ===
+    // Admin special login
     if (usernameLower === 'budi') {
         if (password === '.') {
             localStorage.setItem('autocuan_user', 'budi');
@@ -787,241 +546,109 @@ async function doLogin() {
             localStorage.setItem('autocuan_login_time', Date.now().toString());
             logLogin('budi', false, true);
             showDashboard('budi');
-        } else {
-            errorEl.textContent = 'Password salah.';
-            errorEl.classList.remove('hidden');
-        }
+        } else { errorEl.textContent = 'Password salah.'; errorEl.classList.remove('hidden'); }
         return;
     }
-
-    // === NORMAL USER: check bad username (skip for review) ===
-    if (usernameLower !== 'review' && isBadUsername(usernameInput)) {
-        blockDeviceForBadName();
-        return;
-    }
-
-    if (!password) {
-        errorEl.textContent = 'Password tidak boleh kosong.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
-    // Hash password and call API
-    loginBtn.disabled = true;
-    loginBtn.innerHTML = '<span class="spinner-sm"></span>Masuk...';
-
+    if (usernameLower !== 'review' && isBadUsername(usernameInput)) { blockDeviceForBadName(); return; }
+    if (!password) { errorEl.textContent = 'Password tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
+    loginBtn.disabled = true; loginBtn.innerHTML = '<span class="spinner-sm"></span>Masuk...';
     try {
         var passwordHash = await hashPassword(password);
         var deviceId = getOrCreateDeviceId();
-
-        var response = await fetch('/api/login-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: usernameLower,
-                passwordHash: passwordHash,
-                deviceId: deviceId,
-                userAgent: navigator.userAgent
-            })
-        });
-
+        var response = await fetch('/api/login-user', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent }) });
         var data = await response.json();
-
         if (data.success) {
             localStorage.setItem('autocuan_user', data.username);
             localStorage.setItem('autocuan_is_admin', 'false');
             localStorage.setItem('autocuan_logged_in', 'true');
             localStorage.setItem('autocuan_login_time', Date.now().toString());
-            if (data.isReview) {
-                localStorage.setItem('autocuan_is_review', 'true');
-                localStorage.setItem('autocuan_user_name', 'review');
-            } else {
-                localStorage.removeItem('autocuan_is_review');
-            }
+            if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
             logLogin(data.username, false, false);
             showDashboard(data.username);
-        } else {
-            errorEl.textContent = data.error || 'Login gagal.';
-            errorEl.classList.remove('hidden');
-        }
-    } catch(e) {
-        errorEl.textContent = 'Koneksi gagal. Coba lagi.';
-        errorEl.classList.remove('hidden');
-    } finally {
-        loginBtn.disabled = false;
-        loginBtn.innerHTML = 'Masuk';
-    }
+        } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
+    } catch(e) { errorEl.textContent = 'Koneksi gagal. Coba lagi.'; errorEl.classList.remove('hidden'); }
+    finally { loginBtn.disabled = false; loginBtn.innerHTML = 'Masuk'; }
 }
 
-// ===== REGISTER LOGIC =====
+// ===== REGISTER =====
 async function doRegister() {
     if (isDeviceBlocked()) { showBlockedScreen(); return; }
-
     var usernameInput = document.getElementById('regUsername').value.trim();
     var password = document.getElementById('regPassword').value;
     var passwordConfirm = document.getElementById('regPasswordConfirm').value;
     var errorEl = document.getElementById('registerError');
     var successEl = document.getElementById('registerSuccess');
     var registerBtn = document.getElementById('registerBtn');
-
-    errorEl.classList.add('hidden');
-    successEl.classList.add('hidden');
-
-    if (!usernameInput) {
-        errorEl.textContent = 'Username tidak boleh kosong.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
+    errorEl.classList.add('hidden'); successEl.classList.add('hidden');
+    if (!usernameInput) { errorEl.textContent = 'Username tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
     var usernameLower = usernameInput.toLowerCase();
-
-    // Block budi registration
-    if (usernameLower === 'budi') {
-        errorEl.textContent = 'Username tidak tersedia.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
-    // Check bad username
-    if (isBadUsername(usernameInput)) {
-        blockDeviceForBadName();
-        return;
-    }
-
-    // Password validation
-    if (!isValidPassword(password)) {
-        errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
-    if (password !== passwordConfirm) {
-        errorEl.textContent = 'Konfirmasi password tidak sama.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
-    // Call API
-    registerBtn.disabled = true;
-    registerBtn.innerHTML = '<span class="spinner-sm"></span>Mendaftar...';
-
+    if (usernameLower === 'budi') { errorEl.textContent = 'Username tidak tersedia.'; errorEl.classList.remove('hidden'); return; }
+    if (isBadUsername(usernameInput)) { blockDeviceForBadName(); return; }
+    if (!isValidPassword(password)) { errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka.'; errorEl.classList.remove('hidden'); return; }
+    if (password !== passwordConfirm) { errorEl.textContent = 'Konfirmasi password tidak sama.'; errorEl.classList.remove('hidden'); return; }
+    registerBtn.disabled = true; registerBtn.innerHTML = '<span class="spinner-sm"></span>Mendaftar...';
     try {
         var passwordHash = await hashPassword(password);
         var deviceId = getOrCreateDeviceId();
-
-        var response = await fetch('/api/register-user', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: usernameLower,
-                passwordHash: passwordHash,
-                deviceId: deviceId,
-                userAgent: navigator.userAgent
-            })
-        });
-
+        var response = await fetch('/api/register-user', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent }) });
         var data = await response.json();
-
-        if (data.success) {
-            successEl.textContent = 'Akun berhasil dibuat. Silakan masuk.';
-            successEl.classList.remove('hidden');
-            document.getElementById('regUsername').value = '';
-            document.getElementById('regPassword').value = '';
-            document.getElementById('regPasswordConfirm').value = '';
-            // Switch to login tab after short delay
+        if (data.success) { successEl.textContent = 'Akun berhasil dibuat. Silakan masuk.'; successEl.classList.remove('hidden');
+            document.getElementById('regUsername').value = ''; document.getElementById('regPassword').value = ''; document.getElementById('regPasswordConfirm').value = '';
             setTimeout(function() { switchAuthTab('login'); }, 1500);
-        } else {
-            errorEl.textContent = data.error || 'Registrasi gagal.';
-            errorEl.classList.remove('hidden');
-        }
-    } catch(e) {
-        errorEl.textContent = 'Koneksi gagal. Coba lagi.';
-        errorEl.classList.remove('hidden');
-    } finally {
-        registerBtn.disabled = false;
-        registerBtn.innerHTML = 'Daftar';
-    }
+        } else { errorEl.textContent = data.error || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); }
+    } catch(e) { errorEl.textContent = 'Koneksi gagal. Coba lagi.'; errorEl.classList.remove('hidden'); }
+    finally { registerBtn.disabled = false; registerBtn.innerHTML = 'Daftar'; }
 }
 
-// ===== GUEST LOGIN =====
-function guestLogin() {
+// ===== GUEST ACCESS (can use AI) =====
+function guestAccess() {
     if (isDeviceBlocked()) { showBlockedScreen(); return; }
     localStorage.setItem('autocuan_user', 'guest');
     localStorage.setItem('autocuan_is_admin', 'false');
+    localStorage.removeItem('autocuan_is_review');
     logLogin('Guest', true, false);
     showDashboard('guest');
 }
+function goToLogin() {
+    logout();
+}
 
-// ===== LOGGING FUNCTIONS =====
+
+// ===== LOGGING =====
 async function logLogin(username, isGuest, isAdmin) {
-    try {
-        await fetch('/api/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'login',
-                username: username,
-                isGuest: isGuest,
-                isAdmin: isAdmin,
-                userAgent: navigator.userAgent
-            })
-        });
-    } catch (e) { console.warn('logLogin failed', e); }
+    try { await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', username: username, isGuest: isGuest, isAdmin: isAdmin, userAgent: navigator.userAgent }) });
+    } catch (e) {}
 }
-
 async function logSearch(ticker, source) {
-    try {
-        var username = localStorage.getItem('autocuan_user') || 'Unknown';
-        await fetch('/api/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'search', username: username, ticker: ticker, source: source })
-        });
-    } catch (e) { console.warn('logSearch failed', e); }
+    try { var username = localStorage.getItem('autocuan_user') || 'Unknown';
+        await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'search', username: username, ticker: ticker, source: source }) });
+    } catch (e) {}
 }
-
 async function logAnalysisResult(ticker, mode, html) {
-    try {
-        var username = localStorage.getItem('autocuan_user') || 'Unknown';
+    try { var username = localStorage.getItem('autocuan_user') || 'Unknown';
         var text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-        var resultSummary = text.slice(0, 500);
-        await fetch('/api/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'analysis',
-                username: username,
-                ticker: ticker,
-                mode: mode,
-                resultSummary: resultSummary,
-                fullResultHtml: html
-            })
-        });
-    } catch (e) { console.warn('logAnalysis failed', e); }
+        await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'analysis', username: username, ticker: ticker, mode: mode, resultSummary: text.slice(0, 500), fullResultHtml: html }) });
+    } catch (e) {}
 }
-
-async function logUsage(ticker, action) {
-    try {
-        var username = localStorage.getItem('autocuan_user') || 'Unknown';
-        await fetch('/api/log', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'usage', username: username, ticker: ticker, usageAction: action })
-        });
-    } catch (e) { console.warn('logUsage failed', e); }
+async function logUsage(ticker, usageAction) {
+    try { var username = localStorage.getItem('autocuan_user') || 'Unknown';
+        await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'usage', username: username, ticker: ticker, usageAction: usageAction }) });
+    } catch (e) {}
 }
 
 function logout() {
-    localStorage.removeItem('autocuan_user');
-    localStorage.removeItem('autocuan_is_admin');
-    localStorage.removeItem('autocuan_logged_in');
-    localStorage.removeItem('autocuan_login_time');
+    localStorage.removeItem('autocuan_user'); localStorage.removeItem('autocuan_is_admin');
+    localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time');
     localStorage.removeItem('autocuan_is_review');
-    localStorage.removeItem('autocuan_user_name');
     document.getElementById('dashboardScreen').classList.add('hidden');
     document.getElementById('loginScreen').classList.remove('hidden');
-    document.getElementById('loginUsername').value = '';
-    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginUsername').value = ''; document.getElementById('loginPassword').value = '';
     document.getElementById('loginError').classList.add('hidden');
 }
 
@@ -1035,37 +662,30 @@ function showDashboard(username) {
     document.getElementById('dashboardScreen').classList.remove('hidden');
     document.getElementById('headerUsername').textContent = username;
 
-    var isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
+    var isAdmin = localStorage.getItem('autocuan_is_admin') === 'true' && username.toLowerCase() === 'budi';
     var isGuest = (username === 'guest');
-    var isReview = localStorage.getItem('autocuan_is_review') === 'true';
 
-    // Show/hide review badge
+    // Badges
     var reviewBadge = document.getElementById('reviewBadge');
-    if (reviewBadge) {
-        if (isReview) { reviewBadge.classList.remove('hidden'); }
-        else { reviewBadge.classList.add('hidden'); }
-    }
+    var guestBadge = document.getElementById('guestBadge');
+    if (reviewBadge) { if (isReview) reviewBadge.classList.remove('hidden'); else reviewBadge.classList.add('hidden'); }
+    if (guestBadge) { if (isGuest) guestBadge.classList.remove('hidden'); else guestBadge.classList.add('hidden'); }
 
-    if (isGuest) {
-        document.getElementById('guestBanner').classList.remove('hidden');
-        document.getElementById('aiSection').classList.add('hidden');
-        document.getElementById('adminPanel').classList.add('hidden');
-    } else {
-        document.getElementById('guestBanner').classList.add('hidden');
-        document.getElementById('aiSection').classList.remove('hidden');
-        if (isAdmin && !isReview) {
-            document.getElementById('adminPanel').classList.remove('hidden');
-        } else {
-            document.getElementById('adminPanel').classList.add('hidden');
-        }
-    }
+    // Guest: show login button in header, hide logout
+    var loginFromGuestBtn = document.getElementById('loginFromGuestBtn');
+    var logoutBtn = document.getElementById('logoutBtn');
+    if (isGuest) { loginFromGuestBtn.classList.remove('hidden'); logoutBtn.classList.add('hidden'); }
+    else { loginFromGuestBtn.classList.add('hidden'); logoutBtn.classList.remove('hidden'); }
 
+    // Admin panel only for budi
+    if (isAdmin && !isReview) { document.getElementById('adminPanel').classList.remove('hidden'); }
+    else { document.getElementById('adminPanel').classList.add('hidden'); }
+
+    updateUsageCounter();
     loadTradingView();
 }
-</script>
 
 
-<script>
 // ===== TRADINGVIEW =====
 var _tvScriptPromise = null;
 var _tvCurrentSymbol = null;
@@ -1073,29 +693,20 @@ var _tvCurrentSymbol = null;
 function loadTradingViewScript() {
     if (window.TradingView) return Promise.resolve();
     if (_tvScriptPromise) return _tvScriptPromise;
-
     _tvScriptPromise = new Promise(function(resolve, reject) {
         var existing = document.querySelector('script[src*="s3.tradingview.com/tv.js"]');
-        if (existing) {
-            if (window.TradingView) { resolve(); return; }
-            existing.addEventListener('load', resolve);
-            existing.addEventListener('error', reject);
-            return;
-        }
+        if (existing) { if (window.TradingView) { resolve(); return; } existing.addEventListener('load', resolve); existing.addEventListener('error', reject); return; }
         var script = document.createElement('script');
         script.src = 'https://s3.tradingview.com/tv.js';
-        script.async = true;
-        script.onload = resolve;
-        script.onerror = reject;
+        script.async = true; script.onload = resolve; script.onerror = reject;
         document.head.appendChild(script);
     });
-
     return _tvScriptPromise;
 }
 
 function normalizeTvSymbol(input) {
     var raw = String(input || '').trim().toUpperCase().replace(/\s+/g, '');
-    if (!raw || raw === 'IHSG' || raw === 'COMPOSITE' || raw === 'IDX' || raw === 'IDXCOMPOSITE' || raw === 'IDX:IHSG') {
+    if (!raw || raw === 'IHSG' || raw === 'COMPOSITE' || raw === 'IDX' || raw === 'IDXCOMPOSITE' || raw === 'IDX:IHSG' || raw === 'IDX:COMPOSITE') {
         return 'IDX:COMPOSITE';
     }
     if (raw.startsWith('IDX:')) return raw;
@@ -1106,117 +717,76 @@ function loadTradingView(symbolInput) {
     var symbol = normalizeTvSymbol(symbolInput || 'IDX:COMPOSITE');
     var container = document.getElementById('tvChartContainer');
     if (!container) return;
-
-    // Don't recreate if same symbol already loaded
     if (_tvCurrentSymbol === symbol && container.querySelector('iframe')) return;
-
     _tvCurrentSymbol = symbol;
     container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-600 text-sm">Memuat chart...</div>';
 
+    // Timeout fallback
+    var timeout = setTimeout(function() {
+        if (!container.querySelector('iframe')) {
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-red-400 text-sm p-4 text-center">Chart TradingView gagal dimuat. Silakan refresh halaman atau coba ticker lain.</div>';
+        }
+    }, 15000);
+
     loadTradingViewScript().then(function() {
+        clearTimeout(timeout);
         if (!window.TradingView) {
-            container.innerHTML = '<div class="flex items-center justify-center h-full text-red-400 text-sm">Chart TradingView gagal dimuat. Silakan refresh halaman.</div>';
+            container.innerHTML = '<div class="flex items-center justify-center h-full text-red-400 text-sm p-4 text-center">Chart TradingView gagal dimuat. Silakan refresh halaman atau coba ticker lain.</div>';
             return;
         }
-
         container.innerHTML = '';
         var widgetDiv = document.createElement('div');
         widgetDiv.id = 'tv_widget_inner';
-        widgetDiv.style.height = '100%';
-        widgetDiv.style.width = '100%';
+        widgetDiv.style.height = '100%'; widgetDiv.style.width = '100%';
         container.appendChild(widgetDiv);
-
         new window.TradingView.widget({
-            autosize: true,
-            symbol: symbol,
-            interval: 'D',
-            timezone: 'Asia/Jakarta',
-            theme: 'dark',
-            style: '1',
-            locale: 'id',
-            toolbar_bg: '#0b1117',
-            enable_publishing: false,
-            allow_symbol_change: true,
-            container_id: 'tv_widget_inner',
-            backgroundColor: 'rgba(15, 19, 25, 1)',
-            gridColor: 'rgba(28, 35, 51, 0.5)'
+            autosize: true, symbol: symbol, interval: 'D', timezone: 'Asia/Jakarta',
+            theme: 'dark', style: '1', locale: 'id', toolbar_bg: '#0b1117',
+            enable_publishing: false, allow_symbol_change: true, container_id: 'tv_widget_inner',
+            backgroundColor: 'rgba(15, 19, 25, 1)', gridColor: 'rgba(28, 35, 51, 0.5)'
         });
     }).catch(function(err) {
-        console.error('TradingView failed to load:', err);
+        clearTimeout(timeout);
         container.innerHTML = '<div class="flex items-center justify-center h-full text-red-400 text-sm p-4 text-center">Chart TradingView gagal dimuat. Silakan refresh halaman atau coba ticker lain.</div>';
     });
 }
 
-// ===== AI ANALYSIS =====
-function getUsageRecords() {
-    try {
-        var records = JSON.parse(localStorage.getItem('autocuan_usage') || '[]');
-        var now = Date.now();
-        return records.filter(function(t) { return (now - t) < 30 * 60 * 1000; });
-    } catch(e) { return []; }
-}
 
-function addUsageRecord() {
-    var records = getUsageRecords();
-    records.push(Date.now());
-    localStorage.setItem('autocuan_usage', JSON.stringify(records));
-}
-
-function checkUsageLimit() {
-    var isAdmin = localStorage.getItem('autocuan_is_admin') === 'true';
-    if (isAdmin) return true;
-    var records = getUsageRecords();
-    return records.length < 2;
-}
-
+// ===== AI ANALYSIS (Ticker mode) =====
 async function analyzeChart() {
     var ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
     var currentPrice = document.getElementById('priceInput').value.trim();
     var limitWarning = document.getElementById('limitWarning');
-
     if (!ticker) { alert('Masukkan ticker saham.'); return; }
     if (!currentPrice) { alert('Masukkan harga sekarang.'); return; }
-
-    if (!checkUsageLimit()) {
-        limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
+    if (!checkDailyLimit()) {
+        limitWarning.textContent = getLimitMessage();
         limitWarning.classList.remove('hidden');
         logUsage(ticker, 'ai_limit_blocked');
         return;
     }
     limitWarning.classList.add('hidden');
-
     logSearch(ticker, 'ticker_mode');
     logUsage(ticker, 'ai_analysis_started');
-
     document.getElementById('loadingState').classList.remove('hidden');
     document.getElementById('resultSection').classList.add('hidden');
     document.getElementById('analyzeBtn').disabled = true;
-
+    // Update TradingView to show this ticker
+    loadTradingView(ticker);
     try {
-        var response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker: ticker, currentPrice: parseFloat(currentPrice), username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' })
-        });
-
+        var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticker: ticker, currentPrice: parseFloat(currentPrice), username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
         var data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Terjadi kesalahan pada server.');
-        }
-
+        if (!response.ok) throw new Error(data.error || 'Terjadi kesalahan pada server.');
         if (data.html) {
-            var html = data.html;
-            html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+            var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
             document.getElementById('resultContent').innerHTML = html;
             document.getElementById('resultSection').classList.remove('hidden');
             document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            addUsageRecord();
+            incrementDailyUsage(); updateUsageCounter();
             logUsage(ticker, 'ai_success');
             logAnalysisResult(ticker, 'ticker', html);
-        } else {
-            throw new Error('Tidak ada hasil analisis dari AI.');
-        }
+        } else { throw new Error('Tidak ada hasil analisis dari AI.'); }
     } catch(error) {
         logUsage(ticker, 'ai_error');
         document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal Menganalisis</p><p class="text-red-300/70 text-sm">' + error.message + '</p><button onclick="analyzeChart()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">Coba Lagi</button></div>';
@@ -1227,121 +797,77 @@ async function analyzeChart() {
     }
 }
 
-// ===== TAB SWITCHING (Chart/Ticker) =====
+// ===== TAB SWITCHING =====
 var currentTab = 'ticker';
 function switchTab(tab) {
     currentTab = tab;
     var tabChart = document.getElementById('tabChart');
     var tabTicker = document.getElementById('tabTicker');
-    var modeChart = document.getElementById('modeChartPanel');
-    var modeTicker = document.getElementById('modeTickerPanel');
-
     if (tab === 'chart') {
         tabChart.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
         tabTicker.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
-        modeChart.classList.remove('hidden');
-        modeTicker.classList.add('hidden');
+        document.getElementById('modeChartPanel').classList.remove('hidden');
+        document.getElementById('modeTickerPanel').classList.add('hidden');
     } else {
         tabTicker.className = 'w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-black text-black transition';
         tabChart.className = 'w-full rounded-xl bg-transparent px-4 py-3 text-sm font-bold text-gray-400 hover:bg-gray-800/70 hover:text-gray-200 transition';
-        modeTicker.classList.remove('hidden');
-        modeChart.classList.add('hidden');
+        document.getElementById('modeTickerPanel').classList.remove('hidden');
+        document.getElementById('modeChartPanel').classList.add('hidden');
     }
 }
 
 // ===== CHART UPLOAD =====
 var selectedChartFile = null;
-
 function handleChartFile(event) {
     var file = event.target.files[0];
     if (!file) return;
-
     var validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-        alert('Format file tidak didukung. Gunakan PNG, JPG, atau WebP.');
-        return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-        alert('Ukuran file terlalu besar. Maksimal 20MB.');
-        return;
-    }
-
+    if (!validTypes.includes(file.type)) { alert('Format file tidak didukung. Gunakan PNG, JPG, atau WebP.'); return; }
+    if (file.size > 20 * 1024 * 1024) { alert('Ukuran file terlalu besar. Maksimal 20MB.'); return; }
     selectedChartFile = file;
     var preview = document.getElementById('chartPreviewImage');
-    preview.src = URL.createObjectURL(file);
-    preview.classList.remove('hidden');
+    preview.src = URL.createObjectURL(file); preview.classList.remove('hidden');
     document.getElementById('chartUploadLabel').classList.add('hidden');
 }
-
 function resetChartUpload() {
     selectedChartFile = null;
-    var preview = document.getElementById('chartPreviewImage');
-    preview.src = '';
-    preview.classList.add('hidden');
+    document.getElementById('chartPreviewImage').src = '';
+    document.getElementById('chartPreviewImage').classList.add('hidden');
     document.getElementById('chartUploadLabel').classList.remove('hidden');
     document.getElementById('chartFileInput').value = '';
 }
 
+
 async function analyzeChartUpload() {
     var limitWarning = document.getElementById('limitWarning');
-    var user = localStorage.getItem('autocuan_user');
-
-    if (user === 'guest') {
-        alert('Login diperlukan untuk menggunakan fitur AI.');
-        return;
-    }
-    if (!selectedChartFile) {
-        alert('Pilih screenshot chart terlebih dahulu.');
-        return;
-    }
-    if (!checkUsageLimit()) {
-        limitWarning.textContent = 'Batas analisis tercapai (2x/30 menit). Tunggu beberapa menit.';
+    if (!selectedChartFile) { alert('Pilih screenshot chart terlebih dahulu.'); return; }
+    if (!checkDailyLimit()) {
+        limitWarning.textContent = getLimitMessage();
         limitWarning.classList.remove('hidden');
         logUsage('CHART_UPLOAD', 'ai_limit_blocked');
         return;
     }
     limitWarning.classList.add('hidden');
-
     logSearch('CHART_UPLOAD', 'chart_upload');
     logUsage('CHART_UPLOAD', 'ai_analysis_started');
-
     document.getElementById('loadingState').classList.remove('hidden');
     document.getElementById('resultSection').classList.add('hidden');
     document.getElementById('analyzeChartBtn').disabled = true;
-
     try {
         var base64Data = await fileToBase64(selectedChartFile);
-
-        var response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                image: base64Data,
-                mimeType: selectedChartFile.type,
-                source: 'chart_upload',
-                username: localStorage.getItem('autocuan_user') || '',
-                isAdmin: localStorage.getItem('autocuan_is_admin') === 'true'
-            })
-        });
-
+        var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Data, mimeType: selectedChartFile.type, source: 'chart_upload', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
         var data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.error || 'Terjadi kesalahan pada server.');
-        }
-
+        if (!response.ok) throw new Error(data.error || 'Terjadi kesalahan pada server.');
         if (data.html) {
-            var html = data.html;
-            html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+            var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
             document.getElementById('resultContent').innerHTML = html;
             document.getElementById('resultSection').classList.remove('hidden');
             document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            addUsageRecord();
+            incrementDailyUsage(); updateUsageCounter();
             logUsage('CHART_UPLOAD', 'ai_success');
             logAnalysisResult('CHART_UPLOAD', 'chart', html);
-        } else {
-            throw new Error('Tidak ada hasil analisis dari AI.');
-        }
+        } else { throw new Error('Tidak ada hasil analisis dari AI.'); }
     } catch(error) {
         logUsage('CHART_UPLOAD', 'ai_error');
         document.getElementById('resultContent').innerHTML = '<div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center"><p class="text-red-400 font-semibold mb-2">Gagal Menganalisis Chart</p><p class="text-red-300/70 text-sm">' + error.message + '</p><button onclick="analyzeChartUpload()" class="mt-4 px-4 py-2 rounded-lg bg-red-500/20 text-red-300 text-sm hover:bg-red-500/30 transition-colors">Coba Lagi</button></div>';
@@ -1351,23 +877,15 @@ async function analyzeChartUpload() {
         document.getElementById('analyzeChartBtn').disabled = false;
     }
 }
-
 function fileToBase64(file) {
     return new Promise(function(resolve, reject) {
-        var reader = new FileReader();
-        reader.onload = function(e) { resolve(e.target.result); };
-        reader.onerror = function(e) { reject(new Error('Gagal membaca file.')); };
-        reader.readAsDataURL(file);
+        var reader = new FileReader(); reader.onload = function(e) { resolve(e.target.result); }; reader.onerror = function() { reject(new Error('Gagal membaca file.')); }; reader.readAsDataURL(file);
     });
 }
 
 // ===== RESPONSIVE TV HEIGHT =====
-function updateTvHeight() {
-    var el = document.getElementById('tvChartContainer');
-    if (el) { el.style.height = window.innerWidth < 640 ? '400px' : '500px'; }
-}
-window.addEventListener('resize', updateTvHeight);
-updateTvHeight();
+function updateTvHeight() { var el = document.getElementById('tvChartContainer'); if (el) el.style.height = window.innerWidth < 640 ? '380px' : '450px'; }
+window.addEventListener('resize', updateTvHeight); updateTvHeight();
 </script>
 
 
@@ -1380,22 +898,13 @@ async function loadAdminLogs(type) {
     lastAdminLogType = type;
     var container = document.getElementById('adminLogsContainer');
     container.innerHTML = '<div class="space-y-2">' + skeletonRows(5) + '</div>';
-
     try {
         var adminName = localStorage.getItem('autocuan_user') || '';
-        var response = await fetch('/api/admin-logs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminName: adminName })
-        });
+        var response = await fetch('/api/admin-logs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName }) });
         if (!response.ok) throw new Error('Fetch failed');
         var data = await response.json();
         cachedAdminData = data;
-
-        if (!data.success) {
-            container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Database logging belum dikonfigurasi.') + '</p>';
-            return;
-        }
+        if (!data.success) { container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Belum ada data log.') + '</p>'; return; }
 
         var summaryHtml = '<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">';
         summaryHtml += '<div class="bg-dark-700 rounded-lg p-3 text-center"><p class="text-xs text-gray-500">Total Logins</p><p class="text-lg font-bold text-emerald-400">' + (data.summary.totalLogins || 0) + '</p></div>';
@@ -1410,118 +919,65 @@ async function loadAdminLogs(type) {
         else if (type === 'analysis') logs = data.aiAnalysisLogs || [];
         else logs = data.aiUsageLogs || [];
 
-        if (logs.length === 0) {
-            container.innerHTML = summaryHtml + '<p class="text-sm text-gray-500">Belum ada data log.</p>';
-            return;
-        }
+        if (logs.length === 0) { container.innerHTML = summaryHtml + '<p class="text-sm text-gray-500">Belum ada data log.</p>'; return; }
 
         if (type === 'analysis') {
             var cardsHtml = '<div class="space-y-3">';
             logs.forEach(function(row, idx) {
-                var summary = row.result_summary || '';
-                if (summary.length > 120) summary = summary.slice(0, 120) + '...';
-                cardsHtml += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333]">';
-                cardsHtml += '<div class="flex flex-wrap items-center gap-2 mb-2">';
+                var summary = row.result_summary || ''; if (summary.length > 120) summary = summary.slice(0, 120) + '...';
+                cardsHtml += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333]"><div class="flex flex-wrap items-center gap-2 mb-2">';
                 cardsHtml += '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400">' + (row.ticker || '-') + '</span>';
                 cardsHtml += '<span class="text-xs text-gray-500">' + (row.username || '-') + '</span>';
                 cardsHtml += '<span class="text-xs text-gray-600">' + (row.mode || '-') + '</span>';
-                cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + (row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span>';
-                cardsHtml += '</div>';
+                cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + (row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span></div>';
                 if (summary) cardsHtml += '<p class="text-xs text-gray-400 mb-3 line-clamp-2">' + summary + '</p>';
-                cardsHtml += '<button onclick="openAdminAiDetail(' + idx + ')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Lihat Hasil</button>';
-                cardsHtml += '</div>';
+                cardsHtml += '<button onclick="openAdminAiDetail(' + idx + ')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Lihat Hasil</button></div>';
             });
             cardsHtml += '</div>';
-            container.innerHTML = summaryHtml + cardsHtml;
-            return;
+            container.innerHTML = summaryHtml + cardsHtml; return;
         }
 
         var excludeCols = ['full_result_html'];
         var keys = Object.keys(logs[0]).filter(function(k) { return excludeCols.indexOf(k) === -1; });
         var tableHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
-        keys.forEach(function(k) {
-            tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>';
-        });
+        keys.forEach(function(k) { tableHtml += '<th class="px-3 py-2 text-left text-emerald-400 font-medium border-b border-dark-600/50 bg-dark-700 whitespace-nowrap">' + k + '</th>'; });
         tableHtml += '</tr></thead><tbody>';
         logs.forEach(function(row) {
             tableHtml += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
-            keys.forEach(function(k) {
-                var val = row[k] || '-';
-                if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...';
-                tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>';
-            });
+            keys.forEach(function(k) { var val = row[k] || '-'; if (typeof val === 'string' && val.length > 80) val = val.slice(0, 80) + '...'; tableHtml += '<td class="px-3 py-2 text-gray-300 whitespace-nowrap">' + val + '</td>'; });
             tableHtml += '</tr>';
         });
         tableHtml += '</tbody></table></div>';
-
         container.innerHTML = summaryHtml + tableHtml;
-    } catch(e) {
-        console.error('loadAdminLogs error:', e);
-        container.innerHTML = '<p class="text-sm text-yellow-400">Database logging belum dikonfigurasi.</p>';
-    }
+    } catch(e) { container.innerHTML = '<p class="text-sm text-gray-500">Belum ada data log.</p>'; }
 }
 
 function openAdminAiDetail(idx) {
     if (!cachedAdminData || !cachedAdminData.aiAnalysisLogs) return;
-    var log = cachedAdminData.aiAnalysisLogs[idx];
-    if (!log) return;
-
-    var modal = document.getElementById('adminAiModal');
-    var subtitle = document.getElementById('adminAiModalSubtitle');
-    var detail = document.getElementById('adminAiResultDetail');
-
-    subtitle.textContent = (log.ticker || 'N/A') + ' \u2022 ' + (log.username || 'N/A') + ' \u2022 ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
-
-    if (log.full_result_html && log.full_result_html.length > 50) {
-        detail.innerHTML = log.full_result_html;
-    } else {
-        detail.innerHTML = '<p class="text-sm text-yellow-400">Hasil lengkap tidak tersedia. Kemungkinan analisis lama hanya menyimpan ringkasan.</p>';
-    }
-
-    modal.classList.remove('hidden');
+    var log = cachedAdminData.aiAnalysisLogs[idx]; if (!log) return;
+    document.getElementById('adminAiModalSubtitle').textContent = (log.ticker || 'N/A') + ' \u2022 ' + (log.username || 'N/A') + ' \u2022 ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
+    if (log.full_result_html && log.full_result_html.length > 50) { document.getElementById('adminAiResultDetail').innerHTML = log.full_result_html; }
+    else { document.getElementById('adminAiResultDetail').innerHTML = '<p class="text-sm text-yellow-400">Hasil lengkap tidak tersedia.</p>'; }
+    document.getElementById('adminAiModal').classList.remove('hidden');
 }
+function closeAdminAiModal() { document.getElementById('adminAiModal').classList.add('hidden'); document.getElementById('adminAiResultDetail').innerHTML = ''; }
 
-function closeAdminAiModal() {
-    document.getElementById('adminAiModal').classList.add('hidden');
-    document.getElementById('adminAiResultDetail').innerHTML = '';
-}
 
 // ===== ADMIN USER MANAGEMENT =====
 var cachedUsers = [];
-
 async function loadAdminUsers() {
     var container = document.getElementById('adminLogsContainer');
     container.innerHTML = '<div class="space-y-2">' + skeletonRows(4) + '</div>';
-
     try {
         var adminName = localStorage.getItem('autocuan_user') || '';
-        var response = await fetch('/api/admin-users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminName: adminName, action: 'list' })
-        });
-
+        var response = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName, action: 'list' }) });
         var data = await response.json();
-
-        if (!data.success) {
-            container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Gagal memuat users.') + '</p>';
-            return;
-        }
-
+        if (!data.success) { container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Gagal memuat users.') + '</p>'; return; }
         cachedUsers = data.users || [];
+        if (cachedUsers.length === 0) { container.innerHTML = '<p class="text-sm text-gray-500">Belum ada user terdaftar.</p>'; return; }
 
-        if (cachedUsers.length === 0) {
-            container.innerHTML = '<p class="text-sm text-gray-500">Belum ada user terdaftar.</p>';
-            return;
-        }
-
-        var html = '<div class="mb-3 flex flex-wrap gap-2">';
-        html += '<button onclick="loadAdminUsers()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">🔄 Refresh Users</button>';
-        html += '<button onclick="exportUsers()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">📋 Export Users</button>';
-        html += '</div>';
-
+        var html = '<div class="mb-3 flex flex-wrap gap-2"><button onclick="loadAdminUsers()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">&#x1F504; Refresh Users</button></div>';
         html += '<div class="text-xs text-gray-500 mb-2">Total: ' + cachedUsers.length + ' user terdaftar</div>';
-
         html += '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
         html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Username</th>';
         html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Device ID</th>';
@@ -1530,15 +986,11 @@ async function loadAdminUsers() {
         html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Status</th>';
         html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Actions</th>';
         html += '</tr></thead><tbody>';
-
         cachedUsers.forEach(function(user) {
             var deviceShort = user.device_id ? user.device_id.slice(0, 16) + '...' : '-';
             var created = user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : '-';
             var lastLogin = user.last_login_at ? new Date(user.last_login_at).toLocaleString('id-ID') : '-';
-            var statusBadge = user.is_blocked
-                ? '<span class="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">Blocked</span>'
-                : '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Active</span>';
-
+            var statusBadge = user.is_blocked ? '<span class="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">Blocked</span>' : '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Active</span>';
             html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
             html += '<td class="px-3 py-2 text-white font-medium">' + user.username + '</td>';
             html += '<td class="px-3 py-2 text-gray-400 text-xs font-mono">' + deviceShort + '</td>';
@@ -1546,359 +998,147 @@ async function loadAdminUsers() {
             html += '<td class="px-3 py-2 text-gray-400">' + lastLogin + '</td>';
             html += '<td class="px-3 py-2">' + statusBadge + '</td>';
             html += '<td class="px-3 py-2">';
-            if (user.is_blocked) {
-                html += '<button onclick="adminUserAction(\'unblock\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>';
-            } else {
-                html += '<button onclick="adminUserAction(\'block\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>';
-            }
-            html += '<button onclick="openResetPasswordModal(\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10">Reset Password</button>';
-            html += '</td>';
-            html += '</tr>';
+            if (user.is_blocked) { html += '<button onclick="adminUserAction(\'unblock\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>'; }
+            else { html += '<button onclick="adminUserAction(\'block\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>'; }
+            html += '<button onclick="openResetPasswordModal(\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10">Reset PW</button>';
+            html += '</td></tr>';
         });
-
         html += '</tbody></table></div>';
         container.innerHTML = html;
-    } catch(e) {
-        console.error('loadAdminUsers error:', e);
-        container.innerHTML = '<p class="text-sm text-yellow-400">Gagal memuat user management.</p>';
-    }
+    } catch(e) { container.innerHTML = '<p class="text-sm text-yellow-400">Gagal memuat user management.</p>'; }
 }
 
 async function adminUserAction(action, username) {
     if (!confirm('Konfirmasi: ' + action + ' untuk user "' + username + '"?')) return;
-
     try {
         var adminName = localStorage.getItem('autocuan_user') || '';
-        var response = await fetch('/api/admin-users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminName: adminName, action: action, username: username })
-        });
-
+        var response = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName, action: action, username: username }) });
         var data = await response.json();
-
-        if (data.success) {
-            alert(data.message || 'Berhasil.');
-            loadAdminUsers();
-        } else {
-            alert('Gagal: ' + (data.error || 'Unknown error'));
-        }
-    } catch(e) {
-        alert('Koneksi gagal.');
-    }
+        if (data.success) { alert(data.message || 'Berhasil.'); loadAdminUsers(); }
+        else { alert('Gagal: ' + (data.error || 'Unknown error')); }
+    } catch(e) { alert('Koneksi gagal.'); }
 }
 
-function exportUsers() {
-    if (!cachedUsers || cachedUsers.length === 0) {
-        alert('Tidak ada data user.');
-        return;
-    }
-    var csv = 'username,device_id,created_at,last_login_at,is_blocked,user_agent\n';
-    cachedUsers.forEach(function(u) {
-        csv += '"' + (u.username||'') + '","' + (u.device_id||'') + '","' + (u.created_at||'') + '","' + (u.last_login_at||'') + '","' + (u.is_blocked||false) + '","' + (u.user_agent||'').replace(/"/g,'""') + '"\n';
-    });
-    var blob = new Blob([csv], { type: 'text/csv' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'autocuan_users_' + new Date().toISOString().slice(0,10) + '.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-}
 
 // ===== SELF-SERVICE RESET PASSWORD =====
 function openSelfResetModal() {
     document.getElementById('selfResetModal').classList.remove('hidden');
-    document.getElementById('selfResetUsername').value = '';
-    document.getElementById('selfResetPw').value = '';
-    document.getElementById('selfResetPwConfirm').value = '';
-    document.getElementById('selfResetError').classList.add('hidden');
-    document.getElementById('selfResetSuccess').classList.add('hidden');
-    document.getElementById('selfResetUsername').focus();
+    document.getElementById('selfResetUsername').value = ''; document.getElementById('selfResetPw').value = ''; document.getElementById('selfResetPwConfirm').value = '';
+    document.getElementById('selfResetError').classList.add('hidden'); document.getElementById('selfResetSuccess').classList.add('hidden');
 }
-
-function closeSelfResetModal() {
-    document.getElementById('selfResetModal').classList.add('hidden');
-}
-
+function closeSelfResetModal() { document.getElementById('selfResetModal').classList.add('hidden'); }
 async function doSelfResetPassword() {
     var username = document.getElementById('selfResetUsername').value.trim();
     var pw = document.getElementById('selfResetPw').value;
     var pwConfirm = document.getElementById('selfResetPwConfirm').value;
     var errorEl = document.getElementById('selfResetError');
     var successEl = document.getElementById('selfResetSuccess');
-
-    errorEl.classList.add('hidden');
-    successEl.classList.add('hidden');
-
-    if (!username) {
-        errorEl.textContent = 'Username tidak boleh kosong.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
-    if (username.toLowerCase() === 'budi') {
-        errorEl.textContent = 'Akun admin tidak bisa direset dari halaman ini.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
-    if (!isValidPassword(pw)) {
-        errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
-    if (pw !== pwConfirm) {
-        errorEl.textContent = 'Konfirmasi password tidak sama.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
+    errorEl.classList.add('hidden'); successEl.classList.add('hidden');
+    if (!username) { errorEl.textContent = 'Username tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
+    if (username.toLowerCase() === 'budi') { errorEl.textContent = 'Akun admin tidak bisa direset dari halaman ini.'; errorEl.classList.remove('hidden'); return; }
+    if (!isValidPassword(pw)) { errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka.'; errorEl.classList.remove('hidden'); return; }
+    if (pw !== pwConfirm) { errorEl.textContent = 'Konfirmasi password tidak sama.'; errorEl.classList.remove('hidden'); return; }
     try {
-        var newPasswordHash = await hashPassword(pw);
-        var deviceId = getOrCreateDeviceId();
-
-        var response = await fetch('/api/reset-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: username.toLowerCase(),
-                newPasswordHash: newPasswordHash,
-                deviceId: deviceId
-            })
-        });
-
+        var newPasswordHash = await hashPassword(pw); var deviceId = getOrCreateDeviceId();
+        var response = await fetch('/api/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username.toLowerCase(), newPasswordHash: newPasswordHash, deviceId: deviceId }) });
         var data = await response.json();
-
-        if (data.success) {
-            successEl.textContent = 'Password berhasil direset. Silakan masuk.';
-            successEl.classList.remove('hidden');
-            document.getElementById('selfResetPw').value = '';
-            document.getElementById('selfResetPwConfirm').value = '';
-            setTimeout(function() { closeSelfResetModal(); }, 2000);
-        } else {
-            errorEl.textContent = data.error || 'Gagal mereset password.';
-            errorEl.classList.remove('hidden');
-        }
-    } catch(e) {
-        errorEl.textContent = 'Koneksi gagal. Coba lagi.';
-        errorEl.classList.remove('hidden');
-    }
+        if (data.success) { successEl.textContent = 'Password berhasil direset. Silakan masuk.'; successEl.classList.remove('hidden'); setTimeout(function() { closeSelfResetModal(); }, 2000); }
+        else { errorEl.textContent = data.error || 'Gagal mereset password.'; errorEl.classList.remove('hidden'); }
+    } catch(e) { errorEl.textContent = 'Koneksi gagal. Coba lagi.'; errorEl.classList.remove('hidden'); }
 }
 
-// ===== RESET PASSWORD MODAL =====
+// ===== ADMIN RESET PASSWORD MODAL =====
 var resetPasswordUsername = '';
-
 function openResetPasswordModal(username) {
     resetPasswordUsername = username;
     document.getElementById('resetPasswordTarget').textContent = 'User: ' + username;
-    document.getElementById('resetPwInput').value = '';
-    document.getElementById('resetPwConfirm').value = '';
+    document.getElementById('resetPwInput').value = ''; document.getElementById('resetPwConfirm').value = '';
     document.getElementById('resetPwError').classList.add('hidden');
     document.getElementById('resetPasswordModal').classList.remove('hidden');
-    document.getElementById('resetPwInput').focus();
 }
-
-function closeResetPasswordModal() {
-    document.getElementById('resetPasswordModal').classList.add('hidden');
-    resetPasswordUsername = '';
-}
-
+function closeResetPasswordModal() { document.getElementById('resetPasswordModal').classList.add('hidden'); resetPasswordUsername = ''; }
 async function doResetPassword() {
     var pw = document.getElementById('resetPwInput').value;
     var pwConfirm = document.getElementById('resetPwConfirm').value;
     var errorEl = document.getElementById('resetPwError');
     errorEl.classList.add('hidden');
-
-    if (!isValidPassword(pw)) {
-        errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
-    if (pw !== pwConfirm) {
-        errorEl.textContent = 'Konfirmasi password tidak sama.';
-        errorEl.classList.remove('hidden');
-        return;
-    }
-
+    if (!isValidPassword(pw)) { errorEl.textContent = 'Password terlalu lemah.'; errorEl.classList.remove('hidden'); return; }
+    if (pw !== pwConfirm) { errorEl.textContent = 'Konfirmasi password tidak sama.'; errorEl.classList.remove('hidden'); return; }
     try {
-        var newPasswordHash = await hashPassword(pw);
-        var adminName = localStorage.getItem('autocuan_user') || '';
-        var response = await fetch('/api/admin-users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                adminName: adminName,
-                action: 'reset_password',
-                username: resetPasswordUsername,
-                newPasswordHash: newPasswordHash
-            })
-        });
+        var newPasswordHash = await hashPassword(pw); var adminName = localStorage.getItem('autocuan_user') || '';
+        var response = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName, action: 'reset_password', username: resetPasswordUsername, newPasswordHash: newPasswordHash }) });
         var data = await response.json();
-        if (data.success) {
-            alert('Password user berhasil direset.');
-            closeResetPasswordModal();
-        } else {
-            errorEl.textContent = data.error || 'Gagal mereset password.';
-            errorEl.classList.remove('hidden');
-        }
-    } catch(e) {
-        errorEl.textContent = 'Koneksi gagal.';
-        errorEl.classList.remove('hidden');
-    }
+        if (data.success) { alert('Password user berhasil direset.'); closeResetPasswordModal(); }
+        else { errorEl.textContent = data.error || 'Gagal mereset password.'; errorEl.classList.remove('hidden'); }
+    } catch(e) { errorEl.textContent = 'Koneksi gagal.'; errorEl.classList.remove('hidden'); }
 }
 
 // ===== WEBSITE SETTINGS =====
 async function loadWebsiteSettings() {
     var container = document.getElementById('adminLogsContainer');
     container.innerHTML = '<div class="space-y-3">' + skeletonRows(3) + '</div>';
-
     try {
-        var response = await fetch('/api/maintenance-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'get' })
-        });
+        var response = await fetch('/api/maintenance-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get' }) });
         var data = await response.json();
-
         var config = (data.success && data.config) ? data.config : { maintenanceMode: false, message: 'Auto-Cuan sedang tidak dapat diakses sementara.' };
-
-        var html = '<div class="space-y-5">';
-        html += '<h3 class="text-base font-bold text-purple-400">Website Settings</h3>';
-
-        // Maintenance Mode toggle
-        html += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333] space-y-3">';
-        html += '<div class="flex items-center justify-between">';
-        html += '<div><p class="text-sm font-semibold text-white">Maintenance Mode</p>';
-        html += '<p class="text-xs text-gray-500">Jika aktif, user biasa dan guest akan melihat halaman maintenance.</p></div>';
-        html += '<label class="relative inline-flex items-center cursor-pointer">';
-        html += '<input type="checkbox" id="settingsMaintenanceToggle" class="sr-only peer" ' + (config.maintenanceMode ? 'checked' : '') + '>';
-        html += '<div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>';
-        html += '</label>';
-        html += '</div>';
-        html += '</div>';
-
-        // Maintenance message
-        html += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333] space-y-2">';
-        html += '<label class="text-sm font-semibold text-white">Pesan Maintenance</label>';
-        html += '<textarea id="settingsMaintenanceMsg" rows="3" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-purple-500 text-sm resize-none">' + (config.message || '') + '</textarea>';
-        html += '</div>';
-
-        // Last updated info
-        if (config.updatedAt) {
-            html += '<p class="text-xs text-gray-600">Terakhir diperbarui: ' + new Date(config.updatedAt).toLocaleString('id-ID') + ' oleh ' + (config.updatedBy || '-') + '</p>';
-        }
-
-        // Buttons
-        html += '<div class="flex flex-wrap gap-3">';
-        html += '<button onclick="saveWebsiteSettings()" class="px-5 py-2.5 rounded-xl bg-purple-500 text-sm font-bold text-white hover:bg-purple-400 transition">Simpan Pengaturan</button>';
-        html += '<button onclick="testMaintenanceScreen()" class="px-5 py-2.5 rounded-xl border border-gray-700 text-sm font-medium text-gray-300 hover:bg-gray-700/50 transition">Test Maintenance Screen</button>';
-        html += '</div>';
-
-        html += '</div>';
+        var html = '<div class="space-y-5"><h3 class="text-base font-bold text-purple-400">Website Settings</h3>';
+        html += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333] space-y-3"><div class="flex items-center justify-between"><div><p class="text-sm font-semibold text-white">Maintenance Mode</p><p class="text-xs text-gray-500">Jika aktif, user biasa dan guest akan melihat halaman maintenance.</p></div>';
+        html += '<label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="settingsMaintenanceToggle" class="sr-only peer" ' + (config.maintenanceMode ? 'checked' : '') + '><div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div></label></div></div>';
+        html += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333] space-y-2"><label class="text-sm font-semibold text-white">Pesan Maintenance</label><textarea id="settingsMaintenanceMsg" rows="3" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-purple-500 text-sm resize-none">' + (config.message || '') + '</textarea></div>';
+        if (config.updatedAt) html += '<p class="text-xs text-gray-600">Terakhir diperbarui: ' + new Date(config.updatedAt).toLocaleString('id-ID') + ' oleh ' + (config.updatedBy || '-') + '</p>';
+        html += '<div class="flex flex-wrap gap-3"><button onclick="saveWebsiteSettings()" class="px-5 py-2.5 rounded-xl bg-purple-500 text-sm font-bold text-white hover:bg-purple-400 transition">Simpan Pengaturan</button>';
+        html += '<button onclick="testMaintenanceScreen()" class="px-5 py-2.5 rounded-xl border border-gray-700 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Preview Maintenance</button></div></div>';
         container.innerHTML = html;
-    } catch(e) {
-        container.innerHTML = '<p class="text-sm text-yellow-400">Gagal memuat pengaturan.</p>';
-    }
+    } catch(e) { container.innerHTML = '<p class="text-sm text-yellow-400">Gagal memuat pengaturan.</p>'; }
 }
-
 async function saveWebsiteSettings() {
     var toggle = document.getElementById('settingsMaintenanceToggle');
     var msgEl = document.getElementById('settingsMaintenanceMsg');
-
-    var config = {
-        maintenanceMode: toggle ? toggle.checked : false,
-        message: msgEl ? msgEl.value.trim() : 'Auto-Cuan sedang tidak dapat diakses sementara.'
-    };
-
+    var config = { maintenanceMode: toggle ? toggle.checked : false, message: msgEl ? msgEl.value.trim() : 'Auto-Cuan sedang tidak dapat diakses sementara.' };
     try {
         var adminName = localStorage.getItem('autocuan_user') || '';
-        var response = await fetch('/api/maintenance-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminName: adminName, action: 'save', config: config })
-        });
+        var response = await fetch('/api/maintenance-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName, action: 'save', config: config }) });
         var data = await response.json();
-        if (data.success) {
-            maintenanceConfig = data.config;
-            alert('Pengaturan berhasil disimpan.');
-            loadWebsiteSettings();
-        } else {
-            alert('Gagal: ' + (data.error || 'Unknown error'));
-        }
-    } catch(e) {
-        alert('Koneksi gagal.');
-    }
+        if (data.success) { maintenanceConfig = data.config; alert('Pengaturan berhasil disimpan.'); loadWebsiteSettings(); }
+        else { alert('Gagal: ' + (data.error || 'Unknown error')); }
+    } catch(e) { alert('Koneksi gagal.'); }
 }
-
 function testMaintenanceScreen() {
     var msgEl = document.getElementById('settingsMaintenanceMsg');
-    var previewMsg = msgEl ? msgEl.value.trim() : 'Auto-Cuan sedang tidak dapat diakses sementara.';
-    document.getElementById('maintenancePreviewMsg').textContent = previewMsg;
+    document.getElementById('maintenancePreviewMsg').textContent = msgEl ? msgEl.value.trim() : 'Auto-Cuan sedang tidak dapat diakses sementara.';
     document.getElementById('maintenancePreviewModal').classList.remove('hidden');
 }
-</script>
 
-<script>
+
 // ===== TOAST SYSTEM =====
 function showToast(message, type) {
     type = type || 'success';
-    var container = document.getElementById('toastContainer');
-    if (!container) return;
+    var container = document.getElementById('toastContainer'); if (!container) return;
     var toast = document.createElement('div');
-    toast.className = 'toast toast-' + type;
-    toast.textContent = message;
+    toast.className = 'toast toast-' + type; toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(function() {
-        toast.classList.add('toast-exit');
-        setTimeout(function() { toast.remove(); }, 250);
-    }, 3000);
+    setTimeout(function() { toast.classList.add('toast-exit'); setTimeout(function() { toast.remove(); }, 250); }, 3000);
 }
 
 // ===== MODAL UTILITIES =====
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        var modals = ['selfResetModal', 'resetPasswordModal', 'maintenancePreviewModal', 'adminAiModal', 'adminBypassModal'];
-        for (var i = 0; i < modals.length; i++) {
-            var el = document.getElementById(modals[i]);
-            if (el && !el.classList.contains('hidden')) {
-                el.classList.add('hidden');
-                document.body.classList.remove('modal-open');
-                return;
-            }
-        }
+        var modals = ['selfResetModal', 'resetPasswordModal', 'maintenancePreviewModal', 'adminAiModal'];
+        for (var i = 0; i < modals.length; i++) { var el = document.getElementById(modals[i]); if (el && !el.classList.contains('hidden')) { el.classList.add('hidden'); return; } }
     }
 });
+document.addEventListener('click', function(e) { if (e.target.classList.contains('fixed') && e.target.classList.contains('bg-black/70')) { e.target.classList.add('hidden'); } });
 
-// Close modals on overlay click
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('fixed') && e.target.classList.contains('bg-black/70')) {
-        e.target.classList.add('hidden');
-        document.body.classList.remove('modal-open');
-    }
-});
-
-// ===== REPLACE ALERTS WITH TOASTS =====
-var _origAlert = window.alert;
+// Replace alerts with toasts
 window.alert = function(msg) {
     if (!msg) return;
-    var type = 'success';
-    var m = String(msg).toLowerCase();
+    var type = 'success'; var m = String(msg).toLowerCase();
     if (m.indexOf('gagal') !== -1 || m.indexOf('error') !== -1 || m.indexOf('salah') !== -1) type = 'error';
-    else if (m.indexOf('tidak') !== -1 || m.indexOf('warning') !== -1) type = 'warning';
+    else if (m.indexOf('tidak') !== -1 || m.indexOf('warning') !== -1 || m.indexOf('limit') !== -1) type = 'warning';
     showToast(msg, type);
 };
 
-// ===== SKELETON GENERATOR =====
-function skeletonRows(count) {
-    var html = '';
-    for (var i = 0; i < (count || 4); i++) {
-        html += '<div class="skeleton h-10 w-full mb-2"></div>';
-    }
-    return html;
-}
+function skeletonRows(count) { var html = ''; for (var i = 0; i < (count || 4); i++) html += '<div class="skeleton h-10 w-full mb-2"></div>'; return html; }
 </script>
 </body>
 </html>

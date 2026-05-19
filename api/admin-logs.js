@@ -20,15 +20,14 @@ module.exports = async function handler(req, res) {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      realtime: { autoConnect: false }
+      auth: { persistSession: false, autoRefreshToken: false }
     });
 
     // Fetch all 4 tables
     const [loginRes, searchRes, analysisRes, usageRes] = await Promise.all([
       supabase.from('login_logs').select('*').order('created_at', { ascending: false }).limit(50),
       supabase.from('search_logs').select('*').order('created_at', { ascending: false }).limit(100),
-      supabase.from('ai_analysis_logs').select('id, username, ticker, mode, result_summary, created_at').order('created_at', { ascending: false }).limit(50),
+      supabase.from('ai_analysis_logs').select('id, username, ticker, mode, result_summary, full_result_html, created_at').order('created_at', { ascending: false }).limit(50),
       supabase.from('ai_usage_logs').select('*').order('created_at', { ascending: false }).limit(100)
     ]);
 
@@ -79,6 +78,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (e) {
     console.error('admin-logs exception:', e);
-    return res.status(200).json({ success: false, error: 'Database logging belum dikonfigurasi.' });
+    return res.status(200).json({ success: false, error: 'Gagal memuat data log: ' + e.message });
   }
 };
