@@ -60,6 +60,30 @@
         .copy-btn { opacity: 0; transition: opacity 0.15s ease-out; }
         .flex.gap-3:hover .copy-btn, .copy-btn:focus { opacity: 1; }
         @media (max-width: 640px) { .copy-btn { opacity: 0.7; } }
+
+        /* ===== SIDEBAR STYLES ===== */
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 200; transition: opacity 0.2s ease; }
+        .sidebar-overlay.active { display: block; }
+        .sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: 280px; background: #0f1319; border-right: 1px solid #1c2333; z-index: 210; transform: translateX(-100%); transition: transform 0.25s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; overflow: hidden; }
+        .sidebar.open { transform: translateX(0); }
+        .sidebar-header { padding: 16px; border-bottom: 1px solid #1c2333; flex-shrink: 0; }
+        .sidebar-sessions { flex: 1; overflow-y: auto; padding: 8px; }
+        .sidebar-footer { padding: 12px 16px; border-top: 1px solid #1c2333; flex-shrink: 0; }
+        .session-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: background 0.15s; margin-bottom: 2px; }
+        .session-item:hover { background: #151a23; }
+        .session-item.active { background: #1c2333; border: 1px solid rgba(16,185,129,0.2); }
+        .session-item .session-title { flex: 1; font-size: 0.8125rem; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .session-item.active .session-title { color: #6ee7b7; }
+        .session-item .session-delete { opacity: 0; flex-shrink: 0; padding: 4px; border-radius: 6px; color: #6b7280; transition: all 0.15s; }
+        .session-item:hover .session-delete { opacity: 1; }
+        .session-item .session-delete:hover { color: #f87171; background: rgba(239,68,68,0.1); }
+        .new-chat-btn { width: 100%; padding: 10px 16px; border-radius: 10px; font-size: 0.8125rem; font-weight: 600; color: #e5e7eb; background: #151a23; border: 1px solid #242d3d; display: flex; align-items: center; gap: 8px; transition: all 0.15s; }
+        .new-chat-btn:hover { background: #1c2333; border-color: rgba(16,185,129,0.3); color: #6ee7b7; }
+        .sidebar-toggle-btn { padding: 8px; border-radius: 10px; color: #9ca3af; transition: all 0.15s; background: transparent; border: none; cursor: pointer; }
+        .sidebar-toggle-btn:hover { color: #e5e7eb; background: #151a23; }
+        @media (min-width: 768px) {
+            .sidebar { width: 300px; }
+        }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -90,11 +114,36 @@
 <!-- ===== DASHBOARD SCREEN ===== -->
 <div id="dashboardScreen" class="hidden flex flex-col min-h-screen">
 
+<!-- SIDEBAR OVERLAY (mobile) -->
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside id="chatSidebar" class="sidebar">
+    <div class="sidebar-header">
+        <button onclick="createNewSession()" class="new-chat-btn">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Chat Baru
+        </button>
+    </div>
+    <div id="sidebarSessions" class="sidebar-sessions">
+        <!-- Sessions rendered dynamically -->
+    </div>
+    <div class="sidebar-footer">
+        <button onclick="clearAllSessions()" class="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition flex items-center gap-2">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Hapus Semua Riwayat
+        </button>
+    </div>
+</aside>
+
 <!-- HEADER -->
 <header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50 flex-shrink-0">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="sidebar-toggle-btn" title="Riwayat Chat">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                 </div>
@@ -1062,59 +1111,243 @@ function copyBubbleContent(btn) {
     });
 }
 
-// ===== CHAT HISTORY (localStorage) =====
-var CHAT_HISTORY_KEY = 'autocuan_chat_history';
-var CHAT_CONTEXT_KEY = 'autocuan_chat_context';
-var MAX_HISTORY = 50;
+// ===== CHAT HISTORY - SESSION-BASED (localStorage) =====
+var SESSIONS_KEY = 'autocuan_chat_sessions';
+var MAX_SESSIONS = 25;
+var MAX_MESSAGES_PER_SESSION = 50;
+var currentSessionId = null;
+var sessions = [];
+
+function generateSessionId() { return 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
+
+function generateSessionTitle(firstMessage) {
+    var msg = String(firstMessage || '').trim();
+    if (!msg) return 'Chat baru';
+    // Remove chart upload markers
+    msg = msg.replace(/\[Chart:.*?\]/g, '').trim();
+    // Truncate to 40 chars
+    if (msg.length > 40) msg = msg.slice(0, 37) + '...';
+    return msg || 'Chat baru';
+}
+
+function loadSessions() {
+    try {
+        var raw = localStorage.getItem(SESSIONS_KEY);
+        if (raw) { sessions = JSON.parse(raw); }
+        else { sessions = []; }
+        // Migration from old format
+        var oldHistory = localStorage.getItem('autocuan_chat_history');
+        var oldContext = localStorage.getItem('autocuan_chat_context');
+        if (oldHistory && sessions.length === 0) {
+            var oldMessages = JSON.parse(oldHistory);
+            if (Array.isArray(oldMessages) && oldMessages.length > 0) {
+                var migratedSession = {
+                    id: generateSessionId(),
+                    title: 'Chat sebelumnya',
+                    messages: oldMessages.slice(0, MAX_MESSAGES_PER_SESSION),
+                    activeTicker: null,
+                    activeCompanyName: null,
+                    pendingAnalysisRequest: null,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                if (oldContext) {
+                    try {
+                        var ctx = JSON.parse(oldContext);
+                        migratedSession.activeTicker = ctx.activeTicker || null;
+                        migratedSession.activeCompanyName = ctx.activeCompanyName || null;
+                        migratedSession.pendingAnalysisRequest = ctx.pendingAnalysisRequest || null;
+                    } catch(e) {}
+                }
+                sessions = [migratedSession];
+                saveSessions();
+            }
+            localStorage.removeItem('autocuan_chat_history');
+            localStorage.removeItem('autocuan_chat_context');
+        }
+    } catch(e) { sessions = []; }
+}
+
+function saveSessions() {
+    try {
+        // Enforce max sessions
+        if (sessions.length > MAX_SESSIONS) {
+            sessions = sessions.slice(0, MAX_SESSIONS);
+        }
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+    } catch(e) {}
+}
+
+function getActiveSession() {
+    if (!currentSessionId) return null;
+    return sessions.find(function(s) { return s.id === currentSessionId; }) || null;
+}
+
+function createNewSession() {
+    var newSession = {
+        id: generateSessionId(),
+        title: 'Chat baru',
+        messages: [],
+        activeTicker: null,
+        activeCompanyName: null,
+        pendingAnalysisRequest: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    sessions.unshift(newSession);
+    saveSessions();
+    switchSession(newSession.id);
+    closeSidebar();
+}
+
+function switchSession(sessionId) {
+    currentSessionId = sessionId;
+    var session = getActiveSession();
+    // Clear chat messages
+    var container = document.getElementById('chatMessages');
+    while (container.children.length > 1) { container.removeChild(container.lastChild); }
+    // Restore session context
+    if (session) {
+        activeTicker = session.activeTicker || null;
+        activeCompanyName = session.activeCompanyName || null;
+        pendingAnalysisRequest = session.pendingAnalysisRequest || null;
+        // Restore messages
+        if (session.messages && session.messages.length > 0) {
+            session.messages.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
+        }
+        // Update TradingView if ticker context exists
+        if (activeTicker) { updateTradingViewSafe(activeTicker); }
+    } else {
+        activeTicker = null; activeCompanyName = null; pendingAnalysisRequest = null;
+    }
+    container.scrollTop = container.scrollHeight;
+    renderSidebarSessions();
+}
+
+function deleteSession(sessionId, event) {
+    if (event) { event.stopPropagation(); }
+    sessions = sessions.filter(function(s) { return s.id !== sessionId; });
+    saveSessions();
+    if (currentSessionId === sessionId) {
+        if (sessions.length > 0) {
+            switchSession(sessions[0].id);
+        } else {
+            createNewSession();
+        }
+    } else {
+        renderSidebarSessions();
+    }
+}
+
+function clearAllSessions() {
+    if (!confirm('Hapus semua riwayat chat? Tindakan ini tidak bisa dibatalkan.')) return;
+    sessions = [];
+    currentSessionId = null;
+    saveSessions();
+    createNewSession();
+    showToast('Semua riwayat dihapus.', 'success');
+}
 
 function saveChatHistory() {
     try {
+        var session = getActiveSession();
+        if (!session) {
+            // Auto-create session if none exists
+            createNewSession();
+            session = getActiveSession();
+            if (!session) return;
+        }
         var container = document.getElementById('chatMessages');
         var messages = container.querySelectorAll('.flex.gap-3, .flex.justify-end');
         var history = [];
         messages.forEach(function(el, idx) {
             if (idx === 0) return; // skip welcome message
-            if (history.length >= MAX_HISTORY) return;
+            if (history.length >= MAX_MESSAGES_PER_SESSION) return;
             history.push(el.outerHTML);
         });
-        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
-        // Save context
-        var context = { activeTicker: activeTicker, activeCompanyName: activeCompanyName, pendingAnalysisRequest: pendingAnalysisRequest, savedAt: new Date().toISOString() };
-        localStorage.setItem(CHAT_CONTEXT_KEY, JSON.stringify(context));
+        session.messages = history;
+        session.activeTicker = activeTicker;
+        session.activeCompanyName = activeCompanyName;
+        session.pendingAnalysisRequest = pendingAnalysisRequest;
+        session.updatedAt = new Date().toISOString();
+        // Update title from first user message if still default
+        if (session.title === 'Chat baru' && history.length > 0) {
+            var firstUserMsg = container.querySelector('.flex.justify-end .text-gray-100');
+            if (firstUserMsg) {
+                session.title = generateSessionTitle(firstUserMsg.textContent);
+            }
+        }
+        // Move active session to top
+        sessions = sessions.filter(function(s) { return s.id !== session.id; });
+        sessions.unshift(session);
+        saveSessions();
+        renderSidebarSessions();
     } catch(e) {}
 }
+
 function loadChatHistory() {
-    try {
-        var raw = localStorage.getItem(CHAT_HISTORY_KEY);
-        if (raw) {
-            var history = JSON.parse(raw);
-            if (Array.isArray(history) && history.length > 0) {
-                var container = document.getElementById('chatMessages');
-                history.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
-                container.scrollTop = container.scrollHeight;
-            }
-        }
-        // Restore context
-        var ctxRaw = localStorage.getItem(CHAT_CONTEXT_KEY);
-        if (ctxRaw) {
-            var ctx = JSON.parse(ctxRaw);
-            if (ctx.activeTicker && isValidTicker(ctx.activeTicker)) {
-                activeTicker = ctx.activeTicker;
-                activeCompanyName = ctx.activeCompanyName || getCompanyName(ctx.activeTicker);
-                pendingAnalysisRequest = ctx.pendingAnalysisRequest || null;
-            }
-        }
-    } catch(e) {}
+    loadSessions();
+    if (sessions.length === 0) {
+        createNewSession();
+    } else {
+        // Load most recent session
+        switchSession(sessions[0].id);
+    }
+    renderSidebarSessions();
 }
+
 function clearChat() {
-    if (!confirm('Hapus semua riwayat chat?')) return;
-    localStorage.removeItem(CHAT_HISTORY_KEY);
-    localStorage.removeItem(CHAT_CONTEXT_KEY);
+    var session = getActiveSession();
+    if (!session) return;
+    if (session.messages.length === 0) return;
+    if (!confirm('Hapus chat sesi ini?')) return;
+    session.messages = [];
+    session.activeTicker = null;
+    session.activeCompanyName = null;
+    session.pendingAnalysisRequest = null;
+    session.title = 'Chat baru';
     activeTicker = null; activeCompanyName = null; pendingAnalysisRequest = null;
     var container = document.getElementById('chatMessages');
-    // Keep only first child (welcome message)
     while (container.children.length > 1) { container.removeChild(container.lastChild); }
+    saveSessions();
+    renderSidebarSessions();
     showToast('Chat dihapus.', 'success');
+}
+
+// ===== SIDEBAR UI =====
+function toggleSidebar() {
+    var sidebar = document.getElementById('chatSidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+}
+function closeSidebar() {
+    var sidebar = document.getElementById('chatSidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+}
+
+function renderSidebarSessions() {
+    var container = document.getElementById('sidebarSessions');
+    if (!container) return;
+    if (sessions.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-600 text-center py-4">Belum ada riwayat chat</p>';
+        return;
+    }
+    var html = '';
+    sessions.forEach(function(session) {
+        var isActive = session.id === currentSessionId;
+        var tickerBadge = session.activeTicker ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 flex-shrink-0">' + session.activeTicker + '</span>' : '';
+        html += '<div class="session-item' + (isActive ? ' active' : '') + '" onclick="switchSession(\'' + session.id + '\');closeSidebar()">';
+        html += '<svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>';
+        html += '<span class="session-title">' + escapeHtml(session.title) + '</span>';
+        html += tickerBadge;
+        html += '<button class="session-delete" onclick="deleteSession(\'' + session.id + '\', event)" title="Hapus sesi">';
+        html += '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
+        html += '</button></div>';
+    });
+    container.innerHTML = html;
 }
 
 
