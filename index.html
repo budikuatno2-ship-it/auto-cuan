@@ -227,12 +227,10 @@
                 <!-- Upload button -->
                 <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
                 <div class="flex-shrink-0 relative">
-                    <button onclick="document.getElementById('fileInput').click()" class="p-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload File (maks 8)">
+                    <button onclick="document.getElementById('fileInput').click()" class="p-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload File (maks 8) - Ctrl+V untuk paste gambar">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </button>
-                    <span id="fileCountBadge" class="hidden absolute -top-1 -right-1 bg-emerald-500 text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"></span>
                 </div>
-                <span class="hidden sm:inline text-[10px] text-gray-600 self-center">Ctrl+V paste</span>
                 <!-- Text input -->
                 <div class="flex-1 relative">
                     <textarea id="chatInput" rows="1" placeholder="Tanya saham, kirim ticker + harga, atau upload chart..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/40 text-sm resize-none overflow-hidden" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
@@ -814,13 +812,7 @@ function renderFilePreview() {
 }
 
 function updateFileCountBadge() {
-    var badge = document.getElementById('fileCountBadge');
-    if (selectedFiles.length > 0) {
-        badge.textContent = selectedFiles.length;
-        badge.classList.remove('hidden');
-    } else {
-        badge.classList.add('hidden');
-    }
+    // Badge removed - files visible in attachment preview area
 }
 
 function removeFile(fileId) {
@@ -917,6 +909,26 @@ var activeTicker = null;
 var activeCompanyName = null;
 var pendingAnalysisRequest = null;
 var latestAnalysisContext = {
+    ticker: null,
+    companyName: null,
+    currentPrice: null,
+    detectedTimeframes: [],
+    uploadedEvidenceSummary: null,
+    chartSummary: null,
+    keyLevels: null,
+    finalDecision: null,
+    score: null,
+    entryArea: null,
+    stopLoss: null,
+    takeProfits: null,
+    riskReward: null,
+    fcaStatus: 'not_detected',
+    newsProvided: false,
+    newsSummary: null,
+    corporateActionSummary: null,
+    orderbookProvided: false,
+    orderbookSummary: null,
+    marketMakerCodeSummary: null,
     brokerSummaryProvided: false,
     brokerSummaryPeriods: [],
     brokerSummaryBias: null,
@@ -924,8 +936,11 @@ var latestAnalysisContext = {
     dominantNetBuyers: [],
     dominantNetSellers: [],
     brokerSummaryNotes: '',
-    brokerSummaryLastUpdated: null
+    lastUserQuestion: null,
+    lastAssistantAnswer: null,
+    lastUpdated: null
 };
+var lastSentMessage = '';
 
 function detectBrokerSummaryIntent(message) {
     var keywords = ['broker summary', 'net buy', 'net sell', 'akumulasi broker', 'distribusi broker', 'bandarmology', 'top buyer', 'top seller', 'broker code', 'bandar akum', 'broker akumulasi'];
@@ -938,6 +953,26 @@ function detectBrokerSummaryIntent(message) {
 
 function resetBrokerSummaryContext() {
     latestAnalysisContext = {
+        ticker: null,
+        companyName: null,
+        currentPrice: null,
+        detectedTimeframes: [],
+        uploadedEvidenceSummary: null,
+        chartSummary: null,
+        keyLevels: null,
+        finalDecision: null,
+        score: null,
+        entryArea: null,
+        stopLoss: null,
+        takeProfits: null,
+        riskReward: null,
+        fcaStatus: 'not_detected',
+        newsProvided: false,
+        newsSummary: null,
+        corporateActionSummary: null,
+        orderbookProvided: false,
+        orderbookSummary: null,
+        marketMakerCodeSummary: null,
         brokerSummaryProvided: false,
         brokerSummaryPeriods: [],
         brokerSummaryBias: null,
@@ -945,8 +980,96 @@ function resetBrokerSummaryContext() {
         dominantNetBuyers: [],
         dominantNetSellers: [],
         brokerSummaryNotes: '',
-        brokerSummaryLastUpdated: null
+        lastUserQuestion: null,
+        lastAssistantAnswer: null,
+        lastUpdated: null
     };
+}
+function resetAnalysisContext() { resetBrokerSummaryContext(); }
+
+function updateAnalysisContext(msg, html) {
+    latestAnalysisContext.ticker = activeTicker || latestAnalysisContext.ticker;
+    latestAnalysisContext.companyName = activeCompanyName || latestAnalysisContext.companyName;
+    // Detect price from context
+    var priceMatch = html ? html.match(/(?:harga|price|terakhir)\s*[:=]?\s*(?:Rp\.?\s*)?(\d[\d.,]*)/i) : null;
+    if (priceMatch) latestAnalysisContext.currentPrice = priceMatch[1].replace(/[.,]/g, '');
+    // Extract decision label
+    var decisionLabels = ['CUT LOSS', 'TAKE PROFIT PARTIAL', 'HOLD', 'SWING VALID', 'SCALP ONLY', 'BUY ON PULLBACK', 'BUY ON CONFIRMATION', 'SPECULATIVE BUY', 'NEED CHART CONFIRMATION', 'WATCHLIST', 'WAIT', 'AVOID'];
+    var textContent = html ? html.replace(/<[^>]*>/g, ' ') : '';
+    for (var i = 0; i < decisionLabels.length; i++) {
+        if (textContent.indexOf(decisionLabels[i]) !== -1) {
+            latestAnalysisContext.finalDecision = decisionLabels[i];
+            break;
+        }
+    }
+    // Extract score
+    var scoreMatch = textContent.match(/(\d{1,2})\s*\/\s*(\d{2,3})/);
+    if (scoreMatch) latestAnalysisContext.score = scoreMatch[1] + '/' + scoreMatch[2];
+    // Store last interaction
+    latestAnalysisContext.lastUserQuestion = msg ? String(msg).slice(0, 200) : latestAnalysisContext.lastUserQuestion;
+    latestAnalysisContext.lastAssistantAnswer = textContent ? textContent.trim().slice(0, 200) : latestAnalysisContext.lastAssistantAnswer;
+    latestAnalysisContext.lastUpdated = new Date().toISOString();
+    // Detect news keywords
+    if (msg) {
+        var msgLower = String(msg).toLowerCase();
+        if (/news|katalis|corporate action|right issue|inbreng|dividen|akuisisi|merger|private placement/.test(msgLower)) {
+            latestAnalysisContext.newsProvided = true;
+        }
+    }
+    // Broker summary extraction (keep existing logic)
+    if (html && html.toLowerCase().indexOf('broker summary check') !== -1) {
+        latestAnalysisContext.brokerSummaryProvided = true;
+        var biasMatch = html.match(/(?:bias|indikasi|klasifikasi)\s*[:=]?\s*(?:indikasi\s*)?(akumulasi|distribusi|mixed|rotation|retail|unclear|rotasi)/i);
+        if (biasMatch) latestAnalysisContext.brokerSummaryBias = biasMatch[1].toLowerCase();
+        var strengthMatch = html.match(/(?:strength|kekuatan|konsentrasi)\s*[:=]?\s*(low|medium|high|rendah|sedang|tinggi)/i);
+        if (strengthMatch) latestAnalysisContext.brokerSummaryStrength = strengthMatch[1].toLowerCase();
+        var periodMatch = html.match(/(?:period[e]?|periode)\s*(?:detected|terdeteksi)?\s*[:=]?\s*(today|7\s*d(?:ay)?|this\s*month|1\s*m(?:onth)?|3\s*m(?:onth)?|hari\s*ini|7\s*hari|bulan\s*ini|1\s*bulan|3\s*bulan)/gi);
+        if (periodMatch) {
+            latestAnalysisContext.brokerSummaryPeriods = periodMatch.map(function(m) {
+                return m.replace(/.*[:=]\s*/i, '').trim();
+            });
+        }
+    }
+}
+
+function hideEmptySections(container) {
+    var sections = container.querySelectorAll(':scope > div');
+    sections.forEach(function(section) {
+        var heading = section.querySelector('h3, h4');
+        if (!heading) return;
+        var headingText = heading.textContent.toLowerCase();
+        var isOptionalSection = headingText.indexOf('final note') !== -1 || headingText.indexOf('catatan akhir') !== -1 || headingText.indexOf('peringatan') !== -1;
+        if (!isOptionalSection) return;
+        var paragraphs = section.querySelectorAll('p, li, span');
+        var hasContent = false;
+        paragraphs.forEach(function(p) {
+            if (p.textContent.trim().length > 5) hasContent = true;
+        });
+        if (!hasContent) section.style.display = 'none';
+    });
+    var warningDivs = container.querySelectorAll('[class*="red-"], [class*="warning"]');
+    warningDivs.forEach(function(div) {
+        if (div.textContent.trim().length < 5 && !div.querySelector('img')) {
+            div.style.display = 'none';
+        }
+    });
+}
+
+function buildContextForApi() {
+    var contextForApi = {};
+    if (latestAnalysisContext.ticker) contextForApi.ticker = latestAnalysisContext.ticker;
+    if (latestAnalysisContext.currentPrice) contextForApi.currentPrice = latestAnalysisContext.currentPrice;
+    if (latestAnalysisContext.finalDecision) contextForApi.finalDecision = latestAnalysisContext.finalDecision;
+    if (latestAnalysisContext.score) contextForApi.score = latestAnalysisContext.score;
+    if (latestAnalysisContext.entryArea) contextForApi.entryArea = latestAnalysisContext.entryArea;
+    if (latestAnalysisContext.stopLoss) contextForApi.stopLoss = latestAnalysisContext.stopLoss;
+    if (latestAnalysisContext.takeProfits) contextForApi.takeProfits = latestAnalysisContext.takeProfits;
+    if (latestAnalysisContext.chartSummary) contextForApi.chartSummary = latestAnalysisContext.chartSummary;
+    if (latestAnalysisContext.brokerSummaryBias) contextForApi.brokerSummaryBias = latestAnalysisContext.brokerSummaryBias;
+    if (latestAnalysisContext.newsProvided) contextForApi.newsProvided = true;
+    if (latestAnalysisContext.newsSummary) contextForApi.newsSummary = latestAnalysisContext.newsSummary;
+    if (latestAnalysisContext.fcaStatus && latestAnalysisContext.fcaStatus !== 'not_detected') contextForApi.fcaStatus = latestAnalysisContext.fcaStatus;
+    return Object.keys(contextForApi).length > 0 ? contextForApi : undefined;
 }
 
 function setActiveTicker(ticker) {
@@ -1189,6 +1312,9 @@ async function handleSend() {
 
     if (!msg && !hasFile) return;
 
+    // Track last sent message for regenerate
+    lastSentMessage = msg;
+
     // Determine what to do based on mode
     var mode = currentMode;
     var intent = null;
@@ -1284,13 +1410,14 @@ async function handleAnalysis(msg, intent) {
 
     try {
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker: ticker, currentPrice: price, fcaStatus: detectFCAStatus(msg, ticker), evidenceLevel: 1, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify({ ticker: ticker, currentPrice: price, fcaStatus: detectFCAStatus(msg, ticker), evidenceLevel: 1, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
         if (!response.ok) throw new Error(data.error || 'Server error.');
         if (data.html) {
             var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
             addAIBubble(html, true);
+            updateAnalysisContext(msg, html);
             incrementAnalysisUsage(); updateUsageCounter();
             logUsage(ticker, 'ai_success'); logAnalysisResult(ticker, 'ticker', html);
         } else { throw new Error('Tidak ada hasil.'); }
@@ -1315,10 +1442,10 @@ async function handleTickerQuestion(msg, ticker) {
         var company = getCompanyName(ticker);
         var enrichedMsg = msg + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError('Gagal: ' + e.message); logUsage(ticker, 'chat_error'); }
     finally { enableSend(); saveChatHistory(); }
@@ -1342,10 +1469,10 @@ async function handleChat(msg) {
             enrichedMsg += '\n[Konteks Broker Summary sebelumnya: bias=' + (latestAnalysisContext.brokerSummaryBias || 'unknown') + ', strength=' + (latestAnalysisContext.brokerSummaryStrength || 'unknown') + ', periods=' + (latestAnalysisContext.brokerSummaryPeriods.join(',') || 'unknown') + ']';
         }
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError('Gagal: ' + e.message); logUsage('CHAT', 'chat_error'); }
     finally { enableSend(); saveChatHistory(); }
@@ -1399,28 +1526,11 @@ async function handleChartUpload(msg) {
         var fcaStatus = detectFCAStatus(msg, activeTicker || chartTicker, docsArray);
         clearAllFiles();
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images: imagesArray, documents: docsArray, image: null, mimeType: imagesArray.length > 0 ? imagesArray[0].mimeType : 'image/png', source: 'chart_upload', timeframe: firstImageTimeframe, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, fcaStatus: fcaStatus, evidenceLevel: evidenceLevel, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify({ images: imagesArray, documents: docsArray, image: null, mimeType: imagesArray.length > 0 ? imagesArray[0].mimeType : 'image/png', source: 'chart_upload', timeframe: firstImageTimeframe, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, fcaStatus: fcaStatus, evidenceLevel: evidenceLevel, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         imagesArray = null;
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html);
-            // Detect broker summary in response
-            if (html.toLowerCase().indexOf('broker summary check') !== -1) {
-                latestAnalysisContext.brokerSummaryProvided = true;
-                latestAnalysisContext.brokerSummaryLastUpdated = new Date().toISOString();
-                // Try to extract bias from response
-                var biasMatch = html.match(/(?:bias|indikasi|klasifikasi)\s*[:=]?\s*(?:indikasi\s*)?(akumulasi|distribusi|mixed|rotation|retail|unclear|rotasi)/i);
-                if (biasMatch) latestAnalysisContext.brokerSummaryBias = biasMatch[1].toLowerCase();
-                var strengthMatch = html.match(/(?:strength|kekuatan|konsentrasi)\s*[:=]?\s*(low|medium|high|rendah|sedang|tinggi)/i);
-                if (strengthMatch) latestAnalysisContext.brokerSummaryStrength = strengthMatch[1].toLowerCase();
-                var periodMatch = html.match(/(?:period[e]?|periode)\s*(?:detected|terdeteksi)?\s*[:=]?\s*(today|7\s*d(?:ay)?|this\s*month|1\s*m(?:onth)?|3\s*m(?:onth)?|hari\s*ini|7\s*hari|bulan\s*ini|1\s*bulan|3\s*bulan)/gi);
-                if (periodMatch) {
-                    latestAnalysisContext.brokerSummaryPeriods = periodMatch.map(function(m) {
-                        return m.replace(/.*[:=]\s*/i, '').trim();
-                    });
-                }
-            }
-        }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); updateAnalysisContext(msg, html); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
         else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError('Gambar chart belum bisa dianalisis. Coba upload ulang dengan resolusi lebih jelas.'); logUsage('CHART_UPLOAD', 'ai_error'); }
     finally { enableSend(); saveChatHistory(); }
@@ -1455,9 +1565,12 @@ function addAIBubble(html, isStructured) {
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up';
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
-    var copyBtnHtml = '<div class="mt-2 flex justify-end"><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
+    var copyBtnHtml = '<div class="mt-2 flex items-center gap-2 justify-end"><button onclick="regenerateLastAnswer(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">Regenerate</button><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
     div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] overflow-x-auto"><div class="ai-content">' + html + '</div>' + copyBtnHtml + '</div>';
     container.appendChild(div);
+    // Hide empty sections
+    var contentDiv = div.querySelector('.ai-content');
+    if (contentDiv) hideEmptySections(contentDiv);
     container.scrollTop = container.scrollHeight;
 }
 function addAIError(msg) { addAIBubble('<p class="text-sm text-red-400">' + escapeHtml(msg) + '</p>'); }
@@ -1482,6 +1595,17 @@ function copyBubbleContent(btn) {
     });
 }
 
+async function regenerateLastAnswer(btn) {
+    if (isSending) return;
+    var aiBubble = btn.closest('.flex.gap-3');
+    if (aiBubble) aiBubble.remove();
+    if (lastSentMessage) {
+        var input = document.getElementById('chatInput');
+        input.value = lastSentMessage;
+        await handleSend();
+    }
+}
+
 // ===== CHAT HISTORY - SESSION-BASED (localStorage) =====
 var SESSIONS_KEY = 'autocuan_chat_sessions';
 var MAX_SESSIONS = 25;
@@ -1494,9 +1618,15 @@ function generateSessionId() { return 'sess_' + Date.now() + '_' + Math.random()
 function generateSessionTitle(firstMessage) {
     var msg = String(firstMessage || '').trim();
     if (!msg) return 'Chat baru';
-    // Remove chart upload markers
-    msg = msg.replace(/\[Chart:.*?\]/g, '').trim();
-    // Truncate to 40 chars
+    msg = msg.replace(/\[.*?\]/g, '').trim();
+    // If we have an active ticker, use it for title
+    if (activeTicker) {
+        var company = getCompanyName(activeTicker);
+        if (msg.toLowerCase().indexOf('chart') !== -1 || selectedFiles.length > 0) {
+            return activeTicker + ' Chart Review';
+        }
+        return activeTicker + ' Analysis';
+    }
     if (msg.length > 40) msg = msg.slice(0, 37) + '...';
     return msg || 'Chat baru';
 }
@@ -1583,7 +1713,7 @@ function switchSession(sessionId) {
         activeTicker = session.activeTicker || null;
         activeCompanyName = session.activeCompanyName || null;
         pendingAnalysisRequest = session.pendingAnalysisRequest || null;
-        latestAnalysisContext = session.latestAnalysisContext || { brokerSummaryProvided: false, brokerSummaryPeriods: [], brokerSummaryBias: null, brokerSummaryStrength: null, dominantNetBuyers: [], dominantNetSellers: [], brokerSummaryNotes: '', brokerSummaryLastUpdated: null };
+        latestAnalysisContext = session.latestAnalysisContext || { ticker: null, companyName: null, currentPrice: null, detectedTimeframes: [], uploadedEvidenceSummary: null, chartSummary: null, keyLevels: null, finalDecision: null, score: null, entryArea: null, stopLoss: null, takeProfits: null, riskReward: null, fcaStatus: 'not_detected', newsProvided: false, newsSummary: null, corporateActionSummary: null, orderbookProvided: false, orderbookSummary: null, marketMakerCodeSummary: null, brokerSummaryProvided: false, brokerSummaryPeriods: [], brokerSummaryBias: null, brokerSummaryStrength: null, dominantNetBuyers: [], dominantNetSellers: [], brokerSummaryNotes: '', lastUserQuestion: null, lastAssistantAnswer: null, lastUpdated: null };
         // Restore messages
         if (session.messages && session.messages.length > 0) {
             session.messages.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
