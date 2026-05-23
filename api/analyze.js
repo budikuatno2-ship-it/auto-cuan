@@ -256,6 +256,14 @@ function generateFallback(ticker, price) {
   const worstCase = Math.max(Math.round(p * 0.82), p - 4);
   const score = p > 500 ? 48 : p > 200 ? 45 : p > 100 ? 42 : p > 50 ? 40 : 38;
 
+  // Compute sub-scores that sum to the overall score
+  // Without chart: Technical and Entry are low, Risk is moderate, News is 0
+  const newsScore = 0;
+  const entryScore = Math.min(Math.round(score * 0.18), 25);
+  const riskScore = Math.min(Math.round(score * 0.45), 25);
+  // Technical absorbs the remainder to ensure exact sum
+  const techScore = score - entryScore - riskScore - newsScore;
+
   return `
 <div class="space-y-5">
   <!-- 1. Data Quality Check -->
@@ -281,19 +289,19 @@ function generateFallback(ticker, price) {
     <div class="grid grid-cols-2 gap-3">
       <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
         <p class="text-xs text-gray-500">Technical</p>
-        <p class="text-sm font-bold text-red-400">5/25</p>
+        <p class="text-sm font-bold text-red-400">${techScore}/25</p>
       </div>
       <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
         <p class="text-xs text-gray-500">Entry Precision</p>
-        <p class="text-sm font-bold text-red-400">5/25</p>
+        <p class="text-sm font-bold text-red-400">${entryScore}/25</p>
       </div>
       <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
         <p class="text-xs text-gray-500">Risk Management</p>
-        <p class="text-sm font-bold text-yellow-400">12/25</p>
+        <p class="text-sm font-bold text-yellow-400">${riskScore}/25</p>
       </div>
       <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
         <p class="text-xs text-gray-500">News/Catalyst</p>
-        <p class="text-sm font-bold text-red-400">0/25</p>
+        <p class="text-sm font-bold text-red-400">${newsScore}/25</p>
       </div>
     </div>
     <div class="mt-3 bg-[#0b0e14] rounded-lg p-3 border border-yellow-500/30 text-center">
@@ -614,6 +622,11 @@ async function handleChartUpload(req, res, imageData, mimeType) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const { timeframe, ticker, currentPrice } = req.body || {};
 
+  // Sanitize inputs to prevent prompt injection
+  const safeTicker = ticker ? String(ticker).replace(/[^A-Za-z]/g, '').slice(0, 10).toUpperCase() : null;
+  const safePrice = currentPrice ? String(currentPrice).replace(/[^0-9.]/g, '').slice(0, 15) : null;
+  const safeTimeframe = timeframe ? String(timeframe).replace(/[^A-Za-z0-9]/g, '').slice(0, 5) : null;
+
   if (!GEMINI_API_KEY) {
     return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center"><p class="text-yellow-400 font-semibold">Gemini API belum dikonfigurasi.</p><p class="text-yellow-300/70 text-sm mt-2">Hubungi admin untuk mengaktifkan fitur analisis chart.</p></div>' });
   }
@@ -626,11 +639,11 @@ async function handleChartUpload(req, res, imageData, mimeType) {
 
   // Build enhanced prompt with additional context if available
   let chartPrompt = CHART_SYSTEM_PROMPT;
-  if (ticker || currentPrice || timeframe) {
+  if (safeTicker || safePrice || safeTimeframe) {
     chartPrompt += '\n\n=== KONTEKS TAMBAHAN DARI USER ===\n';
-    if (ticker) chartPrompt += '- Ticker: ' + ticker.toUpperCase() + '\n';
-    if (currentPrice) chartPrompt += '- Harga sekarang: Rp ' + currentPrice + '\n';
-    if (timeframe) chartPrompt += '- Timeframe chart: ' + timeframe + '\n';
+    if (safeTicker) chartPrompt += '- Ticker: ' + safeTicker + '\n';
+    if (safePrice) chartPrompt += '- Harga sekarang: Rp ' + safePrice + '\n';
+    if (safeTimeframe) chartPrompt += '- Timeframe chart: ' + safeTimeframe + '\n';
     chartPrompt += 'Gunakan informasi ini untuk memperkuat analisis chart.';
   }
 
