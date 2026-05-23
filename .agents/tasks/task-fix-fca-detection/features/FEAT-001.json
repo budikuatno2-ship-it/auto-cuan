@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "fix",
   "description": "Fix FCA detection logic in both frontend (index.html) and backend (api/analyze.js) to prevent the AI from hallucinating FCA status. The frontend detectFCAStatus() must be expanded to support all required status values. The backend buildFCASection() must be updated to handle the full status enum. The AI prompts (buildPrompt and CHART_SYSTEM_PROMPT) must include explicit anti-FCA-hallucination instructions that pass structured FCA status to the AI and forbid the AI from inferring FCA status on its own.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1: Update frontend detectFCAStatus() in index.html (around line 998) to return the full set of status values: 'confirmed_by_user', 'confirmed_by_mapping', 'confirmed_by_uploaded_evidence', 'not_detected', 'unconfirmed'. Rename existing return values: 'confirmed_mapping' becomes 'confirmed_by_mapping', 'user_mentioned' becomes 'confirmed_by_user'. Add detection for uploaded evidence (check if document text contains FCA-related keywords). Add 'unconfirmed' status for ambiguous cases (e.g., user asks 'apakah ini FCA?' or 'kalau ini FCA gimana?'). Add a helper function getFcaStatus(ticker, userText, uploadedEvidence) that returns { status, label, reason }.",
     "Step 2: Update backend buildFCASection() in api/analyze.js to handle the new status values. It should only show full FCA warning for 'confirmed_by_user', 'confirmed_by_mapping', 'confirmed_by_uploaded_evidence'. For 'not_detected' it should return empty string (already does this). For 'unconfirmed' it should return a mild note saying FCA status cannot be confirmed. Update statusLabel to use the correct labels per the spec.",
@@ -33,5 +33,5 @@
     "Run: node -e \"const code = require('fs').readFileSync('api/analyze.js','utf8'); if(code.includes('confirmed_by_user') && code.includes('confirmed_by_mapping') && code.includes('confirmed_by_uploaded_evidence') && code.includes('not_detected') && code.includes('unconfirmed') && code.includes('JANGAN') && code.includes('FCA Status')) { console.log('PASS: Backend FCA logic updated'); } else { console.log('FAIL'); process.exit(1); }\""
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All changes implemented successfully. node -c passes for both api/analyze.js and assets/fca-stocks.js. All verification scripts pass. Frontend detectFCAStatus now supports 5 status values with uploaded evidence detection. Backend passes structured FCA context to AI in all modes (ticker, chart upload). CHART_SYSTEM_PROMPT includes explicit anti-FCA-hallucination rules. NODE_OPTIONS must be cleared to run node in this sandbox environment."
 }
