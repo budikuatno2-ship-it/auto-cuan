@@ -388,6 +388,7 @@
 
 
 <script src="/assets/idx-tickers.js"></script>
+<script src="/assets/fca-stocks.js"></script>
 <script>
 // ===== DEVICE ID =====
 function getOrCreateDeviceId() {
@@ -988,6 +989,59 @@ function detectTicker(message) {
     return null;
 }
 
+// ===== FCA DETECTION =====
+function isFCAStock(ticker) {
+    if (!ticker || !window.FCA_STOCKS) return false;
+    return !!window.FCA_STOCKS[String(ticker).toUpperCase().trim()];
+}
+
+function detectFCAStatus(message, ticker) {
+    // Check local mapping first
+    if (ticker && isFCAStock(ticker)) return 'confirmed_mapping';
+    // Check user message for FCA keywords
+    if (message) {
+        var lower = String(message).toLowerCase();
+        var fcaKeywords = ['fca', 'full call auction', 'papan pemantauan khusus', 'papan pemantauan', 'saham fca'];
+        for (var i = 0; i < fcaKeywords.length; i++) {
+            if (lower.indexOf(fcaKeywords[i]) !== -1) return 'user_mentioned';
+        }
+    }
+    return 'not_detected';
+}
+
+// ===== EVIDENCE LEVEL =====
+function getEvidenceLevel() {
+    var imageFiles = selectedFiles.filter(function(f) { return SUPPORTED_IMAGE_TYPES.indexOf(f.type) !== -1; });
+    var docFiles = selectedFiles.filter(function(f) { return SUPPORTED_DOC_TYPES.indexOf(f.type) !== -1; });
+    var hasImages = imageFiles.length > 0;
+    var imageCount = imageFiles.length;
+    var hasDocuments = docFiles.length > 0;
+    
+    if (!hasImages && !hasDocuments) return 1;
+    if (imageCount === 1 && !hasDocuments) return 2;
+    if (imageCount >= 2) return hasDocuments ? 4 : 3;
+    if (hasDocuments) return 2;
+    return 1;
+}
+
+// ===== DOCUMENT TEXT EXTRACTION =====
+function extractDocumentText(file) {
+    return new Promise(function(resolve) {
+        var type = file.type;
+        // TXT and CSV - read as text
+        if (type === 'text/plain' || type === 'text/csv') {
+            var reader = new FileReader();
+            reader.onload = function(e) { resolve({ text: e.target.result || '', filename: file.name, type: type }); };
+            reader.onerror = function() { resolve({ text: '', filename: file.name, type: type }); };
+            reader.readAsText(file);
+            return;
+        }
+        // For PDF, DOC, DOCX, XLS, XLSX - cannot extract in browser without heavy libs
+        // Return empty text with metadata - the file info is still useful context
+        resolve({ text: '', filename: file.name, type: type });
+    });
+}
+
 // ===== AUTO MODE DETECTION (IMPROVED) =====
 function detectIntent(message) {
     var msg = message.trim();
@@ -1139,7 +1193,7 @@ async function handleAnalysis(msg, intent) {
 
     try {
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker: ticker, currentPrice: price, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify({ ticker: ticker, currentPrice: price, fcaStatus: detectFCAStatus(msg, ticker), evidenceLevel: 1, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
         var data = await response.json();
         removeLoadingBubble();
         if (!response.ok) throw new Error(data.error || 'Server error.');
@@ -1219,23 +1273,45 @@ async function handleChartUpload(msg) {
     var fileName = imageFile.name;
     var detectedTimeframe = detectTimeframeFromFilename(fileName);
     var tfLabel = detectedTimeframe ? ' ' + detectedTimeframe : '';
-    var fileCountLabel = selectedFiles.length > 1 ? ' [' + selectedFiles.length + ' file terlampir]' : '';
-    addUserBubble((msg ? msg + '\n' : '') + '[Chart' + tfLabel + ': ' + fileName + ']' + fileCountLabel);
+    // User bubble with file count
+    var fileLabel = '';
+    if (selectedFiles.length === 1) {
+        fileLabel = '[' + selectedFiles[0].name + ']';
+    } else if (selectedFiles.length > 1) {
+        fileLabel = '[' + selectedFiles.length + ' file terlampir]';
+    }
+    addUserBubble((msg ? msg + '\n' : '') + fileLabel);
     addLoadingBubble();
     disableSend(); clearInput();
     logSearch('CHART_UPLOAD', 'chart_upload'); logUsage('CHART_UPLOAD', 'ai_analysis_started');
     try {
-        var base64Data = await fileToBase64(imageFile.file);
-        var mimeType = imageFile.type;
+        // Build images array from all image files
+        var imageFiles = selectedFiles.filter(function(f) { return SUPPORTED_IMAGE_TYPES.indexOf(f.type) !== -1; });
+        var docFiles = selectedFiles.filter(function(f) { return SUPPORTED_DOC_TYPES.indexOf(f.type) !== -1; });
+        var imagesArray = [];
+        for (var i = 0; i < imageFiles.length; i++) {
+            var imgData = await fileToBase64(imageFiles[i].file);
+            var imgTimeframe = detectTimeframeFromFilename(imageFiles[i].name);
+            imagesArray.push({ data: imgData, mimeType: imageFiles[i].type, filename: imageFiles[i].name, timeframe: imgTimeframe || null });
+        }
+        // Build documents array
+        var docsArray = [];
+        for (var j = 0; j < docFiles.length; j++) {
+            var docResult = await extractDocumentText(docFiles[j].file);
+            docsArray.push(docResult);
+        }
+        var firstImageTimeframe = detectedTimeframe || null;
+        var evidenceLevel = getEvidenceLevel();
+        var fcaStatus = detectFCAStatus(msg, activeTicker || chartTicker);
         clearAllFiles();
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Data, mimeType: mimeType, source: 'chart_upload', timeframe: detectedTimeframe || null, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
-        base64Data = null;
+            body: JSON.stringify({ images: imagesArray, documents: docsArray, image: imagesArray.length > 0 ? imagesArray[0].data : null, mimeType: imagesArray.length > 0 ? imagesArray[0].mimeType : 'image/png', source: 'chart_upload', timeframe: firstImageTimeframe, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, fcaStatus: fcaStatus, evidenceLevel: evidenceLevel, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+        imagesArray = null;
         var data = await response.json();
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
         else { throw new Error('Tidak ada hasil.'); }
-    } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError('Gagal: ' + e.message); logUsage('CHART_UPLOAD', 'ai_error'); base64Data = null; }
+    } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError('Gambar chart belum bisa dianalisis. Coba upload ulang dengan resolusi lebih jelas.'); logUsage('CHART_UPLOAD', 'ai_error'); }
     finally { enableSend(); saveChatHistory(); }
 }
 
@@ -1282,7 +1358,7 @@ function copyBubbleContent(btn) {
     var text = contentEl ? contentEl.innerText : bubble.innerText;
     navigator.clipboard.writeText(text).then(function() {
         var originalText = btn.textContent;
-        btn.textContent = 'Disalin!';
+        btn.textContent = 'Tersalin';
         btn.classList.add('text-emerald-400');
         setTimeout(function() { btn.textContent = originalText; btn.classList.remove('text-emerald-400'); }, 2000);
     }).catch(function() {
@@ -1290,7 +1366,7 @@ function copyBubbleContent(btn) {
         var textarea = document.createElement('textarea');
         textarea.value = text; textarea.style.position = 'fixed'; textarea.style.opacity = '0';
         document.body.appendChild(textarea); textarea.select();
-        try { document.execCommand('copy'); btn.textContent = 'Disalin!'; btn.classList.add('text-emerald-400'); setTimeout(function() { btn.textContent = 'Salin'; btn.classList.remove('text-emerald-400'); }, 2000); } catch(e) {}
+        try { document.execCommand('copy'); btn.textContent = 'Tersalin'; btn.classList.add('text-emerald-400'); setTimeout(function() { btn.textContent = 'Salin'; btn.classList.remove('text-emerald-400'); }, 2000); } catch(e) {}
         document.body.removeChild(textarea);
     });
 }
@@ -1406,6 +1482,12 @@ function switchSession(sessionId) {
                 noteDiv.innerHTML = '<p class="text-xs text-gray-600 italic">Gambar chart tidak disimpan permanen. Hasil analisis tetap tersimpan.</p>';
                 container.appendChild(noteDiv);
             }
+            if (session.fileCount && session.fileCount > 0) {
+                var fileNoteDiv = document.createElement('div');
+                fileNoteDiv.className = 'text-center py-2 fade-in';
+                fileNoteDiv.innerHTML = '<p class="text-xs text-gray-600 italic">File/gambar asli tidak disimpan. Upload ulang jika perlu analisis ulang.</p>';
+                container.appendChild(fileNoteDiv);
+            }
         }
         // Update TradingView if ticker context exists
         if (activeTicker) { updateTradingViewSafe(activeTicker); }
@@ -1462,6 +1544,7 @@ function saveChatHistory() {
         session.activeCompanyName = activeCompanyName;
         session.pendingAnalysisRequest = pendingAnalysisRequest;
         session.updatedAt = new Date().toISOString();
+        session.fileCount = selectedFiles ? selectedFiles.length : 0;
         // Update title from first user message if still default
         if (session.title === 'Chat baru' && history.length > 0) {
             var firstUserMsg = container.querySelector('.flex.justify-end .text-gray-100');
@@ -1531,6 +1614,7 @@ function renderSidebarSessions() {
     sessions.forEach(function(session) {
         var isActive = session.id === currentSessionId;
         var tickerBadge = session.activeTicker ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 flex-shrink-0">' + session.activeTicker + '</span>' : '';
+        var fileBadge = session.fileCount && session.fileCount > 0 ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 flex-shrink-0">' + session.fileCount + ' file</span>' : '';
         var relativeDate = getRelativeDate(session.updatedAt || session.createdAt);
         var msgCount = session.messages ? session.messages.length : 0;
         html += '<div class="session-item' + (isActive ? ' active' : '') + '" onclick="switchSession(\'' + session.id + '\');closeSidebar()">';
@@ -1538,6 +1622,7 @@ function renderSidebarSessions() {
         html += '<div class="flex-1 min-w-0"><span class="session-title block">' + escapeHtml(session.title) + '</span>';
         html += '<span class="text-[10px] text-gray-600">' + relativeDate + '</span></div>';
         html += tickerBadge;
+        html += fileBadge;
         html += '<span class="text-[10px] text-gray-600 flex-shrink-0">' + msgCount + '</span>';
         html += '<button class="session-delete" onclick="deleteSession(\'' + session.id + '\', event)" title="Hapus sesi">';
         html += '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
