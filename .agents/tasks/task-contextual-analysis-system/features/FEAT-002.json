@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Implement session memory (latestAnalysisContext) in the frontend for natural follow-up conversations, fix empty red warning boxes in AI output, add follow-up chat behavior that uses stored context, and make the UI feel more like ChatGPT/Claude with smooth follow-up flow.",
+  "status": "in_progress",
+  "steps": [
+    "STEP 1 - Expand latestAnalysisContext (around line 919 in index.html) to store full analysis context. New structure: { ticker, companyName, score, decision, keyLevels: { support, resistance, entry, stopLoss, target }, risks: [], actionPlan: [], evidenceLevel, fcaStatus, brokerSummaryProvided, brokerSummaryBias, brokerSummaryStrength, brokerSummaryPeriods: [], lastAnalysisHtml: null (store summary text only, NOT full html), lastAnalysisTimestamp }. Update resetBrokerSummaryContext to reset all fields.",
+    "STEP 2 - After each successful analysis response (in handleAnalysis and handleChartUpload), parse the AI response HTML to extract key context. Add a function extractAnalysisContext(html) that uses regex/DOM parsing to extract: score (from text like 'xx/70' or 'xx/55'), decision label (from known labels list), key levels (support/resistance numbers), ticker. Store extracted data in latestAnalysisContext. Do NOT store the full HTML - just structured data. Keep it under 2KB to avoid localStorage bloat.",
+    "STEP 3 - Update handleChat function (around line 1340 in index.html) to pass latestAnalysisContext as a 'context' field in the API request body when source is 'chat_mode' or 'follow_up'. Build a concise context string: 'Ticker: X, Score: Y/Z, Decision: LABEL, Support: A, Resistance: B, Risks: [...]'. Only include fields that have values. This enables the AI to answer follow-ups without re-asking for data.",
+    "STEP 4 - Add a new request source 'follow_up' in handleChat. Detect when user is asking a follow-up about the last analysis (regex: /gimana|bagaimana|kenapa|why|lanjut|terus|kalau|apa.*berikutnya|masuk.*gak|beli|jual|hold|cut/i AND latestAnalysisContext.ticker exists). When detected, use source 'follow_up' instead of 'chat_mode'. This tells the API to use the compact follow-up prompt.",
+    "STEP 5 - Fix empty red warning boxes. After each AI response is inserted into the DOM (in addAIBubble function), add a post-processing step: find all elements with classes containing 'border-red' or 'bg-red' or 'text-red-400' that have empty or whitespace-only text content, and hide them (display:none). Also hide any div that contains only 'Tidak tersedia' or 'Belum bisa dikonfirmasi' as its sole content. Add function: hideEmptySections(bubbleElement).",
+    "STEP 6 - Fix empty 'Final Note' display. In the hideEmptySections function, also target any h3/heading containing 'Final Note' where the sibling content area is empty or contains only generic disclaimers that are already said elsewhere. If a section's meaningful content (excluding the heading) is less than 20 characters, hide the entire section card.",
+    "STEP 7 - Update saveChatHistory to also save latestAnalysisContext in the session object (already partially done - verify it saves the expanded context). When switching sessions via switchSession, restore latestAnalysisContext from the session. This enables follow-up conversations to work even after switching sessions.",
+    "STEP 8 - Add visual indicator in the composer area when context is available. When latestAnalysisContext.ticker exists, show a small subtle tag below the input: '<ticker> context active' in emerald-400 text. This helps users know they can ask follow-up questions. Hide it when no analysis has been done in the current session."
+  ],
+  "acceptance_criteria": [
+    "latestAnalysisContext stores ticker, score, decision, keyLevels after each analysis",
+    "Follow-up chat requests include context field with structured analysis data",
+    "Follow-up detection works for common Indonesian follow-up phrases",
+    "Empty warning boxes (red border with no content) are hidden after AI response renders",
+    "Empty Final Note sections are hidden",
+    "Session switching restores latestAnalysisContext properly",
+    "Context indicator shows below input when analysis context is available",
+    "No base64 or full HTML stored in latestAnalysisContext",
+    "All inline JS passes syntax validation"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && node -e \"const fs=require('fs'); const html=fs.readFileSync('/projects/sandbox/auto-cuan/index.html','utf8'); if(!html.includes('extractAnalysisContext')) throw 'Missing context extraction'; if(!html.includes('hideEmptySections')) throw 'Missing empty section hiding'; if(!html.includes('follow_up')) throw 'Missing follow-up source'; console.log('FEAT-002 checks passed');\"",
+    "unset NODE_OPTIONS && node -c /projects/sandbox/auto-cuan/api/analyze.js"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

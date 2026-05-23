@@ -242,6 +242,7 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>
             </div>
+            <div id="contextIndicator" class="hidden text-[10px] text-emerald-400/60 mt-1 ml-1"></div>
         </div>
     </div>
 </section>
@@ -917,6 +918,15 @@ var activeTicker = null;
 var activeCompanyName = null;
 var pendingAnalysisRequest = null;
 var latestAnalysisContext = {
+    ticker: null,
+    companyName: null,
+    score: null,
+    decision: null,
+    keyLevels: { support: null, resistance: null, entry: null, stopLoss: null, target: null },
+    risks: [],
+    actionPlan: [],
+    evidenceLevel: null,
+    fcaStatus: null,
     brokerSummaryProvided: false,
     brokerSummaryPeriods: [],
     brokerSummaryBias: null,
@@ -924,7 +934,8 @@ var latestAnalysisContext = {
     dominantNetBuyers: [],
     dominantNetSellers: [],
     brokerSummaryNotes: '',
-    brokerSummaryLastUpdated: null
+    brokerSummaryLastUpdated: null,
+    lastAnalysisTimestamp: null
 };
 
 function detectBrokerSummaryIntent(message) {
@@ -938,6 +949,15 @@ function detectBrokerSummaryIntent(message) {
 
 function resetBrokerSummaryContext() {
     latestAnalysisContext = {
+        ticker: null,
+        companyName: null,
+        score: null,
+        decision: null,
+        keyLevels: { support: null, resistance: null, entry: null, stopLoss: null, target: null },
+        risks: [],
+        actionPlan: [],
+        evidenceLevel: null,
+        fcaStatus: null,
         brokerSummaryProvided: false,
         brokerSummaryPeriods: [],
         brokerSummaryBias: null,
@@ -945,8 +965,102 @@ function resetBrokerSummaryContext() {
         dominantNetBuyers: [],
         dominantNetSellers: [],
         brokerSummaryNotes: '',
-        brokerSummaryLastUpdated: null
+        brokerSummaryLastUpdated: null,
+        lastAnalysisTimestamp: null
     };
+}
+
+// ===== EXTRACT ANALYSIS CONTEXT FROM AI RESPONSE =====
+function extractAnalysisContext(html) {
+    var ctx = {};
+    // Extract score: look for patterns like XX/55, XX/70, XX/80, XX/90
+    var scoreMatch = html.match(/(\d{1,2})\s*\/\s*(55|70|80|90|100)/);
+    if (scoreMatch) { ctx.score = scoreMatch[1] + '/' + scoreMatch[2]; }
+    // Extract decision label
+    var decisionLabels = ['CUT LOSS \\/ EXIT', 'CUT LOSS', 'TAKE PROFIT PARTIAL', 'NEED CHART CONFIRMATION', 'BUY ON CONFIRMATION', 'BUY ON PULLBACK', 'SPECULATIVE BUY', 'SWING VALID', 'SCALP ONLY', 'WATCHLIST', 'AVOID', 'WAIT', 'HOLD'];
+    for (var i = 0; i < decisionLabels.length; i++) {
+        var re = new RegExp(decisionLabels[i], 'i');
+        if (re.test(html)) { ctx.decision = decisionLabels[i].replace('\\/', '/'); break; }
+    }
+    // Extract key levels: look for Rp patterns near keywords
+    var supportMatch = html.match(/[Ss]upport[^<]{0,40}?[Rr]p\.?\s*([\d.,]+)/);
+    var resistanceMatch = html.match(/[Rr]esist(?:ance|en)[^<]{0,40}?[Rr]p\.?\s*([\d.,]+)/);
+    var entryMatch = html.match(/[Ee]ntry[^<]{0,40}?[Rr]p\.?\s*([\d.,]+)/);
+    var slMatch = html.match(/[Ss]top\s*[Ll]oss[^<]{0,40}?[Rr]p\.?\s*([\d.,]+)/);
+    var tpMatch = html.match(/[Tt]arget[^<]{0,40}?[Rr]p\.?\s*([\d.,]+)/);
+    ctx.keyLevels = {
+        support: supportMatch ? supportMatch[1].replace(/\./g, '').replace(',', '.') : null,
+        resistance: resistanceMatch ? resistanceMatch[1].replace(/\./g, '').replace(',', '.') : null,
+        entry: entryMatch ? entryMatch[1].replace(/\./g, '').replace(',', '.') : null,
+        stopLoss: slMatch ? slMatch[1].replace(/\./g, '').replace(',', '.') : null,
+        target: tpMatch ? tpMatch[1].replace(/\./g, '').replace(',', '.') : null
+    };
+    // Extract risks: look for list items in "What Could Go Wrong" section
+    var risksSection = html.match(/What Could Go Wrong[\s\S]{0,800}/i);
+    if (risksSection) {
+        var riskItems = risksSection[0].match(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+        if (riskItems) {
+            ctx.risks = riskItems.slice(0, 5).map(function(item) {
+                return item.replace(/<[^>]+>/g, '').trim();
+            }).filter(function(t) { return t.length > 3; });
+        }
+    }
+    // Extract action plan items
+    var actionSection = html.match(/Action Plan[\s\S]{0,800}/i);
+    if (actionSection) {
+        var actionItems = actionSection[0].match(/<li[^>]*>([\s\S]*?)<\/li>/gi);
+        if (actionItems) {
+            ctx.actionPlan = actionItems.slice(0, 5).map(function(item) {
+                return item.replace(/<[^>]+>/g, '').trim();
+            }).filter(function(t) { return t.length > 3; });
+        }
+    }
+    return ctx;
+}
+
+// ===== HIDE EMPTY SECTIONS IN AI RESPONSE =====
+function hideEmptySections(bubbleElement) {
+    // Hide elements with border-red-500 or bg-red-500 that have very short text
+    var redElements = bubbleElement.querySelectorAll('[class*="border-red-500"], [class*="bg-red-500"]');
+    for (var i = 0; i < redElements.length; i++) {
+        if (redElements[i].textContent.trim().length < 5) {
+            redElements[i].style.display = 'none';
+        }
+    }
+    // Hide divs with only "Tidak tersedia" or "Belum bisa dikonfirmasi"
+    var allDivs = bubbleElement.querySelectorAll('div, p, span');
+    for (var j = 0; j < allDivs.length; j++) {
+        var txt = allDivs[j].textContent.trim();
+        if (txt === 'Tidak tersedia' || txt === 'Belum bisa dikonfirmasi' || txt === 'Tidak tersedia.' || txt === 'Belum bisa dikonfirmasi.') {
+            allDivs[j].style.display = 'none';
+        }
+    }
+    // Hide Final Note sections with < 20 chars of content
+    var headings = bubbleElement.querySelectorAll('h3, h4, strong, b');
+    for (var k = 0; k < headings.length; k++) {
+        if (/Final Note/i.test(headings[k].textContent)) {
+            var section = headings[k].closest('div') || headings[k].parentElement;
+            if (section) {
+                var sectionText = section.textContent.replace(/Final Note/i, '').trim();
+                if (sectionText.length < 20) {
+                    section.style.display = 'none';
+                }
+            }
+        }
+    }
+}
+
+// ===== UPDATE CONTEXT INDICATOR =====
+function updateContextIndicator() {
+    var indicator = document.getElementById('contextIndicator');
+    if (!indicator) return;
+    if (latestAnalysisContext.ticker) {
+        indicator.textContent = 'Konteks: ' + latestAnalysisContext.ticker + ' aktif - tanya follow-up langsung';
+        indicator.classList.remove('hidden');
+    } else {
+        indicator.classList.add('hidden');
+        indicator.textContent = '';
+    }
 }
 
 function setActiveTicker(ticker) {
@@ -1293,6 +1407,18 @@ async function handleAnalysis(msg, intent) {
             addAIBubble(html, true);
             incrementAnalysisUsage(); updateUsageCounter();
             logUsage(ticker, 'ai_success'); logAnalysisResult(ticker, 'ticker', html);
+            // Extract and store analysis context
+            var extracted = extractAnalysisContext(html);
+            latestAnalysisContext.ticker = activeTicker || ticker;
+            latestAnalysisContext.companyName = activeCompanyName || getCompanyName(ticker);
+            if (extracted.score) latestAnalysisContext.score = extracted.score;
+            if (extracted.decision) latestAnalysisContext.decision = extracted.decision;
+            if (extracted.keyLevels) latestAnalysisContext.keyLevels = extracted.keyLevels;
+            if (extracted.risks && extracted.risks.length) latestAnalysisContext.risks = extracted.risks;
+            if (extracted.actionPlan && extracted.actionPlan.length) latestAnalysisContext.actionPlan = extracted.actionPlan;
+            latestAnalysisContext.evidenceLevel = 1;
+            latestAnalysisContext.lastAnalysisTimestamp = new Date().toISOString();
+            updateContextIndicator();
         } else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); addAIError('Gagal: ' + e.message); logUsage(ticker, 'ai_error'); }
     finally { enableSend(); saveChatHistory(); }
@@ -1332,6 +1458,31 @@ async function handleChat(msg) {
     disableSend(); clearInput();
     logUsage('CHAT', 'chat_started');
     try {
+        // Determine source: follow_up if context exists and message matches follow-up patterns
+        var chatSource = 'chat_mode';
+        var followUpPattern = /gimana|bagaimana|kenapa|why|lanjut|terus|kalau|apa.*berikutnya|masuk.*gak|beli|jual|hold|cut|entry|target|stop.*loss|risk/i;
+        if (latestAnalysisContext.ticker && latestAnalysisContext.score && followUpPattern.test(msg)) {
+            chatSource = 'follow_up';
+        }
+        // Build context string from latestAnalysisContext
+        var contextStr = '';
+        if (latestAnalysisContext.ticker) {
+            var parts = [];
+            parts.push('Ticker: ' + latestAnalysisContext.ticker);
+            if (latestAnalysisContext.companyName) parts.push('Company: ' + latestAnalysisContext.companyName);
+            if (latestAnalysisContext.score) parts.push('Score: ' + latestAnalysisContext.score);
+            if (latestAnalysisContext.decision) parts.push('Decision: ' + latestAnalysisContext.decision);
+            if (latestAnalysisContext.keyLevels) {
+                if (latestAnalysisContext.keyLevels.support) parts.push('Support: Rp' + latestAnalysisContext.keyLevels.support);
+                if (latestAnalysisContext.keyLevels.resistance) parts.push('Resistance: Rp' + latestAnalysisContext.keyLevels.resistance);
+                if (latestAnalysisContext.keyLevels.entry) parts.push('Entry: Rp' + latestAnalysisContext.keyLevels.entry);
+                if (latestAnalysisContext.keyLevels.stopLoss) parts.push('StopLoss: Rp' + latestAnalysisContext.keyLevels.stopLoss);
+                if (latestAnalysisContext.keyLevels.target) parts.push('Target: Rp' + latestAnalysisContext.keyLevels.target);
+            }
+            if (latestAnalysisContext.risks && latestAnalysisContext.risks.length) parts.push('Risks: ' + latestAnalysisContext.risks.join('; '));
+            if (latestAnalysisContext.brokerSummaryBias) parts.push('BrokerBias: ' + latestAnalysisContext.brokerSummaryBias);
+            contextStr = parts.join(', ');
+        }
         // Enrich with active ticker context if available
         var enrichedMsg = msg;
         if (activeTicker) {
@@ -1341,8 +1492,10 @@ async function handleChat(msg) {
         if (latestAnalysisContext.brokerSummaryProvided) {
             enrichedMsg += '\n[Konteks Broker Summary sebelumnya: bias=' + (latestAnalysisContext.brokerSummaryBias || 'unknown') + ', strength=' + (latestAnalysisContext.brokerSummaryStrength || 'unknown') + ', periods=' + (latestAnalysisContext.brokerSummaryPeriods.join(',') || 'unknown') + ']';
         }
+        var requestBody = { chatMessage: enrichedMsg, source: chatSource, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' };
+        if (contextStr) { requestBody.context = contextStr; }
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify(requestBody) });
         var data = await response.json();
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
@@ -1404,6 +1557,19 @@ async function handleChartUpload(msg) {
         var data = await response.json();
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html);
+            // Extract and store analysis context
+            var extracted = extractAnalysisContext(html);
+            latestAnalysisContext.ticker = activeTicker || chartTicker;
+            latestAnalysisContext.companyName = activeCompanyName || (chartTicker ? getCompanyName(chartTicker) : null);
+            if (extracted.score) latestAnalysisContext.score = extracted.score;
+            if (extracted.decision) latestAnalysisContext.decision = extracted.decision;
+            if (extracted.keyLevels) latestAnalysisContext.keyLevels = extracted.keyLevels;
+            if (extracted.risks && extracted.risks.length) latestAnalysisContext.risks = extracted.risks;
+            if (extracted.actionPlan && extracted.actionPlan.length) latestAnalysisContext.actionPlan = extracted.actionPlan;
+            latestAnalysisContext.evidenceLevel = evidenceLevel;
+            latestAnalysisContext.fcaStatus = fcaStatus;
+            latestAnalysisContext.lastAnalysisTimestamp = new Date().toISOString();
+            updateContextIndicator();
             // Detect broker summary in response
             if (html.toLowerCase().indexOf('broker summary check') !== -1) {
                 latestAnalysisContext.brokerSummaryProvided = true;
@@ -1457,6 +1623,7 @@ function addAIBubble(html, isStructured) {
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
     var copyBtnHtml = '<div class="mt-2 flex justify-end"><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
     div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] overflow-x-auto"><div class="ai-content">' + html + '</div>' + copyBtnHtml + '</div>';
+    hideEmptySections(div);
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
@@ -1583,7 +1750,11 @@ function switchSession(sessionId) {
         activeTicker = session.activeTicker || null;
         activeCompanyName = session.activeCompanyName || null;
         pendingAnalysisRequest = session.pendingAnalysisRequest || null;
-        latestAnalysisContext = session.latestAnalysisContext || { brokerSummaryProvided: false, brokerSummaryPeriods: [], brokerSummaryBias: null, brokerSummaryStrength: null, dominantNetBuyers: [], dominantNetSellers: [], brokerSummaryNotes: '', brokerSummaryLastUpdated: null };
+        latestAnalysisContext = session.latestAnalysisContext || { ticker: null, companyName: null, score: null, decision: null, keyLevels: { support: null, resistance: null, entry: null, stopLoss: null, target: null }, risks: [], actionPlan: [], evidenceLevel: null, fcaStatus: null, brokerSummaryProvided: false, brokerSummaryPeriods: [], brokerSummaryBias: null, brokerSummaryStrength: null, dominantNetBuyers: [], dominantNetSellers: [], brokerSummaryNotes: '', brokerSummaryLastUpdated: null, lastAnalysisTimestamp: null };
+        // Ensure new fields exist when restoring from old sessions
+        if (!latestAnalysisContext.keyLevels) latestAnalysisContext.keyLevels = { support: null, resistance: null, entry: null, stopLoss: null, target: null };
+        if (!latestAnalysisContext.risks) latestAnalysisContext.risks = [];
+        if (!latestAnalysisContext.actionPlan) latestAnalysisContext.actionPlan = [];
         // Restore messages
         if (session.messages && session.messages.length > 0) {
             session.messages.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
@@ -1604,9 +1775,11 @@ function switchSession(sessionId) {
         }
         // Update TradingView if ticker context exists
         if (activeTicker) { updateTradingViewSafe(activeTicker); }
+        updateContextIndicator();
     } else {
         activeTicker = null; activeCompanyName = null; pendingAnalysisRequest = null;
         resetBrokerSummaryContext();
+        updateContextIndicator();
     }
     container.scrollTop = container.scrollHeight;
     renderSidebarSessions();
