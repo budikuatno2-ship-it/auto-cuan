@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Polish the chat UI to feel more like ChatGPT/Claude: smoother loading states, better message spacing, regenerate button on AI responses, improved copy feedback, and compact response rendering that does not overwhelm the viewport.",
+  "status": "in_progress",
+  "steps": [
+    "STEP 1 - Add a 'Regenerate' button next to the copy button on AI analysis bubbles. In the addAIBubble function (around line 1466 in index.html), when isStructured is true, add a regenerate button: '<button onclick=\"regenerateLastAnalysis(this)\" class=\"copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all\">Ulang</button>'. Implement regenerateLastAnalysis(btn) that: (a) finds the previous user message, (b) re-triggers the same analysis with the same parameters, (c) replaces the current AI bubble with new response.",
+    "STEP 2 - Improve the loading state. Replace the simple 'Menganalisis...' text with a multi-step progress indicator. Update addLoadingBubble to show: 'Membaca data...' (0-2s) then 'Menganalisis chart...' (2-5s) then 'Menyusun rekomendasi...' (5s+). Use setInterval to cycle through these messages. This makes the wait feel shorter and more interactive, similar to ChatGPT's streaming feel.",
+    "STEP 3 - Add typing effect for short chat responses (not structured analysis). In addAIBubble, when isStructured is false AND html length < 500, render the text character-by-character with a 10ms delay to simulate typing. For longer responses and structured analysis, render immediately (no typing effect - it would be too slow). Add a flag to skip effect when restoring from history.",
+    "STEP 4 - Improve message spacing and bubble styling. Change the chat-messages space-y-4 to space-y-3 for tighter spacing. For AI analysis bubbles (isStructured=true), add a subtle top label: '<p class=\"text-[10px] text-gray-600 mb-1\">Analisis</p>' before the content. For follow-up responses, no label needed. This visually distinguishes full analyses from chat responses.",
+    "STEP 5 - Make structured analysis responses collapsible. Wrap the AI analysis content in a container that shows the Score & Decision section always visible, with the rest expandable. Add: '<div class=\"analysis-preview\">[Score & Decision section]</div><button onclick=\"toggleAnalysisExpand(this)\" class=\"text-xs text-emerald-400 hover:text-emerald-300 mt-2\">Lihat detail lengkap</button><div class=\"analysis-full hidden\">[rest of sections]</div>'. On first render, show fully expanded. On history restore, show collapsed. Implement toggleAnalysisExpand to toggle visibility.",
+    "STEP 6 - Fix copy button to also work with collapsed/expanded content. Update copyBubbleContent to get text from both .analysis-preview and .analysis-full (even if hidden). Ensure the copied text is complete regardless of collapse state."
+  ],
+  "acceptance_criteria": [
+    "Regenerate button appears on structured AI analysis bubbles",
+    "regenerateLastAnalysis function re-sends the analysis request and replaces the response",
+    "Loading bubble shows progressive messages (Membaca data / Menganalisis / Menyusun rekomendasi)",
+    "Short chat responses have a subtle typing effect",
+    "Analysis bubbles have 'Analisis' label",
+    "Structured analyses are collapsible with toggle button",
+    "Copy works correctly on both collapsed and expanded analysis",
+    "All inline JS passes syntax validation",
+    "Existing chat, sidebar, mode dropdown still work"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && node -e \"const fs=require('fs'); const html=fs.readFileSync('/projects/sandbox/auto-cuan/index.html','utf8'); if(!html.includes('regenerateLastAnalysis')) throw 'Missing regenerate'; if(!html.includes('Membaca data')) throw 'Missing loading steps'; if(!html.includes('toggleAnalysisExpand')) throw 'Missing collapsible'; console.log('FEAT-003 checks passed');\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

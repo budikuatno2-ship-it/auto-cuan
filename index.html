@@ -1395,6 +1395,7 @@ async function handleAnalysis(msg, intent) {
     clearInput();
     logSearch(ticker, 'auto_analysis'); logUsage(ticker, 'ai_analysis_started');
     updateTradingViewSafe(ticker);
+    lastAnalysisParams = { type: 'ticker', ticker: ticker, price: price, files: null, msg: msg || (ticker + ' ' + price) };
 
     try {
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1457,6 +1458,7 @@ async function handleChat(msg) {
     addLoadingBubble();
     disableSend(); clearInput();
     logUsage('CHAT', 'chat_started');
+    lastAnalysisParams = { type: 'chat', ticker: null, price: null, files: null, msg: msg };
     try {
         // Determine source: follow_up if context exists and message matches follow-up patterns
         var chatSource = 'chat_mode';
@@ -1531,6 +1533,7 @@ async function handleChartUpload(msg) {
     addLoadingBubble();
     disableSend(); clearInput();
     logSearch('CHART_UPLOAD', 'chart_upload'); logUsage('CHART_UPLOAD', 'ai_analysis_started');
+    lastAnalysisParams = { type: 'chart_upload', ticker: activeTicker || chartTicker, price: null, files: null, msg: msg };
     try {
         // Build images array from all image files
         var imageFiles = selectedFiles.filter(function(f) { return SUPPORTED_IMAGE_TYPES.indexOf(f.type) !== -1; });
@@ -1611,20 +1614,66 @@ function addLoadingBubble() {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up'; div.id = 'loadingBubble';
-    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3"><p class="text-sm text-emerald-400 animate-pulse-glow">Menganalisis...</p></div>';
+    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3"><p class="text-sm text-emerald-400 animate-pulse-glow loading-text">Membaca data...</p></div>';
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+    var loadingStartTime = Date.now();
+    var loadingInterval = setInterval(function() {
+        var el = document.getElementById('loadingBubble');
+        if (!el) { clearInterval(loadingInterval); return; }
+        var textEl = el.querySelector('.loading-text');
+        if (!textEl) { clearInterval(loadingInterval); return; }
+        var elapsed = Date.now() - loadingStartTime;
+        if (elapsed >= 5000) { textEl.textContent = 'Menyusun rekomendasi...'; }
+        else if (elapsed >= 2000) { textEl.textContent = 'Menganalisis...'; }
+    }, 500);
+    div._loadingInterval = loadingInterval;
 }
-function removeLoadingBubble() { var el = document.getElementById('loadingBubble'); if (el) el.remove(); }
-function addAIBubble(html, isStructured) {
+function removeLoadingBubble() { var el = document.getElementById('loadingBubble'); if (el) { if (el._loadingInterval) clearInterval(el._loadingInterval); el.remove(); } }
+function addAIBubble(html, isStructured, fromHistory) {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up';
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
-    var copyBtnHtml = '<div class="mt-2 flex justify-end"><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
-    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] overflow-x-auto"><div class="ai-content">' + html + '</div>' + copyBtnHtml + '</div>';
+    var regenBtnHtml = isStructured ? '<button onclick="regenerateLastAnalysis(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all ml-1">Ulang</button>' : '';
+    var copyBtnHtml = '<div class="mt-2 flex justify-end"><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button>' + regenBtnHtml + '</div>';
+    var labelHtml = isStructured ? '<p class="text-[10px] text-gray-600 mb-1.5 uppercase tracking-wider">Analisis</p>' : '';
+    var contentHtml = '';
+    if (isStructured) {
+        // Collapsible analysis
+        var splitIdx = html.indexOf('Action Plan');
+        if (splitIdx === -1) splitIdx = html.indexOf('</div>', 300);
+        if (splitIdx === -1 || splitIdx < 100) splitIdx = 300;
+        if (splitIdx > html.length) splitIdx = html.length;
+        var previewHtml = html.slice(0, splitIdx);
+        var fullHtml = html.slice(splitIdx);
+        contentHtml = '<div class="analysis-preview">' + previewHtml + '</div>';
+        if (fullHtml.length > 0) {
+            contentHtml += '<button onclick="toggleAnalysisExpand(this)" class="w-full text-center text-xs text-emerald-400/70 hover:text-emerald-400 py-1.5 transition">Lihat ringkas</button>';
+            contentHtml += '<div class="analysis-full">' + fullHtml + '</div>';
+        }
+    } else {
+        contentHtml = html;
+    }
+    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] overflow-x-auto">' + labelHtml + '<div class="ai-content">' + contentHtml + '</div>' + copyBtnHtml + '</div>';
     hideEmptySections(div);
     container.appendChild(div);
+    // Typing effect for short non-structured responses
+    if (!isStructured && !fromHistory && html.length < 500) {
+        var aiContentEl = div.querySelector('.ai-content');
+        var fullContent = html;
+        aiContentEl.innerHTML = '';
+        var charIdx = 0;
+        var typingInterval = setInterval(function() {
+            charIdx += 4;
+            if (charIdx >= fullContent.length) {
+                aiContentEl.innerHTML = fullContent;
+                clearInterval(typingInterval);
+            } else {
+                aiContentEl.innerHTML = fullContent.slice(0, charIdx);
+            }
+        }, 15);
+    }
     container.scrollTop = container.scrollHeight;
 }
 function addAIError(msg) { addAIBubble('<p class="text-sm text-red-400">' + escapeHtml(msg) + '</p>'); }
@@ -1632,8 +1681,15 @@ function addAIError(msg) { addAIBubble('<p class="text-sm text-red-400">' + esca
 // ===== COPY BUTTON =====
 function copyBubbleContent(btn) {
     var bubble = btn.closest('.bg-dark-700\\/50') || btn.closest('.bg-emerald-500\\/15') || btn.parentElement.parentElement;
-    var contentEl = bubble.querySelector('.ai-content') || bubble.querySelector('p');
-    var text = contentEl ? contentEl.innerText : bubble.innerText;
+    var preview = bubble.querySelector('.analysis-preview');
+    var full = bubble.querySelector('.analysis-full');
+    var text;
+    if (preview && full) {
+        text = (preview.innerText || '') + '\n' + (full.innerText || '');
+    } else {
+        var contentEl = bubble.querySelector('.ai-content') || bubble.querySelector('p');
+        text = contentEl ? contentEl.innerText : bubble.innerText;
+    }
     navigator.clipboard.writeText(text).then(function() {
         var originalText = btn.textContent;
         btn.textContent = 'Tersalin';
@@ -1647,6 +1703,38 @@ function copyBubbleContent(btn) {
         try { document.execCommand('copy'); btn.textContent = 'Tersalin'; btn.classList.add('text-emerald-400'); setTimeout(function() { btn.textContent = 'Salin'; btn.classList.remove('text-emerald-400'); }, 2000); } catch(e) {}
         document.body.removeChild(textarea);
     });
+}
+
+// ===== REGENERATE & COLLAPSIBLE =====
+var lastAnalysisParams = { type: null, ticker: null, price: null, files: null, msg: null };
+
+function regenerateLastAnalysis(btn) {
+    var bubble = btn.closest('.flex.gap-3');
+    if (bubble) bubble.remove();
+    if (lastAnalysisParams.type === 'chart_upload') {
+        // Cannot regenerate chart upload without files
+        addAIBubble('<p class="text-sm text-gray-300">Tidak bisa mengulang analisis chart - upload ulang file untuk analisis baru.</p>');
+        saveChatHistory();
+        return;
+    }
+    if (lastAnalysisParams.type === 'ticker' && lastAnalysisParams.ticker && lastAnalysisParams.price) {
+        var intent = { type: 'force_analysis', ticker: lastAnalysisParams.ticker, price: lastAnalysisParams.price };
+        handleAnalysis(lastAnalysisParams.msg || (lastAnalysisParams.ticker + ' ' + lastAnalysisParams.price), intent);
+    } else if (lastAnalysisParams.msg) {
+        handleChat(lastAnalysisParams.msg);
+    }
+}
+
+function toggleAnalysisExpand(btn) {
+    var fullSection = btn.nextElementSibling;
+    if (!fullSection) return;
+    if (fullSection.classList.contains('hidden')) {
+        fullSection.classList.remove('hidden');
+        btn.textContent = 'Lihat ringkas';
+    } else {
+        fullSection.classList.add('hidden');
+        btn.textContent = 'Lihat detail lengkap';
+    }
 }
 
 // ===== CHAT HISTORY - SESSION-BASED (localStorage) =====
