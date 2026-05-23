@@ -1464,7 +1464,13 @@ async function handleChat(msg) {
         var chatSource = 'chat_mode';
         var followUpPattern = /gimana|bagaimana|kenapa|why|lanjut|terus|kalau|apa.*berikutnya|masuk.*gak|beli|jual|hold|cut|entry|target|stop.*loss|risk/i;
         if (latestAnalysisContext.ticker && latestAnalysisContext.score && followUpPattern.test(msg)) {
-            chatSource = 'follow_up';
+            // Only classify as follow_up if message does not contain a different ticker
+            // and the message is short (under 100 chars - long messages are likely standalone)
+            var detectedFollowTicker = detectTicker(msg);
+            var isDifferentTicker = detectedFollowTicker && detectedFollowTicker !== latestAnalysisContext.ticker;
+            if (!isDifferentTicker && msg.length < 100) {
+                chatSource = 'follow_up';
+            }
         }
         // Build context string from latestAnalysisContext
         var contextStr = '';
@@ -1640,17 +1646,48 @@ function addAIBubble(html, isStructured, fromHistory) {
     var labelHtml = isStructured ? '<p class="text-[10px] text-gray-600 mb-1.5 uppercase tracking-wider">Analisis</p>' : '';
     var contentHtml = '';
     if (isStructured) {
-        // Collapsible analysis
-        var splitIdx = html.indexOf('Action Plan');
-        if (splitIdx === -1) splitIdx = html.indexOf('</div>', 300);
-        if (splitIdx === -1 || splitIdx < 100) splitIdx = 300;
-        if (splitIdx > html.length) splitIdx = html.length;
-        var previewHtml = html.slice(0, splitIdx);
-        var fullHtml = html.slice(splitIdx);
-        contentHtml = '<div class="analysis-preview">' + previewHtml + '</div>';
-        if (fullHtml.length > 0) {
-            contentHtml += '<button onclick="toggleAnalysisExpand(this)" class="w-full text-center text-xs text-emerald-400/70 hover:text-emerald-400 py-1.5 transition">Lihat ringkas</button>';
-            contentHtml += '<div class="analysis-full">' + fullHtml + '</div>';
+        // Collapsible analysis - use structural DOM split to avoid breaking HTML mid-tag
+        var tempContainer = document.createElement('div');
+        tempContainer.innerHTML = html;
+        var splitElement = null;
+        var children = tempContainer.children;
+        for (var ci = 0; ci < children.length; ci++) {
+            if (children[ci].textContent && children[ci].textContent.indexOf('Action Plan') !== -1) {
+                splitElement = children[ci];
+                break;
+            }
+            // Check nested children (e.g. heading inside a div)
+            var nested = children[ci].querySelectorAll('h3, h2, h4');
+            for (var ni = 0; ni < nested.length; ni++) {
+                if (nested[ni].textContent && nested[ni].textContent.indexOf('Action Plan') !== -1) {
+                    splitElement = children[ci];
+                    break;
+                }
+            }
+            if (splitElement) break;
+        }
+        if (splitElement) {
+            var previewParts = [];
+            var fullParts = [];
+            var reachedSplit = false;
+            for (var si = 0; si < children.length; si++) {
+                if (children[si] === splitElement) reachedSplit = true;
+                if (!reachedSplit) {
+                    previewParts.push(children[si].outerHTML);
+                } else {
+                    fullParts.push(children[si].outerHTML);
+                }
+            }
+            var previewHtml = previewParts.join('');
+            var fullHtml = fullParts.join('');
+            contentHtml = '<div class="analysis-preview">' + previewHtml + '</div>';
+            if (fullHtml.length > 0) {
+                contentHtml += '<button onclick="toggleAnalysisExpand(this)" class="w-full text-center text-xs text-emerald-400/70 hover:text-emerald-400 py-1.5 transition">Lihat ringkas</button>';
+                contentHtml += '<div class="analysis-full">' + fullHtml + '</div>';
+            }
+        } else {
+            // No structural split found, show full content without splitting
+            contentHtml = html;
         }
     } else {
         contentHtml = html;
@@ -1662,15 +1699,20 @@ function addAIBubble(html, isStructured, fromHistory) {
     if (!isStructured && !fromHistory && html.length < 500) {
         var aiContentEl = div.querySelector('.ai-content');
         var fullContent = html;
-        aiContentEl.innerHTML = '';
+        // Extract plain text from the HTML for typing animation
+        var tempTypingDiv = document.createElement('div');
+        tempTypingDiv.innerHTML = fullContent;
+        var plainText = tempTypingDiv.innerText || tempTypingDiv.textContent || '';
+        aiContentEl.textContent = '';
         var charIdx = 0;
         var typingInterval = setInterval(function() {
             charIdx += 4;
-            if (charIdx >= fullContent.length) {
+            if (charIdx >= plainText.length) {
+                // Animation complete: swap to full HTML
                 aiContentEl.innerHTML = fullContent;
                 clearInterval(typingInterval);
             } else {
-                aiContentEl.innerHTML = fullContent.slice(0, charIdx);
+                aiContentEl.textContent = plainText.slice(0, charIdx);
             }
         }, 15);
     }
@@ -1710,18 +1752,24 @@ var lastAnalysisParams = { type: null, ticker: null, price: null, files: null, m
 
 function regenerateLastAnalysis(btn) {
     var bubble = btn.closest('.flex.gap-3');
-    if (bubble) bubble.remove();
     if (lastAnalysisParams.type === 'chart_upload') {
         // Cannot regenerate chart upload without files
         addAIBubble('<p class="text-sm text-gray-300">Tidak bisa mengulang analisis chart - upload ulang file untuk analisis baru.</p>');
         saveChatHistory();
         return;
     }
+    // Hide old bubble instead of removing immediately
+    var hiddenBubble = bubble;
+    if (hiddenBubble) hiddenBubble.style.display = 'none';
+    var removeHidden = function() { if (hiddenBubble) hiddenBubble.remove(); };
+    var restoreHidden = function() { if (hiddenBubble) hiddenBubble.style.display = ''; };
     if (lastAnalysisParams.type === 'ticker' && lastAnalysisParams.ticker && lastAnalysisParams.price) {
         var intent = { type: 'force_analysis', ticker: lastAnalysisParams.ticker, price: lastAnalysisParams.price };
-        handleAnalysis(lastAnalysisParams.msg || (lastAnalysisParams.ticker + ' ' + lastAnalysisParams.price), intent);
+        handleAnalysis(lastAnalysisParams.msg || (lastAnalysisParams.ticker + ' ' + lastAnalysisParams.price), intent).then(removeHidden).catch(restoreHidden);
     } else if (lastAnalysisParams.msg) {
-        handleChat(lastAnalysisParams.msg);
+        handleChat(lastAnalysisParams.msg).then(removeHidden).catch(restoreHidden);
+    } else {
+        restoreHidden();
     }
 }
 

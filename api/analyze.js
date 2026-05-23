@@ -207,6 +207,23 @@ function sanitizeDocumentText(text) {
   return sanitized.join('\n');
 }
 
+function sanitizeContextString(str) {
+  if (!str) return '';
+  var lines = String(str).split('\n');
+  var sanitized = lines.filter(function(line) {
+    var trimmed = line.trim();
+    // Strip lines starting with delimiter patterns
+    if (/^={3,}/.test(trimmed)) return false;
+    if (/^-{3,}/.test(trimmed)) return false;
+    // Strip lines that look like injection attempts
+    if (/^(IGNORE|OVERRIDE|SYSTEM|NEW INSTRUCTIONS|FORGET|YOU ARE NOW)/i.test(trimmed)) return false;
+    // Strip instruction-like patterns
+    if (/^(ATURAN|INSTRUKSI|INSTRUCTION|PROMPT|RULE):/i.test(trimmed)) return false;
+    return true;
+  });
+  return sanitized.join('\n').trim();
+}
+
 function sanitizeFilename(name) {
   if (!name) return 'unknown';
   // Only keep alphanumeric, dots, dashes, underscores, spaces
@@ -818,6 +835,7 @@ async function handleChatMode(req, res, message) {
   // Follow-up mode: context from previous analysis is provided
   if (context && source === 'follow_up') {
     var ctxStr = typeof context === 'string' ? context : JSON.stringify(context);
+    ctxStr = sanitizeContextString(ctxStr);
     chatSystemPrompt = `Kamu adalah Auto-Cuan AI. User sudah menerima analisis sebelumnya.
 
 Konteks analisis terakhir: ${ctxStr}
