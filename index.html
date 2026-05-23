@@ -1024,6 +1024,9 @@ function detectFCAStatus(message, ticker, uploadedEvidence) {
         if (/masuk\s+fca\s*(gak|ga|nggak|tidak|kah)?/.test(lower)) return 'unconfirmed';
         if (/ini\s+fca\s*(bukan|gak|ga|nggak|tidak|kah)\??/.test(lower)) return 'unconfirmed';
         if (/termasuk\s+fca\s*(gak|ga|nggak|tidak|kah)?/.test(lower)) return 'unconfirmed';
+        if (/ini\s+fca\s*ya\??/.test(lower)) return 'unconfirmed';
+        if (/fca\s*(ya|kan|kah|nih|gitu)\??/.test(lower)) return 'unconfirmed';
+        if (/\bfca\b.*\?/.test(lower)) return 'unconfirmed';
         // Confirmed user mentions (assertive)
         if (/\bfca\b/.test(lower)) return 'confirmed_by_user';
         if (/\bfull\s+call\s+auction\b/.test(lower)) return 'confirmed_by_user';

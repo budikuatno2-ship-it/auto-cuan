@@ -1,5 +1,10 @@
 // === HELPER FUNCTIONS ===
 
+var VALID_FCA_STATUSES = ['confirmed_by_mapping', 'confirmed_by_user', 'confirmed_by_uploaded_evidence', 'unconfirmed', 'not_detected'];
+function validateFcaStatus(status) {
+  return VALID_FCA_STATUSES.indexOf(status) !== -1 ? status : 'not_detected';
+}
+
 function calculateEvidenceLevel(req) {
   const { images, documents, image, ticker, currentPrice } = req.body || {};
   const hasImages = (images && images.length > 0) || !!image;
@@ -24,7 +29,7 @@ function buildFCASection(fcaStatus, evidenceLevel) {
   if (fcaStatus === 'confirmed_by_mapping') statusLabel = 'Confirmed by local mapping';
   else if (fcaStatus === 'confirmed_by_user') statusLabel = 'Confirmed by user';
   else if (fcaStatus === 'confirmed_by_uploaded_evidence') statusLabel = 'Confirmed by uploaded evidence';
-  else statusLabel = 'Mentioned by user';
+  else return '';
 
   var scorePenalty = fcaStatus === 'confirmed_by_mapping' ? 20 : 15;
 
@@ -313,7 +318,7 @@ module.exports = async function handler(req, res) {
     const tickerUpper = ticker.toUpperCase();
     const price = parseFloat(currentPrice);
     const level = calculateEvidenceLevel(req);
-    const fca = fcaStatus || 'not_detected';
+    const fca = validateFcaStatus(fcaStatus);
     const docContext = buildDocumentContext(documents);
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -961,7 +966,7 @@ async function handleChartUpload(req, res, imageData, mimeType) {
   const imageCount = hasMultiImages ? images.length : (imageData ? 1 : 0);
   const hasDocuments = documents && documents.length > 0 && documents.some(function(d) { return d.text && d.text.length > 0; });
   const level = (imageCount >= 2 ? (hasDocuments ? 4 : 3) : (hasDocuments ? 2 : 2));
-  const fca = fcaStatus || 'not_detected';
+  const fca = validateFcaStatus(fcaStatus);
 
   // Determine score cap based on evidence level
   var scoreCap;
