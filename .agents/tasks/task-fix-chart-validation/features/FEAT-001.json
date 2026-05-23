@@ -32,5 +32,5 @@
     "Run `grep 'Analisis chart belum lengkap' api/analyze.js` should return nothing (old message removed)"
   ],
   "blocked_reason": null,
-  "findings": "All 7 steps implemented successfully. Syntax check passes. Evidence Lock preserved. FCA detection logic unchanged. The NODE_OPTIONS env var must be cleared to run node -c in this environment (NODE_OPTIONS=\"\" node -c api/analyze.js)."
+  "findings": "All 7 steps implemented successfully. Syntax check passes. Evidence Lock preserved. FCA detection logic unchanged. The NODE_OPTIONS env var must be cleared to run node -c in this environment (NODE_OPTIONS=\"\" node -c api/analyze.js). Post-review fix: replaced generic alt keywords with distinctive section-heading terms, tightened combined condition to require foundCount >= 1, and changed WAJIB DIBACA PERTAMA to WAJIB DIPATUHI."
 }
