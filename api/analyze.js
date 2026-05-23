@@ -174,7 +174,7 @@ function buildMarketMakerSection() {
     '- Kode market maker di thin bid/offer + satu screenshot saja: cap score di 50-55\n' +
     '- Kode market maker di fast tape + thick liquidity + repeated confirmation: cap score di 65-70\n' +
     '- Jika chart confirmation tidak ada, tetap hindari aggressive BUY\n' +
-    '- Jika saham FCA, terapkan FCA cap terlebih dahulu, lalu kurangi lagi jika likuiditas tipis\n\n' +
+    '- Jika saham FCA, gunakan min(FCA cap, Market Maker cap) sebagai skor akhir. Contoh: FCA cap 60 dan MM thin cap 50-55, maka skor akhir max 50-55\n\n' +
     '=== REMINDER PENTING ===\n' +
     'Market maker code hanyalah secondary evidence.\n' +
     'Fast Tape / Order Flow Activity membuat kode lebih relevan, tapi tetap tidak dijamin.\n' +
@@ -952,7 +952,8 @@ async function handleChartUpload(req, res, imageData, mimeType) {
     chartPrompt += fcaSection;
   }
 
-  // Add market maker code reader section
+  // Add market maker code reader section (always included - the AI is instructed
+  // to only apply these rules when orderbook/running trade data is visible in the image)
   chartPrompt += buildMarketMakerSection();
 
   // Add document context if available
