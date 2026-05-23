@@ -1,0 +1,12 @@
+{
+  "task_id": "task-compact-analysis-chat",
+  "task_description": "Replace the current long 15-section analysis system with a compact 7-section ChatGPT/Claude-like contextual analysis system. Integrate follow-up chat memory, FCA safety reinforcement, news/catalyst/corporate action impact, broker summary integration, and optional evidence sections into one clean workflow. Fix UI bugs (empty sections, paste text clutter, missing regenerate button). Optimize token usage.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "review_fixes": {
+    "applied": "2025-01-25",
+    "issues_fixed": 5,
+    "summary": "Fixed: (1) Regenerate loses file context - added lastSentMode tracking, (2) Context extraction gaps - added Entry/SL/TP/RR/chartSummary regex extraction, (3) Prompt injection in chat mode - separated user message into its own contents turn, (4) hideEmptySections fragility - replaced [class*=red-] with clone-based content check, (5) Dual context enrichment - removed inline broker summary from enrichedMsg"
+  }
+}
