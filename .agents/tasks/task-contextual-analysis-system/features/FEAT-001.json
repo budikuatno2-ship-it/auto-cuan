@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Rewrite the API backend prompts and response handling to produce compact 700-1200 word analysis output (7 main sections + optional sections only when evidence exists), implement session memory for follow-up conversations, fix FCA hallucination, hide empty sections, and integrate all evidence types into one clean workflow.",
+  "status": "in_progress",
+  "steps": [
+    "STEP 1 - Replace the 15-section buildPrompt function in api/analyze.js with a new compact 7-section format. The 7 MAIN sections are: (1) Input Quality & Evidence Summary (combined, 2-3 lines), (2) Technical Analysis (chart reading, key levels, structure - only if chart provided), (3) Multi-Timeframe Bias (brief, only if multi-chart), (4) Risk Management (entry/SL/TP/RR/position sizing), (5) Score & Decision (score with color, decision label, 2-3 bullet reasons), (6) Action Plan (3-5 concrete steps), (7) What Could Go Wrong (2-3 risks). OPTIONAL sections (only show when evidence exists): FCA Risk Check (only if fcaStatus is confirmed_*), Broker Summary Check (only if broker data detected in images/docs), News/Catalyst Impact (only if user provides news/catalyst text), Market Maker Code (only if orderbook/running trade visible). Total output target: 700-1200 words max. Instruct AI to be concise, no filler, no repeated warnings.",
+    "STEP 2 - Replace the CHART_SYSTEM_PROMPT with a compact version following the same 7-section format. For chart mode, Section 2 (Technical Analysis) becomes the primary content. Remove the verbose 15-section instructions. Keep evidence lock rules but make them concise (5-7 lines instead of 30+). Keep chart validation rules but compress to essential points only. Score caps remain: single chart max 70, multi-chart max 80, multi+docs max 90.",
+    "STEP 3 - Rewrite the handleChatMode function to accept a 'context' field from the request body. When context is provided (containing latestAnalysisContext with ticker, score, decision, key levels, risks, broker summary bias), the AI should use it for natural follow-up answers. Follow-up responses should be 150-400 words, direct, contextual. System prompt for follow-up: 'User sudah menerima analisis sebelumnya. Konteks: [context]. Jawab pertanyaan follow-up secara langsung dan singkat. Jangan ulangi analisis lengkap. Jangan minta data yang sudah diberikan.' Add a new source value 'follow_up' alongside existing 'chat_mode'.",
+    "STEP 4 - Fix the FCA hallucination bug in the prompt. Currently buildFCAContextBlock is always appended (even when not_detected). Change: when fcaStatus is 'not_detected', do NOT append buildFCAContextBlock at all. Only append it when status is confirmed_* or unconfirmed. In the main prompt, remove any mention of FCA/Full Call Auction from the base prompt text (it should only appear via the dynamic FCA section). This prevents the AI from 'seeing' FCA keywords and hallucinating FCA warnings.",
+    "STEP 5 - Add empty section hiding logic. In the compact prompt, add instruction: 'Jika sebuah section OPSIONAL tidak memiliki data/evidence, JANGAN tampilkan section tersebut sama sekali. Jangan tampilkan section kosong atau section yang hanya berisi \"tidak tersedia\". Final Note: hanya tampilkan jika ada konten substantif (disclaimer cukup 1 kalimat di akhir Action Plan).' Remove the dedicated 'Final Note' section from the format entirely - merge the short disclaimer into Action Plan's last bullet.",
+    "STEP 6 - Add token optimization rules to the prompt. Add: 'ATURAN TOKEN: (1) Jangan ulangi informasi yang sudah disebut di section lain. (2) Jangan beri warning yang sama lebih dari sekali. (3) Jangan tampilkan section yang isinya \"tidak tersedia\" atau \"belum bisa dikonfirmasi\". (4) Jika hanya ada ticker+harga (Level 1), output maksimal 400-600 kata. (5) Jika ada chart (Level 2-3), output maksimal 700-1000 kata. (6) Jika ada chart+docs (Level 4+), output maksimal 1000-1200 kata.' Also reduce maxOutputTokens from 8192 to 4096 for ticker mode, keep 8192 for chart mode.",
+    "STEP 7 - Update the isCompleteAnalysis function to work with the new compact format. Change required keywords to match new section names: 'Score', 'Decision', 'Action Plan', 'Risk'. The validation should pass if: (a) response length > 300 chars AND (b) contains at least 2 of the new keywords. Remove old keywords like 'Multi-Timeframe', 'Position Sizing', 'Scenario-Based' that no longer exist as dedicated sections.",
+    "STEP 8 - Update the generateFallback function to match the new compact format (7 sections instead of 15). Make it much shorter - the fallback for ticker-only should be ~400 words showing: Input Quality (Level 1 basic), Key Level Estimates (brief), Score (cap 55, NEED CHART CONFIRMATION label), Action Plan (upload chart, check news), Risks (3 bullets). Remove sections 4, 6, 11, 12, 13 from fallback entirely.",
+    "STEP 9 - Add the decision labels to the prompt as a standardized list: AVOID, WAIT, WATCHLIST, NEED CHART CONFIRMATION, SPECULATIVE BUY, BUY ON CONFIRMATION, BUY ON PULLBACK, SCALP ONLY, SWING VALID, HOLD, TAKE PROFIT PARTIAL, CUT LOSS / EXIT. Add color mapping instruction: red for AVOID/CUT LOSS, yellow for WAIT/WATCHLIST/NEED CHART/SPECULATIVE, emerald/green for BUY/SWING/HOLD, blue for TAKE PROFIT.",
+    "STEP 10 - Compress buildMarketMakerSection and buildBrokerSummarySection. Both are extremely long (100+ lines each of string concatenation). Reduce each to ~40 lines keeping only the essential rules. Remove repetitive disclaimers and examples. Keep: when to apply, what to extract, how to score-adjust, key warnings. The AI already understands these concepts - it does not need 5 examples of each scenario."
+  ],
+  "acceptance_criteria": [
+    "api/analyze.js passes node -c syntax check",
+    "buildPrompt produces a compact 7-section format instruction (not 15 sections)",
+    "CHART_SYSTEM_PROMPT uses compact format with same evidence lock rules",
+    "handleChatMode accepts context field for follow-up conversations",
+    "FCA context block is NOT appended when fcaStatus is 'not_detected'",
+    "No dedicated 'Final Note' section in the prompt format",
+    "maxOutputTokens is 4096 for ticker mode",
+    "isCompleteAnalysis validates against new compact keywords",
+    "generateFallback is shorter and matches new 7-section format",
+    "Decision labels list is included in prompts",
+    "buildMarketMakerSection and buildBrokerSummarySection are each under 50 lines"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && node -c /projects/sandbox/auto-cuan/api/analyze.js",
+    "unset NODE_OPTIONS && node -e \"const fs=require('fs'); const code=fs.readFileSync('/projects/sandbox/auto-cuan/api/analyze.js','utf8'); if(code.includes('15 BAGIAN WAJIB')) throw 'Still has 15 sections'; if(!code.includes('Action Plan')) throw 'Missing Action Plan section'; if(code.includes('buildFCAContextBlock(fca)') && !code.includes('not_detected')) throw 'FCA block always appended'; console.log('FEAT-001 checks passed');\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
