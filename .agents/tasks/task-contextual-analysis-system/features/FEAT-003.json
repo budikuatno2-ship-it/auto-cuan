@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Polish the chat UI to feel more like ChatGPT/Claude: smoother loading states, better message spacing, regenerate button on AI responses, improved copy feedback, and compact response rendering that does not overwhelm the viewport.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "STEP 1 - Add a 'Regenerate' button next to the copy button on AI analysis bubbles. In the addAIBubble function (around line 1466 in index.html), when isStructured is true, add a regenerate button: '<button onclick=\"regenerateLastAnalysis(this)\" class=\"copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all\">Ulang</button>'. Implement regenerateLastAnalysis(btn) that: (a) finds the previous user message, (b) re-triggers the same analysis with the same parameters, (c) replaces the current AI bubble with new response.",
     "STEP 2 - Improve the loading state. Replace the simple 'Menganalisis...' text with a multi-step progress indicator. Update addLoadingBubble to show: 'Membaca data...' (0-2s) then 'Menganalisis chart...' (2-5s) then 'Menyusun rekomendasi...' (5s+). Use setInterval to cycle through these messages. This makes the wait feel shorter and more interactive, similar to ChatGPT's streaming feel.",
@@ -26,5 +26,5 @@
     "unset NODE_OPTIONS && node -e \"const fs=require('fs'); const html=fs.readFileSync('/projects/sandbox/auto-cuan/index.html','utf8'); if(!html.includes('regenerateLastAnalysis')) throw 'Missing regenerate'; if(!html.includes('Membaca data')) throw 'Missing loading steps'; if(!html.includes('toggleAnalysisExpand')) throw 'Missing collapsible'; console.log('FEAT-003 checks passed');\""
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Implemented all 6 sub-features: (1) Regenerate button with lastAnalysisParams global var tracking last analysis call, (2) Progressive loading messages cycling through 3 stages with setInterval, (3) Typing effect for short non-structured responses using 4-char groups at 15ms, (4) Analisis label for structured bubbles, (5) Collapsible analysis splitting at Action Plan section with toggle button, (6) Updated copyBubbleContent to concatenate preview+full text. addAIBubble now takes 3 params (html, isStructured, fromHistory). All callers that produce real-time results still work fine without the third param (defaults to undefined/falsy)."
 }
