@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Implement multi-file upload, paste support, file preview UI, document type support, and improved composer UX in index.html. This covers Features 1, 2, 4, 5, and 10 from the requirements (paste support, multiple uploads, multi-timeframe workflow hints, better composer UI, and error handling for files).",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "STEP 1 - Multi-file state: Replace the global 'var selectedFile = null' with 'var selectedFiles = []' array. Each entry has: id, file, name, type, size, previewUrl, source (upload/paste), status (ready/processing/error). Add constants: MAX_FILES=8, MAX_IMAGE_SIZE=10*1024*1024, MAX_DOC_SIZE=20*1024*1024, MAX_TOTAL_SIZE=50*1024*1024. Add SUPPORTED_TYPES object with images (png,jpg,jpeg,webp,gif) and documents (pdf,doc,docx,txt,csv,xls,xlsx).",
     "STEP 2 - File input update: Change the <input id='fileInput'> to accept='image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx' and add the 'multiple' attribute. Update the upload button icon/title to reflect multi-file support.",

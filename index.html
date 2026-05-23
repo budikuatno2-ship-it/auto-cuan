@@ -139,7 +139,7 @@
 
 <!-- HEADER -->
 <header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50 flex-shrink-0">
-    <div class="max-w-[1500px] w-full mx-auto px-4 sm:px-6 py-3">
+    <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-3">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <button onclick="toggleSidebar()" class="sidebar-toggle-btn" title="Riwayat Chat">
@@ -166,7 +166,7 @@
 </header>
 
 <!-- MAIN CHAT SECTION - Full screen height -->
-<section id="aiSection" class="flex-1 flex flex-col max-w-[1500px] w-full mx-auto px-4 sm:px-6" style="min-height:calc(100vh - 64px);">
+<section id="aiSection" class="flex-1 flex flex-col max-w-[1600px] w-full mx-auto px-4 sm:px-6" style="min-height:calc(100vh - 64px);">
     <div class="flex-1 flex flex-col bg-dark-800/40 border border-dark-600/30 rounded-2xl shadow-2xl shadow-black/30 my-4 overflow-hidden chat-container">
         <!-- Chat header -->
         <div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between flex-shrink-0">
@@ -202,13 +202,9 @@
         </div>
 
 
-        <!-- Attachment preview -->
+        <!-- Attachment preview (multi-file) -->
         <div id="attachmentPreview" class="hidden px-4 pb-2 flex-shrink-0">
-            <div class="attachment-preview inline-block">
-                <img id="attachmentImg" class="h-16 rounded-lg border border-dark-600/50 object-cover" alt="Preview">
-                <span class="remove-btn" onclick="removeAttachment()">&times;</span>
-            </div>
-            <p id="attachmentName" class="text-xs text-gray-500 mt-1"></p>
+            <div id="filePreviewContainer" class="flex flex-wrap gap-2"></div>
         </div>
 
         <!-- Composer -->
@@ -229,10 +225,14 @@
                     </div>
                 </div>
                 <!-- Upload button -->
-                <input id="fileInput" type="file" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
-                <button onclick="document.getElementById('fileInput').click()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload Chart">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                </button>
+                <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
+                <div class="flex-shrink-0 relative">
+                    <button onclick="document.getElementById('fileInput').click()" class="p-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload File (maks 8)">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </button>
+                    <span id="fileCountBadge" class="hidden absolute -top-1 -right-1 bg-emerald-500 text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"></span>
+                </div>
+                <span class="hidden sm:inline text-[10px] text-gray-600 self-center">Ctrl+V paste</span>
                 <!-- Text input -->
                 <div class="flex-1 relative">
                     <textarea id="chatInput" rows="1" placeholder="Tanya saham, kirim ticker + harga, atau upload chart..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/40 text-sm resize-none overflow-hidden" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
@@ -247,7 +247,7 @@
 </section>
 
 <!-- TRADINGVIEW WIDGET - Below chat -->
-<section id="tvSection" class="max-w-[1500px] w-full mx-auto px-4 sm:px-6 pb-6">
+<section id="tvSection" class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 pb-6">
     <div class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
         <div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -267,7 +267,7 @@
 
 
 <!-- ADMIN PANEL (only for budi) -->
-<section id="adminPanel" class="hidden max-w-[1500px] w-full mx-auto px-4 sm:px-6 pb-6">
+<section id="adminPanel" class="hidden max-w-[1600px] w-full mx-auto px-4 sm:px-6 pb-6">
     <div class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
         <div class="px-4 sm:px-6 py-4 border-b border-dark-600/30 flex items-center gap-2">
             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
@@ -292,7 +292,7 @@
 
 <!-- FOOTER -->
 <footer class="border-t border-dark-700/50 mt-auto flex-shrink-0">
-    <div class="max-w-[1500px] w-full mx-auto px-4 sm:px-6 py-4 text-center">
+    <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-4 text-center">
         <p class="text-xs text-gray-600">Auto-Cuan &copy; 2024 &bull; Disclaimer: Bukan merupakan saran investasi.</p>
     </div>
 </footer>
@@ -716,34 +716,173 @@ function handleInputKeydown(e) {
 }
 
 // ===== FILE HANDLING =====
-var selectedFile = null;
+var selectedFiles = [];
+var MAX_FILES = 8;
+var MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+var MAX_DOC_SIZE = 20 * 1024 * 1024;
+var MAX_TOTAL_SIZE = 50 * 1024 * 1024;
+var SUPPORTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+var SUPPORTED_DOC_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+var ALL_SUPPORTED_TYPES = SUPPORTED_IMAGE_TYPES.concat(SUPPORTED_DOC_TYPES);
+
 function handleFileSelect(event) {
-    var file = event.target.files[0]; if (!file) return;
-    var validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-    if (!validTypes.includes(file.type)) { showToast('Format tidak didukung. Gunakan PNG/JPG/WebP.', 'error'); return; }
-    if (file.size > 20 * 1024 * 1024) { showToast('File terlalu besar. Maks 20MB.', 'error'); return; }
-    selectedFile = file;
-    var preview = document.getElementById('attachmentPreview');
-    var img = document.getElementById('attachmentImg');
-    var name = document.getElementById('attachmentName');
-    img.src = URL.createObjectURL(file); name.textContent = file.name;
-    preview.classList.remove('hidden');
-    // Auto switch to chart mode if in auto mode
-    if (currentMode === 'auto' || currentMode === 'chart') {
+    var files = event.target.files;
+    if (!files || files.length === 0) return;
+    addFilesToSelection(Array.from(files), 'upload');
+    event.target.value = '';
+}
+
+function addFilesToSelection(files, source) {
+    var totalCurrentSize = selectedFiles.reduce(function(sum, f) { return sum + f.size; }, 0);
+    for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        if (selectedFiles.length >= MAX_FILES) {
+            showToast('Terlalu banyak file. Maksimal ' + MAX_FILES + ' file dalam satu pesan.', 'error');
+            break;
+        }
+        if (!ALL_SUPPORTED_TYPES.includes(file.type)) {
+            showToast('Format file belum didukung. Gunakan PNG, JPG, WEBP, GIF, PDF, DOCX, TXT, CSV, XLS, atau XLSX.', 'error');
+            continue;
+        }
+        var isImage = SUPPORTED_IMAGE_TYPES.includes(file.type);
+        if (isImage && file.size > MAX_IMAGE_SIZE) {
+            showToast('Ukuran gambar terlalu besar. Maksimal 10 MB.', 'error');
+            continue;
+        }
+        if (!isImage && file.size > MAX_DOC_SIZE) {
+            showToast('Ukuran dokumen terlalu besar. Maksimal 20 MB.', 'error');
+            continue;
+        }
+        if (totalCurrentSize + file.size > MAX_TOTAL_SIZE) {
+            showToast('Total ukuran file terlalu besar. Maksimal 50 MB per pesan.', 'error');
+            break;
+        }
+        // Duplicate check by name + size
+        var isDuplicate = selectedFiles.some(function(sf) { return sf.name === file.name && sf.size === file.size; });
+        if (isDuplicate) continue;
+        selectedFiles.push({
+            id: 'file_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            file: file,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            previewUrl: isImage ? URL.createObjectURL(file) : null,
+            source: source,
+            status: 'ready'
+        });
+        totalCurrentSize += file.size;
+    }
+    renderFilePreview();
+    if (selectedFiles.length > 0 && (currentMode === 'auto' || currentMode === 'chart')) {
         document.getElementById('chatInput').placeholder = 'Tulis ticker dan harga sekarang (opsional)...';
     }
 }
-function removeAttachment() {
-    selectedFile = null;
-    document.getElementById('attachmentPreview').classList.add('hidden');
+
+function renderFilePreview() {
+    var container = document.getElementById('filePreviewContainer');
+    var wrapper = document.getElementById('attachmentPreview');
+    if (selectedFiles.length === 0) {
+        wrapper.classList.add('hidden');
+        container.innerHTML = '';
+        updateFileCountBadge();
+        return;
+    }
+    wrapper.classList.remove('hidden');
+    var html = '';
+    selectedFiles.forEach(function(f) {
+        var isImage = SUPPORTED_IMAGE_TYPES.includes(f.type);
+        var sizeStr = f.size < 1024 * 1024 ? (f.size / 1024).toFixed(0) + ' KB' : (f.size / (1024 * 1024)).toFixed(1) + ' MB';
+        var shortName = f.name.length > 18 ? f.name.slice(0, 15) + '...' : f.name;
+        if (isImage && f.previewUrl) {
+            html += '<div class="relative group flex items-center gap-2 bg-dark-700 border border-dark-600/50 rounded-lg px-2 py-1.5" data-file-id="' + f.id + '">';
+            html += '<img src="' + f.previewUrl + '" class="h-10 w-10 rounded object-cover" alt="' + escapeHtml(f.name) + '">';
+            html += '<div class="flex flex-col"><span class="text-[11px] text-gray-300 leading-tight">' + escapeHtml(shortName) + '</span><span class="text-[10px] text-gray-500">' + sizeStr + '</span></div>';
+            html += '<button onclick="removeFile(\'' + f.id + '\')" class="ml-1 text-gray-500 hover:text-red-400 text-sm font-bold transition">&times;</button>';
+            html += '</div>';
+        } else {
+            var ext = f.name.split('.').pop().toUpperCase();
+            html += '<div class="relative group flex items-center gap-2 bg-dark-700 border border-dark-600/50 rounded-lg px-2 py-1.5" data-file-id="' + f.id + '">';
+            html += '<span class="inline-flex items-center justify-center h-10 w-10 rounded bg-dark-600 text-[10px] font-bold text-emerald-400">' + ext + '</span>';
+            html += '<div class="flex flex-col"><span class="text-[11px] text-gray-300 leading-tight">' + escapeHtml(shortName) + '</span><span class="text-[10px] text-gray-500">' + sizeStr + '</span></div>';
+            html += '<button onclick="removeFile(\'' + f.id + '\')" class="ml-1 text-gray-500 hover:text-red-400 text-sm font-bold transition">&times;</button>';
+            html += '</div>';
+        }
+    });
+    container.innerHTML = html;
+    updateFileCountBadge();
+}
+
+function updateFileCountBadge() {
+    var badge = document.getElementById('fileCountBadge');
+    if (selectedFiles.length > 0) {
+        badge.textContent = selectedFiles.length;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function removeFile(fileId) {
+    var idx = selectedFiles.findIndex(function(f) { return f.id === fileId; });
+    if (idx !== -1) {
+        if (selectedFiles[idx].previewUrl) URL.revokeObjectURL(selectedFiles[idx].previewUrl);
+        selectedFiles.splice(idx, 1);
+    }
+    renderFilePreview();
+    if (selectedFiles.length === 0) {
+        document.getElementById('chatInput').placeholder = modePlaceholders[currentMode];
+    }
+}
+
+function clearAllFiles() {
+    selectedFiles.forEach(function(f) {
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+    });
+    selectedFiles = [];
     document.getElementById('fileInput').value = '';
+    renderFilePreview();
     document.getElementById('chatInput').placeholder = modePlaceholders[currentMode];
 }
+
+function removeAttachment() {
+    clearAllFiles();
+}
+
+// Paste handler for images/files
+document.addEventListener('paste', function(e) {
+    var chatInput = document.getElementById('chatInput');
+    var isComposerActive = document.activeElement === chatInput || document.activeElement.closest('.chat-container');
+    if (!isComposerActive) return;
+    var clipboardFiles = [];
+    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+        clipboardFiles = Array.from(e.clipboardData.files);
+    } else if (e.clipboardData && e.clipboardData.items) {
+        for (var i = 0; i < e.clipboardData.items.length; i++) {
+            var item = e.clipboardData.items[i];
+            if (item.kind === 'file') {
+                var f = item.getAsFile();
+                if (f) clipboardFiles.push(f);
+            }
+        }
+    }
+    if (clipboardFiles.length > 0) {
+        e.preventDefault();
+        addFilesToSelection(clipboardFiles, 'paste');
+    }
+});
+
 function fileToBase64(file) {
     return new Promise(function(resolve, reject) {
         var reader = new FileReader(); reader.onload = function(e) { resolve(e.target.result); }; reader.onerror = function() { reject(new Error('Gagal membaca file.')); }; reader.readAsDataURL(file);
     });
 }
+
+// Cleanup object URLs on page unload
+window.addEventListener('beforeunload', function() {
+    selectedFiles.forEach(function(f) {
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+    });
+});
 
 
 // ===== TICKER STOPWORDS =====
@@ -899,7 +1038,7 @@ async function handleSend() {
     if (isSending) return;
     var input = document.getElementById('chatInput');
     var msg = input.value.trim();
-    var hasFile = !!selectedFile;
+    var hasFile = selectedFiles.length > 0;
     var limitWarning = document.getElementById('limitWarning');
     limitWarning.classList.add('hidden');
 
@@ -1066,7 +1205,7 @@ async function handleChat(msg) {
 
 // ===== CHART UPLOAD HANDLER =====
 async function handleChartUpload(msg) {
-    if (!selectedFile) { showToast('Upload screenshot chart dulu ya.', 'warning'); return; }
+    if (selectedFiles.length === 0) { showToast('Upload screenshot chart dulu ya.', 'warning'); return; }
     if (!canAnalyze()) { document.getElementById('limitWarning').textContent = getAnalysisLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
     // If msg contains a valid ticker, use it
     var chartTicker = null;
@@ -1074,24 +1213,29 @@ async function handleChartUpload(msg) {
         chartTicker = detectTicker(msg);
         if (chartTicker) { setActiveTicker(chartTicker); updateTradingViewSafe(chartTicker); }
     }
-    var fileName = selectedFile.name;
+    // Use first image file for analysis
+    var imageFile = selectedFiles.find(function(f) { return SUPPORTED_IMAGE_TYPES.includes(f.type); });
+    if (!imageFile) { showToast('Upload screenshot chart (gambar) untuk analisis.', 'warning'); return; }
+    var fileName = imageFile.name;
     var detectedTimeframe = detectTimeframeFromFilename(fileName);
     var tfLabel = detectedTimeframe ? ' ' + detectedTimeframe : '';
-    addUserBubble((msg ? msg + '\n' : '') + '[Chart' + tfLabel + ': ' + fileName + ']');
+    var fileCountLabel = selectedFiles.length > 1 ? ' [' + selectedFiles.length + ' file terlampir]' : '';
+    addUserBubble((msg ? msg + '\n' : '') + '[Chart' + tfLabel + ': ' + fileName + ']' + fileCountLabel);
     addLoadingBubble();
     disableSend(); clearInput();
     logSearch('CHART_UPLOAD', 'chart_upload'); logUsage('CHART_UPLOAD', 'ai_analysis_started');
     try {
-        var base64Data = await fileToBase64(selectedFile);
-        removeAttachment();
+        var base64Data = await fileToBase64(imageFile.file);
+        var mimeType = imageFile.type;
+        clearAllFiles();
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Data, mimeType: selectedFile ? selectedFile.type : 'image/png', source: 'chart_upload', timeframe: detectedTimeframe || null, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify({ image: base64Data, mimeType: mimeType, source: 'chart_upload', timeframe: detectedTimeframe || null, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
         base64Data = null;
         var data = await response.json();
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
         else { throw new Error('Tidak ada hasil.'); }
-    } catch(e) { removeLoadingBubble(); removeAttachment(); addAIError('Gagal: ' + e.message); logUsage('CHART_UPLOAD', 'ai_error'); base64Data = null; }
+    } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError('Gagal: ' + e.message); logUsage('CHART_UPLOAD', 'ai_error'); base64Data = null; }
     finally { enableSend(); saveChatHistory(); }
 }
 
