@@ -53,6 +53,135 @@ function buildFCASection(fcaStatus, evidenceLevel) {
     'DILARANG menggunakan kata-kata: pasti, aman, mudah naik, tinggal gas, auto cuan, pasti mantul, gas buy untuk saham FCA.';
 }
 
+function buildMarketMakerSection() {
+  return '\n\n=== MARKET MAKER CODE READER ===\n' +
+    '=== PENTING: KAPAN MARKET MAKER CODE BERLAKU ===\n' +
+    '- Kode market maker TIDAK muncul di setiap saham\n' +
+    '- Kode lebih likely terlihat di saham fast-moving dengan running trade aktif, bid-offer cepat berubah, frekuensi transaksi tinggi, dan orderbook bergerak cepat\n' +
+    '- Jika saham illiquid, slow, atau sangat sedikit transaksi, output:\n' +
+    '  "Kode market maker belum terlihat jelas karena aktivitas transaksi tidak cukup cepat/ramai."\n' +
+    '- Jangan paksa deteksi kode pada setiap saham\n' +
+    '- Jika tidak ada kode valid yang jelas, output:\n' +
+    '  "Tidak ada kode market maker yang valid terdeteksi dari data yang diberikan."\n' +
+    '\n' +
+    '=== FAST TAPE / ORDER FLOW ACTIVITY CHECK ===\n' +
+    'Evaluasi apakah screenshot/orderbook/running trade yang di-upload cukup aktif untuk interpretasi kode market maker.\n\n' +
+    'Faktor yang dicek (jika terlihat):\n' +
+    '- Kecepatan running trade\n' +
+    '- Frekuensi transaksi\n' +
+    '- Perubahan bid-offer\n' +
+    '- Ketebalan lot bid\n' +
+    '- Ketebalan lot offer\n' +
+    '- Perubahan antrian\n' +
+    '- Spread\n' +
+    '- Total bid\n' +
+    '- Total offer\n' +
+    '- Repeated prints\n' +
+    '- Apakah kode muncul hanya sekali atau berulang\n\n' +
+    'Klasifikasi:\n' +
+    '1. Fast Tape / Active\n' +
+    '   - Running trade terlihat aktif\n' +
+    '   - Frekuensi tinggi\n' +
+    '   - Bid-offer berubah cepat\n' +
+    '   - Orderbook memiliki likuiditas cukup\n' +
+    '   - Kode market maker mungkin lebih relevan, tapi tetap tidak dijamin\n\n' +
+    '2. Moderate Activity\n' +
+    '   - Ada aktivitas\n' +
+    '   - Bid-offer bergerak tapi tidak sangat cepat\n' +
+    '   - Kode market maker hanya bisa digunakan sebagai referensi lemah-medium\n\n' +
+    '3. Slow / Illiquid\n' +
+    '   - Sedikit transaksi\n' +
+    '   - Frekuensi rendah\n' +
+    '   - Bid-offer tipis\n' +
+    '   - Spread lebar\n' +
+    '   - Orderbook terlihat tidak aktif\n' +
+    '   - Kode market maker lemah dan bisa menyesatkan\n\n' +
+    'Jika aktivitas Slow/Illiquid, output:\n' +
+    '"Kode market maker belum terlihat jelas karena aktivitas transaksi tidak cukup cepat/ramai."\n\n' +
+    '=== THIN BID/OFFER + CODE WARNING ===\n' +
+    'Jika total bid/offer tipis, antrian kecil, likuiditas lemah, atau spread lebar, DAN kode market maker muncul, JANGAN anggap sebagai sinyal kuat.\n\n' +
+    'Interpretasi:\n' +
+    '- Kode bisa jadi false signal\n' +
+    '- Kode bisa jadi noise\n' +
+    '- Kode bisa digunakan untuk menarik perhatian retail\n' +
+    '- Kode lebih mudah dimanipulasi karena likuiditas tipis\n' +
+    '- Kode harus divalidasi dengan repeated snapshots, running trade, chart structure, dan volume\n\n' +
+    'Output wording WAJIB jika bid/offer tipis + kode muncul:\n' +
+    '"Bid/offer terlihat tipis, sehingga kemunculan kode market maker belum bisa dianggap kuat. Pada kondisi likuiditas tipis, kode seperti ini bisa saja menjadi sinyal lemah, noise, atau bahkan jebakan/false signal. Validasi tetap wajib menggunakan running trade, perubahan orderbook beberapa waktu, chart intraday, dan risk management."\n\n' +
+    'DILARANG menggunakan kata:\n' +
+    '- "pasti jebakan"\n' +
+    '- "pasti fake"\n' +
+    '- "pasti bandar"\n' +
+    '- "pasti naik"\n' +
+    '- "pasti turun"\n\n' +
+    'Gunakan HANYA wording hati-hati:\n' +
+    '- "bisa jadi"\n' +
+    '- "terindikasi"\n' +
+    '- "belum bisa dikonfirmasi"\n' +
+    '- "perlu validasi"\n' +
+    '- "risiko false signal meningkat"\n\n' +
+    '=== THIN LIQUIDITY RULES ===\n' +
+    'Jika bid/offer tipis:\n' +
+    '- Kurangi confidence\n' +
+    '- Kurangi score\n' +
+    '- Hindari kesimpulan BUY/SELL yang kuat\n' +
+    '- Prefer WAIT / WATCHLIST / NEED CHART CONFIRMATION\n' +
+    '- Sebutkan execution risk\n' +
+    '- Sebutkan risiko fake bid/fake offer\n' +
+    '- Sebutkan bahwa order kecil bisa menggerakkan harga\n\n' +
+    'Jika kode market maker muncul dalam likuiditas tipis:\n' +
+    '- Code confidence default LOW\n' +
+    '- Indikasi fake bid/fake offer: Weak, tapi tidak confirmed\n' +
+    '- Jika hanya satu screenshot, katakan tidak bisa dikonfirmasi\n' +
+    '- Jika multiple snapshots menunjukkan kode muncul/hilang, confidence bisa naik ke Medium\n' +
+    '- Jika repeated snapshots menunjukkan bid/offer walls hilang saat harga mendekat, indikasi fake bid/fake offer bisa menjadi Strong\n\n' +
+    '=== INTERPRETATION MATRIX ===\n' +
+    '1. Fast Tape + Thick Bid/Offer + Repeated Code\n' +
+    '   - Sinyal order flow lebih kuat\n' +
+    '   - Kemungkinan coordinated activity\n' +
+    '   - Tetap butuh validasi chart dan risk management\n\n' +
+    '2. Fast Tape + Thin Bid/Offer + Code Appears\n' +
+    '   - Sinyal berisiko\n' +
+    '   - Kemungkinan trap/false signal\n' +
+    '   - Harga bisa bergerak cepat karena likuiditas tipis\n' +
+    '   - JANGAN berikan rekomendasi agresif\n\n' +
+    '3. Slow Tape + Thick Bid/Offer + Code Appears\n' +
+    '   - Order mungkin terkonsentrasi\n' +
+    '   - Kemungkinan big player\n' +
+    '   - Bisa juga fake wall\n' +
+    '   - Butuh validasi berbasis waktu\n\n' +
+    '4. Slow Tape + Thin Bid/Offer + Code Appears\n' +
+    '   - Sinyal lemah\n' +
+    '   - Risiko false signal tinggi\n' +
+    '   - Confidence rendah\n' +
+    '   - Prefer WAIT / AVOID / NEED CHART CONFIRMATION\n\n' +
+    '5. No Clear Code\n' +
+    '   - Jangan paksa deteksi\n' +
+    '   - Katakan tidak ada kode valid terdeteksi\n\n' +
+    '=== OUTPUT FORMAT: FAST TAPE / ORDER FLOW ACTIVITY CHECK ===\n' +
+    'Jika terlihat orderbook/running trade/bid-offer data, WAJIB tampilkan section ini:\n\n' +
+    '"Fast Tape / Order Flow Activity Check"\n' +
+    '- Activity level: Fast / Moderate / Slow / Unknown\n' +
+    '- Bid-offer condition: Thick / Balanced / Thin / Unknown\n' +
+    '- Spread condition: Tight / Normal / Wide / Unknown\n' +
+    '- Code reliability: Low / Medium / High\n' +
+    '- False signal risk: Low / Medium / High\n' +
+    '- Catatan/Explanation\n\n' +
+    '=== SCORING RULES MARKET MAKER CODE ===\n' +
+    '- Kode market maker di fast tape + repeated snapshots: confidence boleh naik sedikit\n' +
+    '- Kode market maker di thin liquidity: confidence HARUS turun\n' +
+    '- Kode market maker di slow tape: TIDAK BOLEH menaikkan score\n' +
+    '- Kode market maker di thin bid/offer + satu screenshot saja: cap score di 50-55\n' +
+    '- Kode market maker di fast tape + thick liquidity + repeated confirmation: cap score di 65-70\n' +
+    '- Jika chart confirmation tidak ada, tetap hindari aggressive BUY\n' +
+    '- Jika saham FCA, terapkan FCA cap terlebih dahulu, lalu kurangi lagi jika likuiditas tipis\n\n' +
+    '=== REMINDER PENTING ===\n' +
+    'Market maker code hanyalah secondary evidence.\n' +
+    'Fast Tape / Order Flow Activity membuat kode lebih relevan, tapi tetap tidak dijamin.\n' +
+    'Thin bid/offer membuat kode kurang reliable dan meningkatkan risiko false signal.\n' +
+    'JANGAN PERNAH menghasilkan kepastian dari kode saja.\n';
+}
+
 function buildDocumentContext(documents) {
   if (!documents || documents.length === 0) return '';
   var validDocs = documents.filter(function(d) { return d.text && d.text.trim().length > 0; });
@@ -657,6 +786,7 @@ DILARANG mengklaim hal yang TIDAK terlihat di chart:
 5. Identifikasi area support/resistance yang VISIBLE
 6. Jika indikator SMC terlihat (BOS, CHoCH, OB), baca label yang ada
 7. Jika harga tidak terbaca jelas, estimasi dan tulis "estimasi dari chart"
+8. Jika terlihat orderbook, running trade, atau data bid-offer, evaluasi menggunakan Market Maker Code Reader rules yang diberikan di bawah.
 
 === SCORE MEANING ===
 0-30: AVOID
@@ -821,6 +951,9 @@ async function handleChartUpload(req, res, imageData, mimeType) {
   if (fcaSection) {
     chartPrompt += fcaSection;
   }
+
+  // Add market maker code reader section
+  chartPrompt += buildMarketMakerSection();
 
   // Add document context if available
   var docContext = buildDocumentContext(documents);

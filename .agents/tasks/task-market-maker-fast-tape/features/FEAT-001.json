@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Add Market Maker Code Reader with Fast Tape / Order Flow Activity logic, thin bid-offer warning, interpretation matrix, and scoring updates to the CHART_SYSTEM_PROMPT in api/analyze.js. This adds comprehensive prompt instructions so Gemini AI can evaluate orderbook/running trade screenshots for market maker code reliability.",
+  "status": "in_progress",
+  "steps": [
+    "Step 1: In api/analyze.js, create a new helper function called buildMarketMakerSection() that returns a large prompt string containing all the market maker code reader instructions. This function should be placed near buildFCASection(). The prompt string must include ALL of the following sections as instructed text for the AI: (a) Fast Tape / Order Flow Activity Check section - instructs AI to evaluate whether the uploaded screenshot/orderbook/running trade is active enough for market maker code interpretation, checking factors like running trade speed, transaction frequency, bid-offer changes, bid lot thickness, offer lot thickness, queue changes, spread, total bid, total offer, repeated prints, and whether the code appears only once or repeatedly. (b) Activity Classification - Fast Tape/Active, Moderate Activity, Slow/Illiquid with specific criteria for each. (c) Thin Bid/Offer + Code Warning section - instructs AI to output a specific Indonesian warning message when bid/offer is thin but a market maker code appears, using only cautious wording (bisa jadi, terindikasi, belum bisa dikonfirmasi, perlu validasi, risiko false signal meningkat). Never say pasti jebakan/pasti fake/pasti bandar/pasti naik/pasti turun. (d) Thin Liquidity Rules - reduce confidence, reduce score, avoid strong BUY/SELL, prefer WAIT/WATCHLIST/NEED CHART CONFIRMATION, mention execution risk, fake bid/fake offer risk, and that small orders can move price. (e) Updated Interpretation Matrix with 5 scenarios: Fast Tape + Thick + Repeated Code, Fast Tape + Thin + Code, Slow Tape + Thick + Code, Slow Tape + Thin + Code, No Clear Code. (f) Output format for 'Fast Tape / Order Flow Activity Check' section showing Activity level, Bid-offer condition, Spread condition, Code reliability, False signal risk, and Explanation. (g) Scoring update rules: code in fast tape + repeated snapshots may improve confidence slightly; code in thin liquidity must reduce confidence; code in slow tape must not increase score; code in thin bid/offer + one screenshot caps score at 50-55; code in fast tape + thick liquidity + repeated confirmation caps at 65-70; if chart confirmation missing still avoid aggressive BUY; if FCA apply FCA cap first then reduce again if liquidity thin. (h) Important reminders: market maker codes do not appear in every stock, more likely in fast-moving stocks; if stock is illiquid/slow say 'Kode market maker belum terlihat jelas karena aktivitas transaksi tidak cukup cepat/ramai'; if no clear valid code appears say 'Tidak ada kode market maker yang valid terdeteksi dari data yang diberikan'; never force code detection; market maker code is only secondary evidence.",
+    "Step 2: In the handleChartUpload() function within api/analyze.js, after the FCA section is appended to chartPrompt (around line 820-825 area where fcaSection is added), add a call to append buildMarketMakerSection() to chartPrompt. This ensures the market maker code reader instructions are always included when images are uploaded (since orderbook/running trade are uploaded as images).",
+    "Step 3: In the CHART_SYSTEM_PROMPT template literal, add a note in the '=== INSTRUKSI MEMBACA CHART ===' section (after step 7) that says: '8. Jika terlihat orderbook, running trade, atau data bid-offer, evaluasi menggunakan Market Maker Code Reader rules yang diberikan di bawah.' This connects the chart reading instructions to the market maker module.",
+    "Step 4: In the isCompleteAnalysis() function, keep the existing required keywords check as-is (do NOT require market maker sections since they only appear when orderbook data is present - the AI decides whether to include them based on what it sees in the image).",
+    "Step 5: Verify syntax by running 'node -c api/analyze.js' to ensure no errors."
+  ],
+  "acceptance_criteria": [
+    "api/analyze.js contains a buildMarketMakerSection() function that returns the complete market maker code reader prompt text including Fast Tape / Order Flow Activity Check, Thin Bid/Offer Warning, Interpretation Matrix, Scoring Updates, and all Indonesian-language output templates",
+    "The buildMarketMakerSection() output is appended to chartPrompt in handleChartUpload() after the FCA section",
+    "CHART_SYSTEM_PROMPT includes step 8 referencing market maker code reader rules for orderbook/running trade evaluation",
+    "The prompt contains all 5 interpretation matrix scenarios",
+    "The prompt contains proper scoring cap rules (50-55 for thin+single screenshot, 65-70 for fast tape+thick+repeated)",
+    "The prompt explicitly forbids: pasti jebakan, pasti fake, pasti bandar, pasti naik, pasti turun",
+    "The prompt includes both Indonesian messages: 'Kode market maker belum terlihat jelas...' and 'Tidak ada kode market maker yang valid terdeteksi...'",
+    "The prompt includes the thin bid/offer warning text starting with 'Bid/offer terlihat tipis...'",
+    "'node -c api/analyze.js' passes with no syntax errors"
+  ],
+  "verification": [
+    "Run 'node -c api/analyze.js' and confirm exit code 0",
+    "Run 'node -e \"const m = require('./api/analyze.js'); console.log(typeof m)\"' from /projects/sandbox/auto-cuan to confirm the module exports correctly",
+    "Run 'grep -c \"buildMarketMakerSection\" api/analyze.js' to confirm the function exists and is called"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
