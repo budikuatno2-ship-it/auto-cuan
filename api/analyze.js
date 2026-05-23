@@ -1341,10 +1341,12 @@ FORMAT OUTPUT:
     chatSystemPrompt += '\nGunakan konteks ini untuk menjawab. Jangan tanya ulang data yang sudah ada.\n';
   }
 
-  chatSystemPrompt += '\n\nPertanyaan user: ' + message;
-
   const payload = {
-    contents: [{ parts: [{ text: chatSystemPrompt }] }],
+    contents: [
+      { role: 'user', parts: [{ text: chatSystemPrompt }] },
+      { role: 'model', parts: [{ text: 'Saya siap membantu analisis saham IDX. Silakan tanya.' }] },
+      { role: 'user', parts: [{ text: message }] }
+    ],
     generationConfig: {
       temperature: 0.7,
       topP: 0.9,
