@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Layout width improvements, UI polish, and copy button enhancements. Make the main chat container wider (max-width ~1500px, width: min(95vw, 1500px)), improve card spacing, add subtle borders/shadows, and ensure copy buttons work properly on all assistant responses.",
+  "status": "in_progress",
+  "steps": [
+    "In index.html, change the main chat container max-width from max-w-5xl (1024px) to a custom width. Update the <section id='aiSection'> element's classes from 'max-w-5xl' to use inline style or Tailwind arbitrary value like 'max-w-[1500px]' and 'w-[min(95vw,1500px)]'. Do the same for the header div (max-w-5xl), TradingView section, admin panel section, and footer.",
+    "Update the assistant bubble max-width from 'max-w-[85%]' to 'max-w-[90%]' or 'max-w-full' to let analysis results use more horizontal space. Keep user bubbles at max-w-[85%] right-aligned.",
+    "Improve card styling: add subtle box-shadow to the main chat container (e.g., shadow-xl shadow-black/20), improve the chat header with slightly stronger border, add a very subtle glow on the composer area border.",
+    "Ensure the copy button in addAIBubble() function shows 'Salin' for regular chat responses and 'Salin Hasil' for structured analysis results (isStructured=true). Verify the copyBubbleContent function properly copies plain text. The copy button should have better visibility - change from opacity:0 on desktop to opacity:0.5 default, 1 on hover.",
+    "Add a copy button to user messages as well (lower priority, small 'Salin' button that appears on hover).",
+    "Keep mobile responsive: on screens < 640px, use w-full with small padding. On sm+ screens, use the wider layout. Test that nothing overflows horizontally.",
+    "Add smoother transitions to session items and buttons. Use transition-all duration-150 consistently."
+  ],
+  "acceptance_criteria": [
+    "Main content area uses approximately 95vw or max 1500px width on desktop instead of the old 1024px (max-w-5xl)",
+    "Header, chat section, TradingView section, admin panel, and footer all use the same wider max-width",
+    "Assistant response cards use max-w-[90%] or wider to display analysis results without excessive scrolling",
+    "Copy buttons are visible (opacity 0.5+ on desktop, 0.7 on mobile) and show 'Disalin!' feedback after click",
+    "Layout remains centered and responsive on mobile without horizontal overflow",
+    "No JavaScript errors when running node --check equivalent validation"
+  ],
+  "verification": [
+    "Run: grep -n 'max-w-5xl' /projects/sandbox/auto-cuan/index.html - should return 0 results (all replaced with wider values)",
+    "Run: grep -n '1500px\\|95vw' /projects/sandbox/auto-cuan/index.html - should find the new width values",
+    "Run: grep -n 'Salin' /projects/sandbox/auto-cuan/index.html - should find copy button labels",
+    "Validate HTML/JS syntax is intact by checking the file can be parsed"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

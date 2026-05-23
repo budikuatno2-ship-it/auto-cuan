@@ -57,9 +57,10 @@
         .chat-messages { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
         .attachment-preview { position: relative; display: inline-block; }
         .attachment-preview .remove-btn { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: #ef4444; color: white; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid #0b0e14; }
-        .copy-btn { opacity: 0; transition: opacity 0.15s ease-out; }
+        .copy-btn { opacity: 0.4; transition: all 0.15s ease-out; }
         .flex.gap-3:hover .copy-btn, .copy-btn:focus { opacity: 1; }
         @media (max-width: 640px) { .copy-btn { opacity: 0.7; } }
+        .chat-container > .border-t { background: linear-gradient(to bottom, rgba(16,185,129,0.02), transparent 20px); }
 
         /* ===== SIDEBAR STYLES ===== */
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 200; transition: opacity 0.2s ease; }
@@ -69,7 +70,7 @@
         .sidebar-header { padding: 16px; border-bottom: 1px solid #1c2333; flex-shrink: 0; }
         .sidebar-sessions { flex: 1; overflow-y: auto; padding: 8px; }
         .sidebar-footer { padding: 12px 16px; border-top: 1px solid #1c2333; flex-shrink: 0; }
-        .session-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: background 0.15s; margin-bottom: 2px; }
+        .session-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: all 0.15s ease-out; margin-bottom: 2px; }
         .session-item:hover { background: #151a23; }
         .session-item.active { background: #1c2333; border: 1px solid rgba(16,185,129,0.2); }
         .session-item .session-title { flex: 1; font-size: 0.8125rem; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -138,7 +139,7 @@
 
 <!-- HEADER -->
 <header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50 flex-shrink-0">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3">
+    <div class="max-w-[1500px] w-full mx-auto px-4 sm:px-6 py-3">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <button onclick="toggleSidebar()" class="sidebar-toggle-btn" title="Riwayat Chat">
@@ -165,8 +166,8 @@
 </header>
 
 <!-- MAIN CHAT SECTION - Full screen height -->
-<section id="aiSection" class="flex-1 flex flex-col max-w-5xl w-full mx-auto px-4 sm:px-6" style="min-height:calc(100vh - 64px);">
-    <div class="flex-1 flex flex-col bg-dark-800/40 border border-dark-600/30 rounded-2xl my-4 overflow-hidden chat-container">
+<section id="aiSection" class="flex-1 flex flex-col max-w-[1500px] w-full mx-auto px-4 sm:px-6" style="min-height:calc(100vh - 64px);">
+    <div class="flex-1 flex flex-col bg-dark-800/40 border border-dark-600/30 rounded-2xl shadow-2xl shadow-black/30 my-4 overflow-hidden chat-container">
         <!-- Chat header -->
         <div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between flex-shrink-0">
             <div class="flex items-center gap-2">
@@ -246,7 +247,7 @@
 </section>
 
 <!-- TRADINGVIEW WIDGET - Below chat -->
-<section id="tvSection" class="max-w-5xl w-full mx-auto px-4 sm:px-6 pb-6">
+<section id="tvSection" class="max-w-[1500px] w-full mx-auto px-4 sm:px-6 pb-6">
     <div class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
         <div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -266,7 +267,7 @@
 
 
 <!-- ADMIN PANEL (only for budi) -->
-<section id="adminPanel" class="hidden max-w-5xl w-full mx-auto px-4 sm:px-6 pb-6">
+<section id="adminPanel" class="hidden max-w-[1500px] w-full mx-auto px-4 sm:px-6 pb-6">
     <div class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
         <div class="px-4 sm:px-6 py-4 border-b border-dark-600/30 flex items-center gap-2">
             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
@@ -291,7 +292,7 @@
 
 <!-- FOOTER -->
 <footer class="border-t border-dark-700/50 mt-auto flex-shrink-0">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-4 text-center">
+    <div class="max-w-[1500px] w-full mx-auto px-4 sm:px-6 py-4 text-center">
         <p class="text-xs text-gray-600">Auto-Cuan &copy; 2024 &bull; Disclaimer: Bukan merupakan saran investasi.</p>
     </div>
 </footer>
@@ -1066,7 +1067,7 @@ function addUserBubble(text) {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'flex gap-3 justify-end fade-in-up';
-    div.innerHTML = '<div class="bg-emerald-500/15 border border-emerald-500/20 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%]"><p class="text-sm text-gray-100 whitespace-pre-wrap">' + escapeHtml(text) + '</p></div>';
+    div.innerHTML = '<div class="bg-emerald-500/15 border border-emerald-500/20 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%]"><p class="text-sm text-gray-100 whitespace-pre-wrap">' + escapeHtml(text) + '</p><div class="mt-1.5 flex justify-end"><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-0.5 rounded-lg text-[11px] text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">Salin</button></div></div>';
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
@@ -1085,7 +1086,7 @@ function addAIBubble(html, isStructured) {
     div.className = 'flex gap-3 fade-in-up';
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
     var copyBtnHtml = '<div class="mt-2 flex justify-end"><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
-    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] overflow-x-auto"><div class="ai-content">' + html + '</div>' + copyBtnHtml + '</div>';
+    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] overflow-x-auto"><div class="ai-content">' + html + '</div>' + copyBtnHtml + '</div>';
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
@@ -1093,8 +1094,8 @@ function addAIError(msg) { addAIBubble('<p class="text-sm text-red-400">' + esca
 
 // ===== COPY BUTTON =====
 function copyBubbleContent(btn) {
-    var bubble = btn.closest('.bg-dark-700\\/50') || btn.parentElement.parentElement;
-    var contentEl = bubble.querySelector('.ai-content');
+    var bubble = btn.closest('.bg-dark-700\\/50') || btn.closest('.bg-emerald-500\\/15') || btn.parentElement.parentElement;
+    var contentEl = bubble.querySelector('.ai-content') || bubble.querySelector('p');
     var text = contentEl ? contentEl.innerText : bubble.innerText;
     navigator.clipboard.writeText(text).then(function() {
         var originalText = btn.textContent;
