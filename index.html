@@ -195,7 +195,7 @@
                         <li>• <span class="text-gray-200">BBCA 9250</span> → analisis lengkap</li>
                         <li>• <span class="text-gray-200">saham NAYZ gimana?</span> → info singkat</li>
                         <li>• <span class="text-gray-200">apa itu order block?</span> → edukasi</li>
-                        <li>• Upload chart → pindai chart otomatis</li>
+                        <li>• Upload chart 1W/1D/4H → analisis presisi</li>
                     </ul>
                 </div>
             </div>
@@ -823,6 +823,18 @@ function parseCleanPrice(str) {
     return price;
 }
 
+// ===== TIMEFRAME DETECTION FROM FILENAME =====
+function detectTimeframeFromFilename(filename) {
+    if (!filename) return null;
+    var f = filename.toLowerCase();
+    if (/1w|weekly|1\s*week|minggu/i.test(f)) return '1W';
+    if (/1d|daily|1\s*day|harian/i.test(f)) return '1D';
+    if (/4h|4\s*hour|4\s*jam/i.test(f)) return '4H';
+    if (/1h|1\s*hour|1\s*jam/i.test(f)) return '1H';
+    if (/15m|15\s*min/i.test(f)) return '15M';
+    return null;
+}
+
 // ===== TICKER DETECTION FROM MESSAGE =====
 function detectTicker(message) {
     var msg = String(message);
@@ -1057,12 +1069,15 @@ async function handleChartUpload(msg) {
     if (!selectedFile) { showToast('Upload screenshot chart dulu ya.', 'warning'); return; }
     if (!canAnalyze()) { document.getElementById('limitWarning').textContent = getAnalysisLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
     // If msg contains a valid ticker, use it
+    var chartTicker = null;
     if (msg) {
-        var chartTicker = detectTicker(msg);
+        chartTicker = detectTicker(msg);
         if (chartTicker) { setActiveTicker(chartTicker); updateTradingViewSafe(chartTicker); }
     }
     var fileName = selectedFile.name;
-    addUserBubble((msg ? msg + '\n' : '') + '[Chart: ' + fileName + ']');
+    var detectedTimeframe = detectTimeframeFromFilename(fileName);
+    var tfLabel = detectedTimeframe ? ' ' + detectedTimeframe : '';
+    addUserBubble((msg ? msg + '\n' : '') + '[Chart' + tfLabel + ': ' + fileName + ']');
     addLoadingBubble();
     disableSend(); clearInput();
     logSearch('CHART_UPLOAD', 'chart_upload'); logUsage('CHART_UPLOAD', 'ai_analysis_started');
@@ -1070,12 +1085,13 @@ async function handleChartUpload(msg) {
         var base64Data = await fileToBase64(selectedFile);
         removeAttachment();
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Data, mimeType: selectedFile ? selectedFile.type : 'image/png', source: 'chart_upload', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify({ image: base64Data, mimeType: selectedFile ? selectedFile.type : 'image/png', source: 'chart_upload', timeframe: detectedTimeframe || null, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+        base64Data = null;
         var data = await response.json();
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
         else { throw new Error('Tidak ada hasil.'); }
-    } catch(e) { removeLoadingBubble(); removeAttachment(); addAIError('Gagal: ' + e.message); logUsage('CHART_UPLOAD', 'ai_error'); }
+    } catch(e) { removeLoadingBubble(); removeAttachment(); addAIError('Gagal: ' + e.message); logUsage('CHART_UPLOAD', 'ai_error'); base64Data = null; }
     finally { enableSend(); saveChatHistory(); }
 }
 

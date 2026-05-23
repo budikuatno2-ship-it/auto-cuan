@@ -612,6 +612,7 @@ PENTING: Semua angka HARUS dari chart yang terlihat. Jangan mengarang angka.`;
 
 async function handleChartUpload(req, res, imageData, mimeType) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const { timeframe, ticker, currentPrice } = req.body || {};
 
   if (!GEMINI_API_KEY) {
     return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center"><p class="text-yellow-400 font-semibold">Gemini API belum dikonfigurasi.</p><p class="text-yellow-300/70 text-sm mt-2">Hubungi admin untuk mengaktifkan fitur analisis chart.</p></div>' });
@@ -623,13 +624,23 @@ async function handleChartUpload(req, res, imageData, mimeType) {
     base64Data = base64Data.split(',')[1];
   }
 
+  // Build enhanced prompt with additional context if available
+  let chartPrompt = CHART_SYSTEM_PROMPT;
+  if (ticker || currentPrice || timeframe) {
+    chartPrompt += '\n\n=== KONTEKS TAMBAHAN DARI USER ===\n';
+    if (ticker) chartPrompt += '- Ticker: ' + ticker.toUpperCase() + '\n';
+    if (currentPrice) chartPrompt += '- Harga sekarang: Rp ' + currentPrice + '\n';
+    if (timeframe) chartPrompt += '- Timeframe chart: ' + timeframe + '\n';
+    chartPrompt += 'Gunakan informasi ini untuk memperkuat analisis chart.';
+  }
+
   const GEMINI_MODEL = 'gemini-2.5-flash';
   const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
   const payload = {
     contents: [{
       parts: [
-        { text: CHART_SYSTEM_PROMPT },
+        { text: chartPrompt },
         {
           inline_data: {
             mime_type: mimeType || 'image/png',
