@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Rewrite the API backend prompts and response handling to produce compact 700-1200 word analysis output (7 main sections + optional sections only when evidence exists), implement session memory for follow-up conversations, fix FCA hallucination, hide empty sections, and integrate all evidence types into one clean workflow.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "STEP 1 - Replace the 15-section buildPrompt function in api/analyze.js with a new compact 7-section format. The 7 MAIN sections are: (1) Input Quality & Evidence Summary (combined, 2-3 lines), (2) Technical Analysis (chart reading, key levels, structure - only if chart provided), (3) Multi-Timeframe Bias (brief, only if multi-chart), (4) Risk Management (entry/SL/TP/RR/position sizing), (5) Score & Decision (score with color, decision label, 2-3 bullet reasons), (6) Action Plan (3-5 concrete steps), (7) What Could Go Wrong (2-3 risks). OPTIONAL sections (only show when evidence exists): FCA Risk Check (only if fcaStatus is confirmed_*), Broker Summary Check (only if broker data detected in images/docs), News/Catalyst Impact (only if user provides news/catalyst text), Market Maker Code (only if orderbook/running trade visible). Total output target: 700-1200 words max. Instruct AI to be concise, no filler, no repeated warnings.",
     "STEP 2 - Replace the CHART_SYSTEM_PROMPT with a compact version following the same 7-section format. For chart mode, Section 2 (Technical Analysis) becomes the primary content. Remove the verbose 15-section instructions. Keep evidence lock rules but make them concise (5-7 lines instead of 30+). Keep chart validation rules but compress to essential points only. Score caps remain: single chart max 70, multi-chart max 80, multi+docs max 90.",
@@ -33,5 +33,5 @@
     "unset NODE_OPTIONS && node -e \"const fs=require('fs'); const code=fs.readFileSync('/projects/sandbox/auto-cuan/api/analyze.js','utf8'); if(code.includes('15 BAGIAN WAJIB')) throw 'Still has 15 sections'; if(!code.includes('Action Plan')) throw 'Missing Action Plan section'; if(code.includes('buildFCAContextBlock(fca)') && !code.includes('not_detected')) throw 'FCA block always appended'; console.log('FEAT-001 checks passed');\""
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "File reduced from 1483 to 909 lines. All function signatures preserved. buildMarketMakerSection compressed to 27 lines, buildBrokerSummarySection to 31 lines. FCA context block now only appended when fcaStatus is not not_detected (both ticker and chart modes). handleChatMode now supports source=follow_up with context field. maxOutputTokens=4096 for ticker mode. isCompleteAnalysis validates length>300 AND 2+ keywords from [Score, Decision, Action Plan, Risk]."
 }
