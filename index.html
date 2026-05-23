@@ -916,6 +916,38 @@ function isValidTicker(word) {
 var activeTicker = null;
 var activeCompanyName = null;
 var pendingAnalysisRequest = null;
+var latestAnalysisContext = {
+    brokerSummaryProvided: false,
+    brokerSummaryPeriods: [],
+    brokerSummaryBias: null,
+    brokerSummaryStrength: null,
+    dominantNetBuyers: [],
+    dominantNetSellers: [],
+    brokerSummaryNotes: '',
+    brokerSummaryLastUpdated: null
+};
+
+function detectBrokerSummaryIntent(message) {
+    var keywords = ['broker summary', 'net buy', 'net sell', 'akumulasi broker', 'distribusi broker', 'bandarmology', 'top buyer', 'top seller', 'broker code', 'bandar akum', 'broker akumulasi'];
+    var msgLower = message.toLowerCase();
+    for (var i = 0; i < keywords.length; i++) {
+        if (msgLower.indexOf(keywords[i]) !== -1) return true;
+    }
+    return false;
+}
+
+function resetBrokerSummaryContext() {
+    latestAnalysisContext = {
+        brokerSummaryProvided: false,
+        brokerSummaryPeriods: [],
+        brokerSummaryBias: null,
+        brokerSummaryStrength: null,
+        dominantNetBuyers: [],
+        dominantNetSellers: [],
+        brokerSummaryNotes: '',
+        brokerSummaryLastUpdated: null
+    };
+}
 
 function setActiveTicker(ticker) {
     if (!ticker) return;
@@ -1072,9 +1104,9 @@ function getEvidenceLevel() {
     });
     
     if (!hasImages && !hasDocuments) return 1;
-    if (imageCount === 1 && !hasDocuments) return 2;
-    if (imageCount >= 2) return hasDocuments ? 4 : 3;
-    if (hasDocuments) return 2;
+    if (imageCount === 1 && !hasDocuments) return latestAnalysisContext.brokerSummaryProvided ? 3 : 2;
+    if (imageCount >= 2) return (hasDocuments || latestAnalysisContext.brokerSummaryProvided) ? 4 : 3;
+    if (hasDocuments) return latestAnalysisContext.brokerSummaryProvided ? 3 : 2;
     return 1;
 }
 
@@ -1134,6 +1166,11 @@ function detectIntent(message) {
     // Case 5: No ticker and asking about something → use activeTicker context if available
     if (!detectedTicker && activeTicker && /gimana|bagaimana|review|cek|analisis|ini/i.test(msg)) {
         return { type: 'ticker_question', ticker: activeTicker };
+    }
+
+    // Case 6: Broker summary follow-up question with context available
+    if (latestAnalysisContext.brokerSummaryProvided && /bagus|lanjut|beli|distribusi|akumulasi|bandar|broker.*summary|gimana/i.test(msg)) {
+        return { type: 'chat' };
     }
 
     // Default: chat
@@ -1301,6 +1338,9 @@ async function handleChat(msg) {
             var company = getCompanyName(activeTicker);
             enrichedMsg += '\n[Konteks: User sedang membahas saham ' + activeTicker + (company ? ' (' + company + ')' : '') + ']';
         }
+        if (latestAnalysisContext.brokerSummaryProvided) {
+            enrichedMsg += '\n[Konteks Broker Summary sebelumnya: bias=' + (latestAnalysisContext.brokerSummaryBias || 'unknown') + ', strength=' + (latestAnalysisContext.brokerSummaryStrength || 'unknown') + ', periods=' + (latestAnalysisContext.brokerSummaryPeriods.join(',') || 'unknown') + ']';
+        }
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
         var data = await response.json();
@@ -1363,7 +1403,18 @@ async function handleChartUpload(msg) {
         imagesArray = null;
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html);
+            // Detect broker summary in response
+            if (html.toLowerCase().indexOf('broker summary check') !== -1 || html.toLowerCase().indexOf('broker summary') !== -1) {
+                latestAnalysisContext.brokerSummaryProvided = true;
+                latestAnalysisContext.brokerSummaryLastUpdated = new Date().toISOString();
+                // Try to extract bias from response
+                var biasMatch = html.match(/(?:bias|indikasi)\s*[:=]?\s*(akumulasi|distribusi|mixed|rotation|retail|unclear)/i);
+                if (biasMatch) latestAnalysisContext.brokerSummaryBias = biasMatch[1].toLowerCase();
+                var strengthMatch = html.match(/(?:strength|kekuatan)\s*[:=]?\s*(low|medium|high|rendah|sedang|tinggi)/i);
+                if (strengthMatch) latestAnalysisContext.brokerSummaryStrength = strengthMatch[1].toLowerCase();
+            }
+        }
         else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError('Gambar chart belum bisa dianalisis. Coba upload ulang dengan resolusi lebih jelas.'); logUsage('CHART_UPLOAD', 'ai_error'); }
     finally { enableSend(); saveChatHistory(); }
@@ -1498,6 +1549,7 @@ function getActiveSession() {
 }
 
 function createNewSession() {
+    resetBrokerSummaryContext();
     var newSession = {
         id: generateSessionId(),
         title: 'Chat baru',
@@ -1525,6 +1577,7 @@ function switchSession(sessionId) {
         activeTicker = session.activeTicker || null;
         activeCompanyName = session.activeCompanyName || null;
         pendingAnalysisRequest = session.pendingAnalysisRequest || null;
+        latestAnalysisContext = session.latestAnalysisContext || { brokerSummaryProvided: false, brokerSummaryPeriods: [], brokerSummaryBias: null, brokerSummaryStrength: null, dominantNetBuyers: [], dominantNetSellers: [], brokerSummaryNotes: '', brokerSummaryLastUpdated: null };
         // Restore messages
         if (session.messages && session.messages.length > 0) {
             session.messages.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
@@ -1547,6 +1600,7 @@ function switchSession(sessionId) {
         if (activeTicker) { updateTradingViewSafe(activeTicker); }
     } else {
         activeTicker = null; activeCompanyName = null; pendingAnalysisRequest = null;
+        resetBrokerSummaryContext();
     }
     container.scrollTop = container.scrollHeight;
     renderSidebarSessions();
@@ -1597,6 +1651,7 @@ function saveChatHistory() {
         session.activeTicker = activeTicker;
         session.activeCompanyName = activeCompanyName;
         session.pendingAnalysisRequest = pendingAnalysisRequest;
+        session.latestAnalysisContext = latestAnalysisContext;
         session.updatedAt = new Date().toISOString();
         session.fileCount = selectedFiles ? selectedFiles.length : 0;
         // Update title from first user message if still default
@@ -1636,6 +1691,7 @@ function clearChat() {
     session.pendingAnalysisRequest = null;
     session.title = 'Chat baru';
     activeTicker = null; activeCompanyName = null; pendingAnalysisRequest = null;
+    resetBrokerSummaryContext();
     var container = document.getElementById('chatMessages');
     while (container.children.length > 1) { container.removeChild(container.lastChild); }
     saveSessions();

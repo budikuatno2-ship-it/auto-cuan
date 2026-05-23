@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Update the frontend (index.html) to support broker summary detection, context storage, and follow-up chat memory. This includes: auto-detecting broker summary intent from uploaded files and messages, storing broker summary analysis context for follow-up questions, and updating the evidence level calculation on the frontend.",
+  "status": "in_progress",
+  "steps": [
+    "Step 1: In index.html, add a new object latestAnalysisContext near the activeTicker/activeCompanyName declarations (around line 916). Initialize it with: { brokerSummaryProvided: false, brokerSummaryPeriods: [], brokerSummaryBias: null, brokerSummaryStrength: null, dominantNetBuyers: [], dominantNetSellers: [], brokerSummaryNotes: '', brokerSummaryLastUpdated: null }. This stores broker summary context for follow-up questions.",
+    "Step 2: Add a function detectBrokerSummaryIntent(message) that checks if user message contains broker summary related keywords. Keywords to detect: 'broker summary', 'net buy', 'net sell', 'akumulasi', 'distribusi', 'bandarmology', 'bandar', 'top buyer', 'top seller', 'broker code'. This function returns true/false. It should be used by detectIntent() to help classify messages.",
+    "Step 3: Update the detectIntent() function to detect broker summary related follow-up questions. If the user asks 'bandar akum gak?', 'broker summary gimana?', 'ini distribusi atau akumulasi?', 'bagus gak?', 'lanjut beli?', 'kalau digabung chart gimana?' and latestAnalysisContext.brokerSummaryProvided is true, route to chat mode with enriched context including the broker summary data.",
+    "Step 4: Update the handleChat() function to enrich the message with broker summary context when latestAnalysisContext.brokerSummaryProvided is true. Append a context block like: '[Konteks Broker Summary: bias={bias}, strength={strength}, periods={periods}]' to enrichedMsg. This allows the AI to answer follow-ups without re-uploading.",
+    "Step 5: Update the handleChartUpload() function to detect when uploaded images might be broker summary screenshots. After analysis completes successfully, parse the response HTML to check if it contains 'Broker Summary Check' section. If found, update latestAnalysisContext with brokerSummaryProvided: true and brokerSummaryLastUpdated: new Date().toISOString().",
+    "Step 6: Update the getEvidenceLevel() function on frontend to account for broker summary. If latestAnalysisContext.brokerSummaryProvided is true and user is uploading new chart images, the evidence level should be bumped (supporting evidence present). This means adding broker summary as a factor in the evidence level calculation.",
+    "Step 7: Update the saveChatHistory() / session context to include latestAnalysisContext in the session object, so switching sessions preserves broker summary context. In switchSession(), restore latestAnalysisContext from the session.",
+    "Step 8: Add a function resetBrokerSummaryContext() that clears latestAnalysisContext back to defaults. Call it when createNewSession() or clearChat() is invoked to avoid stale context bleeding between sessions."
+  ],
+  "acceptance_criteria": [
+    "index.html contains latestAnalysisContext object with all required fields (brokerSummaryProvided, brokerSummaryPeriods, brokerSummaryBias, brokerSummaryStrength, dominantNetBuyers, dominantNetSellers, brokerSummaryNotes, brokerSummaryLastUpdated)",
+    "detectBrokerSummaryIntent() function exists and detects relevant keywords",
+    "detectIntent() routes broker summary follow-up questions using latestAnalysisContext",
+    "handleChat() enriches messages with broker summary context when available",
+    "handleChartUpload() updates latestAnalysisContext after successful broker summary analysis",
+    "Session save/restore includes latestAnalysisContext",
+    "resetBrokerSummaryContext() is called on new session creation and chat clear",
+    "The HTML file parses correctly (no syntax errors in inline script)",
+    "No new api/ files are created"
+  ],
+  "verification": [
+    "Run: node -e \"const fs=require('fs'); const html=fs.readFileSync('/projects/sandbox/auto-cuan/index.html','utf8'); const scriptMatch=html.match(/<script[^>]*>([\\s\\S]*?)<\\/script>/g); console.log('Script blocks found:', scriptMatch ? scriptMatch.length : 0);\" to verify HTML structure",
+    "Run: grep -c 'latestAnalysisContext' /projects/sandbox/auto-cuan/index.html to confirm context object is used",
+    "Run: grep -c 'detectBrokerSummaryIntent' /projects/sandbox/auto-cuan/index.html to confirm function exists",
+    "Run: grep -c 'brokerSummaryProvided' /projects/sandbox/auto-cuan/index.html to confirm all context references"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
