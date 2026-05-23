@@ -995,20 +995,66 @@ function isFCAStock(ticker) {
     return !!window.FCA_STOCKS[String(ticker).toUpperCase().trim()];
 }
 
-function detectFCAStatus(message, ticker) {
+function detectFCAStatus(message, ticker, uploadedEvidence) {
     // Check local mapping first
-    if (ticker && isFCAStock(ticker)) return 'confirmed_mapping';
+    if (ticker && isFCAStock(ticker)) return 'confirmed_by_mapping';
+    // Check uploaded evidence (document text) for FCA keywords
+    if (uploadedEvidence) {
+        var evidenceText = '';
+        if (typeof uploadedEvidence === 'string') {
+            evidenceText = uploadedEvidence.toLowerCase();
+        } else if (Array.isArray(uploadedEvidence)) {
+            for (var e = 0; e < uploadedEvidence.length; e++) {
+                var docText = uploadedEvidence[e] && uploadedEvidence[e].text ? uploadedEvidence[e].text : '';
+                evidenceText += ' ' + docText.toLowerCase();
+            }
+        }
+        if (evidenceText.length > 0) {
+            if (/\bfull\s+call\s+auction\b/.test(evidenceText)) return 'confirmed_by_uploaded_evidence';
+            if (/papan\s+pemantauan\s+khusus/.test(evidenceText)) return 'confirmed_by_uploaded_evidence';
+            if (/\bfca\b/.test(evidenceText) && /\bsaham\b/.test(evidenceText)) return 'confirmed_by_uploaded_evidence';
+        }
+    }
     // Check user message for FCA keywords with word boundary matching
     if (message) {
         var lower = String(message).toLowerCase();
-        // Use word boundary for short keywords to avoid false positives
-        if (/\bfca\b/.test(lower)) return 'user_mentioned';
-        if (/\bfull\s+call\s+auction\b/.test(lower)) return 'user_mentioned';
-        if (/papan\s+pemantauan\s+khusus/.test(lower)) return 'user_mentioned';
-        if (/papan\s+pemantauan/.test(lower)) return 'user_mentioned';
-        if (/saham\s+fca\b/.test(lower)) return 'user_mentioned';
+        // Detect ambiguous/questioning FCA mentions (unconfirmed)
+        if (/apakah\s+(ini\s+)?fca/.test(lower)) return 'unconfirmed';
+        if (/kalau\s+(ini\s+)?fca/.test(lower)) return 'unconfirmed';
+        if (/masuk\s+fca\s*(gak|ga|nggak|tidak|kah)?/.test(lower)) return 'unconfirmed';
+        if (/ini\s+fca\s*(bukan|gak|ga|nggak|tidak|kah)\??/.test(lower)) return 'unconfirmed';
+        if (/termasuk\s+fca\s*(gak|ga|nggak|tidak|kah)?/.test(lower)) return 'unconfirmed';
+        // Confirmed user mentions (assertive)
+        if (/\bfca\b/.test(lower)) return 'confirmed_by_user';
+        if (/\bfull\s+call\s+auction\b/.test(lower)) return 'confirmed_by_user';
+        if (/papan\s+pemantauan\s+khusus/.test(lower)) return 'confirmed_by_user';
+        if (/papan\s+pemantauan/.test(lower)) return 'confirmed_by_user';
+        if (/saham\s+fca\b/.test(lower)) return 'confirmed_by_user';
     }
     return 'not_detected';
+}
+
+function getFcaStatusInfo(ticker, userText, uploadedEvidence) {
+    var status = detectFCAStatus(userText, ticker, uploadedEvidence);
+    var label = '';
+    var reason = '';
+    if (status === 'confirmed_by_mapping') {
+        label = 'Confirmed by local mapping';
+        reason = 'Ticker terdaftar dalam daftar saham FCA lokal';
+    } else if (status === 'confirmed_by_user') {
+        label = 'Confirmed by user';
+        reason = 'User secara eksplisit menyebut FCA dalam pesan';
+    } else if (status === 'confirmed_by_uploaded_evidence') {
+        label = 'Confirmed by uploaded evidence';
+        reason = 'Dokumen yang diunggah mengandung referensi FCA';
+    } else if (status === 'unconfirmed') {
+        label = 'Unconfirmed';
+        reason = 'User bertanya tentang FCA tapi belum ada bukti konfirmasi';
+    } else {
+        label = 'Not detected';
+        reason = 'Tidak ada indikasi FCA dari input user maupun mapping lokal';
+    }
+    return { status: status, label: label, reason: reason };
 }
 
 // ===== EVIDENCE LEVEL =====
@@ -1307,7 +1353,7 @@ async function handleChartUpload(msg) {
         }
         var firstImageTimeframe = detectedTimeframe || null;
         var evidenceLevel = getEvidenceLevel();
-        var fcaStatus = detectFCAStatus(msg, activeTicker || chartTicker);
+        var fcaStatus = detectFCAStatus(msg, activeTicker || chartTicker, docsArray);
         clearAllFiles();
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ images: imagesArray, documents: docsArray, image: null, mimeType: imagesArray.length > 0 ? imagesArray[0].mimeType : 'image/png', source: 'chart_upload', timeframe: firstImageTimeframe, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, fcaStatus: fcaStatus, evidenceLevel: evidenceLevel, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });

@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Fix FCA detection logic in both frontend (index.html) and backend (api/analyze.js) to prevent the AI from hallucinating FCA status. The frontend detectFCAStatus() must be expanded to support all required status values. The backend buildFCASection() must be updated to handle the full status enum. The AI prompts (buildPrompt and CHART_SYSTEM_PROMPT) must include explicit anti-FCA-hallucination instructions that pass structured FCA status to the AI and forbid the AI from inferring FCA status on its own.",
+  "status": "in_progress",
+  "steps": [
+    "Step 1: Update frontend detectFCAStatus() in index.html (around line 998) to return the full set of status values: 'confirmed_by_user', 'confirmed_by_mapping', 'confirmed_by_uploaded_evidence', 'not_detected', 'unconfirmed'. Rename existing return values: 'confirmed_mapping' becomes 'confirmed_by_mapping', 'user_mentioned' becomes 'confirmed_by_user'. Add detection for uploaded evidence (check if document text contains FCA-related keywords). Add 'unconfirmed' status for ambiguous cases (e.g., user asks 'apakah ini FCA?' or 'kalau ini FCA gimana?'). Add a helper function getFcaStatus(ticker, userText, uploadedEvidence) that returns { status, label, reason }.",
+    "Step 2: Update backend buildFCASection() in api/analyze.js to handle the new status values. It should only show full FCA warning for 'confirmed_by_user', 'confirmed_by_mapping', 'confirmed_by_uploaded_evidence'. For 'not_detected' it should return empty string (already does this). For 'unconfirmed' it should return a mild note saying FCA status cannot be confirmed. Update statusLabel to use the correct labels per the spec.",
+    "Step 3: Add explicit FCA anti-hallucination instruction block to buildPrompt() in api/analyze.js. After the existing prompt template, add a section that passes structured FCA status context to the AI: 'FCA Status: status: <status>, source: <source>, reason: <reason>'. Add rules: AI must NOT infer FCA from chart appearance, price level, volatility, liquidity, or any visual characteristic. AI must follow the FCA status provided by the app.",
+    "Step 4: Add explicit FCA anti-hallucination instruction block to CHART_SYSTEM_PROMPT in api/analyze.js. Add a section that says: 'ATURAN FCA UNTUK CHART: Jangan pernah menyimpulkan bahwa saham adalah FCA hanya dari tampilan chart. Chart yang terlihat illiquid, volatile, penny stock, atau memiliki candle tajam BUKAN bukti FCA. Status FCA ditentukan oleh sistem, bukan oleh AI. Jika FCA status yang diberikan adalah not_detected, JANGAN tampilkan warning FCA apapun.' Also add the structured FCA status context block to the chart upload handler so it passes the status to the AI in the prompt.",
+    "Step 5: Update the handleChartUpload function in api/analyze.js to pass structured FCA context (status + source + reason) in the prompt text, not just use buildFCASection(). When fcaStatus is 'not_detected' or 'unconfirmed', explicitly include in the prompt: 'FCA Status: not_detected. Source: none. Reason: ...' so the AI knows not to add FCA warnings.",
+    "Step 6: Update the frontend handleChartUpload() in index.html to also check uploaded documents for FCA evidence. When building fcaStatus for chart uploads, also inspect docsArray text content for FCA keywords (e.g., 'full call auction', 'papan pemantauan khusus', 'FCA') and return 'confirmed_by_uploaded_evidence' if found."
+  ],
+  "acceptance_criteria": [
+    "detectFCAStatus() returns 'confirmed_by_user' when user text explicitly mentions FCA",
+    "detectFCAStatus() returns 'confirmed_by_mapping' when ticker exists in FCA_STOCKS",
+    "detectFCAStatus() returns 'unconfirmed' when user asks about FCA ambiguously (e.g., 'apakah ini FCA?')",
+    "detectFCAStatus() returns 'not_detected' when no FCA evidence exists",
+    "buildFCASection() returns empty string for 'not_detected'",
+    "buildFCASection() returns empty string or mild note for 'unconfirmed'",
+    "buildFCASection() returns full FCA warning only for confirmed statuses",
+    "AI prompts include explicit instruction not to infer FCA from chart appearance",
+    "AI prompts include structured FCA status context (status, source, reason)",
+    "CHART_SYSTEM_PROMPT includes anti-FCA-hallucination rules",
+    "Chart upload handler passes structured FCA context in prompt",
+    "node -c api/analyze.js passes (no syntax errors)",
+    "FCA score cap only applies when FCA is confirmed (not for not_detected or unconfirmed)"
+  ],
+  "verification": [
+    "Run: node -c api/analyze.js (must pass with no errors)",
+    "Run: node -c assets/fca-stocks.js (must pass with no errors)",
+    "Run: node -e \"const html = require('fs').readFileSync('index.html','utf8'); if(html.includes('confirmed_by_mapping') && html.includes('confirmed_by_user') && html.includes('not_detected') && html.includes('unconfirmed')) { console.log('PASS: All FCA status values present in frontend'); } else { console.log('FAIL'); process.exit(1); }\"",
+    "Run: node -e \"const code = require('fs').readFileSync('api/analyze.js','utf8'); if(code.includes('confirmed_by_user') && code.includes('confirmed_by_mapping') && code.includes('confirmed_by_uploaded_evidence') && code.includes('not_detected') && code.includes('unconfirmed') && code.includes('JANGAN') && code.includes('FCA Status')) { console.log('PASS: Backend FCA logic updated'); } else { console.log('FAIL'); process.exit(1); }\""
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

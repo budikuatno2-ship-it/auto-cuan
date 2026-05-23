@@ -16,8 +16,17 @@ function calculateEvidenceLevel(req) {
 function buildFCASection(fcaStatus, evidenceLevel) {
   if (fcaStatus === 'not_detected') return '';
 
-  var statusLabel = fcaStatus === 'confirmed_mapping' ? 'Confirmed by local mapping' : 'Mentioned by user';
-  var scorePenalty = fcaStatus === 'confirmed_mapping' ? 20 : 15;
+  if (fcaStatus === 'unconfirmed') {
+    return '\n\nStatus FCA: Belum bisa dikonfirmasi dari data yang ada. Analisis menggunakan mode saham reguler.\n';
+  }
+
+  var statusLabel;
+  if (fcaStatus === 'confirmed_by_mapping') statusLabel = 'Confirmed by local mapping';
+  else if (fcaStatus === 'confirmed_by_user') statusLabel = 'Confirmed by user';
+  else if (fcaStatus === 'confirmed_by_uploaded_evidence') statusLabel = 'Confirmed by uploaded evidence';
+  else statusLabel = 'Mentioned by user';
+
+  var scorePenalty = fcaStatus === 'confirmed_by_mapping' ? 20 : 15;
 
   var maxScore;
   if (evidenceLevel === 1) maxScore = 45;
@@ -51,6 +60,44 @@ function buildFCASection(fcaStatus, evidenceLevel) {
     'Analisis teknikal pada saham FCA harus dianggap lebih lemah dibanding saham reguler. ' +
     'Gunakan modal kecil, hindari all-in, dan wajib punya batas risiko."\n\n' +
     'DILARANG menggunakan kata-kata: pasti, aman, mudah naik, tinggal gas, auto cuan, pasti mantul, gas buy untuk saham FCA.';
+}
+
+function buildFCAContextBlock(fcaStatus) {
+  var status, source, reason;
+  if (fcaStatus === 'confirmed_by_mapping') {
+    status = 'confirmed_by_mapping';
+    source = 'Local mapping (fca-stocks.js)';
+    reason = 'Ticker terdaftar dalam daftar saham FCA lokal';
+  } else if (fcaStatus === 'confirmed_by_user') {
+    status = 'confirmed_by_user';
+    source = 'User input';
+    reason = 'User secara eksplisit menyebut FCA dalam pesan';
+  } else if (fcaStatus === 'confirmed_by_uploaded_evidence') {
+    status = 'confirmed_by_uploaded_evidence';
+    source = 'Uploaded document';
+    reason = 'Dokumen yang diunggah mengandung referensi FCA';
+  } else if (fcaStatus === 'unconfirmed') {
+    status = 'unconfirmed';
+    source = 'User question (ambiguous)';
+    reason = 'User bertanya tentang FCA tapi belum ada bukti konfirmasi';
+  } else {
+    status = 'not_detected';
+    source = 'none';
+    reason = 'Tidak ada indikasi FCA dari input user maupun mapping lokal';
+  }
+
+  return '\n\n=== FCA STATUS (DETERMINED BY SYSTEM - AI MUST NOT OVERRIDE) ===\n' +
+    'FCA Status: ' + status + '\n' +
+    'Source: ' + source + '\n' +
+    'Reason: ' + reason + '\n\n' +
+    'ATURAN FCA WAJIB:\n' +
+    '- AI DILARANG menentukan status FCA sendiri dari chart, harga, volatilitas, atau likuiditas\n' +
+    '- AI DILARANG mengatakan "saham ini FCA" kecuali status di atas adalah confirmed\n' +
+    '- Jika status FCA adalah not_detected atau unconfirmed, DILARANG menampilkan warning FCA\n' +
+    '- Jika status FCA adalah not_detected, gunakan wording: "Status FCA: Tidak terdeteksi dari input user maupun mapping lokal."\n' +
+    '- Jika status FCA adalah unconfirmed, gunakan wording: "Status FCA: Belum bisa dikonfirmasi dari data yang ada."\n' +
+    '- Chart yang terlihat illiquid, volatile, penny stock, sharp candles, atau low volume BUKAN bukti FCA\n' +
+    '- Hanya tampilkan "PERINGATAN FCA" jika status di atas adalah confirmed_by_user, confirmed_by_mapping, atau confirmed_by_uploaded_evidence\n';
 }
 
 function buildMarketMakerSection() {
@@ -502,6 +549,9 @@ Pastikan SETIAP bagian ada dan memiliki konten substantif. Output harus jujur te
     prompt += fcaSection;
   }
 
+  // Append structured FCA context block (always, even when not_detected)
+  prompt += buildFCAContextBlock(fcaStatus);
+
   // Append document context if available
   if (documentContext) {
     prompt += documentContext;
@@ -778,6 +828,13 @@ DILARANG mengklaim hal yang TIDAK terlihat di chart:
 - Jika ragu, tulis: "Belum bisa dikonfirmasi dari chart ini"
 - Semua angka Entry/SL/TP HARUS sesuai skala harga yang TERLIHAT di chart
 
+=== ATURAN FCA UNTUK CHART ===
+- JANGAN PERNAH menyimpulkan bahwa saham adalah FCA hanya dari tampilan chart
+- Chart yang terlihat illiquid, volatile, penny stock, atau memiliki candle tajam BUKAN bukti FCA
+- Status FCA ditentukan oleh sistem dan diberikan sebagai konteks terstruktur
+- Jika tidak ada konteks FCA yang diberikan, atau jika status FCA adalah "not_detected", JANGAN tampilkan warning FCA
+- DILARANG menggunakan kata "Full Call Auction" atau "FCA" dalam output kecuali status FCA adalah confirmed
+
 === INSTRUKSI MEMBACA CHART ===
 1. Baca harga terakhir/current price dari sumbu Y-axis (kanan)
 2. Identifikasi ticker/nama saham dari judul chart jika terlihat
@@ -951,6 +1008,9 @@ async function handleChartUpload(req, res, imageData, mimeType) {
   if (fcaSection) {
     chartPrompt += fcaSection;
   }
+
+  // Add structured FCA context block (always, even when not_detected)
+  chartPrompt += buildFCAContextBlock(fca);
 
   // Add market maker code reader section (always included - the AI is instructed
   // to only apply these rules when orderbook/running trade data is visible in the image)
