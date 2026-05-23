@@ -927,6 +927,7 @@ var latestAnalysisContext = {
     actionPlan: [],
     evidenceLevel: null,
     fcaStatus: null,
+    newsProvided: false,
     brokerSummaryProvided: false,
     brokerSummaryPeriods: [],
     brokerSummaryBias: null,
@@ -958,6 +959,7 @@ function resetBrokerSummaryContext() {
         actionPlan: [],
         evidenceLevel: null,
         fcaStatus: null,
+        newsProvided: false,
         brokerSummaryProvided: false,
         brokerSummaryPeriods: [],
         brokerSummaryBias: null,
@@ -1046,6 +1048,34 @@ function hideEmptySections(bubbleElement) {
                     section.style.display = 'none';
                 }
             }
+        }
+    }
+}
+
+// ===== STRIP FCA CONTENT FROM OUTPUT WHEN NOT CONFIRMED =====
+function stripUnconfirmedFCA(bubbleElement, fcaStatus) {
+    // If FCA is confirmed, do nothing - FCA content should remain
+    if (fcaStatus === 'confirmed_by_mapping' || fcaStatus === 'confirmed_by_user' || fcaStatus === 'confirmed_by_uploaded_evidence') return;
+    // FCA not confirmed - remove any FCA-related text from the output
+    var html = bubbleElement.innerHTML;
+    // Remove FCA-related phrases
+    html = html.replace(/\bFCA\b/g, '');
+    html = html.replace(/Full\s*Call\s*Auction/gi, '');
+    html = html.replace(/papan\s+pemantauan\s+khusus/gi, '');
+    html = html.replace(/saham\s+FCA/gi, '');
+    html = html.replace(/Risiko\s+FCA/gi, '');
+    html = html.replace(/FCA\s+score\s+cap/gi, '');
+    html = html.replace(/Position\s+sizing\s+FCA/gi, '');
+    html = html.replace(/PERINGATAN\s+FCA[^<]*/gi, '');
+    html = html.replace(/FCA\s*\/\s*Full\s*Call\s*Auction[^<]*/gi, '');
+    // Remove sections that only contained FCA content (now empty after stripping)
+    bubbleElement.innerHTML = html;
+    // After stripping, hide any sections that became empty
+    var allSections = bubbleElement.querySelectorAll('div[class*="bg-"]');
+    for (var i = 0; i < allSections.length; i++) {
+        var text = allSections[i].textContent.trim();
+        if (text.length < 5 && allSections[i].querySelectorAll('img, svg').length === 0) {
+            allSections[i].style.display = 'none';
         }
     }
 }
@@ -1420,6 +1450,9 @@ async function handleAnalysis(msg, intent) {
             latestAnalysisContext.evidenceLevel = 1;
             latestAnalysisContext.lastAnalysisTimestamp = new Date().toISOString();
             updateContextIndicator();
+            if (html.toLowerCase().indexOf('sudah dipertimbangkan') !== -1) {
+                latestAnalysisContext.newsProvided = true;
+            }
         } else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); addAIError('Gagal: ' + e.message); logUsage(ticker, 'ai_error'); }
     finally { enableSend(); saveChatHistory(); }
@@ -1598,6 +1631,10 @@ async function handleChartUpload(msg) {
                     });
                 }
             }
+            // Detect if news/corporate action was mentioned
+            if (html.toLowerCase().indexOf('news') !== -1 && html.toLowerCase().indexOf('corporate action') !== -1 && html.toLowerCase().indexOf('sudah dipertimbangkan') !== -1) {
+                latestAnalysisContext.newsProvided = true;
+            }
         }
         else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError('Gambar chart belum bisa dianalisis. Coba upload ulang dengan resolusi lebih jelas.'); logUsage('CHART_UPLOAD', 'ai_error'); }
@@ -1697,6 +1734,9 @@ function addAIBubble(html, isStructured, fromHistory) {
     }
     div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] overflow-x-auto">' + labelHtml + '<div class="ai-content">' + contentHtml + '</div>' + copyBtnHtml + '</div>';
     hideEmptySections(div);
+    // Strip FCA content if not confirmed
+    var currentFcaStatus = latestAnalysisContext.fcaStatus || 'not_detected';
+    stripUnconfirmedFCA(div, currentFcaStatus);
     container.appendChild(div);
     // Typing effect for short non-structured responses
     if (!isStructured && !fromHistory && html.length < 500) {

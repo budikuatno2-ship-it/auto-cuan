@@ -348,7 +348,7 @@ module.exports = async function handler(req, res) {
 
 function isCompleteAnalysis(html) {
   if (!html || html.length < 300) return false;
-  const requiredKeywords = ['Score', 'Decision', 'Action Plan', 'Risk'];
+  const requiredKeywords = ['Score', 'Decision', 'Action Plan', 'Risk', 'Trading Plan', 'Kesimpulan', 'Agresif', 'Moderat'];
   const lowerHtml = html.toLowerCase();
   let foundCount = 0;
   for (const kw of requiredKeywords) {
@@ -392,34 +392,39 @@ Warna label: merah=AVOID/CUT LOSS, kuning=WAIT/WATCHLIST/NEED CHART/SPECULATIVE,
 HTML valid + Tailwind CSS dark theme. bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white (netral), text-gray-300 (body).
 Wrap dalam <div class="space-y-5">.
 
-=== 7 SECTION FORMAT (output 400-600 kata max untuk Level 1) ===
+=== OUTPUT STRUCTURE (400-600 kata max untuk Level 1) ===
 
-1. INPUT QUALITY & EVIDENCE SUMMARY (2-3 baris)
-   Level 1 Basic. Ticker: ${ticker}, Harga: Rp ${currentPrice}. Tidak ada chart/volume/news. Skor di-cap 55.
+1. KESIMPULAN
+   Skor: x/55 (max 55). Label: [DECISION LABEL]. Alasan singkat.
 
 2. TECHNICAL ANALYSIS
-   Tanpa chart: hanya bisa estimasi key levels dari round number. Support ~Rp [round number bawah], Resistance ~Rp [round number atas]. SEMUA ESTIMASI, belum validated.
+   Tanpa chart: hanya estimasi key levels dari round number. Support ~Rp [round number bawah], Resistance ~Rp [round number atas]. SEMUA ESTIMASI.
 
-3. RISK MANAGEMENT
-   Entry/SL/TP estimasi dari round numbers. RR ratio. Position sizing: KECIL (1-3% portfolio). Jangan all-in tanpa chart.
+3. TRADING PLAN (kondisional - belum divalidasi)
+   Agresif:
+   - Entry: ~Rp [round number support]
+   - SL: ~Rp [di bawah support estimasi]
+   - TP1: ~Rp [resistance estimasi]
+   - TP2: ~Rp [resistance kedua estimasi]
+   - Cocok jika: chart konfirmasi pantulan di support
 
-4. SCORE & DECISION
-   Skor: x/55 (max 55). Label: [DECISION LABEL]. Warna sesuai label.
-   Alasan (2-3 bullet):
-   - [alasan 1]
-   - [alasan 2]
-   - [alasan 3 jika perlu]
+   Moderat:
+   - Entry: setelah chart konfirmasi
+   - SL/TP: tunggu validasi chart
 
-5. ACTION PLAN (3-5 langkah)
+   Konservatif:
+   - Tunggu chart + multi-timeframe + news
+
+   Invalidasi: breakdown di bawah support estimasi.
+   DISCLAIMER: Semua level ini ESTIMASI tanpa chart. Upload chart untuk validasi.
+
+4. ACTION PLAN (3-5 langkah)
    1. Upload chart 1W/1D/4H untuk konfirmasi
    2. Cek news/katalis terbaru
-   3. [langkah lain sesuai konteks]
-   4. Disclaimer: Bukan ajakan beli/jual, DYOR.
+   3. Re-analisis setelah data lengkap
 
-6. WHAT COULD GO WRONG (2-3 risiko)
-   - [risiko 1]
-   - [risiko 2]
-   - [risiko 3 jika perlu]
+5. PERTANYAAN LANJUTAN
+   "Ada news atau corporate action terbaru? Kalau ada, kirim supaya bisa dipertimbangkan."
 
 === SECTION OPSIONAL (HANYA jika ada evidence) ===
 - FCA Risk Check: hanya jika status FCA confirmed
@@ -589,45 +594,57 @@ Warna label: merah=AVOID/CUT LOSS, kuning=WAIT/WATCHLIST/NEED CHART/SPECULATIVE,
 HTML valid + Tailwind CSS dark theme. bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white (netral), text-gray-300 (body).
 Wrap dalam <div class="space-y-5">.
 
-=== 7 SECTION FORMAT (output 700-1000 kata max) ===
+=== OUTPUT STRUCTURE (700-1200 kata max) ===
 
-1. INPUT QUALITY & EVIDENCE SUMMARY (2-3 baris)
-   Level [2/3/4]. Timeframe terdeteksi: [X]. Data tersedia vs missing. Skor di-cap [cap].
+1. KESIMPULAN (summary card)
+   - Decision label + score + main reason + risk level
+   - 2-3 baris max
 
-2. TECHNICAL ANALYSIS (section utama untuk chart mode)
-   - Trend structure dari chart (bullish/bearish/sideways)
-   - Key levels: support/resistance VISIBLE di chart
-   - Pattern/structure: BOS, CHoCH, OB, FVG jika terlihat
-   - Entry point spesifik dari chart
+2. ANALISIS INTI
+   - Timeframe terdeteksi dan bias masing-masing (1W/1D/4H jika multi-chart)
+   - Key support/resistance VISIBLE di chart
+   - Structure: trend, BOS, CHoCH, OB, FVG jika terlihat
    - Harga terakhir dari Y-axis
 
-3. MULTI-TIMEFRAME BIAS (hanya jika multi-chart dikirim, skip jika single chart)
-   - Bias per timeframe yang terlihat
-   - Alignment atau divergence antar timeframe
+3. TRADING PLAN (WAJIB jika chart tersedia)
+   SELALU berikan minimal 3 skenario kondisional:
 
-4. RISK MANAGEMENT
-   - Entry: Rp [dari chart]
-   - SL: Rp [dari chart, swing low/high]
-   - TP: Rp [dari chart, resistance/target]
-   - RR ratio
-   - Position sizing: [sesuai confidence]
+   Agresif:
+   - Entry: [area dari chart, dekat support]
+   - SL: [di bawah swing low terdekat]
+   - TP1: [resistance pertama]
+   - TP2: [resistance kedua]
+   - TP3: [jika terlihat]
+   - Cocok jika: [kondisi]
 
-5. SCORE & DECISION
-   Skor: x/[cap]. Label: [DECISION LABEL]. Warna sesuai label.
-   Alasan (2-3 bullet):
-   - [alasan dari chart evidence]
-   - [alasan 2]
+   Moderat:
+   - Entry: [setelah konfirmasi/reclaim level]
+   - SL: [di bawah level reclaimed]
+   - TP1: [target 1]
+   - TP2: [target 2]
+   - Cocok jika: [kondisi]
 
-6. ACTION PLAN (3-5 langkah)
-   1. [specific action berdasarkan chart]
-   2. [SL/TP management]
-   3. [upload timeframe tambahan jika perlu]
-   4. Disclaimer: Bukan ajakan beli/jual, DYOR.
+   Konservatif:
+   - Entry: [setelah breakout + retest hold]
+   - SL: [di bawah new support]
+   - TP1: [target 1]
+   - TP2: [target 2]
+   - Cocok jika: [kondisi]
 
-7. WHAT COULD GO WRONG (2-3 risiko)
-   - [risiko dari chart]
-   - [timeframe missing]
-   - [possible invalidation]
+   Invalidasi utama: [level di mana SEMUA skenario batal]
+   Validasi setup: [apa yang perlu terjadi supaya setup valid]
+
+   CATATAN: Jika level tidak terlihat jelas di chart, tulis:
+   "Level ini estimasi dari area yang terlihat di chart, bukan angka pasti."
+   Jangan bilang "Belum ada entry" tanpa memberikan estimasi.
+   Bahkan jika setup lemah, berikan rencana kondisional.
+
+4. RISIKO (2-3 poin saja, jangan repetitif)
+
+5. PERTANYAAN LANJUTAN
+   Jika user BELUM memberikan news/corporate action, WAJIB tulis di akhir:
+   "Ada news atau corporate action terbaru terkait saham ini? Kalau ada, kirim link/screenshot/ringkasannya supaya penilaian bisa diperbarui."
+   Jika user SUDAH memberikan news: tulis "News/corporate action yang dikirim sudah dipertimbangkan." dan JANGAN tanya lagi.
 
 === SECTION OPSIONAL (HANYA jika ada evidence) ===
 - FCA Risk Check: hanya jika status FCA confirmed
