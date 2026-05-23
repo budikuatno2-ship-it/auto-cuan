@@ -227,12 +227,12 @@
                 <!-- Upload button -->
                 <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
                 <div class="flex-shrink-0 relative">
-                    <button onclick="document.getElementById('fileInput').click()" class="p-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload File (maks 8)">
+                    <button onclick="document.getElementById('fileInput').click()" class="p-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload atau paste gambar/file (Ctrl+V)">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </button>
                     <span id="fileCountBadge" class="hidden absolute -top-1 -right-1 bg-emerald-500 text-black text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"></span>
                 </div>
-                <span class="hidden sm:inline text-[10px] text-gray-600 self-center">Ctrl+V paste</span>
+
                 <!-- Text input -->
                 <div class="flex-1 relative">
                     <textarea id="chatInput" rows="1" placeholder="Tanya saham, kirim ticker + harga, atau upload chart..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/40 text-sm resize-none overflow-hidden" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
@@ -1358,7 +1358,7 @@ async function handleAnalysis(msg, intent) {
                 addUserBubble(msg);
                 setActiveTicker(tickerOnly);
                 pendingAnalysisRequest = { type: 'stock-analysis', ticker: tickerOnly, companyName: company };
-                addAIBubble('<p class="text-sm text-gray-300">' + label + ' — masukkan harga sekarang juga ya biar analisisnya akurat. Contoh: <strong class="text-white">' + tickerOnly + ' 1000</strong></p>');
+                addAIBubble('<p class="text-sm text-gray-300"><strong class="text-emerald-400">' + label + '</strong> terdeteksi.</p><p class="text-sm text-gray-300 mt-1.5">Harga sekarang berapa? Kirim angkanya atau ketik <strong class="text-white">' + tickerOnly + ' [harga]</strong>.</p><p class="text-sm text-gray-500 mt-1 text-xs">Opsional: upload chart 1W/1D/4H untuk analisis presisi.</p>');
                 saveChatHistory(); return;
             }
             showToast('Format: TICKER HARGA, contoh: BBCA 9250', 'warning'); return;
@@ -1369,7 +1369,7 @@ async function handleAnalysis(msg, intent) {
             addUserBubble(msg);
             setActiveTicker(detectedT);
             pendingAnalysisRequest = { type: 'stock-analysis', ticker: detectedT, companyName: company };
-            addAIBubble('<p class="text-sm text-gray-300">' + label + ' — masukkan harga sekarang juga ya biar analisisnya akurat. Contoh: <strong class="text-white">' + detectedT + ' 1000</strong></p>');
+            addAIBubble('<p class="text-sm text-gray-300"><strong class="text-emerald-400">' + label + '</strong> terdeteksi.</p><p class="text-sm text-gray-300 mt-1.5">Harga sekarang berapa? Kirim angkanya atau ketik <strong class="text-white">' + detectedT + ' [harga]</strong>.</p><p class="text-sm text-gray-500 mt-1 text-xs">Opsional: upload chart 1W/1D/4H untuk analisis presisi.</p>');
             saveChatHistory(); return;
         }
         ticker = detectedT; price = detectedP;
@@ -1427,28 +1427,31 @@ async function handleAnalysis(msg, intent) {
 
 // ===== TICKER QUESTION HANDLER (casual) =====
 async function handleTickerQuestion(msg, ticker) {
-    if (!canChat()) { document.getElementById('limitWarning').textContent = getChatLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
     // Validate ticker
     if (!isValidTicker(ticker) && activeTicker) { ticker = activeTicker; }
     if (!isValidTicker(ticker)) { addUserBubble(msg); addAIBubble('<p class="text-sm text-gray-300">Ticker tidak dikenali. Pastikan menggunakan kode saham yang terdaftar di BEI.</p>'); saveChatHistory(); return; }
     setActiveTicker(ticker);
     pendingAnalysisRequest = { type: 'stock-analysis', ticker: ticker, companyName: getCompanyName(ticker) };
     addUserBubble(msg);
-    addLoadingBubble();
-    disableSend(); clearInput();
-    logUsage(ticker, 'chat_started');
+    clearInput();
+    var company = getCompanyName(ticker);
+    var label = company ? ticker + ' (' + company + ')' : ticker;
     updateTradingViewSafe(ticker);
-    try {
-        var company = getCompanyName(ticker);
-        var enrichedMsg = msg + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
-        var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
-        var data = await response.json();
-        removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
-        else { throw new Error('Tidak ada respons.'); }
-    } catch(e) { removeLoadingBubble(); addAIError('Gagal: ' + e.message); logUsage(ticker, 'chat_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    // Check if we already have chart/evidence in the session
+    var hasEvidence = latestAnalysisContext.ticker === ticker && latestAnalysisContext.evidenceLevel && latestAnalysisContext.evidenceLevel >= 2;
+    var responseHtml;
+    if (hasEvidence) {
+        // Already have data for this ticker, give contextual answer
+        responseHtml = '<p class="text-sm text-gray-300"><strong class="text-emerald-400">' + label + '</strong></p>';
+        responseHtml += '<p class="text-sm text-gray-300 mt-1.5">Data chart sudah ada. Kirim harga sekarang untuk update analisis, atau tanya langsung apa yang mau dicek.</p>';
+    } else {
+        // No existing evidence - ask for price only
+        responseHtml = '<p class="text-sm text-gray-300"><strong class="text-emerald-400">' + label + '</strong> terdeteksi.</p>';
+        responseHtml += '<p class="text-sm text-gray-300 mt-1.5">Kirim harga sekarang untuk analisis cepat.</p>';
+        responseHtml += '<p class="text-sm text-gray-500 mt-1 text-xs">Untuk analisis presisi, upload chart 1W/1D/4H.</p>';
+    }
+    addAIBubble(responseHtml);
+    saveChatHistory();
 }
 
 // ===== CHAT HANDLER =====
