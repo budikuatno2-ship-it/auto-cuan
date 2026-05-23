@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Add the Broker Summary Reader prompt builder and integrate it into the chart analysis pipeline in api/analyze.js. This includes: building a comprehensive buildBrokerSummarySection() function, updating evidence level calculation, integrating broker summary into CHART_SYSTEM_PROMPT and ticker analysis, and updating the chat mode to understand broker summary follow-ups.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Step 1: In api/analyze.js, add a new function buildBrokerSummarySection() that returns the full Broker Summary Reader prompt text. This function should contain all the rules from the task specification: supported periods (Today, 7 Day, This Month, 1 Month, 3 Month), data extraction rules, period interpretation logic, classification logic (accumulation/distribution/rotation/retail/unclear), broker concentration logic, broker average price logic, multi-period comparison logic, output format (Broker Summary Check section), chart integration rules, news/corporate action integration rules, orderbook/market maker integration rules, FCA interaction rules, score adjustment rules (+5 to +10 for strong accumulation, -5 to -15 for strong distribution, etc.), and the mandatory disclaimer wording. Use the same coding style as buildFCASection() and buildMarketMakerSection().",
     "Step 2: Update the calculateEvidenceLevel() function in api/analyze.js to account for broker summary as supporting evidence. When images + documents are present, broker summary data (detected from document content or additional images) should allow reaching Level 4-6. Current logic: Level 1 = ticker+price, Level 2 = single chart, Level 3 = multi-chart, Level 4 = chart + supporting evidence. Add broker summary awareness: if broker summary text/images are present alongside chart, it counts as supporting evidence for Level 4+.",
@@ -30,5 +30,5 @@
     "Run: grep -c 'buildBrokerSummarySection' /projects/sandbox/auto-cuan/api/analyze.js to confirm the function exists and is called"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Successfully implemented buildBrokerSummarySection() as a large string-returning function following the same pattern as buildMarketMakerSection(). Integrated into handleChartUpload() after market maker section and before document context, into buildPrompt() after FCA context block and before FORBIDDEN_WORDS_PROMPT. Updated calculateEvidenceLevel() with detailed comments about broker summary as supporting evidence. Added 'Broker Summary' and 'Broker Summary Check' to isCompleteAnalysis() alternativeKeywords. Updated chatSystemPrompt with ATURAN BROKER SUMMARY section. NODE_OPTIONS must be cleared to run node commands in this environment due to a missing preload module."
 }
