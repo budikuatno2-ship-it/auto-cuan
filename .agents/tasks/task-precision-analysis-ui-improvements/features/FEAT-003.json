@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "High-precision evidence-based analysis system overhaul. Rewrite the AI prompts in api/analyze.js to implement strict Evidence Lock, input quality levels, score caps, anti-hallucination rules, structured output sections, and the complete pre-decision checklist. This is the core precision improvement.",
+  "status": "completed",
+  "steps": [
+    "In api/analyze.js, rewrite the buildPrompt(ticker, price) function to implement the new strict analysis system. The new prompt must include: (1) Evidence Lock rules - AI can only conclude based on provided evidence, (2) Input Quality Level 1 (Basic Analysis: ticker + price only, max score 55, recommendation usually WAIT/WATCHLIST/NEED CHART CONFIRMATION), (3) Strict score system with caps, (4) Anti-hallucination rules (do not invent volume, demand zone, order block, BOS, CHoCH, liquidity sweep etc without chart), (5) The 17-point pre-decision checklist, (6) All 15 output sections from the spec.",
+    "The new buildPrompt output format must include these sections in order: (1) Data Quality Check, (2) Context Summary, (3) Confidence Breakdown (Technical/Entry/Risk/News/Overall), (4) Multi-Timeframe Bias (show 'Not available - chart not uploaded'), (5) Key Level Validation (only from evidence), (6) Entry Quality classification, (7) Invalidation First, (8) Risk Reward Check, (9) Final Decision with strict label, (10) Best Action Plan, (11) News/Catalyst Impact, (12) Scenario-Based Output (Best/Base/Worst), (13) Position Sizing Based on Risk, (14) What Could Go Wrong, (15) Final Note.",
+    "Update the strict recommendation labels in the prompt: AVOID, WAIT, WATCHLIST, NEED CHART CONFIRMATION, SPECULATIVE BUY, BUY ON CONFIRMATION, BUY ON PULLBACK, SCALP ONLY, SWING VALID, HOLD, TAKE PROFIT PARTIAL, CUT LOSS / EXIT. Remove the old 'HAKA' and 'LAYAK MASUK' labels from the ticker-only mode (they were too easy to trigger).",
+    "Update the score meaning in the prompt: 0-30 AVOID, 31-45 WEAK SETUP, 46-55 WATCHLIST, 56-65 SPECULATIVE, 66-75 BUY ON CONFIRMATION, 76-85 STRONG SETUP, 86-90 VERY STRONG (rare), 91-100 almost never.",
+    "Rewrite the CHART_SYSTEM_PROMPT for chart upload mode to implement: (1) Evidence Lock (only describe what is visible in chart), (2) Input Quality Level 2 (single chart, max score 70), (3) Must identify which timeframe the chart shows, (4) Must mention missing timeframes, (5) Anti-hallucination (do not invent what is not visible), (6) Same 15 output sections adapted for chart mode, (7) Ask user to upload additional timeframes for higher precision.",
+    "Update the isCompleteAnalysis() function to check for new required keywords that match the new output format: 'Data Quality', 'Confidence', 'Invalidation', 'Final Decision', 'Risk Reward' instead of old keywords like 'Agresif', 'Konservatif', 'Scalping'.",
+    "Update the generateFallback() function to match the new output structure. The fallback should clearly state it is a basic analysis (ticker + price only), show score capped at 55, and recommend uploading charts for better precision. Keep the HTML/Tailwind styling consistent.",
+    "In the chat mode prompt (handleChatMode), add instruction: when user asks for analysis, if they have not provided chart, remind them that for highest precision they should upload 1W/1D/4H charts. Include the Indonesian prompt template asking for complete data.",
+    "Add TradingView disclaimer note in the output: 'Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input.'",
+    "Reduce temperature for ticker mode from 0.4 to 0.3 and for chart mode from 0.5 to 0.35 to reduce hallucination. Keep chat mode at 0.7 for natural conversation."
+  ],
+  "acceptance_criteria": [
+    "buildPrompt function contains Evidence Lock rules and anti-hallucination instructions",
+    "Ticker-only mode has max score cap of 55 in the prompt",
+    "Chart upload mode has max score cap of 70 in the prompt",
+    "All 15 output sections are specified in the prompts",
+    "Old easy labels like HAKA/LAYAK MASUK are removed from ticker-only analysis prompt",
+    "isCompleteAnalysis checks for new section keywords",
+    "generateFallback produces output matching new structure with score capped at 55",
+    "Temperature reduced for ticker (0.3) and chart (0.35) modes",
+    "api/analyze.js passes node --check syntax validation"
+  ],
+  "verification": [
+    "Run: node --check /projects/sandbox/auto-cuan/api/analyze.js - should exit 0 (no syntax errors)",
+    "Run: grep -n 'Evidence Lock' /projects/sandbox/auto-cuan/api/analyze.js - should find the rule",
+    "Run: grep -n 'max.*55\\|skor.*55\\|score.*55' /projects/sandbox/auto-cuan/api/analyze.js - should find score cap for basic mode",
+    "Run: grep -n 'temperature.*0\\.3' /projects/sandbox/auto-cuan/api/analyze.js - should find reduced temperature"
+  ],
+  "blocked_reason": null,
+  "findings": "File rewritten successfully (772 lines). node --check passes (requires NODE_OPTIONS= prefix in sandbox due to preload module). Temperature: ticker 0.3, chart 0.35, chat 0.7. Score caps: ticker max 55, chart max 70, fallback max 48. All 15 sections implemented in prompts and fallback. Old labels HAKA/LAYAK MASUK removed."
+}
