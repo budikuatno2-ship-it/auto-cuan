@@ -6,8 +6,6 @@ module.exports = async function handler(req, res) {
   try {
     const { ticker, currentPrice, image, mimeType, source, username, isAdmin, chatMessage } = req.body || {};
 
-    // === MAINTENANCE GUARD (removed automatic 22:00-06:00 block - now manual only) ===
-
     // === CHAT MODE ===
     if (source === 'chat_mode' && chatMessage) {
       return await handleChatMode(req, res, chatMessage);
@@ -40,7 +38,7 @@ module.exports = async function handler(req, res) {
     const payload = {
       contents: [{ parts: [{ text: systemPrompt }] }],
       generationConfig: {
-        temperature: 0.4,
+        temperature: 0.3,
         topP: 0.9,
         topK: 30,
         maxOutputTokens: 8192
@@ -67,7 +65,6 @@ module.exports = async function handler(req, res) {
         let html = parts[0].text;
         html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
 
-        // Validate completeness - must contain key sections
         if (!isCompleteAnalysis(html)) {
           const fallbackHtml = generateFallback(tickerUpper, price);
           return res.status(200).json({ html: fallbackHtml });
@@ -96,411 +93,363 @@ module.exports = async function handler(req, res) {
 }
 
 
-// Maintenance is now manual only via app_settings (no automatic time-based block)
-
-
 function isCompleteAnalysis(html) {
-  // Must be substantial length
-  if (!html || html.length < 500) return false;
-  // Must contain key trading plan keywords
-  const requiredKeywords = [
-    'Trading Plan',
-    'Entry',
-    'Agresif',
-    'Konservatif',
-    'Scalping',
-    'Rekomendasi'
-  ];
+  if (!html || html.length < 400) return false;
+  const requiredKeywords = ['Data Quality', 'Confidence', 'Invalidation', 'Final Decision', 'Risk Reward', 'Action Plan'];
   const lowerHtml = html.toLowerCase();
   let foundCount = 0;
   for (const kw of requiredKeywords) {
     if (lowerHtml.includes(kw.toLowerCase())) foundCount++;
   }
-  // Must have at least 5 of 6 keywords
-  return foundCount >= 5;
+  return foundCount >= 4;
 }
 
 
 function buildPrompt(ticker, currentPrice) {
-  return `Kamu adalah AI Analis Teknikal Saham PROFESIONAL LEVEL INSTITUSIONAL dengan keahlian mendalam di Smart Money Concepts (SMC), Market Structure, dan Price Action Analysis.
+  return `Kamu adalah AI Analis Teknikal Saham PROFESIONAL dengan standar EVIDENCE-BASED ANALYSIS yang ketat.
 
-TUGAS: Buat analisis KOMPREHENSIF dan DETAIL untuk saham ${ticker} dengan harga sekarang Rp ${currentPrice}.
-PENTING: User sudah memberikan harga Rp ${currentPrice} sebagai harga real-time saat ini. Gunakan HANYA angka ini sebagai basis kalkulasi.
+=== EVIDENCE LOCK (WAJIB DIPATUHI 100%) ===
+EVIDENCE LOCK ACTIVE: Kamu HANYA boleh menggunakan data berikut sebagai basis analisis:
+(a) Harga saat ini: Rp ${currentPrice}
+(b) Ticker: ${ticker}
 
-=== ATURAN HARGA ABSOLUT (WAJIB DIPATUHI 100%) ===
-- Harga sekarang = Rp ${currentPrice}. Ini adalah angka ABSOLUT dan FINAL.
-- SEMUA angka Entry, SL, TP HARUS dihitung berdasarkan Rp ${currentPrice}.
-- SL MAKSIMUM 15% di bawah harga sekarang (Rp ${currentPrice}).
-- TP MAKSIMUM 30% di atas harga sekarang (Rp ${currentPrice}).
-- Jika currentPrice < 100, DILARANG KERAS menampilkan angka ribuan.
-- Jika SL hasil pembulatan = Entry, maka SL = Entry - 1.
-- Jika TP hasil pembulatan = Entry, maka TP = Entry + 1.
-- Contoh: Jika currentPrice = 18, maka Entry ~17-19, SL ~15-17, TP ~20-24.
-- Contoh: Jika currentPrice = 63, maka Entry ~60-65, SL ~54-61, TP ~68-82.
-- Contoh: Jika currentPrice = 550, maka Entry ~530-560, SL ~470-530, TP ~600-715.
+TIDAK ADA data lain yang tersedia. Tidak ada chart, tidak ada news, tidak ada volume, tidak ada orderbook.
+
+=== INPUT QUALITY LEVEL ===
+Ini adalah INPUT QUALITY LEVEL 1 (Basic Analysis: Ticker + Harga saja).
+- SKOR MAKSIMUM: 55. DILARANG memberi skor di atas 55.
+- Rekomendasi yang VALID untuk level ini: WAIT / WATCHLIST / NEED CHART CONFIRMATION
+- DILARANG memberikan rekomendasi BUY yang kuat tanpa chart sebagai konfirmasi.
+
+=== ANTI-HALLUCINATION RULES (WAJIB) ===
+DILARANG KERAS mengklaim atau menyimpulkan hal berikut TANPA bukti chart:
+- Volume spike / volume tinggi / volume rendah
+- Demand zone / supply zone yang "teridentifikasi"
+- Order block yang "aktif" atau "fresh"
+- BOS (Break of Structure) / CHoCH (Change of Character)
+- Akumulasi / distribusi
+- Higher high / higher low / lower high / lower low
+- Liquidity sweep / liquidity grab
+- FVG (Fair Value Gap)
+- Candle pattern (engulfing, doji, hammer, dll)
+
+Jika ingin menyebut hal di atas, WAJIB tulis: "Belum bisa dikonfirmasi dari data yang ada. Upload chart untuk validasi."
+
+=== SCORE MEANING ===
+0-30: AVOID (setup buruk atau data sangat minim)
+31-45: WEAK SETUP (ada potensi tapi banyak uncertainty)
+46-55: WATCHLIST (menarik tapi butuh konfirmasi chart) - INI MAKSIMUM UNTUK LEVEL 1
+56-65: SPECULATIVE (hanya jika ada chart partial)
+66-75: BUY ON CONFIRMATION (chart + price tersedia)
+76-85: STRONG SETUP (multi-timeframe aligned)
+86-90: VERY STRONG (rare, semua data lengkap dan aligned)
+91-100: Hampir tidak pernah tercapai
+
+=== STRICT RECOMMENDATION LABELS ===
+Gunakan HANYA label berikut:
+AVOID | WAIT | WATCHLIST | NEED CHART CONFIRMATION | SPECULATIVE BUY | BUY ON CONFIRMATION | BUY ON PULLBACK | SCALP ONLY | SWING VALID | HOLD | TAKE PROFIT PARTIAL | CUT LOSS / EXIT
+
+Untuk Level 1 (ticker + harga saja), label yang valid: WAIT, WATCHLIST, NEED CHART CONFIRMATION, atau AVOID.
 
 === FORMAT OUTPUT ===
 Output HARUS berupa HTML valid dengan Tailwind CSS classes.
 Gunakan tema gelap: bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white (netral), text-gray-300 (body), text-gray-400 (secondary), text-gray-500 (muted).
 Wrap semua konten dalam <div class="space-y-5">.
 
-=== 13 BAGIAN WAJIB (SEMUA HARUS ADA, DETAIL, DAN LENGKAP) ===
+=== 15 BAGIAN WAJIB (SEMUA HARUS ADA) ===
 
-1. AUTO-CUAN SCORE (skor 0-100)
-   - Tampilkan skor besar dengan warna gradient
-   - Sertakan penjelasan singkat kenapa skor segitu (3-4 faktor)
-   - Warna: >= 70 emerald, 50-69 yellow, < 50 red
+1. DATA QUALITY CHECK
+   - Tampilkan level input: "Level 1 - Basic (Ticker + Harga)"
+   - Data tersedia: Ticker, Harga saat ini
+   - Data TIDAK tersedia: Chart, Volume, News, Orderbook, Multi-timeframe
+   - Confidence impact: "Analisis terbatas, skor di-cap di 55"
 
-2. KESIMPULAN CEPAT
-   - 2-3 kalimat: apakah saham ini menarik?
-   - Cocok untuk swing, scalping, atau wait?
-   - Sentimen: Bullish/Bearish/Netral
+2. CONTEXT SUMMARY
+   - Ticker: ${ticker}, Harga: Rp ${currentPrice}
+   - Apa yang bisa disimpulkan dari harga saja (price level, apakah penny stock / mid / blue chip berdasarkan harga)
+   - Apa yang TIDAK bisa disimpulkan tanpa chart
 
-3. PREDIKSI TARGET HARGA
-   - Target Konservatif: ~+11% dari ${currentPrice}
-   - Target Moderat: ~+22% dari ${currentPrice}
-   - Target Optimistis: ~+33% dari ${currentPrice}
-   - Timeframe untuk masing-masing
+3. CONFIDENCE BREAKDOWN
+   - Technical Score: x/25 (rendah karena tanpa chart)
+   - Entry Precision: x/25 (rendah karena tanpa konfirmasi visual)
+   - Risk Management: x/25 (estimasi saja)
+   - News/Catalyst: x/25 (tidak tersedia)
+   - OVERALL: x/55 (cap di 55)
 
-4. REKOMENDASI AKSI
-   - Pilih salah satu: HAKA (Hajar Kanan) / LAYAK MASUK / WAIT AND SEE / JUAL
-   - Berikan 3 alasan spesifik
+4. MULTI-TIMEFRAME BIAS
+   - Weekly: "Tidak tersedia - chart belum di-upload"
+   - Daily: "Tidak tersedia - chart belum di-upload"
+   - H4: "Tidak tersedia - chart belum di-upload"
+   - H1: "Tidak tersedia - chart belum di-upload"
+   - Catatan: "Upload chart 1W/1D/4H untuk multi-timeframe analysis"
 
-5. RINGKASAN STRUKTUR MARKET
-   - Trend: Bullish/Bearish/Sideways
-   - Momentum: Strong/Moderate/Weak
-   - Structure: Higher High, Higher Low, Lower High, Lower Low
-   - Key levels yang teridentifikasi
+5. KEY LEVEL VALIDATION
+   - Estimasi support/resistance berdasarkan round number terdekat dari Rp ${currentPrice}
+   - WAJIB label: "ESTIMASI SAJA - belum divalidasi dari chart"
+   - Jangan klaim ini sebagai "confirmed level"
 
-6. AREA HARGA SAAT INI
-   - Posisi harga relatif terhadap demand/supply zone
-   - Apakah di premium atau discount zone?
-   - Jarak ke support/resistance terdekat
+6. ENTRY QUALITY
+   - Klasifikasi: LOW CONFIDENCE (tanpa chart)
+   - Alasan: tidak ada visual confirmation
+   - Saran: tunggu chart untuk konfirmasi entry
 
-7. TRADING PLAN TABLE (3 strategi)
-   - Agresif: Entry, SL, TP1, TP2, Risk:Reward
-   - Konservatif: Entry, SL, TP1, TP2, Risk:Reward
-   - Scalping: Entry, SL, TP1, TP2, Risk:Reward
-   Format tabel HTML responsif dengan header emerald
+7. INVALIDATION FIRST
+   - Kapan analisis ini INVALID (misal: jika harga break level tertentu)
+   - Estimasi invalidation level (round number di bawah harga)
+   - "Validasi lebih akurat membutuhkan chart"
 
-8. KENAPA AREA ENTRY ITU?
-   - Penjelasan teknikal untuk setiap Entry point
-   - Penjelasan kenapa SL di level tersebut
-   - Penjelasan kenapa TP di level tersebut
-   - Referensi ke Order Block, FVG, atau Liquidity
+8. RISK REWARD CHECK
+   - Estimasi Risk:Reward berdasarkan round number levels
+   - Apakah RR layak? (biasanya minimum 1:2)
+   - Catatan bahwa ini estimasi tanpa chart
 
-9. SKENARIO BULLISH
-   - Trigger: apa yang harus terjadi?
-   - Target jika skenario aktif
-   - Konfirmasi yang dibutuhkan (volume, candle pattern)
-   - Probabilitas estimasi
+9. FINAL DECISION
+   - Label keputusan (WAIT / WATCHLIST / NEED CHART CONFIRMATION)
+   - Skor: x/55 (JANGAN lebih dari 55)
+   - Alasan singkat 2-3 poin
+   - Warna skor: text-yellow-400 (karena pasti di bawah 56)
 
-10. SKENARIO BEARISH
-    - Trigger: apa yang membatalkan setup?
-    - Support yang harus diperhatikan
-    - Worst case scenario
-    - Action plan jika bearish aktif
+10. BEST ACTION PLAN
+    - Langkah 1: Upload chart (1W/1D/4H) untuk konfirmasi
+    - Langkah 2: Cek news/katalis terbaru
+    - Langkah 3: Tentukan average price jika sudah hold
+    - Langkah 4: Re-analisis setelah data lengkap
+    - Jika sudah hold: saran hold/cut berdasarkan harga saja
 
-11. RISK MANAGEMENT
-    - Position sizing recommendation (% modal)
-    - Disiplin SL: kenapa wajib pasang SL
-    - Volatilitas saham ini (tinggi/sedang/rendah)
-    - Max loss yang bisa ditoleransi per trade
+11. NEWS/CATALYST IMPACT
+    - Status: "Tidak ada data news yang tersedia"
+    - Impact: "Tidak bisa dinilai"
+    - Saran: "Cek berita terbaru sebelum mengambil keputusan"
 
-12. AUTO-CUAN SMC OVERLAY
-    - Demand Zone: level harga spesifik
-    - Supply Zone: level harga spesifik
-    - BOS (Break of Structure): level terakhir
-    - CHoCH (Change of Character): level terakhir
-    - Tampilkan dalam grid cards
+12. SCENARIO-BASED OUTPUT
+    - Best Case: estimasi target (round number di atas harga)
+    - Base Case: sideways / consolidation
+    - Worst Case: estimasi downside (round number di bawah harga)
+    - Semua diberi label "ESTIMASI - butuh chart untuk konfirmasi"
 
-13. CATATAN AKHIR
-    - Disclaimer bahwa ini bukan ajakan beli/jual
-    - Reminder untuk DYOR (Do Your Own Research)
-    - Tips spesifik untuk saham ini
+13. POSITION SIZING
+    - Rekomendasi alokasi: KECIL (1-3% portfolio) karena confidence rendah
+    - Jangan all-in tanpa chart confirmation
+    - Scaling plan: tambah posisi setelah chart confirm
 
-Pastikan SETIAP bagian memiliki konten yang SUBSTANTIF (minimal 3-5 poin per bagian). Jangan skip atau singkat-singkat. Output harus comprehensive dan actionable.`;
+14. WHAT COULD GO WRONG
+    - Tanpa chart, banyak yang bisa salah
+    - List 3-5 risiko utama
+    - Kenapa analisis harga saja tidak cukup
+
+15. FINAL NOTE
+    - Disclaimer: bukan ajakan beli/jual
+    - "Untuk presisi lebih tinggi, upload chart 1W, 1D, dan 4H"
+    - "Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input."
+    - DYOR reminder
+
+Pastikan SETIAP bagian ada dan memiliki konten substantif. Output harus jujur tentang keterbatasan data.`;
 }
 
 
 function generateFallback(ticker, price) {
   const p = price;
-
-  // Agresif calculations
-  const entryAgresif = p;
-  const slAgresif = Math.max(Math.round(p * 0.94), p - 1);
-  const tp1Agresif = Math.max(Math.round(p * 1.11), p + 2);
-  const tp2Agresif = Math.max(Math.round(p * 1.22), p + 4);
-  const rrAgresif = ((tp1Agresif - entryAgresif) / Math.max(entryAgresif - slAgresif, 1)).toFixed(1);
-
-  // Konservatif calculations
-  const entryKons = Math.max(Math.round(p * 0.97), p - 1);
-  const slKons = Math.max(Math.round(p * 0.91), p - 2);
-  const tp1Kons = Math.max(Math.round(p * 1.06), p + 1);
-  const tp2Kons = Math.max(Math.round(p * 1.14), p + 2);
-  const rrKons = ((tp1Kons - entryKons) / Math.max(entryKons - slKons, 1)).toFixed(1);
-
-  // Scalping calculations
-  const entryScalp = p;
-  const slScalp = Math.max(Math.round(p * 0.95), p - 1);
-  const tp1Scalp = Math.max(Math.round(p * 1.05), p + 1);
-  const tp2Scalp = Math.max(Math.round(p * 1.08), p + 2);
-  const rrScalp = ((tp1Scalp - entryScalp) / Math.max(entryScalp - slScalp, 1)).toFixed(1);
-
-  // Score calculation (65-75 range)
-  const score = p > 500 ? 75 : p > 200 ? 72 : p > 100 ? 70 : p > 50 ? 68 : 65;
-
-  // Target prices
-  const targetConservative = Math.round(p * 1.11);
-  const targetModerate = Math.round(p * 1.22);
-  const targetOptimistic = Math.round(p * 1.33);
-
-  const scoreColor = score >= 70 ? 'text-emerald-400' : 'text-yellow-400';
-  const scoreBg = score >= 70 ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-yellow-500/20 border-yellow-500/30';
+  const supportEst = Math.max(Math.round(p * 0.92), p - 2);
+  const resistEst = Math.max(Math.round(p * 1.08), p + 2);
+  const invLevel = Math.max(Math.round(p * 0.88), p - 3);
+  const bestCase = Math.max(Math.round(p * 1.15), p + 3);
+  const worstCase = Math.max(Math.round(p * 0.82), p - 4);
+  const score = p > 500 ? 48 : p > 200 ? 45 : p > 100 ? 42 : p > 50 ? 40 : 38;
 
   return `
 <div class="space-y-5">
-  <!-- 1. Auto-Cuan Score -->
+  <!-- 1. Data Quality Check -->
   <div class="bg-[#151a23] rounded-xl p-5 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-yellow-400 mb-3">Data Quality Check</h3>
+    <div class="space-y-2">
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Input Level:</span> Level 1 - Basic (Ticker + Harga)</p>
+      <p class="text-sm text-gray-300"><span class="text-emerald-400">Tersedia:</span> Ticker (${ticker}), Harga (Rp ${p})</p>
+      <p class="text-sm text-gray-300"><span class="text-red-400">Tidak tersedia:</span> Chart, Volume, News, Orderbook, Multi-timeframe</p>
+      <p class="text-sm text-gray-300"><span class="text-yellow-400">Impact:</span> Skor di-cap maksimal 55. Analisis bersifat estimasi.</p>
+    </div>
+  </div>
+
+  <!-- 2. Context Summary -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Context Summary</h3>
+    <p class="text-sm text-gray-300">Saham <strong class="text-white">${ticker}</strong> di harga Rp ${p}. ${p > 1000 ? 'Tergolong saham mid-large cap berdasarkan harga.' : p > 200 ? 'Tergolong saham second liner berdasarkan range harga.' : p > 50 ? 'Tergolong saham small cap.' : 'Tergolong saham penny stock / low price.'} Tanpa chart dan data tambahan, analisis sangat terbatas dan hanya bersifat estimasi awal.</p>
+  </div>
+
+  <!-- 3. Confidence Breakdown -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Confidence Breakdown</h3>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
+        <p class="text-xs text-gray-500">Technical</p>
+        <p class="text-sm font-bold text-red-400">5/25</p>
+      </div>
+      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
+        <p class="text-xs text-gray-500">Entry Precision</p>
+        <p class="text-sm font-bold text-red-400">5/25</p>
+      </div>
+      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
+        <p class="text-xs text-gray-500">Risk Management</p>
+        <p class="text-sm font-bold text-yellow-400">12/25</p>
+      </div>
+      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
+        <p class="text-xs text-gray-500">News/Catalyst</p>
+        <p class="text-sm font-bold text-red-400">0/25</p>
+      </div>
+    </div>
+    <div class="mt-3 bg-[#0b0e14] rounded-lg p-3 border border-yellow-500/30 text-center">
+      <p class="text-xs text-gray-500">OVERALL SCORE</p>
+      <p class="text-2xl font-bold text-yellow-400">${score}/55</p>
+      <p class="text-xs text-gray-500 mt-1">Cap: 55 (Level 1 - Basic)</p>
+    </div>
+  </div>
+
+  <!-- 4. Multi-Timeframe Bias -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Multi-Timeframe Bias</h3>
+    <div class="space-y-2">
+      <p class="text-sm text-gray-500">Weekly: Tidak tersedia - chart belum di-upload</p>
+      <p class="text-sm text-gray-500">Daily: Tidak tersedia - chart belum di-upload</p>
+      <p class="text-sm text-gray-500">H4: Tidak tersedia - chart belum di-upload</p>
+      <p class="text-sm text-gray-500">H1: Tidak tersedia - chart belum di-upload</p>
+    </div>
+    <p class="text-xs text-yellow-400 mt-3">Upload chart 1W/1D/4H untuk multi-timeframe analysis yang akurat.</p>
+  </div>
+
+  <!-- 5. Key Level Validation -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Key Level Validation</h3>
+    <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-3">
+      <p class="text-xs text-yellow-400 font-semibold">ESTIMASI SAJA - belum divalidasi dari chart</p>
+    </div>
+    <div class="space-y-2">
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Support estimasi:</span> ~Rp ${supportEst} (round number terdekat)</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Resistance estimasi:</span> ~Rp ${resistEst} (round number terdekat)</p>
+      <p class="text-sm text-gray-300"><span class="text-gray-500">Belum bisa dikonfirmasi dari data yang ada. Upload chart untuk validasi.</span></p>
+    </div>
+  </div>
+
+  <!-- 6. Entry Quality -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Entry Quality</h3>
+    <span class="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-red-500/20 text-red-400 border border-red-500/30">LOW CONFIDENCE</span>
+    <p class="text-sm text-gray-300 mt-2">Tanpa chart, tidak ada visual confirmation untuk entry point. Level yang ditampilkan hanya estimasi berdasarkan round number.</p>
+  </div>
+
+  <!-- 7. Invalidation First -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-red-400 mb-2">Invalidation First</h3>
+    <div class="space-y-2">
+      <p class="text-sm text-gray-300"><span class="text-red-400 font-semibold">Invalidation Level:</span> ~Rp ${invLevel} (estimasi)</p>
+      <p class="text-sm text-gray-300">Jika harga break di bawah Rp ${invLevel}, analisis estimasi ini tidak valid.</p>
+      <p class="text-sm text-gray-500">Validasi lebih akurat membutuhkan chart dengan candle structure yang jelas.</p>
+    </div>
+  </div>
+
+  <!-- 8. Risk Reward Check -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Risk Reward Check</h3>
+    <div class="space-y-2">
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Estimasi Risk:</span> Rp ${p} ke Rp ${invLevel} = ~${Math.round((p - invLevel)/p * 100)}%</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Estimasi Reward:</span> Rp ${p} ke Rp ${resistEst} = ~${Math.round((resistEst - p)/p * 100)}%</p>
+      <p class="text-sm text-gray-300"><span class="text-yellow-400">Catatan:</span> Ini estimasi tanpa chart. RR aktual bisa sangat berbeda.</p>
+    </div>
+  </div>
+
+  <!-- 9. Final Decision -->
+  <div class="bg-[#151a23] rounded-xl p-5 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Final Decision</h3>
     <div class="flex items-center gap-4">
-      <div class="flex items-center justify-center w-20 h-20 rounded-full ${scoreBg} border-2">
-        <span class="text-3xl font-bold ${scoreColor}">${score}</span>
+      <div class="flex items-center justify-center w-16 h-16 rounded-full bg-yellow-500/20 border-2 border-yellow-500/30">
+        <span class="text-2xl font-bold text-yellow-400">${score}</span>
       </div>
       <div>
-        <h3 class="text-lg font-bold text-white">Auto-Cuan Score</h3>
-        <p class="text-sm text-gray-400">${ticker} • Rp ${p}</p>
-        <div class="mt-2 space-y-1">
-          <p class="text-xs text-gray-300">• Struktur market menunjukkan potensi akumulasi</p>
-          <p class="text-xs text-gray-300">• Area demand zone aktif di sekitar harga saat ini</p>
-          <p class="text-xs text-gray-300">• Volume menunjukkan minat beli yang cukup</p>
-          <p class="text-xs text-gray-300">• Risk:Reward ratio memadai untuk entry</p>
-        </div>
+        <span class="inline-block px-4 py-2 rounded-lg text-sm font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">NEED CHART CONFIRMATION</span>
+        <p class="text-xs text-gray-400 mt-2">Skor ${score}/55 (max 55 untuk Level 1 Basic)</p>
       </div>
     </div>
-  </div>
-
-  <!-- 2. Kesimpulan Cepat -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Kesimpulan Cepat</h3>
-    <p class="text-sm text-gray-300 leading-relaxed">Saham ${ticker} di harga Rp ${p} menunjukkan setup yang <strong class="text-white">cukup menarik</strong> untuk swing trading jangka pendek-menengah. Struktur market sedang dalam fase akumulasi dengan potensi breakout ke atas.</p>
-    <div class="flex gap-2 mt-3">
-      <span class="px-2 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Swing Trading</span>
-      <span class="px-2 py-1 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Scalping OK</span>
-      <span class="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Sentimen: Netral-Bullish</span>
+    <div class="mt-3 space-y-1">
+      <p class="text-sm text-gray-300">- Data terlalu minim untuk keputusan trading</p>
+      <p class="text-sm text-gray-300">- Butuh chart confirmation untuk validasi level</p>
+      <p class="text-sm text-gray-300">- Tanpa news/catalyst, tidak ada edge</p>
     </div>
   </div>
 
-  <!-- 3. Prediksi Target Harga -->
+  <!-- 10. Best Action Plan -->
   <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Prediksi Target Harga</h3>
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Best Action Plan</h3>
+    <div class="space-y-2">
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">1.</span> Upload chart (1W/1D/4H) untuk konfirmasi struktur market</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">2.</span> Cek news/katalis terbaru untuk ${ticker}</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">3.</span> Tentukan average price jika sudah hold</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">4.</span> Re-analisis setelah data lengkap untuk skor lebih tinggi</p>
+    </div>
+  </div>
+
+  <!-- 11. News/Catalyst Impact -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">News/Catalyst Impact</h3>
+    <div class="space-y-2">
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Status:</span> Tidak ada data news yang tersedia</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Impact:</span> Tidak bisa dinilai</p>
+      <p class="text-sm text-gray-300"><span class="text-yellow-400">Saran:</span> Cek berita terbaru ${ticker} sebelum mengambil keputusan apapun</p>
+    </div>
+  </div>
+
+  <!-- 12. Scenario-Based Output -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Scenario-Based Output</h3>
+    <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-3">
+      <p class="text-xs text-yellow-400">ESTIMASI - butuh chart untuk konfirmasi</p>
+    </div>
     <div class="grid grid-cols-3 gap-3">
       <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">Konservatif</p>
-        <p class="text-lg font-bold text-emerald-400">Rp ${targetConservative}</p>
-        <p class="text-xs text-gray-500 mt-1">+${Math.round((targetConservative/p - 1)*100)}% • 2-4 minggu</p>
+        <p class="text-xs text-gray-500 mb-1">Best Case</p>
+        <p class="text-lg font-bold text-emerald-400">Rp ${bestCase}</p>
+        <p class="text-xs text-gray-500 mt-1">+${Math.round((bestCase/p - 1)*100)}%</p>
       </div>
       <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">Moderat</p>
-        <p class="text-lg font-bold text-yellow-400">Rp ${targetModerate}</p>
-        <p class="text-xs text-gray-500 mt-1">+${Math.round((targetModerate/p - 1)*100)}% • 1-2 bulan</p>
+        <p class="text-xs text-gray-500 mb-1">Base Case</p>
+        <p class="text-lg font-bold text-yellow-400">Rp ${p}</p>
+        <p class="text-xs text-gray-500 mt-1">Sideways</p>
       </div>
       <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">Optimistis</p>
-        <p class="text-lg font-bold text-blue-400">Rp ${targetOptimistic}</p>
-        <p class="text-xs text-gray-500 mt-1">+${Math.round((targetOptimistic/p - 1)*100)}% • 2-3 bulan</p>
+        <p class="text-xs text-gray-500 mb-1">Worst Case</p>
+        <p class="text-lg font-bold text-red-400">Rp ${worstCase}</p>
+        <p class="text-xs text-gray-500 mt-1">${Math.round((worstCase/p - 1)*100)}%</p>
       </div>
     </div>
   </div>
 
-  <!-- 4. Rekomendasi Aksi -->
+  <!-- 13. Position Sizing -->
   <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Rekomendasi Aksi</h3>
-    <div class="flex items-center gap-3 mb-3">
-      <span class="inline-block px-4 py-2 rounded-lg text-sm font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">LAYAK MASUK</span>
-    </div>
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Position Sizing</h3>
     <div class="space-y-2">
-      <p class="text-sm text-gray-300">• Harga berada di area demand zone yang masih fresh (belum di-test ulang)</p>
-      <p class="text-sm text-gray-300">• Struktur Higher Low terbentuk pada timeframe H4, mengindikasikan akumulasi</p>
-      <p class="text-sm text-gray-300">• Risk:Reward ratio minimal 1:${rrAgresif} pada setup agresif, layak untuk diambil</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Rekomendasi alokasi:</span> <span class="text-yellow-400">KECIL (1-3% portfolio)</span></p>
+      <p class="text-sm text-gray-300">Confidence rendah, jangan all-in tanpa chart confirmation.</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Scaling plan:</span> Tambah posisi hanya setelah chart mengkonfirmasi setup valid.</p>
     </div>
   </div>
 
-  <!-- 5. Ringkasan Struktur Market -->
+  <!-- 14. What Could Go Wrong -->
   <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Ringkasan Struktur Market</h3>
-    <div class="grid grid-cols-2 gap-3 mb-3">
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
-        <p class="text-xs text-gray-500">Trend</p>
-        <p class="text-sm font-bold text-yellow-400">Sideways-Bullish</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
-        <p class="text-xs text-gray-500">Momentum</p>
-        <p class="text-sm font-bold text-emerald-400">Moderate</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
-        <p class="text-xs text-gray-500">Structure</p>
-        <p class="text-sm font-bold text-white">Higher Low Forming</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
-        <p class="text-xs text-gray-500">Key Level</p>
-        <p class="text-sm font-bold text-white">Rp ${slAgresif} - ${tp1Agresif}</p>
-      </div>
-    </div>
-    <p class="text-sm text-gray-300 leading-relaxed">Harga ${ticker} saat ini di Rp ${p} sedang membentuk pola akumulasi. Terdapat indikasi pembentukan Higher Low dari swing low sebelumnya. Momentum mulai meningkat dengan candle body bullish pada timeframe daily.</p>
-  </div>
-
-  <!-- 6. Area Harga Saat Ini -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Area Harga Saat Ini</h3>
+    <h3 class="text-sm font-semibold text-red-400 mb-2">What Could Go Wrong</h3>
     <div class="space-y-2">
-      <p class="text-sm text-gray-300">• Harga Rp ${p} berada di zona <strong class="text-white">Discount (di bawah equilibrium)</strong></p>
-      <p class="text-sm text-gray-300">• Jarak ke Demand Zone terdekat: Rp ${slAgresif} (<span class="text-emerald-400">${Math.round((p - slAgresif)/p * 100)}% di bawah</span>)</p>
-      <p class="text-sm text-gray-300">• Jarak ke Supply Zone terdekat: Rp ${tp1Agresif} (<span class="text-red-400">${Math.round((tp1Agresif - p)/p * 100)}% di atas</span>)</p>
-      <p class="text-sm text-gray-300">• Posisi relatif: harga berada di area yang menguntungkan untuk akumulasi beli</p>
-      <p class="text-sm text-gray-300">• Support kuat di Rp ${slKons}, resistance terdekat di Rp ${tp1Agresif}</p>
-    </div>
-  </div>` +
-
-  // Continue with sections 7-13
-  `
-  <!-- 7. Trading Plan Table -->
-  <div class="bg-[#151a23] rounded-xl border border-[#1c2333] overflow-hidden">
-    <h3 class="text-sm font-semibold text-emerald-400 px-4 pt-4 pb-2">Trading Plan</h3>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-[#1c2333] bg-[#0f1319]">
-            <th class="px-3 py-2 text-left text-emerald-400 font-medium">Strategi</th>
-            <th class="px-3 py-2 text-right text-emerald-400 font-medium">Entry</th>
-            <th class="px-3 py-2 text-right text-emerald-400 font-medium">SL</th>
-            <th class="px-3 py-2 text-right text-emerald-400 font-medium">TP1</th>
-            <th class="px-3 py-2 text-right text-emerald-400 font-medium">TP2</th>
-            <th class="px-3 py-2 text-center text-emerald-400 font-medium">RR</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr class="border-b border-[#1c2333]/50">
-            <td class="px-3 py-2 text-yellow-400 font-medium">Agresif</td>
-            <td class="px-3 py-2 text-right text-white">${entryAgresif}</td>
-            <td class="px-3 py-2 text-right text-red-400">${slAgresif}</td>
-            <td class="px-3 py-2 text-right text-emerald-400">${tp1Agresif}</td>
-            <td class="px-3 py-2 text-right text-emerald-400">${tp2Agresif}</td>
-            <td class="px-3 py-2 text-center text-white">1:${rrAgresif}</td>
-          </tr>
-          <tr class="border-b border-[#1c2333]/50 bg-[#0f1319]/50">
-            <td class="px-3 py-2 text-blue-400 font-medium">Konservatif</td>
-            <td class="px-3 py-2 text-right text-white">${entryKons}</td>
-            <td class="px-3 py-2 text-right text-red-400">${slKons}</td>
-            <td class="px-3 py-2 text-right text-emerald-400">${tp1Kons}</td>
-            <td class="px-3 py-2 text-right text-emerald-400">${tp2Kons}</td>
-            <td class="px-3 py-2 text-center text-white">1:${rrKons}</td>
-          </tr>
-          <tr>
-            <td class="px-3 py-2 text-purple-400 font-medium">Scalping</td>
-            <td class="px-3 py-2 text-right text-white">${entryScalp}</td>
-            <td class="px-3 py-2 text-right text-red-400">${slScalp}</td>
-            <td class="px-3 py-2 text-right text-emerald-400">${tp1Scalp}</td>
-            <td class="px-3 py-2 text-right text-emerald-400">${tp2Scalp}</td>
-            <td class="px-3 py-2 text-center text-white">1:${rrScalp}</td>
-          </tr>
-        </tbody>
-      </table>
+      <p class="text-sm text-gray-300">- Tanpa chart, trend sebenarnya bisa bearish (kita tidak tahu)</p>
+      <p class="text-sm text-gray-300">- Level support/resistance hanya estimasi, bisa meleset jauh</p>
+      <p class="text-sm text-gray-300">- Ada news negatif yang belum terdeteksi</p>
+      <p class="text-sm text-gray-300">- Volume bisa sangat tipis (saham tidak likuid)</p>
+      <p class="text-sm text-gray-300">- Analisis harga saja TIDAK CUKUP untuk keputusan trading</p>
     </div>
   </div>
 
-  <!-- 8. Kenapa Area Entry Itu? -->
+  <!-- 15. Final Note -->
   <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Kenapa Area Entry Itu?</h3>
-    <div class="space-y-3">
-      <div>
-        <p class="text-xs text-yellow-400 font-semibold mb-1">Entry Agresif (Rp ${entryAgresif}):</p>
-        <p class="text-sm text-gray-300">Entry langsung di harga sekarang karena momentum bullish sudah terlihat. SL di Rp ${slAgresif} (di bawah Order Block H4 terakhir) untuk memberi ruang pergerakan normal.</p>
-      </div>
-      <div>
-        <p class="text-xs text-blue-400 font-semibold mb-1">Entry Konservatif (Rp ${entryKons}):</p>
-        <p class="text-sm text-gray-300">Menunggu pullback ke area Order Block/Demand Zone di Rp ${entryKons}. SL di Rp ${slKons} (di bawah swing low terakhir) untuk proteksi dari false break.</p>
-      </div>
-      <div>
-        <p class="text-xs text-purple-400 font-semibold mb-1">Entry Scalping (Rp ${entryScalp}):</p>
-        <p class="text-sm text-gray-300">Entry cepat untuk memanfaatkan momentum intraday. SL ketat di Rp ${slScalp} dengan target cepat Rp ${tp1Scalp} untuk risk minimalis.</p>
-      </div>
-      <div>
-        <p class="text-xs text-gray-400 font-semibold mb-1">Kenapa TP di level tersebut?</p>
-        <p class="text-sm text-gray-300">TP1 berada di area supply zone/resistance terdekat. TP2 berada di liquidity pool di atas resistance, dimana Smart Money biasanya melakukan distribusi.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- 9. Skenario Bullish -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Skenario Bullish</h3>
+    <h3 class="text-sm font-semibold text-gray-400 mb-2">Final Note</h3>
     <div class="space-y-2">
-      <p class="text-sm text-gray-300"><span class="text-emerald-400 font-semibold">Trigger:</span> Break dan close di atas Rp ${tp1Agresif} dengan volume di atas rata-rata</p>
-      <p class="text-sm text-gray-300"><span class="text-emerald-400 font-semibold">Target:</span> Jika breakout valid, target berikutnya di Rp ${tp2Agresif} - ${targetOptimistic}</p>
-      <p class="text-sm text-gray-300"><span class="text-emerald-400 font-semibold">Konfirmasi:</span> Candle bullish engulfing/marubozu pada daily, volume spike minimal 2x rata-rata, BOS (Break of Structure) terkonfirmasi</p>
-      <p class="text-sm text-gray-300"><span class="text-emerald-400 font-semibold">Probabilitas:</span> ~60% berdasarkan struktur market saat ini</p>
-      <p class="text-sm text-gray-300"><span class="text-emerald-400 font-semibold">Action:</span> Tambah posisi (averaging up) setelah konfirmasi BOS dengan lot 50% dari posisi awal</p>
-    </div>
-  </div>
-
-  <!-- 10. Skenario Bearish -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-red-400 mb-2">Skenario Bearish</h3>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-300"><span class="text-red-400 font-semibold">Trigger:</span> Break dan close di bawah Rp ${slAgresif} dengan volume tinggi</p>
-      <p class="text-sm text-gray-300"><span class="text-red-400 font-semibold">Support Kritis:</span> Rp ${slKons} - jika tembus, potensi turun lebih dalam ke Rp ${Math.max(Math.round(p * 0.85), p - 3)}</p>
-      <p class="text-sm text-gray-300"><span class="text-red-400 font-semibold">Worst Case:</span> CHoCH bearish terkonfirmasi, target penurunan ke Rp ${Math.max(Math.round(p * 0.80), p - 4)}</p>
-      <p class="text-sm text-gray-300"><span class="text-red-400 font-semibold">Probabilitas:</span> ~40% - market masih menunjukkan tendensi akumulasi</p>
-      <p class="text-sm text-gray-300"><span class="text-red-400 font-semibold">Action Plan:</span> Cut loss di SL yang sudah ditentukan, JANGAN averaging down. Tunggu struktur bullish baru terbentuk sebelum re-entry.</p>
-    </div>
-  </div>` +
-
-  `
-  <!-- 11. Risk Management -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Risk Management</h3>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Position Sizing:</span> Maksimal 5-10% dari total portfolio per posisi. Jika modal Rp 10 juta, maka alokasi Rp 500rb - 1 juta untuk ${ticker}.</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Disiplin SL:</span> WAJIB pasang Stop Loss di level yang ditentukan. Jangan pindahkan SL ke bawah. Jika SL kena, artinya analisis salah dan pasar memberi sinyal untuk keluar.</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Volatilitas:</span> ${p > 200 ? 'Sedang - pergerakan harian sekitar 2-4%' : p > 50 ? 'Cukup Tinggi - pergerakan harian bisa 3-7%' : 'Tinggi - pergerakan harian bisa 5-10%, saham low cap/small tick'}</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Max Loss/Trade:</span> Jangan lebih dari 2% total portfolio per trade. Jika loss 3x berturut-turut, istirahat dan evaluasi strategi.</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Tips:</span> Gunakan metode partial close - jual 50% di TP1, trail stop sisanya ke entry point (free trade).</p>
-    </div>
-  </div>
-
-  <!-- 12. Auto-Cuan SMC Overlay -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Auto-Cuan SMC Overlay</h3>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">Demand Zone</p>
-        <p class="text-sm font-bold text-emerald-400">Rp ${slAgresif} - ${entryKons}</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">Supply Zone</p>
-        <p class="text-sm font-bold text-red-400">Rp ${tp1Agresif} - ${tp2Agresif}</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">BOS Level</p>
-        <p class="text-sm font-bold text-blue-400">Rp ${tp1Agresif}</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">CHoCH Level</p>
-        <p class="text-sm font-bold text-yellow-400">Rp ${slAgresif}</p>
-      </div>
-    </div>
-    <div class="mt-3 p-3 bg-[#0b0e14] rounded-lg border border-[#1c2333]">
-      <p class="text-xs text-gray-400">SMC Summary: Harga ${ticker} di Rp ${p} berada di antara Demand Zone (Rp ${slAgresif}) dan Supply Zone (Rp ${tp1Agresif}). BOS terakhir terjadi di Rp ${tp1Agresif}, jika break level ini maka bullish continuation terkonfirmasi. CHoCH bearish jika break Rp ${slAgresif}.</p>
-    </div>
-  </div>
-
-  <!-- 13. Catatan Akhir -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-gray-400 mb-2">Catatan Akhir</h3>
-    <div class="space-y-2">
-      <p class="text-xs text-gray-500">⚠️ <strong>Disclaimer:</strong> Analisis ini dibuat oleh AI berdasarkan perhitungan teknikal dan BUKAN merupakan ajakan atau rekomendasi untuk membeli atau menjual saham. Keputusan investasi sepenuhnya tanggung jawab Anda.</p>
-      <p class="text-xs text-gray-500">📊 <strong>DYOR:</strong> Selalu lakukan riset mandiri. Cek fundamental perusahaan, berita terkini, dan sentimen pasar sebelum mengambil keputusan.</p>
-      <p class="text-xs text-gray-500">💡 <strong>Tips untuk ${ticker}:</strong> ${p > 200 ? 'Saham mid-large cap - perhatikan rotasi sektor dan foreign flow untuk konfirmasi arah.' : p > 50 ? 'Saham second liner - momentum bisa cepat berubah, gunakan tight SL dan jangan overleveraged.' : 'Saham small cap/penny stock - pergerakan bisa sangat volatil, batasi alokasi maksimal 3-5% portfolio dan siap cut loss kapan saja.'}</p>
+      <p class="text-xs text-gray-500">Disclaimer: Analisis ini dibuat oleh AI dengan data SANGAT TERBATAS (hanya ticker + harga) dan BUKAN merupakan ajakan atau rekomendasi untuk membeli atau menjual saham.</p>
+      <p class="text-xs text-yellow-400">Untuk presisi lebih tinggi, upload chart 1W, 1D, dan 4H serta sertakan news/katalis terbaru.</p>
+      <p class="text-xs text-gray-500">Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input.</p>
+      <p class="text-xs text-gray-500">DYOR - Do Your Own Research. Keputusan investasi sepenuhnya tanggung jawab Anda.</p>
     </div>
   </div>
 </div>`;
@@ -529,45 +478,137 @@ async function logAnalysis(ticker, price) {
   } catch (e) { /* silent */ }
 }
 
-// === CHART UPLOAD HANDLER ===
-const CHART_SYSTEM_PROMPT = `Anda adalah AI Analis Teknikal Saham PROFESIONAL LEVEL INSTITUSIONAL dengan keahlian mendalam di Smart Money Concepts (SMC), Market Structure, dan Price Action Analysis.
 
-TUGAS: Analisis screenshot chart saham yang dikirimkan secara mendalam dan 100% akurat sesuai visual gambar.
+// === CHART UPLOAD HANDLER ===
+const CHART_SYSTEM_PROMPT = `Kamu adalah AI Analis Teknikal Saham PROFESIONAL dengan standar EVIDENCE-BASED ANALYSIS yang ketat.
+
+=== EVIDENCE LOCK (WAJIB DIPATUHI 100%) ===
+EVIDENCE LOCK ACTIVE: Kamu HANYA boleh mendeskripsikan dan menganalisis apa yang TERLIHAT di chart.
+- Hanya gunakan informasi yang VISIBLE di gambar
+- Jika sesuatu tidak terlihat jelas, katakan "tidak terlihat jelas di chart ini"
+- DILARANG mengarang data yang tidak ada di chart
+
+=== INPUT QUALITY LEVEL ===
+Ini adalah INPUT QUALITY LEVEL 2 (Single Chart Analysis).
+- SKOR MAKSIMUM: 70. DILARANG memberi skor di atas 70.
+- Kamu HARUS mengidentifikasi timeframe yang ditampilkan di chart
+- Kamu HARUS menyebutkan timeframe yang TIDAK tersedia (yang belum di-upload)
+- Untuk skor lebih tinggi, user perlu upload chart multi-timeframe (1W/1D/4H)
+
+=== ANTI-HALLUCINATION RULES ===
+DILARANG mengklaim hal yang TIDAK terlihat di chart:
+- Jangan sebut volume jika volume bar tidak terlihat
+- Jangan sebut indikator yang tidak ada di chart
+- Jangan klaim pattern yang ambiguous
+- Jika ragu, tulis: "Belum bisa dikonfirmasi dari chart ini"
+- Semua angka Entry/SL/TP HARUS sesuai skala harga yang TERLIHAT di chart
 
 === INSTRUKSI MEMBACA CHART ===
-1. Baca harga terakhir/current price dari sumbu kanan (Y-axis) chart.
-2. Baca ticker/nama saham dari judul chart jika terlihat.
-3. Identifikasi trend: Bullish/Bearish/Sideways dari candle structure.
-4. Identifikasi area Demand/Supply zone, Order Block, FVG (Fair Value Gap).
-5. Jika indikator LuxAlgo/SMC terlihat, baca label CHoCH, BOS, MSB, Weak Low, Strong High.
-6. Jika harga tidak terbaca jelas, estimasi dari visible scale dan tulis "estimasi dari chart".
-7. Semua angka Entry/SL/TP HARUS sesuai skala harga yang TERLIHAT di chart. DILARANG mengarang angka.
+1. Baca harga terakhir/current price dari sumbu Y-axis (kanan)
+2. Identifikasi ticker/nama saham dari judul chart jika terlihat
+3. Identifikasi timeframe yang ditampilkan
+4. Identifikasi trend dari candle structure yang TERLIHAT
+5. Identifikasi area support/resistance yang VISIBLE
+6. Jika indikator SMC terlihat (BOS, CHoCH, OB), baca label yang ada
+7. Jika harga tidak terbaca jelas, estimasi dan tulis "estimasi dari chart"
 
-=== FORMAT OUTPUT (HTML valid dengan Tailwind CSS, tema gelap) ===
-Gunakan: bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white, text-gray-300, text-gray-400.
-Wrap semua dalam <div class="space-y-5">.
+=== SCORE MEANING ===
+0-30: AVOID
+31-45: WEAK SETUP
+46-55: WATCHLIST
+56-65: SPECULATIVE (single chart tanpa konfirmasi)
+66-70: BUY ON CONFIRMATION (chart jelas, setup valid) - INI MAKSIMUM LEVEL 2
+71-85: Butuh multi-timeframe (tidak tersedia di level ini)
+86-100: Hampir tidak tercapai
 
-=== 12 BAGIAN WAJIB (SEMUA HARUS ADA DAN LENGKAP) ===
+=== STRICT RECOMMENDATION LABELS ===
+AVOID | WAIT | WATCHLIST | NEED CHART CONFIRMATION | SPECULATIVE BUY | BUY ON CONFIRMATION | BUY ON PULLBACK | SCALP ONLY | SWING VALID | HOLD | TAKE PROFIT PARTIAL | CUT LOSS / EXIT
 
-1. AUTO-CUAN SCORE (0-100) dengan penjelasan 3-4 faktor
-2. REKOMENDASI AKSI: HAKA / LAYAK MASUK / WAIT AND SEE / JUAL dengan 3 alasan
-3. PREDIKSI TARGET HARGA: Target Konservatif, Moderat, Optimistis (berdasarkan chart)
-4. RINGKASAN STRUKTUR MARKET: Trend, Momentum, Structure, Key Levels
-5. AREA HARGA SAAT INI: Posisi relatif terhadap demand/supply
-6. TRADING PLAN TABLE (format tabel HTML responsif):
-   | Strategi | Entry | SL | TP1 | TP2 | RR |
-   - Agresif (breakout terdekat)
-   - Konservatif (pullback ke OB)
-   - Scalping (RR ~1:1)
-   Angka HARUS dari visible chart price. Jangan karangan.
-7. KENAPA AREA ENTRY ITU: Penjelasan teknikal per entry/SL/TP
-8. SKENARIO BULLISH: Trigger, target, konfirmasi, probabilitas
-9. SKENARIO BEARISH: Trigger, support kritis, worst case, action plan
-10. RISK MANAGEMENT: Position sizing, disiplin SL, volatilitas, max loss
-11. AUTO-CUAN SMC OVERLAY: Demand Zone, Supply Zone, BOS Level, CHoCH Level (grid cards)
-12. CATATAN AKHIR: Disclaimer + DYOR + tips
+=== FORMAT OUTPUT ===
+Output HARUS berupa HTML valid dengan Tailwind CSS classes.
+Gunakan tema gelap: bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white (netral), text-gray-300 (body), text-gray-400 (secondary), text-gray-500 (muted).
+Wrap semua konten dalam <div class="space-y-5">.
 
-PENTING: Jangan hanya memberi ringkasan pasar. Harus ada Trading Plan TABLE dengan angka Entry/SL/TP yang spesifik dari chart.`;
+=== 15 BAGIAN WAJIB ===
+
+1. DATA QUALITY CHECK
+   - Level input: "Level 2 - Single Chart"
+   - Timeframe yang terdeteksi di chart
+   - Data tersedia vs tidak tersedia
+   - Timeframe yang MISSING (belum di-upload)
+
+2. CONTEXT SUMMARY
+   - Ticker (jika terlihat), Harga terakhir dari chart
+   - Ringkasan apa yang terlihat di chart
+   - Apa yang masih kurang untuk analisis lengkap
+
+3. CONFIDENCE BREAKDOWN
+   - Technical Score: x/25 (dari chart yang terlihat)
+   - Entry Precision: x/25
+   - Risk Management: x/25
+   - News/Catalyst: x/25 (biasanya 0 kecuali ada info)
+   - OVERALL: x/70 (cap di 70)
+
+4. MULTI-TIMEFRAME BIAS
+   - Timeframe yang TERLIHAT di chart: analisis bias-nya
+   - Timeframe lain: "Tidak tersedia - belum di-upload"
+   - Saran upload timeframe tambahan
+
+5. KEY LEVEL VALIDATION
+   - Support/Resistance yang TERLIHAT di chart
+   - Order Block / Demand Zone / Supply Zone jika visible
+   - Label mana yang confirmed vs estimasi
+
+6. ENTRY QUALITY
+   - Klasifikasi berdasarkan apa yang terlihat di chart
+   - Apakah ada konfirmasi visual?
+   - Entry point spesifik dari chart
+
+7. INVALIDATION FIRST
+   - Level invalidasi dari chart (swing low/high terlihat)
+   - Kapan setup ini gagal
+   - Action jika invalidasi terjadi
+
+8. RISK REWARD CHECK
+   - Entry/SL/TP berdasarkan chart yang terlihat
+   - Risk:Reward ratio
+   - Apakah layak? (minimum 1:2)
+
+9. FINAL DECISION
+   - Label keputusan
+   - Skor x/70 (JANGAN lebih dari 70)
+   - Alasan berdasarkan EVIDENCE dari chart
+
+10. BEST ACTION PLAN
+    - Trading plan spesifik berdasarkan chart
+    - Entry, SL, TP yang jelas
+    - Saran upload timeframe tambahan untuk presisi lebih tinggi
+
+11. NEWS/CATALYST IMPACT
+    - Biasanya tidak tersedia dari chart saja
+    - Saran cek news
+
+12. SCENARIO-BASED OUTPUT
+    - Best Case: target dari resistance/supply zone terlihat
+    - Base Case: sideways dalam range
+    - Worst Case: break support terlihat
+
+13. POSITION SIZING
+    - Rekomendasi alokasi berdasarkan confidence level
+    - Scaling plan
+
+14. WHAT COULD GO WRONG
+    - Risiko dari setup yang terlihat
+    - Timeframe yang belum dikonfirmasi
+    - Gap analysis
+
+15. FINAL NOTE
+    - Disclaimer
+    - Saran upload chart tambahan (1W/1D/4H) untuk skor lebih tinggi
+    - "Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input."
+    - DYOR
+
+PENTING: Semua angka HARUS dari chart yang terlihat. Jangan mengarang angka.`;
 
 async function handleChartUpload(req, res, imageData, mimeType) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -598,7 +639,7 @@ async function handleChartUpload(req, res, imageData, mimeType) {
       ]
     }],
     generationConfig: {
-      temperature: 0.5,
+      temperature: 0.35,
       topP: 0.95,
       topK: 40,
       maxOutputTokens: 8192
@@ -624,7 +665,6 @@ async function handleChartUpload(req, res, imageData, mimeType) {
       let html = parts[0].text;
       html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
 
-      // Validate completeness - same check as ticker mode
       if (isCompleteAnalysis(html)) {
         logAnalysis('CHART_UPLOAD', 0);
         return res.status(200).json({ html });
@@ -632,10 +672,8 @@ async function handleChartUpload(req, res, imageData, mimeType) {
     }
   }
 
-  // Incomplete or failed - return helpful fallback
-  return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center space-y-3"><p class="text-yellow-400 font-semibold text-base">Analisis chart belum lengkap</p><p class="text-yellow-300/70 text-sm">AI tidak dapat menghasilkan analisis Trading Plan yang lengkap dari screenshot ini.</p><div class="text-left bg-[#0b0e14] rounded-lg p-4 border border-yellow-500/20 mt-4"><p class="text-xs text-gray-300 mb-2 font-semibold">Saran:</p><ul class="text-xs text-gray-400 space-y-1 list-disc list-inside"><li>Pastikan chart menampilkan candle dengan jelas</li><li>Pastikan sumbu harga (kanan) terlihat jelas</li><li>Jika menggunakan indikator SMC/LuxAlgo, pastikan label terlihat</li><li>Gunakan timeframe Daily atau H4 untuk hasil terbaik</li><li>Atau gunakan mode <strong class="text-emerald-400">Nama Saham</strong> dengan mengisi ticker dan harga sekarang</li></ul></div></div>' });
+  return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center space-y-3"><p class="text-yellow-400 font-semibold text-base">Analisis chart belum lengkap</p><p class="text-yellow-300/70 text-sm">AI tidak dapat menghasilkan analisis yang lengkap dari screenshot ini.</p><div class="text-left bg-[#0b0e14] rounded-lg p-4 border border-yellow-500/20 mt-4"><p class="text-xs text-gray-300 mb-2 font-semibold">Saran:</p><ul class="text-xs text-gray-400 space-y-1 list-disc list-inside"><li>Pastikan chart menampilkan candle dengan jelas</li><li>Pastikan sumbu harga (kanan) terlihat jelas</li><li>Gunakan timeframe Daily atau H4 untuk hasil terbaik</li><li>Atau gunakan mode Nama Saham dengan mengisi ticker dan harga</li></ul></div></div>' });
 }
-
 
 
 // === CHAT MODE HANDLER ===
@@ -665,6 +703,21 @@ ATURAN KONTEN:
 - JANGAN kasih trading plan lengkap dengan tabel di chat mode. Cukup penjelasan dan saran.
 - Kalau ada info [Info: TICKER = Nama Perusahaan] di pesan, gunakan info itu untuk menyebut nama perusahaan.
 
+ATURAN ANALISIS PRESISI:
+- Jika user meminta "analisis presisi", "analisis lengkap", "full analysis", atau sejenisnya, berikan template berikut:
+  "Untuk analisis presisi maksimal, saya butuh data berikut:
+  1. Harga saat ini (contoh: BBCA 9250)
+  2. Chart Weekly (1W) - screenshot dari TradingView/app broker
+  3. Chart Daily (1D) - screenshot
+  4. Chart 4 Jam (4H) - screenshot
+  5. News/katalis terbaru (jika ada)
+  6. Average price kamu (jika sudah hold)
+
+  Semakin lengkap data, semakin tinggi presisi analisis (skor bisa sampai 85+). Tanpa chart, skor maksimal hanya 55."
+
+- Catatan tentang TradingView: "Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input."
+- Jika user belum upload chart, ingatkan bahwa untuk presisi tertinggi mereka perlu upload chart 1W/1D/4H.
+
 FORMAT OUTPUT:
 - HTML sederhana: <p>, <strong>, <ul>, <li> saja.
 - Class: text-sm text-gray-300 untuk paragraf, text-emerald-400 untuk keyword penting, text-white untuk emphasis.
@@ -673,12 +726,8 @@ FORMAT OUTPUT:
 
 CONTOH GAYA JAWABAN YANG BAGUS:
 - "BBCA itu Bank Central Asia. Saham big bank, likuid, biasanya jadi pilihan aman. Kalau mau analisis lengkap, kirim harga sekarangnya ya, contoh: BBCA 9250."
-- "Order block itu zona di mana smart money (institusi besar) melakukan akumulasi atau distribusi. Biasanya muncul sebelum pergerakan besar. Ciri-cirinya: candle besar yang diikuti pergerakan impulsif."
-- "Kalau cuma lihat sekilas, saham kecil kayak gini perlu hati-hati. Volatilnya tinggi. Mau saya analisis lengkap? Kirim harga sekarangnya."
-
-CONTOH GAYA YANG JELEK (JANGAN DITIRU):
-- "Halo! Anda menanyakan tentang saham X. Sebagai Auto-Cuan AI, saya dapat membantu..."
-- "Terima kasih atas pertanyaan Anda. Berikut penjelasan lengkap mengenai..."
+- "Order block itu zona di mana smart money (institusi besar) melakukan akumulasi atau distribusi. Biasanya muncul sebelum pergerakan besar."
+- "Kalau mau presisi tinggi, upload chart 1W + 1D + 4H. Tanpa chart, skor analisis maximal cuma 55."
 
 Pertanyaan user: ${message}`;
 
