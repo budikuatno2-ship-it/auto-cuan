@@ -393,12 +393,24 @@ module.exports = async function handler(req, res) {
 function isCompleteAnalysis(html) {
   if (!html || html.length < 400) return false;
   const requiredKeywords = ['Data Quality', 'Confidence', 'Invalidation', 'Final Decision', 'Risk Reward', 'Action Plan'];
+  const alternativeKeywords = ['Kualitas Data', 'Keputusan', 'Risiko', 'Support', 'Resistance', 'Entry', 'Target', 'Stop Loss', 'Timeframe'];
   const lowerHtml = html.toLowerCase();
   let foundCount = 0;
   for (const kw of requiredKeywords) {
     if (lowerHtml.includes(kw.toLowerCase())) foundCount++;
   }
-  return foundCount >= 4;
+  // Pass if 3+ original keywords found
+  if (foundCount >= 3) return true;
+  // Pass if long response (>1500 chars) with at least 2 original keywords
+  if (html.length > 1500 && foundCount >= 2) return true;
+  // Check alternative keywords
+  let altCount = 0;
+  for (const kw of alternativeKeywords) {
+    if (lowerHtml.includes(kw.toLowerCase())) altCount++;
+  }
+  // Pass if combined original + alternative keywords >= 3
+  if (foundCount + altCount >= 3) return true;
+  return false;
 }
 
 
@@ -818,12 +830,77 @@ EVIDENCE LOCK ACTIVE: Kamu HANYA boleh mendeskripsikan dan menganalisis apa yang
 - Jika sesuatu tidak terlihat jelas, katakan "tidak terlihat jelas di chart ini"
 - DILARANG mengarang data yang tidak ada di chart
 
+=== CHART VALIDATION (WAJIB DIBACA PERTAMA) ===
+Sebelum menganalisis, evaluasi apakah screenshot adalah chart yang valid.
+
+Chart TradingView dianggap VALID jika mengandung sebagian besar elemen berikut:
+1. Ticker atau nama perusahaan (di header kiri atas)
+2. Label timeframe (bisa di header dekat nama saham, contoh: '4h', '1D', '1W')
+3. Label exchange (contoh: IDX)
+4. Candlestick chart atau price structure yang terlihat
+5. Skala harga di sisi kanan
+6. Harga terakhir atau nilai OHLC
+7. Area chart yang visible
+8. Volume bars (opsional)
+9. Indikator atau label SMC (opsional, contoh: BOS, CHoCH, MSB, OB)
+
+ATURAN VALIDASI:
+- Jika ticker/nama, timeframe, candle, dan skala harga terlihat = CHART VALID, lanjutkan analisis
+- Jika chart terlihat tapi beberapa detail kurang jelas = CHART VALID SEBAGIAN, tetap lanjutkan analisis
+- Jika gambar terlalu blur/crop atau bukan chart = CHART TIDAK VALID
+- JANGAN tolak chart hanya karena: ada sidebar TradingView, ada browser UI, dark mode, ada indikator/label SMC, candle area tidak zoom sempurna, chart lebar, volume kecil tapi visible, timeframe ditulis '4h'/'D'/'W'
+
+Jika chart valid atau valid sebagian, WAJIB lanjutkan analisis lengkap 15 bagian.
+Jangan pernah menolak chart yang valid dengan mengatakan 'analisis belum lengkap'.
+
+Jika chart valid sebagian dan ada detail yang kurang jelas, sebutkan di bagian Data Quality Check:
+'Chart valid sebagian. Analisis tetap dilakukan berdasarkan bagian yang terlihat, tetapi beberapa detail belum bisa dikonfirmasi.'
+
+=== DETEKSI TIMEFRAME DARI CHART ===
+Timeframe WAJIB dideteksi dari chart. Cari di lokasi berikut (urutan prioritas):
+
+1. Header kiri atas TradingView - format: '[Nama Perusahaan] . [timeframe] . [exchange]'
+   Contoh:
+   - 'PT Widodo Makmur Unggas Tbk . 4h . IDX' = timeframe 4H
+   - 'PT Widodo Makmur Unggas Tbk . 1W . IDX' = timeframe 1W (Weekly)
+   - 'PT Widodo Makmur Unggas Tbk . 1D . IDX' = timeframe 1D (Daily)
+
+2. Toolbar atas TradingView - button timeframe yang aktif/highlighted
+   - '4h' = 4H
+   - '1D' atau 'D' = Daily / 1D
+   - '1W' atau 'W' = Weekly / 1W
+   - '1H' = 1H
+   - '15m' atau '15' = 15M
+   - '5m' atau '5' = 5M
+
+ATURAN:
+- Jika timeframe terlihat di header dekat nama saham, GUNAKAN itu sebagai timeframe utama
+- JANGAN katakan timeframe missing jika visible di header atau toolbar
+- Timeframe '4h', 'D', 'W' adalah format standar TradingView, jangan anggap tidak valid
+- Jika ada OHLC values visible (contoh: 'O56 H58 L55 C58'), itu adalah bukti tambahan chart valid
+
+=== JANGAN OVER-REJECT ===
+Jangan tolak chart karena alasan berikut:
+- Screenshot termasuk sidebar icons TradingView
+- Screenshot termasuk browser UI
+- Chart dalam dark mode
+- Chart memiliki indikator atau label
+- Chart memiliki gambar SMC (BOS, CHoCH, OB, dll)
+- Area candle tidak zoom sempurna
+- Chart terlalu lebar
+- Volume kecil tapi visible
+- Timeframe ditulis sebagai '4h', 'D', atau 'W'
+- OHLC ditulis format ringkas (contoh: 'O56 H58 L55 C58')
+
+Semua di atas adalah format standar screenshot TradingView dan HARUS diterima sebagai chart valid.
+
 === INPUT QUALITY LEVEL ===
 Ini adalah INPUT QUALITY LEVEL 2 (Single Chart Analysis).
 - SKOR MAKSIMUM: 70. DILARANG memberi skor di atas 70.
 - Kamu HARUS mengidentifikasi timeframe yang ditampilkan di chart
 - Kamu HARUS menyebutkan timeframe yang TIDAK tersedia (yang belum di-upload)
 - Untuk skor lebih tinggi, user perlu upload chart multi-timeframe (1W/1D/4H)
+- Catatan: Jika user mengirim multiple chart, lihat bagian EVIDENCE LEVEL di bawah untuk level dan skor maksimum yang berlaku.
 
 === ANTI-HALLUCINATION RULES ===
 DILARANG mengklaim hal yang TIDAK terlihat di chart:
@@ -998,6 +1075,21 @@ async function handleChartUpload(req, res, imageData, mimeType) {
     });
     chartPrompt += '\nAnalisis SETIAP chart yang terlihat. Identifikasi timeframe masing-masing.\n';
     chartPrompt += 'Sintesis analisis multi-timeframe. JANGAN fabrikasi data untuk timeframe yang TIDAK terlihat.\n';
+    chartPrompt += '\n=== MULTI-TIMEFRAME CLASSIFICATION ===\n';
+    chartPrompt += 'Klasifikasikan setiap chart image berdasarkan timeframe yang terdeteksi dari header masing-masing.\n\n';
+    chartPrompt += 'Contoh klasifikasi:\n';
+    chartPrompt += '- Image dengan header \'4h\' = 4H chart (short-term structure, entry, invalidation)\n';
+    chartPrompt += '- Image dengan header \'1W\' = Weekly chart (major trend, macro structure)\n';
+    chartPrompt += '- Image dengan header \'1D\' = Daily chart (swing structure, support, resistance)\n\n';
+    chartPrompt += 'Sintesis Multi-Timeframe:\n';
+    chartPrompt += '- 1W = trend utama / macro structure\n';
+    chartPrompt += '- 1D = swing structure / support / resistance\n';
+    chartPrompt += '- 4H = short-term structure / entry / invalidation\n\n';
+    chartPrompt += 'ATURAN PENTING:\n';
+    chartPrompt += '- Jangan tolak seluruh analisis hanya karena satu image kurang jelas\n';
+    chartPrompt += '- Jika minimal satu chart valid, lanjutkan analisis dengan evidence yang tersedia\n';
+    chartPrompt += '- Jika tiga chart valid terdeteksi, klasifikasikan sebagai Multi-Timeframe Analysis\n';
+    chartPrompt += '- Update Data Quality Check untuk mencerminkan chart mana saja yang terdeteksi\n';
   }
 
   if (safeTicker || safePrice || safeTimeframe) {
@@ -1093,7 +1185,7 @@ async function handleChartUpload(req, res, imageData, mimeType) {
     }
   }
 
-  return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center space-y-3"><p class="text-yellow-400 font-semibold text-base">Analisis chart belum lengkap</p><p class="text-yellow-300/70 text-sm">AI tidak dapat menghasilkan analisis yang lengkap dari screenshot ini.</p><div class="text-left bg-[#0b0e14] rounded-lg p-4 border border-yellow-500/20 mt-4"><p class="text-xs text-gray-300 mb-2 font-semibold">Saran:</p><ul class="text-xs text-gray-400 space-y-1 list-disc list-inside"><li>Pastikan chart menampilkan candle dengan jelas</li><li>Pastikan sumbu harga (kanan) terlihat jelas</li><li>Gunakan timeframe Daily atau H4 untuk hasil terbaik</li><li>Atau gunakan mode Nama Saham dengan mengisi ticker dan harga</li></ul></div></div>' });
+  return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center space-y-3"><p class="text-yellow-400 font-semibold text-base">AI belum berhasil menghasilkan analisis lengkap</p><p class="text-yellow-300/70 text-sm">Ini bukan berarti chart Anda tidak valid. Silakan coba lagi atau pastikan chart menampilkan candle, skala harga, dan timeframe dengan jelas.</p><div class="text-left bg-[#0b0e14] rounded-lg p-4 border border-yellow-500/20 mt-4"><p class="text-xs text-gray-300 mb-2 font-semibold">Saran:</p><ul class="text-xs text-gray-400 space-y-1 list-disc list-inside"><li>Pastikan chart menampilkan candle dengan jelas</li><li>Pastikan sumbu harga (kanan) terlihat jelas</li><li>Gunakan timeframe Daily atau H4 untuk hasil terbaik</li><li>Atau gunakan mode Nama Saham dengan mengisi ticker dan harga</li></ul></div></div>' });
 }
 
 
