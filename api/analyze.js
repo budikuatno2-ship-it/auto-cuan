@@ -481,7 +481,8 @@ module.exports = async function handler(req, res) {
 
     // === CHAT MODE ===
     if (source === 'chat_mode' && chatMessage) {
-      return await handleChatMode(req, res, chatMessage);
+      const chatContext = req.body.context || null;
+      return await handleChatMode(req, res, chatMessage, chatContext);
     }
 
     // === CHART UPLOAD MODE ===
@@ -509,7 +510,7 @@ module.exports = async function handler(req, res) {
     const GEMINI_MODEL = 'gemini-2.5-flash';
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
-    const systemPrompt = buildPrompt(tickerUpper, price, { fcaStatus: fca, evidenceLevel: level, documentContext: docContext });
+    const systemPrompt = buildPrompt(tickerUpper, price, { fcaStatus: fca, evidenceLevel: level, documentContext: docContext, context: req.body.context || null });
 
     const payload = {
       contents: [{ parts: [{ text: systemPrompt }] }],
@@ -571,23 +572,23 @@ module.exports = async function handler(req, res) {
 
 function isCompleteAnalysis(html) {
   if (!html || html.length < 400) return false;
-  const requiredKeywords = ['Data Quality', 'Confidence', 'Invalidation', 'Final Decision', 'Risk Reward', 'Action Plan'];
-  const alternativeKeywords = ['Kualitas Data', 'Keputusan Final', 'Rencana Aksi', 'Skenario', 'Position Sizing', 'Invalidasi', 'Multi-Timeframe', 'Entry Quality', 'Risk Reward', 'Broker Summary', 'Broker Summary Check'];
+  const requiredKeywords = ['Kesimpulan', 'Level Penting', 'Entry', 'Risiko', 'Action Plan', 'Bias'];
+  const alternativeKeywords = ['Data', 'Score', 'Support', 'Resistance', 'Setup', 'Broker Summary', 'FCA', 'News', 'Confidence', 'Final Decision', 'Risk Reward'];
   const lowerHtml = html.toLowerCase();
   let foundCount = 0;
   for (const kw of requiredKeywords) {
     if (lowerHtml.includes(kw.toLowerCase())) foundCount++;
   }
-  // Pass if 3+ original keywords found
+  // Pass if 3+ required keywords found
   if (foundCount >= 3) return true;
-  // Pass if long response (>1500 chars) with at least 2 original keywords
+  // Pass if long response (>1500 chars) with at least 2 required keywords
   if (html.length > 1500 && foundCount >= 2) return true;
   // Check alternative keywords
   let altCount = 0;
   for (const kw of alternativeKeywords) {
     if (lowerHtml.includes(kw.toLowerCase())) altCount++;
   }
-  // Pass if at least 1 original keyword AND combined original + alternative keywords >= 3
+  // Pass if at least 1 required keyword AND combined >= 3
   if (foundCount >= 1 && foundCount + altCount >= 3) return true;
   return false;
 }
@@ -598,6 +599,7 @@ function buildPrompt(ticker, currentPrice, options) {
   var fcaStatus = opts.fcaStatus || 'not_detected';
   var evidenceLevel = opts.evidenceLevel || 1;
   var documentContext = opts.documentContext || '';
+  var context = opts.context || null;
 
   var fcaSection = buildFCASection(fcaStatus, evidenceLevel);
 
@@ -616,6 +618,14 @@ Ini adalah INPUT QUALITY LEVEL 1 (Basic Analysis: Ticker + Harga saja).
 - Rekomendasi yang VALID untuk level ini: WAIT / WATCHLIST / NEED CHART CONFIRMATION
 - DILARANG memberikan rekomendasi BUY yang kuat tanpa chart sebagai konfirmasi.
 
+=== INPUT QUALITY LEVELS (REFERENCE) ===
+Level 1 (ticker + price only): Max score 55
+Level 2 (ticker + price + one chart): Max score 70
+Level 3 (ticker + price + multi-timeframe chart): Max score 80
+Level 4 (ticker + price + chart + one supporting evidence): Max score 85
+Level 5 (ticker + price + multi-TF chart + supporting evidence): Max score 90
+Level 6 (ticker + price + multi-TF chart + multiple supporting evidence): Max score 95
+
 === ANTI-HALLUCINATION RULES (WAJIB) ===
 DILARANG KERAS mengklaim atau menyimpulkan hal berikut TANPA bukti chart:
 - Volume spike / volume tinggi / volume rendah
@@ -632,13 +642,8 @@ Jika ingin menyebut hal di atas, WAJIB tulis: "Belum bisa dikonfirmasi dari data
 
 === SCORE MEANING ===
 0-30: AVOID (setup buruk atau data sangat minim)
-31-45: WEAK SETUP (ada potensi tapi banyak uncertainty)
+31-45: WEAK (ada potensi tapi banyak uncertainty)
 46-55: WATCHLIST (menarik tapi butuh konfirmasi chart) - INI MAKSIMUM UNTUK LEVEL 1
-56-65: SPECULATIVE (hanya jika ada chart partial)
-66-75: BUY ON CONFIRMATION (chart + price tersedia)
-76-85: STRONG SETUP (multi-timeframe aligned)
-86-90: VERY STRONG (rare, semua data lengkap dan aligned)
-91-100: Hampir tidak pernah tercapai
 
 === STRICT RECOMMENDATION LABELS ===
 Gunakan HANYA label berikut:
@@ -646,99 +651,127 @@ AVOID | WAIT | WATCHLIST | NEED CHART CONFIRMATION | SPECULATIVE BUY | BUY ON CO
 
 Untuk Level 1 (ticker + harga saja), label yang valid: WAIT, WATCHLIST, NEED CHART CONFIRMATION, atau AVOID.
 
-=== FORMAT OUTPUT ===
-Output HARUS berupa HTML valid dengan Tailwind CSS classes.
-Gunakan tema gelap: bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white (netral), text-gray-300 (body), text-gray-400 (secondary), text-gray-500 (muted).
-Wrap semua konten dalam <div class="space-y-5">.
+=== ATURAN FCA ===
+JIKA STATUS FCA ADALAH not_detected:
+- DILARANG menampilkan section FCA Check.
+- DILARANG menyebut kata FCA atau Full Call Auction di manapun dalam output.
+- DILARANG menyebut risiko FCA.
+- Ini berlaku meskipun chart terlihat illiquid, volatile, atau penny stock.
 
-=== 15 BAGIAN WAJIB (SEMUA HARUS ADA) ===
+Jika user bertanya hypothetical (kalau FCA gimana?) dan status FCA tetap not_detected, jelaskan secara hypothetical tanpa mengkonfirmasi FCA.
 
-1. DATA QUALITY CHECK
-   - Tampilkan level input: "Level 1 - Basic (Ticker + Harga)"
-   - Data tersedia: Ticker, Harga saat ini
-   - Data TIDAK tersedia: Chart, Volume, News, Orderbook, Multi-timeframe
-   - Confidence impact: "Analisis terbatas, skor di-cap di 55"
+=== NEWS / CATALYST / CORPORATE ACTION CHECK (OPTIONAL) ===
+Section ini HANYA ditampilkan jika user memberikan evidence news/catalyst/corporate action.
+Jika ada evidence news, output section "News / Catalyst / Corporate Action Check" dengan:
+- Type: news / corporate action / rumor / disclosure / financial report / other
+- Source: user text / uploaded screenshot / uploaded file / link
+- Status: confirmed / unverified / unclear
+- Bias impact: bullish / bearish / neutral / mixed / unclear
+- Impact strength: low / medium / high
+- Time sensitivity: immediate / short-term / medium-term / long-term
+- Effect on technical setup: strengthens / weakens / does not change / needs confirmation
 
-2. CONTEXT SUMMARY
-   - Ticker: ${ticker}, Harga: Rp ${currentPrice}
-   - Apa yang bisa disimpulkan dari harga saja (price level, apakah penny stock / mid / blue chip berdasarkan harga)
-   - Apa yang TIDAK bisa disimpulkan tanpa chart
+Score adjustment untuk news:
+- Strong confirmed bullish catalyst: +5 to +15
+- Medium bullish catalyst: +3 to +8
+- Weak/unverified bullish rumor: +0 to +5
+- Medium bearish news: -5 to -10
+- Strong bearish news: -10 to -25
 
-3. CONFIDENCE BREAKDOWN
-   - Technical Score: x/25 (rendah karena tanpa chart)
-   - Entry Precision: x/25 (rendah karena tanpa konfirmasi visual)
-   - Risk Management: x/25 (estimasi saja)
-   - News/Catalyst: x/25 (tidak tersedia)
-   - OVERALL: x/55 (cap di 55)
+Score adjustment untuk broker summary:
+- Strong accumulation + chart supports: +5 to +10
+- Medium accumulation + chart supports: +3 to +7
+- Accumulation but chart bearish: +0 to +5 only
+- Strong distribution + chart bearish: -5 to -15
+- Distribution while chart bullish: -3 to -10
+- Mixed/unclear: no score change
 
-4. MULTI-TIMEFRAME BIAS
-   - Weekly: "Tidak tersedia - chart belum di-upload"
-   - Daily: "Tidak tersedia - chart belum di-upload"
-   - H4: "Tidak tersedia - chart belum di-upload"
-   - H1: "Tidak tersedia - chart belum di-upload"
-   - Catatan: "Upload chart 1W/1D/4H untuk multi-timeframe analysis"
+=== FORMAT OUTPUT - COMPACT 7-SECTION ===
+Format output harus HTML valid dengan Tailwind CSS classes tema gelap.
+Wrap dalam <div class='space-y-4'>.
+Gunakan: bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white (netral), text-gray-300 (body), text-gray-400 (secondary).
 
-5. KEY LEVEL VALIDATION
-   - Estimasi support/resistance berdasarkan round number terdekat dari Rp ${currentPrice}
-   - WAJIB label: "ESTIMASI SAJA - belum divalidasi dari chart"
-   - Jangan klaim ini sebagai "confirmed level"
+OUTPUT WAJIB 7 BAGIAN (COMPACT):
 
-6. ENTRY QUALITY
-   - Klasifikasi: LOW CONFIDENCE (tanpa chart)
-   - Alasan: tidak ada visual confirmation
-   - Saran: tunggu chart untuk konfirmasi entry
+1. Kesimpulan Cepat
+   - Label keputusan (WAIT / WATCHLIST / NEED CHART CONFIRMATION / AVOID)
+   - Score: x/55 (max 55 Level 1)
+   - Satu kalimat alasan
+   - Risk level: Low / Medium / High
 
-7. INVALIDATION FIRST
-   - Kapan analisis ini INVALID (misal: jika harga break level tertentu)
-   - Estimasi invalidation level (round number di bawah harga)
-   - "Validasi lebih akurat membutuhkan chart"
+2. Data yang Terbaca
+   - Ticker: ${ticker}
+   - Harga: Rp ${currentPrice}
+   - Timeframe: Tidak tersedia (chart belum di-upload)
+   - Evidence tersedia: Ticker + Harga
+   - Evidence belum ada: Chart, News, Orderbook, Broker Summary
 
-8. RISK REWARD CHECK
-   - Estimasi Risk:Reward berdasarkan round number levels
-   - Apakah RR layak? (biasanya minimum 1:2)
-   - Catatan bahwa ini estimasi tanpa chart
+3. Bias 1W / 1D / 4H
+   - 1W: Tidak tersedia - chart belum di-upload
+   - 1D: Tidak tersedia - chart belum di-upload
+   - 4H: Tidak tersedia - chart belum di-upload
 
-9. FINAL DECISION
-   - Label keputusan (WAIT / WATCHLIST / NEED CHART CONFIRMATION)
-   - Skor: x/55 (JANGAN lebih dari 55)
-   - Alasan singkat 2-3 poin
-   - Warna skor: text-yellow-400 (karena pasti di bawah 56)
+4. Level Penting
+   - Support estimasi (round number, WAJIB label "ESTIMASI")
+   - Resistance estimasi (round number, WAJIB label "ESTIMASI")
+   - Invalidation level estimasi
+   - Entry: Belum bisa dikonfirmasi tanpa chart
+   - TP/SL: Belum bisa dikonfirmasi tanpa chart
 
-10. BEST ACTION PLAN
-    - Langkah 1: Upload chart (1W/1D/4H) untuk konfirmasi
-    - Langkah 2: Cek news/katalis terbaru
-    - Langkah 3: Tentukan average price jika sudah hold
-    - Langkah 4: Re-analisis setelah data lengkap
-    - Jika sudah hold: saran hold/cut berdasarkan harga saja
+5. Entry / SL / TP
+   - Setup: NOT VALID (tanpa chart)
+   - Entry plan: Tunggu chart confirmation
+   - R:R: Belum bisa dihitung akurat
+   - Confirmation needed: Upload chart 1W/1D/4H
 
-11. NEWS/CATALYST IMPACT
-    - Status: "Tidak ada data news yang tersedia"
-    - Impact: "Tidak bisa dinilai"
-    - Saran: "Cek berita terbaru sebelum mengambil keputusan"
+6. Risiko Utama
+   - Tanpa chart, trend tidak diketahui
+   - Level support/resistance hanya estimasi
+   - Tidak ada news/catalyst yang diketahui
 
-12. SCENARIO-BASED OUTPUT
-    - Best Case: estimasi target (round number di atas harga)
-    - Base Case: sideways / consolidation
-    - Worst Case: estimasi downside (round number di bawah harga)
-    - Semua diberi label "ESTIMASI - butuh chart untuk konfirmasi"
+7. Action Plan
+   - NEED CHART CONFIRMATION
+   - Upload chart 1W/1D/4H untuk analisis lengkap
+   - Cek news/katalis terbaru
 
-13. POSITION SIZING
-    - Rekomendasi alokasi: KECIL (1-3% portfolio) karena confidence rendah
-    - Jangan all-in tanpa chart confirmation
-    - Scaling plan: tambah posisi setelah chart confirm
+OPTIONAL SECTIONS (hanya jika evidence ada):
+- FCA Check: HANYA jika FCA confirmed
+- Broker Summary Check: HANYA jika broker summary evidence ada
+- News/Catalyst/Corporate Action Check: HANYA jika user berikan evidence news
+- Orderbook/MM Code Check: HANYA jika orderbook/bid-offer/MM code ada
 
-14. WHAT COULD GO WRONG
-    - Tanpa chart, banyak yang bisa salah
-    - List 3-5 risiko utama
-    - Kenapa analisis harga saja tidak cukup
+JANGAN tampilkan section optional jika tidak ada data.
+JANGAN tampilkan Final Note kosong.
+JANGAN tampilkan warning box kosong.
 
-15. FINAL NOTE
-    - Disclaimer: bukan ajakan beli/jual
-    - "Untuk presisi lebih tinggi, upload chart 1W, 1D, dan 4H"
-    - "Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input."
-    - DYOR reminder
+=== ATURAN TOKEN SAVING ===
+- Jangan ulangi warning yang sama lebih dari sekali
+- Jangan tampilkan section kosong
+- Jangan ulangi disclaimer panjang di setiap jawaban
+- Cukup satu kalimat disclaimer di akhir
+- Target: 700-1200 kata untuk full analysis, 150-400 untuk follow-up
+- Untuk follow-up: jawab langsung tanpa mengulang seluruh analisis
 
-Pastikan SETIAP bagian ada dan memiliki konten substantif. Output harus jujur tentang keterbatasan data.`;
+=== KONTEKS FOLLOW-UP ===
+Jika ada KONTEKS SESI SEBELUMNYA, gunakan langsung tanpa menanyakan ulang data yang sudah ada.`;
+
+  // Append follow-up context if provided
+  if (context && typeof context === 'object') {
+    prompt += '\n\n=== KONTEKS SESI SEBELUMNYA ===\n';
+    if (context.ticker) prompt += 'Ticker: ' + context.ticker + '\n';
+    if (context.currentPrice) prompt += 'Harga terakhir: Rp ' + context.currentPrice + '\n';
+    if (context.finalDecision) prompt += 'Keputusan sebelumnya: ' + context.finalDecision + '\n';
+    if (context.score) prompt += 'Score sebelumnya: ' + context.score + '\n';
+    if (context.entryArea) prompt += 'Entry area: ' + context.entryArea + '\n';
+    if (context.stopLoss) prompt += 'Stop loss: ' + context.stopLoss + '\n';
+    if (context.takeProfits) prompt += 'Take profits: ' + context.takeProfits + '\n';
+    if (context.chartSummary) prompt += 'Chart summary: ' + context.chartSummary + '\n';
+    if (context.brokerSummaryBias) prompt += 'Broker summary bias: ' + context.brokerSummaryBias + '\n';
+    if (context.newsProvided) prompt += 'News/catalyst sudah diberikan: Ya\n';
+    if (context.newsSummary) prompt += 'News summary: ' + context.newsSummary + '\n';
+    if (context.fcaStatus) prompt += 'FCA status: ' + context.fcaStatus + '\n';
+    prompt += 'Gunakan konteks ini untuk menjawab. Jangan tanya ulang data yang sudah ada.\n';
+  }
 
   // Append FCA section if applicable
   if (fcaSection) {
@@ -749,7 +782,6 @@ Pastikan SETIAP bagian ada dan memiliki konten substantif. Output harus jujur te
   prompt += buildFCAContextBlock(fcaStatus);
 
   // Append broker summary reader section only when documents are provided
-  // (broker summary is irrelevant for pure ticker+price queries without documents)
   if (documentContext) {
     prompt += buildBrokerSummarySection();
   }
@@ -771,213 +803,58 @@ function generateFallback(ticker, price) {
   const supportEst = Math.max(Math.round(p * 0.92), p - 2);
   const resistEst = Math.max(Math.round(p * 1.08), p + 2);
   const invLevel = Math.max(Math.round(p * 0.88), p - 3);
-  const bestCase = Math.max(Math.round(p * 1.15), p + 3);
-  const worstCase = Math.max(Math.round(p * 0.82), p - 4);
   const score = p > 500 ? 48 : p > 200 ? 45 : p > 100 ? 42 : p > 50 ? 40 : 38;
 
-  // Compute sub-scores that sum to the overall score
-  // Without chart: Technical and Entry are low, Risk is moderate, News is 0
-  const newsScore = 0;
-  const entryScore = Math.min(Math.round(score * 0.18), 25);
-  const riskScore = Math.min(Math.round(score * 0.45), 25);
-  // Technical absorbs the remainder to ensure exact sum
-  const techScore = score - entryScore - riskScore - newsScore;
-
   return `
-<div class="space-y-5">
-  <!-- 1. Data Quality Check -->
+<div class="space-y-4">
+  <!-- 1. Kesimpulan Cepat -->
   <div class="bg-[#151a23] rounded-xl p-5 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-yellow-400 mb-3">Data Quality Check</h3>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Input Level:</span> Level 1 - Basic (Ticker + Harga)</p>
-      <p class="text-sm text-gray-300"><span class="text-emerald-400">Tersedia:</span> Ticker (${ticker}), Harga (Rp ${p})</p>
-      <p class="text-sm text-gray-300"><span class="text-red-400">Tidak tersedia:</span> Chart, Volume, News, Orderbook, Multi-timeframe</p>
-      <p class="text-sm text-gray-300"><span class="text-yellow-400">Impact:</span> Skor di-cap maksimal 55. Analisis bersifat estimasi.</p>
-    </div>
-  </div>
-
-  <!-- 2. Context Summary -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Context Summary</h3>
-    <p class="text-sm text-gray-300">Saham <strong class="text-white">${ticker}</strong> di harga Rp ${p}. ${p > 1000 ? 'Tergolong saham mid-large cap berdasarkan harga.' : p > 200 ? 'Tergolong saham second liner berdasarkan range harga.' : p > 50 ? 'Tergolong saham small cap.' : 'Tergolong saham penny stock / low price.'} Tanpa chart dan data tambahan, analisis sangat terbatas dan hanya bersifat estimasi awal.</p>
-  </div>
-
-  <!-- 3. Confidence Breakdown -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Confidence Breakdown</h3>
-    <div class="grid grid-cols-2 gap-3">
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
-        <p class="text-xs text-gray-500">Technical</p>
-        <p class="text-sm font-bold text-red-400">${techScore}/25</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
-        <p class="text-xs text-gray-500">Entry Precision</p>
-        <p class="text-sm font-bold text-red-400">${entryScore}/25</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
-        <p class="text-xs text-gray-500">Risk Management</p>
-        <p class="text-sm font-bold text-yellow-400">${riskScore}/25</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333]">
-        <p class="text-xs text-gray-500">News/Catalyst</p>
-        <p class="text-sm font-bold text-red-400">${newsScore}/25</p>
-      </div>
-    </div>
-    <div class="mt-3 bg-[#0b0e14] rounded-lg p-3 border border-yellow-500/30 text-center">
-      <p class="text-xs text-gray-500">OVERALL SCORE</p>
-      <p class="text-2xl font-bold text-yellow-400">${score}/55</p>
-      <p class="text-xs text-gray-500 mt-1">Cap: 55 (Level 1 - Basic)</p>
-    </div>
-  </div>
-
-  <!-- 4. Multi-Timeframe Bias -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Multi-Timeframe Bias</h3>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-500">Weekly: Tidak tersedia - chart belum di-upload</p>
-      <p class="text-sm text-gray-500">Daily: Tidak tersedia - chart belum di-upload</p>
-      <p class="text-sm text-gray-500">H4: Tidak tersedia - chart belum di-upload</p>
-      <p class="text-sm text-gray-500">H1: Tidak tersedia - chart belum di-upload</p>
-    </div>
-    <p class="text-xs text-yellow-400 mt-3">Upload chart 1W/1D/4H untuk multi-timeframe analysis yang akurat.</p>
-  </div>
-
-  <!-- 5. Key Level Validation -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Key Level Validation</h3>
-    <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-3">
-      <p class="text-xs text-yellow-400 font-semibold">ESTIMASI SAJA - belum divalidasi dari chart</p>
-    </div>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Support estimasi:</span> ~Rp ${supportEst} (round number terdekat)</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Resistance estimasi:</span> ~Rp ${resistEst} (round number terdekat)</p>
-      <p class="text-sm text-gray-300"><span class="text-gray-500">Belum bisa dikonfirmasi dari data yang ada. Upload chart untuk validasi.</span></p>
-    </div>
-  </div>
-
-  <!-- 6. Entry Quality -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Entry Quality</h3>
-    <span class="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-red-500/20 text-red-400 border border-red-500/30">LOW CONFIDENCE</span>
-    <p class="text-sm text-gray-300 mt-2">Tanpa chart, tidak ada visual confirmation untuk entry point. Level yang ditampilkan hanya estimasi berdasarkan round number.</p>
-  </div>
-
-  <!-- 7. Invalidation First -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-red-400 mb-2">Invalidation First</h3>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-300"><span class="text-red-400 font-semibold">Invalidation Level:</span> ~Rp ${invLevel} (estimasi)</p>
-      <p class="text-sm text-gray-300">Jika harga break di bawah Rp ${invLevel}, analisis estimasi ini tidak valid.</p>
-      <p class="text-sm text-gray-500">Validasi lebih akurat membutuhkan chart dengan candle structure yang jelas.</p>
-    </div>
-  </div>
-
-  <!-- 8. Risk Reward Check -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Risk Reward Check</h3>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Estimasi Risk:</span> Rp ${p} ke Rp ${invLevel} = ~${Math.round((p - invLevel)/p * 100)}%</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Estimasi Reward:</span> Rp ${p} ke Rp ${resistEst} = ~${Math.round((resistEst - p)/p * 100)}%</p>
-      <p class="text-sm text-gray-300"><span class="text-yellow-400">Catatan:</span> Ini estimasi tanpa chart. RR aktual bisa sangat berbeda.</p>
-    </div>
-  </div>
-
-  <!-- 9. Final Decision -->
-  <div class="bg-[#151a23] rounded-xl p-5 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Final Decision</h3>
+    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Kesimpulan Cepat</h3>
     <div class="flex items-center gap-4">
-      <div class="flex items-center justify-center w-16 h-16 rounded-full bg-yellow-500/20 border-2 border-yellow-500/30">
-        <span class="text-2xl font-bold text-yellow-400">${score}</span>
+      <div class="flex items-center justify-center w-14 h-14 rounded-full bg-yellow-500/20 border-2 border-yellow-500/30">
+        <span class="text-xl font-bold text-yellow-400">${score}</span>
       </div>
       <div>
-        <span class="inline-block px-4 py-2 rounded-lg text-sm font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">NEED CHART CONFIRMATION</span>
-        <p class="text-xs text-gray-400 mt-2">Skor ${score}/55 (max 55 untuk Level 1 Basic)</p>
+        <span class="inline-block px-3 py-1 rounded-lg text-sm font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">NEED CHART CONFIRMATION</span>
+        <p class="text-sm text-gray-300 mt-2">Data terlalu minim (hanya ticker + harga). Butuh chart untuk validasi.</p>
+        <p class="text-xs text-gray-500 mt-1">Risk: Medium-High | Score ${score}/55 (max Level 1)</p>
       </div>
-    </div>
-    <div class="mt-3 space-y-1">
-      <p class="text-sm text-gray-300">- Data terlalu minim untuk keputusan trading</p>
-      <p class="text-sm text-gray-300">- Butuh chart confirmation untuk validasi level</p>
-      <p class="text-sm text-gray-300">- Tanpa news/catalyst, tidak ada edge</p>
     </div>
   </div>
 
-  <!-- 10. Best Action Plan -->
+  <!-- 2. Data yang Terbaca -->
   <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Best Action Plan</h3>
-    <div class="space-y-2">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Data yang Terbaca</h3>
+    <div class="space-y-1">
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Ticker:</span> ${ticker} | <span class="text-white font-semibold">Harga:</span> Rp ${p}</p>
+      <p class="text-sm text-gray-300"><span class="text-emerald-400">Tersedia:</span> Ticker, Harga</p>
+      <p class="text-sm text-gray-300"><span class="text-red-400">Belum ada:</span> Chart, News, Orderbook, Broker Summary</p>
+    </div>
+  </div>
+
+  <!-- 4. Level Penting -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Level Penting</h3>
+    <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-2">
+      <p class="text-xs text-yellow-400">ESTIMASI - belum divalidasi dari chart</p>
+    </div>
+    <div class="space-y-1">
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Support estimasi:</span> ~Rp ${supportEst}</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Resistance estimasi:</span> ~Rp ${resistEst}</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Invalidation:</span> ~Rp ${invLevel}</p>
+      <p class="text-xs text-gray-500">Entry/SL/TP belum bisa dikonfirmasi tanpa chart.</p>
+    </div>
+  </div>
+
+  <!-- 7. Action Plan -->
+  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
+    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Action Plan</h3>
+    <div class="space-y-1">
       <p class="text-sm text-gray-300"><span class="text-white font-semibold">1.</span> Upload chart (1W/1D/4H) untuk konfirmasi struktur market</p>
       <p class="text-sm text-gray-300"><span class="text-white font-semibold">2.</span> Cek news/katalis terbaru untuk ${ticker}</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">3.</span> Tentukan average price jika sudah hold</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">4.</span> Re-analisis setelah data lengkap untuk skor lebih tinggi</p>
+      <p class="text-sm text-gray-300"><span class="text-white font-semibold">3.</span> Re-analisis setelah data lengkap untuk skor lebih tinggi</p>
     </div>
-  </div>
-
-  <!-- 11. News/Catalyst Impact -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">News/Catalyst Impact</h3>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Status:</span> Tidak ada data news yang tersedia</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Impact:</span> Tidak bisa dinilai</p>
-      <p class="text-sm text-gray-300"><span class="text-yellow-400">Saran:</span> Cek berita terbaru ${ticker} sebelum mengambil keputusan apapun</p>
-    </div>
-  </div>
-
-  <!-- 12. Scenario-Based Output -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-3">Scenario-Based Output</h3>
-    <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-3">
-      <p class="text-xs text-yellow-400">ESTIMASI - butuh chart untuk konfirmasi</p>
-    </div>
-    <div class="grid grid-cols-3 gap-3">
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">Best Case</p>
-        <p class="text-lg font-bold text-emerald-400">Rp ${bestCase}</p>
-        <p class="text-xs text-gray-500 mt-1">+${Math.round((bestCase/p - 1)*100)}%</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">Base Case</p>
-        <p class="text-lg font-bold text-yellow-400">Rp ${p}</p>
-        <p class="text-xs text-gray-500 mt-1">Sideways</p>
-      </div>
-      <div class="bg-[#0b0e14] rounded-lg p-3 border border-[#1c2333] text-center">
-        <p class="text-xs text-gray-500 mb-1">Worst Case</p>
-        <p class="text-lg font-bold text-red-400">Rp ${worstCase}</p>
-        <p class="text-xs text-gray-500 mt-1">${Math.round((worstCase/p - 1)*100)}%</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- 13. Position Sizing -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-emerald-400 mb-2">Position Sizing</h3>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Rekomendasi alokasi:</span> <span class="text-yellow-400">KECIL (1-3% portfolio)</span></p>
-      <p class="text-sm text-gray-300">Confidence rendah, jangan all-in tanpa chart confirmation.</p>
-      <p class="text-sm text-gray-300"><span class="text-white font-semibold">Scaling plan:</span> Tambah posisi hanya setelah chart mengkonfirmasi setup valid.</p>
-    </div>
-  </div>
-
-  <!-- 14. What Could Go Wrong -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-red-400 mb-2">What Could Go Wrong</h3>
-    <div class="space-y-2">
-      <p class="text-sm text-gray-300">- Tanpa chart, trend sebenarnya bisa bearish (kita tidak tahu)</p>
-      <p class="text-sm text-gray-300">- Level support/resistance hanya estimasi, bisa meleset jauh</p>
-      <p class="text-sm text-gray-300">- Ada news negatif yang belum terdeteksi</p>
-      <p class="text-sm text-gray-300">- Volume bisa sangat tipis (saham tidak likuid)</p>
-      <p class="text-sm text-gray-300">- Analisis harga saja TIDAK CUKUP untuk keputusan trading</p>
-    </div>
-  </div>
-
-  <!-- 15. Final Note -->
-  <div class="bg-[#151a23] rounded-xl p-4 border border-[#1c2333]">
-    <h3 class="text-sm font-semibold text-gray-400 mb-2">Final Note</h3>
-    <div class="space-y-2">
-      <p class="text-xs text-gray-500">Disclaimer: Analisis ini dibuat oleh AI dengan data SANGAT TERBATAS (hanya ticker + harga) dan BUKAN merupakan ajakan atau rekomendasi untuk membeli atau menjual saham.</p>
-      <p class="text-xs text-yellow-400">Untuk presisi lebih tinggi, upload chart 1W, 1D, dan 4H serta sertakan news/katalis terbaru.</p>
-      <p class="text-xs text-gray-500">Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input.</p>
-      <p class="text-xs text-gray-500">DYOR - Do Your Own Research. Keputusan investasi sepenuhnya tanggung jawab Anda.</p>
-    </div>
+    <p class="text-xs text-gray-500 mt-3">Disclaimer: Bukan ajakan beli/jual. DYOR.</p>
   </div>
 </div>`;
 }
@@ -1016,8 +893,6 @@ EVIDENCE LOCK ACTIVE: Kamu HANYA boleh mendeskripsikan dan menganalisis apa yang
 - DILARANG mengarang data yang tidak ada di chart
 
 === CHART VALIDATION (WAJIB DIPATUHI) ===
-Sebelum menganalisis, evaluasi apakah screenshot adalah chart yang valid.
-
 Chart TradingView dianggap VALID jika mengandung sebagian besar elemen berikut:
 1. Ticker atau nama perusahaan (di header kiri atas)
 2. Label timeframe (bisa di header dekat nama saham, contoh: '4h', '1D', '1W')
@@ -1027,65 +902,37 @@ Chart TradingView dianggap VALID jika mengandung sebagian besar elemen berikut:
 6. Harga terakhir atau nilai OHLC
 7. Area chart yang visible
 8. Volume bars (opsional)
-9. Indikator atau label SMC (opsional, contoh: BOS, CHoCH, MSB, OB)
+9. Indikator atau label SMC (opsional)
 
-ATURAN VALIDASI:
-- Jika ticker/nama, timeframe, candle, dan skala harga terlihat = CHART VALID, lanjutkan analisis
-- Jika chart terlihat tapi beberapa detail kurang jelas = CHART VALID SEBAGIAN, tetap lanjutkan analisis
-- Jika gambar terlalu blur/crop atau bukan chart = CHART TIDAK VALID
-- JANGAN tolak chart hanya karena: ada sidebar TradingView, ada browser UI, dark mode, ada indikator/label SMC, candle area tidak zoom sempurna, chart lebar, volume kecil tapi visible, timeframe ditulis '4h'/'D'/'W'
+JANGAN tolak chart hanya karena: ada sidebar TradingView, ada browser UI, dark mode, ada indikator/label SMC, candle area tidak zoom sempurna, chart lebar, timeframe ditulis '4h'/'D'/'W'.
 
-Jika chart valid atau valid sebagian, WAJIB lanjutkan analisis lengkap 15 bagian.
-Jangan pernah menolak chart yang valid dengan mengatakan 'analisis belum lengkap'.
-
-Jika chart valid sebagian dan ada detail yang kurang jelas, sebutkan di bagian Data Quality Check:
-'Chart valid sebagian. Analisis tetap dilakukan berdasarkan bagian yang terlihat, tetapi beberapa detail belum bisa dikonfirmasi.'
+Jika chart valid atau valid sebagian, WAJIB lanjutkan analisis.
 
 === DETEKSI TIMEFRAME DARI CHART ===
-Timeframe WAJIB dideteksi dari chart. Cari di lokasi berikut (urutan prioritas):
+Cari timeframe di lokasi berikut (urutan prioritas):
+1. Header kiri atas TradingView: '[Nama] . [timeframe] . [exchange]'
+2. Toolbar atas TradingView - button timeframe yang aktif
 
-1. Header kiri atas TradingView - format: '[Nama Perusahaan] . [timeframe] . [exchange]'
-   Contoh:
-   - 'PT Widodo Makmur Unggas Tbk . 4h . IDX' = timeframe 4H
-   - 'PT Widodo Makmur Unggas Tbk . 1W . IDX' = timeframe 1W (Weekly)
-   - 'PT Widodo Makmur Unggas Tbk . 1D . IDX' = timeframe 1D (Daily)
-
-2. Toolbar atas TradingView - button timeframe yang aktif/highlighted
-   - '4h' = 4H
-   - '1D' atau 'D' = Daily / 1D
-   - '1W' atau 'W' = Weekly / 1W
-   - '1H' = 1H
-   - '15m' atau '15' = 15M
-   - '5m' atau '5' = 5M
+Contoh: '4h' = 4H, '1D' atau 'D' = Daily, '1W' atau 'W' = Weekly, '1H' = 1H
 
 ATURAN:
-- Jika timeframe terlihat di header dekat nama saham, GUNAKAN itu sebagai timeframe utama
+- Jika timeframe terlihat di header dekat nama saham, GUNAKAN itu
 - JANGAN katakan timeframe missing jika visible di header atau toolbar
-- Timeframe '4h', 'D', 'W' adalah format standar TradingView, jangan anggap tidak valid
-- Jika ada OHLC values visible (contoh: 'O56 H58 L55 C58'), itu adalah bukti tambahan chart valid
+- Jika ada OHLC values visible (contoh: 'O56 H58 L55 C58'), itu bukti tambahan chart valid
 
-=== JANGAN OVER-REJECT ===
-Jangan tolak chart karena alasan berikut:
-- Screenshot termasuk sidebar icons TradingView
-- Screenshot termasuk browser UI
-- Chart dalam dark mode
-- Chart memiliki indikator atau label
-- Chart memiliki gambar SMC (BOS, CHoCH, OB, dll)
-- Area candle tidak zoom sempurna
-- Chart terlalu lebar
-- Volume kecil tapi visible
-- Timeframe ditulis sebagai '4h', 'D', atau 'W'
-- OHLC ditulis format ringkas (contoh: 'O56 H58 L55 C58')
+=== ATURAN FCA UNTUK CHART ===
+- JANGAN PERNAH menyimpulkan bahwa saham adalah FCA hanya dari tampilan chart
+- Chart yang terlihat illiquid, volatile, penny stock, atau memiliki candle tajam BUKAN bukti FCA
+- Status FCA ditentukan oleh sistem dan diberikan sebagai konteks terstruktur
+- Jika status FCA adalah "not_detected", JANGAN tampilkan warning FCA dan JANGAN sebut FCA
 
-Semua di atas adalah format standar screenshot TradingView dan HARUS diterima sebagai chart valid.
+JIKA STATUS FCA ADALAH not_detected:
+- DILARANG menampilkan section FCA Check.
+- DILARANG menyebut kata FCA atau Full Call Auction di manapun dalam output.
+- DILARANG menyebut risiko FCA.
+- Ini berlaku meskipun chart terlihat illiquid, volatile, atau penny stock.
 
-=== INPUT QUALITY LEVEL ===
-Ini adalah INPUT QUALITY LEVEL 2 (Single Chart Analysis).
-- SKOR MAKSIMUM: 70. DILARANG memberi skor di atas 70.
-- Kamu HARUS mengidentifikasi timeframe yang ditampilkan di chart
-- Kamu HARUS menyebutkan timeframe yang TIDAK tersedia (yang belum di-upload)
-- Untuk skor lebih tinggi, user perlu upload chart multi-timeframe (1W/1D/4H)
-- Catatan: Jika user mengirim multiple chart, lihat bagian EVIDENCE LEVEL di bawah untuk level dan skor maksimum yang berlaku.
+Jika user bertanya hypothetical (kalau FCA gimana?) dan status FCA tetap not_detected, jelaskan secara hypothetical tanpa mengkonfirmasi FCA.
 
 === ANTI-HALLUCINATION RULES ===
 DILARANG mengklaim hal yang TIDAK terlihat di chart:
@@ -1095,118 +942,119 @@ DILARANG mengklaim hal yang TIDAK terlihat di chart:
 - Jika ragu, tulis: "Belum bisa dikonfirmasi dari chart ini"
 - Semua angka Entry/SL/TP HARUS sesuai skala harga yang TERLIHAT di chart
 
-=== ATURAN FCA UNTUK CHART ===
-- JANGAN PERNAH menyimpulkan bahwa saham adalah FCA hanya dari tampilan chart
-- Chart yang terlihat illiquid, volatile, penny stock, atau memiliki candle tajam BUKAN bukti FCA
-- Status FCA ditentukan oleh sistem dan diberikan sebagai konteks terstruktur
-- Jika tidak ada konteks FCA yang diberikan, atau jika status FCA adalah "not_detected", JANGAN tampilkan warning FCA
-- DILARANG menggunakan kata "Full Call Auction" atau "FCA" dalam output kecuali status FCA adalah confirmed
-
-=== INSTRUKSI MEMBACA CHART ===
-1. Baca harga terakhir/current price dari sumbu Y-axis (kanan)
-2. Identifikasi ticker/nama saham dari judul chart jika terlihat
-3. Identifikasi timeframe yang ditampilkan
-4. Identifikasi trend dari candle structure yang TERLIHAT
-5. Identifikasi area support/resistance yang VISIBLE
-6. Jika indikator SMC terlihat (BOS, CHoCH, OB), baca label yang ada
-7. Jika harga tidak terbaca jelas, estimasi dan tulis "estimasi dari chart"
-8. Jika terlihat orderbook, running trade, atau data bid-offer, evaluasi menggunakan Market Maker Code Reader rules yang diberikan di bawah.
+=== INPUT QUALITY LEVELS ===
+Level 1 (ticker + price only): Max score 55
+Level 2 (ticker + price + one chart): Max score 70
+Level 3 (ticker + price + multi-timeframe chart): Max score 80
+Level 4 (ticker + price + chart + one supporting evidence): Max score 85
+Level 5 (ticker + price + multi-TF chart + supporting evidence): Max score 90
+Level 6 (ticker + price + multi-TF chart + multiple supporting evidence): Max score 95
 
 === SCORE MEANING ===
 0-30: AVOID
 31-45: WEAK SETUP
 46-55: WATCHLIST
-56-65: SPECULATIVE (single chart tanpa konfirmasi)
-66-70: BUY ON CONFIRMATION (chart jelas, setup valid) - INI MAKSIMUM LEVEL 2
-71-85: Butuh multi-timeframe (tidak tersedia di level ini)
-86-100: Hampir tidak tercapai
+56-65: SPECULATIVE
+66-75: BUY ON CONFIRMATION
+76-85: STRONG SETUP (multi-timeframe aligned)
+86-95: VERY STRONG (rare, semua data lengkap dan aligned)
 
 === STRICT RECOMMENDATION LABELS ===
 AVOID | WAIT | WATCHLIST | NEED CHART CONFIRMATION | SPECULATIVE BUY | BUY ON CONFIRMATION | BUY ON PULLBACK | SCALP ONLY | SWING VALID | HOLD | TAKE PROFIT PARTIAL | CUT LOSS / EXIT
 
-=== FORMAT OUTPUT ===
-Output HARUS berupa HTML valid dengan Tailwind CSS classes.
-Gunakan tema gelap: bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white (netral), text-gray-300 (body), text-gray-400 (secondary), text-gray-500 (muted).
-Wrap semua konten dalam <div class="space-y-5">.
+=== FORMAT OUTPUT - COMPACT 7-SECTION ===
+Output HARUS berupa HTML valid dengan Tailwind CSS classes tema gelap.
+Wrap dalam <div class="space-y-4">.
+Gunakan: bg-[#151a23], border-[#1c2333], text-emerald-400 (positif), text-red-400 (negatif), text-white (netral), text-gray-300 (body), text-gray-400 (secondary).
 
-=== 15 BAGIAN WAJIB ===
+OUTPUT WAJIB 7 BAGIAN (COMPACT):
 
-1. DATA QUALITY CHECK
-   - Level input: "Level 2 - Single Chart"
-   - Timeframe yang terdeteksi di chart
-   - Data tersedia vs tidak tersedia
-   - Timeframe yang MISSING (belum di-upload)
+1. Kesimpulan Cepat
+   - Label keputusan (dari STRICT LABELS di atas)
+   - Score: x/[max sesuai level]
+   - Satu kalimat alasan berdasarkan evidence
+   - Risk level: Low / Medium / High
 
-2. CONTEXT SUMMARY
-   - Ticker (jika terlihat), Harga terakhir dari chart
-   - Ringkasan apa yang terlihat di chart
-   - Apa yang masih kurang untuk analisis lengkap
+2. Data yang Terbaca
+   - Ticker (dari chart atau user input)
+   - Harga terakhir (dari chart)
+   - Timeframe yang terdeteksi
+   - Evidence tersedia (chart, news, broker summary, orderbook)
+   - Evidence belum ada
 
-3. CONFIDENCE BREAKDOWN
-   - Technical Score: x/25 (dari chart yang terlihat)
-   - Entry Precision: x/25
-   - Risk Management: x/25
-   - News/Catalyst: x/25 (biasanya 0 kecuali ada info)
-   - OVERALL: x/70 (cap di 70)
+3. Bias 1W / 1D / 4H
+   - 1W: 1-2 kalimat (atau "Tidak tersedia" jika chart 1W tidak ada)
+   - 1D: 1-2 kalimat (atau "Tidak tersedia")
+   - 4H: 1-2 kalimat (atau "Tidak tersedia")
 
-4. MULTI-TIMEFRAME BIAS
-   - Timeframe yang TERLIHAT di chart: analisis bias-nya
-   - Timeframe lain: "Tidak tersedia - belum di-upload"
-   - Saran upload timeframe tambahan
+4. Level Penting
+   - Support utama (dari chart)
+   - Resistance utama (dari chart)
+   - Invalidation level
+   - Entry area (jika valid)
+   - TP1, TP2 (dari chart)
+   - SL (dari chart)
 
-5. KEY LEVEL VALIDATION
-   - Support/Resistance yang TERLIHAT di chart
-   - Order Block / Demand Zone / Supply Zone jika visible
-   - Label mana yang confirmed vs estimasi
+5. Entry / SL / TP
+   - Setup valid atau weak?
+   - Entry plan (spesifik dari chart)
+   - SL dengan alasan
+   - TP1 dan TP2
+   - R:R ratio
+   - Confirmation yang dibutuhkan
 
-6. ENTRY QUALITY
-   - Klasifikasi berdasarkan apa yang terlihat di chart
-   - Apakah ada konfirmasi visual?
-   - Entry point spesifik dari chart
+6. Risiko Utama
+   - Hanya risiko paling relevan (2-4 poin)
+   - Jangan ulangi risiko generic
+   - Jika news/catalyst missing, sebut sekali saja
 
-7. INVALIDATION FIRST
-   - Level invalidasi dari chart (swing low/high terlihat)
-   - Kapan setup ini gagal
-   - Action jika invalidasi terjadi
+7. Action Plan
+   - Label keputusan final
+   - Langkah spesifik yang harus dilakukan user
+   - Tanyakan evidence yang belum ada (news/catalyst) HANYA jika belum diberikan
 
-8. RISK REWARD CHECK
-   - Entry/SL/TP berdasarkan chart yang terlihat
-   - Risk:Reward ratio
-   - Apakah layak? (minimum 1:2)
+OPTIONAL SECTIONS (HANYA jika evidence ada):
+- FCA Check: HANYA jika FCA status confirmed. Tampilkan dampak dan score cap.
+- Broker Summary Check: HANYA jika broker summary evidence ada.
+  Include: Period, Dominant net buyer/seller, Bias (Accumulation/Distribution/Mixed/Retail-driven/Unclear), Strength, Key observation, Effect on chart analysis.
+- News / Catalyst / Corporate Action Check: HANYA jika user berikan evidence news.
+  Include: Type (news/corporate action/rumor/disclosure/financial report/other), Source, Status (confirmed/unverified/unclear), Bias impact (bullish/bearish/neutral/mixed), Impact strength (low/medium/high), Time sensitivity (immediate/short-term/medium-term/long-term), Effect on technical setup (strengthens/weakens/does not change/needs confirmation).
+- Orderbook / MM Code Check: HANYA jika orderbook/bid-offer/running trade/MM code terlihat.
 
-9. FINAL DECISION
-   - Label keputusan
-   - Skor x/70 (JANGAN lebih dari 70)
-   - Alasan berdasarkan EVIDENCE dari chart
+JANGAN tampilkan section optional jika tidak ada data.
+JANGAN tampilkan Final Note kosong.
+JANGAN tampilkan warning box kosong.
+JANGAN tampilkan section yang isinya hanya "Tidak tersedia".
 
-10. BEST ACTION PLAN
-    - Trading plan spesifik berdasarkan chart
-    - Entry, SL, TP yang jelas
-    - Saran upload timeframe tambahan untuk presisi lebih tinggi
+=== SCORE ADJUSTMENT RULES ===
+News/catalyst/corporate action:
+- Strong confirmed bullish catalyst: +5 to +15
+- Medium bullish catalyst: +3 to +8
+- Weak/unverified bullish rumor: +0 to +5
+- Mixed/unclear catalyst: no score increase or small penalty
+- Medium bearish news: -5 to -10
+- Strong bearish news: -10 to -25
 
-11. NEWS/CATALYST IMPACT
-    - Biasanya tidak tersedia dari chart saja
-    - Saran cek news
+Broker summary:
+- Strong accumulation + chart supports: +5 to +10
+- Medium accumulation + chart supports: +3 to +7
+- Accumulation but chart bearish: +0 to +5 only
+- Strong distribution + chart bearish: -5 to -15
+- Distribution while chart bullish: -3 to -10
+- Mixed/unclear: no score change
 
-12. SCENARIO-BASED OUTPUT
-    - Best Case: target dari resistance/supply zone terlihat
-    - Base Case: sideways dalam range
-    - Worst Case: break support terlihat
+Score TIDAK boleh melebihi cap dari evidence level.
 
-13. POSITION SIZING
-    - Rekomendasi alokasi berdasarkan confidence level
-    - Scaling plan
+=== ATURAN TOKEN SAVING ===
+- Jangan ulangi warning yang sama lebih dari sekali
+- Jangan tampilkan section kosong
+- Jangan ulangi disclaimer panjang di setiap jawaban
+- Cukup satu kalimat disclaimer di akhir
+- Target: 700-1200 kata untuk full analysis, 150-400 untuk follow-up
+- Untuk follow-up: jawab langsung tanpa mengulang seluruh analisis
 
-14. WHAT COULD GO WRONG
-    - Risiko dari setup yang terlihat
-    - Timeframe yang belum dikonfirmasi
-    - Gap analysis
-
-15. FINAL NOTE
-    - Disclaimer
-    - Saran upload chart tambahan (1W/1D/4H) untuk skor lebih tinggi
-    - "Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input."
-    - DYOR
+=== KONTEKS FOLLOW-UP ===
+Jika ada KONTEKS SESI SEBELUMNYA, gunakan langsung tanpa menanyakan ulang data yang sudah ada.
 
 PENTING: Semua angka HARUS dari chart yang terlihat. Jangan mengarang angka.`;
 
@@ -1310,6 +1158,21 @@ async function handleChartUpload(req, res, imageData, mimeType) {
     chartPrompt += docContext;
   }
 
+  // Add follow-up context if provided
+  var chartContext = req.body.context || null;
+  if (chartContext && typeof chartContext === 'object') {
+    chartPrompt += '\n\n=== KONTEKS SESI SEBELUMNYA ===\n';
+    if (chartContext.ticker) chartPrompt += 'Ticker: ' + chartContext.ticker + '\n';
+    if (chartContext.currentPrice) chartPrompt += 'Harga terakhir: Rp ' + chartContext.currentPrice + '\n';
+    if (chartContext.finalDecision) chartPrompt += 'Keputusan sebelumnya: ' + chartContext.finalDecision + '\n';
+    if (chartContext.score) chartPrompt += 'Score sebelumnya: ' + chartContext.score + '\n';
+    if (chartContext.chartSummary) chartPrompt += 'Chart summary sebelumnya: ' + chartContext.chartSummary + '\n';
+    if (chartContext.brokerSummaryBias) chartPrompt += 'Broker summary bias: ' + chartContext.brokerSummaryBias + '\n';
+    if (chartContext.newsProvided) chartPrompt += 'News sudah diberikan: Ya\n';
+    if (chartContext.newsSummary) chartPrompt += 'News summary: ' + chartContext.newsSummary + '\n';
+    chartPrompt += 'Gunakan konteks ini untuk memperkaya analisis. Jangan tanya ulang data yang sudah ada.\n';
+  }
+
   // Add anti-hallucination forbidden words
   chartPrompt += FORBIDDEN_WORDS_PROMPT;
 
@@ -1381,7 +1244,7 @@ async function handleChartUpload(req, res, imageData, mimeType) {
 
 
 // === CHAT MODE HANDLER ===
-async function handleChatMode(req, res, message) {
+async function handleChatMode(req, res, message, context) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
   if (!GEMINI_API_KEY) {
@@ -1391,7 +1254,7 @@ async function handleChatMode(req, res, message) {
   const GEMINI_MODEL = 'gemini-2.5-flash';
   const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
-  const chatSystemPrompt = `Kamu adalah Auto-Cuan AI, asisten saham Indonesia yang paham Smart Money Concepts (SMC), analisis teknikal, dan pasar saham IDX/BEI.
+  var chatSystemPrompt = `Kamu adalah Auto-Cuan AI, asisten saham Indonesia yang paham Smart Money Concepts (SMC), analisis teknikal, dan pasar saham IDX/BEI.
 
 GAYA BAHASA:
 - Pakai Bahasa Indonesia yang natural, santai, tapi tetap profesional.
@@ -1420,27 +1283,65 @@ ATURAN ANALISIS PRESISI:
 
   Semakin lengkap data, semakin tinggi presisi analisis (skor bisa sampai 85+). Tanpa chart, skor maksimal hanya 55."
 
-- Catatan tentang TradingView: "Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input."
-- Jika user belum upload chart, ingatkan bahwa untuk presisi tertinggi mereka perlu upload chart 1W/1D/4H.
-
 ATURAN BROKER SUMMARY:
 - Jika user bertanya tentang broker summary, akumulasi, distribusi, bandar, atau aktivitas broker, dan konteks menunjukkan broker summary sudah dianalisis sebelumnya, gunakan konteks tersebut.
 - Broker summary hanya menunjukkan aktivitas melalui broker, bukan identitas bandar sebenarnya.
 - Jangan pernah klaim kepastian dari broker summary. Gunakan wording: "terindikasi", "indikasi", "perlu validasi", "belum cukup untuk memastikan".
 - Jika user bertanya tentang akumulasi/distribusi tanpa konteks broker summary, jelaskan bahwa mereka perlu upload screenshot broker summary untuk analisis yang lebih akurat.
 
+ATURAN FCA:
+- JANGAN pernah menyebut FCA atau Full Call Auction kecuali konteks sesi menunjukkan FCA confirmed.
+- Jika user bertanya hypothetical (kalau FCA gimana?), jawab secara hypothetical tanpa mengkonfirmasi.
+- Chart appearance, harga rendah, volatilitas, atau likuiditas tipis BUKAN bukti FCA.
+
+STRICT RECOMMENDATION LABELS:
+Gunakan HANYA: AVOID | WAIT | WATCHLIST | NEED CHART CONFIRMATION | SPECULATIVE BUY | BUY ON CONFIRMATION | BUY ON PULLBACK | SCALP ONLY | SWING VALID | HOLD | TAKE PROFIT PARTIAL | CUT LOSS / EXIT
+
+ATURAN FOLLOW-UP:
+- Jika ada konteks sesi, gunakan langsung. Jangan tanya ulang ticker/chart/news yang sudah ada.
+- Jawab follow-up langsung 150-400 kata.
+- Berikan kesimpulan, entry, SL, TP, invalidation, dan risk langsung dari konteks.
+- Jangan mengulang seluruh analisis untuk follow-up.
+
 FORMAT OUTPUT:
 - HTML sederhana: <p>, <strong>, <ul>, <li> saja.
 - Class: text-sm text-gray-300 untuk paragraf, text-emerald-400 untuk keyword penting, text-white untuk emphasis.
 - Jangan pakai heading besar. Boleh <strong>.
-- Maks 3-6 paragraf. Ringkas.
+- Maks 3-6 paragraf. Ringkas.`;
 
-CONTOH GAYA JAWABAN YANG BAGUS:
-- "BBCA itu Bank Central Asia. Saham big bank, likuid, biasanya jadi pilihan aman. Kalau mau analisis lengkap, kirim harga sekarangnya ya, contoh: BBCA 9250."
-- "Order block itu zona di mana smart money (institusi besar) melakukan akumulasi atau distribusi. Biasanya muncul sebelum pergerakan besar."
-- "Kalau mau presisi tinggi, upload chart 1W + 1D + 4H. Tanpa chart, skor analisis maximal cuma 55."
+  // Append context if provided
+  if (context && typeof context === 'object') {
+    chatSystemPrompt += '\n\n=== KONTEKS SESI SEBELUMNYA ===\n';
+    if (context.ticker) chatSystemPrompt += 'Ticker: ' + context.ticker + '\n';
+    if (context.companyName) chatSystemPrompt += 'Nama: ' + context.companyName + '\n';
+    if (context.currentPrice) chatSystemPrompt += 'Harga terakhir: Rp ' + context.currentPrice + '\n';
+    if (context.detectedTimeframes) chatSystemPrompt += 'Timeframe tersedia: ' + context.detectedTimeframes + '\n';
+    if (context.finalDecision) chatSystemPrompt += 'Keputusan terakhir: ' + context.finalDecision + '\n';
+    if (context.score) chatSystemPrompt += 'Score: ' + context.score + '\n';
+    if (context.entryArea) chatSystemPrompt += 'Entry area: ' + context.entryArea + '\n';
+    if (context.stopLoss) chatSystemPrompt += 'Stop loss: ' + context.stopLoss + '\n';
+    if (context.takeProfits) chatSystemPrompt += 'Take profits: ' + context.takeProfits + '\n';
+    if (context.chartSummary) chatSystemPrompt += 'Chart summary: ' + context.chartSummary + '\n';
+    if (context.keyLevels) chatSystemPrompt += 'Key levels: ' + context.keyLevels + '\n';
+    if (context.riskReward) chatSystemPrompt += 'Risk:Reward: ' + context.riskReward + '\n';
+    if (context.fcaStatus) chatSystemPrompt += 'FCA status: ' + context.fcaStatus + '\n';
+    if (context.newsProvided) chatSystemPrompt += 'News sudah diberikan: Ya\n';
+    if (context.newsSummary) chatSystemPrompt += 'News summary: ' + context.newsSummary + '\n';
+    if (context.corporateActionSummary) chatSystemPrompt += 'Corporate action: ' + context.corporateActionSummary + '\n';
+    if (context.brokerSummaryProvided) chatSystemPrompt += 'Broker summary sudah diberikan: Ya\n';
+    if (context.brokerSummaryBias) chatSystemPrompt += 'Broker summary bias: ' + context.brokerSummaryBias + '\n';
+    if (context.brokerSummaryStrength) chatSystemPrompt += 'Broker summary strength: ' + context.brokerSummaryStrength + '\n';
+    if (context.brokerSummaryPeriods) chatSystemPrompt += 'Broker summary periods: ' + context.brokerSummaryPeriods + '\n';
+    if (context.dominantNetBuyers) chatSystemPrompt += 'Dominant net buyers: ' + context.dominantNetBuyers + '\n';
+    if (context.dominantNetSellers) chatSystemPrompt += 'Dominant net sellers: ' + context.dominantNetSellers + '\n';
+    if (context.brokerSummaryNotes) chatSystemPrompt += 'Broker notes: ' + context.brokerSummaryNotes + '\n';
+    if (context.orderbookProvided) chatSystemPrompt += 'Orderbook sudah diberikan: Ya\n';
+    if (context.orderbookSummary) chatSystemPrompt += 'Orderbook summary: ' + context.orderbookSummary + '\n';
+    if (context.marketMakerCodeSummary) chatSystemPrompt += 'Market maker code: ' + context.marketMakerCodeSummary + '\n';
+    chatSystemPrompt += '\nGunakan konteks ini untuk menjawab. Jangan tanya ulang data yang sudah ada.\n';
+  }
 
-Pertanyaan user: ${message}`;
+  chatSystemPrompt += '\n\nPertanyaan user: ' + message;
 
   const payload = {
     contents: [{ parts: [{ text: chatSystemPrompt }] }],
