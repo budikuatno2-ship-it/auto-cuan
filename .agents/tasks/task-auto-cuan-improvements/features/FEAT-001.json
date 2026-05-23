@@ -1,0 +1,24 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Install dependencies and verify baseline project health. Ensure all existing JS files parse without errors.",
+  "status": "completed",
+  "steps": [
+    "Run npm install in /projects/sandbox/auto-cuan to install @google/generative-ai and @supabase/supabase-js",
+    "Run node -c on every file in api/*.js and assets/*.js to confirm no syntax errors",
+    "Count files in api/ directory to confirm exactly 10 files exist",
+    "Verify index.html exists and contains valid HTML structure"
+  ],
+  "acceptance_criteria": [
+    "npm install completes successfully",
+    "All .js files in api/ and assets/ pass node -c syntax check",
+    "api/ directory contains exactly 10 files"
+  ],
+  "verification": [
+    "cd /projects/sandbox/auto-cuan && npm install",
+    "for f in api/*.js assets/*.js; do node -c \"$f\" && echo \"OK: $f\"; done",
+    "ls api/*.js | wc -l"
+  ],
+  "blocked_reason": null,
+  "findings": "NODE_OPTIONS env var references a missing module (/opt/amazon/kiro-agent/proxy-bootstrap.js). Must unset NODE_OPTIONS before running npm or node commands. All 10 api/ files and 1 assets/ .js file pass syntax check. npm install adds 10 packages with 0 vulnerabilities."
+}

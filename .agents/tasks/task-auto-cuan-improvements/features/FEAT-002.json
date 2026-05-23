@@ -1,0 +1,34 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Implement multi-file upload, paste support, file preview UI, document type support, and improved composer UX in index.html. This covers Features 1, 2, 4, 5, and 10 from the requirements (paste support, multiple uploads, multi-timeframe workflow hints, better composer UI, and error handling for files).",
+  "status": "pending",
+  "steps": [
+    "STEP 1 - Multi-file state: Replace the global 'var selectedFile = null' with 'var selectedFiles = []' array. Each entry has: id, file, name, type, size, previewUrl, source (upload/paste), status (ready/processing/error). Add constants: MAX_FILES=8, MAX_IMAGE_SIZE=10*1024*1024, MAX_DOC_SIZE=20*1024*1024, MAX_TOTAL_SIZE=50*1024*1024. Add SUPPORTED_TYPES object with images (png,jpg,jpeg,webp,gif) and documents (pdf,doc,docx,txt,csv,xls,xlsx).",
+    "STEP 2 - File input update: Change the <input id='fileInput'> to accept='image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx' and add the 'multiple' attribute. Update the upload button icon/title to reflect multi-file support.",
+    "STEP 3 - handleFileSelect rewrite: Rewrite handleFileSelect to handle multiple files from event.target.files. Validate each file type and size. Show toast errors for invalid files. Add valid files to selectedFiles array with generated id (Date.now + random), previewUrl via URL.createObjectURL for images, source='upload', status='ready'. Enforce MAX_FILES and MAX_TOTAL_SIZE limits with clear Indonesian error messages.",
+    "STEP 4 - Paste handler: Add a paste event listener on the chatInput textarea (and document level as fallback). On paste: check clipboardData.files and clipboardData.items for image/file content. If files found, validate and add to selectedFiles with source='paste'. If only text, allow normal paste behavior. Prevent duplicate detection by checking file name+size+lastModified.",
+    "STEP 5 - Attachment preview UI rewrite: Replace the existing single-image #attachmentPreview div with a new multi-file preview area. Show a grid/flex container above the composer input. For images: show small thumbnail (h-16 rounded), filename, filesize, remove button. For documents: show a file-type icon (PDF/DOC/TXT/CSV/XLS), filename, filesize, remove button. Each card has a unique data-file-id. Add a removeFile(fileId) function that removes from array, revokes objectURL, and re-renders.",
+    "STEP 6 - Composer UI improvements: Make the chat area use max-w-[1600px] instead of max-w-[1500px]. Add a subtle paste hint text below the file input button area: 'Ctrl+V untuk paste gambar/file'. Ensure the composer area is responsive, the mode dropdown stays left, upload button stays accessible, and file previews above input don't cause layout jumps (use min-height or smooth transitions). Add a small file count badge on the upload button when files are attached.",
+    "STEP 7 - removeAttachment update: Rename to clearAllFiles(). Also add individual removeFile(fileId) that removes one file. Both should call URL.revokeObjectURL on removed image previews. Update the clearInput flow to also call clearAllFiles.",
+    "STEP 8 - Error messages: Implement clear Indonesian error toast messages for all file validation failures: unsupported type ('Format file belum didukung. Gunakan PNG, JPG, WEBP, GIF, PDF, DOCX, TXT, CSV, XLS, atau XLSX.'), too large ('Ukuran file terlalu besar. Maksimal 10 MB untuk gambar dan 20 MB untuk dokumen.'), too many files ('Terlalu banyak file. Maksimal 8 file dalam satu pesan.'), total size exceeded ('Total ukuran file terlalu besar. Maksimal 50 MB per pesan.').",
+    "STEP 9 - handleSend integration: Update handleSend and handleChartUpload to work with the selectedFiles array instead of single selectedFile. If multiple images are uploaded, detect timeframes from filenames. Pass all images to the API. After send, clear all files.",
+    "STEP 10 - Chat history safety: In saveChatHistory, ensure no base64 data leaks into localStorage. The stripBase64FromHtml function already exists - verify it catches all patterns. When displaying file attachments in user bubbles, show only file metadata (name, type, count) not actual image data.",
+    "STEP 11 - Cleanup on unmount: Add beforeunload listener to revoke all object URLs in selectedFiles to prevent memory leaks."
+  ],
+  "acceptance_criteria": [
+    "File input accepts multiple files and document types (PDF, DOC, DOCX, TXT, CSV, XLS, XLSX, plus images)",
+    "Paste handler correctly attaches pasted images without breaking text paste",
+    "Multiple file thumbnails/cards display above the input with individual remove buttons",
+    "File validation enforces size limits (10MB image, 20MB doc, 50MB total, 8 files max) with clear error toasts",
+    "No base64 data stored in localStorage",
+    "All JS in index.html passes basic syntax validation",
+    "Existing chat, analysis, sidebar history, and mode dropdown still work"
+  ],
+  "verification": [
+    "node -e \"const fs=require('fs'); const html=fs.readFileSync('/projects/sandbox/auto-cuan/index.html','utf8'); if(!html.includes('selectedFiles')) throw 'Missing multi-file state'; if(!html.includes('multiple')) throw 'Missing multiple attribute'; if(!html.includes('paste')) throw 'Missing paste handler'; console.log('FEAT-002 checks passed');\"",
+    "node -c /projects/sandbox/auto-cuan/api/analyze.js"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

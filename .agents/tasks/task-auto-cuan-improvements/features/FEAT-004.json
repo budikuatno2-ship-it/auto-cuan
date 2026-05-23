@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Complete frontend integration: wire the multi-file upload and FCA detection to the updated API, improve copy buttons, enhance the history sidebar, add document text extraction on frontend, and ensure end-to-end flow works. This covers Features 3 (frontend extraction), 8 (copy buttons improvements), and 9 (history improvements).",
+  "status": "pending",
+  "steps": [
+    "STEP 1 - Frontend document text extraction: Add lightweight text extraction for supported document types. For TXT/CSV files, use FileReader.readAsText(). For PDF, attempt basic text extraction using a minimal approach (since we cannot add heavy libs, read as ArrayBuffer and try to extract visible text strings, or simply pass file metadata and let user know extraction is best-effort). For DOC/DOCX/XLS/XLSX, note that browser-side extraction is limited - show a message that these files will be sent as metadata only unless the user pastes the text content. The key rule: if extraction fails, still allow the message to be sent with other valid evidence.",
+    "STEP 2 - Wire multi-file to API calls: Update handleChartUpload to build the request body with: images array (base64 + mimeType + filename + timeframe for each image file), documents array (extracted text + filename + type for each document), fcaStatus from detectFCAStatus(message, ticker), evidenceLevel calculated from available data. Send to /api/analyze with the new payload structure.",
+    "STEP 3 - FCA detection in frontend: Implement detectFCAStatus(message, ticker) function. Check: (1) if ticker exists in window.FCA_STOCKS return 'confirmed_mapping', (2) if message contains FCA keywords ('FCA', 'full call auction', 'papan pemantauan khusus', 'papan pemantauan') return 'user_mentioned', (3) otherwise return 'not_detected'. Pass this to the API.",
+    "STEP 4 - Evidence level calculation frontend: Implement getEvidenceLevel(hasImages, imageCount, hasDocuments, hasNews) function. Level 1: ticker+price only (no files). Level 2: has one image. Level 3: has multiple images (2+). Level 4: has images + documents/news context. Pass to API.",
+    "STEP 5 - Copy button improvements: The copy buttons already exist (Salin / Salin Hasil). Improve them: change success feedback text from 'Disalin!' to 'Tersalin' per requirements. Ensure the copy preserves formatting as clean plain text (use innerText). Add the copy button to every AI message bubble consistently. Ensure copy button does not break layout on mobile (use flex-shrink-0 and proper sizing).",
+    "STEP 6 - History improvements: The sidebar history already supports New Chat, open session, delete session, and clear all with confirmation. Enhance it: (a) Add file count metadata to session objects (fileCount field). (b) Show file count badge in sidebar session items if > 0. (c) When reopening old session that had files, show info note: 'File/gambar asli tidak disimpan. Upload ulang jika perlu analisis ulang.' (d) Add ticker badge display in sidebar (already exists but verify). (e) Add latest message preview as subtitle in session items. (f) Ensure history never stores base64 - verify stripBase64FromHtml catches all patterns including the new multi-file patterns.",
+    "STEP 7 - User bubble for multi-file messages: When user sends a message with multiple files, show a clean user bubble that lists: message text + '[N file terlampir: filename1, filename2, ...]'. Do not embed actual image data in the bubble HTML that gets saved to history.",
+    "STEP 8 - Error states for analysis failures: Add proper error handling for: AI analysis failed (show friendly message with retry suggestion), empty message with no file (already handled but verify), chart image could not be analyzed (show specific message about resolution/clarity), document extraction returned empty (show message but allow other files). All error messages in Indonesian per the requirements list.",
+    "STEP 9 - Layout width and premium feel: Update max-w-[1500px] to max-w-[1600px] on the main container. Ensure AI response bubbles use max-w-[92%] (already set). Add smooth transitions to file preview area appearance/disappearance. Ensure dark theme consistency throughout new elements."
+  ],
+  "acceptance_criteria": [
+    "Multi-file messages correctly build API request with images array and documents array",
+    "FCA detection works for both local mapping and user-mentioned keywords",
+    "Copy buttons show 'Tersalin' feedback and work on mobile without layout issues",
+    "History sidebar shows file count and ticker badges for sessions",
+    "Reopening old sessions with file references shows appropriate info note",
+    "No base64 data in localStorage even with multi-file messages",
+    "Error messages display in Indonesian for all failure cases",
+    "All JS passes syntax check"
+  ],
+  "verification": [
+    "node -e \"const fs=require('fs'); const html=fs.readFileSync('/projects/sandbox/auto-cuan/index.html','utf8'); if(!html.includes('detectFCAStatus')) throw 'Missing FCA detection'; if(!html.includes('getEvidenceLevel')) throw 'Missing evidence level'; if(!html.includes('Tersalin')) throw 'Missing copy feedback'; if(!html.includes('fca-stocks.js')) throw 'Missing FCA script load'; console.log('FEAT-004 checks passed');\"",
+    "for f in /projects/sandbox/auto-cuan/api/*.js /projects/sandbox/auto-cuan/assets/*.js; do node -c \"$f\" || exit 1; done && echo 'All JS valid'"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

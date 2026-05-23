@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Update the API backend (api/analyze.js) to handle multiple files/images, document text extraction, FCA stock detection, and improved AI analysis prompts. This covers Features 3, 6, 7 from requirements (file extraction, better AI quality, FCA handling). Also create assets/fca-stocks.js for local FCA mapping.",
+  "status": "pending",
+  "steps": [
+    "STEP 1 - Create assets/fca-stocks.js: Create a new file with a FCA stock watchlist. Export as window.FCA_STOCKS (object with ticker keys and metadata values). Include known FCA/papan pemantauan khusus stocks like NAYZ, WMUU, and a few others. Structure: { 'NAYZ': { name: 'Nusantara Atlas Sejahtera', status: 'FCA', reason: 'Papan Pemantauan Khusus' }, ... }. Make it easy to add more tickers manually.",
+    "STEP 2 - Update index.html to load FCA stocks: Add <script src='/assets/fca-stocks.js'></script> after the idx-tickers.js script tag. Add a helper function isFCAStock(ticker) that checks window.FCA_STOCKS. Add FCA detection from user message text (detect keywords: 'FCA', 'full call auction', 'papan pemantauan khusus', 'papan pemantauan', 'saham FCA').",
+    "STEP 3 - Update API request body: Modify the frontend handleChartUpload and handleAnalysis functions to send: images array (array of {base64Data, mimeType, filename, timeframe}), documents array (array of {text, filename, type}), fcaStatus ('confirmed_mapping', 'user_mentioned', 'not_detected'), and evidenceLevel (1-4). Keep backward compatibility - if single image, still works.",
+    "STEP 4 - Update api/analyze.js to accept multi-image: Modify the handler to accept a new 'images' array field in req.body alongside the existing 'image' field for backward compat. When images array exists, build multi-part Gemini request with multiple image parts. Keep the existing single-image flow as fallback.",
+    "STEP 5 - Add document text handling in api/analyze.js: Accept a 'documents' array field in req.body. Each document has {text, filename, type}. Append document text as clearly marked user-provided evidence in the prompt. Label it: '=== DOKUMEN YANG DIUNGGAH USER ===' with filename and content. If text is empty or extraction failed on frontend, skip gracefully.",
+    "STEP 6 - FCA-aware prompt system: In api/analyze.js, accept fcaStatus field. When fcaStatus is 'confirmed_mapping' or 'user_mentioned', inject FCA-specific prompt sections into the system prompt: FCA Risk Check section, score penalty rules (reduce by 10-20 points), stricter decision labels, FCA warning text block, conservative position sizing. Cap scores: FCA+Level1=45, FCA+one chart=55-60, FCA+multi-chart=70, FCA+multi+news=80.",
+    "STEP 7 - Improve the main buildPrompt function: Enhance the existing buildPrompt to accept additional parameters (fcaStatus, evidenceLevel, documentContext). Add the complete 9-section answer framework from requirements (Input Quality Check, Evidence Summary, Ticker Validation, Technical Analysis, Multi-timeframe Bias, Risk Management, Score Rules with strict caps, Final Decision Labels, Final Output Style). Keep the existing 15-section HTML output format but integrate the stricter rules.",
+    "STEP 8 - Improve CHART_SYSTEM_PROMPT: Update the chart upload prompt to handle multiple charts. When multiple images are provided, instruct the AI to identify each chart's timeframe and provide multi-timeframe analysis. If timeframe is unknown, say so. If only one chart, explain multi-timeframe confirmation is incomplete. Adjust score caps: single chart max 70, multi-chart max 80, multi-chart+context max 90.",
+    "STEP 9 - Add multi-timeframe handling: When the frontend sends multiple images with detected timeframes, the API should include timeframe context in the prompt: 'User mengirim X chart: [1W], [1D], [4H]' or '[timeframe tidak diketahui]'. The AI must analyze each visible chart and synthesize, but not fabricate data for missing timeframes.",
+    "STEP 10 - Evidence Level calculation: Add logic in api/analyze.js to determine evidence level from request data: Level 1 = ticker+price only, Level 2 = ticker+price+one chart, Level 3 = ticker+price+multi-timeframe charts, Level 4 = Level 3 + news/catalyst/documents. Use this to set appropriate score caps in the prompt.",
+    "STEP 11 - Anti-hallucination reinforcement: Add stronger anti-hallucination rules to all prompts. Explicitly list forbidden conclusions without evidence. Add the 'Belum bisa dikonfirmasi dari data yang ada' required response. Add the forbidden words list (pasti naik, pasti turun, dijamin, akurat 100%, pasti cuan, aman, tinggal gas, auto cuan, pasti mantul)."
+  ],
+  "acceptance_criteria": [
+    "assets/fca-stocks.js exists with valid JS syntax and FCA stock data",
+    "api/analyze.js accepts images array, documents array, fcaStatus, and evidenceLevel",
+    "FCA stocks get score penalty and special warning section in analysis",
+    "Multi-image requests build proper multi-part Gemini API payload",
+    "Document text is included in prompt as user-provided evidence",
+    "Evidence level correctly calculated and used for score capping",
+    "All .js files pass node -c syntax check",
+    "api/ directory still has 10 files (fca-stocks.js is in assets/, not api/)"
+  ],
+  "verification": [
+    "node -c /projects/sandbox/auto-cuan/api/analyze.js",
+    "node -c /projects/sandbox/auto-cuan/assets/fca-stocks.js",
+    "node -e \"const fs=require('fs'); const code=fs.readFileSync('/projects/sandbox/auto-cuan/api/analyze.js','utf8'); if(!code.includes('fcaStatus')) throw 'Missing FCA handling'; if(!code.includes('images')) throw 'Missing multi-image'; if(!code.includes('documents')) throw 'Missing document handling'; console.log('FEAT-003 API checks passed');\"",
+    "ls /projects/sandbox/auto-cuan/api/*.js | wc -l"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}
