@@ -393,7 +393,7 @@ module.exports = async function handler(req, res) {
 function isCompleteAnalysis(html) {
   if (!html || html.length < 400) return false;
   const requiredKeywords = ['Data Quality', 'Confidence', 'Invalidation', 'Final Decision', 'Risk Reward', 'Action Plan'];
-  const alternativeKeywords = ['Kualitas Data', 'Keputusan', 'Risiko', 'Support', 'Resistance', 'Entry', 'Target', 'Stop Loss', 'Timeframe'];
+  const alternativeKeywords = ['Kualitas Data', 'Keputusan Final', 'Rencana Aksi', 'Skenario', 'Position Sizing', 'Invalidasi', 'Multi-Timeframe', 'Entry Quality', 'Risk Reward'];
   const lowerHtml = html.toLowerCase();
   let foundCount = 0;
   for (const kw of requiredKeywords) {
@@ -408,8 +408,8 @@ function isCompleteAnalysis(html) {
   for (const kw of alternativeKeywords) {
     if (lowerHtml.includes(kw.toLowerCase())) altCount++;
   }
-  // Pass if combined original + alternative keywords >= 3
-  if (foundCount + altCount >= 3) return true;
+  // Pass if at least 1 original keyword AND combined original + alternative keywords >= 3
+  if (foundCount >= 1 && foundCount + altCount >= 3) return true;
   return false;
 }
 
@@ -830,7 +830,7 @@ EVIDENCE LOCK ACTIVE: Kamu HANYA boleh mendeskripsikan dan menganalisis apa yang
 - Jika sesuatu tidak terlihat jelas, katakan "tidak terlihat jelas di chart ini"
 - DILARANG mengarang data yang tidak ada di chart
 
-=== CHART VALIDATION (WAJIB DIBACA PERTAMA) ===
+=== CHART VALIDATION (WAJIB DIPATUHI) ===
 Sebelum menganalisis, evaluasi apakah screenshot adalah chart yang valid.
 
 Chart TradingView dianggap VALID jika mengandung sebagian besar elemen berikut:
