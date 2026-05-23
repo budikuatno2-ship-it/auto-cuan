@@ -1,10 +1,88 @@
+// === HELPER FUNCTIONS ===
+
+function calculateEvidenceLevel(req) {
+  const { images, documents, image, ticker, currentPrice } = req.body || {};
+  const hasImages = (images && images.length > 0) || !!image;
+  const imageCount = images ? images.length : (image ? 1 : 0);
+  const hasDocuments = documents && documents.length > 0 && documents.some(function(d) { return d.text && d.text.length > 0; });
+
+  if (!hasImages && !hasDocuments) return 1; // ticker + price only
+  if (imageCount === 1 && !hasDocuments) return 2; // single chart
+  if (imageCount >= 2) return hasDocuments ? 4 : 3; // multi-chart
+  if (hasDocuments) return 2; // docs without chart still level 2
+  return 1;
+}
+
+function buildFCASection(fcaStatus, evidenceLevel) {
+  if (fcaStatus === 'not_detected') return '';
+
+  var statusLabel = fcaStatus === 'confirmed_mapping' ? 'Confirmed by local mapping' : 'Mentioned by user';
+  var scorePenalty = fcaStatus === 'confirmed_mapping' ? 20 : 15;
+
+  var maxScore;
+  if (evidenceLevel === 1) maxScore = 45;
+  else if (evidenceLevel === 2) maxScore = 60;
+  else if (evidenceLevel === 3) maxScore = 70;
+  else maxScore = 80;
+
+  return '\n\n=== FCA / FULL CALL AUCTION SPECIAL HANDLING ===\n' +
+    'STATUS FCA: ' + statusLabel + '\n' +
+    'SKOR MAKSIMUM UNTUK SAHAM FCA: ' + maxScore + '\n' +
+    'PENALTY SKOR: -' + scorePenalty + ' poin dari skor normal\n\n' +
+    'ATURAN FCA WAJIB:\n' +
+    '- Saham FCA TIDAK BOLEH dianalisis dengan confidence yang sama seperti saham reguler\n' +
+    '- Saham FCA lebih sulit diprediksi karena likuiditas terbatas dan mekanisme perdagangan berbeda\n' +
+    '- Support/resistance, order block, demand/supply, BOS, CHoCH, breakout KURANG RELIABLE pada saham FCA\n' +
+    '- DILARANG memberikan rekomendasi BUY yang kuat untuk saham FCA\n' +
+    '- Label yang DIREKOMENDASIKAN untuk FCA: AVOID, WAIT, WATCHLIST, NEED CHART CONFIRMATION\n' +
+    '- SPECULATIVE BUY hanya jika chart evidence kuat DAN tetap warn risiko FCA\n' +
+    '- BUY ON CONFIRMATION atau SWING VALID SANGAT JARANG untuk FCA\n\n' +
+    'WAJIB TAMPILKAN SECTION: "FCA / Full Call Auction Risk Check" dengan:\n' +
+    '1. Status FCA: ' + statusLabel + '\n' +
+    '2. Dampak terhadap analisis:\n' +
+    '   - Saham FCA lebih sulit diprediksi\n' +
+    '   - Likuiditas dan eksekusi transaksi bisa berbeda dari saham reguler\n' +
+    '   - Analisis teknikal/SMC normal menjadi kurang kuat\n' +
+    '   - Support, resistance, order block, demand/supply, dan breakout perlu dianggap lebih lemah\n' +
+    '3. Position Sizing FCA: SANGAT KECIL (max 1-3% portfolio, hindari all-in)\n\n' +
+    'WAJIB TAMPILKAN WARNING:\n' +
+    '"PERINGATAN FCA: Saham FCA / Full Call Auction memiliki karakter pergerakan yang berbeda dari saham reguler. ' +
+    'Harga bisa sulit diprediksi, likuiditas bisa terbatas, spread bisa melebar, dan eksekusi transaksi tidak selalu mudah. ' +
+    'Analisis teknikal pada saham FCA harus dianggap lebih lemah dibanding saham reguler. ' +
+    'Gunakan modal kecil, hindari all-in, dan wajib punya batas risiko."\n\n' +
+    'DILARANG menggunakan kata-kata: pasti, aman, mudah naik, tinggal gas, auto cuan, pasti mantul, gas buy untuk saham FCA.';
+}
+
+function buildDocumentContext(documents) {
+  if (!documents || documents.length === 0) return '';
+  var validDocs = documents.filter(function(d) { return d.text && d.text.trim().length > 0; });
+  if (validDocs.length === 0) return '';
+
+  var context = '\n\n=== DOKUMEN YANG DIUNGGAH USER (USER-PROVIDED EVIDENCE) ===\n';
+  validDocs.forEach(function(doc, i) {
+    var truncatedText = doc.text.length > 5000 ? doc.text.slice(0, 5000) + '\n[...teks dipotong, terlalu panjang]' : doc.text;
+    context += '\nDokumen ' + (i + 1) + ': ' + (doc.filename || 'unknown') + ' (' + (doc.type || 'unknown') + ')\n';
+    context += '--- KONTEN DOKUMEN ---\n' + truncatedText + '\n--- AKHIR DOKUMEN ---\n';
+  });
+  context += '\nGunakan informasi dari dokumen di atas sebagai EVIDENCE tambahan jika relevan dengan analisis saham.\n';
+  return context;
+}
+
+var FORBIDDEN_WORDS_PROMPT = '\n\n=== KATA-KATA TERLARANG (JANGAN GUNAKAN) ===\n' +
+  '- pasti naik / pasti turun\n' +
+  '- dijamin / akurat 100%\n' +
+  '- pasti cuan / auto cuan\n' +
+  '- aman / tinggal gas\n' +
+  '- pasti mantul\n\n' +
+  'Jika tidak ada bukti, WAJIB tulis: "Belum bisa dikonfirmasi dari data yang ada."\n';
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { ticker, currentPrice, image, mimeType, source, username, isAdmin, chatMessage } = req.body || {};
+    const { ticker, currentPrice, image, mimeType, source, username, isAdmin, chatMessage, images, documents, fcaStatus, evidenceLevel } = req.body || {};
 
     // === CHAT MODE ===
     if (source === 'chat_mode' && chatMessage) {
@@ -12,7 +90,7 @@ module.exports = async function handler(req, res) {
     }
 
     // === CHART UPLOAD MODE ===
-    if (source === 'chart_upload' && image) {
+    if (source === 'chart_upload' && (image || (images && images.length > 0))) {
       return await handleChartUpload(req, res, image, mimeType);
     }
 
@@ -23,6 +101,9 @@ module.exports = async function handler(req, res) {
 
     const tickerUpper = ticker.toUpperCase();
     const price = parseFloat(currentPrice);
+    const level = evidenceLevel || calculateEvidenceLevel(req);
+    const fca = fcaStatus || 'not_detected';
+    const docContext = buildDocumentContext(documents);
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
@@ -33,7 +114,7 @@ module.exports = async function handler(req, res) {
     const GEMINI_MODEL = 'gemini-2.5-flash';
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
-    const systemPrompt = buildPrompt(tickerUpper, price);
+    const systemPrompt = buildPrompt(tickerUpper, price, { fcaStatus: fca, evidenceLevel: level, documentContext: docContext });
 
     const payload = {
       contents: [{ parts: [{ text: systemPrompt }] }],
@@ -105,8 +186,15 @@ function isCompleteAnalysis(html) {
 }
 
 
-function buildPrompt(ticker, currentPrice) {
-  return `Kamu adalah AI Analis Teknikal Saham PROFESIONAL dengan standar EVIDENCE-BASED ANALYSIS yang ketat.
+function buildPrompt(ticker, currentPrice, options) {
+  var opts = options || {};
+  var fcaStatus = opts.fcaStatus || 'not_detected';
+  var evidenceLevel = opts.evidenceLevel || 1;
+  var documentContext = opts.documentContext || '';
+
+  var fcaSection = buildFCASection(fcaStatus, evidenceLevel);
+
+  var prompt = `Kamu adalah AI Analis Teknikal Saham PROFESIONAL dengan standar EVIDENCE-BASED ANALYSIS yang ketat.
 
 === EVIDENCE LOCK (WAJIB DIPATUHI 100%) ===
 EVIDENCE LOCK ACTIVE: Kamu HANYA boleh menggunakan data berikut sebagai basis analisis:
@@ -244,6 +332,21 @@ Wrap semua konten dalam <div class="space-y-5">.
     - DYOR reminder
 
 Pastikan SETIAP bagian ada dan memiliki konten substantif. Output harus jujur tentang keterbatasan data.`;
+
+  // Append FCA section if applicable
+  if (fcaSection) {
+    prompt += fcaSection;
+  }
+
+  // Append document context if available
+  if (documentContext) {
+    prompt += documentContext;
+  }
+
+  // Append anti-hallucination forbidden words
+  prompt += FORBIDDEN_WORDS_PROMPT;
+
+  return prompt;
 }
 
 
@@ -620,7 +723,7 @@ PENTING: Semua angka HARUS dari chart yang terlihat. Jangan mengarang angka.`;
 
 async function handleChartUpload(req, res, imageData, mimeType) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  const { timeframe, ticker, currentPrice } = req.body || {};
+  const { timeframe, ticker, currentPrice, images, documents, fcaStatus, evidenceLevel } = req.body || {};
 
   // Sanitize inputs to prevent prompt injection
   const safeTicker = ticker ? String(ticker).replace(/[^A-Za-z]/g, '').slice(0, 10).toUpperCase() : null;
@@ -631,14 +734,44 @@ async function handleChartUpload(req, res, imageData, mimeType) {
     return res.status(200).json({ html: '<div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 text-center"><p class="text-yellow-400 font-semibold">Gemini API belum dikonfigurasi.</p><p class="text-yellow-300/70 text-sm mt-2">Hubungi admin untuk mengaktifkan fitur analisis chart.</p></div>' });
   }
 
-  // Strip data URI prefix if present
-  let base64Data = imageData;
-  if (base64Data.includes(',')) {
-    base64Data = base64Data.split(',')[1];
+  // Determine if multi-image or single image
+  const hasMultiImages = images && images.length > 0;
+  const imageCount = hasMultiImages ? images.length : (imageData ? 1 : 0);
+  const hasDocuments = documents && documents.length > 0 && documents.some(function(d) { return d.text && d.text.length > 0; });
+  const level = evidenceLevel || (imageCount >= 2 ? (hasDocuments ? 4 : 3) : 2);
+  const fca = fcaStatus || 'not_detected';
+
+  // Determine score cap based on evidence level
+  var scoreCap;
+  if (imageCount === 1 && !hasDocuments) scoreCap = 70;
+  else if (imageCount >= 2 && !hasDocuments) scoreCap = 80;
+  else if (imageCount >= 2 && hasDocuments) scoreCap = 90;
+  else scoreCap = 70;
+
+  // Build enhanced prompt with additional context
+  var chartPrompt = CHART_SYSTEM_PROMPT;
+
+  // Add evidence level awareness
+  var levelLabel;
+  if (imageCount === 1) levelLabel = 'Level 2 - Single Chart. SKOR MAKSIMUM: 70';
+  else if (imageCount >= 2 && !hasDocuments) levelLabel = 'Level 3 - Multi-Timeframe. SKOR MAKSIMUM: 80';
+  else if (imageCount >= 2 && hasDocuments) levelLabel = 'Level 4 - Comprehensive. SKOR MAKSIMUM: 90';
+  else levelLabel = 'Level 2 - Single Chart. SKOR MAKSIMUM: 70';
+
+  chartPrompt += '\n\n=== EVIDENCE LEVEL ===\n' + levelLabel + '\nSKOR MAKSIMUM ABSOLUT: ' + scoreCap + '\nDILARANG memberi skor di atas ' + scoreCap + '.\n';
+
+  // Add multi-image context
+  if (hasMultiImages && imageCount > 1) {
+    chartPrompt += '\n=== MULTI-CHART ANALYSIS ===\n';
+    chartPrompt += 'User mengirim ' + imageCount + ' chart:\n';
+    images.forEach(function(img, i) {
+      var tf = img.timeframe ? String(img.timeframe).replace(/[^A-Za-z0-9]/g, '').slice(0, 10) : 'tidak diketahui';
+      chartPrompt += '- Chart ' + (i + 1) + ': [' + tf + ']' + (img.filename ? ' (' + img.filename + ')' : '') + '\n';
+    });
+    chartPrompt += '\nAnalisis SETIAP chart yang terlihat. Identifikasi timeframe masing-masing.\n';
+    chartPrompt += 'Sintesis analisis multi-timeframe. JANGAN fabrikasi data untuk timeframe yang TIDAK terlihat.\n';
   }
 
-  // Build enhanced prompt with additional context if available
-  let chartPrompt = CHART_SYSTEM_PROMPT;
   if (safeTicker || safePrice || safeTimeframe) {
     chartPrompt += '\n\n=== KONTEKS TAMBAHAN DARI USER ===\n';
     if (safeTicker) chartPrompt += '- Ticker: ' + safeTicker + '\n';
@@ -647,21 +780,50 @@ async function handleChartUpload(req, res, imageData, mimeType) {
     chartPrompt += 'Gunakan informasi ini untuk memperkuat analisis chart.';
   }
 
+  // Add FCA section if applicable
+  var fcaSection = buildFCASection(fca, level);
+  if (fcaSection) {
+    chartPrompt += fcaSection;
+  }
+
+  // Add document context if available
+  var docContext = buildDocumentContext(documents);
+  if (docContext) {
+    chartPrompt += docContext;
+  }
+
+  // Add anti-hallucination forbidden words
+  chartPrompt += FORBIDDEN_WORDS_PROMPT;
+
   const GEMINI_MODEL = 'gemini-2.5-flash';
   const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
+  // Build payload - multi-image or single image
+  var parts = [{ text: chartPrompt }];
+
+  if (hasMultiImages) {
+    images.forEach(function(img) {
+      var base64 = img.data || img.base64Data || '';
+      if (base64.includes(',')) base64 = base64.split(',')[1];
+      if (base64) {
+        parts.push({
+          inline_data: { mime_type: img.mimeType || 'image/png', data: base64 }
+        });
+      }
+    });
+  } else if (imageData) {
+    // Single image backward compatibility
+    var base64Data = imageData;
+    if (base64Data.includes(',')) {
+      base64Data = base64Data.split(',')[1];
+    }
+    parts.push({
+      inline_data: { mime_type: mimeType || 'image/png', data: base64Data }
+    });
+  }
+
   const payload = {
-    contents: [{
-      parts: [
-        { text: chartPrompt },
-        {
-          inline_data: {
-            mime_type: mimeType || 'image/png',
-            data: base64Data
-          }
-        }
-      ]
-    }],
+    contents: [{ parts: parts }],
     generationConfig: {
       temperature: 0.35,
       topP: 0.95,
@@ -684,13 +846,13 @@ async function handleChartUpload(req, res, imageData, mimeType) {
   const candidates = result.candidates || [];
 
   if (candidates.length > 0) {
-    const parts = candidates[0].content?.parts || [];
-    if (parts.length > 0 && parts[0].text) {
-      let html = parts[0].text;
+    const cparts = candidates[0].content?.parts || [];
+    if (cparts.length > 0 && cparts[0].text) {
+      let html = cparts[0].text;
       html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
 
       if (isCompleteAnalysis(html)) {
-        logAnalysis('CHART_UPLOAD', 0);
+        logAnalysis(safeTicker || 'CHART_UPLOAD', 0);
         return res.status(200).json({ html });
       }
     }

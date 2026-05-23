@@ -2,7 +2,7 @@
   "id": "FEAT-003",
   "type": "feat",
   "description": "Update the API backend (api/analyze.js) to handle multiple files/images, document text extraction, FCA stock detection, and improved AI analysis prompts. This covers Features 3, 6, 7 from requirements (file extraction, better AI quality, FCA handling). Also create assets/fca-stocks.js for local FCA mapping.",
-  "status": "pending",
+  "status": "in_progress",
   "steps": [
     "STEP 1 - Create assets/fca-stocks.js: Create a new file with a FCA stock watchlist. Export as window.FCA_STOCKS (object with ticker keys and metadata values). Include known FCA/papan pemantauan khusus stocks like NAYZ, WMUU, and a few others. Structure: { 'NAYZ': { name: 'Nusantara Atlas Sejahtera', status: 'FCA', reason: 'Papan Pemantauan Khusus' }, ... }. Make it easy to add more tickers manually.",
     "STEP 2 - Update index.html to load FCA stocks: Add <script src='/assets/fca-stocks.js'></script> after the idx-tickers.js script tag. Add a helper function isFCAStock(ticker) that checks window.FCA_STOCKS. Add FCA detection from user message text (detect keywords: 'FCA', 'full call auction', 'papan pemantauan khusus', 'papan pemantauan', 'saham FCA').",
