@@ -748,9 +748,11 @@ Pastikan SETIAP bagian ada dan memiliki konten substantif. Output harus jujur te
   // Append structured FCA context block (always, even when not_detected)
   prompt += buildFCAContextBlock(fcaStatus);
 
-  // Append broker summary reader section (always included for ticker mode -
-  // the AI uses these rules if broker summary data appears in documents)
-  prompt += buildBrokerSummarySection();
+  // Append broker summary reader section only when documents are provided
+  // (broker summary is irrelevant for pure ticker+price queries without documents)
+  if (documentContext) {
+    prompt += buildBrokerSummarySection();
+  }
 
   // Append document context if available
   if (documentContext) {
@@ -1296,9 +1298,11 @@ async function handleChartUpload(req, res, imageData, mimeType) {
   // to only apply these rules when orderbook/running trade data is visible in the image)
   chartPrompt += buildMarketMakerSection();
 
-  // Add broker summary reader section (always included - the AI is instructed
-  // to only apply these rules when broker summary data is visible in the image/document)
-  chartPrompt += buildBrokerSummarySection();
+  // Add broker summary reader section only when multi-images or documents are present
+  // (for a single chart image without documents, broker summary rules are irrelevant)
+  if ((hasMultiImages && imageCount >= 2) || hasDocuments) {
+    chartPrompt += buildBrokerSummarySection();
+  }
 
   // Add document context if available
   var docContext = buildDocumentContext(documents);
