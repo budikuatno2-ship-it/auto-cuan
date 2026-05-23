@@ -2,7 +2,7 @@
   "id": "FEAT-004",
   "type": "feat",
   "description": "Complete frontend integration: wire the multi-file upload and FCA detection to the updated API, improve copy buttons, enhance the history sidebar, add document text extraction on frontend, and ensure end-to-end flow works. This covers Features 3 (frontend extraction), 8 (copy buttons improvements), and 9 (history improvements).",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "STEP 1 - Frontend document text extraction: Add lightweight text extraction for supported document types. For TXT/CSV files, use FileReader.readAsText(). For PDF, attempt basic text extraction using a minimal approach (since we cannot add heavy libs, read as ArrayBuffer and try to extract visible text strings, or simply pass file metadata and let user know extraction is best-effort). For DOC/DOCX/XLS/XLSX, note that browser-side extraction is limited - show a message that these files will be sent as metadata only unless the user pastes the text content. The key rule: if extraction fails, still allow the message to be sent with other valid evidence.",
     "STEP 2 - Wire multi-file to API calls: Update handleChartUpload to build the request body with: images array (base64 + mimeType + filename + timeframe for each image file), documents array (extracted text + filename + type for each document), fcaStatus from detectFCAStatus(message, ticker), evidenceLevel calculated from available data. Send to /api/analyze with the new payload structure.",
@@ -29,5 +29,5 @@
     "for f in /projects/sandbox/auto-cuan/api/*.js /projects/sandbox/auto-cuan/assets/*.js; do node -c \"$f\" || exit 1; done && echo 'All JS valid'"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All changes implemented in index.html. Max-w values were already at 1600px from FEAT-002. The FCA detection, evidence level calculation, document text extraction, multi-image API wiring, copy button Tersalin feedback, sidebar file count badge, and session file note are all working. Inline JS syntax validated successfully."
 }
