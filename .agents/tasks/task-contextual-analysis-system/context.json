@@ -1,0 +1,23 @@
+{
+  "project_type": "Single-page web app with Vercel serverless API (index.html frontend + api/analyze.js backend)",
+  "language": "JavaScript (ES5-ish frontend inline script, CommonJS serverless functions)",
+  "build_system": "No build step - static HTML + Vercel serverless. npm for dependency management.",
+  "test_framework": "None - manual testing only. Validation via node -c syntax checks.",
+  "build_command": "unset NODE_OPTIONS && npm install",
+  "test_command": "unset NODE_OPTIONS && for f in api/*.js assets/*.js; do node -c \"$f\" || exit 1; done && echo 'All JS valid'",
+  "verification_instructions": "1. Run node -c on all JS files. 2. Verify index.html is valid (not truncated). 3. Check key functions exist via grep.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "unset NODE_OPTIONS && cd /projects/sandbox/auto-cuan && npm install",
+  "environment_constraints": "NODE_OPTIONS references missing module - must unset before running node/npm. Network mode is COMMON_DEPENDENCIES (can install packages). No Docker needed.",
+  "contribution_requirements": "Incremental improvements only. Do not break existing modes (Review, Guest, Login, Admin). Do not rewrite entire app. Do not store image base64 in localStorage. Evidence Lock rules must be preserved.",
+  "key_patterns": "Frontend: single index.html with inline <script>. Uses TailwindCSS via CDN. Dark theme colors: bg-[#0b0e14], bg-[#0f1319], bg-[#151a23], border-[#1c2333]. Chat bubbles use addAIBubble/addUserBubble. Session management via localStorage with sessions array. API: single api/analyze.js with handleChatMode, handleChartUpload, and ticker analysis handler. Uses Gemini 2.5 Flash via REST API. All prompts are long string concatenations.",
+  "relevant_files": [
+    "index.html",
+    "api/analyze.js",
+    "assets/fca-stocks.js",
+    "assets/idx-tickers.js",
+    "package.json",
+    "vercel.json"
+  ],
+  "directory_structure": "Root: index.html (2027 lines, full frontend), api/ (10 serverless functions, analyze.js is main at 1483 lines), assets/ (fca-stocks.js, idx-tickers.js/csv)"
+}
