@@ -1,0 +1,31 @@
+{
+  "id": "FEAT-005",
+  "type": "fix",
+  "description": "Address code review issues: remove doubled payload, add prompt injection protection, fix server-side evidence level validation, fix frontend evidence level mismatch, fix FCA keyword false-positives, add filename sanitization, and add server-side request body size check.",
+  "status": "in_progress",
+  "steps": [
+    "STEP 1 - Fix doubled payload in index.html handleChartUpload",
+    "STEP 2 - Add prompt injection sanitization in api/analyze.js buildDocumentContext",
+    "STEP 3 - Always recalculate evidence level server-side in api/analyze.js",
+    "STEP 4 - Fix frontend getEvidenceLevel to only count extractable documents",
+    "STEP 5 - Fix FCA keyword false-positives with word boundary regex",
+    "STEP 6 - Add filename sanitization in api/analyze.js handleChartUpload",
+    "STEP 7 - Add server-side document count validation in api/analyze.js"
+  ],
+  "acceptance_criteria": [
+    "image field is null when images array is non-empty",
+    "Document text is sanitized before prompt inclusion",
+    "Server always recalculates evidence level",
+    "Frontend only counts TXT/CSV as documents for evidence level",
+    "FCA detection uses word boundary regex",
+    "Filenames are sanitized before inclusion in prompts",
+    "Document count is validated server-side",
+    "All JS files pass node -c syntax check"
+  ],
+  "verification": [
+    "unset NODE_OPTIONS && node -c api/analyze.js",
+    "unset NODE_OPTIONS && node -c assets/fca-stocks.js"
+  ],
+  "blocked_reason": null,
+  "findings": null
+}

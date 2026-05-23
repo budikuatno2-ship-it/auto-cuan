@@ -998,13 +998,15 @@ function isFCAStock(ticker) {
 function detectFCAStatus(message, ticker) {
     // Check local mapping first
     if (ticker && isFCAStock(ticker)) return 'confirmed_mapping';
-    // Check user message for FCA keywords
+    // Check user message for FCA keywords with word boundary matching
     if (message) {
         var lower = String(message).toLowerCase();
-        var fcaKeywords = ['fca', 'full call auction', 'papan pemantauan khusus', 'papan pemantauan', 'saham fca'];
-        for (var i = 0; i < fcaKeywords.length; i++) {
-            if (lower.indexOf(fcaKeywords[i]) !== -1) return 'user_mentioned';
-        }
+        // Use word boundary for short keywords to avoid false positives
+        if (/\bfca\b/.test(lower)) return 'user_mentioned';
+        if (/\bfull\s+call\s+auction\b/.test(lower)) return 'user_mentioned';
+        if (/papan\s+pemantauan\s+khusus/.test(lower)) return 'user_mentioned';
+        if (/papan\s+pemantauan/.test(lower)) return 'user_mentioned';
+        if (/saham\s+fca\b/.test(lower)) return 'user_mentioned';
     }
     return 'not_detected';
 }
@@ -1015,7 +1017,10 @@ function getEvidenceLevel() {
     var docFiles = selectedFiles.filter(function(f) { return SUPPORTED_DOC_TYPES.indexOf(f.type) !== -1; });
     var hasImages = imageFiles.length > 0;
     var imageCount = imageFiles.length;
-    var hasDocuments = docFiles.length > 0;
+    // Only count documents that can actually be text-extracted browser-side (TXT, CSV)
+    var hasDocuments = docFiles.some(function(f) { 
+        return f.type === 'text/plain' || f.type === 'text/csv'; 
+    });
     
     if (!hasImages && !hasDocuments) return 1;
     if (imageCount === 1 && !hasDocuments) return 2;
@@ -1305,7 +1310,7 @@ async function handleChartUpload(msg) {
         var fcaStatus = detectFCAStatus(msg, activeTicker || chartTicker);
         clearAllFiles();
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images: imagesArray, documents: docsArray, image: imagesArray.length > 0 ? imagesArray[0].data : null, mimeType: imagesArray.length > 0 ? imagesArray[0].mimeType : 'image/png', source: 'chart_upload', timeframe: firstImageTimeframe, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, fcaStatus: fcaStatus, evidenceLevel: evidenceLevel, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
+            body: JSON.stringify({ images: imagesArray, documents: docsArray, image: null, mimeType: imagesArray.length > 0 ? imagesArray[0].mimeType : 'image/png', source: 'chart_upload', timeframe: firstImageTimeframe, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, fcaStatus: fcaStatus, evidenceLevel: evidenceLevel, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true' }) });
         imagesArray = null;
         var data = await response.json();
         removeLoadingBubble();
