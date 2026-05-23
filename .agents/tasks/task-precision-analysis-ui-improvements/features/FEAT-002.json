@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Improve session history sidebar (ChatGPT-like), add delete options, fix localStorage storage to never store base64 images, and ensure smooth performance. Also add session date/time display and confirmation dialogs.",
+  "status": "in_progress",
+  "steps": [
+    "In the sidebar session items (renderSidebarSessions function in index.html), add a small date/time display below or beside the title. Use relative time like 'Hari ini', 'Kemarin', or date for older sessions. Add a helper function getRelativeDate(isoString) that returns these labels.",
+    "Improve the session item design: add subtle left border accent for active session (border-l-2 border-emerald-500), show message count badge, and improve the delete button positioning.",
+    "In the clearAllSessions() function, replace the native confirm() with the Indonesian message 'Yakin hapus semua riwayat chat?' (already done, verify it says this).",
+    "In the saveChatHistory() function, add a sanitization step that strips any base64 image data from the stored messages HTML. Before pushing to session.messages, run each outerHTML through a function stripBase64FromHtml(html) that replaces any src='data:image/...' with a placeholder text like '[Gambar chart tidak disimpan]'. This prevents localStorage bloat.",
+    "Add a note in the UI: when a session is reopened that had chart uploads, if the image is gone, show a small gray note: 'Gambar chart tidak disimpan permanen. Hasil analisis tetap tersimpan.' - add this as a helper that checks if message HTML contains the placeholder.",
+    "Ensure the MAX_SESSIONS limit is 25 and MAX_MESSAGES_PER_SESSION is 50 (already set, verify).",
+    "Improve sidebar animation: make the sidebar transition faster (0.2s instead of 0.25s) and add a subtle slide animation to session items when they appear.",
+    "On desktop (min-width 1024px), consider making the sidebar semi-permanent (always visible as a narrow strip) - but only if it does not cramp the main chat area. If it would cramp things, keep it as toggle-only. Given the wider layout from FEAT-001, a 300px sidebar with the remaining space for chat should work. Add a CSS rule: @media (min-width: 1280px) the sidebar could be pinned open by default. However, since this is a single-page app and the sidebar uses fixed positioning, it may be simpler to keep it as toggle-only for now.",
+    "Performance: ensure that renderSidebarSessions does not cause layout thrashing. Use innerHTML assignment once rather than multiple DOM operations. Verify that saveChatHistory is not called on every keystroke (it should only be called after send completes)."
+  ],
+  "acceptance_criteria": [
+    "Sidebar shows relative dates (Hari ini, Kemarin, or dd/mm/yyyy) for each session",
+    "clearAllSessions shows Indonesian confirmation dialog",
+    "No base64 image data is stored in localStorage - the stripBase64FromHtml function removes data:image sources",
+    "When reopening a session that had chart uploads, user sees a note about images not being stored permanently",
+    "Session list is smooth and responsive, no visible lag when opening sidebar with 20+ sessions",
+    "Delete single session and clear all history work correctly"
+  ],
+  "verification": [
+    "Run: grep -n 'stripBase64' /projects/sandbox/auto-cuan/index.html - should find the sanitization function",
+    "Run: grep -n 'Gambar chart tidak disimpan' /projects/sandbox/auto-cuan/index.html - should find the placeholder note",
+    "Run: grep -n 'getRelativeDate\\|relativeDate' /projects/sandbox/auto-cuan/index.html - should find date helper",
+    "Validate no syntax errors in the JavaScript by checking balanced braces/parens"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

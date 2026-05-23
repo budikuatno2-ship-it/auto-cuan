@@ -72,8 +72,8 @@
         .sidebar-footer { padding: 12px 16px; border-top: 1px solid #1c2333; flex-shrink: 0; }
         .session-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: all 0.15s ease-out; margin-bottom: 2px; }
         .session-item:hover { background: #151a23; }
-        .session-item.active { background: #1c2333; border: 1px solid rgba(16,185,129,0.2); }
-        .session-item .session-title { flex: 1; font-size: 0.8125rem; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .session-item.active { background: #1c2333; border: 1px solid rgba(16,185,129,0.2); border-left: 3px solid #10b981; }
+        .session-item .session-title { flex: 1; font-size: 0.8125rem; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
         .session-item.active .session-title { color: #6ee7b7; }
         .session-item .session-delete { opacity: 0; flex-shrink: 0; padding: 4px; border-radius: 6px; color: #6b7280; transition: all 0.15s; }
         .session-item:hover .session-delete { opacity: 1; }
@@ -458,6 +458,29 @@ function getWIBDateString() {
     var now = new Date();
     var wib = new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
     return wib.toISOString().slice(0, 10);
+}
+
+function getRelativeDate(isoString) {
+    if (!isoString) return '';
+    var now = new Date();
+    var wibNow = new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+    var target = new Date(isoString);
+    var wibTarget = new Date(target.getTime() + (7 * 60 * 60 * 1000) - (target.getTimezoneOffset() * 60 * 1000));
+    var todayStr = wibNow.toISOString().slice(0, 10);
+    var targetStr = wibTarget.toISOString().slice(0, 10);
+    if (targetStr === todayStr) return 'Hari ini';
+    var yesterday = new Date(wibNow.getTime() - 86400000);
+    if (targetStr === yesterday.toISOString().slice(0, 10)) return 'Kemarin';
+    var d = wibTarget.getDate().toString().padStart(2, '0');
+    var m = (wibTarget.getMonth() + 1).toString().padStart(2, '0');
+    var y = wibTarget.getFullYear();
+    return d + '/' + m + '/' + y;
+}
+
+function stripBase64FromHtml(html) {
+    if (!html) return html;
+    return html.replace(/src\s*=\s*["']data:image\/[^"']+["']/gi, 'src="data:removed"')
+               .replace(/data:image\/[a-z+]+;base64,[A-Za-z0-9+/=]+/gi, '[gambar-dihapus]');
 }
 
 // ===== DAILY USAGE LIMIT SYSTEM =====
@@ -1215,6 +1238,14 @@ function switchSession(sessionId) {
         // Restore messages
         if (session.messages && session.messages.length > 0) {
             session.messages.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
+            // Show note if images were stripped
+            var hasRemovedImages = session.messages.some(function(m) { return m.indexOf('data:removed') !== -1 || m.indexOf('gambar-dihapus') !== -1; });
+            if (hasRemovedImages) {
+                var noteDiv = document.createElement('div');
+                noteDiv.className = 'text-center py-2 fade-in';
+                noteDiv.innerHTML = '<p class="text-xs text-gray-600 italic">Gambar chart tidak disimpan permanen. Hasil analisis tetap tersimpan.</p>';
+                container.appendChild(noteDiv);
+            }
         }
         // Update TradingView if ticker context exists
         if (activeTicker) { updateTradingViewSafe(activeTicker); }
@@ -1264,7 +1295,7 @@ function saveChatHistory() {
         messages.forEach(function(el, idx) {
             if (idx === 0) return; // skip welcome message
             if (history.length >= MAX_MESSAGES_PER_SESSION) return;
-            history.push(el.outerHTML);
+            history.push(stripBase64FromHtml(el.outerHTML));
         });
         session.messages = history;
         session.activeTicker = activeTicker;
@@ -1340,10 +1371,14 @@ function renderSidebarSessions() {
     sessions.forEach(function(session) {
         var isActive = session.id === currentSessionId;
         var tickerBadge = session.activeTicker ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 flex-shrink-0">' + session.activeTicker + '</span>' : '';
+        var relativeDate = getRelativeDate(session.updatedAt || session.createdAt);
+        var msgCount = session.messages ? session.messages.length : 0;
         html += '<div class="session-item' + (isActive ? ' active' : '') + '" onclick="switchSession(\'' + session.id + '\');closeSidebar()">';
         html += '<svg class="w-4 h-4 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>';
-        html += '<span class="session-title">' + escapeHtml(session.title) + '</span>';
+        html += '<div class="flex-1 min-w-0"><span class="session-title block">' + escapeHtml(session.title) + '</span>';
+        html += '<span class="text-[10px] text-gray-600">' + relativeDate + '</span></div>';
         html += tickerBadge;
+        html += '<span class="text-[10px] text-gray-600 flex-shrink-0">' + msgCount + '</span>';
         html += '<button class="session-delete" onclick="deleteSession(\'' + session.id + '\', event)" title="Hapus sesi">';
         html += '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
         html += '</button></div>';
