@@ -1,0 +1,34 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Add the Broker Summary Reader prompt builder and integrate it into the chart analysis pipeline in api/analyze.js. This includes: building a comprehensive buildBrokerSummarySection() function, updating evidence level calculation, integrating broker summary into CHART_SYSTEM_PROMPT and ticker analysis, and updating the chat mode to understand broker summary follow-ups.",
+  "status": "in_progress",
+  "steps": [
+    "Step 1: In api/analyze.js, add a new function buildBrokerSummarySection() that returns the full Broker Summary Reader prompt text. This function should contain all the rules from the task specification: supported periods (Today, 7 Day, This Month, 1 Month, 3 Month), data extraction rules, period interpretation logic, classification logic (accumulation/distribution/rotation/retail/unclear), broker concentration logic, broker average price logic, multi-period comparison logic, output format (Broker Summary Check section), chart integration rules, news/corporate action integration rules, orderbook/market maker integration rules, FCA interaction rules, score adjustment rules (+5 to +10 for strong accumulation, -5 to -15 for strong distribution, etc.), and the mandatory disclaimer wording. Use the same coding style as buildFCASection() and buildMarketMakerSection().",
+    "Step 2: Update the calculateEvidenceLevel() function in api/analyze.js to account for broker summary as supporting evidence. When images + documents are present, broker summary data (detected from document content or additional images) should allow reaching Level 4-6. Current logic: Level 1 = ticker+price, Level 2 = single chart, Level 3 = multi-chart, Level 4 = chart + supporting evidence. Add broker summary awareness: if broker summary text/images are present alongside chart, it counts as supporting evidence for Level 4+.",
+    "Step 3: In the handleChartUpload() function in api/analyze.js, append the broker summary section to chartPrompt by calling buildBrokerSummarySection(). Place it after buildMarketMakerSection() and before buildDocumentContext(). The broker summary section should always be included (like market maker section) because the AI needs instructions on how to handle broker summary images when they appear.",
+    "Step 4: In the buildPrompt() function (ticker mode) in api/analyze.js, also append buildBrokerSummarySection() after the market maker section. This ensures that if a user sends broker summary data as a document alongside ticker+price, the AI knows how to handle it.",
+    "Step 5: Update the INPUT QUALITY LEVEL section in buildPrompt() and in CHART_SYSTEM_PROMPT to reference Level 4-6 with broker summary. Add text explaining that broker summary counts as supporting evidence. Update the evidence level definitions: Level 4 = ticker + price + chart + one supporting evidence (news/catalyst, corporate action, orderbook/bid-offer, broker summary, market maker code). Level 5 = ticker + price + multi-timeframe chart + supporting evidence. Level 6 = ticker + price + multi-timeframe chart + multiple supporting evidence.",
+    "Step 6: Update the chatSystemPrompt in handleChatMode() to include brief broker summary context awareness. Add instructions that if the user asks about broker summary (akumulasi, distribusi, bandar, broker summary, etc.) and context mentions broker summary was already analyzed, the AI should use that context. Add the key disclaimer: 'Broker summary hanya menunjukkan aktivitas melalui broker, bukan identitas bandar sebenarnya.'",
+    "Step 7: Update the isCompleteAnalysis() function to also recognize 'Broker Summary Check' as a valid keyword, adding it to alternativeKeywords array."
+  ],
+  "acceptance_criteria": [
+    "api/analyze.js passes syntax check: node -c api/analyze.js",
+    "buildBrokerSummarySection() function exists and returns a non-empty string containing broker summary rules",
+    "CHART_SYSTEM_PROMPT flow includes broker summary section when chartPrompt is built",
+    "buildPrompt() (ticker mode) includes broker summary section",
+    "calculateEvidenceLevel() accounts for broker summary in its logic",
+    "chatSystemPrompt mentions broker summary context handling",
+    "isCompleteAnalysis() includes 'Broker Summary' in alternativeKeywords",
+    "The function follows the same pattern as buildMarketMakerSection() - returns a string constant with all rules",
+    "No new api/ files are created (stays at 10)",
+    "The broker summary section includes all required disclaimers about not claiming bandar certainty"
+  ],
+  "verification": [
+    "Run: node -c /projects/sandbox/auto-cuan/api/analyze.js",
+    "Run: node -e \"const m = require('/projects/sandbox/auto-cuan/api/analyze.js'); console.log('Module loaded OK')\" to verify the module exports without error",
+    "Run: grep -c 'buildBrokerSummarySection' /projects/sandbox/auto-cuan/api/analyze.js to confirm the function exists and is called"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

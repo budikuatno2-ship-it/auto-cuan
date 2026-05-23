@@ -11,9 +11,19 @@ function calculateEvidenceLevel(req) {
   const imageCount = images ? images.length : (image ? 1 : 0);
   const hasDocuments = documents && documents.length > 0 && documents.some(function(d) { return d.text && d.text.length > 0; });
 
+  // Evidence levels:
+  // Level 1 = ticker + price only
+  // Level 2 = single chart OR docs without chart
+  // Level 3 = multi-chart (2+ images without documents)
+  // Level 4 = ticker + price + chart + one supporting evidence (news/catalyst, corporate action, orderbook/bid-offer, broker summary, market maker code)
+  // Level 5 = ticker + price + multi-timeframe chart + supporting evidence
+  // Level 6 = ticker + price + multi-timeframe chart + multiple supporting evidence
+  // Note: Broker summary data comes through as either image (screenshot) or document evidence.
+  // When images + documents are present, broker summary counts as supporting evidence for Level 4+.
+
   if (!hasImages && !hasDocuments) return 1; // ticker + price only
   if (imageCount === 1 && !hasDocuments) return 2; // single chart
-  if (imageCount >= 2) return hasDocuments ? 4 : 3; // multi-chart
+  if (imageCount >= 2) return hasDocuments ? 4 : 3; // multi-chart + docs = Level 4 (supporting evidence present)
   if (hasDocuments) return 2; // docs without chart still level 2
   return 1;
 }
@@ -234,6 +244,175 @@ function buildMarketMakerSection() {
     'JANGAN PERNAH menghasilkan kepastian dari kode saja.\n';
 }
 
+function buildBrokerSummarySection() {
+  return '\n\n=== BROKER SUMMARY READER ===\n' +
+    '=== PENTING: KAPAN BROKER SUMMARY BERLAKU ===\n' +
+    '- Broker summary HANYA relevan jika user meng-upload screenshot/data broker summary\n' +
+    '- Jika tidak ada data broker summary yang terlihat, JANGAN tampilkan section Broker Summary Check\n' +
+    '- Broker summary adalah SECONDARY EVIDENCE, bukan primary signal\n' +
+    '- Jangan pernah menganggap broker summary sebagai satu-satunya alasan untuk BUY/SELL\n\n' +
+    '=== PERIODE YANG DIDUKUNG ===\n' +
+    '- Today / Hari Ini\n' +
+    '- 7 Day / 7 Hari\n' +
+    '- This Month / Bulan Ini\n' +
+    '- 1 Month / 1 Bulan\n' +
+    '- 3 Month / 3 Bulan\n\n' +
+    '=== APA YANG DIEKSTRAK DARI BROKER SUMMARY ===\n' +
+    '- Top buyer brokers (kode broker, net buy value, lot)\n' +
+    '- Top seller brokers (kode broker, net sell value, lot)\n' +
+    '- Broker concentration (apakah dominan di satu/dua broker atau tersebar)\n' +
+    '- Net foreign/domestic flow jika terlihat\n' +
+    '- Average price per broker jika tersedia\n' +
+    '- Total value traded\n' +
+    '- Perbandingan buyer vs seller dominance\n\n' +
+    '=== INTERPRETASI PERIODE ===\n' +
+    '1. Today / Hari Ini:\n' +
+    '   - Menunjukkan aktivitas intraday, bisa berubah drastis\n' +
+    '   - Berguna untuk scalper/day trader\n' +
+    '   - LIMITASI: satu hari tidak cukup untuk menyimpulkan akumulasi/distribusi\n\n' +
+    '2. 7 Day / 7 Hari:\n' +
+    '   - Menunjukkan aktivitas mingguan\n' +
+    '   - Mulai terlihat pola jika broker yang sama muncul berulang\n' +
+    '   - LIMITASI: masih terlalu pendek untuk konfirmasi kuat\n\n' +
+    '3. This Month / Bulan Ini:\n' +
+    '   - Menunjukkan aktivitas bulan berjalan\n' +
+    '   - Lebih reliable jika sudah lewat pertengahan bulan\n' +
+    '   - LIMITASI: awal bulan data masih sedikit\n\n' +
+    '4. 1 Month / 1 Bulan:\n' +
+    '   - Menunjukkan akumulasi/distribusi satu bulan penuh\n' +
+    '   - Cukup untuk melihat pola broker dominan\n' +
+    '   - Berguna untuk swing trader\n\n' +
+    '5. 3 Month / 3 Bulan:\n' +
+    '   - Paling reliable untuk melihat pola akumulasi/distribusi jangka menengah\n' +
+    '   - Jika broker yang sama konsisten net buy selama 3 bulan, indikasi kuat\n' +
+    '   - Berguna untuk position trader\n\n' +
+    '=== KLASIFIKASI AKTIVITAS BROKER ===\n' +
+    '1. AKUMULASI (Accumulation):\n' +
+    '   - Top buyer didominasi broker institusi/asing (contoh: ML, CS, UB, YU, RX)\n' +
+    '   - Net buy value besar dan konsisten di beberapa periode\n' +
+    '   - Buyer terkonsentrasi di sedikit broker (1-3 broker dominan)\n' +
+    '   - Average price buyer naik secara gradual (willing to buy higher)\n' +
+    '   - Seller tersebar di banyak broker retail\n\n' +
+    '2. DISTRIBUSI (Distribution):\n' +
+    '   - Top seller didominasi broker institusi yang sebelumnya buyer\n' +
+    '   - Net sell value besar dari broker yang sama\n' +
+    '   - Seller terkonsentrasi, buyer tersebar\n' +
+    '   - Average price seller turun (willing to sell lower / urgent selling)\n' +
+    '   - Volume selling meningkat dibanding periode sebelumnya\n\n' +
+    '3. ROTASI / MIXED:\n' +
+    '   - Tidak ada dominasi jelas antara buyer/seller\n' +
+    '   - Broker institusi ada di kedua sisi (buy dan sell)\n' +
+    '   - Bisa jadi pergantian posisi antar institusi\n' +
+    '   - Perlu multi-periode untuk konfirmasi arah\n\n' +
+    '4. RETAIL-DRIVEN:\n' +
+    '   - Top buyer/seller didominasi broker retail (contoh: PD, NI, KK, EP)\n' +
+    '   - Volume tersebar merata di banyak broker\n' +
+    '   - Tidak ada konsentrasi institusi yang jelas\n' +
+    '   - Pergerakan harga mungkin tidak sustainable\n\n' +
+    '5. UNCLEAR / DATA KURANG:\n' +
+    '   - Data broker summary tidak cukup jelas/terbaca\n' +
+    '   - Periode terlalu pendek untuk kesimpulan\n' +
+    '   - Screenshot tidak lengkap atau terpotong\n\n' +
+    '=== LOGIKA KONSENTRASI BROKER ===\n' +
+    '- HIGH CONCENTRATION: Top 1-2 broker menguasai >50% net buy/sell = sinyal lebih kuat\n' +
+    '- MEDIUM CONCENTRATION: Top 3-5 broker menguasai >50% = sinyal medium\n' +
+    '- LOW CONCENTRATION: Tersebar merata = sinyal lemah, kemungkinan retail-driven\n\n' +
+    '=== LOGIKA PERBANDINGAN AVERAGE PRICE BROKER ===\n' +
+    '- Jika avg price buyer > current price = buyer sudah di atas, bisa jadi distribution incoming\n' +
+    '- Jika avg price buyer < current price = buyer masih floating profit, bisa hold/tambah\n' +
+    '- Jika avg price buyer mendekati current price = zona kritis, perhatikan volume\n' +
+    '- Perhatikan apakah avg price buyer naik antar periode (bullish) atau turun (bearish)\n\n' +
+    '=== LOGIKA MULTI-PERIOD COMPARISON ===\n' +
+    '- Jika broker yang sama konsisten net buy di Today + 7D + 1M = akumulasi kuat\n' +
+    '- Jika broker berubah dari net buy (1M) ke net sell (Today/7D) = potensi distribusi baru\n' +
+    '- Jika broker baru muncul sebagai top buyer = perhatikan apakah institusi atau retail\n' +
+    '- Trend consistency lebih penting dari single-period snapshot\n\n' +
+    '=== OUTPUT FORMAT: BROKER SUMMARY CHECK ===\n' +
+    'Jika data broker summary terlihat, WAJIB tampilkan section:\n\n' +
+    '"Broker Summary Check"\n' +
+    '- Periode yang dianalisis: [periode]\n' +
+    '- Klasifikasi: Akumulasi / Distribusi / Rotasi / Retail-Driven / Unclear\n' +
+    '- Konsentrasi: High / Medium / Low\n' +
+    '- Top buyer: [broker codes + net value jika terlihat]\n' +
+    '- Top seller: [broker codes + net value jika terlihat]\n' +
+    '- Net foreign flow: [jika terlihat]\n' +
+    '- Confidence level: Low / Medium / High\n' +
+    '- Catatan/interpretasi singkat\n\n' +
+    '=== INTEGRASI DENGAN ANALISIS CHART ===\n' +
+    '1. Chart Bullish + Akumulasi:\n' +
+    '   - Konfirmasi kuat, confidence naik\n' +
+    '   - Score adjustment: +5 sampai +10\n' +
+    '   - Label: "Broker summary mengkonfirmasi setup bullish"\n\n' +
+    '2. Chart Bearish + Akumulasi:\n' +
+    '   - Divergence, perlu hati-hati\n' +
+    '   - Bisa jadi smart money buying dip, atau data belum update\n' +
+    '   - Score adjustment: +3 sampai +5 (benefit of doubt)\n' +
+    '   - Label: "Ada indikasi akumulasi meski chart masih bearish, perlu validasi"\n\n' +
+    '3. Chart Bullish + Distribusi:\n' +
+    '   - Warning signal, distribution on rally\n' +
+    '   - Score adjustment: -5 sampai -10\n' +
+    '   - Label: "Hati-hati, ada indikasi distribusi meski chart masih bullish"\n\n' +
+    '4. Chart Bearish + Distribusi:\n' +
+    '   - Konfirmasi bearish kuat\n' +
+    '   - Score adjustment: -10 sampai -15\n' +
+    '   - Label: "Broker summary mengkonfirmasi tekanan jual"\n\n' +
+    '5. Mixed / Unclear:\n' +
+    '   - Tidak menambah atau mengurangi confidence signifikan\n' +
+    '   - Score adjustment: 0 sampai +/-3\n' +
+    '   - Label: "Data broker summary belum konklusif"\n\n' +
+    '=== INTEGRASI DENGAN NEWS/CORPORATE ACTION ===\n' +
+    '- Jika ada news positif + akumulasi broker = konfirmasi lebih kuat\n' +
+    '- Jika ada corporate action (rights issue, stock split) = broker summary bisa misleading\n' +
+    '- Jika ada news negatif + distribusi = konfirmasi tekanan jual\n' +
+    '- Selalu cross-check broker summary dengan konteks fundamental\n\n' +
+    '=== INTEGRASI DENGAN ORDERBOOK / MARKET MAKER CODE ===\n' +
+    '- Jika market maker code menunjukkan accumulation + broker summary akumulasi = double confirmation\n' +
+    '- Jika market maker code bertentangan dengan broker summary = prioritaskan data yang lebih konsisten\n' +
+    '- Broker summary = medium-term view, market maker code = short-term view\n' +
+    '- Gunakan keduanya untuk memperkuat atau melemahkan hipotesis\n\n' +
+    '=== FCA INTERACTION RULES ===\n' +
+    '- Jika saham FCA + broker summary menunjukkan akumulasi, TETAP berlaku FCA score cap\n' +
+    '- Broker summary TIDAK bisa override FCA penalty\n' +
+    '- FCA + akumulasi: "Ada indikasi akumulasi, namun karena saham FCA, tetap berlaku batasan skor FCA"\n' +
+    '- FCA + distribusi: double penalty (FCA cap + distribution penalty)\n\n' +
+    '=== SCORE ADJUSTMENT RULES ===\n' +
+    '- Strong accumulation (high concentration, multi-period consistent): +5 sampai +10\n' +
+    '- Medium accumulation (moderate signal): +3 sampai +7\n' +
+    '- Weak/unclear accumulation: +0 sampai +3\n' +
+    '- Weak/unclear distribution: -0 sampai -3\n' +
+    '- Medium distribution: -3 sampai -7\n' +
+    '- Strong distribution (high concentration, multi-period consistent): -5 sampai -15\n' +
+    '- Retail-driven: 0 (no adjustment, low conviction)\n' +
+    '- CATATAN: Score adjustment dari broker summary TIDAK boleh melebihi cap dari evidence level\n\n' +
+    '=== DISCLAIMER WAJIB ===\n' +
+    'Jika broker summary dianalisis, WAJIB tampilkan disclaimer:\n' +
+    '"Broker summary hanya menunjukkan aktivitas melalui broker, bukan identitas bandar sebenarnya. ' +
+    'Gunakan sebagai konfirmasi tambahan, bukan sinyal tunggal."\n\n' +
+    '=== ANTI-HALLUCINATION BROKER SUMMARY ===\n' +
+    '- Jika data broker summary tidak terbaca jelas, tulis:\n' +
+    '  "Sebagian data broker summary belum terbaca jelas."\n' +
+    '- Jangan mengarang kode broker yang tidak terlihat\n' +
+    '- Jangan mengarang angka net buy/sell yang tidak visible\n' +
+    '- Jika hanya sebagian data terlihat, analisis hanya bagian yang terlihat\n\n' +
+    '=== KLAIM TERLARANG (BROKER SUMMARY) ===\n' +
+    'DILARANG menggunakan:\n' +
+    '- "bandar pasti akumulasi"\n' +
+    '- "bandar pasti distribusi"\n' +
+    '- "pasti smart money"\n' +
+    '- "dijamin institusi masuk"\n\n' +
+    'WAJIB menggunakan wording hati-hati:\n' +
+    '- "terindikasi akumulasi"\n' +
+    '- "indikasi distribusi"\n' +
+    '- "perlu validasi"\n' +
+    '- "belum cukup untuk memastikan"\n' +
+    '- "data menunjukkan kemungkinan"\n\n' +
+    '=== REMINDER PENTING ===\n' +
+    'Broker summary hanyalah secondary evidence.\n' +
+    'Tidak bisa digunakan sebagai sinyal tunggal untuk keputusan trading.\n' +
+    'Selalu kombinasikan dengan chart analysis, news, dan risk management.\n' +
+    'JANGAN PERNAH menghasilkan kepastian dari broker summary saja.\n';
+}
+
 function buildDocumentContext(documents) {
   if (!documents || documents.length === 0) return '';
   var validDocs = documents.filter(function(d) { return d.text && d.text.trim().length > 0; });
@@ -393,7 +572,7 @@ module.exports = async function handler(req, res) {
 function isCompleteAnalysis(html) {
   if (!html || html.length < 400) return false;
   const requiredKeywords = ['Data Quality', 'Confidence', 'Invalidation', 'Final Decision', 'Risk Reward', 'Action Plan'];
-  const alternativeKeywords = ['Kualitas Data', 'Keputusan Final', 'Rencana Aksi', 'Skenario', 'Position Sizing', 'Invalidasi', 'Multi-Timeframe', 'Entry Quality', 'Risk Reward'];
+  const alternativeKeywords = ['Kualitas Data', 'Keputusan Final', 'Rencana Aksi', 'Skenario', 'Position Sizing', 'Invalidasi', 'Multi-Timeframe', 'Entry Quality', 'Risk Reward', 'Broker Summary', 'Broker Summary Check'];
   const lowerHtml = html.toLowerCase();
   let foundCount = 0;
   for (const kw of requiredKeywords) {
@@ -568,6 +747,10 @@ Pastikan SETIAP bagian ada dan memiliki konten substantif. Output harus jujur te
 
   // Append structured FCA context block (always, even when not_detected)
   prompt += buildFCAContextBlock(fcaStatus);
+
+  // Append broker summary reader section (always included for ticker mode -
+  // the AI uses these rules if broker summary data appears in documents)
+  prompt += buildBrokerSummarySection();
 
   // Append document context if available
   if (documentContext) {
@@ -1113,6 +1296,10 @@ async function handleChartUpload(req, res, imageData, mimeType) {
   // to only apply these rules when orderbook/running trade data is visible in the image)
   chartPrompt += buildMarketMakerSection();
 
+  // Add broker summary reader section (always included - the AI is instructed
+  // to only apply these rules when broker summary data is visible in the image/document)
+  chartPrompt += buildBrokerSummarySection();
+
   // Add document context if available
   var docContext = buildDocumentContext(documents);
   if (docContext) {
@@ -1224,12 +1411,19 @@ ATURAN ANALISIS PRESISI:
   3. Chart Daily (1D) - screenshot
   4. Chart 4 Jam (4H) - screenshot
   5. News/katalis terbaru (jika ada)
-  6. Average price kamu (jika sudah hold)
+  6. Broker summary (jika ada) - screenshot dari app broker
+  7. Average price kamu (jika sudah hold)
 
   Semakin lengkap data, semakin tinggi presisi analisis (skor bisa sampai 85+). Tanpa chart, skor maksimal hanya 55."
 
 - Catatan tentang TradingView: "Chart TradingView hanya visual dan bisa delay. Analisis presisi memakai chart yang Anda upload dan harga yang Anda input."
 - Jika user belum upload chart, ingatkan bahwa untuk presisi tertinggi mereka perlu upload chart 1W/1D/4H.
+
+ATURAN BROKER SUMMARY:
+- Jika user bertanya tentang broker summary, akumulasi, distribusi, bandar, atau aktivitas broker, dan konteks menunjukkan broker summary sudah dianalisis sebelumnya, gunakan konteks tersebut.
+- Broker summary hanya menunjukkan aktivitas melalui broker, bukan identitas bandar sebenarnya.
+- Jangan pernah klaim kepastian dari broker summary. Gunakan wording: "terindikasi", "indikasi", "perlu validasi", "belum cukup untuk memastikan".
+- Jika user bertanya tentang akumulasi/distribusi tanpa konteks broker summary, jelaskan bahwa mereka perlu upload screenshot broker summary untuk analisis yang lebih akurat.
 
 FORMAT OUTPUT:
 - HTML sederhana: <p>, <strong>, <ul>, <li> saja.
