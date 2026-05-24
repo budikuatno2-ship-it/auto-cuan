@@ -1,3 +1,10 @@
+// === NEW MODULES ===
+const { routeIntent, INTENT_TYPES } = require('./lib/intent-router');
+const { getResponseMode, RESPONSE_MODES } = require('./lib/response-mode');
+const { sanitizeOutput, generateNewsFollowUp } = require('./lib/output-sanitizer');
+const { buildConversationalPrompt, buildChartConversationalPrompt, buildFollowUpPrompt } = require('./lib/prompt-builder');
+const { hasUsableContext, hasChartInContext, hasNewsInContext } = require('./lib/analysis-context-cache');
+
 // === HELPER FUNCTIONS ===
 
 var VALID_FCA_STATUSES = ['confirmed_by_mapping', 'confirmed_by_user', 'confirmed_by_uploaded_evidence', 'unconfirmed', 'not_detected'];
@@ -479,18 +486,53 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Terlalu banyak gambar.' });
     }
 
-    // === CHAT MODE ===
+    // === CHAT MODE (with Intent Router) ===
     if (source === 'chat_mode' && chatMessage) {
       const chatContext = req.body.context || null;
-      return await handleChatMode(req, res, chatMessage, chatContext);
+      const hasPreviousContext = hasUsableContext(chatContext);
+
+      // Route intent
+      const intentResult = routeIntent(chatMessage, {
+        hasImages: false,
+        imageCount: 0,
+        hasDocuments: false,
+        hasPreviousContext: hasPreviousContext,
+        ticker: chatContext && chatContext.ticker ? chatContext.ticker : null,
+        currentPrice: chatContext && chatContext.currentPrice ? chatContext.currentPrice : null
+      });
+
+      // Check if this is a full analysis request - use legacy handler
+      if (intentResult.intent === INTENT_TYPES.FULL_ANALYSIS && hasPreviousContext && chatContext.ticker) {
+        // Redirect to ticker mode with full analysis flag
+        req.body.ticker = chatContext.ticker;
+        req.body.currentPrice = chatContext.currentPrice || 0;
+        req.body.fullAnalysisRequested = true;
+        // Fall through to ticker mode below
+      } else {
+        return await handleChatModeV2(req, res, chatMessage, chatContext, intentResult);
+      }
     }
 
-    // === CHART UPLOAD MODE ===
+    // === CHART UPLOAD MODE (with Intent Router) ===
     if (source === 'chart_upload' && (image || (images && images.length > 0))) {
-      return await handleChartUpload(req, res, image, mimeType);
+      const chartContext = req.body.context || null;
+      const chartMsg = req.body.chatMessage || '';
+
+      // Determine if user wants full analysis
+      const chartIntentResult = routeIntent(chartMsg, {
+        hasImages: true,
+        imageCount: images ? images.length : (image ? 1 : 0),
+        hasDocuments: documents && documents.length > 0,
+        hasPreviousContext: hasUsableContext(chartContext),
+        ticker: ticker || (chartContext && chartContext.ticker) || null,
+        currentPrice: currentPrice || (chartContext && chartContext.currentPrice) || null
+      });
+
+      const isFullAnalysis = chartIntentResult.intent === INTENT_TYPES.FULL_ANALYSIS || req.body.fullAnalysisRequested;
+      return await handleChartUpload(req, res, image, mimeType, isFullAnalysis);
     }
 
-    // === TICKER MODE ===
+    // === TICKER MODE (Conversational by default) ===
     if (!ticker || !currentPrice) {
       return res.status(400).json({ error: 'Ticker dan harga sekarang wajib diisi.' });
     }
@@ -500,6 +542,7 @@ module.exports = async function handler(req, res) {
     const level = calculateEvidenceLevel(req);
     const fca = validateFcaStatus(fcaStatus);
     const docContext = buildDocumentContext(documents);
+    const isFullAnalysis = req.body.fullAnalysisRequested === true;
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     if (!GEMINI_API_KEY) {
@@ -510,16 +553,32 @@ module.exports = async function handler(req, res) {
     const GEMINI_MODEL = 'gemini-2.5-flash';
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
-    const systemPrompt = buildPrompt(tickerUpper, price, { fcaStatus: fca, evidenceLevel: level, documentContext: docContext, context: req.body.context || null });
+    // Use conversational prompt by default, structured only for full analysis
+    let systemPrompt;
+    let genConfig;
+
+    if (isFullAnalysis) {
+      // Full analysis: use original structured 7-section prompt
+      systemPrompt = buildPrompt(tickerUpper, price, { fcaStatus: fca, evidenceLevel: level, documentContext: docContext, context: req.body.context || null });
+      genConfig = { temperature: 0.3, topP: 0.9, topK: 30, maxOutputTokens: 8192 };
+    } else {
+      // Conversational: natural two-way chat style
+      systemPrompt = buildConversationalPrompt({
+        intent: INTENT_TYPES.TICKER_PRICE_BASIC,
+        responseMode: RESPONSE_MODES.CONVERSATIONAL,
+        ticker: tickerUpper,
+        currentPrice: price,
+        fcaStatus: fca,
+        context: req.body.context || null,
+        evidenceLevel: level
+      });
+      if (docContext) systemPrompt += docContext;
+      genConfig = { temperature: 0.5, topP: 0.9, topK: 40, maxOutputTokens: 2048 };
+    }
 
     const payload = {
       contents: [{ parts: [{ text: systemPrompt }] }],
-      generationConfig: {
-        temperature: 0.3,
-        topP: 0.9,
-        topK: 30,
-        maxOutputTokens: 8192
-      }
+      generationConfig: genConfig
     };
 
     const response = await fetch(GEMINI_URL, {
@@ -542,13 +601,29 @@ module.exports = async function handler(req, res) {
         let html = parts[0].text;
         html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
 
-        if (!isCompleteAnalysis(html)) {
+        // Apply output sanitizer
+        html = sanitizeOutput(html, {
+          fcaStatus: fca,
+          responseMode: isFullAnalysis ? 'full_analysis' : 'conversational',
+          hasChart: false,
+          hasNews: hasNewsInContext(req.body.context),
+          hasBrokerSummary: false
+        });
+
+        // For full analysis, validate completeness
+        if (isFullAnalysis && !isCompleteAnalysis(html)) {
+          const fallbackHtml = generateFallback(tickerUpper, price);
+          return res.status(200).json({ html: fallbackHtml });
+        }
+
+        // For conversational, accept shorter responses
+        if (!isFullAnalysis && (!html || html.trim().length < 50)) {
           const fallbackHtml = generateFallback(tickerUpper, price);
           return res.status(200).json({ html: fallbackHtml });
         }
 
         logAnalysis(tickerUpper, price);
-        return res.status(200).json({ html });
+        return res.status(200).json({ html, intent: 'ticker_price_basic', responseMode: isFullAnalysis ? 'full_analysis' : 'conversational' });
       }
     }
 
@@ -1058,7 +1133,7 @@ Jika ada KONTEKS SESI SEBELUMNYA, gunakan langsung tanpa menanyakan ulang data y
 
 PENTING: Semua angka HARUS dari chart yang terlihat. Jangan mengarang angka.`;
 
-async function handleChartUpload(req, res, imageData, mimeType) {
+async function handleChartUpload(req, res, imageData, mimeType, isFullAnalysis) {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   const { timeframe, ticker, currentPrice, images, documents, fcaStatus, evidenceLevel } = req.body || {};
 
@@ -1086,7 +1161,31 @@ async function handleChartUpload(req, res, imageData, mimeType) {
   else scoreCap = 70;
 
   // Build enhanced prompt with additional context
-  var chartPrompt = CHART_SYSTEM_PROMPT;
+  // Use conversational prompt by default, structured report only when full analysis requested
+  var chartPrompt;
+  if (!isFullAnalysis) {
+    // Conversational chart analysis (default)
+    var timeframesList = [];
+    if (hasMultiImages) {
+      images.forEach(function(img) {
+        var tf = img.timeframe || null;
+        if (tf) timeframesList.push(tf);
+      });
+    }
+    chartPrompt = buildChartConversationalPrompt({
+      ticker: safeTicker,
+      currentPrice: safePrice,
+      fcaStatus: fca,
+      imageCount: imageCount,
+      timeframes: timeframesList,
+      context: req.body.context || null,
+      evidenceLevel: level,
+      hasDocuments: hasDocuments
+    });
+  } else {
+    // Full analysis: original structured prompt
+    chartPrompt = CHART_SYSTEM_PROMPT;
+  }
 
   // Add evidence level awareness
   var levelLabel;
@@ -1206,10 +1305,10 @@ async function handleChartUpload(req, res, imageData, mimeType) {
   const payload = {
     contents: [{ parts: parts }],
     generationConfig: {
-      temperature: 0.35,
+      temperature: isFullAnalysis ? 0.35 : 0.4,
       topP: 0.95,
       topK: 40,
-      maxOutputTokens: 8192
+      maxOutputTokens: isFullAnalysis ? 8192 : 4096
     }
   };
 
@@ -1232,9 +1331,25 @@ async function handleChartUpload(req, res, imageData, mimeType) {
       let html = cparts[0].text;
       html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
 
+      // Apply output sanitizer
+      const chartFca = validateFcaStatus(fcaStatus);
+      html = sanitizeOutput(html, {
+        fcaStatus: chartFca,
+        responseMode: isFullAnalysis ? 'full_analysis' : 'compact_analysis',
+        hasChart: true,
+        hasNews: hasNewsInContext(req.body.context),
+        hasBrokerSummary: hasDocuments
+      });
+
+      // For non-full-analysis, accept shorter but valid responses
+      if (!isFullAnalysis && html && html.trim().length >= 100) {
+        logAnalysis(safeTicker || 'CHART_UPLOAD', 0);
+        return res.status(200).json({ html, intent: 'chart_analysis', responseMode: isFullAnalysis ? 'full_analysis' : 'compact_analysis' });
+      }
+
       if (isCompleteAnalysis(html)) {
         logAnalysis(safeTicker || 'CHART_UPLOAD', 0);
-        return res.status(200).json({ html });
+        return res.status(200).json({ html, intent: 'chart_analysis', responseMode: isFullAnalysis ? 'full_analysis' : 'compact_analysis' });
       }
     }
   }
@@ -1381,6 +1496,108 @@ FORMAT OUTPUT:
     return res.status(200).json({ html: '<p class="text-sm text-gray-400">Maaf, saya tidak bisa menjawab pertanyaan itu saat ini. Coba tanya dengan cara lain.</p>' });
   } catch (e) {
     console.error('chat mode error:', e);
+    return res.status(200).json({ html: '<p class="text-sm text-red-400">Terjadi kesalahan. Coba lagi.</p>' });
+  }
+}
+
+
+
+// === CHAT MODE V2 HANDLER (Intent-Routed, Conversational) ===
+async function handleChatModeV2(req, res, message, context, intentResult) {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+  if (!GEMINI_API_KEY) {
+    return res.status(200).json({ html: '<p class="text-sm text-yellow-400">Gemini API belum dikonfigurasi. Hubungi admin.</p>' });
+  }
+
+  const GEMINI_MODEL = 'gemini-2.5-flash';
+  const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+  const intent = intentResult.intent;
+  const responseMode = getResponseMode(intent, { hasPreviousContext: hasUsableContext(context) });
+  const fcaStatus = (context && context.fcaStatus) || 'not_detected';
+
+  // Build prompt based on intent
+  let systemPrompt;
+
+  if (intent === INTENT_TYPES.FOLLOW_UP) {
+    systemPrompt = buildFollowUpPrompt({ message, context, fcaStatus });
+  } else {
+    // Use conversational prompt for all other intents in chat mode
+    systemPrompt = buildConversationalPrompt({
+      intent: intent,
+      responseMode: responseMode.mode,
+      ticker: (context && context.ticker) || null,
+      currentPrice: (context && context.currentPrice) || null,
+      fcaStatus: fcaStatus,
+      context: context,
+      evidenceLevel: 1
+    });
+  }
+
+  const payload = {
+    contents: [
+      { role: 'user', parts: [{ text: systemPrompt }] },
+      { role: 'model', parts: [{ text: 'Siap, saya jawab langsung dan natural.' }] },
+      { role: 'user', parts: [{ text: message }] }
+    ],
+    generationConfig: {
+      temperature: responseMode.temperature,
+      topP: 0.9,
+      topK: 40,
+      maxOutputTokens: responseMode.maxTokens
+    }
+  };
+
+  try {
+    const response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      return res.status(200).json({ html: '<p class="text-sm text-red-400">Maaf, AI sedang tidak tersedia. Coba lagi nanti.</p>' });
+    }
+
+    const result = await response.json();
+    const candidates = result.candidates || [];
+
+    if (candidates.length > 0) {
+      const parts = candidates[0].content?.parts || [];
+      if (parts.length > 0 && parts[0].text) {
+        let html = parts[0].text;
+        html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+
+        // Apply output sanitizer
+        html = sanitizeOutput(html, {
+          fcaStatus: fcaStatus,
+          responseMode: responseMode.mode,
+          hasChart: hasChartInContext(context),
+          hasNews: hasNewsInContext(context),
+          hasBrokerSummary: context && context.brokerSummaryProvided
+        });
+
+        // Append news follow-up if needed (only for stock-related intents)
+        if (intent !== INTENT_TYPES.NORMAL_CHAT && intent !== INTENT_TYPES.UNKNOWN) {
+          const followUp = generateNewsFollowUp({
+            hasNews: hasNewsInContext(context),
+            hasCorporateAction: context && context.corporateActionSummary,
+            hasChart: hasChartInContext(context),
+            hasTicker: context && context.ticker
+          });
+          if (followUp && !html.includes('news') && !html.includes('corporate action')) {
+            html += followUp;
+          }
+        }
+
+        return res.status(200).json({ html, intent: intent, responseMode: responseMode.mode });
+      }
+    }
+
+    return res.status(200).json({ html: '<p class="text-sm text-gray-400">Maaf, saya tidak bisa menjawab saat ini. Coba tanya dengan cara lain.</p>' });
+  } catch (e) {
+    console.error('chat mode v2 error:', e);
     return res.status(200).json({ html: '<p class="text-sm text-red-400">Terjadi kesalahan. Coba lagi.</p>' });
   }
 }

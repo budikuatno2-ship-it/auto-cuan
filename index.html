@@ -62,6 +62,10 @@
         @media (max-width: 640px) { .copy-btn { opacity: 0.7; } }
         .chat-container > .border-t { background: linear-gradient(to bottom, rgba(16,185,129,0.02), transparent 20px); }
 
+        /* ===== SUGGESTION CHIPS ===== */
+        .suggestion-chip { transition: all 0.15s ease-out; }
+        .suggestion-chip:hover { transform: translateY(-1px); }
+
         /* ===== SIDEBAR STYLES ===== */
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 200; transition: opacity 0.2s ease; }
         .sidebar-overlay.active { display: block; }
@@ -1063,16 +1067,26 @@ function hideEmptySections(container) {
         var heading = section.querySelector('h3, h4');
         if (!heading) return;
         var headingText = heading.textContent.toLowerCase().trim();
-        // Only hide known optional sections that are empty
-        var isOptionalSection = headingText.indexOf('final note') !== -1 || headingText.indexOf('catatan akhir') !== -1 || headingText.indexOf('peringatan') !== -1 || headingText.indexOf('fca') !== -1 || headingText.indexOf('warning') !== -1;
+        // Hide known optional sections that are empty
+        var isOptionalSection = headingText.indexOf('final note') !== -1 || headingText.indexOf('catatan akhir') !== -1 || headingText.indexOf('peringatan') !== -1 || headingText.indexOf('fca') !== -1 || headingText.indexOf('warning') !== -1 || headingText.indexOf('disclaimer') !== -1 || headingText.indexOf('broker summary check') !== -1 || headingText.indexOf('news') !== -1 || headingText.indexOf('orderbook') !== -1;
         if (!isOptionalSection) return;
         // Check for meaningful content (excluding the heading itself)
         var clone = section.cloneNode(true);
         var headingClone = clone.querySelector('h3, h4');
         if (headingClone) headingClone.remove();
         var remainingText = clone.textContent.trim();
-        if (remainingText.length < 10) section.style.display = 'none';
+        if (remainingText.length < 15) section.style.display = 'none';
     });
+    // Also hide FCA sections entirely if FCA not confirmed (double safety)
+    var fcaConfirmed = latestAnalysisContext.fcaStatus === 'confirmed_by_mapping' || latestAnalysisContext.fcaStatus === 'confirmed_by_user' || latestAnalysisContext.fcaStatus === 'confirmed_by_uploaded_evidence';
+    if (!fcaConfirmed) {
+        sections.forEach(function(section) {
+            var text = section.textContent || '';
+            if (/FCA|Full Call Auction|papan pemantauan khusus/i.test(text)) {
+                section.style.display = 'none';
+            }
+        });
+    }
 }
 
 function buildContextForApi() {
@@ -1433,8 +1447,11 @@ async function handleAnalysis(msg, intent) {
     updateTradingViewSafe(ticker);
 
     try {
+        var company = getCompanyName(ticker);
+        var enrichedMsg = (msg || ticker + ' ' + price) + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
+        var fcaSt = detectFCAStatus(msg, ticker);
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker: ticker, currentPrice: price, fcaStatus: detectFCAStatus(msg, ticker), evidenceLevel: 1, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
+            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
         if (!response.ok) throw new Error(data.error || 'Server error.');
@@ -1559,6 +1576,100 @@ async function handleChartUpload(msg) {
 
 
 // ===== CHAT UI HELPERS =====
+
+// === Client-side FCA Sanitizer ===
+function clientSanitizeFCA(html) {
+    if (!html) return html;
+    // Only sanitize if FCA is NOT confirmed
+    var fcaConfirmed = latestAnalysisContext.fcaStatus === 'confirmed_by_mapping' ||
+                       latestAnalysisContext.fcaStatus === 'confirmed_by_user' ||
+                       latestAnalysisContext.fcaStatus === 'confirmed_by_uploaded_evidence';
+    if (fcaConfirmed) return html;
+
+    // Remove FCA-related content
+    var output = html;
+    // Remove div sections about FCA
+    output = output.replace(/<div[^>]*>[\s\S]*?<\/div>/gi, function(match) {
+        if (/FCA|Full Call Auction|papan pemantauan khusus|Position Sizing FCA|PERINGATAN FCA/i.test(match)) {
+            var text = match.replace(/<[^>]*>/g, '');
+            if (text.length < 800 || /fca\s*(check|risk|warning|status)/i.test(text)) return '';
+        }
+        return match;
+    });
+    // Remove paragraphs/list items mentioning FCA
+    output = output.replace(/<(?:p|li|span)[^>]*>[^<]*(?:FCA|Full Call Auction|papan pemantauan khusus|saham FCA|risiko FCA|Position Sizing FCA|FCA score cap|PERINGATAN FCA)[^<]*<\/(?:p|li|span)>/gi, '');
+    // Remove inline FCA status text
+    output = output.replace(/Status\s+FCA\s*:\s*(?:not_detected|Tidak terdeteksi)[^<]*/gi, '');
+    return output;
+}
+
+// === Suggestion Chips ===
+function buildSuggestionChips() {
+    if (!activeTicker) return '';
+    var chips = [];
+
+    // Determine which chips to show based on context
+    if (!latestAnalysisContext.chartSummary && !latestAnalysisContext.detectedTimeframes.length) {
+        // No chart yet - don't show "Analisis lengkap" without chart
+        chips.push({ label: 'Cek entry', msg: 'entry di mana?' });
+    } else {
+        chips.push({ label: 'Analisis lengkap', msg: 'analisis lengkap' });
+        chips.push({ label: 'Cek entry', msg: 'entry di mana?' });
+    }
+    if (!latestAnalysisContext.newsProvided) {
+        chips.push({ label: 'Update dengan news', msg: 'ada news terbaru gak?' });
+    }
+    if (!latestAnalysisContext.brokerSummaryProvided) {
+        chips.push({ label: 'Cek broker summary', msg: 'cek broker summary dong' });
+    }
+    if (!latestAnalysisContext.orderbookProvided) {
+        chips.push({ label: 'Cek orderbook', msg: 'cek orderbook' });
+    }
+
+    if (chips.length === 0) return '';
+
+    var html = '<div class="flex flex-wrap gap-1.5 mt-3">';
+    chips.forEach(function(chip) {
+        html += '<button onclick="handleSuggestionChip(\'' + chip.msg.replace(/'/g, "\\'") + '\')" class="px-2.5 py-1 rounded-lg text-[11px] font-medium text-gray-400 bg-dark-600/50 border border-[#242d3d] hover:border-emerald-500/30 hover:text-emerald-400 hover:bg-emerald-500/5 transition-all">' + chip.label + '</button>';
+    });
+    html += '</div>';
+    return html;
+}
+
+function handleSuggestionChip(msg) {
+    var input = document.getElementById('chatInput');
+    input.value = msg;
+    handleSend();
+}
+
+// === Evidence Badges ===
+function buildEvidenceBadges() {
+    var badges = [];
+    if (!activeTicker && !latestAnalysisContext.ticker) return '';
+
+    if (latestAnalysisContext.chartSummary || (latestAnalysisContext.detectedTimeframes && latestAnalysisContext.detectedTimeframes.length > 0)) {
+        badges.push('Chart');
+        if (latestAnalysisContext.detectedTimeframes) {
+            latestAnalysisContext.detectedTimeframes.forEach(function(tf) {
+                if (badges.indexOf(tf) === -1) badges.push(tf);
+            });
+        }
+    }
+    if (latestAnalysisContext.newsProvided || latestAnalysisContext.newsSummary) badges.push('News');
+    if (latestAnalysisContext.brokerSummaryProvided || latestAnalysisContext.brokerSummaryBias) badges.push('Broker');
+    if (latestAnalysisContext.orderbookProvided || latestAnalysisContext.orderbookSummary) badges.push('Orderbook');
+    if (latestAnalysisContext.marketMakerCodeSummary) badges.push('MM Code');
+
+    if (badges.length === 0) return '';
+
+    var html = '<div class="flex flex-wrap gap-1 mb-2">';
+    badges.forEach(function(badge) {
+        html += '<span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20">' + badge + '</span>';
+    });
+    html += '</div>';
+    return html;
+}
+
 function escapeHtml(text) { var div = document.createElement('div'); div.appendChild(document.createTextNode(text)); return div.innerHTML; }
 function clearInput() { var el = document.getElementById('chatInput'); el.value = ''; el.style.height = 'auto'; }
 function disableSend() { document.getElementById('sendBtn').disabled = true; }
@@ -1576,18 +1687,43 @@ function addLoadingBubble() {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up'; div.id = 'loadingBubble';
-    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3"><p class="text-sm text-emerald-400 animate-pulse-glow">Menganalisis...</p></div>';
+    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3"><p class="text-sm text-emerald-400 animate-pulse-glow loading-stage-text">Membaca data...</p></div>';
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+    // Staged loading messages
+    var stages = ['Menyusun analisis...', 'Menyiapkan trading plan...'];
+    var stageIdx = 0;
+    div._stageTimer = setInterval(function() {
+        if (stageIdx < stages.length) {
+            var textEl = div.querySelector('.loading-stage-text');
+            if (textEl) textEl.textContent = stages[stageIdx];
+            stageIdx++;
+        } else {
+            clearInterval(div._stageTimer);
+        }
+    }, 2500);
 }
-function removeLoadingBubble() { var el = document.getElementById('loadingBubble'); if (el) el.remove(); }
+function removeLoadingBubble() { var el = document.getElementById('loadingBubble'); if (el) { if (el._stageTimer) clearInterval(el._stageTimer); el.remove(); } }
 function addAIBubble(html, isStructured) {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up';
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
     var copyBtnHtml = '<div class="mt-2 flex items-center gap-2 justify-end"><button onclick="regenerateLastAnswer(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">Regenerate</button><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
-    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] overflow-x-auto"><div class="ai-content">' + html + '</div>' + copyBtnHtml + '</div>';
+
+    // Client-side FCA sanitizer
+    var sanitizedHtml = clientSanitizeFCA(html);
+
+    // Build suggestion chips if this is a stock analysis response
+    var chipsHtml = '';
+    if (isStructured || (activeTicker && sanitizedHtml.length > 200)) {
+        chipsHtml = buildSuggestionChips();
+    }
+
+    // Build evidence badges
+    var badgesHtml = buildEvidenceBadges();
+
+    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] overflow-x-auto">' + badgesHtml + '<div class="ai-content">' + sanitizedHtml + '</div>' + chipsHtml + copyBtnHtml + '</div>';
     container.appendChild(div);
     // Hide empty sections
     var contentDiv = div.querySelector('.ai-content');
