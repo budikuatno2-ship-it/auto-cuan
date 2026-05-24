@@ -1,6 +1,6 @@
 {
-  "buildCommand": "echo done",
-  "outputDirectory": "public",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/review", "destination": "/index.html" }
   ]
