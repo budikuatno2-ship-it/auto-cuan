@@ -29,6 +29,12 @@ const REPORT_HEADERS = [
   /\d+\.\s*ACTION PLAN/gi,
   /\d+\.\s*WHAT COULD GO WRONG/gi,
   /INPUT QUALITY\s*&?\s*EVIDENCE SUMMARY/gi,
+  /\d+\.\s*DATA YANG TERBACA/gi,
+  /\d+\.\s*BIAS\s*\d/gi,
+  /\d+\.\s*LEVEL PENTING/gi,
+  /\d+\.\s*ENTRY\s*\/?\s*SL\s*\/?\s*TP/gi,
+  /\d+\.\s*RISIKO UTAMA/gi,
+  /\d+\.\s*KESIMPULAN\s*CEPAT/gi,
 ];
 
 /**
@@ -80,27 +86,35 @@ function isFCAConfirmed(fcaStatus) {
 function removeFCAContent(html) {
   let output = html;
 
-  // Remove entire div sections containing FCA
-  // Match divs that contain FCA-related terms
+  // Remove entire div sections containing FCA terms
   output = output.replace(/<div[^>]*>[\s\S]*?<\/div>/gi, function(match) {
-    for (const term of FCA_TERMS) {
-      if (match.includes(term)) {
-        // Only remove if it's an FCA-specific section (not just a passing mention in a larger section)
-        const textContent = match.replace(/<[^>]*>/g, '');
-        if (textContent.length < 1000 || /fca\s*(check|risk|warning|status)/i.test(textContent)) {
-          return '';
-        }
+    const textContent = match.replace(/<[^>]*>/g, '');
+    // Check if this div contains any FCA-related term
+    if (/FCA|Full\s*Call\s*Auction|papan\s*pemantauan\s*khusus/i.test(textContent)) {
+      // Remove the div if it's an FCA-specific section (< 2000 chars or has FCA keywords in heading-like content)
+      if (textContent.length < 2000 || /fca\s*(check|risk|warning|status|score|cap)/i.test(textContent)) {
+        return '';
       }
+      // For larger divs, strip FCA sentences but keep the rest
+      return match.replace(/<(?:p|li|span|strong|h[1-6]|div)[^>]*>[^<]*(?:FCA|Full\s*Call\s*Auction|papan\s*pemantauan\s*khusus|saham\s*FCA|risiko\s*FCA|Position\s*Sizing\s*FCA|FCA\s*score\s*cap|PERINGATAN\s*FCA|FCA\s*Check|FCA\s*Risk|status\s*FCA|Status\s*FCA)[^<]*<\/(?:p|li|span|strong|h[1-6]|div)>/gi, '');
     }
     return match;
   });
 
-  // Remove individual paragraphs/list items mentioning FCA
-  output = output.replace(/<(?:p|li|span|h[1-6])[^>]*>[^<]*(?:FCA|Full Call Auction|papan pemantauan khusus|saham FCA|risiko FCA|Position Sizing FCA|FCA score cap|PERINGATAN FCA)[^<]*<\/(?:p|li|span|h[1-6])>/gi, '');
+  // Remove individual paragraphs/list items mentioning FCA (catch-all pass)
+  output = output.replace(/<(?:p|li|span|strong|h[1-6])[^>]*>[^<]*(?:FCA|Full\s*Call\s*Auction|papan\s*pemantauan\s*khusus|saham\s*FCA|risiko\s*FCA|Position\s*Sizing\s*FCA|FCA\s*score\s*cap|PERINGATAN\s*FCA|FCA\s*Check|FCA\s*Risk)[^<]*<\/(?:p|li|span|strong|h[1-6])>/gi, '');
 
   // Remove remaining inline FCA text that might leak through
-  output = output.replace(/(?:Status\s+FCA\s*:\s*(?:not_detected|Tidak terdeteksi)[^<]*)/gi, '');
+  output = output.replace(/(?:Status\s+FCA\s*:\s*(?:not_detected|Tidak terdeteksi|Tidak ada)[^<.]*\.?)/gi, '');
   output = output.replace(/(?:FCA\s*\/\s*Full\s*Call\s*Auction\s*Risk\s*Check)/gi, '');
+  
+  // Final safety pass: remove any remaining standalone FCA mentions in sentences
+  output = output.replace(/[^<>]*\b(?:FCA|Full\s*Call\s*Auction|papan\s*pemantauan\s*khusus)\b[^<>]*/gi, function(match) {
+    // Only remove if it's inside an HTML tag content (not an attribute)
+    // This prevents removing text that's inside larger important content
+    if (match.trim().length < 200) return '';
+    return match;
+  });
 
   return output;
 }
