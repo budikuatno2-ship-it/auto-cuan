@@ -1,9 +1,32 @@
-// === NEW MODULES ===
-const { routeIntent, INTENT_TYPES } = require('./lib/intent-router');
-const { getResponseMode, RESPONSE_MODES } = require('./lib/response-mode');
-const { sanitizeOutput, generateNewsFollowUp } = require('./lib/output-sanitizer');
-const { buildConversationalPrompt, buildChartConversationalPrompt, buildFollowUpPrompt } = require('./lib/prompt-builder');
-const { hasUsableContext, hasChartInContext, hasNewsInContext } = require('./lib/analysis-context-cache');
+// === NEW MODULES (safe-loaded) ===
+let routeIntent, INTENT_TYPES, getResponseMode, RESPONSE_MODES;
+let sanitizeOutput, generateNewsFollowUp;
+let buildConversationalPrompt, buildChartConversationalPrompt, buildFollowUpPrompt;
+let hasUsableContext, hasChartInContext, hasNewsInContext;
+let LIB_LOAD_ERROR = null;
+
+try {
+  ({ routeIntent, INTENT_TYPES } = require('./lib/intent-router'));
+  ({ getResponseMode, RESPONSE_MODES } = require('./lib/response-mode'));
+  ({ sanitizeOutput, generateNewsFollowUp } = require('./lib/output-sanitizer'));
+  ({ buildConversationalPrompt, buildChartConversationalPrompt, buildFollowUpPrompt } = require('./lib/prompt-builder'));
+  ({ hasUsableContext, hasChartInContext, hasNewsInContext } = require('./lib/analysis-context-cache'));
+} catch (e) {
+  LIB_LOAD_ERROR = e;
+  // Provide safe fallbacks so the module still exports a handler
+  routeIntent = () => ({ intent: 'unknown', confidence: 0, metadata: {} });
+  INTENT_TYPES = { NORMAL_CHAT: 'normal_chat', FULL_ANALYSIS: 'full_analysis_request', CHART_ANALYSIS: 'chart_analysis', MULTI_TIMEFRAME_CHART: 'multi_timeframe_chart_analysis', FOLLOW_UP: 'follow_up_question', TICKER_PRICE_BASIC: 'ticker_price_basic', TICKER_ONLY: 'ticker_only', UNKNOWN: 'unknown' };
+  getResponseMode = () => ({ mode: 'conversational', maxTokens: 2048, temperature: 0.5, outputStyle: 'conversational_short' });
+  RESPONSE_MODES = { CONVERSATIONAL: 'conversational', FULL_ANALYSIS: 'full_analysis' };
+  sanitizeOutput = (html) => html || '';
+  generateNewsFollowUp = () => null;
+  buildConversationalPrompt = () => '';
+  buildChartConversationalPrompt = () => '';
+  buildFollowUpPrompt = () => '';
+  hasUsableContext = () => false;
+  hasChartInContext = () => false;
+  hasNewsInContext = () => false;
+}
 
 // === HELPER FUNCTIONS ===
 
@@ -471,6 +494,12 @@ var FORBIDDEN_WORDS_PROMPT = '\n\n=== KATA-KATA TERLARANG (JANGAN GUNAKAN) ===\n
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // If lib modules failed to load, return error immediately
+  if (LIB_LOAD_ERROR) {
+    console.error('analyze.js lib load error:', LIB_LOAD_ERROR);
+    return res.status(500).json({ error: 'Server initialization error. Please try again later.' });
   }
 
   try {
