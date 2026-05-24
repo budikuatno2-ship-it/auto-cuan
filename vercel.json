@@ -1,7 +1,7 @@
 {
   "framework": null,
   "buildCommand": "echo done",
-  "outputDirectory": ".",
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/review", "destination": "/index.html" }
   ],
