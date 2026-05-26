@@ -41,10 +41,8 @@ module.exports = async function handler(req, res) {
         });
       }
       if (evidenceType === 'broker_summary') {
-        return res.status(200).json({
-          html: '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">broker summary</strong>. Analisis broker detail akan dipulihkan bertahap.</p>',
-          evidenceType: evidenceType
-        });
+        var bsHtml = await handleBrokerSummary(GEMINI_API_KEY, images, image, body.mimeType, chatMessage, body.context);
+        return res.status(200).json({ html: bsHtml, evidenceType: evidenceType, intent: 'broker_summary_analysis' });
       }
       if (evidenceType === 'market_maker_code_reference') {
         var mmHtml = handleMMCode(chatMessage || '');
@@ -306,6 +304,86 @@ async function handleOrderbook(apiKey, images, singleImage, mimeType, userMessag
     return '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">bid-offer/orderbook</strong>, tetapi AI belum berhasil menganalisis detail. Coba lagi.</p>';
   } catch (e) {
     return '<p class="text-sm text-red-400">Terjadi kesalahan saat analisis orderbook.</p>';
+  }
+}
+
+// === BROKER SUMMARY READER ===
+async function handleBrokerSummary(apiKey, images, singleImage, mimeType, userMessage, context) {
+  var prompt = 'Kamu Auto-Cuan AI. Ini data broker summary, BUKAN chart.\n\n' +
+    'Analisis broker flow dari gambar/teks:\n' +
+    '1. Periode (Today/7D/1M/3M) jika terlihat\n' +
+    '2. Top net buyer (broker code + value jika terlihat)\n' +
+    '3. Top net seller (broker code + value jika terlihat)\n' +
+    '4. Konsentrasi (High: 1-2 broker dominan >50%, Medium: 3-5 broker, Low: tersebar)\n' +
+    '5. Klasifikasi: Akumulasi / Distribusi / Rotasi / Retail-driven / Unclear\n' +
+    '6. Dampak ke analisis jika ada konteks chart sebelumnya\n\n' +
+    'ATURAN:\n' +
+    '- Ini BUKAN chart, ini broker summary\n' +
+    '- JANGAN bilang gambar chart tidak jelas\n' +
+    '- Broker summary hanya menunjukkan aktivitas melalui broker, BUKAN identitas bandar sebenarnya\n' +
+    '- Jangan pernah bilang: bandar pasti akumulasi, pasti distribusi, pasti naik, pasti turun\n' +
+    '- Gunakan: terindikasi akumulasi, indikasi distribusi, mixed/rotasi, belum cukup memastikan\n' +
+    '- Jika data tidak lengkap/terbaca: "Sebagian data broker summary belum terbaca jelas"\n' +
+    '- Jika periode tidak jelas: "Periode belum bisa dikonfirmasi dari data yang diberikan"\n' +
+    '- JANGAN sebut FCA\n\n';
+
+  // Add chart context if available
+  if (context && context.ticker) {
+    prompt += 'KONTEKS SESI: Ticker ' + context.ticker;
+    if (context.currentPrice) prompt += ', Harga Rp ' + context.currentPrice;
+    if (context.finalDecision) prompt += ', Keputusan chart: ' + context.finalDecision;
+    prompt += '\nGunakan konteks chart ini untuk menilai apakah broker summary memperkuat atau melemahkan setup.\n';
+    prompt += '- Chart bullish + akumulasi broker = confidence naik\n';
+    prompt += '- Chart bearish + akumulasi broker = WATCHLIST, belum tentu reversal\n';
+    prompt += '- Chart bullish + distribusi broker = hati-hati, possible bull trap\n';
+    prompt += '- Chart bearish + distribusi broker = risiko bertambah\n\n';
+  }
+
+  prompt += 'FORMAT OUTPUT: HTML Tailwind dark. Wrap dalam <div class="space-y-3">.\n' +
+    'Gunakan text-sm text-gray-300, text-emerald-400, text-red-400, text-white.\n\n' +
+    'Struktur jawaban:\n' +
+    '1. Pembuka: "Ini saya baca sebagai broker summary. Broker summary hanya menunjukkan aktivitas melalui broker, bukan identitas bandar sebenarnya."\n' +
+    '2. Broker Summary Check (periode, net buyer/seller, bias, strength, catatan)\n' +
+    '3. Dampak ke analisis (jika ada konteks chart)\n' +
+    '4. Kesimpulan: WAIT / WATCHLIST / NEED CHART CONFIRMATION\n' +
+    '5. Follow-up: saran kirim chart atau periode lain\n\n' +
+    'Jawab conversational, BUKAN numbered report. Max 400 kata.';
+
+  // Build image parts
+  var parts = [{ text: prompt + (userMessage ? '\n\nUser: ' + userMessage : '') }];
+
+  if (images && images.length > 0) {
+    images.forEach(function(img) {
+      var base64 = img.data || img.base64Data || '';
+      if (base64.indexOf(',') !== -1) base64 = base64.split(',')[1];
+      if (base64) parts.push({ inline_data: { mime_type: img.mimeType || 'image/png', data: base64 } });
+    });
+  } else if (singleImage) {
+    var base64 = singleImage;
+    if (base64.indexOf(',') !== -1) base64 = base64.split(',')[1];
+    if (base64) parts.push({ inline_data: { mime_type: mimeType || 'image/png', data: base64 } });
+  }
+
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+  var payload = {
+    contents: [{ parts: parts }],
+    generationConfig: { temperature: 0.4, topP: 0.9, maxOutputTokens: 1536 }
+  };
+
+  try {
+    var response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!response.ok) return '<p class="text-sm text-red-400">AI tidak tersedia untuk analisis broker summary saat ini.</p>';
+    var result = await response.json();
+    var candidates = result.candidates || [];
+    if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts && candidates[0].content.parts[0]) {
+      var text = candidates[0].content.parts[0].text || '';
+      text = text.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+      text = text.replace(/<[^>]*>[^<]*(?:FCA|Full\s*Call\s*Auction|papan\s*pemantauan\s*khusus)[^<]*<\/[^>]*>/gi, '');
+      return text;
+    }
+    return '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">broker summary</strong>, tetapi AI belum berhasil menganalisis detail. Coba lagi.</p>';
+  } catch (e) {
+    return '<p class="text-sm text-red-400">Terjadi kesalahan saat analisis broker summary.</p>';
   }
 }
 
