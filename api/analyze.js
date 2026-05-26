@@ -31,10 +31,8 @@ module.exports = async function handler(req, res) {
         });
       }
       if (evidenceType === 'orderbook_bid_offer') {
-        return res.status(200).json({
-          html: '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">bid-offer/orderbook</strong>. Analisis order flow detail akan dipulihkan bertahap.</p>',
-          evidenceType: evidenceType
-        });
+        var obHtml = await handleOrderbook(GEMINI_API_KEY, images, image, body.mimeType, chatMessage);
+        return res.status(200).json({ html: obHtml, evidenceType: evidenceType, intent: 'orderbook_analysis' });
       }
       if (evidenceType === 'running_trade') {
         return res.status(200).json({
@@ -242,6 +240,76 @@ function isFCAConfirmed(bodyFcaStatus, message) {
   return false;
 }
 
+
+// === ORDERBOOK / BID-OFFER READER ===
+async function handleOrderbook(apiKey, images, singleImage, mimeType, userMessage) {
+  var prompt = 'Kamu Auto-Cuan AI. Ini gambar bid-offer/orderbook, BUKAN chart.\n\n' +
+    'Analisis order flow dari gambar:\n' +
+    '1. Kondisi bid (tebal/tipis/normal)\n' +
+    '2. Kondisi offer (tebal/tipis/normal)\n' +
+    '3. Spread (ketat/normal/lebar)\n' +
+    '4. Likuiditas (aktif/tipis)\n' +
+    '5. Apakah ada indikasi tekanan beli atau jual\n' +
+    '6. Risiko false signal\n\n' +
+    'ATURAN:\n' +
+    '- JANGAN bilang ini chart yang tidak jelas\n' +
+    '- Ini BUKAN chart, ini orderbook/bid-offer\n' +
+    '- Jangan pernah bilang: pasti bandar, pasti fake, pasti naik, pasti turun\n' +
+    '- Gunakan: terindikasi, belum bisa dikonfirmasi, perlu validasi\n' +
+    '- Dari satu screenshot TIDAK bisa memastikan fake bid/fake offer\n' +
+    '- Jika bid lebih tebal: "Bid terlihat lebih tebal, tetapi belum tentu support valid karena bisa saja berubah atau ditarik."\n' +
+    '- Jika offer lebih tebal: "Offer terlihat lebih tebal, sehingga ada indikasi tekanan jual / sell wall, tetapi belum bisa dipastikan dari satu snapshot."\n' +
+    '- Jika tipis: "Likuiditas terlihat tipis, jadi risiko false signal lebih tinggi."\n' +
+    '- Jika spread lebar: "Spread terlihat lebar, sehingga risiko eksekusi lebih tinggi."\n' +
+    '- Jika data tidak jelas: "Sebagian angka bid-offer belum terbaca jelas, jadi kesimpulannya masih terbatas."\n' +
+    '- JANGAN sebut FCA\n\n' +
+    'FORMAT OUTPUT: HTML Tailwind dark. Wrap dalam <div class="space-y-3">.\n' +
+    'Gunakan text-sm text-gray-300, text-emerald-400, text-red-400, text-white.\n\n' +
+    'Struktur jawaban:\n' +
+    '1. Pembuka: "Ini saya baca sebagai bid-offer/orderbook, bukan chart."\n' +
+    '2. Analisis singkat (kondisi bid, offer, spread, likuiditas, risiko)\n' +
+    '3. Kesimpulan: salah satu label WAIT / WATCHLIST / SCALP ONLY / NEED CHART CONFIRMATION\n' +
+    '4. Follow-up: "Kalau ada beberapa screenshot orderbook berurutan atau chart 1D/4H, kirim supaya bisa divalidasi lebih kuat."\n\n' +
+    'Jawab conversational, BUKAN numbered report. Max 300 kata.';
+
+  // Build image parts
+  var parts = [{ text: prompt + (userMessage ? '\n\nUser: ' + userMessage : '') }];
+
+  if (images && images.length > 0) {
+    images.forEach(function(img) {
+      var base64 = img.data || img.base64Data || '';
+      if (base64.indexOf(',') !== -1) base64 = base64.split(',')[1];
+      if (base64) parts.push({ inline_data: { mime_type: img.mimeType || 'image/png', data: base64 } });
+    });
+  } else if (singleImage) {
+    var base64 = singleImage;
+    if (base64.indexOf(',') !== -1) base64 = base64.split(',')[1];
+    if (base64) parts.push({ inline_data: { mime_type: mimeType || 'image/png', data: base64 } });
+  }
+
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+  var payload = {
+    contents: [{ parts: parts }],
+    generationConfig: { temperature: 0.4, topP: 0.9, maxOutputTokens: 1536 }
+  };
+
+  try {
+    var response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!response.ok) return '<p class="text-sm text-red-400">AI tidak tersedia untuk analisis orderbook saat ini.</p>';
+    var result = await response.json();
+    var candidates = result.candidates || [];
+    if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts && candidates[0].content.parts[0]) {
+      var text = candidates[0].content.parts[0].text || '';
+      text = text.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+      // Sanitize FCA just in case
+      text = text.replace(/<[^>]*>[^<]*(?:FCA|Full\s*Call\s*Auction|papan\s*pemantauan\s*khusus)[^<]*<\/[^>]*>/gi, '');
+      return text;
+    }
+    return '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">bid-offer/orderbook</strong>, tetapi AI belum berhasil menganalisis detail. Coba lagi.</p>';
+  } catch (e) {
+    return '<p class="text-sm text-red-400">Terjadi kesalahan saat analisis orderbook.</p>';
+  }
+}
 
 // === EVIDENCE CLASSIFIER ===
 function classifyEvidence(message, images, documents) {
