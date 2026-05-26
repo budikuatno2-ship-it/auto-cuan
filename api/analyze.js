@@ -20,10 +20,50 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Image upload — placeholder response for now
+    // Image/file upload — classify evidence type first
     if (source === 'chart_upload' && (image || (images && images.length > 0))) {
+      var evidenceType = classifyEvidence(chatMessage || '', images, body.documents);
+
+      if (evidenceType === 'chart') {
+        return res.status(200).json({
+          html: '<p class="text-sm text-gray-300">Chart diterima. Analisis chart visual sedang dipulihkan bertahap. Sementara gunakan mode Nama Saham (ticker + harga) untuk analisis teks.</p>',
+          evidenceType: evidenceType
+        });
+      }
+      if (evidenceType === 'orderbook_bid_offer') {
+        return res.status(200).json({
+          html: '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">bid-offer/orderbook</strong>. Analisis order flow detail akan dipulihkan bertahap.</p>',
+          evidenceType: evidenceType
+        });
+      }
+      if (evidenceType === 'running_trade') {
+        return res.status(200).json({
+          html: '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">running trade/tape</strong>. Analisis running trade detail akan dipulihkan bertahap.</p>',
+          evidenceType: evidenceType
+        });
+      }
+      if (evidenceType === 'broker_summary') {
+        return res.status(200).json({
+          html: '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">broker summary</strong>. Analisis broker detail akan dipulihkan bertahap.</p>',
+          evidenceType: evidenceType
+        });
+      }
+      if (evidenceType === 'market_maker_code_reference') {
+        return res.status(200).json({
+          html: '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">referensi kode market maker/kode bandar</strong>. Mapping kode akan dipulihkan bertahap.</p>',
+          evidenceType: evidenceType
+        });
+      }
+      if (evidenceType === 'news_or_corporate_action') {
+        return res.status(200).json({
+          html: '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">news/corporate action</strong>. Dampaknya bisa mengubah penilaian setelah fitur reader dipulihkan.</p>',
+          evidenceType: evidenceType
+        });
+      }
+      // unknown
       return res.status(200).json({
-        html: '<p class="text-sm text-gray-300">Gambar diterima, tetapi analisis visual lanjutan sedang dipulihkan bertahap.</p>'
+        html: '<p class="text-sm text-gray-300">Ini gambar/data jenis apa: chart, bid-offer, running trade, broker summary, atau news? Ketik keterangan supaya saya bisa analisis dengan benar.</p>',
+        evidenceType: 'unknown'
       });
     }
 
@@ -200,4 +240,55 @@ function isFCAConfirmed(bodyFcaStatus, message) {
     return true;
   }
   return false;
+}
+
+
+// === EVIDENCE CLASSIFIER ===
+function classifyEvidence(message, images, documents) {
+  var hints = (message || '').toLowerCase();
+
+  // Also check filenames
+  if (images && images.length > 0) {
+    images.forEach(function(img) {
+      if (img.filename) hints += ' ' + img.filename.toLowerCase();
+    });
+  }
+  if (documents && documents.length > 0) {
+    documents.forEach(function(doc) {
+      if (doc.filename) hints += ' ' + doc.filename.toLowerCase();
+      if (doc.text) hints += ' ' + doc.text.slice(0, 300).toLowerCase();
+    });
+  }
+
+  // Check document file types first
+  if (/\.(pdf|doc|docx|xls|xlsx|csv|txt)\b/.test(hints)) {
+    // Could be broker data, news, or generic doc — check content
+    if (/broker|net\s*buy|net\s*sell|top\s*buyer|top\s*seller|avg/i.test(hints)) return 'broker_summary';
+    if (/news|berita|corporate\s*action|aksi\s*korporasi|rights?\s*issue|private\s*placement|dividen|merger|akuisisi|suspensi|uma|pkpu|buyback|inbreng/i.test(hints)) return 'news_or_corporate_action';
+    return 'document_file';
+  }
+
+  // Orderbook / bid-offer
+  if (/\b(orderbook|order\s*book|bid.?offer|antrian|queue|lot\s*bid|lot\s*offer|harga\s*bid|harga\s*offer)\b/.test(hints)) return 'orderbook_bid_offer';
+
+  // Running trade
+  if (/\b(running\s*trade|trade\s*print|fast\s*tape|tape\s*reading|transaksi\s*berjalan)\b/.test(hints)) return 'running_trade';
+
+  // Broker summary
+  if (/\b(broker\s*summary|top\s*buyer|top\s*seller|net\s*buy|net\s*sell|bandarmology|broker\s*akum|broker\s*distribusi|data\s*broker)\b/.test(hints)) return 'broker_summary';
+
+  // Market maker code
+  if (/\b(kode\s*bandar|kode\s*market\s*maker|kode\s*mm|mm\s*code|market\s*maker)\b/.test(hints)) return 'market_maker_code_reference';
+  if (/\b(777|666|999|555|888|404|911|2100)\b/.test(hints) && /\b(kode|code|arti|meaning|bandar)\b/.test(hints)) return 'market_maker_code_reference';
+
+  // News / corporate action
+  if (/\b(news|berita|corporate\s*action|aksi\s*korporasi|rights?\s*issue|private\s*placement|dividen|dividend|merger|akuisisi|acquisition|suspensi|suspension|uma|pkpu|buyback|inbreng|tender\s*offer|delisting)\b/.test(hints)) return 'news_or_corporate_action';
+
+  // Chart (explicit keywords)
+  if (/\b(chart|tradingview|candle|candlestick|timeframe|1w|1d|4h|1h|15m|weekly|daily|support|resistance|bos|choch|order\s*block|demand|supply|fvg)\b/.test(hints)) return 'chart';
+
+  // Default for image uploads without text hints = chart (most common)
+  if (images && images.length > 0) return 'chart';
+
+  return 'unknown';
 }
