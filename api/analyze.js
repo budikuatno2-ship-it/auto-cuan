@@ -47,10 +47,8 @@ module.exports = async function handler(req, res) {
         });
       }
       if (evidenceType === 'market_maker_code_reference') {
-        return res.status(200).json({
-          html: '<p class="text-sm text-gray-300">Ini saya baca sebagai <strong class="text-emerald-400">referensi kode market maker/kode bandar</strong>. Mapping kode akan dipulihkan bertahap.</p>',
-          evidenceType: evidenceType
-        });
+        var mmHtml = handleMMCode(chatMessage || '');
+        return res.status(200).json({ html: mmHtml, evidenceType: evidenceType, intent: 'mm_code_analysis' });
       }
       if (evidenceType === 'news_or_corporate_action') {
         return res.status(200).json({
@@ -309,6 +307,112 @@ async function handleOrderbook(apiKey, images, singleImage, mimeType, userMessag
   } catch (e) {
     return '<p class="text-sm text-red-400">Terjadi kesalahan saat analisis orderbook.</p>';
   }
+}
+
+// === MARKET MAKER CODE MAPPING ===
+var MM_CODES = {
+  '666': { meaning: 'Akhir dari mark up, potensi jual segera, risiko turun dalam.', bias: 'DISTRIBUTION', strength: 'HIGH' },
+  '400': { meaning: 'Saham cenderung sideways / belum bergerak jelas.', bias: 'SIDEWAYS', strength: 'MEDIUM' },
+  '999': { meaning: 'Harga diduga sudah di puncak, risiko distribusi / perubahan drastis.', bias: 'DISTRIBUTION', strength: 'HIGH' },
+  '500': { meaning: 'Potensi menuju gap up atau gap down, butuh kode/konfirmasi lanjutan.', bias: 'UNKNOWN', strength: 'MEDIUM' },
+  '777': { meaning: 'Referensi bullish / potensi harga naik tinggi.', bias: 'ACCUM', strength: 'HIGH' },
+  '200': { meaning: 'Indikasi butuh saham untuk dibeli, tetapi jangan turunkan harga drastis.', bias: 'ACCUM', strength: 'MEDIUM' },
+  '2100': { meaning: 'Let it run, tahan selama tren masih valid.', bias: 'ACCUM', strength: 'MEDIUM' },
+  '555': { meaning: 'Gap up / beli sebelum naik / potensi fase akumulasi mingguan.', bias: 'ACCUM', strength: 'HIGH' },
+  '888': { meaning: 'Sell on strength / jual saat harga diangkat.', bias: 'DISTRIBUTION', strength: 'HIGH' },
+  '404': { meaning: 'Risiko turun dalam kondisi sideways, bisa muncul sebelum turun / ARB.', bias: 'WARNING', strength: 'HIGH' },
+  '911': { meaning: 'Pending news / menunggu news keluar / harga ditahan menjelang news.', bias: 'WARNING', strength: 'MEDIUM' },
+  '100': { meaning: 'Membutuhkan saham untuk dibeli.', bias: 'ACCUM', strength: 'MEDIUM' },
+  '700': { meaning: 'Harga berpotensi naik, tetapi tetap butuh validasi.', bias: 'ACCUM', strength: 'MEDIUM' }
+};
+
+// === MARKET MAKER CODE READER ===
+function handleMMCode(text) {
+  var detected = detectMMCodes(text);
+
+  if (detected.length === 0) {
+    return '<div class="space-y-3"><p class="text-sm text-gray-300">Ini saya baca sebagai referensi <strong class="text-emerald-400">kode market maker/kode bandar</strong>. Ini hanya referensi tambahan, bukan sinyal pasti.</p><p class="text-sm text-gray-400">Tidak ada kode yang valid terdeteksi dari teks yang diberikan. Coba sebutkan kode spesifik (contoh: 777, 666, 999) atau kirim screenshot orderbook/running trade.</p></div>';
+  }
+
+  var html = '<div class="space-y-3">';
+  html += '<p class="text-sm text-gray-300">Ini saya baca sebagai kode market maker/kode bandar. Ini hanya <strong class="text-yellow-400">referensi tambahan</strong>, bukan sinyal pasti.</p>';
+
+  detected.forEach(function(item) {
+    var biasColor = item.bias === 'ACCUM' ? 'text-emerald-400' : item.bias === 'DISTRIBUTION' ? 'text-red-400' : 'text-yellow-400';
+    html += '<div class="bg-[#151a23] rounded-lg p-3 border border-[#1c2333]">';
+    html += '<p class="text-sm text-white font-semibold">Kode: ' + item.code + (item.location ? ' <span class="text-gray-400 font-normal">(' + item.location + ')</span>' : '') + '</p>';
+    html += '<p class="text-sm text-gray-300">Arti: ' + item.meaning + '</p>';
+    html += '<p class="text-sm ' + biasColor + '">Bias: ' + item.bias + ' | Strength: ' + item.strength + '</p>';
+    html += '<p class="text-xs text-gray-500">Confidence: ' + item.confidence + '</p>';
+    html += '</div>';
+  });
+
+  html += '<p class="text-sm text-gray-400 italic">Kode ini baru terlihat dari satu snapshot/teks, jadi belum bisa dipastikan valid atau hanya muncul sesaat. Perlu validasi chart/orderbook.</p>';
+  html += '<p class="text-sm text-gray-300"><strong class="text-white">Kesimpulan:</strong> WATCHLIST — kode hanya secondary reference, butuh konfirmasi price action.</p>';
+  html += '<p class="text-xs text-gray-500">Kalau ada chart 1D/4H atau beberapa screenshot orderbook berurutan, kirim supaya kode ini bisa divalidasi dengan price action dan order flow.</p>';
+  html += '</div>';
+
+  return html;
+}
+
+function detectMMCodes(text) {
+  if (!text) return [];
+  var results = [];
+  var seen = {};
+
+  // Detect location context
+  var locationHint = 'unknown';
+  if (/\b(bid|beli|buyer)\b/i.test(text)) locationHint = 'bid';
+  else if (/\b(offer|jual|seller)\b/i.test(text)) locationHint = 'offer';
+  else if (/\b(freq|frekuensi|frequency)\b/i.test(text)) locationHint = 'freq';
+  else if (/\b(lot)\b/i.test(text)) locationHint = 'lot';
+  else if (/\b(running|trade|tape)\b/i.test(text)) locationHint = 'running trade';
+
+  // Detect confidence hints
+  var isRepeated = /\b(berulang|repeated|muncul.*lagi|terus.*muncul)\b/i.test(text);
+  var isThin = /\b(tipis|thin|sepi|illiquid)\b/i.test(text);
+  var isFast = /\b(fast|cepat|aktif|ramai)\b/i.test(text);
+
+  var baseConfidence = 'Low';
+  if (isRepeated) baseConfidence = 'Medium';
+  if (isThin) baseConfidence = 'Low';
+  if (isFast && !isThin) baseConfidence = 'Medium';
+
+  // Check 4-digit codes first (2100)
+  var match4 = text.match(/\b(2100)\b/g);
+  if (match4) {
+    match4.forEach(function(m) {
+      if (!seen[m] && MM_CODES[m]) {
+        seen[m] = true;
+        results.push({ code: m, meaning: MM_CODES[m].meaning, bias: MM_CODES[m].bias, strength: MM_CODES[m].strength, location: locationHint, confidence: baseConfidence });
+      }
+    });
+  }
+
+  // Check 3-digit codes
+  var match3 = text.match(/\b(100|200|400|404|500|555|666|700|777|888|911|999)\b/g);
+  if (match3) {
+    match3.forEach(function(m) {
+      if (!seen[m] && MM_CODES[m]) {
+        seen[m] = true;
+        results.push({ code: m, meaning: MM_CODES[m].meaning, bias: MM_CODES[m].bias, strength: MM_CODES[m].strength, location: locationHint, confidence: baseConfidence });
+      }
+    });
+  }
+
+  // Check last 3 digits of larger numbers (e.g. 10,777 -> 777)
+  var matchLarge = text.match(/\d{1,3}[.,]?(777|666|999|555|888|404|911)\b/g);
+  if (matchLarge) {
+    matchLarge.forEach(function(m) {
+      var last3 = m.slice(-3);
+      if (!seen[last3] && MM_CODES[last3]) {
+        seen[last3] = true;
+        results.push({ code: last3 + ' (dari ' + m + ')', meaning: MM_CODES[last3].meaning, bias: MM_CODES[last3].bias, strength: MM_CODES[last3].strength, location: locationHint, confidence: 'Low' });
+      }
+    });
+  }
+
+  return results;
 }
 
 // === EVIDENCE CLASSIFIER ===
