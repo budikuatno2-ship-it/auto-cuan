@@ -185,6 +185,8 @@ function isCasualChat(message, context, intent) {
 
   // If message contains stock keywords, not casual
   if (/\b(saham|emiten|chart|volume|MA\d|entry|tp|sl|stop\s*loss|take\s*profit|support|resistance|broker|orderbook|order\s*book|bid|offer|analisis|analisa|cut\s*loss|hold|averaging|nambah|beli|jual|scalp|swing|intraday|dividen|right\s*issue|akuisisi|merger)\b/i.test(lower)) return false;
+  // If emotional word followed by "di" + something (implies stuck in a specific stock)
+  if (/\b(rungkad|nyangkut|minus|rugi)\s+(di|sama)\s+\w/i.test(lower)) return false;
   // If message contains a 4-letter uppercase word that could be a ticker
   if (/\b[A-Z]{4}\b/.test(cleanMsg)) return false;
   // If message has price patterns
@@ -198,7 +200,13 @@ function isCasualChat(message, context, intent) {
   if (/^(jelasin|tolong\s*jelasin|explain|bantuin|bantu\s*dong|help)\s*(dong|ya|please)?\s*$/i.test(lower)) return true;
   if (/^(lanjut|terus|next|oke\s*lanjut|yuk|gas|gass|let'?s\s*go)\s*[.!]?\s*$/i.test(lower)) return true;
   // Emotional / loss-related casual (no ticker mentioned, just venting)
-  if (/\b(minus|rugi|nyangkut|floating\s*loss|portofolio?\s*merah|porto\s*merah|merah\s*semua|lagi\s*merah|sedih|galau|bingung\s*nih|stress|pusing|panik|takut|capek|males)\b/i.test(lower) && !/\b[A-Z]{4}\b/.test(cleanMsg)) return true;
+  // Must NOT contain potential ticker (4-letter word that isn't a common Indonesian word)
+  var commonWords4 = /\b(yang|saya|lagi|bisa|dari|buat|mana|kamu|kami|juga|baru|sama|udah|gitu|gini|dong|dulu|pagi|sore|soal|baik|atas|lalu|cuma|abis|akan|agar|biar|saat|guys|boss|bang|halo|stop|naik|jadi|tapi|juga|terus)\b/gi;
+  var strippedForTicker = cleanMsg.replace(commonWords4, '').replace(/[^a-zA-Z\s]/g, '');
+  var hasPotentialTicker = /\b[a-zA-Z]{4}\b/.test(strippedForTicker);
+  // Also check if message mentions price patterns (e.g. "stop di 50")
+  var hasPriceHint = /\b\d{2,6}\b/.test(lower) || /\b(di|harga|stop|nyangkut)\s+\d/i.test(lower);
+  if (/\b(minus|rugi|nyangkut|rungkad|floating\s*loss|portofolio?\s*merah|porto\s*merah|merah\s*semua|lagi\s*merah|sedih|galau|bingung\s*nih|stress|pusing|panik|takut|capek|males)\b/i.test(lower) && !hasPotentialTicker && !hasPriceHint) return true;
   // Very short non-stock messages (< 15 chars, no ticker patterns)
   if (lower.length < 15 && !/[A-Z]{4}/.test(cleanMsg) && !/\d{2,}/.test(lower)) return true;
 
