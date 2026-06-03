@@ -152,7 +152,7 @@
             </div>
             <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 <span id="reviewBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">Review</span>
-                <span id="guestBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Guest</span>
+                <span id="guestBadge" class="hidden"></span>
                 <span id="headerUserLabel" class="hidden text-sm text-gray-400"><span id="headerUsername" class="text-emerald-400 font-medium"></span></span>
                 <button id="headerLoginBtn" onclick="openLoginModal()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login</button>
                 <button id="headerRegisterBtn" onclick="openRegisterModal()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Daftar</button>
@@ -173,13 +173,9 @@
                     <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                 </div>
                 <div class="bg-dark-700/60 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%] sm:max-w-[80%]">
-                    <p class="text-sm text-gray-300">Halo! Saya <strong class="text-emerald-400">Auto-Cuan AI</strong>.</p>
-                    <p class="text-sm text-gray-400 mt-1.5">Ketik langsung, contoh:</p>
-                    <ul class="text-sm text-gray-400 mt-1 space-y-0.5">
-                        <li>• <span class="text-gray-200">BBCA 9250</span> — analisis saham</li>
-                        <li>• <span class="text-gray-200">NAYZ gimana?</span> — tanya singkat</li>
-                        <li>• Upload chart — analisis visual</li>
-                    </ul>
+                    <p class="text-sm text-gray-300">Halo, selamat datang di <strong class="text-emerald-400">Auto-Cuan</strong> &#x1F44B;</p>
+                    <p class="text-sm text-gray-400 mt-1">Semoga sehat selalu ya.</p>
+                    <p class="text-sm text-gray-400 mt-2">Langsung aja mau bahas apa hari ini? Bisa ketik emiten seperti <span class="text-gray-200">BBCA</span>, <span class="text-gray-200">WMUU</span>, <span class="text-gray-200">NAYZ</span>, atau kirim chart/news kalau mau dianalisis lebih dalam.</p>
                 </div>
             </div>
         </div>
@@ -193,7 +189,6 @@
         <!-- Composer -->
         <div class="border-t border-dark-600/30 p-3 flex-shrink-0">
             <div id="limitWarning" class="hidden text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-2 text-center"></div>
-            <span id="usageCounter" class="hidden text-[10px] text-gray-600 mb-1 block text-right"></span>
             <div class="flex items-end gap-2">
                 <!-- Upload button -->
                 <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
@@ -242,20 +237,31 @@
         </div>
         <div class="p-4 sm:p-6 space-y-4">
             <div class="flex flex-wrap gap-2">
-                <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login Logs</button>
-                <button onclick="loadAdminLogs('search')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Search Logs</button>
-                <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">AI Logs</button>
-                <button onclick="loadAdminLogs('usage')" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Usage Logs</button>
-                <button onclick="loadAdminUsers()" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">User Management</button>
                 <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
-                <button onclick="loadAdminLogs(lastAdminLogType || 'login')" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">&#x1F504; Refresh</button>
             </div>
             <div id="adminLogsContainer" class="overflow-x-auto">
-                <p class="text-sm text-gray-500">Klik tombol di atas untuk memuat logs.</p>
+                <p class="text-sm text-gray-500">Klik Website Settings untuk mengelola pengaturan.</p>
+            </div>
+            <div class="mt-4 bg-dark-700/50 border border-dark-600/30 rounded-xl p-4">
+                <h3 class="text-sm font-semibold text-gray-300 flex items-center gap-2"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Security Guard</h3>
+                <p class="text-xs text-gray-500 mt-2">Perlindungan dasar aktif otomatis: sanitasi output AI, pembatasan input terlalu panjang, validasi upload, dan akses admin/settings tetap diproteksi.</p>
             </div>
         </div>
     </div>
 </section>
+
+<!-- USAGE REMINDER MODAL -->
+<div id="usageReminderModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl text-center space-y-4">
+        <div class="text-4xl">&#x2615;</div>
+        <h3 class="text-base font-bold text-white">Sudah cukup banyak nih</h3>
+        <p class="text-sm text-gray-400">Kamu sudah chat/analisis sekitar <span id="reminderCount">10</span> kali di sesi ini. Mau istirahat dulu sebentar atau lanjut?</p>
+        <div class="flex gap-3 justify-center pt-2">
+            <button onclick="window.location.reload()" class="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">Istirahat dulu</button>
+            <button onclick="closeUsageReminder()" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition-all">Lanjut</button>
+        </div>
+    </div>
+</div>
 
 <!-- FOOTER -->
 <footer class="border-t border-dark-700/50 mt-auto flex-shrink-0">
@@ -467,10 +473,7 @@ function canChat() { return getChatCount() < getChatLimit(); }
 function getAnalysisLimitMsg() { return getUsername() === 'guest' ? 'Limit analisis guest hari ini sudah habis. Login atau daftar untuk mendapatkan 10 analisis per hari, atau coba lagi besok.' : 'Limit analisis harian Anda sudah habis. Silakan coba lagi besok.'; }
 function getChatLimitMsg() { return getUsername() === 'guest' ? 'Limit chat guest hari ini sudah habis. Login atau daftar untuk mendapatkan 20 chat per hari, atau coba lagi besok.' : 'Limit chat harian Anda sudah habis. Silakan coba lagi besok.'; }
 function updateUsageCounter() {
-    var el = document.getElementById('usageCounter'); if (!el) return;
-    if (isAdmin()) { el.classList.add('hidden'); return; }
-    el.classList.remove('hidden');
-    el.textContent = getAnalysisCount() + '/' + getAnalysisLimit() + ' analisis · ' + getChatCount() + '/' + getChatLimit() + ' chat';
+    // Usage counter removed from visible UI — replaced by reminder modal
 }
 
 
@@ -1320,8 +1323,16 @@ async function handleSend() {
 
     if (!msg && !hasFile) return;
 
+    // Input length safety limit (max 2000 chars)
+    if (msg.length > 2000) {
+        msg = msg.slice(0, 2000);
+    }
+
     // Track last sent message for regenerate
     lastSentMessage = msg;
+
+    // Increment session message counter for reminder
+    incrementSessionMessageCount();
 
     // Determine intent from message content
     var intent = null;
@@ -1698,8 +1709,8 @@ function addAIBubble(html, isStructured) {
 
     var copyBtnHtml = '<div class="mt-3 pt-2 border-t border-dark-600/20 flex items-center gap-1.5 flex-wrap">' + tvLinkHtml + '<button onclick="regenerateLastAnswer(this)" class="copy-btn px-2 py-1 rounded-lg text-[11px] text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">Regenerate</button><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-[11px] text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">' + copyLabel + '</button></div>';
 
-    // Client-side FCA sanitizer
-    var sanitizedHtml = clientSanitizeFCA(html);
+    // Client-side FCA sanitizer + security sanitizer
+    var sanitizedHtml = sanitizeAIHtml(clientSanitizeFCA(html));
 
     div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%] sm:max-w-[85%] overflow-x-auto"><div class="ai-content">' + sanitizedHtml + '</div>' + copyBtnHtml + '</div>';
     container.appendChild(div);
@@ -2304,6 +2315,77 @@ window.alert = function(msg) {
 };
 
 function skeletonRows(count) { var html = ''; for (var i = 0; i < (count || 4); i++) html += '<div class="skeleton h-10 w-full mb-2"></div>'; return html; }
+
+// ===== SESSION MESSAGE COUNTER & USAGE REMINDER =====
+var sessionMessageCount = 0;
+var REMINDER_INTERVAL = 10;
+
+function incrementSessionMessageCount() {
+    sessionMessageCount++;
+    if (sessionMessageCount > 0 && sessionMessageCount % REMINDER_INTERVAL === 0) {
+        showUsageReminder();
+    }
+}
+
+function showUsageReminder() {
+    var modal = document.getElementById('usageReminderModal');
+    var countEl = document.getElementById('reminderCount');
+    if (modal && countEl) {
+        countEl.textContent = String(sessionMessageCount);
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeUsageReminder() {
+    var modal = document.getElementById('usageReminderModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// ===== TEMPORARY HISTORY CLEANUP (non-logged-in users) =====
+(function setupTempHistoryCleanup() {
+    var INACTIVE_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+    var LAST_ACTIVITY_KEY = 'autocuan_last_activity';
+
+    function updateActivity() {
+        localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
+    }
+
+    function checkInactiveCleanup() {
+        var username = (localStorage.getItem('autocuan_user') || 'guest').toLowerCase();
+        if (username !== 'guest') return; // Only for non-logged-in users
+        var lastActivity = parseInt(localStorage.getItem(LAST_ACTIVITY_KEY) || '0', 10);
+        if (lastActivity > 0 && (Date.now() - lastActivity > INACTIVE_TIMEOUT)) {
+            // Clear temporary chat sessions for guest
+            localStorage.removeItem('autocuan_chat_sessions');
+            localStorage.removeItem(LAST_ACTIVITY_KEY);
+        }
+    }
+
+    // Check on page load
+    checkInactiveCleanup();
+    // Update activity on user interaction
+    document.addEventListener('click', updateActivity);
+    document.addEventListener('keydown', updateActivity);
+    // Initial activity mark
+    updateActivity();
+})();
+
+// ===== AI OUTPUT SANITIZER (security) =====
+function sanitizeAIHtml(html) {
+    if (!html) return html;
+    // Remove script tags
+    var output = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+    // Remove event handlers
+    output = output.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+    output = output.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
+    // Remove javascript: URLs
+    output = output.replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"');
+    // Remove iframe/embed/object
+    output = output.replace(/<(iframe|embed|object|form|input|button)[\s\S]*?<\/\1>/gi, '');
+    output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, '');
+    return output;
+}
+
 </script>
 </body>
 </html>
