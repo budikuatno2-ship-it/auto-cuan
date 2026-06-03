@@ -1052,6 +1052,34 @@ function buildContextForApi() {
     return Object.keys(contextForApi).length > 0 ? contextForApi : undefined;
 }
 
+// ===== YAHOO QUOTE CONTEXT FETCHER =====
+async function fetchQuoteContext(ticker) {
+    if (!ticker || !isValidTicker(ticker)) return '';
+    try {
+        var resp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker), { method: 'GET' });
+        if (!resp.ok) return '\n[Auto-Cuan Market Data]\nData harga otomatis dari Yahoo belum berhasil diambil.';
+        var q = await resp.json();
+        if (!q.success) return '\n[Auto-Cuan Market Data]\nData harga otomatis dari Yahoo belum berhasil diambil.';
+        var lines = ['\n[Auto-Cuan Market Data]'];
+        lines.push('Ticker: ' + q.ticker);
+        lines.push('Source: ' + (q.note || 'Yahoo Finance unofficial/delayed'));
+        lines.push('Latest bar date: ' + q.latestBarDate);
+        lines.push('Last: ' + q.last);
+        lines.push('Open: ' + q.open);
+        lines.push('High: ' + q.high);
+        lines.push('Low: ' + q.low);
+        lines.push('Volume: ' + (q.volume || 0));
+        if (q.ma20 != null) lines.push('MA20: ' + q.ma20);
+        if (q.ma50 != null) lines.push('MA50: ' + q.ma50);
+        if (q.ma100 != null) lines.push('MA100: ' + q.ma100);
+        if (q.ma200 != null) lines.push('MA200: ' + q.ma200);
+        if (q.priceVsMA) lines.push('Price vs MA: ' + q.priceVsMA);
+        return lines.join('\n');
+    } catch (e) {
+        return '\n[Auto-Cuan Market Data]\nData harga otomatis dari Yahoo belum berhasil diambil.';
+    }
+}
+
 function setActiveTicker(ticker) {
     if (!ticker) return;
     var t = String(ticker).toUpperCase().trim();
@@ -1388,6 +1416,9 @@ async function handleAnalysis(msg, intent) {
     try {
         var company = getCompanyName(ticker);
         var enrichedMsg = (msg || ticker + ' ' + price) + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
+        // Fetch Yahoo quote context
+        var quoteCtx = await fetchQuoteContext(ticker);
+        if (quoteCtx) enrichedMsg += quoteCtx;
         var fcaSt = detectFCAStatus(msg, ticker);
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
@@ -1420,6 +1451,9 @@ async function handleTickerQuestion(msg, ticker) {
     try {
         var company = getCompanyName(ticker);
         var enrichedMsg = msg + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
+        // Fetch Yahoo quote context
+        var quoteCtx = await fetchQuoteContext(ticker);
+        if (quoteCtx) enrichedMsg += quoteCtx;
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
@@ -1446,6 +1480,9 @@ async function handleChat(msg) {
         if (activeTicker) {
             var company = getCompanyName(activeTicker);
             enrichedMsg += '\n[Info: ' + activeTicker + (company ? ' = ' + company : '') + ']';
+            // Fetch Yahoo quote context
+            var quoteCtx = await fetchQuoteContext(activeTicker);
+            if (quoteCtx) enrichedMsg += quoteCtx;
         }
         var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });

@@ -79,7 +79,7 @@ module.exports = async function handler(req, res) {
       }
 
       if (intent === 'follow_up_question') {
-        prompt = 'Kamu Auto-Cuan AI, asisten trading yang conversational dan thoughtful. User bertanya follow-up tentang saham. Jawab 150-350 kata, langsung ke inti. Gunakan format HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Bahasa Indonesia santai tapi berisi. Berikan reasoning singkat, bukan hanya ya/tidak. Jika relevan sertakan level harga spesifik. Akhiri dengan satu kalimat natural jika data masih terbatas (jangan paksa mention orderbook/broker kecuali user tanya).';
+        prompt = 'Kamu Auto-Cuan AI, asisten trading yang conversational dan thoughtful. User bertanya follow-up tentang saham. Jawab 150-350 kata, langsung ke inti. Gunakan format HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Bahasa Indonesia santai tapi berisi. Berikan reasoning singkat, bukan hanya ya/tidak. Jika relevan sertakan level harga spesifik. Akhiri dengan satu kalimat natural jika data masih terbatas (jangan paksa mention orderbook/broker kecuali user tanya). Jika ada blok [Auto-Cuan Market Data] dalam pesan user, gunakan data OHLC/volume/MA sebagai supporting evidence (data Yahoo bisa delayed, jangan overstate). Jangan tampilkan blok data mentah ke user.';
         if (body.context && body.context.ticker) {
           prompt += ' Konteks: ' + body.context.ticker;
           if (body.context.currentPrice) prompt += ' Rp ' + body.context.currentPrice;
@@ -92,7 +92,7 @@ module.exports = async function handler(req, res) {
         if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
         maxTokens = 1024;
       } else if (intent === 'full_analysis_request') {
-        prompt = 'Kamu Auto-Cuan AI. User minta analisis lengkap. Jawab conversational tapi terstruktur. Gunakan HTML (div, p, strong, ul, li) dengan class text-sm text-gray-300. Format jawaban: 1) Kesimpulan/Bias (1-2 kalimat), 2) Alasan (2-3 poin), 3) Level penting (support/resistance), 4) Trading plan (Entry, SL, TP1, TP2), 5) Risiko utama (1-2 poin). Jangan buat lebih dari 5 section. Jangan buat section kosong. Jangan terlalu panjang (max 800 kata). Bahasa Indonesia. Jika data terbatas, jujur bilang dan sarankan kirim chart/data tambahan di satu kalimat penutup yang natural.';
+        prompt = 'Kamu Auto-Cuan AI. User minta analisis lengkap. Jawab conversational tapi terstruktur. Gunakan HTML (div, p, strong, ul, li) dengan class text-sm text-gray-300. Format jawaban: 1) Kesimpulan/Bias (1-2 kalimat), 2) Alasan (2-3 poin), 3) Level penting (support/resistance), 4) Trading plan (Entry, SL, TP1, TP2), 5) Risiko utama (1-2 poin). Jangan buat lebih dari 5 section. Jangan buat section kosong. Jangan terlalu panjang (max 800 kata). Bahasa Indonesia. Jika data terbatas, jujur bilang dan sarankan kirim chart/data tambahan di satu kalimat penutup yang natural. Jika ada blok [Auto-Cuan Market Data], gunakan data OHLC/volume/MA sebagai supporting evidence (data Yahoo bisa delayed). Jangan tampilkan blok data mentah ke user.';
         if (body.context && body.context.ticker) {
           prompt += ' Ticker: ' + body.context.ticker;
           if (body.context.currentPrice) prompt += ' Rp ' + body.context.currentPrice;
@@ -101,7 +101,7 @@ module.exports = async function handler(req, res) {
         maxTokens = 2048;
       } else {
         // normal_chat or ticker_price_basic
-        prompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang conversational dan thoughtful. Jawab dalam HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Bahasa Indonesia santai tapi berisi. Jawab 200-400 kata. Struktur jawaban untuk pertanyaan saham: 1) Kesimpulan/Bias singkat, 2) Alasan (2-3 poin key reasoning), 3) Jika bisa estimasi: Entry, SL, TP1, TP2, 4) Risiko utama, 5) Satu kalimat penutup natural jika data terbatas. Jangan buat 15-section report. Jangan terlalu pendek tanpa reasoning. Jangan robotik. Jangan paksa mention broker/orderbook/news kecuali user tanya. Jika pertanyaan bukan soal saham spesifik (edukasi, konsep), jawab langsung tanpa format trading plan.';
+        prompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang conversational dan thoughtful. Jawab dalam HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Bahasa Indonesia santai tapi berisi. Jawab 200-400 kata. Struktur jawaban untuk pertanyaan saham: 1) Kesimpulan/Bias singkat, 2) Alasan (2-3 poin key reasoning), 3) Jika bisa estimasi: Entry, SL, TP1, TP2, 4) Risiko utama, 5) Satu kalimat penutup natural jika data terbatas. Jangan buat 15-section report. Jangan terlalu pendek tanpa reasoning. Jangan robotik. Jangan paksa mention broker/orderbook/news kecuali user tanya. Jika pertanyaan bukan soal saham spesifik (edukasi, konsep), jawab langsung tanpa format trading plan. Jika ada blok [Auto-Cuan Market Data], gunakan data OHLC/volume/MA sebagai supporting evidence (data Yahoo bisa delayed, sebutkan singkat). Jangan tampilkan blok data mentah ke user.';
         if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
         maxTokens = 1024;
       }
@@ -113,7 +113,7 @@ module.exports = async function handler(req, res) {
 
     // Ticker mode (from ticker input, not chat)
     if (ticker && currentPrice) {
-      var tPrompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang conversational dan thoughtful. User tanya saham ' + String(ticker).toUpperCase() + ' di harga Rp ' + currentPrice + '. Jawab 200-400 kata dalam HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Berikan: 1) Bias singkat, 2) Estimasi support/resistance terdekat jika bisa, 3) Apakah menarik di harga ini atau belum, 4) Saran next step (upload chart untuk konfirmasi visual). Jangan buat report panjang. Bahasa Indonesia santai tapi berisi.' +
+      var tPrompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang conversational dan thoughtful. User tanya saham ' + String(ticker).toUpperCase() + ' di harga Rp ' + currentPrice + '. Jawab 200-400 kata dalam HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Berikan: 1) Bias singkat, 2) Estimasi support/resistance terdekat jika bisa, 3) Apakah menarik di harga ini atau belum, 4) Saran next step (upload chart untuk konfirmasi visual). Jika ada blok [Auto-Cuan Market Data], gunakan data OHLC/volume/MA sebagai supporting evidence (data Yahoo bisa delayed). Jangan buat report panjang. Bahasa Indonesia santai tapi berisi.' +
         (fcaConfirmed ? '' : ' JANGAN sebut FCA/Full Call Auction sama sekali.');
       var tHtml = await callGemini(GEMINI_API_KEY, tPrompt, '', 1024);
       if (!tHtml) {
