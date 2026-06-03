@@ -37,9 +37,24 @@ module.exports = async function handler(req, res) {
       var evidenceType = classifyEvidence(chatMessage || '', images, body.documents);
 
       if (evidenceType === 'chart') {
+        // Try DeepSeek image first, fallback to Gemini Vision
+        var chartHtml = null;
+        var chartProvider = 'fallback';
+        if (CODECRAFTERS_API_KEY) {
+          chartHtml = await handleChartDeepSeek(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, images, image, body.mimeType, chatMessage);
+          if (chartHtml) chartProvider = 'deepseek-image';
+        }
+        if (!chartHtml && GEMINI_API_KEY) {
+          chartHtml = await handleChartVision(GEMINI_API_KEY, images, image, body.mimeType, chatMessage);
+          if (chartHtml) chartProvider = 'gemini-vision';
+        }
+        if (!chartHtml) {
+          chartHtml = '<p class="text-sm text-gray-300">Chart diterima, tetapi analisis gagal. Coba upload ulang atau tambahkan keterangan ticker + harga.</p>';
+        }
         return res.status(200).json({
-          html: '<p class="text-sm text-gray-300">Chart diterima. Analisis chart visual sedang dipulihkan bertahap. Sementara gunakan mode Nama Saham (ticker + harga) untuk analisis teks.</p>',
-          evidenceType: evidenceType
+          html: chartHtml,
+          evidenceType: evidenceType,
+          provider: chartProvider
         });
       }
       if (evidenceType === 'orderbook_bid_offer') {
@@ -82,13 +97,18 @@ module.exports = async function handler(req, res) {
       var prompt;
       var maxTokens = 1024;
 
-      // === DEEPSEEK CASUAL CHAT ===
+      // === GROQ FOR CASUAL CHAT ===
       if (isCasualChat(chatMessage, body.context, intent)) {
-        var casualResult = await handleCasualChat(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, chatMessage);
+        var casualResult = await handleCasualWithGroq(chatMessage);
         if (casualResult) {
-          return res.status(200).json({ html: casualResult, intent: 'casual_chat', provider: 'deepseek' });
+          return res.status(200).json({ html: casualResult, intent: 'casual_chat', provider: 'groq' });
         }
-        // Fallback to Gemini for casual chat
+        // Fallback: DeepSeek casual
+        var dsCasual = await handleCasualChat(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, chatMessage);
+        if (dsCasual) {
+          return res.status(200).json({ html: dsCasual, intent: 'casual_chat', provider: 'deepseek' });
+        }
+        // Fallback: Gemini
         if (GEMINI_API_KEY) {
           var fallbackPrompt = 'Kamu Auto-Cuan AI. User kirim chat casual/sapaan. Jawab singkat 1-3 kalimat dalam HTML (p class text-sm text-gray-300). Bahasa Indonesia santai dan friendly. Jangan bahas saham kecuali ditanya.';
           var fallbackHtml = await callGemini(GEMINI_API_KEY, fallbackPrompt, chatMessage, 256);
@@ -111,7 +131,7 @@ module.exports = async function handler(req, res) {
       }
 
       if (intent === 'follow_up_question') {
-        prompt = 'Kamu Auto-Cuan AI, asisten trading yang conversational, thoughtful, dan natural. User bertanya follow-up tentang saham. Jawab 150-350 kata, langsung ke inti. Format HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Bahasa Indonesia santai tapi berisi — seperti teman trading yang pinter. Berikan reasoning singkat, bukan hanya ya/tidak. Jika relevan sertakan level harga spesifik. Jika ada blok [Auto-Cuan Market Data], gunakan data OHLC/volume/MA sebagai acuan pendukung dan sebutkan singkat posisi harga vs MA. Catatan: data Yahoo bisa delayed, sebutkan ini sekali saja. Jangan tampilkan blok data mentah ke user. Jangan paksa mention orderbook/broker kecuali user tanya. Akhiri dengan satu kalimat natural jika data masih terbatas, contoh: "Kalau ada chart atau news terbaru, kirim aja biar analisisnya lebih presisi."';
+        prompt = 'Kamu Auto-Cuan AI, asisten trading yang conversational, thoughtful, dan natural. User bertanya follow-up tentang saham. Jawab 150-350 kata, langsung ke inti. Format HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Bahasa Indonesia santai tapi berisi — seperti teman trading yang pinter. Berikan reasoning singkat, bukan hanya ya/tidak. Jika relevan sertakan level harga spesifik. Jika ada blok [Auto-Cuan Market Data], gunakan data OHLC/volume/MA sebagai acuan pendukung dan sebutkan singkat posisi harga vs MA. Catatan: data Yahoo bisa delayed, sebutkan ini sekali saja. Jika ada blok [Auto-Cuan News Research], gunakan temuan news/rumor sebagai konteks tambahan. Label rumor jelas. Jangan tampilkan blok data mentah ke user. Jangan paksa mention orderbook/broker kecuali user tanya. Jangan pakai markdown stars **. Jangan suggest short-selling. Untuk bearish: pakai avoid/wait/hold ketat/cut loss. Akhiri dengan satu kalimat natural jika data masih terbatas.';
         if (body.context && body.context.ticker) {
           prompt += ' Konteks: ' + body.context.ticker;
           if (body.context.currentPrice) prompt += ' Rp ' + body.context.currentPrice;
@@ -124,7 +144,7 @@ module.exports = async function handler(req, res) {
         if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
         maxTokens = 1536;
       } else if (intent === 'full_analysis_request') {
-        prompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang natural dan thoughtful. User minta analisis lengkap. Jawab conversational tapi terstruktur. Format HTML (div, p, strong, ul, li) class text-sm text-gray-300. Bahasa Indonesia santai tapi serius — seperti mentor trading yang ngobrol. Format jawaban: 1) Kesimpulan/Bias (1-2 kalimat tegas), 2) Data Singkat dari [Auto-Cuan Market Data] jika ada: tampilkan Last, OHLC, Volume, MA20/50/100/200, posisi harga vs MA dalam format ringkas. Catatan: "Data Yahoo delayed, pakai sebagai acuan pendukung." 3) Alasan (2-3 poin key reasoning), 4) Trading plan (Entry, SL, TP1, TP2), 5) Risiko utama (1-2 poin). Jangan buat lebih dari 5 section. Jangan buat section kosong. Max 800 kata. Jika data terbatas jujur bilang. Akhiri dengan satu follow-up natural: "Kalau ada chart, news, atau broker summary terbaru, kirim saja. Nanti saya gabungkan dengan data OHLCV terakhir biar kesimpulannya lebih presisi." Jangan tampilkan blok data mentah ke user. JANGAN bilang pasti naik/pasti cuan/aman 100%.';
+        prompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang natural dan thoughtful. User minta analisis lengkap. Jawab conversational tapi terstruktur. Format HTML (div, p, strong, ul, li) class text-sm text-gray-300. Bahasa Indonesia santai tapi serius — seperti mentor trading yang ngobrol. Format jawaban: 1) Kesimpulan/Bias (1-2 kalimat tegas), 2) Data Singkat dari [Auto-Cuan Market Data] jika ada: tampilkan Last, OHLC, Volume, MA20/50/100/200, posisi harga vs MA. "Data Yahoo delayed, pakai sebagai acuan pendukung." 3) News/Katalis dari [Auto-Cuan News Research] jika ada: sebutkan ringkas berita terkonfirmasi dan rumor (label RUMOR jelas), 4) Trading plan (Entry, SL, TP1, TP2), 5) Risiko utama (1-2 poin). Max 5 section. Max 800 kata. Jangan pakai markdown stars **. Jangan suggest short-selling. Untuk bearish: avoid/wait/hold ketat/cut loss. Jangan tampilkan blok data mentah. JANGAN bilang pasti naik/pasti cuan/aman 100%. Akhiri: "Kalau ada chart terbaru, kirim saja biar kesimpulannya lebih presisi."';
         if (body.context && body.context.ticker) {
           prompt += ' Ticker: ' + body.context.ticker;
           if (body.context.currentPrice) prompt += ' Rp ' + body.context.currentPrice;
@@ -133,21 +153,43 @@ module.exports = async function handler(req, res) {
         maxTokens = 2048;
       } else {
         // normal_chat or ticker_price_basic
-        prompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang natural, thoughtful, dan risk-aware. Bahasa Indonesia santai tapi berisi — seperti teman trading yang pinter dan jujur. Format HTML (p, strong, ul, li) class text-sm text-gray-300. Jawab 200-400 kata. Struktur jawaban untuk pertanyaan saham: 1) Kesimpulan/Bias singkat (tegas tapi tidak overconfident), 2) Data Singkat: jika ada [Auto-Cuan Market Data], tampilkan ringkas: Last, OHLC, Volume, MA20/50/100/200, posisi harga vs MA. Sebutkan "Data Yahoo delayed, pakai sebagai acuan pendukung." 3) Alasan (2-3 poin key reasoning), 4) Jika bisa estimasi: Entry, SL, TP1, TP2, 5) Risiko utama, 6) Satu follow-up question natural: "Kalau ada chart, news, atau broker summary terbaru, kirim saja biar analisisnya lebih presisi." Jangan buat 15-section report. Jangan terlalu pendek tanpa reasoning. Jangan robotik. Jangan paksa mention orderbook/broker kecuali user tanya. Jangan bilang pasti naik/pasti cuan/aman 100%. Jika pertanyaan bukan soal saham spesifik (edukasi, konsep), jawab langsung tanpa format trading plan. Jangan tampilkan blok [Auto-Cuan Market Data] mentah ke user.';
+        prompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang natural, thoughtful, dan risk-aware. Bahasa Indonesia santai tapi berisi — seperti teman trading yang pinter dan jujur. Format HTML (p, strong, ul, li) class text-sm text-gray-300. Jawab 200-400 kata. Struktur: 1) Kesimpulan/Bias singkat (tegas tapi tidak overconfident), 2) Data Singkat: jika ada [Auto-Cuan Market Data], tampilkan ringkas: Last, OHLC, Volume, MA20/50/100/200, posisi harga vs MA. "Data Yahoo delayed, pakai sebagai acuan pendukung." 3) News/Katalis: jika ada [Auto-Cuan News Research], sebutkan ringkas berita/rumor (label RUMOR jelas), 4) Jika bisa estimasi: Entry, SL, TP1, TP2, 5) Risiko utama, 6) Satu follow-up: "Kalau ada chart terbaru, kirim saja biar analisisnya lebih presisi." Jangan buat 15-section report. Jangan pakai markdown stars **. Jangan suggest short-selling. Untuk bearish: avoid/wait/hold ketat/cut loss. Jangan bilang pasti naik/pasti cuan/aman 100%. Jangan tampilkan blok data mentah ke user.';
         if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
         maxTokens = 1536;
       }
 
       // === TRY DEEPSEEK FIRST, GEMINI FALLBACK ===
+      // Fetch Gemini Search news if ticker is available (for stock analysis intents)
+      var newsFindings = '';
+      var detectedTickerForNews = (body.context && body.context.ticker) ? body.context.ticker : null;
+      if (!detectedTickerForNews) {
+        // Try to detect ticker from message for news search
+        var tickerMatch = chatMessage.match(/\b[A-Z]{4}\b/);
+        if (tickerMatch) detectedTickerForNews = tickerMatch[0];
+      }
+      // Run Gemini Search for stock analysis intents (not casual chat)
+      var shouldSearchNews = detectedTickerForNews && GEMINI_API_KEY && (
+        intent === 'ticker_price_basic' ||
+        intent === 'full_analysis_request' ||
+        intent === 'follow_up_question' ||
+        /\b(news|berita|katalis|rumor|kabar)\b/i.test(chatMessage)
+      );
+      if (shouldSearchNews) {
+        var searchResult = await geminiSearchNews(GEMINI_API_KEY, detectedTickerForNews);
+        if (searchResult) {
+          newsFindings = '\n\n[Auto-Cuan News Research - Gemini Search]\n' + searchResult + '\n[End News Research]\nGunakan temuan news di atas sebagai context tambahan. Label rumor jelas dengan "RUMOR/belum terkonfirmasi". Jangan tampilkan blok ini mentah ke user. Jangan suggest short-selling.';
+        }
+      }
+
       var html = null;
       if (CODECRAFTERS_API_KEY) {
-        html = await callDeepSeek(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, prompt, chatMessage, maxTokens);
+        html = await callDeepSeek(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, prompt, chatMessage + newsFindings, maxTokens);
         if (html) {
-          return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'deepseek' });
+          return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: newsFindings ? 'deepseek+gemini-search' : 'deepseek' });
         }
       }
       if (GEMINI_API_KEY) {
-        html = await callGemini(GEMINI_API_KEY, prompt, chatMessage, maxTokens);
+        html = await callGemini(GEMINI_API_KEY, prompt, chatMessage + newsFindings, maxTokens);
         if (html) {
           return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'gemini-fallback' });
         }
@@ -241,6 +283,119 @@ async function callDeepSeek(apiKey, baseUrl, model, systemPrompt, userMessage, m
     return null;
   } catch (e) {
     return null;
+  }
+}
+
+// === GEMINI SEARCH: BACKGROUND NEWS RESEARCHER ===
+// NOTE: Real Google Search grounding (tools: google_search) is NOT yet implemented.
+// Returns null to prevent hallucinated news from model memory.
+// When grounding is available, re-enable with proper search tool configuration.
+async function geminiSearchNews(apiKey, ticker) {
+  return null;
+}
+
+// === CHART ANALYSIS: DEEPSEEK IMAGE (primary) ===
+async function handleChartDeepSeek(apiKey, baseUrl, model, images, singleImage, mimeType, userMessage) {
+  if (!apiKey) return null;
+
+  var prompt = 'Kamu Auto-Cuan AI. Ini screenshot chart saham. Analisis visual chart ini: 1) Timeframe yang terlihat, 2) Trend (bullish/bearish/sideways), 3) Level support/resistance yang terlihat, 4) Pattern jika ada (BOS, CHoCH, order block, FVG, dll), 5) Bias dan saran aksi. Jawab conversational dalam HTML (p, strong, ul, li) class text-sm text-gray-300. Bahasa Indonesia. Max 400 kata. Jangan bilang pasti naik/pasti cuan. JANGAN sebut FCA. Jangan pakai markdown stars **. Jangan suggest short-selling.';
+
+  // Build image data URL for OpenAI-compatible vision format
+  var imageDataUrl = null;
+  if (images && images.length > 0) {
+    var img = images[0];
+    var base64 = img.data || img.base64Data || '';
+    if (base64.indexOf(',') !== -1) {
+      imageDataUrl = base64; // Already a data URL
+    } else if (base64) {
+      imageDataUrl = 'data:' + (img.mimeType || 'image/png') + ';base64,' + base64;
+    }
+  } else if (singleImage) {
+    if (singleImage.indexOf(',') !== -1) {
+      imageDataUrl = singleImage;
+    } else {
+      imageDataUrl = 'data:' + (mimeType || 'image/png') + ';base64,' + singleImage;
+    }
+  }
+
+  if (!imageDataUrl) return null;
+
+  var url = (baseUrl || 'https://api.codecrafters.id/v1') + '/chat/completions';
+  var payload = {
+    model: model || 'deepseek-v4-flash',
+    messages: [
+      { role: 'system', content: prompt },
+      { role: 'user', content: [
+        { type: 'text', text: userMessage || 'Analisis chart ini.' },
+        { type: 'image_url', image_url: { url: imageDataUrl } }
+      ] }
+    ],
+    temperature: 0.5,
+    max_tokens: 1536,
+    stream: false
+  };
+
+  try {
+    var response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify(payload)
+    });
+
+    // If DeepSeek returns 400/415/422 (unsupported image), return null for Gemini fallback
+    if (!response.ok) return null;
+
+    var result = await response.json();
+    var choices = result.choices || [];
+    if (choices.length > 0 && choices[0].message && choices[0].message.content) {
+      var text = choices[0].message.content.trim();
+      if (!text.startsWith('<')) {
+        text = '<p class="text-sm text-gray-300">' + text.replace(/\n\n/g, '</p><p class="text-sm text-gray-300">').replace(/\n/g, '<br>') + '</p>';
+      }
+      text = text.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      return text;
+    }
+    return null;
+  } catch (e) {
+    return null; // Silent fail, Gemini Vision will handle
+  }
+}
+
+// === CHART VISION HANDLER (Gemini) ===
+async function handleChartVision(apiKey, images, singleImage, mimeType, userMessage) {
+  var prompt = 'Kamu Auto-Cuan AI. Ini screenshot chart saham. Analisis visual chart ini: 1) Timeframe yang terlihat, 2) Trend (bullish/bearish/sideways), 3) Level support/resistance yang terlihat, 4) Pattern jika ada (BOS, CHoCH, order block, FVG, dll), 5) Bias dan saran aksi. Jawab conversational dalam HTML (p, strong, ul, li) class text-sm text-gray-300. Bahasa Indonesia. Max 400 kata. Jangan bilang pasti naik/pasti cuan. JANGAN sebut FCA.';
+
+  var parts = [{ text: prompt + (userMessage ? '\n\nUser: ' + userMessage : '') }];
+  if (images && images.length > 0) {
+    images.forEach(function(img) {
+      var base64 = img.data || img.base64Data || '';
+      if (base64.indexOf(',') !== -1) base64 = base64.split(',')[1];
+      if (base64) parts.push({ inline_data: { mime_type: img.mimeType || 'image/png', data: base64 } });
+    });
+  } else if (singleImage) {
+    var base64 = singleImage;
+    if (base64.indexOf(',') !== -1) base64 = base64.split(',')[1];
+    if (base64) parts.push({ inline_data: { mime_type: mimeType || 'image/png', data: base64 } });
+  }
+
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+  var payload = { contents: [{ parts: parts }], generationConfig: { temperature: 0.5, topP: 0.9, maxOutputTokens: 1536 } };
+
+  try {
+    var response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!response.ok) return '<p class="text-sm text-red-400">Analisis chart gagal. Coba upload ulang.</p>';
+    var result = await response.json();
+    var candidates = result.candidates || [];
+    if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts && candidates[0].content.parts[0]) {
+      var text = candidates[0].content.parts[0].text || '';
+      text = text.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+      text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      return text;
+    }
+    return '<p class="text-sm text-gray-300">Chart diterima, tetapi AI belum berhasil menganalisis detail visual. Coba upload dengan resolusi lebih jelas atau tambahkan keterangan ticker + harga.</p>';
+  } catch (e) {
+    return '<p class="text-sm text-red-400">Terjadi kesalahan saat analisis chart.</p>';
   }
 }
 
@@ -416,13 +571,18 @@ function sanitizeOutput(html, fcaConfirmed, intent) {
   if (!html) return html;
   var output = html;
 
-  // A. FCA Guard — remove all FCA content if not confirmed
+  // A. Strip raw markdown bold ** stars → convert to <strong>
+  output = output.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Strip remaining single * that might be leftover
+  output = output.replace(/(?<![<\/])\*([^*\n]+)\*(?![>])/g, '<em>$1</em>');
+
+  // B. FCA Guard — remove all FCA content if not confirmed
   if (!fcaConfirmed) {
     output = output.replace(/<(?:p|li|span|strong|div|h[1-6])[^>]*>[^<]*(?:FCA|Full\s*Call\s*Auction|papan\s*pemantauan\s*khusus|saham\s*FCA|risiko\s*FCA|FCA\s*score\s*cap|Position\s*Sizing\s*FCA|PERINGATAN\s*FCA)[^<]*<\/(?:p|li|span|strong|div|h[1-6])>/gi, '');
     output = output.replace(/(?:Status\s+FCA\s*:\s*[^<.]*\.?)/gi, '');
   }
 
-  // B. Remove report-style headers (unless full_analysis_request)
+  // C. Remove report-style headers (unless full_analysis_request)
   if (intent !== 'full_analysis_request') {
     output = output.replace(/\d+\.\s*INPUT QUALITY[^<]*/gi, '');
     output = output.replace(/\d+\.\s*TECHNICAL ANALYSIS[^<]*/gi, '');
@@ -433,8 +593,12 @@ function sanitizeOutput(html, fcaConfirmed, intent) {
     output = output.replace(/INPUT QUALITY\s*&?\s*EVIDENCE SUMMARY[^<]*/gi, '');
   }
 
-  // C. Remove empty paragraphs left over
+  // D. Remove empty paragraphs left over
   output = output.replace(/<p[^>]*>\s*<\/p>/gi, '');
+
+  // E. Remove raw [Auto-Cuan ...] blocks that leaked
+  output = output.replace(/\[Auto-Cuan[^\]]*\]/gi, '');
+  output = output.replace(/\[End News Research\]/gi, '');
 
   return output;
 }
