@@ -79,30 +79,30 @@ module.exports = async function handler(req, res) {
       }
 
       if (intent === 'follow_up_question') {
-        prompt = 'Kamu Auto-Cuan AI, teman trading santai. User bertanya follow-up. Jawab langsung 100-300 kata, to the point. HTML (p, strong, ul, li). Bahasa Indonesia santai.';
+        prompt = 'Kamu Auto-Cuan AI, asisten trading yang conversational dan thoughtful. User bertanya follow-up tentang saham. Jawab 150-350 kata, langsung ke inti. Gunakan format HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Bahasa Indonesia santai tapi berisi. Berikan reasoning singkat, bukan hanya ya/tidak. Jika relevan sertakan level harga spesifik. Akhiri dengan satu kalimat natural jika data masih terbatas (jangan paksa mention orderbook/broker kecuali user tanya).';
         if (body.context && body.context.ticker) {
           prompt += ' Konteks: ' + body.context.ticker;
           if (body.context.currentPrice) prompt += ' Rp ' + body.context.currentPrice;
-          if (body.context.finalDecision) prompt += ', ' + body.context.finalDecision;
+          if (body.context.finalDecision) prompt += ', Decision: ' + body.context.finalDecision;
           if (body.context.entryArea) prompt += ', Entry: ' + body.context.entryArea;
           if (body.context.stopLoss) prompt += ', SL: ' + body.context.stopLoss;
           if (body.context.takeProfits) prompt += ', TP: ' + body.context.takeProfits;
-          prompt += '. Jawab dari konteks ini.';
+          prompt += '. Jawab berdasarkan konteks ini.';
         }
-        if (!fcaConfirmed) prompt += ' JANGAN sebut FCA.';
+        if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
         maxTokens = 1024;
       } else if (intent === 'full_analysis_request') {
-        prompt = 'Kamu Auto-Cuan AI. User minta analisis lengkap. Jawab terstruktur tapi tetap conversational. Sertakan: kesimpulan, level penting, entry/SL/TP, risiko, action plan. HTML (div, p, strong, ul, li). Max 1200 kata.';
+        prompt = 'Kamu Auto-Cuan AI. User minta analisis lengkap. Jawab conversational tapi terstruktur. Gunakan HTML (div, p, strong, ul, li) dengan class text-sm text-gray-300. Format jawaban: 1) Kesimpulan/Bias (1-2 kalimat), 2) Alasan (2-3 poin), 3) Level penting (support/resistance), 4) Trading plan (Entry, SL, TP1, TP2), 5) Risiko utama (1-2 poin). Jangan buat lebih dari 5 section. Jangan buat section kosong. Jangan terlalu panjang (max 800 kata). Bahasa Indonesia. Jika data terbatas, jujur bilang dan sarankan kirim chart/data tambahan di satu kalimat penutup yang natural.';
         if (body.context && body.context.ticker) {
           prompt += ' Ticker: ' + body.context.ticker;
           if (body.context.currentPrice) prompt += ' Rp ' + body.context.currentPrice;
         }
-        if (!fcaConfirmed) prompt += ' JANGAN sebut FCA.';
+        if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
         maxTokens = 2048;
       } else {
         // normal_chat or ticker_price_basic
-        prompt = 'Kamu Auto-Cuan AI, teman trading santai. Jawab singkat dalam HTML (p, strong, ul, li). Bahasa Indonesia. Jangan format report.';
-        if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction.';
+        prompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang conversational dan thoughtful. Jawab dalam HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Bahasa Indonesia santai tapi berisi. Jawab 200-400 kata. Struktur jawaban untuk pertanyaan saham: 1) Kesimpulan/Bias singkat, 2) Alasan (2-3 poin key reasoning), 3) Jika bisa estimasi: Entry, SL, TP1, TP2, 4) Risiko utama, 5) Satu kalimat penutup natural jika data terbatas. Jangan buat 15-section report. Jangan terlalu pendek tanpa reasoning. Jangan robotik. Jangan paksa mention broker/orderbook/news kecuali user tanya. Jika pertanyaan bukan soal saham spesifik (edukasi, konsep), jawab langsung tanpa format trading plan.';
+        if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
         maxTokens = 1024;
       }
 
@@ -113,8 +113,8 @@ module.exports = async function handler(req, res) {
 
     // Ticker mode (from ticker input, not chat)
     if (ticker && currentPrice) {
-      var tPrompt = 'Kamu Auto-Cuan AI. User tanya ' + String(ticker).toUpperCase() + ' harga Rp ' + currentPrice + '. Jawab singkat: estimasi support/resistance, saran upload chart. HTML (p, strong).' +
-        (fcaConfirmed ? '' : ' JANGAN sebut FCA/Full Call Auction.');
+      var tPrompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang conversational dan thoughtful. User tanya saham ' + String(ticker).toUpperCase() + ' di harga Rp ' + currentPrice + '. Jawab 200-400 kata dalam HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Berikan: 1) Bias singkat, 2) Estimasi support/resistance terdekat jika bisa, 3) Apakah menarik di harga ini atau belum, 4) Saran next step (upload chart untuk konfirmasi visual). Jangan buat report panjang. Bahasa Indonesia santai tapi berisi.' +
+        (fcaConfirmed ? '' : ' JANGAN sebut FCA/Full Call Auction sama sekali.');
       var tHtml = await callGemini(GEMINI_API_KEY, tPrompt, '', 1024);
       if (!tHtml) {
         return res.status(200).json({ html: '<p class="text-sm text-gray-300"><strong>' + String(ticker).toUpperCase() + '</strong> Rp ' + currentPrice + ' — Upload chart 1W/1D/4H untuk analisis lengkap.</p>' });

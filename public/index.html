@@ -47,12 +47,6 @@
         button, [role="button"] { transition: all 0.15s ease-out; }
         button:active:not(:disabled) { transform: scale(0.97); }
         button:disabled { opacity: 0.6; cursor: not-allowed; }
-        .mode-dropdown { position: relative; }
-        .mode-dropdown-menu { position: absolute; bottom: 100%; left: 0; margin-bottom: 4px; min-width: 160px; background: #151a23; border: 1px solid #1c2333; border-radius: 0.75rem; padding: 4px; z-index: 50; display: none; }
-        .mode-dropdown-menu.show { display: block; }
-        .mode-dropdown-menu button { display: block; width: 100%; text-align: left; padding: 8px 12px; border-radius: 0.5rem; font-size: 0.8125rem; color: #9ca3af; transition: all 0.1s; }
-        .mode-dropdown-menu button:hover { background: #1c2333; color: #e5e7eb; }
-        .mode-dropdown-menu button.active { background: rgba(16,185,129,0.15); color: #6ee7b7; }
         .chat-container { display: flex; flex-direction: column; }
         .chat-messages { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
         .attachment-preview { position: relative; display: inline-block; }
@@ -60,11 +54,10 @@
         .copy-btn { opacity: 0.4; transition: all 0.15s ease-out; }
         .flex.gap-3:hover .copy-btn, .copy-btn:focus { opacity: 1; }
         @media (max-width: 640px) { .copy-btn { opacity: 0.7; } }
-        .chat-container > .border-t { background: linear-gradient(to bottom, rgba(16,185,129,0.02), transparent 20px); }
-
-        /* ===== SUGGESTION CHIPS ===== */
-        .suggestion-chip { transition: all 0.15s ease-out; }
-        .suggestion-chip:hover { transform: translateY(-1px); }
+        .ai-content p { margin-bottom: 0.5rem; }
+        .ai-content p:last-child { margin-bottom: 0; }
+        .ai-content ul, .ai-content ol { margin: 0.25rem 0; padding-left: 1.25rem; }
+        .ai-content li { margin-bottom: 0.125rem; }
 
         /* ===== SIDEBAR STYLES ===== */
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 200; transition: opacity 0.2s ease; }
@@ -142,8 +135,8 @@
 </aside>
 
 <!-- HEADER -->
-<header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/80 border-b border-dark-600/50 flex-shrink-0">
-    <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-3">
+<header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/90 border-b border-dark-600/30 flex-shrink-0">
+    <div class="max-w-3xl w-full mx-auto px-3 sm:px-4 py-2.5">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <button onclick="toggleSidebar()" class="sidebar-toggle-btn" title="Riwayat Chat">
@@ -170,36 +163,22 @@
 </header>
 
 <!-- MAIN CHAT SECTION - Full screen height -->
-<section id="aiSection" class="flex-1 flex flex-col max-w-[1600px] w-full mx-auto px-4 sm:px-6" style="min-height:calc(100vh - 64px);">
-    <div class="flex-1 flex flex-col bg-dark-800/40 border border-dark-600/30 rounded-2xl shadow-2xl shadow-black/30 my-4 overflow-hidden chat-container">
-        <!-- Chat header -->
-        <div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between flex-shrink-0">
-            <div class="flex items-center gap-2">
-                <div class="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                </div>
-                <h2 class="text-sm font-semibold text-gray-300">Auto-Cuan AI</h2>
-            </div>
-            <div class="flex items-center gap-3">
-                <span id="usageCounter" class="text-xs text-gray-500"></span>
-                <button onclick="clearChat()" class="text-xs text-gray-500 hover:text-red-400 transition px-2 py-1 rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/20" title="Hapus Chat">Hapus</button>
-            </div>
-        </div>
+<section id="aiSection" class="flex-1 flex flex-col max-w-3xl w-full mx-auto px-3 sm:px-4" style="min-height:calc(100vh - 64px);">
+    <div class="flex-1 flex flex-col my-3 overflow-hidden chat-container">
 
         <!-- Chat messages area -->
-        <div id="chatMessages" class="chat-messages flex-1 p-4 space-y-4">
+        <div id="chatMessages" class="chat-messages flex-1 py-4 space-y-4">
             <div class="flex gap-3">
                 <div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                     <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                 </div>
-                <div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]">
-                    <p class="text-sm text-gray-300">Halo! Saya <strong class="text-emerald-400">Auto-Cuan AI</strong> — asisten analisis saham berbasis Smart Money Concepts.</p>
-                    <p class="text-sm text-gray-400 mt-2">Langsung aja ketik, contoh:</p>
+                <div class="bg-dark-700/60 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%] sm:max-w-[80%]">
+                    <p class="text-sm text-gray-300">Halo! Saya <strong class="text-emerald-400">Auto-Cuan AI</strong>.</p>
+                    <p class="text-sm text-gray-400 mt-1.5">Ketik langsung, contoh:</p>
                     <ul class="text-sm text-gray-400 mt-1 space-y-0.5">
-                        <li>• <span class="text-gray-200">BBCA 9250</span> → analisis lengkap</li>
-                        <li>• <span class="text-gray-200">saham NAYZ gimana?</span> → info singkat</li>
-                        <li>• <span class="text-gray-200">apa itu order block?</span> → edukasi</li>
-                        <li>• Upload chart 1W/1D/4H → analisis presisi</li>
+                        <li>• <span class="text-gray-200">BBCA 9250</span> — analisis saham</li>
+                        <li>• <span class="text-gray-200">NAYZ gimana?</span> — tanya singkat</li>
+                        <li>• Upload chart — analisis visual</li>
                     </ul>
                 </div>
             </div>
@@ -207,41 +186,26 @@
 
 
         <!-- Attachment preview (multi-file) -->
-        <div id="attachmentPreview" class="hidden px-4 pb-2 flex-shrink-0">
+        <div id="attachmentPreview" class="hidden px-1 pb-2 flex-shrink-0">
             <div id="filePreviewContainer" class="flex flex-wrap gap-2"></div>
         </div>
 
         <!-- Composer -->
-        <div class="border-t border-dark-600/30 p-3 sm:p-4 flex-shrink-0">
-            <div id="limitWarning" class="hidden text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-3 text-center"></div>
+        <div class="border-t border-dark-600/30 p-3 flex-shrink-0">
+            <div id="limitWarning" class="hidden text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-2 text-center"></div>
+            <span id="usageCounter" class="hidden text-[10px] text-gray-600 mb-1 block text-right"></span>
             <div class="flex items-end gap-2">
-                <!-- Mode dropdown -->
-                <div class="mode-dropdown flex-shrink-0">
-                    <button id="modeBtn" onclick="toggleModeMenu()" class="px-2.5 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-xs font-medium text-gray-300 hover:border-emerald-500/30 transition flex items-center gap-1.5">
-                        <span id="modeBtnLabel">Chat</span>
-                        <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
-                    <div id="modeMenu" class="mode-dropdown-menu">
-                        <button onclick="selectMode('chat')" class="active">&#x1F4AC; Chat</button>
-                        <button onclick="selectMode('analisis_maksimal')">&#x1F4CA; Analisis Maksimal</button>
-                        <button onclick="selectMode('analisis_lengkap')">&#x1F4DD; Analisis Lengkap</button>
-                        <button onclick="selectMode('news_katalis')">&#x1F4F0; News/Katalis</button>
-                        <button onclick="selectMode('broker_orderbook')">&#x1F4CA; Broker/Orderbook</button>
-                    </div>
-                </div>
                 <!-- Upload button -->
                 <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
-                <div class="flex-shrink-0 relative">
-                    <button onclick="document.getElementById('fileInput').click()" class="p-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload File (maks 8) - Ctrl+V untuk paste gambar">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    </button>
-                </div>
+                <button onclick="document.getElementById('fileInput').click()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                </button>
                 <!-- Text input -->
                 <div class="flex-1 relative">
-                    <textarea id="chatInput" rows="1" placeholder="Tanya saham, kirim ticker + harga, atau upload chart..." class="w-full px-4 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/40 text-sm resize-none overflow-hidden" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+                    <textarea id="chatInput" rows="1" placeholder="Tanya saham, kirim ticker + harga, atau upload chart..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
                 </div>
                 <!-- Send button -->
-                <button id="sendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 transition" title="Kirim">
+                <button id="sendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>
             </div>
@@ -250,7 +214,7 @@
 </section>
 
 <!-- TRADINGVIEW WIDGET - Below chat (hidden by default, shown on demand) -->
-<section id="tvSection" class="hidden max-w-[1600px] w-full mx-auto px-4 sm:px-6 pb-6">
+<section id="tvSection" class="hidden max-w-3xl w-full mx-auto px-3 sm:px-4 pb-6">
     <div class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
         <div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -270,7 +234,7 @@
 
 
 <!-- ADMIN PANEL (only for budi) -->
-<section id="adminPanel" class="hidden max-w-[1600px] w-full mx-auto px-4 sm:px-6 pb-6">
+<section id="adminPanel" class="hidden max-w-3xl w-full mx-auto px-3 sm:px-4 pb-6">
     <div class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
         <div class="px-4 sm:px-6 py-4 border-b border-dark-600/30 flex items-center gap-2">
             <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
@@ -295,8 +259,8 @@
 
 <!-- FOOTER -->
 <footer class="border-t border-dark-700/50 mt-auto flex-shrink-0">
-    <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-4 text-center">
-        <p class="text-xs text-gray-600">Auto-Cuan &copy; 2024 &bull; Disclaimer: Bukan merupakan saran investasi.</p>
+    <div class="max-w-3xl w-full mx-auto px-3 sm:px-4 py-3 text-center">
+        <p class="text-[10px] text-gray-600">Auto-Cuan &copy; 2024 &bull; Bukan merupakan saran investasi.</p>
     </div>
 </footer>
 
@@ -504,8 +468,9 @@ function getAnalysisLimitMsg() { return getUsername() === 'guest' ? 'Limit anali
 function getChatLimitMsg() { return getUsername() === 'guest' ? 'Limit chat guest hari ini sudah habis. Login atau daftar untuk mendapatkan 20 chat per hari, atau coba lagi besok.' : 'Limit chat harian Anda sudah habis. Silakan coba lagi besok.'; }
 function updateUsageCounter() {
     var el = document.getElementById('usageCounter'); if (!el) return;
-    if (isAdmin()) { el.textContent = 'Unlimited'; return; }
-    el.textContent = 'Analisis: ' + getAnalysisCount() + '/' + getAnalysisLimit() + ' | Chat: ' + getChatCount() + '/' + getChatLimit();
+    if (isAdmin()) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.textContent = getAnalysisCount() + '/' + getAnalysisLimit() + ' analisis · ' + getChatCount() + '/' + getChatLimit() + ' chat';
 }
 
 
@@ -683,33 +648,11 @@ function showDashboard() {
     loadChatHistory();
 }
 
-// ===== MODE SYSTEM =====
+// ===== MODE SYSTEM (simplified - always Chat, intent auto-detected from message) =====
 var currentMode = 'chat';
-var modeLabels = { chat: '&#x1F4AC; Chat', analisis_maksimal: '&#x1F4CA; Analisis Maksimal', analisis_lengkap: '&#x1F4DD; Analisis Lengkap', news_katalis: '&#x1F4F0; News/Katalis', broker_orderbook: '&#x1F4CA; Broker/Orderbook' };
-var modePlaceholders = { chat: 'Tanya saham, kirim ticker + harga, atau upload chart...', analisis_maksimal: 'Ketik ticker + harga untuk analisis mendalam, contoh: BBCA 9250', analisis_lengkap: 'Ketik ticker + harga untuk analisis lengkap terstruktur...', news_katalis: 'Tanya news atau katalis saham, contoh: ada news BBCA?', broker_orderbook: 'Kirim data broker/orderbook atau tanya soal broker summary...' };
-var modeContextPrefix = { chat: '', analisis_maksimal: '[Mode: Analisis Maksimal - analisis mendalam dan presisi] ', analisis_lengkap: '[Mode: Analisis Lengkap - jawab terstruktur dengan semua aspek] ', news_katalis: '[Mode: News/Katalis - fokus ke news, katalis, corporate action] ', broker_orderbook: '[Mode: Broker/Orderbook - fokus analisis broker summary dan order flow] ' };
-var ALL_MODES = ['chat', 'analisis_maksimal', 'analisis_lengkap', 'news_katalis', 'broker_orderbook'];
 
-function toggleModeMenu() {
-    var menu = document.getElementById('modeMenu');
-    menu.classList.toggle('show');
-}
-function selectMode(mode) {
-    currentMode = mode;
-    document.getElementById('modeBtnLabel').innerHTML = modeLabels[mode];
-    document.getElementById('chatInput').placeholder = modePlaceholders[mode];
-    document.getElementById('modeMenu').classList.remove('show');
-    // Update active state
-    var btns = document.getElementById('modeMenu').querySelectorAll('button');
-    btns.forEach(function(btn) { btn.classList.remove('active'); });
-    var idx = ALL_MODES.indexOf(mode);
-    if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
-}
-// Close mode menu on outside click
-document.addEventListener('click', function(e) {
-    var modeDropdown = document.querySelector('.mode-dropdown');
-    if (modeDropdown && !modeDropdown.contains(e.target)) { document.getElementById('modeMenu').classList.remove('show'); }
-});
+function toggleModeMenu() { /* removed - no dropdown */ }
+function selectMode(mode) { currentMode = 'chat'; }
 
 // ===== INPUT HANDLING =====
 function autoResizeInput() {
@@ -780,7 +723,7 @@ function addFilesToSelection(files, source) {
     }
     renderFilePreview();
     if (selectedFiles.length > 0 && (currentMode === 'chat' || currentMode === 'analisis_maksimal' || currentMode === 'analisis_lengkap')) {
-        document.getElementById('chatInput').placeholder = 'Tulis ticker dan harga sekarang (opsional)...';
+        document.getElementById('chatInput').placeholder = 'Tulis keterangan (opsional)...';
     }
 }
 
@@ -830,7 +773,7 @@ function removeFile(fileId) {
     }
     renderFilePreview();
     if (selectedFiles.length === 0) {
-        document.getElementById('chatInput').placeholder = modePlaceholders[currentMode];
+        document.getElementById('chatInput').placeholder = 'Tanya saham, kirim ticker + harga, atau upload chart...';
     }
 }
 
@@ -841,7 +784,7 @@ function clearAllFiles() {
     selectedFiles = [];
     document.getElementById('fileInput').value = '';
     renderFilePreview();
-    document.getElementById('chatInput').placeholder = modePlaceholders[currentMode];
+    document.getElementById('chatInput').placeholder = 'Tanya saham, kirim ticker + harga, atau upload chart...';
 }
 
 function removeAttachment() {
@@ -1352,12 +1295,8 @@ async function handleSend() {
     // Track last sent message for regenerate
     lastSentMessage = msg;
 
-    // Determine what to do based on mode
-    var mode = currentMode;
+    // Determine intent from message content
     var intent = null;
-
-    // Prepend mode context prefix for non-chat modes
-    var modePrefix = modeContextPrefix[mode] || '';
 
     if (hasFile) {
         intent = { type: 'chart_upload' };
@@ -1365,27 +1304,19 @@ async function handleSend() {
         intent = detectIntent(msg);
     }
 
-    // For specific modes, override intent type to use analysis/chat appropriately
-    if (mode === 'analisis_maksimal' || mode === 'analisis_lengkap') {
-        if (intent.type === 'chat' || intent.type === 'ticker_question') {
-            // These modes want deeper analysis, so let it flow as chat with mode context
-            intent = { type: 'chat' };
-        }
-    }
-
-    // Route to appropriate handler (pass modePrefix for context enrichment)
+    // Route to appropriate handler
     if (intent.type === 'analysis' || intent.type === 'force_analysis') {
         lastSentMode = 'analysis';
-        await handleAnalysis(modePrefix + msg, intent);
+        await handleAnalysis(msg, intent);
     } else if (intent.type === 'chart_upload') {
         lastSentMode = 'chart_upload';
         await handleChartUpload(msg);
     } else if (intent.type === 'ticker_question') {
         lastSentMode = 'ticker_question';
-        await handleTickerQuestion(modePrefix + msg, intent.ticker);
+        await handleTickerQuestion(msg, intent.ticker);
     } else {
         lastSentMode = 'chat';
-        await handleChat(modePrefix + msg);
+        await handleChat(msg);
     }
 }
 
@@ -1448,7 +1379,7 @@ async function handleAnalysis(msg, intent) {
     pendingAnalysisRequest = null; // Clear pending since we're executing
     var company = getCompanyName(ticker);
     var displayTicker = company ? ticker + ' (' + company + ')' : ticker;
-    addUserBubble((msg || ticker + ' ' + price).replace(/^\[Mode:[^\]]*\]\s*/, ''));
+    addUserBubble((msg || ticker + ' ' + price));
     addLoadingBubble();
     disableSend();
     clearInput();
@@ -1479,10 +1410,10 @@ async function handleTickerQuestion(msg, ticker) {
     if (!canChat()) { document.getElementById('limitWarning').textContent = getChatLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
     // Validate ticker
     if (!isValidTicker(ticker) && activeTicker) { ticker = activeTicker; }
-    if (!isValidTicker(ticker)) { addUserBubble(msg.replace(/^\[Mode:[^\]]*\]\s*/, '')); addAIBubble('<p class="text-sm text-gray-300">Ticker tidak dikenali. Pastikan menggunakan kode saham yang terdaftar di BEI.</p>'); saveChatHistory(); return; }
+    if (!isValidTicker(ticker)) { addUserBubble(msg); addAIBubble('<p class="text-sm text-gray-300">Ticker tidak dikenali. Pastikan menggunakan kode saham yang terdaftar di BEI.</p>'); saveChatHistory(); return; }
     setActiveTicker(ticker);
     pendingAnalysisRequest = { type: 'stock-analysis', ticker: ticker, companyName: getCompanyName(ticker) };
-    addUserBubble(msg.replace(/^\[Mode:[^\]]*\]\s*/, ''));
+    addUserBubble(msg);
     addLoadingBubble();
     disableSend(); clearInput();
     logUsage(ticker, 'chat_started');
@@ -1505,7 +1436,7 @@ async function handleChat(msg) {
     // Detect ticker from message even in chat mode
     var chatDetectedTicker = detectTicker(msg);
     if (chatDetectedTicker) { setActiveTicker(chatDetectedTicker); }
-    addUserBubble(msg.replace(/^\[Mode:[^\]]*\]\s*/, ''));
+    addUserBubble(msg);
     addLoadingBubble();
     disableSend(); clearInput();
     logUsage('CHAT', 'chat_started');
@@ -1689,7 +1620,7 @@ function addUserBubble(text) {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'flex gap-3 justify-end fade-in-up';
-    div.innerHTML = '<div class="bg-emerald-500/15 border border-emerald-500/20 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%]"><p class="text-sm text-gray-100 whitespace-pre-wrap">' + escapeHtml(text) + '</p><div class="mt-1.5 flex justify-end"><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-0.5 rounded-lg text-[11px] text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">Salin</button></div></div>';
+    div.innerHTML = '<div class="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[88%] sm:max-w-[80%]"><p class="text-sm text-gray-100 whitespace-pre-wrap">' + escapeHtml(text) + '</p></div>';
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
 }
@@ -1725,25 +1656,16 @@ function addAIBubble(html, isStructured) {
     var tvTicker = activeTicker || latestAnalysisContext.ticker || null;
     if (tvTicker && isValidTicker(tvTicker)) {
         var tvUrl = 'https://www.tradingview.com/chart/?symbol=IDX%3A' + encodeURIComponent(tvTicker);
-        tvLinkHtml = '<a href="' + tvUrl + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/40 transition-all"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>Buka TradingView ' + tvTicker + '</a>';
-        tvLinkHtml += '<button onclick="showTradingViewChart(\'' + tvTicker + '\')" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 transition-all"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Tampilkan Chart ' + tvTicker + '</button>';
+        tvLinkHtml = '<a href="' + tvUrl + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>TradingView ' + tvTicker + '</a>';
+        tvLinkHtml += '<button onclick="showTradingViewChart(\'' + tvTicker + '\')" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Chart</button>';
     }
 
-    var copyBtnHtml = '<div class="mt-2 flex items-center gap-2 flex-wrap justify-end">' + tvLinkHtml + '<button onclick="regenerateLastAnswer(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">Regenerate</button><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
+    var copyBtnHtml = '<div class="mt-3 pt-2 border-t border-dark-600/20 flex items-center gap-1.5 flex-wrap">' + tvLinkHtml + '<button onclick="regenerateLastAnswer(this)" class="copy-btn px-2 py-1 rounded-lg text-[11px] text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">Regenerate</button><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-[11px] text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">' + copyLabel + '</button></div>';
 
     // Client-side FCA sanitizer
     var sanitizedHtml = clientSanitizeFCA(html);
 
-    // Build suggestion chips if this is a stock analysis response
-    var chipsHtml = '';
-    if (isStructured || (activeTicker && sanitizedHtml.length > 200)) {
-        chipsHtml = buildSuggestionChips();
-    }
-
-    // Build evidence badges
-    var badgesHtml = buildEvidenceBadges();
-
-    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] overflow-x-auto">' + badgesHtml + '<div class="ai-content">' + sanitizedHtml + '</div>' + chipsHtml + copyBtnHtml + '</div>';
+    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%] sm:max-w-[85%] overflow-x-auto"><div class="ai-content">' + sanitizedHtml + '</div>' + copyBtnHtml + '</div>';
     container.appendChild(div);
     // Hide empty sections
     var contentDiv = div.querySelector('.ai-content');
