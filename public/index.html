@@ -249,8 +249,8 @@
     </div>
 </section>
 
-<!-- TRADINGVIEW WIDGET - Below chat -->
-<section id="tvSection" class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 pb-6">
+<!-- TRADINGVIEW WIDGET - Below chat (hidden by default, shown on demand) -->
+<section id="tvSection" class="hidden max-w-[1600px] w-full mx-auto px-4 sm:px-6 pb-6">
     <div class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
         <div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -680,7 +680,6 @@ function showDashboard() {
     // Admin panel
     if (isAdm && !isReview) { document.getElementById('adminPanel').classList.remove('hidden'); } else { document.getElementById('adminPanel').classList.add('hidden'); }
     updateUsageCounter();
-    loadTradingView();
     loadChatHistory();
 }
 
@@ -1454,7 +1453,6 @@ async function handleAnalysis(msg, intent) {
     disableSend();
     clearInput();
     logSearch(ticker, 'auto_analysis'); logUsage(ticker, 'ai_analysis_started');
-    updateTradingViewSafe(ticker);
 
     try {
         var company = getCompanyName(ticker);
@@ -1488,7 +1486,6 @@ async function handleTickerQuestion(msg, ticker) {
     addLoadingBubble();
     disableSend(); clearInput();
     logUsage(ticker, 'chat_started');
-    updateTradingViewSafe(ticker);
     try {
         var company = getCompanyName(ticker);
         var enrichedMsg = msg + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
@@ -1507,7 +1504,7 @@ async function handleChat(msg) {
     if (!canChat()) { document.getElementById('limitWarning').textContent = getChatLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
     // Detect ticker from message even in chat mode
     var chatDetectedTicker = detectTicker(msg);
-    if (chatDetectedTicker) { setActiveTicker(chatDetectedTicker); updateTradingViewSafe(chatDetectedTicker); }
+    if (chatDetectedTicker) { setActiveTicker(chatDetectedTicker); }
     addUserBubble(msg.replace(/^\[Mode:[^\]]*\]\s*/, ''));
     addLoadingBubble();
     disableSend(); clearInput();
@@ -1537,7 +1534,7 @@ async function handleChartUpload(msg) {
     var chartTicker = null;
     if (msg) {
         chartTicker = detectTicker(msg);
-        if (chartTicker) { setActiveTicker(chartTicker); updateTradingViewSafe(chartTicker); }
+        if (chartTicker) { setActiveTicker(chartTicker); }
     }
     // Use first image file for analysis
     var imageFile = selectedFiles.find(function(f) { return SUPPORTED_IMAGE_TYPES.includes(f.type); });
@@ -1729,6 +1726,7 @@ function addAIBubble(html, isStructured) {
     if (tvTicker && isValidTicker(tvTicker)) {
         var tvUrl = 'https://www.tradingview.com/chart/?symbol=IDX%3A' + encodeURIComponent(tvTicker);
         tvLinkHtml = '<a href="' + tvUrl + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/40 transition-all"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>Buka TradingView ' + tvTicker + '</a>';
+        tvLinkHtml += '<button onclick="showTradingViewChart(\'' + tvTicker + '\')" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 transition-all"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Tampilkan Chart ' + tvTicker + '</button>';
     }
 
     var copyBtnHtml = '<div class="mt-2 flex items-center gap-2 flex-wrap justify-end">' + tvLinkHtml + '<button onclick="regenerateLastAnswer(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">Regenerate</button><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
@@ -1915,8 +1913,8 @@ function switchSession(sessionId) {
                 container.appendChild(fileNoteDiv);
             }
         }
-        // Update TradingView if ticker context exists
-        if (activeTicker) { updateTradingViewSafe(activeTicker); }
+        // Update active ticker context (but don't auto-load chart)
+        if (activeTicker) { /* chart loads on demand via Tampilkan Chart button */ }
     } else {
         activeTicker = null; activeCompanyName = null; pendingAnalysisRequest = null;
         resetBrokerSummaryContext();
@@ -2067,6 +2065,19 @@ function updateTradingViewSafe(ticker) {
     if (!ticker) return;
     var t = String(ticker).toUpperCase().trim();
     if (!isValidTicker(t)) return;
+    loadTradingView(t);
+}
+
+// Show TradingView chart on demand (user clicks "Tampilkan Chart")
+function showTradingViewChart(ticker) {
+    if (!ticker) return;
+    var t = String(ticker).toUpperCase().trim();
+    if (!isValidTicker(t)) return;
+    var section = document.getElementById('tvSection');
+    if (section) {
+        section.classList.remove('hidden');
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
     loadTradingView(t);
 }
 
