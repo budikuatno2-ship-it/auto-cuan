@@ -70,6 +70,15 @@ module.exports = async function handler(req, res) {
       var prompt;
       var maxTokens = 1024;
 
+      // === GROQ ROUTER: casual chat → Groq, stock analysis → Gemini ===
+      if (isCasualChat(chatMessage, body.context, intent)) {
+        var groqResult = await handleCasualWithGroq(chatMessage);
+        if (groqResult) {
+          return res.status(200).json({ html: groqResult, intent: 'casual_chat', provider: 'groq' });
+        }
+        // If Groq fails, fall through to Gemini
+      }
+
       if (intent === 'ticker_only') {
         // Just a ticker, ask for price
         return res.status(200).json({
@@ -151,6 +160,97 @@ async function callGemini(apiKey, systemPrompt, userMessage, maxTokens) {
     return text.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
   }
   return null;
+}
+
+// === GROQ: CASUAL CHAT HANDLER ===
+function isCasualChat(message, context, intent) {
+  // If there's an active ticker context, it's likely stock-related
+  if (context && context.ticker) return false;
+  // If intent is stock-related, not casual
+  if (intent === 'ticker_only' || intent === 'ticker_price_basic' || intent === 'full_analysis_request' || intent === 'follow_up_question') return false;
+
+  var msg = String(message || '').trim();
+  // Strip [Auto-Cuan Market Data] and [Info:] blocks for classification
+  var cleanMsg = msg.replace(/\n?\[Auto-Cuan Market Data\][\s\S]*/i, '').replace(/\n?\[Info:[^\]]*\]/gi, '').trim();
+  var lower = cleanMsg.toLowerCase();
+
+  // If message contains stock keywords, not casual
+  if (/\b(saham|emiten|chart|volume|MA\d|entry|tp|sl|stop\s*loss|take\s*profit|support|resistance|broker|orderbook|order\s*book|bid|offer|analisis|analisa|cut\s*loss|hold|averaging|nambah|beli|jual|scalp|swing|intraday|dividen|right\s*issue|akuisisi|merger)\b/i.test(lower)) return false;
+  // If message contains a 4-letter uppercase word that could be a ticker
+  if (/\b[A-Z]{4}\b/.test(cleanMsg)) return false;
+  // If message has price patterns
+  if (/\b\d{2,6}\b/.test(lower) && /harga|rp|rupiah/i.test(lower)) return false;
+
+  // Casual patterns
+  if (/^(hai|halo|hi|hello|hey|pagi|siang|sore|malam|selamat|assalamualaikum|waalaikumsalam)\b/i.test(lower)) return true;
+  if (/^(makasih|terima\s*kasih|thanks|thank\s*you|thx|tq|trims)\b/i.test(lower)) return true;
+  if (/^(oke|ok|siap|sip|mantap|good|nice|baik|iya|ya|yap|yup|yoi)\s*[.!]?\s*$/i.test(lower)) return true;
+  if (/^(kamu\s*(siapa|apa)|lu\s*siapa|ini\s*apa|web\s*ini|app\s*ini|fitur|cara\s*pakai|cara\s*pake|gimana\s*cara|cara\s*kerja|fungsi|buat\s*apa)/i.test(lower)) return true;
+  if (/^(jelasin|tolong\s*jelasin|explain|bantuin|bantu\s*dong|help)\s*(dong|ya|please)?\s*$/i.test(lower)) return true;
+  if (/^(lanjut|terus|next|oke\s*lanjut|yuk|gas|gass|let'?s\s*go)\s*[.!]?\s*$/i.test(lower)) return true;
+  // Very short non-stock messages (< 15 chars, no ticker patterns)
+  if (lower.length < 15 && !/[A-Z]{4}/.test(cleanMsg) && !/\d{2,}/.test(lower)) return true;
+
+  return false;
+}
+
+async function handleCasualWithGroq(message) {
+  var GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) return null; // Fallback to Gemini
+
+  // Detect WIB time for natural greeting
+  var now = new Date();
+  var wibHour = (now.getUTCHours() + 7) % 24;
+  var timeContext = '';
+  if (wibHour >= 4 && wibHour < 11) timeContext = 'Sekarang pagi hari (WIB).';
+  else if (wibHour >= 11 && wibHour < 15) timeContext = 'Sekarang siang hari (WIB).';
+  else if (wibHour >= 15 && wibHour < 18) timeContext = 'Sekarang sore hari (WIB).';
+  else timeContext = 'Sekarang malam hari (WIB).';
+
+  var systemPrompt = 'Kamu Auto-Cuan AI, asisten analisis saham Indonesia. ' + timeContext + ' Jawab casual chat user dalam Bahasa Indonesia yang santai, natural, friendly. Jangan kaku. Boleh sedikit gen-Z tapi tetap sopan. Jika user menyapa, balas dengan sapaan yang sesuai waktu (selamat pagi/siang/sore/malam). Jika user bertanya soal fitur/cara pakai, jelaskan singkat: Auto-Cuan membantu analisis saham IDX (BEI) berbasis Smart Money Concepts, user bisa ketik ticker+harga atau upload chart. Jawab singkat 1-3 kalimat. Format: HTML sederhana (p tag saja, class text-sm text-gray-300). Jangan panjang. Jangan bahas saham kecuali user bertanya.';
+
+  var result = await callGroq(GROQ_API_KEY, systemPrompt, message);
+  return result;
+}
+
+async function callGroq(apiKey, systemPrompt, userMessage) {
+  var url = 'https://api.groq.com/openai/v1/chat/completions';
+  var payload = {
+    model: 'llama-3.1-8b-instant',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ],
+    temperature: 0.7,
+    max_tokens: 256,
+    stream: false
+  };
+
+  try {
+    var response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) return null;
+    var result = await response.json();
+    var choices = result.choices || [];
+    if (choices.length > 0 && choices[0].message && choices[0].message.content) {
+      var text = choices[0].message.content.trim();
+      // Wrap in HTML if not already
+      if (!text.startsWith('<')) {
+        text = '<p class="text-sm text-gray-300">' + text.replace(/\n/g, '</p><p class="text-sm text-gray-300">') + '</p>';
+      }
+      return text.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+    }
+    return null;
+  } catch (e) {
+    return null; // Silent fail, will fallback to Gemini
+  }
 }
 
 // === INTENT ROUTER ===
