@@ -1,6 +1,8 @@
 /**
  * Auto-Cuan Analyze API — Minimal real implementation
  * Single file, no local lib deps, deployment-safe.
+ * Primary AI: DeepSeek V4 Flash via CodeCrafters
+ * Fallback: Gemini (also used for vision/image tasks)
  * Includes: Intent Router, Output Sanitizer, FCA Guard.
  */
 
@@ -14,14 +16,24 @@ module.exports = async function handler(req, res) {
     const { ticker, currentPrice, source, chatMessage, image, images } = body;
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    if (!GEMINI_API_KEY) {
+    const CODECRAFTERS_API_KEY = process.env.CODECRAFTERS_API_KEY;
+    const CODECRAFTERS_BASE_URL = process.env.CODECRAFTERS_BASE_URL || 'https://api.codecrafters.id/v1';
+    const CODECRAFTERS_MODEL = process.env.CODECRAFTERS_MODEL || 'deepseek-v4-flash';
+
+    if (!GEMINI_API_KEY && !CODECRAFTERS_API_KEY) {
       return res.status(200).json({
-        html: '<p class="text-sm text-yellow-400">Gemini API belum dikonfigurasi. Hubungi admin.</p>'
+        html: '<p class="text-sm text-yellow-400">AI provider belum dikonfigurasi. Hubungi admin.</p>'
       });
     }
 
-    // Image/file upload — classify evidence type first
+    // Image/file upload — use Gemini for vision tasks
     if (source === 'chart_upload' && (image || (images && images.length > 0))) {
+      if (!GEMINI_API_KEY) {
+        return res.status(200).json({
+          html: '<p class="text-sm text-yellow-400">Upload gambar memerlukan Gemini API. Hubungi admin.</p>',
+          provider: 'none'
+        });
+      }
       var evidenceType = classifyEvidence(chatMessage || '', images, body.documents);
 
       if (evidenceType === 'chart') {
@@ -70,17 +82,19 @@ module.exports = async function handler(req, res) {
       var prompt;
       var maxTokens = 1024;
 
-      // === GROQ ROUTER: casual chat → Groq, stock analysis → Gemini ===
+      // === DEEPSEEK CASUAL CHAT ===
       if (isCasualChat(chatMessage, body.context, intent)) {
-        var groqResult = await handleCasualWithGroq(chatMessage);
-        if (groqResult) {
-          return res.status(200).json({ html: groqResult, intent: 'casual_chat', provider: 'groq' });
+        var casualResult = await handleCasualChat(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, chatMessage);
+        if (casualResult) {
+          return res.status(200).json({ html: casualResult, intent: 'casual_chat', provider: 'deepseek' });
         }
-        // If Groq fails, try Gemini as fallback for casual chat
-        var fallbackPrompt = 'Kamu Auto-Cuan AI. User kirim chat casual/sapaan. Jawab singkat 1-3 kalimat dalam HTML (p class text-sm text-gray-300). Bahasa Indonesia santai dan friendly. Jangan bahas saham kecuali ditanya.';
-        var fallbackHtml = await callGemini(GEMINI_API_KEY, fallbackPrompt, chatMessage, 256);
-        if (fallbackHtml) {
-          return res.status(200).json({ html: fallbackHtml, intent: 'casual_chat', provider: 'gemini_fallback' });
+        // Fallback to Gemini for casual chat
+        if (GEMINI_API_KEY) {
+          var fallbackPrompt = 'Kamu Auto-Cuan AI. User kirim chat casual/sapaan. Jawab singkat 1-3 kalimat dalam HTML (p class text-sm text-gray-300). Bahasa Indonesia santai dan friendly. Jangan bahas saham kecuali ditanya.';
+          var fallbackHtml = await callGemini(GEMINI_API_KEY, fallbackPrompt, chatMessage, 256);
+          if (fallbackHtml) {
+            return res.status(200).json({ html: fallbackHtml, intent: 'casual_chat', provider: 'gemini-fallback' });
+          }
         }
         return res.status(200).json({
           html: '<p class="text-sm text-gray-300">Maaf, mode chat santai lagi belum aktif. Coba ulang sebentar lagi ya.</p>',
@@ -124,20 +138,38 @@ module.exports = async function handler(req, res) {
         maxTokens = 1536;
       }
 
-      var html = await callGemini(GEMINI_API_KEY, prompt, chatMessage, maxTokens);
-      if (!html) return res.status(200).json({ html: '<p class="text-sm text-red-400">AI tidak tersedia saat ini.</p>', provider: 'none' });
-      return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'gemini' });
+      // === TRY DEEPSEEK FIRST, GEMINI FALLBACK ===
+      var html = null;
+      if (CODECRAFTERS_API_KEY) {
+        html = await callDeepSeek(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, prompt, chatMessage, maxTokens);
+        if (html) {
+          return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'deepseek' });
+        }
+      }
+      if (GEMINI_API_KEY) {
+        html = await callGemini(GEMINI_API_KEY, prompt, chatMessage, maxTokens);
+        if (html) {
+          return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'gemini-fallback' });
+        }
+      }
+      return res.status(200).json({ html: '<p class="text-sm text-red-400">AI tidak tersedia saat ini.</p>', provider: 'none' });
     }
 
     // Ticker mode (from ticker input, not chat)
     if (ticker && currentPrice) {
       var tPrompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang natural, thoughtful, dan risk-aware. User tanya saham ' + String(ticker).toUpperCase() + ' di harga Rp ' + currentPrice + '. Bahasa Indonesia santai tapi berisi. Format HTML (p, strong, ul, li) class text-sm text-gray-300. Jawab 200-400 kata. Struktur: 1) Bias singkat, 2) Data Singkat jika ada [Auto-Cuan Market Data]: Last, OHLC, Volume, MA posisi. "Data Yahoo delayed." 3) Estimasi support/resistance terdekat, 4) Apakah menarik atau belum di harga ini, 5) Entry/SL/TP jika bisa estimasi, 6) Risiko utama, 7) Satu follow-up natural: "Kalau ada chart atau news terbaru, kirim biar analisisnya lebih presisi." Jangan buat report panjang. Jangan bilang pasti naik/pasti cuan/aman 100%. Jangan tampilkan blok data mentah.' +
         (fcaConfirmed ? '' : ' JANGAN sebut FCA/Full Call Auction sama sekali.');
-      var tHtml = await callGemini(GEMINI_API_KEY, tPrompt, '', 1024);
-      if (!tHtml) {
-        return res.status(200).json({ html: '<p class="text-sm text-gray-300"><strong>' + String(ticker).toUpperCase() + '</strong> Rp ' + currentPrice + ' — Upload chart 1W/1D/4H untuk analisis lengkap.</p>' });
+      var tHtml = null;
+      if (CODECRAFTERS_API_KEY) {
+        tHtml = await callDeepSeek(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, tPrompt, '', 1200);
       }
-      return res.status(200).json({ html: sanitizeOutput(tHtml, fcaConfirmed, 'ticker_price_basic'), intent: 'ticker_price_basic' });
+      if (!tHtml && GEMINI_API_KEY) {
+        tHtml = await callGemini(GEMINI_API_KEY, tPrompt, '', 1024);
+      }
+      if (!tHtml) {
+        return res.status(200).json({ html: '<p class="text-sm text-gray-300"><strong>' + String(ticker).toUpperCase() + '</strong> Rp ' + currentPrice + ' — Upload chart 1W/1D/4H untuk analisis lengkap.</p>', provider: 'fallback' });
+      }
+      return res.status(200).json({ html: sanitizeOutput(tHtml, fcaConfirmed, 'ticker_price_basic'), intent: 'ticker_price_basic', provider: tHtml ? 'deepseek' : 'gemini-fallback' });
     }
 
     return res.status(400).json({ error: 'Kirim ticker+harga atau gunakan mode chat/upload.' });
@@ -171,7 +203,93 @@ async function callGemini(apiKey, systemPrompt, userMessage, maxTokens) {
   return null;
 }
 
-// === GROQ: CASUAL CHAT HANDLER ===
+// === DEEPSEEK: PRIMARY AI PROVIDER ===
+async function callDeepSeek(apiKey, baseUrl, model, systemPrompt, userMessage, maxTokens) {
+  var url = (baseUrl || 'https://api.codecrafters.id/v1') + '/chat/completions';
+  var payload = {
+    model: model || 'deepseek-v4-flash',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage || '' }
+    ],
+    temperature: 0.7,
+    max_tokens: maxTokens || 1200,
+    stream: false
+  };
+
+  try {
+    var response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) return null;
+    var result = await response.json();
+    var choices = result.choices || [];
+    if (choices.length > 0 && choices[0].message && choices[0].message.content) {
+      var text = choices[0].message.content.trim();
+      // Wrap in HTML if not already wrapped
+      if (!text.startsWith('<')) {
+        text = '<p class="text-sm text-gray-300">' + text.replace(/\n\n/g, '</p><p class="text-sm text-gray-300">').replace(/\n/g, '<br>') + '</p>';
+      }
+      return text.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// === DEEPSEEK CASUAL CHAT ===
+async function handleCasualChat(apiKey, baseUrl, model, message) {
+  if (!apiKey) return null;
+
+  // Detect WIB time for natural greeting
+  var now = new Date();
+  var wibHour = (now.getUTCHours() + 7) % 24;
+  var timeContext = '';
+  if (wibHour >= 4 && wibHour < 11) timeContext = 'Sekarang pagi hari (WIB).';
+  else if (wibHour >= 11 && wibHour < 15) timeContext = 'Sekarang siang hari (WIB).';
+  else if (wibHour >= 15 && wibHour < 18) timeContext = 'Sekarang sore hari (WIB).';
+  else timeContext = 'Sekarang malam hari (WIB).';
+
+  var systemPrompt = 'Kamu Auto-Cuan AI, asisten analisis saham Indonesia yang friendly dan supportive. ' + timeContext + '\n\n' +
+    'PERSONALITY:\n' +
+    '- Bahasa Indonesia santai, natural, warm\n' +
+    '- Boleh sedikit Gen Z tapi tetap sopan dan berguna\n' +
+    '- Seperti teman trading yang supportive\n' +
+    '- Jangan kaku atau formal berlebihan\n' +
+    '- Jangan terlalu panjang (max 2-4 kalimat)\n\n' +
+    'SAPAAN:\n' +
+    '- Jika user menyapa (hai/halo/pagi/siang/sore/malam), balas sesuai waktu WIB\n' +
+    '- Tambahkan "Semoga sehat selalu ya."\n' +
+    '- Akhiri dengan ajakan: "Mau bahas saham apa hari ini? Bisa langsung ketik ticker kayak BBCA, WMUU, atau kirim chart juga."\n\n' +
+    'EMPATI (minus/rugi/nyangkut/floating loss/portofolio merah/sedih/galau/bingung):\n' +
+    '- Tenangkan dulu, jangan panik\n' +
+    '- JANGAN bilang: pasti balik modal, pasti cuan, aman 100%\n' +
+    '- JANGAN rekomendasikan secara buta\n' +
+    '- Bilang: "Ini bukan rekomendasi investasi pasti, tapi aku bantu analisis semaksimal mungkin."\n' +
+    '- Ajak user kirim detail: ticker, harga beli, harga sekarang, chart/news kalau ada\n' +
+    '- Tone: supportive, calm, rational\n\n' +
+    'FITUR/CARA PAKAI:\n' +
+    '- Auto-Cuan membantu analisis saham IDX (BEI) berbasis Smart Money Concepts\n' +
+    '- User bisa: ketik ticker+harga (BBCA 9250), tanya casual (NAYZ gimana?), upload chart, kirim news/broker summary\n' +
+    '- Data didukung Yahoo Finance (delayed) untuk OHLCV dan Moving Average\n\n' +
+    'FORMAT OUTPUT: HTML sederhana (p tag saja, class text-sm text-gray-300). Jangan pakai markdown. Jangan pakai ```.';
+
+  return await callDeepSeek(apiKey, baseUrl, model, systemPrompt, message, 800);
+}
+
+// === GROQ (kept for backward compatibility, not used as primary) ===
+async function handleCasualWithGroq(message) {
+  var GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) return null;
+  return await callGroq(GROQ_API_KEY, 'Kamu Auto-Cuan AI. Jawab casual singkat dalam HTML (p class text-sm text-gray-300). Bahasa Indonesia santai.', message);
+}
 function isCasualChat(message, context, intent) {
   // If there's an active ticker context, it's likely stock-related
   if (context && context.ticker) return false;
@@ -211,48 +329,6 @@ function isCasualChat(message, context, intent) {
   if (lower.length < 15 && !/[A-Z]{4}/.test(cleanMsg) && !/\d{2,}/.test(lower)) return true;
 
   return false;
-}
-
-async function handleCasualWithGroq(message) {
-  var GROQ_API_KEY = process.env.GROQ_API_KEY;
-  if (!GROQ_API_KEY) return null; // Fallback to Gemini
-
-  // Detect WIB time for natural greeting
-  var now = new Date();
-  var wibHour = (now.getUTCHours() + 7) % 24;
-  var timeContext = '';
-  if (wibHour >= 4 && wibHour < 11) timeContext = 'Sekarang pagi hari (WIB).';
-  else if (wibHour >= 11 && wibHour < 15) timeContext = 'Sekarang siang hari (WIB).';
-  else if (wibHour >= 15 && wibHour < 18) timeContext = 'Sekarang sore hari (WIB).';
-  else timeContext = 'Sekarang malam hari (WIB).';
-
-  var systemPrompt = 'Kamu Auto-Cuan AI, asisten analisis saham Indonesia yang friendly dan supportive. ' + timeContext + '\n\n' +
-    'PERSONALITY:\n' +
-    '- Bahasa Indonesia santai, natural, warm\n' +
-    '- Boleh sedikit Gen Z tapi tetap sopan dan berguna\n' +
-    '- Seperti teman trading yang supportive\n' +
-    '- Jangan kaku atau formal berlebihan\n' +
-    '- Jangan terlalu panjang (max 2-4 kalimat)\n\n' +
-    'SAPAAN:\n' +
-    '- Jika user menyapa (hai/halo/pagi/siang/sore/malam), balas sesuai waktu WIB\n' +
-    '- Tambahkan "Semoga sehat selalu ya."\n' +
-    '- Akhiri dengan ajakan: "Mau bahas saham apa hari ini? Bisa langsung ketik ticker kayak BBCA, WMUU, atau kirim chart juga."\n\n' +
-    'EMPATI (minus/rugi/nyangkut/floating loss/portofolio merah/sedih/galau/bingung):\n' +
-    '- Tenangkan dulu, jangan panik\n' +
-    '- JANGAN bilang: pasti balik modal, pasti cuan, aman 100%\n' +
-    '- JANGAN rekomendasikan secara buta\n' +
-    '- Bilang: "Ini bukan rekomendasi investasi pasti, tapi aku bantu analisis semaksimal mungkin."\n' +
-    '- Ajak user kirim detail: ticker, harga beli, harga sekarang, chart/news kalau ada\n' +
-    '- Tone: supportive, calm, rational\n' +
-    '- Contoh: "Tenang dulu ya, jangan panik. Minus memang bikin mental kebawa, tapi kita bisa bedah pelan-pelan biar keputusannya lebih rasional. Kirim ticker dan harga sekarang, nanti aku bantu susun skenarionya."\n\n' +
-    'FITUR/CARA PAKAI:\n' +
-    '- Auto-Cuan membantu analisis saham IDX (BEI) berbasis Smart Money Concepts\n' +
-    '- User bisa: ketik ticker+harga (BBCA 9250), tanya casual (NAYZ gimana?), upload chart, kirim news/broker summary\n' +
-    '- Data didukung Yahoo Finance (delayed) untuk OHLCV dan Moving Average\n\n' +
-    'FORMAT OUTPUT: HTML sederhana (p tag saja, class text-sm text-gray-300). Jangan pakai markdown. Jangan pakai ```.';
-
-  var result = await callGroq(GROQ_API_KEY, systemPrompt, message);
-  return result;
 }
 
 async function callGroq(apiKey, systemPrompt, userMessage) {
