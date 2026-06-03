@@ -2419,8 +2419,8 @@ function closeUsageReminder() {
 // ===== AI OUTPUT SANITIZER (security) =====
 function sanitizeAIHtml(html) {
     if (!html) return html;
-    // Remove script tags
-    var output = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+    // Remove script tags (split closing tag to avoid HTML parser issue)
+    var output = html.replace(new RegExp('<script[\\s\\S]*?<\\/script>', 'gi'), '');
     // Remove event handlers
     output = output.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
     output = output.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
@@ -2432,12 +2432,14 @@ function sanitizeAIHtml(html) {
     return output;
 }
 
+</script>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 // ===== YAHOO OHLCV CHART (lazy-loaded, click-to-show) =====
 var _activeChartPanel = null;
 
 async function toggleYahooChart(ticker, chartId, btn) {
+    try {
     // If chart panel already exists, toggle visibility
     var existing = document.getElementById(chartId);
     if (existing) {
@@ -2471,6 +2473,10 @@ async function toggleYahooChart(ticker, chartId, btn) {
     } catch (e) {
         document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart belum berhasil dimuat. Coba lagi nanti atau buka TradingView.</div>';
     }
+    } catch (outerErr) {
+        // Catch any unexpected error so the page doesn't crash
+        if (typeof showToast === 'function') showToast('Chart gagal dimuat.', 'warning');
+    }
 }
 
 function closeYahooChart(chartId) {
@@ -2481,9 +2487,10 @@ function closeYahooChart(chartId) {
 function renderLightweightChart(containerId, candles) {
     var container = document.getElementById(containerId);
     if (!container || !window.LightweightCharts) {
-        container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs">Library chart belum dimuat.</div>';
+        if (container) container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs">Library chart belum dimuat.</div>';
         return;
     }
+    try {
     container.innerHTML = '';
     var chart = LightweightCharts.createChart(container, {
         width: container.clientWidth,
@@ -2535,13 +2542,18 @@ function renderLightweightChart(containerId, candles) {
     chart.timeScale().fitContent();
 
     // Responsive resize
-    var resizeObserver = new ResizeObserver(function() {
-        chart.applyOptions({ width: container.clientWidth });
-    });
-    resizeObserver.observe(container);
+    if (typeof ResizeObserver !== 'undefined') {
+        var resizeObserver = new ResizeObserver(function() {
+            chart.applyOptions({ width: container.clientWidth });
+        });
+        resizeObserver.observe(container);
+    }
 
     // Store chart ref for PNG export
     container._chart = chart;
+    } catch (renderErr) {
+        container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart gagal dirender. Coba buka TradingView.</div>';
+    }
 }
 
 function downloadChartPng(chartId, ticker) {
