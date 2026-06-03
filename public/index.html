@@ -218,14 +218,15 @@
                 <!-- Mode dropdown -->
                 <div class="mode-dropdown flex-shrink-0">
                     <button id="modeBtn" onclick="toggleModeMenu()" class="px-2.5 py-2.5 rounded-xl bg-dark-700 border border-dark-600/50 text-xs font-medium text-gray-300 hover:border-emerald-500/30 transition flex items-center gap-1.5">
-                        <span id="modeBtnLabel">Auto</span>
+                        <span id="modeBtnLabel">Chat</span>
                         <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </button>
                     <div id="modeMenu" class="mode-dropdown-menu">
-                        <button onclick="selectMode('auto')" class="active">&#x1F916; Auto</button>
-                        <button onclick="selectMode('ticker')">&#x1F4CA; Nama Saham</button>
-                        <button onclick="selectMode('chart')">&#x1F4F7; Pindai Chart</button>
-                        <button onclick="selectMode('chat')">&#x1F4AC; Chat</button>
+                        <button onclick="selectMode('chat')" class="active">&#x1F4AC; Chat</button>
+                        <button onclick="selectMode('analisis_maksimal')">&#x1F4CA; Analisis Maksimal</button>
+                        <button onclick="selectMode('analisis_lengkap')">&#x1F4DD; Analisis Lengkap</button>
+                        <button onclick="selectMode('news_katalis')">&#x1F4F0; News/Katalis</button>
+                        <button onclick="selectMode('broker_orderbook')">&#x1F4CA; Broker/Orderbook</button>
                     </div>
                 </div>
                 <!-- Upload button -->
@@ -684,9 +685,11 @@ function showDashboard() {
 }
 
 // ===== MODE SYSTEM =====
-var currentMode = 'auto';
-var modeLabels = { auto: '&#x1F916; Auto', ticker: '&#x1F4CA; Nama Saham', chart: '&#x1F4F7; Pindai Chart', chat: '&#x1F4AC; Chat' };
-var modePlaceholders = { auto: 'Tanya saham, kirim ticker + harga, atau upload chart...', ticker: 'Ketik ticker dan harga, contoh: BBCA 9250', chart: 'Upload chart, lalu tulis ticker dan harga sekarang...', chat: 'Tanya apa saja soal saham, SMC, support, resistance...' };
+var currentMode = 'chat';
+var modeLabels = { chat: '&#x1F4AC; Chat', analisis_maksimal: '&#x1F4CA; Analisis Maksimal', analisis_lengkap: '&#x1F4DD; Analisis Lengkap', news_katalis: '&#x1F4F0; News/Katalis', broker_orderbook: '&#x1F4CA; Broker/Orderbook' };
+var modePlaceholders = { chat: 'Tanya saham, kirim ticker + harga, atau upload chart...', analisis_maksimal: 'Ketik ticker + harga untuk analisis mendalam, contoh: BBCA 9250', analisis_lengkap: 'Ketik ticker + harga untuk analisis lengkap terstruktur...', news_katalis: 'Tanya news atau katalis saham, contoh: ada news BBCA?', broker_orderbook: 'Kirim data broker/orderbook atau tanya soal broker summary...' };
+var modeContextPrefix = { chat: '', analisis_maksimal: '[Mode: Analisis Maksimal - analisis mendalam dan presisi] ', analisis_lengkap: '[Mode: Analisis Lengkap - jawab terstruktur dengan semua aspek] ', news_katalis: '[Mode: News/Katalis - fokus ke news, katalis, corporate action] ', broker_orderbook: '[Mode: Broker/Orderbook - fokus analisis broker summary dan order flow] ' };
+var ALL_MODES = ['chat', 'analisis_maksimal', 'analisis_lengkap', 'news_katalis', 'broker_orderbook'];
 
 function toggleModeMenu() {
     var menu = document.getElementById('modeMenu');
@@ -700,7 +703,8 @@ function selectMode(mode) {
     // Update active state
     var btns = document.getElementById('modeMenu').querySelectorAll('button');
     btns.forEach(function(btn) { btn.classList.remove('active'); });
-    btns[['auto','ticker','chart','chat'].indexOf(mode)].classList.add('active');
+    var idx = ALL_MODES.indexOf(mode);
+    if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
 }
 // Close mode menu on outside click
 document.addEventListener('click', function(e) {
@@ -776,7 +780,7 @@ function addFilesToSelection(files, source) {
         totalCurrentSize += file.size;
     }
     renderFilePreview();
-    if (selectedFiles.length > 0 && (currentMode === 'auto' || currentMode === 'chart')) {
+    if (selectedFiles.length > 0 && (currentMode === 'chat' || currentMode === 'analisis_maksimal' || currentMode === 'analisis_lengkap')) {
         document.getElementById('chatInput').placeholder = 'Tulis ticker dan harga sekarang (opsional)...';
     }
 }
@@ -1353,30 +1357,36 @@ async function handleSend() {
     var mode = currentMode;
     var intent = null;
 
-    if (mode === 'auto') {
-        if (hasFile) { intent = { type: 'chart_upload' }; }
-        else { intent = detectIntent(msg); }
-    } else if (mode === 'ticker') {
-        intent = { type: 'force_analysis', raw: msg };
-    } else if (mode === 'chart') {
+    // Prepend mode context prefix for non-chat modes
+    var modePrefix = modeContextPrefix[mode] || '';
+
+    if (hasFile) {
         intent = { type: 'chart_upload' };
     } else {
-        intent = { type: 'chat' };
+        intent = detectIntent(msg);
     }
 
-    // Route to appropriate handler
+    // For specific modes, override intent type to use analysis/chat appropriately
+    if (mode === 'analisis_maksimal' || mode === 'analisis_lengkap') {
+        if (intent.type === 'chat' || intent.type === 'ticker_question') {
+            // These modes want deeper analysis, so let it flow as chat with mode context
+            intent = { type: 'chat' };
+        }
+    }
+
+    // Route to appropriate handler (pass modePrefix for context enrichment)
     if (intent.type === 'analysis' || intent.type === 'force_analysis') {
         lastSentMode = 'analysis';
-        await handleAnalysis(msg, intent);
+        await handleAnalysis(modePrefix + msg, intent);
     } else if (intent.type === 'chart_upload') {
         lastSentMode = 'chart_upload';
         await handleChartUpload(msg);
     } else if (intent.type === 'ticker_question') {
         lastSentMode = 'ticker_question';
-        await handleTickerQuestion(msg, intent.ticker);
+        await handleTickerQuestion(modePrefix + msg, intent.ticker);
     } else {
         lastSentMode = 'chat';
-        await handleChat(msg);
+        await handleChat(modePrefix + msg);
     }
 }
 
@@ -1439,7 +1449,7 @@ async function handleAnalysis(msg, intent) {
     pendingAnalysisRequest = null; // Clear pending since we're executing
     var company = getCompanyName(ticker);
     var displayTicker = company ? ticker + ' (' + company + ')' : ticker;
-    addUserBubble(msg || ticker + ' ' + price);
+    addUserBubble((msg || ticker + ' ' + price).replace(/^\[Mode:[^\]]*\]\s*/, ''));
     addLoadingBubble();
     disableSend();
     clearInput();
@@ -1471,10 +1481,10 @@ async function handleTickerQuestion(msg, ticker) {
     if (!canChat()) { document.getElementById('limitWarning').textContent = getChatLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
     // Validate ticker
     if (!isValidTicker(ticker) && activeTicker) { ticker = activeTicker; }
-    if (!isValidTicker(ticker)) { addUserBubble(msg); addAIBubble('<p class="text-sm text-gray-300">Ticker tidak dikenali. Pastikan menggunakan kode saham yang terdaftar di BEI.</p>'); saveChatHistory(); return; }
+    if (!isValidTicker(ticker)) { addUserBubble(msg.replace(/^\[Mode:[^\]]*\]\s*/, '')); addAIBubble('<p class="text-sm text-gray-300">Ticker tidak dikenali. Pastikan menggunakan kode saham yang terdaftar di BEI.</p>'); saveChatHistory(); return; }
     setActiveTicker(ticker);
     pendingAnalysisRequest = { type: 'stock-analysis', ticker: ticker, companyName: getCompanyName(ticker) };
-    addUserBubble(msg);
+    addUserBubble(msg.replace(/^\[Mode:[^\]]*\]\s*/, ''));
     addLoadingBubble();
     disableSend(); clearInput();
     logUsage(ticker, 'chat_started');
@@ -1495,7 +1505,10 @@ async function handleTickerQuestion(msg, ticker) {
 // ===== CHAT HANDLER =====
 async function handleChat(msg) {
     if (!canChat()) { document.getElementById('limitWarning').textContent = getChatLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
-    addUserBubble(msg);
+    // Detect ticker from message even in chat mode
+    var chatDetectedTicker = detectTicker(msg);
+    if (chatDetectedTicker) { setActiveTicker(chatDetectedTicker); updateTradingViewSafe(chatDetectedTicker); }
+    addUserBubble(msg.replace(/^\[Mode:[^\]]*\]\s*/, ''));
     addLoadingBubble();
     disableSend(); clearInput();
     logUsage('CHAT', 'chat_started');
@@ -1709,7 +1722,16 @@ function addAIBubble(html, isStructured) {
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up';
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
-    var copyBtnHtml = '<div class="mt-2 flex items-center gap-2 justify-end"><button onclick="regenerateLastAnswer(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">Regenerate</button><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
+
+    // Detect ticker for TradingView link
+    var tvLinkHtml = '';
+    var tvTicker = activeTicker || latestAnalysisContext.ticker || null;
+    if (tvTicker && isValidTicker(tvTicker)) {
+        var tvUrl = 'https://www.tradingview.com/chart/?symbol=IDX%3A' + encodeURIComponent(tvTicker);
+        tvLinkHtml = '<a href="' + tvUrl + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 border border-blue-500/20 hover:border-blue-500/40 transition-all"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>Buka TradingView ' + tvTicker + '</a>';
+    }
+
+    var copyBtnHtml = '<div class="mt-2 flex items-center gap-2 flex-wrap justify-end">' + tvLinkHtml + '<button onclick="regenerateLastAnswer(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">Regenerate</button><button onclick="copyBubbleContent(this)" class="copy-btn px-2 py-1 rounded-lg text-xs text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all">' + copyLabel + '</button></div>';
 
     // Client-side FCA sanitizer
     var sanitizedHtml = clientSanitizeFCA(html);
