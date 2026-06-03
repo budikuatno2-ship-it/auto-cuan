@@ -1,6 +1,6 @@
 /**
  * Auto-Cuan Candles API — Yahoo Finance OHLCV for chart rendering
- * Returns 1-year daily candles for lightweight chart display.
+ * Returns 1-year daily candles + compact latest metrics.
  * In-memory cache with 5-minute TTL.
  */
 
@@ -29,7 +29,6 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Format ticker tidak valid.' });
     }
 
-    // Check cache
     var cached = cache[ticker];
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
       return res.status(200).json(cached.data);
@@ -50,17 +49,17 @@ module.exports = async function handler(req, res) {
       });
     } catch (fetchErr) {
       clearTimeout(timeout);
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal mengambil data dari Yahoo Finance.' });
+      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal mengambil data.' });
     }
     clearTimeout(timeout);
 
     if (!response.ok) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Yahoo Finance HTTP ' + response.status });
+      return res.status(200).json({ success: false, ticker: ticker, error: 'HTTP ' + response.status });
     }
 
     var json;
     try { json = await response.json(); } catch (e) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal parsing respons.' });
+      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal parsing.' });
     }
 
     var chartResult = json && json.chart && json.chart.result && json.chart.result[0];
@@ -71,7 +70,7 @@ module.exports = async function handler(req, res) {
     var timestamps = chartResult.timestamp || [];
     var indicators = chartResult.indicators && chartResult.indicators.quote && chartResult.indicators.quote[0];
     if (!indicators) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Data OHLCV kosong.' });
+      return res.status(200).json({ success: false, ticker: ticker, error: 'OHLCV kosong.' });
     }
 
     var opens = indicators.open || [];
@@ -99,11 +98,33 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: false, ticker: ticker, error: 'Tidak ada candle valid.' });
     }
 
+    // Calculate latest metrics
+    var closePrices = candles.map(function(c) { return c.close; });
+    var volumeArr = candles.map(function(c) { return c.volume; });
+    var latest = candles[candles.length - 1];
+
     var result = {
       success: true,
       ticker: ticker,
-      source: 'Yahoo Finance unofficial/delayed',
+      source: 'Data Historis T-1',
       totalCandles: candles.length,
+      latest: {
+        date: latest.time,
+        last: latest.close,
+        open: latest.open,
+        high: latest.high,
+        low: latest.low,
+        volume: latest.volume
+      },
+      metrics: {
+        ma20: calcMA(closePrices, 20),
+        ma50: calcMA(closePrices, 50),
+        ma100: calcMA(closePrices, 100),
+        ma200: calcMA(closePrices, 200),
+        rsi14: calcRSI(closePrices, 14),
+        volumeAvg20: calcMA(volumeArr, 20) ? Math.round(calcMA(volumeArr, 20)) : null,
+        volumeVsAvg20: calcVolumeRatio(volumeArr, latest.volume, 20)
+      },
       candles: candles
     };
 
@@ -112,6 +133,35 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('candles error:', err);
-    return res.status(200).json({ success: false, ticker: 'unknown', error: 'Terjadi kesalahan internal.' });
+    return res.status(200).json({ success: false, ticker: 'unknown', error: 'Kesalahan internal.' });
   }
 };
+
+function calcMA(prices, period) {
+  if (!prices || prices.length < period) return null;
+  var slice = prices.slice(prices.length - period);
+  var sum = 0;
+  for (var i = 0; i < slice.length; i++) sum += slice[i];
+  return Math.round((sum / period) * 100) / 100;
+}
+
+function calcRSI(closes, period) {
+  if (!closes || closes.length < period + 1) return null;
+  var gains = 0, losses = 0;
+  for (var i = closes.length - period; i < closes.length; i++) {
+    var diff = closes[i] - closes[i - 1];
+    if (diff > 0) gains += diff;
+    else losses -= diff;
+  }
+  var avgGain = gains / period;
+  var avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  var rs = avgGain / avgLoss;
+  return Math.round((100 - (100 / (1 + rs))) * 100) / 100;
+}
+
+function calcVolumeRatio(volumeArr, latestVol, period) {
+  var avg = calcMA(volumeArr, period);
+  if (!avg || avg <= 0) return null;
+  return Math.round((latestVol / avg) * 100) / 100;
+}
