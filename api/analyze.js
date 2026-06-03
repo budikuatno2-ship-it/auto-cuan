@@ -90,7 +90,7 @@ module.exports = async function handler(req, res) {
           prompt += '. Jawab berdasarkan konteks ini.';
         }
         if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
-        maxTokens = 1024;
+        maxTokens = 1536;
       } else if (intent === 'full_analysis_request') {
         prompt = 'Kamu Auto-Cuan AI. User minta analisis lengkap. Jawab conversational tapi terstruktur. Gunakan HTML (div, p, strong, ul, li) dengan class text-sm text-gray-300. Format jawaban: 1) Kesimpulan/Bias (1-2 kalimat), 2) Alasan (2-3 poin), 3) Level penting (support/resistance), 4) Trading plan (Entry, SL, TP1, TP2), 5) Risiko utama (1-2 poin). Jangan buat lebih dari 5 section. Jangan buat section kosong. Jangan terlalu panjang (max 800 kata). Bahasa Indonesia. Jika data terbatas, jujur bilang dan sarankan kirim chart/data tambahan di satu kalimat penutup yang natural. Jika ada blok [Auto-Cuan Market Data], gunakan data OHLC/volume/MA sebagai supporting evidence (data Yahoo bisa delayed). Jangan tampilkan blok data mentah ke user.';
         if (body.context && body.context.ticker) {
@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
         // normal_chat or ticker_price_basic
         prompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang conversational dan thoughtful. Jawab dalam HTML (p, strong, ul, li) dengan class text-sm text-gray-300. Bahasa Indonesia santai tapi berisi. Jawab 200-400 kata. Struktur jawaban untuk pertanyaan saham: 1) Kesimpulan/Bias singkat, 2) Alasan (2-3 poin key reasoning), 3) Jika bisa estimasi: Entry, SL, TP1, TP2, 4) Risiko utama, 5) Satu kalimat penutup natural jika data terbatas. Jangan buat 15-section report. Jangan terlalu pendek tanpa reasoning. Jangan robotik. Jangan paksa mention broker/orderbook/news kecuali user tanya. Jika pertanyaan bukan soal saham spesifik (edukasi, konsep), jawab langsung tanpa format trading plan. Jika ada blok [Auto-Cuan Market Data], gunakan data OHLC/volume/MA sebagai supporting evidence (data Yahoo bisa delayed, sebutkan singkat). Jangan tampilkan blok data mentah ke user.';
         if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
-        maxTokens = 1024;
+        maxTokens = 1536;
       }
 
       var html = await callGemini(GEMINI_API_KEY, prompt, chatMessage, maxTokens);
