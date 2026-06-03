@@ -1063,27 +1063,58 @@ function buildContextForApi() {
 async function fetchQuoteContext(ticker) {
     if (!ticker || !isValidTicker(ticker)) return '';
     try {
-        var resp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker), { method: 'GET' });
-        if (!resp.ok) return '\n[Auto-Cuan Market Data]\nData historis belum berhasil diambil.';
-        var q = await resp.json();
-        if (!q.success) return '\n[Auto-Cuan Market Data]\nData historis belum berhasil diambil.';
+        // Fetch quote and board in parallel
+        var results = await Promise.all([
+            fetch('/api/quote?ticker=' + encodeURIComponent(ticker), { method: 'GET' }).catch(function() { return null; }),
+            fetch('/api/board?ticker=' + encodeURIComponent(ticker), { method: 'GET' }).catch(function() { return null; })
+        ]);
+        var quoteResp = results[0];
+        var boardResp = results[1];
+
         var lines = ['\n[Auto-Cuan Market Data]'];
-        lines.push('Ticker: ' + q.ticker);
+        lines.push('Ticker: ' + ticker);
         lines.push('Basis: Data Historis T-1');
-        lines.push('Tanggal: ' + q.latestBarDate);
-        lines.push('Last: ' + q.last);
-        lines.push('Open: ' + q.open);
-        lines.push('High: ' + q.high);
-        lines.push('Low: ' + q.low);
-        lines.push('Volume: ' + (q.volume || 0));
-        if (q.ma20 != null) lines.push('MA20: ' + q.ma20);
-        if (q.ma50 != null) lines.push('MA50: ' + q.ma50);
-        if (q.ma100 != null) lines.push('MA100: ' + q.ma100);
-        if (q.ma200 != null) lines.push('MA200: ' + q.ma200);
-        if (q.rsi14 != null) lines.push('RSI14: ' + q.rsi14);
-        if (q.volumeAvg20 != null) lines.push('Avg Volume 20: ' + q.volumeAvg20);
-        if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg20: ' + q.volumeVsAvg20 + 'x');
-        if (q.priceVsMA) lines.push('Price vs MA: ' + q.priceVsMA);
+
+        // Quote data
+        if (quoteResp && quoteResp.ok) {
+            var q = await quoteResp.json();
+            if (q.success) {
+                lines.push('Tanggal: ' + q.latestBarDate);
+                lines.push('Last: ' + q.last);
+                lines.push('Open: ' + q.open);
+                lines.push('High: ' + q.high);
+                lines.push('Low: ' + q.low);
+                lines.push('Volume: ' + (q.volume || 0));
+                if (q.ma20 != null) lines.push('MA20: ' + q.ma20);
+                if (q.ma50 != null) lines.push('MA50: ' + q.ma50);
+                if (q.ma100 != null) lines.push('MA100: ' + q.ma100);
+                if (q.ma200 != null) lines.push('MA200: ' + q.ma200);
+                if (q.rsi14 != null) lines.push('RSI14: ' + q.rsi14);
+                if (q.volumeAvg20 != null) lines.push('Avg Volume 20: ' + q.volumeAvg20);
+                if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg20: ' + q.volumeVsAvg20 + 'x');
+                if (q.priceVsMA) lines.push('Price vs MA: ' + q.priceVsMA);
+            } else {
+                lines.push('Data historis belum berhasil diambil.');
+            }
+        } else {
+            lines.push('Data historis belum berhasil diambil.');
+        }
+
+        // Board data
+        if (boardResp && boardResp.ok) {
+            var b = await boardResp.json();
+            if (b.board && b.board !== 'UNKNOWN') {
+                lines.push('');
+                lines.push('[Auto-Cuan Board Data]');
+                lines.push('Ticker: ' + b.ticker);
+                if (b.companyName) lines.push('Company: ' + b.companyName);
+                lines.push('Board: ' + b.board);
+                lines.push('FCA: ' + (b.isFca ? 'true' : 'false'));
+                lines.push('Min Price Guard: ' + (b.minPriceGuard != null ? b.minPriceGuard : 50));
+                if (b.note) lines.push('Note: ' + b.note);
+            }
+        }
+
         return lines.join('\n');
     } catch (e) {
         return '\n[Auto-Cuan Market Data]\nData historis belum berhasil diambil.';
