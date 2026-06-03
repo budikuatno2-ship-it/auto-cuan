@@ -76,7 +76,16 @@ module.exports = async function handler(req, res) {
         if (groqResult) {
           return res.status(200).json({ html: groqResult, intent: 'casual_chat', provider: 'groq' });
         }
-        // If Groq fails, fall through to Gemini
+        // If Groq fails, try Gemini as fallback for casual chat
+        var fallbackPrompt = 'Kamu Auto-Cuan AI. User kirim chat casual/sapaan. Jawab singkat 1-3 kalimat dalam HTML (p class text-sm text-gray-300). Bahasa Indonesia santai dan friendly. Jangan bahas saham kecuali ditanya.';
+        var fallbackHtml = await callGemini(GEMINI_API_KEY, fallbackPrompt, chatMessage, 256);
+        if (fallbackHtml) {
+          return res.status(200).json({ html: fallbackHtml, intent: 'casual_chat', provider: 'gemini_fallback' });
+        }
+        return res.status(200).json({
+          html: '<p class="text-sm text-gray-300">Maaf, mode chat santai lagi belum aktif. Coba ulang sebentar lagi ya.</p>',
+          intent: 'casual_chat', provider: 'fallback'
+        });
       }
 
       if (intent === 'ticker_only') {
@@ -116,8 +125,8 @@ module.exports = async function handler(req, res) {
       }
 
       var html = await callGemini(GEMINI_API_KEY, prompt, chatMessage, maxTokens);
-      if (!html) return res.status(200).json({ html: '<p class="text-sm text-red-400">AI tidak tersedia saat ini.</p>' });
-      return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent });
+      if (!html) return res.status(200).json({ html: '<p class="text-sm text-red-400">AI tidak tersedia saat ini.</p>', provider: 'none' });
+      return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'gemini' });
     }
 
     // Ticker mode (from ticker input, not chat)

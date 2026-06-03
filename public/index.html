@@ -453,8 +453,11 @@ function getRelativeDate(isoString) {
 
 function stripBase64FromHtml(html) {
     if (!html) return html;
-    return html.replace(/src\s*=\s*["']data:image\/[^"']+["']/gi, 'src="data:removed"')
+    var result = html.replace(/src\s*=\s*["']data:image\/[^"']+["']/gi, 'src="data:removed"')
                .replace(/data:image\/[a-z+]+;base64,[A-Za-z0-9+/=]+/gi, '[gambar-dihapus]');
+    // Strip long text content from pre tags for history storage (keep card shell)
+    result = result.replace(/<pre[^>]*class="[^"]*hidden[^"]*"[^>]*>[\s\S]{500,}<\/pre>/gi, '<pre class="hidden">[teks-panjang-dihapus]</pre>');
+    return result;
 }
 
 // ===== DAILY USAGE LIMIT SYSTEM =====
@@ -843,7 +846,8 @@ var TICKER_STOPWORDS = [
     'TRUS','GIMANA','KAPAN','KENAPA','DIMANA','SIAPA','APAKAH','BAGAIMANA',
     'NTAR','NANTI','HABIS','ABIS','BARU','DULU','MUNGKIN','KAYAK','KAYA',
     'COBA','LIKE','THIS','THAT','HAVE','WHAT','WHEN','WHERE','FROM','AKAN',
-    'BIAR','AGAR','ATAS','BAWAH','LALU','SAJA','CUMA','DOANG','UDAH','BAIK'
+    'BIAR','AGAR','ATAS','BAWAH','LALU','SAJA','CUMA','DOANG','UDAH','BAIK',
+    'HELLO','PAGI','SIANG','SORE','MALAM','GUYS','BOSS','BANG','KALI'
 ];
 function isTickerStopword(word) {
     return TICKER_STOPWORDS.indexOf(String(word).toUpperCase()) !== -1;
@@ -1144,6 +1148,12 @@ function detectTimeframeFromFilename(filename) {
 // ===== TICKER DETECTION FROM MESSAGE =====
 function detectTicker(message) {
     var msg = String(message);
+    var lower = msg.toLowerCase();
+    // Do not detect tickers in clearly casual/greeting messages
+    if (/^(hai|halo|hi|hello|hey|pagi|siang|sore|malam|selamat|makasih|terima\s*kasih|oke|ok|siap|sip|mantap)\b/i.test(lower)) {
+        // Only allow ticker detection if message also contains stock context
+        if (!/\b(saham|emiten|harga|analisis|analisa|gimana|chart|ticker)\b/i.test(lower)) return null;
+    }
     var upper = msg.toUpperCase();
     // Find all 4-letter uppercase words
     var matches = upper.match(/\b[A-Z]{4}\b/g);
@@ -1323,10 +1333,13 @@ async function handleSend() {
 
     if (!msg && !hasFile) return;
 
-    // Input length safety limit (max 2000 chars)
-    if (msg.length > 2000) {
-        msg = msg.slice(0, 2000);
+    // Input length safety limit (max 10000 chars)
+    if (msg.length > 10000) {
+        msg = msg.slice(0, 10000);
     }
+
+    // Track whether this is a long pasted text
+    var isLongText = msg.length > 500;
 
     // Track last sent message for regenerate
     lastSentMessage = msg;
@@ -1668,9 +1681,39 @@ function addUserBubble(text) {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
     div.className = 'flex gap-3 justify-end fade-in-up';
-    div.innerHTML = '<div class="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[88%] sm:max-w-[80%]"><p class="text-sm text-gray-100 whitespace-pre-wrap">' + escapeHtml(text) + '</p></div>';
+    // Long text: show collapsed card
+    if (text.length > 500) {
+        var preview = text.slice(0, 120).replace(/\n/g, ' ') + '...';
+        var charCount = text.length;
+        var uid = 'lt_' + Date.now();
+        div.innerHTML = '<div class="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[88%] sm:max-w-[80%]">' +
+            '<p class="text-xs text-gray-500 font-medium">Teks panjang ditempel</p>' +
+            '<p class="text-[11px] text-gray-600">&plusmn;' + charCount + ' karakter</p>' +
+            '<p id="' + uid + '_preview" class="text-sm text-gray-300 mt-1">' + escapeHtml(preview) + '</p>' +
+            '<pre id="' + uid + '_full" class="hidden text-sm text-gray-300 mt-1 whitespace-pre-wrap break-words max-h-60 overflow-y-auto">' + escapeHtml(text) + '</pre>' +
+            '<button onclick="toggleLongText(\'' + uid + '\')" id="' + uid + '_btn" class="text-[11px] text-emerald-400 mt-1 hover:underline">Lihat teks</button>' +
+            '</div>';
+    } else {
+        div.innerHTML = '<div class="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[88%] sm:max-w-[80%]"><p class="text-sm text-gray-100 whitespace-pre-wrap">' + escapeHtml(text) + '</p></div>';
+    }
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
+}
+
+function toggleLongText(uid) {
+    var preview = document.getElementById(uid + '_preview');
+    var full = document.getElementById(uid + '_full');
+    var btn = document.getElementById(uid + '_btn');
+    if (!preview || !full || !btn) return;
+    if (full.classList.contains('hidden')) {
+        full.classList.remove('hidden');
+        preview.classList.add('hidden');
+        btn.textContent = 'Sembunyikan';
+    } else {
+        full.classList.add('hidden');
+        preview.classList.remove('hidden');
+        btn.textContent = 'Lihat teks';
+    }
 }
 function addLoadingBubble() {
     var container = document.getElementById('chatMessages');
@@ -1699,10 +1742,11 @@ function addAIBubble(html, isStructured) {
     div.className = 'flex gap-3 fade-in-up';
     var copyLabel = isStructured ? 'Salin Hasil' : 'Salin';
 
-    // Detect ticker for TradingView link
+    // Detect ticker for TradingView link (only for stock-related responses)
     var tvLinkHtml = '';
     var tvTicker = activeTicker || latestAnalysisContext.ticker || null;
-    if (tvTicker && isValidTicker(tvTicker)) {
+    var showTvLink = tvTicker && isValidTicker(tvTicker) && (lastSentMode === 'analysis' || lastSentMode === 'ticker_question' || lastSentMode === 'chart_upload');
+    if (showTvLink) {
         var tvUrl = 'https://www.tradingview.com/chart/?symbol=IDX%3A' + encodeURIComponent(tvTicker);
         tvLinkHtml = '<a href="' + tvUrl + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>TradingView ' + tvTicker + '</a>';
     }
