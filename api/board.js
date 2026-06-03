@@ -69,13 +69,13 @@ module.exports = async function handler(req, res) {
     }
 
     if (!rows || rows.length === 0) {
-      var result = makeNotFound(ticker);
-      cache[ticker] = { data: result, timestamp: Date.now() };
-      return res.status(200).json(result);
+      var notFoundResult = makeNotFound(ticker);
+      cache[ticker] = { data: notFoundResult, timestamp: Date.now() };
+      return res.status(200).json(notFoundResult);
     }
 
     var row = rows[0];
-    var result = {
+    var boardResult = {
       success: true,
       ticker: ticker,
       companyName: row.company_name || null,
@@ -85,12 +85,12 @@ module.exports = async function handler(req, res) {
       note: row.note || getBoardNote(row.board)
     };
 
-    cache[ticker] = { data: result, timestamp: Date.now() };
-    return res.status(200).json(result);
+    cache[ticker] = { data: boardResult, timestamp: Date.now() };
+    return res.status(200).json(boardResult);
 
   } catch (err) {
-    console.error('board error:', err);
-    return res.status(200).json(makeNotFound(ticker || 'unknown'));
+    console.error('board error:', err && err.message);
+    return res.status(200).json(makeNotFound((typeof ticker === 'string' && ticker) ? ticker : 'unknown'));
   }
 };
 
