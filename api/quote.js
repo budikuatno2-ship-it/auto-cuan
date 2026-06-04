@@ -658,7 +658,7 @@ async function saveCachedNews(supabaseUrl, supabaseKey, ticker, items) {
 
 // === GEMINI: FETCH NEWS SUMMARY (with Google Search grounding) ===
 async function fetchNewsFromGemini(apiKey, ticker) {
-  var diag = { configured: true, called: true, groundingEnabled: true, httpStatus: null, ok: false, rawTextLength: 0, parsedJson: false, itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
+  var diag = { configured: true, called: true, groundingEnabled: true, httpStatus: null, ok: false, rawTextLength: 0, rawTextPreview: '', hasGroundingMetadata: false, groundingChunkCount: 0, parsedJson: false, parsedFrom: null, itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
 
   var prompt = 'Kamu adalah research assistant untuk saham Indonesia (IDX/BEI). ' +
     'Gunakan Google Search untuk mencari berita/katalis penting saham ' + ticker + '.JK (ticker IDX: ' + ticker + ') dalam 6 bulan terakhir.\n\n' +
@@ -715,7 +715,15 @@ async function fetchNewsFromGemini(apiKey, ticker) {
     var candidates = result.candidates || [];
     if (candidates.length === 0) { diag.errorType = 'empty_response'; diag.reason = 'no candidates'; return { items: [], _diag: diag }; }
 
-    // Gemini with grounding may return multiple parts; concatenate text parts
+    // Check for grounding metadata
+    var groundingMeta = candidates[0].groundingMetadata || null;
+    if (groundingMeta) {
+      diag.hasGroundingMetadata = true;
+      var gChunks = groundingMeta.groundingChunks || [];
+      diag.groundingChunkCount = gChunks.length;
+    }
+
+    // Concatenate all text parts from response
     var textParts = [];
     var parts = (candidates[0].content && candidates[0].content.parts) || [];
     for (var pi = 0; pi < parts.length; pi++) {
@@ -723,18 +731,110 @@ async function fetchNewsFromGemini(apiKey, ticker) {
     }
     var text = textParts.join('');
     diag.rawTextLength = text.length;
+    diag.rawTextPreview = text.slice(0, 120);
 
-    // Clean markdown code fences if present
-    text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    // Clean markdown code fences
+    var cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
 
-    // Try to extract JSON array from response (may have surrounding text with grounding)
-    var jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) { diag.errorType = 'parse_error'; diag.reason = 'no JSON array found in text'; return { items: [], _diag: diag }; }
+    // Detect "no news" plain text responses
+    var noNewsPatterns = /tidak ada berita|tidak ditemukan|no relevant|no news|no significant|belum ada|tidak tersedia|empty array/i;
+    if (cleaned.length < 80 && noNewsPatterns.test(cleaned)) {
+      diag.errorType = 'no_news_text';
+      diag.reason = 'provider says no relevant news';
+      diag.parsedFrom = 'text_detection';
+      return { items: [], _diag: diag };
+    }
 
-    var parsed = JSON.parse(jsonMatch[0]);
+    // Strategy 1: Try extracting JSON array directly
+    var parsed = null;
+    var jsonArrayMatch = cleaned.match(/\[[\s\S]*?\]/);
+    if (jsonArrayMatch) {
+      try {
+        parsed = JSON.parse(jsonArrayMatch[0]);
+        if (Array.isArray(parsed)) { diag.parsedFrom = 'json_array'; }
+        else { parsed = null; }
+      } catch (e) {
+        // Try greedy match if non-greedy failed
+        var greedyMatch = cleaned.match(/\[[\s\S]*\]/);
+        if (greedyMatch) {
+          try {
+            parsed = JSON.parse(greedyMatch[0]);
+            if (Array.isArray(parsed)) { diag.parsedFrom = 'json_array_greedy'; }
+            else { parsed = null; }
+          } catch (e2) { parsed = null; }
+        }
+      }
+    }
+
+    // Strategy 2: Try extracting JSON object with items/news/data array
+    if (!parsed) {
+      var jsonObjMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (jsonObjMatch) {
+        try {
+          var obj = JSON.parse(jsonObjMatch[0]);
+          if (obj && Array.isArray(obj.items)) { parsed = obj.items; diag.parsedFrom = 'json_object_items'; }
+          else if (obj && Array.isArray(obj.news)) { parsed = obj.news; diag.parsedFrom = 'json_object_news'; }
+          else if (obj && Array.isArray(obj.data)) { parsed = obj.data; diag.parsedFrom = 'json_object_data'; }
+          else if (obj && Array.isArray(obj.results)) { parsed = obj.results; diag.parsedFrom = 'json_object_results'; }
+        } catch (e) { /* not valid JSON object */ }
+      }
+    }
+
+    // Strategy 3: Try parsing the entire cleaned text as JSON
+    if (!parsed) {
+      try {
+        var full = JSON.parse(cleaned);
+        if (Array.isArray(full)) { parsed = full; diag.parsedFrom = 'full_text_array'; }
+        else if (full && Array.isArray(full.items)) { parsed = full.items; diag.parsedFrom = 'full_text_object_items'; }
+      } catch (e) { /* not valid JSON */ }
+    }
+
+    // Strategy 4: Extract from grounding metadata chunks if no parsed items
+    if ((!parsed || parsed.length === 0) && groundingMeta && diag.groundingChunkCount > 0) {
+      var groundingItems = [];
+      var metaChunks = groundingMeta.groundingChunks;
+      for (var gi = 0; gi < metaChunks.length && groundingItems.length < 2; gi++) {
+        var chunk = metaChunks[gi];
+        var web = chunk.web || chunk;
+        if (web.title || web.uri) {
+          groundingItems.push({
+            date: null,
+            title: (web.title || 'News ' + ticker).slice(0, 200),
+            source: web.uri ? web.uri.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] : null,
+            url: web.uri || null,
+            summary: web.title || ('Berita terkait ' + ticker),
+            impact: 'neutral'
+          });
+        }
+      }
+      if (groundingItems.length > 0) {
+        parsed = groundingItems;
+        diag.parsedFrom = 'grounding_chunks';
+      }
+    }
+
+    // No parseable content at all
+    if (!parsed || !Array.isArray(parsed)) {
+      if (noNewsPatterns.test(cleaned)) {
+        diag.errorType = 'no_news_text';
+        diag.reason = 'provider says no relevant news (long text)';
+        diag.parsedFrom = 'text_detection';
+      } else {
+        diag.errorType = 'parse_error';
+        diag.reason = 'no JSON array/object found in response';
+      }
+      return { items: [], _diag: diag };
+    }
+
     diag.parsedJson = true;
-    if (!Array.isArray(parsed)) { diag.errorType = 'parse_error'; diag.reason = 'parsed but not array'; return { items: [], _diag: diag }; }
     diag.itemCountRaw = parsed.length;
+
+    // Handle empty array response from provider (legitimate "no news")
+    if (parsed.length === 0) {
+      diag.errorType = 'empty_array';
+      diag.reason = 'provider returned empty array (no news)';
+      return { items: [], _diag: diag };
+    }
 
     var valid = validateAndLimitNews(parsed);
     diag.itemCountValid = valid.length;
