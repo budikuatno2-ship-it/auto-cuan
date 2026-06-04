@@ -96,7 +96,7 @@ jobs:
       - name: Fetch stock summary from IDX
         working-directory: idx-api
         run: |
-          deno run --allow-net --allow-read --allow-write --allow-env sync_stock_summary_today.ts
+          deno run --allow-net --allow-read --allow-write --allow-env --allow-sys --allow-ffi sync_stock_summary_today.ts
 
       - name: Verify SQLite has data
         working-directory: idx-api
