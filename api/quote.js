@@ -386,7 +386,7 @@ async function fetchNewsData(ticker) {
     if (!debug.reason || debug.reason === 'cache_miss_or_expired') {
       debug.reason = (debug.reason ? debug.reason + ',' : '') + 'no_valid_results';
     }
-    var rEmpty = { success: true, items: [], note: 'Tidak ada news/katalis signifikan ditemukan.' };
+    var rEmpty = { success: false, items: [], note: 'News/katalis belum tersedia.' };
     if (NEWS_DEBUG) rEmpty._debug = debug;
     return rEmpty;
   }
