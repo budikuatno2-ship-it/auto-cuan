@@ -1161,19 +1161,37 @@ async function fetchQuoteContext(ticker) {
                 delete window._stockNewsByTicker[ticker];
             }
 
-            // === AUTO-CUAN SCORE CALCULATION ===
-            var acScore = calculateAutoCuanScore(q, b, newsData);
-            if (acScore) {
+            // === AUTO-CUAN SCORE (from server-side calculation) ===
+            var acs = q.autoCuanScore;
+            if (acs && acs.score != null) {
                 lines.push('');
                 lines.push('[Auto-Cuan Score]');
-                lines.push('Total: ' + acScore.total + '/100');
-                lines.push('Category: ' + acScore.category);
-                lines.push('Trend Score: ' + acScore.trendScore + '/30');
-                lines.push('RSI Score: ' + acScore.rsiScore + '/20');
-                lines.push('Volume Score: ' + acScore.volumeScore + '/20');
-                lines.push('News Score: ' + acScore.newsScore + '/15');
-                lines.push('Board Risk Score: ' + acScore.boardRiskScore + '/15');
-                lines.push('Reason: ' + acScore.reason);
+                lines.push('Score: ' + acs.score + '/100');
+                lines.push('Grade: ' + acs.grade);
+                lines.push('Confidence: ' + acs.confidence);
+                lines.push('Trend: ' + acs.components.trend + '/25');
+                lines.push('Momentum: ' + acs.components.momentum + '/20');
+                lines.push('Volume: ' + acs.components.volume + '/20');
+                lines.push('Pivot: ' + acs.components.pivot + '/15');
+                lines.push('Catalyst: ' + acs.components.catalyst + '/10');
+                lines.push('Risk: ' + acs.components.risk);
+                if (acs.reasons && acs.reasons.length > 0) lines.push('Reasons: ' + acs.reasons.join('; '));
+                if (acs.warnings && acs.warnings.length > 0) lines.push('Warnings: ' + acs.warnings.join('; '));
+            } else {
+                // Fallback to frontend calculation if server didn't return score
+                var acScore = calculateAutoCuanScore(q, b, newsData);
+                if (acScore) {
+                    lines.push('');
+                    lines.push('[Auto-Cuan Score]');
+                    lines.push('Total: ' + acScore.total + '/100');
+                    lines.push('Category: ' + acScore.category);
+                    lines.push('Trend Score: ' + acScore.trendScore + '/30');
+                    lines.push('RSI Score: ' + acScore.rsiScore + '/20');
+                    lines.push('Volume Score: ' + acScore.volumeScore + '/20');
+                    lines.push('News Score: ' + acScore.newsScore + '/15');
+                    lines.push('Board Risk Score: ' + acScore.boardRiskScore + '/15');
+                    lines.push('Reason: ' + acScore.reason);
+                }
             }
 
             // === SETUP LABEL (from server-side calculation) ===

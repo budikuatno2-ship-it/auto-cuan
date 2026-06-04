@@ -63,6 +63,9 @@ module.exports = async function handler(req, res) {
     // === SETUP LABEL CALCULATION (deterministic) ===
     quoteResult.setupLabel = calculateSetupLabel(quoteResult, boardResult);
 
+    // === AUTO-CUAN SCORE CALCULATION (deterministic, server-side) ===
+    quoteResult.autoCuanScore = calculateAutoCuanScore(quoteResult, boardResult);
+
     return res.status(200).json(quoteResult);
 
   } catch (err) {
@@ -1264,5 +1267,190 @@ function calculateSetupLabel(quote, board) {
     validIf: 'Breakout di atas R1 atau breakdown di bawah S1 dengan volume',
     invalidIf: 'Tetap sideways tanpa katalis baru',
     flags: flags
+  };
+}
+
+
+// ===== AUTO-CUAN SCORE CALCULATOR (deterministic, server-side) =====
+function calculateAutoCuanScore(quote, board) {
+  if (!quote || !quote.success) {
+    return { score: 0, grade: 'E', confidence: 'low', components: { trend: 0, momentum: 0, volume: 0, pivot: 0, catalyst: 0, risk: 0 }, reasons: ['Data quote tidak tersedia'], warnings: ['no_data'] };
+  }
+
+  var price = quote.last;
+  var ma20 = quote.ma20;
+  var ma50 = quote.ma50;
+  var ma100 = quote.ma100;
+  var ma200 = quote.ma200;
+  var rsi = quote.rsi14;
+  var volVsAvg = quote.volumeVsAvg20;
+  var pivot = quote.pivot;
+  var r1 = pivot ? pivot.resistance1 : null;
+  var s1 = pivot ? pivot.support1 : null;
+  var s2 = pivot ? pivot.support2 : null;
+  var pivotPoint = pivot ? pivot.pivotPoint : null;
+  var flatRange = pivot ? pivot.flatRange : false;
+  var isGreenCandle = price >= quote.open;
+
+  var reasons = [];
+  var warnings = [];
+  var confidence = 'medium';
+
+  // === TREND COMPONENT (0-25) ===
+  var trend = 0;
+  if (ma20 != null && price >= ma20) { trend += 7; }
+  if (ma50 != null && price >= ma50) { trend += 6; }
+  if (ma100 != null && price >= ma100) { trend += 6; }
+  if (ma200 != null && price >= ma200) { trend += 6; }
+
+  // Track MA count for confidence
+  var maCount = 0;
+  if (ma20 != null) maCount++;
+  if (ma50 != null) maCount++;
+  if (ma100 != null) maCount++;
+  if (ma200 != null) maCount++;
+
+  if (maCount === 0) {
+    trend = 10; // neutral if no MA data
+    warnings.push('MA data tidak lengkap');
+  } else if (trend === 0) {
+    reasons.push('Trend bearish: price below semua MA');
+  } else if (trend >= 20) {
+    reasons.push('Trend bullish: price above MA utama');
+  } else {
+    reasons.push('Trend mixed');
+  }
+
+  // === MOMENTUM COMPONENT (0-20) ===
+  var momentum = 0;
+  if (rsi != null) {
+    if (rsi >= 55 && rsi <= 65) { momentum = 18; reasons.push('RSI ' + rsi + ' bullish momentum'); }
+    else if (rsi > 65 && rsi <= 70) { momentum = 15; reasons.push('RSI ' + rsi + ' kuat tapi mendekati overbought'); }
+    else if (rsi >= 50 && rsi < 55) { momentum = 13; reasons.push('RSI ' + rsi + ' netral-positif'); }
+    else if (rsi >= 45 && rsi < 50) { momentum = 10; reasons.push('RSI ' + rsi + ' netral'); }
+    else if (rsi >= 35 && rsi < 45) { momentum = 7; reasons.push('RSI ' + rsi + ' lemah'); }
+    else if (rsi > 70 && rsi <= 80) { momentum = 10; reasons.push('RSI ' + rsi + ' overbought risk'); warnings.push('RSI overbought'); }
+    else if (rsi > 80) { momentum = 6; reasons.push('RSI ' + rsi + ' extreme overbought'); warnings.push('RSI extreme overbought'); }
+    else if (rsi < 35 && rsi >= 25) { momentum = 5; reasons.push('RSI ' + rsi + ' oversold belum confirm reversal'); }
+    else if (rsi < 25) { momentum = 3; reasons.push('RSI ' + rsi + ' deeply oversold'); warnings.push('RSI deeply oversold'); }
+    else { momentum = 10; }
+  } else {
+    momentum = 8;
+    warnings.push('RSI tidak tersedia');
+  }
+
+  // === VOLUME COMPONENT (0-20) ===
+  var volume = 0;
+  if (volVsAvg != null) {
+    if (volVsAvg >= 1.5 && isGreenCandle) { volume = 20; reasons.push('Volume sangat tinggi + green (' + volVsAvg + 'x)'); }
+    else if (volVsAvg >= 1.2 && isGreenCandle) { volume = 16; reasons.push('Volume di atas avg + green (' + volVsAvg + 'x)'); }
+    else if (volVsAvg >= 1.5 && !isGreenCandle) { volume = 6; reasons.push('Volume tinggi tapi red candle (' + volVsAvg + 'x) — tekanan jual'); warnings.push('Volume tinggi + red candle'); }
+    else if (volVsAvg >= 1.2 && !isGreenCandle) { volume = 8; reasons.push('Volume cukup tapi red candle (' + volVsAvg + 'x)'); }
+    else if (volVsAvg >= 0.8 && volVsAvg < 1.2) { volume = 12; reasons.push('Volume normal (' + volVsAvg + 'x)'); }
+    else if (volVsAvg >= 0.5 && volVsAvg < 0.8) { volume = 7; reasons.push('Volume di bawah rata-rata (' + volVsAvg + 'x)'); }
+    else if (volVsAvg < 0.5) { volume = 3; reasons.push('Volume sangat lemah (' + volVsAvg + 'x)'); warnings.push('Likuiditas rendah'); }
+    else { volume = 10; }
+  } else {
+    volume = 8;
+    warnings.push('Volume data tidak lengkap');
+  }
+
+  // === PIVOT COMPONENT (0-15) ===
+  var pivotScore = 0;
+  if (pivotPoint != null && !flatRange) {
+    if (price >= pivotPoint) { pivotScore += 5; }
+    if (r1 != null && price >= r1) { pivotScore += 5; reasons.push('Price di atas R1'); }
+    else if (r1 != null && price >= pivotPoint) { pivotScore += 3; }
+    if (s1 != null && price < s1) { pivotScore = Math.max(0, pivotScore - 3); warnings.push('Price di bawah S1'); }
+    if (s2 != null && price < s2) { pivotScore = 0; warnings.push('Price di bawah S2'); }
+
+    // Bonus for being near support with positive momentum
+    if (s1 != null && Math.abs(price - s1) / s1 <= 0.02 && rsi != null && rsi >= 40) {
+      pivotScore += 3;
+    }
+    pivotScore = Math.min(15, pivotScore);
+  } else if (flatRange) {
+    pivotScore = 5; // reduced confidence
+    warnings.push('Pivot range flat, level kurang informatif');
+  } else {
+    pivotScore = 7; // neutral if no pivot
+  }
+
+  // === CATALYST COMPONENT (0-10) ===
+  var catalyst = 0;
+  var newsData = quote.news;
+  if (newsData && newsData.success && newsData.items && newsData.items.length > 0) {
+    var positiveCount = 0;
+    var negativeCount = 0;
+    for (var i = 0; i < newsData.items.length; i++) {
+      var impact = newsData.items[i].possibleImpact || newsData.items[i].impact || 'neutral';
+      if (impact === 'positive') positiveCount++;
+      else if (impact === 'negative') negativeCount++;
+    }
+    if (positiveCount > 0 && negativeCount === 0) { catalyst = 9; reasons.push('Katalis positif'); }
+    else if (negativeCount > 0 && positiveCount === 0) { catalyst = 1; reasons.push('Katalis negatif'); warnings.push('News negatif'); }
+    else if (positiveCount > 0 && negativeCount > 0) { catalyst = 5; reasons.push('Katalis mixed'); }
+    else { catalyst = 4; } // neutral news
+  } else {
+    catalyst = 3; // no news = slightly below neutral, do not penalize heavily
+  }
+
+  // === RISK PENALTY (0 to -30) ===
+  var risk = 0;
+  if (board && board.success) {
+    var b = board.board;
+    if (b === 'PEMANTAUAN_KHUSUS' || board.isFca) {
+      risk -= 25;
+      warnings.push('Papan Pemantauan Khusus / FCA');
+    } else if (b === 'AKSELERASI') {
+      risk -= 12;
+      warnings.push('Papan Akselerasi — likuiditas ketat');
+    } else if (b === 'UNKNOWN') {
+      risk -= 5;
+    }
+    // UTAMA, PENGEMBANGAN, EKONOMI_BARU = no penalty
+  }
+  // Low price penalty
+  if (price != null && price <= 50) { risk -= 8; warnings.push('Harga sangat rendah'); }
+  else if (price != null && price <= 100) { risk -= 4; warnings.push('Harga rendah'); }
+  // Extreme RSI penalty (already captured in momentum but add risk warning)
+  if (rsi != null && rsi > 80) { risk -= 5; }
+  if (rsi != null && rsi < 25) { risk -= 5; }
+  // Very weak volume penalty
+  if (volVsAvg != null && volVsAvg < 0.3) { risk -= 5; }
+
+  risk = Math.max(-30, risk);
+
+  // === TOTAL SCORE ===
+  var rawScore = trend + momentum + volume + pivotScore + catalyst + risk;
+  var score = Math.max(0, Math.min(100, rawScore));
+
+  // === GRADE ===
+  var grade;
+  if (score >= 80) grade = 'A';
+  else if (score >= 65) grade = 'B';
+  else if (score >= 50) grade = 'C';
+  else if (score >= 35) grade = 'D';
+  else grade = 'E';
+
+  // === CONFIDENCE ===
+  if (maCount < 2 || rsi == null || volVsAvg == null) confidence = 'low';
+  else if (maCount >= 3 && rsi != null && volVsAvg != null && !flatRange) confidence = 'high';
+  else confidence = 'medium';
+
+  return {
+    score: score,
+    grade: grade,
+    confidence: confidence,
+    components: {
+      trend: trend,
+      momentum: momentum,
+      volume: volume,
+      pivot: pivotScore,
+      catalyst: catalyst,
+      risk: risk
+    },
+    reasons: reasons.slice(0, 5),
+    warnings: warnings.slice(0, 4)
   };
 }
