@@ -25,6 +25,8 @@ module.exports = async function handler(req, res) {
     }
 
     ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
+    // Normalize IHSG aliases
+    if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
     if (!/^[A-Z]{3,5}$/.test(ticker)) {
       return res.status(400).json({ error: 'Format ticker tidak valid.' });
     }
@@ -34,7 +36,13 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(cached.data);
     }
 
-    var symbol = ticker + '.JK';
+    // Map ticker to Yahoo Finance symbol
+    var symbol;
+    if (ticker === 'IHSG') {
+      symbol = '%5EJKSE'; // ^JKSE (URL-encoded)
+    } else {
+      symbol = ticker + '.JK';
+    }
     var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=1y&interval=1d';
 
     var controller = new AbortController();

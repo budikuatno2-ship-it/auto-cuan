@@ -976,7 +976,8 @@ window.IDX_TICKERS = {
 "ZBRA":"Dosni Roha Indonesia Tbk.",
 "ZINC":"Kapuas Prima Coal Tbk.",
 "ZONE":"Mega Perintis Tbk.",
-"ZYRX":"Zyrexindo Mandiri Buana Tbk."
+"ZYRX":"Zyrexindo Mandiri Buana Tbk.",
+"IHSG":"Indeks Harga Saham Gabungan"
 };
 
 // === IDX Ticker Helper Functions ===

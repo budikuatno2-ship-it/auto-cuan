@@ -37,14 +37,19 @@ module.exports = async function handler(req, res) {
     }
 
     ticker = String(ticker).toUpperCase().trim().replace(/\.JK$/i, '');
-    if (!/^[A-Z]{3,5}$/.test(ticker)) {
+    // Normalize IHSG aliases to canonical 'IHSG'
+    if (ticker === 'JKSE' || ticker === 'JCI' || ticker === 'COMPOSITE') ticker = 'IHSG';
+    if (!/^[A-Z]{3,5}$/.test(ticker) && ticker !== 'IHSG') {
       return res.status(400).json({ error: 'Format ticker tidak valid.' });
     }
+
+    // IHSG/Index: skip board data, use ^JKSE for Yahoo
+    var isIndex = (ticker === 'IHSG');
 
     // Run Yahoo quote and Supabase board in parallel first
     var baseResults = await Promise.all([
       fetchYahooQuote(ticker),
-      fetchBoardData(ticker)
+      isIndex ? Promise.resolve(makeIndexBoard(ticker)) : fetchBoardData(ticker)
     ]);
 
     var quoteResult = baseResults[0];
@@ -94,7 +99,13 @@ async function fetchYahooQuote(ticker) {
     return cached.data;
   }
 
-  var symbol = ticker + '.JK';
+  // Map ticker to Yahoo Finance symbol
+  var symbol;
+  if (ticker === 'IHSG') {
+    symbol = '%5EJKSE'; // ^JKSE (URL-encoded)
+  } else {
+    symbol = ticker + '.JK';
+  }
   var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=1y&interval=1d';
 
   var controller = new AbortController();
@@ -173,7 +184,8 @@ async function fetchYahooQuote(ticker) {
   var result = {
     success: true,
     ticker: ticker,
-    symbol: symbol,
+    symbol: ticker === 'IHSG' ? '^JKSE' : symbol,
+    isIndex: ticker === 'IHSG',
     latestBarDate: latest.date,
     last: lastPrice,
     open: latest.open,
@@ -293,6 +305,21 @@ function makeBoardNotFound(ticker) {
     isFca: false,
     minPriceGuard: 50,
     note: 'Board/FCA belum tersedia'
+  };
+}
+
+// Special board object for index symbols (IHSG etc.)
+// Not a stock — no board/FCA/speculative penalties apply.
+function makeIndexBoard(ticker) {
+  return {
+    success: true,
+    companyName: ticker === 'IHSG' ? 'Indeks Harga Saham Gabungan' : ticker,
+    board: 'INDEX',
+    isFca: false,
+    isIndex: true,
+    minPriceGuard: 0,
+    note: 'Indeks pasar — bukan emiten individual',
+    source: 'index_special_case'
   };
 }
 
@@ -1695,6 +1722,60 @@ function calculateRiskGuard(quote, board) {
   var boardLabel = boardInfo.label;
 
   // === BASE RISK FROM BOARD ===
+  // INDEX: skip all board/stock-specific penalties
+  if (boardLevel === 'index') {
+    // For indices (IHSG), only assess based on technicals — no board/price/speculative penalties
+    var indexReasons = [];
+    var indexWarnings = [];
+    var indexScore = 0;
+
+    // Only technical weakness matters for indices
+    if (rsi != null && rsi < 35) {
+      indexScore += 8;
+      indexReasons.push('RSI ' + rsi + ' — momentum indeks lemah');
+    }
+    if (volVsAvg != null && volVsAvg < 0.5) {
+      indexScore += 5;
+      indexReasons.push('Volume indeks rendah (' + volVsAvg + 'x avg)');
+    }
+
+    // Setup label risk for index
+    var idxSetupStatus = (setupLabel && setupLabel.status) ? setupLabel.status : null;
+    if (idxSetupStatus === 'Bearish Continuation' || idxSetupStatus === 'Avoid Dulu') {
+      indexScore += 15;
+      indexReasons.push('Kondisi teknikal indeks: ' + idxSetupStatus);
+    } else if (idxSetupStatus === 'Breakdown Risk') {
+      indexScore += 12;
+      indexReasons.push('Indeks dalam area breakdown risk');
+    }
+
+    // Breakout confirmation for index
+    var idxBreakout = (breakoutConf && breakoutConf.status) ? breakoutConf.status : null;
+    if (idxBreakout === 'Breakdown Risk') {
+      indexScore += 10;
+      indexReasons.push('Indeks di bawah support utama');
+    }
+
+    indexScore = Math.max(0, Math.min(100, indexScore));
+    var indexLevel = indexScore >= 45 ? 'High' : indexScore >= 25 ? 'Medium' : indexScore >= 10 ? 'Low' : 'Very Low';
+    var indexBias = indexLevel === 'High' ? 'Cautious' : indexLevel === 'Medium' ? 'Wait Confirmation' : 'Normal Watch';
+
+    return {
+      level: indexLevel,
+      riskScore: indexScore,
+      actionBias: indexBias,
+      reasons: indexReasons.length > 0 ? indexReasons : ['Indeks — analisis berbasis teknikal saja'],
+      warnings: indexWarnings,
+      floors: { applied: false, trigger: null, minimumScore: null },
+      catalystReduction: 0,
+      boardInfo: {
+        boardLevel: 'index',
+        boardLabel: 'Indeks Pasar',
+        source: 'index_special_case'
+      }
+    };
+  }
+
   if (boardLevel === 'high') {
     // PEMANTAUAN_KHUSUS / FCA — hard override
     return {
@@ -1971,6 +2052,12 @@ function normalizeBoardSafe(board) {
 
   // Normalize to uppercase for comparison
   var upper = b.toUpperCase().trim();
+
+  // INDEX — special case for IHSG/market indices
+  // No board penalty, no FCA, no speculative risk
+  if (upper === 'INDEX' || board.isIndex === true) {
+    return { level: 'index', label: 'Indeks Pasar' };
+  }
 
   // FCA / Pemantauan Khusus — hard override
   if (upper === 'PEMANTAUAN_KHUSUS' || board.isFca === true) {
