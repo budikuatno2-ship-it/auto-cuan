@@ -270,6 +270,35 @@ function getBoardNote(board) {
   }
 }
 
+// ===== NEWS PROVIDER COOLDOWN (in-memory, per serverless instance) =====
+var _newsCooldown = {};
+var NEWS_COOLDOWN_MS = 45 * 60 * 1000; // 45 minutes
+var COOLDOWN_HTTP_CODES = [401, 402, 403, 429, 503];
+
+function isProviderCoolingDown(providerName) {
+  var cd = _newsCooldown[providerName];
+  if (!cd) return false;
+  if (Date.now() < cd.until) return true;
+  delete _newsCooldown[providerName]; // expired
+  return false;
+}
+
+function setProviderCooldown(providerName, httpStatus, reason) {
+  _newsCooldown[providerName] = {
+    until: Date.now() + NEWS_COOLDOWN_MS,
+    httpStatus: httpStatus,
+    reason: reason,
+    setAt: new Date().toISOString()
+  };
+}
+
+function getCooldownDebug(providerName) {
+  var cd = _newsCooldown[providerName];
+  if (!cd) return { cooldownActive: false };
+  if (Date.now() >= cd.until) { delete _newsCooldown[providerName]; return { cooldownActive: false }; }
+  return { cooldownActive: true, cooldownReason: cd.reason, cooldownUntil: new Date(cd.until).toISOString() };
+}
+
 // ===== NEWS/KATALIS FETCH (Supabase cache + CodeCrafters/Gemini) =====
 async function fetchNewsData(ticker) {
   var SUPABASE_URL = process.env.SUPABASE_URL;
@@ -281,6 +310,9 @@ async function fetchNewsData(ticker) {
   var CC_NEWS_MODEL = process.env.CODECRAFTERS_NEWS_MODEL || 'gemini-3.5-flash-free';
   var NEWS_DEBUG = process.env.NEWS_DEBUG === 'true';
 
+  var ccCooldown = getCooldownDebug('codecrafters');
+  var gmCooldown = getCooldownDebug('official_gemini');
+
   var debug = {
     newsProvider: NEWS_PROVIDER || 'default_official_gemini',
     providerTried: [],
@@ -290,6 +322,7 @@ async function fetchNewsData(ticker) {
     groundingEnabled: true,
     cacheChecked: false,
     cacheHit: false,
+    cooldown: { codecrafters: ccCooldown, official_gemini: gmCooldown },
     reason: ''
   };
 
@@ -309,20 +342,27 @@ async function fetchNewsData(ticker) {
     debug.reason = 'supabase_not_configured';
   }
 
-  // 2. Fetch news based on NEWS_PROVIDER setting
+  // 2. Fetch news based on NEWS_PROVIDER setting (with cooldown checks)
   var newsItems = null;
   var providerResults = {};
 
   if (NEWS_PROVIDER === 'codecrafters') {
     if (CC_NEWS_KEY && CC_NEWS_URL) {
-      debug.providerTried.push('codecrafters');
-      var ccResult = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
-      providerResults.codecrafters = ccResult._diag;
-      if (isValidNewsResult(ccResult.items)) {
-        newsItems = ccResult.items;
-        debug.providerUsed = 'codecrafters';
+      if (isProviderCoolingDown('codecrafters')) {
+        providerResults.codecrafters = { configured: true, called: false, providerSkippedDueToCooldown: true, errorType: 'cooldown', reason: 'provider cooling down' };
       } else {
-        debug.reason = (debug.reason ? debug.reason + ',' : '') + 'codecrafters_no_valid_results';
+        debug.providerTried.push('codecrafters');
+        var ccResult = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
+        providerResults.codecrafters = ccResult._diag;
+        if (isValidNewsResult(ccResult.items)) {
+          newsItems = ccResult.items;
+          debug.providerUsed = 'codecrafters';
+        } else {
+          if (ccResult._diag.httpStatus && COOLDOWN_HTTP_CODES.indexOf(ccResult._diag.httpStatus) >= 0) {
+            setProviderCooldown('codecrafters', ccResult._diag.httpStatus, 'HTTP ' + ccResult._diag.httpStatus);
+          }
+          debug.reason = (debug.reason ? debug.reason + ',' : '') + 'codecrafters_no_valid_results';
+        }
       }
     } else {
       providerResults.codecrafters = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
@@ -331,14 +371,21 @@ async function fetchNewsData(ticker) {
 
   } else if (NEWS_PROVIDER === 'official_gemini') {
     if (GEMINI_API_KEY) {
-      debug.providerTried.push('official_gemini');
-      var gmResult = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
-      providerResults.official_gemini = gmResult._diag;
-      if (isValidNewsResult(gmResult.items)) {
-        newsItems = gmResult.items;
-        debug.providerUsed = 'official_gemini';
+      if (isProviderCoolingDown('official_gemini')) {
+        providerResults.official_gemini = { configured: true, called: false, groundingEnabled: true, providerSkippedDueToCooldown: true, errorType: 'cooldown', reason: 'provider cooling down' };
       } else {
-        debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_no_valid_results';
+        debug.providerTried.push('official_gemini');
+        var gmResult = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+        providerResults.official_gemini = gmResult._diag;
+        if (isValidNewsResult(gmResult.items)) {
+          newsItems = gmResult.items;
+          debug.providerUsed = 'official_gemini';
+        } else {
+          if (gmResult._diag.httpStatus && COOLDOWN_HTTP_CODES.indexOf(gmResult._diag.httpStatus) >= 0) {
+            setProviderCooldown('official_gemini', gmResult._diag.httpStatus, 'HTTP ' + gmResult._diag.httpStatus);
+          }
+          debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_no_valid_results';
+        }
       }
     } else {
       providerResults.official_gemini = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
@@ -346,27 +393,42 @@ async function fetchNewsData(ticker) {
     }
 
   } else if (NEWS_PROVIDER === 'auto') {
-    // Try CodeCrafters first, fallback to official Gemini
+    // Try CodeCrafters first (with cooldown), fallback to official Gemini
     if (CC_NEWS_KEY && CC_NEWS_URL) {
-      debug.providerTried.push('codecrafters');
-      var ccResult2 = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
-      providerResults.codecrafters = ccResult2._diag;
-      if (isValidNewsResult(ccResult2.items)) {
-        newsItems = ccResult2.items;
-        debug.providerUsed = 'codecrafters';
+      if (isProviderCoolingDown('codecrafters')) {
+        providerResults.codecrafters = { configured: true, called: false, providerSkippedDueToCooldown: true, errorType: 'cooldown', reason: 'provider cooling down' };
+      } else {
+        debug.providerTried.push('codecrafters');
+        var ccResult2 = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
+        providerResults.codecrafters = ccResult2._diag;
+        if (isValidNewsResult(ccResult2.items)) {
+          newsItems = ccResult2.items;
+          debug.providerUsed = 'codecrafters';
+        } else {
+          if (ccResult2._diag.httpStatus && COOLDOWN_HTTP_CODES.indexOf(ccResult2._diag.httpStatus) >= 0) {
+            setProviderCooldown('codecrafters', ccResult2._diag.httpStatus, 'HTTP ' + ccResult2._diag.httpStatus);
+          }
+        }
       }
     } else {
       providerResults.codecrafters = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
     }
     if (!newsItems && GEMINI_API_KEY) {
-      debug.providerTried.push('official_gemini');
-      var gmResult2 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
-      providerResults.official_gemini = gmResult2._diag;
-      if (isValidNewsResult(gmResult2.items)) {
-        newsItems = gmResult2.items;
-        debug.providerUsed = 'official_gemini';
+      if (isProviderCoolingDown('official_gemini')) {
+        providerResults.official_gemini = { configured: true, called: false, groundingEnabled: true, providerSkippedDueToCooldown: true, errorType: 'cooldown', reason: 'provider cooling down' };
       } else {
-        debug.reason = (debug.reason ? debug.reason + ',' : '') + 'auto_all_providers_failed';
+        debug.providerTried.push('official_gemini');
+        var gmResult2 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+        providerResults.official_gemini = gmResult2._diag;
+        if (isValidNewsResult(gmResult2.items)) {
+          newsItems = gmResult2.items;
+          debug.providerUsed = 'official_gemini';
+        } else {
+          if (gmResult2._diag.httpStatus && COOLDOWN_HTTP_CODES.indexOf(gmResult2._diag.httpStatus) >= 0) {
+            setProviderCooldown('official_gemini', gmResult2._diag.httpStatus, 'HTTP ' + gmResult2._diag.httpStatus);
+          }
+          debug.reason = (debug.reason ? debug.reason + ',' : '') + 'auto_all_providers_failed';
+        }
       }
     } else if (!newsItems && !GEMINI_API_KEY) {
       providerResults.official_gemini = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
@@ -378,14 +440,21 @@ async function fetchNewsData(ticker) {
   } else {
     // Default: official Gemini with grounding (backward compatible)
     if (GEMINI_API_KEY) {
-      debug.providerTried.push('official_gemini');
-      var gmResult3 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
-      providerResults.official_gemini = gmResult3._diag;
-      if (isValidNewsResult(gmResult3.items)) {
-        newsItems = gmResult3.items;
-        debug.providerUsed = 'official_gemini';
+      if (isProviderCoolingDown('official_gemini')) {
+        providerResults.official_gemini = { configured: true, called: false, groundingEnabled: true, providerSkippedDueToCooldown: true, errorType: 'cooldown', reason: 'provider cooling down' };
       } else {
-        debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_no_valid_results';
+        debug.providerTried.push('official_gemini');
+        var gmResult3 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+        providerResults.official_gemini = gmResult3._diag;
+        if (isValidNewsResult(gmResult3.items)) {
+          newsItems = gmResult3.items;
+          debug.providerUsed = 'official_gemini';
+        } else {
+          if (gmResult3._diag.httpStatus && COOLDOWN_HTTP_CODES.indexOf(gmResult3._diag.httpStatus) >= 0) {
+            setProviderCooldown('official_gemini', gmResult3._diag.httpStatus, 'HTTP ' + gmResult3._diag.httpStatus);
+          }
+          debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_no_valid_results';
+        }
       }
     } else {
       providerResults.official_gemini = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
