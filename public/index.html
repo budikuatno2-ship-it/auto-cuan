@@ -1060,10 +1060,11 @@ function buildContextForApi() {
 }
 
 // ===== MARKET DATA CONTEXT FETCHER =====
+// Always sends includeNews=1. Backend Supabase cache prevents repeated Gemini calls.
 async function fetchQuoteContext(ticker) {
     if (!ticker || !isValidTicker(ticker)) return '';
     try {
-        var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker), { method: 'GET' }).catch(function() { return null; });
+        var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=1', { method: 'GET' }).catch(function() { return null; });
 
         var lines = ['\n[Auto-Cuan Market Data]'];
         lines.push('Ticker: ' + ticker);
@@ -1099,6 +1100,26 @@ async function fetchQuoteContext(ticker) {
                 lines.push('FCA: ' + (b.isFca ? 'true' : 'false'));
                 lines.push('Min Price Guard: ' + (b.minPriceGuard != null ? b.minPriceGuard : 50));
                 if (b.note) lines.push('Note: ' + b.note);
+            }
+
+            // News data from same response
+            var newsData = q && q.news;
+            if (newsData && newsData.items && newsData.items.length > 0) {
+                lines.push('');
+                lines.push('[Auto-Cuan News Summary]');
+                lines.push('Ticker: ' + ticker);
+                lines.push('Period: 6 bulan terakhir');
+                for (var ni = 0; ni < newsData.items.length; ni++) {
+                    var news = newsData.items[ni];
+                    lines.push('- ' + (news.date || '?') + ': ' + news.title);
+                    if (news.summary) lines.push('  ' + news.summary);
+                    if (news.impact) lines.push('  Impact: ' + news.impact);
+                    if (news.source) lines.push('  Sumber: ' + news.source);
+                }
+            } else {
+                lines.push('');
+                lines.push('[Auto-Cuan News Summary]');
+                lines.push('News Summary: unavailable');
             }
         } else {
             lines.push('Data historis belum berhasil diambil.');

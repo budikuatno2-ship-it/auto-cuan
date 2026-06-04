@@ -1,9 +1,10 @@
 /**
- * Auto-Cuan Quote API — Yahoo Finance Lite + Board/FCA from Supabase
- * Fetches daily OHLCV + calculates MA20/50/100/200, RSI14, Volume metrics
+ * Auto-Cuan Quote API — Yahoo Finance Lite + Board/FCA + News/Katalis
+ * Fetches daily OHLCV + calculates MA20/50/100/200, RSI14, Volume metrics.
  * Also fetches board classification from Supabase REST (no SDK).
- * Returns compact JSON summary with board data included.
- * Yahoo cache: 5-minute TTL. Board cache: 12-hour TTL.
+ * Optionally fetches cached news/katalis summary (includeNews=1).
+ * Returns compact JSON summary with board + optional news data.
+ * Yahoo cache: 5-minute TTL. Board cache: 12-hour TTL. News cache: 30-day TTL (Supabase).
  */
 
 var quoteCache = {};
@@ -12,14 +13,21 @@ var QUOTE_CACHE_TTL = 5 * 60 * 1000;
 var boardCache = {};
 var BOARD_CACHE_TTL = 12 * 60 * 60 * 1000;
 
+var NEWS_CACHE_TTL_DAYS = 30;
+var NEWS_PERIOD = '6m';
+
 module.exports = async function handler(req, res) {
   var ticker = null;
   try {
+    var includeNews = false;
+
     if (req.method === 'GET') {
       ticker = req.query && req.query.ticker;
+      includeNews = req.query && req.query.includeNews === '1';
     } else if (req.method === 'POST') {
       var body = req.body || {};
       ticker = body.ticker;
+      includeNews = body.includeNews === '1' || body.includeNews === 1 || body.includeNews === true;
     } else {
       return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -33,17 +41,28 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Format ticker tidak valid.' });
     }
 
-    // Run Yahoo quote and Supabase board fetch in parallel
-    var results = await Promise.all([
+    // Run Yahoo quote, Supabase board, and optionally news in parallel
+    var fetches = [
       fetchYahooQuote(ticker),
       fetchBoardData(ticker)
-    ]);
+    ];
+    if (includeNews) {
+      fetches.push(fetchNewsData(ticker));
+    }
+
+    var results = await Promise.all(fetches);
 
     var quoteResult = results[0];
     var boardResult = results[1];
+    var newsResult = includeNews ? results[2] : null;
 
     // Attach board to quote result
     quoteResult.board = boardResult;
+
+    // Attach news if requested
+    if (includeNews) {
+      quoteResult.news = newsResult;
+    }
 
     return res.status(200).json(quoteResult);
 
@@ -248,6 +267,184 @@ function getBoardNote(board) {
     case 'PEMANTAUAN_KHUSUS': return 'Papan Pemantauan Khusus';
     case 'EKONOMI_BARU': return 'Papan Ekonomi Baru';
     default: return '';
+  }
+}
+
+// ===== NEWS/KATALIS FETCH (Supabase cache + Gemini) =====
+async function fetchNewsData(ticker) {
+  var SUPABASE_URL = process.env.SUPABASE_URL;
+  var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  var GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+  // 1. Check Supabase cache first
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    var cached = await getCachedNews(SUPABASE_URL, SUPABASE_KEY, ticker);
+    if (cached !== null) {
+      return { success: true, items: cached, source: 'cache' };
+    }
+  }
+
+  // 2. If no cache, call Gemini for news summary
+  if (!GEMINI_API_KEY) {
+    return { success: false, items: [], note: 'News summary belum tersedia.' };
+  }
+
+  var newsItems = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+
+  // 3. Save to Supabase cache
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    await saveCachedNews(SUPABASE_URL, SUPABASE_KEY, ticker, newsItems || []);
+  }
+
+  if (!newsItems || newsItems.length === 0) {
+    return { success: true, items: [], note: 'Tidak ada news/katalis signifikan ditemukan.' };
+  }
+
+  return { success: true, items: newsItems, source: 'gemini' };
+}
+
+// === SUPABASE NEWS CACHE: READ ===
+async function getCachedNews(supabaseUrl, supabaseKey, ticker) {
+  try {
+    var url = supabaseUrl + '/rest/v1/stock_news_cache?ticker=eq.' + ticker + '&period=eq.' + NEWS_PERIOD + '&limit=1';
+    var response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': 'Bearer ' + supabaseKey,
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) return null;
+    var rows = await response.json();
+    if (!rows || rows.length === 0) return null;
+
+    var row = rows[0];
+    // Check expiry
+    if (row.expires_at) {
+      var expiresAt = new Date(row.expires_at);
+      if (expiresAt <= new Date()) return null; // expired
+    } else {
+      // Fallback: check created_at + TTL
+      var createdAt = new Date(row.created_at);
+      var expiryDate = new Date(createdAt.getTime() + NEWS_CACHE_TTL_DAYS * 24 * 60 * 60 * 1000);
+      if (expiryDate <= new Date()) return null;
+    }
+
+    return row.items || [];
+  } catch (e) {
+    return null;
+  }
+}
+
+// === SUPABASE NEWS CACHE: WRITE (UPSERT) ===
+async function saveCachedNews(supabaseUrl, supabaseKey, ticker, items) {
+  try {
+    var now = new Date();
+    var expiresAt = new Date(now.getTime() + NEWS_CACHE_TTL_DAYS * 24 * 60 * 60 * 1000);
+
+    var payload = {
+      ticker: ticker,
+      period: NEWS_PERIOD,
+      items: items,
+      created_at: now.toISOString(),
+      expires_at: expiresAt.toISOString()
+    };
+
+    var url = supabaseUrl + '/rest/v1/stock_news_cache';
+    await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': 'Bearer ' + supabaseKey,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    // Silent fail — cache write is non-critical
+  }
+}
+
+// === GEMINI: FETCH NEWS SUMMARY ===
+async function fetchNewsFromGemini(apiKey, ticker) {
+  var prompt = 'Kamu adalah research assistant untuk saham Indonesia (IDX/BEI). ' +
+    'Cari berita/katalis penting untuk saham ' + ticker + '.JK (ticker IDX: ' + ticker + ') dalam 6 bulan terakhir.\n\n' +
+    'Return HANYA valid JSON array (max 2 items). Setiap item harus memiliki format:\n' +
+    '{\n' +
+    '  "date": "YYYY-MM-DD",\n' +
+    '  "title": "judul singkat berita",\n' +
+    '  "source": "nama media/sumber",\n' +
+    '  "url": "link jika tersedia, atau null",\n' +
+    '  "summary": "ringkasan 1-2 kalimat dampak ke saham",\n' +
+    '  "impact": "positive" | "negative" | "neutral" | "mixed"\n' +
+    '}\n\n' +
+    'Prioritas:\n' +
+    '1. Berita paling relevan dari 0-3 bulan terakhir (jika ada)\n' +
+    '2. Satu berita tambahan dari 3-6 bulan terakhir (jika relevan)\n\n' +
+    'Rules:\n' +
+    '- Max 2 items\n' +
+    '- Jika tidak ada berita relevan, return empty array: []\n' +
+    '- Jangan karang berita. Jika tidak yakin, return []\n' +
+    '- Jangan include full article text\n' +
+    '- Fokus: corporate action, akuisisi, dividen, right issue, perubahan papan, kinerja keuangan, kontrak baru, regulasi\n' +
+    '- Return HANYA JSON array, tanpa markdown, tanpa explanation\n' +
+    '- Jika ticker tidak dikenal atau tidak ada berita, return: []';
+
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+  var payload = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.2,
+      topP: 0.8,
+      maxOutputTokens: 512
+    }
+  };
+
+  try {
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 15000);
+
+    var response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) return [];
+
+    var result = await response.json();
+    var candidates = result.candidates || [];
+    if (candidates.length === 0) return [];
+
+    var text = (candidates[0].content && candidates[0].content.parts && candidates[0].content.parts[0] && candidates[0].content.parts[0].text) || '';
+    // Clean markdown code fences if present
+    text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    var parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) return [];
+
+    // Validate and limit to 2 items
+    var valid = [];
+    for (var i = 0; i < parsed.length && valid.length < 2; i++) {
+      var item = parsed[i];
+      if (item && item.title && item.summary) {
+        valid.push({
+          date: item.date || null,
+          title: String(item.title).slice(0, 200),
+          source: item.source || null,
+          url: item.url || null,
+          summary: String(item.summary).slice(0, 300),
+          impact: ['positive', 'negative', 'neutral', 'mixed'].indexOf(item.impact) >= 0 ? item.impact : 'neutral'
+        });
+      }
+    }
+    return valid;
+  } catch (e) {
+    return [];
   }
 }
 
