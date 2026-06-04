@@ -275,32 +275,62 @@ async function fetchNewsData(ticker) {
   var SUPABASE_URL = process.env.SUPABASE_URL;
   var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   var GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  var NEWS_DEBUG = process.env.NEWS_DEBUG === 'true';
+
+  var debug = {
+    supabaseConfigured: !!(SUPABASE_URL && SUPABASE_KEY),
+    geminiConfigured: !!GEMINI_API_KEY,
+    cacheChecked: false,
+    cacheHit: false,
+    geminiCalled: false,
+    cacheSaved: false,
+    reason: ''
+  };
 
   // 1. Check Supabase cache first
   if (SUPABASE_URL && SUPABASE_KEY) {
+    debug.cacheChecked = true;
     var cached = await getCachedNews(SUPABASE_URL, SUPABASE_KEY, ticker);
     if (cached !== null) {
-      return { success: true, items: cached, source: 'cache' };
+      debug.cacheHit = true;
+      debug.reason = 'cache_valid';
+      var r1 = { success: true, items: cached, source: 'cache' };
+      if (NEWS_DEBUG) r1._debug = debug;
+      return r1;
     }
+    debug.reason = 'cache_miss_or_expired';
+  } else {
+    debug.reason = 'supabase_not_configured';
   }
 
   // 2. If no cache, call Gemini for news summary
   if (!GEMINI_API_KEY) {
-    return { success: false, items: [], note: 'News summary belum tersedia.' };
+    debug.reason = (debug.reason || '') + ',gemini_not_configured';
+    var r2 = { success: false, items: [], note: 'News summary belum tersedia.' };
+    if (NEWS_DEBUG) r2._debug = debug;
+    return r2;
   }
 
+  debug.geminiCalled = true;
   var newsItems = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
 
   // 3. Save to Supabase cache
   if (SUPABASE_URL && SUPABASE_KEY) {
     await saveCachedNews(SUPABASE_URL, SUPABASE_KEY, ticker, newsItems || []);
+    debug.cacheSaved = true;
   }
 
   if (!newsItems || newsItems.length === 0) {
-    return { success: true, items: [], note: 'Tidak ada news/katalis signifikan ditemukan.' };
+    debug.reason = (debug.reason ? debug.reason + ',' : '') + 'gemini_no_results';
+    var r3 = { success: true, items: [], note: 'Tidak ada news/katalis signifikan ditemukan.' };
+    if (NEWS_DEBUG) r3._debug = debug;
+    return r3;
   }
 
-  return { success: true, items: newsItems, source: 'gemini' };
+  debug.reason = 'gemini_success';
+  var r4 = { success: true, items: newsItems, source: 'gemini' };
+  if (NEWS_DEBUG) r4._debug = debug;
+  return r4;
 }
 
 // === SUPABASE NEWS CACHE: READ ===
