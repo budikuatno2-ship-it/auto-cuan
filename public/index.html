@@ -243,45 +243,36 @@
                 <span>Broksum: <span class="text-gray-500">BBCA broksum 1D</span></span>
                 <span>Chart: <span class="text-gray-500">upload</span></span>
                 <button onclick="toggleBroksumHelper()" class="text-emerald-600 hover:text-emerald-400 transition underline underline-offset-2" title="Lihat contoh format Broker Summary">Contoh Broksum</button>
-                <button onclick="toggleUsageGuide()" class="text-blue-500 hover:text-blue-400 transition underline underline-offset-2" title="Cara menggunakan Auto-Cuan">Cara Pakai</button>
+                <button onclick="showOnboardingGuide()" class="text-blue-500 hover:text-blue-400 transition underline underline-offset-2" title="Cara menggunakan Auto-Cuan">Cara Pakai</button>
             </div>
-            <!-- Broker Summary helper (collapsible) -->
+            <!-- Broker Summary helper (collapsible, table-style) -->
             <div id="broksumHelper" class="hidden mt-2 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 text-[11px] sm:text-xs text-gray-500 space-y-2">
                 <div class="flex items-center justify-between">
-                    <span class="font-medium text-gray-400">Contoh Broker Summary (NET-only)</span>
+                    <span class="font-medium text-gray-400">Contoh Broker Summary Manual</span>
                     <button onclick="toggleBroksumHelper()" class="text-gray-600 hover:text-gray-400 text-sm leading-none">&times;</button>
                 </div>
-                <pre id="broksumExample" class="bg-dark-800/60 rounded-lg p-2.5 text-gray-400 whitespace-pre-wrap leading-relaxed select-all">BBCA broksum 1D
-YP +4,5B
-PD +3,1B
-CC +1,8B
-AK -8B
-ZP -2,5B
-BK -1,2B</pre>
-                <div class="flex flex-wrap gap-2">
+                <p class="text-gray-500">Periode: <span class="text-gray-300">1D</span></p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-[11px] sm:text-xs border-collapse">
+                        <thead><tr class="text-gray-400 border-b border-dark-600/40"><th class="text-left py-1 pr-3 font-medium">Broker</th><th class="text-left py-1 pr-3 font-medium">Net</th><th class="text-left py-1 font-medium">Arti</th></tr></thead>
+                        <tbody class="text-gray-300">
+                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">YP</td><td class="py-1 pr-3 text-emerald-400">+4,5B</td><td class="py-1 text-gray-500">Net Buyer</td></tr>
+                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">PD</td><td class="py-1 pr-3 text-emerald-400">+3,1B</td><td class="py-1 text-gray-500">Net Buyer</td></tr>
+                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">CC</td><td class="py-1 pr-3 text-emerald-400">+1,8B</td><td class="py-1 text-gray-500">Net Buyer</td></tr>
+                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">AK</td><td class="py-1 pr-3 text-red-400">-8B</td><td class="py-1 text-gray-500">Net Seller</td></tr>
+                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">ZP</td><td class="py-1 pr-3 text-red-400">-2,5B</td><td class="py-1 text-gray-500">Net Seller</td></tr>
+                            <tr><td class="py-1 pr-3">BK</td><td class="py-1 pr-3 text-red-400">-1,2B</td><td class="py-1 text-gray-500">Net Seller</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-[10px] text-gray-600 space-y-0.5 pt-1">
+                    <p>Net positif = broker dominan beli. Net negatif = broker dominan jual.</p>
+                    <p>Periode didukung: <span class="text-gray-500">1D, 7D, 1M, 3M</span>. Broker Summary = konfirmasi tambahan, bukan sinyal beli tunggal.</p>
+                </div>
+                <div class="flex flex-wrap gap-2 pt-1">
                     <button onclick="fillBroksumExample()" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition text-[11px] font-medium">Isi ke Chat</button>
                     <button onclick="copyBroksumExample()" class="px-2.5 py-1 rounded-lg bg-dark-600/50 border border-dark-500/30 text-gray-400 hover:text-gray-200 transition text-[11px]">Salin</button>
                 </div>
-                <p class="text-gray-600 leading-snug">Periode: <span class="text-gray-500">1D, 7D, 1M, 3M</span>. Broker Summary adalah konfirmasi tambahan, bukan sinyal beli tunggal.</p>
-            </div>
-            <!-- Usage Guide (collapsible) -->
-            <div id="usageGuide" class="hidden mt-2 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 text-[11px] sm:text-xs text-gray-500 space-y-2.5">
-                <div class="flex items-center justify-between">
-                    <span class="font-medium text-gray-300">Cara Pakai Auto-Cuan</span>
-                    <button onclick="toggleUsageGuide()" class="text-gray-600 hover:text-gray-400 text-sm leading-none">&times;</button>
-                </div>
-                <div class="space-y-2 leading-relaxed">
-                    <p><span class="text-gray-400 font-medium">1. Analisis saham</span><br><span class="text-gray-500">Ketik: </span><span class="text-gray-300">BBCA gimana?</span> atau <span class="text-gray-300">BREN potensi besok?</span></p>
-                    <p><span class="text-gray-400 font-medium">2. Analisis IHSG</span><br><span class="text-gray-500">Ketik: </span><span class="text-gray-300">IHSG</span> atau <span class="text-gray-300">Composite potensi besok?</span></p>
-                    <p><span class="text-gray-400 font-medium">3. Upload chart</span><br><span class="text-gray-500">Kirim screenshot chart untuk analisis visual.</span></p>
-                    <p><span class="text-gray-400 font-medium">4. Broker Summary manual</span><br><span class="text-gray-500">Format: </span><span class="text-gray-300">BBCA broksum 1D</span><br><span class="text-gray-500">Lalu paste net broker: </span><span class="text-gray-300">YP +4,5B / AK -8B</span></p>
-                    <p><span class="text-gray-400 font-medium">5. Periode broksum</span><br><span class="text-gray-500">Didukung: </span><span class="text-gray-300">1D, 7D, 1M, 3M</span></p>
-                </div>
-                <div class="flex flex-wrap gap-2 pt-1">
-                    <button onclick="fillGuideExample('BBCA gimana?')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition text-[11px] font-medium">Coba BBCA</button>
-                    <button onclick="fillGuideExample('IHSG')" class="px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition text-[11px] font-medium">Coba IHSG</button>
-                </div>
-                <p class="text-gray-600 text-[10px] sm:text-[11px] leading-snug pt-0.5">Analisis bersifat probabilistik, bukan kepastian atau rekomendasi beli/jual mutlak.</p>
             </div>
         </div>
     </div>
@@ -339,6 +330,14 @@ BK -1,2B</pre>
             <button onclick="window.location.reload()" class="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">Istirahat dulu</button>
             <button onclick="closeUsageReminder()" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition-all">Lanjut</button>
         </div>
+    </div>
+</div>
+
+<!-- ONBOARDING GUIDE MODAL -->
+<div id="onboardingModal" class="hidden fixed inset-0 z-[9998] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="w-full max-w-[520px] rounded-2xl border border-gray-700/60 bg-[#0f1319] shadow-2xl overflow-hidden">
+        <div id="onboardingContent" class="p-5 sm:p-6 space-y-4"></div>
+        <div id="onboardingFooter" class="px-5 sm:px-6 pb-5 flex items-center justify-between gap-3"></div>
     </div>
 </div>
 
@@ -622,6 +621,10 @@ async function enterReviewMode() {
         localStorage.removeItem('autocuan_is_review');
     }
     showDashboard();
+    // Auto-show onboarding on first visit
+    if (localStorage.getItem('auto_cuan_onboarding_seen') !== 'true') {
+        setTimeout(function() { showOnboardingGuide(); }, 600);
+    }
 })();
 
 // ===== MODAL FUNCTIONS =====
@@ -773,9 +776,82 @@ function copyBroksumExample() {
 }
 
 // ===== USAGE GUIDE HELPER FUNCTIONS =====
-function toggleUsageGuide() {
-    var el = document.getElementById('usageGuide');
-    if (el) el.classList.toggle('hidden');
+var _onboardingStep = 0;
+var _onboardingSteps = [
+    {
+        title: 'Selamat datang di Auto-Cuan \uD83D\uDC4B',
+        content: '<p class="text-sm text-gray-300">Auto-Cuan adalah asisten analisis saham dan IHSG yang membantu membaca arah market secara lebih rapi, berbasis data, dan mudah dipahami.</p><p class="text-sm text-gray-400 mt-2">Kamu bisa cek saham, IHSG/Composite, upload chart, atau kirim Broker Summary manual. Auto-Cuan akan menggabungkan teknikal, volume, pivot, support-resistance, Risk Guard, news/katalis jika tersedia, dan data broker yang kamu kirim.</p><p class="text-[11px] text-gray-500 mt-3">Analisis ini bersifat probabilistik, bukan kepastian atau rekomendasi beli/jual mutlak.</p><p class="text-xs text-gray-500 mt-2">Klik <strong class="text-emerald-400">Next</strong> untuk mulai.</p>',
+        showClose: false
+    },
+    {
+        title: 'Analisis Saham',
+        content: '<p class="text-sm text-gray-400">Ketik ticker atau pertanyaan:</p><p class="text-sm text-gray-200 mt-1.5">BBCA gimana?<br>BREN potensi besok?</p>',
+        showClose: true,
+        quickFill: { text: 'BBCA gimana?', label: 'Coba BBCA' }
+    },
+    {
+        title: 'IHSG / Composite',
+        content: '<p class="text-sm text-gray-400">Bisa tanya market:</p><p class="text-sm text-gray-200 mt-1.5">IHSG<br>Composite potensi besok?</p>',
+        showClose: true,
+        quickFill: { text: 'IHSG', label: 'Coba IHSG' }
+    },
+    {
+        title: 'Upload Chart',
+        content: '<p class="text-sm text-gray-400">Upload screenshot chart untuk analisis visual. Auto-Cuan akan membaca struktur chart lalu menggabungkannya dengan data teknikal jika tersedia.</p>',
+        showClose: true
+    },
+    {
+        title: 'Broker Summary Manual',
+        content: '<p class="text-sm text-gray-400">Paste data Broker Summary NET:</p><p class="text-sm text-gray-200 mt-1.5 font-mono">BBCA broksum 1D<br>YP +4,5B<br>AK -8B</p><p class="text-[11px] text-gray-500 mt-2">Periode: 1D, 7D, 1M, 3M</p>',
+        showClose: true
+    }
+];
+
+function showOnboardingGuide() {
+    _onboardingStep = 0;
+    renderOnboardingStep();
+    document.getElementById('onboardingModal').classList.remove('hidden');
+}
+function hideOnboardingGuide(markSeen) {
+    document.getElementById('onboardingModal').classList.add('hidden');
+    if (markSeen !== false) localStorage.setItem('auto_cuan_onboarding_seen', 'true');
+}
+function nextOnboardingStep() {
+    _onboardingStep++;
+    if (_onboardingStep >= _onboardingSteps.length) {
+        hideOnboardingGuide(true);
+        return;
+    }
+    renderOnboardingStep();
+}
+function renderOnboardingStep() {
+    var step = _onboardingSteps[_onboardingStep];
+    var contentEl = document.getElementById('onboardingContent');
+    var footerEl = document.getElementById('onboardingFooter');
+    var isLast = _onboardingStep === _onboardingSteps.length - 1;
+    var stepIndicator = '<div class="flex gap-1 mb-3">';
+    for (var i = 0; i < _onboardingSteps.length; i++) {
+        stepIndicator += '<div class="h-1 rounded-full flex-1 ' + (i <= _onboardingStep ? 'bg-emerald-500' : 'bg-dark-600') + '"></div>';
+    }
+    stepIndicator += '</div>';
+    contentEl.innerHTML = stepIndicator + '<h3 class="text-base font-bold text-white">' + step.title + '</h3>' + step.content;
+    var footerHtml = '';
+    if (step.showClose) {
+        footerHtml += '<button onclick="hideOnboardingGuide(true)" class="px-4 py-2 rounded-xl text-sm text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition">Tutup</button>';
+    } else {
+        footerHtml += '<div></div>';
+    }
+    var rightBtns = '';
+    if (step.quickFill) {
+        rightBtns += '<button onclick="fillGuideExample(\'' + step.quickFill.text.replace(/'/g, "\\'") + '\')" class="px-3 py-2 rounded-xl text-sm text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition">' + step.quickFill.label + '</button>';
+    }
+    if (isLast) {
+        rightBtns += '<button onclick="hideOnboardingGuide(true)" class="px-5 py-2 rounded-xl text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition">Mulai</button>';
+    } else {
+        rightBtns += '<button onclick="nextOnboardingStep()" class="px-5 py-2 rounded-xl text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition">Next</button>';
+    }
+    footerHtml += '<div class="flex gap-2">' + rightBtns + '</div>';
+    footerEl.innerHTML = footerHtml;
 }
 function fillGuideExample(text) {
     var input = document.getElementById('chatInput');
@@ -784,8 +860,10 @@ function fillGuideExample(text) {
         autoResizeInput();
         input.focus();
     }
-    toggleUsageGuide();
+    hideOnboardingGuide(true);
 }
+// Legacy alias
+function toggleUsageGuide() { showOnboardingGuide(); }
 
 // ===== FILE HANDLING =====
 var selectedFiles = [];
@@ -3045,11 +3123,24 @@ function showToast(message, type) {
 // ===== MODAL UTILITIES =====
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        // Onboarding: block Escape on step 0, allow on step 1+
+        var obModal = document.getElementById('onboardingModal');
+        if (obModal && !obModal.classList.contains('hidden')) {
+            if (_onboardingStep >= 1) { hideOnboardingGuide(true); }
+            return;
+        }
         var modals = ['loginModal', 'registerModal', 'selfResetModal', 'resetPasswordModal', 'maintenancePreviewModal', 'adminAiModal'];
         for (var i = 0; i < modals.length; i++) { var el = document.getElementById(modals[i]); if (el && !el.classList.contains('hidden')) { el.classList.add('hidden'); return; } }
     }
 });
-document.addEventListener('click', function(e) { if (e.target.classList.contains('fixed') && e.target.classList.contains('bg-black/70')) { e.target.classList.add('hidden'); } });
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('fixed') && (e.target.classList.contains('bg-black/70') || e.target.classList.contains('bg-black/60'))) {
+        // Block backdrop close for onboarding on step 0
+        if (e.target.id === 'onboardingModal' && _onboardingStep === 0) return;
+        if (e.target.id === 'onboardingModal') { hideOnboardingGuide(true); return; }
+        e.target.classList.add('hidden');
+    }
+});
 
 window.alert = function(msg) {
     if (!msg) return;
