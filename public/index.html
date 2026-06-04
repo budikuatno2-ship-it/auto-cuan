@@ -54,18 +54,18 @@
         .copy-btn { opacity: 0.4; transition: all 0.15s ease-out; }
         .flex.gap-3:hover .copy-btn, .copy-btn:focus { opacity: 1; }
         @media (max-width: 640px) { .copy-btn { opacity: 0.7; } }
-        .ai-content { font-size: 13.5px; line-height: 1.45; }
-        .ai-content p { margin: 0 0 8px; font-size: inherit; }
+        .ai-content { font-size: 13.5px; line-height: 1.38; }
+        .ai-content p { margin: 0 0 7px; font-size: inherit; }
         .ai-content p:last-child { margin-bottom: 0; }
         .ai-content p:first-child { font-size: 14px; font-weight: 600; }
         .ai-content p:empty { display: none; }
-        .ai-content ul, .ai-content ol { margin: 4px 0 8px; padding-left: 18px; }
-        .ai-content li { margin: 2px 0; font-size: inherit; }
+        .ai-content ul, .ai-content ol { margin: 3px 0 7px; padding-left: 16px; }
+        .ai-content li { margin: 1px 0; font-size: inherit; }
         .ai-content strong { font-size: inherit; font-weight: 700; }
         .ai-content br + br { display: none; }
         @media (min-width: 640px) {
-            .ai-content { font-size: 14px; line-height: 1.5; }
-            .ai-content p { margin: 0 0 10px; }
+            .ai-content { font-size: 14px; line-height: 1.42; }
+            .ai-content p { margin: 0 0 8px; }
             .ai-content p:first-child { font-size: 14.5px; }
         }
 
@@ -1070,9 +1070,20 @@ function buildContextForApi() {
 }
 
 // ===== MARKET DATA CONTEXT FETCHER =====
-// Always sends includeNews=1. Backend Supabase cache prevents repeated Gemini calls.
+// Frontend cache: avoid repeated /api/quote calls for same ticker within 4 minutes
+var _quoteContextCache = {};
+var QUOTE_CONTEXT_CACHE_TTL = 4 * 60 * 1000;
+
 async function fetchQuoteContext(ticker) {
     if (!ticker || !isValidTicker(ticker)) return '';
+
+    // Check frontend cache
+    var cacheKey = ticker;
+    var cached = _quoteContextCache[cacheKey];
+    if (cached && (Date.now() - cached.ts < QUOTE_CONTEXT_CACHE_TTL)) {
+        return cached.ctx;
+    }
+
     try {
         var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=1', { method: 'GET' }).catch(function() { return null; });
 
@@ -1156,7 +1167,9 @@ async function fetchQuoteContext(ticker) {
             lines.push('Data historis belum berhasil diambil.');
         }
 
-        return lines.join('\n');
+        var ctx = lines.join('\n');
+        _quoteContextCache[cacheKey] = { ctx: ctx, ts: Date.now() };
+        return ctx;
     } catch (e) {
         return '\n[Auto-Cuan Market Data]\nData historis belum berhasil diambil.';
     }
@@ -2626,9 +2639,18 @@ function sanitizeAIHtml(html) {
     output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, '');
     // Collapse excessive whitespace/empty elements for compact layout
     output = output.replace(/<p[^>]*>\s*<\/p>/gi, ''); // remove empty <p></p>
-    output = output.replace(/(<br\s*\/?>){3,}/gi, '<br><br>'); // max 2 consecutive br
-    output = output.replace(/\n{3,}/g, '\n\n'); // max 2 consecutive newlines
+    output = output.replace(/(<br\s*\/?>){3,}/gi, '<br>'); // max 1 consecutive br
+    output = output.replace(/\n{3,}/g, '\n'); // max 1 newline
     output = output.replace(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi, ''); // remove <p><br></p>
+    // Fix joined text from AI (e.g. "Low: 62Volume:" or "1,2xMA20:")
+    output = output.replace(/(\d[,.\d]*)(Volume:)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*x)(MA\d)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(RSI\d)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(MA\d{2,3}:)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(Posisi:)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(Avg Vol)/g, '$1<br>$2');
+    // Fix stuck numbered risks like "1. xxx.2. yyy" or "...waktu.2."
+    output = output.replace(/\.(\d+)\.\s/g, '.<br>$1. ');
     return output;
 }
 
@@ -2656,7 +2678,7 @@ function toggleNewsPanel(ticker, panelId, btn) {
             if (n.possibleImpact) { var ic = n.possibleImpact === 'positive' ? 'text-emerald-400 bg-emerald-500/10' : n.possibleImpact === 'negative' ? 'text-red-400 bg-red-500/10' : 'text-gray-400 bg-gray-500/10'; badges += '<span class="px-1.5 py-0.5 rounded text-[10px] ' + ic + '">' + n.possibleImpact + '</span>'; }
             if (n.source) badges += '<span class="text-[10px] text-gray-500">' + escapeHtml(n.source) + '</span>';
             if (badges) html += '<div class="flex items-center gap-2 mt-1.5">' + badges + '</div>';
-            if (n.url) html += '<a href="' + escapeHtml(n.url) + '" target="_blank" rel="noopener noreferrer" class="text-[10px] text-blue-400 hover:underline mt-1 block truncate">' + escapeHtml(n.url) + '</a>';
+            if (n.url) html += '<a href="' + escapeHtml(n.url) + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:underline mt-1"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>Buka Sumber</a>';
             html += '</div>';
         }
         html += '</div>';
