@@ -1137,6 +1137,21 @@ async function fetchQuoteContext(ticker) {
                 window._stockNewsByTicker = window._stockNewsByTicker || {};
                 delete window._stockNewsByTicker[ticker];
             }
+
+            // === AUTO-CUAN SCORE CALCULATION ===
+            var acScore = calculateAutoCuanScore(q, b, newsData);
+            if (acScore) {
+                lines.push('');
+                lines.push('[Auto-Cuan Score]');
+                lines.push('Total: ' + acScore.total + '/100');
+                lines.push('Category: ' + acScore.category);
+                lines.push('Trend Score: ' + acScore.trendScore + '/30');
+                lines.push('RSI Score: ' + acScore.rsiScore + '/20');
+                lines.push('Volume Score: ' + acScore.volumeScore + '/20');
+                lines.push('News Score: ' + acScore.newsScore + '/15');
+                lines.push('Board Risk Score: ' + acScore.boardRiskScore + '/15');
+                lines.push('Reason: ' + acScore.reason);
+            }
         } else {
             lines.push('Data historis belum berhasil diambil.');
         }
@@ -1145,6 +1160,120 @@ async function fetchQuoteContext(ticker) {
     } catch (e) {
         return '\n[Auto-Cuan Market Data]\nData historis belum berhasil diambil.';
     }
+}
+
+// ===== AUTO-CUAN SCORE CALCULATOR =====
+function calculateAutoCuanScore(q, board, newsData) {
+    if (!q || !q.success) return null;
+
+    var trendScore = 0; // 0-30
+    var rsiScore = 0;   // 0-20
+    var volumeScore = 0; // 0-20
+    var newsScore = 7;  // 0-15 (default neutral)
+    var boardRiskScore = 10; // 0-15 (default medium)
+    var reasons = [];
+
+    // 1. TREND / MA Score (0-30)
+    var last = q.last;
+    var maAbove = 0;
+    var maTotal = 0;
+    if (q.ma20 != null) { maTotal++; if (last >= q.ma20) maAbove++; }
+    if (q.ma50 != null) { maTotal++; if (last >= q.ma50) maAbove++; }
+    if (q.ma100 != null) { maTotal++; if (last >= q.ma100) maAbove++; }
+    if (q.ma200 != null) { maTotal++; if (last >= q.ma200) maAbove++; }
+
+    if (maTotal > 0) {
+        var maRatio = maAbove / maTotal;
+        trendScore = Math.round(maRatio * 30);
+        // Bonus: check MA alignment (MA20 > MA50 > MA100 = bullish)
+        if (q.ma20 != null && q.ma50 != null && q.ma20 > q.ma50) trendScore = Math.min(30, trendScore + 3);
+        if (maAbove === 0) reasons.push('trend bearish (below all MA)');
+        else if (maAbove === maTotal) reasons.push('trend bullish (above all MA)');
+        else reasons.push('trend mixed');
+    } else {
+        trendScore = 10; // no MA data, neutral
+    }
+
+    // 2. RSI / MOMENTUM Score (0-20)
+    var rsi = q.rsi14;
+    if (rsi != null) {
+        if (rsi >= 55 && rsi <= 70) { rsiScore = 17; reasons.push('RSI bullish momentum'); }
+        else if (rsi >= 45 && rsi < 55) { rsiScore = 12; reasons.push('RSI netral'); }
+        else if (rsi > 70) { rsiScore = 8; reasons.push('RSI overbought risk'); }
+        else if (rsi >= 30 && rsi < 45) { rsiScore = 7; reasons.push('RSI weak/bearish'); }
+        else if (rsi < 30) { rsiScore = 5; reasons.push('RSI oversold belum confirm reversal'); }
+        else { rsiScore = 10; }
+    } else {
+        rsiScore = 8; // no RSI data
+    }
+
+    // 3. VOLUME Score (0-20)
+    var volVsAvg = q.volumeVsAvg20;
+    if (volVsAvg != null) {
+        // Determine if last candle was green or red
+        var isGreenCandle = q.last >= q.open;
+        if (volVsAvg >= 1.2 && isGreenCandle) { volumeScore = 18; reasons.push('volume tinggi + price naik'); }
+        else if (volVsAvg >= 1.2 && !isGreenCandle) { volumeScore = 6; reasons.push('volume tinggi tapi price turun (distribusi)'); }
+        else if (volVsAvg >= 0.8 && volVsAvg < 1.2) { volumeScore = 12; reasons.push('volume normal'); }
+        else if (volVsAvg < 0.5) { volumeScore = 4; reasons.push('volume sangat lemah'); }
+        else { volumeScore = 8; reasons.push('volume di bawah rata-rata'); }
+    } else {
+        volumeScore = 8; // no volume data
+    }
+
+    // 4. NEWS / KATALIS Score (0-15)
+    if (newsData && newsData.items && newsData.items.length > 0) {
+        var positiveNews = 0, negativeNews = 0;
+        for (var ni = 0; ni < newsData.items.length; ni++) {
+            var impact = newsData.items[ni].possibleImpact || newsData.items[ni].impact || 'neutral';
+            if (impact === 'positive') positiveNews++;
+            else if (impact === 'negative') negativeNews++;
+        }
+        if (positiveNews > 0 && negativeNews === 0) { newsScore = 13; reasons.push('katalis positif'); }
+        else if (negativeNews > 0 && positiveNews === 0) { newsScore = 3; reasons.push('katalis negatif'); }
+        else if (positiveNews > 0 && negativeNews > 0) { newsScore = 8; reasons.push('katalis mixed'); }
+        else { newsScore = 7; }
+    } else {
+        newsScore = 6; // no news = slightly below neutral
+    }
+
+    // 5. BOARD / RISK Score (0-15)
+    if (board && board.board) {
+        var b = board.board;
+        if (b === 'UTAMA') { boardRiskScore = 14; }
+        else if (b === 'PENGEMBANGAN' || b === 'EKONOMI_BARU') { boardRiskScore = 11; }
+        else if (b === 'AKSELERASI') { boardRiskScore = 6; reasons.push('papan AKSELERASI (likuiditas ketat)'); }
+        else if (b === 'PEMANTAUAN_KHUSUS') { boardRiskScore = 3; reasons.push('Pemantauan Khusus (risk tinggi)'); }
+        else { boardRiskScore = 8; } // UNKNOWN
+        if (board.isFca) { boardRiskScore = Math.min(boardRiskScore, 3); reasons.push('FCA risk'); }
+    }
+
+    // Calculate total
+    var total = trendScore + rsiScore + volumeScore + newsScore + boardRiskScore;
+    total = Math.max(0, Math.min(100, total));
+
+    // Determine category
+    var category;
+    if (total <= 30) category = 'Avoid';
+    else if (total <= 45) category = 'Wait and see';
+    else if (total <= 60) category = 'Watchlist';
+    else if (total <= 75) category = 'Speculative buy';
+    else category = 'Strong setup';
+
+    // Build reason string (max 2 most important)
+    var topReasons = reasons.slice(0, 3).join(', ');
+    if (!topReasons) topReasons = 'Data terbatas';
+
+    return {
+        total: total,
+        category: category,
+        trendScore: trendScore,
+        rsiScore: rsiScore,
+        volumeScore: volumeScore,
+        newsScore: newsScore,
+        boardRiskScore: boardRiskScore,
+        reason: topReasons
+    };
 }
 
 function setActiveTicker(ticker) {
