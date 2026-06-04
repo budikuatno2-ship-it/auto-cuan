@@ -1106,6 +1106,18 @@ async function fetchQuoteContext(ticker) {
                 if (q.ma100 != null) lines.push('MA100: ' + q.ma100);
                 if (q.ma200 != null) lines.push('MA200: ' + q.ma200);
                 if (q.rsi14 != null) lines.push('RSI14: ' + q.rsi14);
+                // Pivot data from same response
+                if (q.pivot) {
+                    lines.push('Pivot Point: ' + q.pivot.pivotPoint);
+                    lines.push('OHLC Pivot: ' + q.pivot.ohlcPivot);
+                    lines.push('Support 1: ' + q.pivot.support1);
+                    lines.push('Support 2: ' + q.pivot.support2);
+                    lines.push('Resistance 1: ' + q.pivot.resistance1);
+                    lines.push('Resistance 2: ' + q.pivot.resistance2);
+                    lines.push('Pivot Method: ' + q.pivot.pivotMethod);
+                    lines.push('Pivot Source Date: ' + q.pivot.pivotSourceDate);
+                    if (q.pivot.flatRange) lines.push('Note: Range T-1 flat/sempit, level pivot kurang informatif.');
+                }
             } else {
                 lines.push('Data historis belum berhasil diambil.');
             }

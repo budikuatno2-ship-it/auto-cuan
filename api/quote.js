@@ -180,6 +180,35 @@ async function fetchYahooQuote(ticker) {
     note: 'Data Historis T-1'
   };
 
+  // === PIVOT POINT CALCULATION (Classic) from T-1 completed candle ===
+  var prevH = latest.high;
+  var prevL = latest.low;
+  var prevC = latest.close;
+  var prevO = latest.open;
+  var pivotPoint = roundPrice((prevH + prevL + prevC) / 3);
+  var ohlcPivot = roundPrice((prevO + prevH + prevL + prevC) / 4);
+  var range = prevH - prevL;
+  var r1 = roundPrice((2 * pivotPoint) - prevL);
+  var s1 = roundPrice((2 * pivotPoint) - prevH);
+  var r2 = roundPrice(pivotPoint + range);
+  var s2 = roundPrice(pivotPoint - range);
+
+  result.pivot = {
+    pivotPoint: pivotPoint,
+    ohlcPivot: ohlcPivot,
+    resistance1: r1,
+    resistance2: r2,
+    support1: s1,
+    support2: s2,
+    prevOpen: prevO,
+    prevHigh: prevH,
+    prevLow: prevL,
+    prevClose: prevC,
+    pivotMethod: 'classic',
+    pivotSourceDate: latest.date,
+    flatRange: (range === 0 || range < 1)
+  };
+
   quoteCache[ticker] = { data: result, timestamp: Date.now() };
   return result;
 }
@@ -965,6 +994,11 @@ function validateAndLimitNews(parsed) {
 }
 
 // ===== CALCULATION HELPERS =====
+function roundPrice(val) {
+  if (val == null || isNaN(val)) return null;
+  return Math.round(val);
+}
+
 function calcMA(prices, period) {
   if (!prices || prices.length < period) return null;
   var slice = prices.slice(prices.length - period);
