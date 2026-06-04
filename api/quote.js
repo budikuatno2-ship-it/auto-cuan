@@ -41,26 +41,22 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Format ticker tidak valid.' });
     }
 
-    // Run Yahoo quote, Supabase board, and optionally news in parallel
-    var fetches = [
+    // Run Yahoo quote and Supabase board in parallel first
+    var baseResults = await Promise.all([
       fetchYahooQuote(ticker),
       fetchBoardData(ticker)
-    ];
-    if (includeNews) {
-      fetches.push(fetchNewsData(ticker));
-    }
+    ]);
 
-    var results = await Promise.all(fetches);
-
-    var quoteResult = results[0];
-    var boardResult = results[1];
-    var newsResult = includeNews ? results[2] : null;
+    var quoteResult = baseResults[0];
+    var boardResult = baseResults[1];
 
     // Attach board to quote result
     quoteResult.board = boardResult;
 
-    // Attach news if requested
+    // Fetch news after board is available (uses companyName for better search)
     if (includeNews) {
+      var companyName = (boardResult && boardResult.companyName) || null;
+      var newsResult = await fetchNewsData(ticker, companyName);
       quoteResult.news = newsResult;
     }
 
@@ -300,7 +296,7 @@ function getCooldownDebug(providerName) {
 }
 
 // ===== NEWS/KATALIS FETCH (Supabase cache + CodeCrafters/Gemini) =====
-async function fetchNewsData(ticker) {
+async function fetchNewsData(ticker, companyName) {
   var SUPABASE_URL = process.env.SUPABASE_URL;
   var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   var GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -375,7 +371,7 @@ async function fetchNewsData(ticker) {
         providerResults.official_gemini = { configured: true, called: false, groundingEnabled: true, providerSkippedDueToCooldown: true, errorType: 'cooldown', reason: 'provider cooling down' };
       } else {
         debug.providerTried.push('official_gemini');
-        var gmResult = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+        var gmResult = await fetchNewsFromGemini(GEMINI_API_KEY, ticker, companyName);
         providerResults.official_gemini = gmResult._diag;
         if (isValidNewsResult(gmResult.items)) {
           newsItems = gmResult.items;
@@ -418,7 +414,7 @@ async function fetchNewsData(ticker) {
         providerResults.official_gemini = { configured: true, called: false, groundingEnabled: true, providerSkippedDueToCooldown: true, errorType: 'cooldown', reason: 'provider cooling down' };
       } else {
         debug.providerTried.push('official_gemini');
-        var gmResult2 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+        var gmResult2 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker, companyName);
         providerResults.official_gemini = gmResult2._diag;
         if (isValidNewsResult(gmResult2.items)) {
           newsItems = gmResult2.items;
@@ -444,7 +440,7 @@ async function fetchNewsData(ticker) {
         providerResults.official_gemini = { configured: true, called: false, groundingEnabled: true, providerSkippedDueToCooldown: true, errorType: 'cooldown', reason: 'provider cooling down' };
       } else {
         debug.providerTried.push('official_gemini');
-        var gmResult3 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+        var gmResult3 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker, companyName);
         providerResults.official_gemini = gmResult3._diag;
         if (isValidNewsResult(gmResult3.items)) {
           newsItems = gmResult3.items;
@@ -656,11 +652,42 @@ async function saveCachedNews(supabaseUrl, supabaseKey, ticker, items) {
   }
 }
 
-// === GEMINI: FETCH NEWS SUMMARY (with Google Search grounding) ===
-async function fetchNewsFromGemini(apiKey, ticker) {
-  var diag = { configured: true, called: true, groundingEnabled: true, httpStatus: null, ok: false, finishReason: null, rawTextLength: 0, rawTextPreview: '', hasGroundingMetadata: false, groundingChunkCount: 0, parsedJson: false, parsedFrom: null, parseFailureReason: null, itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
+// === GEMINI: FETCH NEWS SUMMARY (with Google Search grounding + multi-query) ===
+async function fetchNewsFromGemini(apiKey, ticker, companyName) {
+  var diag = { configured: true, called: true, groundingEnabled: true, httpStatus: null, ok: false, finishReason: null, rawTextLength: 0, rawTextPreview: '', hasGroundingMetadata: false, groundingChunkCount: 0, parsedJson: false, parsedFrom: null, parseFailureReason: null, queryVariantsUsed: [], itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
 
-  var prompt = 'Search Google for recent news about Indonesian stock ' + ticker + '.JK (IDX ticker: ' + ticker + '). Return ONLY a JSON array, no markdown, no explanation, no code fences.\n\nFormat: [{"date":"YYYY-MM-DD","title":"short title","source":"media name","url":"url or null","summary":"one sentence impact","possibleImpact":"positive|negative|neutral|mixed"}]\n\nRules: max 2 items, last 6 months only, must include source name, prefer items with real URLs, if no news found return []\nFocus: earnings, dividends, acquisitions, rights issue, board changes, new contracts, regulations.';
+  // Build search context with multiple query variants for better coverage
+  var searchContext = ticker + '.JK saham IDX';
+  if (companyName) searchContext += ', ' + companyName;
+
+  var queryVariants = [
+    ticker + ' berita saham terbaru',
+    ticker + ' katalis',
+    ticker + ' keterbukaan informasi IDX',
+    ticker + ' laporan keuangan',
+    ticker + ' aksi korporasi BEI'
+  ];
+  if (companyName) {
+    queryVariants.push(companyName + ' IDX berita');
+    queryVariants.push(companyName + ' saham');
+  }
+  diag.queryVariantsUsed = queryVariants.slice(0, 3); // show first 3 in debug
+
+  var prompt = 'Search Google for recent stock news about ' + searchContext + '.\n\n' +
+    'Search queries to try: ' + queryVariants.join('; ') + '\n\n' +
+    'Return ONLY a valid JSON array (no markdown, no code fences, no explanation).\n' +
+    'Format: [{"date":"YYYY-MM-DD","title":"judul singkat","source":"nama media","url":"link atau null","summary":"satu kalimat dampak ke saham","possibleImpact":"positive|negative|neutral|mixed"}]\n\n' +
+    'Rules:\n' +
+    '- Max 2 items total\n' +
+    '- Prioritas 1: berita paling relevan 0-3 bulan terakhir\n' +
+    '- Prioritas 2: satu berita dari 3-6 bulan terakhir jika relevan\n' +
+    '- WAJIB sertakan source (nama media) untuk setiap item\n' +
+    '- Prefer sources: IDX/BEI, Kontan, Bisnis, CNBC Indonesia, Investor Daily, RTI, emiten official\n' +
+    '- URL wajib jika tersedia dari search results\n' +
+    '- Jangan karang berita, hanya dari hasil search yang valid\n' +
+    '- Fokus: earnings, dividends, acquisitions, rights issue, board changes, contracts, regulations, keterbukaan informasi\n' +
+    '- Jika tidak ada berita valid dari search, return: []\n' +
+    '- Summary dalam Bahasa Indonesia, singkat 1 kalimat';
 
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
   var payload = {
