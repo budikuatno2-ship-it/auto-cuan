@@ -69,6 +69,9 @@ module.exports = async function handler(req, res) {
     // === BREAKOUT / BREAKDOWN CONFIRMATION (deterministic) ===
     quoteResult.breakoutConfirmation = calculateBreakoutConfirmation(quoteResult, boardResult);
 
+    // === RISK GUARD (deterministic, conservative risk assessment) ===
+    quoteResult.riskGuard = calculateRiskGuard(quoteResult, boardResult);
+
     return res.status(200).json(quoteResult);
 
   } catch (err) {
@@ -1656,4 +1659,340 @@ function calculateBreakoutConfirmation(quote, board) {
     warnings: warnings,
     flags: flags
   };
+}
+
+
+
+// ===== RISK GUARD v1 (deterministic, conservative risk assessment) =====
+// Purpose: Prevent aggressive wording for risky stocks.
+// Conservative by design — floors ensure speculative/low-price stocks cannot be rated "Low" without strong evidence.
+function calculateRiskGuard(quote, board) {
+  if (!quote || !quote.success) {
+    return {
+      level: 'Unknown',
+      riskScore: 50,
+      actionBias: 'Wait Confirmation',
+      reasons: ['Data quote tidak tersedia'],
+      warnings: ['no_data'],
+      floors: { applied: false }
+    };
+  }
+
+  var price = quote.last;
+  var rsi = quote.rsi14;
+  var volVsAvg = quote.volumeVsAvg20;
+  var setupLabel = quote.setupLabel;
+  var autoCuanScore = quote.autoCuanScore;
+  var breakoutConf = quote.breakoutConfirmation;
+
+  var reasons = [];
+  var warnings = [];
+  var riskScore = 0; // 0 = no risk, 100 = maximum risk
+
+  // === BOARD RISK ASSESSMENT (with safe normalization) ===
+  var boardInfo = normalizeBoardSafe(board);
+  var boardLevel = boardInfo.level; // 'normal', 'elevated', 'high', 'unknown'
+  var boardLabel = boardInfo.label;
+
+  // === BASE RISK FROM BOARD ===
+  if (boardLevel === 'high') {
+    // PEMANTAUAN_KHUSUS / FCA — hard override
+    return {
+      level: 'Very High',
+      riskScore: 90,
+      actionBias: 'Avoid Dulu',
+      reasons: ['Board: ' + boardLabel + ' — FCA/Pemantauan Khusus', 'Likuiditas sangat terbatas', 'Risiko delisting / suspensi'],
+      warnings: ['fca_override', 'hard_avoid'],
+      floors: { applied: true, trigger: 'PEMANTAUAN_KHUSUS/FCA hard override' }
+    };
+  }
+
+  if (boardLevel === 'elevated') {
+    riskScore += 25;
+    reasons.push('Board: ' + boardLabel + ' — likuiditas ketat, risiko tinggi');
+    warnings.push('board_akselerasi');
+  } else if (boardLevel === 'unknown') {
+    riskScore += 10;
+    reasons.push('Board data tidak tersedia/stale — risiko tidak diketahui');
+    warnings.push('board_unknown');
+  }
+  // UTAMA/PENGEMBANGAN/EKONOMI_BARU: no board penalty
+
+  // === PRICE RISK ===
+  if (price != null) {
+    if (price <= 50) {
+      riskScore += 20;
+      reasons.push('Harga sangat rendah (Rp ' + price + ') — area gocap/near-gocap');
+      warnings.push('very_low_price');
+    } else if (price <= 100) {
+      riskScore += 15;
+      reasons.push('Harga rendah (Rp ' + price + ') — speculative area');
+      warnings.push('low_price');
+    } else if (price <= 200) {
+      riskScore += 8;
+      reasons.push('Harga masih low-price (Rp ' + price + ') — perlu konfirmasi kuat');
+      warnings.push('low_price_area');
+    }
+  }
+
+  // === SETUP LABEL RISK ===
+  var setupStatus = (setupLabel && setupLabel.status) ? setupLabel.status : null;
+  if (setupStatus === 'High Risk Speculative') {
+    riskScore += 20;
+    reasons.push('Setup Label: High Risk Speculative');
+    warnings.push('high_risk_speculative_label');
+  } else if (setupStatus === 'Speculative Watch') {
+    riskScore += 12;
+    reasons.push('Setup Label: Speculative Watch — catalyst ada tapi konfirmasi lemah');
+    warnings.push('speculative_watch_label');
+  } else if (setupStatus === 'Avoid Dulu') {
+    riskScore += 25;
+    reasons.push('Setup Label: Avoid Dulu — kondisi teknikal bearish');
+    warnings.push('avoid_label');
+  } else if (setupStatus === 'Bearish Continuation') {
+    riskScore += 20;
+    reasons.push('Setup Label: Bearish Continuation — trend turun berlanjut');
+    warnings.push('bearish_continuation_label');
+  } else if (setupStatus === 'Breakdown Risk') {
+    riskScore += 15;
+    reasons.push('Setup Label: breakdown risk terdeteksi');
+  } else if (setupStatus === 'Sideways / No Trade') {
+    riskScore += 5;
+  }
+  // Breakout Watch, Rebound Watch = low additional risk
+
+  // === BREAKOUT CONFIRMATION RISK ===
+  var breakoutStatus = (breakoutConf && breakoutConf.status) ? breakoutConf.status : null;
+  if (breakoutStatus === 'Breakdown Risk') {
+    riskScore += 15;
+    reasons.push('Breakout Confirmation: Breakdown Risk — harga di bawah support');
+    warnings.push('breakdown_risk');
+  } else if (breakoutStatus === 'Rejection Risk') {
+    riskScore += 8;
+    reasons.push('Breakout Confirmation: Rejection Risk — momentum lemah di resistance');
+  }
+
+  // === AUTO-CUAN SCORE RISK ===
+  var grade = (autoCuanScore && autoCuanScore.grade) ? autoCuanScore.grade : null;
+  var score = (autoCuanScore && autoCuanScore.score != null) ? autoCuanScore.score : null;
+  if (grade === 'E') {
+    riskScore += 18;
+    reasons.push('Auto-Cuan Grade E (score ' + score + '/100) — very weak setup');
+    warnings.push('grade_e');
+  } else if (grade === 'D') {
+    riskScore += 12;
+    reasons.push('Auto-Cuan Grade D (score ' + score + '/100) — weak setup');
+    warnings.push('grade_d');
+  } else if (grade === 'C') {
+    riskScore += 5;
+    if (setupStatus === 'Speculative Watch' || setupStatus === 'High Risk Speculative') {
+      riskScore += 5;
+      reasons.push('Auto-Cuan Grade C + speculative label — mixed setup');
+    }
+  }
+  // Grade B/A = low risk contribution
+
+  // === TECHNICAL WEAKNESS ===
+  if (rsi != null && rsi < 35) {
+    riskScore += 5;
+    reasons.push('RSI ' + rsi + ' — momentum sangat lemah');
+  }
+  if (volVsAvg != null && volVsAvg < 0.5) {
+    riskScore += 5;
+    reasons.push('Volume sangat rendah (' + volVsAvg + 'x avg) — likuiditas lemah');
+    warnings.push('very_low_volume');
+  }
+
+  // === POSITIVE CATALYST REDUCTION (capped, respects floors) ===
+  var catalystReduction = 0;
+  var newsData = quote.news;
+  if (newsData && newsData.success && newsData.items && newsData.items.length > 0) {
+    var positiveCount = 0;
+    var negativeCount = 0;
+    for (var i = 0; i < newsData.items.length; i++) {
+      var impact = newsData.items[i].possibleImpact || newsData.items[i].impact || 'neutral';
+      if (impact === 'positive') positiveCount++;
+      else if (impact === 'negative') negativeCount++;
+    }
+    if (positiveCount > 0 && negativeCount === 0) {
+      // Positive catalyst: reduce risk by max 5 points
+      catalystReduction = Math.min(5, positiveCount * 3);
+      reasons.push('Katalis positif terdeteksi (pengurangan risiko terbatas -' + catalystReduction + ')');
+    } else if (negativeCount > 0 && positiveCount === 0) {
+      riskScore += 5;
+      reasons.push('Katalis negatif terdeteksi');
+      warnings.push('negative_catalyst');
+    }
+    // Mixed catalyst: no reduction
+  }
+
+  // Apply catalyst reduction BEFORE floor enforcement
+  riskScore = riskScore - catalystReduction;
+
+  // === RISK FLOORS (minimum levels — cannot be reduced by catalyst) ===
+  var floorApplied = false;
+  var floorTrigger = null;
+  var minimumScore = 0;
+
+  // Floor: PEMANTAUAN_KHUSUS/FCA already handled above (hard override)
+
+  // Floor: Akselerasi board → minimum Medium
+  if (boardLevel === 'elevated') {
+    minimumScore = Math.max(minimumScore, 30);
+    if (!floorTrigger) floorTrigger = 'Board AKSELERASI → minimum Medium';
+  }
+
+  // Floor: price <= 200 → minimum Medium unless technicals clearly strong and liquidity excellent
+  if (price != null && price <= 200) {
+    var technicalsStrong = (rsi != null && rsi >= 55) && (volVsAvg != null && volVsAvg >= 1.5);
+    var gradeGood = (grade === 'A' || grade === 'B');
+    if (!(technicalsStrong && gradeGood)) {
+      minimumScore = Math.max(minimumScore, 25);
+      if (!floorTrigger) floorTrigger = 'Price <= 200 tanpa konfirmasi kuat → minimum Medium';
+    }
+  }
+
+  // Floor: Speculative Watch → minimum Medium, actionBias Wait Confirmation
+  if (setupStatus === 'Speculative Watch') {
+    minimumScore = Math.max(minimumScore, 25);
+    if (!floorTrigger) floorTrigger = 'Setup Speculative Watch → minimum Medium';
+  }
+
+  // Floor: High Risk Speculative → minimum High
+  if (setupStatus === 'High Risk Speculative') {
+    minimumScore = Math.max(minimumScore, 45);
+    if (!floorTrigger) floorTrigger = 'Setup High Risk Speculative → minimum High';
+  }
+
+  // Floor: Avoid Dulu or Bearish Continuation → minimum High
+  if (setupStatus === 'Avoid Dulu' || setupStatus === 'Bearish Continuation') {
+    minimumScore = Math.max(minimumScore, 50);
+    if (!floorTrigger) floorTrigger = 'Setup ' + setupStatus + ' → minimum High';
+  }
+
+  // Floor: Breakdown Risk (from breakoutConfirmation) → minimum High
+  if (breakoutStatus === 'Breakdown Risk') {
+    minimumScore = Math.max(minimumScore, 45);
+    if (!floorTrigger) floorTrigger = 'Breakout Confirmation Breakdown Risk → minimum High';
+  }
+
+  // Floor: Auto-Cuan Grade D or E → minimum High
+  if (grade === 'D' || grade === 'E') {
+    minimumScore = Math.max(minimumScore, 45);
+    if (!floorTrigger) floorTrigger = 'Grade ' + grade + ' → minimum High';
+  }
+
+  // Floor: Grade C with speculative label → minimum Medium
+  if (grade === 'C' && (setupStatus === 'Speculative Watch' || setupStatus === 'High Risk Speculative')) {
+    minimumScore = Math.max(minimumScore, 30);
+    if (!floorTrigger) floorTrigger = 'Grade C + speculative label → minimum Medium';
+  }
+
+  // Enforce floor
+  if (riskScore < minimumScore) {
+    riskScore = minimumScore;
+    floorApplied = true;
+  }
+
+  // Clamp to 0-100 (natural floor — catalyst cannot make risk negative)
+  if (riskScore < 0) {
+    riskScore = 0;
+    // This is natural clamping, not a policy floor
+  }
+  riskScore = Math.min(100, riskScore);
+
+  // === DETERMINE LEVEL ===
+  var level;
+  if (riskScore >= 75) level = 'Very High';
+  else if (riskScore >= 45) level = 'High';
+  else if (riskScore >= 25) level = 'Medium';
+  else if (riskScore >= 10) level = 'Low';
+  else level = 'Very Low';
+
+  // === DETERMINE ACTION BIAS ===
+  var actionBias;
+  if (level === 'Very High') {
+    actionBias = 'Avoid Dulu';
+  } else if (level === 'High') {
+    actionBias = 'Small Position Only';
+  } else if (level === 'Medium') {
+    // Speculative Watch or waiting confirmation
+    if (setupStatus === 'Speculative Watch' || setupStatus === 'Rebound Watch') {
+      actionBias = 'Wait Confirmation';
+    } else {
+      actionBias = 'Wait Confirmation';
+    }
+  } else if (level === 'Low') {
+    actionBias = 'Normal Watch';
+  } else {
+    actionBias = 'Normal Watch';
+  }
+
+  // Override actionBias for specific setup labels
+  if (setupStatus === 'Speculative Watch' && level === 'Medium') {
+    actionBias = 'Wait Confirmation';
+  }
+  if (setupStatus === 'High Risk Speculative') {
+    actionBias = 'Small Position Only';
+  }
+
+  return {
+    level: level,
+    riskScore: riskScore,
+    actionBias: actionBias,
+    reasons: reasons.slice(0, 6),
+    warnings: warnings.slice(0, 5),
+    floors: {
+      applied: floorApplied,
+      trigger: floorTrigger || null,
+      minimumScore: minimumScore > 0 ? minimumScore : null
+    },
+    catalystReduction: catalystReduction,
+    boardInfo: {
+      boardLevel: boardLevel,
+      boardLabel: boardLabel,
+      source: (board && board.success) ? 'supabase' : 'unavailable'
+    }
+  };
+}
+
+// === SAFE BOARD NORMALIZATION ===
+// Only treat as AKSELERASI if actual board string explicitly matches.
+// Do not infer from unrelated text.
+function normalizeBoardSafe(board) {
+  if (!board || !board.success) {
+    return { level: 'unknown', label: 'Board data unavailable/stale' };
+  }
+
+  var b = board.board;
+  if (!b || typeof b !== 'string') {
+    return { level: 'unknown', label: 'Board field empty' };
+  }
+
+  // Normalize to uppercase for comparison
+  var upper = b.toUpperCase().trim();
+
+  // FCA / Pemantauan Khusus — hard override
+  if (upper === 'PEMANTAUAN_KHUSUS' || board.isFca === true) {
+    return { level: 'high', label: 'Pemantauan Khusus / FCA' };
+  }
+
+  // Akselerasi — only exact match, never infer
+  if (upper === 'AKSELERASI') {
+    return { level: 'elevated', label: 'Papan Akselerasi' };
+  }
+
+  // Normal boards — safe
+  if (upper === 'UTAMA') {
+    return { level: 'normal', label: 'Papan Utama' };
+  }
+  if (upper === 'PENGEMBANGAN') {
+    return { level: 'normal', label: 'Papan Pengembangan' };
+  }
+  if (upper === 'EKONOMI_BARU') {
+    return { level: 'normal', label: 'Papan Ekonomi Baru' };
+  }
+
+  // UNKNOWN or anything else — treat as unknown, do not falsely assign
+  return { level: 'unknown', label: 'Board: ' + b + ' (tidak dikenali)' };
 }
