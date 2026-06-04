@@ -311,32 +311,37 @@ async function fetchNewsData(ticker) {
 
   // 2. Fetch news based on NEWS_PROVIDER setting
   var newsItems = null;
+  var providerResults = {};
 
   if (NEWS_PROVIDER === 'codecrafters') {
     if (CC_NEWS_KEY && CC_NEWS_URL) {
       debug.providerTried.push('codecrafters');
-      newsItems = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
-      if (isValidNewsResult(newsItems)) {
+      var ccResult = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
+      providerResults.codecrafters = ccResult._diag;
+      if (isValidNewsResult(ccResult.items)) {
+        newsItems = ccResult.items;
         debug.providerUsed = 'codecrafters';
       } else {
-        newsItems = null;
         debug.reason = (debug.reason ? debug.reason + ',' : '') + 'codecrafters_no_valid_results';
       }
     } else {
+      providerResults.codecrafters = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
       debug.reason = (debug.reason ? debug.reason + ',' : '') + 'codecrafters_not_configured';
     }
 
   } else if (NEWS_PROVIDER === 'official_gemini') {
     if (GEMINI_API_KEY) {
       debug.providerTried.push('official_gemini');
-      newsItems = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
-      if (isValidNewsResult(newsItems)) {
+      var gmResult = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+      providerResults.official_gemini = gmResult._diag;
+      if (isValidNewsResult(gmResult.items)) {
+        newsItems = gmResult.items;
         debug.providerUsed = 'official_gemini';
       } else {
-        newsItems = null;
         debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_no_valid_results';
       }
     } else {
+      providerResults.official_gemini = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
       debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_not_configured';
     }
 
@@ -344,22 +349,27 @@ async function fetchNewsData(ticker) {
     // Try CodeCrafters first, fallback to official Gemini
     if (CC_NEWS_KEY && CC_NEWS_URL) {
       debug.providerTried.push('codecrafters');
-      newsItems = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
-      if (isValidNewsResult(newsItems)) {
+      var ccResult2 = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
+      providerResults.codecrafters = ccResult2._diag;
+      if (isValidNewsResult(ccResult2.items)) {
+        newsItems = ccResult2.items;
         debug.providerUsed = 'codecrafters';
-      } else {
-        newsItems = null;
       }
+    } else {
+      providerResults.codecrafters = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
     }
     if (!newsItems && GEMINI_API_KEY) {
       debug.providerTried.push('official_gemini');
-      newsItems = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
-      if (isValidNewsResult(newsItems)) {
+      var gmResult2 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+      providerResults.official_gemini = gmResult2._diag;
+      if (isValidNewsResult(gmResult2.items)) {
+        newsItems = gmResult2.items;
         debug.providerUsed = 'official_gemini';
       } else {
-        newsItems = null;
         debug.reason = (debug.reason ? debug.reason + ',' : '') + 'auto_all_providers_failed';
       }
+    } else if (!newsItems && !GEMINI_API_KEY) {
+      providerResults.official_gemini = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
     }
     if (!newsItems && !GEMINI_API_KEY && !(CC_NEWS_KEY && CC_NEWS_URL)) {
       debug.reason = (debug.reason ? debug.reason + ',' : '') + 'no_providers_configured';
@@ -369,17 +379,22 @@ async function fetchNewsData(ticker) {
     // Default: official Gemini with grounding (backward compatible)
     if (GEMINI_API_KEY) {
       debug.providerTried.push('official_gemini');
-      newsItems = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
-      if (isValidNewsResult(newsItems)) {
+      var gmResult3 = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+      providerResults.official_gemini = gmResult3._diag;
+      if (isValidNewsResult(gmResult3.items)) {
+        newsItems = gmResult3.items;
         debug.providerUsed = 'official_gemini';
       } else {
-        newsItems = null;
         debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_no_valid_results';
       }
     } else {
+      providerResults.official_gemini = { configured: false, called: false, errorType: 'not_configured', reason: 'missing env' };
       debug.reason = (debug.reason ? debug.reason + ',' : '') + 'gemini_not_configured';
     }
   }
+
+  // Attach provider results to debug
+  debug.providerResults = providerResults;
 
   // 3. No valid news from any provider — do NOT cache failed/empty results
   if (!newsItems || newsItems.length === 0) {
@@ -405,6 +420,7 @@ async function fetchNewsData(ticker) {
 // === NEWS VALIDATION ===
 function isValidNewsItem(item) {
   if (!item || !item.title || !item.summary) return false;
+  // source OR url is enough (url preferred but source+title+summary is valid)
   if (!item.source && !item.url) return false;
   return true;
 }
@@ -419,6 +435,8 @@ function isValidNewsResult(items) {
 
 // === CODECRAFTERS NEWS PROVIDER (OpenAI-compatible) ===
 async function fetchNewsFromCodeCrafters(apiKey, baseUrl, model, ticker) {
+  var diag = { configured: true, called: true, httpStatus: null, ok: false, rawTextLength: 0, parsedJson: false, itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
+
   var prompt = 'Kamu adalah research assistant untuk saham Indonesia (IDX/BEI). ' +
     'Cari berita/katalis penting saham ' + ticker + '.JK (ticker IDX: ' + ticker + ') dalam 6 bulan terakhir.\n\n' +
     'Return HANYA valid JSON array (max 2 items). Setiap item harus memiliki format:\n' +
@@ -435,8 +453,8 @@ async function fetchNewsFromCodeCrafters(apiKey, baseUrl, model, ticker) {
     '2. Satu berita tambahan dari 3-6 bulan terakhir (jika relevan)\n\n' +
     'Rules:\n' +
     '- Max 2 items\n' +
-    '- WAJIB sertakan source (nama media) dan url (link asli) untuk setiap item\n' +
-    '- Jika tidak ada berita yang bisa diverifikasi dengan source/url, return empty array: []\n' +
+    '- Sertakan source (nama media) untuk setiap item. URL jika tersedia.\n' +
+    '- Jika tidak ada berita yang bisa diverifikasi, return empty array: []\n' +
     '- Jangan karang berita. Jika tidak yakin, return []\n' +
     '- Jangan include full article text\n' +
     '- Fokus: corporate action, akuisisi, dividen, right issue, perubahan papan, kinerja keuangan, kontrak baru, regulasi\n' +
@@ -470,24 +488,35 @@ async function fetchNewsFromCodeCrafters(apiKey, baseUrl, model, ticker) {
     });
     clearTimeout(timeout);
 
-    if (!response.ok) return [];
+    diag.httpStatus = response.status;
+    if (!response.ok) { diag.errorType = 'http_error'; diag.reason = 'HTTP ' + response.status; return { items: [], _diag: diag }; }
+    diag.ok = true;
 
     var result = await response.json();
     var choices = result.choices || [];
-    if (choices.length === 0 || !choices[0].message || !choices[0].message.content) return [];
+    if (choices.length === 0 || !choices[0].message || !choices[0].message.content) { diag.errorType = 'empty_response'; diag.reason = 'no choices/content'; return { items: [], _diag: diag }; }
 
     var text = choices[0].message.content.trim();
+    diag.rawTextLength = text.length;
     text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
     var jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
+    if (!jsonMatch) { diag.errorType = 'parse_error'; diag.reason = 'no JSON array found in text'; return { items: [], _diag: diag }; }
 
     var parsed = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(parsed)) return [];
+    diag.parsedJson = true;
+    if (!Array.isArray(parsed)) { diag.errorType = 'parse_error'; diag.reason = 'parsed but not array'; return { items: [], _diag: diag }; }
+    diag.itemCountRaw = parsed.length;
 
-    return validateAndLimitNews(parsed);
+    var valid = validateAndLimitNews(parsed);
+    diag.itemCountValid = valid.length;
+    if (valid.length === 0) { diag.errorType = 'invalid_items'; diag.reason = 'items parsed but none valid (need title+summary+source/url)'; }
+    else { diag.reason = 'ok'; }
+    return { items: valid, _diag: diag };
   } catch (e) {
-    return [];
+    diag.errorType = e.name === 'AbortError' ? 'timeout' : 'exception';
+    diag.reason = e.name === 'AbortError' ? 'request timeout' : (e.message || '').slice(0, 100);
+    return { items: [], _diag: diag };
   }
 }
 
@@ -560,6 +589,8 @@ async function saveCachedNews(supabaseUrl, supabaseKey, ticker, items) {
 
 // === GEMINI: FETCH NEWS SUMMARY (with Google Search grounding) ===
 async function fetchNewsFromGemini(apiKey, ticker) {
+  var diag = { configured: true, called: true, groundingEnabled: true, httpStatus: null, ok: false, rawTextLength: 0, parsedJson: false, itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
+
   var prompt = 'Kamu adalah research assistant untuk saham Indonesia (IDX/BEI). ' +
     'Gunakan Google Search untuk mencari berita/katalis penting saham ' + ticker + '.JK (ticker IDX: ' + ticker + ') dalam 6 bulan terakhir.\n\n' +
     'Return HANYA valid JSON array (max 2 items). Setiap item harus memiliki format:\n' +
@@ -576,6 +607,7 @@ async function fetchNewsFromGemini(apiKey, ticker) {
     '2. Satu berita tambahan dari 3-6 bulan terakhir (jika relevan)\n\n' +
     'Rules:\n' +
     '- Max 2 items\n' +
+    '- Sertakan source (nama media) untuk setiap item. URL jika tersedia.\n' +
     '- Jika tidak ada berita relevan, return empty array: []\n' +
     '- Jangan karang berita. Jika tidak yakin, return []\n' +
     '- Jangan include full article text\n' +
@@ -606,11 +638,13 @@ async function fetchNewsFromGemini(apiKey, ticker) {
     });
     clearTimeout(timeout);
 
-    if (!response.ok) return [];
+    diag.httpStatus = response.status;
+    if (!response.ok) { diag.errorType = 'http_error'; diag.reason = 'HTTP ' + response.status; return { items: [], _diag: diag }; }
+    diag.ok = true;
 
     var result = await response.json();
     var candidates = result.candidates || [];
-    if (candidates.length === 0) return [];
+    if (candidates.length === 0) { diag.errorType = 'empty_response'; diag.reason = 'no candidates'; return { items: [], _diag: diag }; }
 
     // Gemini with grounding may return multiple parts; concatenate text parts
     var textParts = [];
@@ -619,20 +653,29 @@ async function fetchNewsFromGemini(apiKey, ticker) {
       if (parts[pi].text) textParts.push(parts[pi].text);
     }
     var text = textParts.join('');
+    diag.rawTextLength = text.length;
 
     // Clean markdown code fences if present
     text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
     // Try to extract JSON array from response (may have surrounding text with grounding)
     var jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
+    if (!jsonMatch) { diag.errorType = 'parse_error'; diag.reason = 'no JSON array found in text'; return { items: [], _diag: diag }; }
 
     var parsed = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(parsed)) return [];
+    diag.parsedJson = true;
+    if (!Array.isArray(parsed)) { diag.errorType = 'parse_error'; diag.reason = 'parsed but not array'; return { items: [], _diag: diag }; }
+    diag.itemCountRaw = parsed.length;
 
-    return validateAndLimitNews(parsed);
+    var valid = validateAndLimitNews(parsed);
+    diag.itemCountValid = valid.length;
+    if (valid.length === 0) { diag.errorType = 'invalid_items'; diag.reason = 'items parsed but none valid (need title+summary+source/url)'; }
+    else { diag.reason = 'ok'; }
+    return { items: valid, _diag: diag };
   } catch (e) {
-    return [];
+    diag.errorType = e.name === 'AbortError' ? 'timeout' : 'exception';
+    diag.reason = e.name === 'AbortError' ? 'request timeout' : (e.message || '').slice(0, 100);
+    return { items: [], _diag: diag };
   }
 }
 
