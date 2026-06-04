@@ -1,0 +1,149 @@
+name: Sync Foreign Flow to Supabase
+
+on:
+  schedule:
+    # Weekdays at 10:30 UTC = 17:30 WIB (after BEI market close + data release)
+    - cron: '30 10 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: 'Comma-separated tickers (empty = all stocks)'
+        required: false
+        default: ''
+        type: string
+      dry_run:
+        description: 'Dry-run mode (preview only, no Supabase writes)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  sync-foreign-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout auto-cuan repo
+        uses: actions/checkout@v4
+
+      - name: Clone IDX-API
+        run: |
+          git clone --depth 1 https://github.com/NeaByteLab/IDX-API.git idx-api
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Initialize IDX-API database
+        working-directory: idx-api
+        run: |
+          mkdir -p data
+          deno task db:push --config drizzle.config.json
+
+      - name: Create lightweight sync script for today
+        working-directory: idx-api
+        run: |
+          cat > sync_stock_summary_today.ts << 'EOF'
+          import { syncStockSummary } from '@app/Backend/Sync/StockSummary.ts'
+
+          // Get today's date in YYYYMMDD format (WIB = UTC+7)
+          const now = new Date()
+          const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000)
+          const todayStr = wib.getFullYear().toString() +
+            String(wib.getMonth() + 1).padStart(2, '0') +
+            String(wib.getDate()).padStart(2, '0')
+
+          console.log(`[sync] Fetching stock summary for ${todayStr} ...`)
+
+          try {
+            await syncStockSummary(todayStr)
+            console.log(`[sync] Stock summary sync complete for ${todayStr}.`)
+          } catch (err) {
+            console.error(`[sync] Failed for ${todayStr}:`, err instanceof Error ? err.message : String(err))
+
+            // Try yesterday if today fails (market may not have data yet)
+            const yesterday = new Date(wib.getTime() - 24 * 60 * 60 * 1000)
+            const yesterdayStr = yesterday.getFullYear().toString() +
+              String(yesterday.getMonth() + 1).padStart(2, '0') +
+              String(yesterday.getDate()).padStart(2, '0')
+
+            console.log(`[sync] Retrying with ${yesterdayStr} ...`)
+            try {
+              await syncStockSummary(yesterdayStr)
+              console.log(`[sync] Stock summary sync complete for ${yesterdayStr}.`)
+            } catch (err2) {
+              console.error(`[sync] Also failed for ${yesterdayStr}:`, err2 instanceof Error ? err2.message : String(err2))
+
+              // Try 2 days ago (Friday data on Monday)
+              const twoDaysAgo = new Date(wib.getTime() - 2 * 24 * 60 * 60 * 1000)
+              const twoDaysAgoStr = twoDaysAgo.getFullYear().toString() +
+                String(twoDaysAgo.getMonth() + 1).padStart(2, '0') +
+                String(twoDaysAgo.getDate()).padStart(2, '0')
+
+              console.log(`[sync] Retrying with ${twoDaysAgoStr} ...`)
+              await syncStockSummary(twoDaysAgoStr)
+              console.log(`[sync] Stock summary sync complete for ${twoDaysAgoStr}.`)
+            }
+          }
+          EOF
+
+      - name: Fetch stock summary from IDX
+        working-directory: idx-api
+        run: |
+          deno run --allow-net --allow-read --allow-write sync_stock_summary_today.ts
+
+      - name: Verify SQLite has data
+        working-directory: idx-api
+        run: |
+          python3 -c "
+          import sqlite3, os
+          db_path = 'data/database.sqlite'
+          if not os.path.exists(db_path):
+            print('ERROR: database.sqlite not found')
+            exit(1)
+          conn = sqlite3.connect(db_path)
+          cursor = conn.execute('SELECT COUNT(*), MAX(date) FROM stock_summary')
+          row = cursor.fetchone()
+          count, max_date = row
+          if count == 0:
+            print('ERROR: stock_summary table is empty')
+            exit(1)
+          from datetime import datetime, timezone, timedelta
+          dt = datetime.fromtimestamp(max_date / 1000, tz=timezone(timedelta(hours=7)))
+          print(f'stock_summary rows: {count}')
+          print(f'Latest trade date: {dt.strftime(\"%Y-%m-%d\")} (unix_ms: {max_date})')
+          conn.close()
+          "
+
+      - name: Copy sync script to IDX-API folder
+        run: |
+          cp scripts/idx-sync/sync_foreign_flow.py idx-api/sync_foreign_flow.py
+
+      - name: Run Foreign Flow sync to Supabase
+        working-directory: idx-api
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ARGS=""
+
+          # Add tickers if provided
+          TICKERS="${{ github.event.inputs.tickers }}"
+          if [ -n "$TICKERS" ]; then
+            ARGS="$ARGS --tickers $TICKERS"
+          fi
+
+          # Add dry-run if requested
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+
+          echo "Running: python3 sync_foreign_flow.py $ARGS"
+          python3 sync_foreign_flow.py $ARGS
