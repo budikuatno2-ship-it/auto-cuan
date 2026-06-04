@@ -1,9 +1,15 @@
 name: Sync Foreign Flow to Supabase
 
+# NOTE: Scheduled trigger is DISABLED.
+# IDX.co.id blocks GitHub Actions IPs via Cloudflare WAF (403 + captcha page).
+# Direct IDX fetch from GitHub Actions does not work.
+# Foreign flow sync will be handled by Oracle Cloud VPS instead.
+# Keeping workflow_dispatch for manual debugging only.
+
 on:
-  schedule:
-    # Weekdays at 10:30 UTC = 17:30 WIB (after BEI market close + data release)
-    - cron: '30 10 * * 1-5'
+  # schedule:
+  #   # Weekdays at 10:30 UTC = 17:30 WIB (after BEI market close + data release)
+  #   - cron: '30 10 * * 1-5'
   workflow_dispatch:
     inputs:
       tickers:
