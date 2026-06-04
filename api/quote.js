@@ -658,40 +658,18 @@ async function saveCachedNews(supabaseUrl, supabaseKey, ticker, items) {
 
 // === GEMINI: FETCH NEWS SUMMARY (with Google Search grounding) ===
 async function fetchNewsFromGemini(apiKey, ticker) {
-  var diag = { configured: true, called: true, groundingEnabled: true, httpStatus: null, ok: false, rawTextLength: 0, rawTextPreview: '', hasGroundingMetadata: false, groundingChunkCount: 0, parsedJson: false, parsedFrom: null, itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
+  var diag = { configured: true, called: true, groundingEnabled: true, httpStatus: null, ok: false, finishReason: null, rawTextLength: 0, rawTextPreview: '', hasGroundingMetadata: false, groundingChunkCount: 0, parsedJson: false, parsedFrom: null, parseFailureReason: null, itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
 
-  var prompt = 'Kamu adalah research assistant untuk saham Indonesia (IDX/BEI). ' +
-    'Gunakan Google Search untuk mencari berita/katalis penting saham ' + ticker + '.JK (ticker IDX: ' + ticker + ') dalam 6 bulan terakhir.\n\n' +
-    'Return HANYA valid JSON array (max 2 items). Setiap item harus memiliki format:\n' +
-    '{\n' +
-    '  "date": "YYYY-MM-DD",\n' +
-    '  "title": "judul singkat berita",\n' +
-    '  "source": "nama media/sumber",\n' +
-    '  "url": "link jika tersedia, atau null",\n' +
-    '  "summary": "ringkasan 1-2 kalimat dampak ke saham",\n' +
-    '  "impact": "positive" | "negative" | "neutral" | "mixed"\n' +
-    '}\n\n' +
-    'Prioritas:\n' +
-    '1. Berita paling relevan dari 0-3 bulan terakhir (jika ada)\n' +
-    '2. Satu berita tambahan dari 3-6 bulan terakhir (jika relevan)\n\n' +
-    'Rules:\n' +
-    '- Max 2 items\n' +
-    '- Sertakan source (nama media) untuk setiap item. URL jika tersedia.\n' +
-    '- Jika tidak ada berita relevan, return empty array: []\n' +
-    '- Jangan karang berita. Jika tidak yakin, return []\n' +
-    '- Jangan include full article text\n' +
-    '- Fokus: corporate action, akuisisi, dividen, right issue, perubahan papan, kinerja keuangan, kontrak baru, regulasi\n' +
-    '- Return HANYA JSON array, tanpa markdown, tanpa explanation\n' +
-    '- Jika ticker tidak dikenal atau tidak ada berita, return: []';
+  var prompt = 'Search Google for recent news about Indonesian stock ' + ticker + '.JK (IDX ticker: ' + ticker + '). Return ONLY a JSON array, no markdown, no explanation, no code fences.\n\nFormat: [{"date":"YYYY-MM-DD","title":"short title","source":"media name","url":"url or null","summary":"one sentence impact","possibleImpact":"positive|negative|neutral|mixed"}]\n\nRules: max 2 items, last 6 months only, must include source name, prefer items with real URLs, if no news found return []\nFocus: earnings, dividends, acquisitions, rights issue, board changes, new contracts, regulations.';
 
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
   var payload = {
     contents: [{ parts: [{ text: prompt }] }],
     tools: [{ google_search: {} }],
     generationConfig: {
-      temperature: 0.2,
+      temperature: 0.1,
       topP: 0.8,
-      maxOutputTokens: 1024
+      maxOutputTokens: 2048
     }
   };
 
@@ -715,13 +693,18 @@ async function fetchNewsFromGemini(apiKey, ticker) {
     var candidates = result.candidates || [];
     if (candidates.length === 0) { diag.errorType = 'empty_response'; diag.reason = 'no candidates'; return { items: [], _diag: diag }; }
 
+    // Capture finish reason
+    diag.finishReason = candidates[0].finishReason || null;
+
     // Check for grounding metadata
     var groundingMeta = candidates[0].groundingMetadata || null;
     if (groundingMeta) {
       diag.hasGroundingMetadata = true;
-      var gChunks = groundingMeta.groundingChunks || [];
+      var gChunks = groundingMeta.groundingChunks || groundingMeta.searchEntryPoint && [] || [];
       diag.groundingChunkCount = gChunks.length;
     }
+    // Also check citationMetadata
+    var citationMeta = candidates[0].citationMetadata || null;
 
     // Concatenate all text parts from response
     var textParts = [];
@@ -731,42 +714,36 @@ async function fetchNewsFromGemini(apiKey, ticker) {
     }
     var text = textParts.join('');
     diag.rawTextLength = text.length;
-    diag.rawTextPreview = text.slice(0, 120);
+    diag.rawTextPreview = text.slice(0, 240);
 
-    // Clean markdown code fences
-    var cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    // Clean markdown code fences globally
+    var cleaned = text.replace(/```json/gi, '').replace(/```/gi, '').trim();
 
     // Detect "no news" plain text responses
-    var noNewsPatterns = /tidak ada berita|tidak ditemukan|no relevant|no news|no significant|belum ada|tidak tersedia|empty array/i;
-    if (cleaned.length < 80 && noNewsPatterns.test(cleaned)) {
+    var noNewsPatterns = /tidak ada berita|tidak ditemukan|no relevant|no news|no significant|belum ada|tidak tersedia|empty array|\[\s*\]/i;
+    if (cleaned.length < 100 && noNewsPatterns.test(cleaned)) {
       diag.errorType = 'no_news_text';
       diag.reason = 'provider says no relevant news';
-      diag.parsedFrom = 'text_detection';
+      diag.parsedFrom = 'plain_unavailable';
       return { items: [], _diag: diag };
     }
 
-    // Strategy 1: Try extracting JSON array directly
+    // Strategy 1: Try extracting JSON array (greedy — handles truncation better)
     var parsed = null;
-    var jsonArrayMatch = cleaned.match(/\[[\s\S]*?\]/);
+    var jsonArrayMatch = cleaned.match(/\[[\s\S]*\]/);
     if (jsonArrayMatch) {
       try {
         parsed = JSON.parse(jsonArrayMatch[0]);
         if (Array.isArray(parsed)) { diag.parsedFrom = 'json_array'; }
         else { parsed = null; }
       } catch (e) {
-        // Try greedy match if non-greedy failed
-        var greedyMatch = cleaned.match(/\[[\s\S]*\]/);
-        if (greedyMatch) {
-          try {
-            parsed = JSON.parse(greedyMatch[0]);
-            if (Array.isArray(parsed)) { diag.parsedFrom = 'json_array_greedy'; }
-            else { parsed = null; }
-          } catch (e2) { parsed = null; }
-        }
+        // JSON might be truncated — try salvage
+        parsed = salvageTruncatedJsonArray(jsonArrayMatch[0]);
+        if (parsed && parsed.length > 0) { diag.parsedFrom = 'salvage_truncated'; }
       }
     }
 
-    // Strategy 2: Try extracting JSON object with items/news/data array
+    // Strategy 2: Try JSON object with items/news/data/results
     if (!parsed) {
       var jsonObjMatch = cleaned.match(/\{[\s\S]*\}/);
       if (jsonObjMatch) {
@@ -780,61 +757,70 @@ async function fetchNewsFromGemini(apiKey, ticker) {
       }
     }
 
-    // Strategy 3: Try parsing the entire cleaned text as JSON
+    // Strategy 3: Parse entire cleaned text
     if (!parsed) {
       try {
         var full = JSON.parse(cleaned);
-        if (Array.isArray(full)) { parsed = full; diag.parsedFrom = 'full_text_array'; }
-        else if (full && Array.isArray(full.items)) { parsed = full.items; diag.parsedFrom = 'full_text_object_items'; }
+        if (Array.isArray(full)) { parsed = full; diag.parsedFrom = 'full_json'; }
+        else if (full && Array.isArray(full.items)) { parsed = full.items; diag.parsedFrom = 'full_json_items'; }
       } catch (e) { /* not valid JSON */ }
     }
 
-    // Strategy 4: Extract from grounding metadata chunks if no parsed items
-    if ((!parsed || parsed.length === 0) && groundingMeta && diag.groundingChunkCount > 0) {
+    // Strategy 4: Salvage fields from text (regex extraction of individual items)
+    if (!parsed) {
+      parsed = salvageFieldsFromText(cleaned);
+      if (parsed && parsed.length > 0) { diag.parsedFrom = 'salvage_fields'; }
+    }
+
+    // Strategy 5: Extract from grounding metadata
+    if ((!parsed || parsed.length === 0) && groundingMeta) {
+      var metaChunks = groundingMeta.groundingChunks || [];
+      var supports = groundingMeta.groundingSupports || [];
       var groundingItems = [];
-      var metaChunks = groundingMeta.groundingChunks;
+
       for (var gi = 0; gi < metaChunks.length && groundingItems.length < 2; gi++) {
         var chunk = metaChunks[gi];
         var web = chunk.web || chunk;
         if (web.title || web.uri) {
+          var supportText = '';
+          // Try to find matching support text
+          for (var si = 0; si < supports.length && !supportText; si++) {
+            var seg = supports[si];
+            if (seg.segment && seg.segment.text) supportText = seg.segment.text;
+          }
           groundingItems.push({
             date: null,
             title: (web.title || 'News ' + ticker).slice(0, 200),
             source: web.uri ? web.uri.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] : null,
             url: web.uri || null,
-            summary: web.title || ('Berita terkait ' + ticker),
-            impact: 'neutral'
+            summary: supportText || web.title || ('Berita terkait ' + ticker),
+            possibleImpact: 'neutral'
           });
         }
       }
       if (groundingItems.length > 0) {
         parsed = groundingItems;
-        diag.parsedFrom = 'grounding_chunks';
+        diag.parsedFrom = 'grounding_metadata';
       }
     }
 
-    // No parseable content at all
-    if (!parsed || !Array.isArray(parsed)) {
+    // No parseable content
+    if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
       if (noNewsPatterns.test(cleaned)) {
         diag.errorType = 'no_news_text';
-        diag.reason = 'provider says no relevant news (long text)';
-        diag.parsedFrom = 'text_detection';
+        diag.reason = 'provider says no relevant news (in longer text)';
+        diag.parsedFrom = 'plain_unavailable';
       } else {
         diag.errorType = 'parse_error';
-        diag.reason = 'no JSON array/object found in response';
+        diag.parseFailureReason = 'no JSON array/object/salvageable content found';
+        diag.reason = 'parse_failed';
+        diag.parsedFrom = 'failed';
       }
       return { items: [], _diag: diag };
     }
 
     diag.parsedJson = true;
     diag.itemCountRaw = parsed.length;
-
-    // Handle empty array response from provider (legitimate "no news")
-    if (parsed.length === 0) {
-      diag.errorType = 'empty_array';
-      diag.reason = 'provider returned empty array (no news)';
-      return { items: [], _diag: diag };
-    }
 
     var valid = validateAndLimitNews(parsed);
     diag.itemCountValid = valid.length;
@@ -848,6 +834,53 @@ async function fetchNewsFromGemini(apiKey, ticker) {
   }
 }
 
+// === SALVAGE: Try to parse truncated JSON array ===
+function salvageTruncatedJsonArray(text) {
+  // Try progressively trimming from the end to find valid JSON
+  var items = [];
+  // Find individual objects within the array text
+  var objMatches = text.match(/\{[^{}]*\}/g);
+  if (!objMatches) return null;
+
+  for (var i = 0; i < objMatches.length && items.length < 2; i++) {
+    try {
+      var item = JSON.parse(objMatches[i]);
+      if (item && item.title) items.push(item);
+    } catch (e) {
+      // Try fixing common truncation: missing closing quote/brace
+      var fixed = objMatches[i];
+      if (!fixed.endsWith('}')) fixed += '"}';
+      try {
+        var item2 = JSON.parse(fixed);
+        if (item2 && item2.title) items.push(item2);
+      } catch (e2) { /* skip */ }
+    }
+  }
+  return items.length > 0 ? items : null;
+}
+
+// === SALVAGE: Extract news fields from plain text ===
+function salvageFieldsFromText(text) {
+  // Try to find title/source/summary patterns in unstructured text
+  var dateMatch = text.match(/(\d{4}-\d{2}-\d{2})/);
+  var titleMatch = text.match(/"title"\s*:\s*"([^"]+)"/i) || text.match(/title[:\s]+([^\n,]{10,80})/i);
+  var sourceMatch = text.match(/"source"\s*:\s*"([^"]+)"/i) || text.match(/source[:\s]+([^\n,]{3,40})/i);
+  var summaryMatch = text.match(/"summary"\s*:\s*"([^"]+)"/i) || text.match(/summary[:\s]+([^\n]{10,200})/i);
+  var urlMatch = text.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/i) || text.match(/(https?:\/\/[^\s"<>]{10,200})/i);
+
+  if (titleMatch && summaryMatch && (sourceMatch || urlMatch)) {
+    return [{
+      date: dateMatch ? dateMatch[1] : null,
+      title: (titleMatch[1] || '').slice(0, 200),
+      source: sourceMatch ? sourceMatch[1].slice(0, 100) : null,
+      url: urlMatch ? urlMatch[1] : null,
+      summary: (summaryMatch[1] || '').slice(0, 300),
+      possibleImpact: 'neutral'
+    }];
+  }
+  return null;
+}
+
 // === SHARED NEWS VALIDATION + LIMIT ===
 function validateAndLimitNews(parsed) {
   if (!Array.isArray(parsed)) return [];
@@ -855,13 +888,14 @@ function validateAndLimitNews(parsed) {
   for (var i = 0; i < parsed.length && valid.length < 2; i++) {
     var item = parsed[i];
     if (item && item.title && item.summary) {
+      var impactVal = item.possibleImpact || item.impact || 'neutral';
       valid.push({
         date: item.date || null,
         title: String(item.title).slice(0, 200),
         source: item.source || null,
         url: item.url || null,
         summary: String(item.summary).slice(0, 300),
-        impact: ['positive', 'negative', 'neutral', 'mixed'].indexOf(item.impact) >= 0 ? item.impact : 'neutral'
+        possibleImpact: ['positive', 'negative', 'neutral', 'mixed'].indexOf(impactVal) >= 0 ? impactVal : 'neutral'
       });
     }
   }
