@@ -654,7 +654,7 @@ async function saveCachedNews(supabaseUrl, supabaseKey, ticker, items) {
 
 // === GEMINI: FETCH NEWS SUMMARY (with Google Search grounding + multi-query) ===
 async function fetchNewsFromGemini(apiKey, ticker, companyName) {
-  var diag = { configured: true, called: true, groundingEnabled: true, httpStatus: null, ok: false, finishReason: null, rawTextLength: 0, rawTextPreview: '', hasGroundingMetadata: false, groundingChunkCount: 0, parsedJson: false, parsedFrom: null, parseFailureReason: null, queryVariantsUsed: [], itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
+  var diag = { configured: true, called: true, groundingEnabled: true, httpStatus: null, ok: false, finishReason: null, wasTruncated: false, maxOutputTokensUsed: 4096, rawTextLength: 0, rawTextPreview: '', hasGroundingMetadata: false, groundingChunkCount: 0, parsedJson: false, parsedFrom: null, parseFailureReason: null, salvageAttempted: false, salvageSuccess: false, salvageReason: null, queryVariantsUsed: [], itemCountRaw: 0, itemCountValid: 0, errorType: null, reason: '' };
 
   // Build search context with multiple query variants for better coverage
   var searchContext = ticker + '.JK saham IDX';
@@ -662,32 +662,26 @@ async function fetchNewsFromGemini(apiKey, ticker, companyName) {
 
   var queryVariants = [
     ticker + ' berita saham terbaru',
-    ticker + ' katalis',
+    ticker + ' katalis ' + ticker + '.JK',
     ticker + ' keterbukaan informasi IDX',
     ticker + ' laporan keuangan',
-    ticker + ' aksi korporasi BEI'
+    ticker + ' aksi korporasi BEI',
+    ticker + ' IDX news',
+    ticker + '.JK news'
   ];
   if (companyName) {
-    queryVariants.push(companyName + ' IDX berita');
-    queryVariants.push(companyName + ' saham');
+    var shortName = companyName.replace(/\s*Tbk\.?/i, '').trim();
+    queryVariants.push(shortName + ' IDX berita');
+    queryVariants.push(shortName + ' saham keterbukaan informasi');
+    queryVariants.push(shortName + ' laporan keuangan');
   }
-  diag.queryVariantsUsed = queryVariants.slice(0, 3); // show first 3 in debug
+  diag.queryVariantsUsed = queryVariants;
 
-  var prompt = 'Search Google for recent stock news about ' + searchContext + '.\n\n' +
-    'Search queries to try: ' + queryVariants.join('; ') + '\n\n' +
-    'Return ONLY a valid JSON array (no markdown, no code fences, no explanation).\n' +
-    'Format: [{"date":"YYYY-MM-DD","title":"judul singkat","source":"nama media","url":"link atau null","summary":"satu kalimat dampak ke saham","possibleImpact":"positive|negative|neutral|mixed"}]\n\n' +
-    'Rules:\n' +
-    '- Max 2 items total\n' +
-    '- Prioritas 1: berita paling relevan 0-3 bulan terakhir\n' +
-    '- Prioritas 2: satu berita dari 3-6 bulan terakhir jika relevan\n' +
-    '- WAJIB sertakan source (nama media) untuk setiap item\n' +
-    '- Prefer sources: IDX/BEI, Kontan, Bisnis, CNBC Indonesia, Investor Daily, RTI, emiten official\n' +
-    '- URL wajib jika tersedia dari search results\n' +
-    '- Jangan karang berita, hanya dari hasil search yang valid\n' +
-    '- Fokus: earnings, dividends, acquisitions, rights issue, board changes, contracts, regulations, keterbukaan informasi\n' +
-    '- Jika tidak ada berita valid dari search, return: []\n' +
-    '- Summary dalam Bahasa Indonesia, singkat 1 kalimat';
+  // Compact prompt — force short output to avoid MAX_TOKENS truncation
+  var prompt = 'Search: ' + searchContext + '. Queries: ' + queryVariants.slice(0, 5).join(', ') + '.\n\n' +
+    'Return JSON array only. No markdown. No explanation. No code fence. Max 2 items.\n' +
+    '[{"date":"YYYY-MM-DD","title":"max 80 chars","source":"media","url":"url or null","summary":"max 15 words Indonesian","possibleImpact":"positive|negative|neutral|mixed"}]\n' +
+    'If no news: []. Title max 80 chars. Summary max 15 words.';
 
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
   var payload = {
@@ -696,7 +690,7 @@ async function fetchNewsFromGemini(apiKey, ticker, companyName) {
     generationConfig: {
       temperature: 0.1,
       topP: 0.8,
-      maxOutputTokens: 2048
+      maxOutputTokens: 4096
     }
   };
 
@@ -722,6 +716,7 @@ async function fetchNewsFromGemini(apiKey, ticker, companyName) {
 
     // Capture finish reason
     diag.finishReason = candidates[0].finishReason || null;
+    diag.wasTruncated = (diag.finishReason === 'MAX_TOKENS');
 
     // Check for grounding metadata
     var groundingMeta = candidates[0].groundingMetadata || null;
@@ -765,8 +760,9 @@ async function fetchNewsFromGemini(apiKey, ticker, companyName) {
         else { parsed = null; }
       } catch (e) {
         // JSON might be truncated — try salvage
-        parsed = salvageTruncatedJsonArray(jsonArrayMatch[0]);
-        if (parsed && parsed.length > 0) { diag.parsedFrom = 'salvage_truncated'; }
+        diag.salvageAttempted = true;
+        parsed = salvageTruncatedJsonArray(jsonArrayMatch[0], ticker);
+        if (parsed && parsed.length > 0) { diag.parsedFrom = 'salvage_truncated'; diag.salvageSuccess = true; diag.salvageReason = 'extracted from truncated array'; }
       }
     }
 
@@ -793,10 +789,11 @@ async function fetchNewsFromGemini(apiKey, ticker, companyName) {
       } catch (e) { /* not valid JSON */ }
     }
 
-    // Strategy 4: Salvage fields from text (regex extraction of individual items)
+    // Strategy 4: Salvage fields from text (regex extraction — especially for MAX_TOKENS truncation)
     if (!parsed) {
-      parsed = salvageFieldsFromText(cleaned);
-      if (parsed && parsed.length > 0) { diag.parsedFrom = 'salvage_fields'; }
+      diag.salvageAttempted = true;
+      parsed = salvageFieldsFromText(cleaned, ticker);
+      if (parsed && parsed.length > 0) { diag.parsedFrom = 'salvage_fields'; diag.salvageSuccess = true; diag.salvageReason = diag.wasTruncated ? 'MAX_TOKENS truncation recovery' : 'regex field extraction'; }
     }
 
     // Strategy 5: Extract from grounding metadata
@@ -862,50 +859,88 @@ async function fetchNewsFromGemini(apiKey, ticker, companyName) {
 }
 
 // === SALVAGE: Try to parse truncated JSON array ===
-function salvageTruncatedJsonArray(text) {
-  // Try progressively trimming from the end to find valid JSON
+function salvageTruncatedJsonArray(text, ticker) {
   var items = [];
-  // Find individual objects within the array text
-  var objMatches = text.match(/\{[^{}]*\}/g);
-  if (!objMatches) return null;
 
-  for (var i = 0; i < objMatches.length && items.length < 2; i++) {
-    try {
-      var item = JSON.parse(objMatches[i]);
-      if (item && item.title) items.push(item);
-    } catch (e) {
-      // Try fixing common truncation: missing closing quote/brace
-      var fixed = objMatches[i];
-      if (!fixed.endsWith('}')) fixed += '"}';
+  // Strategy A: Find complete JSON objects {key:val, key:val}
+  var objMatches = text.match(/\{[^{}]*\}/g);
+  if (objMatches) {
+    for (var i = 0; i < objMatches.length && items.length < 2; i++) {
       try {
-        var item2 = JSON.parse(fixed);
-        if (item2 && item2.title) items.push(item2);
-      } catch (e2) { /* skip */ }
+        var item = JSON.parse(objMatches[i]);
+        if (item && item.title) items.push(item);
+      } catch (e) { /* skip malformed */ }
     }
   }
+
+  // Strategy B: If no complete objects, try to extract fields from truncated text
+  if (items.length === 0) {
+    var dateMatch = text.match(/"date"\s*:\s*"(\d{4}-\d{2}-\d{2})"/);
+    var titleMatch = text.match(/"title"\s*:\s*"([^"]{5,}?)"/);
+    var sourceMatch = text.match(/"source"\s*:\s*"([^"]{2,}?)"/);
+    var summaryMatch = text.match(/"summary"\s*:\s*"([^"]{5,}?)"/);
+    var urlMatch = text.match(/"url"\s*:\s*"(https?:\/\/[^"]*?)"/);
+    var impactMatch = text.match(/"possibleImpact"\s*:\s*"(positive|negative|neutral|mixed)"/);
+
+    if (titleMatch && sourceMatch) {
+      items.push({
+        date: dateMatch ? dateMatch[1] : null,
+        title: titleMatch[1].slice(0, 200),
+        source: sourceMatch[1].slice(0, 100),
+        url: (urlMatch && urlMatch[1].length < 300 && !urlMatch[1].includes('vertexaisearch.cloud.google')) ? urlMatch[1] : null,
+        summary: summaryMatch ? summaryMatch[1].slice(0, 300) : ('Berita terkait ' + (ticker || 'saham') + ': ' + titleMatch[1].slice(0, 60)),
+        possibleImpact: impactMatch ? impactMatch[1] : 'neutral'
+      });
+    }
+  }
+
   return items.length > 0 ? items : null;
 }
 
 // === SALVAGE: Extract news fields from plain text ===
-function salvageFieldsFromText(text) {
-  // Try to find title/source/summary patterns in unstructured text
-  var dateMatch = text.match(/(\d{4}-\d{2}-\d{2})/);
-  var titleMatch = text.match(/"title"\s*:\s*"([^"]+)"/i) || text.match(/title[:\s]+([^\n,]{10,80})/i);
-  var sourceMatch = text.match(/"source"\s*:\s*"([^"]+)"/i) || text.match(/source[:\s]+([^\n,]{3,40})/i);
-  var summaryMatch = text.match(/"summary"\s*:\s*"([^"]+)"/i) || text.match(/summary[:\s]+([^\n]{10,200})/i);
-  var urlMatch = text.match(/"url"\s*:\s*"(https?:\/\/[^"]+)"/i) || text.match(/(https?:\/\/[^\s"<>]{10,200})/i);
+function salvageFieldsFromText(text, ticker) {
+  var items = [];
 
-  if (titleMatch && summaryMatch && (sourceMatch || urlMatch)) {
-    return [{
+  // Try regex for JSON-like field patterns (handles truncated/malformed JSON)
+  var dateMatch = text.match(/"date"\s*:\s*"(\d{4}-\d{2}-\d{2})"/);
+  var titleMatch = text.match(/"title"\s*:\s*"([^"]{5,}?)"/i);
+  var sourceMatch = text.match(/"source"\s*:\s*"([^"]{2,}?)"/i);
+  var summaryMatch = text.match(/"summary"\s*:\s*"([^"]{5,}?)"/i);
+  var urlMatch = text.match(/"url"\s*:\s*"(https?:\/\/[^"]*?)"/i);
+  var impactMatch = text.match(/"possibleImpact"\s*:\s*"(positive|negative|neutral|mixed)"/i) || text.match(/"impact"\s*:\s*"(positive|negative|neutral|mixed)"/i);
+
+  // Need at least title + source to salvage
+  if (titleMatch && sourceMatch) {
+    var cleanUrl = (urlMatch && urlMatch[1].length < 300 && !urlMatch[1].includes('vertexaisearch.cloud.google')) ? urlMatch[1] : null;
+    items.push({
       date: dateMatch ? dateMatch[1] : null,
-      title: (titleMatch[1] || '').slice(0, 200),
-      source: sourceMatch ? sourceMatch[1].slice(0, 100) : null,
-      url: urlMatch ? urlMatch[1] : null,
-      summary: (summaryMatch[1] || '').slice(0, 300),
-      possibleImpact: 'neutral'
-    }];
+      title: titleMatch[1].slice(0, 200),
+      source: sourceMatch[1].slice(0, 100),
+      url: cleanUrl,
+      summary: summaryMatch ? summaryMatch[1].slice(0, 300) : ('Berita terkait ' + (ticker || 'saham') + ': ' + titleMatch[1].slice(0, 60)),
+      possibleImpact: impactMatch ? impactMatch[1] : 'neutral'
+    });
+
+    // Try to find a second item (look for second occurrence)
+    var remaining = text.substring(text.indexOf(titleMatch[0]) + titleMatch[0].length);
+    var title2 = remaining.match(/"title"\s*:\s*"([^"]{5,}?)"/i);
+    var source2 = remaining.match(/"source"\s*:\s*"([^"]{2,}?)"/i);
+    if (title2 && source2 && title2[1] !== titleMatch[1]) {
+      var date2 = remaining.match(/"date"\s*:\s*"(\d{4}-\d{2}-\d{2})"/);
+      var summary2 = remaining.match(/"summary"\s*:\s*"([^"]{5,}?)"/i);
+      var impact2 = remaining.match(/"possibleImpact"\s*:\s*"(positive|negative|neutral|mixed)"/i);
+      items.push({
+        date: date2 ? date2[1] : null,
+        title: title2[1].slice(0, 200),
+        source: source2[1].slice(0, 100),
+        url: null,
+        summary: summary2 ? summary2[1].slice(0, 300) : ('Berita terkait ' + (ticker || 'saham') + ': ' + title2[1].slice(0, 60)),
+        possibleImpact: impact2 ? impact2[1] : 'neutral'
+      });
+    }
   }
-  return null;
+
+  return items.length > 0 ? items : null;
 }
 
 // === SHARED NEWS VALIDATION + LIMIT ===
