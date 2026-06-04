@@ -66,6 +66,9 @@ module.exports = async function handler(req, res) {
     // === AUTO-CUAN SCORE CALCULATION (deterministic, server-side) ===
     quoteResult.autoCuanScore = calculateAutoCuanScore(quoteResult, boardResult);
 
+    // === BREAKOUT / BREAKDOWN CONFIRMATION (deterministic) ===
+    quoteResult.breakoutConfirmation = calculateBreakoutConfirmation(quoteResult, boardResult);
+
     return res.status(200).json(quoteResult);
 
   } catch (err) {
@@ -1452,5 +1455,205 @@ function calculateAutoCuanScore(quote, board) {
     },
     reasons: reasons.slice(0, 5),
     warnings: warnings.slice(0, 4)
+  };
+}
+
+
+// ===== BREAKOUT / BREAKDOWN CONFIRMATION (deterministic) =====
+function calculateBreakoutConfirmation(quote, board) {
+  if (!quote || !quote.success) {
+    return { status: null, confidence: 'low', breakoutLevel: null, breakdownLevel: null, validIf: '-', invalidIf: '-', reasons: ['Data quote tidak tersedia'], warnings: ['no_data'], flags: ['no_data'] };
+  }
+
+  var price = quote.last;
+  var open = quote.open;
+  var ma20 = quote.ma20;
+  var ma50 = quote.ma50;
+  var rsi = quote.rsi14;
+  var volVsAvg = quote.volumeVsAvg20;
+  var pivot = quote.pivot;
+  var r1 = pivot ? pivot.resistance1 : null;
+  var r2 = pivot ? pivot.resistance2 : null;
+  var s1 = pivot ? pivot.support1 : null;
+  var s2 = pivot ? pivot.support2 : null;
+  var pivotPoint = pivot ? pivot.pivotPoint : null;
+  var flatRange = pivot ? pivot.flatRange : false;
+  var isGreenCandle = price >= open;
+
+  // Board risk
+  var boardRisk = 'normal';
+  if (board && board.success) {
+    if (board.board === 'PEMANTAUAN_KHUSUS' || board.isFca) boardRisk = 'high';
+    else if (board.board === 'AKSELERASI') boardRisk = 'elevated';
+  }
+
+  var reasons = [];
+  var warnings = [];
+  var flags = [];
+  var confidence = 'medium';
+
+  // Determine breakout and breakdown levels
+  var breakoutLevel = r1;
+  var breakdownLevel = s1 || pivotPoint;
+
+  // If R1 is already breached, use R2 as next breakout target
+  if (r1 != null && price > r1 && r2 != null) {
+    breakoutLevel = r2;
+  }
+  // If S1 is already breached, use S2 as next breakdown level
+  if (s1 != null && price < s1 && s2 != null) {
+    breakdownLevel = s2;
+  }
+
+  // Helper: near a level (within tolerance %)
+  function nearLevel(level, pct) {
+    if (level == null || level === 0) return false;
+    return Math.abs(price - level) / level <= (pct || 0.02);
+  }
+
+  // === PRIORITY 1: Confirmed Breakout ===
+  if (r1 != null && price > r1 && volVsAvg != null && volVsAvg >= 1.5 && rsi != null && rsi >= 50 && rsi <= 70 && ma20 != null && price > ma20 && boardRisk !== 'high') {
+    reasons.push('Price breakout di atas R1 (' + r1 + ')');
+    reasons.push('Volume kuat ' + volVsAvg + 'x avg');
+    reasons.push('RSI ' + rsi + ' (bullish tanpa extreme)');
+    if (price > ma20) reasons.push('Price di atas MA20');
+    flags.push('confirmed_breakout', 'volume_confirm');
+    confidence = volVsAvg >= 2.0 ? 'high' : 'medium';
+
+    return {
+      status: 'Confirmed Breakout',
+      confidence: confidence,
+      breakoutLevel: breakoutLevel,
+      breakdownLevel: breakdownLevel,
+      validIf: 'Sustain di atas ' + r1 + ' pada close berikutnya dengan volume tetap tinggi',
+      invalidIf: 'Kembali di bawah ' + r1 + ' (false breakout) atau volume drop drastis',
+      reasons: reasons,
+      warnings: warnings,
+      flags: flags
+    };
+  }
+
+  // === PRIORITY 2: Breakout Watch ===
+  if (ma20 != null && price >= ma20 && rsi != null && rsi >= 48 && rsi <= 70 && volVsAvg != null && volVsAvg >= 1.2 && boardRisk !== 'high') {
+    var nearR1 = nearLevel(r1, 0.03);
+    var aboveR1 = r1 != null && price > r1;
+
+    if (nearR1 || aboveR1) {
+      reasons.push('Price mendekati/di atas R1 (' + r1 + ')');
+    } else {
+      reasons.push('Price di atas MA20, momentum naik');
+    }
+    reasons.push('Volume ' + volVsAvg + 'x avg');
+    reasons.push('RSI ' + rsi);
+    flags.push('breakout_watch');
+
+    // Not yet confirmed because volume < 1.5 or other condition not met
+    if (aboveR1 && volVsAvg < 1.5) {
+      warnings.push('Volume belum cukup kuat untuk konfirmasi penuh');
+    }
+
+    return {
+      status: 'Breakout Watch',
+      confidence: nearR1 || aboveR1 ? 'medium' : 'low',
+      breakoutLevel: breakoutLevel,
+      breakdownLevel: breakdownLevel,
+      validIf: 'Close di atas ' + (r1 || 'resistance') + ' dengan volume > 1.5x avg',
+      invalidIf: 'Rejection di resistance / gagal sustain di atas MA20',
+      reasons: reasons,
+      warnings: warnings,
+      flags: flags
+    };
+  }
+
+  // === PRIORITY 3: Rejection Risk ===
+  if (r1 != null && nearLevel(r1, 0.03)) {
+    var rejectionSignals = 0;
+    if (volVsAvg != null && volVsAvg < 1.0) rejectionSignals++;
+    if (!isGreenCandle) rejectionSignals++;
+    if (rsi != null && rsi > 70) rejectionSignals++;
+    if (price < open) rejectionSignals++; // closed lower than open = red candle at resistance
+
+    if (rejectionSignals >= 2) {
+      reasons.push('Price di area R1 (' + r1 + ') tapi momentum lemah');
+      if (volVsAvg != null && volVsAvg < 1.0) reasons.push('Volume lemah (' + volVsAvg + 'x)');
+      if (!isGreenCandle) reasons.push('Candle merah di resistance');
+      if (rsi != null && rsi > 70) { reasons.push('RSI ' + rsi + ' overbought'); warnings.push('RSI overbought'); }
+      flags.push('rejection_risk');
+
+      return {
+        status: 'Rejection Risk',
+        confidence: rejectionSignals >= 3 ? 'high' : 'medium',
+        breakoutLevel: breakoutLevel,
+        breakdownLevel: breakdownLevel,
+        validIf: 'Breakout besok dengan volume besar (bisa false rejection)',
+        invalidIf: 'Turun di bawah pivot atau MA20 — konfirmasi rejection',
+        reasons: reasons,
+        warnings: warnings,
+        flags: flags
+      };
+    }
+  }
+
+  // === PRIORITY 4: Breakdown Risk ===
+  var belowMA20 = ma20 != null && price < ma20;
+  var belowMA50 = ma50 != null && price < ma50;
+  var belowPivot = pivotPoint != null && price < pivotPoint;
+  var belowS1 = s1 != null && price < s1;
+
+  if ((belowMA20 && belowMA50) || belowS1) {
+    var breakdownSignals = 0;
+    if (belowMA20) breakdownSignals++;
+    if (belowMA50) breakdownSignals++;
+    if (belowPivot) breakdownSignals++;
+    if (belowS1) breakdownSignals++;
+    if (rsi != null && rsi < 45) breakdownSignals++;
+
+    if (breakdownSignals >= 2) {
+      if (belowS1) reasons.push('Price di bawah S1 (' + s1 + ')');
+      if (belowMA20) reasons.push('Price di bawah MA20');
+      if (belowMA50) reasons.push('Price di bawah MA50');
+      if (rsi != null && rsi < 45) reasons.push('RSI ' + rsi + ' lemah');
+      flags.push('breakdown_risk');
+      if (belowS1 && s2 != null && price < s2) {
+        flags.push('below_s2');
+        warnings.push('Price sudah di bawah S2');
+      }
+
+      return {
+        status: 'Breakdown Risk',
+        confidence: breakdownSignals >= 4 ? 'high' : 'medium',
+        breakoutLevel: breakoutLevel,
+        breakdownLevel: breakdownLevel,
+        validIf: 'Recovery di atas ' + (pivotPoint || 'pivot') + ' dan MA20 dengan volume',
+        invalidIf: 'Lanjut turun di bawah ' + (s2 || s1 || 'support') + ' — downtrend berlanjut',
+        reasons: reasons,
+        warnings: warnings,
+        flags: flags
+      };
+    }
+  }
+
+  // === PRIORITY 5: Sideways / Wait (default) ===
+  reasons.push('Price dalam range antara support dan resistance');
+  if (volVsAvg != null && volVsAvg < 1.0) reasons.push('Volume belum mendukung (' + volVsAvg + 'x)');
+  if (rsi != null && rsi >= 45 && rsi <= 55) reasons.push('RSI ' + rsi + ' netral');
+  flags.push('sideways_wait');
+
+  if (flatRange) {
+    confidence = 'low';
+    warnings.push('Pivot range flat, level breakout/breakdown kurang informatif');
+    flags.push('flat_range');
+  }
+
+  return {
+    status: 'Sideways / Wait',
+    confidence: confidence,
+    breakoutLevel: breakoutLevel,
+    breakdownLevel: breakdownLevel,
+    validIf: 'Breakout di atas ' + (r1 || 'resistance') + ' ATAU breakdown di bawah ' + (s1 || 'support') + ' dengan volume',
+    invalidIf: 'Tetap sideways tanpa katalis atau volume baru',
+    reasons: reasons,
+    warnings: warnings,
+    flags: flags
   };
 }

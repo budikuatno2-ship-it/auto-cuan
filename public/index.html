@@ -1206,6 +1206,21 @@ async function fetchQuoteContext(ticker) {
                 lines.push('Invalid If: ' + sl.invalidIf);
                 if (sl.flags && sl.flags.length > 0) lines.push('Flags: ' + sl.flags.join(', '));
             }
+
+            // === BREAKOUT / BREAKDOWN CONFIRMATION (from server-side) ===
+            var bc = q.breakoutConfirmation;
+            if (bc && bc.status) {
+                lines.push('');
+                lines.push('[Auto-Cuan Breakout Confirmation]');
+                lines.push('Status: ' + bc.status);
+                lines.push('Confidence: ' + bc.confidence);
+                if (bc.breakoutLevel != null) lines.push('Breakout Level: ' + bc.breakoutLevel);
+                if (bc.breakdownLevel != null) lines.push('Breakdown Level: ' + bc.breakdownLevel);
+                lines.push('Valid If: ' + bc.validIf);
+                lines.push('Invalid If: ' + bc.invalidIf);
+                if (bc.reasons && bc.reasons.length > 0) lines.push('Reasons: ' + bc.reasons.join('; '));
+                if (bc.warnings && bc.warnings.length > 0) lines.push('Warnings: ' + bc.warnings.join('; '));
+            }
         } else {
             lines.push('Data historis belum berhasil diambil.');
         }
