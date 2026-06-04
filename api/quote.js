@@ -60,6 +60,9 @@ module.exports = async function handler(req, res) {
       quoteResult.news = newsResult;
     }
 
+    // === SETUP LABEL CALCULATION (deterministic) ===
+    quoteResult.setupLabel = calculateSetupLabel(quoteResult, boardResult);
+
     return res.status(200).json(quoteResult);
 
   } catch (err) {
@@ -1020,4 +1023,246 @@ function calcRSI(closes, period) {
   if (avgLoss === 0) return 100;
   var rs = avgGain / avgLoss;
   return Math.round((100 - (100 / (1 + rs))) * 100) / 100;
+}
+
+
+// ===== SETUP LABEL CALCULATOR (deterministic) =====
+function calculateSetupLabel(quote, board) {
+  if (!quote || !quote.success) {
+    return { status: null, confidence: 'low', reasons: ['Data quote tidak tersedia'], validIf: '-', invalidIf: '-', flags: ['no_data'] };
+  }
+
+  var price = quote.last;
+  var ma20 = quote.ma20;
+  var ma50 = quote.ma50;
+  var ma100 = quote.ma100;
+  var ma200 = quote.ma200;
+  var rsi = quote.rsi14;
+  var volVsAvg = quote.volumeVsAvg20;
+  var pivot = quote.pivot;
+  var r1 = pivot ? pivot.resistance1 : null;
+  var r2 = pivot ? pivot.resistance2 : null;
+  var s1 = pivot ? pivot.support1 : null;
+  var s2 = pivot ? pivot.support2 : null;
+  var pivotPoint = pivot ? pivot.pivotPoint : null;
+  var flatRange = pivot ? pivot.flatRange : false;
+
+  // Board risk assessment
+  var boardRisk = 'normal';
+  if (board && board.success) {
+    var b = board.board;
+    if (b === 'PEMANTAUAN_KHUSUS' || board.isFca) boardRisk = 'high';
+    else if (b === 'AKSELERASI') boardRisk = 'elevated';
+  }
+
+  // Helper: check if price is below a MA (null-safe)
+  function belowMA(maVal) { return maVal != null && price < maVal; }
+  function aboveMA(maVal) { return maVal != null && price >= maVal; }
+  function nearLevel(level, tolerancePct) {
+    if (level == null || level === 0) return false;
+    var diff = Math.abs(price - level) / level;
+    return diff <= (tolerancePct || 0.02); // default 2%
+  }
+
+  // Count how many MAs price is below
+  var masBelow = 0;
+  var masTotal = 0;
+  if (ma20 != null) { masTotal++; if (belowMA(ma20)) masBelow++; }
+  if (ma50 != null) { masTotal++; if (belowMA(ma50)) masBelow++; }
+  if (ma100 != null) { masTotal++; if (belowMA(ma100)) masBelow++; }
+  if (ma200 != null) { masTotal++; if (belowMA(ma200)) masBelow++; }
+
+  var reasons = [];
+  var flags = [];
+  var confidence = 'medium';
+
+  // === PRIORITY 1: Avoid Dulu ===
+  // High board risk overrides everything
+  if (boardRisk === 'high') {
+    reasons.push('Board: Pemantauan Khusus / FCA');
+    flags.push('high_board_risk');
+    return {
+      status: 'Avoid Dulu',
+      confidence: 'high',
+      reasons: reasons,
+      validIf: 'Keluar dari Papan Pemantauan Khusus dan teknikal membaik',
+      invalidIf: 'Tetap di papan pemantauan / likuiditas memburuk',
+      flags: flags
+    };
+  }
+
+  // All MAs below + RSI weak
+  if (masTotal >= 3 && masBelow >= masTotal && rsi != null && rsi < 40) {
+    reasons.push('Price di bawah semua MA utama');
+    reasons.push('RSI ' + rsi + ' (bearish)');
+    if (volVsAvg != null && volVsAvg < 1.0) reasons.push('Volume lemah (' + volVsAvg + 'x avg)');
+    flags.push('below_all_ma', 'rsi_weak');
+    return {
+      status: 'Avoid Dulu',
+      confidence: 'high',
+      reasons: reasons,
+      validIf: 'RSI > 50 dan price kembali above MA20',
+      invalidIf: 'Breakdown lebih dalam / RSI terus turun',
+      flags: flags
+    };
+  }
+
+  // === PRIORITY 2: Bearish Continuation ===
+  if (masBelow >= 2 && belowMA(ma20) && belowMA(ma50)) {
+    var bearishSignals = 0;
+    if (rsi != null && rsi < 45) bearishSignals++;
+    if (pivotPoint != null && price < pivotPoint) bearishSignals++;
+    if (s1 != null && price < s1) bearishSignals++;
+    if (volVsAvg != null && volVsAvg >= 1.0) bearishSignals++; // volume on decline = selling pressure
+
+    if (bearishSignals >= 2) {
+      reasons.push('Price di bawah MA20 dan MA50');
+      if (rsi != null && rsi < 45) reasons.push('RSI ' + rsi + ' (lemah)');
+      if (pivotPoint != null && price < pivotPoint) reasons.push('Price di bawah pivot');
+      if (s1 != null && price < s1) reasons.push('Breakdown di bawah S1');
+      flags.push('bearish_continuation');
+      return {
+        status: 'Bearish Continuation',
+        confidence: bearishSignals >= 3 ? 'high' : 'medium',
+        reasons: reasons,
+        validIf: 'Price kembali above MA20 dan RSI > 50',
+        invalidIf: 'Terus breakdown di bawah S2 / volume jual makin besar',
+        flags: flags
+      };
+    }
+  }
+
+  // === PRIORITY 3: High Risk Speculative ===
+  if (boardRisk === 'elevated') {
+    reasons.push('Board: Akselerasi (risiko tinggi)');
+    flags.push('elevated_board_risk');
+    var hasNews = !!(quote.news && quote.news.success && quote.news.items && quote.news.items.length > 0);
+    if (hasNews) {
+      reasons.push('Ada katalis/news tapi teknikal belum terkonfirmasi');
+      flags.push('has_catalyst');
+    }
+    return {
+      status: 'High Risk Speculative',
+      confidence: 'medium',
+      reasons: reasons,
+      validIf: 'Teknikal breakout confirmed dan volume meningkat',
+      invalidIf: 'Gagal sustain di atas MA20 / volume kering',
+      flags: flags
+    };
+  }
+
+  // Low price stock with high volatility
+  if (price != null && price <= 100 && masBelow >= 2) {
+    reasons.push('Harga sangat rendah (Rp ' + price + ')');
+    reasons.push('Volatilitas tinggi, risiko likuiditas');
+    flags.push('low_price_stock');
+    return {
+      status: 'High Risk Speculative',
+      confidence: 'medium',
+      reasons: reasons,
+      validIf: 'Volume meningkat signifikan dan price above MA20',
+      invalidIf: 'Volume kering / terus sideways di harga rendah',
+      flags: flags
+    };
+  }
+
+  // === PRIORITY 4: Breakout Watch ===
+  if (aboveMA(ma20) && rsi != null && rsi >= 50 && rsi <= 70 && volVsAvg != null && volVsAvg >= 1.2) {
+    var nearR1 = nearLevel(r1, 0.03);
+    var nearR2 = nearLevel(r2, 0.03);
+    var aboveR1 = r1 != null && price >= r1;
+
+    if (nearR1 || nearR2 || aboveR1) {
+      reasons.push('Price di atas MA20 dan dekat/above R1');
+      reasons.push('RSI ' + rsi + ' (bullish momentum)');
+      reasons.push('Volume ' + volVsAvg + 'x avg (di atas rata-rata)');
+      flags.push('breakout_watch', 'volume_confirm');
+      return {
+        status: 'Breakout Watch',
+        confidence: boardRisk === 'normal' ? 'high' : 'medium',
+        reasons: reasons,
+        validIf: 'Close di atas R1 dengan volume > 1.5x avg',
+        invalidIf: 'Rejection di R1 / volume turun drastis',
+        flags: flags
+      };
+    }
+
+    // Above MA20 with good volume/RSI but not near resistance yet
+    reasons.push('Price di atas MA20');
+    reasons.push('RSI ' + rsi + ' (bullish)');
+    reasons.push('Volume ' + volVsAvg + 'x avg');
+    flags.push('breakout_watch');
+    return {
+      status: 'Breakout Watch',
+      confidence: 'medium',
+      reasons: reasons,
+      validIf: 'Approach R1/R2 dengan volume sustained',
+      invalidIf: 'Price kembali di bawah MA20 / volume menurun',
+      flags: flags
+    };
+  }
+
+  // === PRIORITY 5: Rebound Watch ===
+  if (rsi != null && rsi >= 35 && rsi <= 50) {
+    var nearSupport = nearLevel(s1, 0.03) || nearLevel(s2, 0.03) || nearLevel(ma20, 0.03) || nearLevel(ma50, 0.03);
+    var notAllBelow = masBelow < masTotal; // at least one MA still above
+
+    if (nearSupport && notAllBelow) {
+      reasons.push('Price dekat area support (S1/S2/MA)');
+      reasons.push('RSI ' + rsi + ' (potensi rebound zone)');
+      if (volVsAvg != null && volVsAvg >= 0.8) reasons.push('Volume cukup (' + volVsAvg + 'x avg)');
+      flags.push('rebound_watch');
+      return {
+        status: 'Rebound Watch',
+        confidence: nearLevel(s1, 0.02) || nearLevel(ma20, 0.02) ? 'medium' : 'low',
+        reasons: reasons,
+        validIf: 'Bounce dari support + RSI naik di atas 50 + volume meningkat',
+        invalidIf: 'Breakdown di bawah S2 / RSI terus turun di bawah 30',
+        flags: flags
+      };
+    }
+  }
+
+  // === PRIORITY 6: Speculative Watch ===
+  var hasNewsCatalyst = !!(quote.news && quote.news.success && quote.news.items && quote.news.items.length > 0);
+  if (hasNewsCatalyst && volVsAvg != null && volVsAvg >= 1.0) {
+    var trendWeak = (rsi == null || rsi < 50) || belowMA(ma20);
+    if (trendWeak) {
+      reasons.push('Ada katalis/news');
+      reasons.push('Volume aktif (' + volVsAvg + 'x avg)');
+      reasons.push('Tapi konfirmasi trend belum kuat (RSI/MA belum bullish)');
+      flags.push('speculative_watch', 'has_catalyst');
+      return {
+        status: 'Speculative Watch',
+        confidence: 'low',
+        reasons: reasons,
+        validIf: 'Price above MA20 + RSI > 50 + volume sustained',
+        invalidIf: 'News tidak ada follow-up / price gagal sustain',
+        flags: flags
+      };
+    }
+  }
+
+  // === PRIORITY 7: Sideways / No Trade (default fallback) ===
+  reasons.push('Price dalam range antara support dan resistance');
+  if (volVsAvg != null && volVsAvg < 1.0) reasons.push('Volume lemah (' + volVsAvg + 'x avg)');
+  if (rsi != null && rsi >= 45 && rsi <= 55) reasons.push('RSI ' + rsi + ' (netral)');
+  if (!hasNewsCatalyst) reasons.push('Tidak ada katalis jelas');
+  flags.push('sideways');
+
+  // Adjust confidence
+  if (flatRange) {
+    confidence = 'low';
+    flags.push('flat_range');
+    reasons.push('Range T-1 flat, pivot kurang informatif');
+  }
+
+  return {
+    status: 'Sideways / No Trade',
+    confidence: confidence,
+    reasons: reasons,
+    validIf: 'Breakout di atas R1 atau breakdown di bawah S1 dengan volume',
+    invalidIf: 'Tetap sideways tanpa katalis baru',
+    flags: flags
+  };
 }

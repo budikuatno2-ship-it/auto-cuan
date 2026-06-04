@@ -1175,6 +1175,19 @@ async function fetchQuoteContext(ticker) {
                 lines.push('Board Risk Score: ' + acScore.boardRiskScore + '/15');
                 lines.push('Reason: ' + acScore.reason);
             }
+
+            // === SETUP LABEL (from server-side calculation) ===
+            var sl = q.setupLabel;
+            if (sl && sl.status) {
+                lines.push('');
+                lines.push('[Auto-Cuan Setup Label]');
+                lines.push('Status: ' + sl.status);
+                lines.push('Confidence: ' + sl.confidence);
+                if (sl.reasons && sl.reasons.length > 0) lines.push('Reasons: ' + sl.reasons.join('; '));
+                lines.push('Valid If: ' + sl.validIf);
+                lines.push('Invalid If: ' + sl.invalidIf);
+                if (sl.flags && sl.flags.length > 0) lines.push('Flags: ' + sl.flags.join(', '));
+            }
         } else {
             lines.push('Data historis belum berhasil diambil.');
         }
