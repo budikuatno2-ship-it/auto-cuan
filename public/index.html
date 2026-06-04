@@ -208,12 +208,39 @@
                 </button>
                 <!-- Text input -->
                 <div class="flex-1 relative">
-                    <textarea id="chatInput" rows="1" placeholder="Tanya saham, kirim ticker + harga, atau upload chart..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+                    <textarea id="chatInput" rows="1" placeholder="Ketik BBCA, IHSG, paste broksum, atau upload chart..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
                 </div>
                 <!-- Send button -->
                 <button id="sendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>
+            </div>
+            <!-- Input helper hints -->
+            <div id="inputHints" class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] sm:text-[11px] text-gray-600">
+                <span>Ticker: <span class="text-gray-500">BBCA</span></span>
+                <span>Index: <span class="text-gray-500">IHSG</span></span>
+                <span>Broksum: <span class="text-gray-500">BBCA broksum 1D</span></span>
+                <span>Chart: <span class="text-gray-500">upload</span></span>
+                <button onclick="toggleBroksumHelper()" class="text-emerald-600 hover:text-emerald-400 transition underline underline-offset-2" title="Lihat contoh format Broker Summary">Contoh Broksum</button>
+            </div>
+            <!-- Broker Summary helper (collapsible) -->
+            <div id="broksumHelper" class="hidden mt-2 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 text-[11px] sm:text-xs text-gray-500 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="font-medium text-gray-400">Contoh Broker Summary (NET-only)</span>
+                    <button onclick="toggleBroksumHelper()" class="text-gray-600 hover:text-gray-400 text-sm leading-none">&times;</button>
+                </div>
+                <pre id="broksumExample" class="bg-dark-800/60 rounded-lg p-2.5 text-gray-400 whitespace-pre-wrap leading-relaxed select-all">BBCA broksum 1D
+YP +4,5B
+PD +3,1B
+CC +1,8B
+AK -8B
+ZP -2,5B
+BK -1,2B</pre>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="fillBroksumExample()" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition text-[11px] font-medium">Isi ke Chat</button>
+                    <button onclick="copyBroksumExample()" class="px-2.5 py-1 rounded-lg bg-dark-600/50 border border-dark-500/30 text-gray-400 hover:text-gray-200 transition text-[11px]">Salin</button>
+                </div>
+                <p class="text-gray-600 leading-snug">Periode: <span class="text-gray-500">1D, 7D, 1M, 3M</span>. Broker Summary adalah konfirmasi tambahan, bukan sinyal beli tunggal.</p>
             </div>
         </div>
     </div>
@@ -679,6 +706,29 @@ function autoResizeInput() {
 }
 function handleInputKeydown(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+}
+
+// ===== BROKER SUMMARY HELPER FUNCTIONS =====
+function toggleBroksumHelper() {
+    var el = document.getElementById('broksumHelper');
+    if (el) el.classList.toggle('hidden');
+}
+function fillBroksumExample() {
+    var input = document.getElementById('chatInput');
+    if (input) {
+        input.value = 'BBCA broksum 1D\nYP +4,5B\nPD +3,1B\nCC +1,8B\nAK -8B\nZP -2,5B\nBK -1,2B';
+        autoResizeInput();
+        input.focus();
+    }
+    toggleBroksumHelper();
+}
+function copyBroksumExample() {
+    var text = 'BBCA broksum 1D\nYP +4,5B\nPD +3,1B\nCC +1,8B\nAK -8B\nZP -2,5B\nBK -1,2B';
+    navigator.clipboard.writeText(text).then(function() {
+        showToast('Contoh Broker Summary disalin', 'success');
+    }).catch(function() {
+        showToast('Gagal menyalin', 'error');
+    });
 }
 
 // ===== FILE HANDLING =====
@@ -2035,6 +2085,19 @@ async function handleBrokerSummaryText(msg, parsed) {
     setActiveTicker(ticker);
     addUserBubble(msg);
     addLoadingBubble();
+    // Custom loading stages for broker summary
+    var bsLoadBubble = document.getElementById('loadingBubble');
+    if (bsLoadBubble) {
+        var bsLoadEl = bsLoadBubble.querySelector('.loading-stage-text');
+        if (bsLoadEl) bsLoadEl.textContent = 'Membaca Broker Summary manual...';
+        if (bsLoadBubble._stageTimer) clearInterval(bsLoadBubble._stageTimer);
+        var bsStages = ['Memperbarui kesimpulan dengan data broker...', 'Menyiapkan analisis terintegrasi...'];
+        var bsIdx = 0;
+        bsLoadBubble._stageTimer = setInterval(function() {
+            if (bsIdx < bsStages.length) { if (bsLoadEl) bsLoadEl.textContent = bsStages[bsIdx]; bsIdx++; }
+            else { clearInterval(bsLoadBubble._stageTimer); }
+        }, 2500);
+    }
     disableSend(); clearInput();
     logUsage(ticker, 'broker_summary_text_started');
 
