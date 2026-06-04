@@ -64,6 +64,27 @@
         .ai-content strong { font-size: inherit; font-weight: 700; }
         .ai-content br { display: block; content: ""; margin-top: 1px; }
         .ai-content br + br { display: none; }
+        /* ===== DECISION CARD ===== */
+        .ai-content .decision-card {
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 14px;
+            padding: 10px 14px;
+            margin: 4px 0 14px;
+            background: rgba(15, 23, 42, 0.5);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+            font-size: 12.5px;
+            line-height: 1.6;
+        }
+        .ai-content .decision-card strong {
+            display: inline-block;
+            margin-bottom: 3px;
+            color: #6ee7b7;
+            font-size: 13px;
+        }
+        @media (min-width: 640px) {
+            .ai-content .decision-card { padding: 12px 16px; font-size: 13px; }
+            .ai-content .decision-card strong { font-size: 13.5px; }
+        }
         @media (min-width: 640px) {
             .ai-content { font-size: 14px; line-height: 1.58; }
             .ai-content p { margin: 0 0 12px; }
@@ -2121,9 +2142,9 @@ async function handleBrokerSummaryText(msg, parsed) {
             enrichedMsg += '\n\n[Konteks Analisis Sebelumnya]';
             if (latestAnalysisContext.finalDecision) enrichedMsg += '\nKeputusan sebelumnya: ' + latestAnalysisContext.finalDecision;
             if (latestAnalysisContext.score) enrichedMsg += '\nScore sebelumnya: ' + latestAnalysisContext.score;
-            enrichedMsg += '\n\nUser sekarang mengirim Broker Summary baru. WAJIB re-analisis dan update kesimpulan berdasarkan data broker terbaru ini. Tampilkan: "Kesimpulan diperbarui setelah memasukkan Broker Summary manual." di awal section kesimpulan.';
+            enrichedMsg += '\n\nUser sekarang mengirim Broker Summary baru. WAJIB re-analisis dan update kesimpulan berdasarkan data broker terbaru ini. Gunakan format Decision Card + Kesimpulan Final yang sama seperti analisis normal. Tampilkan di awal Ringkasan Cepat: "Kesimpulan diperbarui setelah memasukkan Broker Summary manual." Bandingkan kesimpulan lama vs data baru, jelaskan apa yang berubah (confidence naik/turun, bias berubah, dll). Integrasi broker: bullish chart + akumulasi = confidence naik. Bearish chart + akumulasi = watchlist bukan buy. Bullish chart + distribusi = warning supply. Bearish chart + distribusi = risk naik.';
         } else {
-            enrichedMsg += '\n\nUser mengirim Broker Summary manual. Analisis data broker ini dan berikan kesimpulan terintegrasi dengan data teknikal.';
+            enrichedMsg += '\n\nUser mengirim Broker Summary manual. Analisis data broker ini dan berikan kesimpulan terintegrasi dengan data teknikal. Gunakan format Decision Card + semua section seperti analisis normal. Sertakan section Broker Summary Manual dengan Pembacaan dan Kekuatan Sinyal.';
         }
 
         // Add period note if missing
