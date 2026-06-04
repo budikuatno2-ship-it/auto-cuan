@@ -519,7 +519,10 @@ async function getCachedNews(supabaseUrl, supabaseKey, ticker) {
       if (expiryDate <= new Date()) return null;
     }
 
-    return row.items || [];
+    // Only return cache if it has valid items; empty arrays are not valid cache
+    var items = row.items || [];
+    if (!Array.isArray(items) || items.length === 0) return null;
+    return items;
   } catch (e) {
     return null;
   }
