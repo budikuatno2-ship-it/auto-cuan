@@ -270,20 +270,26 @@ function getBoardNote(board) {
   }
 }
 
-// ===== NEWS/KATALIS FETCH (Supabase cache + Gemini) =====
+// ===== NEWS/KATALIS FETCH (Supabase cache + CodeCrafters/Gemini) =====
 async function fetchNewsData(ticker) {
   var SUPABASE_URL = process.env.SUPABASE_URL;
   var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   var GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  var NEWS_PROVIDER = process.env.NEWS_PROVIDER || '';
+  var CC_NEWS_KEY = process.env.CODECRAFTERS_NEWS_API_KEY;
+  var CC_NEWS_URL = process.env.CODECRAFTERS_NEWS_BASE_URL;
+  var CC_NEWS_MODEL = process.env.CODECRAFTERS_NEWS_MODEL || 'gemini-3.5-flash-free';
   var NEWS_DEBUG = process.env.NEWS_DEBUG === 'true';
 
   var debug = {
-    supabaseConfigured: !!(SUPABASE_URL && SUPABASE_KEY),
-    geminiConfigured: !!GEMINI_API_KEY,
+    newsProvider: NEWS_PROVIDER || 'default_official_gemini',
+    providerTried: [],
+    providerUsed: null,
+    codeCraftersNewsConfigured: !!(CC_NEWS_KEY && CC_NEWS_URL),
+    officialGeminiConfigured: !!GEMINI_API_KEY,
+    groundingEnabled: true,
     cacheChecked: false,
     cacheHit: false,
-    geminiCalled: false,
-    cacheSaved: false,
     reason: ''
   };
 
@@ -303,34 +309,186 @@ async function fetchNewsData(ticker) {
     debug.reason = 'supabase_not_configured';
   }
 
-  // 2. If no cache, call Gemini for news summary
-  if (!GEMINI_API_KEY) {
-    debug.reason = (debug.reason || '') + ',gemini_not_configured';
-    var r2 = { success: false, items: [], note: 'News summary belum tersedia.' };
-    if (NEWS_DEBUG) r2._debug = debug;
-    return r2;
+  // 2. Fetch news based on NEWS_PROVIDER setting
+  var newsItems = null;
+
+  if (NEWS_PROVIDER === 'codecrafters') {
+    if (CC_NEWS_KEY && CC_NEWS_URL) {
+      debug.providerTried.push('codecrafters');
+      newsItems = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
+      if (isValidNewsResult(newsItems)) {
+        debug.providerUsed = 'codecrafters';
+      } else {
+        newsItems = null;
+        debug.reason = (debug.reason ? debug.reason + ',' : '') + 'codecrafters_no_valid_results';
+      }
+    } else {
+      debug.reason = (debug.reason ? debug.reason + ',' : '') + 'codecrafters_not_configured';
+    }
+
+  } else if (NEWS_PROVIDER === 'official_gemini') {
+    if (GEMINI_API_KEY) {
+      debug.providerTried.push('official_gemini');
+      newsItems = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+      if (isValidNewsResult(newsItems)) {
+        debug.providerUsed = 'official_gemini';
+      } else {
+        newsItems = null;
+        debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_no_valid_results';
+      }
+    } else {
+      debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_not_configured';
+    }
+
+  } else if (NEWS_PROVIDER === 'auto') {
+    // Try CodeCrafters first, fallback to official Gemini
+    if (CC_NEWS_KEY && CC_NEWS_URL) {
+      debug.providerTried.push('codecrafters');
+      newsItems = await fetchNewsFromCodeCrafters(CC_NEWS_KEY, CC_NEWS_URL, CC_NEWS_MODEL, ticker);
+      if (isValidNewsResult(newsItems)) {
+        debug.providerUsed = 'codecrafters';
+      } else {
+        newsItems = null;
+      }
+    }
+    if (!newsItems && GEMINI_API_KEY) {
+      debug.providerTried.push('official_gemini');
+      newsItems = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+      if (isValidNewsResult(newsItems)) {
+        debug.providerUsed = 'official_gemini';
+      } else {
+        newsItems = null;
+        debug.reason = (debug.reason ? debug.reason + ',' : '') + 'auto_all_providers_failed';
+      }
+    }
+    if (!newsItems && !GEMINI_API_KEY && !(CC_NEWS_KEY && CC_NEWS_URL)) {
+      debug.reason = (debug.reason ? debug.reason + ',' : '') + 'no_providers_configured';
+    }
+
+  } else {
+    // Default: official Gemini with grounding (backward compatible)
+    if (GEMINI_API_KEY) {
+      debug.providerTried.push('official_gemini');
+      newsItems = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
+      if (isValidNewsResult(newsItems)) {
+        debug.providerUsed = 'official_gemini';
+      } else {
+        newsItems = null;
+        debug.reason = (debug.reason ? debug.reason + ',' : '') + 'official_gemini_no_valid_results';
+      }
+    } else {
+      debug.reason = (debug.reason ? debug.reason + ',' : '') + 'gemini_not_configured';
+    }
   }
 
-  debug.geminiCalled = true;
-  var newsItems = await fetchNewsFromGemini(GEMINI_API_KEY, ticker);
-
-  // 3. Save to Supabase cache
-  if (SUPABASE_URL && SUPABASE_KEY) {
-    await saveCachedNews(SUPABASE_URL, SUPABASE_KEY, ticker, newsItems || []);
-    debug.cacheSaved = true;
-  }
-
+  // 3. No valid news from any provider — do NOT cache failed/empty results
   if (!newsItems || newsItems.length === 0) {
-    debug.reason = (debug.reason ? debug.reason + ',' : '') + 'gemini_no_results';
-    var r3 = { success: true, items: [], note: 'Tidak ada news/katalis signifikan ditemukan.' };
-    if (NEWS_DEBUG) r3._debug = debug;
-    return r3;
+    if (!debug.reason || debug.reason === 'cache_miss_or_expired') {
+      debug.reason = (debug.reason ? debug.reason + ',' : '') + 'no_valid_results';
+    }
+    var rEmpty = { success: true, items: [], note: 'Tidak ada news/katalis signifikan ditemukan.' };
+    if (NEWS_DEBUG) rEmpty._debug = debug;
+    return rEmpty;
   }
 
-  debug.reason = 'gemini_success';
-  var r4 = { success: true, items: newsItems, source: 'gemini' };
-  if (NEWS_DEBUG) r4._debug = debug;
-  return r4;
+  // 4. Save valid news to Supabase cache
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    await saveCachedNews(SUPABASE_URL, SUPABASE_KEY, ticker, newsItems);
+  }
+
+  debug.reason = 'success';
+  var rOk = { success: true, items: newsItems, source: debug.providerUsed || 'unknown' };
+  if (NEWS_DEBUG) rOk._debug = debug;
+  return rOk;
+}
+
+// === NEWS VALIDATION ===
+function isValidNewsItem(item) {
+  if (!item || !item.title || !item.summary) return false;
+  if (!item.source && !item.url) return false;
+  return true;
+}
+
+function isValidNewsResult(items) {
+  if (!items || !Array.isArray(items) || items.length === 0) return false;
+  for (var i = 0; i < items.length; i++) {
+    if (isValidNewsItem(items[i])) return true;
+  }
+  return false;
+}
+
+// === CODECRAFTERS NEWS PROVIDER (OpenAI-compatible) ===
+async function fetchNewsFromCodeCrafters(apiKey, baseUrl, model, ticker) {
+  var prompt = 'Kamu adalah research assistant untuk saham Indonesia (IDX/BEI). ' +
+    'Cari berita/katalis penting saham ' + ticker + '.JK (ticker IDX: ' + ticker + ') dalam 6 bulan terakhir.\n\n' +
+    'Return HANYA valid JSON array (max 2 items). Setiap item harus memiliki format:\n' +
+    '{\n' +
+    '  "date": "YYYY-MM-DD",\n' +
+    '  "title": "judul singkat berita",\n' +
+    '  "source": "nama media/sumber",\n' +
+    '  "url": "link lengkap jika tersedia, atau null",\n' +
+    '  "summary": "ringkasan 1-2 kalimat dampak ke saham",\n' +
+    '  "impact": "positive" | "negative" | "neutral" | "mixed"\n' +
+    '}\n\n' +
+    'Prioritas:\n' +
+    '1. Berita paling relevan dari 0-3 bulan terakhir (jika ada)\n' +
+    '2. Satu berita tambahan dari 3-6 bulan terakhir (jika relevan)\n\n' +
+    'Rules:\n' +
+    '- Max 2 items\n' +
+    '- WAJIB sertakan source (nama media) dan url (link asli) untuk setiap item\n' +
+    '- Jika tidak ada berita yang bisa diverifikasi dengan source/url, return empty array: []\n' +
+    '- Jangan karang berita. Jika tidak yakin, return []\n' +
+    '- Jangan include full article text\n' +
+    '- Fokus: corporate action, akuisisi, dividen, right issue, perubahan papan, kinerja keuangan, kontrak baru, regulasi\n' +
+    '- Return HANYA JSON array, tanpa markdown, tanpa explanation\n' +
+    '- Jika ticker tidak dikenal atau tidak ada berita, return: []';
+
+  var url = (baseUrl || 'https://api.codecrafters.id/v1') + '/chat/completions';
+  var payload = {
+    model: model || 'gemini-3.5-flash-free',
+    messages: [
+      { role: 'system', content: 'You are a stock news research assistant for Indonesian stocks (IDX/BEI). Return only valid JSON.' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.2,
+    max_tokens: 1024,
+    stream: false
+  };
+
+  try {
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 20000);
+
+    var response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) return [];
+
+    var result = await response.json();
+    var choices = result.choices || [];
+    if (choices.length === 0 || !choices[0].message || !choices[0].message.content) return [];
+
+    var text = choices[0].message.content.trim();
+    text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    var jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return [];
+
+    var parsed = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(parsed)) return [];
+
+    return validateAndLimitNews(parsed);
+  } catch (e) {
+    return [];
+  }
 }
 
 // === SUPABASE NEWS CACHE: READ ===
@@ -397,10 +555,10 @@ async function saveCachedNews(supabaseUrl, supabaseKey, ticker, items) {
   }
 }
 
-// === GEMINI: FETCH NEWS SUMMARY ===
+// === GEMINI: FETCH NEWS SUMMARY (with Google Search grounding) ===
 async function fetchNewsFromGemini(apiKey, ticker) {
   var prompt = 'Kamu adalah research assistant untuk saham Indonesia (IDX/BEI). ' +
-    'Cari berita/katalis penting untuk saham ' + ticker + '.JK (ticker IDX: ' + ticker + ') dalam 6 bulan terakhir.\n\n' +
+    'Gunakan Google Search untuk mencari berita/katalis penting saham ' + ticker + '.JK (ticker IDX: ' + ticker + ') dalam 6 bulan terakhir.\n\n' +
     'Return HANYA valid JSON array (max 2 items). Setiap item harus memiliki format:\n' +
     '{\n' +
     '  "date": "YYYY-MM-DD",\n' +
@@ -425,16 +583,17 @@ async function fetchNewsFromGemini(apiKey, ticker) {
   var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
   var payload = {
     contents: [{ parts: [{ text: prompt }] }],
+    tools: [{ google_search: {} }],
     generationConfig: {
       temperature: 0.2,
       topP: 0.8,
-      maxOutputTokens: 512
+      maxOutputTokens: 1024
     }
   };
 
   try {
     var controller = new AbortController();
-    var timeout = setTimeout(function() { controller.abort(); }, 15000);
+    var timeout = setTimeout(function() { controller.abort(); }, 20000);
 
     var response = await fetch(url, {
       method: 'POST',
@@ -450,32 +609,48 @@ async function fetchNewsFromGemini(apiKey, ticker) {
     var candidates = result.candidates || [];
     if (candidates.length === 0) return [];
 
-    var text = (candidates[0].content && candidates[0].content.parts && candidates[0].content.parts[0] && candidates[0].content.parts[0].text) || '';
+    // Gemini with grounding may return multiple parts; concatenate text parts
+    var textParts = [];
+    var parts = (candidates[0].content && candidates[0].content.parts) || [];
+    for (var pi = 0; pi < parts.length; pi++) {
+      if (parts[pi].text) textParts.push(parts[pi].text);
+    }
+    var text = textParts.join('');
+
     // Clean markdown code fences if present
     text = text.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
-    var parsed = JSON.parse(text);
+    // Try to extract JSON array from response (may have surrounding text with grounding)
+    var jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return [];
+
+    var parsed = JSON.parse(jsonMatch[0]);
     if (!Array.isArray(parsed)) return [];
 
-    // Validate and limit to 2 items
-    var valid = [];
-    for (var i = 0; i < parsed.length && valid.length < 2; i++) {
-      var item = parsed[i];
-      if (item && item.title && item.summary) {
-        valid.push({
-          date: item.date || null,
-          title: String(item.title).slice(0, 200),
-          source: item.source || null,
-          url: item.url || null,
-          summary: String(item.summary).slice(0, 300),
-          impact: ['positive', 'negative', 'neutral', 'mixed'].indexOf(item.impact) >= 0 ? item.impact : 'neutral'
-        });
-      }
-    }
-    return valid;
+    return validateAndLimitNews(parsed);
   } catch (e) {
     return [];
   }
+}
+
+// === SHARED NEWS VALIDATION + LIMIT ===
+function validateAndLimitNews(parsed) {
+  if (!Array.isArray(parsed)) return [];
+  var valid = [];
+  for (var i = 0; i < parsed.length && valid.length < 2; i++) {
+    var item = parsed[i];
+    if (item && item.title && item.summary) {
+      valid.push({
+        date: item.date || null,
+        title: String(item.title).slice(0, 200),
+        source: item.source || null,
+        url: item.url || null,
+        summary: String(item.summary).slice(0, 300),
+        impact: ['positive', 'negative', 'neutral', 'mixed'].indexOf(item.impact) >= 0 ? item.impact : 'neutral'
+      });
+    }
+  }
+  return valid;
 }
 
 // ===== CALCULATION HELPERS =====
