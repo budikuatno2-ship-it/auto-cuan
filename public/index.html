@@ -243,6 +243,7 @@
                 <span>Broksum: <span class="text-gray-500">BBCA broksum 1D</span></span>
                 <span>Chart: <span class="text-gray-500">upload</span></span>
                 <button onclick="toggleBroksumHelper()" class="text-emerald-600 hover:text-emerald-400 transition underline underline-offset-2" title="Lihat contoh format Broker Summary">Contoh Broksum</button>
+                <button onclick="toggleUsageGuide()" class="text-blue-500 hover:text-blue-400 transition underline underline-offset-2" title="Cara menggunakan Auto-Cuan">Cara Pakai</button>
             </div>
             <!-- Broker Summary helper (collapsible) -->
             <div id="broksumHelper" class="hidden mt-2 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 text-[11px] sm:text-xs text-gray-500 space-y-2">
@@ -262,6 +263,25 @@ BK -1,2B</pre>
                     <button onclick="copyBroksumExample()" class="px-2.5 py-1 rounded-lg bg-dark-600/50 border border-dark-500/30 text-gray-400 hover:text-gray-200 transition text-[11px]">Salin</button>
                 </div>
                 <p class="text-gray-600 leading-snug">Periode: <span class="text-gray-500">1D, 7D, 1M, 3M</span>. Broker Summary adalah konfirmasi tambahan, bukan sinyal beli tunggal.</p>
+            </div>
+            <!-- Usage Guide (collapsible) -->
+            <div id="usageGuide" class="hidden mt-2 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 text-[11px] sm:text-xs text-gray-500 space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <span class="font-medium text-gray-300">Cara Pakai Auto-Cuan</span>
+                    <button onclick="toggleUsageGuide()" class="text-gray-600 hover:text-gray-400 text-sm leading-none">&times;</button>
+                </div>
+                <div class="space-y-2 leading-relaxed">
+                    <p><span class="text-gray-400 font-medium">1. Analisis saham</span><br><span class="text-gray-500">Ketik: </span><span class="text-gray-300">BBCA gimana?</span> atau <span class="text-gray-300">BREN potensi besok?</span></p>
+                    <p><span class="text-gray-400 font-medium">2. Analisis IHSG</span><br><span class="text-gray-500">Ketik: </span><span class="text-gray-300">IHSG</span> atau <span class="text-gray-300">Composite potensi besok?</span></p>
+                    <p><span class="text-gray-400 font-medium">3. Upload chart</span><br><span class="text-gray-500">Kirim screenshot chart untuk analisis visual.</span></p>
+                    <p><span class="text-gray-400 font-medium">4. Broker Summary manual</span><br><span class="text-gray-500">Format: </span><span class="text-gray-300">BBCA broksum 1D</span><br><span class="text-gray-500">Lalu paste net broker: </span><span class="text-gray-300">YP +4,5B / AK -8B</span></p>
+                    <p><span class="text-gray-400 font-medium">5. Periode broksum</span><br><span class="text-gray-500">Didukung: </span><span class="text-gray-300">1D, 7D, 1M, 3M</span></p>
+                </div>
+                <div class="flex flex-wrap gap-2 pt-1">
+                    <button onclick="fillGuideExample('BBCA gimana?')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition text-[11px] font-medium">Coba BBCA</button>
+                    <button onclick="fillGuideExample('IHSG')" class="px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition text-[11px] font-medium">Coba IHSG</button>
+                </div>
+                <p class="text-gray-600 text-[10px] sm:text-[11px] leading-snug pt-0.5">Analisis bersifat probabilistik, bukan kepastian atau rekomendasi beli/jual mutlak.</p>
             </div>
         </div>
     </div>
@@ -750,6 +770,21 @@ function copyBroksumExample() {
     }).catch(function() {
         showToast('Gagal menyalin', 'error');
     });
+}
+
+// ===== USAGE GUIDE HELPER FUNCTIONS =====
+function toggleUsageGuide() {
+    var el = document.getElementById('usageGuide');
+    if (el) el.classList.toggle('hidden');
+}
+function fillGuideExample(text) {
+    var input = document.getElementById('chatInput');
+    if (input) {
+        input.value = text;
+        autoResizeInput();
+        input.focus();
+    }
+    toggleUsageGuide();
 }
 
 // ===== FILE HANDLING =====
