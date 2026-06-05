@@ -234,8 +234,8 @@
         /* ===== CHART FIBONACCI STRIP (below chart) ===== */
         .chart-fib-strip {
             padding: 8px 12px;
-            border-top: 1px solid rgba(168, 85, 247, 0.15);
-            background: rgba(15, 10, 30, 0.4);
+            border-top: 1px solid rgba(245, 158, 11, 0.2);
+            background: rgba(15, 12, 5, 0.4);
             font-size: 11px;
         }
         .chart-fib-header {
@@ -256,10 +256,10 @@
             text-align: center;
             padding: 4px 6px;
             border-radius: 6px;
-            background: rgba(168, 85, 247, 0.08);
-            border: 1px solid rgba(168, 85, 247, 0.15);
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.18);
         }
-        .chart-fib-item span { display: block; font-size: 9px; color: #a78bfa; margin-bottom: 1px; }
+        .chart-fib-item span { display: block; font-size: 9px; color: #f59e0b; margin-bottom: 1px; }
         .chart-fib-item b { display: block; font-size: 11px; color: #e5e7eb; }
         .chart-fib-note {
             margin-top: 6px;
@@ -3616,7 +3616,7 @@ async function toggleYahooChart(ticker, chartId, btn) {
         '<div id="' + chartId + '_container" style="height:280px;width:100%"><div class="flex items-center justify-center h-full text-gray-600 text-xs">Memuat chart...</div></div>' +
         '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%"></div>' +
         '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
-        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-violet-400/70">Fib</span></div>';
+        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
     bubble.after(panel);
     _activeChartPanel = panel;
 
@@ -3705,11 +3705,11 @@ async function renderLightweightChart(chartId, candles, metrics) {
         fibQuote = (fibResp && fibResp.fibonacci) ? fibResp.fibonacci : null;
         if (fibQuote && fibQuote.levels && candles.length >= 10) {
             var fibLevels = [
-                { val: fibQuote.levels.fib236, label: '23.6%', color: '#c4b5fd80' },
-                { val: fibQuote.levels.fib382, label: '38.2%', color: '#a78bfaa0' },
-                { val: fibQuote.levels.fib500, label: '50%', color: '#8b5cf6b0' },
-                { val: fibQuote.levels.fib618, label: '61.8%', color: '#7c3aedb0' },
-                { val: fibQuote.levels.fib786, label: '78.6%', color: '#6d28d9a0' }
+                { val: fibQuote.levels.fib236, label: '23.6%', color: '#fbbf2460' },
+                { val: fibQuote.levels.fib382, label: '38.2%', color: '#f59e0b90' },
+                { val: fibQuote.levels.fib500, label: '50%', color: '#f59e0ba0' },
+                { val: fibQuote.levels.fib618, label: '61.8%', color: '#d97706a0' },
+                { val: fibQuote.levels.fib786, label: '78.6%', color: '#b4560080' }
             ];
             var firstTime = candles[0].time;
             var lastTime = candles[candles.length - 1].time;
@@ -3811,8 +3811,8 @@ async function renderLightweightChart(chartId, candles, metrics) {
             }
         }
         if (fibStripEl) {
-            var fHtml = '<div class="chart-fib-header"><span class="text-violet-400">Fib Levels</span>';
-            if (fibQuote.nearestLabel) fHtml += '<span class="text-gray-400">Nearest: <b class="text-violet-300">' + fibQuote.nearestLabel + '</b></span>';
+            var fHtml = '<div class="chart-fib-header"><span class="text-amber-400">Fib Levels</span>';
+            if (fibQuote.nearestLabel) fHtml += '<span class="text-gray-400">Nearest: <b class="text-amber-300">' + fibQuote.nearestLabel + '</b></span>';
             fHtml += '</div><div class="chart-fib-grid">';
             if (fibQuote.levels.fib382 != null) fHtml += '<div class="chart-fib-item"><span>38.2%</span><b>' + fibQuote.levels.fib382 + '</b></div>';
             if (fibQuote.levels.fib500 != null) fHtml += '<div class="chart-fib-item"><span>50%</span><b>' + fibQuote.levels.fib500 + '</b></div>';
