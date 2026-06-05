@@ -231,6 +231,45 @@
             .ai-content .fibo-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
             .ai-content .fibo-card { padding: 10px 10px; }
         }
+        /* ===== CHART FIBONACCI STRIP (below chart) ===== */
+        .chart-fib-strip {
+            padding: 8px 12px;
+            border-top: 1px solid rgba(168, 85, 247, 0.15);
+            background: rgba(15, 10, 30, 0.4);
+            font-size: 11px;
+        }
+        .chart-fib-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .chart-fib-header b { font-weight: 700; }
+        .chart-fib-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+        .chart-fib-item {
+            text-align: center;
+            padding: 4px 6px;
+            border-radius: 6px;
+            background: rgba(168, 85, 247, 0.08);
+            border: 1px solid rgba(168, 85, 247, 0.15);
+        }
+        .chart-fib-item span { display: block; font-size: 9px; color: #a78bfa; margin-bottom: 1px; }
+        .chart-fib-item b { display: block; font-size: 11px; color: #e5e7eb; }
+        .chart-fib-note {
+            margin-top: 6px;
+            font-size: 10px;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+        @media (max-width: 400px) {
+            .chart-fib-grid { grid-template-columns: repeat(2, 1fr); }
+        }
         /* ===== PREMIUM LAYOUT: SCENARIO PRICE GRID ===== */
         .ai-content .scenario-price-grid {
             display: grid;
@@ -3659,17 +3698,18 @@ async function renderLightweightChart(chartId, candles, metrics) {
     if (candles.length >= 200) buildMALine(closes, 200, '#a855f7');
 
     // Fibonacci level overlay (from quote API)
+    var fibQuote = null;
     try {
         var fibTicker = chartId.replace('yahoo_chart_', '');
         var fibResp = await fetch('/api/quote?ticker=' + encodeURIComponent(fibTicker)).then(function(r) { return r.json(); }).catch(function() { return null; });
-        var fibQuote = (fibResp && fibResp.fibonacci) ? fibResp.fibonacci : null;
+        fibQuote = (fibResp && fibResp.fibonacci) ? fibResp.fibonacci : null;
         if (fibQuote && fibQuote.levels && candles.length >= 10) {
             var fibLevels = [
-                { val: fibQuote.levels.fib236, label: '23.6%', color: '#c4b5fd50' },
-                { val: fibQuote.levels.fib382, label: '38.2%', color: '#a78bfa60' },
-                { val: fibQuote.levels.fib500, label: '50%', color: '#8b5cf670' },
-                { val: fibQuote.levels.fib618, label: '61.8%', color: '#7c3aed70' },
-                { val: fibQuote.levels.fib786, label: '78.6%', color: '#6d28d950' }
+                { val: fibQuote.levels.fib236, label: '23.6%', color: '#c4b5fd80' },
+                { val: fibQuote.levels.fib382, label: '38.2%', color: '#a78bfaa0' },
+                { val: fibQuote.levels.fib500, label: '50%', color: '#8b5cf6b0' },
+                { val: fibQuote.levels.fib618, label: '61.8%', color: '#7c3aedb0' },
+                { val: fibQuote.levels.fib786, label: '78.6%', color: '#6d28d9a0' }
             ];
             var firstTime = candles[0].time;
             var lastTime = candles[candles.length - 1].time;
@@ -3677,7 +3717,7 @@ async function renderLightweightChart(chartId, candles, metrics) {
                 if (fibLevels[fi].val != null) {
                     var fibSeries = chart.addLineSeries({
                         color: fibLevels[fi].color,
-                        lineWidth: 1,
+                        lineWidth: 1.5,
                         lineStyle: 2,
                         crosshairMarkerVisible: false,
                         priceLineVisible: false,
@@ -3756,6 +3796,32 @@ async function renderLightweightChart(chartId, candles, metrics) {
         if (m.ma50) html += '<div><span class="text-gray-500">MA50</span><br><span class="text-yellow-400">' + m.ma50 + '</span></div>';
         if (m.ma200) html += '<div><span class="text-gray-500">MA200</span><br><span class="text-purple-400">' + m.ma200 + '</span></div>';
         metricsEl.innerHTML = html;
+    }
+
+    // Fibonacci levels strip (visible fallback below chart)
+    if (fibQuote && fibQuote.levels) {
+        var fibStripEl = document.getElementById(chartId + '_fib_strip');
+        if (!fibStripEl) {
+            fibStripEl = document.createElement('div');
+            fibStripEl.id = chartId + '_fib_strip';
+            fibStripEl.className = 'chart-fib-strip';
+            var metricsParent = document.getElementById(chartId + '_metrics');
+            if (metricsParent && metricsParent.parentNode) {
+                metricsParent.parentNode.insertBefore(fibStripEl, metricsParent.nextSibling);
+            }
+        }
+        if (fibStripEl) {
+            var fHtml = '<div class="chart-fib-header"><span class="text-violet-400">Fib Levels</span>';
+            if (fibQuote.nearestLabel) fHtml += '<span class="text-gray-400">Nearest: <b class="text-violet-300">' + fibQuote.nearestLabel + '</b></span>';
+            fHtml += '</div><div class="chart-fib-grid">';
+            if (fibQuote.levels.fib382 != null) fHtml += '<div class="chart-fib-item"><span>38.2%</span><b>' + fibQuote.levels.fib382 + '</b></div>';
+            if (fibQuote.levels.fib500 != null) fHtml += '<div class="chart-fib-item"><span>50%</span><b>' + fibQuote.levels.fib500 + '</b></div>';
+            if (fibQuote.levels.fib618 != null) fHtml += '<div class="chart-fib-item"><span>61.8%</span><b>' + fibQuote.levels.fib618 + '</b></div>';
+            if (fibQuote.levels.fib786 != null) fHtml += '<div class="chart-fib-item"><span>78.6%</span><b>' + fibQuote.levels.fib786 + '</b></div>';
+            fHtml += '</div>';
+            if (fibQuote.positionReading) fHtml += '<div class="chart-fib-note">' + fibQuote.positionReading + '</div>';
+            fibStripEl.innerHTML = fHtml;
+        }
     }
 
     } catch (renderErr) {
