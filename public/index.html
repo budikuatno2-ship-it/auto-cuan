@@ -2855,8 +2855,12 @@ function addAIBubble(html, isStructured) {
     // Client-side FCA sanitizer + security sanitizer + final technical label normalizer
     var sanitizedHtml = sanitizeAIHtml(clientSanitizeFCA(html));
     sanitizedHtml = normalizeFinalStockHtml(sanitizedHtml);
-    // Strip stock-specific sections from IHSG/index responses
-    if (isIndexTicker(activeTicker) || isIndexTicker(latestAnalysisContext && latestAnalysisContext.ticker)) {
+    // Determine if this is an index query
+    var _isIndexQuery = isIndexTicker(activeTicker) || isIndexTicker(latestAnalysisContext && latestAnalysisContext.ticker);
+    // Reorder Broker CTA: extract from middle, append at bottom (or strip for index)
+    sanitizedHtml = reorderBrokerCTA(sanitizedHtml, _isIndexQuery);
+    // Strip remaining stock-specific sections from IHSG/index responses
+    if (_isIndexQuery) {
         sanitizedHtml = sanitizeIHSGOutput(sanitizedHtml);
     }
 
@@ -3534,7 +3538,7 @@ function closeUsageReminder() {
 })();
 
 // ===== BUILD VERSION MARKER =====
-window.AUTO_CUAN_BUILD = 'phase-11m-final-spacing-news-ihsg';
+window.AUTO_CUAN_BUILD = 'phase-11n-broker-cta-spacing';
 
 // ===== IHSG OUTPUT SANITIZER (strip stock-specific sections from index responses) =====
 function sanitizeIHSGOutput(html) {
@@ -3552,6 +3556,39 @@ function sanitizeIHSGOutput(html) {
     });
     // Remove stray TP/Entry/SL mentions in paragraphs
     o = o.replace(/<p[^>]*>[^<]*<strong>Rencana Trading<\/strong>[^<]*<\/p>/gi, '');
+    return o;
+}
+
+// ===== BROKER CTA REORDER (move to bottom for normal stocks, strip for index) =====
+function reorderBrokerCTA(html, isIndex) {
+    if (!html) return html;
+    // Match Broker CTA paragraphs (the "Kirim Broker Summary manual..." text)
+    var ctaPattern = /<p[^>]*class="[^"]*text-gray-500[^"]*text-xs[^"]*"[^>]*>[\s\S]*?<\/p>/gi;
+    var ctaPattern2 = /<p[^>]*class="[^"]*text-gray-500[^"]*"[^>]*>[^<]*(?:[Kk]irim [Bb]roker|[Bb]roker [Ss]ummary manual|chart SMC[^<]*broker)[\s\S]*?<\/p>/gi;
+    var extractedCTAs = [];
+    var o = html;
+    // Extract all broker CTA paragraphs
+    o = o.replace(ctaPattern2, function(match) {
+        extractedCTAs.push(match);
+        return '';
+    });
+    // Also catch the generic text-gray-500 text-xs broker CTA
+    o = o.replace(/<p[^>]*class="text-gray-500 text-xs"[^>]*>[\s\S]*?[Bb]roker[\s\S]*?<\/p>/gi, function(match) {
+        if (extractedCTAs.indexOf(match) === -1) extractedCTAs.push(match);
+        return '';
+    });
+    // Also catch "Kalau ada chart SMC..." paragraph
+    o = o.replace(/<p[^>]*class="[^"]*text-gray-500[^"]*"[^>]*>[^<]*chart SMC[^<]*<\/p>/gi, function(match) {
+        if (extractedCTAs.indexOf(match) === -1) extractedCTAs.push(match);
+        return '';
+    });
+    // For index: don't append CTA at all
+    if (isIndex) return o;
+    // For normal stocks: append CTA once at the very bottom (only if extracted)
+    if (extractedCTAs.length > 0) {
+        // Use only the first (most relevant) CTA, avoid duplicates
+        o = o + extractedCTAs[0];
+    }
     return o;
 }
 
@@ -3583,15 +3620,18 @@ function normalizeFinalStockHtml(html) {
     o = o.replace(re, function(match, digit, middle, label) {
         // Already has <br> in middle? skip
         if (middle && middle.indexOf('<br') > -1) return match;
-        return digit + (middle || '') + '<br>' + label;
+        // Trim trailing whitespace from middle before inserting <br>
+        var cleanMiddle = (middle || '').replace(/\s+$/, '');
+        return digit + cleanMiddle + '<br>' + label;
     });
-    // Also catch: letter/word + closing tags + label (e.g. "avg</b>Last:" or "semua</b>MA50:")
+    // Also catch: letter/word + closing tags/space + label (e.g. "avg</b>Last:" or "semua MA50:")
     var re2 = new RegExp('([a-zA-Z])(' + closeTags + ')(' + labelGroup + ')', 'g');
     o = o.replace(re2, function(match, letter, middle, label) {
         if (middle && middle.indexOf('<br') > -1) return match;
         // Don't break if it's part of a word like "Resistance" starting with "R"
         if (/^(R[1-3]:|S[1-3]:)$/.test(label) && /[a-z]/.test(letter)) return match;
-        return letter + (middle || '') + '<br>' + label;
+        var cleanMiddle = (middle || '').replace(/\s+$/, '');
+        return letter + cleanMiddle + '<br>' + label;
     });
     // Fix ratio decimals: replace period with comma before 'x' in volume ratios (e.g. "5.41x" -> "5,41x")
     o = o.replace(/(\d+)\.(\d+)(x\b)/g, '$1,$2$3');
