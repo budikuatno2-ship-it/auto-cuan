@@ -2236,7 +2236,7 @@ async function handleAnalysis(msg, intent) {
             incrementAnalysisUsage(); updateUsageCounter();
             logUsage(ticker, 'ai_success'); logAnalysisResult(ticker, 'ticker', html);
         } else { throw new Error('Tidak ada hasil.'); }
-    } catch(e) { removeLoadingBubble(); addAIError('Analisis belum berhasil dibuat. Coba ulang beberapa saat lagi.'); logUsage(ticker, 'ai_error'); }
+    } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Analisis belum berhasil dibuat. Coba ulang beberapa saat lagi, atau kirim ulang dengan format yang lebih jelas.'); logUsage(ticker, 'ai_error'); }
     finally { enableSend(); saveChatHistory(); }
 }
 
@@ -2264,7 +2264,7 @@ async function handleTickerQuestion(msg, ticker) {
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
-    } catch(e) { removeLoadingBubble(); addAIError('Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage(ticker, 'chat_error'); }
+    } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage(ticker, 'chat_error'); }
     finally { enableSend(); saveChatHistory(); }
 }
 
@@ -2294,7 +2294,7 @@ async function handleChat(msg) {
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
-    } catch(e) { removeLoadingBubble(); addAIError('Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage('CHAT', 'chat_error'); }
+    } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage('CHAT', 'chat_error'); }
     finally { enableSend(); saveChatHistory(); }
 }
 
@@ -2316,20 +2316,7 @@ async function handleBrokerSummaryText(msg, parsed) {
 
     setActiveTicker(ticker);
     addUserBubble(msg);
-    addLoadingBubble();
-    // Custom loading stages for broker summary
-    var bsLoadBubble = document.getElementById('loadingBubble');
-    if (bsLoadBubble) {
-        var bsLoadEl = bsLoadBubble.querySelector('.loading-stage-text');
-        if (bsLoadEl) bsLoadEl.textContent = 'Membaca Broker Summary manual...';
-        if (bsLoadBubble._stageTimer) clearInterval(bsLoadBubble._stageTimer);
-        var bsStages = ['Memperbarui kesimpulan dengan data broker...', 'Menyiapkan analisis terintegrasi...'];
-        var bsIdx = 0;
-        bsLoadBubble._stageTimer = setInterval(function() {
-            if (bsIdx < bsStages.length) { if (bsLoadEl) bsLoadEl.textContent = bsStages[bsIdx]; bsIdx++; }
-            else { clearInterval(bsLoadBubble._stageTimer); }
-        }, 2500);
-    }
+    addLoadingBubble('broker');
     disableSend(); clearInput();
     logUsage(ticker, 'broker_summary_text_started');
 
@@ -2381,7 +2368,7 @@ async function handleBrokerSummaryText(msg, parsed) {
             incrementChatUsage(); updateUsageCounter();
             logUsage(ticker, 'broker_summary_text_success');
         } else { throw new Error('Tidak ada respons.'); }
-    } catch(e) { removeLoadingBubble(); addAIError('Analisis Broker Summary belum berhasil. Coba kirim ulang beberapa saat lagi.'); logUsage(ticker || 'BROKSUM', 'broker_summary_text_error'); }
+    } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Analisis Broker Summary belum berhasil. Coba kirim ulang beberapa saat lagi.'); logUsage(ticker || 'BROKSUM', 'broker_summary_text_error'); }
     finally { enableSend(); saveChatHistory(); }
 }
 
@@ -2439,7 +2426,7 @@ async function handleChartUpload(msg) {
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); updateAnalysisContext(msg, html); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
         else { throw new Error('Tidak ada hasil.'); }
-    } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError('Gambar chart belum bisa dianalisis. Coba upload ulang dengan resolusi lebih jelas.'); logUsage('CHART_UPLOAD', 'ai_error'); }
+    } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Gambar chart belum bisa dianalisis. Coba upload ulang dengan resolusi lebih jelas.'); logUsage('CHART_UPLOAD', 'ai_error'); }
     finally { enableSend(); saveChatHistory(); }
 }
 
@@ -2582,6 +2569,11 @@ function toggleLongText(uid) {
         btn.textContent = 'Lihat teks';
     }
 }
+function isNetworkError(e) {
+    if (!e) return false;
+    var msg = (e.message || '').toLowerCase();
+    return msg.indexOf('failed to fetch') !== -1 || msg.indexOf('networkerror') !== -1 || msg.indexOf('network') !== -1 || msg.indexOf('timeout') !== -1 || msg.indexOf('aborted') !== -1 || msg.indexOf('err_connection') !== -1;
+}
 function addLoadingBubble(loadingContext) {
     var container = document.getElementById('chatMessages');
     var div = document.createElement('div');
@@ -2595,9 +2587,12 @@ function addLoadingBubble(loadingContext) {
     } else if (loadingContext === 'chart') {
         initialText = 'Membaca chart yang kamu kirim...';
         stages = ['Mencari area support, resistance, dan momentum...', 'Menggabungkan chart dengan data teknikal...'];
+    } else if (loadingContext === 'broker') {
+        initialText = 'Membaca Broker Summary manual...';
+        stages = ['Memperbarui kesimpulan dengan data broker...', 'Menyiapkan analisis terintegrasi...'];
     } else if (loadingContext === 'chat') {
-        initialText = 'Memproses pertanyaan...';
-        stages = ['Menyusun jawaban...'];
+        initialText = 'Membaca pesan kamu...';
+        stages = ['Menyiapkan jawaban...', 'Merapikan respons...'];
     }
     div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3"><p class="text-sm text-emerald-400 animate-pulse-glow loading-stage-text">' + initialText + '</p></div>';
     container.appendChild(div);
