@@ -257,6 +257,9 @@ async function fetchYahooQuote(ticker) {
     flatRange: (range === 0 || range < 1)
   };
 
+  // === FIBONACCI INTELLIGENCE (from OHLCV candles) ===
+  result.fibonacci = calculateFibonacciLevels(candles);
+
   quoteCache[ticker] = { data: result, timestamp: Date.now() };
   return result;
 }
@@ -2162,4 +2165,195 @@ function interpretPriceVolume(priceChange1D, volumeVsAvg7, lastClose, prevClose)
   if (priceUp) return 'Harga naik dengan volume normal.';
   if (priceDown) return 'Harga turun dengan volume normal.';
   return 'Harga dan volume relatif stabil.';
+}
+
+
+
+// ===== FIBONACCI INTELLIGENCE =====
+
+/**
+ * Calculate Fibonacci retracement levels from OHLCV candles.
+ * Uses last 60 candles (or available if fewer) to find swing high/low.
+ * Minimum 10 candles required.
+ * Returns null if insufficient data.
+ */
+function calculateFibonacciLevels(candles) {
+  if (!candles || !Array.isArray(candles) || candles.length < 10) return null;
+
+  // Use last 60 candles (or all available)
+  var lookback = Math.min(60, candles.length);
+  var recentCandles = candles.slice(-lookback);
+
+  // Find swing high and swing low from lookback window
+  var swingHigh = -Infinity;
+  var swingLow = Infinity;
+  var swingHighIdx = -1;
+  var swingLowIdx = -1;
+
+  for (var i = 0; i < recentCandles.length; i++) {
+    var c = recentCandles[i];
+    if (c == null || c.high == null || c.low == null || c.close == null) continue;
+    if (isNaN(c.high) || isNaN(c.low)) continue;
+
+    if (c.high > swingHigh) {
+      swingHigh = c.high;
+      swingHighIdx = i;
+    }
+    if (c.low < swingLow) {
+      swingLow = c.low;
+      swingLowIdx = i;
+    }
+  }
+
+  // Validate swing points
+  if (swingHigh === -Infinity || swingLow === Infinity) return null;
+  if (swingHigh <= swingLow) return null;
+
+  var fibRange = swingHigh - swingLow;
+  if (fibRange <= 0) return null;
+
+  // Get latest close for position analysis
+  var latestCandle = recentCandles[recentCandles.length - 1];
+  if (!latestCandle || latestCandle.close == null || isNaN(latestCandle.close)) return null;
+  var latestClose = latestCandle.close;
+
+  // Determine trend context
+  // If swing high came AFTER swing low → uptrend retracement context
+  // If swing low came AFTER swing high → downtrend retracement context
+  var fibTrend;
+  if (swingHighIdx > swingLowIdx) {
+    // Price went up first, then retracing — upward context
+    fibTrend = 'upward_retracement';
+  } else {
+    // Price went down first — downward context
+    fibTrend = 'downward_retracement';
+  }
+
+  // Refine trend based on latest close position
+  var closePosition = (latestClose - swingLow) / fibRange; // 0 = at low, 1 = at high
+  if (closePosition > 0.7) {
+    fibTrend = 'upward_retracement'; // near highs
+  } else if (closePosition < 0.3) {
+    fibTrend = 'downward_retracement'; // near lows
+  }
+
+  // Calculate Fibonacci levels
+  // For upward retracement: levels measured from swing high down
+  // fib236 = swingHigh - 0.236 * range (closest to high)
+  // fib786 = swingHigh - 0.786 * range (closest to low)
+  var fib236 = roundPrice(swingHigh - 0.236 * fibRange);
+  var fib382 = roundPrice(swingHigh - 0.382 * fibRange);
+  var fib500 = roundPrice(swingHigh - 0.500 * fibRange);
+  var fib618 = roundPrice(swingHigh - 0.618 * fibRange);
+  var fib786 = roundPrice(swingHigh - 0.786 * fibRange);
+
+  // Find nearest Fibonacci level
+  var fibLevels = [
+    { level: fib236, label: 'Fib 23.6%', ratio: 0.236 },
+    { level: fib382, label: 'Fib 38.2%', ratio: 0.382 },
+    { level: fib500, label: 'Fib 50%', ratio: 0.500 },
+    { level: fib618, label: 'Fib 61.8%', ratio: 0.618 },
+    { level: fib786, label: 'Fib 78.6%', ratio: 0.786 }
+  ];
+
+  var nearest = findNearestFibLevel(latestClose, fibLevels);
+  var positionReading = interpretFibonacciPosition(latestClose, fibTrend, nearest, fibLevels, swingHigh, swingLow);
+
+  // Invalidation level: depends on trend context
+  var invalidationLevel;
+  if (fibTrend === 'upward_retracement') {
+    // Breakdown below Fib 61.8% weakens rebound scenario
+    invalidationLevel = fib618;
+  } else {
+    // Breakout above Fib 38.2% weakens downtrend scenario
+    invalidationLevel = fib382;
+  }
+
+  return {
+    swingHigh: roundPrice(swingHigh),
+    swingLow: roundPrice(swingLow),
+    trend: fibTrend,
+    lookbackCandles: lookback,
+    levels: {
+      fib236: fib236,
+      fib382: fib382,
+      fib500: fib500,
+      fib618: fib618,
+      fib786: fib786
+    },
+    nearestLevel: nearest ? nearest.level : null,
+    nearestLabel: nearest ? nearest.label : null,
+    positionReading: positionReading,
+    invalidationLevel: invalidationLevel
+  };
+}
+
+/**
+ * Find the nearest Fibonacci level to the current close price.
+ */
+function findNearestFibLevel(close, fibLevels) {
+  if (close == null || !fibLevels || fibLevels.length === 0) return null;
+
+  var nearest = null;
+  var minDist = Infinity;
+
+  for (var i = 0; i < fibLevels.length; i++) {
+    var fl = fibLevels[i];
+    if (fl.level == null) continue;
+    var dist = Math.abs(close - fl.level);
+    if (dist < minDist) {
+      minDist = dist;
+      nearest = fl;
+    }
+  }
+
+  return nearest;
+}
+
+/**
+ * Interpret Fibonacci position and generate a reading in Indonesian.
+ */
+function interpretFibonacciPosition(close, trend, nearest, fibLevels, swingHigh, swingLow) {
+  if (!nearest || close == null) return null;
+
+  var label = nearest.label;
+  var level = nearest.level;
+  var distPct = level > 0 ? Math.round(Math.abs(close - level) / level * 10000) / 100 : 0;
+
+  // Close is very near the level (within 2%)
+  var isNear = distPct <= 2;
+  var isAbove = close > level;
+
+  if (trend === 'upward_retracement') {
+    if (isNear) {
+      if (nearest.ratio <= 0.382) {
+        return 'Harga berada dekat area ' + label + ', area ini bisa menjadi support dinamis jika rebound masih sehat.';
+      } else if (nearest.ratio <= 0.5) {
+        return 'Harga berada di area ' + label + ', level psikologis penting. Rebound masih mungkin jika volume mendukung.';
+      } else if (nearest.ratio <= 0.618) {
+        return 'Harga sudah retrace cukup dalam ke ' + label + '. Area golden ratio ini krusial untuk menentukan arah selanjutnya.';
+      } else {
+        return 'Harga retrace sangat dalam ke ' + label + '. Skenario rebound melemah, risiko breakdown meningkat.';
+      }
+    } else if (isAbove) {
+      return 'Harga berada di atas ' + label + ' (' + level + '), masih dalam zona retracement sehat.';
+    } else {
+      return 'Harga sudah menembus ke bawah ' + label + ' (' + level + '), tekanan bearish meningkat.';
+    }
+  } else {
+    // downward_retracement
+    if (isNear) {
+      if (nearest.ratio <= 0.382) {
+        return 'Harga mendekati ' + label + ' dari bawah, area ini bisa menjadi resistance jika downtrend masih dominan.';
+      } else if (nearest.ratio <= 0.618) {
+        return 'Harga berada di area ' + label + ', level ini krusial sebagai resistance dinamis.';
+      } else {
+        return 'Harga sudah recover cukup tinggi ke ' + label + '. Jika tembus, potensi reversal meningkat.';
+      }
+    } else if (isAbove) {
+      return 'Harga di atas ' + label + ' (' + level + '), ada potensi recovery lebih lanjut.';
+    } else {
+      return 'Harga masih di bawah ' + label + ' (' + level + '), tekanan jual masih dominan.';
+    }
+  }
 }

@@ -198,6 +198,39 @@
         .ai-content .volume-grid span { display: block; font-size: 10px; color: #94a3b8; margin-bottom: 2px; }
         .ai-content .volume-grid b { display: block; color: #e5e7eb; font-size: 12px; }
         .ai-content .volume-note { margin-top: 10px; font-size: 11.5px; color: #cbd5e1; line-height: 1.5; padding: 8px 10px; border-radius: 8px; background: rgba(15, 23, 42, 0.25); }
+        /* ===== PREMIUM LAYOUT: FIBONACCI CARD ===== */
+        .ai-content .fibo-card {
+            border: 1px solid rgba(168, 85, 247, 0.22);
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin: 10px 0;
+            background: rgba(168, 85, 247, 0.04);
+            font-size: 12px;
+            line-height: 1.55;
+        }
+        .ai-content .fibo-card > strong:first-child { display: block; margin-bottom: 8px; color: #c4b5fd; font-size: 12.5px; }
+        .ai-content .fibo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .ai-content .fibo-grid > div {
+            border: 1px solid rgba(168, 85, 247, 0.14);
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: rgba(15, 23, 42, 0.3);
+        }
+        .ai-content .fibo-grid span { display: block; font-size: 10px; color: #a78bfa; margin-bottom: 2px; }
+        .ai-content .fibo-grid b { display: block; color: #e5e7eb; font-size: 12px; }
+        .ai-content .fibo-level { border-color: rgba(168, 85, 247, 0.1) !important; padding: 6px 10px !important; }
+        .ai-content .fibo-level strong, .ai-content .fibo-grid > div.fibo-level b { color: #c4b5fd; font-size: 11.5px; }
+        .ai-content .fibo-note { margin-top: 10px; font-size: 11.5px; color: #cbd5e1; line-height: 1.5; padding: 8px 10px; border-radius: 8px; background: rgba(15, 23, 42, 0.25); }
+        .ai-content .fibo-note strong { color: #c4b5fd; }
+        @media (max-width: 480px) {
+            .ai-content .fibo-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .ai-content .fibo-card { padding: 10px 10px; }
+        }
         /* ===== PREMIUM LAYOUT: SCENARIO PRICE GRID ===== */
         .ai-content .scenario-price-grid {
             display: grid;
@@ -1694,6 +1727,25 @@ async function fetchQuoteContext(ticker) {
                     lines.push('Price Change 1D: ' + (q.priceChange1D || 0) + '%');
                     lines.push('Volume Trend: ' + (q.volumeTrend || 'normal'));
                     lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup.'));
+                }
+
+                // Fibonacci Intelligence context (only if data available)
+                var fib = q.fibonacci;
+                if (fib && fib.swingHigh != null && fib.levels) {
+                    lines.push('');
+                    lines.push('[Auto-Cuan Fibonacci Intelligence]');
+                    lines.push('Swing High: ' + fib.swingHigh);
+                    lines.push('Swing Low: ' + fib.swingLow);
+                    lines.push('Trend Context: ' + fib.trend);
+                    lines.push('Lookback: ' + fib.lookbackCandles + ' candles');
+                    lines.push('Fib 23.6%: ' + fib.levels.fib236);
+                    lines.push('Fib 38.2%: ' + fib.levels.fib382);
+                    lines.push('Fib 50%: ' + fib.levels.fib500);
+                    lines.push('Fib 61.8%: ' + fib.levels.fib618);
+                    lines.push('Fib 78.6%: ' + fib.levels.fib786);
+                    if (fib.nearestLabel) lines.push('Nearest Fib: ' + fib.nearestLabel + ' (' + fib.nearestLevel + ')');
+                    if (fib.positionReading) lines.push('Reading: ' + fib.positionReading);
+                    if (fib.invalidationLevel) lines.push('Invalidation: ' + (fib.trend === 'upward_retracement' ? 'Breakdown di bawah ' : 'Breakout di atas ') + fib.invalidationLevel + ' melemahkan skenario saat ini.');
                 }
             } else {
                 lines.push('Data historis belum berhasil diambil.');
@@ -3525,7 +3577,7 @@ async function toggleYahooChart(ticker, chartId, btn) {
         '<div id="' + chartId + '_container" style="height:280px;width:100%"><div class="flex items-center justify-center h-full text-gray-600 text-xs">Memuat chart...</div></div>' +
         '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%"></div>' +
         '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
-        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span></div>';
+        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-violet-400/70">Fib</span></div>';
     bubble.after(panel);
     _activeChartPanel = panel;
 
@@ -3537,7 +3589,7 @@ async function toggleYahooChart(ticker, chartId, btn) {
             btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Lihat Chart ' + ticker;
             return;
         }
-        renderLightweightChart(chartId, data.candles, data.metrics || null);
+        await renderLightweightChart(chartId, data.candles, data.metrics || null);
         btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Tutup Chart';
     } catch (e) {
         document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart belum berhasil dimuat. Coba lagi nanti atau buka TradingView.</div>';
@@ -3553,7 +3605,7 @@ function closeYahooChart(chartId) {
     if (el) { el.remove(); _activeChartPanel = null; }
 }
 
-function renderLightweightChart(chartId, candles, metrics) {
+async function renderLightweightChart(chartId, candles, metrics) {
     var containerId = chartId + '_container';
     var container = document.getElementById(containerId);
     if (!container || !window.LightweightCharts) {
@@ -3605,6 +3657,40 @@ function renderLightweightChart(chartId, candles, metrics) {
     if (candles.length >= 50) buildMALine(closes, 50, '#eab308');
     if (candles.length >= 100) buildMALine(closes, 100, '#3b82f6');
     if (candles.length >= 200) buildMALine(closes, 200, '#a855f7');
+
+    // Fibonacci level overlay (from quote API)
+    try {
+        var fibTicker = chartId.replace('yahoo_chart_', '');
+        var fibResp = await fetch('/api/quote?ticker=' + encodeURIComponent(fibTicker)).then(function(r) { return r.json(); }).catch(function() { return null; });
+        var fibQuote = (fibResp && fibResp.fibonacci) ? fibResp.fibonacci : null;
+        if (fibQuote && fibQuote.levels && candles.length >= 10) {
+            var fibLevels = [
+                { val: fibQuote.levels.fib236, label: '23.6%', color: '#c4b5fd50' },
+                { val: fibQuote.levels.fib382, label: '38.2%', color: '#a78bfa60' },
+                { val: fibQuote.levels.fib500, label: '50%', color: '#8b5cf670' },
+                { val: fibQuote.levels.fib618, label: '61.8%', color: '#7c3aed70' },
+                { val: fibQuote.levels.fib786, label: '78.6%', color: '#6d28d950' }
+            ];
+            var firstTime = candles[0].time;
+            var lastTime = candles[candles.length - 1].time;
+            for (var fi = 0; fi < fibLevels.length; fi++) {
+                if (fibLevels[fi].val != null) {
+                    var fibSeries = chart.addLineSeries({
+                        color: fibLevels[fi].color,
+                        lineWidth: 1,
+                        lineStyle: 2,
+                        crosshairMarkerVisible: false,
+                        priceLineVisible: false,
+                        lastValueVisible: false
+                    });
+                    fibSeries.setData([
+                        { time: firstTime, value: fibLevels[fi].val },
+                        { time: lastTime, value: fibLevels[fi].val }
+                    ]);
+                }
+            }
+        }
+    } catch (fibErr) { /* Fibonacci overlay is optional — fail silently */ }
 
     chart.timeScale().fitContent();
     if (typeof ResizeObserver !== 'undefined') {
