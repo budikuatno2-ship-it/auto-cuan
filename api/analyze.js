@@ -185,7 +185,7 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'gemini-fallback' });
         }
       }
-      return res.status(200).json({ html: '<p class="text-sm text-red-400">AI tidak tersedia saat ini.</p>', provider: 'none' });
+      return res.status(200).json({ html: '<p class="text-sm text-red-400">AI tidak tersedia saat ini. Coba beberapa saat lagi.</p>', provider: 'none' });
     }
 
     // Ticker mode (from ticker input, not chat)
@@ -209,7 +209,7 @@ module.exports = async function handler(req, res) {
 
   } catch (err) {
     console.error('analyze error:', err);
-    return res.status(200).json({ html: '<p class="text-sm text-red-400">Terjadi kesalahan. Coba lagi.</p>' });
+    return res.status(200).json({ html: '<p class="text-sm text-red-400">Terjadi kesalahan. Coba kirim ulang beberapa saat lagi.</p>' });
   }
 };
 
