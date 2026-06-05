@@ -231,12 +231,19 @@
             .ai-content .fibo-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
             .ai-content .fibo-card { padding: 10px 10px; }
         }
-        /* ===== CHART FIBONACCI STRIP (below chart) ===== */
+        /* ===== CHART FIBONACCI STRIP (below chart — compact fallback) ===== */
         .chart-fib-strip {
-            padding: 8px 12px;
-            border-top: 1px solid rgba(245, 158, 11, 0.2);
-            background: rgba(15, 12, 5, 0.4);
-            font-size: 11px;
+            padding: 6px 12px;
+            border-top: 1px solid rgba(245, 158, 11, 0.12);
+            background: rgba(15, 12, 5, 0.25);
+            font-size: 10px;
+        }
+        .chart-fib-strip-compact {
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .chart-fib-strip-compact:hover {
+            opacity: 1;
         }
         .chart-fib-header {
             display: flex;
@@ -1756,16 +1763,21 @@ async function fetchQuoteContext(ticker) {
                 if (q.volumeAvg3 != null && q.volumeAvg7 != null && !q.isIndex) {
                     lines.push('');
                     lines.push('[Auto-Cuan Volume Intelligence]');
-                    lines.push('Volume Terakhir: ' + (q.volume || 0));
-                    lines.push('Rata-rata 3 Hari: ' + q.volumeAvg3);
-                    lines.push('Rata-rata 7 Hari: ' + q.volumeAvg7);
-                    lines.push('Rata-rata 20 Hari: ' + (q.volumeAvg20 || 0));
+                    lines.push('Volume Terakhir: ' + formatIndonesianVolume(q.volume || 0));
+                    lines.push('Rata-rata 3 Hari: ' + formatCompactVolume(q.volumeAvg3));
+                    lines.push('Rata-rata 7 Hari: ' + formatCompactVolume(q.volumeAvg7));
+                    lines.push('Rata-rata 20 Hari: ' + formatCompactVolume(q.volumeAvg20 || 0));
                     lines.push('Volume vs Avg 3D: ' + (q.volumeVsAvg3 || 0) + 'x');
                     lines.push('Volume vs Avg 7D: ' + (q.volumeVsAvg7 || 0) + 'x');
                     lines.push('Volume vs Avg 20D: ' + (q.volumeVsAvg20 || 0) + 'x');
                     lines.push('Price Change 1D: ' + (q.priceChange1D || 0) + '%');
                     lines.push('Volume Trend: ' + (q.volumeTrend || 'normal'));
                     lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup.'));
+                    // Estimated transaction value (optional)
+                    if (q.last && q.volume && q.volume > 0) {
+                        var estTxnValue = q.last * q.volume;
+                        lines.push('Estimasi Nilai Transaksi: ' + formatIndonesianRupiah(estTxnValue));
+                    }
                 }
 
                 // Fibonacci Intelligence context (only if data available)
@@ -3542,6 +3554,31 @@ function sanitizeAIHtml(html) {
     output = output.replace(/([a-zA-Z\u00C0-\u024F])(Integrasi:)/g, '$1<br>$2');
     // Fix concatenated scenario labels (e.g. "...target.Skenario Netral:")
     output = output.replace(/([.!?])(\s*)(Skenario [A-Z])/g, '$1$2<br>$3');
+    // Fix stuck TP1/TP2 merged (e.g. "TP1: 5584TP2:" or "5584TP2:")
+    output = output.replace(/(\d[,.\d]*)(TP\d)/g, '$1<br>$2');
+    // Fix stuck R1/R2 and S1/S2 merged (e.g. "R1: 5584R2:" or "S1: 5284S2:")
+    output = output.replace(/(\d[,.\d]*)(R\d:)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(S\d:)/g, '$1<br>$2');
+    // Fix stuck MA values merged (e.g. "MA20: 5968.75MA50:")
+    output = output.replace(/(\d[,.\d]*)(MA\d{2,3}:)/g, '$1<br>$2');
+    // Fix merged Avg lines (e.g. "416,57 jutaAvg 7D:")
+    output = output.replace(/(juta|miliar|ribu|lembar)(Avg\s)/gi, '$1<br>$2');
+    output = output.replace(/(juta|miliar|ribu|lembar)(Terakhir:)/gi, '$1<br>$2');
+    output = output.replace(/(juta|miliar|ribu|lembar)(Rata-rata)/gi, '$1<br>$2');
+    // Fix stuck Swing/Nearest/Trend labels
+    output = output.replace(/(\d[,.\d]*)(Swing [HL])/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(Nearest)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(Trend:)/g, '$1<br>$2');
+    // Fix stuck Entry/Stop Loss/Take Profit labels
+    output = output.replace(/([a-zA-Z\u00C0-\u024F])(Entry:)/g, '$1<br>$2');
+    output = output.replace(/([a-zA-Z\u00C0-\u024F])(Stop Loss:)/g, '$1<br>$2');
+    output = output.replace(/([a-zA-Z\u00C0-\u024F])(Take Profit:)/g, '$1<br>$2');
+    output = output.replace(/([a-zA-Z\u00C0-\u024F])(Catatan:)/g, '$1<br>$2');
+    // Fix stuck Resistance/Support label after number
+    output = output.replace(/(\d[,.\d]*)(Resistance)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(Support)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(Breakout)/g, '$1<br>$2');
+    output = output.replace(/(\d[,.\d]*)(Breakdown)/g, '$1<br>$2');
     // Fix stuck Open/High/Low after numbers
     output = output.replace(/(\d[,.\d]*)(Open:)/g, '$1<br>$2');
     output = output.replace(/(\d[,.\d]*)(High:)/g, '$1<br>$2');
@@ -3628,7 +3665,7 @@ async function toggleYahooChart(ticker, chartId, btn) {
             btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Lihat Chart ' + ticker;
             return;
         }
-        await renderLightweightChart(chartId, data.candles, data.metrics || null);
+        await renderLightweightChart(chartId, data.candles, data.metrics || null, ticker);
         btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Tutup Chart';
     } catch (e) {
         document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart belum berhasil dimuat. Coba lagi nanti atau buka TradingView.</div>';
@@ -3644,7 +3681,7 @@ function closeYahooChart(chartId) {
     if (el) { el.remove(); _activeChartPanel = null; }
 }
 
-async function renderLightweightChart(chartId, candles, metrics) {
+async function renderLightweightChart(chartId, candles, metrics, ticker) {
     var containerId = chartId + '_container';
     var container = document.getElementById(containerId);
     if (!container || !window.LightweightCharts) {
@@ -3697,39 +3734,46 @@ async function renderLightweightChart(chartId, candles, metrics) {
     if (candles.length >= 100) buildMALine(closes, 100, '#3b82f6');
     if (candles.length >= 200) buildMALine(closes, 200, '#a855f7');
 
-    // Fibonacci level overlay (from quote API)
+    // Fibonacci level overlay (from quote API) — uses createPriceLine for direct chart visibility
     var fibQuote = null;
     try {
-        var fibTicker = chartId.replace('yahoo_chart_', '');
+        var fibTicker = ticker || chartId.replace('ychart_', '').replace(/^\d+$/, '');
+        if (fibTicker) {
         var fibResp = await fetch('/api/quote?ticker=' + encodeURIComponent(fibTicker)).then(function(r) { return r.json(); }).catch(function() { return null; });
         fibQuote = (fibResp && fibResp.fibonacci) ? fibResp.fibonacci : null;
         if (fibQuote && fibQuote.levels && candles.length >= 10) {
-            var fibLevels = [
-                { val: fibQuote.levels.fib236, label: '23.6%', color: '#fbbf2460' },
-                { val: fibQuote.levels.fib382, label: '38.2%', color: '#f59e0b90' },
-                { val: fibQuote.levels.fib500, label: '50%', color: '#f59e0ba0' },
-                { val: fibQuote.levels.fib618, label: '61.8%', color: '#d97706a0' },
-                { val: fibQuote.levels.fib786, label: '78.6%', color: '#b4560080' }
+            // Use createPriceLine on candlestick series for reliable horizontal Fib lines
+            var fibPriceLines = [
+                { val: fibQuote.levels.fib382, label: 'Fib 38.2', color: '#f59e0b' },
+                { val: fibQuote.levels.fib500, label: 'Fib 50', color: '#fbbf24' },
+                { val: fibQuote.levels.fib618, label: 'Fib 61.8', color: '#d97706' },
+                { val: fibQuote.levels.fib786, label: 'Fib 78.6', color: '#b45309' }
             ];
-            var firstTime = candles[0].time;
-            var lastTime = candles[candles.length - 1].time;
-            for (var fi = 0; fi < fibLevels.length; fi++) {
-                if (fibLevels[fi].val != null) {
-                    var fibSeries = chart.addLineSeries({
-                        color: fibLevels[fi].color,
-                        lineWidth: 1.5,
+            // Get price range from candles to skip lines far outside visible area
+            var priceMin = Infinity, priceMax = -Infinity;
+            for (var pi = 0; pi < candles.length; pi++) {
+                if (candles[pi].low < priceMin) priceMin = candles[pi].low;
+                if (candles[pi].high > priceMax) priceMax = candles[pi].high;
+            }
+            var priceRange = priceMax - priceMin;
+            var visibleMin = priceMin - priceRange * 0.15;
+            var visibleMax = priceMax + priceRange * 0.15;
+
+            for (var fi = 0; fi < fibPriceLines.length; fi++) {
+                var fpl = fibPriceLines[fi];
+                if (fpl.val != null && fpl.val >= visibleMin && fpl.val <= visibleMax) {
+                    candleSeries.createPriceLine({
+                        price: fpl.val,
+                        color: fpl.color,
+                        lineWidth: 1,
                         lineStyle: 2,
-                        crosshairMarkerVisible: false,
-                        priceLineVisible: false,
-                        lastValueVisible: false
+                        axisLabelVisible: true,
+                        title: fpl.label
                     });
-                    fibSeries.setData([
-                        { time: firstTime, value: fibLevels[fi].val },
-                        { time: lastTime, value: fibLevels[fi].val }
-                    ]);
                 }
             }
         }
+        } // end if (fibTicker)
     } catch (fibErr) { /* Fibonacci overlay is optional — fail silently */ }
 
     chart.timeScale().fitContent();
@@ -3798,28 +3842,27 @@ async function renderLightweightChart(chartId, candles, metrics) {
         metricsEl.innerHTML = html;
     }
 
-    // Fibonacci levels strip (visible fallback below chart)
+    // Fibonacci levels strip (compact fallback below chart — secondary to in-chart price lines)
     if (fibQuote && fibQuote.levels) {
         var fibStripEl = document.getElementById(chartId + '_fib_strip');
         if (!fibStripEl) {
             fibStripEl = document.createElement('div');
             fibStripEl.id = chartId + '_fib_strip';
-            fibStripEl.className = 'chart-fib-strip';
+            fibStripEl.className = 'chart-fib-strip chart-fib-strip-compact';
             var metricsParent = document.getElementById(chartId + '_metrics');
             if (metricsParent && metricsParent.parentNode) {
                 metricsParent.parentNode.insertBefore(fibStripEl, metricsParent.nextSibling);
             }
         }
         if (fibStripEl) {
-            var fHtml = '<div class="chart-fib-header"><span class="text-amber-400">Fib Levels</span>';
-            if (fibQuote.nearestLabel) fHtml += '<span class="text-gray-400">Nearest: <b class="text-amber-300">' + fibQuote.nearestLabel + '</b></span>';
+            var fHtml = '<div class="chart-fib-header"><span class="text-amber-400/70 text-[9px]">Fib Levels (lihat chart)</span>';
+            if (fibQuote.nearestLabel) fHtml += '<span class="text-gray-500 text-[9px]">Nearest: <b class="text-amber-400/80">' + fibQuote.nearestLabel + '</b></span>';
             fHtml += '</div><div class="chart-fib-grid">';
             if (fibQuote.levels.fib382 != null) fHtml += '<div class="chart-fib-item"><span>38.2%</span><b>' + fibQuote.levels.fib382 + '</b></div>';
             if (fibQuote.levels.fib500 != null) fHtml += '<div class="chart-fib-item"><span>50%</span><b>' + fibQuote.levels.fib500 + '</b></div>';
             if (fibQuote.levels.fib618 != null) fHtml += '<div class="chart-fib-item"><span>61.8%</span><b>' + fibQuote.levels.fib618 + '</b></div>';
             if (fibQuote.levels.fib786 != null) fHtml += '<div class="chart-fib-item"><span>78.6%</span><b>' + fibQuote.levels.fib786 + '</b></div>';
             fHtml += '</div>';
-            if (fibQuote.positionReading) fHtml += '<div class="chart-fib-note">' + fibQuote.positionReading + '</div>';
             fibStripEl.innerHTML = fHtml;
         }
     }
@@ -3835,6 +3878,33 @@ function formatVol(v) {
     if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
     if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
     return String(v);
+}
+
+// Indonesian volume formatter (lembar, not Rupiah)
+function formatIndonesianVolume(v) {
+    if (!v || v === 0) return '0 lembar';
+    if (v >= 1000000000) return (v / 1000000000).toFixed(2).replace('.', ',') + ' miliar lembar';
+    if (v >= 1000000) return (v / 1000000).toFixed(2).replace('.', ',') + ' juta lembar';
+    if (v >= 1000) return (v / 1000).toFixed(1).replace('.', ',') + ' ribu lembar';
+    return String(v) + ' lembar';
+}
+
+// Compact Indonesian volume (shorter, for context lines)
+function formatCompactVolume(v) {
+    if (!v || v === 0) return '0';
+    if (v >= 1000000000) return (v / 1000000000).toFixed(2).replace('.', ',') + ' miliar';
+    if (v >= 1000000) return (v / 1000000).toFixed(2).replace('.', ',') + ' juta';
+    if (v >= 1000) return (v / 1000).toFixed(1).replace('.', ',') + ' ribu';
+    return String(v);
+}
+
+// Format Rupiah (for estimated transaction value)
+function formatIndonesianRupiah(v) {
+    if (!v || v === 0) return 'Rp0';
+    if (v >= 1000000000000) return 'Rp' + (v / 1000000000000).toFixed(2).replace('.', ',') + ' triliun';
+    if (v >= 1000000000) return 'Rp' + (v / 1000000000).toFixed(2).replace('.', ',') + ' miliar';
+    if (v >= 1000000) return 'Rp' + (v / 1000000).toFixed(1).replace('.', ',') + ' juta';
+    return 'Rp' + Math.round(v).toLocaleString('id-ID');
 }
 
 function downloadChartPng(chartId, ticker) {
