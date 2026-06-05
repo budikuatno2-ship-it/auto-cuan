@@ -372,6 +372,12 @@
 <body class="min-h-screen text-gray-100">
 <div id="toastContainer"></div>
 
+<!-- ===== INITIAL LOADING INDICATOR (visible before JS init completes) ===== -->
+<div id="initialLoader" class="min-h-screen w-full flex flex-col items-center justify-center" style="background-color:#0b0e14">
+    <div class="spinner" style="width:32px;height:32px;border:3px solid #242d3d;border-top-color:#10b981;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+    <p style="margin-top:16px;font-size:13px;color:#6b7280;font-family:Inter,-apple-system,sans-serif">Memuat Auto-Cuan...</p>
+</div>
+
 
 <!-- ===== BLOCKED SCREEN ===== -->
 <div id="blockedScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
@@ -730,6 +736,7 @@ function showBlockedScreen() {
     document.getElementById('blockedScreen').classList.remove('hidden');
     document.getElementById('dashboardScreen').classList.add('hidden');
     document.getElementById('maintenanceScreen').classList.add('hidden');
+    var il = document.getElementById('initialLoader'); if (il) il.remove();
     updateBlockedCountdown();
 }
 var blockedInterval = null;
@@ -865,6 +872,7 @@ async function enterReviewMode() {
         if (msgEl && maintenanceConfig.message) msgEl.textContent = maintenanceConfig.message;
         document.getElementById('maintenanceScreen').classList.remove('hidden');
         document.getElementById('dashboardScreen').classList.add('hidden');
+        var il = document.getElementById('initialLoader'); if (il) il.remove();
         return;
     }
     document.getElementById('maintenanceScreen').classList.add('hidden');
@@ -879,6 +887,8 @@ async function enterReviewMode() {
         setTimeout(function() { showOnboardingGuide(); }, 600);
     }
 })();
+// Safety: remove loader if init takes too long (network timeout)
+setTimeout(function() { var il = document.getElementById('initialLoader'); if (il) il.remove(); }, 5000);
 
 // ===== MODAL FUNCTIONS =====
 function openLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); }
@@ -972,6 +982,7 @@ function showDashboard() {
     document.getElementById('blockedScreen').classList.add('hidden');
     document.getElementById('maintenanceScreen').classList.add('hidden');
     document.getElementById('dashboardScreen').classList.remove('hidden');
+    var il = document.getElementById('initialLoader'); if (il) il.remove();
     var isGuest = (username === 'guest'); var isAdm = isAdmin();
     // Header
     var headerUserLabel = document.getElementById('headerUserLabel');
@@ -3554,8 +3565,10 @@ function sanitizeAIHtml(html) {
     output = output.replace(/([a-zA-Z\u00C0-\u024F])(Integrasi:)/g, '$1<br>$2');
     // Fix concatenated scenario labels (e.g. "...target.Skenario Netral:")
     output = output.replace(/([.!?])(\s*)(Skenario [A-Z])/g, '$1$2<br>$3');
-    // Fix stuck TP1/TP2 merged (e.g. "TP1: 5584TP2:" or "5584TP2:")
+    // Fix stuck TP1/TP2 merged (e.g. "TP1: 5584TP2:" or "5584TP2:" or "52TP2")
     output = output.replace(/(\d[,.\d]*)(TP\d)/g, '$1<br>$2');
+    // Also handle TP without colon after closing tag (e.g. "</b>TP2" without colon)
+    output = output.replace(/(<\/(?:b|strong|span)>)\s*(TP\d)/g, '$1<br>$2');
     // Fix stuck R1/R2 and S1/S2 merged (e.g. "R1: 5584R2:" or "S1: 5284S2:")
     output = output.replace(/(\d[,.\d]*)(R\d:)/g, '$1<br>$2');
     output = output.replace(/(\d[,.\d]*)(S\d:)/g, '$1<br>$2');
@@ -3608,7 +3621,7 @@ function normalizeTechnicalLabels(html) {
         'MA20:', 'MA50:', 'MA100:', 'MA200:', 'Posisi:',
         'RSI14:', 'Volume:', 'Last:', 'High:', 'Low:', 'Open:',
         'R1:', 'R2:', 'R3:', 'S1:', 'S2:', 'S3:',
-        'TP1:', 'TP2:', 'TP3:', 'Entry:', 'Stop Loss:', 'Take Profit:',
+        'TP1:', 'TP2:', 'TP3:', 'TP1', 'TP2', 'Entry:', 'Stop Loss:', 'Take Profit:',
         'Catatan:', 'Resistance', 'Support', 'Breakout', 'Breakdown',
         'Avg 3D:', 'Avg 7D:', 'Avg 20D:', 'vs 7D:', 'vs 3D:',
         'Terakhir:', 'Rata-rata', 'Swing H', 'Swing L', 'Nearest', 'Trend:',
