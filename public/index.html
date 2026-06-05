@@ -54,8 +54,8 @@
         .copy-btn { opacity: 0.4; transition: all 0.15s ease-out; }
         .flex.gap-3:hover .copy-btn, .copy-btn:focus { opacity: 1; }
         @media (max-width: 640px) { .copy-btn { opacity: 0.7; } }
-        .ai-content { font-size: 13.5px; line-height: 1.55; }
-        .ai-content p { margin: 0 0 10px; font-size: inherit; white-space: pre-line; }
+        .ai-content { font-size: 13.5px; line-height: 1.55; word-break: break-word; overflow-wrap: break-word; }
+        .ai-content p { margin: 0 0 10px; font-size: inherit; white-space: pre-line; word-break: break-word; }
         .ai-content p:last-child { margin-bottom: 0; }
         .ai-content p:first-child { font-size: 14px; font-weight: 600; }
         .ai-content p:empty { display: none; }
@@ -178,6 +178,11 @@
             .ai-content .metric-grid,
             .ai-content .level-grid,
             .ai-content .trade-plan-grid { grid-template-columns: 1fr; }
+            .ai-content .decision-card { padding: 10px 12px; }
+            .ai-content .scenario-list > div,
+            .ai-content .metric-grid > div,
+            .ai-content .level-grid > div,
+            .ai-content .trade-plan-grid > div { padding: 8px 10px; }
         }
         @media (min-width: 640px) {
             .ai-content .decision-card { padding: 14px 16px; font-size: 13px; }
@@ -443,7 +448,7 @@
 <!-- FOOTER -->
 <footer class="border-t border-dark-700/50 mt-auto flex-shrink-0">
     <div class="max-w-3xl w-full mx-auto px-3 sm:px-4 py-3 text-center">
-        <p class="text-[10px] text-gray-600">Auto-Cuan &copy; 2024 &bull; Bukan merupakan saran investasi.</p>
+        <p class="text-[10px] text-gray-600">Auto-Cuan &copy; 2024–2026 &bull; Bukan merupakan saran investasi.</p>
     </div>
 </footer>
 
@@ -766,7 +771,7 @@ async function doLogin() {
             if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
             logLogin(data.username, false, false); closeLoginModal(); showDashboard();
         } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
-    } catch(e) { errorEl.textContent = 'Koneksi gagal. Coba lagi.'; errorEl.classList.remove('hidden'); }
+    } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { loginBtn.disabled = false; loginBtn.innerHTML = 'Masuk'; }
 }
 
@@ -793,7 +798,7 @@ async function doRegister() {
         var data = await response.json();
         if (data.success) { successEl.textContent = 'Akun berhasil dibuat! Silakan login.'; successEl.classList.remove('hidden'); setTimeout(function() { closeRegisterModal(); openLoginModal(); }, 1500); }
         else { errorEl.textContent = data.error || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); }
-    } catch(e) { errorEl.textContent = 'Koneksi gagal. Coba lagi.'; errorEl.classList.remove('hidden'); }
+    } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { registerBtn.disabled = false; registerBtn.innerHTML = 'Daftar'; }
 }
 
@@ -878,8 +883,8 @@ function copyBroksumExample() {
 var _onboardingStep = 0;
 var _onboardingSteps = [
     {
-        title: 'Selamat datang di Auto-Cuan \uD83D\uDC4B',
-        content: '<p class="text-sm text-gray-300">Auto-Cuan adalah asisten analisis saham dan IHSG yang membantu membaca arah market secara lebih rapi, berbasis data, dan mudah dipahami.</p><p class="text-sm text-gray-400 mt-2">Kamu bisa cek saham, IHSG/Composite, upload chart, atau kirim Broker Summary manual. Auto-Cuan akan menggabungkan teknikal, volume, pivot, support-resistance, Risk Guard, news/katalis jika tersedia, dan data broker yang kamu kirim.</p><p class="text-[11px] text-gray-500 mt-3">Analisis ini bersifat probabilistik, bukan kepastian atau rekomendasi beli/jual mutlak.</p><p class="text-xs text-gray-500 mt-2">Klik <strong class="text-emerald-400">Next</strong> untuk mulai.</p>',
+        title: 'Halo! Selamat datang \uD83D\uDC4B',
+        content: '<p class="text-sm text-gray-300">Auto-Cuan bantu kamu baca arah market dan saham — berbasis data teknikal, ringkas, dan mudah dipahami.</p><p class="text-sm text-gray-400 mt-2">Bisa cek saham, IHSG, upload chart, atau kirim Broker Summary manual. Semua digabungin jadi satu analisis yang utuh.</p><p class="text-[11px] text-gray-500 mt-3">Analisis bersifat probabilistik — bukan rekomendasi beli/jual.</p><p class="text-xs text-gray-500 mt-2">Klik <strong class="text-emerald-400">Next</strong> untuk lihat caranya.</p>',
         showClose: false
     },
     {
@@ -2202,7 +2207,7 @@ async function handleAnalysis(msg, intent) {
     // Final validation
     if (!isValidTicker(ticker)) {
         if (activeTicker) { ticker = activeTicker; }
-        else { addUserBubble(msg); addAIBubble('<p class="text-sm text-gray-300">Ticker tidak dikenali. Pastikan menggunakan kode saham yang terdaftar di BEI (contoh: BBCA, NAYZ, ANTM).</p>'); saveChatHistory(); return; }
+        else { addUserBubble(msg); addAIBubble('<p class="text-sm text-gray-300">Kode saham belum dikenali. Cek lagi kode emitennya ya — contoh: <strong class="text-gray-200">BBCA</strong>, <strong class="text-gray-200">NAYZ</strong>, <strong class="text-gray-200">ANTM</strong>.</p>'); saveChatHistory(); return; }
     }
 
     if (!canAnalyze()) { limitWarning.textContent = getAnalysisLimitMsg(); limitWarning.classList.remove('hidden'); logUsage(ticker, 'ai_limit_blocked'); return; }
@@ -2245,7 +2250,7 @@ async function handleTickerQuestion(msg, ticker) {
     if (!canChat()) { document.getElementById('limitWarning').textContent = getChatLimitMsg(); document.getElementById('limitWarning').classList.remove('hidden'); return; }
     // Validate ticker
     if (!isValidTicker(ticker) && activeTicker) { ticker = activeTicker; }
-    if (!isValidTicker(ticker)) { addUserBubble(msg); addAIBubble('<p class="text-sm text-gray-300">Ticker tidak dikenali. Pastikan menggunakan kode saham yang terdaftar di BEI.</p>'); saveChatHistory(); return; }
+    if (!isValidTicker(ticker)) { addUserBubble(msg); addAIBubble('<p class="text-sm text-gray-300">Kode saham belum dikenali. Cek lagi kode emitennya ya — contoh: <strong class="text-gray-200">BBCA</strong>, <strong class="text-gray-200">NAYZ</strong>, <strong class="text-gray-200">ANTM</strong>.</p>'); saveChatHistory(); return; }
     setActiveTicker(ticker);
     pendingAnalysisRequest = { type: 'stock-analysis', ticker: ticker, companyName: getCompanyName(ticker) };
     addUserBubble(msg);
@@ -2548,7 +2553,7 @@ function addUserBubble(text) {
             '<button onclick="toggleLongText(\'' + uid + '\')" id="' + uid + '_btn" class="text-[11px] text-emerald-400 mt-1 hover:underline">Lihat teks</button>' +
             '</div>';
     } else {
-        div.innerHTML = '<div class="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[88%] sm:max-w-[80%]"><p class="text-sm text-gray-100 whitespace-pre-wrap">' + escapeHtml(text) + '</p></div>';
+        div.innerHTML = '<div class="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[88%] sm:max-w-[80%]"><p class="text-sm text-gray-100 whitespace-pre-wrap break-words">' + escapeHtml(text) + '</p></div>';
     }
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
@@ -3157,7 +3162,7 @@ async function doResetPassword() {
         var data = await response.json();
         if (data.success) { showToast('Password user berhasil direset.', 'success'); closeResetPasswordModal(); }
         else { errorEl.textContent = data.error || 'Gagal mereset password.'; errorEl.classList.remove('hidden'); }
-    } catch(e) { errorEl.textContent = 'Koneksi gagal.'; errorEl.classList.remove('hidden'); }
+    } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
 }
 
 // ===== SELF-SERVICE RESET PASSWORD =====
@@ -3176,7 +3181,7 @@ async function doSelfResetPassword() {
         var data = await response.json();
         if (data.success) { successEl.textContent = 'Password berhasil direset. Silakan masuk.'; successEl.classList.remove('hidden'); setTimeout(function() { closeSelfResetModal(); }, 2000); }
         else { errorEl.textContent = data.error || 'Gagal mereset password.'; errorEl.classList.remove('hidden'); }
-    } catch(e) { errorEl.textContent = 'Koneksi gagal.'; errorEl.classList.remove('hidden'); }
+    } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
 }
 
 
