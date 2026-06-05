@@ -1906,8 +1906,8 @@ function normalizeIHSGAlias(message) {
     for (var i = 0; i < ihsgPatterns.length; i++) {
         if (ihsgPatterns[i].test(lower)) return 'IHSG';
     }
-    // Check if message is just "composite" alone
-    if (/^\s*composite\s*$/i.test(message)) return 'IHSG';
+    // Check if message contains "composite" as standalone word
+    if (/\bcomposite\b/i.test(message)) return 'IHSG';
     return null;
 }
 
