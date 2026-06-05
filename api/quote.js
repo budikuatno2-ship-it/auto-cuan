@@ -174,6 +174,22 @@ async function fetchYahooQuote(ticker) {
   var volumeAvg20 = calcMA(volumeArr, 20);
   var volumeVsAvg20 = (volumeAvg20 && volumeAvg20 > 0) ? Math.round((latest.volume / volumeAvg20) * 100) / 100 : null;
 
+  // === VOLUME INTELLIGENCE (3D / 7D) ===
+  var volumeAvg3 = calcMA(volumeArr, 3);
+  var volumeAvg7 = calcMA(volumeArr, 7);
+  var volumeVsAvg3 = (volumeAvg3 && volumeAvg3 > 0) ? Math.round((latest.volume / volumeAvg3) * 100) / 100 : null;
+  var volumeVsAvg7 = (volumeAvg7 && volumeAvg7 > 0) ? Math.round((latest.volume / volumeAvg7) * 100) / 100 : null;
+
+  // Previous close and price change
+  var prevClose = candles.length >= 2 ? candles[candles.length - 2].close : null;
+  var priceChange1D = (prevClose != null && prevClose > 0) ? Math.round(((latest.close - prevClose) / prevClose) * 10000) / 100 : null;
+
+  // Volume trend classification
+  var volumeTrend = classifyVolumeTrend(volumeArr);
+
+  // Price-volume interpretation
+  var priceVolumeReading = interpretPriceVolume(priceChange1D, volumeVsAvg7, latest.close, prevClose);
+
   var lastPrice = latest.close;
   var priceVsMA = [];
   if (ma20 !== null) priceVsMA.push((lastPrice >= ma20 ? 'above' : 'below') + ' MA20');
@@ -199,6 +215,14 @@ async function fetchYahooQuote(ticker) {
     rsi14: rsi14,
     volumeAvg20: volumeAvg20 ? Math.round(volumeAvg20) : null,
     volumeVsAvg20: volumeVsAvg20,
+    volumeAvg3: volumeAvg3 ? Math.round(volumeAvg3) : null,
+    volumeAvg7: volumeAvg7 ? Math.round(volumeAvg7) : null,
+    volumeVsAvg3: volumeVsAvg3,
+    volumeVsAvg7: volumeVsAvg7,
+    prevClose: prevClose,
+    priceChange1D: priceChange1D,
+    volumeTrend: volumeTrend,
+    priceVolumeReading: priceVolumeReading,
     priceVsMA: priceVsMA.join(', '),
     totalCandles: candles.length,
     note: 'Data Historis T-1'
@@ -2082,4 +2106,60 @@ function normalizeBoardSafe(board) {
 
   // UNKNOWN or anything else — treat as unknown, do not falsely assign
   return { level: 'unknown', label: 'Board: ' + b + ' (tidak dikenali)' };
+}
+
+
+// ===== VOLUME INTELLIGENCE HELPERS =====
+
+/**
+ * Classify volume trend from recent 7 days of volume data.
+ * Returns: 'spike', 'rising', 'falling', 'drying_up', 'normal'
+ */
+function classifyVolumeTrend(volumeArr) {
+  if (!volumeArr || volumeArr.length < 7) return 'normal';
+  var recent7 = volumeArr.slice(-7);
+  var recent3 = volumeArr.slice(-3);
+  var avg7 = recent7.reduce(function(s, v) { return s + v; }, 0) / 7;
+  var avg3 = recent3.reduce(function(s, v) { return s + v; }, 0) / 3;
+  var latest = volumeArr[volumeArr.length - 1];
+
+  if (avg7 <= 0) return 'normal';
+
+  var latestRatio = latest / avg7;
+  var recentRatio = avg3 / avg7;
+
+  // Spike: latest volume > 2x avg7
+  if (latestRatio > 2.0) return 'spike';
+  // Rising: 3-day avg notably above 7-day avg
+  if (recentRatio > 1.3) return 'rising';
+  // Drying up: latest volume < 0.4x avg7
+  if (latestRatio < 0.4) return 'drying_up';
+  // Falling: 3-day avg notably below 7-day avg
+  if (recentRatio < 0.7) return 'falling';
+  return 'normal';
+}
+
+/**
+ * Interpret price-volume relationship.
+ * Returns a compact interpretation string in Indonesian.
+ */
+function interpretPriceVolume(priceChange1D, volumeVsAvg7, lastClose, prevClose) {
+  if (priceChange1D == null || volumeVsAvg7 == null) return null;
+
+  var priceUp = priceChange1D > 0.3;
+  var priceDown = priceChange1D < -0.3;
+  var sideways = !priceUp && !priceDown;
+  var volUp = volumeVsAvg7 > 1.2;
+  var volDown = volumeVsAvg7 < 0.8;
+
+  if (priceUp && volUp) return 'Minat beli menguat — kenaikan harga didukung volume di atas rata-rata.';
+  if (priceUp && volDown) return 'Kenaikan belum meyakinkan — volume tidak ikut naik.';
+  if (priceDown && volUp) return 'Tekanan jual masih kuat — penurunan harga disertai volume besar.';
+  if (priceDown && volDown) return 'Tekanan jual mulai mereda — volume ikut menurun, tapi belum otomatis bullish.';
+  if (sideways && volUp) return 'Ada aktivitas akumulasi/distribusi — harga stagnan tapi volume naik, tunggu arah breakout/breakdown.';
+  if (sideways && volDown) return 'Market sepi — harga dan volume sama-sama flat, sinyal lemah.';
+  // Default
+  if (priceUp) return 'Harga naik dengan volume normal.';
+  if (priceDown) return 'Harga turun dengan volume normal.';
+  return 'Harga dan volume relatif stabil.';
 }

@@ -172,17 +172,87 @@
             line-height: 1.55;
         }
         .ai-content .trade-plan-grid > div > strong:first-child { display: block; margin-bottom: 4px; color: #94a3b8; font-size: 11.5px; }
+        /* ===== PREMIUM LAYOUT: VOLUME CARD ===== */
+        .ai-content .volume-card {
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin: 8px 0 14px;
+            background: rgba(16, 185, 129, 0.04);
+            font-size: 12px;
+            line-height: 1.55;
+        }
+        .ai-content .volume-card > strong:first-child { display: block; margin-bottom: 8px; color: #6ee7b7; font-size: 12.5px; }
+        .ai-content .volume-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .ai-content .volume-grid > div {
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: rgba(15, 23, 42, 0.3);
+        }
+        .ai-content .volume-grid span { display: block; font-size: 10px; color: #94a3b8; margin-bottom: 2px; }
+        .ai-content .volume-grid b { display: block; color: #e5e7eb; font-size: 12px; }
+        .ai-content .volume-note { margin-top: 10px; font-size: 11.5px; color: #cbd5e1; line-height: 1.5; padding: 8px 10px; border-radius: 8px; background: rgba(15, 23, 42, 0.25); }
+        /* ===== PREMIUM LAYOUT: SCENARIO PRICE GRID ===== */
+        .ai-content .scenario-price-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin: 8px 0 14px;
+        }
+        .ai-content .case-card {
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .ai-content .case-card span { display: block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .ai-content .case-card b { display: block; font-size: 13px; color: #e5e7eb; margin-bottom: 4px; }
+        .ai-content .case-card p { margin: 0; font-size: 11px; color: #94a3b8; }
+        .ai-content .case-card.bear { border: 1px solid rgba(239, 68, 68, 0.25); background: rgba(239, 68, 68, 0.06); }
+        .ai-content .case-card.bear span { color: #fca5a5; }
+        .ai-content .case-card.base { border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(148, 163, 184, 0.06); }
+        .ai-content .case-card.base span { color: #94a3b8; }
+        .ai-content .case-card.bull { border: 1px solid rgba(16, 185, 129, 0.25); background: rgba(16, 185, 129, 0.06); }
+        .ai-content .case-card.bull span { color: #6ee7b7; }
+        /* ===== PREMIUM LAYOUT: ANALYTIC SUMMARY ===== */
+        .ai-content .analytic-summary {
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 14px;
+            padding: 12px 14px;
+            margin: 8px 0 14px;
+            background: rgba(15, 23, 42, 0.35);
+            font-size: 12px;
+            line-height: 1.55;
+        }
+        .ai-content .analytic-summary > strong:first-child { display: block; margin-bottom: 8px; color: #6ee7b7; font-size: 12.5px; }
+        .ai-content .summary-rows { display: grid; gap: 6px; }
+        .ai-content .summary-rows > div { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.08); }
+        .ai-content .summary-rows > div:last-child { border-bottom: none; }
+        .ai-content .summary-rows > div > span:first-child { color: #94a3b8; font-size: 11px; }
+        .ai-content .summary-rows > div > b { color: #e5e7eb; font-size: 12px; text-align: right; }
         /* ===== PREMIUM LAYOUT: MOBILE RESPONSIVE ===== */
         @media (max-width: 639px) {
             .ai-content .decision-grid,
             .ai-content .metric-grid,
             .ai-content .level-grid,
-            .ai-content .trade-plan-grid { grid-template-columns: 1fr; }
+            .ai-content .trade-plan-grid,
+            .ai-content .volume-grid { grid-template-columns: 1fr; }
+            .ai-content .scenario-price-grid { grid-template-columns: 1fr; }
             .ai-content .decision-card { padding: 10px 12px; }
             .ai-content .scenario-list > div,
             .ai-content .metric-grid > div,
             .ai-content .level-grid > div,
-            .ai-content .trade-plan-grid > div { padding: 8px 10px; }
+            .ai-content .trade-plan-grid > div,
+            .ai-content .volume-grid > div,
+            .ai-content .case-card { padding: 8px 10px; }
+            .ai-content .summary-rows > div { flex-direction: column; gap: 2px; }
+            .ai-content .summary-rows > div > b { text-align: left; }
         }
         @media (min-width: 640px) {
             .ai-content .decision-card { padding: 14px 16px; font-size: 13px; }
@@ -1584,6 +1654,14 @@ async function fetchQuoteContext(ticker) {
                 lines.push('Volume: ' + (q.volume || 0));
                 if (q.volumeAvg20 != null) lines.push('Avg Volume 20: ' + q.volumeAvg20);
                 if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg 20: ' + q.volumeVsAvg20 + 'x');
+                if (q.volumeAvg3 != null) lines.push('Avg Volume 3D: ' + q.volumeAvg3);
+                if (q.volumeAvg7 != null) lines.push('Avg Volume 7D: ' + q.volumeAvg7);
+                if (q.volumeVsAvg3 != null) lines.push('Volume vs Avg 3D: ' + q.volumeVsAvg3 + 'x');
+                if (q.volumeVsAvg7 != null) lines.push('Volume vs Avg 7D: ' + q.volumeVsAvg7 + 'x');
+                if (q.prevClose != null) lines.push('Prev Close: ' + q.prevClose);
+                if (q.priceChange1D != null) lines.push('Price Change 1D: ' + q.priceChange1D + '%');
+                if (q.volumeTrend) lines.push('Volume Trend: ' + q.volumeTrend);
+                if (q.priceVolumeReading) lines.push('Price-Volume Reading: ' + q.priceVolumeReading);
                 if (q.ma20 != null) lines.push('MA20: ' + q.ma20);
                 if (q.ma50 != null) lines.push('MA50: ' + q.ma50);
                 if (q.ma100 != null) lines.push('MA100: ' + q.ma100);
@@ -1600,6 +1678,22 @@ async function fetchQuoteContext(ticker) {
                     lines.push('Pivot Method: ' + q.pivot.pivotMethod);
                     lines.push('Pivot Source Date: ' + q.pivot.pivotSourceDate);
                     if (q.pivot.flatRange) lines.push('Note: Range T-1 flat/sempit, level pivot kurang informatif.');
+                }
+
+                // Volume Intelligence context (only for stocks with volume data)
+                if (q.volumeAvg3 != null && q.volumeAvg7 != null && !q.isIndex) {
+                    lines.push('');
+                    lines.push('[Auto-Cuan Volume Intelligence]');
+                    lines.push('Volume Terakhir: ' + (q.volume || 0));
+                    lines.push('Rata-rata 3 Hari: ' + q.volumeAvg3);
+                    lines.push('Rata-rata 7 Hari: ' + q.volumeAvg7);
+                    lines.push('Rata-rata 20 Hari: ' + (q.volumeAvg20 || 0));
+                    lines.push('Volume vs Avg 3D: ' + (q.volumeVsAvg3 || 0) + 'x');
+                    lines.push('Volume vs Avg 7D: ' + (q.volumeVsAvg7 || 0) + 'x');
+                    lines.push('Volume vs Avg 20D: ' + (q.volumeVsAvg20 || 0) + 'x');
+                    lines.push('Price Change 1D: ' + (q.priceChange1D || 0) + '%');
+                    lines.push('Volume Trend: ' + (q.volumeTrend || 'normal'));
+                    lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup.'));
                 }
             } else {
                 lines.push('Data historis belum berhasil diambil.');
