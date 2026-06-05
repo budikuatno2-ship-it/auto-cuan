@@ -808,7 +808,7 @@ function logout() {
 // ===== LOGGING =====
 async function logLogin(username, isGuest, isAdm) { try { await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'login', username: username, isGuest: isGuest, isAdmin: isAdm, userAgent: navigator.userAgent }) }); } catch (e) {} }
 async function logSearch(ticker, source) { try { var username = localStorage.getItem('autocuan_user') || 'guest'; await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'search', username: username, ticker: ticker, source: source }) }); } catch (e) {} }
-async function logAnalysisResult(ticker, mode, html) { try { var username = localStorage.getItem('autocuan_user') || 'guest'; var text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'analysis', username: username, ticker: ticker, mode: mode, resultSummary: text.slice(0, 500), fullResultHtml: html }) }); } catch (e) {} }
+async function logAnalysisResult(ticker, mode, html) { try { var username = localStorage.getItem('autocuan_user') || 'guest'; var text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'analysis', username: username, ticker: ticker, mode: mode, resultSummary: text.slice(0, 500), fullResultHtml: String(html || '').slice(0, 2000) }) }); } catch (e) {} }
 async function logUsage(ticker, usageAction) { try { var username = localStorage.getItem('autocuan_user') || 'guest'; await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'usage', username: username, ticker: ticker, usageAction: usageAction }) }); } catch (e) {} }
 
 // ===== DASHBOARD =====
@@ -1630,7 +1630,6 @@ async function fetchQuoteContext(ticker) {
                 // Store for News panel button (by ticker)
                 if (!window._stockNewsByTicker) window._stockNewsByTicker = {};
                 window._stockNewsByTicker[ticker] = newsData.items;
-                console.log('[Auto-Cuan] News stored for', ticker, ':', newsData.items.length, 'items');
             } else {
                 lines.push('');
                 lines.push('[Auto-Cuan News Summary]');

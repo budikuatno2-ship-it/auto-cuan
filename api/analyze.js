@@ -172,38 +172,15 @@ module.exports = async function handler(req, res) {
         prompt += '\n\n=== OVERRIDE IHSG/INDEKS — WAJIB DIIKUTI SEPENUHNYA ===\n\nTicker ini adalah IHSG (Indeks Harga Saham Gabungan). Ini adalah indeks market, bukan emiten/saham individual.\n\nATURAN KETAT:\n- JANGAN gunakan: saham ini, emiten, papan pencatatan, FCA, broker emiten, Entry saham, SL saham, TP saham\n- JANGAN tampilkan: Broker Summary Manual, Rencana Trading (Entry/SL/TP), board warning, FCA, low-price warning\n- WAJIB gunakan: IHSG, indeks, market, tekanan pasar, pelaku pasar, arus market\n\nDECISION CARD FORMAT — WAJIB:\n<div class="decision-card">\n<strong>Kesimpulan Cepat IHSG</strong>\n<div class="decision-grid">\n<div><span>Status Market</span><b>[Risk-Off / Wait Confirmation / Rebound Watch / Breakout Watch / Sideways Watch]</b></div>\n<div><span>Bias IHSG</span><b>[Bullish / Neutral / Bearish / Mixed]</b></div>\n<div><span>Confidence</span><b>[Low / Medium / High]</b></div>\n<div><span>Sikap</span><b>[Defensive / Wait confirmation / Pantau support-resistance / Selektif di saham kuat / Tunggu market stabil]</b></div>\n</div>\n<div class="key-level">Level kunci: Resistance [X] / Support [X]</div>\n</div>\n\nSEKSI WAJIB UNTUK IHSG:\n1. Decision Card (format di atas)\n2. Ringkasan Cepat — kondisi market + kenapa + apa yang ditunggu\n3. Setup Label — gunakan "Market Watch" / "Wait Confirmation" / "Rebound Watch" / "Breakout Watch"\n4. Data Teknikal T-1 — metric-grid format seperti biasa\n5. Area Penting — level-grid format seperti biasa\n6. Skenario Market — scenario-list format, label: "Skenario Bullish Market" / "Skenario Netral" / "Skenario Koreksi"\n7. Rencana Sikap Market (BUKAN Rencana Trading) — trade-plan-grid format:\n   <div class="trade-plan-grid">\n   <div><strong>Sikap Utama</strong><br>[defensive / wait / selektif]</div>\n   <div><strong>Level Konfirmasi</strong><br>[IHSG reclaim X, indikasi market membaik]</div>\n   <div><strong>Level Risiko</strong><br>[IHSG breakdown X, koreksi berlanjut]</div>\n   <div><strong>Implikasi ke Saham</strong><br>[lebih selektif / prioritaskan saham kuat / hindari entry agresif]</div>\n   </div>\n8. Risk Guard — hanya teknikal (RSI, volume, breakdown risk). JANGAN board/price risk.\n9. Invalidasi\n10. Kesimpulan Final IHSG — gunakan: "Status Market" / "Bias IHSG" / "Sikap" (bukan "Action")\n\nJANGAN TAMPILKAN untuk IHSG:\n- Broker Summary Manual (skip sepenuhnya)\n- Rencana Trading (Entry/SL/TP)\n- CTA Broker Summary\n- Papan pencatatan\n- FCA warning\n- Emiten wording\n- "Avoid Dulu" sebagai status (gunakan "Risk-Off" atau "Wait Confirmation")';
       }
 
-      // === TRY DEEPSEEK FIRST, GEMINI FALLBACK ===
-      // Fetch Gemini Search news if ticker is available (for stock analysis intents)
-      var newsFindings = '';
-      var detectedTickerForNews = (body.context && body.context.ticker) ? body.context.ticker : null;
-      if (!detectedTickerForNews) {
-        // Try to detect ticker from message for news search
-        var tickerMatch = chatMessage.match(/\b[A-Z]{4}\b/);
-        if (tickerMatch) detectedTickerForNews = tickerMatch[0];
-      }
-      // Run Gemini Search for stock analysis intents (not casual chat)
-      var shouldSearchNews = detectedTickerForNews && GEMINI_API_KEY && (
-        intent === 'ticker_price_basic' ||
-        intent === 'full_analysis_request' ||
-        intent === 'follow_up_question' ||
-        /\b(news|berita|katalis|rumor|kabar)\b/i.test(chatMessage)
-      );
-      if (shouldSearchNews) {
-        var searchResult = await geminiSearchNews(GEMINI_API_KEY, detectedTickerForNews);
-        if (searchResult) {
-          newsFindings = '\n\n[Auto-Cuan News Research - Gemini Search]\n' + searchResult + '\n[End News Research]\nGunakan temuan news di atas sebagai context tambahan. Label rumor jelas dengan "RUMOR/belum terkonfirmasi". Jangan tampilkan blok ini mentah ke user. Jangan suggest short-selling.';
-        }
-      }
-
       var html = null;
       if (CODECRAFTERS_API_KEY) {
-        html = await callDeepSeek(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, prompt, chatMessage + newsFindings, maxTokens);
+        html = await callDeepSeek(CODECRAFTERS_API_KEY, CODECRAFTERS_BASE_URL, CODECRAFTERS_MODEL, prompt, chatMessage, maxTokens);
         if (html) {
-          return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: newsFindings ? 'deepseek+gemini-search' : 'deepseek' });
+          return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'deepseek' });
         }
       }
       if (GEMINI_API_KEY) {
-        html = await callGemini(GEMINI_API_KEY, prompt, chatMessage + newsFindings, maxTokens);
+        html = await callGemini(GEMINI_API_KEY, prompt, chatMessage, maxTokens);
         if (html) {
           return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'gemini-fallback' });
         }
