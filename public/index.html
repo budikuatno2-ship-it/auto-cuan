@@ -1778,9 +1778,9 @@ async function fetchQuoteContext(ticker) {
                     lines.push('Rata-rata 3 Hari: ' + formatCompactVolume(q.volumeAvg3));
                     lines.push('Rata-rata 7 Hari: ' + formatCompactVolume(q.volumeAvg7));
                     lines.push('Rata-rata 20 Hari: ' + formatCompactVolume(q.volumeAvg20 || 0));
-                    lines.push('Volume vs Avg 3D: ' + (q.volumeVsAvg3 || 0) + 'x');
-                    lines.push('Volume vs Avg 7D: ' + (q.volumeVsAvg7 || 0) + 'x');
-                    lines.push('Volume vs Avg 20D: ' + (q.volumeVsAvg20 || 0) + 'x');
+                    lines.push('Volume vs Avg 3D: ' + String(q.volumeVsAvg3 || 0).replace('.', ',') + 'x');
+                    lines.push('Volume vs Avg 7D: ' + String(q.volumeVsAvg7 || 0).replace('.', ',') + 'x');
+                    lines.push('Volume vs Avg 20D: ' + String(q.volumeVsAvg20 || 0).replace('.', ',') + 'x');
                     lines.push('Price Change 1D: ' + (q.priceChange1D || 0) + '%');
                     lines.push('Volume Trend: ' + (q.volumeTrend || 'normal'));
                     lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup.'));
@@ -1798,7 +1798,7 @@ async function fetchQuoteContext(ticker) {
                     lines.push('[Auto-Cuan Fibonacci Intelligence]');
                     lines.push('Swing High: ' + fib.swingHigh);
                     lines.push('Swing Low: ' + fib.swingLow);
-                    lines.push('Trend Context: ' + fib.trend);
+                    lines.push('Trend Context: ' + humanizeFibTrend(fib.trend));
                     lines.push('Lookback: ' + fib.lookbackCandles + ' candles');
                     lines.push('Fib 23.6%: ' + fib.levels.fib236);
                     lines.push('Fib 38.2%: ' + fib.levels.fib382);
@@ -2858,6 +2858,8 @@ function addAIBubble(html, isStructured) {
     // Hide empty sections
     var contentDiv = div.querySelector('.ai-content');
     if (contentDiv) hideEmptySections(contentDiv);
+    // Post-render: normalize any remaining merged technical labels in DOM text nodes
+    if (contentDiv) normalizeRenderedTechnicalText(contentDiv);
     container.scrollTop = container.scrollHeight;
 }
 function addAIError(msg) { addAIBubble('<p class="text-sm text-red-400">' + escapeHtml(msg) + '</p>'); }
@@ -3654,6 +3656,42 @@ function normalizeTechnicalLabels(html) {
     return output;
 }
 
+// ===== POST-RENDER DOM TEXT NODE NORMALIZER =====
+// Universal safety net: walks rendered text nodes and splits merged technical labels.
+// Runs AFTER innerHTML is set, catches anything regex-based sanitizer missed.
+function normalizeRenderedTechnicalText(container) {
+    if (!container) return;
+    // Pattern: digit(s) immediately followed by a technical label
+    var labelPattern = /(\d)(R[1-3]:|S[1-3]:|TP[1-3]:|TP[1-3]\s|MA20:|MA50:|MA100:|MA200:|Posisi:|RSI14:|Volume:|Last:|High:|Low:|Open:)/g;
+    // Walk all text nodes
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+    var nodesToFix = [];
+    var node;
+    while (node = walker.nextNode()) {
+        if (node.textContent && labelPattern.test(node.textContent)) {
+            labelPattern.lastIndex = 0;
+            nodesToFix.push(node);
+        }
+        labelPattern.lastIndex = 0;
+    }
+    // Process: replace merged text node with split fragments
+    for (var i = 0; i < nodesToFix.length; i++) {
+        var tn = nodesToFix[i];
+        var parent = tn.parentNode;
+        if (!parent) continue;
+        var pTag = parent.tagName ? parent.tagName.toLowerCase() : '';
+        if (pTag === 'script' || pTag === 'style' || pTag === 'code' || pTag === 'pre') continue;
+        var original = tn.textContent;
+        // Insert newline (as <br>) before each label that follows a digit
+        var newHtml = original.replace(/(\d)(R[1-3]:|S[1-3]:|TP[1-3]:|TP[1-3]\s|MA20:|MA50:|MA100:|MA200:|Posisi:|RSI14:|Volume:|Last:|High:|Low:|Open:)/g, '$1<br>$2');
+        if (newHtml !== original) {
+            var span = document.createElement('span');
+            span.innerHTML = newHtml;
+            parent.replaceChild(span, tn);
+        }
+    }
+}
+
 </script>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <script>
@@ -3952,13 +3990,13 @@ function formatIndonesianVolume(v) {
     return String(v) + ' lembar';
 }
 
-// Compact Indonesian volume (shorter, for context lines)
+// Compact Indonesian volume (shorter, for context lines — always includes "lembar")
 function formatCompactVolume(v) {
-    if (!v || v === 0) return '0';
-    if (v >= 1000000000) return (v / 1000000000).toFixed(2).replace('.', ',') + ' miliar';
-    if (v >= 1000000) return (v / 1000000).toFixed(2).replace('.', ',') + ' juta';
-    if (v >= 1000) return (v / 1000).toFixed(1).replace('.', ',') + ' ribu';
-    return String(v);
+    if (!v || v === 0) return '0 lembar';
+    if (v >= 1000000000) return (v / 1000000000).toFixed(2).replace('.', ',') + ' miliar lembar';
+    if (v >= 1000000) return (v / 1000000).toFixed(2).replace('.', ',') + ' juta lembar';
+    if (v >= 1000) return (v / 1000).toFixed(1).replace('.', ',') + ' ribu lembar';
+    return String(v) + ' lembar';
 }
 
 // Format Rupiah (for estimated transaction value)
@@ -3968,6 +4006,18 @@ function formatIndonesianRupiah(v) {
     if (v >= 1000000000) return 'Rp' + (v / 1000000000).toFixed(2).replace('.', ',') + ' miliar';
     if (v >= 1000000) return 'Rp' + (v / 1000000).toFixed(1).replace('.', ',') + ' juta';
     return 'Rp' + Math.round(v).toLocaleString('id-ID');
+}
+
+// Humanize Fibonacci trend enum to Indonesian label
+function humanizeFibTrend(trend) {
+    var map = {
+        'upward_retracement': 'Retracement naik',
+        'downward_retracement': 'Retracement turun',
+        'range_bound': 'Dalam rentang swing',
+        'above_high': 'Di atas swing high',
+        'below_low': 'Di bawah swing low'
+    };
+    return map[trend] || trend || 'Tidak tersedia';
 }
 
 function downloadChartPng(chartId, ticker) {
