@@ -3542,24 +3542,78 @@ function closeUsageReminder() {
 })();
 
 // ===== BUILD VERSION MARKER =====
-window.AUTO_CUAN_BUILD = 'phase-11o-universal-spacing-ihsg-outlook';
+window.AUTO_CUAN_BUILD = 'phase-11p-live-render-spacing-volume-ihsg-dedicated';
 
 // ===== IHSG OUTPUT SANITIZER (strip stock-specific sections from index responses) =====
 function sanitizeIHSGOutput(html) {
     if (!html) return html;
     var o = html;
-    // Remove Broker CTA paragraph
+    // Remove Broker CTA paragraph (all variants)
     o = o.replace(/<p[^>]*class="[^"]*text-gray-500[^"]*"[^>]*>[^<]*[Bb]roker [Ss]ummary[^<]*<\/p>/gi, '');
     o = o.replace(/<p[^>]*>[^<]*[Kk]irim [Bb]roker [Ss]ummary[^<]*<\/p>/gi, '');
-    // Remove "Kalau ada chart SMC, broker summary..." paragraph
     o = o.replace(/<p[^>]*>[^<]*chart SMC[^<]*broker summary[^<]*<\/p>/gi, '');
-    // Remove trade-plan-grid with Entry/SL/TP if it slipped through
-    o = o.replace(/<div[^>]*class="[^"]*trade-plan-grid[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>\s*<\/div>/gi, function(match) {
-        if (/Entry|Stop Loss|Take Profit|TP1|TP2/i.test(match)) return '';
-        return match; // Keep if it's the IHSG "Sikap" grid
+    o = o.replace(/<p[^>]*class="[^"]*text-gray-500[^"]*"[^>]*>[\s\S]*?<\/p>/gi, function(match) {
+        if (/[Bb]roker|chart SMC/i.test(match)) return '';
+        return match;
     });
-    // Remove stray TP/Entry/SL mentions in paragraphs
-    o = o.replace(/<p[^>]*>[^<]*<strong>Rencana Trading<\/strong>[^<]*<\/p>/gi, '');
+    // Remove trade-plan-grid completely for index (contains Entry/SL/TP)
+    o = o.replace(/<div[^>]*class="[^"]*trade-plan-grid[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>\s*<\/div>/gi, '');
+    // Remove any remaining trade-plan-grid (alternative nesting)
+    o = o.replace(/<div[^>]*class="[^"]*trade-plan-grid[^"]*"[^>]*>[\s\S]*?(<\/div>\s*){2,5}/gi, '');
+    // Remove Rencana Trading heading
+    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Rencana Trading<\/strong>[\s\S]*?<\/p>/gi, '');
+    // Remove Setup Label section
+    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Setup Label<\/strong>[\s\S]*?<\/p>/gi, '');
+    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Setup<\/strong>[\s\S]*?<\/p>/gi, '');
+    // Remove summary-rows that contain Setup/Entry/Stop Loss
+    o = o.replace(/<div[^>]*class="[^"]*summary-rows[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>/gi, function(match) {
+        if (/Entry|Stop Loss|Take Profit|Setup/i.test(match) && !/Status Market|Bias|Sikap|Konfirmasi|Risiko/i.test(match)) return '';
+        return match;
+    });
+    // Remove Entry paragraph
+    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Entry<\/strong>[\s\S]*?<\/p>/gi, '');
+    // Remove Stop Loss paragraph  
+    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Stop Loss<\/strong>[\s\S]*?<\/p>/gi, '');
+    // Remove TP/Take Profit paragraphs
+    o = o.replace(/<p[^>]*>[\s\S]*?<strong>(?:TP|Take Profit)<\/strong>[\s\S]*?<\/p>/gi, '');
+    // Remove standalone Entry/SL/TP lines inside divs (e.g. inside metric-grid)
+    o = o.replace(/<div[^>]*>[\s\S]*?<strong>(?:Entry|Stop Loss|Take Profit|TP)<\/strong>[\s\S]*?<\/div>/gi, function(match) {
+        // Only remove if it's clearly a stock-style entry/sl/tp block
+        if (/(?:entry|stop loss|take profit|TP1|TP2)/i.test(match) && !/(?:Level Konfirmasi|Level Risiko|Skenario|Momentum|Data Teknikal)/i.test(match)) return '';
+        return match;
+    });
+    // Remove "Broker Summary Manual" section
+    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Broker Summary Manual<\/strong>[\s\S]*?<\/p>/gi, '');
+    // Remove Auto-Cuan Score for IHSG
+    o = o.replace(/<p[^>]*>[\s\S]*?Auto-Cuan Score[\s\S]*?<\/p>/gi, '');
+    // Remove Skenario Harga with scenario-price-grid (stock-style)
+    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Skenario Harga<\/strong>[\s\S]*?<\/p>/gi, '');
+    o = o.replace(/<div[^>]*class="[^"]*scenario-price-grid[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>\s*<\/div>/gi, '');
+    // Remove Breakout/Breakdown section (stock-style)
+    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Breakout \/ Breakdown<\/strong>[\s\S]*?<\/p>/gi, '');
+    // === REWRITE stock status labels to market status ===
+    // Replace "Avoid Dulu" with "Risk-Off" in decision-card/summary-rows
+    o = o.replace(/>Avoid [Dd]ulu</g, '>Risk-Off<');
+    o = o.replace(/>Avoid dulu</g, '>Risk-Off<');
+    // Replace Status/Action labels with market-specific ones
+    o = o.replace(/<span>Status<\/span>/g, '<span>Status Market</span>');
+    o = o.replace(/<span>Action<\/span>/g, '<span>Sikap Market</span>');
+    // Replace "Kesimpulan Cepat" with "Kesimpulan Cepat IHSG" if not already
+    o = o.replace(/<strong>Kesimpulan Cepat<\/strong>/g, '<strong>Kesimpulan Cepat IHSG</strong>');
+    // Remove "saham ini" / "emiten" wording
+    o = o.replace(/saham ini/gi, 'indeks ini');
+    o = o.replace(/emiten/gi, 'market');
+    // Remove TP lines that remain inline
+    o = o.replace(/TP1:?\s*[^<]*<br>/gi, function(match) {
+        // Only remove if inside index context (check if match doesn't contain a real price discussion)
+        return '';
+    });
+    o = o.replace(/TP2:?\s*[^<]*<br>/gi, '');
+    // Remove stray "N/A" TP entries
+    o = o.replace(/TP[12]:?\s*N\/A\s*(<br>|$)/gi, '');
+    // Clean empty paragraphs left over
+    o = o.replace(/<p[^>]*>\s*<\/p>/gi, '');
+    o = o.replace(/<div[^>]*>\s*<\/div>/gi, '');
     return o;
 }
 
@@ -3602,9 +3656,26 @@ function reorderBrokerCTA(html, isIndex) {
 function normalizeFinalStockHtml(html) {
     if (!html) return html;
     var o = html;
-    // Universal split: any digit (optionally followed by closing tags) then a technical label
-    // Pattern: digit + optional </b></strong></span> + optional space + LABEL
-    // Labels now match WITH or WITHOUT colon (e.g. "MA50:" and "MA50" both split)
+    // === PHASE 1: Word boundary fixes (insert SPACE, not <br>) ===
+    // Patterns: belowMA20, aboveMA20, danRSI, danMA20, di bawahMA20, di atasMA20
+    o = o.replace(/(below)(MA\d{2,3})/gi, '$1 $2');
+    o = o.replace(/(above)(MA\d{2,3})/gi, '$1 $2');
+    o = o.replace(/(below)(RSI\d*)/gi, '$1 $2');
+    o = o.replace(/(above)(RSI\d*)/gi, '$1 $2');
+    o = o.replace(/(dan)(MA\d{2,3})/gi, '$1 $2');
+    o = o.replace(/(dan)(RSI\d*)/gi, '$1 $2');
+    o = o.replace(/(dan)(Volume)/gi, '$1 $2');
+    o = o.replace(/(dan)(Price)/gi, '$1 $2');
+    o = o.replace(/(bawah)(MA\d{2,3})/gi, '$1 $2');
+    o = o.replace(/(atas)(MA\d{2,3})/gi, '$1 $2');
+    o = o.replace(/(bawah)(RSI\d*)/gi, '$1 $2');
+    o = o.replace(/(atas)(RSI\d*)/gi, '$1 $2');
+    // === PHASE 2: N/A boundary fix ===
+    // "N/ATP2" or "N/A TP2" → "N/A<br>TP2"
+    o = o.replace(/(N\/A)\s*(TP\d:?)/gi, '$1<br>$2');
+    o = o.replace(/(N\/A)\s*(R[1-3]:?)/gi, '$1<br>$2');
+    o = o.replace(/(N\/A)\s*(S[1-3]:?)/gi, '$1<br>$2');
+    // === PHASE 3: Digit + technical label (with/without colon) ===
     var closeTags = '(?:<\\/(?:b|strong|span)>)*\\s*';
     var labels = [
         'MA20:?', 'MA50:?', 'MA100:?', 'MA200:?', 'Posisi:?',
@@ -3618,28 +3689,28 @@ function normalizeFinalStockHtml(html) {
         'Status:?', 'Bias:?', 'Confidence:?', 'Action:?', 'Pembacaan:?',
         'Breakout', 'Breakdown', 'Resistance', 'Support'
     ];
-    // Build combined pattern
     var labelGroup = labels.join('|');
     // Match: (digit)(optional closing tags + space)(label) — insert <br> before label
     var re = new RegExp('(\\d)(' + closeTags + ')(' + labelGroup + ')', 'g');
     o = o.replace(re, function(match, digit, middle, label) {
-        // Already has <br> in middle? skip
         if (middle && middle.indexOf('<br') > -1) return match;
-        // Trim trailing whitespace from middle before inserting <br>
         var cleanMiddle = (middle || '').replace(/\s+$/, '');
         return digit + cleanMiddle + '<br>' + label;
     });
     // Also catch: letter/word + closing tags/space + label (e.g. "avg</b>Last:" or "semua MA50:")
+    // But do NOT break if there's already a proper space between word and label (e.g. "below MA20")
     var re2 = new RegExp('([a-zA-Z])(' + closeTags + ')(' + labelGroup + ')', 'g');
     o = o.replace(re2, function(match, letter, middle, label) {
         if (middle && middle.indexOf('<br') > -1) return match;
-        // Don't break inside words like "Resistance" when label is "R1" etc
+        // Don't break inside words when label is R/S (e.g. lowercase before R1/S1 could be part of word)
         if (/^(R[1-3]:?|S[1-3]:?)$/.test(label) && /[a-z]/.test(letter)) return match;
-        // Don't break if letter is part of "MA" prefix collision (e.g. inside "IHSG")
+        // Don't break if there's already a space between letter and label (word boundary is fine)
+        if (/^\s+$/.test(middle)) return match;
         var cleanMiddle = (middle || '').replace(/\s+$/, '');
         return letter + cleanMiddle + '<br>' + label;
     });
-    // Catch Indonesian comma decimals followed by label without colon (e.g. "10,75Volume" or "0,74x avg20Last")
+    // === PHASE 4: Indonesian comma decimals + avg patterns ===
+    // Catch "10,75Volume" or "0,74x avg20Last"
     o = o.replace(/(\d+,\d+)(x?\s*)(avg\d*\s*)((?:Last|High|Low|Volume|Open|MA\d{2,3}|RSI\d*|R[1-3]|S[1-3]|TP[1-3]|Posisi):?)/g, function(match, num, xPart, avgPart, label) {
         if (match.indexOf('<br') > -1) return match;
         return num + xPart + avgPart + '<br>' + label;
@@ -3649,9 +3720,24 @@ function normalizeFinalStockHtml(html) {
         if (match.indexOf('<br') > -1) return match;
         return avg + '<br>' + label;
     });
-    // Fix ratio decimals: replace period with comma before 'x' in volume ratios (e.g. "5.41x" -> "5,41x")
+    // === PHASE 5: Volume "lembar" consistency ===
+    // Add "lembar" to volume lines that have juta/miliar but no lembar (not for ratio lines)
+    o = o.replace(/(<b>[\d.,]+\s*(?:juta|miliar))(\s*<\/b>)/gi, function(match, prefix, suffix) {
+        // Check if "lembar" already present
+        if (/lembar/i.test(match)) return match;
+        // Check if this is a ratio (contains "x")
+        if (/\dx/i.test(match)) return match;
+        return prefix + ' lembar' + suffix;
+    });
+    // Also handle plain text volume (not in <b> tags)
+    o = o.replace(/((?:Terakhir|Avg \d+D|Avg 20D)[^<]*?[\d.,]+\s*(?:juta|miliar))(?!\s*lembar)(\s*(?:<br|<\/|$))/gi, function(match, prefix, suffix) {
+        if (/lembar/i.test(match)) return match;
+        if (/\dx/i.test(match)) return match;
+        return prefix + ' lembar' + suffix;
+    });
+    // === PHASE 6: Fix ratio decimals ===
     o = o.replace(/(\d+)\.(\d+)(x\b)/g, '$1,$2$3');
-    // Cleanup double <br>
+    // === PHASE 7: Cleanup ===
     o = o.replace(/(<br\s*\/?>)\s*(<br\s*\/?>)/gi, '<br>');
     return o;
 }
@@ -3733,6 +3819,23 @@ function sanitizeAIHtml(html) {
     output = output.replace(/\.(\d+)\.\s/g, '.<br>$1. ');
     // Fix stuck numbered alasan (e.g. "...angka.2. momentum")
     output = output.replace(/([.!)])(\d+)\.\s/g, '$1<br>$2. ');
+    // === WORD BOUNDARY FIXES (space, not <br>) ===
+    output = output.replace(/(below)(MA\d{2,3})/gi, '$1 $2');
+    output = output.replace(/(above)(MA\d{2,3})/gi, '$1 $2');
+    output = output.replace(/(below)(RSI\d*)/gi, '$1 $2');
+    output = output.replace(/(above)(RSI\d*)/gi, '$1 $2');
+    output = output.replace(/(dan)(MA\d{2,3})/gi, '$1 $2');
+    output = output.replace(/(dan)(RSI\d*)/gi, '$1 $2');
+    output = output.replace(/(dan)(Volume)/gi, '$1 $2');
+    output = output.replace(/(dan)(Price)/gi, '$1 $2');
+    output = output.replace(/(bawah)(MA\d{2,3})/gi, '$1 $2');
+    output = output.replace(/(atas)(MA\d{2,3})/gi, '$1 $2');
+    output = output.replace(/(bawah)(RSI\d*)/gi, '$1 $2');
+    output = output.replace(/(atas)(RSI\d*)/gi, '$1 $2');
+    // === N/A BOUNDARY FIX ===
+    output = output.replace(/(N\/A)\s*(TP\d:?)/gi, '$1<br>$2');
+    output = output.replace(/(N\/A)\s*(R[1-3]:?)/gi, '$1<br>$2');
+    output = output.replace(/(N\/A)\s*(S[1-3]:?)/gi, '$1<br>$2');
     // === FINAL PASS: normalize technical label boundaries (handles </b>, </strong>, </span> between value and label) ===
     output = normalizeTechnicalLabels(output);
     return output;
@@ -3776,8 +3879,11 @@ function normalizeTechnicalLabels(html) {
     // Case 3: text/word immediately followed by label without any tag (e.g. "avg20Last:" or "semua MAMA50:")
     // Handle "avgNN" followed by label (with or without colon)
     output = output.replace(/(avg\d*)((?:Last|High|Low|Volume|Open|MA\d{2,3}|RSI\d*|R[1-3]|S[1-3]|TP[1-3]|Posisi):?)/gi, '$1<br>$2');
-    // Handle text ending with letter immediately into label (e.g. "bawah semua MAMA50:" is unlikely but catch "MA" prefix collision)
-    output = output.replace(/([a-zA-Z])(MA(?:20|50|100|200):?)/g, '$1<br>$2');
+    // Handle text ending with letter DIRECTLY (no space) into MA label (e.g. "semaMA50:" → VERY unlikely, but "wMA20" from "belowMA20" after space fix is handled separately)
+    output = output.replace(/([a-zA-Z])(MA(?:20|50|100|200):?)/g, function(match, letter, label) {
+        // Check if there's no space before — only break if letter is directly adjacent
+        return letter + '<br>' + label;
+    });
     // Case 4: number inside tag then label, e.g. sometext<b>110</b> <b>R2:</b> — already handled by grid
     // Case 5: plain "x avg20" stuck to next label (e.g. "0.75x avg20Last:")
     output = output.replace(/(avg\d+\s*<\/(?:b|strong|span)>)\s*((?:Last|High|Low|Volume):?)/gi, '$1<br>$2');
@@ -3795,6 +3901,10 @@ function normalizeRenderedTechnicalText(container) {
     var labelPattern = /(\d)(R[1-3]:?|S[1-3]:?|TP[1-3]:?|MA20:?|MA50:?|MA100:?|MA200:?|Posisi:?|RSI14:?|Volume:?|Last:?|High:?|Low:?|Open:?)/g;
     // Secondary pattern: letter immediately followed by label (e.g. "avgLast" or "avg20Last")
     var letterLabelPattern = /(avg\d*)(Last:?|High:?|Low:?|Volume:?|Open:?|MA\d{2,3}:?|RSI\d*:?|R[1-3]:?|S[1-3]:?|TP[1-3]:?|Posisi:?)/gi;
+    // Word boundary patterns (need space, not <br>)
+    var wordBoundaryPattern = /(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi;
+    // N/A boundary
+    var naPattern = /(N\/A)\s*(TP[1-3]:?|R[1-3]:?|S[1-3]:?)/gi;
     // Walk all text nodes
     var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
     var nodesToFix = [];
@@ -3804,9 +3914,9 @@ function normalizeRenderedTechnicalText(container) {
         if (!txt) continue;
         labelPattern.lastIndex = 0;
         letterLabelPattern.lastIndex = 0;
-        if (labelPattern.test(txt) || letterLabelPattern.test(txt)) {
-            labelPattern.lastIndex = 0;
-            letterLabelPattern.lastIndex = 0;
+        wordBoundaryPattern.lastIndex = 0;
+        naPattern.lastIndex = 0;
+        if (labelPattern.test(txt) || letterLabelPattern.test(txt) || wordBoundaryPattern.test(txt) || naPattern.test(txt)) {
             nodesToFix.push(node);
         }
     }
@@ -3816,11 +3926,16 @@ function normalizeRenderedTechnicalText(container) {
         var parent = tn.parentNode;
         if (!parent) continue;
         var pTag = parent.tagName ? parent.tagName.toLowerCase() : '';
-        if (pTag === 'script' || pTag === 'style' || pTag === 'code' || pTag === 'pre') continue;
+        if (pTag === 'script' || pTag === 'style' || pTag === 'code' || pTag === 'pre' || pTag === 'input' || pTag === 'textarea' || pTag === 'button') continue;
         var original = tn.textContent;
-        // Insert newline (as <br>) before each label that follows a digit
-        var newHtml = original.replace(/(\d)(R[1-3]:?|S[1-3]:?|TP[1-3]:?|MA20:?|MA50:?|MA100:?|MA200:?|Posisi:?|RSI14:?|Volume:?|Last:?|High:?|Low:?|Open:?)/g, '$1<br>$2');
-        // Also split letter+label patterns (e.g. "avgLast", "avg20Last")
+        var newHtml = original;
+        // Word boundaries: insert space
+        newHtml = newHtml.replace(/(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi, '$1 $2');
+        // N/A boundary: insert <br>
+        newHtml = newHtml.replace(/(N\/A)\s*(TP[1-3]:?|R[1-3]:?|S[1-3]:?)/gi, '$1<br>$2');
+        // Digit + label: insert <br>
+        newHtml = newHtml.replace(/(\d)(R[1-3]:?|S[1-3]:?|TP[1-3]:?|MA20:?|MA50:?|MA100:?|MA200:?|Posisi:?|RSI14:?|Volume:?|Last:?|High:?|Low:?|Open:?)/g, '$1<br>$2');
+        // avg + label: insert <br>
         newHtml = newHtml.replace(/(avg\d*)(Last:?|High:?|Low:?|Volume:?|Open:?|MA\d{2,3}:?|RSI\d*:?|R[1-3]:?|S[1-3]:?|TP[1-3]:?|Posisi:?)/gi, '$1<br>$2');
         if (newHtml !== original) {
             var span = document.createElement('span');
@@ -3830,36 +3945,42 @@ function normalizeRenderedTechnicalText(container) {
     }
 }
 
-// ===== SELF-TEST: Universal Spacing Fix (IHSG + PTRO samples) =====
+// ===== SELF-TEST: Universal Spacing Fix (BUVA + IHSG + PTRO samples) =====
 (function selfTestSpacing() {
+    // BUVA sample (live failure case — this is what Phase 11O missed)
+    var buvaInput = 'MA20: 820.75MA50: 1008.5MA100: 1196MA200: 997.79Posisi: belowMA20\nRSI14: 26.74Volume: 0,79x avgLast: 610High: 675Low: 575\nR1: 665R2: 720\nS1: 565S2: 520\nTP1: N/ATP2: N/A\nInvalidasi: Recovery di atas 620 dengan volume di atas rata-rata 7D danRSI >50.';
     // IHSG sample (live failure case)
-    var ihsgInput = 'MA20: 6466,67MA50: 6947,55MA100: 7676,27MA200: 7916,73Posisi:\nRSI14: 10,75Volume: 0,74x avg20Last: 5594,77High: 5860,67Low: 5594,11\nR1: 5772R2: 5950\nS1: 5505S2: 5416';
-    // PTRO sample (live failure case)
-    var ptroInput = 'MA20: 4340MA50: 4966.7MA100: 6426.75MA200: 6772.48Posisi:\nRSI14: 34.36Volume: 0,76x avgLast: 3650High: 4180Low: 3650\nR1: 4004R2: 4357\nS1: 3474S2: 3297\nTP1: 4004TP2: 4357';
+    var ihsgInput = 'MA20: 6466,67MA50: 6947,55MA100: 7676,27MA200: 7916,73Posisi: di bawahMA20\nRSI14: 10,75Volume: 0,74x avg20Last: 5594,77High: 5860,67Low: 5594,11\nR1: 5772R2: 5950\nS1: 5505S2: 5416';
+    // PTRO sample
+    var ptroInput = 'MA20: 4340MA50: 4966.7MA100: 6426.75MA200: 6772.48Posisi: belowMA20\nRSI14: 34.36Volume: 0,76x avgLast: 3650High: 4180Low: 3650\nR1: 4004R2: 4357\nS1: 3474S2: 3297\nTP1: 4004TP2: 4357';
 
     function testNormalize(input, label) {
-        // Simulate full render path: sanitizeAIHtml -> normalizeFinalStockHtml
         var result = normalizeFinalStockHtml(sanitizeAIHtml(input));
-        // Check no merged labels remain
-        var mergedPattern = /\d(MA20|MA50|MA100|MA200|RSI14|Volume|Last|High|Low|R1|R2|S1|S2|TP1|TP2|Posisi)[^a-z]/g;
-        var letterMergedPattern = /avg\d*(Last|High|Low|Volume|Open|MA\d|RSI|R[1-3]|S[1-3]|TP[1-3])/gi;
         var failures = [];
+        // Check digit+label merges
+        var mergedDigit = /\d(MA20|MA50|MA100|MA200|RSI14|Volume|Last|High|Low|R[1-3]|S[1-3]|TP[1-3]|Posisi)[^a-z]/g;
         var m;
-        while (m = mergedPattern.exec(result)) { failures.push(m[0]); }
-        mergedPattern.lastIndex = 0;
-        while (m = letterMergedPattern.exec(result)) { failures.push(m[0]); }
+        while (m = mergedDigit.exec(result)) { failures.push('digit+label: ' + m[0]); }
+        // Check letter+label merges
+        var mergedLetter = /avg\d*(Last|High|Low|Volume|Open|MA\d|RSI|R[1-3]|S[1-3]|TP[1-3])/gi;
+        while (m = mergedLetter.exec(result)) { failures.push('avg+label: ' + m[0]); }
+        // Check word boundaries (should have space)
+        var wordMerge = /(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi;
+        while (m = wordMerge.exec(result)) { failures.push('word+label: ' + m[0]); }
+        // Check N/A boundary
+        var naMerge = /N\/A(TP\d|R[1-3]|S[1-3])/gi;
+        while (m = naMerge.exec(result)) { failures.push('N/A+label: ' + m[0]); }
         if (failures.length > 0) {
-            console.warn('[Auto-Cuan Self-Test FAIL] ' + label + ': merged labels found:', failures, '\nResult:', result);
-        } else {
-            console.log('[Auto-Cuan Self-Test PASS] ' + label + ': all labels properly separated');
+            console.warn('[Auto-Cuan Self-Test FAIL] ' + label + ':', failures);
         }
         return failures.length === 0;
     }
 
-    var pass1 = testNormalize(ihsgInput, 'IHSG');
-    var pass2 = testNormalize(ptroInput, 'PTRO');
-    if (pass1 && pass2) {
-        console.log('[Auto-Cuan] Phase 11O spacing self-test: ALL PASS');
+    var p1 = testNormalize(buvaInput, 'BUVA');
+    var p2 = testNormalize(ihsgInput, 'IHSG');
+    var p3 = testNormalize(ptroInput, 'PTRO');
+    if (p1 && p2 && p3) {
+        console.log('[Auto-Cuan] Phase 11P spacing self-test: ALL PASS');
     }
 })();
 
