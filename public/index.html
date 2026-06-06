@@ -978,6 +978,7 @@ async function logUsage(ticker, usageAction) { try { var username = localStorage
 
 // ===== DASHBOARD =====
 function showDashboard() {
+    saveChatHistoryImmediate();
     var username = getUsername(); var isReview = localStorage.getItem('autocuan_is_review') === 'true';
     if (!isReview && isDeviceBlocked()) { showBlockedScreen(); return; }
     document.getElementById('blockedScreen').classList.add('hidden');
@@ -1355,6 +1356,11 @@ var latestAnalysisContext = {
     dominantNetBuyers: [],
     dominantNetSellers: [],
     brokerSummaryNotes: '',
+    supportLevels: null,
+    resistanceLevels: null,
+    maValues: null,
+    rsiValue: null,
+    pivotPoint: null,
     lastUserQuestion: null,
     lastAssistantAnswer: null,
     lastUpdated: null
@@ -1592,6 +1598,11 @@ function resetBrokerSummaryContext() {
         dominantNetBuyers: [],
         dominantNetSellers: [],
         brokerSummaryNotes: '',
+        supportLevels: null,
+        resistanceLevels: null,
+        maValues: null,
+        rsiValue: null,
+        pivotPoint: null,
         lastUserQuestion: null,
         lastAssistantAnswer: null,
         lastUpdated: null
@@ -1641,6 +1652,39 @@ function updateAnalysisContext(msg, html) {
     if (biasMatch && biasMatch[0].length > 20) {
         latestAnalysisContext.chartSummary = biasMatch[0].trim().slice(0, 150);
     }
+    // Extract support/resistance levels
+    var s1Match = textContent.match(/S1\s*[:=]?\s*(\d[\d.,]*)/i);
+    var s2Match = textContent.match(/S2\s*[:=]?\s*(\d[\d.,]*)/i);
+    var r1Match = textContent.match(/R1\s*[:=]?\s*(\d[\d.,]*)/i);
+    var r2Match = textContent.match(/R2\s*[:=]?\s*(\d[\d.,]*)/i);
+    if (s1Match || s2Match) {
+        latestAnalysisContext.supportLevels = [];
+        if (s1Match) latestAnalysisContext.supportLevels.push(s1Match[1].replace(/[.,]/g, ''));
+        if (s2Match) latestAnalysisContext.supportLevels.push(s2Match[1].replace(/[.,]/g, ''));
+    }
+    if (r1Match || r2Match) {
+        latestAnalysisContext.resistanceLevels = [];
+        if (r1Match) latestAnalysisContext.resistanceLevels.push(r1Match[1].replace(/[.,]/g, ''));
+        if (r2Match) latestAnalysisContext.resistanceLevels.push(r2Match[1].replace(/[.,]/g, ''));
+    }
+    // Extract MA values
+    var ma20Match = textContent.match(/MA20\s*[:=]?\s*(\d[\d.,]*)/i);
+    var ma50Match = textContent.match(/MA50\s*[:=]?\s*(\d[\d.,]*)/i);
+    var ma100Match = textContent.match(/MA100\s*[:=]?\s*(\d[\d.,]*)/i);
+    var ma200Match = textContent.match(/MA200\s*[:=]?\s*(\d[\d.,]*)/i);
+    if (ma20Match || ma50Match || ma100Match || ma200Match) {
+        latestAnalysisContext.maValues = {};
+        if (ma20Match) latestAnalysisContext.maValues.ma20 = ma20Match[1].replace(/[.,]/g, '');
+        if (ma50Match) latestAnalysisContext.maValues.ma50 = ma50Match[1].replace(/[.,]/g, '');
+        if (ma100Match) latestAnalysisContext.maValues.ma100 = ma100Match[1].replace(/[.,]/g, '');
+        if (ma200Match) latestAnalysisContext.maValues.ma200 = ma200Match[1].replace(/[.,]/g, '');
+    }
+    // Extract RSI
+    var rsiMatch = textContent.match(/RSI14?\s*[:=]?\s*(\d[\d.,]*)/i);
+    if (rsiMatch) latestAnalysisContext.rsiValue = rsiMatch[1];
+    // Extract Pivot
+    var pivotMatch = textContent.match(/Pivot(?:\s*Point)?\s*[:=]?\s*(\d[\d.,]*)/i);
+    if (pivotMatch) latestAnalysisContext.pivotPoint = pivotMatch[1].replace(/[.,]/g, '');
     // Store last interaction
     latestAnalysisContext.lastUserQuestion = msg ? String(msg).slice(0, 200) : latestAnalysisContext.lastUserQuestion;
     latestAnalysisContext.lastAssistantAnswer = textContent ? textContent.trim().slice(0, 200) : latestAnalysisContext.lastAssistantAnswer;
@@ -1696,6 +1740,39 @@ function hideEmptySections(container) {
     }
 }
 
+function renderChartFocus(chartFocus) {
+    if (!chartFocus || !chartFocus.enabled || !chartFocus.levels || chartFocus.levels.length === 0) return '';
+    var colorMap = { reclaim: 'text-emerald-400', support: 'text-blue-400', breakdown: 'text-red-400', watch: 'text-yellow-400', extreme_target: 'text-red-500', resistance: 'text-orange-400' };
+    var html = '<div class="chart-focus-card bg-[#151a23] border border-[#1c2333] rounded-lg p-3 mt-2">';
+    html += '<p class="text-xs font-semibold text-gray-400 mb-2">' + (chartFocus.title || 'Level Fokus') + '</p>';
+    if (chartFocus.last) {
+        html += '<div class="flex items-center gap-2 mb-2"><span class="text-xs text-gray-500">Last:</span><span class="text-sm font-bold text-white">' + formatRupiahLevel(chartFocus.last) + '</span></div>';
+    }
+    html += '<div class="space-y-1">';
+    for (var i = 0; i < chartFocus.levels.length; i++) {
+        var lv = chartFocus.levels[i];
+        var color = colorMap[lv.type] || 'text-gray-300';
+        var distance = '';
+        if (chartFocus.last && lv.value) {
+            var pct = ((lv.value - chartFocus.last) / chartFocus.last * 100).toFixed(1);
+            var sign = pct >= 0 ? '+' : '';
+            distance = '<span class="text-xs text-gray-500 ml-auto">' + sign + pct + '%</span>';
+        }
+        html += '<div class="flex items-center gap-2 text-xs">';
+        html += '<span class="text-gray-500 w-28 shrink-0">' + lv.label + '</span>';
+        html += '<span class="font-medium ' + color + '">' + formatRupiahLevel(lv.value) + '</span>';
+        html += distance;
+        html += '</div>';
+    }
+    html += '</div></div>';
+    return html;
+}
+
+function formatRupiahLevel(value) {
+    if (value == null) return '-';
+    return String(Math.round(Number(value))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 function buildContextForApi() {
     var contextForApi = {};
     // Use activeTicker (current request) rather than stale latestAnalysisContext.ticker
@@ -1712,6 +1789,11 @@ function buildContextForApi() {
     if (latestAnalysisContext.newsProvided) contextForApi.newsProvided = true;
     if (latestAnalysisContext.newsSummary) contextForApi.newsSummary = latestAnalysisContext.newsSummary;
     if (latestAnalysisContext.fcaStatus && latestAnalysisContext.fcaStatus !== 'not_detected') contextForApi.fcaStatus = latestAnalysisContext.fcaStatus;
+    if (latestAnalysisContext.supportLevels && latestAnalysisContext.supportLevels.length > 0) contextForApi.support = latestAnalysisContext.supportLevels;
+    if (latestAnalysisContext.resistanceLevels && latestAnalysisContext.resistanceLevels.length > 0) contextForApi.resistance = latestAnalysisContext.resistanceLevels;
+    if (latestAnalysisContext.maValues) contextForApi.maValues = latestAnalysisContext.maValues;
+    if (latestAnalysisContext.rsiValue) contextForApi.rsiValue = latestAnalysisContext.rsiValue;
+    if (latestAnalysisContext.pivotPoint) contextForApi.pivotPoint = latestAnalysisContext.pivotPoint;
     return Object.keys(contextForApi).length > 0 ? contextForApi : undefined;
 }
 
@@ -2461,7 +2543,11 @@ async function handleAnalysis(msg, intent) {
         if (!response.ok) throw new Error(data.error || 'Server error.');
         if (data.html) {
             var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
-            addAIBubble(html, true);
+            var chartFocusHtml = '';
+            if (data.chart_focus && data.chart_focus.enabled) {
+                chartFocusHtml = renderChartFocus(data.chart_focus);
+            }
+            addAIBubble(html + chartFocusHtml, true);
             updateAnalysisContext(msg, html);
             incrementAnalysisUsage(); updateUsageCounter();
             logUsage(ticker, 'ai_success'); logAnalysisResult(ticker, 'ticker', html);
@@ -2492,7 +2578,7 @@ async function handleTickerQuestion(msg, ticker) {
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); var chartFocusHtml = ''; if (data.chart_focus && data.chart_focus.enabled) { chartFocusHtml = renderChartFocus(data.chart_focus); } addAIBubble(html + chartFocusHtml); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage(ticker, 'chat_error'); }
     finally { enableSend(); saveChatHistory(); }
@@ -2522,7 +2608,7 @@ async function handleChat(msg) {
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); var chartFocusHtml = ''; if (data.chart_focus && data.chart_focus.enabled) { chartFocusHtml = renderChartFocus(data.chart_focus); } addAIBubble(html + chartFocusHtml); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage('CHAT', 'chat_error'); }
     finally { enableSend(); saveChatHistory(); }

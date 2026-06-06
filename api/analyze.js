@@ -143,6 +143,52 @@ module.exports = async function handler(req, res) {
         }
         if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
         maxTokens = 1536;
+      } else if (intent === 'contextual_data_followup') {
+        // Build rich context string from all available technical data
+        var techContext = '';
+        if (body.context) {
+          var c = body.context;
+          if (c.ticker) techContext += 'Ticker: ' + c.ticker + '. ';
+          if (c.currentPrice) techContext += 'Last price: ' + c.currentPrice + '. ';
+          if (c.finalDecision) techContext += 'Decision sebelumnya: ' + c.finalDecision + '. ';
+          if (c.entryArea) techContext += 'Entry area: ' + c.entryArea + '. ';
+          if (c.stopLoss) techContext += 'Stop loss: ' + c.stopLoss + '. ';
+          if (c.takeProfits) techContext += 'Take profit: ' + c.takeProfits + '. ';
+          if (c.support) techContext += 'Support levels: ' + (Array.isArray(c.support) ? c.support.join(', ') : c.support) + '. ';
+          if (c.resistance) techContext += 'Resistance levels: ' + (Array.isArray(c.resistance) ? c.resistance.join(', ') : c.resistance) + '. ';
+          if (c.pivotPoint) techContext += 'Pivot: ' + c.pivotPoint + '. ';
+          if (c.maValues) {
+            var ma = c.maValues;
+            if (ma.ma20) techContext += 'MA20: ' + ma.ma20 + '. ';
+            if (ma.ma50) techContext += 'MA50: ' + ma.ma50 + '. ';
+            if (ma.ma100) techContext += 'MA100: ' + ma.ma100 + '. ';
+            if (ma.ma200) techContext += 'MA200: ' + ma.ma200 + '. ';
+          }
+          if (c.rsiValue) techContext += 'RSI14: ' + c.rsiValue + '. ';
+          if (c.chartSummary) techContext += 'Chart summary: ' + c.chartSummary + '. ';
+        }
+
+        prompt = 'Kamu Auto-Cuan AI, asisten trading yang conversational dan data-driven. User menanyakan follow-up kontekstual tentang level/target/support/resistance berdasarkan analisis sebelumnya.\n\n' +
+          '=== KONTEKS TEKNIKAL ===\n' + techContext + '\n\n' +
+          '=== ATURAN WAJIB ===\n' +
+          '1. Jawab LANGSUNG ke pertanyaan user, 150-350 kata.\n' +
+          '2. Gunakan DATA dari konteks: harga terakhir, support, resistance, MA, RSI, pivot.\n' +
+          '3. Jika user sebut angka tertentu (misal 4700, 5416), jelaskan posisi angka tersebut relatif terhadap data.\n' +
+          '4. Hitung jarak/persentase jika relevan.\n' +
+          '5. Jelaskan konfirmasi dan invalidasi secara spesifik.\n' +
+          '6. Jika data teknikal tidak cukup, bilang: "Dari data teknikal yang tersedia..."\n' +
+          '7. Jika katalis/berita tidak tersedia, bilang: "Katalis eksternal belum cukup tersedia di data saat ini."\n\n' +
+          '=== LARANGAN MUTLAK ===\n' +
+          'JANGAN gunakan template full analysis. JANGAN tampilkan section/header berikut:\n' +
+          '- Kesimpulan Cepat\n- Ringkasan Market\n- Potensi Besok\n- Data Teknikal\n- Momentum Market\n- Resistance IHSG\n- Support IHSG\n- Fibonacci Market\n- Kesimpulan Final Market\n- Kesimpulan Final\n- Kesimpulan Analitis\n- Skenario Harga\n- Rencana Trading\n- Setup Label\n- Risk Guard\n- decision-card\n- decision-grid\n- metric-grid\n- scenario-price-grid\n' +
+          'JANGAN gunakan class: decision-card, decision-grid, metric-grid, level-grid, scenario-price-grid, trade-plan-grid.\n' +
+          'Jawab NATURAL dan CONVERSATIONAL seperti teman trading yang pinter.\n\n' +
+          '=== FORMAT OUTPUT ===\n' +
+          'HTML sederhana: <p>, <strong>, <br>, <ul>, <li>. Class: text-sm text-gray-300.\n' +
+          'Boleh pakai <strong class="text-emerald-400"> untuk highlight angka positif dan <strong class="text-red-400"> untuk angka negatif/risk.\n' +
+          'JANGAN pakai markdown stars **. JANGAN suggest short-selling.';
+        if (!fcaConfirmed) prompt += ' JANGAN sebut FCA/Full Call Auction sama sekali.';
+        maxTokens = 1536;
       } else if (intent === 'full_analysis_request') {
         prompt = 'Kamu Auto-Cuan AI, asisten analisis saham Indonesia premium. User minta analisis lengkap/mendalam. Format: HTML (div, p, strong, br, span, b). Bahasa Indonesia natural, evidence-based. Jawab 800-1200 kata.\n\n=== ATURAN UTAMA ===\nWAJIB selesaikan SEMUA section sampai Kesimpulan Final. RINGKAS tapi LENGKAP. JANGAN berhenti di tengah. JANGAN gabung field. Setiap field pisah baris <br>. JANGAN banyak dash/em-dash.\n\n=== DECISION GUARD ===\nJika Price Change 1D <= -5% DAN price di bawah MA20+MA50: Status WAJIB "Avoid Dulu", Bias "Bearish", Action "Avoid dulu".\n\n=== RP50 FLOOR GUARD ===\nJika last price 50-55 (area gocap):\n- Rp50 = floor penting. JANGAN target 49/48 kecuali board Akselerasi/FCA terkonfirmasi.\n- Board UNKNOWN: "Support utama 50 (floor). Sub-50 tidak diasumsikan."\n- Support S1 = 50 (floor). S2 = N/A (sub-50 tidak valid kecuali FCA/Akselerasi terkonfirmasi).\n- JANGAN buat Stop Loss 49 atau di bawah 50. Jika board tidak diketahui atau Papan Utama/Pengembangan, SL tidak berlaku di bawah floor.\n- Bear Case: "Tertahan di 50 dengan likuiditas lemah dan antrean jual." BUKAN target 48/45/40.\n- Risk Guard: "Harga di area Rp50. Risiko utama bukan penurunan harga, tetapi saham tertahan di floor dan likuiditas exit melemah."\n- JANGAN tulis "papan izin" atau "jika papan memungkinkan". Tulis: "Sub-50 tidak diasumsikan kecuali FCA/Akselerasi terkonfirmasi."\n- JANGAN invent board status.\n\nJANGAN gabung field. JANGAN markdown **. JANGAN pipe. Gunakan class CSS.\n\n=== STRUKTUR OUTPUT (ANALISIS LENGKAP) ===\n\n--- SECTION 1: DECISION CARD ---\n<div class="decision-card">\n<strong>Kesimpulan Cepat</strong>\n<div class="decision-grid">\n<div><span>Status</span><b>[Avoid Dulu / Wait Confirmation / Rebound Watch / Breakout Watch / Speculative Watch]</b></div>\n<div><span>Bias</span><b>[Bullish / Neutral / Bearish / Mixed]</b></div>\n<div><span>Confidence</span><b>[Low / Medium / High]</b></div>\n<div><span>Action</span><b>[Avoid dulu / Watchlist / Wait breakout / Wait reclaim MA20 / Small position only]</b></div>\n</div>\n<div class="key-level">Level kunci: Resistance [X] / Support [X]</div>\n</div>\n\n--- SECTION 2: AUTO-CUAN SCORE ---\n<p><strong class="text-emerald-400">Auto-Cuan Score: XX/100 (Grade X)</strong><br>Confidence: [dari data]<br>Alasan skor: [KENAPA score ini — hubungkan trend/momentum/volume/risk dengan angka]</p>\n\n--- SECTION 3: RINGKASAN CEPAT ---\n<p><strong>Ringkasan Cepat</strong><br>[2-4 kalimat natural. Kondisi + kenapa + apa yang ditunggu.]</p>\n\n--- SECTION 4: SKENARIO HARGA ---\n<p><strong>Skenario Harga</strong></p>\n<div class="scenario-price-grid">\n<div class="case-card bear"><span>Bear Case</span><b>[target support bawah]</b><p>[kondisi: breakdown support X + volume jual meningkat]</p></div>\n<div class="case-card base"><span>Base Case</span><b>[area sideways/stabilisasi]</b><p>[kondisi: harga bertahan di area X-X, volume normal]</p></div>\n<div class="case-card bull"><span>Bull Case</span><b>[target resistance berikutnya]</b><p>[kondisi: breakout resistance X + volume naik]</p></div>\n</div>\n\n--- SECTION 5: SETUP LABEL ---\n<p><strong>Setup Label</strong><br>Status: [dari Auto-Cuan Setup Label]<br>Alasan: [kenapa — hubungkan teknikal]<br>Valid jika: [kondisi]<br>Batal jika: [kondisi]</p>\n\n--- SECTION 6: DATA TEKNIKAL T-1 ---\n<p><strong>Data Teknikal T-1</strong></p>\n<div class="metric-grid">\n<div><strong>Moving Average</strong><br>MA20: [X]<br>MA50: [X]<br>MA100: [X]<br>MA200: [X]<br>Posisi: [above/below]</div>\n<div><strong>Momentum &amp; Volume</strong><br>RSI14: [X] — [interpretasi]<br>Volume: [X]x avg<br>Kondisi: [oversold/overbought/normal]<br>Last: [X] | Open: [X]<br>High: [X] | Low: [X]</div>\n</div>\n\n--- SECTION 7: ANALISIS VOLUME 3/7 HARI ---\n[Jika ada [Auto-Cuan Volume Intelligence]:]\n<div class="volume-card">\n<strong>Analisis Volume 3/7 Hari</strong>\n<div class="volume-grid">\n<div><span>Volume Terakhir</span><b>[dari data]</b></div>\n<div><span>Rata-rata 3 Hari</span><b>[dari data]</b></div>\n<div><span>Rata-rata 7 Hari</span><b>[dari data]</b></div>\n<div><span>Volume vs 7D</span><b>[X]x — [trend]</b></div>\n</div>\n<div class="volume-note">Pembacaan: [gunakan Price-Volume Reading dari data. Jelaskan implikasi 1-2 kalimat natural.]</div>\n</div>\n[Jika tidak ada Volume Intelligence: skip.]\n\n--- SECTION 7B: ANALISIS FIBONACCI ---\n[Jika ada [Auto-Cuan Fibonacci Intelligence]: WAJIB tampilkan section ini.]\n<div class="fibo-card">\n<strong>Analisis Fibonacci</strong>\n<div class="fibo-grid">\n<div><span>Swing High</span><b>[dari data]</b></div>\n<div><span>Swing Low</span><b>[dari data]</b></div>\n<div><span>Nearest Fib</span><b>[label + level dari data]</b></div>\n<div><span>Trend</span><b>[upward/downward retracement]</b></div>\n</div>\n<div class="fibo-grid">\n<div class="fibo-level"><span>Fib 38.2%</span><b>[dari data]</b></div>\n<div class="fibo-level"><span>Fib 50%</span><b>[dari data]</b></div>\n<div class="fibo-level"><span>Fib 61.8%</span><b>[dari data]</b></div>\n<div class="fibo-level"><span>Fib 78.6%</span><b>[dari data]</b></div>\n</div>\n<div class="fibo-note">[Reading dari data — 1 kalimat. Invalidation — 1 kalimat.]</div>\n</div>\n[Jika TIDAK ADA Fibonacci Intelligence: skip section ini sepenuhnya.]\n\n--- SECTION 8: AREA PENTING ---\n<p><strong>Area Penting</strong></p>\n<div class="level-grid">\n<div><strong>Resistance</strong><br>R1: [X]<br>R2: [X]<br>Breakout valid jika: [kondisi]</div>\n<div><strong>Support</strong><br>S1: [X]<br>S2: [X]<br>Breakdown risk jika: [kondisi]</div>\n</div>\n<p>Pivot Point: [X]</p>\n\n--- SECTION 9: BREAKOUT / BREAKDOWN ---\n<p><strong>Breakout / Breakdown</strong><br>Status: [dari Auto-Cuan Breakout Confirmation]<br>Breakout Level: [X]<br>Breakdown Level: [X]<br>Valid jika: [kondisi]<br>Batal jika: [kondisi]</p>\n\n--- SECTION 10: SKENARIO TRADING ---\n<p><strong>Skenario Trading</strong></p>\n<div class="scenario-list">\n<div><strong>Skenario Bullish</strong><br>[kondisi + target]</div>\n<div><strong>Skenario Netral</strong><br>[area sideways + catatan]</div>\n<div><strong>Skenario Bearish</strong><br>[risk + downside target]</div>\n</div>\n\n--- SECTION 11: RENCANA TRADING ---\n<p><strong>Rencana Trading</strong></p>\n<div class="trade-plan-grid">\n<div><strong>Entry</strong><br>[kondisi entry valid / tidak disarankan]</div>\n<div><strong>Stop Loss</strong><br>[SL level + kondisi]</div>\n<div><strong>Take Profit</strong><br>TP1: [X]<br>TP2: [X]</div>\n<div><strong>Catatan</strong><br>[warning / kondisi khusus]</div>\n</div>\n\n--- SECTION 12: RISK GUARD ---\n<p><strong>Risk Guard</strong><br>[Level + Action Bias + alasan. Skip jika tidak ada.]</p>\n\n--- SECTION 13: BROKER SUMMARY (jika ada) ---\n[Jika ada [Auto-Cuan Broker Summary Manual]:]\n<p><strong>Broker Summary Manual</strong><br>Periode: [dari data]<br>Top Net Buyer:<br>1. [broker]: [value]<br>2. [broker]: [value]<br>Top Net Seller:<br>1. [broker]: [value]<br>2. [broker]: [value]<br>Pembacaan: [akumulasi / distribusi / campuran]<br>Kekuatan Sinyal: [kuat / sedang / lemah]<br>Integrasi: [hubungkan dengan teknikal + volume intelligence]</p>\n[Jika TIDAK ADA [Auto-Cuan Broker Summary Manual]: JANGAN tampilkan section ini. JANGAN tulis "tidak tersedia". Skip sepenuhnya.]\n\n--- SECTION 14: KESIMPULAN ANALITIS ---\n<div class="analytic-summary">\n<strong>Kesimpulan Analitis</strong>\n<div class="summary-rows">\n<div><span>Trend harga</span><b>[Bearish / Neutral / Bullish]</b></div>\n<div><span>Momentum teknikal</span><b>[Lemah / Mulai membaik / Kuat]</b></div>\n<div><span>Volume 3/7 hari</span><b>[Naik signifikan / Normal / Menurun / Spike]</b></div>\n<div><span>Fibonacci</span><b>[Nearest level + reading singkat, atau skip jika tidak ada]</b></div>\n<div><span>Area support</span><b>[level]</b></div>\n<div><span>Area resistance</span><b>[level]</b></div>\n<div><span>Risiko utama</span><b>[1 kalimat]</b></div>\n<div><span>Rekomendasi trader</span><b>[Wait confirmation / Speculative buy if breakout / Avoid dulu / dll]</b></div>\n</div>\n</div>\n\n--- SECTION 15: NEWS / KATALIS ---\n<p><strong>News / Katalis</strong><br>[Jika ada: sebutkan + dampak. Jika unavailable: "Tidak ada katalis kuat. Fokus teknikal."]</p>\n\n--- SECTION 16: INVALIDASI ---\n<p><strong>Invalidasi</strong><br>[Kapan setup batal — level + kondisi spesifik]</p>\n\n--- SECTION 17: KESIMPULAN FINAL ---\n<p><strong>Kesimpulan Final</strong><br>Status: [konsisten Decision Card]<br>Bias: [konsisten]<br>Confidence: [konsisten]<br>Action: [konsisten]<br><br>Alasan utama:<br>1. [trend+MA — angka]<br>2. [momentum RSI — angka]<br>3. [volume 3/7D — rasio + trend]<br>4. [fibonacci level jika ada]<br>5. [katalis/broker jika ada]<br>6. [risk guard jika relevan]<br><br>Konfirmasi: [kondisi valid]<br>Invalidasi: [kondisi batal]</p>\n\n[Jika tidak ada [Auto-Cuan Broker Summary Manual], tampilkan CTA ini:]\n<p class="text-gray-500 text-xs">Untuk memperkuat analisis, kamu bisa kirim Broker Summary manual emiten ini. Contoh:<br>BBCA broksum 1D<br>YP +4,5B<br>AK -8B</p>\n\n<p class="text-gray-500">Kalau ada chart SMC, broker summary, atau data tambahan lain, kirim saja biar kesimpulannya lebih presisi.</p>\n\n=== RULES ===\n- WAJIB gunakan class HTML: decision-card, decision-grid, metric-grid, level-grid, scenario-list, trade-plan-grid, key-level, volume-card, volume-grid, volume-note, scenario-price-grid, case-card, analytic-summary, summary-rows, fibo-card, fibo-grid, fibo-level, fibo-note.\n- Setiap klaim didukung angka. JANGAN generik.\n- Bahasa natural: karena, sehingga, masih tertekan, belum kuat, mulai menarik jika.\n- JANGAN kaku/robotic. Kalimat pendek, jelas, natural.\n- Cautious: berpotensi, indikasi, lebih valid jika, belum terkonfirmasi.\n- JANGAN: pasti naik, dijamin, all in, aman beli, pasti cuan, auto cuan.\n- Decision Card HARUS konsisten dengan Kesimpulan Final dan Kesimpulan Analitis.\n- Score: [Auto-Cuan Score]. <=34=Avoid, 35-49=Wait, 50-64=Watchlist, 65-79=Speculative, 80+=Strong.\n- Board: UTAMA/PENGEMBANGAN+guard50: jangan FCA. AKSELERASI+guard1: boleh <Rp50. PEMANTAUAN/FCA: boleh Rp1.\n- IHSG/INDEX: "indeks"/"market"/"IHSG". JANGAN "emiten"/"saham ini". JANGAN board/FCA.\n- JANGAN tampilkan [Auto-Cuan...] mentah. JANGAN English. Setiap field baris sendiri.\n- Broker summary = konfirmasi tambahan, bukan sinyal beli tunggal.\n- Volume Intelligence: gunakan data [Auto-Cuan Volume Intelligence] untuk section Analisis Volume. Jangan karang angka volume sendiri.\n- Fibonacci Intelligence: gunakan data [Auto-Cuan Fibonacci Intelligence] untuk section Analisis Fibonacci. Jangan karang level Fibonacci sendiri. Jika data tidak ada, skip section Fibonacci sepenuhnya.';
         if (body.context && body.context.ticker) {
@@ -184,6 +230,13 @@ module.exports = async function handler(req, res) {
           }
         }
         if (html) {
+          // Build chart_focus for contextual_data_followup
+          if (intent === 'contextual_data_followup' && body.context && body.context.ticker) {
+            var chartFocus = buildChartFocus(body.context, chatMessage);
+            if (chartFocus) {
+              return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'deepseek', chart_focus: chartFocus });
+            }
+          }
           return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'deepseek' });
         }
       }
@@ -198,6 +251,13 @@ module.exports = async function handler(req, res) {
           }
         }
         if (html) {
+          // Build chart_focus for contextual_data_followup
+          if (intent === 'contextual_data_followup' && body.context && body.context.ticker) {
+            var chartFocus2 = buildChartFocus(body.context, chatMessage);
+            if (chartFocus2) {
+              return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'gemini-fallback', chart_focus: chartFocus2 });
+            }
+          }
           return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, provider: 'gemini-fallback' });
         }
       }
@@ -556,7 +616,15 @@ function routeIntent(message, context) {
     if (/^(cut|jual|lepas|keluar)\s*(gak|ga|aja|sekarang)?\s*\??$/i.test(msg)) return 'follow_up_question';
     if (/^(risky|risiko|bahaya)\s*(gak|ga|tinggi)?\s*\??$/i.test(msg)) return 'follow_up_question';
     if (/^(worth|layak)\s*(beli|buy|entry|masuk)?\s*(gak|ga)?\s*\??$/i.test(msg)) return 'follow_up_question';
-    // Short message with question mark when context exists
+    if (/^(masih\s*)?(aman|bahaya)\s*(gak|ga|tidak|nggak)?\s*(ya|sih|nih|dong)?\s*\??$/i.test(msg)) return 'follow_up_question';
+
+    // Contextual data follow-up: level-related keywords when context exists
+    // MUST be checked before the short-message catch-all to avoid misrouting
+    if (/\b(tembus|jebol|breakdown|breakout|target|support|resistance|entry|cutloss|cut\s*loss|hold|aman|bahaya|reclaim|rebound|lanjut|koreksi|turun\s*ke|naik\s*ke|sampai|mentok|level)\b/i.test(msgLower)) {
+      return 'contextual_data_followup';
+    }
+
+    // Short message with question mark when context exists (catch-all for simple follow-ups)
     if (msg.length < 40 && msg.includes('?')) return 'follow_up_question';
   }
 
@@ -578,7 +646,7 @@ function routeIntent(message, context) {
 function isStockAnalysisIncomplete(html, intent) {
   if (!html || typeof html !== 'string') return true;
   // Only check for stock analysis intents (not casual chat, follow-up, etc.)
-  if (intent === 'casual_chat' || intent === 'follow_up_question' || intent === 'ticker_only') return false;
+  if (intent === 'casual_chat' || intent === 'follow_up_question' || intent === 'ticker_only' || intent === 'contextual_data_followup') return false;
 
   var lower = html.toLowerCase();
   var requiredMarkers = [
@@ -636,6 +704,21 @@ function sanitizeOutput(html, fcaConfirmed, intent) {
   output = output.replace(/\[Auto-Cuan News Summary\]/gi, '');
   output = output.replace(/\[Auto-Cuan Score\]/gi, '');
   output = output.replace(/News Summary: unavailable/gi, '');
+
+  // Minimal safety for contextual_data_followup: warn if full template leaked
+  if (intent === 'contextual_data_followup') {
+    var templateHeaders = ['kesimpulan cepat', 'ringkasan market', 'potensi besok', 'data teknikal', 'momentum market', 'kesimpulan final', 'kesimpulan analitis', 'skenario harga', 'rencana trading'];
+    var headerCount = 0;
+    var outputLower = output.toLowerCase();
+    for (var th = 0; th < templateHeaders.length; th++) {
+      if (outputLower.indexOf(templateHeaders[th]) !== -1) headerCount++;
+    }
+    // If 3+ template headers leaked, strip the strong/header tags but keep content
+    if (headerCount >= 3) {
+      output = output.replace(/<strong[^>]*>(?:Kesimpulan Cepat|Ringkasan Market|Potensi Besok|Data Teknikal|Momentum Market|Kesimpulan Final|Kesimpulan Analitis|Skenario Harga|Rencana Trading|Risk Guard|Setup Label)[^<]*<\/strong>/gi, '');
+      output = output.replace(/<div\s+class="(?:decision-card|decision-grid|metric-grid|scenario-price-grid|trade-plan-grid|level-grid)"[^>]*>/gi, '<div>');
+    }
+  }
 
   return output;
 }
@@ -910,6 +993,80 @@ function detectMMCodes(text) {
   }
 
   return results;
+}
+
+// === CHART FOCUS BUILDER ===
+function buildChartFocus(context, userMessage) {
+  if (!context || !context.ticker) return null;
+  var levels = [];
+  var last = context.currentPrice ? parseFloat(String(context.currentPrice).replace(/[.,]/g, '')) : null;
+  var symbol = context.ticker;
+
+  // Extract levels from context
+  if (context.resistance && Array.isArray(context.resistance)) {
+    context.resistance.forEach(function(r) {
+      var val = parseFloat(String(r).replace(/[.,]/g, ''));
+      if (!isNaN(val)) levels.push({ label: 'Resistance', value: val, type: 'resistance' });
+    });
+  }
+  if (context.support && Array.isArray(context.support)) {
+    context.support.forEach(function(s) {
+      var val = parseFloat(String(s).replace(/[.,]/g, ''));
+      if (!isNaN(val)) levels.push({ label: 'Support', value: val, type: 'support' });
+    });
+  }
+  if (context.pivotPoint) {
+    var pv = parseFloat(String(context.pivotPoint).replace(/[.,]/g, ''));
+    if (!isNaN(pv)) levels.push({ label: 'Pivot', value: pv, type: 'reclaim' });
+  }
+  if (context.entryArea) {
+    var ea = parseFloat(String(context.entryArea).replace(/[^\d]/g, ''));
+    if (!isNaN(ea)) levels.push({ label: 'Entry area', value: ea, type: 'watch' });
+  }
+  if (context.stopLoss) {
+    var sl = parseFloat(String(context.stopLoss).replace(/[^\d]/g, ''));
+    if (!isNaN(sl)) levels.push({ label: 'Stop loss', value: sl, type: 'breakdown' });
+  }
+
+  // Extract user-mentioned numbers as custom levels
+  var userNums = (userMessage || '').match(/\b(\d{3,6})\b/g);
+  if (userNums) {
+    var seen = {};
+    levels.forEach(function(l) { seen[l.value] = true; });
+    userNums.forEach(function(n) {
+      var val = parseInt(n, 10);
+      if (!isNaN(val) && !seen[val] && val > 50) {
+        var type = 'watch';
+        if (last) {
+          if (val < last * 0.9) type = 'extreme_target';
+          else if (val < last) type = 'support';
+          else if (val > last) type = 'resistance';
+        }
+        // Determine label based on context keywords in user message
+        var msgLower = (userMessage || '').toLowerCase();
+        var label = 'Level ' + val;
+        if (/tembus|jebol|breakdown/.test(msgLower) && val < (last || Infinity)) label = 'Breakdown level';
+        else if (/reclaim|kembali/.test(msgLower) && val > (last || 0)) label = 'Reclaim target';
+        else if (/target|lanjut|naik/.test(msgLower) && val > (last || 0)) label = 'Target';
+        else if (/target|turun|lanjut/.test(msgLower) && val < (last || Infinity)) label = 'Target turun';
+        levels.push({ label: label, value: val, type: type });
+        seen[val] = true;
+      }
+    });
+  }
+
+  if (levels.length === 0) return null;
+
+  // Sort levels by value descending (highest first)
+  levels.sort(function(a, b) { return b.value - a.value; });
+
+  return {
+    enabled: true,
+    symbol: symbol,
+    title: 'Level Fokus ' + symbol,
+    last: last,
+    levels: levels
+  };
 }
 
 // === EVIDENCE CLASSIFIER ===
