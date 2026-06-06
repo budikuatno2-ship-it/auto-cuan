@@ -3025,6 +3025,9 @@ function switchSession(sessionId) {
         // Restore messages
         if (session.messages && session.messages.length > 0) {
             session.messages.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
+            // Post-restore: normalize any merged technical labels in restored AI content
+            var restoredAiContents = container.querySelectorAll('.ai-content');
+            restoredAiContents.forEach(function(el) { normalizeRenderedTechnicalText(el); });
             // Show note if images were stripped
             var hasRemovedImages = session.messages.some(function(m) { return m.indexOf('data:removed') !== -1 || m.indexOf('gambar-dihapus') !== -1; });
             if (hasRemovedImages) {
@@ -3542,76 +3545,61 @@ function closeUsageReminder() {
 })();
 
 // ===== BUILD VERSION MARKER =====
-window.AUTO_CUAN_BUILD = 'phase-11p-live-render-spacing-volume-ihsg-dedicated';
+window.AUTO_CUAN_BUILD = 'phase-11q-verify-env-final-render-spacing';
 
 // ===== IHSG OUTPUT SANITIZER (strip stock-specific sections from index responses) =====
 function sanitizeIHSGOutput(html) {
     if (!html) return html;
     var o = html;
+    // Helper: remove individual <p>...</p> blocks containing a label (non-greedy, single paragraph)
+    // Uses [^]*? with </p> boundary to stay within one paragraph
+    function removePWithLabel(html, labelRegex) {
+        // Match each <p...>...</p> individually and test
+        return html.replace(/<p[^>]*>(?:(?!<\/p>)[\s\S])*?<\/p>/gi, function(match) {
+            if (labelRegex.test(match)) return '';
+            return match;
+        });
+    }
     // Remove Broker CTA paragraph (all variants)
-    o = o.replace(/<p[^>]*class="[^"]*text-gray-500[^"]*"[^>]*>[^<]*[Bb]roker [Ss]ummary[^<]*<\/p>/gi, '');
-    o = o.replace(/<p[^>]*>[^<]*[Kk]irim [Bb]roker [Ss]ummary[^<]*<\/p>/gi, '');
-    o = o.replace(/<p[^>]*>[^<]*chart SMC[^<]*broker summary[^<]*<\/p>/gi, '');
-    o = o.replace(/<p[^>]*class="[^"]*text-gray-500[^"]*"[^>]*>[\s\S]*?<\/p>/gi, function(match) {
+    o = removePWithLabel(o, /[Kk]irim [Bb]roker [Ss]ummary|[Bb]roker [Ss]ummary manual|chart SMC[^<]*broker/i);
+    o = o.replace(/<p[^>]*class="[^"]*text-gray-500[^"]*text-xs[^"]*"[^>]*>(?:(?!<\/p>)[\s\S])*?<\/p>/gi, function(match) {
         if (/[Bb]roker|chart SMC/i.test(match)) return '';
         return match;
     });
     // Remove trade-plan-grid completely for index (contains Entry/SL/TP)
     o = o.replace(/<div[^>]*class="[^"]*trade-plan-grid[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>\s*<\/div>/gi, '');
-    // Remove any remaining trade-plan-grid (alternative nesting)
     o = o.replace(/<div[^>]*class="[^"]*trade-plan-grid[^"]*"[^>]*>[\s\S]*?(<\/div>\s*){2,5}/gi, '');
-    // Remove Rencana Trading heading
-    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Rencana Trading<\/strong>[\s\S]*?<\/p>/gi, '');
-    // Remove Setup Label section
-    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Setup Label<\/strong>[\s\S]*?<\/p>/gi, '');
-    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Setup<\/strong>[\s\S]*?<\/p>/gi, '');
+    // Remove stock-specific paragraphs
+    o = removePWithLabel(o, /<strong>Rencana Trading<\/strong>/i);
+    o = removePWithLabel(o, /<strong>Setup Label<\/strong>/i);
+    o = removePWithLabel(o, /<strong>Setup<\/strong>/i);
+    o = removePWithLabel(o, /<strong>Entry<\/strong>/i);
+    o = removePWithLabel(o, /<strong>Stop Loss<\/strong>/i);
+    o = removePWithLabel(o, /<strong>(?:TP|Take Profit)<\/strong>/i);
+    o = removePWithLabel(o, /<strong>Broker Summary Manual<\/strong>/i);
+    o = removePWithLabel(o, /Auto-Cuan Score/i);
+    o = removePWithLabel(o, /<strong>Skenario Harga<\/strong>/i);
+    o = removePWithLabel(o, /<strong>Breakout \/ Breakdown<\/strong>/i);
     // Remove summary-rows that contain Setup/Entry/Stop Loss
     o = o.replace(/<div[^>]*class="[^"]*summary-rows[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>/gi, function(match) {
         if (/Entry|Stop Loss|Take Profit|Setup/i.test(match) && !/Status Market|Bias|Sikap|Konfirmasi|Risiko/i.test(match)) return '';
         return match;
     });
-    // Remove Entry paragraph
-    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Entry<\/strong>[\s\S]*?<\/p>/gi, '');
-    // Remove Stop Loss paragraph  
-    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Stop Loss<\/strong>[\s\S]*?<\/p>/gi, '');
-    // Remove TP/Take Profit paragraphs
-    o = o.replace(/<p[^>]*>[\s\S]*?<strong>(?:TP|Take Profit)<\/strong>[\s\S]*?<\/p>/gi, '');
-    // Remove standalone Entry/SL/TP lines inside divs (e.g. inside metric-grid)
-    o = o.replace(/<div[^>]*>[\s\S]*?<strong>(?:Entry|Stop Loss|Take Profit|TP)<\/strong>[\s\S]*?<\/div>/gi, function(match) {
-        // Only remove if it's clearly a stock-style entry/sl/tp block
-        if (/(?:entry|stop loss|take profit|TP1|TP2)/i.test(match) && !/(?:Level Konfirmasi|Level Risiko|Skenario|Momentum|Data Teknikal)/i.test(match)) return '';
-        return match;
-    });
-    // Remove "Broker Summary Manual" section
-    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Broker Summary Manual<\/strong>[\s\S]*?<\/p>/gi, '');
-    // Remove Auto-Cuan Score for IHSG
-    o = o.replace(/<p[^>]*>[\s\S]*?Auto-Cuan Score[\s\S]*?<\/p>/gi, '');
-    // Remove Skenario Harga with scenario-price-grid (stock-style)
-    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Skenario Harga<\/strong>[\s\S]*?<\/p>/gi, '');
+    // Remove scenario-price-grid (stock-style bear/base/bull)
     o = o.replace(/<div[^>]*class="[^"]*scenario-price-grid[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>\s*<\/div>/gi, '');
-    // Remove Breakout/Breakdown section (stock-style)
-    o = o.replace(/<p[^>]*>[\s\S]*?<strong>Breakout \/ Breakdown<\/strong>[\s\S]*?<\/p>/gi, '');
     // === REWRITE stock status labels to market status ===
-    // Replace "Avoid Dulu" with "Risk-Off" in decision-card/summary-rows
     o = o.replace(/>Avoid [Dd]ulu</g, '>Risk-Off<');
     o = o.replace(/>Avoid dulu</g, '>Risk-Off<');
-    // Replace Status/Action labels with market-specific ones
     o = o.replace(/<span>Status<\/span>/g, '<span>Status Market</span>');
     o = o.replace(/<span>Action<\/span>/g, '<span>Sikap Market</span>');
-    // Replace "Kesimpulan Cepat" with "Kesimpulan Cepat IHSG" if not already
     o = o.replace(/<strong>Kesimpulan Cepat<\/strong>/g, '<strong>Kesimpulan Cepat IHSG</strong>');
     // Remove "saham ini" / "emiten" wording
     o = o.replace(/saham ini/gi, 'indeks ini');
     o = o.replace(/emiten/gi, 'market');
     // Remove TP lines that remain inline
-    o = o.replace(/TP1:?\s*[^<]*<br>/gi, function(match) {
-        // Only remove if inside index context (check if match doesn't contain a real price discussion)
-        return '';
-    });
-    o = o.replace(/TP2:?\s*[^<]*<br>/gi, '');
-    // Remove stray "N/A" TP entries
-    o = o.replace(/TP[12]:?\s*N\/A\s*(<br>|$)/gi, '');
-    // Clean empty paragraphs left over
+    o = o.replace(/TP1:?\s*N\/A\s*(<br>|$)/gi, '');
+    o = o.replace(/TP2:?\s*N\/A\s*(<br>|$)/gi, '');
+    // Clean empty paragraphs and divs left over
     o = o.replace(/<p[^>]*>\s*<\/p>/gi, '');
     o = o.replace(/<div[^>]*>\s*<\/div>/gi, '');
     return o;
@@ -3945,8 +3933,10 @@ function normalizeRenderedTechnicalText(container) {
     }
 }
 
-// ===== SELF-TEST: Universal Spacing Fix (BUVA + IHSG + PTRO samples) =====
+// ===== SELF-TEST: Universal Spacing Fix (Latest + BUVA + IHSG + PTRO samples) =====
 (function selfTestSpacing() {
+    // Latest live failure sample (Phase 11Q regression)
+    var latestInput = 'MA20: 316.30MA50: 313.40MA100: 356.01MA200: 298.52Posisi: di bawah semua MA\nRSI14: 32.09Volume: 0,55x avgLast: 260High: 298Low: 250\nR1: 288R2: 317\nS1: 240S2: 221\nTP1: 288TP2: 317';
     // BUVA sample (live failure case — this is what Phase 11O missed)
     var buvaInput = 'MA20: 820.75MA50: 1008.5MA100: 1196MA200: 997.79Posisi: belowMA20\nRSI14: 26.74Volume: 0,79x avgLast: 610High: 675Low: 575\nR1: 665R2: 720\nS1: 565S2: 520\nTP1: N/ATP2: N/A\nInvalidasi: Recovery di atas 620 dengan volume di atas rata-rata 7D danRSI >50.';
     // IHSG sample (live failure case)
@@ -3976,11 +3966,12 @@ function normalizeRenderedTechnicalText(container) {
         return failures.length === 0;
     }
 
+    var p0 = testNormalize(latestInput, 'Latest');
     var p1 = testNormalize(buvaInput, 'BUVA');
     var p2 = testNormalize(ihsgInput, 'IHSG');
     var p3 = testNormalize(ptroInput, 'PTRO');
-    if (p1 && p2 && p3) {
-        console.log('[Auto-Cuan] Phase 11P spacing self-test: ALL PASS');
+    if (p0 && p1 && p2 && p3) {
+        console.log('[Auto-Cuan] Phase 11Q spacing self-test: ALL PASS');
     }
 })();
 
