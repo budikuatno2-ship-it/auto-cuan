@@ -346,6 +346,16 @@
             .ai-content p:first-child { font-size: 14.5px; }
         }
 
+        /* ===== NAVIGATION STYLES ===== */
+        .nav-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 500; color: #9ca3af; background: transparent; border: 1px solid transparent; white-space: nowrap; transition: all 0.15s; cursor: pointer; }
+        .nav-btn:hover:not(.disabled) { color: #e5e7eb; background: #151a23; border-color: #242d3d; }
+        .nav-btn.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
+        .nav-btn.disabled { color: #4b5563; cursor: not-allowed; opacity: 0.6; }
+        .nav-btn svg { flex-shrink: 0; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .page-content { animation: fadeIn 0.15s ease-out; }
+
         /* ===== SIDEBAR STYLES ===== */
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 200; transition: opacity 0.2s ease; }
         .sidebar-overlay.active { display: block; }
@@ -440,7 +450,7 @@
                 </div>
                 <div class="min-w-0">
                     <h1 class="text-lg font-bold text-white leading-tight truncate">Auto-Cuan</h1>
-                    <p class="text-xs text-gray-500 hidden sm:block">SMC Analysis Platform</p>
+                    <p class="text-xs text-gray-500 hidden sm:block">Stock Analysis Dashboard</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -453,10 +463,178 @@
             </div>
         </div>
     </div>
+    <!-- NAVIGATION MENU -->
+    <nav class="max-w-[1100px] w-full mx-auto px-3 sm:px-5">
+        <div class="flex items-center gap-1 overflow-x-auto pb-2 pt-1 scrollbar-hide" id="mainNav">
+            <button onclick="navigateTo('dashboard')" class="nav-btn active" data-page="dashboard">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                <span>Dashboard</span>
+            </button>
+            <button onclick="navigateTo('analisis')" class="nav-btn" data-page="analisis">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span>Analisis Saham</span>
+            </button>
+            <button onclick="navigateTo('sektor')" class="nav-btn" data-page="sektor">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>Sektor Hot</span>
+            </button>
+            <button onclick="navigateTo('chart')" class="nav-btn" data-page="chart">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                <span>Chart</span>
+            </button>
+            <button class="nav-btn disabled" title="Coming Soon" disabled>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+                <span>Top Volume</span>
+                <span class="text-[9px] bg-yellow-500/20 text-yellow-400 px-1 rounded ml-1">Soon</span>
+            </button>
+        </div>
+    </nav>
 </header>
 
-<!-- MAIN CHAT SECTION - Full screen height -->
-<section id="aiSection" class="flex-1 flex flex-col max-w-[1100px] w-full mx-auto px-3 sm:px-5" style="min-height:calc(100vh - 64px);">
+<!-- ===== PAGE: DASHBOARD HOME ===== -->
+<div id="page-dashboard" class="page-content flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
+    <div class="space-y-4">
+        <!-- Greeting -->
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-xl font-bold text-white" id="dashGreeting">Halo, Trader</h2>
+                <p class="text-xs text-gray-500 mt-0.5">Semoga sehat dan cuan selalu.</p>
+            </div>
+            <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">Approved</span>
+        </div>
+
+        <!-- IHSG Summary Card -->
+        <div id="ihsgSummaryCard" class="bg-dark-700/50 border border-dark-600/30 rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h3 class="text-sm font-semibold text-gray-300">IHSG (Composite)</h3>
+                </div>
+                <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="text-[11px] text-emerald-400 hover:text-emerald-300 transition">Analisis IHSG &rarr;</button>
+            </div>
+            <div id="ihsgSummaryContent" class="text-xs text-gray-500">
+                <p>Klik "Analisis IHSG" untuk melihat laporan market terbaru.</p>
+            </div>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <button onclick="navigateTo('analisis')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-2 group-hover:bg-emerald-500/20 transition">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                </div>
+                <p class="text-sm font-semibold text-gray-200">Analisis Saham</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">BBCA, IHSG, dll</p>
+            </button>
+            <button onclick="navigateTo('sektor')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group">
+                <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center mb-2 group-hover:bg-blue-500/20 transition">
+                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+                <p class="text-sm font-semibold text-gray-200">Sektor Hot</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">Grup konglomerat</p>
+            </button>
+            <button onclick="navigateTo('chart')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group">
+                <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center mb-2 group-hover:bg-purple-500/20 transition">
+                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                </div>
+                <p class="text-sm font-semibold text-gray-200">Chart</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">Lihat grafik saham</p>
+            </button>
+            <div class="bg-dark-700/30 border border-dark-600/20 rounded-xl p-4 text-left opacity-50 cursor-not-allowed">
+                <div class="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center mb-2">
+                    <svg class="w-4 h-4 text-yellow-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+                </div>
+                <p class="text-sm font-semibold text-gray-400">Top Volume</p>
+                <p class="text-[11px] text-yellow-500/80 mt-0.5">Coming Soon</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE: ANALISIS SAHAM ===== -->
+<div id="page-analisis" class="page-content hidden flex-1 flex flex-col max-w-[1100px] w-full mx-auto px-3 sm:px-5" style="min-height:calc(100vh - 120px);">
+    <!-- Analisis Input -->
+    <div class="py-3 border-b border-dark-600/30 flex-shrink-0">
+        <div class="flex items-center gap-2">
+            <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, IHSG, TLKM..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')handleAnalisisSubmit()">
+            <button onclick="handleAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Analisis</button>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-2">
+            <button onclick="quickAnalisis('IHSG')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">IHSG</button>
+            <button onclick="quickAnalisis('BBCA')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">BBCA</button>
+            <button onclick="quickAnalisis('BBRI')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">BBRI</button>
+            <button onclick="quickAnalisis('TLKM')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">TLKM</button>
+        </div>
+    </div>
+    <!-- Analisis Result Area (replaces chat for analysis) -->
+    <div id="analisisResult" class="flex-1 py-4 overflow-y-auto">
+        <div class="text-center py-12 text-gray-500">
+            <svg class="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <p class="text-sm">Ketik ticker di atas untuk mulai analisis.</p>
+            <p class="text-xs text-gray-600 mt-1">Contoh: BBCA, IHSG, TLKM</p>
+        </div>
+    </div>
+    <!-- Chat input area (for follow-up questions) -->
+    <div id="analisisFollowUp" class="hidden border-t border-dark-600/30 p-3 flex-shrink-0">
+        <div class="flex items-end gap-2">
+            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
+            <button onclick="document.getElementById('fileInput').click()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+            </button>
+            <div class="flex-1 relative">
+                <textarea id="chatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+            </div>
+            <button id="sendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE: SEKTOR HOT (Placeholder) ===== -->
+<div id="page-sektor" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <h2 class="text-lg font-bold text-white mb-2">Sektor Hot / Grup Konglomerat Hot</h2>
+        <p class="text-sm text-gray-400 max-w-md">Fitur Sektor Hot sedang disiapkan. Akan menampilkan sektor dan grup konglomerat yang sedang aktif bergerak di market.</p>
+        <div class="mt-6 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400">Segera hadir</div>
+    </div>
+</div>
+
+<!-- ===== PAGE: CHART ===== -->
+<div id="page-chart" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
+    <div class="space-y-3">
+        <div class="flex items-center gap-2">
+            <input id="chartTickerInput" type="text" placeholder="Ketik ticker: BBCA, IHSG..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')loadChartPage()">
+            <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-purple-500 text-white font-semibold text-sm hover:bg-purple-400 transition-all">Lihat Chart</button>
+        </div>
+        <div id="chartPageContainer" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
+            <div class="flex items-center justify-center py-16 text-gray-500 text-sm">
+                <div class="text-center">
+                    <svg class="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                    <p>Ketik ticker di atas untuk melihat chart.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE: TOP VOLUME (Placeholder) ===== -->
+<div id="page-topvolume" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+        </div>
+        <h2 class="text-lg font-bold text-white mb-2">Top Volume</h2>
+        <p class="text-sm text-gray-400 max-w-md">Top Volume &mdash; Coming Soon</p>
+        <div class="mt-6 px-4 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-400">Coming Soon</div>
+    </div>
+</div>
+
+<!-- ===== HIDDEN: ORIGINAL CHAT SECTION (preserved for JS compatibility) ===== -->
+<section id="aiSection" class="hidden flex-1 flex flex-col max-w-[1100px] w-full mx-auto px-3 sm:px-5" style="min-height:calc(100vh - 64px);">
     <div class="flex-1 flex flex-col my-3 overflow-hidden chat-container">
 
         <!-- Chat messages area -->
@@ -803,18 +981,29 @@ function stripBase64FromHtml(html) {
 // ===== DAILY USAGE LIMIT SYSTEM =====
 function getUsername() { return (localStorage.getItem('autocuan_user') || 'guest').toLowerCase(); }
 function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
-function getAnalysisUsageKey() { return 'autocuan_analysis_' + getUsername() + '_' + getWIBDateString(); }
-function getChatUsageKey() { return 'autocuan_chat_' + getUsername() + '_' + getWIBDateString(); }
-function getAnalysisCount() { try { return parseInt(localStorage.getItem(getAnalysisUsageKey()) || '0', 10); } catch(e) { return 0; } }
-function getChatCount() { try { return parseInt(localStorage.getItem(getChatUsageKey()) || '0', 10); } catch(e) { return 0; } }
-function incrementAnalysisUsage() { localStorage.setItem(getAnalysisUsageKey(), String(getAnalysisCount() + 1)); }
-function incrementChatUsage() { localStorage.setItem(getChatUsageKey(), String(getChatCount() + 1)); }
-function getAnalysisLimit() { if (isAdmin()) return Infinity; if (getUsername() === 'guest') return 2; return 10; }
-function getChatLimit() { if (isAdmin()) return Infinity; if (getUsername() === 'guest') return 5; return 20; }
-function canAnalyze() { return getAnalysisCount() < getAnalysisLimit(); }
-function canChat() { return getChatCount() < getChatLimit(); }
-function getAnalysisLimitMsg() { return getUsername() === 'guest' ? 'Limit analisis guest hari ini sudah habis. Login atau daftar untuk mendapatkan 10 analisis per hari, atau coba lagi besok.' : 'Limit analisis harian Anda sudah habis. Silakan coba lagi besok.'; }
-function getChatLimitMsg() { return getUsername() === 'guest' ? 'Limit chat guest hari ini sudah habis. Login atau daftar untuk mendapatkan 20 chat per hari, atau coba lagi besok.' : 'Limit chat harian Anda sudah habis. Silakan coba lagi besok.'; }
+// === UNIFIED AI USAGE LIMIT ===
+// Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
+// Logged-in approved: unlimited (controlled by admin approval)
+// Admin: unlimited
+function getAIUsageKey() { return 'autocuan_ai_usage_' + getUsername() + '_' + getWIBDateString(); }
+function getAIUsageCount() { try { return parseInt(localStorage.getItem(getAIUsageKey()) || '0', 10); } catch(e) { return 0; } }
+function incrementAIUsage() { localStorage.setItem(getAIUsageKey(), String(getAIUsageCount() + 1)); }
+function getAILimit() { if (isAdmin()) return Infinity; if (getUsername() === 'guest') return 3; return Infinity; }
+function canUseAI() { return getAIUsageCount() < getAILimit(); }
+function getAILimitMsg() { return 'Limit AI gratis hari ini sudah habis (3/hari). Login atau daftar untuk akses penuh, atau coba lagi besok.'; }
+// Legacy compat wrappers (so existing code doesn't break)
+function getAnalysisUsageKey() { return getAIUsageKey(); }
+function getChatUsageKey() { return getAIUsageKey(); }
+function getAnalysisCount() { return getAIUsageCount(); }
+function getChatCount() { return getAIUsageCount(); }
+function incrementAnalysisUsage() { incrementAIUsage(); }
+function incrementChatUsage() { incrementAIUsage(); }
+function getAnalysisLimit() { return getAILimit(); }
+function getChatLimit() { return getAILimit(); }
+function canAnalyze() { return canUseAI(); }
+function canChat() { return canUseAI(); }
+function getAnalysisLimitMsg() { return getAILimitMsg(); }
+function getChatLimitMsg() { return getAILimitMsg(); }
 function updateUsageCounter() {
     // Usage counter removed from visible UI — replaced by reminder modal
 }
@@ -1003,6 +1192,256 @@ function showDashboard() {
     if (isAdm && !isReview) { document.getElementById('adminPanel').classList.remove('hidden'); } else { document.getElementById('adminPanel').classList.add('hidden'); }
     updateUsageCounter();
     loadChatHistory();
+    // Update dashboard greeting
+    updateDashGreeting();
+}
+
+// ===== PAGE NAVIGATION =====
+var currentPage = 'dashboard';
+function navigateTo(page) {
+    currentPage = page;
+    // Hide all pages
+    document.querySelectorAll('.page-content').forEach(function(el) { el.classList.add('hidden'); });
+    // Show target page
+    var target = document.getElementById('page-' + page);
+    if (target) { target.classList.remove('hidden'); target.classList.add('flex-1'); }
+    // Update nav active state
+    document.querySelectorAll('.nav-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-page') === page) btn.classList.add('active');
+    });
+    // Show admin panel only on dashboard
+    var adminPanel = document.getElementById('adminPanel');
+    if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
+}
+
+function updateDashGreeting() {
+    var el = document.getElementById('dashGreeting');
+    if (!el) return;
+    var username = getUsername();
+    var displayName = 'Trader';
+    if (username && username !== 'guest') {
+        // Try profile.full_name (stored in localStorage if available)
+        var fullName = localStorage.getItem('autocuan_full_name');
+        if (fullName && fullName.trim()) {
+            displayName = fullName.trim();
+        } else {
+            // Use email local-part or username
+            displayName = username.includes('@') ? username.split('@')[0] : username;
+        }
+    }
+    el.textContent = 'Halo, ' + displayName;
+    // Show approved badge for non-guest logged-in users
+    var approvedBadge = document.getElementById('approvedBadge');
+    if (approvedBadge) {
+        if (username !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true') {
+            approvedBadge.classList.remove('hidden');
+        } else {
+            approvedBadge.classList.add('hidden');
+        }
+    }
+}
+
+// ===== ANALISIS SAHAM PAGE =====
+function handleAnalisisSubmit() {
+    var input = document.getElementById('analisisInput');
+    var val = (input.value || '').trim().toUpperCase();
+    if (!val) return;
+    input.value = val;
+    // Route to existing analysis logic
+    runAnalisisFromDashboard(val);
+}
+function quickAnalisis(ticker) {
+    var input = document.getElementById('analisisInput');
+    input.value = ticker;
+    runAnalisisFromDashboard(ticker);
+}
+async function runAnalisisFromDashboard(tickerOrQuery) {
+    var resultArea = document.getElementById('analisisResult');
+    var followUp = document.getElementById('analisisFollowUp');
+    if (!resultArea) return;
+
+    // Check limits
+    if (!canAnalyze()) {
+        resultArea.innerHTML = '<div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center"><p class="text-sm text-yellow-400">' + getAnalysisLimitMsg() + '</p></div>';
+        return;
+    }
+
+    // Show loading
+    resultArea.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-sm text-gray-500 mt-4 loading-stage-text">Mengambil data teknikal...</p></div>';
+
+    var ticker = tickerOrQuery.replace(/[^A-Z0-9]/g, '');
+    var isIndex = isIndexTicker(ticker);
+
+    // Update loading text stages
+    var stageEl = resultArea.querySelector('.loading-stage-text');
+    var stages = isIndex ? ['Membaca trend market dan level kunci...', 'Menyusun laporan IHSG...'] : ['Membaca struktur trend, MA, RSI, volume...', 'Menyusun analisis...'];
+    var stageIdx = 0;
+    var stageTimer = setInterval(function() { if (stageIdx < stages.length && stageEl) { stageEl.textContent = stages[stageIdx]; stageIdx++; } else { clearInterval(stageTimer); } }, 2500);
+
+    try {
+        // Set active ticker for context
+        if (typeof setActiveTicker === 'function') setActiveTicker(ticker);
+
+        // Build enriched message
+        var company = (typeof getCompanyName === 'function') ? getCompanyName(ticker) : null;
+        var enrichedMsg = ticker + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
+
+        // Fetch quote context
+        if (typeof fetchQuoteContext === 'function') {
+            var quoteCtx = await fetchQuoteContext(ticker);
+            if (quoteCtx) enrichedMsg += quoteCtx;
+        }
+
+        var response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chatMessage: enrichedMsg,
+                source: 'chat_mode',
+                username: localStorage.getItem('autocuan_user') || '',
+                isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
+                context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
+            })
+        });
+        var data = await response.json();
+        clearInterval(stageTimer);
+
+        if (data.html) {
+            var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+            // Apply client-side sanitizers if available
+            if (typeof clientSanitizeFCA === 'function') html = clientSanitizeFCA(html);
+            if (typeof sanitizeAIHtml === 'function') html = sanitizeAIHtml(html);
+            if (typeof normalizeFinalStockHtml === 'function') html = normalizeFinalStockHtml(html);
+            if (isIndex && typeof sanitizeIHSGOutput === 'function') html = sanitizeIHSGOutput(html);
+            if (typeof reorderBrokerCTA === 'function') html = reorderBrokerCTA(html, isIndex);
+
+            // Render result
+            resultArea.innerHTML = '<div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up">' + html + '</div>' +
+                '<div class="mt-3 flex flex-wrap gap-2">' +
+                '<button onclick="openChartFromAnalisis(\'' + ticker + '\')" class="px-3 py-1.5 rounded-lg text-xs text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition">Lihat Chart ' + ticker + '</button>' +
+                '</div>';
+
+            // Show follow-up input
+            if (followUp) followUp.classList.remove('hidden');
+
+            // Update context
+            if (typeof updateAnalysisContext === 'function') updateAnalysisContext(ticker, html);
+            incrementAnalysisUsage();
+            if (typeof logUsage === 'function') logUsage(ticker, 'ai_success');
+        } else {
+            throw new Error('Tidak ada hasil.');
+        }
+    } catch(e) {
+        clearInterval(stageTimer);
+        var errMsg = (typeof isNetworkError === 'function' && isNetworkError(e)) ? 'Koneksi ke server sedang bermasalah.' : 'Analisis belum berhasil. Coba lagi.';
+        resultArea.innerHTML = '<div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center"><p class="text-sm text-red-400">' + errMsg + '</p></div>';
+    }
+}
+
+function openChartFromAnalisis(ticker) {
+    navigateTo('chart');
+    var input = document.getElementById('chartTickerInput');
+    if (input) input.value = ticker;
+    setTimeout(function() { loadChartPage(); }, 100);
+}
+
+// ===== ANALISIS FOLLOW-UP (on analisis page) =====
+async function handleAnalisisFollowUp(msg) {
+    var resultArea = document.getElementById('analisisResult');
+    var input = document.getElementById('chatInput');
+    if (!resultArea || !input) return;
+
+    if (!canChat()) {
+        resultArea.innerHTML += '<div class="mt-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-center"><p class="text-xs text-yellow-400">' + getChatLimitMsg() + '</p></div>';
+        return;
+    }
+
+    // Add user message bubble to result area
+    resultArea.innerHTML += '<div class="mt-3 flex justify-end fade-in-up"><div class="bg-emerald-500/10 border border-emerald-500/15 rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[80%]"><p class="text-sm text-gray-100">' + escapeHtml(msg) + '</p></div></div>';
+
+    // Add loading
+    resultArea.innerHTML += '<div id="analisisFollowUpLoading" class="mt-3 flex gap-3 fade-in-up"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3"><p class="text-sm text-emerald-400 animate-pulse-glow">Menyiapkan jawaban...</p></div></div>';
+
+    input.value = '';
+    if (typeof autoResizeInput === 'function') autoResizeInput();
+    resultArea.scrollTop = resultArea.scrollHeight;
+
+    try {
+        var enrichedMsg = msg;
+        if (activeTicker) {
+            var company = (typeof getCompanyName === 'function') ? getCompanyName(activeTicker) : null;
+            enrichedMsg += '\n[Info: ' + activeTicker + (company ? ' = ' + company : '') + ']';
+            if (typeof fetchQuoteContext === 'function') {
+                var quoteCtx = await fetchQuoteContext(activeTicker);
+                if (quoteCtx) enrichedMsg += quoteCtx;
+            }
+        }
+        var response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chatMessage: enrichedMsg,
+                source: 'chat_mode',
+                username: localStorage.getItem('autocuan_user') || '',
+                isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
+                context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
+            })
+        });
+        var data = await response.json();
+        // Remove loading
+        var loadEl = document.getElementById('analisisFollowUpLoading');
+        if (loadEl) loadEl.remove();
+
+        if (data.html) {
+            var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+            if (typeof clientSanitizeFCA === 'function') html = clientSanitizeFCA(html);
+            if (typeof sanitizeAIHtml === 'function') html = sanitizeAIHtml(html);
+
+            resultArea.innerHTML += '<div class="mt-3 flex gap-3 fade-in-up"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%]">' + html + '</div></div>';
+            if (typeof updateAnalysisContext === 'function') updateAnalysisContext(msg, html);
+            incrementChatUsage();
+        } else {
+            throw new Error('no response');
+        }
+    } catch(e) {
+        var loadEl2 = document.getElementById('analisisFollowUpLoading');
+        if (loadEl2) loadEl2.remove();
+        resultArea.innerHTML += '<div class="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl p-3"><p class="text-xs text-red-400">Belum berhasil mendapatkan jawaban. Coba lagi.</p></div>';
+    }
+    resultArea.scrollTop = resultArea.scrollHeight;
+}
+
+// ===== CHART PAGE =====
+async function loadChartPage() {
+    var input = document.getElementById('chartTickerInput');
+    var ticker = (input.value || '').trim().toUpperCase();
+    if (!ticker) return;
+    input.value = ticker;
+
+    var container = document.getElementById('chartPageContainer');
+    if (!container) return;
+
+    var chartId = 'pagechart_' + Date.now();
+    container.innerHTML = '<div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><h2 class="text-sm font-semibold text-gray-300">Chart ' + ticker + '</h2><span class="text-xs text-gray-500">Data Historis T-1</span></div></div>' +
+        '<div id="' + chartId + '_container" style="height:350px;width:100%"><div class="flex items-center justify-center h-full text-gray-600 text-xs"><span class="spinner-sm"></span> Memuat chart...</div></div>' +
+        '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%"></div>' +
+        '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
+        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
+
+    try {
+        var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
+        var data = await resp.json();
+        if (!data.success || !data.candles || data.candles.length === 0) {
+            document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart belum berhasil dimuat untuk ' + ticker + '. Coba ticker lain.</div>';
+            return;
+        }
+        if (typeof loadLightweightCharts === 'function') await loadLightweightCharts();
+        if (typeof renderLightweightChart === 'function') await renderLightweightChart(chartId, data.candles, data.metrics || null, ticker);
+    } catch(e) {
+        var cont = document.getElementById(chartId + '_container');
+        if (cont) cont.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart gagal dimuat. Coba lagi nanti.</div>';
+    }
 }
 
 // ===== MODE SYSTEM (simplified - always Chat, intent auto-detected from message) =====
@@ -2393,9 +2832,15 @@ async function handleSend() {
     var msg = input.value.trim();
     var hasFile = selectedFiles.length > 0;
     var limitWarning = document.getElementById('limitWarning');
-    limitWarning.classList.add('hidden');
+    if (limitWarning) limitWarning.classList.add('hidden');
 
     if (!msg && !hasFile) return;
+
+    // If on analisis page, route follow-up to analisis result area
+    if (currentPage === 'analisis' && msg && !hasFile) {
+        await handleAnalisisFollowUp(msg);
+        return;
+    }
 
     // Input length safety limit (max 10000 chars)
     if (msg.length > 10000) {

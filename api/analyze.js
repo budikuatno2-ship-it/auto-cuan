@@ -97,6 +97,51 @@ module.exports = async function handler(req, res) {
       var prompt;
       var maxTokens = 1024;
 
+      // === DETECT IHSG EARLY FOR FIXED TEMPLATE ===
+      var detectedIHSG = false;
+      var ihsgAliasesEarly = /\b(IHSG|JKSE|JCI)\b|\^JKSE/i;
+      var compositeAliasEarly = /\b(composite|idx\s*composite|indeks\s*harga\s*saham\s*gabungan)\b/i;
+      if (ihsgAliasesEarly.test(chatMessage) || compositeAliasEarly.test(chatMessage)) {
+        detectedIHSG = true;
+      }
+      if (body.context && body.context.ticker === 'IHSG') detectedIHSG = true;
+
+      // === FIXED IHSG TEMPLATE (deterministic, data-driven) ===
+      if (detectedIHSG && intent !== 'follow_up_question' && intent !== 'contextual_data_followup' && intent !== 'casual_chat') {
+        var ihsgData = parseMarketDataFromMessage(chatMessage);
+        if (ihsgData && ihsgData.last) {
+          var ihsgHtml = buildIHSGFixedTemplate(ihsgData, chatMessage);
+          // Use AI only for narrative fill if needed
+          if (ihsgHtml) {
+            return res.status(200).json({ html: ihsgHtml, intent: 'ihsg_fixed_report', provider: 'template' });
+          }
+        }
+      }
+
+      // === FIXED STOCK TEMPLATE (conversational, data-driven) ===
+      var detectedStockTicker = null;
+      if (!detectedIHSG && (intent === 'normal_chat' || intent === 'ticker_price_basic' || intent === 'ticker_only')) {
+        // Try to detect ticker from message
+        var stockMatch = chatMessage.match(/\b([A-Z]{4})\b/);
+        if (stockMatch && typeof isValidTicker !== 'undefined') {
+          detectedStockTicker = stockMatch[1];
+        } else if (stockMatch) {
+          detectedStockTicker = stockMatch[1];
+        }
+        if (body.context && body.context.ticker && body.context.ticker !== 'IHSG') {
+          detectedStockTicker = body.context.ticker;
+        }
+      }
+      if (detectedStockTicker && intent !== 'follow_up_question' && intent !== 'contextual_data_followup' && intent !== 'casual_chat' && intent !== 'ticker_only') {
+        var stockData = parseMarketDataFromMessage(chatMessage);
+        if (stockData && stockData.last) {
+          var stockHtml = buildStockFixedTemplate(stockData, detectedStockTicker, chatMessage);
+          if (stockHtml) {
+            return res.status(200).json({ html: stockHtml, intent: 'stock_fixed_conversational', provider: 'template' });
+          }
+        }
+      }
+
       // === GROQ FOR CASUAL CHAT ===
       if (isCasualChat(chatMessage, body.context, intent)) {
         var casualResult = await handleCasualWithGroq(chatMessage);
@@ -707,6 +752,515 @@ function sanitizeOutput(html, fcaConfirmed, intent) {
   }
 
   return output;
+}
+
+// === FIXED TEMPLATE: Parse Market Data from enriched message ===
+function parseMarketDataFromMessage(msg) {
+  if (!msg || typeof msg !== 'string') return null;
+  var dataBlock = msg.match(/\[Auto-Cuan Market Data\]([\s\S]*?)(?:\[Auto-Cuan|$)/i);
+  if (!dataBlock) return null;
+  var block = dataBlock[1];
+  function extract(label) {
+    var re = new RegExp(label + '\\s*[:]\\s*([^\\n]+)', 'i');
+    var m = block.match(re);
+    return m ? m[1].trim() : null;
+  }
+  function num(label) {
+    var v = extract(label);
+    if (!v) return null;
+    var n = parseFloat(v.replace(/,/g, ''));
+    return isNaN(n) ? null : n;
+  }
+  return {
+    last: num('Last'),
+    open: num('Open'),
+    high: num('High'),
+    low: num('Low'),
+    volume: num('Volume') || 0,
+    prevClose: num('Prev Close'),
+    priceChange1D: num('Price Change 1D'),
+    volumeVsAvg20: num('Volume vs Avg 20'),
+    volumeAvg20: num('Avg Volume 20'),
+    ma20: num('MA20'),
+    ma50: num('MA50'),
+    ma100: num('MA100'),
+    ma200: num('MA200'),
+    rsi14: num('RSI14'),
+    support1: num('Support 1'),
+    support2: num('Support 2'),
+    resistance1: num('Resistance 1'),
+    resistance2: num('Resistance 2'),
+    pivotPoint: num('Pivot Point'),
+    fib382: num('Fib 38\\.2%'),
+    fib500: num('Fib 50%'),
+    fib618: num('Fib 61\\.8%'),
+    fib786: num('Fib 78\\.6%'),
+    volumeTrend: extract('Volume Trend'),
+    priceVolumeReading: extract('Price-Volume Reading')
+  };
+}
+
+// === FIXED TEMPLATE: IHSG Market Report ===
+function buildIHSGFixedTemplate(d, rawMsg) {
+  if (!d || !d.last) return null;
+  var last = d.last;
+  var changePct = d.priceChange1D != null ? d.priceChange1D : 0;
+  var volRatio = d.volumeVsAvg20 != null ? d.volumeVsAvg20 : 1;
+  var rsi14 = d.rsi14 || 50;
+  var ma20 = d.ma20 || '-';
+  var ma50 = d.ma50 || '-';
+  var ma100 = d.ma100 || '-';
+  var ma200 = d.ma200 || '-';
+  var high = d.high || '-';
+  var low = d.low || '-';
+  var r1 = d.resistance1 || '-';
+  var r2 = d.resistance2 || '-';
+  var s1 = d.support1 || '-';
+  var s2 = d.support2 || '-';
+
+  // Determine status/bias/confidence/sikap from data
+  var statusMarket, biasIHSG, confidence, sikap;
+  if (changePct <= -1.5 && rsi14 < 40) { statusMarket = 'Risk-Off'; biasIHSG = 'Bearish'; confidence = 'High'; sikap = 'Defensive'; }
+  else if (changePct <= -0.5 && rsi14 < 50) { statusMarket = 'Wait Confirmation'; biasIHSG = 'Bearish'; confidence = 'Medium'; sikap = 'Defensive'; }
+  else if (changePct >= 1 && rsi14 > 55) { statusMarket = 'Breakout Watch'; biasIHSG = 'Bullish'; confidence = 'High'; sikap = 'Aggressive'; }
+  else if (changePct >= 0.3 && rsi14 > 50) { statusMarket = 'Rebound Watch'; biasIHSG = 'Bullish'; confidence = 'Medium'; sikap = 'Selective'; }
+  else if (rsi14 < 30) { statusMarket = 'Rebound Watch'; biasIHSG = 'Bearish'; confidence = 'Medium'; sikap = 'Wait'; }
+  else { statusMarket = 'Neutral'; biasIHSG = 'Neutral'; confidence = 'Medium'; sikap = 'Selective'; }
+
+  // RSI condition
+  var rsiCondition = rsi14 > 70 ? 'overbought' : rsi14 > 55 ? 'bullish momentum' : rsi14 > 45 ? 'netral' : rsi14 > 30 ? 'bearish' : 'oversold';
+
+  // MA position
+  var maPosition = '';
+  if (d.ma20 && d.ma50) {
+    if (last > d.ma20 && last > d.ma50) maPosition = 'di atas MA20 dan MA50';
+    else if (last > d.ma20) maPosition = 'di atas MA20, di bawah MA50';
+    else if (last > d.ma50) maPosition = 'di bawah MA20, di atas MA50';
+    else maPosition = 'di bawah MA20 dan MA50';
+  } else { maPosition = '-'; }
+
+  // Market pressure
+  var marketPressure = changePct < -1 ? 'tekanan jual dominan' : changePct < 0 ? 'tekanan jual ringan' : changePct > 1 ? 'tekanan beli dominan' : changePct > 0 ? 'tekanan beli ringan' : 'keseimbangan sementara';
+
+  // Direction
+  var arahUtama = changePct >= 0.5 ? 'Potensi lanjut naik jika momentum terjaga' : changePct <= -0.5 ? 'Potensi tekanan lanjut jika support tidak bertahan' : 'Sideways, menunggu katalis arah';
+  var syaratRebound = 'IHSG bertahan di atas ' + s1 + ' dengan volume beli meningkat';
+  var risikoBreakdown = 'Jika ' + s1 + ' ditembus, tekanan lanjut ke ' + s2;
+
+  // Skenario
+  var skenarioBullish = 'IHSG break ' + r1 + ' dengan volume meningkat, target selanjutnya ' + r2;
+  var skenarioNetral = 'IHSG bergerak sideways di range ' + s1 + '-' + r1 + ', volume normal';
+  var skenarioBearish = 'IHSG breakdown ' + s1 + ', tekanan lanjut ke ' + s2 + ' dengan volume jual tinggi';
+
+  // Konfirmasi & Risiko
+  var levelKonfirmasi = 'IHSG reclaim ' + r1 + ' dengan volume di atas rata-rata';
+  var levelRisiko = 'IHSG breakdown ' + s1 + ' dengan volume jual meningkat';
+
+  // Fibonacci (if available)
+  var fibSection = '';
+  if (d.fib382 && d.fib500 && d.fib618) {
+    var posisiFib = '';
+    if (last > d.fib382) posisiFib = 'di atas Fib 38,2%';
+    else if (last > d.fib500) posisiFib = 'antara Fib 50% dan Fib 38,2%';
+    else if (last > d.fib618) posisiFib = 'antara Fib 61,8% dan Fib 50%';
+    else posisiFib = 'di bawah Fib 61,8%';
+    var implikasiFib = last > d.fib500 ? 'Retracement masih wajar, potensi recovery ada' : 'Retracement cukup dalam, waspada tekanan lanjutan';
+    fibSection = '<div class="metric-grid"><div><strong>Fibonacci Market</strong><br>' +
+      'Fib 38,2%: ' + d.fib382 + '<br>' +
+      'Fib 50%: ' + d.fib500 + '<br>' +
+      'Fib 61,8%: ' + d.fib618 + '<br>' +
+      (d.fib786 ? 'Fib 78,6%: ' + d.fib786 + '<br>' : '') +
+      'Posisi IHSG: ' + posisiFib + '<br>' +
+      'Implikasi Market: ' + implikasiFib + '</div></div>';
+  }
+
+  // Implikasi ke Saham
+  var implBigCaps = changePct >= 0 ? 'Big caps berpotensi stabil, bisa jadi penggerak jika momentum lanjut' : 'Big caps ikut tertekan, potensi tekanan jual dari asing';
+  var implSecondLiners = changePct >= 0 ? 'Second liners bisa ikut bergerak jika IHSG konfirmasi bullish' : 'Second liners lebih rentan, likuiditas bisa menyusut';
+  var implDefensive = changePct >= 0 ? 'Sektor defensif bisa underperform jika risk-on dominan' : 'Sektor defensif (consumer, telco) bisa jadi tempat parking dana';
+
+  // Sentimen/Katalis
+  var newsBlock = rawMsg.match(/\[Auto-Cuan News Summary\]([\s\S]*?)(?:\[Auto-Cuan|$)/i);
+  var katalisText = 'Data katalis tidak tersedia saat ini, fokus teknikal.';
+  if (newsBlock && newsBlock[1] && newsBlock[1].indexOf('unavailable') === -1 && newsBlock[1].indexOf('- ') !== -1) {
+    katalisText = 'Terdapat beberapa katalis dari data yang tersedia yang dapat mempengaruhi sentimen market.';
+  }
+
+  // Risk Guard
+  var riskGuard = rsi14 < 30 ? 'RSI14 sudah oversold (' + rsi14 + '), potensi technical rebound ada tapi butuh konfirmasi volume.' : changePct <= -2 ? 'Penurunan signifikan (' + changePct + '%), waspada tekanan lanjutan jika support ' + s1 + ' tidak bertahan.' : 'Kondisi teknikal ' + rsiCondition + ', pantau level ' + s1 + ' sebagai acuan risiko.';
+
+  // Build HTML
+  var html = '';
+  html += '<div class="decision-card"><strong>Kesimpulan Cepat IHSG</strong><div class="decision-grid">';
+  html += '<div><span>Status Market</span><b>' + statusMarket + '</b></div>';
+  html += '<div><span>Bias IHSG</span><b>' + biasIHSG + '</b></div>';
+  html += '<div><span>Confidence</span><b>' + confidence + '</b></div>';
+  html += '<div><span>Sikap</span><b>' + sikap + '</b></div>';
+  html += '</div><div class="key-level">Level kunci: R ' + r1 + ' / S ' + s1 + '</div></div>';
+
+  html += '<p><strong>Ringkasan Market</strong><br>';
+  html += 'IHSG ditutup ' + last + ', ' + (changePct >= 0 ? 'naik' : (changePct <= -3 ? 'anjlok' : 'turun')) + ' ' + String(Math.abs(changePct).toFixed(2)).replace('.', ',') + '% dengan volume ' + String(volRatio).replace('.', ',') + 'x rata-rata. ';
+  html += 'Harga ' + maPosition + ' dan RSI 14 menyentuh ' + String(rsi14).replace('.', ',') + ' (' + rsiCondition + '), menunjukkan ' + marketPressure + '.</p>';
+
+  html += '<div class="scenario-list"><div><strong>Potensi Besok</strong><br>';
+  html += 'Arah Utama: ' + arahUtama + '<br>';
+  html += 'Uji Resistance: Resistance terdekat di ' + r1 + ' (R1), kemudian ' + r2 + ' (R2).<br>';
+  html += 'Uji Support: Support pertama ' + s1 + ' (S1), kemudian ' + s2 + ' (S2).<br>';
+  html += 'Syarat Rebound: ' + syaratRebound + '.<br>';
+  html += 'Risiko Breakdown: ' + risikoBreakdown + '.</div></div>';
+
+  html += '<div class="metric-grid"><div><strong>Data Teknikal IHSG</strong><br>';
+  html += 'MA20: ' + ma20 + '<br>MA50: ' + ma50 + '<br>MA100: ' + ma100 + '<br>MA200: ' + ma200 + '<br>';
+  html += 'Posisi: ' + maPosition + '</div>';
+  html += '<div><strong>Momentum Market</strong><br>';
+  html += 'RSI14: ' + rsi14 + '<br>Volume: ' + volRatio + 'x avg20<br>';
+  html += 'Last: ' + last + '<br>High: ' + high + '<br>Low: ' + low + '</div></div>';
+
+  html += '<div class="level-grid"><div><strong>Resistance IHSG</strong><br>R1: ' + r1 + '<br>R2: ' + r2 + '</div>';
+  html += '<div><strong>Support IHSG</strong><br>S1: ' + s1 + '<br>S2: ' + s2 + '</div></div>';
+
+  html += '<div class="level-grid"><div><strong>Level Konfirmasi</strong><br>' + levelKonfirmasi + '</div>';
+  html += '<div><strong>Level Risiko</strong><br>' + levelRisiko + '</div></div>';
+
+  html += '<div class="scenario-list"><div><strong>Skenario Bullish Market</strong><br>' + skenarioBullish + '</div>';
+  html += '<div><strong>Skenario Netral</strong><br>' + skenarioNetral + '</div>';
+  html += '<div><strong>Skenario Bearish</strong><br>' + skenarioBearish + '</div></div>';
+
+  if (fibSection) html += fibSection;
+
+  html += '<p><strong>Implikasi ke Saham</strong><br>';
+  html += 'Big caps: ' + implBigCaps + '<br>';
+  html += 'Second liners: ' + implSecondLiners + '<br>';
+  html += 'Defensive sectors: ' + implDefensive + '</p>';
+
+  html += '<p><strong>Katalis / Sentimen IHSG</strong><br>' + katalisText + '</p>';
+
+  html += '<p><strong>Risk Guard Market</strong><br>' + riskGuard + '</p>';
+
+  html += '<div class="analytic-summary"><strong>Kesimpulan Final Market</strong><div class="summary-rows">';
+  html += '<div><span>Status Market</span><b>' + statusMarket + '</b></div>';
+  html += '<div><span>Bias</span><b>' + biasIHSG + '</b></div>';
+  html += '<div><span>Sikap</span><b>' + sikap + '</b></div>';
+  html += '<div><span>Konfirmasi</span><b>' + levelKonfirmasi + '</b></div>';
+  html += '<div><span>Risiko</span><b>' + levelRisiko + '</b></div>';
+  html += '</div></div>';
+
+  return html;
+}
+
+// === FIXED TEMPLATE: Stock Structured Report ===
+function buildStockFixedTemplate(d, ticker, rawMsg) {
+  if (!d || !d.last) return null;
+  var last = d.last;
+  var changePct = d.priceChange1D != null ? d.priceChange1D : 0;
+  var volRatio = d.volumeVsAvg20 != null ? d.volumeVsAvg20 : 1;
+  var rsi14 = d.rsi14 || 50;
+  var ma20 = d.ma20;
+  var ma50 = d.ma50;
+  var ma100 = d.ma100;
+  var ma200 = d.ma200;
+  var high = d.high || '\u2014';
+  var low = d.low || '\u2014';
+  var r1 = d.resistance1;
+  var r2 = d.resistance2;
+  var s1 = d.support1;
+  var s2 = d.support2;
+
+  // Need at least some technical data
+  if (!rsi14 && !ma20 && !s1) return null;
+
+  // Indonesian number format: decimals use comma (6,45), integers stay plain (5075)
+  function idn(val) {
+    if (val == null) return '\u2014';
+    var n = Number(val);
+    if (isNaN(n)) return String(val);
+    // Integer: plain number, no thousand separator
+    if (n === Math.floor(n)) return String(n);
+    // Decimal: replace dot with comma
+    return String(parseFloat(n.toPrecision(6))).replace('.', ',');
+  }
+  function pct(val) { if (val == null) return '\u2014'; return String(Math.abs(val).toFixed(2)).replace('.', ',') + '%'; }
+  function ratio(val) { if (val == null) return '\u2014'; return String(val).replace('.', ',') + 'x'; }
+  // Safe display value (keeps string as-is, formats numbers Indonesian)
+  function v(val) { if (val == null) return '\u2014'; if (typeof val === 'number') return idn(val); return String(val); }
+
+  // === DECISION LOGIC ===
+  var status, bias, confidence, action;
+  if (changePct <= -5 && last < (ma20 || Infinity) && last < (ma50 || Infinity)) {
+    status = 'Avoid Dulu'; bias = 'Bearish'; confidence = 'High'; action = 'Avoid dulu';
+  } else if (changePct <= -2 && rsi14 < 40) {
+    status = 'Avoid Dulu'; bias = 'Bearish'; confidence = 'High'; action = 'Avoid dulu';
+  } else if (changePct <= -1 && rsi14 < 45) {
+    status = 'Wait Confirmation'; bias = 'Bearish'; confidence = 'Medium'; action = 'Wait confirmation';
+  } else if (rsi14 < 30) {
+    status = 'Rebound Watch'; bias = 'Bearish'; confidence = 'Medium'; action = 'Wait rebound confirmation';
+  } else if (changePct >= 2 && rsi14 > 55 && last > (ma20 || 0)) {
+    status = 'Breakout Watch'; bias = 'Bullish'; confidence = 'High'; action = 'Entry on breakout confirmation';
+  } else if (changePct >= 0.5 && rsi14 > 50 && last > (ma20 || 0)) {
+    status = 'Speculative Watch'; bias = 'Bullish'; confidence = 'Medium'; action = 'Small position only';
+  } else if (last > (ma20 || 0) && last > (ma50 || 0) && rsi14 > 50) {
+    status = 'Breakout Watch'; bias = 'Bullish'; confidence = 'Medium'; action = 'Watchlist';
+  } else {
+    status = 'Wait Confirmation'; bias = 'Neutral'; confidence = 'Medium'; action = 'Watchlist';
+  }
+
+  var rsiLabel = rsi14 > 70 ? 'overbought' : rsi14 > 55 ? 'bullish momentum' : rsi14 > 45 ? 'netral' : rsi14 > 30 ? 'bearish/lemah' : 'oversold';
+  var maPosition = '\u2014';
+  if (ma20 && ma50 && ma100 && ma200) {
+    if (last > ma20 && last > ma50 && last > ma100 && last > ma200) maPosition = 'Di atas semua MA utama';
+    else if (last < ma20 && last < ma50 && last < ma100 && last < ma200) maPosition = 'Di bawah semua MA utama';
+    else if (last > ma20 && last > ma50) maPosition = 'Di atas MA20 dan MA50';
+    else maPosition = 'Di bawah MA20 dan MA50';
+  } else if (ma20 && ma50) {
+    if (last > ma20 && last > ma50) maPosition = 'Di atas MA20 dan MA50';
+    else if (last < ma20 && last < ma50) maPosition = 'Di bawah MA20 dan MA50';
+    else maPosition = 'Mixed';
+  }
+  var changeText = changePct >= 0 ? 'naik ' + pct(changePct) : (changePct <= -5 ? 'anjlok ' : 'turun ') + pct(changePct);
+  var pressureSummary = changePct <= -3 ? 'Tekanan jual masih dominan, belum ada sinyal pemulihan' : changePct <= -1 ? 'Tekanan jual terlihat, perlu konfirmasi support' : changePct >= 2 ? 'Tekanan beli dominan, momentum positif' : 'Belum ada tekanan dominan yang jelas';
+  var bearLevel = s2 || (s1 ? Math.round(s1 * 0.98) : '\u2014');
+  var baseRange = v(s1) + '\u2013' + v(r1);
+  var bullLevel = r1 || '\u2014';
+  var bearDesc = s1 ? 'Tembus S1 ' + s1 + ' dan lanjut ke S2 dengan volume jual meningkat' : 'Breakdown support terdekat';
+  var baseDesc = 'Konsolidasi di area support-resistance, volume normal';
+  var bullDesc = r1 ? 'Breakout di atas ' + r1 + ' dengan volume meningkat' : 'Breakout resistance terdekat';
+  var setupAction, setupReason, setupValid, setupCancel;
+  if (bias === 'Bearish') { setupAction = 'Avoid Dulu'; setupReason = 'Momentum negatif, harga ' + maPosition.toLowerCase() + ', RSI ' + rsiLabel; setupValid = 'Harga reclaim ' + v(r1) + ' dengan volume di atas rata-rata'; setupCancel = 'Breakdown di bawah ' + v(s1) + ' menuju ' + v(s2); }
+  else if (bias === 'Bullish') { setupAction = 'Entry on confirmation'; setupReason = 'Momentum positif, harga ' + maPosition.toLowerCase() + ', RSI ' + rsiLabel; setupValid = 'Harga bertahan di atas ' + v(ma20) + ' dan volume konsisten'; setupCancel = 'Harga breakdown ' + v(s1) + ' atau volume menurun'; }
+  else { setupAction = 'Watchlist'; setupReason = 'Kondisi netral, menunggu konfirmasi arah'; setupValid = 'Breakout ' + v(r1) + ' atau reclaim MA20 dengan volume'; setupCancel = 'Breakdown ' + v(s1) + ' dengan volume jual'; }
+  var volBlock = rawMsg.match(/\[Auto-Cuan Volume Intelligence\]([\s\S]*?)(?:\[Auto-Cuan|$)/i);
+  var volToday = '\u2014', volAvg3 = '\u2014', volAvg7 = '\u2014', volVs7 = '\u2014', volCommentary = '\u2014';
+  if (volBlock) { var vb = volBlock[1]; var ve = function(lbl) { var m = vb.match(new RegExp(lbl + '\\s*[:]\\s*([^\\n]+)', 'i')); return m ? m[1].trim() : '\u2014'; }; volToday = ve('Volume Terakhir'); volAvg3 = ve('Rata-rata 3 Hari'); volAvg7 = ve('Rata-rata 7 Hari'); volVs7 = ve('Volume vs Avg 7D'); volCommentary = ve('Pembacaan'); }
+  var fibBlock = rawMsg.match(/\[Auto-Cuan Fibonacci Intelligence\]([\s\S]*?)(?:\[Auto-Cuan|$)/i);
+  var fibSwingH = '\u2014', fibSwingL = '\u2014', fibNearest = '\u2014', fibTrend = '\u2014', fib382 = d.fib382 != null ? d.fib382 : '\u2014', fib500 = d.fib500 != null ? d.fib500 : '\u2014', fib618 = d.fib618 != null ? d.fib618 : '\u2014', fib786 = d.fib786 != null ? d.fib786 : '\u2014', fibCommentary = '\u2014', hasFib = false;
+  if (fibBlock) { hasFib = true; var fb = fibBlock[1]; var fe = function(lbl) { var m = fb.match(new RegExp(lbl + '\\s*[:]\\s*([^\\n]+)', 'i')); return m ? m[1].trim() : '\u2014'; }; fibSwingH = fe('Swing High'); fibSwingL = fe('Swing Low'); fibNearest = fe('Nearest Fib'); fibTrend = fe('Trend Context'); fibCommentary = fe('Reading'); if (fibCommentary === '\u2014') fibCommentary = fe('Invalidation'); } else if (d.fib382) { hasFib = true; }
+  var scenBullish = r1 ? 'Breakout ' + r1 + ' dengan volume meningkat, target ' + v(r2) : 'Breakout resistance terdekat';
+  var scenNeutral = 'Sideways di range ' + v(s1) + '\u2013' + v(r1) + ', volume normal';
+  var scenBearish = s1 ? 'Breakdown ' + s1 + ', tekanan lanjut ke ' + v(s2) : 'Breakdown support terdekat';
+  var entryPlan, stopLoss, tp1, tp2, catatan;
+  // reclaimLevel: use pivot from data; fallback to midpoint(S1,R1) rounded to IDX tick
+  function roundToIdxTick(price) {
+    if (!price || price <= 0) return price;
+    // IDX tick: <=200 → multiple of 1; 200-500 → multiple of 2; 500-2000 → multiple of 5; 2000-5000 → multiple of 10; >5000 → multiple of 25
+    if (price > 5000) return Math.round(price / 25) * 25;
+    if (price > 2000) return Math.round(price / 10) * 10;
+    if (price > 500) return Math.round(price / 5) * 5;
+    if (price > 200) return Math.round(price / 2) * 2;
+    return Math.round(price);
+  }
+  var reclaimLevel = d.pivotPoint || (s1 && r1 ? roundToIdxTick((s1 + r1) / 2) : null) || ma20 || r1 || s1;
+  if (bias === 'Bearish') { entryPlan = 'Tunggu konfirmasi rebound di atas ' + v(reclaimLevel) + ' dengan volume.'; stopLoss = s1 ? 'Di bawah ' + v(s1) : '\u2014'; tp1 = v(r1); tp2 = v(r2); catatan = 'Hindari beli saat tekanan jual masih dominan dan RSI ' + rsiLabel + ' tanpa konfirmasi.'; }
+  else if (bias === 'Bullish') { entryPlan = 'Area ' + v(s1) + '\u2013' + v(ma20) + ' jika ada konfirmasi volume.'; stopLoss = s1 ? 'Di bawah ' + v(s1) : '\u2014'; tp1 = v(r1); tp2 = v(r2); catatan = 'Entry valid jika volume meningkat dan harga bertahan di atas support.'; }
+  else { entryPlan = 'Tunggu konfirmasi breakout ' + v(r1) + ' atau rebound dari ' + v(s1) + '.'; stopLoss = s1 ? 'Di bawah ' + v(s1) : '\u2014'; tp1 = v(r1); tp2 = v(r2); catatan = 'Kondisi netral, perlu trigger arah sebelum ambil posisi.'; }
+  // setupValid uses reclaimLevel for consistency with Entry/Konfirmasi
+  var setupValidFinal = bias === 'Bearish' ? 'Harga reclaim ' + v(reclaimLevel) + ' dengan volume di atas rata-rata' : setupValid;
+  var riskGuard = rsi14 < 30 ? 'RSI oversold (' + idn(rsi14) + ') tapi bukan otomatis sinyal beli. Tunggu konfirmasi volume.' : changePct <= -5 ? 'Penurunan sangat besar (' + pct(changePct) + '). Hindari averaging tanpa konfirmasi.' : changePct <= -2 ? 'Tekanan jual kuat. Cut loss jika breakdown ' + v(s1) + '.' : 'Pantau level ' + v(s1) + ' sebagai acuan risiko. Disiplin stop loss.';
+  var trendSummary = bias === 'Bullish' ? 'Bullish' : bias === 'Bearish' ? 'Bearish' : 'Neutral';
+  var momentumSummary = rsi14 > 55 ? 'Kuat' : rsi14 > 45 ? 'Netral' : rsi14 > 30 ? 'Lemah' : 'Sangat lemah (oversold)';
+  var volumeSummary = volRatio > 2 ? 'Spike (' + ratio(volRatio) + ' avg)' : volRatio > 1.3 ? 'Di atas rata-rata' : volRatio > 0.7 ? 'Normal' : 'Di bawah rata-rata';
+  var fibSummary = hasFib ? fibNearest : '\u2014';
+  var riskSummary = changePct <= -3 ? 'Tinggi' : changePct <= -1 ? 'Sedang' : 'Rendah-Sedang';
+  var newsBlock2 = rawMsg.match(/\[Auto-Cuan News Summary\]([\s\S]*?)(?:\[Auto-Cuan|$)/i);
+  var newsText = 'Tidak ada katalis kuat. Fokus teknikal.';
+  if (newsBlock2 && newsBlock2[1] && newsBlock2[1].indexOf('unavailable') === -1 && newsBlock2[1].indexOf('- ') !== -1) { newsText = 'Terdapat katalis yang bisa mempengaruhi pergerakan. Validasi apakah sudah ter-price-in.'; }
+  var invalidation = bias === 'Bearish' ? 'Breakdown di bawah ' + v(s1) + ' menuju ' + v(s2) + ' dengan volume jual meningkat.' : 'Setup batal jika harga breakdown ' + v(s1) + ' dengan volume jual signifikan.';
+  var finalReason = '1. Trend: harga ' + maPosition.toLowerCase() + '<br>2. Momentum: RSI ' + idn(rsi14) + ' (' + rsiLabel + ')<br>3. Volume: ' + ratio(volRatio) + ' rata-rata<br>' + (hasFib ? '4. Fibonacci: ' + fibNearest + '<br>5' : '4') + '. Perubahan harga: ' + changeText;
+
+  // === BUILD HTML ===
+  var html = '';
+  // 1. Kesimpulan Cepat
+  html += '<div class="decision-card"><strong>Kesimpulan Cepat</strong><div class="decision-grid">';
+  html += '<div><span>Status</span><b>' + status + '</b></div>';
+  html += '<div><span>Bias</span><b>' + bias + '</b></div>';
+  html += '<div><span>Confidence</span><b>' + confidence + '</b></div>';
+  html += '<div><span>Action</span><b>' + action + '</b></div>';
+  html += '</div><div class="key-level">Level kunci: R ' + v(r1) + ' / S ' + v(s1) + '</div></div>';
+  // 2. Ringkasan Cepat
+  html += '<p><strong>Ringkasan Cepat</strong><br>' + ticker + ' ' + changeText + ' dengan volume ' + ratio(volRatio) + ' rata-rata. Harga ' + maPosition.toLowerCase() + ' dan RSI ' + rsiLabel + '. ' + pressureSummary + '.</p>';
+  // 3. Skenario Harga
+  html += '<div class="scenario-price-grid">';
+  html += '<div class="case-card bear"><span>BEAR</span><b>' + bearLevel + '</b><p>' + bearDesc + '</p></div>';
+  html += '<div class="case-card base"><span>BASE</span><b>' + baseRange + '</b><p>' + baseDesc + '</p></div>';
+  html += '<div class="case-card bull"><span>BULL</span><b>' + bullLevel + '</b><p>' + bullDesc + '</p></div>';
+  html += '</div>';
+  // 4. Setup
+  html += '<p><strong>Setup</strong><br>' + setupAction + '</p>';
+  html += '<p><strong>Alasan</strong><br>' + setupReason + '</p>';
+  html += '<p><strong>Valid jika</strong><br>' + setupValidFinal + '</p>';
+  html += '<p><strong>Batal jika</strong><br>' + setupCancel + '</p>';
+  // 5. Moving Average + Momentum
+  html += '<div class="metric-grid"><div><strong>Moving Average</strong><br>';
+  html += 'MA20: ' + v(ma20) + '<br>';
+  html += 'MA50: ' + v(ma50) + '<br>';
+  html += 'MA100: ' + v(ma100) + '<br>';
+  html += 'MA200: ' + v(ma200) + '<br>';
+  html += 'Posisi: ' + maPosition + '</div>';
+  html += '<div><strong>Momentum</strong><br>';
+  html += 'RSI14: ' + idn(rsi14) + ' (' + rsiLabel + ')<br>';
+  html += 'Volume: ' + ratio(volRatio) + ' avg 20D<br>';
+  html += 'Last: ' + idn(last) + '<br>';
+  html += 'High: ' + idn(d.high) + '<br>';
+  html += 'Low: ' + idn(d.low) + '</div></div>';
+  // 6. Volume 3/7D
+  html += '<div class="volume-card"><strong>Volume 3/7D</strong><div class="volume-grid">';
+  html += '<div><span>Terakhir</span><b>' + volToday + '</b></div>';
+  html += '<div><span>Avg 3D</span><b>' + volAvg3 + '</b></div>';
+  html += '<div><span>Avg 7D</span><b>' + volAvg7 + '</b></div>';
+  html += '<div><span>vs 7D</span><b>' + volVs7 + '</b></div>';
+  html += '</div><div class="volume-note">' + volCommentary + '</div></div>';
+  // 7. Fibonacci
+  if (hasFib) {
+    html += '<div class="fibo-card"><strong>Fibonacci</strong><div class="fibo-grid">';
+    html += '<div><span>Swing H</span><b>' + fibSwingH + '</b></div>';
+    html += '<div><span>Swing L</span><b>' + fibSwingL + '</b></div>';
+    html += '<div><span>Nearest</span><b>' + fibNearest + '</b></div>';
+    html += '<div><span>Trend</span><b>' + fibTrend + '</b></div>';
+    html += '</div><div class="fibo-grid">';
+    html += '<div class="fibo-level"><span>38,2%</span><b>' + fib382 + '</b></div>';
+    html += '<div class="fibo-level"><span>50%</span><b>' + fib500 + '</b></div>';
+    html += '<div class="fibo-level"><span>61,8%</span><b>' + fib618 + '</b></div>';
+    html += '<div class="fibo-level"><span>78,6%</span><b>' + fib786 + '</b></div>';
+    html += '</div><div class="fibo-note">' + fibCommentary + '</div></div>';
+  }
+  // 8. Resistance + Support
+  html += '<div class="level-grid"><div><strong>Resistance</strong><br>';
+  html += 'R1: ' + v(r1) + '<br>';
+  html += 'R2: ' + v(r2) + '</div>';
+  html += '<div><strong>Support</strong><br>';
+  html += 'S1: ' + v(s1) + '<br>';
+  html += 'S2: ' + v(s2) + '</div></div>';
+  // 9. Skenario Trading
+  html += '<div class="scenario-list">';
+  html += '<div><strong>Bullish</strong><br>' + scenBullish + '</div>';
+  html += '<div><strong>Netral</strong><br>' + scenNeutral + '</div>';
+  html += '<div><strong>Bearish</strong><br>' + scenBearish + '</div></div>';
+  // 10. Rencana Trading
+  html += '<div class="trade-plan-grid">';
+  html += '<div><strong>Entry</strong><br>' + entryPlan + '</div>';
+  html += '<div><strong>Stop Loss</strong><br>' + stopLoss + '</div>';
+  html += '<div><strong>TP</strong><br>TP1: ' + tp1 + '<br>TP2: ' + tp2 + '</div>';
+  html += '<div><strong>Catatan</strong><br>' + catatan + '</div></div>';
+  // 11. Risk Guard
+  html += '<p><strong>Risk Guard</strong><br>' + riskGuard + '</p>';
+  // 12. Kesimpulan Analitis
+  html += '<div class="analytic-summary"><strong>Kesimpulan Analitis</strong><div class="summary-rows">';
+  html += '<div><span>Trend</span><b>' + trendSummary + '</b></div>';
+  html += '<div><span>Momentum</span><b>' + momentumSummary + '</b></div>';
+  html += '<div><span>Volume</span><b>' + volumeSummary + '</b></div>';
+  html += '<div><span>Fibonacci</span><b>' + fibSummary + '</b></div>';
+  html += '<div><span>Support</span><b>' + v(s1) + '</b></div>';
+  html += '<div><span>Resistance</span><b>' + v(r1) + '</b></div>';
+  html += '<div><span>Risiko</span><b>' + riskSummary + '</b></div>';
+  html += '<div><span>Rekomendasi</span><b>' + action + '</b></div>';
+  html += '</div></div>';
+  // 13. News/Katalis
+  html += '<p><strong>News/Katalis</strong><br>' + newsText + '</p>';
+  // 14. Invalidasi
+  html += '<p><strong>Invalidasi</strong><br>' + invalidation + '</p>';
+  // 15. Final (no "Kesimpulan Final" header — directly Status/Bias/Action)
+  html += '<div class="analytic-summary"><div class="summary-rows">';
+  html += '<div><span>Status</span><b>' + status + '</b></div>';
+  html += '<div><span>Bias</span><b>' + bias + '</b></div>';
+  html += '<div><span>Action</span><b>' + action + '</b></div>';
+  html += '</div></div>';
+  html += '<p><strong>Alasan</strong><br>' + finalReason + '</p>';
+  html += '<p><strong>Konfirmasi</strong><br>' + setupValidFinal + '</p>';
+  html += '<p><strong>Invalidasi</strong><br>' + invalidation + '</p>';
+  return html;
+}
+
+// === FCA STATUS CHECK ===
+function isFCAConfirmed(bodyFcaStatus, message) {
+
+  // Change description
+  var changeDesc = '';
+  if (changePct != null) {
+    if (changePct <= -3) changeDesc = 'turun ' + Math.abs(changePct).toFixed(2) + '% — tekanan jual sangat kuat';
+    else if (changePct < 0) changeDesc = 'turun ' + Math.abs(changePct).toFixed(2) + '%';
+    else if (changePct >= 3) changeDesc = 'naik ' + changePct.toFixed(2) + '% — momentum kuat';
+    else if (changePct > 0) changeDesc = 'naik ' + changePct.toFixed(2) + '%';
+    else changeDesc = 'flat (tidak berubah)';
+  }
+
+  // Trend bias
+  var trendBias = 'netral';
+  if (rsi14 && ma20) {
+    if (rsi14 > 55 && last > ma20) trendBias = 'bullish';
+    else if (rsi14 < 40 && last < ma20) trendBias = 'bearish';
+    else if (rsi14 < 30) trendBias = 'oversold (potensi rebound tapi belum terkonfirmasi)';
+  }
+
+  // News/Katalis
+  var newsBlock = rawMsg.match(/\[Auto-Cuan News Summary\]([\s\S]*?)(?:\[Auto-Cuan|$)/i);
+  var katalisText = '';
+  if (newsBlock && newsBlock[1] && newsBlock[1].indexOf('unavailable') === -1 && newsBlock[1].indexOf('- ') !== -1) {
+    katalisText = 'Dari sisi katalis, terdapat beberapa berita yang bisa mempengaruhi pergerakan. Namun perlu divalidasi apakah sudah ter-price-in atau belum.';
+  } else {
+    katalisText = 'Data katalis belum cukup kuat saat ini, jadi fokus ke teknikal dulu.';
+  }
+
+  // Konfirmasi & risiko
+  var konfirmasiLevel = r1 || (ma20 ? ma20 : '-');
+  var risikoLevel = s2 || s1 || '-';
+
+  // Build conversational HTML
+  var html = '<p class="text-sm text-gray-300">';
+  html += 'Halo, untuk <strong class="text-emerald-400">' + ticker + '</strong> ';
+
+  if (changePct != null && changePct <= -3) {
+    html += 'kondisi memang cukup berat hari ini. ';
+  } else if (changePct != null && changePct < 0) {
+    html += 'ada tekanan turun. ';
+  } else if (changePct != null && changePct > 1) {
+    html += 'pergerakan cukup positif. ';
+  } else {
+    html += 'ini kondisi terkini. ';
+  }
+
+  html += 'Harga terakhir di <strong>' + last + '</strong>';
+  if (changeDesc) html += ', ' + changeDesc;
+  if (volDesc) html += ' dengan volume ' + volDesc;
+  html += '. ';
+
+  if (rsi14) {
+    html += 'RSI 14 di <strong>' + rsi14 + '</strong> (' + rsiDesc + ')';
+    if (rsi14 < 30) html += ' — sudah oversold berat tapi bukan otomatis sinyal beli';
+    else if (rsi14 > 70) html += ' — waspada potensi koreksi';
+    html += '. ';
+  }
+
+  if (maDesc) html += 'Harga sekarang ' + maDesc + ', jadi tren masih ' + trendBias + '.';
+  html += '</p>';
+
+  html += '<p class="text-sm text-gray-300">';
+  html += 'Dari sisi level, ';
+  if (s1) html += 'support terdekat ada di <strong>' + s1 + '</strong>. ';
+  if (s2) html += 'Kalau itu jebol, support berikutnya di <strong>' + s2 + '</strong>. ';
+  if (r1) html += 'Sebaliknya, resistance pertama di <strong>' + r1 + '</strong>';
+  if (r2) html += ', lalu <strong>' + r2 + '</strong>';
+  html += '.';
+  html += '</p>';
+
+  if (katalisText) {
+    html += '<p class="text-sm text-gray-300">' + katalisText + '</p>';
+  }
+
+  html += '<p class="text-sm text-gray-300">';
+  html += 'Untuk konfirmasi pemulihan, kita perlu lihat harga bisa close di atas <strong>' + konfirmasiLevel + '</strong> dengan volume meningkat. ';
+  if (s1) html += 'Kalau harga terus turun menembus <strong>' + risikoLevel + '</strong>, skenario downtrend berlanjut. ';
+  html += 'Dari data teknikal yang tersedia, ';
+  if (trendBias === 'bearish' || (rsi14 && rsi14 < 40)) {
+    html += 'momentum masih negatif, jadi lebih baik tunggu konfirmasi dulu sebelum entry.';
+  } else if (trendBias === 'bullish') {
+    html += 'momentum cukup positif, tapi tetap pantau apakah bisa bertahan di atas level kunci.';
+  } else {
+    html += 'kondisi masih wait and see, perlu konfirmasi arah lebih jelas sebelum ambil posisi.';
+  }
+  html += '</p>';
+
+  html += '<p class="text-sm text-gray-500 text-xs">Kalau ada chart, broker summary, atau data tambahan lain, kirim aja biar kesimpulannya lebih presisi.</p>';
+
+  return html;
 }
 
 // === FCA STATUS CHECK ===
