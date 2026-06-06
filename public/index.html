@@ -2876,9 +2876,21 @@ function addAIBubble(html, isStructured) {
     var contentDiv = div.querySelector('.ai-content');
     if (contentDiv) hideEmptySections(contentDiv);
     // Post-render: normalize any remaining merged technical labels in DOM text nodes
+    if (contentDiv) forceNormalizeTechnicalDOM(contentDiv);
     if (contentDiv) normalizeRenderedTechnicalText(contentDiv);
-    if (contentDiv) requestAnimationFrame(function() { normalizeRenderedTechnicalText(contentDiv); });
-    if (contentDiv) setTimeout(function() { normalizeRenderedTechnicalText(contentDiv); }, 0);
+    if (contentDiv) requestAnimationFrame(function() { forceNormalizeTechnicalDOM(contentDiv); normalizeRenderedTechnicalText(contentDiv); });
+    if (contentDiv) setTimeout(function() { forceNormalizeTechnicalDOM(contentDiv); normalizeRenderedTechnicalText(contentDiv); }, 0);
+    if (contentDiv) setTimeout(function() { forceNormalizeTechnicalDOM(contentDiv); normalizeRenderedTechnicalText(contentDiv); }, 100);
+    // MutationObserver: catch late HTML rewrites (card rendering, async DOM updates)
+    if (contentDiv && typeof MutationObserver !== 'undefined') {
+        var _moTimer = setTimeout(function() { _mo.disconnect(); }, 2000);
+        var _mo = new MutationObserver(function() {
+            forceNormalizeTechnicalDOM(contentDiv);
+            normalizeRenderedTechnicalText(contentDiv);
+        });
+        _mo.observe(contentDiv, { childList: true, subtree: true, characterData: true });
+        setTimeout(function() { _mo.disconnect(); clearTimeout(_moTimer); }, 2000);
+    }
     container.scrollTop = container.scrollHeight;
 }
 function addAIError(msg) { addAIBubble('<p class="text-sm text-red-400">' + escapeHtml(msg) + '</p>'); }
@@ -3031,7 +3043,7 @@ function switchSession(sessionId) {
             session.messages.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
             // Post-restore: normalize any merged technical labels in restored AI content
             var restoredAiContents = container.querySelectorAll('.ai-content');
-            restoredAiContents.forEach(function(el) { normalizeRenderedTechnicalText(el); });
+            restoredAiContents.forEach(function(el) { forceNormalizeTechnicalDOM(el); normalizeRenderedTechnicalText(el); });
             // Show note if images were stripped
             var hasRemovedImages = session.messages.some(function(m) { return m.indexOf('data:removed') !== -1 || m.indexOf('gambar-dihapus') !== -1; });
             if (hasRemovedImages) {
@@ -3549,7 +3561,7 @@ function closeUsageReminder() {
 })();
 
 // ===== BUILD VERSION MARKER =====
-window.AUTO_CUAN_BUILD = 'phase-11r-fix-index-mode-leak-and-ihsg-spacing';
+window.AUTO_CUAN_BUILD = 'phase-11t-final-dom-spacing-sweep';
 
 // ===== IHSG OUTPUT SANITIZER (strip stock-specific sections from index responses) =====
 function sanitizeIHSGOutput(html) {
@@ -3712,6 +3724,21 @@ function normalizeFinalStockHtml(html) {
         if (match.indexOf('<br') > -1) return match;
         return avg + '<br>' + label;
     });
+    // Catch "NNDLabel:" pattern (e.g. "20DLast:", "7DVolume:", "20DMA50:")
+    o = o.replace(/(\d+D)(Last:?|High:?|Low:?|Open:?|Volume:?|MA\d{2,3}:?|RSI\d*:?|R[1-3]:?|S[1-3]:?|TP[1-3]:?|Posisi:?)/g, function(match, d, label) {
+        if (match.indexOf('<br') > -1) return match;
+        return d + '<br>' + label;
+    });
+    // Catch "avg NND" followed by label (e.g. "avg 20DLast:")
+    o = o.replace(/(avg\s*\d+D)\s*(Last:?|High:?|Low:?|Open:?|Volume:?|MA\d{2,3}:?|RSI\d*:?)/gi, function(match, avg, label) {
+        if (match.indexOf('<br') > -1) return match;
+        return avg + '<br>' + label;
+    });
+    // === PHASE 4b: Closing tag + opening tag + label (e.g. "</b><b>MA50:") ===
+    o = o.replace(/(<\/(?:b|strong|span)>)\s*(<(?:b|strong|span)(?:\s[^>]*)?>)\s*((?:MA20|MA50|MA100|MA200|Posisi|RSI14|Volume|Last|High|Low|Open|R[1-3]|S[1-3]|TP[1-3]):?)/g, function(match, closeTag, openTag, label) {
+        if (match.indexOf('<br') > -1) return match;
+        return closeTag + '<br>' + openTag + label;
+    });
     // === PHASE 5: Volume "lembar" consistency ===
     // Add "lembar" to volume lines that have juta/miliar but no lembar (not for ratio lines)
     o = o.replace(/(<b>[\d.,]+\s*(?:juta|miliar))(\s*<\/b>)/gi, function(match, prefix, suffix) {
@@ -3807,6 +3834,10 @@ function sanitizeAIHtml(html) {
     output = output.replace(/(\d[,.\d]*)(High:?)/g, '$1<br>$2');
     output = output.replace(/(\d[,.\d]*)(Low:?)/g, '$1<br>$2');
     output = output.replace(/(\d[,.\d]*)(Last:?)/g, '$1<br>$2');
+    // Fix stuck "NNDLabel:" pattern (e.g. "20DLast:", "7DVolume:", "20DMA50:")
+    output = output.replace(/(\d+D)(Last:?|High:?|Low:?|Open:?|Volume:?|MA\d{2,3}:?|RSI\d*:?|R[1-3]:?|S[1-3]:?|TP[1-3]:?|Posisi:?)/g, '$1<br>$2');
+    // Fix stuck "avg NNDLabel:" (e.g. "avg 20DLast:", "avg20DVolume:")
+    output = output.replace(/(avg\s*\d+D)(Last:?|High:?|Low:?|Open:?|Volume:?|MA\d{2,3}:?|RSI\d*:?)/gi, '$1<br>$2');
     // Fix stuck numbered risks like "1. xxx.2. yyy" or "...waktu.2."
     output = output.replace(/\.(\d+)\.\s/g, '.<br>$1. ');
     // Fix stuck numbered alasan (e.g. "...angka.2. momentum")
@@ -3866,6 +3897,18 @@ function normalizeTechnicalLabels(html) {
         output = output.replace(re2, function(match, tags, lbl) {
             if (match.indexOf('<br>') > -1) return match; // already has br
             return tags + '<br>' + lbl;
+        });
+        // Case 2b: </b><b>LABEL or </strong><strong>LABEL (closing tag + opening tag + label)
+        var re2b = new RegExp('(<\\/(?:b|strong|span)>)\\s*(<(?:b|strong|span)(?:\\s[^>]*)?>)\\s*(' + label + ')', 'g');
+        output = output.replace(re2b, function(match, closeTag, openTag, lbl) {
+            if (match.indexOf('<br>') > -1) return match;
+            return closeTag + '<br>' + openTag + lbl;
+        });
+        // Case 2c: </b> <b>LABEL with optional whitespace/newline (closing tag + space + opening tag + label)
+        var re2c = new RegExp('(<\\/(?:b|strong|span)>)([\\s\\n]*)(<(?:b|strong|span)(?:\\s[^>]*)?>)([\\s\\n]*)(' + label + ')', 'g');
+        output = output.replace(re2c, function(match, closeTag, ws1, openTag, ws2, lbl) {
+            if (match.indexOf('<br>') > -1) return match;
+            return closeTag + '<br>' + openTag + lbl;
         });
     }
     // Case 3: text/word immediately followed by label without any tag (e.g. "avg20Last:" or "semua MAMA50:")
@@ -3929,6 +3972,8 @@ function normalizeRenderedTechnicalText(container) {
         newHtml = newHtml.replace(/(\d)(R[1-3]:?|S[1-3]:?|TP[1-3]:?|MA20:?|MA50:?|MA100:?|MA200:?|Posisi:?|RSI14:?|Volume:?|Last:?|High:?|Low:?|Open:?)/g, '$1<br>$2');
         // avg + label: insert <br>
         newHtml = newHtml.replace(/(avg\d*)(Last:?|High:?|Low:?|Volume:?|Open:?|MA\d{2,3}:?|RSI\d*:?|R[1-3]:?|S[1-3]:?|TP[1-3]:?|Posisi:?)/gi, '$1<br>$2');
+        // D-suffix + label: "20DLast:" → "20D<br>Last:"
+        newHtml = newHtml.replace(/(\d+D)(Last:?|High:?|Low:?|Open:?|Volume:?|MA\d{2,3}:?|RSI\d*:?|R[1-3]:?|S[1-3]:?|TP[1-3]:?|Posisi:?)/g, '$1<br>$2');
         if (newHtml !== original) {
             var span = document.createElement('span');
             span.innerHTML = newHtml;
@@ -3937,7 +3982,138 @@ function normalizeRenderedTechnicalText(container) {
     }
 }
 
-// ===== SELF-TEST: Universal Spacing Fix (Latest + BUVA + IHSG + PTRO samples) =====
+// ===== FORCE NORMALIZE TECHNICAL DOM (Phase 11T) =====
+// Final DOM sweep that handles merged technical labels across tag boundaries.
+// Unlike normalizeRenderedTechnicalText (which only sees individual text nodes),
+// this function reconstructs the full text content of parent elements and re-splits
+// when merged labels are detected spanning across child element boundaries.
+function forceNormalizeTechnicalDOM(root) {
+    if (!root) return;
+    var SKIP_TAGS = { SCRIPT:1, STYLE:1, PRE:1, CODE:1, INPUT:1, TEXTAREA:1, BUTTON:1, CANVAS:1, SVG:1 };
+    // Technical labels that indicate a new line boundary
+    var TECH_LABELS = ['MA20', 'MA50', 'MA100', 'MA200', 'Posisi', 'RSI14', 'RSI', 'Volume', 'Last', 'High', 'Low', 'Open', 'R1', 'R2', 'R3', 'S1', 'S2', 'S3', 'TP1', 'TP2', 'TP3', 'Entry', 'Stop Loss', 'Take Profit', 'Catatan', 'Avg 3D', 'Avg 7D', 'Avg 20D', 'vs 7D', 'vs 3D', 'Terakhir', 'Swing H', 'Swing L', 'Nearest', 'Trend', 'Konfirmasi', 'Invalidasi', 'Alasan', 'Valid jika', 'Batal jika', 'Status', 'Bias', 'Confidence', 'Action', 'Pembacaan', 'Breakout', 'Breakdown', 'Resistance', 'Support'];
+    var labelEscaped = TECH_LABELS.map(function(l) { return l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); });
+    var labelGroup = labelEscaped.join('|');
+    // Regex: digit(s) optionally followed by D/x suffix, then immediately a tech label
+    var mergePattern = new RegExp('(\\d[,\\.\\d]*[Dx]?)\\s*(' + labelGroup + '):?', 'g');
+    // Regex: avg + digits + D? then label
+    var avgMerge = new RegExp('(avg\\s*\\d*D?)\\s*(' + labelGroup + '):?', 'gi');
+    // Regex: word boundary (below/above/dan/bawah/atas) + label without space
+    var wordMerge = /(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi;
+    // Regex: N/A directly before label
+    var naMerge = /(N\/A)\s*(TP[1-3]:?|R[1-3]:?|S[1-3]:?)/gi;
+
+    function hasMergedContent(text) {
+        mergePattern.lastIndex = 0;
+        avgMerge.lastIndex = 0;
+        wordMerge.lastIndex = 0;
+        naMerge.lastIndex = 0;
+        return mergePattern.test(text) || avgMerge.test(text) || wordMerge.test(text) || naMerge.test(text);
+    }
+
+    function fixText(text) {
+        if (!text) return text;
+        var o = text;
+        // Word boundaries: insert space
+        o = o.replace(/(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi, '$1 $2');
+        // N/A boundary
+        o = o.replace(/(N\/A)\s*(TP[1-3]:?|R[1-3]:?|S[1-3]:?)/gi, '$1\n$2');
+        // D suffix: "20DLast:" → "20D\nLast:"
+        o = o.replace(/(\d+D)((?:Last|High|Low|Open|Volume|MA\d{2,3}|RSI\d*|R[1-3]|S[1-3]|TP[1-3]|Posisi):?)/g, '$1\n$2');
+        // avg pattern: "avg20Last:" → "avg20\nLast:"
+        o = o.replace(/(avg\s*\d*D?)\s*((?:Last|High|Low|Open|Volume|MA\d{2,3}|RSI\d*|R[1-3]|S[1-3]|TP[1-3]|Posisi):?)/gi, '$1\n$2');
+        // Digit + label: "753.15MA50:" → "753.15\nMA50:"
+        o = o.replace(/(\d[,.\d]*)\s*((?:MA20|MA50|MA100|MA200|Posisi|RSI14|RSI|Volume|Last|High|Low|Open|R1|R2|R3|S1|S2|S3|TP1|TP2|TP3|Entry|Stop Loss|Take Profit|Catatan|Avg 3D|Avg 7D|Avg 20D|vs 7D|vs 3D|Terakhir|Swing H|Swing L|Nearest|Trend|Konfirmasi|Invalidasi|Alasan|Valid jika|Batal jika|Status|Bias|Confidence|Action|Pembacaan|Breakout|Breakdown|Resistance|Support):?)/g, function(match, num, label) {
+            // Don't break if it's just a number inside a normal sentence
+            if (/^\d{1,2}$/.test(num) && !/^(R[1-3]|S[1-3]|TP[1-3]|MA\d|RSI)/.test(label)) return match;
+            return num + '\n' + label;
+        });
+        return o;
+    }
+
+    // Walk all elements that may contain technical content
+    var elements = root.querySelectorAll('div, p, span, b, strong, td, li');
+    for (var i = 0; i < elements.length; i++) {
+        var el = elements[i];
+        if (SKIP_TAGS[el.tagName]) continue;
+        if (el.closest && (el.closest('script') || el.closest('style') || el.closest('pre') || el.closest('code') || el.closest('svg'))) continue;
+        // Get the full visible text of this element (concatenated across child nodes)
+        var fullText = el.textContent || '';
+        if (!fullText || fullText.length < 8) continue;
+        if (!hasMergedContent(fullText)) continue;
+        // Check if this element has direct text node children or inline children only
+        var hasBlockChildren = false;
+        for (var c = 0; c < el.children.length; c++) {
+            var tag = el.children[c].tagName;
+            if (tag === 'DIV' || tag === 'P' || tag === 'UL' || tag === 'OL' || tag === 'TABLE' || tag === 'H1' || tag === 'H2' || tag === 'H3' || tag === 'H4' || tag === 'H5' || tag === 'H6' || tag === 'SECTION' || tag === 'ARTICLE') {
+                hasBlockChildren = true; break;
+            }
+        }
+        // Only process leaf-level or inline-only containers
+        if (hasBlockChildren) continue;
+        // Reconstruct innerHTML with fixes
+        var currentHtml = el.innerHTML;
+        if (!currentHtml) continue;
+        // Apply HTML-level fixes (insert <br> for merged patterns)
+        var fixedHtml = currentHtml;
+        // Digit + label across possible tag boundaries
+        fixedHtml = fixedHtml.replace(/(\d[,.\d]*[Dx]?)(\s*<\/(?:b|strong|span)>\s*<(?:b|strong|span)(?:\s[^>]*)?>?\s*)((?:MA20|MA50|MA100|MA200|Posisi|RSI14|RSI|Volume|Last|High|Low|Open|R1|R2|R3|S1|S2|S3|TP1|TP2|TP3|Entry|Stop Loss|Take Profit|Catatan|Avg 3D|Avg 7D|Avg 20D|vs 7D|vs 3D|Terakhir|Swing H|Swing L|Nearest|Trend|Konfirmasi|Invalidasi|Alasan|Valid jika|Batal jika|Status|Bias|Confidence|Action|Pembacaan|Breakout|Breakdown|Resistance|Support):?)/g, function(match, num, tags, label) {
+            if (match.indexOf('<br') > -1) return match;
+            return num + tags.replace(/>\s*</, '><br><') + label;
+        });
+        // Direct digit+label (no tags between)
+        fixedHtml = fixedHtml.replace(/(\d[,.\d]*)(<\/(?:b|strong|span)>)?\s*((?:MA20|MA50|MA100|MA200|Posisi|RSI14|Volume|Last|High|Low|Open|R[1-3]|S[1-3]|TP[1-3]):?)/g, function(match, num, closeTag, label) {
+            if (match.indexOf('<br') > -1) return match;
+            return num + (closeTag || '') + '<br>' + label;
+        });
+        // D suffix: "20D" then label
+        fixedHtml = fixedHtml.replace(/(\d+D)(<\/(?:b|strong|span)>)?\s*((?:Last|High|Low|Open|Volume|MA\d{2,3}|RSI\d*|R[1-3]|S[1-3]|TP[1-3]|Posisi):?)/g, function(match, d, closeTag, label) {
+            if (match.indexOf('<br') > -1) return match;
+            return d + (closeTag || '') + '<br>' + label;
+        });
+        // avg pattern
+        fixedHtml = fixedHtml.replace(/(avg\s*\d*D?)(<\/(?:b|strong|span)>)?\s*((?:Last|High|Low|Open|Volume|MA\d{2,3}|RSI\d*|R[1-3]|S[1-3]|TP[1-3]|Posisi):?)/gi, function(match, avg, closeTag, label) {
+            if (match.indexOf('<br') > -1) return match;
+            return avg + (closeTag || '') + '<br>' + label;
+        });
+        // Word boundaries (space, not <br>)
+        fixedHtml = fixedHtml.replace(/(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi, '$1 $2');
+        // N/A boundary
+        fixedHtml = fixedHtml.replace(/(N\/A)\s*(TP[1-3]:?|R[1-3]:?|S[1-3]:?)/gi, '$1<br>$2');
+        // Cleanup double <br>
+        fixedHtml = fixedHtml.replace(/(<br\s*\/?>)\s*(<br\s*\/?>)/gi, '<br>');
+        if (fixedHtml !== currentHtml) {
+            el.innerHTML = fixedHtml;
+        }
+    }
+    // Second pass: walk raw text nodes for any remaining plain-text merges
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var textNodesToFix = [];
+    var node;
+    while (node = walker.nextNode()) {
+        if (!node.textContent || node.textContent.length < 6) continue;
+        var par = node.parentNode;
+        if (!par || !par.tagName) continue;
+        if (SKIP_TAGS[par.tagName]) continue;
+        if (hasMergedContent(node.textContent)) {
+            textNodesToFix.push(node);
+        }
+    }
+    for (var j = 0; j < textNodesToFix.length; j++) {
+        var tn = textNodesToFix[j];
+        var parent = tn.parentNode;
+        if (!parent) continue;
+        var fixed = fixText(tn.textContent);
+        if (fixed !== tn.textContent) {
+            // Replace text node with HTML containing <br> for line breaks
+            var span = document.createElement('span');
+            span.innerHTML = fixed.replace(/\n/g, '<br>');
+            parent.replaceChild(span, tn);
+        }
+    }
+}
+
+// ===== SELF-TEST: Universal Spacing Fix (Latest + BUVA + IHSG + PTRO + DSSA samples) =====
 (function selfTestSpacing() {
     // Latest live failure sample (Phase 11Q regression)
     var latestInput = 'MA20: 316.30MA50: 313.40MA100: 356.01MA200: 298.52Posisi: di bawah semua MA\nRSI14: 32.09Volume: 0,55x avgLast: 260High: 298Low: 250\nR1: 288R2: 317\nS1: 240S2: 221\nTP1: 288TP2: 317';
@@ -3947,6 +4123,10 @@ function normalizeRenderedTechnicalText(container) {
     var ihsgInput = 'MA20: 6466,67MA50: 6947,55MA100: 7676,27MA200: 7916,73Posisi: di bawahMA20\nRSI14: 10,75Volume: 0,74x avg20Last: 5594,77High: 5860,67Low: 5594,11\nR1: 5772R2: 5950\nS1: 5505S2: 5416';
     // PTRO sample
     var ptroInput = 'MA20: 4340MA50: 4966.7MA100: 6426.75MA200: 6772.48Posisi: belowMA20\nRSI14: 34.36Volume: 0,76x avgLast: 3650High: 4180Low: 3650\nR1: 4004R2: 4357\nS1: 3474S2: 3297\nTP1: 4004TP2: 4357';
+    // DSSA sample (Phase 11T live failure — exact output from browser)
+    var dssaInput = 'MA20: 753.15MA50: 1795.24MA100: 2718.13MA200: 3369.34Posisi: Di bawah semua MA\nRSI14: 27.42Volume: 1,29x avg 20DLast: 610High: 740Low: 610\nR1: 696R2: 783\nS1: 566S2: 523\nTP1: 696TP2: 783';
+    // DSSA with HTML tags (simulates real AI output with <b> tags across boundaries)
+    var dssaHtmlInput = '<div class="metric-grid"><div><strong>Moving Average</strong><br>MA20: <b>753.15</b><b>MA50: 1795.24</b><b>MA100: 2718.13</b><b>MA200: 3369.34</b><b>Posisi: Di bawah semua MA</b></div><div><strong>Momentum</strong><br>RSI14: <b>27.42</b><b>Volume: 1,29x avg 20D</b><b>Last: 610</b><b>High: 740</b><b>Low: 610</b></div></div>';
 
     function testNormalize(input, label) {
         var result = normalizeFinalStockHtml(sanitizeAIHtml(input));
@@ -3964,8 +4144,38 @@ function normalizeRenderedTechnicalText(container) {
         // Check N/A boundary
         var naMerge = /N\/A(TP\d|R[1-3]|S[1-3])/gi;
         while (m = naMerge.exec(result)) { failures.push('N/A+label: ' + m[0]); }
+        // Check D-suffix merges (20DLast, avg20DVolume)
+        var dMerge = /\dD(Last|High|Low|Open|Volume|MA\d|RSI|R[1-3]|S[1-3]|TP[1-3]|Posisi)/gi;
+        while (m = dMerge.exec(result)) { failures.push('D+label: ' + m[0]); }
         if (failures.length > 0) {
             console.warn('[Auto-Cuan Self-Test FAIL] ' + label + ':', failures);
+        }
+        return failures.length === 0;
+    }
+
+    // DOM render path test: simulates real addAIBubble flow through actual DOM
+    function testDOMRender(htmlInput, label) {
+        var testDiv = document.createElement('div');
+        testDiv.style.display = 'none';
+        testDiv.className = 'ai-content';
+        document.body.appendChild(testDiv);
+        var sanitized = normalizeFinalStockHtml(sanitizeAIHtml(htmlInput));
+        testDiv.innerHTML = sanitized;
+        forceNormalizeTechnicalDOM(testDiv);
+        normalizeRenderedTechnicalText(testDiv);
+        var visibleText = testDiv.textContent || testDiv.innerText || '';
+        document.body.removeChild(testDiv);
+        var failures = [];
+        // Check for merged patterns in final visible text
+        var mergedDigit = /\d(MA20|MA50|MA100|MA200|RSI14|Volume|Last|High|Low|R[1-3]|S[1-3]|TP[1-3]|Posisi)/g;
+        var m;
+        while (m = mergedDigit.exec(visibleText)) { failures.push('DOM digit+label: ' + m[0]); }
+        var dMerge = /\dD(Last|High|Low|Open|Volume|MA\d|RSI)/gi;
+        while (m = dMerge.exec(visibleText)) { failures.push('DOM D+label: ' + m[0]); }
+        var wordMerge = /(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi;
+        while (m = wordMerge.exec(visibleText)) { failures.push('DOM word+label: ' + m[0]); }
+        if (failures.length > 0) {
+            console.warn('[Auto-Cuan DOM-Test FAIL] ' + label + ':', failures);
         }
         return failures.length === 0;
     }
@@ -3974,8 +4184,14 @@ function normalizeRenderedTechnicalText(container) {
     var p1 = testNormalize(buvaInput, 'BUVA');
     var p2 = testNormalize(ihsgInput, 'IHSG');
     var p3 = testNormalize(ptroInput, 'PTRO');
-    if (p0 && p1 && p2 && p3) {
-        console.log('[Auto-Cuan] Phase 11Q spacing self-test: ALL PASS');
+    var p4 = testNormalize(dssaInput, 'DSSA');
+    // DOM render path tests (real DOM)
+    var d0 = testDOMRender(dssaInput, 'DSSA-plain');
+    var d1 = testDOMRender(dssaHtmlInput, 'DSSA-html-tags');
+    var d2 = testDOMRender(latestInput, 'Latest-DOM');
+    var d3 = testDOMRender(buvaInput, 'BUVA-DOM');
+    if (p0 && p1 && p2 && p3 && p4 && d0 && d1 && d2 && d3) {
+        console.log('[Auto-Cuan] Phase 11T spacing self-test: ALL PASS (string + DOM)');
     }
 })();
 
