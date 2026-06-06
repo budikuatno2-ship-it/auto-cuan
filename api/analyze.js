@@ -4,7 +4,196 @@
  * Primary AI: DeepSeek V4 Flash via CodeCrafters
  * Fallback: Gemini (also used for vision/image tasks)
  * Includes: Intent Router, Output Sanitizer, FCA Guard.
+ * Phase 13A: Auth gate + anonymous 3/day limit.
  */
+
+const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
+
+// ===== PHASE 13A: AUTH + RATE LIMIT HELPER =====
+const ANON_DAILY_LIMIT = 3;
+
+function getSupabaseAdmin() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+function hashIP(ip) {
+  if (!ip) return null;
+  return crypto.createHash('sha256').update(ip + '_autocuan_ip_salt').digest('hex');
+}
+
+function getClientIP(req) {
+  // Vercel: x-forwarded-for or x-real-ip
+  var forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return String(forwarded).split(',')[0].trim();
+  return req.headers['x-real-ip'] || req.connection?.remoteAddress || null;
+}
+
+function getTodayDateString() {
+  // WIB (Asia/Jakarta, UTC+7) date string YYYY-MM-DD
+  // Daily quota resets at 00:00 WIB (= 17:00 UTC previous day)
+  var now = new Date();
+  var wibOffset = 7 * 60 * 60 * 1000; // +7 hours in ms
+  var wib = new Date(now.getTime() + wibOffset);
+  return wib.toISOString().slice(0, 10);
+}
+
+/**
+ * Check auth and rate limit. Returns:
+ * { allowed: true, userId: uuid|null, incrementUsage: fn }  — proceed with AI call
+ * { allowed: false } — response already sent (429/403)
+ */
+async function checkAccessGate(req, res, body) {
+  var supabase = getSupabaseAdmin();
+  if (!supabase) {
+    // If Supabase not configured, allow (graceful degradation)
+    return { allowed: true, userId: null, incrementUsage: function(){} };
+  }
+
+  // --- Check for Supabase Auth token ---
+  var authHeader = req.headers.authorization || req.headers['authorization'] || '';
+  var token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+  if (token) {
+    // Authenticated user path
+    var userData;
+    try {
+      var result = await supabase.auth.getUser(token);
+      userData = result.data;
+    } catch (e) { userData = null; }
+
+    if (userData && userData.user) {
+      // Valid auth — check profile approval
+      var { data: profile } = await supabase
+        .from('profiles')
+        .select('is_approved')
+        .eq('id', userData.user.id)
+        .maybeSingle();
+
+      if (!profile || !profile.is_approved) {
+        res.status(403).json({
+          html: '<p class="text-sm text-yellow-400">Akun kamu sudah terdaftar, tapi masih menunggu approval admin.</p>',
+          authError: 'not_approved'
+        });
+        return { allowed: false };
+      }
+      // Approved user — allow, no limit
+      return { allowed: true, userId: userData.user.id, incrementUsage: function(){} };
+    }
+    // Token invalid — fall through to anonymous path
+  }
+
+  // --- Anonymous user path ---
+  var anonId = body._anonId || null;
+  var ipHash = hashIP(getClientIP(req));
+  var today = getTodayDateString();
+
+  // Query usage by BOTH anon_id and ip_hash independently.
+  // Take the MAXIMUM count to prevent bypass by clearing localStorage.
+  var anonRow = null;
+  var ipRow = null;
+
+  if (anonId) {
+    var { data } = await supabase
+      .from('daily_ai_usage')
+      .select('id, request_count, anon_id, ip_hash')
+      .eq('usage_date', today)
+      .eq('anon_id', anonId)
+      .is('user_id', null)
+      .maybeSingle();
+    anonRow = data;
+  }
+
+  if (ipHash) {
+    var { data: ipData } = await supabase
+      .from('daily_ai_usage')
+      .select('id, request_count, anon_id, ip_hash')
+      .eq('usage_date', today)
+      .eq('ip_hash', ipHash)
+      .is('user_id', null)
+      .order('request_count', { ascending: false })
+      .limit(1);
+    ipRow = (ipData && ipData.length > 0) ? ipData[0] : null;
+  }
+
+  // Determine effective count: max of anon_id row and ip_hash row
+  // This ensures clearing localStorage (new anon_id) does not reset quota
+  var anonCount = anonRow ? anonRow.request_count : 0;
+  var ipCount = ipRow ? ipRow.request_count : 0;
+  var currentCount = Math.max(anonCount, ipCount);
+
+  // Determine which row to use for incrementing
+  // Prefer the row with higher count (the blocking one), else anon row, else ip row
+  var usageRow = null;
+  if (anonRow && ipRow) {
+    // If they are the same row (same id), use it
+    if (anonRow.id === ipRow.id) {
+      usageRow = anonRow;
+    } else {
+      // Different rows — use the one with higher count for enforcement
+      usageRow = ipCount >= anonCount ? ipRow : anonRow;
+    }
+  } else {
+    usageRow = anonRow || ipRow || null;
+  }
+
+  if (currentCount >= ANON_DAILY_LIMIT) {
+    res.status(429).json({
+      html: '<p class="text-sm text-yellow-400">Limit gratis harian sudah habis. Daftar atau login untuk lanjut memakai Auto Cuan.</p>',
+      limitReached: true,
+      used: currentCount,
+      limit: ANON_DAILY_LIMIT
+    });
+    return { allowed: false };
+  }
+
+  // Return increment function to call AFTER successful AI response
+  var incrementUsage = async function() {
+    try {
+      if (usageRow) {
+        // Update existing row (the one with higher count or the primary one)
+        await supabase
+          .from('daily_ai_usage')
+          .update({ request_count: usageRow.request_count + 1, updated_at: new Date().toISOString() })
+          .eq('id', usageRow.id);
+
+        // If anon row and ip row are different, also update/create the other
+        if (anonRow && ipRow && anonRow.id !== ipRow.id) {
+          // Sync both to same count
+          var newCount = Math.max(anonRow.request_count, ipRow.request_count) + 1;
+          await supabase
+            .from('daily_ai_usage')
+            .update({ request_count: newCount, updated_at: new Date().toISOString() })
+            .eq('id', anonRow.id);
+          await supabase
+            .from('daily_ai_usage')
+            .update({ request_count: newCount, updated_at: new Date().toISOString() })
+            .eq('id', ipRow.id);
+        }
+      } else {
+        // Insert new row with both anon_id and ip_hash
+        await supabase
+          .from('daily_ai_usage')
+          .insert({
+            usage_date: today,
+            anon_id: anonId || null,
+            ip_hash: ipHash || null,
+            user_id: null,
+            request_count: 1
+          });
+      }
+    } catch (e) {
+      console.error('incrementUsage error:', e.message);
+    }
+  };
+
+  return { allowed: true, userId: null, incrementUsage: incrementUsage, remaining: ANON_DAILY_LIMIT - currentCount - 1 };
+}
+
+// ===== END PHASE 13A AUTH GATE =====
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,6 +203,27 @@ module.exports = async function handler(req, res) {
   try {
     const body = req.body || {};
     const { ticker, currentPrice, source, chatMessage, image, images } = body;
+
+    // === PHASE 13A: Auth + Rate Limit Gate ===
+    var accessGate = await checkAccessGate(req, res, body);
+    if (!accessGate.allowed) return; // response already sent (429 or 403)
+
+    // Wrap res.json to auto-increment usage on successful AI responses
+    var _originalJson = res.json.bind(res);
+    var _usageIncremented = false;
+    res.json = function(data) {
+      // Increment anonymous usage on any 200 response with html content (= successful AI response)
+      if (!_usageIncremented && accessGate.incrementUsage && data && data.html) {
+        _usageIncremented = true;
+        accessGate.incrementUsage();
+      }
+      // Attach remaining quota info for frontend
+      if (typeof accessGate.remaining === 'number' && data && !data.limitReached) {
+        data._anonRemaining = accessGate.remaining;
+        data._anonLimit = ANON_DAILY_LIMIT;
+      }
+      return _originalJson(data);
+    };
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     const CODECRAFTERS_API_KEY = process.env.CODECRAFTERS_API_KEY;

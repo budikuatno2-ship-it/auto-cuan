@@ -367,7 +367,35 @@
         @media (min-width: 768px) {
             .sidebar { width: 300px; }
         }
+        /* ===== SUPABASE AUTH STATUS STYLES ===== */
+        .auth-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+        .auth-status-approved {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .auth-status-pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        .auth-status-logged-out {
+            background: rgba(107, 114, 128, 0.15);
+            color: #9ca3af;
+            border: 1px solid rgba(107, 114, 128, 0.3);
+        }
     </style>
+    <!-- Supabase JS Client (CDN) — for Auth only, no service_role key exposed -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body class="min-h-screen text-gray-100">
 <div id="toastContainer"></div>
@@ -448,6 +476,8 @@
                 <button id="headerLoginBtn" onclick="openLoginModal()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login</button>
                 <button id="headerRegisterBtn" onclick="openRegisterModal()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Daftar</button>
                 <button id="logoutBtn" onclick="logout()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/50 hover:border-red-500/40 hover:text-red-400 transition-all">Logout</button>
+                <span id="supaAuthStatus" class="hidden auth-status-badge auth-status-logged-out"></span>
+                <span id="anonQuotaBadge" class="hidden auth-status-badge auth-status-logged-out"></span>
             </div>
         </div>
     </div>
@@ -684,6 +714,45 @@
     </div>
 </div>
 
+<!-- SUPABASE AUTH LOGIN MODAL (Email-based for approved features) -->
+<div id="supaLoginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white">Login Fitur Khusus</h3>
+            <button onclick="closeSupaLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none">&times;</button>
+        </div>
+        <p class="text-xs text-gray-500">Login untuk membuka fitur khusus Auto Cuan.</p>
+        <div id="supaLoginForm" class="space-y-3">
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Email</label><input type="email" id="supaLoginEmail" placeholder="Email terdaftar" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="supaLoginPassword" placeholder="Password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doSupaLogin()"></div>
+            <div id="supaLoginError" class="hidden text-sm text-red-400 text-center py-1"></div>
+            <button onclick="doSupaLogin()" id="supaLoginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Login</button>
+            <div class="text-center"><button type="button" onclick="closeSupaLoginModal();openSupaRegisterModal()" class="text-xs text-blue-400 hover:underline">Belum punya akun? Daftar</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- SUPABASE AUTH REGISTER MODAL (Email-based for approved features) -->
+<div id="supaRegisterModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white">Daftar Fitur Khusus</h3>
+            <button onclick="closeSupaRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none">&times;</button>
+        </div>
+        <p class="text-xs text-gray-500">Daftar dengan email untuk mengakses fitur khusus. Setelah daftar, tunggu approval admin.</p>
+        <div id="supaRegisterForm" class="space-y-3">
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Nama Lengkap</label><input type="text" id="supaRegFullName" placeholder="Nama lengkap" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Email</label><input type="email" id="supaRegEmail" placeholder="Email aktif" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="supaRegPassword" placeholder="Min 8 karakter" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><input type="password" id="supaRegPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doSupaRegister()"></div>
+            <div id="supaRegisterError" class="hidden text-sm text-red-400 text-center py-1"></div>
+            <div id="supaRegisterSuccess" class="hidden text-sm text-emerald-400 text-center py-1"></div>
+            <button onclick="doSupaRegister()" id="supaRegisterBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
+            <div class="text-center"><button type="button" onclick="closeSupaRegisterModal();openSupaLoginModal()" class="text-xs text-blue-400 hover:underline">Sudah punya akun? Login</button></div>
+        </div>
+    </div>
+</div>
+
 <!-- MAINTENANCE PREVIEW MODAL -->
 <div id="maintenancePreviewModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
@@ -699,6 +768,260 @@
 
 <script src="/assets/idx-tickers.js"></script>
 <script src="/assets/fca-stocks.js"></script>
+<script>
+// ===== SUPABASE AUTH CLIENT (Public anon key only — safe for frontend) =====
+// SUPABASE_URL is loaded from a meta tag or env-injected config
+// The anon key is the PUBLIC key, NOT the service_role key
+var SUPA_URL = '';
+var SUPA_ANON_KEY = '';
+var _supaClient = null;
+
+// Initialize Supabase client from /api/auth-config endpoint (safe: only returns public URL + anon key)
+async function initSupabaseAuth() {
+    if (_supaClient) return _supaClient;
+    try {
+        var resp = await fetch('/api/auth-config');
+        var cfg = await resp.json();
+        if (cfg.url && cfg.anonKey) {
+            SUPA_URL = cfg.url;
+            SUPA_ANON_KEY = cfg.anonKey;
+            _supaClient = window.supabase.createClient(SUPA_URL, SUPA_ANON_KEY);
+            return _supaClient;
+        }
+    } catch (e) { console.warn('Supabase Auth not configured:', e.message); }
+    return null;
+}
+
+function getSupaClient() { return _supaClient; }
+
+// ===== SUPABASE AUTH MODAL FUNCTIONS =====
+function openSupaLoginModal() { document.getElementById('supaLoginModal').classList.remove('hidden'); document.getElementById('supaLoginError').classList.add('hidden'); }
+function closeSupaLoginModal() { document.getElementById('supaLoginModal').classList.add('hidden'); }
+function openSupaRegisterModal() { document.getElementById('supaRegisterModal').classList.remove('hidden'); document.getElementById('supaRegisterError').classList.add('hidden'); document.getElementById('supaRegisterSuccess').classList.add('hidden'); }
+function closeSupaRegisterModal() { document.getElementById('supaRegisterModal').classList.add('hidden'); }
+
+// ===== SUPABASE AUTH LOGIN =====
+async function doSupaLogin() {
+    var email = document.getElementById('supaLoginEmail').value.trim();
+    var password = document.getElementById('supaLoginPassword').value;
+    var errorEl = document.getElementById('supaLoginError');
+    var btn = document.getElementById('supaLoginBtn');
+    errorEl.classList.add('hidden');
+    if (!email) { errorEl.textContent = 'Email tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
+    if (!password) { errorEl.textContent = 'Password tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-sm"></span>Login...';
+    try {
+        var client = await initSupabaseAuth();
+        if (!client) { errorEl.textContent = 'Fitur auth belum dikonfigurasi. Hubungi admin.'; errorEl.classList.remove('hidden'); return; }
+        var { data, error } = await client.auth.signInWithPassword({ email: email, password: password });
+        if (error) { errorEl.textContent = error.message || 'Login gagal.'; errorEl.classList.remove('hidden'); return; }
+        closeSupaLoginModal();
+        await refreshSupaAuthStatus();
+        showToast('Login fitur khusus berhasil!', 'success');
+    } catch (e) { errorEl.textContent = 'Koneksi bermasalah. Coba lagi.'; errorEl.classList.remove('hidden'); }
+    finally { btn.disabled = false; btn.innerHTML = 'Login'; }
+}
+
+// ===== SUPABASE AUTH REGISTER =====
+async function doSupaRegister() {
+    var fullName = document.getElementById('supaRegFullName').value.trim();
+    var email = document.getElementById('supaRegEmail').value.trim();
+    var password = document.getElementById('supaRegPassword').value;
+    var passwordConfirm = document.getElementById('supaRegPasswordConfirm').value;
+    var errorEl = document.getElementById('supaRegisterError');
+    var successEl = document.getElementById('supaRegisterSuccess');
+    var btn = document.getElementById('supaRegisterBtn');
+    errorEl.classList.add('hidden'); successEl.classList.add('hidden');
+    if (!fullName) { errorEl.textContent = 'Nama lengkap tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
+    if (!email) { errorEl.textContent = 'Email tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
+    if (!password || password.length < 8) { errorEl.textContent = 'Password minimal 8 karakter.'; errorEl.classList.remove('hidden'); return; }
+    if (password !== passwordConfirm) { errorEl.textContent = 'Konfirmasi password tidak sama.'; errorEl.classList.remove('hidden'); return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-sm"></span>Mendaftar...';
+    try {
+        var client = await initSupabaseAuth();
+        if (!client) { errorEl.textContent = 'Fitur auth belum dikonfigurasi. Hubungi admin.'; errorEl.classList.remove('hidden'); return; }
+        var { data, error } = await client.auth.signUp({
+            email: email,
+            password: password,
+            options: { data: { full_name: fullName } }
+        });
+        if (error) { errorEl.textContent = error.message || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); return; }
+        successEl.textContent = 'Akun berhasil dibuat! Tunggu approval admin untuk fitur khusus.';
+        successEl.classList.remove('hidden');
+        setTimeout(function() { closeSupaRegisterModal(); refreshSupaAuthStatus(); }, 2000);
+    } catch (e) { errorEl.textContent = 'Koneksi bermasalah. Coba lagi.'; errorEl.classList.remove('hidden'); }
+    finally { btn.disabled = false; btn.innerHTML = 'Daftar'; }
+}
+
+// ===== SUPABASE AUTH LOGOUT =====
+async function doSupaLogout() {
+    var client = getSupaClient();
+    if (client) {
+        await client.auth.signOut();
+    }
+    await refreshSupaAuthStatus();
+    showToast('Logout fitur khusus berhasil.', 'success');
+}
+
+// ===== SUPABASE AUTH STATUS HELPERS =====
+var _supaUserProfile = null;
+var _supaCurrentUser = null;
+
+async function getCurrentSupaUser() {
+    var client = getSupaClient();
+    if (!client) return null;
+    try {
+        var { data } = await client.auth.getUser();
+        _supaCurrentUser = data && data.user ? data.user : null;
+        return _supaCurrentUser;
+    } catch (e) { _supaCurrentUser = null; return null; }
+}
+
+async function getUserProfile() {
+    var user = await getCurrentSupaUser();
+    if (!user) { _supaUserProfile = null; return null; }
+    var client = getSupaClient();
+    try {
+        var { data, error } = await client.from('profiles').select('*').eq('id', user.id).maybeSingle();
+        if (error || !data) { _supaUserProfile = null; return null; }
+        _supaUserProfile = data;
+        return data;
+    } catch (e) { _supaUserProfile = null; return null; }
+}
+
+function isApprovedUser() {
+    if (!_supaCurrentUser) return false;
+    if (!_supaUserProfile) return false;
+    return _supaUserProfile.is_approved === true;
+}
+
+async function refreshSupaAuthStatus() {
+    var statusEl = document.getElementById('supaAuthStatus');
+    if (!statusEl) return;
+    var client = await initSupabaseAuth();
+    if (!client) { statusEl.classList.add('hidden'); return; }
+    var user = await getCurrentSupaUser();
+    if (!user) {
+        // Logged out state — show login CTA
+        statusEl.className = 'auth-status-badge auth-status-logged-out';
+        statusEl.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><span class="cursor-pointer" onclick="openSupaLoginModal()">Login</span>';
+        statusEl.title = 'Login untuk membuka fitur khusus Auto Cuan.';
+        statusEl.classList.remove('hidden');
+        // Show anon quota badge
+        updateAnonQuotaDisplay();
+        return;
+    }
+    // Hide anon quota when logged in
+    var quotaEl = document.getElementById('anonQuotaBadge');
+    if (quotaEl) quotaEl.classList.add('hidden');
+
+    var profile = await getUserProfile();
+    if (profile && profile.is_approved) {
+        statusEl.className = 'auth-status-badge auth-status-approved';
+        statusEl.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Approved';
+        statusEl.title = 'Akun approved. Auto Cuan aktif. (' + user.email + ')';
+    } else {
+        statusEl.className = 'auth-status-badge auth-status-pending';
+        statusEl.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Pending';
+        statusEl.title = 'Akun kamu sudah terdaftar, tapi masih menunggu approval admin. (' + user.email + ')';
+    }
+    statusEl.classList.remove('hidden');
+}
+
+// Initialize Supabase Auth on page load (non-blocking)
+(function() {
+    setTimeout(function() {
+        initSupabaseAuth().then(function(client) {
+            if (client) {
+                refreshSupaAuthStatus();
+                // Listen for auth state changes
+                client.auth.onAuthStateChange(function(event, session) {
+                    refreshSupaAuthStatus();
+                });
+            }
+        });
+    }, 500);
+})();
+
+// ===== PHASE 13A: ANALYZE FETCH WRAPPER =====
+// Adds _anonId to body and Authorization header if Supabase Auth active
+var _anonQuotaRemaining = 3; // updated from server responses
+
+function getAnonId() {
+    var id = localStorage.getItem('autocuan_anon_id');
+    if (!id) { id = 'anon_' + crypto.randomUUID(); localStorage.setItem('autocuan_anon_id', id); }
+    return id;
+}
+
+async function getSupaAccessToken() {
+    var client = getSupaClient();
+    if (!client) return null;
+    try {
+        var { data } = await client.auth.getSession();
+        if (data && data.session && data.session.access_token) return data.session.access_token;
+    } catch (e) {}
+    return null;
+}
+
+async function fetchAnalyzeWithAuth(bodyObj) {
+    // Inject _anonId for anonymous tracking
+    bodyObj._anonId = getAnonId();
+
+    // Build headers
+    var headers = { 'Content-Type': 'application/json' };
+    var token = await getSupaAccessToken();
+    if (token) {
+        headers['Authorization'] = 'Bearer ' + token;
+    }
+
+    var response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(bodyObj)
+    });
+
+    // Handle quota info from response
+    var data = await response.json();
+
+    if (typeof data._anonRemaining === 'number') {
+        _anonQuotaRemaining = data._anonRemaining;
+        updateAnonQuotaDisplay();
+    }
+
+    // Return both response status info and parsed data
+    return { response: response, data: data, status: response.status };
+}
+
+function updateAnonQuotaDisplay() {
+    var el = document.getElementById('anonQuotaBadge');
+    if (!el) return;
+    // Only show for anonymous (non-Supabase-auth) users
+    if (_supaCurrentUser) { el.classList.add('hidden'); return; }
+    if (_anonQuotaRemaining <= 0) {
+        el.className = 'auth-status-badge auth-status-pending';
+        el.innerHTML = 'Limit habis';
+        el.title = 'Limit gratis harian sudah habis. Daftar atau login untuk lanjut.';
+    } else {
+        el.className = 'auth-status-badge auth-status-logged-out';
+        el.innerHTML = 'Sisa: ' + _anonQuotaRemaining + '/3';
+        el.title = 'Sisa analisis gratis hari ini: ' + _anonQuotaRemaining + '/3';
+    }
+    el.classList.remove('hidden');
+}
+
+function handleAuthError(data, status) {
+    // Returns HTML message for 429 (limit) or 403 (not approved)
+    if (status === 429 && data.limitReached) {
+        _anonQuotaRemaining = 0;
+        updateAnonQuotaDisplay();
+        return data.html || '<p class="text-sm text-yellow-400">Limit gratis harian sudah habis. Daftar atau login untuk lanjut memakai Auto Cuan.</p>';
+    }
+    if (status === 403 && data.authError === 'not_approved') {
+        return data.html || '<p class="text-sm text-yellow-400">Akun kamu sudah terdaftar, tapi masih menunggu approval admin.</p>';
+    }
+    return null;
+}
+</script>
 <script>
 // ===== DEVICE ID =====
 function getOrCreateDeviceId() {
@@ -807,12 +1130,12 @@ function getAnalysisCount() { try { return parseInt(localStorage.getItem(getAnal
 function getChatCount() { try { return parseInt(localStorage.getItem(getChatUsageKey()) || '0', 10); } catch(e) { return 0; } }
 function incrementAnalysisUsage() { localStorage.setItem(getAnalysisUsageKey(), String(getAnalysisCount() + 1)); }
 function incrementChatUsage() { localStorage.setItem(getChatUsageKey(), String(getChatCount() + 1)); }
-function getAnalysisLimit() { if (isAdmin()) return Infinity; if (getUsername() === 'guest') return 2; return 10; }
-function getChatLimit() { if (isAdmin()) return Infinity; if (getUsername() === 'guest') return 5; return 20; }
+function getAnalysisLimit() { if (isAdmin()) return Infinity; if (isApprovedUser()) return Infinity; if (getUsername() === 'guest') return 3; return 3; }
+function getChatLimit() { if (isAdmin()) return Infinity; if (isApprovedUser()) return Infinity; if (getUsername() === 'guest') return 3; return 3; }
 function canAnalyze() { return getAnalysisCount() < getAnalysisLimit(); }
 function canChat() { return getChatCount() < getChatLimit(); }
-function getAnalysisLimitMsg() { return getUsername() === 'guest' ? 'Limit analisis guest hari ini sudah habis. Login atau daftar untuk mendapatkan 10 analisis per hari, atau coba lagi besok.' : 'Limit analisis harian Anda sudah habis. Silakan coba lagi besok.'; }
-function getChatLimitMsg() { return getUsername() === 'guest' ? 'Limit chat guest hari ini sudah habis. Login atau daftar untuk mendapatkan 20 chat per hari, atau coba lagi besok.' : 'Limit chat harian Anda sudah habis. Silakan coba lagi besok.'; }
+function getAnalysisLimitMsg() { return 'Limit gratis harian sudah habis. Daftar atau login untuk lanjut memakai Auto Cuan.'; }
+function getChatLimitMsg() { return 'Limit gratis harian sudah habis. Daftar atau login untuk lanjut memakai Auto Cuan.'; }
 function updateUsageCounter() {
     // Usage counter removed from visible UI — replaced by reminder modal
 }
@@ -966,6 +1289,8 @@ async function doRegister() {
 function logout() {
     localStorage.setItem('autocuan_user', 'guest'); localStorage.setItem('autocuan_is_admin', 'false');
     localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_is_review');
+    // Also logout Supabase Auth if active
+    doSupaLogout().catch(function(){});
     showDashboard();
 }
 
@@ -2454,11 +2779,12 @@ async function handleAnalysis(msg, intent) {
         var quoteCtx = await fetchQuoteContext(ticker);
         if (quoteCtx) enrichedMsg += quoteCtx;
         var fcaSt = detectFCAStatus(msg, ticker);
-        var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
-        var data = await response.json();
+        var result = await fetchAnalyzeWithAuth({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() });
+        var data = result.data;
         removeLoadingBubble();
-        if (!response.ok) throw new Error(data.error || 'Server error.');
+        var authErr = handleAuthError(data, result.status);
+        if (authErr) { addAIBubble(authErr); saveChatHistory(); return; }
+        if (!result.response.ok) throw new Error(data.error || 'Server error.');
         if (data.html) {
             var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
             addAIBubble(html, true);
@@ -2488,10 +2814,11 @@ async function handleTickerQuestion(msg, ticker) {
         // Fetch Yahoo quote context
         var quoteCtx = await fetchQuoteContext(ticker);
         if (quoteCtx) enrichedMsg += quoteCtx;
-        var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
-        var data = await response.json();
+        var response = await fetchAnalyzeWithAuth({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() });
+        var data = response.data;
         removeLoadingBubble();
+        var authErr = handleAuthError(data, response.status);
+        if (authErr) { addAIBubble(authErr); saveChatHistory(); return; }
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage(ticker, 'chat_error'); }
@@ -2518,10 +2845,11 @@ async function handleChat(msg) {
             var quoteCtx = await fetchQuoteContext(activeTicker);
             if (quoteCtx) enrichedMsg += quoteCtx;
         }
-        var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
-        var data = await response.json();
+        var response = await fetchAnalyzeWithAuth({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() });
+        var data = response.data;
         removeLoadingBubble();
+        var authErr = handleAuthError(data, response.status);
+        if (authErr) { addAIBubble(authErr); saveChatHistory(); return; }
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage('CHAT', 'chat_error'); }
@@ -2580,10 +2908,11 @@ async function handleBrokerSummaryText(msg, parsed) {
             enrichedMsg += '\nNote: Periode broker summary tidak disebutkan. Analisis dengan catatan timeframe belum jelas.';
         }
 
-        var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
-        var data = await response.json();
+        var response = await fetchAnalyzeWithAuth({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() });
+        var data = response.data;
         removeLoadingBubble();
+        var authErr = handleAuthError(data, response.status);
+        if (authErr) { addAIBubble(authErr); saveChatHistory(); return; }
         if (data.html) {
             var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
             addAIBubble(html, true);
@@ -2649,11 +2978,12 @@ async function handleChartUpload(msg) {
         var evidenceLevel = getEvidenceLevel();
         var fcaStatus = detectFCAStatus(msg, activeTicker || chartTicker, docsArray);
         clearAllFiles();
-        var response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images: imagesArray, documents: docsArray, image: null, mimeType: imagesArray.length > 0 ? imagesArray[0].mimeType : 'image/png', source: 'chart_upload', timeframe: firstImageTimeframe, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, fcaStatus: fcaStatus, evidenceLevel: evidenceLevel, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
+        var response = await fetchAnalyzeWithAuth({ images: imagesArray, documents: docsArray, image: null, mimeType: imagesArray.length > 0 ? imagesArray[0].mimeType : 'image/png', source: 'chart_upload', timeframe: firstImageTimeframe, ticker: activeTicker || chartTicker || null, currentPrice: detectPrice(msg) || null, fcaStatus: fcaStatus, evidenceLevel: evidenceLevel, username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() });
         imagesArray = null;
-        var data = await response.json();
+        var data = response.data;
         removeLoadingBubble();
+        var authErr = handleAuthError(data, response.status);
+        if (authErr) { addAIBubble(authErr); saveChatHistory(); return; }
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); updateAnalysisContext(msg, html); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
         else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Gambar chart belum bisa dianalisis. Coba upload ulang dengan resolusi lebih jelas.'); logUsage('CHART_UPLOAD', 'ai_error'); }
