@@ -1697,7 +1697,9 @@ function hideEmptySections(container) {
 
 function buildContextForApi() {
     var contextForApi = {};
-    if (latestAnalysisContext.ticker) contextForApi.ticker = latestAnalysisContext.ticker;
+    // Use activeTicker (current request) rather than stale latestAnalysisContext.ticker
+    if (activeTicker) contextForApi.ticker = activeTicker;
+    else if (latestAnalysisContext.ticker) contextForApi.ticker = latestAnalysisContext.ticker;
     if (latestAnalysisContext.currentPrice) contextForApi.currentPrice = latestAnalysisContext.currentPrice;
     if (latestAnalysisContext.finalDecision) contextForApi.finalDecision = latestAnalysisContext.finalDecision;
     if (latestAnalysisContext.score) contextForApi.score = latestAnalysisContext.score;
@@ -2043,6 +2045,8 @@ function setActiveTicker(ticker) {
     if (isValidTicker(t)) {
         activeTicker = t;
         activeCompanyName = getCompanyName(t);
+        // Immediately update latestAnalysisContext.ticker to prevent stale index mode leak
+        latestAnalysisContext.ticker = t;
     }
 }
 
@@ -2855,8 +2859,8 @@ function addAIBubble(html, isStructured) {
     // Client-side FCA sanitizer + security sanitizer + final technical label normalizer
     var sanitizedHtml = sanitizeAIHtml(clientSanitizeFCA(html));
     sanitizedHtml = normalizeFinalStockHtml(sanitizedHtml);
-    // Determine if this is an index query
-    var _isIndexQuery = isIndexTicker(activeTicker) || isIndexTicker(latestAnalysisContext && latestAnalysisContext.ticker);
+    // Determine if this is an index query — use ONLY current activeTicker (not stale latestAnalysisContext)
+    var _isIndexQuery = isIndexTicker(activeTicker);
     // Strip remaining stock-specific sections from IHSG/index responses
     if (_isIndexQuery) {
         sanitizedHtml = sanitizeIHSGOutput(sanitizedHtml);
@@ -3545,7 +3549,7 @@ function closeUsageReminder() {
 })();
 
 // ===== BUILD VERSION MARKER =====
-window.AUTO_CUAN_BUILD = 'phase-11q-verify-env-final-render-spacing';
+window.AUTO_CUAN_BUILD = 'phase-11r-fix-index-mode-leak-and-ihsg-spacing';
 
 // ===== IHSG OUTPUT SANITIZER (strip stock-specific sections from index responses) =====
 function sanitizeIHSGOutput(html) {
