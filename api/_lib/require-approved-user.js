@@ -2,7 +2,7 @@
  * Backend helper: Verify authenticated user and check approval status.
  * 
  * Usage in any API route:
- *   const { requireApprovedUser } = require('./lib/require-approved-user');
+ *   const { requireApprovedUser } = require('./_lib/require-approved-user');
  *   
  *   module.exports = async function handler(req, res) {
  *     const { user, profile, error } = await requireApprovedUser(req, res);
