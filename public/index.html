@@ -482,10 +482,9 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
                 <span>Chart</span>
             </button>
-            <button class="nav-btn disabled" title="Coming Soon" disabled>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
-                <span>Top Volume</span>
-                <span class="text-[9px] bg-yellow-500/20 text-yellow-400 px-1 rounded ml-1">Soon</span>
+            <button onclick="navigateTo('portofolio')" class="nav-btn" data-page="portofolio">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                <span>Portofolio</span>
             </button>
         </div>
     </nav>
@@ -503,17 +502,23 @@
             <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">Approved</span>
         </div>
 
-        <!-- IHSG Summary Card -->
+        <!-- IHSG Live Market Indicator -->
         <div id="ihsgSummaryCard" class="bg-dark-700/50 border border-dark-600/30 rounded-2xl p-4">
-            <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <h3 class="text-sm font-semibold text-gray-300">IHSG (Composite)</h3>
+                    <h3 class="text-xs font-semibold text-gray-400">IDX LIVE &middot; IHSG</h3>
                 </div>
-                <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="text-[11px] text-emerald-400 hover:text-emerald-300 transition">Analisis IHSG &rarr;</button>
+                <div class="flex items-center gap-2">
+                    <span id="ihsgTime" class="text-[10px] text-gray-600"></span>
+                    <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="text-[11px] text-emerald-400 hover:text-emerald-300 transition">Analisis IHSG &rarr;</button>
+                </div>
             </div>
-            <div id="ihsgSummaryContent" class="text-xs text-gray-500">
-                <p>Klik "Analisis IHSG" untuk melihat laporan market terbaru.</p>
+            <div id="ihsgSummaryContent" class="mt-2">
+                <div class="flex items-baseline gap-3">
+                    <span id="ihsgLast" class="text-lg font-bold text-white">—</span>
+                    <span id="ihsgChange" class="text-xs font-medium text-gray-500">—</span>
+                </div>
             </div>
         </div>
 
@@ -540,13 +545,13 @@
                 <p class="text-sm font-semibold text-gray-200">Chart</p>
                 <p class="text-[11px] text-gray-500 mt-0.5">Lihat grafik saham</p>
             </button>
-            <div class="bg-dark-700/30 border border-dark-600/20 rounded-xl p-4 text-left opacity-50 cursor-not-allowed">
-                <div class="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center mb-2">
-                    <svg class="w-4 h-4 text-yellow-400/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+            <button onclick="navigateTo('portofolio')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-yellow-500/30 hover:bg-yellow-500/5 transition-all group">
+                <div class="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center mb-2 group-hover:bg-yellow-500/20 transition">
+                    <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 </div>
-                <p class="text-sm font-semibold text-gray-400">Top Volume</p>
-                <p class="text-[11px] text-yellow-500/80 mt-0.5">Coming Soon</p>
-            </div>
+                <p class="text-sm font-semibold text-gray-200">Portofolio</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">Pantau posisi saham manual</p>
+            </button>
         </div>
     </div>
 </div>
@@ -634,15 +639,103 @@
     </div>
 </div>
 
-<!-- ===== PAGE: TOP VOLUME (Placeholder) ===== -->
-<div id="page-topvolume" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
-    <div class="flex flex-col items-center justify-center py-16 text-center">
+<!-- ===== PAGE: PORTOFOLIO ===== -->
+<div id="page-portofolio" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
+    <!-- Login gate (shown if not logged in) -->
+    <div id="portofolioLoginGate" class="hidden flex flex-col items-center justify-center py-16 text-center">
         <div class="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center mb-4">
-            <svg class="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+            <svg class="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
         </div>
-        <h2 class="text-lg font-bold text-white mb-2">Top Volume</h2>
-        <p class="text-sm text-gray-400 max-w-md">Top Volume &mdash; Coming Soon</p>
-        <div class="mt-6 px-4 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-400">Coming Soon</div>
+        <h2 class="text-lg font-bold text-white mb-2">Portofolio</h2>
+        <p class="text-sm text-gray-400 max-w-md">Login/Daftar untuk menyimpan dan melihat Portofolio.</p>
+        <div class="mt-4 flex gap-2">
+            <button onclick="openLoginModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Login</button>
+            <button onclick="openRegisterModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition">Daftar</button>
+        </div>
+    </div>
+    <!-- Portfolio content (shown if logged in) -->
+    <div id="portofolioContent" class="hidden space-y-4">
+        <!-- Header -->
+        <div class="flex items-center justify-between flex-wrap gap-2">
+            <h2 class="text-lg font-bold text-white">Portofolio</h2>
+            <div class="flex items-center gap-2">
+                <button onclick="refreshPortfolioPrices()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition flex items-center gap-1" id="portRefreshBtn">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Refresh Harga
+                </button>
+                <button onclick="openAddPositionForm()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    Tambah Posisi
+                </button>
+            </div>
+        </div>
+        <!-- Add position form (hidden by default) -->
+        <div id="addPositionForm" class="hidden bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 space-y-3">
+            <h3 class="text-sm font-semibold text-gray-300">Tambah Posisi Baru</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-[11px] text-gray-500 mb-1">Ticker</label>
+                    <input id="portTicker" type="text" placeholder="BBCA" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50" maxlength="5">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-500 mb-1">Lot</label>
+                    <input id="portLot" type="number" placeholder="100" min="1" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-500 mb-1">Avg Buy (Rp)</label>
+                    <input id="portAvgBuy" type="number" placeholder="5000" min="1" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
+                </div>
+            </div>
+            <div id="portFormError" class="hidden text-xs text-red-400"></div>
+            <div class="flex gap-2">
+                <button onclick="savePosition()" class="px-4 py-2 rounded-lg text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition">Simpan</button>
+                <button onclick="closeAddPositionForm()" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/50 hover:text-gray-200 transition">Batal</button>
+            </div>
+        </div>
+        <!-- Portfolio summary -->
+        <div id="portSummary" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+                <p class="text-[10px] text-gray-500">Total Modal</p>
+                <p class="text-sm font-semibold text-gray-200" id="portTotalModal">—</p>
+            </div>
+            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+                <p class="text-[10px] text-gray-500">Total Nilai</p>
+                <p class="text-sm font-semibold text-gray-200" id="portTotalValue">—</p>
+            </div>
+            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+                <p class="text-[10px] text-gray-500">Total P/L (Rp)</p>
+                <p class="text-sm font-semibold" id="portTotalPL">—</p>
+            </div>
+            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+                <p class="text-[10px] text-gray-500">Total P/L %</p>
+                <p class="text-sm font-semibold" id="portTotalPLPct">—</p>
+            </div>
+        </div>
+        <!-- Portfolio table -->
+        <div class="bg-dark-700/30 border border-dark-600/30 rounded-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs sm:text-sm">
+                    <thead>
+                        <tr class="text-gray-500 border-b border-dark-600/40 text-left">
+                            <th class="px-3 py-2.5 font-medium">Ticker</th>
+                            <th class="px-3 py-2.5 font-medium">Lot</th>
+                            <th class="px-3 py-2.5 font-medium">Avg Buy</th>
+                            <th class="px-3 py-2.5 font-medium">Last Price</th>
+                            <th class="px-3 py-2.5 font-medium">P/L (Rp)</th>
+                            <th class="px-3 py-2.5 font-medium">P/L %</th>
+                            <th class="px-3 py-2.5 font-medium"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="portTableBody" class="text-gray-300">
+                        <tr id="portEmptyRow"><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Price note -->
+        <p class="text-[10px] text-gray-600 text-center">Harga diperbarui dari data terakhir yang tersedia.</p>
+        <!-- Price warning -->
+        <div id="portPriceWarning" class="hidden text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 text-center">Beberapa harga tidak tersedia. P/L ditampilkan "—" untuk posisi tersebut.</div>
     </div>
 </div>
 
@@ -681,7 +774,7 @@
                 </button>
                 <!-- Text input -->
                 <div class="flex-1 relative">
-                    <textarea id="chatInput" rows="1" placeholder="Ketik BBCA, IHSG, paste broksum, atau upload chart..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+                    <textarea id="chatInput" rows="1" placeholder="Ketik BBCA, IHSG, atau tanya lanjutan..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
                 </div>
                 <!-- Send button -->
                 <button id="sendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim">
@@ -692,39 +785,7 @@
             <div id="inputHints" class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] sm:text-[11px] text-gray-600">
                 <span>Ticker: <span class="text-gray-500">BBCA</span></span>
                 <span>Index: <span class="text-gray-500">IHSG</span></span>
-                <span>Broksum: <span class="text-gray-500">BBCA broksum 1D</span></span>
-                <span>Chart: <span class="text-gray-500">upload</span></span>
-                <button onclick="toggleBroksumHelper()" class="text-emerald-600 hover:text-emerald-400 transition underline underline-offset-2" title="Lihat contoh format Broker Summary">Contoh Broksum</button>
                 <button onclick="showOnboardingGuide()" class="text-blue-500 hover:text-blue-400 transition underline underline-offset-2" title="Cara menggunakan Auto-Cuan">Cara Pakai</button>
-            </div>
-            <!-- Broker Summary helper (collapsible, table-style) -->
-            <div id="broksumHelper" class="hidden mt-2 bg-dark-700/40 border border-dark-600/30 rounded-xl p-3 text-[11px] sm:text-xs text-gray-500 space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="font-medium text-gray-400">Contoh Broker Summary Manual</span>
-                    <button onclick="toggleBroksumHelper()" class="text-gray-600 hover:text-gray-400 text-sm leading-none">&times;</button>
-                </div>
-                <p class="text-gray-500">Periode: <span class="text-gray-300">1D</span></p>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-[11px] sm:text-xs border-collapse">
-                        <thead><tr class="text-gray-400 border-b border-dark-600/40"><th class="text-left py-1 pr-3 font-medium">Broker</th><th class="text-left py-1 pr-3 font-medium">Net</th><th class="text-left py-1 font-medium">Arti</th></tr></thead>
-                        <tbody class="text-gray-300">
-                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">YP</td><td class="py-1 pr-3 text-emerald-400">+4,5B</td><td class="py-1 text-gray-500">Net Buyer</td></tr>
-                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">PD</td><td class="py-1 pr-3 text-emerald-400">+3,1B</td><td class="py-1 text-gray-500">Net Buyer</td></tr>
-                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">CC</td><td class="py-1 pr-3 text-emerald-400">+1,8B</td><td class="py-1 text-gray-500">Net Buyer</td></tr>
-                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">AK</td><td class="py-1 pr-3 text-red-400">-8B</td><td class="py-1 text-gray-500">Net Seller</td></tr>
-                            <tr class="border-b border-dark-600/20"><td class="py-1 pr-3">ZP</td><td class="py-1 pr-3 text-red-400">-2,5B</td><td class="py-1 text-gray-500">Net Seller</td></tr>
-                            <tr><td class="py-1 pr-3">BK</td><td class="py-1 pr-3 text-red-400">-1,2B</td><td class="py-1 text-gray-500">Net Seller</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="text-[10px] text-gray-600 space-y-0.5 pt-1">
-                    <p>Net positif = broker dominan beli. Net negatif = broker dominan jual.</p>
-                    <p>Periode didukung: <span class="text-gray-500">1D, 7D, 1M, 3M</span>. Broker Summary = konfirmasi tambahan, bukan sinyal beli tunggal.</p>
-                </div>
-                <div class="flex flex-wrap gap-2 pt-1">
-                    <button onclick="fillBroksumExample()" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 transition text-[11px] font-medium">Isi ke Chat</button>
-                    <button onclick="copyBroksumExample()" class="px-2.5 py-1 rounded-lg bg-dark-600/50 border border-dark-500/30 text-gray-400 hover:text-gray-200 transition text-[11px]">Salin</button>
-                </div>
             </div>
         </div>
     </div>
@@ -925,7 +986,7 @@ function isDeviceBlocked() { var b = getBlockedUntil(); return b && Date.now() <
 function blockDeviceForBadName() {
     localStorage.setItem('autocuan_blocked_until', String(Date.now() + 2*60*60*1000));
     localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_user');
-    localStorage.removeItem('autocuan_is_admin'); localStorage.removeItem('autocuan_login_time');
+    localStorage.removeItem('autocuan_is_admin'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_user_id');
     showBlockedScreen();
 }
 function showBlockedScreen() {
@@ -1119,7 +1180,7 @@ async function doLogin() {
     if (usernameLower === 'budi') {
         if (password === '.') {
             localStorage.setItem('autocuan_user', 'budi'); localStorage.setItem('autocuan_is_admin', 'true');
-            localStorage.setItem('autocuan_login_time', Date.now().toString()); localStorage.removeItem('autocuan_is_review');
+            localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString()); localStorage.removeItem('autocuan_is_review');
             logLogin('budi', false, true); closeLoginModal(); showDashboard();
         } else { errorEl.textContent = 'Password salah.'; errorEl.classList.remove('hidden'); }
         return;
@@ -1135,6 +1196,7 @@ async function doLogin() {
         if (data.success) {
             localStorage.setItem('autocuan_user', data.username); localStorage.setItem('autocuan_is_admin', 'false');
             localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString());
+            if (data.userId) { localStorage.setItem('autocuan_user_id', data.userId); }
             if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
             logLogin(data.username, false, false); closeLoginModal(); showDashboard();
         } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
@@ -1172,7 +1234,7 @@ async function doRegister() {
 // ===== LOGOUT =====
 function logout() {
     localStorage.setItem('autocuan_user', 'guest'); localStorage.setItem('autocuan_is_admin', 'false');
-    localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_is_review');
+    localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_is_review'); localStorage.removeItem('autocuan_user_id');
     showDashboard();
 }
 
@@ -1180,7 +1242,7 @@ function logout() {
 // ===== LOGGING =====
 async function logLogin(username, isGuest, isAdm) { try { await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'login', username: username, isGuest: isGuest, isAdmin: isAdm, userAgent: navigator.userAgent }) }); } catch (e) {} }
 async function logSearch(ticker, source) { try { var username = localStorage.getItem('autocuan_user') || 'guest'; await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'search', username: username, ticker: ticker, source: source }) }); } catch (e) {} }
-async function logAnalysisResult(ticker, mode, html) { try { var username = localStorage.getItem('autocuan_user') || 'guest'; var text = String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'analysis', username: username, ticker: ticker, mode: mode, resultSummary: text.slice(0, 500), fullResultHtml: String(html || '').slice(0, 2000) }) }); } catch (e) {} }
+async function logAnalysisResult(ticker, mode, html) { try { var username = localStorage.getItem('autocuan_user') || 'guest'; await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'analysis', username: username, ticker: ticker, mode: mode, resultSummary: (ticker || '') + ' ' + (mode || '') + ' success', fullResultHtml: '' }) }); } catch (e) {} }
 async function logUsage(ticker, usageAction) { try { var username = localStorage.getItem('autocuan_user') || 'guest'; await fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'usage', username: username, ticker: ticker, usageAction: usageAction }) }); } catch (e) {} }
 
 // ===== DASHBOARD =====
@@ -1237,6 +1299,16 @@ function navigateTo(page) {
         if (loginGate && placeholder) {
             if (isLoggedIn) { loginGate.classList.add('hidden'); placeholder.classList.remove('hidden'); }
             else { loginGate.classList.remove('hidden'); placeholder.classList.add('hidden'); }
+        }
+    }
+    // Portofolio login gate
+    if (page === 'portofolio') {
+        var isLoggedIn2 = getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true';
+        var portLoginGate = document.getElementById('portofolioLoginGate');
+        var portContent = document.getElementById('portofolioContent');
+        if (portLoginGate && portContent) {
+            if (isLoggedIn2) { portLoginGate.classList.add('hidden'); portContent.classList.remove('hidden'); renderPortfolio(); }
+            else { portLoginGate.classList.remove('hidden'); portContent.classList.add('hidden'); }
         }
     }
 }
@@ -1513,57 +1585,28 @@ function handleInputKeydown(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!isSending) handleSend(); }
 }
 
-// ===== BROKER SUMMARY HELPER FUNCTIONS =====
-function toggleBroksumHelper() {
-    var el = document.getElementById('broksumHelper');
-    if (el) el.classList.toggle('hidden');
-}
-function fillBroksumExample() {
-    var input = document.getElementById('chatInput');
-    if (input) {
-        input.value = 'BBCA broksum 1D\nYP +4,5B\nPD +3,1B\nCC +1,8B\nAK -8B\nZP -2,5B\nBK -1,2B';
-        autoResizeInput();
-        input.focus();
-    }
-    toggleBroksumHelper();
-}
-function copyBroksumExample() {
-    var text = 'BBCA broksum 1D\nYP +4,5B\nPD +3,1B\nCC +1,8B\nAK -8B\nZP -2,5B\nBK -1,2B';
-    navigator.clipboard.writeText(text).then(function() {
-        showToast('Contoh Broker Summary disalin', 'success');
-    }).catch(function() {
-        showToast('Gagal menyalin', 'error');
-    });
-}
-
 // ===== USAGE GUIDE HELPER FUNCTIONS =====
 var _onboardingStep = 0;
 var _onboardingSteps = [
     {
         title: 'Halo! Selamat datang \uD83D\uDC4B',
-        content: '<p class="text-sm text-gray-300">Auto-Cuan bantu kamu baca arah market dan saham — berbasis data teknikal, ringkas, dan mudah dipahami.</p><p class="text-sm text-gray-400 mt-2">Bisa cek saham, IHSG, upload chart, atau kirim Broker Summary manual. Semua digabungin jadi satu analisis yang utuh.</p><p class="text-[11px] text-gray-500 mt-3">Analisis bersifat probabilistik — bukan rekomendasi beli/jual.</p><p class="text-xs text-gray-500 mt-2">Klik <strong class="text-emerald-400">Next</strong> untuk lihat caranya.</p>',
+        content: '<p class="text-sm text-gray-300">Auto-Cuan bantu kamu membaca arah market dan saham berbasis data teknikal, ringkas, dan mudah dipahami.</p><p class="text-sm text-gray-400 mt-2">Kamu bisa cek IHSG, analisis saham, lihat chart, dan pantau portofolio manual dalam satu dashboard.</p><p class="text-[11px] text-gray-500 mt-3">Analisis bersifat probabilistik — bukan rekomendasi beli/jual.</p><p class="text-xs text-gray-500 mt-2">Klik <strong class="text-emerald-400">Next</strong> untuk lihat caranya.</p>',
         showClose: false
     },
     {
         title: 'Analisis Saham',
-        content: '<p class="text-sm text-gray-400">Ketik ticker atau pertanyaan:</p><p class="text-sm text-gray-200 mt-1.5">BBCA gimana?<br>BREN potensi besok?</p>',
+        content: '<p class="text-sm text-gray-400">Masukkan ticker seperti <span class="text-gray-200">BBCA</span>, <span class="text-gray-200">TLKM</span>, <span class="text-gray-200">BBRI</span>, <span class="text-gray-200">DATA</span>, atau <span class="text-gray-200">WMUU</span> untuk melihat laporan teknikal terstruktur.</p><p class="text-sm text-gray-400 mt-2">Setiap saham menampilkan status, bias, level support-resistance, momentum, volume, Fibonacci, entry plan, risiko, dan invalidasi.</p>',
         showClose: true,
-        quickFill: { text: 'BBCA gimana?', label: 'Coba BBCA' }
+        quickFill: { text: 'BBCA', label: 'Coba BBCA' }
     },
     {
-        title: 'IHSG / Composite',
-        content: '<p class="text-sm text-gray-400">Bisa tanya market:</p><p class="text-sm text-gray-200 mt-1.5">IHSG<br>Composite potensi besok?</p>',
-        showClose: true,
-        quickFill: { text: 'IHSG', label: 'Coba IHSG' }
-    },
-    {
-        title: 'Upload Chart',
-        content: '<p class="text-sm text-gray-400">Upload screenshot chart untuk analisis visual. Auto-Cuan akan membaca struktur chart lalu menggabungkannya dengan data teknikal jika tersedia.</p>',
+        title: 'Chart & Portofolio',
+        content: '<p class="text-sm text-gray-400">Gunakan <span class="text-gray-200">Chart</span> untuk melihat candlestick, MA20/50/100/200, RSI, volume, dan Fibonacci.</p><p class="text-sm text-gray-400 mt-2">Gunakan <span class="text-gray-200">Portofolio</span> untuk mencatat posisi manual: ticker, lot, dan avg buy. Auto-Cuan akan mengambil harga terakhir dan menghitung P/L.</p>',
         showClose: true
     },
     {
-        title: 'Broker Summary Manual',
-        content: '<p class="text-sm text-gray-400">Paste data Broker Summary NET:</p><p class="text-sm text-gray-200 mt-1.5 font-mono">BBCA broksum 1D<br>YP +4,5B<br>AK -8B</p><p class="text-[11px] text-gray-500 mt-2">Periode: 1D, 7D, 1M, 3M</p>',
+        title: 'Sektor Hot',
+        content: '<p class="text-sm text-gray-400">Fitur Sektor Hot / Grup Konglomerat Hot sedang disiapkan.</p><p class="text-sm text-gray-400 mt-2">Nantinya fitur ini akan membantu melihat grup saham yang sedang aktif bergerak di market.</p>',
         showClose: true
     }
 ];
@@ -1735,7 +1778,7 @@ function removeFile(fileId) {
     }
     renderFilePreview();
     if (selectedFiles.length === 0) {
-        document.getElementById('chatInput').placeholder = 'Tanya saham, kirim ticker + harga, atau upload chart...';
+        document.getElementById('chatInput').placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan...';
     }
 }
 
@@ -1746,7 +1789,7 @@ function clearAllFiles() {
     selectedFiles = [];
     document.getElementById('fileInput').value = '';
     renderFilePreview();
-    document.getElementById('chatInput').placeholder = 'Tanya saham, kirim ticker + harga, atau upload chart...';
+    document.getElementById('chatInput').placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan...';
 }
 
 function removeAttachment() {
@@ -4143,8 +4186,370 @@ function closeUsageReminder() {
     updateActivity();
 })();
 
+// ===== PORTOFOLIO FEATURE (Phase 15A) =====
+var _portRefreshTimer = null;
+
+function getPortfolioKey() {
+    var user = getUsername();
+    if (!user || user === 'guest') return null;
+    // Prefer stable user ID from Supabase, fallback to username
+    var userId = localStorage.getItem('autocuan_user_id');
+    var userKey = userId || user;
+    return 'autocuan_portfolio_' + userKey;
+}
+
+function loadPortfolio() {
+    var key = getPortfolioKey();
+    if (!key) return [];
+    try { var data = localStorage.getItem(key); return data ? JSON.parse(data) : []; }
+    catch (e) { return []; }
+}
+
+function savePortfolio(positions) {
+    var key = getPortfolioKey();
+    if (!key) return;
+    localStorage.setItem(key, JSON.stringify(positions));
+}
+
+function openAddPositionForm() {
+    var form = document.getElementById('addPositionForm');
+    if (form) { form.classList.remove('hidden'); }
+    var err = document.getElementById('portFormError');
+    if (err) err.classList.add('hidden');
+}
+
+function closeAddPositionForm() {
+    var form = document.getElementById('addPositionForm');
+    if (form) form.classList.add('hidden');
+    document.getElementById('portTicker').value = '';
+    document.getElementById('portLot').value = '';
+    document.getElementById('portAvgBuy').value = '';
+    var err = document.getElementById('portFormError');
+    if (err) err.classList.add('hidden');
+}
+
+function savePosition() {
+    var tickerEl = document.getElementById('portTicker');
+    var lotEl = document.getElementById('portLot');
+    var avgEl = document.getElementById('portAvgBuy');
+    var errEl = document.getElementById('portFormError');
+
+    var ticker = (tickerEl.value || '').trim().toUpperCase();
+    var lot = parseInt(lotEl.value, 10);
+    var avgBuy = parseFloat(avgEl.value);
+
+    if (!ticker) { showPortFormError('Ticker wajib diisi.'); return; }
+    if (!/^[A-Z]{3,5}$/.test(ticker)) { showPortFormError('Ticker harus 3-5 huruf kapital.'); return; }
+    if (!lot || lot <= 0 || isNaN(lot)) { showPortFormError('Lot harus angka positif.'); return; }
+    if (!avgBuy || avgBuy <= 0 || isNaN(avgBuy)) { showPortFormError('Avg Buy harus angka positif.'); return; }
+
+    var positions = loadPortfolio();
+    positions.push({ ticker: ticker, lot: lot, avgBuy: avgBuy, addedAt: Date.now() });
+    savePortfolio(positions);
+    closeAddPositionForm();
+    renderPortfolio();
+}
+
+function showPortFormError(msg) {
+    var errEl = document.getElementById('portFormError');
+    if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+}
+
+function deletePosition(index) {
+    var positions = loadPortfolio();
+    positions.splice(index, 1);
+    savePortfolio(positions);
+    renderPortfolio();
+}
+
+function renderPortfolio() {
+    var positions = loadPortfolio();
+    var tbody = document.getElementById('portTableBody');
+    var emptyRow = document.getElementById('portEmptyRow');
+    var summaryEl = document.getElementById('portSummary');
+    if (!tbody) return;
+
+    if (positions.length === 0) {
+        tbody.innerHTML = '<tr id="portEmptyRow"><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>';
+        if (summaryEl) summaryEl.classList.add('hidden');
+        return;
+    }
+
+    if (summaryEl) summaryEl.classList.remove('hidden');
+
+    var html = '';
+    var totalModal = 0;
+    var totalValue = 0;
+    var allPriced = true;
+
+    for (var i = 0; i < positions.length; i++) {
+        var pos = positions[i];
+        var totalShares = pos.lot * 100;
+        var modalValue = pos.avgBuy * totalShares;
+        totalModal += modalValue;
+
+        var lastPrice = pos._lastPrice || null;
+        var plRp = '—';
+        var plPct = '—';
+        var plRpClass = 'text-gray-500';
+        var plPctClass = 'text-gray-500';
+        var lastPriceDisplay = '—';
+
+        if (lastPrice !== null && lastPrice > 0) {
+            var marketValue = lastPrice * totalShares;
+            totalValue += marketValue;
+            var pl = marketValue - modalValue;
+            var pct = ((lastPrice - pos.avgBuy) / pos.avgBuy) * 100;
+            plRp = formatRupiah(pl);
+            plPct = pct.toFixed(2) + '%';
+            plRpClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
+            plPctClass = pct >= 0 ? 'text-emerald-400' : 'text-red-400';
+            lastPriceDisplay = formatRupiah(lastPrice);
+        } else {
+            allPriced = false;
+        }
+
+        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-600/10">' +
+            '<td class="px-3 py-2.5 font-semibold text-gray-100">' + pos.ticker + '</td>' +
+            '<td class="px-3 py-2.5">' + pos.lot + '</td>' +
+            '<td class="px-3 py-2.5">Rp ' + formatNumber(pos.avgBuy) + '</td>' +
+            '<td class="px-3 py-2.5">' + lastPriceDisplay + '</td>' +
+            '<td class="px-3 py-2.5 ' + plRpClass + '">' + plRp + '</td>' +
+            '<td class="px-3 py-2.5 ' + plPctClass + '">' + plPct + '</td>' +
+            '<td class="px-3 py-2.5"><button onclick="deletePosition(' + i + ')" class="text-red-400/60 hover:text-red-400 transition text-sm" title="Hapus">&times;</button></td>' +
+            '</tr>';
+    }
+    tbody.innerHTML = html;
+
+    // Update summary
+    document.getElementById('portTotalModal').textContent = formatRupiah(totalModal);
+    if (allPriced && positions.length > 0) {
+        var totalPL = totalValue - totalModal;
+        var totalPLPct = totalModal > 0 ? ((totalValue - totalModal) / totalModal) * 100 : 0;
+        document.getElementById('portTotalValue').textContent = formatRupiah(totalValue);
+        document.getElementById('portTotalPL').textContent = formatRupiah(totalPL);
+        document.getElementById('portTotalPL').className = 'text-sm font-semibold ' + (totalPL >= 0 ? 'text-emerald-400' : 'text-red-400');
+        document.getElementById('portTotalPLPct').textContent = totalPLPct.toFixed(2) + '%';
+        document.getElementById('portTotalPLPct').className = 'text-sm font-semibold ' + (totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400');
+    } else {
+        document.getElementById('portTotalValue').textContent = '—';
+        document.getElementById('portTotalPL').textContent = '—';
+        document.getElementById('portTotalPL').className = 'text-sm font-semibold text-gray-500';
+        document.getElementById('portTotalPLPct').textContent = '—';
+        document.getElementById('portTotalPLPct').className = 'text-sm font-semibold text-gray-500';
+    }
+
+    // Show/hide price warning
+    var warningEl = document.getElementById('portPriceWarning');
+    if (warningEl) { if (!allPriced && positions.length > 0) warningEl.classList.remove('hidden'); else warningEl.classList.add('hidden'); }
+
+    // Auto-refresh prices on first render
+    refreshPortfolioPrices();
+}
+
+async function refreshPortfolioPrices() {
+    var positions = loadPortfolio();
+    if (positions.length === 0) return;
+
+    var btn = document.getElementById('portRefreshBtn');
+    if (btn) btn.disabled = true;
+
+    var uniqueTickers = [];
+    for (var i = 0; i < positions.length; i++) {
+        if (uniqueTickers.indexOf(positions[i].ticker) === -1) uniqueTickers.push(positions[i].ticker);
+    }
+
+    var priceMap = {};
+    var hasFailure = false;
+
+    // Fetch prices in parallel (max 10 concurrent)
+    var fetches = uniqueTickers.map(function(ticker) {
+        return fetch('/api/quote?ticker=' + encodeURIComponent(ticker))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data && data.success && data.last) {
+                    priceMap[ticker] = data.last;
+                } else {
+                    hasFailure = true;
+                }
+            })
+            .catch(function() { hasFailure = true; });
+    });
+
+    await Promise.all(fetches);
+
+    // Update positions with fetched prices
+    for (var j = 0; j < positions.length; j++) {
+        var price = priceMap[positions[j].ticker];
+        positions[j]._lastPrice = price || null;
+    }
+    savePortfolio(positions);
+
+    // Re-render table without triggering another refresh
+    renderPortfolioTable(positions, hasFailure);
+
+    if (btn) btn.disabled = false;
+
+    // Setup auto-refresh (every 10 minutes while on portfolio page)
+    clearPortfolioTimer();
+    _portRefreshTimer = setTimeout(function() {
+        if (currentPage === 'portofolio') refreshPortfolioPrices();
+    }, 10 * 60 * 1000);
+}
+
+function clearPortfolioTimer() {
+    if (_portRefreshTimer) { clearTimeout(_portRefreshTimer); _portRefreshTimer = null; }
+}
+
+function renderPortfolioTable(positions, hasFailure) {
+    var tbody = document.getElementById('portTableBody');
+    var summaryEl = document.getElementById('portSummary');
+    if (!tbody) return;
+
+    if (positions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>';
+        if (summaryEl) summaryEl.classList.add('hidden');
+        return;
+    }
+
+    if (summaryEl) summaryEl.classList.remove('hidden');
+
+    var html = '';
+    var totalModal = 0;
+    var totalValue = 0;
+    var allPriced = true;
+
+    for (var i = 0; i < positions.length; i++) {
+        var pos = positions[i];
+        var totalShares = pos.lot * 100;
+        var modalValue = pos.avgBuy * totalShares;
+        totalModal += modalValue;
+
+        var lastPrice = pos._lastPrice || null;
+        var plRp = '—';
+        var plPct = '—';
+        var plRpClass = 'text-gray-500';
+        var plPctClass = 'text-gray-500';
+        var lastPriceDisplay = '—';
+
+        if (lastPrice !== null && lastPrice > 0) {
+            var marketValue = lastPrice * totalShares;
+            totalValue += marketValue;
+            var pl = marketValue - modalValue;
+            var pct = ((lastPrice - pos.avgBuy) / pos.avgBuy) * 100;
+            plRp = formatRupiah(pl);
+            plPct = pct.toFixed(2) + '%';
+            plRpClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
+            plPctClass = pct >= 0 ? 'text-emerald-400' : 'text-red-400';
+            lastPriceDisplay = formatRupiah(lastPrice);
+        } else {
+            allPriced = false;
+        }
+
+        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-600/10">' +
+            '<td class="px-3 py-2.5 font-semibold text-gray-100">' + pos.ticker + '</td>' +
+            '<td class="px-3 py-2.5">' + pos.lot + '</td>' +
+            '<td class="px-3 py-2.5">Rp ' + formatNumber(pos.avgBuy) + '</td>' +
+            '<td class="px-3 py-2.5">' + lastPriceDisplay + '</td>' +
+            '<td class="px-3 py-2.5 ' + plRpClass + '">' + plRp + '</td>' +
+            '<td class="px-3 py-2.5 ' + plPctClass + '">' + plPct + '</td>' +
+            '<td class="px-3 py-2.5"><button onclick="deletePosition(' + i + ')" class="text-red-400/60 hover:text-red-400 transition text-sm" title="Hapus">&times;</button></td>' +
+            '</tr>';
+    }
+    tbody.innerHTML = html;
+
+    // Update summary
+    document.getElementById('portTotalModal').textContent = formatRupiah(totalModal);
+    if (allPriced && positions.length > 0) {
+        var totalPL = totalValue - totalModal;
+        var totalPLPct = totalModal > 0 ? ((totalValue - totalModal) / totalModal) * 100 : 0;
+        document.getElementById('portTotalValue').textContent = formatRupiah(totalValue);
+        document.getElementById('portTotalPL').textContent = formatRupiah(totalPL);
+        document.getElementById('portTotalPL').className = 'text-sm font-semibold ' + (totalPL >= 0 ? 'text-emerald-400' : 'text-red-400');
+        document.getElementById('portTotalPLPct').textContent = totalPLPct.toFixed(2) + '%';
+        document.getElementById('portTotalPLPct').className = 'text-sm font-semibold ' + (totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400');
+    } else {
+        document.getElementById('portTotalValue').textContent = '—';
+        document.getElementById('portTotalPL').textContent = '—';
+        document.getElementById('portTotalPL').className = 'text-sm font-semibold text-gray-500';
+        document.getElementById('portTotalPLPct').textContent = '—';
+        document.getElementById('portTotalPLPct').className = 'text-sm font-semibold text-gray-500';
+    }
+
+    // Show/hide price warning
+    var warningEl = document.getElementById('portPriceWarning');
+    if (warningEl) { if (hasFailure || !allPriced) warningEl.classList.remove('hidden'); else warningEl.classList.add('hidden'); }
+}
+
+function formatRupiah(num) {
+    if (num === null || num === undefined || isNaN(num)) return '—';
+    var prefix = num < 0 ? '-Rp ' : 'Rp ';
+    var absNum = Math.abs(Math.round(num));
+    return prefix + formatNumber(absNum);
+}
+
+function formatNumber(n) {
+    if (n === null || n === undefined || isNaN(n)) return '0';
+    return Number(n).toLocaleString('id-ID');
+}
+
+// ===== IHSG DASHBOARD LIVE INDICATOR =====
+var _ihsgRefreshTimer = null;
+
+function refreshIHSGCard() {
+    fetch('/api/quote?ticker=IHSG')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var lastEl = document.getElementById('ihsgLast');
+            var changeEl = document.getElementById('ihsgChange');
+            var timeEl = document.getElementById('ihsgTime');
+            if (!lastEl) return;
+            if (data && data.success && data.last) {
+                var last = data.last;
+                var prevClose = data.prevClose || last;
+                var change = last - prevClose;
+                var changePct = prevClose > 0 ? ((change / prevClose) * 100) : 0;
+                lastEl.textContent = Number(last).toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                var arrow = change >= 0 ? '\u25B2' : '\u25BC';
+                var sign = change >= 0 ? '+' : '';
+                changeEl.textContent = arrow + ' ' + sign + change.toFixed(2) + ' (' + sign + changePct.toFixed(2) + '%)';
+                changeEl.className = 'text-xs font-medium ' + (change >= 0 ? 'text-emerald-400' : 'text-red-400');
+                // WIB time
+                if (timeEl) {
+                    var now = new Date();
+                    var wib = new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
+                    timeEl.textContent = wib.toTimeString().slice(0,8) + ' WIB';
+                }
+            } else {
+                lastEl.textContent = '\u2014';
+                changeEl.textContent = 'IHSG belum tersedia';
+                changeEl.className = 'text-xs font-medium text-gray-500';
+            }
+        })
+        .catch(function() {
+            var lastEl = document.getElementById('ihsgLast');
+            var changeEl = document.getElementById('ihsgChange');
+            if (lastEl) lastEl.textContent = '\u2014';
+            if (changeEl) { changeEl.textContent = 'IHSG belum tersedia'; changeEl.className = 'text-xs font-medium text-gray-500'; }
+        });
+    // Schedule next refresh (10 minutes)
+    if (_ihsgRefreshTimer) clearTimeout(_ihsgRefreshTimer);
+    _ihsgRefreshTimer = setTimeout(refreshIHSGCard, 10 * 60 * 1000);
+}
+
+// Auto-load on dashboard show
+(function() {
+    var origShowDash = window.showDashboard;
+    window.showDashboard = function() {
+        if (origShowDash) origShowDash.apply(this, arguments);
+        setTimeout(refreshIHSGCard, 300);
+    };
+    // Also load on init if dashboard is visible
+    setTimeout(function() { if (currentPage === 'dashboard') refreshIHSGCard(); }, 800);
+})();
+
 // ===== BUILD VERSION MARKER =====
-window.AUTO_CUAN_BUILD = 'phase-12-speed-ux-optimization';
+window.AUTO_CUAN_BUILD = 'phase-15a-portfolio-feature';
 
 // ===== IHSG OUTPUT SANITIZER (strip stock-specific sections from index responses) =====
 function sanitizeIHSGOutput(html) {

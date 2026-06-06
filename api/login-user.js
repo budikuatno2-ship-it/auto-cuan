@@ -75,6 +75,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         success: true,
         username: 'review',
+        userId: user.id,
         isAdmin: false,
         isReview: true
       });
@@ -101,6 +102,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         success: true,
         username: usernameLower,
+        userId: user.id,
         isAdmin: false
       });
     }
@@ -127,6 +129,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success: true,
       username: usernameLower,
+      userId: user.id,
       isAdmin: false
     });
   } catch (e) {
