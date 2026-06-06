@@ -17,7 +17,7 @@
         }
     </script>
     <style>
-        /* HOTFIX: Hide any previously saved broken Level Fokus cards from chat history */
+        /* Hide any previously saved broken Level Fokus cards from old chat history in localStorage */
         .chart-focus-card { display: none !important; }
         body { background-color: #0b0e14; overflow-x: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         ::-webkit-scrollbar { width: 6px; }
@@ -1743,12 +1743,6 @@ function hideEmptySections(container) {
     }
 }
 
-function renderChartFocus(chartFocus) {
-    // DISABLED: Level Fokus feature temporarily disabled due to aggressive number extraction bug.
-    // Will be rebuilt with strict structured data only.
-    return '';
-}
-
 function formatRupiahLevel(value) {
     if (value == null) return '-';
     return String(Math.round(Number(value))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -2524,11 +2518,7 @@ async function handleAnalysis(msg, intent) {
         if (!response.ok) throw new Error(data.error || 'Server error.');
         if (data.html) {
             var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
-            var chartFocusHtml = '';
-            if (data.chart_focus && data.chart_focus.enabled) {
-                chartFocusHtml = renderChartFocus(data.chart_focus);
-            }
-            addAIBubble(html + chartFocusHtml, true);
+            addAIBubble(html, true);
             updateAnalysisContext(msg, html);
             incrementAnalysisUsage(); updateUsageCounter();
             logUsage(ticker, 'ai_success'); logAnalysisResult(ticker, 'ticker', html);
@@ -2559,7 +2549,7 @@ async function handleTickerQuestion(msg, ticker) {
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); var chartFocusHtml = ''; if (data.chart_focus && data.chart_focus.enabled) { chartFocusHtml = renderChartFocus(data.chart_focus); } addAIBubble(html + chartFocusHtml); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage(ticker, 'chat_error'); }
     finally { enableSend(); saveChatHistoryImmediate(); }
@@ -2589,7 +2579,7 @@ async function handleChat(msg) {
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); var chartFocusHtml = ''; if (data.chart_focus && data.chart_focus.enabled) { chartFocusHtml = renderChartFocus(data.chart_focus); } addAIBubble(html + chartFocusHtml); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage('CHAT', 'chat_error'); }
     finally { enableSend(); saveChatHistoryImmediate(); }
