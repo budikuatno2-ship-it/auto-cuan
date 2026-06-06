@@ -107,11 +107,12 @@ module.exports = async function handler(req, res) {
       if (body.context && body.context.ticker === 'IHSG') detectedIHSG = true;
 
       // === FIXED IHSG TEMPLATE (deterministic, data-driven) ===
-      if (detectedIHSG && intent !== 'follow_up_question' && intent !== 'contextual_data_followup' && intent !== 'casual_chat') {
+      // Runs for ALL intents EXCEPT follow_up_question and casual_chat.
+      // Must run before AI to ensure deterministic structured output.
+      if (detectedIHSG && intent !== 'follow_up_question' && intent !== 'casual_chat') {
         var ihsgData = parseMarketDataFromMessage(chatMessage);
         if (ihsgData && ihsgData.last) {
           var ihsgHtml = buildIHSGFixedTemplate(ihsgData, chatMessage);
-          // Use AI only for narrative fill if needed
           if (ihsgHtml) {
             return res.status(200).json({ html: ihsgHtml, intent: 'ihsg_fixed_report', provider: 'template' });
           }
@@ -119,10 +120,10 @@ module.exports = async function handler(req, res) {
       }
 
       // === FIXED STOCK TEMPLATE (structured report, data-driven) ===
-      // Applies to ALL individual stock tickers when market data is available.
-      // Only excludes: follow_up_question, contextual_data_followup, casual_chat
+      // Runs for ALL intents EXCEPT follow_up_question and casual_chat.
+      // Prioritizes deterministic template BEFORE any AI fallback.
       var detectedStockTicker = null;
-      if (!detectedIHSG && intent !== 'follow_up_question' && intent !== 'contextual_data_followup' && intent !== 'casual_chat') {
+      if (!detectedIHSG && intent !== 'follow_up_question' && intent !== 'casual_chat') {
         // Try to detect ticker from message
         var stockMatch = chatMessage.match(/\b([A-Z]{4})\b/);
         if (stockMatch) {

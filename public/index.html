@@ -419,7 +419,7 @@
 <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <!-- SIDEBAR -->
-<aside id="chatSidebar" class="sidebar">
+<aside id="chatSidebar" class="sidebar hidden">
     <div class="sidebar-header">
         <button onclick="createNewSession()" class="new-chat-btn">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -442,7 +442,7 @@
     <div class="max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-2.5">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()" class="sidebar-toggle-btn" title="Riwayat Chat">
+                <button onclick="toggleSidebar()" class="sidebar-toggle-btn hidden" title="Riwayat Chat">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
