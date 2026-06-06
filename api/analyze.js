@@ -118,26 +118,26 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      // === FIXED STOCK TEMPLATE (conversational, data-driven) ===
+      // === FIXED STOCK TEMPLATE (structured report, data-driven) ===
+      // Applies to ALL individual stock tickers when market data is available.
+      // Only excludes: follow_up_question, contextual_data_followup, casual_chat
       var detectedStockTicker = null;
-      if (!detectedIHSG && (intent === 'normal_chat' || intent === 'ticker_price_basic' || intent === 'ticker_only')) {
+      if (!detectedIHSG && intent !== 'follow_up_question' && intent !== 'contextual_data_followup' && intent !== 'casual_chat') {
         // Try to detect ticker from message
         var stockMatch = chatMessage.match(/\b([A-Z]{4})\b/);
-        if (stockMatch && typeof isValidTicker !== 'undefined') {
-          detectedStockTicker = stockMatch[1];
-        } else if (stockMatch) {
+        if (stockMatch) {
           detectedStockTicker = stockMatch[1];
         }
         if (body.context && body.context.ticker && body.context.ticker !== 'IHSG') {
           detectedStockTicker = body.context.ticker;
         }
       }
-      if (detectedStockTicker && intent !== 'follow_up_question' && intent !== 'contextual_data_followup' && intent !== 'casual_chat' && intent !== 'ticker_only') {
+      if (detectedStockTicker) {
         var stockData = parseMarketDataFromMessage(chatMessage);
         if (stockData && stockData.last) {
           var stockHtml = buildStockFixedTemplate(stockData, detectedStockTicker, chatMessage);
           if (stockHtml) {
-            return res.status(200).json({ html: stockHtml, intent: 'stock_fixed_conversational', provider: 'template' });
+            return res.status(200).json({ html: stockHtml, intent: 'stock_fixed_report', provider: 'template', ticker: detectedStockTicker });
           }
         }
       }
@@ -1144,14 +1144,14 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   html += '<p><strong>Risk Guard</strong><br>' + riskGuard + '</p>';
   // 12. Kesimpulan Analitis
   html += '<div class="analytic-summary"><strong>Kesimpulan Analitis</strong><div class="summary-rows">';
-  html += '<div><span>Trend</span><b>' + trendSummary + '</b></div>';
-  html += '<div><span>Momentum</span><b>' + momentumSummary + '</b></div>';
-  html += '<div><span>Volume</span><b>' + volumeSummary + '</b></div>';
-  html += '<div><span>Fibonacci</span><b>' + fibSummary + '</b></div>';
-  html += '<div><span>Support</span><b>' + v(s1) + '</b></div>';
-  html += '<div><span>Resistance</span><b>' + v(r1) + '</b></div>';
-  html += '<div><span>Risiko</span><b>' + riskSummary + '</b></div>';
-  html += '<div><span>Rekomendasi</span><b>' + action + '</b></div>';
+  html += '<div><span>Trend</span><br><b>' + trendSummary + '</b></div>';
+  html += '<div><span>Momentum</span><br><b>' + momentumSummary + '</b></div>';
+  html += '<div><span>Volume</span><br><b>' + volumeSummary + '</b></div>';
+  html += '<div><span>Fibonacci</span><br><b>' + fibSummary + '</b></div>';
+  html += '<div><span>Support</span><br><b>' + v(s1) + '</b></div>';
+  html += '<div><span>Resistance</span><br><b>' + v(r1) + '</b></div>';
+  html += '<div><span>Risiko</span><br><b>' + riskSummary + '</b></div>';
+  html += '<div><span>Rekomendasi</span><br><b>' + action + '</b></div>';
   html += '</div></div>';
   // 13. News/Katalis
   html += '<p><strong>News/Katalis</strong><br>' + newsText + '</p>';
