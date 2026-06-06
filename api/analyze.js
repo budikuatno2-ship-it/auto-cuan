@@ -997,76 +997,10 @@ function detectMMCodes(text) {
 
 // === CHART FOCUS BUILDER ===
 function buildChartFocus(context, userMessage) {
-  if (!context || !context.ticker) return null;
-  var levels = [];
-  var last = context.currentPrice ? parseFloat(String(context.currentPrice).replace(/[.,]/g, '')) : null;
-  var symbol = context.ticker;
-
-  // Extract levels from context
-  if (context.resistance && Array.isArray(context.resistance)) {
-    context.resistance.forEach(function(r) {
-      var val = parseFloat(String(r).replace(/[.,]/g, ''));
-      if (!isNaN(val)) levels.push({ label: 'Resistance', value: val, type: 'resistance' });
-    });
-  }
-  if (context.support && Array.isArray(context.support)) {
-    context.support.forEach(function(s) {
-      var val = parseFloat(String(s).replace(/[.,]/g, ''));
-      if (!isNaN(val)) levels.push({ label: 'Support', value: val, type: 'support' });
-    });
-  }
-  if (context.pivotPoint) {
-    var pv = parseFloat(String(context.pivotPoint).replace(/[.,]/g, ''));
-    if (!isNaN(pv)) levels.push({ label: 'Pivot', value: pv, type: 'reclaim' });
-  }
-  if (context.entryArea) {
-    var ea = parseFloat(String(context.entryArea).replace(/[^\d]/g, ''));
-    if (!isNaN(ea)) levels.push({ label: 'Entry area', value: ea, type: 'watch' });
-  }
-  if (context.stopLoss) {
-    var sl = parseFloat(String(context.stopLoss).replace(/[^\d]/g, ''));
-    if (!isNaN(sl)) levels.push({ label: 'Stop loss', value: sl, type: 'breakdown' });
-  }
-
-  // Extract user-mentioned numbers as custom levels
-  var userNums = (userMessage || '').match(/\b(\d{3,6})\b/g);
-  if (userNums) {
-    var seen = {};
-    levels.forEach(function(l) { seen[l.value] = true; });
-    userNums.forEach(function(n) {
-      var val = parseInt(n, 10);
-      if (!isNaN(val) && !seen[val] && val > 50) {
-        var type = 'watch';
-        if (last) {
-          if (val < last * 0.9) type = 'extreme_target';
-          else if (val < last) type = 'support';
-          else if (val > last) type = 'resistance';
-        }
-        // Determine label based on context keywords in user message
-        var msgLower = (userMessage || '').toLowerCase();
-        var label = 'Level ' + val;
-        if (/tembus|jebol|breakdown/.test(msgLower) && val < (last || Infinity)) label = 'Breakdown level';
-        else if (/reclaim|kembali/.test(msgLower) && val > (last || 0)) label = 'Reclaim target';
-        else if (/target|lanjut|naik/.test(msgLower) && val > (last || 0)) label = 'Target';
-        else if (/target|turun|lanjut/.test(msgLower) && val < (last || Infinity)) label = 'Target turun';
-        levels.push({ label: label, value: val, type: type });
-        seen[val] = true;
-      }
-    });
-  }
-
-  if (levels.length === 0) return null;
-
-  // Sort levels by value descending (highest first)
-  levels.sort(function(a, b) { return b.value - a.value; });
-
-  return {
-    enabled: true,
-    symbol: symbol,
-    title: 'Level Fokus ' + symbol,
-    last: last,
-    levels: levels
-  };
+  // DISABLED: Level Fokus extraction was too aggressive, extracting random numbers
+  // (MA values, years, percentages, volume) as chart levels.
+  // Will be rebuilt with strict structured data only.
+  return null;
 }
 
 // === EVIDENCE CLASSIFIER ===

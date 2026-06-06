@@ -17,6 +17,8 @@
         }
     </script>
     <style>
+        /* HOTFIX: Hide any previously saved broken Level Fokus cards from chat history */
+        .chart-focus-card { display: none !important; }
         body { background-color: #0b0e14; overflow-x: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f1319; }
@@ -978,7 +980,8 @@ async function logUsage(ticker, usageAction) { try { var username = localStorage
 
 // ===== DASHBOARD =====
 function showDashboard() {
-    saveChatHistoryImmediate();
+    // Only flush pending save if there's actually a pending timer (avoids overwriting on initial load)
+    if (_saveChatTimer) saveChatHistoryImmediate();
     var username = getUsername(); var isReview = localStorage.getItem('autocuan_is_review') === 'true';
     if (!isReview && isDeviceBlocked()) { showBlockedScreen(); return; }
     document.getElementById('blockedScreen').classList.add('hidden');
@@ -1741,31 +1744,9 @@ function hideEmptySections(container) {
 }
 
 function renderChartFocus(chartFocus) {
-    if (!chartFocus || !chartFocus.enabled || !chartFocus.levels || chartFocus.levels.length === 0) return '';
-    var colorMap = { reclaim: 'text-emerald-400', support: 'text-blue-400', breakdown: 'text-red-400', watch: 'text-yellow-400', extreme_target: 'text-red-500', resistance: 'text-orange-400' };
-    var html = '<div class="chart-focus-card bg-[#151a23] border border-[#1c2333] rounded-lg p-3 mt-2">';
-    html += '<p class="text-xs font-semibold text-gray-400 mb-2">' + (chartFocus.title || 'Level Fokus') + '</p>';
-    if (chartFocus.last) {
-        html += '<div class="flex items-center gap-2 mb-2"><span class="text-xs text-gray-500">Last:</span><span class="text-sm font-bold text-white">' + formatRupiahLevel(chartFocus.last) + '</span></div>';
-    }
-    html += '<div class="space-y-1">';
-    for (var i = 0; i < chartFocus.levels.length; i++) {
-        var lv = chartFocus.levels[i];
-        var color = colorMap[lv.type] || 'text-gray-300';
-        var distance = '';
-        if (chartFocus.last && lv.value) {
-            var pct = ((lv.value - chartFocus.last) / chartFocus.last * 100).toFixed(1);
-            var sign = pct >= 0 ? '+' : '';
-            distance = '<span class="text-xs text-gray-500 ml-auto">' + sign + pct + '%</span>';
-        }
-        html += '<div class="flex items-center gap-2 text-xs">';
-        html += '<span class="text-gray-500 w-28 shrink-0">' + lv.label + '</span>';
-        html += '<span class="font-medium ' + color + '">' + formatRupiahLevel(lv.value) + '</span>';
-        html += distance;
-        html += '</div>';
-    }
-    html += '</div></div>';
-    return html;
+    // DISABLED: Level Fokus feature temporarily disabled due to aggressive number extraction bug.
+    // Will be rebuilt with strict structured data only.
+    return '';
 }
 
 function formatRupiahLevel(value) {
@@ -2553,7 +2534,7 @@ async function handleAnalysis(msg, intent) {
             logUsage(ticker, 'ai_success'); logAnalysisResult(ticker, 'ticker', html);
         } else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Analisis belum berhasil dibuat. Coba ulang beberapa saat lagi, atau kirim ulang dengan format yang lebih jelas.'); logUsage(ticker, 'ai_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 // ===== TICKER QUESTION HANDLER (casual) =====
@@ -2581,7 +2562,7 @@ async function handleTickerQuestion(msg, ticker) {
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); var chartFocusHtml = ''; if (data.chart_focus && data.chart_focus.enabled) { chartFocusHtml = renderChartFocus(data.chart_focus); } addAIBubble(html + chartFocusHtml); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage(ticker, 'chat_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 // ===== CHAT HANDLER =====
@@ -2611,7 +2592,7 @@ async function handleChat(msg) {
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); var chartFocusHtml = ''; if (data.chart_focus && data.chart_focus.enabled) { chartFocusHtml = renderChartFocus(data.chart_focus); } addAIBubble(html + chartFocusHtml); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage('CHAT', 'chat_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 // ===== MANUAL BROKER SUMMARY TEXT HANDLER =====
@@ -2685,7 +2666,7 @@ async function handleBrokerSummaryText(msg, parsed) {
             logUsage(ticker, 'broker_summary_text_success');
         } else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Analisis Broker Summary belum berhasil. Coba kirim ulang beberapa saat lagi.'); logUsage(ticker || 'BROKSUM', 'broker_summary_text_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 // ===== CHART UPLOAD HANDLER =====
@@ -2743,7 +2724,7 @@ async function handleChartUpload(msg) {
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); updateAnalysisContext(msg, html); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
         else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Gambar chart belum bisa dianalisis. Coba upload ulang dengan resolusi lebih jelas.'); logUsage('CHART_UPLOAD', 'ai_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 
