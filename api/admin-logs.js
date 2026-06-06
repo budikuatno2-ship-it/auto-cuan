@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
     const [loginRes, searchRes, analysisRes, usageRes] = await Promise.all([
       supabase.from('login_logs').select('*').order('created_at', { ascending: false }).limit(50),
       supabase.from('search_logs').select('*').order('created_at', { ascending: false }).limit(100),
-      supabase.from('ai_analysis_logs').select('id, username, ticker, mode, result_summary, full_result_html, created_at').order('created_at', { ascending: false }).limit(50),
+      supabase.from('ai_analysis_logs').select('id, username, ticker, mode, created_at').order('created_at', { ascending: false }).limit(50),
       supabase.from('ai_usage_logs').select('*').order('created_at', { ascending: false }).limit(100)
     ]);
 
@@ -47,11 +47,15 @@ module.exports = async function handler(req, res) {
     const totalSearches = searchLogs.length;
     const totalAIAnalyses = aiAnalysisLogs.length;
 
-    // Most searched ticker
+    // Most searched ticker (filter pseudo-symbols)
     const tickerCounts = {};
+    const PSEUDO_SYMBOLS = ['CHART_UPLOAD', 'BROKER_SUMMARY', 'UNKNOWN', '', 'NULL', 'UNDEFINED'];
     searchLogs.forEach(function(row) {
       if (row.ticker) {
-        tickerCounts[row.ticker] = (tickerCounts[row.ticker] || 0) + 1;
+        var t = row.ticker.toUpperCase().trim();
+        if (PSEUDO_SYMBOLS.indexOf(t) === -1 && t.length >= 3 && t.length <= 5 && /^[A-Z]+$/.test(t)) {
+          tickerCounts[t] = (tickerCounts[t] || 0) + 1;
+        }
       }
     });
     let mostSearchedTicker = '-';

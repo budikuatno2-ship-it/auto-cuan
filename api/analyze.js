@@ -297,7 +297,17 @@ module.exports = async function handler(req, res) {
 
     // Ticker mode (from ticker input, not chat)
     if (ticker && currentPrice) {
-      var tPrompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang natural, thoughtful, dan risk-aware. User tanya saham ' + String(ticker).toUpperCase() + ' di harga Rp ' + currentPrice + '. Bahasa Indonesia santai tapi berisi. Format HTML (p, strong, ul, li) class text-sm text-gray-300. Jawab 200-500 kata.\n\nStruktur: 1) Bias singkat, 2) Data Historis T-1 jika ada [Auto-Cuan Market Data]: Last, OHLC, Volume, Avg Vol 20, Vol vs Avg, MA20/50/100/200, RSI14. Basis: Data Historis T-1. 3) Alasan teknikal: trend MA + momentum RSI + konfirmasi volume, 4) News/Katalis: jika ada [Auto-Cuan News Summary] dengan items, sebutkan singkat dan dampaknya. Jika news unavailable bilang fokus teknikal. Jangan karang berita. 5) Estimasi support/resistance terdekat, 6) Apakah menarik atau belum di harga ini, 7) Entry/SL/TP jika ada valid setup; jika bearish gunakan risiko downside, 8) Risiko utama, 9) Follow-up: "Kalau ada chart SMC, broker summary, atau link news/katalis lain, kirim saja biar analisisnya lebih presisi."\n\nRSI: >70 overbought, 55-70 bullish, ~50 netral, <40 bearish, <30 oversold. Volume: atas avg+red=selling, atas avg+green=buying, bawah avg=low confirm. News rules: jangan overclaim, jika impact mixed bilang mixed, jika berita lama bilang kemungkinan sudah ter-price-in, jangan rely news alone. Board rules: jika ada [Auto-Cuan Board Data]: UTAMA/PENGEMBANGAN/EKONOMI_BARU + guard 50 = jangan mention Rp1/FCA, jangan bilang risiko turun ke bawah Rp50 (gocap adalah batas bawah normal). AKSELERASI + guard 1 = boleh mention risiko < Rp50. PEMANTAUAN_KHUSUS/isFca = boleh FCA/Rp1. UNKNOWN = jangan mention FCA/Rp1. Jangan buat report panjang. Jangan pakai markdown stars **. Jangan suggest short-selling. Untuk bearish: avoid/wait/hold ketat/cut loss/downside risk. Jangan bilang pasti naik/pasti cuan/aman 100%. Jangan tampilkan blok data mentah.' +
+      // Use fixed stock template with available data (price only, no full market data)
+      var tickerUpper = String(ticker).toUpperCase();
+      var minimalData = { last: parseFloat(String(currentPrice).replace(/,/g, '')), priceChange1D: null, volumeVsAvg20: null, rsi14: null, ma20: null, ma50: null, ma100: null, ma200: null, high: null, low: null, resistance1: null, resistance2: null, support1: null, support2: null };
+      if (!isNaN(minimalData.last) && minimalData.last > 0) {
+        var tickerHtml = buildStockFixedTemplate(minimalData, tickerUpper, '');
+        if (tickerHtml) {
+          return res.status(200).json({ html: tickerHtml, intent: 'stock_fixed_report', provider: 'template', ticker: tickerUpper });
+        }
+      }
+      // Fallback to AI only if template fails
+      var tPrompt = 'Kamu Auto-Cuan AI, asisten analisis saham yang natural, thoughtful, dan risk-aware. User tanya saham ' + tickerUpper + ' di harga Rp ' + currentPrice + '. Bahasa Indonesia santai tapi berisi. Format HTML (p, strong, ul, li) class text-sm text-gray-300. Jawab 200-500 kata.\n\nStruktur: 1) Bias singkat, 2) Data Historis T-1 jika ada [Auto-Cuan Market Data]: Last, OHLC, Volume, Avg Vol 20, Vol vs Avg, MA20/50/100/200, RSI14. Basis: Data Historis T-1. 3) Alasan teknikal: trend MA + momentum RSI + konfirmasi volume, 4) News/Katalis: jika ada [Auto-Cuan News Summary] dengan items, sebutkan singkat dan dampaknya. Jika news unavailable bilang fokus teknikal. Jangan karang berita. 5) Estimasi support/resistance terdekat, 6) Apakah menarik atau belum di harga ini, 7) Entry/SL/TP jika ada valid setup; jika bearish gunakan risiko downside, 8) Risiko utama, 9) Follow-up: "Kalau ada chart SMC, broker summary, atau link news/katalis lain, kirim saja biar analisisnya lebih presisi."\n\nRSI: >70 overbought, 55-70 bullish, ~50 netral, <40 bearish, <30 oversold. Volume: atas avg+red=selling, atas avg+green=buying, bawah avg=low confirm. News rules: jangan overclaim, jika impact mixed bilang mixed, jika berita lama bilang kemungkinan sudah ter-price-in, jangan rely news alone. Board rules: jika ada [Auto-Cuan Board Data]: UTAMA/PENGEMBANGAN/EKONOMI_BARU + guard 50 = jangan mention Rp1/FCA, jangan bilang risiko turun ke bawah Rp50 (gocap adalah batas bawah normal). AKSELERASI + guard 1 = boleh mention risiko < Rp50. PEMANTAUAN_KHUSUS/isFca = boleh FCA/Rp1. UNKNOWN = jangan mention FCA/Rp1. Jangan buat report panjang. Jangan pakai markdown stars **. Jangan suggest short-selling. Untuk bearish: avoid/wait/hold ketat/cut loss/downside risk. Jangan bilang pasti naik/pasti cuan/aman 100%. Jangan tampilkan blok data mentah.' +
         (fcaConfirmed ? '' : ' JANGAN sebut FCA/Full Call Auction sama sekali.');
       var tHtml = null;
       if (CODECRAFTERS_API_KEY) {
@@ -307,7 +317,7 @@ module.exports = async function handler(req, res) {
         tHtml = await callGemini(GEMINI_API_KEY, tPrompt, '', 1024);
       }
       if (!tHtml) {
-        return res.status(200).json({ html: '<p class="text-sm text-gray-300"><strong>' + String(ticker).toUpperCase() + '</strong> Rp ' + currentPrice + ' — Upload chart 1W/1D/4H untuk analisis lengkap.</p>', provider: 'fallback' });
+        return res.status(200).json({ html: '<p class="text-sm text-gray-300"><strong>' + tickerUpper + '</strong> Rp ' + currentPrice + ' — Upload chart 1W/1D/4H untuk analisis lengkap.</p>', provider: 'fallback' });
       }
       return res.status(200).json({ html: sanitizeOutput(tHtml, fcaConfirmed, 'ticker_price_basic'), intent: 'ticker_price_basic', provider: tHtml ? 'deepseek' : 'gemini-fallback' });
     }
@@ -1117,20 +1127,18 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   html += '<div><span>Avg 7D</span><br><b>' + volAvg7 + '</b></div>';
   html += '<div><span>vs 7D</span><br><b>' + volVs7 + '</b></div>';
   html += '</div><div class="volume-note">' + volCommentary + '</div></div>';
-  // 7. Fibonacci
-  if (hasFib) {
-    html += '<div class="fibo-card"><strong>Fibonacci</strong><div class="fibo-grid">';
-    html += '<div><span>Swing H</span><br><b>' + fibSwingH + '</b></div>';
-    html += '<div><span>Swing L</span><br><b>' + fibSwingL + '</b></div>';
-    html += '<div><span>Nearest</span><br><b>' + fibNearest + '</b></div>';
-    html += '<div><span>Trend</span><br><b>' + fibTrend + '</b></div>';
-    html += '</div><div class="fibo-grid">';
-    html += '<div class="fibo-level"><span>38,2%</span><br><b>' + fib382 + '</b></div>';
-    html += '<div class="fibo-level"><span>50%</span><br><b>' + fib500 + '</b></div>';
-    html += '<div class="fibo-level"><span>61,8%</span><br><b>' + fib618 + '</b></div>';
-    html += '<div class="fibo-level"><span>78,6%</span><br><b>' + fib786 + '</b></div>';
-    html += '</div><div class="fibo-note">' + fibCommentary + '</div></div>';
-  }
+  // 7. Fibonacci (always shown; use — for missing values)
+  html += '<div class="fibo-card"><strong>Fibonacci</strong><div class="fibo-grid">';
+  html += '<div><span>Swing H</span><br><b>' + fibSwingH + '</b></div>';
+  html += '<div><span>Swing L</span><br><b>' + fibSwingL + '</b></div>';
+  html += '<div><span>Nearest</span><br><b>' + fibNearest + '</b></div>';
+  html += '<div><span>Trend</span><br><b>' + fibTrend + '</b></div>';
+  html += '</div><div class="fibo-grid">';
+  html += '<div class="fibo-level"><span>38,2%</span><br><b>' + fib382 + '</b></div>';
+  html += '<div class="fibo-level"><span>50%</span><br><b>' + fib500 + '</b></div>';
+  html += '<div class="fibo-level"><span>61,8%</span><br><b>' + fib618 + '</b></div>';
+  html += '<div class="fibo-level"><span>78,6%</span><br><b>' + fib786 + '</b></div>';
+  html += '</div><div class="fibo-note">' + fibCommentary + '</div></div>';
   // 8. Resistance + Support
   html += '<div class="level-grid"><div><strong>Resistance</strong><br>';
   html += 'R1: ' + v(r1) + '<br>';

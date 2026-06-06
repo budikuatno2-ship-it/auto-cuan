@@ -3574,6 +3574,13 @@ function loadSessions() {
         var raw = localStorage.getItem(SESSIONS_KEY);
         if (raw) { sessions = JSON.parse(raw); }
         else { sessions = []; }
+        // Clean up stale empty sessions (keep only the most recent empty one)
+        var emptyCount = 0;
+        sessions = sessions.filter(function(s) {
+            if (s.messages && s.messages.length > 0) return true;
+            emptyCount++;
+            return emptyCount <= 1; // keep only the first (most recent) empty session
+        });
         // Migration from old format
         var oldHistory = localStorage.getItem('autocuan_chat_history');
         var oldContext = localStorage.getItem('autocuan_chat_context');
@@ -3805,12 +3812,16 @@ function closeSidebar() {
 function renderSidebarSessions() {
     var container = document.getElementById('sidebarSessions');
     if (!container) return;
-    if (sessions.length === 0) {
+    // Filter out empty sessions with no messages (except the current active one)
+    var visibleSessions = sessions.filter(function(session) {
+        return session.id === currentSessionId || (session.messages && session.messages.length > 0);
+    });
+    if (visibleSessions.length === 0) {
         container.innerHTML = '<p class="text-xs text-gray-600 text-center py-4">Belum ada riwayat chat</p>';
         return;
     }
     var html = '';
-    sessions.forEach(function(session) {
+    visibleSessions.forEach(function(session) {
         var isActive = session.id === currentSessionId;
         var tickerBadge = session.activeTicker ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 flex-shrink-0">' + session.activeTicker + '</span>' : '';
         var fileBadge = session.fileCount && session.fileCount > 0 ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 flex-shrink-0">' + session.fileCount + ' file</span>' : '';
@@ -3822,7 +3833,7 @@ function renderSidebarSessions() {
         html += '<span class="text-[10px] text-gray-600">' + relativeDate + '</span></div>';
         html += tickerBadge;
         html += fileBadge;
-        html += '<span class="text-[10px] text-gray-600 flex-shrink-0">' + msgCount + '</span>';
+        if (msgCount > 0) html += '<span class="text-[10px] text-gray-600 flex-shrink-0">' + msgCount + '</span>';
         html += '<button class="session-delete" onclick="deleteSession(\'' + session.id + '\', event)" title="Hapus sesi">';
         html += '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
         html += '</button></div>';
@@ -3924,14 +3935,12 @@ async function loadAdminLogs(type) {
         if (type === 'analysis') {
             var cardsHtml = '<div class="space-y-3">';
             logs.forEach(function(row, idx) {
-                var summary = row.result_summary || ''; if (summary.length > 120) summary = summary.slice(0, 120) + '...';
                 cardsHtml += '<div class="bg-[#0f1319] rounded-xl p-4 border border-[#1c2333]"><div class="flex flex-wrap items-center gap-2 mb-2">';
                 cardsHtml += '<span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400">' + (row.ticker || '-') + '</span>';
                 cardsHtml += '<span class="text-xs text-gray-500">' + (row.username || '-') + '</span>';
                 cardsHtml += '<span class="text-xs text-gray-600">' + (row.mode || '-') + '</span>';
                 cardsHtml += '<span class="text-xs text-gray-600 ml-auto">' + (row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : '-') + '</span></div>';
-                if (summary) cardsHtml += '<p class="text-xs text-gray-400 mb-3 line-clamp-2">' + summary + '</p>';
-                cardsHtml += '<button onclick="openAdminAiDetail(' + idx + ')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Lihat Hasil</button></div>';
+                cardsHtml += '<p class="text-xs text-gray-500">Status: success</p></div>';
             });
             cardsHtml += '</div>';
             container.innerHTML = summaryHtml + cardsHtml; return;
@@ -4647,6 +4656,11 @@ function reorderBrokerCTA(html, isIndex) {
 // Handles ALL remaining merged technical labels regardless of HTML tag structure.
 function normalizeFinalStockHtml(html) {
     if (!html) return html;
+    // === EARLY EXIT for structured template HTML ===
+    // Templates from buildStockFixedTemplate / buildIHSGFixedTemplate already have proper structure.
+    if (/class="decision-card"/.test(html) && /class="decision-grid"/.test(html)) {
+        return html;
+    }
     var o = html;
     // === PHASE 1: Word boundary fixes (insert SPACE, not <br>) ===
     // Patterns: belowMA20, aboveMA20, danRSI, danMA20, di bawahMA20, di atasMA20
@@ -4764,9 +4778,20 @@ function sanitizeAIHtml(html) {
     output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, '');
     // Collapse excessive whitespace/empty elements for compact layout
     output = output.replace(/<p[^>]*>\s*<\/p>/gi, ''); // remove empty <p></p>
-    output = output.replace(/(<br\s*\/?>){3,}/gi, '<br>'); // max 1 consecutive br
+    output = output.replace(/(<br\s*\/?>){3,}/gi, '<br>'); // max 1 consecutive br (only 3+)
     output = output.replace(/\n{3,}/g, '\n'); // max 1 newline
     output = output.replace(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi, ''); // remove <p><br></p>
+    // === EARLY EXIT for structured template HTML ===
+    // If output contains decision-card/decision-grid (from buildStockFixedTemplate or buildIHSGFixedTemplate),
+    // skip aggressive text-merging regex fixes as the template already has proper structure.
+    if (/class="decision-card"/.test(output) && /class="decision-grid"/.test(output)) {
+        // Only apply minimal safety fixes for structured templates
+        output = output.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        output = output.replace(/\[Auto-Cuan[^\]]*\]/gi, '');
+        output = output.replace(/\[End News Research\]/gi, '');
+        output = output.replace(/News Summary: unavailable/gi, '');
+        return output;
+    }
     // Fix joined text from AI (e.g. "Low: 62Volume:" or "1,2xMA20:")
     output = output.replace(/(\d[,.\d]*)(Volume:?)/g, '$1<br>$2');
     output = output.replace(/(\d[,.\d]*x)(MA\d)/g, '$1<br>$2');
@@ -4928,6 +4953,8 @@ function normalizeRenderedTechnicalText(container) {
     var wordBoundaryPattern = /(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi;
     // N/A boundary
     var naPattern = /(N\/A)\s*(TP[1-3]:?|R[1-3]:?|S[1-3]:?)/gi;
+    // SKIP structured grid containers — they already have proper layout from templates
+    var SKIP_CLASSES = ['decision-grid','metric-grid','level-grid','volume-grid','fibo-grid','scenario-price-grid','trade-plan-grid','summary-rows','scenario-list'];
     // Walk all text nodes
     var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
     var nodesToFix = [];
@@ -4935,6 +4962,19 @@ function normalizeRenderedTechnicalText(container) {
     while (node = walker.nextNode()) {
         var txt = node.textContent;
         if (!txt) continue;
+        // Skip nodes inside structured grid containers
+        var skipNode = false;
+        var ancestor = node.parentNode;
+        while (ancestor && ancestor !== container) {
+            if (ancestor.className && typeof ancestor.className === 'string') {
+                for (var sc = 0; sc < SKIP_CLASSES.length; sc++) {
+                    if (ancestor.className.indexOf(SKIP_CLASSES[sc]) !== -1) { skipNode = true; break; }
+                }
+            }
+            if (skipNode) break;
+            ancestor = ancestor.parentNode;
+        }
+        if (skipNode) continue;
         labelPattern.lastIndex = 0;
         letterLabelPattern.lastIndex = 0;
         wordBoundaryPattern.lastIndex = 0;
@@ -4978,6 +5018,8 @@ function normalizeRenderedTechnicalText(container) {
 function forceNormalizeTechnicalDOM(root) {
     if (!root) return;
     var SKIP_TAGS = { SCRIPT:1, STYLE:1, PRE:1, CODE:1, INPUT:1, TEXTAREA:1, BUTTON:1, CANVAS:1, SVG:1 };
+    // Skip structured grid containers — they already have proper layout from templates
+    var SKIP_CLASSES = ['decision-grid','metric-grid','level-grid','volume-grid','fibo-grid','scenario-price-grid','trade-plan-grid','summary-rows','scenario-list'];
     // Technical labels that indicate a new line boundary
     var TECH_LABELS = ['MA20', 'MA50', 'MA100', 'MA200', 'Posisi', 'RSI14', 'RSI', 'Volume', 'Last', 'High', 'Low', 'Open', 'R1', 'R2', 'R3', 'S1', 'S2', 'S3', 'TP1', 'TP2', 'TP3', 'Entry', 'Stop Loss', 'Take Profit', 'Catatan', 'Avg 3D', 'Avg 7D', 'Avg 20D', 'vs 7D', 'vs 3D', 'Terakhir', 'Swing H', 'Swing L', 'Nearest', 'Trend', 'Konfirmasi', 'Invalidasi', 'Alasan', 'Valid jika', 'Batal jika', 'Status', 'Bias', 'Confidence', 'Action', 'Pembacaan', 'Breakout', 'Breakdown', 'Resistance', 'Support'];
     var labelEscaped = TECH_LABELS.map(function(l) { return l.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); });
@@ -5025,6 +5067,19 @@ function forceNormalizeTechnicalDOM(root) {
         var el = elements[i];
         if (SKIP_TAGS[el.tagName]) continue;
         if (el.closest && (el.closest('script') || el.closest('style') || el.closest('pre') || el.closest('code') || el.closest('svg'))) continue;
+        // Skip structured grid containers — they already have proper layout
+        var skipEl = false;
+        if (el.className && typeof el.className === 'string') {
+            for (var sci = 0; sci < SKIP_CLASSES.length; sci++) {
+                if (el.className.indexOf(SKIP_CLASSES[sci]) !== -1) { skipEl = true; break; }
+            }
+        }
+        if (!skipEl && el.closest) {
+            for (var sci2 = 0; sci2 < SKIP_CLASSES.length; sci2++) {
+                if (el.closest('.' + SKIP_CLASSES[sci2])) { skipEl = true; break; }
+            }
+        }
+        if (skipEl) continue;
         // Get the full visible text of this element (concatenated across child nodes)
         var fullText = el.textContent || '';
         if (!fullText || fullText.length < 8) continue;
