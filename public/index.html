@@ -1042,17 +1042,57 @@ async function checkApprovalStatus() {
         if (data.success && data.is_approved === true) {
             localStorage.setItem('autocuan_is_approved', 'true');
             stopApprovalPolling();
-            showDashboard();
+            // Update UI without full reload — preserve chat history
+            updateApprovalUI();
             showToast('Akun kamu sudah approved. Auto Cuan aktif!', 'success');
         } else if (data.success && data.is_approved === false) {
             // Still pending — check if was previously approved (revoked)
             if (localStorage.getItem('autocuan_is_approved') === 'true') {
                 localStorage.setItem('autocuan_is_approved', 'false');
-                showDashboard();
+                updateApprovalUI();
                 showToast('Approval dicabut. Menunggu approval ulang.', 'warning');
             }
         }
     } catch (e) { /* silent fail, will retry next interval */ }
+}
+
+// Lightweight UI update for approval changes — does NOT reload chat history
+function updateApprovalUI() {
+    var isLoggedIn = localStorage.getItem('autocuan_logged_in') === 'true';
+    var isApproved = localStorage.getItem('autocuan_is_approved') === 'true';
+    var username = getUsername();
+    var isAdm = isAdmin();
+    var isReview = localStorage.getItem('autocuan_is_review') === 'true';
+    var isGuest = (username === 'guest');
+
+    // Update approval badge
+    var approvalBadge = document.getElementById('approvalBadge');
+    if (approvalBadge) {
+        if (isLoggedIn && !isGuest && !isAdm && !isReview) {
+            approvalBadge.classList.remove('hidden');
+            if (isApproved) {
+                approvalBadge.className = 'px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                approvalBadge.textContent = 'Approved';
+            } else {
+                approvalBadge.className = 'px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+                approvalBadge.textContent = 'Menunggu Approval';
+            }
+        } else {
+            approvalBadge.classList.add('hidden');
+        }
+    }
+
+    // Update pending overlay
+    var pendingOverlay = document.getElementById('pendingApprovalOverlay');
+    if (pendingOverlay) {
+        if (isLoggedIn && !isGuest && !isAdm && !isReview && !isApproved) {
+            pendingOverlay.classList.remove('hidden');
+            startApprovalPolling();
+        } else {
+            pendingOverlay.classList.add('hidden');
+            if (isApproved) stopApprovalPolling();
+        }
+    }
 }
 
 // Also check on page load if user is logged in
@@ -2881,7 +2921,7 @@ async function handleAnalysis(msg, intent) {
             logUsage(ticker, 'ai_success'); logAnalysisResult(ticker, 'ticker', html);
         } else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Analisis belum berhasil dibuat. Coba ulang beberapa saat lagi, atau kirim ulang dengan format yang lebih jelas.'); logUsage(ticker, 'ai_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 // ===== TICKER QUESTION HANDLER (casual) =====
@@ -2910,7 +2950,7 @@ async function handleTickerQuestion(msg, ticker) {
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage(ticker, 'chat_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 // ===== CHAT HANDLER =====
@@ -2941,7 +2981,7 @@ async function handleChat(msg) {
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage('CHAT', 'chat_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 // ===== MANUAL BROKER SUMMARY TEXT HANDLER =====
@@ -3016,7 +3056,7 @@ async function handleBrokerSummaryText(msg, parsed) {
             logUsage(ticker, 'broker_summary_text_success');
         } else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Analisis Broker Summary belum berhasil. Coba kirim ulang beberapa saat lagi.'); logUsage(ticker || 'BROKSUM', 'broker_summary_text_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 // ===== CHART UPLOAD HANDLER =====
@@ -3075,7 +3115,7 @@ async function handleChartUpload(msg) {
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html, true); updateAnalysisContext(msg, html); incrementAnalysisUsage(); updateUsageCounter(); logUsage('CHART_UPLOAD', 'ai_success'); logAnalysisResult('CHART_UPLOAD', 'chart', html); }
         else { throw new Error('Tidak ada hasil.'); }
     } catch(e) { removeLoadingBubble(); clearAllFiles(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Gambar chart belum bisa dianalisis. Coba upload ulang dengan resolusi lebih jelas.'); logUsage('CHART_UPLOAD', 'ai_error'); }
-    finally { enableSend(); saveChatHistory(); }
+    finally { enableSend(); saveChatHistoryImmediate(); }
 }
 
 

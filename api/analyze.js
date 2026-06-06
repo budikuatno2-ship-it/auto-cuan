@@ -877,8 +877,8 @@ function routeIntent(message, context) {
     if (/^(cut|jual|lepas|keluar)\s*(gak|ga|aja|sekarang)?\s*\??$/i.test(msg)) return 'follow_up_question';
     if (/^(risky|risiko|bahaya)\s*(gak|ga|tinggi)?\s*\??$/i.test(msg)) return 'follow_up_question';
     if (/^(worth|layak)\s*(beli|buy|entry|masuk)?\s*(gak|ga)?\s*\??$/i.test(msg)) return 'follow_up_question';
-    // Short message with question mark when context exists
-    if (msg.length < 40 && msg.includes('?')) return 'follow_up_question';
+    // Short message with question mark when context exists (VERY short only — longer ones use contextual_data_followup)
+    if (msg.length < 25 && msg.includes('?')) return 'follow_up_question';
 
     // === CONTEXTUAL DATA FOLLOW-UP (longer follow-up questions when context exists) ===
     // Detect longer contextual follow-ups that should NOT trigger full template
@@ -891,8 +891,23 @@ function routeIntent(message, context) {
   }
 
   // Ticker + price pattern in message
-  if (/\b[A-Z]{3,5}\b.*\b\d{2,6}\b/i.test(msg) || /harga\s*\d/i.test(msg)) {
+  // IMPORTANT: Only match if message contains an ACTUAL uppercase ticker (not just any word)
+  // The /i flag previously caused false matches on Indonesian words like "itu", "tembus" etc.
+  if (/\b[A-Z]{3,5}\b/.test(msg) && /\b\d{2,6}\b/.test(msg)) {
+    // Double-check: the uppercase match should look like a real ticker, not a common word
+    var potentialTicker = msg.match(/\b([A-Z]{3,5})\b/);
+    if (potentialTicker && !/(TAPI|BISA|DARI|YANG|JADI|BARU|KALI|SAAT|JUGA|LAGI|BIAR|AGAR|LALU|SAJA|CUMA|BAIK|JIKA|MANA|UDAH|GITU|GINI|DONG|DULU|BELI|HOLD|WAIT|ENTRY)/.test(potentialTicker[1])) {
+      return 'ticker_price_basic';
+    }
+  }
+  // Fallback: "harga" + number pattern (explicit price mention)
+  if (/harga\s*\d/i.test(msg)) {
     return 'ticker_price_basic';
+  }
+
+  // Final fallback: if context exists and message looks like a follow-up but didn't match earlier patterns
+  if (context && context.ticker && isContextualFollowUp(msgLower, msg, context)) {
+    return 'contextual_data_followup';
   }
 
   return 'normal_chat';
