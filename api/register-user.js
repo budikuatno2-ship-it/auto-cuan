@@ -80,7 +80,8 @@ module.exports = async function handler(req, res) {
         password_hash: passwordHash,
         device_id: deviceId,
         user_agent: userAgent || '',
-        is_blocked: false
+        is_blocked: false,
+        is_approved: false
       })
       .select('id, username, created_at');
 

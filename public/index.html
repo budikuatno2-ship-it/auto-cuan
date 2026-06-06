@@ -476,8 +476,7 @@
                 <button id="headerLoginBtn" onclick="openLoginModal()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">Login</button>
                 <button id="headerRegisterBtn" onclick="openRegisterModal()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Daftar</button>
                 <button id="logoutBtn" onclick="logout()" class="hidden px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/50 hover:border-red-500/40 hover:text-red-400 transition-all">Logout</button>
-                <span id="supaAuthStatus" class="hidden auth-status-badge auth-status-logged-out"></span>
-                <span id="anonQuotaBadge" class="hidden auth-status-badge auth-status-logged-out"></span>
+                <span id="approvalBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold"></span>
             </div>
         </div>
     </div>
@@ -597,9 +596,18 @@
         <div class="p-4 sm:p-6 space-y-4">
             <div class="flex flex-wrap gap-2">
                 <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
+                <button onclick="loadApprovalPanel()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">User Approval</button>
             </div>
             <div id="adminLogsContainer" class="overflow-x-auto">
                 <p class="text-sm text-gray-500">Klik Website Settings untuk mengelola pengaturan.</p>
+            </div>
+            <!-- User Approval Panel -->
+            <div id="adminApprovalPanel" class="hidden mt-4 bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 space-y-3">
+                <h3 class="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    User Approval
+                </h3>
+                <div id="approvalUserList" class="text-sm text-gray-400">Memuat daftar user...</div>
             </div>
             <div class="mt-4 bg-dark-700/50 border border-dark-600/30 rounded-xl p-4">
                 <h3 class="text-sm font-semibold text-gray-300 flex items-center gap-2"><svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>Security Guard</h3>
@@ -627,6 +635,21 @@
     <div class="w-full max-w-[520px] rounded-2xl border border-gray-700/60 bg-[#0f1319] shadow-2xl overflow-hidden">
         <div id="onboardingContent" class="p-5 sm:p-6 space-y-4"></div>
         <div id="onboardingFooter" class="px-5 sm:px-6 pb-5 flex items-center justify-between gap-3"></div>
+    </div>
+</div>
+
+<!-- PENDING APPROVAL OVERLAY -->
+<div id="pendingApprovalOverlay" class="hidden fixed inset-0 z-[150] bg-dark-900/95 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
+        <div class="text-5xl">&#x23F3;</div>
+        <h2 class="text-xl font-bold text-white">Mohon tunggu approval admin.</h2>
+        <p class="text-sm text-gray-300">Akun kamu sudah berhasil terdaftar, tapi masih menunggu persetujuan admin. Setelah disetujui, Auto Cuan akan aktif otomatis.</p>
+        <div class="flex items-center justify-center gap-2 mt-3">
+            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">Menunggu Approval</span>
+        </div>
+        <p id="pendingUsername" class="text-xs text-gray-500 mt-2"></p>
+        <p class="text-xs text-gray-600 mt-1">Halaman ini akan mengecek status approval otomatis.</p>
+        <button onclick="logout()" class="mt-4 px-5 py-2.5 rounded-xl bg-gray-700/80 text-sm font-medium text-gray-300 hover:bg-gray-600 transition border border-gray-600/50">Logout</button>
     </div>
 </div>
 
@@ -896,36 +919,9 @@ function isApprovedUser() {
 }
 
 async function refreshSupaAuthStatus() {
-    var statusEl = document.getElementById('supaAuthStatus');
-    if (!statusEl) return;
-    var client = await initSupabaseAuth();
-    if (!client) { statusEl.classList.add('hidden'); return; }
-    var user = await getCurrentSupaUser();
-    if (!user) {
-        // Logged out state — show login CTA
-        statusEl.className = 'auth-status-badge auth-status-logged-out';
-        statusEl.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg><span class="cursor-pointer" onclick="openSupaLoginModal()">Login</span>';
-        statusEl.title = 'Login untuk membuka fitur khusus Auto Cuan.';
-        statusEl.classList.remove('hidden');
-        // Show anon quota badge
-        updateAnonQuotaDisplay();
-        return;
-    }
-    // Hide anon quota when logged in
-    var quotaEl = document.getElementById('anonQuotaBadge');
-    if (quotaEl) quotaEl.classList.add('hidden');
-
-    var profile = await getUserProfile();
-    if (profile && profile.is_approved) {
-        statusEl.className = 'auth-status-badge auth-status-approved';
-        statusEl.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Approved';
-        statusEl.title = 'Akun approved. Auto Cuan aktif. (' + user.email + ')';
-    } else {
-        statusEl.className = 'auth-status-badge auth-status-pending';
-        statusEl.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Pending';
-        statusEl.title = 'Akun kamu sudah terdaftar, tapi masih menunggu approval admin. (' + user.email + ')';
-    }
-    statusEl.classList.remove('hidden');
+    // Phase 13A.2: Supabase Auth email UI disabled — using username/password system instead
+    // Keep function for compatibility but do nothing visible
+    return;
 }
 
 // Initialize Supabase Auth on page load (non-blocking)
@@ -967,6 +963,11 @@ async function fetchAnalyzeWithAuth(bodyObj) {
     // Inject _anonId for anonymous tracking
     bodyObj._anonId = getAnonId();
 
+    // Signal logged-in status for backend app_users approval check
+    if (localStorage.getItem('autocuan_logged_in') === 'true' && getUsername() !== 'guest') {
+        bodyObj._loggedIn = true;
+    }
+
     // Build headers
     var headers = { 'Content-Type': 'application/json' };
     var token = await getSupaAccessToken();
@@ -993,20 +994,8 @@ async function fetchAnalyzeWithAuth(bodyObj) {
 }
 
 function updateAnonQuotaDisplay() {
-    var el = document.getElementById('anonQuotaBadge');
-    if (!el) return;
-    // Only show for anonymous (non-Supabase-auth) users
-    if (_supaCurrentUser) { el.classList.add('hidden'); return; }
-    if (_anonQuotaRemaining <= 0) {
-        el.className = 'auth-status-badge auth-status-pending';
-        el.innerHTML = 'Limit habis';
-        el.title = 'Limit gratis harian sudah habis. Daftar atau login untuk lanjut.';
-    } else {
-        el.className = 'auth-status-badge auth-status-logged-out';
-        el.innerHTML = 'Sisa: ' + _anonQuotaRemaining + '/3';
-        el.title = 'Sisa analisis gratis hari ini: ' + _anonQuotaRemaining + '/3';
-    }
-    el.classList.remove('hidden');
+    // Phase 13A.2: Quota badge hidden — backend still enforces limit silently
+    return;
 }
 
 function handleAuthError(data, status) {
@@ -1021,6 +1010,59 @@ function handleAuthError(data, status) {
     }
     return null;
 }
+
+// ===== APPROVAL STATUS POLLING =====
+var _approvalPollInterval = null;
+
+function startApprovalPolling() {
+    stopApprovalPolling();
+    // Update pending username display
+    var pendingEl = document.getElementById('pendingUsername');
+    if (pendingEl) pendingEl.textContent = 'Username: ' + getUsername();
+    // Poll every 12 seconds
+    _approvalPollInterval = setInterval(checkApprovalStatus, 12000);
+}
+
+function stopApprovalPolling() {
+    if (_approvalPollInterval) { clearInterval(_approvalPollInterval); _approvalPollInterval = null; }
+}
+
+async function checkApprovalStatus() {
+    var username = getUsername();
+    var pwHash = localStorage.getItem('autocuan_pw_hash');
+    var deviceId = localStorage.getItem('autocuan_device_id');
+    if (!username || username === 'guest' || !pwHash || !deviceId) { stopApprovalPolling(); return; }
+    try {
+        var resp = await fetch('/api/check-approval', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, passwordHash: pwHash, deviceId: deviceId })
+        });
+        var data = await resp.json();
+        if (data.success && data.is_approved === true) {
+            localStorage.setItem('autocuan_is_approved', 'true');
+            stopApprovalPolling();
+            showDashboard();
+            showToast('Akun kamu sudah approved. Auto Cuan aktif!', 'success');
+        } else if (data.success && data.is_approved === false) {
+            // Still pending — check if was previously approved (revoked)
+            if (localStorage.getItem('autocuan_is_approved') === 'true') {
+                localStorage.setItem('autocuan_is_approved', 'false');
+                showDashboard();
+                showToast('Approval dicabut. Menunggu approval ulang.', 'warning');
+            }
+        }
+    } catch (e) { /* silent fail, will retry next interval */ }
+}
+
+// Also check on page load if user is logged in
+(function() {
+    setTimeout(function() {
+        if (localStorage.getItem('autocuan_logged_in') === 'true' && getUsername() !== 'guest' && !isAdmin()) {
+            checkApprovalStatus();
+        }
+    }, 2000);
+})();
 </script>
 <script>
 // ===== DEVICE ID =====
@@ -1124,14 +1166,15 @@ function stripBase64FromHtml(html) {
 // ===== DAILY USAGE LIMIT SYSTEM =====
 function getUsername() { return (localStorage.getItem('autocuan_user') || 'guest').toLowerCase(); }
 function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
+function isUserApproved() { return localStorage.getItem('autocuan_is_approved') === 'true' || isAdmin(); }
 function getAnalysisUsageKey() { return 'autocuan_analysis_' + getUsername() + '_' + getWIBDateString(); }
 function getChatUsageKey() { return 'autocuan_chat_' + getUsername() + '_' + getWIBDateString(); }
 function getAnalysisCount() { try { return parseInt(localStorage.getItem(getAnalysisUsageKey()) || '0', 10); } catch(e) { return 0; } }
 function getChatCount() { try { return parseInt(localStorage.getItem(getChatUsageKey()) || '0', 10); } catch(e) { return 0; } }
 function incrementAnalysisUsage() { localStorage.setItem(getAnalysisUsageKey(), String(getAnalysisCount() + 1)); }
 function incrementChatUsage() { localStorage.setItem(getChatUsageKey(), String(getChatCount() + 1)); }
-function getAnalysisLimit() { if (isAdmin()) return Infinity; if (isApprovedUser()) return Infinity; if (getUsername() === 'guest') return 3; return 3; }
-function getChatLimit() { if (isAdmin()) return Infinity; if (isApprovedUser()) return Infinity; if (getUsername() === 'guest') return 3; return 3; }
+function getAnalysisLimit() { if (isAdmin()) return Infinity; if (isUserApproved()) return Infinity; if (getUsername() === 'guest') return 3; return 3; }
+function getChatLimit() { if (isAdmin()) return Infinity; if (isUserApproved()) return Infinity; if (getUsername() === 'guest') return 3; return 3; }
 function canAnalyze() { return getAnalysisCount() < getAnalysisLimit(); }
 function canChat() { return getChatCount() < getChatLimit(); }
 function getAnalysisLimitMsg() { return 'Limit gratis harian sudah habis. Daftar atau login untuk lanjut memakai Auto Cuan.'; }
@@ -1251,6 +1294,8 @@ async function doLogin() {
         if (data.success) {
             localStorage.setItem('autocuan_user', data.username); localStorage.setItem('autocuan_is_admin', 'false');
             localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString());
+            localStorage.setItem('autocuan_is_approved', data.isApproved ? 'true' : 'false');
+            localStorage.setItem('autocuan_pw_hash', passwordHash);
             if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
             logLogin(data.username, false, false); closeLoginModal(); showDashboard();
         } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
@@ -1279,7 +1324,19 @@ async function doRegister() {
         var response = await fetch('/api/register-user', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent }) });
         var data = await response.json();
-        if (data.success) { successEl.textContent = 'Akun berhasil dibuat! Silakan login.'; successEl.classList.remove('hidden'); setTimeout(function() { closeRegisterModal(); openLoginModal(); }, 1500); }
+        if (data.success) {
+            // Auto-login after successful registration
+            localStorage.setItem('autocuan_user', usernameLower);
+            localStorage.setItem('autocuan_is_admin', 'false');
+            localStorage.setItem('autocuan_logged_in', 'true');
+            localStorage.setItem('autocuan_login_time', Date.now().toString());
+            localStorage.setItem('autocuan_is_approved', 'false');
+            localStorage.setItem('autocuan_pw_hash', passwordHash);
+            localStorage.removeItem('autocuan_is_review');
+            closeRegisterModal();
+            showDashboard();
+            showToast('Akun berhasil dibuat! Menunggu approval admin.', 'success');
+        }
         else { errorEl.textContent = data.error || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { registerBtn.disabled = false; registerBtn.innerHTML = 'Daftar'; }
@@ -1289,6 +1346,8 @@ async function doRegister() {
 function logout() {
     localStorage.setItem('autocuan_user', 'guest'); localStorage.setItem('autocuan_is_admin', 'false');
     localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_is_review');
+    localStorage.removeItem('autocuan_is_approved'); localStorage.removeItem('autocuan_pw_hash');
+    stopApprovalPolling();
     // Also logout Supabase Auth if active
     doSupaLogout().catch(function(){});
     showDashboard();
@@ -1310,6 +1369,8 @@ function showDashboard() {
     document.getElementById('dashboardScreen').classList.remove('hidden');
     var il = document.getElementById('initialLoader'); if (il) il.remove();
     var isGuest = (username === 'guest'); var isAdm = isAdmin();
+    var isLoggedIn = localStorage.getItem('autocuan_logged_in') === 'true';
+    var isApproved = localStorage.getItem('autocuan_is_approved') === 'true';
     // Header
     var headerUserLabel = document.getElementById('headerUserLabel');
     var headerUsername = document.getElementById('headerUsername');
@@ -1317,11 +1378,38 @@ function showDashboard() {
     // Badges
     if (document.getElementById('reviewBadge')) { if (isReview) document.getElementById('reviewBadge').classList.remove('hidden'); else document.getElementById('reviewBadge').classList.add('hidden'); }
     if (document.getElementById('guestBadge')) { if (isGuest) document.getElementById('guestBadge').classList.remove('hidden'); else document.getElementById('guestBadge').classList.add('hidden'); }
+    // Approval badge
+    var approvalBadge = document.getElementById('approvalBadge');
+    if (approvalBadge) {
+        if (isLoggedIn && !isGuest && !isAdm && !isReview) {
+            approvalBadge.classList.remove('hidden');
+            if (isApproved) {
+                approvalBadge.className = 'px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                approvalBadge.textContent = 'Approved';
+            } else {
+                approvalBadge.className = 'px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
+                approvalBadge.textContent = 'Menunggu Approval';
+            }
+        } else {
+            approvalBadge.classList.add('hidden');
+        }
+    }
     // Buttons
     if (isGuest) { document.getElementById('headerLoginBtn').classList.remove('hidden'); document.getElementById('headerRegisterBtn').classList.remove('hidden'); document.getElementById('logoutBtn').classList.add('hidden'); }
     else { document.getElementById('headerLoginBtn').classList.add('hidden'); document.getElementById('headerRegisterBtn').classList.add('hidden'); document.getElementById('logoutBtn').classList.remove('hidden'); }
     // Admin panel
     if (isAdm && !isReview) { document.getElementById('adminPanel').classList.remove('hidden'); } else { document.getElementById('adminPanel').classList.add('hidden'); }
+    // Pending approval overlay
+    var pendingOverlay = document.getElementById('pendingApprovalOverlay');
+    if (pendingOverlay) {
+        if (isLoggedIn && !isGuest && !isAdm && !isReview && !isApproved) {
+            pendingOverlay.classList.remove('hidden');
+            startApprovalPolling();
+        } else {
+            pendingOverlay.classList.add('hidden');
+            stopApprovalPolling();
+        }
+    }
     updateUsageCounter();
     loadChatHistory();
 }
@@ -3863,6 +3951,73 @@ window.alert = function(msg) {
 };
 
 function skeletonRows(count) { var html = ''; for (var i = 0; i < (count || 4); i++) html += '<div class="skeleton h-10 w-full mb-2"></div>'; return html; }
+
+// ===== ADMIN USER APPROVAL PANEL =====
+async function loadApprovalPanel() {
+    var panel = document.getElementById('adminApprovalPanel');
+    var listEl = document.getElementById('approvalUserList');
+    if (!panel || !listEl) return;
+    panel.classList.remove('hidden');
+    listEl.innerHTML = '<div class="skeleton h-8 w-full mb-2"></div><div class="skeleton h-8 w-full mb-2"></div>';
+    try {
+        var resp = await fetch('/api/admin-approve-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: 'budi', action: 'list' })
+        });
+        var data = await resp.json();
+        if (!data.success) { listEl.innerHTML = '<p class="text-sm text-red-400">' + (data.error || 'Gagal memuat.') + '</p>'; return; }
+        var users = data.users || [];
+        if (users.length === 0) { listEl.innerHTML = '<p class="text-sm text-gray-500">Belum ada user terdaftar.</p>'; return; }
+        var html = '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-400 border-b border-dark-600/40"><th class="text-left py-2 pr-3">Username</th><th class="text-left py-2 pr-3">Status</th><th class="text-left py-2 pr-3">Terdaftar</th><th class="text-left py-2">Aksi</th></tr></thead><tbody>';
+        users.forEach(function(u) {
+            var statusLabel = u.is_approved ? '<span class="text-emerald-400">Approved</span>' : '<span class="text-yellow-400">Menunggu</span>';
+            if (u.is_blocked) statusLabel = '<span class="text-red-400">Blocked</span>';
+            var dateStr = u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID') : '-';
+            var actionBtn = '';
+            if (!u.is_blocked) {
+                if (u.is_approved) {
+                    actionBtn = '<button onclick="adminRevokeUser(\'' + u.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 transition">Revoke</button>';
+                } else {
+                    actionBtn = '<button onclick="adminApproveUser(\'' + u.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Approve</button>';
+                }
+            }
+            html += '<tr class="border-b border-dark-600/20"><td class="py-2 pr-3 text-gray-200">' + u.username + '</td><td class="py-2 pr-3">' + statusLabel + '</td><td class="py-2 pr-3 text-gray-500">' + dateStr + '</td><td class="py-2">' + actionBtn + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+        listEl.innerHTML = html;
+    } catch (e) {
+        listEl.innerHTML = '<p class="text-sm text-red-400">Gagal memuat daftar user.</p>';
+    }
+}
+
+async function adminApproveUser(username) {
+    if (!confirm('Approve user ' + username + '?')) return;
+    try {
+        var resp = await fetch('/api/admin-approve-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: 'budi', action: 'approve', username: username })
+        });
+        var data = await resp.json();
+        if (data.success) { showToast('User ' + username + ' berhasil di-approve.', 'success'); loadApprovalPanel(); }
+        else { showToast(data.error || 'Gagal approve user.', 'error'); }
+    } catch (e) { showToast('Gagal memproses approval user.', 'error'); }
+}
+
+async function adminRevokeUser(username) {
+    if (!confirm('Cabut approval user ' + username + '?')) return;
+    try {
+        var resp = await fetch('/api/admin-approve-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminName: 'budi', action: 'revoke', username: username })
+        });
+        var data = await resp.json();
+        if (data.success) { showToast('Approval user ' + username + ' berhasil dicabut.', 'success'); loadApprovalPanel(); }
+        else { showToast(data.error || 'Gagal mencabut approval.', 'error'); }
+    } catch (e) { showToast('Gagal memproses approval user.', 'error'); }
+}
 
 // ===== SESSION MESSAGE COUNTER & USAGE REMINDER =====
 var sessionMessageCount = 0;

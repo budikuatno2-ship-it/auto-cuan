@@ -58,7 +58,7 @@ async function checkAccessGate(req, res, body) {
   var token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
 
   if (token) {
-    // Authenticated user path
+    // Authenticated user path (Supabase Auth — legacy, kept for compatibility)
     var userData;
     try {
       var result = await supabase.auth.getUser(token);
@@ -83,7 +83,40 @@ async function checkAccessGate(req, res, body) {
       // Approved user — allow, no limit
       return { allowed: true, userId: userData.user.id, incrementUsage: function(){} };
     }
-    // Token invalid — fall through to anonymous path
+    // Token invalid — fall through to username check or anonymous path
+  }
+
+  // --- Check for username/password login (custom auth via app_users) ---
+  var loggedInUsername = body.username || null;
+  var loggedInFlag = body._loggedIn || false;
+
+  if (loggedInUsername && loggedInFlag && loggedInUsername !== 'guest') {
+    // User claims to be logged in — verify approval status from app_users
+    var { data: appUser } = await supabase
+      .from('app_users')
+      .select('id, username, is_approved, is_blocked')
+      .eq('username', String(loggedInUsername).toLowerCase())
+      .maybeSingle();
+
+    if (appUser) {
+      if (appUser.is_blocked) {
+        res.status(403).json({
+          html: '<p class="text-sm text-red-400">Akun kamu sedang diblokir.</p>',
+          authError: 'blocked'
+        });
+        return { allowed: false };
+      }
+      if (!appUser.is_approved) {
+        res.status(403).json({
+          html: '<p class="text-sm text-yellow-400">Akun kamu masih menunggu approval admin.</p>',
+          authError: 'not_approved'
+        });
+        return { allowed: false };
+      }
+      // Approved user — allow, no limit
+      return { allowed: true, userId: appUser.id, incrementUsage: function(){} };
+    }
+    // User not found in DB — fall through to anonymous path
   }
 
   // --- Anonymous user path ---

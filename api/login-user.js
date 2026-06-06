@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
     // Find user by username
     const { data: user, error: findError } = await supabase
       .from('app_users')
-      .select('id, username, password_hash, device_id, is_blocked')
+      .select('id, username, password_hash, device_id, is_blocked, is_approved')
       .eq('username', usernameLower)
       .maybeSingle();
 
@@ -76,7 +76,8 @@ module.exports = async function handler(req, res) {
         success: true,
         username: 'review',
         isAdmin: false,
-        isReview: true
+        isReview: true,
+        isApproved: true
       });
     }
 
@@ -101,7 +102,8 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         success: true,
         username: usernameLower,
-        isAdmin: false
+        isAdmin: false,
+        isApproved: user.is_approved === true
       });
     }
 
@@ -127,7 +129,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       success: true,
       username: usernameLower,
-      isAdmin: false
+      isAdmin: false,
+      isApproved: user.is_approved === true
     });
   } catch (e) {
     console.error('login-user exception:', e);
