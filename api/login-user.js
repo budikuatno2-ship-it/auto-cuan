@@ -6,7 +6,53 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { username, passwordHash, deviceId, userAgent } = req.body || {};
+    const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
+
+    // === CHECK APPROVAL STATUS (polling action) ===
+    if (action === 'check_approval') {
+      if (!username || !passwordHash) {
+        return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
+      }
+
+      const usernameLower = String(username).trim().toLowerCase();
+
+      const SUPABASE_URL = process.env.SUPABASE_URL;
+      const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (!SUPABASE_URL || !SUPABASE_KEY) {
+        return res.status(500).json({ success: false, error: 'Database belum dikonfigurasi.' });
+      }
+
+      const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+
+      const { data: user, error: findError } = await supabase
+        .from('app_users')
+        .select('id, username, password_hash, is_approved, is_blocked')
+        .eq('username', usernameLower)
+        .maybeSingle();
+
+      if (findError || !user) {
+        return res.status(400).json({ success: false, error: 'User tidak ditemukan.' });
+      }
+
+      if (user.password_hash !== passwordHash) {
+        return res.status(400).json({ success: false, error: 'Kredensial tidak valid.' });
+      }
+
+      if (user.is_blocked) {
+        return res.status(403).json({ success: false, error: 'Akun diblokir.', is_approved: false });
+      }
+
+      return res.status(200).json({
+        success: true,
+        is_approved: user.is_approved === true,
+        username: user.username
+      });
+    }
+
+    // === NORMAL LOGIN FLOW ===
 
     // Validate inputs
     if (!username || !passwordHash || !deviceId) {

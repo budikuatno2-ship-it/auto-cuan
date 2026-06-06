@@ -1033,10 +1033,10 @@ async function checkApprovalStatus() {
     var deviceId = localStorage.getItem('autocuan_device_id');
     if (!username || username === 'guest' || !pwHash || !deviceId) { stopApprovalPolling(); return; }
     try {
-        var resp = await fetch('/api/check-approval', {
+        var resp = await fetch('/api/login-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username, passwordHash: pwHash, deviceId: deviceId })
+            body: JSON.stringify({ action: 'check_approval', username: username, passwordHash: pwHash, deviceId: deviceId })
         });
         var data = await resp.json();
         if (data.success && data.is_approved === true) {
@@ -3960,10 +3960,10 @@ async function loadApprovalPanel() {
     panel.classList.remove('hidden');
     listEl.innerHTML = '<div class="skeleton h-8 w-full mb-2"></div><div class="skeleton h-8 w-full mb-2"></div>';
     try {
-        var resp = await fetch('/api/admin-approve-user', {
+        var resp = await fetch('/api/admin-users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ adminName: 'budi', action: 'list' })
+            body: JSON.stringify({ adminName: 'budi', action: 'list_approval' })
         });
         var data = await resp.json();
         if (!data.success) { listEl.innerHTML = '<p class="text-sm text-red-400">' + (data.error || 'Gagal memuat.') + '</p>'; return; }
@@ -3994,7 +3994,7 @@ async function loadApprovalPanel() {
 async function adminApproveUser(username) {
     if (!confirm('Approve user ' + username + '?')) return;
     try {
-        var resp = await fetch('/api/admin-approve-user', {
+        var resp = await fetch('/api/admin-users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ adminName: 'budi', action: 'approve', username: username })
@@ -4008,7 +4008,7 @@ async function adminApproveUser(username) {
 async function adminRevokeUser(username) {
     if (!confirm('Cabut approval user ' + username + '?')) return;
     try {
-        var resp = await fetch('/api/admin-approve-user', {
+        var resp = await fetch('/api/admin-users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ adminName: 'budi', action: 'revoke', username: username })

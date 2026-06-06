@@ -136,6 +136,73 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'Password user ' + targetUser + ' berhasil direset.' });
     }
 
+    // === LIST USERS FOR APPROVAL (with is_approved status) ===
+    if (action === 'list_approval') {
+      const { data, error } = await supabase
+        .from('app_users')
+        .select('id, username, is_approved, is_blocked, created_at, last_login_at, updated_at')
+        .neq('username', 'budi')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        console.error('admin-users list_approval error:', error);
+        return res.status(500).json({ success: false, error: 'Gagal memuat daftar user: ' + error.message });
+      }
+
+      return res.status(200).json({ success: true, users: data || [] });
+    }
+
+    // === APPROVE USER ===
+    if (action === 'approve') {
+      if (!username) {
+        return res.status(400).json({ success: false, error: 'Username diperlukan.' });
+      }
+
+      const targetUser = String(username).trim().toLowerCase();
+
+      if (targetUser === 'budi') {
+        return res.status(400).json({ success: false, error: 'Admin tidak perlu di-approve.' });
+      }
+
+      const { error } = await supabase
+        .from('app_users')
+        .update({ is_approved: true, updated_at: new Date().toISOString() })
+        .eq('username', targetUser);
+
+      if (error) {
+        console.error('admin-users approve error:', error);
+        return res.status(500).json({ success: false, error: 'Gagal approve user: ' + error.message });
+      }
+
+      return res.status(200).json({ success: true, message: 'User ' + targetUser + ' berhasil di-approve.' });
+    }
+
+    // === REVOKE APPROVAL ===
+    if (action === 'revoke') {
+      if (!username) {
+        return res.status(400).json({ success: false, error: 'Username diperlukan.' });
+      }
+
+      const targetUser = String(username).trim().toLowerCase();
+
+      if (targetUser === 'budi') {
+        return res.status(400).json({ success: false, error: 'Tidak dapat mencabut approval admin.' });
+      }
+
+      const { error } = await supabase
+        .from('app_users')
+        .update({ is_approved: false, updated_at: new Date().toISOString() })
+        .eq('username', targetUser);
+
+      if (error) {
+        console.error('admin-users revoke error:', error);
+        return res.status(500).json({ success: false, error: 'Gagal mencabut approval: ' + error.message });
+      }
+
+      return res.status(200).json({ success: true, message: 'Approval user ' + targetUser + ' berhasil dicabut.' });
+    }
+
     // Unknown action
     return res.status(400).json({ success: false, error: 'Action tidak dikenal: ' + action });
 
