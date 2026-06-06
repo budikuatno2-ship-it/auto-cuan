@@ -866,15 +866,7 @@ async function enterReviewMode() {
     var params = new URLSearchParams(window.location.search);
     if (params.get('review_access') === '1') { localStorage.removeItem('autocuan_blocked_until'); window.history.replaceState({}, document.title, window.location.pathname); }
     if (isDeviceBlocked()) { showBlockedScreen(); return; }
-    await checkMaintenanceStatus();
-    if (maintenanceConfig.maintenanceMode && !isAdmin()) {
-        var msgEl = document.getElementById('maintenanceMessage');
-        if (msgEl && maintenanceConfig.message) msgEl.textContent = maintenanceConfig.message;
-        document.getElementById('maintenanceScreen').classList.remove('hidden');
-        document.getElementById('dashboardScreen').classList.add('hidden');
-        var il = document.getElementById('initialLoader'); if (il) il.remove();
-        return;
-    }
+    // Show dashboard shell immediately, check maintenance in background
     document.getElementById('maintenanceScreen').classList.add('hidden');
     if (!localStorage.getItem('autocuan_user')) {
         localStorage.setItem('autocuan_user', 'guest');
@@ -882,6 +874,15 @@ async function enterReviewMode() {
         localStorage.removeItem('autocuan_is_review');
     }
     showDashboard();
+    // Non-blocking maintenance check — apply after shell is visible
+    checkMaintenanceStatus().then(function() {
+        if (maintenanceConfig.maintenanceMode && !isAdmin()) {
+            var msgEl = document.getElementById('maintenanceMessage');
+            if (msgEl && maintenanceConfig.message) msgEl.textContent = maintenanceConfig.message;
+            document.getElementById('maintenanceScreen').classList.remove('hidden');
+            document.getElementById('dashboardScreen').classList.add('hidden');
+        }
+    });
     // Auto-show onboarding on first visit
     if (localStorage.getItem('auto_cuan_onboarding_seen') !== 'true') {
         setTimeout(function() { showOnboardingGuide(); }, 600);
@@ -1013,7 +1014,7 @@ function autoResizeInput() {
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
 function handleInputKeydown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!isSending) handleSend(); }
 }
 
 // ===== BROKER SUMMARY HELPER FUNCTIONS =====
@@ -1717,6 +1718,7 @@ function buildContextForApi() {
 // ===== MARKET DATA CONTEXT FETCHER =====
 // Frontend cache: avoid repeated /api/quote calls for same ticker within 4 minutes
 var _quoteContextCache = {};
+var _quoteInflight = {};
 var QUOTE_CONTEXT_CACHE_TTL = 4 * 60 * 1000;
 
 async function fetchQuoteContext(ticker) {
@@ -1729,6 +1731,12 @@ async function fetchQuoteContext(ticker) {
         return cached.ctx;
     }
 
+    // Deduplicate inflight requests for same ticker
+    if (_quoteInflight[cacheKey]) {
+        return _quoteInflight[cacheKey];
+    }
+
+    _quoteInflight[cacheKey] = (async function() {
     try {
         var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=1', { method: 'GET' }).catch(function() { return null; });
 
@@ -1923,6 +1931,9 @@ async function fetchQuoteContext(ticker) {
     } catch (e) {
         return '\n[Auto-Cuan Market Data]\nData historis belum berhasil diambil.';
     }
+    })();
+    try { var result = await _quoteInflight[cacheKey]; return result; }
+    finally { delete _quoteInflight[cacheKey]; }
 }
 
 // ===== AUTO-CUAN SCORE CALCULATOR =====
@@ -2747,8 +2758,8 @@ function buildEvidenceBadges() {
 
 function escapeHtml(text) { var div = document.createElement('div'); div.appendChild(document.createTextNode(text)); return div.innerHTML; }
 function clearInput() { var el = document.getElementById('chatInput'); el.value = ''; el.style.height = 'auto'; }
-function disableSend() { document.getElementById('sendBtn').disabled = true; }
-function enableSend() { document.getElementById('sendBtn').disabled = false; }
+function disableSend() { isSending = true; var btn = document.getElementById('sendBtn'); btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); }
+function enableSend() { isSending = false; var btn = document.getElementById('sendBtn'); btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
 
 function addUserBubble(text) {
     var container = document.getElementById('chatMessages');
@@ -2879,17 +2890,22 @@ function addAIBubble(html, isStructured) {
     if (contentDiv) forceNormalizeTechnicalDOM(contentDiv);
     if (contentDiv) normalizeRenderedTechnicalText(contentDiv);
     if (contentDiv) requestAnimationFrame(function() { forceNormalizeTechnicalDOM(contentDiv); normalizeRenderedTechnicalText(contentDiv); });
-    if (contentDiv) setTimeout(function() { forceNormalizeTechnicalDOM(contentDiv); normalizeRenderedTechnicalText(contentDiv); }, 0);
     if (contentDiv) setTimeout(function() { forceNormalizeTechnicalDOM(contentDiv); normalizeRenderedTechnicalText(contentDiv); }, 100);
     // MutationObserver: catch late HTML rewrites (card rendering, async DOM updates)
+    // Throttled: max once per 150ms to avoid CPU spikes from rapid DOM mutations
     if (contentDiv && typeof MutationObserver !== 'undefined') {
-        var _moTimer = setTimeout(function() { _mo.disconnect(); }, 2000);
+        var _moRunning = false;
         var _mo = new MutationObserver(function() {
-            forceNormalizeTechnicalDOM(contentDiv);
-            normalizeRenderedTechnicalText(contentDiv);
+            if (_moRunning) return;
+            _moRunning = true;
+            requestAnimationFrame(function() {
+                forceNormalizeTechnicalDOM(contentDiv);
+                normalizeRenderedTechnicalText(contentDiv);
+                setTimeout(function() { _moRunning = false; }, 150);
+            });
         });
         _mo.observe(contentDiv, { childList: true, subtree: true, characterData: true });
-        setTimeout(function() { _mo.disconnect(); clearTimeout(_moTimer); }, 2000);
+        setTimeout(function() { _mo.disconnect(); }, 2000);
     }
     container.scrollTop = container.scrollHeight;
 }
@@ -3041,9 +3057,13 @@ function switchSession(sessionId) {
         // Restore messages
         if (session.messages && session.messages.length > 0) {
             session.messages.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
-            // Post-restore: normalize any merged technical labels in restored AI content
+            // Post-restore: normalize any merged technical labels in restored AI content (batched via rAF)
             var restoredAiContents = container.querySelectorAll('.ai-content');
-            restoredAiContents.forEach(function(el) { forceNormalizeTechnicalDOM(el); normalizeRenderedTechnicalText(el); });
+            if (restoredAiContents.length > 0) {
+                requestAnimationFrame(function() {
+                    restoredAiContents.forEach(function(el) { forceNormalizeTechnicalDOM(el); normalizeRenderedTechnicalText(el); });
+                });
+            }
             // Show note if images were stripped
             var hasRemovedImages = session.messages.some(function(m) { return m.indexOf('data:removed') !== -1 || m.indexOf('gambar-dihapus') !== -1; });
             if (hasRemovedImages) {
@@ -3093,7 +3113,15 @@ function clearAllSessions() {
     showToast('Semua riwayat dihapus.', 'success');
 }
 
+// Debounced save: avoids expensive serialization on every minor interaction
+var _saveChatTimer = null;
 function saveChatHistory() {
+    if (_saveChatTimer) clearTimeout(_saveChatTimer);
+    _saveChatTimer = setTimeout(_doSaveChatHistory, 300);
+}
+function saveChatHistoryImmediate() { if (_saveChatTimer) clearTimeout(_saveChatTimer); _doSaveChatHistory(); }
+function _doSaveChatHistory() {
+    _saveChatTimer = null;
     try {
         var session = getActiveSession();
         if (!session) {
@@ -3561,7 +3589,7 @@ function closeUsageReminder() {
 })();
 
 // ===== BUILD VERSION MARKER =====
-window.AUTO_CUAN_BUILD = 'phase-11t-final-dom-spacing-sweep';
+window.AUTO_CUAN_BUILD = 'phase-12-speed-ux-optimization';
 
 // ===== IHSG OUTPUT SANITIZER (strip stock-specific sections from index responses) =====
 function sanitizeIHSGOutput(html) {
@@ -4191,13 +4219,29 @@ function forceNormalizeTechnicalDOM(root) {
     var d2 = testDOMRender(latestInput, 'Latest-DOM');
     var d3 = testDOMRender(buvaInput, 'BUVA-DOM');
     if (p0 && p1 && p2 && p3 && p4 && d0 && d1 && d2 && d3) {
-        console.log('[Auto-Cuan] Phase 11T spacing self-test: ALL PASS (string + DOM)');
+        console.log('[Auto-Cuan] Phase 12 spacing self-test: ALL PASS (string + DOM)');
     }
 })();
 
 </script>
-<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 <script>
+// ===== LIGHTWEIGHT CHARTS LOADER (lazy — loaded on first chart request) =====
+var _lwcLoaded = false;
+var _lwcLoadPromise = null;
+function loadLightweightCharts() {
+    if (_lwcLoaded && window.LightweightCharts) return Promise.resolve();
+    if (_lwcLoadPromise) return _lwcLoadPromise;
+    _lwcLoadPromise = new Promise(function(resolve, reject) {
+        if (window.LightweightCharts) { _lwcLoaded = true; resolve(); return; }
+        var s = document.createElement('script');
+        s.src = 'https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js';
+        s.async = true;
+        s.onload = function() { _lwcLoaded = true; resolve(); };
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+    return _lwcLoadPromise;
+}
 // ===== YAHOO OHLCV CHART (lazy-loaded, click-to-show) =====
 // ===== NEWS PANEL TOGGLE =====
 function toggleNewsPanel(ticker, panelId, btn) {
@@ -4234,6 +4278,8 @@ function toggleNewsPanel(ticker, panelId, btn) {
 }
 
 var _activeChartPanel = null;
+var _candleCache = {};
+var _candleCacheTTL = 5 * 60 * 1000; // 5 min frontend candle cache
 
 async function toggleYahooChart(ticker, chartId, btn) {
     try {
@@ -4262,13 +4308,23 @@ async function toggleYahooChart(ticker, chartId, btn) {
     _activeChartPanel = panel;
 
     try {
-        var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
-        var data = await resp.json();
+        var cachedCandles = _candleCache[ticker];
+        var data;
+        if (cachedCandles && (Date.now() - cachedCandles.ts < _candleCacheTTL)) {
+            data = cachedCandles.data;
+        } else {
+            var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
+            data = await resp.json();
+            if (data.success && data.candles && data.candles.length > 0) {
+                _candleCache[ticker] = { data: data, ts: Date.now() };
+            }
+        }
         if (!data.success || !data.candles || data.candles.length === 0) {
             document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart belum berhasil dimuat. Coba lagi nanti atau buka TradingView.</div>';
             btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Lihat Chart ' + ticker;
             return;
         }
+        await loadLightweightCharts();
         await renderLightweightChart(chartId, data.candles, data.metrics || null, ticker);
         btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Tutup Chart';
     } catch (e) {
