@@ -1942,23 +1942,35 @@ async function fetchNkQuoteData(ticker) {
     // Entry area: between support and Fib 0.382 retracement of range
     const pullbackEntryHigh = support + (resistance - support) * 0.382;
 
-    // Distance from current price to ideal entry zone
+    // Distance from current price to ideal pullback entry zone
     const distanceAboveEntry = pullbackEntryHigh > 0 ? ((lastClose - pullbackEntryHigh) / pullbackEntryHigh) * 100 : 0;
     const priceInEntryZone = lastClose <= pullbackEntryHigh * 1.03; // within 3% of entry high
 
-    // If price is in/near entry zone, use pullback entry. Otherwise use current price.
+    // Smart entry logic:
+    // - If price is in/near pullback zone → use support-based entry (ideal swing entry)
+    // - If price is moderately above but near MA20 → use MA20-pullback entry
+    // - If price is far above → use current position entry + mark as extended
     var entryLow, entryHigh;
     if (priceInEntryZone) {
-      entryLow = support;
+      entryLow = Math.round(support);
       entryHigh = Math.round(pullbackEntryHigh);
+    } else if (ma20 && lastClose >= ma20 && lastClose <= ma20 * 1.05) {
+      // Near MA20 — pullback to MA20 zone
+      entryLow = Math.round(ma20 * 0.98);
+      entryHigh = Math.round(ma20 * 1.01);
     } else {
-      // Price is above ideal entry — entry based on current position
-      entryLow = Math.round(lastClose * 0.97); // 3% below current
+      // Extended — use current position
+      entryLow = Math.round(lastClose * 0.97);
       entryHigh = Math.round(lastClose);
     }
 
-    // Stop loss: 3% below entry low
-    const stopLoss = Math.round(entryLow * 0.97);
+    // Stop loss based on entry structure
+    var stopLoss;
+    if (priceInEntryZone) {
+      stopLoss = Math.round(support * 0.97);
+    } else {
+      stopLoss = Math.round(entryLow * 0.97);
+    }
 
     // TP based on Fibonacci levels of the 20d range
     const tp1 = Math.round(support + (resistance - support) * 0.618);
@@ -2070,10 +2082,10 @@ function calculateNkSetupScore(q) {
   if (q.belowSupport) { score -= 15; components.push('breakdown support'); }
   if (q.slDistance > 5) { score -= 8; components.push('SL jauh ' + q.slDistance.toFixed(1) + '%'); }
 
-  // 5b. DISTANCE-TO-ENTRY PENALTY (Non-Konglo specific)
-  // If price is far above ideal entry zone, the setup is less actionable now
-  if (q.distanceAboveEntry > 8) { score -= 10; components.push('far from entry'); }
-  else if (q.distanceAboveEntry > 5) { score -= 5; components.push('above entry zone'); }
+  // 5b. DISTANCE-TO-ENTRY PENALTY (lighter — only for very extended)
+  // Moderate distance is normal in uptrend; only penalize extremes
+  if (q.distanceAboveEntry > 15) { score -= 8; components.push('sangat jauh dari entry'); }
+  else if (q.distanceAboveEntry > 10) { score -= 4; components.push('extended dari entry'); }
 
   // 6. LIQUIDITY BONUS (small tie-breaker, max +5 pts — not a heavy component)
   var txB = q.avgTxValue20d / 1e9;
@@ -2095,9 +2107,9 @@ function calculateNkSetupScore(q) {
   var statusReason = '';
   var failReasons = [];
 
-  // Swing Ready hard filters (matching Konglo)
+  // Swing Ready hard filters (matching Konglo, score threshold 75)
   var passesAllHardFilters = true;
-  if (score < 80) { passesAllHardFilters = false; failReasons.push('Score < 80'); }
+  if (score < 75) { passesAllHardFilters = false; failReasons.push('Score < 75'); }
   if (!(q.ma20 && q.lastPrice >= q.ma20 * 0.99)) { passesAllHardFilters = false; failReasons.push('Di bawah MA20'); }
   if (!(q.ma50 && q.lastPrice >= q.ma50)) { passesAllHardFilters = false; failReasons.push('Di bawah MA50'); }
   if (!(q.rsi14 !== null && q.rsi14 >= 45 && q.rsi14 <= 68)) {
@@ -2112,18 +2124,26 @@ function calculateNkSetupScore(q) {
   if (q.isLargeRed) { passesAllHardFilters = false; failReasons.push('Candle distribusi'); }
   if (q.overextended) { passesAllHardFilters = false; failReasons.push('Overextended'); }
   if (q.belowSupport) { passesAllHardFilters = false; failReasons.push('Breakdown'); }
-  if (!q.priceInEntryZone && q.distanceAboveEntry > 5) { passesAllHardFilters = false; failReasons.push('Price jauh dari entry area'); }
+  if (!q.priceInEntryZone && q.distanceAboveEntry > 10) { passesAllHardFilters = false; failReasons.push('Price jauh dari entry area'); }
 
   if (passesAllHardFilters) {
     status = 'Swing Ready';
-    statusReason = 'Setup lengkap: trend, momentum, volume, RR layak.';
+    if (q.priceInEntryZone) {
+      statusReason = 'Price near entry area, setup lengkap dan actionable.';
+    } else {
+      statusReason = 'Setup lengkap: trend, momentum, volume, RR layak.';
+    }
   } else if (q.rsi14 !== null && q.rsi14 >= 30 && q.rsi14 <= 42 &&
              q.lastPrice > q.support && q.volumeRatioAvg20 >= 0.8 && score >= 40) {
     status = 'Rebound Speculative';
-    statusReason = 'Potensi rebound dari support. Risiko tinggi.';
-  } else if (score >= 65) {
+    statusReason = 'Near support, potensi rebound. Konfirmasi bounce + volume.';
+  } else if (score >= 60) {
     status = 'Watchlist';
-    statusReason = failReasons.length > 0 ? 'Tunggu: ' + failReasons.slice(0, 2).join(', ') : 'Menunggu konfirmasi.';
+    if (q.distanceAboveEntry > 10) {
+      statusReason = 'Wait pullback ke entry area. ' + (failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : '');
+    } else {
+      statusReason = failReasons.length > 0 ? 'Tunggu: ' + failReasons.slice(0, 2).join(', ') : 'Menunggu konfirmasi.';
+    }
   } else {
     status = 'Speculative';
     statusReason = failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : 'Setup belum memenuhi kriteria.';
