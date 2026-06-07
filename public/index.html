@@ -454,6 +454,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <span id="wibClock" class="text-[11px] text-gray-500 font-mono tabular-nums hidden sm:inline"></span>
                 <span id="reviewBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">Review</span>
                 <span id="guestBadge" class="hidden"></span>
                 <span id="headerUserLabel" class="hidden text-sm text-gray-400"><span id="headerUsername" class="text-emerald-400 font-medium"></span></span>
@@ -1032,6 +1033,24 @@ function getWIBDateString() {
     var wib = new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
     return wib.toISOString().slice(0, 10);
 }
+
+// ===== WIB REALTIME CLOCK =====
+(function() {
+    var clockEl = document.getElementById('wibClock');
+    if (!clockEl) return;
+    var fmt = new Intl.DateTimeFormat('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+    function tick() {
+        clockEl.textContent = fmt.format(new Date()) + ' WIB';
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
 
 function getRelativeDate(isoString) {
     if (!isoString) return '';
