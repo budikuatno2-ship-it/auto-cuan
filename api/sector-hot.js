@@ -293,6 +293,18 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         }
         var analysis = calculateIndicators(candles);
         var scoring = scoreAndClassify(analysis);
+
+        // Compute transaction value metrics from candle data
+        var _txCandles = candles;
+        var _txLastIdx = _txCandles.length - 1;
+        var _txValue1d = _txCandles[_txLastIdx].close * _txCandles[_txLastIdx].volume;
+        var _txLast3 = _txCandles.slice(-3);
+        var _avgTxValue3d = _txLast3.map(function(d) { return d.close * d.volume; }).reduce(function(a, b) { return a + b; }, 0) / _txLast3.length;
+        var _txLast7 = _txCandles.slice(-7);
+        var _avgTxValue7d = _txLast7.map(function(d) { return d.close * d.volume; }).reduce(function(a, b) { return a + b; }, 0) / _txLast7.length;
+        var _txLast20 = _txCandles.slice(-20);
+        var _avgTxValue20d = _txLast20.map(function(d) { return d.close * d.volume; }).reduce(function(a, b) { return a + b; }, 0) / _txLast20.length;
+
         results.push({
           ticker: item.ticker,
           group_code: item.group_code,
@@ -314,7 +326,11 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           invalidation: analysis.invalidation,
           score: scoring.score,
           status: scoring.status,
-          status_reason: scoring.status_reason
+          status_reason: scoring.status_reason,
+          tx_value_1d: Math.round(_txValue1d),
+          avg_tx_value_3d: Math.round(_avgTxValue3d),
+          avg_tx_value_7d: Math.round(_avgTxValue7d),
+          avg_tx_value_20d: Math.round(_avgTxValue20d)
         });
       } catch (e) {
         failedCount++;
@@ -540,6 +556,10 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         ai_reason: r.ai_reason || null,
         ai_red_flags: r.ai_red_flags ? '{' + r.ai_red_flags.map(function(f) { return '"' + String(f).replace(/"/g, '\\"') + '"'; }).join(',') + '}' : null,
         final_status: r.final_status,
+        tx_value_1d: r.tx_value_1d || null,
+        avg_tx_value_3d: r.avg_tx_value_3d || null,
+        avg_tx_value_7d: r.avg_tx_value_7d || null,
+        avg_tx_value_20d: r.avg_tx_value_20d || null,
         calculated_at: now
       };
     });
@@ -1747,6 +1767,9 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       change_pct: c.change_pct,
       avg_volume_20d: c.avg_volume_20d,
       avg_transaction_value_20d: c.avg_transaction_value_20d,
+      tx_value_1d: c.tx_value_1d,
+      avg_tx_value_3d: c.avg_tx_value_3d,
+      avg_tx_value_7d: c.avg_tx_value_7d,
       traded_days_20d: c.traded_days_20d,
       score: c.score,
       grade: c.grade,
@@ -1754,6 +1777,7 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       volume_ratio_avg20: c.volume_ratio_avg20,
       status: c.status,
       status_reason: c.status_reason,
+      setup_type: c.setup_type,
       ma20: c.ma20,
       ma50: c.ma50,
       rsi14: c.rsi14,
@@ -1939,6 +1963,13 @@ async function fetchNkQuoteData(ticker) {
     const txValues = last20.map(d => d.close * d.volume);
     const avgTxValue20d = txValues.reduce((a, b) => a + b, 0) / txValues.length;
 
+    // Transaction value 1d, avg 3d, avg 7d
+    const txValue1d = validDays[lastIdx].close * validDays[lastIdx].volume;
+    const last3 = validDays.slice(-3);
+    const avgTxValue3d = last3.map(d => d.close * d.volume).reduce((a, b) => a + b, 0) / last3.length;
+    const last7 = validDays.slice(-7);
+    const avgTxValue7d = last7.map(d => d.close * d.volume).reduce((a, b) => a + b, 0) / last7.length;
+
     // Volume ratio vs avg20
     const avgVol20 = last20.map(d => d.volume).reduce((a, b) => a + b, 0) / 20;
     const volumeRatioAvg20 = avgVol20 > 0 ? validDays[lastIdx].volume / avgVol20 : 0;
@@ -1964,30 +1995,40 @@ async function fetchNkQuoteData(ticker) {
     const distanceAboveEntry = pullbackEntryHigh > 0 ? ((lastClose - pullbackEntryHigh) / pullbackEntryHigh) * 100 : 0;
     const priceInEntryZone = lastClose <= pullbackEntryHigh * 1.03; // within 3% of entry high
 
-    // Smart entry logic:
-    // - If price is in/near pullback zone → use support-based entry (ideal swing entry)
-    // - If price is moderately above but near MA20 → use MA20-pullback entry
-    // - If price is far above → use current position entry + mark as extended
-    var entryLow, entryHigh;
-    if (priceInEntryZone) {
-      entryLow = Math.round(support);
-      entryHigh = Math.round(pullbackEntryHigh);
-    } else if (ma20 && lastClose >= ma20 && lastClose <= ma20 * 1.05) {
-      // Near MA20 — pullback to MA20 zone
-      entryLow = Math.round(ma20 * 0.98);
-      entryHigh = Math.round(ma20 * 1.01);
+    // Detect setup type
+    var setupType = 'speculative';
+    if (priceInEntryZone && rsi14 !== null && rsi14 >= 30 && rsi14 <= 45) {
+      setupType = 'rebound';
+    } else if (priceInEntryZone || (ma20 && lastClose >= ma20 * 0.97 && lastClose <= ma20 * 1.03)) {
+      setupType = 'pullback';
+    } else if (lastClose >= resistance * 0.97 && volumeRatioAvg20 >= 1.2) {
+      setupType = 'breakout';
+    } else if (ma20 && lastClose > ma20 * 1.05) {
+      setupType = 'wait_pullback';
     } else {
-      // Extended — use current position
-      entryLow = Math.round(lastClose * 0.97);
-      entryHigh = Math.round(lastClose);
+      setupType = 'watchlist';
     }
 
-    // Stop loss based on entry structure
-    var stopLoss;
-    if (priceInEntryZone) {
-      stopLoss = Math.round(support * 0.97);
+    // Entry/SL based on setupType
+    var entryLow, entryHigh, stopLoss;
+    var range = resistance - support;
+    if (setupType === 'rebound') {
+      entryLow = Math.round(support);
+      entryHigh = Math.round(support + range * 0.236);
+      stopLoss = Math.round(support * 0.96);
+    } else if (setupType === 'pullback') {
+      entryLow = Math.round(ma20 * 0.98);
+      entryHigh = Math.round(ma20 * 1.01);
+      stopLoss = Math.round(ma20 * 0.95);
+    } else if (setupType === 'breakout') {
+      entryLow = Math.round(resistance * 0.98);
+      entryHigh = Math.round(resistance * 1.02);
+      stopLoss = Math.round(resistance * 0.95);
     } else {
-      stopLoss = Math.round(entryLow * 0.97);
+      // wait_pullback, watchlist, speculative
+      entryLow = Math.round(lastClose * 0.97);
+      entryHigh = Math.round(lastClose);
+      stopLoss = Math.round(entryLow * 0.96);
     }
 
     // TP based on Fibonacci levels of the 20d range
@@ -2015,6 +2056,9 @@ async function fetchNkQuoteData(ticker) {
       changePct,
       tradedDays20d,
       avgTxValue20d,
+      txValue1d,
+      avgTxValue3d,
+      avgTxValue7d,
       avgVol20: avgVol20,
       volumeRatioAvg20,
       ma20,
@@ -2028,6 +2072,7 @@ async function fetchNkQuoteData(ticker) {
       tp1,
       tp2,
       riskReward,
+      setupType,
       // Penalty flags
       isLargeRed: isLargeRed,
       overextended: overextended,
@@ -2062,15 +2107,15 @@ function calculateNkSetupScore(q) {
   var score = 50; // Same base as Konglo
   var components = [];
 
-  // 1. TREND (same as Konglo: MA20 +10/+5/-5, MA50 +10/+3/-5)
+  // 1. TREND (same as Konglo: MA20 +10/+5/-5, MA50 softened)
   if (q.ma20 && q.lastPrice >= q.ma20) { score += 10; components.push('close>MA20'); }
   else if (q.ma20 && q.lastPrice >= q.ma20 * 0.98) { score += 5; components.push('close~MA20'); }
   else { score -= 5; if (q.ma20) components.push('close<MA20'); }
 
   if (q.ma50 && q.lastPrice >= q.ma50) { score += 10; components.push('close>MA50'); }
   else if (q.ma50 && q.lastPrice >= q.ma50 * 0.97) { score += 3; }
-  else if (q.ma50 && q.lastPrice >= q.ma50 * 0.95) { score -= 3; }
-  else { score -= 5; if (q.ma50) components.push('close<MA50'); }
+  else if (q.ma50 && q.lastPrice >= q.ma50 * 0.95) { score += 0; }
+  else { score -= 3; if (q.ma50) components.push('close<MA50'); }
 
   // Bonus: price in/near actionable entry zone (+3)
   if (q.priceInEntryZone) { score += 3; components.push('near entry'); }
@@ -2100,21 +2145,25 @@ function calculateNkSetupScore(q) {
 
   // 5. PENALTIES (same as Konglo: -15/-10/-15/-8)
   if (q.isLargeRed) { score -= 15; components.push('candle distribusi'); }
-  if (q.overextended) { score -= 10; components.push('overextended'); }
+  if (q.overextended && q.setupType !== 'breakout') { score -= 10; components.push('overextended'); }
   if (q.belowSupport) { score -= 15; components.push('breakdown support'); }
   if (q.slDistance > 5) { score -= 8; components.push('SL jauh ' + q.slDistance.toFixed(1) + '%'); }
 
-  // 5b. DISTANCE-TO-ENTRY PENALTY (lighter — only for very extended)
-  // Moderate distance is normal in uptrend; only penalize extremes
-  if (q.distanceAboveEntry > 15) { score -= 8; components.push('sangat jauh dari entry'); }
-  else if (q.distanceAboveEntry > 10) { score -= 4; components.push('extended dari entry'); }
+  // 5b. DISTANCE-TO-ENTRY PENALTY (only >20%, lighter -3)
+  if (q.distanceAboveEntry > 20) { score -= 3; components.push('jauh dari entry'); }
 
-  // 6. LIQUIDITY BONUS (small tie-breaker, max +5 pts — not a heavy component)
+  // 6. LIQUIDITY BONUS (small tie-breaker, max +5 pts)
   var txB = q.avgTxValue20d / 1e9;
   if (txB >= 50) score += 5;
   else if (txB >= 30) score += 3;
   else if (txB >= 20) score += 2;
-  // txB >= 10 (minimum hard filter) = no bonus, no penalty
+
+  // 7. VALUE ACTIVITY BONUS (max +8)
+  if (q.avgTxValue7d && q.avgTxValue20d && q.avgTxValue7d > q.avgTxValue20d * 1.3) { score += 5; components.push('recent accumulation'); }
+  if (q.txValue1d && q.avgTxValue7d && q.txValue1d > q.avgTxValue7d * 1.5) { score += 3; components.push('today active'); }
+
+  // 8. SETUP TYPE BONUS
+  if ((q.setupType === 'pullback' || q.setupType === 'rebound') && q.priceInEntryZone) { score += 3; components.push('setup ' + q.setupType + ' near entry'); }
 
   score = Math.max(0, Math.min(100, score));
 
@@ -2144,7 +2193,7 @@ function calculateNkSetupScore(q) {
   if (!(q.riskReward >= 1.5)) { passesAllHardFilters = false; failReasons.push('RR kurang'); }
   if (q.slDistance > 5) { passesAllHardFilters = false; failReasons.push('SL jauh'); }
   if (q.isLargeRed) { passesAllHardFilters = false; failReasons.push('Candle distribusi'); }
-  if (q.overextended) { passesAllHardFilters = false; failReasons.push('Overextended'); }
+  if (q.overextended && q.setupType !== 'breakout') { passesAllHardFilters = false; failReasons.push('Overextended'); }
   if (q.belowSupport) { passesAllHardFilters = false; failReasons.push('Breakdown'); }
   if (!q.priceInEntryZone && q.distanceAboveEntry > 10) { passesAllHardFilters = false; failReasons.push('Price jauh dari entry area'); }
 
@@ -2171,21 +2220,38 @@ function calculateNkSetupScore(q) {
     statusReason = failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : 'Setup belum memenuhi kriteria.';
   }
 
-  // Prepend key metrics + entry interpretation for auditability
-  var metricLine = 'Vol ' + q.volumeRatioAvg20.toFixed(2) + 'x, Tx Rp' + txB.toFixed(1) + 'B';
+  // TASK 6: Improved status_reason format
+  // "[SetupType] Vol X.XXx, Tx1D RpXB, Avg7D RpXB, RSI XX.X, RR X.XX. [Entry interpretation]. [Status explanation]"
+  var setupTypeLabel = 'Speculative';
+  if (q.setupType === 'pullback') setupTypeLabel = 'Pullback';
+  else if (q.setupType === 'rebound') setupTypeLabel = 'Rebound';
+  else if (q.setupType === 'breakout') setupTypeLabel = 'Breakout';
+  else if (q.setupType === 'wait_pullback') setupTypeLabel = 'Wait Pullback';
+  else if (q.setupType === 'watchlist') setupTypeLabel = 'Watchlist';
+
+  var tx1dB = q.txValue1d ? (q.txValue1d / 1e9).toFixed(1) : '0.0';
+  var avg7dB = q.avgTxValue7d ? (q.avgTxValue7d / 1e9).toFixed(1) : '0.0';
+
+  var metricLine = '[' + setupTypeLabel + '] Vol ' + q.volumeRatioAvg20.toFixed(2) + 'x, Tx1D Rp' + tx1dB + 'B, Avg7D Rp' + avg7dB + 'B';
   if (q.rsi14 !== null) metricLine += ', RSI ' + q.rsi14.toFixed(1);
   metricLine += ', RR ' + q.riskReward.toFixed(2);
 
-  // Entry interpretation
+  // Entry interpretation based on setupType and distance
   var entryNote = '';
-  if (q.priceInEntryZone) {
-    entryNote = ' Entry actionable (near support).';
+  if (q.setupType === 'rebound' && q.priceInEntryZone) {
+    entryNote = ' Entry rebound near support.';
+  } else if (q.setupType === 'pullback' && q.priceInEntryZone) {
+    entryNote = ' Entry pullback actionable.';
+  } else if (q.setupType === 'breakout') {
+    entryNote = ' Entry breakout zone (resistance).';
+  } else if (q.setupType === 'wait_pullback') {
+    entryNote = ' Price extended, wait pullback.';
   } else if (q.distanceAboveEntry <= 5) {
-    entryNote = ' Entry dekat (near MA20 pullback).';
+    entryNote = ' Entry dekat.';
   } else if (q.distanceAboveEntry <= 10) {
-    entryNote = ' Entry moderat, wait minor pullback.';
+    entryNote = ' Entry moderat.';
   } else {
-    entryNote = ' Price extended dari entry ideal.';
+    entryNote = ' Price jauh dari entry ideal.';
   }
 
   statusReason = metricLine + '.' + entryNote + ' ' + statusReason;
@@ -2198,10 +2264,14 @@ function calculateNkSetupScore(q) {
     grade: grade,
     status: status,
     status_reason: statusReason,
+    setup_type: q.setupType,
     last_price: q.last_price,
     change_pct: q.change_pct,
     avg_volume_20d: avgVolume20d,
     avg_transaction_value_20d: Math.round(q.avgTxValue20d),
+    tx_value_1d: Math.round(q.txValue1d || 0),
+    avg_tx_value_3d: Math.round(q.avgTxValue3d || 0),
+    avg_tx_value_7d: Math.round(q.avgTxValue7d || 0),
     traded_days_20d: q.tradedDays20d,
     risk_reward: Number(q.riskReward.toFixed(2)),
     volume_ratio_avg20: q.volume_ratio_avg20,
