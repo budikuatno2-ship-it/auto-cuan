@@ -511,7 +511,6 @@
                     <h3 class="text-xs font-semibold text-gray-400">IDX LIVE &middot; IHSG</h3>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span id="ihsgTime" class="text-[10px] text-gray-600"></span>
                     <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="text-[11px] text-emerald-400 hover:text-emerald-300 transition">Analisis IHSG &rarr;</button>
                 </div>
             </div>
@@ -1248,7 +1247,7 @@ async function doRegister() {
         var response = await fetch('/api/register-user', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent }) });
         var data = await response.json();
-        if (data.success) { successEl.textContent = 'Akun berhasil dibuat! Silakan login.'; successEl.classList.remove('hidden'); setTimeout(function() { closeRegisterModal(); openLoginModal(); }, 1500); }
+        if (data.success) { successEl.textContent = 'Akun berhasil dibuat! Menunggu persetujuan admin sebelum bisa login.'; successEl.classList.remove('hidden'); setTimeout(function() { closeRegisterModal(); }, 2500); }
         else { errorEl.textContent = data.error || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { registerBtn.disabled = false; registerBtn.innerHTML = 'Daftar'; }
@@ -4023,7 +4022,10 @@ async function loadAdminUsers() {
             var deviceShort = user.device_id ? user.device_id.slice(0, 16) + '...' : '-';
             var created = user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : '-';
             var lastLogin = user.last_login_at ? new Date(user.last_login_at).toLocaleString('id-ID') : '-';
-            var statusBadge = user.is_blocked ? '<span class="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">Blocked</span>' : '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Active</span>';
+            var statusBadge;
+            if (user.is_blocked) { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">Blocked</span>'; }
+            else if (user.is_approved === false) { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-yellow-500/20 text-yellow-400">Pending</span>'; }
+            else { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Approved</span>'; }
             html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
             html += '<td class="px-3 py-2 text-white font-medium">' + user.username + '</td>';
             html += '<td class="px-3 py-2 text-gray-400 text-xs font-mono">' + deviceShort + '</td>';
@@ -4031,6 +4033,8 @@ async function loadAdminUsers() {
             html += '<td class="px-3 py-2 text-gray-400">' + lastLogin + '</td>';
             html += '<td class="px-3 py-2">' + statusBadge + '</td>';
             html += '<td class="px-3 py-2">';
+            if (user.is_approved === false && !user.is_blocked) { html += '<button onclick="adminUserAction(\'approve\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Approve</button>'; }
+            if (user.is_approved !== false && !user.is_blocked) { html += '<button onclick="adminUserAction(\'reject\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reject</button>'; }
             if (user.is_blocked) { html += '<button onclick="adminUserAction(\'unblock\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>'; }
             else { html += '<button onclick="adminUserAction(\'block\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>'; }
             html += '<button onclick="openResetPasswordModal(\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10">Reset PW</button>';
@@ -4690,7 +4694,6 @@ function refreshIHSGCard() {
         .then(function(data) {
             var lastEl = document.getElementById('ihsgLast');
             var changeEl = document.getElementById('ihsgChange');
-            var timeEl = document.getElementById('ihsgTime');
             if (!lastEl) return;
             if (data && data.success && data.last) {
                 var last = data.last;
@@ -4702,12 +4705,6 @@ function refreshIHSGCard() {
                 var sign = change >= 0 ? '+' : '';
                 changeEl.textContent = arrow + ' ' + sign + change.toFixed(2) + ' (' + sign + changePct.toFixed(2) + '%)';
                 changeEl.className = 'text-xs font-medium ' + (change >= 0 ? 'text-emerald-400' : 'text-red-400');
-                // WIB time
-                if (timeEl) {
-                    var now = new Date();
-                    var wib = new Date(now.getTime() + (7 * 60 * 60 * 1000) - (now.getTimezoneOffset() * 60 * 1000));
-                    timeEl.textContent = wib.toTimeString().slice(0,8) + ' WIB';
-                }
             } else {
                 lastEl.textContent = '\u2014';
                 changeEl.textContent = 'IHSG belum tersedia';

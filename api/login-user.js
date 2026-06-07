@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
     // Find user by username
     const { data: user, error: findError } = await supabase
       .from('app_users')
-      .select('id, username, password_hash, device_id, is_blocked')
+      .select('id, username, password_hash, device_id, is_blocked, is_approved')
       .eq('username', usernameLower)
       .maybeSingle();
 
@@ -55,6 +55,11 @@ module.exports = async function handler(req, res) {
     // Check password
     if (user.password_hash !== passwordHash) {
       return res.status(400).json({ success: false, error: 'Password salah.' });
+    }
+
+    // Check approval status (skip for review user — review bypasses approval)
+    if (usernameLower !== 'review' && user.is_approved === false) {
+      return res.status(403).json({ success: false, error: 'Akun belum di-approve oleh admin. Silakan tunggu persetujuan.' });
     }
 
     // === REVIEW USER: bypass device binding ===

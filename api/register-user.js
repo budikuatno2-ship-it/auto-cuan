@@ -72,7 +72,7 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Perangkat ini sudah terdaftar untuk username lain.' });
     }
 
-    // Insert new user
+    // Insert new user (pending approval by default)
     const { data, error: insertError } = await supabase
       .from('app_users')
       .insert({
@@ -80,7 +80,8 @@ module.exports = async function handler(req, res) {
         password_hash: passwordHash,
         device_id: deviceId,
         user_agent: userAgent || '',
-        is_blocked: false
+        is_blocked: false,
+        is_approved: false
       })
       .select('id, username, created_at');
 
@@ -96,7 +97,7 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Gagal membuat akun: ' + insertError.message });
     }
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, pending: true });
   } catch (e) {
     console.error('register-user exception:', e);
     return res.status(500).json({ success: false, error: 'Server error: ' + e.message });

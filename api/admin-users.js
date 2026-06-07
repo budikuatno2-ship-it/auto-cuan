@@ -28,7 +28,7 @@ module.exports = async function handler(req, res) {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('app_users')
-        .select('id, username, device_id, user_agent, is_blocked, created_at, last_login_at')
+        .select('id, username, device_id, user_agent, is_blocked, is_approved, created_at, last_login_at')
         .order('created_at', { ascending: false })
         .limit(200);
 
@@ -134,6 +134,53 @@ module.exports = async function handler(req, res) {
       }
 
       return res.status(200).json({ success: true, message: 'Password user ' + targetUser + ' berhasil direset.' });
+    }
+
+    // === APPROVE USER ===
+    if (action === 'approve') {
+      if (!username) {
+        return res.status(400).json({ success: false, error: 'Username diperlukan.' });
+      }
+
+      const targetUser = String(username).trim().toLowerCase();
+
+      const { error } = await supabase
+        .from('app_users')
+        .update({ is_approved: true })
+        .eq('username', targetUser);
+
+      if (error) {
+        console.error('admin-users approve error:', error);
+        return res.status(500).json({ success: false, error: 'Gagal approve user: ' + error.message });
+      }
+
+      return res.status(200).json({ success: true, message: 'User ' + targetUser + ' berhasil di-approve.' });
+    }
+
+    // === REJECT USER (set is_approved to false) ===
+    if (action === 'reject') {
+      if (!username) {
+        return res.status(400).json({ success: false, error: 'Username diperlukan.' });
+      }
+
+      const targetUser = String(username).trim().toLowerCase();
+
+      // Cannot reject budi
+      if (targetUser === 'budi') {
+        return res.status(400).json({ success: false, error: 'Tidak dapat reject admin.' });
+      }
+
+      const { error } = await supabase
+        .from('app_users')
+        .update({ is_approved: false })
+        .eq('username', targetUser);
+
+      if (error) {
+        console.error('admin-users reject error:', error);
+        return res.status(500).json({ success: false, error: 'Gagal reject user: ' + error.message });
+      }
+
+      return res.status(200).json({ success: true, message: 'User ' + targetUser + ' berhasil di-reject.' });
     }
 
     // Unknown action
