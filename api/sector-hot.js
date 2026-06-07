@@ -320,6 +320,8 @@ async function handleScreenerRefresh(req, res, supabase) {
 
     // 3. AI Confirmation for top candidates
     var aiCalledCount = 0;
+    var aiAttempted = 0;
+    var aiDiagnostic = '';
     var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '15', 10);
     var aiCandidates = results
       .filter(function(r) { return r.score >= 78; })
@@ -327,13 +329,19 @@ async function handleScreenerRefresh(req, res, supabase) {
       .slice(0, maxCandidates);
 
     if (aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
-      var aiResults = await callAIConfirmation(aiCandidates);
-      aiCalledCount = aiCandidates.length;
+      aiAttempted = aiCandidates.length;
+      var aiResult = await callAIConfirmation(aiCandidates);
+      var aiResults = aiResult.data || [];
+      aiDiagnostic = aiResult.diagnostic || '';
 
-      // Merge AI results back
+      // Merge AI results back — only count successfully matched tickers
       var aiMap = {};
-      if (aiResults && aiResults.length) {
-        aiResults.forEach(function(ar) { aiMap[ar.ticker] = ar; });
+      if (aiResults.length > 0) {
+        aiResults.forEach(function(ar) {
+          if (ar && ar.ticker && ar.ai_status) {
+            aiMap[ar.ticker] = ar;
+          }
+        });
       }
 
       results = results.map(function(r) {
@@ -342,6 +350,7 @@ async function handleScreenerRefresh(req, res, supabase) {
           r.ai_status = ai.ai_status || null;
           r.ai_reason = ai.ai_reason || null;
           r.ai_red_flags = ai.ai_red_flags || [];
+          aiCalledCount++; // Only count rows that actually received AI status
           // Downgrade if AI rejects
           if (ai.ai_status === 'REJECT' && r.status === 'Swing Ready') {
             r.final_status = 'Watchlist';
@@ -355,7 +364,11 @@ async function handleScreenerRefresh(req, res, supabase) {
         }
         return r;
       });
+    } else if (aiCandidates.length > 0 && !process.env.SCREENER_AI_API_KEY) {
+      aiDiagnostic = 'AI skipped: SCREENER_AI_API_KEY not configured.';
+      results = results.map(function(r) { r.final_status = r.status; return r; });
     } else {
+      aiDiagnostic = aiCandidates.length === 0 ? 'No candidates with score >= 78.' : '';
       results = results.map(function(r) { r.final_status = r.status; return r; });
     }
 
@@ -398,13 +411,16 @@ async function handleScreenerRefresh(req, res, supabase) {
     }
 
     // 5. Update meta
+    var metaMsg = 'Refresh completed. Scanned: ' + scannedCount + ', Results: ' + results.length + ', AI confirmed: ' + aiCalledCount + '/' + aiAttempted;
+    if (aiDiagnostic) metaMsg += ' (' + aiDiagnostic + ')';
+
     await updateScreenerMeta(supabase, {
       universe_count: universeCount,
       scanned_count: scannedCount,
       failed_count: failedCount,
       ai_called_count: aiCalledCount,
       status: 'ok',
-      message: 'Refresh completed. Scanned: ' + scannedCount + ', Results: ' + results.length + ', AI: ' + aiCalledCount
+      message: metaMsg
     });
 
     return res.status(200).json({
@@ -414,7 +430,9 @@ async function handleScreenerRefresh(req, res, supabase) {
       scanned_count: scannedCount,
       failed_count: failedCount,
       results_count: results.length,
-      ai_called_count: aiCalledCount
+      ai_called_count: aiCalledCount,
+      ai_attempted: aiAttempted,
+      ai_diagnostic: aiDiagnostic
     });
 
   } catch (e) {
@@ -756,7 +774,7 @@ async function callAIConfirmation(candidates) {
   var model = process.env.SCREENER_AI_MODEL || 'deepseek-v4-flash';
   var maxTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '700', 10);
 
-  if (!apiKey) return [];
+  if (!apiKey) return { data: [], diagnostic: 'API key missing.' };
 
   var summaries = candidates.map(function(c) {
     return {
@@ -802,20 +820,36 @@ async function callAIConfirmation(candidates) {
     });
 
     if (!response.ok) {
-      console.error('Screener AI API error:', response.status);
-      return [];
+      var errStatus = response.status;
+      var errText = '';
+      try { errText = await response.text(); } catch(e2) {}
+      console.error('Screener AI API error: HTTP ' + errStatus);
+      return { data: [], diagnostic: 'AI HTTP ' + errStatus + (errText ? ': ' + errText.substring(0, 100) : '') };
     }
 
     var data = await response.json();
     var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if (!content) return [];
+    if (!content) {
+      return { data: [], diagnostic: 'AI response empty. Model: ' + model + ', choices: ' + (data.choices ? data.choices.length : 0) };
+    }
 
     var jsonStr = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-    var parsed = JSON.parse(jsonStr);
-    return Array.isArray(parsed) ? parsed : [];
+    var parsed;
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      console.error('Screener AI parse error:', parseErr.message, 'Raw:', jsonStr.substring(0, 200));
+      return { data: [], diagnostic: 'AI JSON parse failed: ' + parseErr.message };
+    }
+
+    if (!Array.isArray(parsed)) {
+      return { data: [], diagnostic: 'AI response not array. Type: ' + typeof parsed };
+    }
+
+    return { data: parsed, diagnostic: 'OK. Received ' + parsed.length + ' items.' };
   } catch (e) {
     console.error('Screener AI confirmation error:', e.message);
-    return [];
+    return { data: [], diagnostic: 'AI exception: ' + e.message };
   }
 }
 
