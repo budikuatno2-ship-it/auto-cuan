@@ -1501,8 +1501,8 @@ async function handleNkScreenerRun(req, res, supabase) {
     return await handleNkScreenerFinalize(req, res, supabase);
   }
 
-  // If already finalizing or other state
-  if (meta.status === 'finalizing') {
+  // If already finalizing or failed (retry finalize from staging)
+  if (meta.status === 'finalizing' || meta.status === 'failed') {
     return await handleNkScreenerFinalize(req, res, supabase);
   }
 
@@ -1709,7 +1709,16 @@ async function handleNkScreenerFinalize(req, res, supabase) {
   }
 
   // Clear latest table and insert top 15
-  await supabase.from('swing_screener_non_konglo_latest').delete().neq('ticker', '');
+  // NOTE: This is not a true DB transaction (two separate calls).
+  // If insert fails after delete, meta stays in "finalizing" (not "published").
+  // User can retry nk-screener-run&force=1 to re-attempt finalize from staging.
+  var { error: delErr } = await supabase.from('swing_screener_non_konglo_latest').delete().neq('ticker', '');
+  if (delErr) {
+    await updateNkMeta(supabase, { status: 'failed', message: 'Gagal menghapus latest: ' + delErr.message });
+    return res.status(200).json({ success: false, error: 'Failed to clear latest table.' });
+  }
+
+  var publishedCount = 0;
 
   if (topCandidates && topCandidates.length > 0) {
     const publishRows = topCandidates.map((c, idx) => ({
@@ -1741,27 +1750,28 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       run_date: runDate
     }));
 
-    await supabase.from('swing_screener_non_konglo_latest').insert(publishRows);
+    var { error: insErr } = await supabase.from('swing_screener_non_konglo_latest').insert(publishRows);
+    if (insErr) {
+      // Insert failed — meta stays as "finalizing", NOT "published"
+      // User can retry and finalize will re-attempt from staging
+      await updateNkMeta(supabase, { status: 'failed', message: 'Gagal publish Top 15: ' + insErr.message });
+      return res.status(200).json({ success: false, error: 'Failed to publish. Retry will re-attempt from staging.' });
+    }
+    publishedCount = publishRows.length;
   }
 
-  // Final meta
-  const { count: totalScanned } = await supabase
-    .from('swing_screener_non_konglo_jobs')
-    .select('*', { count: 'exact', head: true })
-    .eq('run_date', runDate)
-    .eq('status', 'done');
-
+  // Only mark as "published" if insert succeeded
   await updateNkMeta(supabase, {
     status: 'published',
-    published_count: topCandidates ? topCandidates.length : 0,
-    message: `Published ${topCandidates ? topCandidates.length : 0} top candidates.`,
+    published_count: publishedCount,
+    message: 'Published ' + publishedCount + ' top candidates.',
     calculated_at: new Date().toISOString()
   });
 
   return res.status(200).json({
     success: true,
     step: 'finalize',
-    published: topCandidates ? topCandidates.length : 0
+    published: publishedCount
   });
 }
 
