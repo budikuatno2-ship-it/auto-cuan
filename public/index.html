@@ -774,7 +774,7 @@
             </div>
             <!-- Table -->
             <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="nkScreenerTableWrap">
-                <table class="w-full text-xs border-collapse min-w-[700px]">
+                <table class="w-full text-xs border-collapse min-w-[800px]">
                     <thead>
                         <tr class="bg-dark-700/70">
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">#</th>
@@ -787,10 +787,11 @@
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">R:R</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol Ratio</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
+                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
                         </tr>
                     </thead>
                     <tbody id="nkScreenerTableBody">
-                        <tr><td colspan="10" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                        <tr><td colspan="11" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -4818,7 +4819,7 @@ function renderNkScreenerTable(results) {
     if (!tbody) return;
 
     if (!results || results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
         return;
     }
 
@@ -4853,6 +4854,7 @@ function renderNkScreenerTable(results) {
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + (r.status || '-') + '</span></td>';
+        html += '<td class="px-2 py-2 text-left text-gray-500 text-[10px] max-w-[180px] truncate">' + escapeHtml(r.status_reason || '') + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;

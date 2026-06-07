@@ -1637,11 +1637,11 @@ async function handleNkScreenerBatch(req, res, supabase) {
     }
   }
 
-  // Insert scored candidates into staging
+  // Upsert scored candidates into staging (idempotent on run_date + ticker)
   if (results.length > 0) {
     await supabase
       .from('swing_screener_non_konglo_staging')
-      .insert(results);
+      .upsert(results, { onConflict: 'run_date,ticker' });
   }
 
   // Mark job complete
@@ -1718,11 +1718,15 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       board: c.board,
       last_price: c.last_price,
       change_pct: c.change_pct,
+      avg_volume_20d: c.avg_volume_20d,
+      avg_transaction_value_20d: c.avg_transaction_value_20d,
+      traded_days_20d: c.traded_days_20d,
       score: c.score,
       grade: c.grade,
       risk_reward: c.risk_reward,
       volume_ratio_avg20: c.volume_ratio_avg20,
       status: c.status,
+      status_reason: c.status_reason,
       ma20: c.ma20,
       ma50: c.ma50,
       rsi14: c.rsi14,
@@ -2006,18 +2010,38 @@ function calculateNkSetupScore(q) {
   else if (score >= 65) grade = 'B';
   else if (score >= 45) grade = 'C';
 
-  // Determine status
+  // Determine status and reason
   let status = 'Watchlist';
-  if (score >= 70) status = 'Swing Ready';
-  else if (score >= 45) status = 'Watchlist';
-  else status = 'Speculative';
+  let statusReason = '';
+  if (score >= 70) {
+    status = 'Swing Ready';
+    statusReason = 'Setup kuat: trend + momentum + volume mendukung.';
+  } else if (score >= 45) {
+    status = 'Watchlist';
+    if (q.rsi14 !== null && q.rsi14 > 70) statusReason = 'RSI overbought, tunggu pullback.';
+    else if (q.volumeRatioAvg20 < 1.0) statusReason = 'Volume belum konfirmasi, pantau aktivitas.';
+    else if (q.riskReward < 2.0) statusReason = 'R:R masih minimal, tunggu entry lebih baik.';
+    else statusReason = 'Setup cukup, tunggu konfirmasi volume/breakout.';
+  } else {
+    status = 'Speculative';
+    if (q.rsi14 !== null && q.rsi14 < 35) statusReason = 'RSI oversold, potensi bounce spekulatif.';
+    else if (q.lastPrice && q.ma20 && q.lastPrice < q.ma20) statusReason = 'Price di bawah MA20, trend lemah.';
+    else statusReason = 'Setup lemah, risiko tinggi.';
+  }
+
+  // Compute avg_volume_20d from avgTxValue and lastPrice
+  var avgVolume20d = (q.lastPrice > 0) ? Math.round(q.avgTxValue20d / q.lastPrice) : 0;
 
   return {
     score,
     grade,
     status,
+    status_reason: statusReason,
     last_price: q.last_price,
     change_pct: q.change_pct,
+    avg_volume_20d: avgVolume20d,
+    avg_transaction_value_20d: Math.round(q.avgTxValue20d),
+    traded_days_20d: q.tradedDays20d,
     risk_reward: Number(q.riskReward.toFixed(2)),
     volume_ratio_avg20: q.volume_ratio_avg20,
     ma20: q.ma20 ? Number(q.ma20.toFixed(2)) : null,
