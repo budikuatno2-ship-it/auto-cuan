@@ -1,198 +1,132 @@
 -- =============================================
--- SECTOR HOT MEMBERS PATCH — Expand group mappings
+-- SECTOR HOT MEMBERS PATCH v2 — Corrected mapping
+-- Based ONLY on provided source mapping.
 -- Run this in Supabase SQL Editor manually.
 -- Safe to re-run (uses ON CONFLICT DO UPDATE).
 -- =============================================
 
--- KALBE (add subsidiaries)
+-- =============================================
+-- STEP 1: REMOVE incorrectly added members from previous rejected patch
+-- =============================================
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'KALBE' AND ticker = 'SIDO';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'KALBE' AND ticker = 'TSPC';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'CHAROEN_POKPHAND' AND ticker = 'JPFA';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'WILMAR' AND ticker = 'SIMP';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'WILMAR' AND ticker = 'LSIP';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'WILMAR' AND ticker = 'SMAR';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'SUMMARECON' AND ticker = 'DILD';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'CIPUTRA' AND ticker = 'DUTI';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'DJARUM' AND ticker = 'ARTO';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'BARITO' AND ticker = 'ESSA';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'CT_CORP' AND ticker = 'HEAL';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'EMTEK' AND ticker = 'MSIN';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'MNC' AND ticker = 'IATA';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'PANIN' AND ticker = 'PNIN';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'GAJAH_TUNGGAL' AND ticker = 'MASA';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'MAYAPADA' AND ticker = 'SRAJ';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'PODOMORO' AND ticker = 'KIJA';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'ADARO' AND ticker = 'AADI';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'TRIPUTRA' AND ticker = 'TAPG';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'BAKRIE' AND ticker = 'ELTY';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'SALIM' AND ticker = 'MPPA';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'SALIM' AND ticker = 'DNET';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'SINARMAS' AND ticker = 'SMDM';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'SINARMAS' AND ticker = 'SMMA';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'LIPPO' AND ticker = 'LPPF';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'LIPPO' AND ticker = 'SILO';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'SARATOGA' AND ticker = 'ADRO';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'TOBA' AND ticker = 'PTRO';
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'MAYORA' AND ticker = 'CEKA';
+
+-- Also remove from sector_hot_members_latest cache (will be repopulated on next refresh)
+DELETE FROM public.sector_hot_members_latest WHERE (group_code, ticker) NOT IN (
+  SELECT group_code, ticker FROM public.sector_hot_group_members
+);
+
+-- =============================================
+-- STEP 2: INSERT/UPDATE correct mapping from provided source
+-- =============================================
+
+-- KALBE (provided: KLBF + MIKA)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
 ('KALBE', 'KLBF', 'Kalbe Farma Tbk.', 'ANCHOR', 1),
-('KALBE', 'SIDO', 'Industri Jamu dan Farmasi Sido Muncul Tbk.', 'Member', 2),
-('KALBE', 'TSPC', 'Tempo Scan Pacific Tbk.', 'Member', 3)
+('KALBE', 'MIKA', 'Mitra Keluarga Karyasehat Tbk.', 'Member', 2)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
--- WILMAR (add palm oil / agri related)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('WILMAR', 'SIMP', 'Salim Ivomas Pratama Tbk.', 'ANCHOR', 1),
-('WILMAR', 'LSIP', 'PP London Sumatra Indonesia Tbk.', 'Member', 2),
-('WILMAR', 'SMAR', 'Smart Tbk.', 'Member', 3)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- MAYORA (add food/consumer)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('MAYORA', 'MYOR', 'Mayora Indah Tbk.', 'ANCHOR', 1),
-('MAYORA', 'CEKA', 'Wilmar Cahaya Indonesia Tbk.', 'Member', 2)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- SUMMARECON (add related property)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('SUMMARECON', 'SMRA', 'Summarecon Agung Tbk.', 'ANCHOR', 1),
-('SUMMARECON', 'DILD', 'Intiland Development Tbk.', 'Member', 2)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- CIPUTRA (add property)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('CIPUTRA', 'CTRA', 'Ciputra Development Tbk.', 'ANCHOR', 1),
-('CIPUTRA', 'DUTI', 'Duta Pertiwi Tbk.', 'Member', 2)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- SALIM (expand with more holdings)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('SALIM', 'INDF', 'Indofood Sukses Makmur Tbk.', 'ANCHOR', 1),
-('SALIM', 'ICBP', 'Indofood CBP Sukses Makmur Tbk.', 'Member', 2),
-('SALIM', 'ACES', 'Aspirasi Hidup Indonesia Tbk.', 'Member', 3),
-('SALIM', 'MPPA', 'Matahari Putra Prima Tbk.', 'Member', 4),
-('SALIM', 'DNET', 'Indoritel Makmur Internasional Tbk.', 'Member', 5)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- SINARMAS (expand)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('SINARMAS', 'BSDE', 'Bumi Serpong Damai Tbk.', 'ANCHOR', 1),
-('SINARMAS', 'DSSA', 'Dian Swastatika Sentosa Tbk.', 'Member', 2),
-('SINARMAS', 'SMDM', 'Suryamas Dutamakmur Tbk.', 'Member', 3),
-('SINARMAS', 'SMMA', 'Sinarmas Multiartha Tbk.', 'Member', 4)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- DJARUM (expand with BCA ecosystem)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('DJARUM', 'BBCA', 'Bank Central Asia Tbk.', 'ANCHOR', 1),
-('DJARUM', 'HMSP', 'HM Sampoerna Tbk.', 'Member', 2),
-('DJARUM', 'ARTO', 'Bank Jago Tbk.', 'Member', 3)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- LIPPO (expand)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('LIPPO', 'LPKR', 'Lippo Karawaci Tbk.', 'ANCHOR', 1),
-('LIPPO', 'MPPA', 'Matahari Putra Prima Tbk.', 'Member', 2),
-('LIPPO', 'MLPL', 'Multipolar Tbk.', 'Member', 3),
-('LIPPO', 'LPPF', 'Matahari Department Store Tbk.', 'Member', 4),
-('LIPPO', 'SILO', 'Siloam International Hospitals Tbk.', 'Member', 5)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- BARITO (expand with energy/chemical)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('BARITO', 'BRPT', 'Barito Pacific Tbk.', 'ANCHOR', 1),
-('BARITO', 'BREN', 'Barito Renewables Energy Tbk.', 'Member', 2),
-('BARITO', 'TPIA', 'Chandra Asri Pacific Tbk.', 'Member', 3),
-('BARITO', 'ESSA', 'Surya Esa Perkasa Tbk.', 'Member', 4)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- SARATOGA (expand)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('SARATOGA', 'SRTG', 'Saratoga Investama Sedaya Tbk.', 'ANCHOR', 1),
-('SARATOGA', 'MDKA', 'Merdeka Copper Gold Tbk.', 'Member', 2),
-('SARATOGA', 'TBIG', 'Tower Bersama Infrastructure Tbk.', 'Member', 3),
-('SARATOGA', 'ADRO', 'Alamtri Resources Indonesia Tbk.', 'Member', 4)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- CT_CORP (expand)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('CT_CORP', 'MEGA', 'Bank Mega Tbk.', 'ANCHOR', 1),
-('CT_CORP', 'CARS', 'Industri dan Perdagangan Bintraco Dharma Tbk.', 'Member', 2),
-('CT_CORP', 'HEAL', 'Medikaloka Hermina Tbk.', 'Member', 3)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- EMTEK (expand with digital)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('EMTEK', 'EMTK', 'Elang Mahkota Teknologi Tbk.', 'ANCHOR', 1),
-('EMTEK', 'SCMA', 'Surya Citra Media Tbk.', 'Member', 2),
-('EMTEK', 'MSIN', 'MNC Studios International Tbk.', 'Member', 3)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- MNC (expand)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('MNC', 'MNCN', 'MNC Digital Entertainment Tbk.', 'ANCHOR', 1),
-('MNC', 'BHIT', 'MNC Asia Holding Tbk.', 'Member', 2),
-('MNC', 'BABP', 'Bank MNC Internasional Tbk.', 'Member', 3),
-('MNC', 'IATA', 'MNC Energy Investments Tbk.', 'Member', 4)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- PANIN (expand)
-INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('PANIN', 'PNBN', 'Bank Pan Indonesia Tbk.', 'ANCHOR', 1),
-('PANIN', 'PNLF', 'Panin Financial Tbk.', 'Member', 2),
-('PANIN', 'PNIN', 'Panin Insurance Tbk.', 'Member', 3)
-ON CONFLICT (group_code, ticker) DO UPDATE SET
-  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
-
--- CHAROEN_POKPHAND (expand)
+-- CHAROEN_POKPHAND (provided: CPIN + MAIN)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
 ('CHAROEN_POKPHAND', 'CPIN', 'Charoen Pokphand Indonesia Tbk.', 'ANCHOR', 1),
-('CHAROEN_POKPHAND', 'CPRO', 'Central Proteina Prima Tbk.', 'Member', 2),
-('CHAROEN_POKPHAND', 'JPFA', 'Japfa Comfeed Indonesia Tbk.', 'Member', 3)
+('CHAROEN_POKPHAND', 'MAIN', 'Malindo Feedmill Tbk.', 'Member', 2)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
+-- Remove CPRO (not in provided mapping)
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'CHAROEN_POKPHAND' AND ticker = 'CPRO';
 
--- TOBA (expand)
+-- WILMAR (provided: SGRO as ANCHOR)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('TOBA', 'TOBA', 'Toba Bara Sejahtra Tbk.', 'ANCHOR', 1),
-('TOBA', 'NCKL', 'Trimegah Bangun Persada Tbk.', 'Member', 2),
-('TOBA', 'PTRO', 'Petrosea Tbk.', 'Member', 3)
+('WILMAR', 'SGRO', 'Sampoerna Agro Tbk.', 'ANCHOR', 1)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
--- BAKRIE (expand)
+-- SUMMARECON (provided: SMRA + SMDM)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('BAKRIE', 'BUMI', 'Bumi Resources Tbk.', 'ANCHOR', 1),
-('BAKRIE', 'ENRG', 'Energi Mega Persada Tbk.', 'Member', 2),
-('BAKRIE', 'BNBR', 'Bakrie & Brothers Tbk.', 'Member', 3),
-('BAKRIE', 'ELTY', 'Bakrieland Development Tbk.', 'Member', 4)
+('SUMMARECON', 'SMRA', 'Summarecon Agung Tbk.', 'ANCHOR', 1),
+('SUMMARECON', 'SMDM', 'Suryamas Dutamakmur Tbk.', 'Member', 2)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
--- GAJAH_TUNGGAL (expand)
+-- CIPUTRA (provided: CTRA only)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('GAJAH_TUNGGAL', 'GJTL', 'Gajah Tunggal Tbk.', 'ANCHOR', 1),
-('GAJAH_TUNGGAL', 'MASA', 'Multistrada Arah Sarana Tbk.', 'Member', 2)
+('CIPUTRA', 'CTRA', 'Ciputra Development Tbk.', 'ANCHOR', 1)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
--- MAYAPADA (expand)
+-- LIPPO (provided: LPKR, LPCK, SILO, LPPF, LPGI, MLPL, MLPT, LPIN)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('MAYAPADA', 'MAYA', 'Bank Mayapada Internasional Tbk.', 'ANCHOR', 1),
-('MAYAPADA', 'SRAJ', 'Sejahteraraya Anugrahjaya Tbk.', 'Member', 2)
+('LIPPO', 'LPKR', 'Lippo Karawaci Tbk.', 'ANCHOR', 1),
+('LIPPO', 'LPCK', 'Lippo Cikarang Tbk.', 'Member', 2),
+('LIPPO', 'SILO', 'Siloam International Hospitals Tbk.', 'Member', 3),
+('LIPPO', 'LPPF', 'Matahari Department Store Tbk.', 'Member', 4),
+('LIPPO', 'LPGI', 'Lippo General Insurance Tbk.', 'Member', 5),
+('LIPPO', 'MLPL', 'Multipolar Tbk.', 'Member', 6),
+('LIPPO', 'MLPT', 'Multipolar Technology Tbk.', 'Member', 7),
+('LIPPO', 'LPIN', 'Multi Prima Sejahtera Tbk.', 'Member', 8)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
+-- Remove MPPA from LIPPO (not in provided mapping)
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'LIPPO' AND ticker = 'MPPA';
 
--- PODOMORO (expand)
+-- MNC (provided: BHIT, BMTR, FILM, MNCN, IPTV, NETV, KPIG, BCAP, ABBA)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('PODOMORO', 'APLN', 'Agung Podomoro Land Tbk.', 'ANCHOR', 1),
-('PODOMORO', 'GMTD', 'Gowa Makassar Tourism Development Tbk.', 'Member', 2),
-('PODOMORO', 'KIJA', 'Kawasan Industri Jababeka Tbk.', 'Member', 3)
+('MNC', 'BHIT', 'MNC Asia Holding Tbk.', 'ANCHOR', 1),
+('MNC', 'BMTR', 'Global Mediacom Tbk.', 'Member', 2),
+('MNC', 'FILM', 'MD Entertainment Tbk.', 'Member', 3),
+('MNC', 'MNCN', 'MNC Digital Entertainment Tbk.', 'Member', 4),
+('MNC', 'IPTV', 'MNC Vision Networks Tbk.', 'Member', 5),
+('MNC', 'NETV', 'Net Visi Media Tbk.', 'Member', 6),
+('MNC', 'KPIG', 'MNC Land Tbk.', 'Member', 7),
+('MNC', 'BCAP', 'MNC Kapital Indonesia Tbk.', 'Member', 8),
+('MNC', 'ABBA', 'Mahaka Media Tbk.', 'Member', 9)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
+-- Remove BABP from MNC (not in provided mapping)
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'MNC' AND ticker = 'BABP';
 
--- ADARO (expand)
+-- MAYORA (provided: MYOR only — single member group)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('ADARO', 'ADRO', 'Alamtri Resources Indonesia Tbk.', 'ANCHOR', 1),
-('ADARO', 'ADMR', 'Alamtri Minerals Indonesia Tbk.', 'Member', 2),
-('ADARO', 'AADI', 'Adaro Andalan Indonesia Tbk.', 'Member', 3)
+('MAYORA', 'MYOR', 'Mayora Indah Tbk.', 'ANCHOR', 1)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
--- TRIPUTRA (expand)
+-- GAJAH_TUNGGAL (provided: GJTL only)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('TRIPUTRA', 'DSNG', 'Dharma Satya Nusantara Tbk.', 'ANCHOR', 1),
-('TRIPUTRA', 'ADMR', 'Alamtri Minerals Indonesia Tbk.', 'Member', 2),
-('TRIPUTRA', 'TAPG', 'Triputra Agro Persada Tbk.', 'Member', 3)
+('GAJAH_TUNGGAL', 'GJTL', 'Gajah Tunggal Tbk.', 'ANCHOR', 1)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
--- Remove MPPA from SALIM (it's more accurately Lippo/Matahari)
--- Only remove if it was wrongly placed; keep if intentional cross-holding
--- DELETE FROM public.sector_hot_group_members WHERE group_code = 'SALIM' AND ticker = 'MPPA';
--- NOTE: MPPA can be in both SALIM and LIPPO as a cross-holding. Keeping both.
+-- MAYAPADA (provided: MAYA only)
+INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
+('MAYAPADA', 'MAYA', 'Bank Mayapada Internasional Tbk.', 'ANCHOR', 1)
+ON CONFLICT (group_code, ticker) DO UPDATE SET
+  stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
