@@ -355,6 +355,9 @@
         .screener-tab { color: #6b7280; background: transparent; border: 1px solid transparent; cursor: pointer; }
         .screener-tab:hover { color: #d1d5db; background: #151a23; }
         .screener-tab.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
+        .nk-screener-tab { color: #6b7280; background: transparent; border: 1px solid transparent; cursor: pointer; }
+        .nk-screener-tab:hover { color: #d1d5db; background: #151a23; }
+        .nk-screener-tab.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .page-content { animation: fadeIn 0.15s ease-out; }
@@ -771,6 +774,14 @@
             <!-- Disclaimer -->
             <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
                 <p class="text-[11px] text-amber-400/80 leading-relaxed"><strong>Disclaimer:</strong> Ini bukan rekomendasi beli. Screener ini hanya watchlist setup high-probability untuk swing trading. Selalu lakukan analisis sendiri dan kelola risiko.</p>
+            </div>
+            <!-- Status filter tabs -->
+            <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
+                <button onclick="filterNkScreener('all')" class="nk-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
+                <button onclick="filterNkScreener('Swing Ready')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Swing Ready">Swing Ready</button>
+                <button onclick="filterNkScreener('Watchlist')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
+                <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
+                <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             </div>
             <!-- Table -->
             <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="nkScreenerTableWrap">
@@ -4819,6 +4830,24 @@ function updateNkScreenerMeta(meta) {
     }
 }
 
+var _nkScreenerFilter = 'all';
+
+function filterNkScreener(filter) {
+    _nkScreenerFilter = filter;
+    // Update tab active state
+    document.querySelectorAll('.nk-screener-tab').forEach(function(btn) {
+        if (btn.getAttribute('data-filter') === filter) {
+            btn.className = 'nk-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition';
+        } else {
+            btn.className = 'nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition';
+        }
+    });
+    // Re-render with filter
+    if (_nkScreenerCache && _nkScreenerCache.results) {
+        renderNkScreenerTable(_nkScreenerCache.results);
+    }
+}
+
 function renderNkScreenerTable(results) {
     var tbody = document.getElementById('nkScreenerTableBody');
     if (!tbody) return;
@@ -4828,8 +4857,18 @@ function renderNkScreenerTable(results) {
         return;
     }
 
+    // Apply status filter
+    var filtered = results;
+    if (_nkScreenerFilter && _nkScreenerFilter !== 'all') {
+        filtered = results.filter(function(r) { return r.status === _nkScreenerFilter; });
+    }
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Tidak ada data untuk filter ini.</td></tr>';
+        return;
+    }
+
     var html = '';
-    results.forEach(function(r) {
+    filtered.forEach(function(r) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
         var chgSign = (r.change_pct || 0) >= 0 ? '+' : '';
 
