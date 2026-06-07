@@ -49,7 +49,9 @@ module.exports = async function handler(req, res) {
 
     // === SCREENER REFRESH MODE (cron-protected) ===
     if (action === 'refresh-screener') {
-      return await handleScreenerRefresh(req, res, supabase);
+      // ai=1 enables AI confirmation, ai=0 or missing = deterministic only
+      var enableAI = req.query.ai === '1';
+      return await handleScreenerRefresh(req, res, supabase, enableAI);
     }
 
     // === SEKTOR HOT REFRESH MODE (cron-protected, existing) ===
@@ -230,7 +232,7 @@ async function handleScreenerRead(req, res, supabase) {
 // ============================================================
 // SCREENER REFRESH — cron-protected
 // ============================================================
-async function handleScreenerRefresh(req, res, supabase) {
+async function handleScreenerRefresh(req, res, supabase, enableAI) {
   // Verify cron secret
   const CRON_SECRET = process.env.CRON_SECRET;
   if (!CRON_SECRET) {
@@ -319,7 +321,7 @@ async function handleScreenerRefresh(req, res, supabase) {
       return res.status(200).json({ success: false, error: 'All fetches failed.' });
     }
 
-    // 3. AI Confirmation for top candidates
+    // 3. AI Confirmation for top candidates (only if enableAI=true)
     var aiCalledCount = 0;
     var aiAttempted = 0;
     var aiDiagnostic = '';
@@ -329,42 +331,64 @@ async function handleScreenerRefresh(req, res, supabase) {
       .sort(function(a, b) { return b.score - a.score; })
       .slice(0, maxCandidates);
 
-    if (aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
+    if (enableAI && aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
       aiAttempted = aiCandidates.length;
       var aiResult = await callAIConfirmation(aiCandidates);
       var aiResults = aiResult.data || [];
       aiDiagnostic = aiResult.diagnostic || '';
 
-      // Merge AI results back — only count successfully matched tickers
+      // Merge AI results back — normalize ticker matching (case-insensitive, trim, remove .JK)
       var aiMap = {};
       if (aiResults.length > 0) {
         aiResults.forEach(function(ar) {
           if (ar && ar.ticker && ar.ai_status) {
-            aiMap[ar.ticker] = ar;
+            var normalizedTicker = String(ar.ticker).trim().toUpperCase().replace(/\.JK$/i, '');
+            aiMap[normalizedTicker] = ar;
           }
         });
       }
 
+      // Track unmatched AI tickers for diagnostics
+      var matchedTickers = [];
+      var unmatchedAI = Object.keys(aiMap);
+
       results = results.map(function(r) {
-        var ai = aiMap[r.ticker];
+        var normalizedR = String(r.ticker).trim().toUpperCase();
+        var ai = aiMap[normalizedR];
         if (ai) {
-          r.ai_status = ai.ai_status || null;
-          r.ai_reason = ai.ai_reason || null;
-          r.ai_red_flags = ai.ai_red_flags || [];
-          aiCalledCount++; // Only count rows that actually received AI status
-          // Downgrade if AI rejects
-          if (ai.ai_status === 'REJECT' && r.status === 'Swing Ready') {
-            r.final_status = 'Watchlist';
-          } else if (ai.ai_status === 'CAUTION' && r.status === 'Swing Ready') {
-            r.final_status = r.status;
+          r.ai_status = String(ai.ai_status).toUpperCase().trim();
+          // Normalize ai_status to expected values
+          if (r.ai_status !== 'CONFIRMED' && r.ai_status !== 'CAUTION' && r.ai_status !== 'REJECT') {
+            r.ai_status = null; // invalid value, skip
           } else {
-            r.final_status = r.status;
+            r.ai_reason = ai.ai_reason || null;
+            r.ai_red_flags = Array.isArray(ai.ai_red_flags) ? ai.ai_red_flags : [];
+            aiCalledCount++;
+            matchedTickers.push(normalizedR);
+            // Downgrade if AI rejects
+            if (r.ai_status === 'REJECT' && r.status === 'Swing Ready') {
+              r.final_status = 'Watchlist';
+            } else if (r.ai_status === 'CAUTION' && r.status === 'Swing Ready') {
+              r.final_status = r.status;
+            } else {
+              r.final_status = r.status;
+            }
           }
-        } else {
-          r.final_status = r.status;
         }
+        if (!r.final_status) r.final_status = r.status;
         return r;
       });
+
+      // Append match diagnostic
+      if (aiResults.length > 0 && aiCalledCount === 0) {
+        aiDiagnostic += ' | Ticker match failed. AI returned: ' + aiResults.slice(0, 3).map(function(a) { return a.ticker; }).join(',') + '. Expected: ' + aiCandidates.slice(0, 3).map(function(c) { return c.ticker; }).join(',');
+      } else if (aiCalledCount > 0) {
+        aiDiagnostic += ' | Matched ' + aiCalledCount + '/' + aiResults.length + ' tickers.';
+      }
+
+    } else if (!enableAI) {
+      aiDiagnostic = 'AI disabled for this refresh (ai=0).';
+      results = results.map(function(r) { r.final_status = r.status; return r; });
     } else if (aiCandidates.length > 0 && !process.env.SCREENER_AI_API_KEY) {
       aiDiagnostic = 'AI skipped: SCREENER_AI_API_KEY not configured.';
       results = results.map(function(r) { r.final_status = r.status; return r; });
@@ -840,7 +864,7 @@ async function callAIConfirmation(candidates) {
 
   var systemPrompt = 'Kamu adalah analis teknikal saham IDX. Tugasmu: validasi kandidat swing trading 3-7 hari. Output HANYA JSON array. Untuk setiap ticker, berikan: ticker, ai_status (CONFIRMED/CAUTION/REJECT), ai_reason (1 kalimat bahasa Indonesia), ai_red_flags (array string pendek). Jangan tambahkan narasi. Jangan recommend beli. Gunakan bahasa: pantau, waspadai, invalid jika.';
 
-  var userPrompt = 'Validasi kandidat swing berikut:\n' + JSON.stringify(summaries) + '\n\nOutput JSON array saja.';
+  var userPrompt = 'Validasi kandidat swing berikut. PENTING: gunakan ticker PERSIS seperti yang diberikan (tanpa .JK suffix).\n' + JSON.stringify(summaries) + '\n\nOutput JSON array saja. Setiap item harus punya field: ticker (PERSIS sama), ai_status, ai_reason, ai_red_flags.';
 
   try {
     var response = await fetch(baseUrl + '/chat/completions', {
@@ -875,12 +899,18 @@ async function callAIConfirmation(candidates) {
     }
 
     var jsonStr = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    // Try to extract JSON array even if there's text before/after it
+    var arrayStart = jsonStr.indexOf('[');
+    var arrayEnd = jsonStr.lastIndexOf(']');
+    if (arrayStart >= 0 && arrayEnd > arrayStart) {
+      jsonStr = jsonStr.substring(arrayStart, arrayEnd + 1);
+    }
     var parsed;
     try {
       parsed = JSON.parse(jsonStr);
     } catch (parseErr) {
-      console.error('Screener AI parse error:', parseErr.message, 'Raw:', jsonStr.substring(0, 200));
-      return { data: [], diagnostic: 'AI JSON parse failed: ' + parseErr.message };
+      console.error('Screener AI parse error:', parseErr.message, 'Raw:', content.substring(0, 300));
+      return { data: [], diagnostic: 'AI JSON parse failed: ' + parseErr.message + '. Raw start: ' + content.substring(0, 80) };
     }
 
     if (!Array.isArray(parsed)) {
