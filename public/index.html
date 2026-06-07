@@ -902,16 +902,7 @@
     </div>
 </div>
 
-<!-- ADMIN AI DETAIL MODAL -->
-<div id="adminAiModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-5xl max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-800 bg-[#111827] p-4 sm:p-6 shadow-2xl">
-        <div class="flex items-center justify-between mb-4">
-            <div><h3 class="text-base font-bold text-white">Hasil Analisis AI</h3><p id="adminAiModalSubtitle" class="text-xs text-gray-400 mt-0.5"></p></div>
-            <button onclick="closeAdminAiModal()" class="rounded-xl bg-gray-800 px-3 py-2 text-sm font-bold text-gray-100 hover:bg-gray-700 transition">Tutup</button>
-        </div>
-        <div id="adminAiResultDetail" class="mt-4 space-y-4 overflow-x-auto"></div>
-    </div>
-</div>
+<!-- ADMIN AI DETAIL MODAL removed: metadata-only mode, no full result display -->
 
 <!-- RESET PASSWORD MODAL -->
 <div id="resetPasswordModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
@@ -3971,15 +3962,7 @@ async function loadAdminLogs(type) {
         container.innerHTML = summaryHtml + tableHtml;
     } catch(e) { container.innerHTML = '<p class="text-sm text-gray-500">Belum ada data log.</p>'; }
 }
-function openAdminAiDetail(idx) {
-    if (!cachedAdminData || !cachedAdminData.aiAnalysisLogs) return;
-    var log = cachedAdminData.aiAnalysisLogs[idx]; if (!log) return;
-    document.getElementById('adminAiModalSubtitle').textContent = (log.ticker || 'N/A') + ' \u2022 ' + (log.username || 'N/A') + ' \u2022 ' + (log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '');
-    if (log.full_result_html && log.full_result_html.length > 50) { document.getElementById('adminAiResultDetail').innerHTML = log.full_result_html; }
-    else { document.getElementById('adminAiResultDetail').innerHTML = '<p class="text-sm text-yellow-400">Hasil lengkap tidak tersedia.</p>'; }
-    document.getElementById('adminAiModal').classList.remove('hidden');
-}
-function closeAdminAiModal() { document.getElementById('adminAiModal').classList.add('hidden'); document.getElementById('adminAiResultDetail').innerHTML = ''; }
+// openAdminAiDetail and closeAdminAiModal removed: metadata-only mode
 
 
 // ===== ADMIN USER MANAGEMENT =====
