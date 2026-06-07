@@ -325,6 +325,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiCalledCount = 0;
     var aiAttempted = 0;
     var aiDiagnostic = '';
+    var aiResponseDebug = null;
     var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '15', 10);
     var aiCandidates = results
       .filter(function(r) { return r.score >= 78; })
@@ -336,6 +337,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       var aiResult = await callAIConfirmation(aiCandidates);
       var aiResults = aiResult.data || [];
       aiDiagnostic = aiResult.diagnostic || '';
+      var aiResponseDebug = aiResult.ai_response_debug || null;
 
       // Merge AI results back — normalize ticker matching (case-insensitive, trim, remove .JK)
       var aiMap = {};
@@ -485,6 +487,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_called_count: aiCalledCount,
       ai_candidates_sent: aiCandidates.slice(0, 5).map(function(c) { return c.ticker; }),
       ai_diagnostic: aiDiagnostic,
+      ai_response_debug: aiResponseDebug || undefined,
       save_error: saveError || null
     });
 
@@ -883,8 +886,7 @@ async function callAIConfirmation(candidates) {
           { role: 'user', content: userPrompt }
         ],
         max_tokens: maxTokens,
-        temperature: 0.2,
-        response_format: { type: 'text' }
+        temperature: 0.2
       })
     });
 
@@ -988,27 +990,44 @@ async function callAIConfirmation(candidates) {
     }
 
     if (!content) {
-      // Build detailed diagnostic for debugging
-      var msgContentVal = msg ? String(msg.content).substring(0, 50) : 'n/a';
-      var msgContentType = msg ? (Array.isArray(msg.content) ? 'array(' + msg.content.length + ')' : typeof msg.content) : 'n/a';
-      var hasReasoning = msg && msg.reasoning_content ? 'yes(' + typeof msg.reasoning_content + ',' + String(msg.reasoning_content).length + ')' : 'no';
-      var hasRefusal = msg && msg.refusal ? 'yes: ' + String(msg.refusal).substring(0, 50) : 'no';
-      var hasToolCalls = msg && msg.tool_calls ? 'yes(' + msg.tool_calls.length + ')' : 'no';
+      // Build structured debug object for safe inspection
+      var msgContentVal = msg ? String(msg.content).substring(0, 80) : 'n/a';
+      var msgContentType = msg ? (msg.content === null ? 'null' : Array.isArray(msg.content) ? 'array(' + msg.content.length + ')' : typeof msg.content + '(' + String(msg.content).length + ')') : 'n/a';
+      var reasoningType = (msg && msg.reasoning_content != null) ? typeof msg.reasoning_content + '(' + String(msg.reasoning_content).length + ')' : 'absent';
+      var reasoningPreview = (msg && typeof msg.reasoning_content === 'string' && msg.reasoning_content.length > 0) ? msg.reasoning_content.substring(0, 80) : null;
+
+      var debugObj = {
+        http_status: 200,
+        content_type: response.headers.get('content-type') || 'unknown',
+        raw_length: rawText.length,
+        json_parse_ok: true,
+        top_keys: responseKeys,
+        choices_length: data.choices ? data.choices.length : 0,
+        choice0_keys: choice0Keys,
+        finish_reason: finishReason,
+        message_exists: !!msg,
+        message_keys: msgKeys,
+        message_role: msg ? msg.role : 'n/a',
+        message_content_type: msgContentType,
+        message_content_length: (msg && msg.content != null) ? String(msg.content).length : 0,
+        message_content_is_null: msg ? msg.content === null : 'n/a',
+        message_content_is_empty_string: msg ? msg.content === '' : 'n/a',
+        message_content_preview: msgContentVal,
+        reasoning_content_type: reasoningType,
+        reasoning_content_length: (msg && msg.reasoning_content != null) ? String(msg.reasoning_content).length : 0,
+        reasoning_content_preview: reasoningPreview,
+        text_type: (msg && msg.text != null) ? typeof msg.text + '(' + String(msg.text).length + ')' : 'absent',
+        choice0_text_type: (choice0 && choice0.text != null) ? typeof choice0.text + '(' + String(choice0.text).length + ')' : 'absent',
+        delta_keys: (choice0 && choice0.delta) ? Object.keys(choice0.delta).join(',') : 'absent',
+        refusal_exists: (msg && msg.refusal != null) ? String(msg.refusal).substring(0, 50) : false,
+        tool_calls_exists: (msg && msg.tool_calls) ? msg.tool_calls.length : false,
+        extract_path_attempted: 'all_failed'
+      };
 
       return {
         data: [],
-        diagnostic: 'AI content empty.' +
-          ' topKeys: ' + responseKeys +
-          '. choice0Keys: ' + choice0Keys +
-          '. msgKeys: ' + msgKeys +
-          '. contentType: ' + msgContentType +
-          '. contentVal: ' + msgContentVal +
-          '. reasoning: ' + hasReasoning +
-          '. refusal: ' + hasRefusal +
-          '. toolCalls: ' + hasToolCalls +
-          '. finishReason: ' + finishReason +
-          '. model: ' + model +
-          '. rawLen: ' + rawText.length
+        diagnostic: 'AI content empty. See ai_response_debug for details.',
+        ai_response_debug: debugObj
       };
     }
 
