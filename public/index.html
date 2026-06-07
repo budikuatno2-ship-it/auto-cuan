@@ -596,28 +596,41 @@
     </div>
 </div>
 
-<!-- ===== PAGE: SEKTOR HOT (Placeholder, login-gated) ===== -->
+<!-- ===== PAGE: SEKTOR HOT (Grup Konglomerat Hot) ===== -->
 <div id="page-sektor" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
     <!-- Login gate (shown if not logged in) -->
     <div id="sektorLoginGate" class="hidden flex flex-col items-center justify-center py-16 text-center">
         <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
             <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
         </div>
-        <h2 class="text-lg font-bold text-white mb-2">Sektor Hot</h2>
-        <p class="text-sm text-gray-400 max-w-md">Daftar/Login untuk melihat Sektor Hot dan Grup Konglomerat Hot.</p>
+        <h2 class="text-lg font-bold text-white mb-2">Grup Konglomerat Hot</h2>
+        <p class="text-sm text-gray-400 max-w-md">Daftar/Login untuk melihat Grup Konglomerat Hot.</p>
         <div class="mt-4 flex gap-2">
             <button onclick="openLoginModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Login</button>
             <button onclick="openRegisterModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition">Daftar</button>
         </div>
     </div>
-    <!-- Placeholder (shown if logged in) -->
-    <div id="sektorPlaceholder" class="hidden flex flex-col items-center justify-center py-16 text-center">
-        <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
-            <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    <!-- Content (shown if logged in) -->
+    <div id="sektorContent" class="hidden space-y-4">
+        <!-- List view -->
+        <div id="sektorListView">
+            <div class="mb-4">
+                <h2 class="text-lg font-bold text-white">Grup Konglomerat Hot</h2>
+                <p class="text-xs text-gray-500 mt-1" id="sektorSubtitle">T+1 · BY GROUP · Kinerja rata-rata per grup konglomerat besar. Klik grup untuk detail.</p>
+            </div>
+            <div id="sektorGroupsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Cards rendered dynamically -->
+            </div>
         </div>
-        <h2 class="text-lg font-bold text-white mb-2">Sektor Hot / Grup Konglomerat Hot</h2>
-        <p class="text-sm text-gray-400 max-w-md">Fitur Sektor Hot sedang disiapkan. Akan menampilkan sektor dan grup konglomerat yang sedang aktif bergerak di market.</p>
-        <div class="mt-6 px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-400">Segera hadir</div>
+        <!-- Detail view (hidden by default) -->
+        <div id="sektorDetailView" class="hidden">
+            <button onclick="backToSektorList()" class="mb-3 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-dark-700 transition inline-flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                Sektor
+            </button>
+            <div id="sektorDetailHeader" class="mb-4"></div>
+            <div id="sektorDetailTable" class="overflow-x-auto"></div>
+        </div>
     </div>
 </div>
 
@@ -1286,10 +1299,10 @@ function navigateTo(page) {
     if (page === 'sektor') {
         var isLoggedIn = getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true';
         var loginGate = document.getElementById('sektorLoginGate');
-        var placeholder = document.getElementById('sektorPlaceholder');
-        if (loginGate && placeholder) {
-            if (isLoggedIn) { loginGate.classList.add('hidden'); placeholder.classList.remove('hidden'); }
-            else { loginGate.classList.remove('hidden'); placeholder.classList.add('hidden'); }
+        var sektorContent = document.getElementById('sektorContent');
+        if (loginGate && sektorContent) {
+            if (isLoggedIn) { loginGate.classList.add('hidden'); sektorContent.classList.remove('hidden'); loadSektorHot(); }
+            else { loginGate.classList.remove('hidden'); sektorContent.classList.add('hidden'); }
         }
     }
     // Portofolio login gate
@@ -4193,6 +4206,153 @@ function closeUsageReminder() {
     // Initial activity mark
     updateActivity();
 })();
+
+// ===== SEKTOR HOT / GRUP KONGLOMERAT HOT =====
+var _sektorCache = null;
+
+async function loadSektorHot() {
+    var grid = document.getElementById('sektorGroupsGrid');
+    var listView = document.getElementById('sektorListView');
+    var detailView = document.getElementById('sektorDetailView');
+    if (!grid) return;
+    listView.classList.remove('hidden');
+    detailView.classList.add('hidden');
+
+    grid.innerHTML = '<div class="col-span-full flex justify-center py-8"><div class="spinner"></div></div>';
+
+    try {
+        var response = await fetch('/api/sector-hot');
+        var data = await response.json();
+        _sektorCache = data;
+
+        if (!data.success || !data.groups || data.groups.length === 0) {
+            grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm text-gray-500">Data Grup Konglomerat Hot belum tersedia.</p><p class="text-xs text-gray-600 mt-2">Sedang disiapkan.</p></div>';
+            return;
+        }
+
+        // Update subtitle with timestamp
+        var sub = document.getElementById('sektorSubtitle');
+        if (sub && data.meta && data.meta.calculated_at) {
+            var dt = new Date(data.meta.calculated_at);
+            sub.textContent = 'T+1 \u00B7 BY GROUP \u00B7 Update: ' + dt.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Render cards
+        var html = '';
+        data.groups.forEach(function(g) {
+            var chgColor = (g.avg_change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+            var chgSign = (g.avg_change_pct || 0) >= 0 ? '+' : '';
+            var topChgColor = (g.top_change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+            var topChgSign = (g.top_change_pct || 0) >= 0 ? '+' : '';
+            html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
+            html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold text-gray-200 leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
+            html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + chgSign + formatPct(g.avg_change_pct) + '</span></div>';
+            html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
+            html += '<span>' + (g.stock_count || 0) + ' saham</span>';
+            html += '<span class="' + topChgColor + '">Top: ' + (g.top_ticker || '-') + ' ' + topChgSign + formatPct(g.top_change_pct) + '</span>';
+            html += '</div>';
+            html += '<div class="mt-2 text-xs text-gray-600">Vol aktif: ' + formatRatio(g.avg_volume_ratio) + '</div>';
+            html += '</div>';
+        });
+        grid.innerHTML = html;
+    } catch (e) {
+        grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm text-red-400">Gagal memuat data Sektor Hot.</p></div>';
+    }
+}
+
+async function showGroupDetail(groupCode) {
+    var listView = document.getElementById('sektorListView');
+    var detailView = document.getElementById('sektorDetailView');
+    var header = document.getElementById('sektorDetailHeader');
+    var table = document.getElementById('sektorDetailTable');
+    if (!detailView || !header || !table) return;
+
+    listView.classList.add('hidden');
+    detailView.classList.remove('hidden');
+    header.innerHTML = '<div class="text-center py-4"><div class="spinner"></div></div>';
+    table.innerHTML = '';
+
+    try {
+        var response = await fetch('/api/sector-hot?group=' + encodeURIComponent(groupCode));
+        var data = await response.json();
+
+        if (!data.success || !data.group) {
+            header.innerHTML = '<p class="text-sm text-gray-500">Data grup belum tersedia.</p>';
+            return;
+        }
+
+        var g = data.group;
+        var chgColor = (g.avg_change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var chgSign = (g.avg_change_pct || 0) >= 0 ? '+' : '';
+        header.innerHTML = '<h2 class="text-base font-bold text-white">Grup ' + escapeHtml(groupCode) + '</h2>' +
+            '<p class="text-xs text-gray-400 mt-0.5">' + escapeHtml(g.group_name || '') + ' \u00B7 ' + (g.stock_count || 0) + ' saham</p>' +
+            '<p class="text-sm mt-1 font-semibold ' + chgColor + '">Avg: ' + chgSign + formatPct(g.avg_change_pct) + ' \u00B7 Vol: ' + formatRatio(g.avg_volume_ratio) + '</p>';
+
+        var members = data.members || [];
+        if (members.length === 0) {
+            table.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data member.</p>';
+            return;
+        }
+
+        var tHtml = '<table class="w-full text-xs border-collapse"><thead><tr>';
+        tHtml += '<th class="px-2 py-2 text-left text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Ticker</th>';
+        tHtml += '<th class="px-2 py-2 text-left text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Nama</th>';
+        tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Last</th>';
+        tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">% Hari Ini</th>';
+        tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Vol Hari Ini</th>';
+        tHtml += '<th class="px-2 py-2 text-right text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Vol/Avg30</th>';
+        tHtml += '<th class="px-2 py-2 text-center text-gray-400 font-medium border-b border-dark-600/50 bg-dark-700/50 whitespace-nowrap">Tipe</th>';
+        tHtml += '</tr></thead><tbody>';
+
+        members.forEach(function(m) {
+            var pctColor = (m.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+            var pctSign = (m.change_pct || 0) >= 0 ? '+' : '';
+            var isAnchor = m.member_type === 'ANCHOR';
+            var tickerLabel = isAnchor ? '\u2B50 ' + m.ticker : m.ticker;
+            tHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30">';
+            tHtml += '<td class="px-2 py-2 text-gray-200 font-semibold whitespace-nowrap">' + tickerLabel + '</td>';
+            tHtml += '<td class="px-2 py-2 text-gray-400 whitespace-nowrap max-w-[150px] truncate">' + escapeHtml(m.stock_name || '-') + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(m.last_price) + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right font-semibold whitespace-nowrap ' + pctColor + '">' + pctSign + formatPct(m.change_pct) + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right text-gray-400 whitespace-nowrap">' + formatVolume(m.volume_today) + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(m.volume_ratio_30d) + '</td>';
+            tHtml += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (isAnchor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/15 text-gray-500') + '">' + m.member_type + '</span></td>';
+            tHtml += '</tr>';
+        });
+        tHtml += '</tbody></table>';
+        table.innerHTML = tHtml;
+    } catch (e) {
+        header.innerHTML = '<p class="text-sm text-red-400">Gagal memuat detail grup.</p>';
+    }
+}
+
+function backToSektorList() {
+    var listView = document.getElementById('sektorListView');
+    var detailView = document.getElementById('sektorDetailView');
+    if (listView) listView.classList.remove('hidden');
+    if (detailView) detailView.classList.add('hidden');
+}
+
+// Sektor Hot formatting helpers
+function formatPct(val) {
+    if (val == null) return '-';
+    return String(Math.abs(val).toFixed(2)).replace('.', ',') + '%';
+}
+function formatRatio(val) {
+    if (val == null || val === 0) return '-';
+    return String(val.toFixed(2)).replace('.', ',') + 'x';
+}
+function formatPrice(val) {
+    if (val == null) return '-';
+    return 'Rp ' + Math.round(val).toLocaleString('id-ID');
+}
+function formatVolume(val) {
+    if (val == null || val === 0) return '-';
+    if (val >= 1000000000) return (val / 1000000000).toFixed(1).replace('.', ',') + ' M';
+    if (val >= 1000000) return (val / 1000000).toFixed(1).replace('.', ',') + ' jt';
+    if (val >= 1000) return (val / 1000).toFixed(0) + ' rb';
+    return String(val);
+}
 
 // ===== PORTOFOLIO FEATURE (Phase 15A) =====
 var _portRefreshTimer = null;
