@@ -717,6 +717,7 @@
             <button onclick="filterScreener('Swing Ready')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Swing Ready">Swing Ready</button>
             <button onclick="filterScreener('Watchlist')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
             <button onclick="filterScreener('Rebound Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
+            <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
         </div>
         <!-- Table -->
@@ -782,6 +783,7 @@
                 <button onclick="filterNkScreener('Watchlist')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
                 <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
                 <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
+                <button onclick="filterNkScreener('Invalid')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
             </div>
             <!-- Table -->
             <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="nkScreenerTableWrap">
@@ -4736,6 +4738,7 @@ function screenerTickerClick(ticker) {
 // ===== NON-KONGLO SCREENER FUNCTIONS =====
 var _nkScreenerCache = null;
 var _currentScreenerType = 'konglo';
+var _nkPollInterval = null;
 
 function switchScreenerType(type) {
     _currentScreenerType = type;
@@ -4745,17 +4748,32 @@ function switchScreenerType(type) {
     var btnNk = document.getElementById('scrTypeNonKonglo');
 
     if (type === 'konglo') {
+        _currentScreenerType = 'konglo';
+        stopNkPolling();
         if (kongloPane) kongloPane.classList.remove('hidden');
         if (nkPane) nkPane.classList.add('hidden');
         if (btnKonglo) { btnKonglo.className = 'px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all'; }
         if (btnNk) { btnNk.className = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all'; }
     } else {
+        _currentScreenerType = 'nonkonglo';
         if (kongloPane) kongloPane.classList.add('hidden');
         if (nkPane) nkPane.classList.remove('hidden');
         if (btnNk) { btnNk.className = 'px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all'; }
         if (btnKonglo) { btnKonglo.className = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all'; }
         loadNkScreenerResults();
     }
+}
+
+function startNkPolling() {
+    stopNkPolling();
+    _nkPollInterval = setInterval(function() {
+        if (_currentScreenerType !== 'nonkonglo') { stopNkPolling(); return; }
+        loadNkScreenerResults();
+    }, 4000);
+}
+
+function stopNkPolling() {
+    if (_nkPollInterval) { clearInterval(_nkPollInterval); _nkPollInterval = null; }
 }
 
 async function loadNkScreenerResults() {
@@ -4795,6 +4813,13 @@ async function loadNkScreenerResults() {
 
         updateNkScreenerMeta(data.meta);
         renderNkScreenerTable(data.results);
+
+        // Auto-poll while scanning
+        if (data.meta && (data.meta.status === 'scanning' || data.meta.status === 'finalizing')) {
+            startNkPolling();
+        } else {
+            stopNkPolling();
+        }
 
         // Show progress if scanning
         var progressEl = document.getElementById('nkScreenerProgress');

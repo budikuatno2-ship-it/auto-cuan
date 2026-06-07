@@ -1940,17 +1940,31 @@ async function fetchNkQuoteData(ticker) {
     const resistance = Math.max(...last20Highs);
 
     // Entry area: between support and Fib 0.382 retracement of range
-    const entryLow = support;
-    const entryHigh = Math.min(lastClose, support + (resistance - support) * 0.382);
+    const pullbackEntryHigh = support + (resistance - support) * 0.382;
 
-    // Stop loss: 3% below 20d support
-    const stopLoss = Math.round(support * 0.97);
+    // Distance from current price to ideal entry zone
+    const distanceAboveEntry = pullbackEntryHigh > 0 ? ((lastClose - pullbackEntryHigh) / pullbackEntryHigh) * 100 : 0;
+    const priceInEntryZone = lastClose <= pullbackEntryHigh * 1.03; // within 3% of entry high
 
-    // TP based on Fibonacci levels of the 20d range (not derived from fixed RR)
+    // If price is in/near entry zone, use pullback entry. Otherwise use current price.
+    var entryLow, entryHigh;
+    if (priceInEntryZone) {
+      entryLow = support;
+      entryHigh = Math.round(pullbackEntryHigh);
+    } else {
+      // Price is above ideal entry — entry based on current position
+      entryLow = Math.round(lastClose * 0.97); // 3% below current
+      entryHigh = Math.round(lastClose);
+    }
+
+    // Stop loss: 3% below entry low
+    const stopLoss = Math.round(entryLow * 0.97);
+
+    // TP based on Fibonacci levels of the 20d range
     const tp1 = Math.round(support + (resistance - support) * 0.618);
     const tp2 = Math.round(resistance);
 
-    // Risk/Reward: reward = TP1 - entry midpoint, risk = entry midpoint - SL
+    // Risk/Reward based on actual entry (current-price-aware)
     const entryMid = (entryLow + entryHigh) / 2;
     const riskAmt = entryMid - stopLoss;
     const rewardAmt = tp1 - entryMid;
@@ -1989,6 +2003,8 @@ async function fetchNkQuoteData(ticker) {
       overextended: overextended,
       belowSupport: belowSupport,
       slDistance: slDistance,
+      distanceAboveEntry: distanceAboveEntry,
+      priceInEntryZone: priceInEntryZone,
       last_price: lastClose,
       change_pct: Number(changePct.toFixed(2)),
       volume_ratio_avg20: Number(volumeRatioAvg20.toFixed(2))
@@ -2054,6 +2070,11 @@ function calculateNkSetupScore(q) {
   if (q.belowSupport) { score -= 15; components.push('breakdown support'); }
   if (q.slDistance > 5) { score -= 8; components.push('SL jauh ' + q.slDistance.toFixed(1) + '%'); }
 
+  // 5b. DISTANCE-TO-ENTRY PENALTY (Non-Konglo specific)
+  // If price is far above ideal entry zone, the setup is less actionable now
+  if (q.distanceAboveEntry > 8) { score -= 10; components.push('far from entry'); }
+  else if (q.distanceAboveEntry > 5) { score -= 5; components.push('above entry zone'); }
+
   // 6. LIQUIDITY BONUS (small tie-breaker, max +5 pts — not a heavy component)
   var txB = q.avgTxValue20d / 1e9;
   if (txB >= 50) score += 5;
@@ -2091,6 +2112,7 @@ function calculateNkSetupScore(q) {
   if (q.isLargeRed) { passesAllHardFilters = false; failReasons.push('Candle distribusi'); }
   if (q.overextended) { passesAllHardFilters = false; failReasons.push('Overextended'); }
   if (q.belowSupport) { passesAllHardFilters = false; failReasons.push('Breakdown'); }
+  if (!q.priceInEntryZone && q.distanceAboveEntry > 5) { passesAllHardFilters = false; failReasons.push('Price jauh dari entry area'); }
 
   if (passesAllHardFilters) {
     status = 'Swing Ready';
