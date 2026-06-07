@@ -1676,10 +1676,14 @@ async function handleNkScreenerBatch(req, res, supabase) {
   }
 
   // Upsert scored candidates into staging (idempotent on run_date + ticker)
+  var stagingError = null;
   if (results.length > 0) {
-    await supabase
+    var { error: upsErr } = await supabase
       .from('swing_screener_non_konglo_staging')
       .upsert(results, { onConflict: 'run_date,ticker' });
+    if (upsErr) {
+      stagingError = upsErr.message + (upsErr.details ? ' | ' + upsErr.details : '');
+    }
   }
 
   // Mark job complete
@@ -1712,7 +1716,8 @@ async function handleNkScreenerBatch(req, res, supabase) {
     batch_index: job.batch_index,
     processed: tickers.length,
     passed: results.length,
-    failed: failedCount
+    failed: failedCount,
+    staging_error: stagingError || null
   });
 }
 
@@ -1743,7 +1748,30 @@ async function handleNkScreenerFinalize(req, res, supabase) {
 
   if (stagErr) {
     await updateNkMeta(supabase, { status: 'failed', message: 'Gagal membaca staging: ' + stagErr.message });
-    return res.status(200).json({ success: false, error: 'Failed to read staging.' });
+    return res.status(200).json({ success: false, error: 'Failed to read staging.', staging_error: stagErr.message });
+  }
+
+  // Count total staging rows for diagnostics
+  var { count: totalStagingCount } = await supabase
+    .from('swing_screener_non_konglo_staging')
+    .select('*', { count: 'exact', head: true })
+    .eq('run_date', runDate);
+
+  // If no candidates passed filters, do NOT mark as published
+  if (!topCandidates || topCandidates.length === 0) {
+    await updateNkMeta(supabase, {
+      status: 'failed',
+      published_count: 0,
+      message: 'No candidates passed filters. Staging count: ' + (totalStagingCount || 0)
+    });
+    return res.status(200).json({
+      success: false,
+      step: 'finalize',
+      error: 'No candidates passed filters.',
+      published: 0,
+      staging_count: totalStagingCount || 0,
+      run_date: runDate
+    });
   }
 
   // Clear latest table and insert top 15
@@ -1802,18 +1830,22 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     publishedCount = publishRows.length;
   }
 
-  // Only mark as "published" if insert succeeded
+  // Only mark as "published" if insert succeeded AND rows > 0
   await updateNkMeta(supabase, {
     status: 'published',
     published_count: publishedCount,
-    message: 'Published ' + publishedCount + ' top candidates.',
+    message: 'Published ' + publishedCount + ' top candidates. Staging: ' + (totalStagingCount || 0),
     calculated_at: new Date().toISOString()
   });
 
   return res.status(200).json({
     success: true,
     step: 'finalize',
-    published: publishedCount
+    published: publishedCount,
+    staging_count: totalStagingCount || 0,
+    run_date: runDate,
+    top_ticker: publishedCount > 0 ? topCandidates[0].ticker : null,
+    top_score: publishedCount > 0 ? topCandidates[0].score : null
   });
 }
 
