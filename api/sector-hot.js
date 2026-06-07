@@ -883,7 +883,8 @@ async function callAIConfirmation(candidates) {
           { role: 'user', content: userPrompt }
         ],
         max_tokens: maxTokens,
-        temperature: 0.3
+        temperature: 0.2,
+        response_format: { type: 'text' }
       })
     });
 
@@ -908,38 +909,75 @@ async function callAIConfirmation(candidates) {
     var responseKeys = Object.keys(data || {}).join(',');
     var extractPath = '';
 
-    // Format 1: OpenAI standard — data.choices[0].message.content
-    if (!content && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-      content = data.choices[0].message.content;
-      extractPath = 'choices[0].message.content';
+    // Deep inspection of choices[0] for diagnostics
+    var choice0 = (data.choices && data.choices[0]) || null;
+    var choice0Keys = choice0 ? Object.keys(choice0).join(',') : 'n/a';
+    var msg = (choice0 && choice0.message) || null;
+    var msgKeys = msg ? Object.keys(msg).join(',') : 'n/a';
+    var finishReason = choice0 ? (choice0.finish_reason || choice0.stop_reason || 'n/a') : 'n/a';
+
+    // Try extracting from choices[0].message fields
+    if (msg) {
+      // Standard: message.content (string)
+      if (typeof msg.content === 'string' && msg.content.length > 0) {
+        content = msg.content;
+        extractPath = 'choices[0].message.content';
+      }
+      // DeepSeek: message.content is array [{type:"text", text:"..."}]
+      if (!content && Array.isArray(msg.content) && msg.content.length > 0) {
+        var textParts = msg.content.filter(function(p) { return p && (p.type === 'text' || p.text); });
+        if (textParts.length > 0) {
+          content = textParts.map(function(p) { return p.text || ''; }).join('');
+          extractPath = 'choices[0].message.content[].text (array)';
+        }
+      }
+      // DeepSeek reasoning models: message.reasoning_content
+      if (!content && typeof msg.reasoning_content === 'string' && msg.reasoning_content.length > 0) {
+        content = msg.reasoning_content;
+        extractPath = 'choices[0].message.reasoning_content';
+      }
+      // Alternative: message.text
+      if (!content && typeof msg.text === 'string' && msg.text.length > 0) {
+        content = msg.text;
+        extractPath = 'choices[0].message.text';
+      }
     }
-    // Format 2: data.choices[0].text
-    if (!content && data.choices && data.choices[0] && data.choices[0].text) {
-      content = data.choices[0].text;
+
+    // choices[0].text (completions format)
+    if (!content && choice0 && typeof choice0.text === 'string' && choice0.text.length > 0) {
+      content = choice0.text;
       extractPath = 'choices[0].text';
     }
-    // Format 3: data.output_text (some providers)
-    if (!content && data.output_text) {
+
+    // choices[0].delta.content (streaming leftover)
+    if (!content && choice0 && choice0.delta && typeof choice0.delta.content === 'string' && choice0.delta.content.length > 0) {
+      content = choice0.delta.content;
+      extractPath = 'choices[0].delta.content';
+    }
+
+    // data.output_text
+    if (!content && typeof data.output_text === 'string' && data.output_text.length > 0) {
       content = data.output_text;
       extractPath = 'output_text';
     }
-    // Format 4: data.output[0].content[0].text
+
+    // data.output[0].content[0].text or data.output[0].text
     if (!content && data.output && Array.isArray(data.output) && data.output[0]) {
       var out0 = data.output[0];
       if (out0.content && Array.isArray(out0.content) && out0.content[0] && out0.content[0].text) {
         content = out0.content[0].text;
         extractPath = 'output[0].content[0].text';
-      } else if (out0.text) {
+      } else if (typeof out0.text === 'string' && out0.text.length > 0) {
         content = out0.text;
         extractPath = 'output[0].text';
       }
     }
-    // Format 5: data.content (direct)
-    if (!content && data.content) {
-      content = typeof data.content === 'string' ? data.content : JSON.stringify(data.content);
+
+    // data.content / data.result / data.response
+    if (!content && data.content && typeof data.content === 'string' && data.content.length > 0) {
+      content = data.content;
       extractPath = 'content';
     }
-    // Format 6: data.result or data.response
     if (!content && data.result) {
       content = typeof data.result === 'string' ? data.result : JSON.stringify(data.result);
       extractPath = 'result';
@@ -949,23 +987,28 @@ async function callAIConfirmation(candidates) {
       extractPath = 'response';
     }
 
-    // Build diagnostic metadata
-    var choicesLen = data.choices ? data.choices.length : 0;
-    var finishReason = (data.choices && data.choices[0]) ? (data.choices[0].finish_reason || data.choices[0].stop_reason || 'n/a') : 'n/a';
-    var hasMessage = (data.choices && data.choices[0] && data.choices[0].message) ? true : false;
-    var msgContentType = hasMessage ? typeof data.choices[0].message.content : 'n/a';
-
     if (!content) {
+      // Build detailed diagnostic for debugging
+      var msgContentVal = msg ? String(msg.content).substring(0, 50) : 'n/a';
+      var msgContentType = msg ? (Array.isArray(msg.content) ? 'array(' + msg.content.length + ')' : typeof msg.content) : 'n/a';
+      var hasReasoning = msg && msg.reasoning_content ? 'yes(' + typeof msg.reasoning_content + ',' + String(msg.reasoning_content).length + ')' : 'no';
+      var hasRefusal = msg && msg.refusal ? 'yes: ' + String(msg.refusal).substring(0, 50) : 'no';
+      var hasToolCalls = msg && msg.tool_calls ? 'yes(' + msg.tool_calls.length + ')' : 'no';
+
       return {
         data: [],
-        diagnostic: 'AI content empty. Keys: ' + responseKeys +
-          '. choices: ' + choicesLen +
-          '. hasMessage: ' + hasMessage +
-          '. msgContentType: ' + msgContentType +
+        diagnostic: 'AI content empty.' +
+          ' topKeys: ' + responseKeys +
+          '. choice0Keys: ' + choice0Keys +
+          '. msgKeys: ' + msgKeys +
+          '. contentType: ' + msgContentType +
+          '. contentVal: ' + msgContentVal +
+          '. reasoning: ' + hasReasoning +
+          '. refusal: ' + hasRefusal +
+          '. toolCalls: ' + hasToolCalls +
           '. finishReason: ' + finishReason +
-          '. Model: ' + model +
-          '. RawLen: ' + rawText.length +
-          '. Preview: ' + rawText.substring(0, 150)
+          '. model: ' + model +
+          '. rawLen: ' + rawText.length
       };
     }
 

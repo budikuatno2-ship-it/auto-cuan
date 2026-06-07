@@ -4628,7 +4628,7 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-center whitespace-nowrap">' + aiBadge + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
         html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? r.rsi14.toFixed(1) : '-') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high) + '</td>';
         html += '<td class="px-2 py-2 text-right text-red-400/80 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
