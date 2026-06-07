@@ -2009,133 +2009,109 @@ function applyNkHardFilters(q) {
   return true;
 }
 
-// --- SCORING: deterministic 0-100, multi-component ---
+// --- SCORING: deterministic 0-100, same engine as Konglo ---
+// Uses same base-50 additive/subtractive approach as scoreAndClassify (Konglo).
+// Liquidity is a hard filter (already applied), so only adds a small tie-breaker bonus.
 function calculateNkSetupScore(q) {
+  var score = 50; // Same base as Konglo
   var components = [];
-  var score = 0;
 
-  // 1. TREND (0-25 pts)
-  var trendPts = 0;
-  if (q.ma20 && q.lastPrice > q.ma20) { trendPts += 8; components.push('close>MA20'); }
-  if (q.ma50 && q.lastPrice > q.ma50) { trendPts += 7; components.push('close>MA50'); }
-  if (q.ma20 && q.ma50 && q.ma20 > q.ma50) { trendPts += 5; components.push('MA20>MA50'); }
-  // Proximity bonus: close near MA20 (within 3%) = pullback setup
-  if (q.ma20 && q.lastPrice > q.ma20 && q.lastPrice < q.ma20 * 1.03) { trendPts += 3; components.push('near MA20 pullback'); }
-  // Above resistance midpoint bonus
-  if (q.lastPrice > (q.support + q.resistance) / 2) { trendPts += 2; }
-  trendPts = Math.min(25, trendPts);
-  score += trendPts;
+  // 1. TREND (same as Konglo: MA20 +10/+5/-5, MA50 +10/+3/-10)
+  if (q.ma20 && q.lastPrice >= q.ma20) { score += 10; components.push('close>MA20'); }
+  else if (q.ma20 && q.lastPrice >= q.ma20 * 0.98) { score += 5; components.push('close~MA20'); }
+  else { score -= 5; if (q.ma20) components.push('close<MA20'); }
 
-  // 2. MOMENTUM / RSI (0-20 pts)
-  var momPts = 0;
+  if (q.ma50 && q.lastPrice >= q.ma50) { score += 10; components.push('close>MA50'); }
+  else if (q.ma50 && q.lastPrice >= q.ma50 * 0.97) { score += 3; }
+  else { score -= 10; if (q.ma50) components.push('close<MA50'); }
+
+  // 2. MOMENTUM / RSI (same as Konglo: +15/+8/+5/+3/-5/-10)
   if (q.rsi14 !== null) {
-    if (q.rsi14 >= 50 && q.rsi14 <= 60) { momPts = 20; components.push('RSI ' + q.rsi14.toFixed(1) + ' ideal'); }
-    else if (q.rsi14 >= 45 && q.rsi14 < 50) { momPts = 17; components.push('RSI ' + q.rsi14.toFixed(1) + ' netral+'); }
-    else if (q.rsi14 > 60 && q.rsi14 <= 65) { momPts = 16; components.push('RSI ' + q.rsi14.toFixed(1) + ' kuat'); }
-    else if (q.rsi14 >= 40 && q.rsi14 < 45) { momPts = 13; components.push('RSI ' + q.rsi14.toFixed(1) + ' netral'); }
-    else if (q.rsi14 > 65 && q.rsi14 <= 70) { momPts = 10; components.push('RSI ' + q.rsi14.toFixed(1) + ' mendekati OB'); }
-    else if (q.rsi14 >= 35 && q.rsi14 < 40) { momPts = 9; components.push('RSI ' + q.rsi14.toFixed(1) + ' lemah'); }
-    else if (q.rsi14 > 70 && q.rsi14 <= 80) { momPts = 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' overbought'); }
-    else if (q.rsi14 >= 30 && q.rsi14 < 35) { momPts = 7; components.push('RSI ' + q.rsi14.toFixed(1) + ' oversold zone'); }
-    else if (q.rsi14 > 80) { momPts = 2; components.push('RSI ' + q.rsi14.toFixed(1) + ' extreme OB'); }
-    else { momPts = 4; components.push('RSI ' + q.rsi14.toFixed(1) + ' deep oversold'); }
+    if (q.rsi14 >= 45 && q.rsi14 <= 68) { score += 15; components.push('RSI ' + q.rsi14.toFixed(1) + ' ideal'); }
+    else if (q.rsi14 >= 40 && q.rsi14 < 45) { score += 8; components.push('RSI ' + q.rsi14.toFixed(1) + ' netral'); }
+    else if (q.rsi14 > 68 && q.rsi14 <= 75) { score += 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' kuat'); }
+    else if (q.rsi14 >= 30 && q.rsi14 < 40) { score += 3; components.push('RSI ' + q.rsi14.toFixed(1) + ' oversold zone'); }
+    else if (q.rsi14 > 75) { score -= 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' overbought'); }
+    else { score -= 10; components.push('RSI ' + q.rsi14.toFixed(1) + ' extreme'); }
   }
-  score += momPts;
 
-  // 3. VOLUME (0-20 pts)
-  var volPts = 0;
-  var vr = q.volumeRatioAvg20;
-  if (vr >= 2.5) { volPts = 20; components.push('vol ' + vr.toFixed(2) + 'x spike'); }
-  else if (vr >= 2.0) { volPts = 17; components.push('vol ' + vr.toFixed(2) + 'x tinggi'); }
-  else if (vr >= 1.5) { volPts = 14; components.push('vol ' + vr.toFixed(2) + 'x above avg'); }
-  else if (vr >= 1.2) { volPts = 11; components.push('vol ' + vr.toFixed(2) + 'x normal+'); }
-  else if (vr >= 1.0) { volPts = 8; components.push('vol ' + vr.toFixed(2) + 'x normal'); }
-  else if (vr >= 0.7) { volPts = 5; components.push('vol ' + vr.toFixed(2) + 'x rendah'); }
-  else { volPts = 2; }
-  score += volPts;
+  // 3. VOLUME (same as Konglo: +15/+12/+5/-5)
+  if (q.volumeRatioAvg20 >= 1.5) { score += 15; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x tinggi'); }
+  else if (q.volumeRatioAvg20 >= 1.2) { score += 12; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x above avg'); }
+  else if (q.volumeRatioAvg20 >= 0.8) { score += 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x normal'); }
+  else { score -= 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x rendah'); }
 
-  // 4. RISK/REWARD (0-20 pts)
-  var rrPts = 0;
-  var rr = q.riskReward;
-  if (rr >= 4.0) { rrPts = 20; components.push('RR ' + rr.toFixed(2)); }
-  else if (rr >= 3.5) { rrPts = 18; }
-  else if (rr >= 3.0) { rrPts = 16; components.push('RR ' + rr.toFixed(2) + ' baik'); }
-  else if (rr >= 2.5) { rrPts = 13; components.push('RR ' + rr.toFixed(2)); }
-  else if (rr >= 2.0) { rrPts = 10; components.push('RR ' + rr.toFixed(2)); }
-  else if (rr >= 1.5) { rrPts = 7; components.push('RR ' + rr.toFixed(2) + ' minimal'); }
-  else { rrPts = 3; }
-  score += rrPts;
+  // 4. RISK/REWARD (same as Konglo: +15/+12/+8/+3/-5)
+  if (q.riskReward >= 2.5) { score += 15; components.push('RR ' + q.riskReward.toFixed(2) + ' baik'); }
+  else if (q.riskReward >= 2.0) { score += 12; components.push('RR ' + q.riskReward.toFixed(2)); }
+  else if (q.riskReward >= 1.5) { score += 8; components.push('RR ' + q.riskReward.toFixed(2) + ' minimal'); }
+  else if (q.riskReward >= 1.0) { score += 3; }
+  else { score -= 5; }
 
-  // 5. LIQUIDITY BONUS (0-15 pts)
-  var liqPts = 0;
+  // 5. PENALTIES (same as Konglo: -15/-10/-15/-8)
+  if (q.isLargeRed) { score -= 15; components.push('candle distribusi'); }
+  if (q.overextended) { score -= 10; components.push('overextended'); }
+  if (q.belowSupport) { score -= 15; components.push('breakdown support'); }
+  if (q.slDistance > 5) { score -= 8; components.push('SL jauh ' + q.slDistance.toFixed(1) + '%'); }
+
+  // 6. LIQUIDITY BONUS (small tie-breaker, max +5 pts — not a heavy component)
   var txB = q.avgTxValue20d / 1e9;
-  if (txB >= 100) { liqPts = 15; }
-  else if (txB >= 50) { liqPts = 12; components.push('value Rp' + txB.toFixed(0) + 'B'); }
-  else if (txB >= 30) { liqPts = 9; components.push('value Rp' + txB.toFixed(0) + 'B'); }
-  else if (txB >= 20) { liqPts = 7; }
-  else if (txB >= 10) { liqPts = 4; }
-  else { liqPts = 1; }
-  score += liqPts;
-
-  // 6. PENALTIES (matching Konglo screener technical penalties)
-  if (q.isLargeRed) { score -= 12; components.push('red candle distribusi'); }
-  if (q.overextended) { score -= 8; components.push('overextended >8% dari MA20'); }
-  if (q.belowSupport) { score -= 10; components.push('breakdown support'); }
-  if (q.slDistance > 5) { score -= 6; components.push('SL jauh ' + q.slDistance.toFixed(1) + '%'); }
+  if (txB >= 50) score += 5;
+  else if (txB >= 30) score += 3;
+  else if (txB >= 20) score += 2;
+  // txB >= 10 (minimum hard filter) = no bonus, no penalty
 
   score = Math.max(0, Math.min(100, score));
 
-  // GRADE: A >= 80, B >= 65, C >= 50, D < 50
+  // GRADE (same thresholds)
   var grade = 'D';
   if (score >= 80) grade = 'A';
   else if (score >= 65) grade = 'B';
   else if (score >= 50) grade = 'C';
 
-  // STATUS: based on score + additional quality checks
-  var status = 'Speculative';
+  // STATUS CLASSIFICATION (same logic as Konglo scoreAndClassify)
+  var status = 'Invalid';
   var statusReason = '';
+  var failReasons = [];
 
-  var isAboveMA20 = q.ma20 && q.lastPrice >= q.ma20;
-  var isAboveMA50 = q.ma50 && q.lastPrice >= q.ma50;
-  var isRsiHealthy = q.rsi14 !== null && q.rsi14 >= 40 && q.rsi14 <= 70;
-  var isVolConfirmed = vr >= 1.0;
-  var isRrGood = rr >= 2.0;
+  // Swing Ready hard filters (matching Konglo)
+  var passesAllHardFilters = true;
+  if (score < 80) { passesAllHardFilters = false; failReasons.push('Score < 80'); }
+  if (!(q.ma20 && q.lastPrice >= q.ma20 * 0.99)) { passesAllHardFilters = false; failReasons.push('Di bawah MA20'); }
+  if (!(q.ma50 && q.lastPrice >= q.ma50)) { passesAllHardFilters = false; failReasons.push('Di bawah MA50'); }
+  if (!(q.rsi14 !== null && q.rsi14 >= 45 && q.rsi14 <= 68)) {
+    passesAllHardFilters = false;
+    if (q.rsi14 === null) failReasons.push('RSI N/A');
+    else if (q.rsi14 > 68) failReasons.push('RSI tinggi');
+    else if (q.rsi14 < 45) failReasons.push('RSI rendah');
+  }
+  if (!(q.volumeRatioAvg20 >= 1.0)) { passesAllHardFilters = false; failReasons.push('Vol < 1x'); }
+  if (!(q.riskReward >= 1.5)) { passesAllHardFilters = false; failReasons.push('RR kurang'); }
+  if (q.slDistance > 5) { passesAllHardFilters = false; failReasons.push('SL jauh'); }
+  if (q.isLargeRed) { passesAllHardFilters = false; failReasons.push('Candle distribusi'); }
+  if (q.overextended) { passesAllHardFilters = false; failReasons.push('Overextended'); }
+  if (q.belowSupport) { passesAllHardFilters = false; failReasons.push('Breakdown'); }
 
-  if (score >= 70 && isAboveMA20 && isRsiHealthy && isVolConfirmed && isRrGood && !q.isLargeRed && !q.belowSupport) {
+  if (passesAllHardFilters) {
     status = 'Swing Ready';
-    statusReason = components.slice(0, 4).join(', ') + '. Setup lengkap.';
+    statusReason = 'Setup lengkap: trend, momentum, volume, RR layak.';
   } else if (q.rsi14 !== null && q.rsi14 >= 30 && q.rsi14 <= 42 &&
-             q.lastPrice > q.support && q.volumeRatioAvg20 >= 0.8 &&
-             score >= 35 && !q.belowSupport) {
-    // Rebound Speculative: near oversold, above support, with some volume
+             q.lastPrice > q.support && q.volumeRatioAvg20 >= 0.8 && score >= 40) {
     status = 'Rebound Speculative';
-    statusReason = components.slice(0, 3).join(', ') + '. Potensi rebound dari support, risiko tinggi.';
-  } else if (score >= 50) {
+    statusReason = 'Potensi rebound dari support. Risiko tinggi.';
+  } else if (score >= 65) {
     status = 'Watchlist';
-    var waitReasons = [];
-    if (!isAboveMA20) waitReasons.push('close < MA20');
-    if (!isVolConfirmed) waitReasons.push('vol < 1x avg');
-    if (!isRsiHealthy) waitReasons.push(q.rsi14 !== null ? 'RSI ' + q.rsi14.toFixed(0) + ' di luar zona ideal' : 'RSI N/A');
-    if (!isRrGood) waitReasons.push('RR ' + rr.toFixed(1) + ' minimal');
-    statusReason = 'Tunggu: ' + (waitReasons.length > 0 ? waitReasons.join(', ') : 'konfirmasi breakout') + '.';
+    statusReason = failReasons.length > 0 ? 'Tunggu: ' + failReasons.slice(0, 2).join(', ') : 'Menunggu konfirmasi.';
   } else {
     status = 'Speculative';
-    var weakReasons = [];
-    if (!isAboveMA20 && !isAboveMA50) weakReasons.push('di bawah MA20/50');
-    if (q.rsi14 !== null && q.rsi14 > 75) weakReasons.push('RSI overbought');
-    if (q.rsi14 !== null && q.rsi14 < 35) weakReasons.push('RSI oversold');
-    if (vr < 0.8) weakReasons.push('vol lemah');
-    statusReason = weakReasons.length > 0 ? weakReasons.join(', ') + '. Setup belum valid.' : 'Setup belum memenuhi kriteria.';
+    statusReason = failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : 'Setup belum memenuhi kriteria.';
   }
 
-  // Build detailed reason with key metrics
-  var detailParts = [];
-  detailParts.push('Vol/Avg20 ' + vr.toFixed(2) + 'x');
-  detailParts.push('Value20D Rp' + txB.toFixed(1) + 'B');
-  if (q.rsi14 !== null) detailParts.push('RSI ' + q.rsi14.toFixed(1));
-  if (isAboveMA20) detailParts.push('close>MA20');
-  detailParts.push('RR ' + rr.toFixed(2));
-  statusReason = detailParts.join(', ') + '. ' + statusReason;
+  // Prepend key metrics for auditability
+  var metricLine = 'Vol ' + q.volumeRatioAvg20.toFixed(2) + 'x, Tx Rp' + txB.toFixed(1) + 'B';
+  if (q.rsi14 !== null) metricLine += ', RSI ' + q.rsi14.toFixed(1);
+  metricLine += ', RR ' + q.riskReward.toFixed(2);
+  statusReason = metricLine + '. ' + statusReason;
 
   // Compute avg_volume_20d
   var avgVolume20d = (q.lastPrice > 0) ? Math.round(q.avgTxValue20d / q.lastPrice) : 0;
