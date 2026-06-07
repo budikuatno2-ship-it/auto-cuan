@@ -502,6 +502,18 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         return r;
       });
 
+      // Mark AI-eligible tickers that failed (not in aiMap) as FAILED
+      var aiCandidateTickers = {};
+      aiCandidates.forEach(function(c) { aiCandidateTickers[c.ticker.toUpperCase()] = true; });
+      results = results.map(function(r) {
+        var normalizedR = String(r.ticker).trim().toUpperCase();
+        if (aiCandidateTickers[normalizedR] && !r.ai_status) {
+          r.ai_status = 'FAILED';
+          r.ai_reason = 'AI call failed or returned empty.';
+        }
+        return r;
+      });
+
       // Build diagnostic summary
       aiDiagnostic = 'Batches: ' + aiBatchesSucceeded + '/' + aiBatchCount + ' succeeded.';
       if (allAIResults.length > 0 && aiCalledCount === 0) {
@@ -2042,25 +2054,46 @@ async function fetchNkQuoteData(ticker) {
     }
 
     // Entry/SL based on setupType
+    // RULE: For non-breakout setups, entry MUST be at or below current price.
+    // If calculated entry is above current price, fall back to current-price entry.
     var entryLow, entryHigh, stopLoss;
     var range = resistance - support;
     if (setupType === 'rebound') {
       entryLow = Math.round(support);
-      entryHigh = Math.round(support + range * 0.236);
+      entryHigh = Math.round(Math.min(lastClose, support + range * 0.236));
       stopLoss = Math.round(support * 0.96);
     } else if (setupType === 'pullback') {
-      entryLow = Math.round(ma20 * 0.98);
-      entryHigh = Math.round(ma20 * 1.01);
-      stopLoss = Math.round(ma20 * 0.95);
+      var pullbackLow = ma20 ? Math.round(ma20 * 0.98) : Math.round(lastClose * 0.97);
+      var pullbackHigh = ma20 ? Math.round(ma20 * 1.01) : Math.round(lastClose);
+      // Validate: pullback entry must not be above current price
+      if (pullbackLow > lastClose) {
+        // MA20 is above current price — stock has dropped; use current-position entry
+        entryLow = Math.round(lastClose * 0.97);
+        entryHigh = Math.round(lastClose);
+        setupType = 'wait_pullback'; // reclassify
+      } else {
+        entryLow = pullbackLow;
+        entryHigh = Math.round(Math.min(lastClose, pullbackHigh));
+      }
+      stopLoss = Math.round(entryLow * 0.95);
     } else if (setupType === 'breakout') {
+      // Breakout: entry IS a trigger above current price — this is intentional
       entryLow = Math.round(resistance * 0.98);
       entryHigh = Math.round(resistance * 1.02);
       stopLoss = Math.round(resistance * 0.95);
     } else {
-      // wait_pullback, watchlist, speculative
+      // wait_pullback, watchlist, speculative — always at/below current price
       entryLow = Math.round(lastClose * 0.97);
       entryHigh = Math.round(lastClose);
       stopLoss = Math.round(entryLow * 0.96);
+    }
+
+    // Final safety: for non-breakout, clamp entry to not exceed current price
+    if (setupType !== 'breakout' && entryLow > lastClose) {
+      entryLow = Math.round(lastClose * 0.97);
+      entryHigh = Math.round(lastClose);
+      stopLoss = Math.round(entryLow * 0.96);
+      setupType = 'speculative'; // setup is unclear
     }
 
     // TP based on Fibonacci levels of the 20d range
@@ -2228,6 +2261,8 @@ function calculateNkSetupScore(q) {
   if (q.overextended && q.setupType !== 'breakout') { passesAllHardFilters = false; failReasons.push('Overextended'); }
   if (q.belowSupport) { passesAllHardFilters = false; failReasons.push('Breakdown'); }
   if (!q.priceInEntryZone && q.distanceAboveEntry > 10) { passesAllHardFilters = false; failReasons.push('Price jauh dari entry area'); }
+  // Breakout trigger: entry above current price — NOT immediate Swing Ready
+  if (q.setupType === 'breakout') { passesAllHardFilters = false; failReasons.push('Breakout trigger (wait konfirmasi)'); }
 
   if (passesAllHardFilters) {
     status = 'Swing Ready';
@@ -2275,7 +2310,7 @@ function calculateNkSetupScore(q) {
   } else if (q.setupType === 'pullback' && q.priceInEntryZone) {
     entryNote = ' Entry pullback actionable.';
   } else if (q.setupType === 'breakout') {
-    entryNote = ' Entry breakout zone (resistance).';
+    entryNote = ' BREAKOUT TRIGGER above current price — wait konfirmasi breakout.';
   } else if (q.setupType === 'wait_pullback') {
     entryNote = ' Price extended, wait pullback.';
   } else if (q.distanceAboveEntry <= 5) {
