@@ -895,13 +895,14 @@ function buildIHSGFixedTemplate(d, rawMsg) {
     else if (last > d.fib618) posisiFib = 'antara Fib 61,8% dan Fib 50%';
     else posisiFib = 'di bawah Fib 61,8%';
     var implikasiFib = last > d.fib500 ? 'Retracement masih wajar, potensi recovery ada' : 'Retracement cukup dalam, waspada tekanan lanjutan';
-    fibSection = '<div class="metric-grid"><div><strong>Fibonacci Market</strong><br><br>' +
-      'Fib 38,2%: ' + d.fib382 + '<br>' +
-      'Fib 50%: ' + d.fib500 + '<br>' +
-      'Fib 61,8%: ' + d.fib618 + '<br>' +
-      (d.fib786 ? 'Fib 78,6%: ' + d.fib786 + '<br>' : '') +
-      'Posisi IHSG: ' + posisiFib + '<br>' +
-      'Implikasi Market: ' + implikasiFib + '</div></div>';
+    fibSection = '<div class="metric-grid"><div><strong>Fibonacci Market</strong>' +
+      '<div>Fib 38,2%: ' + d.fib382 + '</div>' +
+      '<div>Fib 50%: ' + d.fib500 + '</div>' +
+      '<div>Fib 61,8%: ' + d.fib618 + '</div>' +
+      (d.fib786 ? '<div>Fib 78,6%: ' + d.fib786 + '</div>' : '') +
+      '<div>Posisi IHSG: ' + posisiFib + '</div>' +
+      '<div>Implikasi Market: ' + implikasiFib + '</div>' +
+      '</div></div>';
   }
 
   // Implikasi ke Saham
@@ -922,10 +923,10 @@ function buildIHSGFixedTemplate(d, rawMsg) {
   // Build HTML
   var html = '';
   html += '<div class="decision-card"><strong>Kesimpulan Cepat IHSG</strong><div class="decision-grid">';
-  html += '<div><span>Status Market</span><br><b>' + statusMarket + '</b></div>';
-  html += '<div><span>Bias IHSG</span><br><b>' + biasIHSG + '</b></div>';
-  html += '<div><span>Confidence</span><br><b>' + confidence + '</b></div>';
-  html += '<div><span>Sikap</span><br><b>' + sikap + '</b></div>';
+  html += '<div><span>Status Market</span><b>' + statusMarket + '</b></div>';
+  html += '<div><span>Bias IHSG</span><b>' + biasIHSG + '</b></div>';
+  html += '<div><span>Confidence</span><b>' + confidence + '</b></div>';
+  html += '<div><span>Sikap</span><b>' + sikap + '</b></div>';
   html += '</div><div class="key-level">Level kunci: R ' + r1 + ' / S ' + s1 + '</div></div>';
 
   html += '<p><strong>Ringkasan Market</strong><br>';
@@ -939,21 +940,23 @@ function buildIHSGFixedTemplate(d, rawMsg) {
   html += '<strong class="text-gray-400">Syarat Rebound:</strong> ' + syaratRebound + '.<br><br>';
   html += '<strong class="text-gray-400">Risiko Breakdown:</strong> ' + risikoBreakdown + '.</div></div>';
 
-  html += '<div class="metric-grid"><div><strong>Data Teknikal IHSG</strong><br><br>';
-  html += 'MA20: ' + ma20 + '<br>';
-  html += 'MA50: ' + ma50 + '<br>';
-  html += 'MA100: ' + ma100 + '<br>';
-  html += 'MA200: ' + ma200 + '<br>';
-  html += 'Posisi: ' + maPosition + '</div>';
-  html += '<div><strong>Momentum Market</strong><br><br>';
-  html += 'RSI14: ' + rsi14 + '<br>';
-  html += 'Volume: ' + volRatio + 'x avg20<br>';
-  html += 'Last: ' + last + '<br>';
-  html += 'High: ' + high + '<br>';
-  html += 'Low: ' + low + '</div></div>';
+  html += '<div class="metric-grid"><div><strong>Data Teknikal IHSG</strong>';
+  html += '<div>MA20: ' + ma20 + '</div>';
+  html += '<div>MA50: ' + ma50 + '</div>';
+  html += '<div>MA100: ' + ma100 + '</div>';
+  html += '<div>MA200: ' + ma200 + '</div>';
+  html += '<div>Posisi: ' + maPosition + '</div>';
+  html += '</div>';
+  html += '<div><strong>Momentum Market</strong>';
+  html += '<div>RSI14: ' + rsi14 + '</div>';
+  html += '<div>Volume: ' + volRatio + 'x avg20</div>';
+  html += '<div>Last: ' + last + '</div>';
+  html += '<div>High: ' + high + '</div>';
+  html += '<div>Low: ' + low + '</div>';
+  html += '</div></div>';
 
-  html += '<div class="level-grid"><div><strong>Resistance IHSG</strong><br><br>R1: ' + r1 + '<br>R2: ' + r2 + '</div>';
-  html += '<div><strong>Support IHSG</strong><br><br>S1: ' + s1 + '<br>S2: ' + s2 + '</div></div>';
+  html += '<div class="level-grid"><div><strong>Resistance IHSG</strong><div>R1: ' + r1 + '</div><div>R2: ' + r2 + '</div></div>';
+  html += '<div><strong>Support IHSG</strong><div>S1: ' + s1 + '</div><div>S2: ' + s2 + '</div></div></div>';
 
   html += '<div class="level-grid"><div><strong>Level Konfirmasi</strong><br><br>' + levelKonfirmasi + '</div>';
   html += '<div><strong>Level Risiko</strong><br><br>' + levelRisiko + '</div></div>';
@@ -964,21 +967,21 @@ function buildIHSGFixedTemplate(d, rawMsg) {
 
   if (fibSection) html += fibSection;
 
-  html += '<p><strong>Implikasi ke Saham</strong><br><br>';
-  html += 'Big caps: ' + implBigCaps + '<br>';
-  html += 'Second liners: ' + implSecondLiners + '<br>';
-  html += 'Defensive sectors: ' + implDefensive + '</p>';
+  html += '<p><strong>Implikasi ke Saham</strong></p>';
+  html += '<div>Big caps: ' + implBigCaps + '</div>';
+  html += '<div>Second liners: ' + implSecondLiners + '</div>';
+  html += '<div>Defensive sectors: ' + implDefensive + '</div>';
 
   html += '<p><strong>Katalis / Sentimen IHSG</strong><br><br>' + katalisText + '</p>';
 
   html += '<p><strong>Risk Guard Market</strong><br><br>' + riskGuard + '</p>';
 
   html += '<div class="analytic-summary"><strong>Kesimpulan Final Market</strong><div class="summary-rows">';
-  html += '<div><span>Status Market</span><br><b>' + statusMarket + '</b></div>';
-  html += '<div><span>Bias</span><br><b>' + biasIHSG + '</b></div>';
-  html += '<div><span>Sikap</span><br><b>' + sikap + '</b></div>';
-  html += '<div><span>Konfirmasi</span><br><b>' + levelKonfirmasi + '</b></div>';
-  html += '<div><span>Risiko</span><br><b>' + levelRisiko + '</b></div>';
+  html += '<div><span>Status Market</span><b>' + statusMarket + '</b></div>';
+  html += '<div><span>Bias</span><b>' + biasIHSG + '</b></div>';
+  html += '<div><span>Sikap</span><b>' + sikap + '</b></div>';
+  html += '<div><span>Konfirmasi</span><b>' + levelKonfirmasi + '</b></div>';
+  html += '<div><span>Risiko</span><b>' + levelRisiko + '</b></div>';
   html += '</div></div>';
 
   return html;
@@ -1103,24 +1106,24 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   var newsText = 'Tidak ada katalis kuat. Fokus teknikal.';
   if (newsBlock2 && newsBlock2[1] && newsBlock2[1].indexOf('unavailable') === -1 && newsBlock2[1].indexOf('- ') !== -1) { newsText = 'Terdapat katalis yang bisa mempengaruhi pergerakan. Validasi apakah sudah ter-price-in.'; }
   var invalidation = bias === 'Bearish' ? 'Breakdown di bawah ' + v(s1) + ' menuju ' + v(s2) + ' dengan volume jual meningkat.' : 'Setup batal jika harga breakdown ' + v(s1) + ' dengan volume jual signifikan.';
-  var finalReason = '1. Trend: harga ' + maPosition.charAt(0).toLowerCase() + maPosition.slice(1) + '<br>2. Momentum: RSI ' + idn(rsi14) + ' (' + rsiLabel + ')<br>3. Volume: ' + ratio(volRatio) + ' rata-rata<br>' + (hasFib ? '4. Fibonacci: ' + fibNearest + '<br>5' : '4') + '. Perubahan harga: ' + changeText;
+  var finalReason = '<div>1. Trend: harga ' + maPosition.charAt(0).toLowerCase() + maPosition.slice(1) + '</div><div>2. Momentum: RSI ' + idn(rsi14) + ' (' + rsiLabel + ')</div><div>3. Volume: ' + ratio(volRatio) + ' rata-rata</div>' + (hasFib ? '<div>4. Fibonacci: ' + fibNearest + '</div><div>5. Perubahan harga: ' + changeText + '</div>' : '<div>4. Perubahan harga: ' + changeText + '</div>');
 
   // === BUILD HTML ===
   var html = '';
   // 1. Kesimpulan Cepat
   html += '<div class="decision-card"><strong>Kesimpulan Cepat</strong><div class="decision-grid">';
-  html += '<div><span>Status</span><br><b>' + status + '</b></div>';
-  html += '<div><span>Bias</span><br><b>' + bias + '</b></div>';
-  html += '<div><span>Confidence</span><br><b>' + confidence + '</b></div>';
-  html += '<div><span>Action</span><br><b>' + action + '</b></div>';
+  html += '<div><span>Status</span><b>' + status + '</b></div>';
+  html += '<div><span>Bias</span><b>' + bias + '</b></div>';
+  html += '<div><span>Confidence</span><b>' + confidence + '</b></div>';
+  html += '<div><span>Action</span><b>' + action + '</b></div>';
   html += '</div><div class="key-level">Level kunci: R ' + v(r1) + ' / S ' + v(s1) + '</div></div>';
   // 2. Ringkasan Cepat
   html += '<p><strong>Ringkasan Cepat</strong><br>' + ticker + ' ' + changeText + ' dengan volume ' + ratio(volRatio) + ' rata-rata. Harga ' + maPosition.charAt(0).toLowerCase() + maPosition.slice(1) + ' dan RSI ' + rsiLabel + '. ' + pressureSummary + '.</p>';
   // 3. Skenario Harga
   html += '<div class="scenario-price-grid">';
-  html += '<div class="case-card bear"><span>BEAR</span><br><b>' + bearLevel + '</b><br><p>' + bearDesc + '</p></div>';
-  html += '<div class="case-card base"><span>BASE</span><br><b>' + baseRange + '</b><br><p>' + baseDesc + '</p></div>';
-  html += '<div class="case-card bull"><span>BULL</span><br><b>' + bullLevel + '</b><br><p>' + bullDesc + '</p></div>';
+  html += '<div class="case-card bear"><span>BEAR</span><b>' + bearLevel + '</b><p>' + bearDesc + '</p></div>';
+  html += '<div class="case-card base"><span>BASE</span><b>' + baseRange + '</b><p>' + baseDesc + '</p></div>';
+  html += '<div class="case-card bull"><span>BULL</span><b>' + bullLevel + '</b><p>' + bullDesc + '</p></div>';
   html += '</div>';
   // 4. Setup
   html += '<p><strong>Setup</strong><br>' + setupAction + '</p>';
@@ -1128,44 +1131,48 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   html += '<p><strong>Valid jika</strong><br>' + setupValidFinal + '</p>';
   html += '<p><strong>Batal jika</strong><br>' + setupCancel + '</p>';
   // 5. Moving Average + Momentum
-  html += '<div class="metric-grid"><div><strong>Moving Average</strong><br>';
-  html += 'MA20: ' + v(ma20) + '<br>';
-  html += 'MA50: ' + v(ma50) + '<br>';
-  html += 'MA100: ' + v(ma100) + '<br>';
-  html += 'MA200: ' + v(ma200) + '<br>';
-  html += 'Posisi: ' + maPosition + '</div>';
-  html += '<div><strong>Momentum</strong><br>';
-  html += 'RSI14: ' + idn(rsi14) + ' (' + rsiLabel + ')<br>';
-  html += 'Volume: ' + ratio(volRatio) + ' avg 20D<br>';
-  html += 'Last: ' + idn(last) + '<br>';
-  html += 'High: ' + idn(d.high) + '<br>';
-  html += 'Low: ' + idn(d.low) + '</div></div>';
+  html += '<div class="metric-grid"><div><strong>Moving Average</strong>';
+  html += '<div>MA20: ' + v(ma20) + '</div>';
+  html += '<div>MA50: ' + v(ma50) + '</div>';
+  html += '<div>MA100: ' + v(ma100) + '</div>';
+  html += '<div>MA200: ' + v(ma200) + '</div>';
+  html += '<div>Posisi: ' + maPosition + '</div>';
+  html += '</div>';
+  html += '<div><strong>Momentum</strong>';
+  html += '<div>RSI14: ' + idn(rsi14) + ' (' + rsiLabel + ')</div>';
+  html += '<div>Volume: ' + ratio(volRatio) + ' avg 20D</div>';
+  html += '<div>Last: ' + idn(last) + '</div>';
+  html += '<div>High: ' + idn(d.high) + '</div>';
+  html += '<div>Low: ' + idn(d.low) + '</div>';
+  html += '</div></div>';
   // 6. Volume 3/7D
   html += '<div class="volume-card"><strong>Volume 3/7D</strong><div class="volume-grid">';
-  html += '<div><span>Terakhir</span><br><b>' + volToday + '</b></div>';
-  html += '<div><span>Avg 3D</span><br><b>' + volAvg3 + '</b></div>';
-  html += '<div><span>Avg 7D</span><br><b>' + volAvg7 + '</b></div>';
-  html += '<div><span>vs 7D</span><br><b>' + volVs7 + '</b></div>';
+  html += '<div><span>Terakhir</span><b>' + volToday + '</b></div>';
+  html += '<div><span>Avg 3D</span><b>' + volAvg3 + '</b></div>';
+  html += '<div><span>Avg 7D</span><b>' + volAvg7 + '</b></div>';
+  html += '<div><span>vs 7D</span><b>' + volVs7 + '</b></div>';
   html += '</div><div class="volume-note">' + volCommentary + '</div></div>';
   // 7. Fibonacci (always shown; use — for missing values)
   html += '<div class="fibo-card"><strong>Fibonacci</strong><div class="fibo-grid">';
-  html += '<div><span>Swing H</span><br><b>' + fibSwingH + '</b></div>';
-  html += '<div><span>Swing L</span><br><b>' + fibSwingL + '</b></div>';
-  html += '<div><span>Nearest</span><br><b>' + fibNearest + '</b></div>';
-  html += '<div><span>Trend</span><br><b>' + fibTrend + '</b></div>';
+  html += '<div><span>Swing H</span><b>' + fibSwingH + '</b></div>';
+  html += '<div><span>Swing L</span><b>' + fibSwingL + '</b></div>';
+  html += '<div><span>Nearest</span><b>' + fibNearest + '</b></div>';
+  html += '<div><span>Trend</span><b>' + fibTrend + '</b></div>';
   html += '</div><div class="fibo-grid">';
-  html += '<div class="fibo-level"><span>38,2%</span><br><b>' + fib382 + '</b></div>';
-  html += '<div class="fibo-level"><span>50%</span><br><b>' + fib500 + '</b></div>';
-  html += '<div class="fibo-level"><span>61,8%</span><br><b>' + fib618 + '</b></div>';
-  html += '<div class="fibo-level"><span>78,6%</span><br><b>' + fib786 + '</b></div>';
+  html += '<div class="fibo-level"><span>38,2%</span><b>' + fib382 + '</b></div>';
+  html += '<div class="fibo-level"><span>50%</span><b>' + fib500 + '</b></div>';
+  html += '<div class="fibo-level"><span>61,8%</span><b>' + fib618 + '</b></div>';
+  html += '<div class="fibo-level"><span>78,6%</span><b>' + fib786 + '</b></div>';
   html += '</div><div class="fibo-note">' + fibCommentary + '</div></div>';
   // 8. Resistance + Support
-  html += '<div class="level-grid"><div><strong>Resistance</strong><br>';
-  html += 'R1: ' + v(r1) + '<br>';
-  html += 'R2: ' + v(r2) + '</div>';
-  html += '<div><strong>Support</strong><br>';
-  html += 'S1: ' + v(s1) + '<br>';
-  html += 'S2: ' + v(s2) + '</div></div>';
+  html += '<div class="level-grid"><div><strong>Resistance</strong>';
+  html += '<div>R1: ' + v(r1) + '</div>';
+  html += '<div>R2: ' + v(r2) + '</div>';
+  html += '</div>';
+  html += '<div><strong>Support</strong>';
+  html += '<div>S1: ' + v(s1) + '</div>';
+  html += '<div>S2: ' + v(s2) + '</div>';
+  html += '</div></div>';
   // 9. Skenario Trading
   html += '<div class="scenario-list">';
   html += '<div><strong>Bullish</strong><br><br>' + scenBullish + '</div>';
@@ -1175,34 +1182,34 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   html += '<div class="trade-plan-grid">';
   html += '<div><strong>Entry</strong><br><br>' + entryPlan + '</div>';
   html += '<div><strong>Stop Loss</strong><br><br>' + stopLoss + '</div>';
-  html += '<div><strong>TP</strong><br><br>TP1: ' + tp1 + '<br>TP2: ' + tp2 + '</div>';
+  html += '<div><strong>TP</strong><br><br><div>TP1: ' + tp1 + '</div><div>TP2: ' + tp2 + '</div></div>';
   html += '<div><strong>Catatan</strong><br><br>' + catatan + '</div></div>';
   // 11. Risk Guard
   html += '<p><strong>Risk Guard</strong><br>' + riskGuard + '</p>';
   // 12. Kesimpulan Analitis
   html += '<div class="analytic-summary"><strong>Kesimpulan Analitis</strong><div class="summary-rows">';
-  html += '<div><span>Trend</span><br><b>' + trendSummary + '</b></div>';
-  html += '<div><span>Momentum</span><br><b>' + momentumSummary + '</b></div>';
-  html += '<div><span>Volume</span><br><b>' + volumeSummary + '</b></div>';
-  html += '<div><span>Fibonacci</span><br><b>' + fibSummary + '</b></div>';
-  html += '<div><span>Support</span><br><b>' + v(s1) + '</b></div>';
-  html += '<div><span>Resistance</span><br><b>' + v(r1) + '</b></div>';
-  html += '<div><span>Risiko</span><br><b>' + riskSummary + '</b></div>';
-  html += '<div><span>Rekomendasi</span><br><b>' + action + '</b></div>';
+  html += '<div><span>Trend</span><b>' + trendSummary + '</b></div>';
+  html += '<div><span>Momentum</span><b>' + momentumSummary + '</b></div>';
+  html += '<div><span>Volume</span><b>' + volumeSummary + '</b></div>';
+  html += '<div><span>Fibonacci</span><b>' + fibSummary + '</b></div>';
+  html += '<div><span>Support</span><b>' + v(s1) + '</b></div>';
+  html += '<div><span>Resistance</span><b>' + v(r1) + '</b></div>';
+  html += '<div><span>Risiko</span><b>' + riskSummary + '</b></div>';
+  html += '<div><span>Rekomendasi</span><b>' + action + '</b></div>';
   html += '</div></div>';
   // 13. News/Katalis
-  html += '<p><strong>News/Katalis</strong><br><br>' + newsText + '</p>';
+  html += '<p><strong>News/Katalis</strong><br>' + newsText + '</p>';
   // 14. Invalidasi
-  html += '<p><strong>Invalidasi</strong><br><br>' + invalidation + '</p>';
+  html += '<p><strong>Invalidasi</strong><br>' + invalidation + '</p>';
   // 15. Final (no "Kesimpulan Final" header — directly Status/Bias/Action)
   html += '<div class="analytic-summary"><div class="summary-rows">';
-  html += '<div><span>Status</span><br><b>' + status + '</b></div>';
-  html += '<div><span>Bias</span><br><b>' + bias + '</b></div>';
-  html += '<div><span>Action</span><br><b>' + action + '</b></div>';
+  html += '<div><span>Status</span><b>' + status + '</b></div>';
+  html += '<div><span>Bias</span><b>' + bias + '</b></div>';
+  html += '<div><span>Action</span><b>' + action + '</b></div>';
   html += '</div></div>';
-  html += '<p><strong>Alasan</strong><br><br>' + finalReason + '</p>';
-  html += '<p><strong>Konfirmasi</strong><br><br>' + setupValidFinal + '</p>';
-  html += '<p><strong>Invalidasi</strong><br><br>' + invalidation + '</p>';
+  html += '<p><strong>Alasan</strong><br>' + finalReason + '</p>';
+  html += '<p><strong>Konfirmasi</strong><br>' + setupValidFinal + '</p>';
+  html += '<p><strong>Invalidasi</strong><br>' + invalidation + '</p>';
   return html;
 }
 
