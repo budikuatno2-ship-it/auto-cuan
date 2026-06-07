@@ -4308,7 +4308,7 @@ async function showGroupDetail(groupCode) {
             var pctColor = (m.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
             var pctSign = (m.change_pct || 0) >= 0 ? '+' : '';
             var isAnchor = m.member_type === 'ANCHOR';
-            var tickerLabel = isAnchor ? '\u2B50 ' + m.ticker : m.ticker;
+            var tickerLabel = isAnchor ? m.ticker + ' \u2605' : m.ticker;
             tHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30">';
             tHtml += '<td class="px-2 py-2 text-gray-200 font-semibold whitespace-nowrap">' + tickerLabel + '</td>';
             tHtml += '<td class="px-2 py-2 text-gray-400 whitespace-nowrap max-w-[150px] truncate">' + escapeHtml(m.stock_name || '-') + '</td>';
