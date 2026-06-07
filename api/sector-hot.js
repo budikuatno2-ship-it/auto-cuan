@@ -475,13 +475,15 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     return res.status(200).json({
       success: savedCount > 0,
       message: savedCount > 0 ? 'Screener refresh completed.' : 'Refresh failed to save rows.',
+      ai_enabled: enableAI,
       universe_count: universeCount,
       scanned_count: scannedCount,
       generated_count: results.length,
       saved_count: savedCount,
       failed_count: failedCount,
-      ai_called_count: aiCalledCount,
       ai_attempted: aiAttempted,
+      ai_called_count: aiCalledCount,
+      ai_candidates_sent: aiCandidates.slice(0, 5).map(function(c) { return c.ticker; }),
       ai_diagnostic: aiDiagnostic,
       save_error: saveError || null
     });
@@ -716,9 +718,9 @@ function calculateIndicators(candles) {
   return {
     last_price: round0(last_price),
     change_pct: change_pct,
-    ma20: ma20 ? round0(ma20) : null,
-    ma50: ma50 ? round0(ma50) : null,
-    rsi14: rsi14 ? round2(rsi14) : null,
+    ma20: ma20 !== null ? round0(ma20) : null,
+    ma50: ma50 !== null ? round0(ma50) : null,
+    rsi14: rsi14 !== null ? round2(rsi14) : null,
     volume_ratio_avg20: volume_ratio_avg20,
     support: round0(primarySupport),
     resistance: round0(resistance),
@@ -797,8 +799,9 @@ function scoreAndClassify(data) {
   if (!(data.ma50 && data.last_price >= data.ma50)) { passesAllHardFilters = false; failReasons.push('Di bawah MA50'); }
   if (!(data.rsi14 !== null && data.rsi14 >= 45 && data.rsi14 <= 68)) {
     passesAllHardFilters = false;
-    if (data.rsi14 !== null && data.rsi14 > 68) failReasons.push('RSI terlalu tinggi');
-    else if (data.rsi14 !== null && data.rsi14 < 45) failReasons.push('RSI terlalu rendah');
+    if (data.rsi14 === null) failReasons.push('RSI tidak tersedia');
+    else if (data.rsi14 > 68) failReasons.push('RSI terlalu tinggi');
+    else if (data.rsi14 < 45) failReasons.push('RSI terlalu rendah');
     else failReasons.push('RSI tidak ideal');
   }
   if (!(data.volume_ratio_avg20 >= 1.0)) { passesAllHardFilters = false; failReasons.push('Volume belum cukup'); }
@@ -889,13 +892,81 @@ async function callAIConfirmation(candidates) {
       var errText = '';
       try { errText = await response.text(); } catch(e2) {}
       console.error('Screener AI API error: HTTP ' + errStatus);
-      return { data: [], diagnostic: 'AI HTTP ' + errStatus + (errText ? ': ' + errText.substring(0, 100) : '') };
+      return { data: [], diagnostic: 'AI HTTP ' + errStatus + '. Length: ' + (errText ? errText.length : 0) + '. Body: ' + (errText ? errText.substring(0, 120) : '(empty)') };
     }
 
-    var data = await response.json();
-    var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    var rawText = await response.text();
+    var data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (jsonErr) {
+      return { data: [], diagnostic: 'AI response not JSON. Length: ' + rawText.length + '. Start: ' + rawText.substring(0, 120) };
+    }
+
+    // Extract content from multiple possible response formats
+    var content = null;
+    var responseKeys = Object.keys(data || {}).join(',');
+    var extractPath = '';
+
+    // Format 1: OpenAI standard — data.choices[0].message.content
+    if (!content && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+      content = data.choices[0].message.content;
+      extractPath = 'choices[0].message.content';
+    }
+    // Format 2: data.choices[0].text
+    if (!content && data.choices && data.choices[0] && data.choices[0].text) {
+      content = data.choices[0].text;
+      extractPath = 'choices[0].text';
+    }
+    // Format 3: data.output_text (some providers)
+    if (!content && data.output_text) {
+      content = data.output_text;
+      extractPath = 'output_text';
+    }
+    // Format 4: data.output[0].content[0].text
+    if (!content && data.output && Array.isArray(data.output) && data.output[0]) {
+      var out0 = data.output[0];
+      if (out0.content && Array.isArray(out0.content) && out0.content[0] && out0.content[0].text) {
+        content = out0.content[0].text;
+        extractPath = 'output[0].content[0].text';
+      } else if (out0.text) {
+        content = out0.text;
+        extractPath = 'output[0].text';
+      }
+    }
+    // Format 5: data.content (direct)
+    if (!content && data.content) {
+      content = typeof data.content === 'string' ? data.content : JSON.stringify(data.content);
+      extractPath = 'content';
+    }
+    // Format 6: data.result or data.response
+    if (!content && data.result) {
+      content = typeof data.result === 'string' ? data.result : JSON.stringify(data.result);
+      extractPath = 'result';
+    }
+    if (!content && data.response) {
+      content = typeof data.response === 'string' ? data.response : JSON.stringify(data.response);
+      extractPath = 'response';
+    }
+
+    // Build diagnostic metadata
+    var choicesLen = data.choices ? data.choices.length : 0;
+    var finishReason = (data.choices && data.choices[0]) ? (data.choices[0].finish_reason || data.choices[0].stop_reason || 'n/a') : 'n/a';
+    var hasMessage = (data.choices && data.choices[0] && data.choices[0].message) ? true : false;
+    var msgContentType = hasMessage ? typeof data.choices[0].message.content : 'n/a';
+
     if (!content) {
-      return { data: [], diagnostic: 'AI response empty. Model: ' + model + ', choices: ' + (data.choices ? data.choices.length : 0) };
+      return {
+        data: [],
+        diagnostic: 'AI content empty. Keys: ' + responseKeys +
+          '. choices: ' + choicesLen +
+          '. hasMessage: ' + hasMessage +
+          '. msgContentType: ' + msgContentType +
+          '. finishReason: ' + finishReason +
+          '. Model: ' + model +
+          '. RawLen: ' + rawText.length +
+          '. Preview: ' + rawText.substring(0, 150)
+      };
     }
 
     var jsonStr = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
@@ -917,7 +988,7 @@ async function callAIConfirmation(candidates) {
       return { data: [], diagnostic: 'AI response not array. Type: ' + typeof parsed };
     }
 
-    return { data: parsed, diagnostic: 'OK. Received ' + parsed.length + ' items.' };
+    return { data: parsed, diagnostic: 'OK. Received ' + parsed.length + ' items via ' + extractPath + '. finishReason: ' + finishReason };
   } catch (e) {
     console.error('Screener AI confirmation error:', e.message);
     return { data: [], diagnostic: 'AI exception: ' + e.message };
