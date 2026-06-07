@@ -373,8 +373,11 @@ async function handleScreenerRefresh(req, res, supabase) {
       results = results.map(function(r) { r.final_status = r.status; return r; });
     }
 
-    // 4. Upsert results to Supabase
+    // 4. Save results to Supabase
     var now = new Date().toISOString();
+    var savedCount = 0;
+    var saveError = null;
+
     var upsertRows = results.map(function(r) {
       return {
         ticker: r.ticker,
@@ -400,41 +403,63 @@ async function handleScreenerRefresh(req, res, supabase) {
         status_reason: r.status_reason || null,
         ai_status: r.ai_status || null,
         ai_reason: r.ai_reason || null,
-        ai_red_flags: r.ai_red_flags || null,
+        ai_red_flags: r.ai_red_flags ? '{' + r.ai_red_flags.map(function(f) { return '"' + String(f).replace(/"/g, '\\"') + '"'; }).join(',') + '}' : null,
         final_status: r.final_status,
         calculated_at: now
       };
     });
 
-    // Delete old data and insert fresh
-    await supabase.from('swing_screener_latest').delete().neq('ticker', '');
     if (upsertRows.length > 0) {
-      await supabase.from('swing_screener_latest').insert(upsertRows);
+      // Delete old data first
+      var { error: delError } = await supabase.from('swing_screener_latest').delete().neq('ticker', '');
+      if (delError) {
+        console.error('Screener delete error:', delError.message);
+        saveError = 'Delete failed: ' + delError.message;
+      }
+
+      if (!saveError) {
+        // Insert in batches of 50 to avoid payload limits
+        var batchSize = 50;
+        for (var b = 0; b < upsertRows.length; b += batchSize) {
+          var batch = upsertRows.slice(b, b + batchSize);
+          var { error: insError, data: insData } = await supabase.from('swing_screener_latest').insert(batch).select('ticker');
+          if (insError) {
+            console.error('Screener insert error (batch ' + b + '):', insError.message, insError.details, insError.hint);
+            saveError = 'Insert failed: ' + insError.message + (insError.details ? ' | ' + insError.details : '') + (insError.hint ? ' | Hint: ' + insError.hint : '');
+            break;
+          }
+          savedCount += (insData ? insData.length : batch.length);
+        }
+      }
     }
 
-    // 5. Update meta
-    var metaMsg = 'Refresh completed. Scanned: ' + scannedCount + ', Results: ' + results.length + ', AI confirmed: ' + aiCalledCount + '/' + aiAttempted;
-    if (aiDiagnostic) metaMsg += ' (' + aiDiagnostic + ')';
+    // 5. Update meta — only mark ok if rows were saved
+    var metaStatus = savedCount > 0 ? 'ok' : 'failed';
+    var metaMsg = 'Scanned: ' + scannedCount + ', Generated: ' + results.length + ', Saved: ' + savedCount + ', AI: ' + aiCalledCount + '/' + aiAttempted;
+    if (aiDiagnostic) metaMsg += ' | AI: ' + aiDiagnostic;
+    if (saveError) metaMsg += ' | Error: ' + saveError;
 
     await updateScreenerMeta(supabase, {
       universe_count: universeCount,
       scanned_count: scannedCount,
       failed_count: failedCount,
       ai_called_count: aiCalledCount,
-      status: 'ok',
+      status: metaStatus,
       message: metaMsg
     });
 
     return res.status(200).json({
-      success: true,
-      message: 'Screener refresh completed.',
+      success: savedCount > 0,
+      message: savedCount > 0 ? 'Screener refresh completed.' : 'Refresh failed to save rows.',
       universe_count: universeCount,
       scanned_count: scannedCount,
+      generated_count: results.length,
+      saved_count: savedCount,
       failed_count: failedCount,
-      results_count: results.length,
       ai_called_count: aiCalledCount,
       ai_attempted: aiAttempted,
-      ai_diagnostic: aiDiagnostic
+      ai_diagnostic: aiDiagnostic,
+      save_error: saveError || null
     });
 
   } catch (e) {
