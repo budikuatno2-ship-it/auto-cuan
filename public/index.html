@@ -734,6 +734,7 @@
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Tx 1D</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
@@ -743,7 +744,7 @@
                     </tr>
                 </thead>
                 <tbody id="screenerTableBody">
-                    <tr><td colspan="15" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                    <tr><td colspan="16" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -798,7 +799,8 @@
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Avg Tx 20D</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Tx 1D</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Avg Tx 7D</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
@@ -808,7 +810,7 @@
                         </tr>
                     </thead>
                     <tbody id="nkScreenerTableBody">
-                        <tr><td colspan="16" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                        <tr><td colspan="17" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -4564,6 +4566,13 @@ function formatPrice(val) {
     if (val == null) return '-';
     return 'Rp ' + Math.round(val).toLocaleString('id-ID');
 }
+function formatTxValue(val) {
+    if (val == null) return '-';
+    var b = val / 1e9;
+    if (b >= 1) return 'Rp' + b.toFixed(1).replace('.', ',') + 'B';
+    var m = val / 1e6;
+    return 'Rp' + m.toFixed(0) + 'M';
+}
 function formatVolume(val) {
     if (val == null || val === 0) return '-';
     if (val >= 1000000000) return (val / 1000000000).toFixed(1).replace('.', ',') + ' M';
@@ -4585,10 +4594,19 @@ function startScreenerPolling() {
         // Lightweight check: re-fetch data and compare calculated_at
         loadSwingScreener(true); // silent mode
     }, 8000);
+    // Visibility detection: refresh when page becomes visible and Konglo tab is active
+    document.addEventListener('visibilitychange', _onScreenerVisibilityChange);
+}
+
+function _onScreenerVisibilityChange() {
+    if (document.visibilityState === 'visible' && _currentScreenerType === 'konglo') {
+        loadSwingScreener(true);
+    }
 }
 
 function stopScreenerPolling() {
     if (_screenerPollInterval) { clearInterval(_screenerPollInterval); _screenerPollInterval = null; }
+    document.removeEventListener('visibilitychange', _onScreenerVisibilityChange);
 }
 
 async function loadSwingScreener(silent) {
@@ -4597,7 +4615,7 @@ async function loadSwingScreener(silent) {
 
     // Guard: do not call API if not logged in (same check as Sektor Hot gate)
     if (getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
         return;
     }
 
@@ -4607,7 +4625,7 @@ async function loadSwingScreener(silent) {
 
     // Only show spinner on initial load (not silent poll)
     if (!silent) {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
     }
 
     try {
@@ -4617,7 +4635,7 @@ async function loadSwingScreener(silent) {
         var data = await response.json();
 
         if (response.status === 403 || !data.success) {
-            if (!silent) tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            if (!silent) tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
             return;
         }
 
@@ -4629,7 +4647,7 @@ async function loadSwingScreener(silent) {
         _screenerCache = data;
 
         if (!data.success || !data.results || data.results.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
             return;
         }
 
@@ -4667,7 +4685,7 @@ async function loadSwingScreener(silent) {
 
         renderScreenerTable(data.results);
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
     }
 }
 
@@ -4693,7 +4711,7 @@ function renderScreenerTable(results) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Tidak ada saham dengan status ini.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Tidak ada saham dengan status ini.</td></tr>';
         return;
     }
 
@@ -4733,6 +4751,7 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatTxValue(r.tx_value_1d) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high) + '</td>';
         html += '<td class="px-2 py-2 text-right text-red-400/80 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
         html += '<td class="px-2 py-2 text-right text-emerald-400/80 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
@@ -4810,14 +4829,14 @@ async function loadNkScreenerResults() {
 
     // Guard: do not call API if not logged in
     if (getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
         return;
     }
 
     var userId = localStorage.getItem('autocuan_user_id') || '';
     var username = getUsername();
 
-    tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
 
     try {
         var response = await fetch('/api/sector-hot?action=nk-screener-results', {
@@ -4826,14 +4845,14 @@ async function loadNkScreenerResults() {
         var data = await response.json();
 
         if (response.status === 403 || !data.success) {
-            tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
             return;
         }
 
         _nkScreenerCache = data;
 
         if (!data.results || data.results.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
             // Still update meta
             updateNkScreenerMeta(data.meta);
             return;
@@ -4841,6 +4860,24 @@ async function loadNkScreenerResults() {
 
         updateNkScreenerMeta(data.meta);
         renderNkScreenerTable(data.results);
+
+        // TASK 7: Show info note if no Swing Ready rows
+        var nkInfoNote = document.getElementById('nkNoSwingReadyNote');
+        var hasSwingReady = data.results.some(function(r) { return r.status === 'Swing Ready'; });
+        if (!hasSwingReady) {
+            if (!nkInfoNote) {
+                var noteDiv = document.createElement('div');
+                noteDiv.id = 'nkNoSwingReadyNote';
+                noteDiv.className = 'text-xs text-gray-500 mb-2 italic';
+                noteDiv.textContent = 'Tidak ada Swing Ready hari ini. Menampilkan kandidat terbaik dari Watchlist/Rebound/Speculative.';
+                var tableWrap = document.getElementById('nkScreenerTableWrap');
+                if (tableWrap && tableWrap.parentNode) {
+                    tableWrap.parentNode.insertBefore(noteDiv, tableWrap);
+                }
+            }
+        } else {
+            if (nkInfoNote) nkInfoNote.remove();
+        }
 
         // Auto-poll while scanning
         if (data.meta && (data.meta.status === 'scanning' || data.meta.status === 'finalizing')) {
@@ -4862,7 +4899,7 @@ async function loadNkScreenerResults() {
             progressEl.classList.add('hidden');
         }
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
     }
 }
 
@@ -4906,7 +4943,7 @@ function renderNkScreenerTable(results) {
     if (!tbody) return;
 
     if (!results || results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
         return;
     }
 
@@ -4916,7 +4953,7 @@ function renderNkScreenerTable(results) {
         filtered = results.filter(function(r) { return r.status === _nkScreenerFilter; });
     }
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Tidak ada data untuk filter ini.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Tidak ada data untuk filter ini.</td></tr>';
         return;
     }
 
@@ -4934,13 +4971,6 @@ function renderNkScreenerTable(results) {
         if (r.status === 'Swing Ready') statusClass = 'bg-emerald-500/15 text-emerald-400';
         else if (r.status === 'Watchlist') statusClass = 'bg-blue-500/15 text-blue-400';
         else if (r.status === 'Speculative') statusClass = 'bg-amber-500/15 text-amber-400';
-
-        // Format avg tx value as Rp X.X B
-        var txValStr = '-';
-        if (r.avg_transaction_value_20d) {
-            var txB = r.avg_transaction_value_20d / 1e9;
-            txValStr = 'Rp ' + txB.toFixed(1).replace('.', ',') + ' B';
-        }
 
         // RSI display (0 shows as 0.0, null shows as -)
         var rsiStr = '-';
@@ -4964,7 +4994,8 @@ function renderNkScreenerTable(results) {
         html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + rsiStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + txValStr + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatTxValue(r.tx_value_1d) + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatTxValue(r.avg_tx_value_7d) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + entryStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-red-400 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
