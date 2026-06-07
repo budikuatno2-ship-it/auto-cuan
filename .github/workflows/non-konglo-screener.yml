@@ -1,0 +1,101 @@
+name: Non-Konglo Screener Scheduler
+
+# This workflow acts as an external scheduler for the Non-Konglo Swing Screener.
+# It calls the Vercel endpoint repeatedly during the target window (Mon-Fri 19:30-21:30 WIB).
+# The server-side endpoint handles idempotency, batching, and finalization.
+#
+# Required GitHub Secrets:
+#   AUTOCUAN_SCREENER_URL - Base URL of the deployment (e.g. Vercel Preview or Production URL)
+#   CRON_SECRET           - Must match the Vercel CRON_SECRET environment variable
+#
+# Manual Preview QA:
+#   Use workflow_dispatch to trigger manually. Set force_mode=true to bypass
+#   the server-side WIB time-window guard (useful for daytime testing).
+
+on:
+  schedule:
+    # Every 5 minutes during UTC 12:00-14:55, Monday-Friday
+    # This covers WIB 19:00-21:55 (broader than 19:30-21:30 WIB).
+    # The server-side time-window guard will skip calls outside 19:30-21:30 WIB.
+    - cron: '*/5 12-14 * * 1-5'
+
+  workflow_dispatch:
+    inputs:
+      force_mode:
+        description: 'Bypass WIB time-window guard (for Preview QA only)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  run-non-konglo-screener:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Validate secrets
+        run: |
+          if [ -z "$SCREENER_URL" ]; then
+            echo "::error::AUTOCUAN_SCREENER_URL secret is not configured"
+            exit 1
+          fi
+          if [ -z "$CRON_KEY" ]; then
+            echo "::error::CRON_SECRET secret is not configured"
+            exit 1
+          fi
+          echo "Secrets validated OK"
+        env:
+          SCREENER_URL: ${{ secrets.AUTOCUAN_SCREENER_URL }}
+          CRON_KEY: ${{ secrets.CRON_SECRET }}
+
+      - name: Call Non-Konglo screener orchestrator
+        id: call_screener
+        run: |
+          # Build URL with force param if needed
+          FORCE="${{ github.event.inputs.force_mode }}"
+          ENDPOINT="${SCREENER_URL}/api/sector-hot?action=nk-screener-run"
+          if [ "$FORCE" = "true" ]; then
+            ENDPOINT="${ENDPOINT}&force=1"
+            echo "Force mode enabled (Preview QA)"
+          fi
+
+          # Call the endpoint (secrets masked by using env vars, not inline)
+          HTTP_CODE=$(curl --silent --output /tmp/response.json --write-out "%{http_code}" \
+            --max-time 55 \
+            -H "Authorization: Bearer ${CRON_KEY}" \
+            "$ENDPOINT")
+
+          echo "HTTP status: ${HTTP_CODE}"
+
+          # Check HTTP success
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::Request failed with HTTP ${HTTP_CODE}"
+            # Show response body (safe - server never includes secrets in response)
+            cat /tmp/response.json 2>/dev/null || true
+            exit 1
+          fi
+
+          # Parse and display safe summary
+          echo "=== Response Summary ==="
+          # Extract only safe fields: success, status, message, phase, published, batchNumber
+          python3 -c "
+          import json, sys
+          try:
+              with open('/tmp/response.json') as f:
+                  data = json.load(f)
+              safe_keys = ['success', 'status', 'message', 'phase', 'published',
+                           'batchNumber', 'tickersProcessed', 'passed',
+                           'totalProcessed', 'totalPassed', 'universe', 'batches',
+                           'scanDate', 'allDone', 'topTicker', 'topScore']
+              for k in safe_keys:
+                  if k in data:
+                      print(f'  {k}: {data[k]}')
+          except Exception as e:
+              print(f'  (could not parse response: {e})')
+          " || true
+        env:
+          SCREENER_URL: ${{ secrets.AUTOCUAN_SCREENER_URL }}
+          CRON_KEY: ${{ secrets.CRON_SECRET }}

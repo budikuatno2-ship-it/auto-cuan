@@ -394,6 +394,19 @@ async function handleNkScreenerRun(req, res, supabase) {
   }
 
   try {
+    // === WIB TIME-WINDOW GUARD ===
+    // Automatic scheduled runs only proceed Mon-Fri 19:30-21:30 WIB.
+    // Manual Preview QA can bypass with force=1 query param.
+    var forceMode = req.query.force === '1';
+
+    if (!forceMode && !isWithinNkRunWindow()) {
+      return res.status(200).json({
+        success: true,
+        status: 'skipped_outside_window',
+        message: 'Outside Non-Konglo screener run window (Mon-Fri 19:30-21:30 WIB).'
+      });
+    }
+
     var today = getWibDateString();
 
     // Check current meta state
@@ -410,7 +423,7 @@ async function handleNkScreenerRun(req, res, supabase) {
 
     // Case 2: Scan already completed today → nothing to do
     if (meta.status === 'completed') {
-      return res.status(200).json({ success: true, message: 'Scan already completed for ' + today, phase: 'done' });
+      return res.status(200).json({ success: true, status: 'already_completed', message: 'Scan already completed for ' + today, phase: 'done' });
     }
 
     // Case 3: Scanning in progress → check if batches remain
@@ -432,6 +445,34 @@ async function handleNkScreenerRun(req, res, supabase) {
     console.error('nk-screener-run error:', e.message);
     return res.status(200).json({ success: false, error: 'Orchestrator error: ' + e.message });
   }
+}
+
+// === WIB TIME-WINDOW CHECK ===
+// Returns true if current time is Mon-Fri 19:30-21:30 WIB
+function isWithinNkRunWindow() {
+  var now = new Date();
+  // Convert to WIB (UTC+7)
+  var wibOffset = 7 * 60; // minutes
+  var utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  var wibMinutes = utcMinutes + wibOffset;
+  var wibHour = Math.floor(wibMinutes / 60) % 24;
+  var wibMin = wibMinutes % 60;
+
+  // Day of week in WIB (handle day rollover)
+  var wibDay = now.getUTCDay();
+  if (wibMinutes >= 24 * 60) {
+    wibDay = (wibDay + 1) % 7;
+  }
+
+  // Must be Monday(1) - Friday(5)
+  if (wibDay < 1 || wibDay > 5) return false;
+
+  // Must be between 19:30 and 21:30 WIB
+  var wibTotalMin = wibHour * 60 + wibMin;
+  var startMin = 19 * 60 + 30; // 19:30
+  var endMin = 21 * 60 + 30;   // 21:30
+
+  return wibTotalMin >= startMin && wibTotalMin <= endMin;
 }
 
 // === NK SCREENER START: Build universe, create batches ===
