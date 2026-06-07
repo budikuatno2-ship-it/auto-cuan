@@ -301,7 +301,8 @@ async function handleScreenerRefresh(req, res, supabase) {
           risk_reward: analysis.risk_reward,
           invalidation: analysis.invalidation,
           score: scoring.score,
-          status: scoring.status
+          status: scoring.status,
+          status_reason: scoring.status_reason
         });
       } catch (e) {
         failedCount++;
@@ -396,6 +397,7 @@ async function handleScreenerRefresh(req, res, supabase) {
         score: r.score,
         status: r.status,
         invalidation: r.invalidation,
+        status_reason: r.status_reason || null,
         ai_status: r.ai_status || null,
         ai_reason: r.ai_reason || null,
         ai_red_flags: r.ai_red_flags || null,
@@ -733,35 +735,49 @@ function scoreAndClassify(data) {
 
   score = Math.max(0, Math.min(100, score));
 
-  // CLASSIFICATION
+  // CLASSIFICATION with hard filters and reason tracking
   var status = 'Invalid';
+  var status_reason = '';
 
-  if (score >= 80 &&
-      data.ma20 && data.last_price >= data.ma20 * 0.99 &&
-      data.ma50 && data.last_price >= data.ma50 &&
-      data.rsi14 !== null && data.rsi14 >= 45 && data.rsi14 <= 68 &&
-      data.risk_reward >= 1.5 &&
-      data._slDistance <= 5 &&
-      !data._isLargeRed &&
-      !data._overextended &&
-      !data._belowSupport) {
+  // Check hard filters for Swing Ready
+  var passesAllHardFilters = true;
+  var failReasons = [];
+
+  if (score < 80) { passesAllHardFilters = false; failReasons.push('Score < 80'); }
+  if (!(data.ma20 && data.last_price >= data.ma20 * 0.99)) { passesAllHardFilters = false; failReasons.push('Di bawah MA20'); }
+  if (!(data.ma50 && data.last_price >= data.ma50)) { passesAllHardFilters = false; failReasons.push('Di bawah MA50'); }
+  if (!(data.rsi14 !== null && data.rsi14 >= 45 && data.rsi14 <= 68)) {
+    passesAllHardFilters = false;
+    if (data.rsi14 !== null && data.rsi14 > 68) failReasons.push('RSI terlalu tinggi');
+    else if (data.rsi14 !== null && data.rsi14 < 45) failReasons.push('RSI terlalu rendah');
+    else failReasons.push('RSI tidak ideal');
+  }
+  if (!(data.volume_ratio_avg20 >= 1.0)) { passesAllHardFilters = false; failReasons.push('Volume belum cukup'); }
+  if (!(data.risk_reward >= 1.5)) { passesAllHardFilters = false; failReasons.push('RR kurang layak'); }
+  if (!(data._slDistance <= 5)) { passesAllHardFilters = false; failReasons.push('SL terlalu jauh'); }
+  if (data._isLargeRed) { passesAllHardFilters = false; failReasons.push('Candle distribusi'); }
+  if (data._overextended) { passesAllHardFilters = false; failReasons.push('Overextended'); }
+  if (data._belowSupport) { passesAllHardFilters = false; failReasons.push('Breakdown support'); }
+
+  if (passesAllHardFilters) {
     status = 'Swing Ready';
-  } else if (score >= 65 && score < 80) {
-    status = 'Watchlist';
+    status_reason = 'Setup lengkap: trend, momentum, volume, RR layak.';
   } else if (data.rsi14 !== null && data.rsi14 >= 30 && data.rsi14 <= 40 &&
              data.last_price > data.support &&
              data.volume_ratio_avg20 >= 0.8 &&
              score >= 40) {
     status = 'Rebound Speculative';
+    status_reason = 'Potensi rebound dari support. Risiko tinggi.';
+  } else if (score >= 65) {
+    status = 'Watchlist';
+    // Build reason from first 2 fail reasons
+    status_reason = failReasons.length > 0 ? 'Tunggu: ' + failReasons.slice(0, 2).join(', ') : 'Menunggu konfirmasi.';
   } else {
     status = 'Invalid';
+    status_reason = failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : 'Setup tidak memenuhi kriteria.';
   }
 
-  if (score >= 80 && status !== 'Swing Ready') {
-    status = 'Watchlist';
-  }
-
-  return { score: score, status: status };
+  return { score: score, status: status, status_reason: status_reason };
 }
 
 // ============================================================

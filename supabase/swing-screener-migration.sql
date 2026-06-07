@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS swing_screener_latest (
   score INTEGER DEFAULT 0,
   status TEXT DEFAULT 'Invalid',  -- 'Swing Ready', 'Watchlist', 'Rebound Speculative', 'Invalid'
   invalidation TEXT,              -- e.g. "Close < 1850"
+  status_reason TEXT,             -- e.g. "Tunggu: Volume belum cukup"
   -- AI confirmation (nullable until AI runs)
   ai_status TEXT,                 -- 'CONFIRMED', 'CAUTION', 'REJECT', NULL
   ai_reason TEXT,
@@ -79,3 +80,19 @@ ALTER TABLE swing_screener_meta ENABLE ROW LEVEL SECURITY;
 
 -- If you ever need authenticated Supabase users to read directly
 -- (not via our API), you can add a policy later. For now, locked down.
+
+
+
+-- ============================================================
+-- PATCH: Add status_reason column if table already exists
+-- Safe to re-run (IF NOT EXISTS equivalent via DO block)
+-- ============================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'swing_screener_latest' AND column_name = 'status_reason'
+  ) THEN
+    ALTER TABLE swing_screener_latest ADD COLUMN status_reason TEXT;
+  END IF;
+END $$;
