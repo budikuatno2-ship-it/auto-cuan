@@ -324,6 +324,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     // 3. AI Confirmation for radar candidates (only if enableAI=true)
     //    Radar = READY, REBOUND, WATCH (exclude INVALID/UNKNOWN)
     //    Priority: READY > REBOUND > WATCH, then higher score
+    //    Batched: smaller groups to avoid finish_reason=length
     var aiCalledCount = 0;
     var aiAttempted = 0;
     var aiEligibleCount = 0;
@@ -332,6 +333,9 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiResponseDebug = null;
     var aiParseDebug = null;
     var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '30', 10);
+    var aiBatchSize = parseInt(process.env.SCREENER_AI_BATCH_SIZE || '5', 10);
+    var maxOutputTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '2000', 10);
+    var aiModelUsed = process.env.SCREENER_AI_MODEL || 'deepseek-v4-flash';
 
     // Filter: only radar statuses using normalized canonical values
     var aiEligible = results.filter(function(r) {
@@ -352,18 +356,71 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiCandidates = aiEligible.slice(0, maxCandidates);
     aiSkippedCount = Math.max(0, aiEligibleCount - aiCandidates.length);
 
+    // Batch tracking
+    var aiBatchCount = 0;
+    var aiBatchesAttempted = 0;
+    var aiBatchesSucceeded = 0;
+    var aiBatchesFailed = 0;
+    var aiBatchDiagnostics = [];
+    var aiUsageDebug = null;
+
     if (enableAI && aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
       aiAttempted = aiCandidates.length;
-      var aiResult = await callAIConfirmation(aiCandidates);
-      var aiResults = aiResult.data || [];
-      aiDiagnostic = aiResult.diagnostic || '';
-      aiResponseDebug = aiResult.ai_response_debug || null;
-      aiParseDebug = aiResult.ai_parse_debug || null;
+
+      // Split candidates into batches
+      var batches = [];
+      for (var bi = 0; bi < aiCandidates.length; bi += aiBatchSize) {
+        batches.push(aiCandidates.slice(bi, bi + aiBatchSize));
+      }
+      aiBatchCount = batches.length;
+
+      var allAIResults = [];
+      var lastUsage = null;
+
+      for (var batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+        aiBatchesAttempted++;
+        var batchCandidates = batches[batchIdx];
+        var batchTickers = batchCandidates.map(function(c) { return c.ticker; });
+
+        var aiResult = await callAIConfirmation(batchCandidates);
+
+        // Collect usage from last batch for diagnostics
+        if (aiResult.usage) lastUsage = aiResult.usage;
+
+        if (aiResult.data && aiResult.data.length > 0) {
+          aiBatchesSucceeded++;
+          allAIResults = allAIResults.concat(aiResult.data);
+          aiBatchDiagnostics.push('Batch ' + (batchIdx + 1) + '/' + batches.length + ': OK ' + aiResult.data.length + ' items (' + batchTickers.join(',') + ')');
+        } else {
+          aiBatchesFailed++;
+          var batchDiag = 'Batch ' + (batchIdx + 1) + '/' + batches.length + ': FAILED (' + batchTickers.join(',') + ') — ' + (aiResult.diagnostic || 'unknown');
+          aiBatchDiagnostics.push(batchDiag);
+          // Capture debug from first failed batch only
+          if (!aiResponseDebug && aiResult.ai_response_debug) aiResponseDebug = aiResult.ai_response_debug;
+          if (!aiParseDebug && aiResult.ai_parse_debug) aiParseDebug = aiResult.ai_parse_debug;
+        }
+
+        // Small delay between batches to avoid rate limiting
+        if (batchIdx < batches.length - 1) {
+          await delay(500);
+        }
+      }
+
+      // Set usage debug from last available
+      if (lastUsage) {
+        aiUsageDebug = {
+          prompt_tokens: lastUsage.prompt_tokens || 0,
+          completion_tokens: lastUsage.completion_tokens || 0,
+          total_tokens: lastUsage.total_tokens || 0,
+          cached_tokens: lastUsage.cached_tokens || lastUsage.prompt_cache_hit_tokens || 0,
+          finish_reason: lastUsage._finish_reason || 'n/a'
+        };
+      }
 
       // Merge AI results back — normalize ticker matching (case-insensitive, trim, remove .JK)
       var aiMap = {};
-      if (aiResults.length > 0) {
-        aiResults.forEach(function(ar) {
+      if (allAIResults.length > 0) {
+        allAIResults.forEach(function(ar) {
           if (ar && ar.ticker && ar.ai_status) {
             var normalizedTicker = String(ar.ticker).trim().toUpperCase().replace(/\.JK$/i, '');
             aiMap[normalizedTicker] = ar;
@@ -373,7 +430,6 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
 
       // Track unmatched AI tickers for diagnostics
       var matchedTickers = [];
-      var unmatchedAI = Object.keys(aiMap);
 
       results = results.map(function(r) {
         var normalizedR = String(r.ticker).trim().toUpperCase();
@@ -402,11 +458,12 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         return r;
       });
 
-      // Append match diagnostic
-      if (aiResults.length > 0 && aiCalledCount === 0) {
-        aiDiagnostic += ' | Ticker match failed. AI returned: ' + aiResults.slice(0, 3).map(function(a) { return a.ticker; }).join(',') + '. Expected: ' + aiCandidates.slice(0, 3).map(function(c) { return c.ticker; }).join(',');
+      // Build diagnostic summary
+      aiDiagnostic = 'Batches: ' + aiBatchesSucceeded + '/' + aiBatchCount + ' succeeded.';
+      if (allAIResults.length > 0 && aiCalledCount === 0) {
+        aiDiagnostic += ' | Ticker match failed. AI returned: ' + allAIResults.slice(0, 3).map(function(a) { return a.ticker; }).join(',') + '. Expected: ' + aiCandidates.slice(0, 3).map(function(c) { return c.ticker; }).join(',');
       } else if (aiCalledCount > 0) {
-        aiDiagnostic += ' | Matched ' + aiCalledCount + '/' + aiResults.length + ' tickers.';
+        aiDiagnostic += ' | Matched ' + aiCalledCount + '/' + allAIResults.length + ' tickers.';
       }
       if (aiSkippedCount > 0) {
         aiDiagnostic += ' | Skipped ' + aiSkippedCount + ' eligible candidates (cap=' + maxCandidates + ').';
@@ -502,6 +559,10 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       success: savedCount > 0,
       message: savedCount > 0 ? 'Screener refresh completed.' : 'Refresh failed to save rows.',
       ai_enabled: enableAI,
+      ai_model_used: aiModelUsed,
+      ai_max_candidates_used: maxCandidates,
+      ai_max_output_tokens_used: maxOutputTokens,
+      ai_batch_size: aiBatchSize,
       universe_count: universeCount,
       scanned_count: scannedCount,
       generated_count: results.length,
@@ -512,6 +573,12 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_called_count: aiCalledCount,
       ai_candidates_sent: aiCandidates.map(function(c) { return c.ticker; }),
       ai_skipped_count: aiSkippedCount,
+      ai_batch_count: aiBatchCount,
+      ai_batches_attempted: aiBatchesAttempted,
+      ai_batches_succeeded: aiBatchesSucceeded,
+      ai_batches_failed: aiBatchesFailed,
+      ai_batch_diagnostics: aiBatchDiagnostics.length > 0 ? aiBatchDiagnostics : undefined,
+      ai_usage_debug: aiUsageDebug || undefined,
       ai_diagnostic: aiDiagnostic,
       ai_response_debug: aiResponseDebug || undefined,
       ai_parse_debug: aiParseDebug || undefined,
@@ -870,7 +937,7 @@ async function callAIConfirmation(candidates) {
   var apiKey = process.env.SCREENER_AI_API_KEY;
   var baseUrl = process.env.SCREENER_AI_BASE_URL || 'https://api.codecrafters.id/v1';
   var model = process.env.SCREENER_AI_MODEL || 'deepseek-v4-flash';
-  var maxTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '700', 10);
+  var maxTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '2000', 10);
 
   if (!apiKey) return { data: [], diagnostic: 'API key missing.' };
 
@@ -1054,7 +1121,8 @@ async function callAIConfirmation(candidates) {
       return {
         data: [],
         diagnostic: 'AI content empty. See ai_response_debug for details.',
-        ai_response_debug: debugObj
+        ai_response_debug: debugObj,
+        usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason }
       };
     }
 
@@ -1124,17 +1192,18 @@ async function callAIConfirmation(candidates) {
               repair_attempted: true,
               second_parse_error: repairErr.message,
               raw_preview_300: jsonStr.substring(0, 300)
-            }
+            },
+            usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason }
           };
         }
       }
     }
 
     if (!Array.isArray(parsed)) {
-      return { data: [], diagnostic: 'AI response not array. Type: ' + typeof parsed };
+      return { data: [], diagnostic: 'AI response not array. Type: ' + typeof parsed, usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason } };
     }
 
-    return { data: parsed, diagnostic: 'OK. Received ' + parsed.length + ' items via ' + extractPath + '. finishReason: ' + finishReason + (repairAttempted ? '. JSON repaired.' : '') };
+    return { data: parsed, diagnostic: 'OK. Received ' + parsed.length + ' items via ' + extractPath + '. finishReason: ' + finishReason + (repairAttempted ? '. JSON repaired.' : ''), usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason } };
   } catch (e) {
     console.error('Screener AI confirmation error:', e.message);
     return { data: [], diagnostic: 'AI exception: ' + e.message };
