@@ -321,25 +321,50 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       return res.status(200).json({ success: false, error: 'All fetches failed.' });
     }
 
-    // 3. AI Confirmation for top candidates (only if enableAI=true)
+    // 3. AI Confirmation for radar candidates (only if enableAI=true)
+    //    Radar = Swing Ready, Watchlist, Rebound Speculative (exclude Invalid)
+    //    Priority: Swing Ready > Rebound Speculative > Watchlist, then higher score
     var aiCalledCount = 0;
     var aiAttempted = 0;
+    var aiEligibleCount = 0;
+    var aiSkippedCount = 0;
     var aiDiagnostic = '';
     var aiResponseDebug = null;
     var aiParseDebug = null;
-    var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '15', 10);
-    var aiCandidates = results
-      .filter(function(r) { return r.score >= 78; })
-      .sort(function(a, b) { return b.score - a.score; })
-      .slice(0, maxCandidates);
+    var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '30', 10);
+
+    // Filter: only radar statuses (exclude Invalid)
+    var radarStatuses = ['Swing Ready', 'Watchlist', 'Rebound Speculative'];
+    var aiEligible = results.filter(function(r) {
+      return radarStatuses.indexOf(r.status) !== -1;
+    });
+    aiEligibleCount = aiEligible.length;
+
+    // Priority sort: Swing Ready=1, Rebound Speculative=2, Watchlist=3, then score desc
+    function getStatusPriority(status) {
+      if (status === 'Swing Ready') return 1;
+      if (status === 'Rebound Speculative') return 2;
+      if (status === 'Watchlist') return 3;
+      return 4;
+    }
+    aiEligible.sort(function(a, b) {
+      var pa = getStatusPriority(a.status);
+      var pb = getStatusPriority(b.status);
+      if (pa !== pb) return pa - pb;
+      return b.score - a.score;
+    });
+
+    // Apply safety cap
+    var aiCandidates = aiEligible.slice(0, maxCandidates);
+    aiSkippedCount = Math.max(0, aiEligibleCount - aiCandidates.length);
 
     if (enableAI && aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
       aiAttempted = aiCandidates.length;
       var aiResult = await callAIConfirmation(aiCandidates);
       var aiResults = aiResult.data || [];
       aiDiagnostic = aiResult.diagnostic || '';
-      var aiResponseDebug = aiResult.ai_response_debug || null;
-      var aiParseDebug = aiResult.ai_parse_debug || null;
+      aiResponseDebug = aiResult.ai_response_debug || null;
+      aiParseDebug = aiResult.ai_parse_debug || null;
 
       // Merge AI results back — normalize ticker matching (case-insensitive, trim, remove .JK)
       var aiMap = {};
@@ -389,6 +414,9 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       } else if (aiCalledCount > 0) {
         aiDiagnostic += ' | Matched ' + aiCalledCount + '/' + aiResults.length + ' tickers.';
       }
+      if (aiSkippedCount > 0) {
+        aiDiagnostic += ' | Skipped ' + aiSkippedCount + ' eligible candidates (cap=' + maxCandidates + ').';
+      }
 
     } else if (!enableAI) {
       aiDiagnostic = 'AI disabled for this refresh (ai=0).';
@@ -397,7 +425,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       aiDiagnostic = 'AI skipped: SCREENER_AI_API_KEY not configured.';
       results = results.map(function(r) { r.final_status = r.status; return r; });
     } else {
-      aiDiagnostic = aiCandidates.length === 0 ? 'No candidates with score >= 78.' : '';
+      aiDiagnostic = aiEligibleCount === 0 ? 'No radar candidates (all Invalid).' : 'No eligible candidates after filtering.';
       results = results.map(function(r) { r.final_status = r.status; return r; });
     }
 
@@ -485,9 +513,11 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       generated_count: results.length,
       saved_count: savedCount,
       failed_count: failedCount,
+      ai_eligible_count: aiEligibleCount,
       ai_attempted: aiAttempted,
       ai_called_count: aiCalledCount,
-      ai_candidates_sent: aiCandidates.slice(0, 5).map(function(c) { return c.ticker; }),
+      ai_candidates_sent: aiCandidates.slice(0, 10).map(function(c) { return c.ticker; }),
+      ai_skipped_count: aiSkippedCount,
       ai_diagnostic: aiDiagnostic,
       ai_response_debug: aiResponseDebug || undefined,
       ai_parse_debug: aiParseDebug || undefined,
