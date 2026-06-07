@@ -678,6 +678,10 @@
         <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
             <p class="text-[11px] text-amber-400/80 leading-relaxed"><strong>Disclaimer:</strong> Ini bukan rekomendasi beli. Screener ini hanya watchlist setup high-probability untuk swing 3&ndash;7 hari. Selalu lakukan analisis sendiri dan kelola risiko. Invalid jika harga menembus level invalidasi.</p>
         </div>
+        <!-- Setup Score legend -->
+        <div class="bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
+            <p class="text-[11px] text-gray-400 leading-relaxed"><strong class="text-gray-300">Setup Score (0&ndash;100)</strong> adalah skor kualitas teknikal berdasarkan trend, momentum, volume, dan risk/reward. <strong>Bukan winrate</strong> atau jaminan profit. Score tinggi + status WATCH = ada filter yang belum terpenuhi (lihat kolom Catatan).</p>
+        </div>
         <!-- Stats row -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="screenerStats">
             <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
@@ -713,7 +717,7 @@
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
                         <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
                         <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">AI</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
@@ -724,7 +728,7 @@
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
-                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Invalid jika</th>
+                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
                     </tr>
                 </thead>
                 <tbody id="screenerTableBody">
@@ -4631,7 +4635,7 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-right text-emerald-400/80 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
         html += '<td class="px-2 py-2 text-right text-emerald-400/60 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
-        html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate">' + escapeHtml(r.invalidation || '-') + '</td>';
+        html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[150px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(r.status_reason || r.invalidation || '-') + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;
