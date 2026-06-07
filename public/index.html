@@ -4852,7 +4852,13 @@ async function loadNkScreenerResults() {
         _nkScreenerCache = data;
 
         if (!data.results || data.results.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
+            var emptyMsg = 'Data screener belum tersedia. Menunggu kalkulasi pertama.';
+            if (data.meta && data.meta.status === 'failed' && data.meta.message) {
+                emptyMsg = data.meta.message;
+            } else if (data.meta && data.meta.status === 'scanning') {
+                emptyMsg = 'Scan sedang berjalan...';
+            }
+            tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">' + escapeHtml(emptyMsg) + '</td></tr>';
             // Still update meta
             updateNkScreenerMeta(data.meta);
             return;
