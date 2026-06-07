@@ -25,7 +25,7 @@ ON CONFLICT (group_code) DO UPDATE SET
 DELETE FROM public.sector_hot_group_members WHERE group_code = 'KALBE' AND ticker IN ('SIDO', 'TSPC');
 -- CHAROEN_POKPHAND: remove CPRO (not provided)
 DELETE FROM public.sector_hot_group_members WHERE group_code = 'CHAROEN_POKPHAND' AND ticker = 'CPRO';
--- WILMAR: remove SIMP, LSIP (not provided)
+-- WILMAR: remove SIMP, LSIP (belongs to SALIM, not WILMAR)
 DELETE FROM public.sector_hot_group_members WHERE group_code = 'WILMAR' AND ticker IN ('SIMP', 'LSIP');
 -- CIPUTRA: remove DUTI (not in CIPUTRA provided; DUTI belongs to SINARMAS)
 DELETE FROM public.sector_hot_group_members WHERE group_code = 'CIPUTRA' AND ticker = 'DUTI';
@@ -49,14 +49,14 @@ DELETE FROM public.sector_hot_group_members WHERE group_code = 'ADARO' AND ticke
 DELETE FROM public.sector_hot_group_members WHERE group_code = 'TRIPUTRA' AND ticker = 'TAPG';
 -- MAYORA: remove CEKA (not provided)
 DELETE FROM public.sector_hot_group_members WHERE group_code = 'MAYORA' AND ticker = 'CEKA';
--- SALIM: remove MPPA, DNET (not in SALIM provided; DNET belongs to DJARUM)
-DELETE FROM public.sector_hot_group_members WHERE group_code = 'SALIM' AND ticker IN ('MPPA', 'DNET');
+-- SALIM: remove ACES (not in provided mapping), MPPA, DNET
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'SALIM' AND ticker IN ('ACES', 'MPPA', 'DNET');
+-- TOBA: remove NCKL (not in provided mapping)
+DELETE FROM public.sector_hot_group_members WHERE group_code = 'TOBA' AND ticker = 'NCKL';
 -- LIPPO: remove MPPA (not provided for LIPPO)
 DELETE FROM public.sector_hot_group_members WHERE group_code = 'LIPPO' AND ticker = 'MPPA';
 -- DJARUM: remove ARTO, HMSP (not in DJARUM provided)
 DELETE FROM public.sector_hot_group_members WHERE group_code = 'DJARUM' AND ticker IN ('ARTO', 'HMSP');
--- TOBA: remove PTRO (PTRO belongs to BARITO)
-DELETE FROM public.sector_hot_group_members WHERE group_code = 'TOBA' AND ticker = 'PTRO';
 
 -- =============================================
 -- STEP 3: INSERT/UPDATE full provided mapping
@@ -110,11 +110,16 @@ INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, mem
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
--- SALIM (provided: INDF, ICBP, ACES)
+-- SALIM (provided: INDF, ICBP, SIMP, LSIP, IMAS, PANI, CMRY, CSAP)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
 ('SALIM', 'INDF', 'Indofood Sukses Makmur Tbk.', 'ANCHOR', 1),
 ('SALIM', 'ICBP', 'Indofood CBP Sukses Makmur Tbk.', 'Member', 2),
-('SALIM', 'ACES', 'Aspirasi Hidup Indonesia Tbk.', 'Member', 3)
+('SALIM', 'SIMP', 'Salim Ivomas Pratama Tbk.', 'Member', 3),
+('SALIM', 'LSIP', 'PP London Sumatra Indonesia Tbk.', 'Member', 4),
+('SALIM', 'IMAS', 'Indomobil Sukses Internasional Tbk.', 'Member', 5),
+('SALIM', 'PANI', 'Pantai Indah Kapuk Dua Tbk.', 'Member', 6),
+('SALIM', 'CMRY', 'Cisarua Mountain Dairy Tbk.', 'Member', 7),
+('SALIM', 'CSAP', 'Catur Sentosa Adiprana Tbk.', 'Member', 8)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
@@ -210,9 +215,10 @@ INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, mem
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
--- MAYAPADA (provided: MAYA only)
+-- MAYAPADA (provided: MAYA, SDPC)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('MAYAPADA', 'MAYA', 'Bank Mayapada Internasional Tbk.', 'ANCHOR', 1)
+('MAYAPADA', 'MAYA', 'Bank Mayapada Internasional Tbk.', 'ANCHOR', 1),
+('MAYAPADA', 'SDPC', 'Millennium Pharmacon International Tbk.', 'Member', 2)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
@@ -222,10 +228,9 @@ INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, mem
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
--- TOBA (provided: TOBA, NCKL)
+-- TOBA (provided: TOBA only)
 INSERT INTO public.sector_hot_group_members (group_code, ticker, stock_name, member_type, sort_order) VALUES
-('TOBA', 'TOBA', 'Toba Bara Sejahtra Tbk.', 'ANCHOR', 1),
-('TOBA', 'NCKL', 'Trimegah Bangun Persada Tbk.', 'Member', 2)
+('TOBA', 'TOBA', 'Toba Bara Sejahtra Tbk.', 'ANCHOR', 1)
 ON CONFLICT (group_code, ticker) DO UPDATE SET
   stock_name = EXCLUDED.stock_name, member_type = EXCLUDED.member_type, sort_order = EXCLUDED.sort_order, updated_at = now();
 
