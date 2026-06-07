@@ -530,7 +530,7 @@
         </div>
 
         <!-- Action Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <button onclick="navigateTo('analisis')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group">
                 <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-2 group-hover:bg-emerald-500/20 transition">
                     <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -544,6 +544,13 @@
                 </div>
                 <p class="text-sm font-semibold text-gray-200">Sektor Hot</p>
                 <p class="text-[11px] text-gray-500 mt-0.5">Grup konglomerat</p>
+            </button>
+            <button onclick="navigateTo('screener')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all group">
+                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-2 group-hover:bg-cyan-500/20 transition">
+                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <p class="text-sm font-semibold text-gray-200">Screener</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">Swing Konglo 3–7D</p>
             </button>
             <button onclick="navigateTo('chart')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group">
                 <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center mb-2 group-hover:bg-purple-500/20 transition">
@@ -1427,10 +1434,9 @@ function navigateTo(page) {
             else { portLoginGate.classList.remove('hidden'); portContent.classList.add('hidden'); }
         }
     }
-    // Screener login gate (requires registered + approved user)
+    // Screener login gate (same auth check as Sektor Hot)
     if (page === 'screener') {
-        var scrUserId = localStorage.getItem('autocuan_user_id') || '';
-        var scrIsLoggedIn = getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true' && scrUserId.length > 2;
+        var scrIsLoggedIn = getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true';
         var scrLoginGate = document.getElementById('screenerLoginGate');
         var scrContent = document.getElementById('screenerContent');
         if (scrLoginGate && scrContent) {
@@ -4493,18 +4499,20 @@ async function loadSwingScreener() {
     var tbody = document.getElementById('screenerTableBody');
     if (!tbody) return;
 
-    // Guard: do not call API if not logged in
-    var userId = localStorage.getItem('autocuan_user_id') || '';
-    if (!userId || userId.length < 2 || getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
+    // Guard: do not call API if not logged in (same check as Sektor Hot gate)
+    if (getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
         tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
         return;
     }
+
+    // Use userId (UUID) if available, otherwise fall back to username
+    var userIdentifier = localStorage.getItem('autocuan_user_id') || getUsername();
 
     tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
 
     try {
         var response = await fetch('/api/sector-hot?action=screener', {
-            headers: { 'X-User-Id': userId }
+            headers: { 'X-User-Id': userIdentifier }
         });
         var data = await response.json();
 

@@ -149,18 +149,37 @@ module.exports = async function handler(req, res) {
 // ============================================================
 async function handleScreenerRead(req, res, supabase) {
   // Server-side access control: require X-User-Id header
-  // Frontend only sends this when user is logged in + approved
+  // Frontend sends userId (UUID) or username as fallback
   var userId = req.headers['x-user-id'] || '';
   if (!userId || userId === 'guest' || userId.length < 2) {
     return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
   }
 
-  // Verify user exists and is approved in app_users
-  var { data: userData, error: userErr } = await supabase
-    .from('app_users')
-    .select('id, is_approved, is_blocked')
-    .eq('id', userId)
-    .maybeSingle();
+  // Try to find user by UUID first, then by username
+  var userData = null;
+  var userErr = null;
+
+  // Check if it looks like a UUID (contains hyphens and is long)
+  if (userId.includes('-') && userId.length > 30) {
+    var result = await supabase
+      .from('app_users')
+      .select('id, is_approved, is_blocked')
+      .eq('id', userId)
+      .maybeSingle();
+    userData = result.data;
+    userErr = result.error;
+  }
+
+  // Fallback: lookup by username
+  if (!userData) {
+    var result2 = await supabase
+      .from('app_users')
+      .select('id, is_approved, is_blocked')
+      .eq('username', userId.toLowerCase())
+      .maybeSingle();
+    userData = result2.data;
+    userErr = result2.error;
+  }
 
   if (userErr || !userData) {
     return res.status(403).json({ success: false, error: 'User tidak ditemukan.' });
