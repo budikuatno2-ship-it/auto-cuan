@@ -536,7 +536,7 @@
                     <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </div>
                 <p class="text-sm font-semibold text-gray-200">Sektor Hot</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">Grup konglomerat</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">Konglo &amp; Screener</p>
             </button>
             <button onclick="navigateTo('chart')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group">
                 <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center mb-2 group-hover:bg-purple-500/20 transition">
@@ -603,8 +603,8 @@
         <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
             <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
         </div>
-        <h2 class="text-lg font-bold text-white mb-2">Grup Konglomerat Hot</h2>
-        <p class="text-sm text-gray-400 max-w-md">Daftar/Login untuk melihat Grup Konglomerat Hot.</p>
+        <h2 class="text-lg font-bold text-white mb-2">Sektor Hot &amp; Screener</h2>
+        <p class="text-sm text-gray-400 max-w-md">Daftar/Login untuk melihat Grup Konglomerat Hot dan Swing Screener.</p>
         <div class="mt-4 flex gap-2">
             <button onclick="openLoginModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Login</button>
             <button onclick="openRegisterModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition">Daftar</button>
@@ -612,24 +612,89 @@
     </div>
     <!-- Content (shown if logged in) -->
     <div id="sektorContent" class="hidden space-y-4">
-        <!-- List view -->
-        <div id="sektorListView">
-            <div class="mb-4">
-                <h2 class="text-lg font-bold text-white">Grup Konglomerat Hot</h2>
-                <p class="text-xs text-gray-500 mt-1" id="sektorSubtitle">T+1 · BY GROUP · Kinerja rata-rata per grup konglomerat besar. Klik grup untuk detail.</p>
+        <!-- Tab switcher: Konglo vs Non-Konglo -->
+        <div class="flex items-center gap-2 border-b border-dark-600/30 pb-2">
+            <button onclick="switchSektorTab('konglo')" id="sektorTabKonglo" class="px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all">Screener Konglo</button>
+            <button onclick="switchSektorTab('nonkonglo')" id="sektorTabNonKonglo" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all">Screener Non-Konglo</button>
+        </div>
+
+        <!-- === TAB: KONGLO (existing, unchanged) === -->
+        <div id="sektorKongloTab">
+            <!-- List view -->
+            <div id="sektorListView">
+                <div class="mb-4">
+                    <h2 class="text-lg font-bold text-white">Grup Konglomerat Hot</h2>
+                    <p class="text-xs text-gray-500 mt-1" id="sektorSubtitle">T+1 · BY GROUP · Kinerja rata-rata per grup konglomerat besar. Klik grup untuk detail.</p>
+                </div>
+                <div id="sektorGroupsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <!-- Cards rendered dynamically -->
+                </div>
             </div>
-            <div id="sektorGroupsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <!-- Cards rendered dynamically -->
+            <!-- Detail view (hidden by default) -->
+            <div id="sektorDetailView" class="hidden">
+                <button onclick="backToSektorList()" class="mb-3 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-dark-700 transition inline-flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    Sektor
+                </button>
+                <div id="sektorDetailHeader" class="mb-4"></div>
+                <div id="sektorDetailTable" class="overflow-x-auto"></div>
             </div>
         </div>
-        <!-- Detail view (hidden by default) -->
-        <div id="sektorDetailView" class="hidden">
-            <button onclick="backToSektorList()" class="mb-3 px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-dark-700 transition inline-flex items-center gap-1">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                Sektor
-            </button>
-            <div id="sektorDetailHeader" class="mb-4"></div>
-            <div id="sektorDetailTable" class="overflow-x-auto"></div>
+
+        <!-- === TAB: NON-KONGLO SCREENER === -->
+        <div id="sektorNonKongloTab" class="hidden">
+            <div class="mb-4">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-white">Swing Screener Non-Konglo</h2>
+                        <p class="text-xs text-gray-500 mt-1">Top 15 saham non-konglomerat dengan setup terbaik. Deterministic scoring, tanpa AI.</p>
+                    </div>
+                    <div id="nkScreenerMeta" class="text-right">
+                        <span id="nkMetaStatus" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-500/20 text-gray-400 border border-gray-500/30">-</span>
+                        <p id="nkMetaTimestamp" class="text-[10px] text-gray-600 mt-1"></p>
+                    </div>
+                </div>
+            </div>
+            <!-- Progress indicator (shown during scan) -->
+            <div id="nkScanProgress" class="hidden mb-4 bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="spinner-sm"></div>
+                    <span class="text-xs text-gray-400" id="nkProgressText">Scanning...</span>
+                </div>
+                <div class="w-full bg-dark-600/50 rounded-full h-1.5">
+                    <div id="nkProgressBar" class="bg-emerald-500 h-1.5 rounded-full transition-all" style="width: 0%"></div>
+                </div>
+            </div>
+            <!-- Results table -->
+            <div id="nkResultsContainer">
+                <div class="bg-dark-700/30 border border-dark-600/30 rounded-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs sm:text-sm">
+                            <thead>
+                                <tr class="text-gray-500 border-b border-dark-600/40 text-left">
+                                    <th class="px-2 py-2.5 font-medium w-8">#</th>
+                                    <th class="px-2 py-2.5 font-medium">Ticker</th>
+                                    <th class="px-2 py-2.5 font-medium hidden sm:table-cell">Board</th>
+                                    <th class="px-2 py-2.5 font-medium text-right">Last</th>
+                                    <th class="px-2 py-2.5 font-medium text-right">Chg%</th>
+                                    <th class="px-2 py-2.5 font-medium text-right">Score</th>
+                                    <th class="px-2 py-2.5 font-medium text-center hidden sm:table-cell">Grade</th>
+                                    <th class="px-2 py-2.5 font-medium text-right hidden md:table-cell">R:R</th>
+                                    <th class="px-2 py-2.5 font-medium text-right hidden md:table-cell">Vol Ratio</th>
+                                    <th class="px-2 py-2.5 font-medium hidden lg:table-cell">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nkResultsBody" class="text-gray-300">
+                                <tr><td colspan="10" class="px-3 py-12 text-center text-gray-600 text-sm">Memuat data screener...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- Disclaimer -->
+                <div class="mt-3 px-3 py-2 bg-dark-700/30 border border-dark-600/20 rounded-lg">
+                    <p class="text-[10px] text-gray-600 leading-relaxed"><strong class="text-gray-500">Disclaimer:</strong> Setup Score adalah skor kualitas teknikal setup, bukan prediksi profit, bukan win rate, dan bukan jaminan keuntungan. Selalu lakukan analisis mandiri sebelum transaksi.</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -4378,6 +4443,131 @@ function formatVolume(val) {
     if (val >= 1000000) return (val / 1000000).toFixed(1).replace('.', ',') + ' jt';
     if (val >= 1000) return (val / 1000).toFixed(0) + ' rb';
     return String(val);
+}
+
+// ===== NON-KONGLO SWING SCREENER (Tab + Data) =====
+var _nkScreenerCache = null;
+var _currentSektorTab = 'konglo';
+
+function switchSektorTab(tab) {
+    _currentSektorTab = tab;
+    var kongloTab = document.getElementById('sektorKongloTab');
+    var nonKongloTab = document.getElementById('sektorNonKongloTab');
+    var btnKonglo = document.getElementById('sektorTabKonglo');
+    var btnNonKonglo = document.getElementById('sektorTabNonKonglo');
+
+    if (tab === 'konglo') {
+        kongloTab.classList.remove('hidden');
+        nonKongloTab.classList.add('hidden');
+        btnKonglo.className = 'px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all';
+        btnNonKonglo.className = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all';
+    } else {
+        kongloTab.classList.add('hidden');
+        nonKongloTab.classList.remove('hidden');
+        btnKonglo.className = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all';
+        btnNonKonglo.className = 'px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all';
+        loadNkScreenerResults();
+    }
+}
+
+async function loadNkScreenerResults() {
+    var tbody = document.getElementById('nkResultsBody');
+    var metaStatus = document.getElementById('nkMetaStatus');
+    var metaTs = document.getElementById('nkMetaTimestamp');
+    var progressDiv = document.getElementById('nkScanProgress');
+    if (!tbody) return;
+
+    // Show loading if no cache
+    if (!_nkScreenerCache) {
+        tbody.innerHTML = '<tr><td colspan="10" class="px-3 py-12 text-center"><div class="inline-block spinner-sm mr-2"></div><span class="text-gray-500 text-sm">Memuat data screener...</span></td></tr>';
+    }
+
+    try {
+        var response = await fetch('/api/sector-hot?action=nk-screener-results');
+        var data = await response.json();
+        _nkScreenerCache = data;
+
+        if (!data.success) {
+            tbody.innerHTML = '<tr><td colspan="10" class="px-3 py-12 text-center text-gray-500 text-sm">Data screener belum tersedia.</td></tr>';
+            return;
+        }
+
+        // Update meta display
+        var meta = data.meta || {};
+        if (metaStatus) {
+            var statusLabel = meta.status || 'idle';
+            var statusColor = 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+            if (statusLabel === 'completed') { statusColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'; statusLabel = 'Selesai'; }
+            else if (statusLabel === 'scanning') { statusColor = 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'; statusLabel = 'Scanning...'; }
+            else if (statusLabel === 'failed') { statusColor = 'bg-red-500/20 text-red-400 border-red-500/30'; statusLabel = 'Gagal'; }
+            else { statusLabel = 'Idle'; }
+            metaStatus.className = 'px-2 py-0.5 rounded-full text-[10px] font-semibold ' + statusColor;
+            metaStatus.textContent = statusLabel;
+        }
+        if (metaTs && meta.completed_at) {
+            var dt = new Date(meta.completed_at);
+            var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+            metaTs.textContent = 'Update: ' + wibStr + ' WIB';
+        } else if (metaTs) {
+            metaTs.textContent = '';
+        }
+
+        // Show/hide progress bar
+        if (progressDiv) {
+            if (meta.status === 'scanning') {
+                progressDiv.classList.remove('hidden');
+                var pctDone = (meta.total_batches > 0) ? Math.round((meta.current_batch / meta.total_batches) * 100) : 0;
+                var pBar = document.getElementById('nkProgressBar');
+                var pText = document.getElementById('nkProgressText');
+                if (pBar) pBar.style.width = pctDone + '%';
+                if (pText) pText.textContent = 'Batch ' + (meta.current_batch || 0) + '/' + (meta.total_batches || 0) + ' · ' + (meta.processed_count || 0) + ' saham diproses';
+            } else {
+                progressDiv.classList.add('hidden');
+            }
+        }
+
+        // Render results
+        var results = data.results || [];
+        if (results.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="px-3 py-12 text-center text-gray-500 text-sm">' + (meta.status === 'scanning' ? 'Scan sedang berjalan. Hasil akan tampil setelah scan selesai.' : 'Belum ada hasil. Scan belum dijalankan.') + '</td></tr>';
+            return;
+        }
+
+        var html = '';
+        results.forEach(function(r) {
+            var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+            var chgSign = (r.change_pct || 0) >= 0 ? '+' : '';
+            var gradeColor = getGradeColor(r.setup_grade);
+            var boardLabel = r.board === 'UTAMA' ? 'Utama' : (r.board === 'PENGEMBANGAN' ? 'Dev' : '-');
+
+            html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30">';
+            html += '<td class="px-2 py-2 text-gray-500 font-mono text-[11px]">' + (r.rank_position || '-') + '</td>';
+            html += '<td class="px-2 py-2"><span class="text-gray-200 font-semibold">' + escapeHtml(r.ticker) + '</span>';
+            if (r.stock_name) html += '<br><span class="text-[10px] text-gray-600 hidden sm:inline">' + escapeHtml(r.stock_name).slice(0, 25) + '</span>';
+            html += '</td>';
+            html += '<td class="px-2 py-2 text-gray-500 text-[11px] hidden sm:table-cell">' + boardLabel + '</td>';
+            html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
+            html += '<td class="px-2 py-2 text-right font-semibold whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
+            html += '<td class="px-2 py-2 text-right font-bold text-white">' + (r.setup_score != null ? r.setup_score : '-') + '</td>';
+            html += '<td class="px-2 py-2 text-center hidden sm:table-cell"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + gradeColor + '">' + (r.setup_grade || '-') + '</span></td>';
+            html += '<td class="px-2 py-2 text-right text-gray-300 hidden md:table-cell">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
+            html += '<td class="px-2 py-2 text-right text-gray-300 hidden md:table-cell">' + (r.volume_ratio_avg20 != null ? r.volume_ratio_avg20.toFixed(2) + 'x' : '-') + '</td>';
+            html += '<td class="px-2 py-2 hidden lg:table-cell"><span class="text-[10px] text-gray-500">' + escapeHtml(r.reason || r.status || '-').slice(0, 50) + '</span></td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html;
+
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="10" class="px-3 py-12 text-center text-red-400 text-sm">Gagal memuat data screener.</td></tr>';
+    }
+}
+
+function getGradeColor(grade) {
+    if (grade === 'A') return 'bg-emerald-500/20 text-emerald-400';
+    if (grade === 'B') return 'bg-blue-500/20 text-blue-400';
+    if (grade === 'C') return 'bg-yellow-500/20 text-yellow-400';
+    if (grade === 'D') return 'bg-orange-500/20 text-orange-400';
+    return 'bg-gray-500/20 text-gray-400';
 }
 
 // ===== PORTOFOLIO FEATURE (Phase 15A) =====
