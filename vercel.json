@@ -1,5 +1,11 @@
 {
   "rewrites": [
     { "source": "/review", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/sector-hot?action=refresh",
+      "schedule": "0 12 * * *"
+    }
   ]
 }
