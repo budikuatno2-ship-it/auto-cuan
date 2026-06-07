@@ -28,7 +28,7 @@ module.exports = async function handler(req, res) {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('app_users')
-        .select('id, username, device_id, user_agent, is_blocked, is_approved, created_at, last_login_at')
+        .select('id, username, device_id, devices, user_agent, is_blocked, is_approved, created_at, last_login_at')
         .order('created_at', { ascending: false })
         .limit(200);
 
@@ -134,6 +134,33 @@ module.exports = async function handler(req, res) {
       }
 
       return res.status(200).json({ success: true, message: 'Password user ' + targetUser + ' berhasil direset.' });
+    }
+
+    // === RESET DEVICES ===
+    if (action === 'reset_devices') {
+      if (!username) {
+        return res.status(400).json({ success: false, error: 'Username diperlukan.' });
+      }
+
+      const targetUser = String(username).trim().toLowerCase();
+
+      // Cannot reset budi devices
+      if (targetUser === 'budi') {
+        return res.status(400).json({ success: false, error: 'Tidak dapat reset perangkat admin.' });
+      }
+
+      // Only update devices to empty array — do NOT touch is_approved, is_blocked, or password
+      const { error } = await supabase
+        .from('app_users')
+        .update({ devices: [] })
+        .eq('username', targetUser);
+
+      if (error) {
+        console.error('admin-users reset_devices error:', error);
+        return res.status(500).json({ success: false, error: 'Gagal reset perangkat: ' + error.message });
+      }
+
+      return res.status(200).json({ success: true, message: 'Perangkat user ' + targetUser + ' berhasil di-reset. User dapat login dari perangkat baru.' });
     }
 
     // === APPROVE USER ===

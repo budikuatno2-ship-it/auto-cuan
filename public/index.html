@@ -4012,14 +4012,15 @@ async function loadAdminUsers() {
         html += '<div class="text-xs text-gray-500 mb-2">Total: ' + cachedUsers.length + ' user terdaftar</div>';
         html += '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
         html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Username</th>';
-        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Device ID</th>';
+        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Devices</th>';
         html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Created</th>';
         html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Last Login</th>';
         html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Status</th>';
         html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Actions</th>';
         html += '</tr></thead><tbody>';
         cachedUsers.forEach(function(user) {
-            var deviceShort = user.device_id ? user.device_id.slice(0, 16) + '...' : '-';
+            var deviceCount = Array.isArray(user.devices) ? user.devices.length : 0;
+            var deviceLabel = deviceCount + '/3';
             var created = user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : '-';
             var lastLogin = user.last_login_at ? new Date(user.last_login_at).toLocaleString('id-ID') : '-';
             var statusBadge;
@@ -4028,7 +4029,7 @@ async function loadAdminUsers() {
             else { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Approved</span>'; }
             html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
             html += '<td class="px-3 py-2 text-white font-medium">' + user.username + '</td>';
-            html += '<td class="px-3 py-2 text-gray-400 text-xs font-mono">' + deviceShort + '</td>';
+            html += '<td class="px-3 py-2 text-gray-400 text-xs font-mono">' + deviceLabel + '</td>';
             html += '<td class="px-3 py-2 text-gray-400">' + created + '</td>';
             html += '<td class="px-3 py-2 text-gray-400">' + lastLogin + '</td>';
             html += '<td class="px-3 py-2">' + statusBadge + '</td>';
@@ -4037,6 +4038,7 @@ async function loadAdminUsers() {
             if (user.is_approved !== false && !user.is_blocked) { html += '<button onclick="adminUserAction(\'reject\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reject</button>'; }
             if (user.is_blocked) { html += '<button onclick="adminUserAction(\'unblock\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>'; }
             else { html += '<button onclick="adminUserAction(\'block\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>'; }
+            html += '<button onclick="adminUserAction(\'reset_devices\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 mr-1">Reset Devices</button>';
             html += '<button onclick="openResetPasswordModal(\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10">Reset PW</button>';
             html += '</td></tr>';
         });

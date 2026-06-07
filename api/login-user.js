@@ -1,5 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
+const MAX_DEVICES = 3;
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -34,7 +36,7 @@ module.exports = async function handler(req, res) {
     // Find user by username
     const { data: user, error: findError } = await supabase
       .from('app_users')
-      .select('id, username, password_hash, device_id, is_blocked, is_approved')
+      .select('id, username, password_hash, devices, is_blocked, is_approved')
       .eq('username', usernameLower)
       .maybeSingle();
 
@@ -64,17 +66,13 @@ module.exports = async function handler(req, res) {
 
     // === REVIEW USER: bypass device binding ===
     if (usernameLower === 'review') {
-      // Update last_login_at only, do NOT check or update device_id
       const { error: updateError } = await supabase
         .from('app_users')
-        .update({
-          last_login_at: new Date().toISOString()
-        })
+        .update({ last_login_at: new Date().toISOString() })
         .eq('id', user.id);
 
       if (updateError) {
         console.error('login-user review update error:', updateError);
-        // Non-fatal, still allow login
       }
 
       return res.status(200).json({
@@ -86,22 +84,22 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Device binding check
-    // If device_id is null or starts with RESET_PENDING_ => bind new device
-    if (!user.device_id || user.device_id.startsWith('RESET_PENDING_')) {
-      // Bind this device to the user
+    // === MULTI-DEVICE BINDING (max 3 devices) ===
+    const currentDevices = Array.isArray(user.devices) ? user.devices : [];
+
+    // Check if this device is already registered for this user
+    if (currentDevices.includes(deviceId)) {
+      // Device already known — just update last_login_at
       const { error: updateError } = await supabase
         .from('app_users')
         .update({
-          device_id: deviceId,
-          user_agent: userAgent || '',
-          last_login_at: new Date().toISOString()
+          last_login_at: new Date().toISOString(),
+          user_agent: userAgent || ''
         })
         .eq('id', user.id);
 
       if (updateError) {
-        console.error('login-user device bind error:', updateError);
-        return res.status(500).json({ success: false, error: 'Gagal memperbarui perangkat.' });
+        console.error('login-user update error:', updateError);
       }
 
       return res.status(200).json({
@@ -112,23 +110,29 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // If device_id exists and differs from current device
-    if (user.device_id !== deviceId) {
-      return res.status(400).json({ success: false, error: 'Username ini sudah terdaftar di perangkat lain.' });
+    // Device is new — check if there's room
+    if (currentDevices.length >= MAX_DEVICES) {
+      return res.status(400).json({
+        success: false,
+        error: 'Batas perangkat tercapai. Hubungi admin untuk reset perangkat.'
+      });
     }
 
-    // Device matches - update last_login_at
+    // Add new device to the array
+    const updatedDevices = [...currentDevices, deviceId];
+
     const { error: updateError } = await supabase
       .from('app_users')
       .update({
-        last_login_at: new Date().toISOString(),
-        user_agent: userAgent || ''
+        devices: updatedDevices,
+        user_agent: userAgent || '',
+        last_login_at: new Date().toISOString()
       })
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('login-user update error:', updateError);
-      // Non-fatal, still allow login
+      console.error('login-user device add error:', updateError);
+      return res.status(500).json({ success: false, error: 'Gagal memperbarui perangkat.' });
     }
 
     return res.status(200).json({

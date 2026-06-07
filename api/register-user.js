@@ -56,29 +56,13 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Username sudah digunakan.' });
     }
 
-    // Check if deviceId already registered to another username
-    const { data: existingDevice, error: deviceError } = await supabase
-      .from('app_users')
-      .select('id, username')
-      .eq('device_id', deviceId)
-      .maybeSingle();
-
-    if (deviceError) {
-      console.error('register-user device check error:', deviceError);
-      return res.status(500).json({ success: false, error: 'Gagal memeriksa perangkat.' });
-    }
-
-    if (existingDevice) {
-      return res.status(400).json({ success: false, error: 'Perangkat ini sudah terdaftar untuk username lain.' });
-    }
-
-    // Insert new user (pending approval by default)
+    // Insert new user (pending approval by default, first device stored in devices array)
     const { data, error: insertError } = await supabase
       .from('app_users')
       .insert({
         username: usernameLower,
         password_hash: passwordHash,
-        device_id: deviceId,
+        devices: [deviceId],
         user_agent: userAgent || '',
         is_blocked: false,
         is_approved: false
@@ -89,9 +73,6 @@ module.exports = async function handler(req, res) {
       console.error('register-user insert error:', insertError);
       // Handle unique constraint violations
       if (insertError.code === '23505') {
-        if (insertError.message && insertError.message.includes('device_id')) {
-          return res.status(400).json({ success: false, error: 'Perangkat ini sudah terdaftar untuk username lain.' });
-        }
         return res.status(400).json({ success: false, error: 'Username sudah digunakan.' });
       }
       return res.status(500).json({ success: false, error: 'Gagal membuat akun: ' + insertError.message });
