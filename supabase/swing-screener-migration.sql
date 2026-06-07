@@ -63,17 +63,19 @@ VALUES ('latest', 'pending', 'Awaiting first calculation.')
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
--- RLS (Row Level Security) — read-only for anon/authenticated
+-- RLS (Row Level Security) — DENY all direct client access
+-- Only service_role (used by our API endpoint) can read/write.
+-- This prevents anonymous or authenticated Supabase clients
+-- from querying screener data directly via PostgREST.
 -- ============================================================
 ALTER TABLE swing_screener_latest ENABLE ROW LEVEL SECURITY;
 ALTER TABLE swing_screener_meta ENABLE ROW LEVEL SECURITY;
 
--- Allow read for authenticated users
-CREATE POLICY "swing_screener_latest_read" ON swing_screener_latest
-  FOR SELECT USING (true);
+-- No SELECT policy for anon or authenticated roles.
+-- This means: anon = denied, authenticated = denied.
+-- Only service_role bypasses RLS and can read/write.
+-- Our API endpoint (sector-hot.js) uses service_role key
+-- and enforces its own access control via X-User-Id + app_users check.
 
-CREATE POLICY "swing_screener_meta_read" ON swing_screener_meta
-  FOR SELECT USING (true);
-
--- Service role can do everything (used by the cron endpoint)
--- No explicit policy needed — service_role bypasses RLS.
+-- If you ever need authenticated Supabase users to read directly
+-- (not via our API), you can add a policy later. For now, locked down.
