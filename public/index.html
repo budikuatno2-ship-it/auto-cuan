@@ -352,6 +352,9 @@
         .nav-btn.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
         .nav-btn.disabled { color: #4b5563; cursor: not-allowed; opacity: 0.6; }
         .nav-btn svg { flex-shrink: 0; }
+        .screener-tab { color: #6b7280; background: transparent; border: 1px solid transparent; cursor: pointer; }
+        .screener-tab:hover { color: #d1d5db; background: #151a23; }
+        .screener-tab.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .page-content { animation: fadeIn 0.15s ease-out; }
@@ -486,6 +489,10 @@
             <button onclick="navigateTo('portofolio')" class="nav-btn" data-page="portofolio">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 <span>Portofolio</span>
+            </button>
+            <button onclick="navigateTo('screener')" class="nav-btn" data-page="screener">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <span>Screener</span>
             </button>
         </div>
     </nav>
@@ -630,6 +637,93 @@
             </button>
             <div id="sektorDetailHeader" class="mb-4"></div>
             <div id="sektorDetailTable" class="overflow-x-auto"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== PAGE: SCREENER SWING KONGLO 3-7D ===== -->
+<div id="page-screener" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
+    <!-- Login gate -->
+    <div id="screenerLoginGate" class="hidden flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <h2 class="text-lg font-bold text-white mb-2">Screener Swing Konglo 3&ndash;7D</h2>
+        <p class="text-sm text-gray-400 max-w-md">Daftar/Login untuk melihat Screener Swing.</p>
+        <div class="mt-4 flex gap-2">
+            <button onclick="openLoginModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Login</button>
+            <button onclick="openRegisterModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition">Daftar</button>
+        </div>
+    </div>
+    <!-- Content -->
+    <div id="screenerContent" class="hidden space-y-4">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+                <h2 class="text-lg font-bold text-white">Screener Swing Konglo 3&ndash;7D</h2>
+                <p class="text-xs text-gray-500 mt-0.5" id="screenerSubtitle">Watchlist high-probability swing setup dari Grup Konglomerat Hot.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="screenerMetaBadge" class="px-2 py-1 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+            </div>
+        </div>
+        <!-- Disclaimer -->
+        <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
+            <p class="text-[11px] text-amber-400/80 leading-relaxed"><strong>Disclaimer:</strong> Ini bukan rekomendasi beli. Screener ini hanya watchlist setup high-probability untuk swing 3&ndash;7 hari. Selalu lakukan analisis sendiri dan kelola risiko. Invalid jika harga menembus level invalidasi.</p>
+        </div>
+        <!-- Stats row -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="screenerStats">
+            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
+                <p class="text-[10px] text-gray-500 uppercase">Universe</p>
+                <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatUniverse">—</p>
+            </div>
+            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
+                <p class="text-[10px] text-gray-500 uppercase">Scanned</p>
+                <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatScanned">—</p>
+            </div>
+            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
+                <p class="text-[10px] text-gray-500 uppercase">Failed</p>
+                <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatFailed">—</p>
+            </div>
+            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
+                <p class="text-[10px] text-gray-500 uppercase">AI Checked</p>
+                <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatAI">—</p>
+            </div>
+        </div>
+        <!-- Filter tabs -->
+        <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
+            <button onclick="filterScreener('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
+            <button onclick="filterScreener('Swing Ready')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Swing Ready">Swing Ready</button>
+            <button onclick="filterScreener('Watchlist')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Watchlist">Watchlist</button>
+            <button onclick="filterScreener('Rebound Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
+            <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
+        </div>
+        <!-- Table -->
+        <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="screenerTableWrap">
+            <table class="w-full text-xs border-collapse min-w-[900px]">
+                <thead>
+                    <tr class="bg-dark-700/70">
+                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
+                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">AI</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
+                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
+                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Invalid jika</th>
+                    </tr>
+                </thead>
+                <tbody id="screenerTableBody">
+                    <tr><td colspan="15" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -1331,6 +1425,16 @@ function navigateTo(page) {
         if (portLoginGate && portContent) {
             if (isLoggedIn2) { portLoginGate.classList.add('hidden'); portContent.classList.remove('hidden'); renderPortfolio(); }
             else { portLoginGate.classList.remove('hidden'); portContent.classList.add('hidden'); }
+        }
+    }
+    // Screener login gate
+    if (page === 'screener') {
+        var isLoggedIn3 = getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true';
+        var scrLoginGate = document.getElementById('screenerLoginGate');
+        var scrContent = document.getElementById('screenerContent');
+        if (scrLoginGate && scrContent) {
+            if (isLoggedIn3) { scrLoginGate.classList.add('hidden'); scrContent.classList.remove('hidden'); loadSwingScreener(); }
+            else { scrLoginGate.classList.remove('hidden'); scrContent.classList.add('hidden'); }
         }
     }
 }
@@ -4378,6 +4482,149 @@ function formatVolume(val) {
     if (val >= 1000000) return (val / 1000000).toFixed(1).replace('.', ',') + ' jt';
     if (val >= 1000) return (val / 1000).toFixed(0) + ' rb';
     return String(val);
+}
+
+// ===== SCREENER SWING KONGLO 3-7D =====
+var _screenerCache = null;
+var _screenerFilter = 'all';
+
+async function loadSwingScreener() {
+    var tbody = document.getElementById('screenerTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+
+    try {
+        var response = await fetch('/api/swing-screener');
+        var data = await response.json();
+        _screenerCache = data;
+
+        if (!data.success || !data.results || data.results.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
+            return;
+        }
+
+        // Update meta
+        if (data.meta) {
+            var m = data.meta;
+            var statU = document.getElementById('screenerStatUniverse');
+            var statS = document.getElementById('screenerStatScanned');
+            var statF = document.getElementById('screenerStatFailed');
+            var statA = document.getElementById('screenerStatAI');
+            if (statU) statU.textContent = m.universe_count || '—';
+            if (statS) statS.textContent = m.scanned_count || '—';
+            if (statF) statF.textContent = m.failed_count || '0';
+            if (statA) statA.textContent = m.ai_called_count || '0';
+
+            // Update subtitle with time
+            var sub = document.getElementById('screenerSubtitle');
+            if (sub && m.calculated_at) {
+                var dt = new Date(m.calculated_at);
+                var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+                sub.textContent = 'Update: ' + wibStr + ' WIB · Swing 3-7 hari · Grup Konglomerat Hot';
+            }
+
+            // Meta badge
+            var badge = document.getElementById('screenerMetaBadge');
+            if (badge) {
+                if (m.status === 'ok') { badge.textContent = 'LIVE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'; }
+                else if (m.status === 'failed') { badge.textContent = 'ERROR'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25'; }
+                else { badge.textContent = 'PENDING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
+            }
+        }
+
+        renderScreenerTable(data.results);
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
+    }
+}
+
+function filterScreener(filter) {
+    _screenerFilter = filter;
+    // Update active tab
+    document.querySelectorAll('.screener-tab').forEach(function(btn) {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-filter') === filter) btn.classList.add('active');
+    });
+    if (_screenerCache && _screenerCache.results) {
+        renderScreenerTable(_screenerCache.results);
+    }
+}
+
+function renderScreenerTable(results) {
+    var tbody = document.getElementById('screenerTableBody');
+    if (!tbody) return;
+
+    var filtered = results;
+    if (_screenerFilter !== 'all') {
+        filtered = results.filter(function(r) { return r.final_status === _screenerFilter; });
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Tidak ada saham dengan status ini.</td></tr>';
+        return;
+    }
+
+    var html = '';
+    filtered.forEach(function(r) {
+        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var chgSign = (r.change_pct || 0) >= 0 ? '+' : '';
+
+        // Status badge color
+        var statusClass = 'bg-gray-500/15 text-gray-400';
+        var fs = r.final_status || r.status || 'Invalid';
+        if (fs === 'Swing Ready') statusClass = 'bg-emerald-500/15 text-emerald-400';
+        else if (fs === 'Watchlist') statusClass = 'bg-blue-500/15 text-blue-400';
+        else if (fs === 'Rebound Speculative') statusClass = 'bg-amber-500/15 text-amber-400';
+        else statusClass = 'bg-red-500/10 text-red-400';
+
+        // AI badge
+        var aiBadge = '-';
+        if (r.ai_status === 'CONFIRMED') aiBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-400" title="' + escapeHtml(r.ai_reason || '') + '">OK</span>';
+        else if (r.ai_status === 'CAUTION') aiBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400" title="' + escapeHtml(r.ai_reason || '') + '">!</span>';
+        else if (r.ai_status === 'REJECT') aiBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/15 text-red-400" title="' + escapeHtml(r.ai_reason || '') + '">X</span>';
+
+        // Score color
+        var scoreColor = 'text-gray-400';
+        if (r.score >= 80) scoreColor = 'text-emerald-400 font-bold';
+        else if (r.score >= 65) scoreColor = 'text-blue-400';
+        else if (r.score >= 40) scoreColor = 'text-amber-400';
+        else scoreColor = 'text-red-400';
+
+        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
+        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '</td>';
+        html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
+        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + screenerStatusShort(fs) + '</span></td>';
+        html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + '</td>';
+        html += '<td class="px-2 py-2 text-center whitespace-nowrap">' + aiBadge + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
+        html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? r.rsi14.toFixed(1) : '-') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-red-400/80 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400/80 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400/60 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
+        html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate">' + escapeHtml(r.invalidation || '-') + '</td>';
+        html += '</tr>';
+    });
+    tbody.innerHTML = html;
+}
+
+function screenerStatusShort(status) {
+    if (status === 'Swing Ready') return 'READY';
+    if (status === 'Watchlist') return 'WATCH';
+    if (status === 'Rebound Speculative') return 'REBOUND';
+    return 'AVOID';
+}
+
+function screenerTickerClick(ticker) {
+    // Navigate to analysis page and trigger analysis
+    navigateTo('analisis');
+    setTimeout(function() {
+        var el = document.getElementById('analisisInput');
+        if (el) { el.value = ticker; handleAnalisisSubmit(); }
+    }, 200);
 }
 
 // ===== PORTOFOLIO FEATURE (Phase 15A) =====
