@@ -693,7 +693,7 @@
                 <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatFailed">—</p>
             </div>
             <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
-                <p class="text-[10px] text-gray-500 uppercase">AI Checked</p>
+                <p class="text-[10px] text-gray-500 uppercase">AI Confirmed</p>
                 <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatAI">—</p>
             </div>
         </div>
@@ -4539,7 +4539,7 @@ async function loadSwingScreener() {
             if (statU) statU.textContent = m.universe_count || '—';
             if (statS) statS.textContent = m.scanned_count || '—';
             if (statF) statF.textContent = m.failed_count || '0';
-            if (statA) statA.textContent = m.ai_called_count || '0';
+            if (statA) statA.textContent = (m.ai_called_count != null ? m.ai_called_count : '—');
 
             // Update subtitle with time
             var sub = document.getElementById('screenerSubtitle');
