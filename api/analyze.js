@@ -111,6 +111,13 @@ module.exports = async function handler(req, res) {
       // Must run before AI to ensure deterministic structured output.
       if (detectedIHSG && intent !== 'follow_up_question' && intent !== 'casual_chat') {
         var ihsgData = parseMarketDataFromMessage(chatMessage);
+        // If market data unavailable, build minimal data from message
+        if (!ihsgData || !ihsgData.last) {
+          var ihsgPriceMatch = chatMessage.match(/\b(\d{4,5}(?:\.\d+)?)\b/);
+          if (ihsgPriceMatch) {
+            ihsgData = { last: parseFloat(ihsgPriceMatch[1]), priceChange1D: null, volumeVsAvg20: null, rsi14: null, ma20: null, ma50: null, ma100: null, ma200: null, high: null, low: null, resistance1: null, resistance2: null, support1: null, support2: null, pivotPoint: null, fib382: null, fib500: null, fib618: null, fib786: null };
+          }
+        }
         if (ihsgData && ihsgData.last) {
           var ihsgHtml = buildIHSGFixedTemplate(ihsgData, chatMessage);
           if (ihsgHtml) {
@@ -135,6 +142,18 @@ module.exports = async function handler(req, res) {
       }
       if (detectedStockTicker) {
         var stockData = parseMarketDataFromMessage(chatMessage);
+        // If no market data from [Auto-Cuan Market Data] block, try to extract price from message
+        if (!stockData || !stockData.last) {
+          var priceMatch = chatMessage.match(/\b(\d{2,6})\b/);
+          var extractedPrice = priceMatch ? parseFloat(priceMatch[1]) : null;
+          // Even without a price, if we have a valid ticker, use currentPrice from context or default
+          if (!extractedPrice && body.context && body.context.currentPrice) {
+            extractedPrice = parseFloat(body.context.currentPrice);
+          }
+          if (extractedPrice && extractedPrice > 0) {
+            stockData = { last: extractedPrice, priceChange1D: null, volumeVsAvg20: null, rsi14: null, ma20: null, ma50: null, ma100: null, ma200: null, high: null, low: null, resistance1: null, resistance2: null, support1: null, support2: null, pivotPoint: null, fib382: null, fib500: null, fib618: null, fib786: null };
+          }
+        }
         if (stockData && stockData.last) {
           var stockHtml = buildStockFixedTemplate(stockData, detectedStockTicker, chatMessage);
           if (stockHtml) {
