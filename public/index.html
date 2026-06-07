@@ -4249,11 +4249,12 @@ async function loadSektorHot() {
             return;
         }
 
-        // Update subtitle with timestamp
+        // Update subtitle with timestamp (explicit WIB)
         var sub = document.getElementById('sektorSubtitle');
         if (sub && data.meta && data.meta.calculated_at) {
             var dt = new Date(data.meta.calculated_at);
-            sub.textContent = 'T+1 \u00B7 BY GROUP \u00B7 Update: ' + dt.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+            sub.textContent = 'T+1 \u00B7 BY GROUP \u00B7 Update: ' + wibStr + ' WIB';
         }
 
         // Render cards
