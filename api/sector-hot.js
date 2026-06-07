@@ -402,12 +402,30 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           allAIResults = allAIResults.concat(aiResult.data);
           aiBatchDiagnostics.push('Batch ' + (batchIdx + 1) + '/' + batches.length + ': OK ' + aiResult.data.length + ' items (' + batchTickers.join(',') + ')');
         } else {
-          aiBatchesFailed++;
-          var batchDiag = 'Batch ' + (batchIdx + 1) + '/' + batches.length + ': FAILED (' + batchTickers.join(',') + ') — ' + (aiResult.diagnostic || 'unknown');
-          aiBatchDiagnostics.push(batchDiag);
-          // Capture debug from first failed batch only
-          if (!aiResponseDebug && aiResult.ai_response_debug) aiResponseDebug = aiResult.ai_response_debug;
-          if (!aiParseDebug && aiResult.ai_parse_debug) aiParseDebug = aiResult.ai_parse_debug;
+          // RETRY: Split failed batch into individual calls (handles finish_reason=length)
+          var retryResults = [];
+          var retryFailed = [];
+          for (var ri = 0; ri < batchCandidates.length; ri++) {
+            await delay(300);
+            var singleResult = await callAIConfirmation([batchCandidates[ri]]);
+            if (singleResult.data && singleResult.data.length > 0) {
+              retryResults = retryResults.concat(singleResult.data);
+            } else {
+              retryFailed.push(batchCandidates[ri].ticker);
+            }
+          }
+
+          if (retryResults.length > 0) {
+            aiBatchesSucceeded++;
+            allAIResults = allAIResults.concat(retryResults);
+            aiBatchDiagnostics.push('Batch ' + (batchIdx + 1) + '/' + batches.length + ': RETRY OK ' + retryResults.length + '/' + batchTickers.length + ' (' + batchTickers.join(',') + ')' + (retryFailed.length > 0 ? ' | Still failed: ' + retryFailed.join(',') : ''));
+          } else {
+            aiBatchesFailed++;
+            var batchDiag = 'Batch ' + (batchIdx + 1) + '/' + batches.length + ': FAILED after retry (' + batchTickers.join(',') + ') — ' + (aiResult.diagnostic || 'unknown');
+            aiBatchDiagnostics.push(batchDiag);
+            if (!aiResponseDebug && aiResult.ai_response_debug) aiResponseDebug = aiResult.ai_response_debug;
+            if (!aiParseDebug && aiResult.ai_parse_debug) aiParseDebug = aiResult.ai_parse_debug;
+          }
         }
 
         // Small delay between batches to avoid rate limiting
@@ -1987,7 +2005,7 @@ async function fetchNkQuoteData(ticker) {
     const candleBody = Math.abs(lastCandle.close - lastCandle.open);
     const candleRange = lastCandle.high - lastCandle.low;
     const isLargeRed = lastCandle.close < lastCandle.open && candleBody > candleRange * 0.6 && volumeRatioAvg20 >= 1.2;
-    const overextended = ma20 && lastClose > ma20 * 1.08; // >8% above MA20
+    const overextended = ma20 && lastClose > ma20 * 1.12; // >12% above MA20 (wider for non-konglo)
     const belowSupport = lastClose < support;
     const slDistance = stopLoss > 0 ? ((entryMid - stopLoss) / entryMid) * 100 : 0;
 
@@ -2044,14 +2062,18 @@ function calculateNkSetupScore(q) {
   var score = 50; // Same base as Konglo
   var components = [];
 
-  // 1. TREND (same as Konglo: MA20 +10/+5/-5, MA50 +10/+3/-10)
+  // 1. TREND (same as Konglo: MA20 +10/+5/-5, MA50 +10/+3/-5)
   if (q.ma20 && q.lastPrice >= q.ma20) { score += 10; components.push('close>MA20'); }
   else if (q.ma20 && q.lastPrice >= q.ma20 * 0.98) { score += 5; components.push('close~MA20'); }
   else { score -= 5; if (q.ma20) components.push('close<MA20'); }
 
   if (q.ma50 && q.lastPrice >= q.ma50) { score += 10; components.push('close>MA50'); }
   else if (q.ma50 && q.lastPrice >= q.ma50 * 0.97) { score += 3; }
-  else { score -= 10; if (q.ma50) components.push('close<MA50'); }
+  else if (q.ma50 && q.lastPrice >= q.ma50 * 0.95) { score -= 3; }
+  else { score -= 5; if (q.ma50) components.push('close<MA50'); }
+
+  // Bonus: price in/near actionable entry zone (+3)
+  if (q.priceInEntryZone) { score += 3; components.push('near entry'); }
 
   // 2. MOMENTUM / RSI (same as Konglo: +15/+8/+5/+3/-5/-10)
   if (q.rsi14 !== null) {
@@ -2149,11 +2171,24 @@ function calculateNkSetupScore(q) {
     statusReason = failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : 'Setup belum memenuhi kriteria.';
   }
 
-  // Prepend key metrics for auditability
+  // Prepend key metrics + entry interpretation for auditability
   var metricLine = 'Vol ' + q.volumeRatioAvg20.toFixed(2) + 'x, Tx Rp' + txB.toFixed(1) + 'B';
   if (q.rsi14 !== null) metricLine += ', RSI ' + q.rsi14.toFixed(1);
   metricLine += ', RR ' + q.riskReward.toFixed(2);
-  statusReason = metricLine + '. ' + statusReason;
+
+  // Entry interpretation
+  var entryNote = '';
+  if (q.priceInEntryZone) {
+    entryNote = ' Entry actionable (near support).';
+  } else if (q.distanceAboveEntry <= 5) {
+    entryNote = ' Entry dekat (near MA20 pullback).';
+  } else if (q.distanceAboveEntry <= 10) {
+    entryNote = ' Entry moderat, wait minor pullback.';
+  } else {
+    entryNote = ' Price extended dari entry ideal.';
+  }
+
+  statusReason = metricLine + '.' + entryNote + ' ' + statusReason;
 
   // Compute avg_volume_20d
   var avgVolume20d = (q.lastPrice > 0) ? Math.round(q.avgTxValue20d / q.lastPrice) : 0;

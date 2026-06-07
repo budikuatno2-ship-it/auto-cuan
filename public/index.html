@@ -4576,20 +4576,22 @@ function formatVolume(val) {
 var _screenerCache = null;
 var _screenerFilter = 'all';
 var _screenerPollInterval = null;
+var _screenerLastCalcAt = null;
 
 function startScreenerPolling() {
     stopScreenerPolling();
     _screenerPollInterval = setInterval(function() {
         if (_currentScreenerType !== 'konglo') { stopScreenerPolling(); return; }
-        loadSwingScreener();
-    }, 5000);
+        // Lightweight check: re-fetch data and compare calculated_at
+        loadSwingScreener(true); // silent mode
+    }, 8000);
 }
 
 function stopScreenerPolling() {
     if (_screenerPollInterval) { clearInterval(_screenerPollInterval); _screenerPollInterval = null; }
 }
 
-async function loadSwingScreener() {
+async function loadSwingScreener(silent) {
     var tbody = document.getElementById('screenerTableBody');
     if (!tbody) return;
 
@@ -4603,18 +4605,26 @@ async function loadSwingScreener() {
     var scrUserId = localStorage.getItem('autocuan_user_id') || '';
     var scrUsername = getUsername();
 
-    tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+    // Only show spinner on initial load (not silent poll)
+    if (!silent) {
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+    }
 
     try {
-        var response = await fetch('/api/sector-hot?action=screener', {
+        var response = await fetch('/api/sector-hot?action=screener&t=' + Date.now(), {
             headers: { 'X-User-Id': scrUserId, 'X-Username': scrUsername }
         });
         var data = await response.json();
 
         if (response.status === 403 || !data.success) {
-            tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            if (!silent) tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
             return;
         }
+
+        // Detect data change via calculated_at — skip re-render if unchanged (silent poll)
+        var newCalcAt = (data.meta && data.meta.calculated_at) ? data.meta.calculated_at : null;
+        if (silent && newCalcAt && _screenerLastCalcAt === newCalcAt) return; // no change
+        _screenerLastCalcAt = newCalcAt;
 
         _screenerCache = data;
 
@@ -4651,12 +4661,8 @@ async function loadSwingScreener() {
                 else { badge.textContent = 'PENDING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
             }
 
-            // Auto-poll while status is not ok/failed (refresh may be running)
-            if (m.status && m.status !== 'ok' && m.status !== 'failed') {
-                startScreenerPolling();
-            } else {
-                stopScreenerPolling();
-            }
+            // Auto-poll while Konglo tab is active to detect external refreshes
+            startScreenerPolling();
         }
 
         renderScreenerTable(data.results);
@@ -4774,6 +4780,7 @@ function switchScreenerType(type) {
         if (btnKonglo) { btnKonglo.className = 'px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all'; }
         if (btnNk) { btnNk.className = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all'; }
         loadSwingScreener();
+        startScreenerPolling();
     } else {
         _currentScreenerType = 'nonkonglo';
         stopScreenerPolling();
