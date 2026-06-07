@@ -1072,7 +1072,13 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   if (volBlock) { var vb = volBlock[1]; var ve = function(lbl) { var m = vb.match(new RegExp(lbl + '\\s*[:]\\s*([^\\n]+)', 'i')); return m ? m[1].trim() : '\u2014'; }; volToday = ve('Volume Terakhir'); volAvg3 = ve('Rata-rata 3 Hari'); volAvg7 = ve('Rata-rata 7 Hari'); volVs7 = ve('Volume vs Avg 7D'); volCommentary = ve('Pembacaan'); }
   var fibBlock = rawMsg.match(/\[Auto-Cuan Fibonacci Intelligence\]([\s\S]*?)(?:\[Auto-Cuan|$)/i);
   var fibSwingH = '\u2014', fibSwingL = '\u2014', fibNearest = '\u2014', fibTrend = '\u2014', fib382 = d.fib382 != null ? d.fib382 : '\u2014', fib500 = d.fib500 != null ? d.fib500 : '\u2014', fib618 = d.fib618 != null ? d.fib618 : '\u2014', fib786 = d.fib786 != null ? d.fib786 : '\u2014', fibCommentary = '\u2014', hasFib = false;
-  if (fibBlock) { hasFib = true; var fb = fibBlock[1]; var fe = function(lbl) { var m = fb.match(new RegExp(lbl + '\\s*[:]\\s*([^\\n]+)', 'i')); return m ? m[1].trim() : '\u2014'; }; fibSwingH = fe('Swing High'); fibSwingL = fe('Swing Low'); fibNearest = fe('Nearest Fib'); fibTrend = fe('Trend Context'); fibCommentary = fe('Reading'); if (fibCommentary === '\u2014') fibCommentary = fe('Invalidation'); } else if (d.fib382) { hasFib = true; }
+  if (fibBlock) { hasFib = true; var fb = fibBlock[1]; var fe = function(lbl) { var m = fb.match(new RegExp(lbl + '\\s*[:]\\s*([^\\n]+)', 'i')); return m ? m[1].trim() : '\u2014'; }; fibSwingH = fe('Swing High'); fibSwingL = fe('Swing Low'); fibNearest = fe('Nearest Fib'); fibTrend = fe('Trend Context'); fibCommentary = fe('Reading'); if (fibCommentary === '\u2014') fibCommentary = fe('Invalidation');
+    // Extract actual Fib level numbers from Fibonacci Intelligence block (overrides Market Data if available)
+    var fibVal382 = fe('Fib 38\\.2%'); if (fibVal382 !== '\u2014') fib382 = fibVal382;
+    var fibVal500 = fe('Fib 50%'); if (fibVal500 !== '\u2014') fib500 = fibVal500;
+    var fibVal618 = fe('Fib 61\\.8%'); if (fibVal618 !== '\u2014') fib618 = fibVal618;
+    var fibVal786 = fe('Fib 78\\.6%'); if (fibVal786 !== '\u2014') fib786 = fibVal786;
+  } else if (d.fib382) { hasFib = true; }
   // Normalize Fibonacci values to Indonesian
   fibNearest = fibNearest.replace(/^Below\b/i, 'Di bawah').replace(/^Above\b/i, 'Di atas');
   fibTrend = fibTrend.replace(/downward_retracement/gi, 'Retracement turun').replace(/upward_retracement/gi, 'Retracement naik').replace(/sideways_range/gi, 'Sideways').replace(/_/g, ' ');
