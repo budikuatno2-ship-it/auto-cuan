@@ -54,6 +54,16 @@ module.exports = async function handler(req, res) {
       return await handleScreenerRefresh(req, res, supabase, enableAI);
     }
 
+    // === NON-KONGLO SCREENER: ORCHESTRATOR (GitHub Actions protected) ===
+    if (action === 'nk-screener-run') {
+      return await handleNkScreenerRun(req, res, supabase);
+    }
+
+    // === NON-KONGLO SCREENER: READ (login-gated, same as Konglo screener) ===
+    if (action === 'nk-screener-results') {
+      return await handleNkScreenerResults(req, res, supabase);
+    }
+
     // === SEKTOR HOT REFRESH MODE (cron-protected, existing) ===
     if (action === 'refresh') {
       return await handleRefresh(req, res, supabase);
@@ -1391,4 +1401,661 @@ async function updateScreenerMeta(supabase, fields) {
     message: fields.message || null,
     updated_at: new Date().toISOString()
   }], { onConflict: 'id' });
+}
+
+
+// ============================================================
+// NON-KONGLO SWING SCREENER v1 — Functions
+// ============================================================
+
+function verifyCronSecret(req) {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  const secret = process.env.CRON_SECRET || '';
+  if (!secret || !token) return false;
+  return token === secret;
+}
+
+function isWithinNkRunWindow() {
+  // Valid window: Mon-Fri 19:30-21:30 WIB (UTC+7)
+  const now = new Date();
+  const wibOffset = 7 * 60; // minutes
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const wibMinutes = utcMinutes + wibOffset;
+  const wibHour = Math.floor((wibMinutes % 1440) / 60);
+  const wibMin = wibMinutes % 60;
+  const wibDay = now.getUTCDay(); // 0=Sun ... 6=Sat
+  // Adjust day if WIB crosses midnight
+  const adjustedDay = (wibMinutes >= 1440) ? (wibDay + 1) % 7 : wibDay;
+
+  // Must be Mon(1)-Fri(5)
+  if (adjustedDay < 1 || adjustedDay > 5) return false;
+
+  const totalMin = wibHour * 60 + wibMin;
+  // 19:30 = 1170, 21:30 = 1290
+  return totalMin >= 1170 && totalMin <= 1290;
+}
+
+function getWibDateString() {
+  const now = new Date();
+  const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  return wib.toISOString().slice(0, 10);
+}
+
+// --- ORCHESTRATOR ---
+async function handleNkScreenerRun(req, res, supabase) {
+  // 1. Verify CRON_SECRET
+  if (!verifyCronSecret(req)) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+
+  // 2. Time-window guard (bypass with force=1)
+  if (req.query.force !== '1' && !isWithinNkRunWindow()) {
+    return res.status(200).json({ success: false, error: 'Di luar waktu operasi (19:30-21:30 WIB, Mon-Fri).', skipped: true });
+  }
+
+  const step = req.query.step || 'auto';
+
+  // Manual step routing
+  if (step === 'start') return await handleNkScreenerStart(req, res, supabase);
+  if (step === 'batch') return await handleNkScreenerBatch(req, res, supabase);
+  if (step === 'finalize') return await handleNkScreenerFinalize(req, res, supabase);
+
+  // Auto mode: determine next action from meta
+  const { data: meta } = await supabase
+    .from('swing_screener_non_konglo_meta')
+    .select('*')
+    .eq('id', 'latest')
+    .maybeSingle();
+
+  const runDate = getWibDateString();
+
+  // If no meta or different date or status is idle/published → start fresh
+  if (!meta || meta.run_date !== runDate || meta.status === 'published' || meta.status === 'idle') {
+    return await handleNkScreenerStart(req, res, supabase);
+  }
+
+  // If scanning, process next batch
+  if (meta.status === 'scanning') {
+    // Check if pending batches exist
+    const { data: pendingJobs } = await supabase
+      .from('swing_screener_non_konglo_jobs')
+      .select('id')
+      .eq('run_date', runDate)
+      .eq('status', 'pending')
+      .limit(1);
+
+    if (pendingJobs && pendingJobs.length > 0) {
+      return await handleNkScreenerBatch(req, res, supabase);
+    }
+
+    // No pending → check if all done
+    const { data: failedJobs } = await supabase
+      .from('swing_screener_non_konglo_jobs')
+      .select('id')
+      .eq('run_date', runDate)
+      .eq('status', 'failed')
+      .limit(1);
+
+    // All batches done (none pending, possibly some failed) → finalize
+    return await handleNkScreenerFinalize(req, res, supabase);
+  }
+
+  // If already finalizing or other state
+  if (meta.status === 'finalizing') {
+    return await handleNkScreenerFinalize(req, res, supabase);
+  }
+
+  return res.status(200).json({ success: true, message: 'No action needed.', meta });
+}
+
+// --- START: build universe, create batches ---
+async function handleNkScreenerStart(req, res, supabase) {
+  const runDate = getWibDateString();
+
+  // Update meta to scanning
+  await updateNkMeta(supabase, { status: 'scanning', run_date: runDate, message: 'Building universe...', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 });
+
+  // Get excluded tickers (tickers already in Konglo groups)
+  const { data: kongloMembers } = await supabase
+    .from('sector_hot_group_members')
+    .select('ticker');
+  const excludedTickers = new Set((kongloMembers || []).map(m => m.ticker));
+
+  // Get eligible stocks from stock_boards
+  const { data: boardStocks, error: boardErr } = await supabase
+    .from('stock_boards')
+    .select('ticker, board')
+    .in('board', ['UTAMA', 'PENGEMBANGAN']);
+
+  if (boardErr || !boardStocks) {
+    await updateNkMeta(supabase, { status: 'failed', message: 'Gagal memuat stock_boards: ' + (boardErr ? boardErr.message : 'no data') });
+    return res.status(200).json({ success: false, error: 'Failed to load stock_boards.' });
+  }
+
+  // Filter out Konglo tickers
+  const universe = boardStocks.filter(s => !excludedTickers.has(s.ticker));
+
+  if (universe.length === 0) {
+    await updateNkMeta(supabase, { status: 'failed', message: 'Universe kosong setelah filter.' });
+    return res.status(200).json({ success: false, error: 'Empty universe.' });
+  }
+
+  await updateNkMeta(supabase, { status: 'scanning', run_date: runDate, universe_count: universe.length, message: 'Creating batches...' });
+
+  // Clear old jobs and staging for this run_date
+  await supabase.from('swing_screener_non_konglo_jobs').delete().eq('run_date', runDate);
+  await supabase.from('swing_screener_non_konglo_staging').delete().eq('run_date', runDate);
+
+  // Create batches of 15
+  const BATCH_SIZE = 15;
+  const batches = [];
+  for (let i = 0; i < universe.length; i += BATCH_SIZE) {
+    const batch = universe.slice(i, i + BATCH_SIZE);
+    batches.push({
+      run_date: runDate,
+      batch_index: Math.floor(i / BATCH_SIZE),
+      tickers: batch.map(s => s.ticker),
+      boards: batch.reduce((acc, s) => { acc[s.ticker] = s.board; return acc; }, {}),
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
+  }
+
+  const { error: insertErr } = await supabase
+    .from('swing_screener_non_konglo_jobs')
+    .insert(batches);
+
+  if (insertErr) {
+    await updateNkMeta(supabase, { status: 'failed', message: 'Gagal membuat batch jobs: ' + insertErr.message });
+    return res.status(200).json({ success: false, error: 'Failed to create batch jobs.' });
+  }
+
+  await updateNkMeta(supabase, { status: 'scanning', message: `Created ${batches.length} batches for ${universe.length} tickers.` });
+
+  return res.status(200).json({
+    success: true,
+    step: 'start',
+    universe_count: universe.length,
+    batch_count: batches.length,
+    batch_size: BATCH_SIZE
+  });
+}
+
+// --- BATCH: process next pending batch ---
+async function handleNkScreenerBatch(req, res, supabase) {
+  const runDate = getWibDateString();
+
+  // Get next pending batch
+  const { data: jobs } = await supabase
+    .from('swing_screener_non_konglo_jobs')
+    .select('*')
+    .eq('run_date', runDate)
+    .eq('status', 'pending')
+    .order('batch_index', { ascending: true })
+    .limit(1);
+
+  if (!jobs || jobs.length === 0) {
+    return res.status(200).json({ success: true, message: 'No pending batches.', step: 'batch' });
+  }
+
+  const job = jobs[0];
+  const tickers = job.tickers || [];
+  const boards = job.boards || {};
+
+  // Mark job as processing
+  await supabase
+    .from('swing_screener_non_konglo_jobs')
+    .update({ status: 'processing', started_at: new Date().toISOString() })
+    .eq('id', job.id);
+
+  const results = [];
+  let failedCount = 0;
+
+  for (const ticker of tickers) {
+    try {
+      const quoteData = await fetchNkQuoteData(ticker);
+      if (!quoteData || !quoteData.closes || quoteData.closes.length < 20) {
+        failedCount++;
+        continue;
+      }
+
+      // Apply hard filters
+      const passesFilter = applyNkHardFilters(quoteData);
+      if (!passesFilter) continue;
+
+      // Calculate score
+      const scored = calculateNkSetupScore(quoteData);
+      scored.ticker = ticker;
+      scored.board = boards[ticker] || 'UNKNOWN';
+      scored.run_date = runDate;
+      scored.calculated_at = new Date().toISOString();
+
+      results.push(scored);
+    } catch (e) {
+      failedCount++;
+    }
+  }
+
+  // Insert scored candidates into staging
+  if (results.length > 0) {
+    await supabase
+      .from('swing_screener_non_konglo_staging')
+      .insert(results);
+  }
+
+  // Mark job complete
+  await supabase
+    .from('swing_screener_non_konglo_jobs')
+    .update({
+      status: 'done',
+      completed_at: new Date().toISOString(),
+      result_count: results.length,
+      failed_count: failedCount
+    })
+    .eq('id', job.id);
+
+  // Update meta scanned count
+  const { data: meta } = await supabase
+    .from('swing_screener_non_konglo_meta')
+    .select('scanned_count, failed_count')
+    .eq('id', 'latest')
+    .maybeSingle();
+
+  await updateNkMeta(supabase, {
+    scanned_count: (meta ? meta.scanned_count : 0) + tickers.length,
+    failed_count: (meta ? meta.failed_count : 0) + failedCount,
+    message: `Batch ${job.batch_index} done: ${results.length} passed, ${failedCount} failed.`
+  });
+
+  return res.status(200).json({
+    success: true,
+    step: 'batch',
+    batch_index: job.batch_index,
+    processed: tickers.length,
+    passed: results.length,
+    failed: failedCount
+  });
+}
+
+// --- FINALIZE: publish Top 15 ---
+async function handleNkScreenerFinalize(req, res, supabase) {
+  const runDate = getWibDateString();
+
+  // Check for pending/failed batches — do NOT finalize if unresolved
+  const { data: pendingJobs } = await supabase
+    .from('swing_screener_non_konglo_jobs')
+    .select('id')
+    .eq('run_date', runDate)
+    .in('status', ['pending', 'processing']);
+
+  if (pendingJobs && pendingJobs.length > 0) {
+    return res.status(200).json({ success: false, error: 'Cannot finalize: pending/processing batches remain.', pending: pendingJobs.length });
+  }
+
+  await updateNkMeta(supabase, { status: 'finalizing', message: 'Publishing top 15...' });
+
+  // Get top 15 from staging by score desc
+  const { data: topCandidates, error: stagErr } = await supabase
+    .from('swing_screener_non_konglo_staging')
+    .select('*')
+    .eq('run_date', runDate)
+    .order('score', { ascending: false })
+    .limit(15);
+
+  if (stagErr) {
+    await updateNkMeta(supabase, { status: 'failed', message: 'Gagal membaca staging: ' + stagErr.message });
+    return res.status(200).json({ success: false, error: 'Failed to read staging.' });
+  }
+
+  // Clear latest table and insert top 15
+  await supabase.from('swing_screener_non_konglo_latest').delete().neq('ticker', '');
+
+  if (topCandidates && topCandidates.length > 0) {
+    const publishRows = topCandidates.map((c, idx) => ({
+      rank: idx + 1,
+      ticker: c.ticker,
+      board: c.board,
+      last_price: c.last_price,
+      change_pct: c.change_pct,
+      score: c.score,
+      grade: c.grade,
+      risk_reward: c.risk_reward,
+      volume_ratio_avg20: c.volume_ratio_avg20,
+      status: c.status,
+      ma20: c.ma20,
+      ma50: c.ma50,
+      rsi14: c.rsi14,
+      entry_low: c.entry_low,
+      entry_high: c.entry_high,
+      stop_loss: c.stop_loss,
+      tp1: c.tp1,
+      tp2: c.tp2,
+      support: c.support,
+      resistance: c.resistance,
+      published_at: new Date().toISOString(),
+      run_date: runDate
+    }));
+
+    await supabase.from('swing_screener_non_konglo_latest').insert(publishRows);
+  }
+
+  // Final meta
+  const { count: totalScanned } = await supabase
+    .from('swing_screener_non_konglo_jobs')
+    .select('*', { count: 'exact', head: true })
+    .eq('run_date', runDate)
+    .eq('status', 'done');
+
+  await updateNkMeta(supabase, {
+    status: 'published',
+    published_count: topCandidates ? topCandidates.length : 0,
+    message: `Published ${topCandidates ? topCandidates.length : 0} top candidates.`,
+    calculated_at: new Date().toISOString()
+  });
+
+  return res.status(200).json({
+    success: true,
+    step: 'finalize',
+    published: topCandidates ? topCandidates.length : 0
+  });
+}
+
+// --- READ: cached results (login-gated) ---
+async function handleNkScreenerResults(req, res, supabase) {
+  // Replicate same auth check as handleScreenerRead
+  var rawUserId = (req.headers['x-user-id'] || '').trim();
+  var rawUsername = (req.headers['x-username'] || '').trim().toLowerCase();
+
+  if (!rawUserId && !rawUsername) {
+    return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
+  }
+  if (rawUsername === 'guest') {
+    return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
+  }
+
+  var userData = null;
+
+  // 1. Try lookup by UUID if it looks valid
+  if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
+    var r1 = await supabase
+      .from('app_users')
+      .select('id, username, is_approved, is_blocked')
+      .eq('id', rawUserId)
+      .maybeSingle();
+    if (r1.data) userData = r1.data;
+  }
+
+  // 2. Fallback: lookup by username
+  if (!userData && rawUsername && rawUsername.length >= 2) {
+    var r2 = await supabase
+      .from('app_users')
+      .select('id, username, is_approved, is_blocked')
+      .eq('username', rawUsername)
+      .maybeSingle();
+    if (r2.data) userData = r2.data;
+  }
+
+  // 3. Fallback: try ilike match for username (case-insensitive safety)
+  if (!userData && rawUsername && rawUsername.length >= 2) {
+    var r3 = await supabase
+      .from('app_users')
+      .select('id, username, is_approved, is_blocked')
+      .ilike('username', rawUsername)
+      .maybeSingle();
+    if (r3.data) userData = r3.data;
+  }
+
+  if (!userData) {
+    return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
+  }
+
+  if (userData.is_blocked) {
+    return res.status(403).json({ success: false, error: 'Akun diblokir.' });
+  }
+
+  if (userData.is_approved === false) {
+    return res.status(403).json({ success: false, error: 'Akun belum di-approve.' });
+  }
+
+  // User verified — return cached NK screener data
+  const { data: meta } = await supabase
+    .from('swing_screener_non_konglo_meta')
+    .select('*')
+    .eq('id', 'latest')
+    .maybeSingle();
+
+  const { data: rows, error: rowErr } = await supabase
+    .from('swing_screener_non_konglo_latest')
+    .select('*')
+    .order('rank', { ascending: true });
+
+  if (rowErr) {
+    return res.status(200).json({ success: false, error: 'Gagal memuat data screener non-konglo.' });
+  }
+
+  return res.status(200).json({
+    success: true,
+    meta: meta || { calculated_at: null, status: 'idle', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 },
+    results: rows || []
+  });
+}
+
+// --- META helper ---
+async function updateNkMeta(supabase, fields) {
+  const updateData = {
+    id: 'latest',
+    updated_at: new Date().toISOString()
+  };
+  if (fields.status !== undefined) updateData.status = fields.status;
+  if (fields.run_date !== undefined) updateData.run_date = fields.run_date;
+  if (fields.message !== undefined) updateData.message = fields.message;
+  if (fields.universe_count !== undefined) updateData.universe_count = fields.universe_count;
+  if (fields.scanned_count !== undefined) updateData.scanned_count = fields.scanned_count;
+  if (fields.failed_count !== undefined) updateData.failed_count = fields.failed_count;
+  if (fields.published_count !== undefined) updateData.published_count = fields.published_count;
+  if (fields.calculated_at !== undefined) updateData.calculated_at = fields.calculated_at;
+
+  await supabase.from('swing_screener_non_konglo_meta').upsert([updateData], { onConflict: 'id' });
+}
+
+// --- DATA FETCH: Yahoo 60d OHLCV ---
+async function fetchNkQuoteData(ticker) {
+  try {
+    const symbol = ticker + '.JK';
+    const now = Math.floor(Date.now() / 1000);
+    const from = now - 60 * 86400; // 60 days back
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${from}&period2=${now}&interval=1d`;
+
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AutoCuan/1.0)' }
+    });
+    if (!resp.ok) return null;
+
+    const json = await resp.json();
+    const result = json.chart && json.chart.result && json.chart.result[0];
+    if (!result || !result.indicators || !result.indicators.quote || !result.indicators.quote[0]) return null;
+
+    const quote = result.indicators.quote[0];
+    const timestamps = result.timestamp || [];
+    const opens = quote.open || [];
+    const highs = quote.high || [];
+    const lows = quote.low || [];
+    const closes = quote.close || [];
+    const volumes = quote.volume || [];
+
+    // Filter out null days
+    const validDays = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      if (closes[i] != null && volumes[i] != null) {
+        validDays.push({ ts: timestamps[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes[i] });
+      }
+    }
+
+    if (validDays.length < 20) return null;
+
+    const lastIdx = validDays.length - 1;
+    const lastClose = validDays[lastIdx].close;
+    const prevClose = validDays[lastIdx - 1].close;
+    const changePct = prevClose ? ((lastClose - prevClose) / prevClose) * 100 : 0;
+
+    // Count traded days in last 20
+    const last20 = validDays.slice(-20);
+    const tradedDays20d = last20.filter(d => d.volume > 0).length;
+
+    // Avg transaction value last 20d (approx: close * volume)
+    const txValues = last20.map(d => d.close * d.volume);
+    const avgTxValue20d = txValues.reduce((a, b) => a + b, 0) / txValues.length;
+
+    // Volume ratio vs avg20
+    const avgVol20 = last20.map(d => d.volume).reduce((a, b) => a + b, 0) / 20;
+    const volumeRatioAvg20 = avgVol20 > 0 ? validDays[lastIdx].volume / avgVol20 : 0;
+
+    // MA20, MA50
+    const closesArr = validDays.map(d => d.close);
+    const ma20 = nkCalcMA(closesArr, 20);
+    const ma50 = closesArr.length >= 50 ? nkCalcMA(closesArr, 50) : null;
+
+    // RSI14
+    const rsi14 = nkCalcRSI(closesArr, 14);
+
+    // Support/Resistance (simple: 20d low/high)
+    const last20Lows = last20.map(d => d.low);
+    const last20Highs = last20.map(d => d.high);
+    const support = Math.min(...last20Lows);
+    const resistance = Math.max(...last20Highs);
+
+    // Entry, SL, TP
+    const entryLow = support;
+    const entryHigh = lastClose;
+    const stopLoss = support * 0.97; // 3% below support
+    const tp1 = lastClose + (lastClose - stopLoss) * 1.5;
+    const tp2 = lastClose + (lastClose - stopLoss) * 2.5;
+    const riskReward = stopLoss < lastClose ? (tp1 - lastClose) / (lastClose - stopLoss) : 0;
+
+    return {
+      closes: closesArr,
+      lastPrice: lastClose,
+      changePct,
+      tradedDays20d,
+      avgTxValue20d,
+      volumeRatioAvg20,
+      ma20,
+      ma50,
+      rsi14,
+      support,
+      resistance,
+      entryLow,
+      entryHigh,
+      stopLoss,
+      tp1,
+      tp2,
+      riskReward,
+      last_price: lastClose,
+      change_pct: Number(changePct.toFixed(2)),
+      volume_ratio_avg20: Number(volumeRatioAvg20.toFixed(2))
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// --- HARD FILTERS ---
+function applyNkHardFilters(q) {
+  if (!q) return false;
+  if (q.lastPrice <= 50) return false;
+  if (q.tradedDays20d < 15) return false;
+  if (q.avgTxValue20d < 10_000_000_000) return false;
+  if (q.riskReward < 1.5) return false;
+  if (q.volumeRatioAvg20 < 0.7) return false;
+  return true;
+}
+
+// --- SCORING: deterministic 0-100 ---
+function calculateNkSetupScore(q) {
+  let score = 0;
+
+  // 1. Trend (30 pts max)
+  if (q.ma20 && q.lastPrice > q.ma20) score += 15;
+  if (q.ma50 && q.lastPrice > q.ma50) score += 10;
+  if (q.ma20 && q.ma50 && q.ma20 > q.ma50) score += 5;
+
+  // 2. Momentum / RSI (25 pts max)
+  if (q.rsi14 !== null) {
+    if (q.rsi14 >= 40 && q.rsi14 <= 65) score += 25; // ideal swing zone
+    else if (q.rsi14 >= 30 && q.rsi14 < 40) score += 15; // oversold bounce potential
+    else if (q.rsi14 > 65 && q.rsi14 <= 75) score += 10; // still ok
+    // >75 or <30 = 0 pts
+  }
+
+  // 3. Volume (20 pts max)
+  if (q.volumeRatioAvg20 >= 2.0) score += 20;
+  else if (q.volumeRatioAvg20 >= 1.5) score += 15;
+  else if (q.volumeRatioAvg20 >= 1.0) score += 10;
+  else if (q.volumeRatioAvg20 >= 0.7) score += 5;
+
+  // 4. Risk/Reward (25 pts max)
+  if (q.riskReward >= 3.0) score += 25;
+  else if (q.riskReward >= 2.5) score += 20;
+  else if (q.riskReward >= 2.0) score += 15;
+  else if (q.riskReward >= 1.5) score += 10;
+
+  // Determine grade
+  let grade = 'D';
+  if (score >= 80) grade = 'A';
+  else if (score >= 65) grade = 'B';
+  else if (score >= 45) grade = 'C';
+
+  // Determine status
+  let status = 'Watchlist';
+  if (score >= 70) status = 'Swing Ready';
+  else if (score >= 45) status = 'Watchlist';
+  else status = 'Speculative';
+
+  return {
+    score,
+    grade,
+    status,
+    last_price: q.last_price,
+    change_pct: q.change_pct,
+    risk_reward: Number(q.riskReward.toFixed(2)),
+    volume_ratio_avg20: q.volume_ratio_avg20,
+    ma20: q.ma20 ? Number(q.ma20.toFixed(2)) : null,
+    ma50: q.ma50 ? Number(q.ma50.toFixed(2)) : null,
+    rsi14: q.rsi14 !== null ? Number(q.rsi14.toFixed(2)) : null,
+    entry_low: Number(q.entryLow.toFixed(2)),
+    entry_high: Number(q.entryHigh.toFixed(2)),
+    stop_loss: Number(q.stopLoss.toFixed(2)),
+    tp1: Number(q.tp1.toFixed(2)),
+    tp2: Number(q.tp2.toFixed(2)),
+    support: Number(q.support.toFixed(2)),
+    resistance: Number(q.resistance.toFixed(2))
+  };
+}
+
+// --- SMA helper ---
+function nkCalcMA(arr, period) {
+  if (arr.length < period) return null;
+  const slice = arr.slice(-period);
+  return slice.reduce((a, b) => a + b, 0) / period;
+}
+
+// --- RSI helper ---
+function nkCalcRSI(closes, period) {
+  if (closes.length < period + 1) return null;
+  let gains = 0;
+  let losses = 0;
+
+  for (let i = closes.length - period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff >= 0) gains += diff;
+    else losses += Math.abs(diff);
+  }
+
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
 }

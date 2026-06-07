@@ -655,8 +655,8 @@
         <div class="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-4">
             <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
-        <h2 class="text-lg font-bold text-white mb-2">Screener Swing Konglo 3&ndash;7D</h2>
-        <p class="text-sm text-gray-400 max-w-md">Screener Swing Konglo tersedia untuk pengguna terdaftar. Silakan login atau daftar untuk melihat hasil.</p>
+        <h2 class="text-lg font-bold text-white mb-2">Screener Swing</h2>
+        <p class="text-sm text-gray-400 max-w-md">Screener tersedia untuk pengguna terdaftar. Silakan login atau daftar untuk melihat hasil.</p>
         <div class="mt-4 flex gap-2">
             <button onclick="openLoginModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Login</button>
             <button onclick="openRegisterModal()" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition">Daftar</button>
@@ -664,6 +664,13 @@
     </div>
     <!-- Content -->
     <div id="screenerContent" class="hidden space-y-4">
+        <!-- Screener type tabs -->
+        <div class="flex items-center gap-2 mb-4">
+            <button onclick="switchScreenerType('konglo')" id="scrTypeKonglo" class="px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all">Konglo</button>
+            <button onclick="switchScreenerType('nonkonglo')" id="scrTypeNonKonglo" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all">Non-Konglo</button>
+        </div>
+        <!-- Konglo Pane -->
+        <div id="screenerKongloPane" class="space-y-4">
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
@@ -736,6 +743,58 @@
                 </tbody>
             </table>
         </div>
+        </div><!-- /screenerKongloPane -->
+        <!-- Non-Konglo Pane (hidden by default) -->
+        <div id="screenerNonKongloPane" class="hidden space-y-4">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Swing Screener Non-Konglo (Top 15)</h2>
+                    <p class="text-xs text-gray-500 mt-0.5" id="nkScreenerSubtitle">Watchlist swing setup dari saham non-konglomerat (papan Utama &amp; Pengembangan).</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="nkScreenerMetaBadge" class="px-2 py-1 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+                </div>
+            </div>
+            <!-- Progress bar (hidden when not scanning) -->
+            <div id="nkScreenerProgress" class="hidden">
+                <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="spinner-sm"></div>
+                        <span class="text-xs text-gray-400" id="nkProgressText">Scanning...</span>
+                    </div>
+                    <div class="w-full bg-dark-600/50 rounded-full h-1.5">
+                        <div id="nkProgressBar" class="bg-emerald-500 h-1.5 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Disclaimer -->
+            <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
+                <p class="text-[11px] text-amber-400/80 leading-relaxed"><strong>Disclaimer:</strong> Ini bukan rekomendasi beli. Screener ini hanya watchlist setup high-probability untuk swing trading. Selalu lakukan analisis sendiri dan kelola risiko.</p>
+            </div>
+            <!-- Table -->
+            <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="nkScreenerTableWrap">
+                <table class="w-full text-xs border-collapse min-w-[700px]">
+                    <thead>
+                        <tr class="bg-dark-700/70">
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">#</th>
+                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Grade</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">R:R</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol Ratio</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="nkScreenerTableBody">
+                        <tr><td colspan="10" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div><!-- /screenerNonKongloPane -->
     </div>
 </div>
 
@@ -4655,6 +4714,148 @@ function screenerTickerClick(ticker) {
         var el = document.getElementById('analisisInput');
         if (el) { el.value = ticker; handleAnalisisSubmit(); }
     }, 200);
+}
+
+// ===== NON-KONGLO SCREENER FUNCTIONS =====
+var _nkScreenerCache = null;
+var _currentScreenerType = 'konglo';
+
+function switchScreenerType(type) {
+    _currentScreenerType = type;
+    var kongloPane = document.getElementById('screenerKongloPane');
+    var nkPane = document.getElementById('screenerNonKongloPane');
+    var btnKonglo = document.getElementById('scrTypeKonglo');
+    var btnNk = document.getElementById('scrTypeNonKonglo');
+
+    if (type === 'konglo') {
+        if (kongloPane) kongloPane.classList.remove('hidden');
+        if (nkPane) nkPane.classList.add('hidden');
+        if (btnKonglo) { btnKonglo.className = 'px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all'; }
+        if (btnNk) { btnNk.className = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all'; }
+    } else {
+        if (kongloPane) kongloPane.classList.add('hidden');
+        if (nkPane) nkPane.classList.remove('hidden');
+        if (btnNk) { btnNk.className = 'px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all'; }
+        if (btnKonglo) { btnKonglo.className = 'px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all'; }
+        loadNkScreenerResults();
+    }
+}
+
+async function loadNkScreenerResults() {
+    var tbody = document.getElementById('nkScreenerTableBody');
+    if (!tbody) return;
+
+    // Guard: do not call API if not logged in
+    if (getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
+        return;
+    }
+
+    var userId = localStorage.getItem('autocuan_user_id') || '';
+    var username = getUsername();
+
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+
+    try {
+        var response = await fetch('/api/sector-hot?action=nk-screener-results', {
+            headers: { 'X-User-Id': userId, 'X-Username': username }
+        });
+        var data = await response.json();
+
+        if (response.status === 403 || !data.success) {
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            return;
+        }
+
+        _nkScreenerCache = data;
+
+        if (!data.results || data.results.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
+            // Still update meta
+            updateNkScreenerMeta(data.meta);
+            return;
+        }
+
+        updateNkScreenerMeta(data.meta);
+        renderNkScreenerTable(data.results);
+
+        // Show progress if scanning
+        var progressEl = document.getElementById('nkScreenerProgress');
+        if (data.meta && data.meta.status === 'scanning' && progressEl) {
+            progressEl.classList.remove('hidden');
+            var pctDone = data.meta.universe_count > 0 ? Math.round((data.meta.scanned_count / data.meta.universe_count) * 100) : 0;
+            var bar = document.getElementById('nkProgressBar');
+            var txt = document.getElementById('nkProgressText');
+            if (bar) bar.style.width = pctDone + '%';
+            if (txt) txt.textContent = 'Scanning: ' + data.meta.scanned_count + '/' + data.meta.universe_count + ' tickers...';
+        } else if (progressEl) {
+            progressEl.classList.add('hidden');
+        }
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
+    }
+}
+
+function updateNkScreenerMeta(meta) {
+    if (!meta) return;
+    var badge = document.getElementById('nkScreenerMetaBadge');
+    if (badge) {
+        if (meta.status === 'published') { badge.textContent = 'LIVE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'; }
+        else if (meta.status === 'failed') { badge.textContent = 'ERROR'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25'; }
+        else if (meta.status === 'scanning') { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25'; }
+        else { badge.textContent = 'IDLE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
+    }
+    var sub = document.getElementById('nkScreenerSubtitle');
+    if (sub && meta.calculated_at) {
+        var dt = new Date(meta.calculated_at);
+        var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+        sub.textContent = 'Update: ' + wibStr + ' WIB · Non-Konglomerat · Papan Utama & Pengembangan';
+    }
+}
+
+function renderNkScreenerTable(results) {
+    var tbody = document.getElementById('nkScreenerTableBody');
+    if (!tbody) return;
+
+    if (!results || results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
+        return;
+    }
+
+    var html = '';
+    results.forEach(function(r) {
+        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var chgSign = (r.change_pct || 0) >= 0 ? '+' : '';
+
+        var scoreColor = 'text-gray-400';
+        if (r.score >= 80) scoreColor = 'text-emerald-400 font-bold';
+        else if (r.score >= 65) scoreColor = 'text-blue-400';
+        else if (r.score >= 45) scoreColor = 'text-amber-400';
+
+        var gradeColor = 'text-gray-400';
+        if (r.grade === 'A') gradeColor = 'text-emerald-400 font-bold';
+        else if (r.grade === 'B') gradeColor = 'text-blue-400';
+        else if (r.grade === 'C') gradeColor = 'text-amber-400';
+
+        var statusClass = 'bg-gray-500/15 text-gray-400';
+        if (r.status === 'Swing Ready') statusClass = 'bg-emerald-500/15 text-emerald-400';
+        else if (r.status === 'Watchlist') statusClass = 'bg-blue-500/15 text-blue-400';
+        else if (r.status === 'Speculative') statusClass = 'bg-amber-500/15 text-amber-400';
+
+        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
+        html += '<td class="px-2 py-2 text-center text-gray-500">' + (r.rank || '-') + '</td>';
+        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '</td>';
+        html += '<td class="px-2 py-2 text-center text-gray-500 text-[10px]">' + (r.board || '-') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
+        html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
+        html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + '</td>';
+        html += '<td class="px-2 py-2 text-center ' + gradeColor + ' whitespace-nowrap">' + (r.grade || '-') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
+        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + (r.status || '-') + '</span></td>';
+        html += '</tr>';
+    });
+    tbody.innerHTML = html;
 }
 
 // ===== PORTOFOLIO FEATURE (Phase 15A) =====
