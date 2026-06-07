@@ -8,7 +8,7 @@
       "schedule": "0 12 * * 1-5"
     },
     {
-      "path": "/api/swing-screener?action=refresh",
+      "path": "/api/sector-hot?action=refresh-screener",
       "schedule": "10 12 * * 1-5"
     }
   ]
