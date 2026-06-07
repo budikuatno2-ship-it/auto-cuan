@@ -148,41 +148,52 @@ module.exports = async function handler(req, res) {
 // SCREENER READ — login-gated via X-User-Id header
 // ============================================================
 async function handleScreenerRead(req, res, supabase) {
-  // Server-side access control: require X-User-Id header
-  // Frontend sends userId (UUID) or username as fallback
-  var userId = req.headers['x-user-id'] || '';
-  if (!userId || userId === 'guest' || userId.length < 2) {
+  // Server-side access control via X-User-Id (UUID) and X-Username headers
+  // Frontend sends both: UUID if available, username always
+  var rawUserId = (req.headers['x-user-id'] || '').trim();
+  var rawUsername = (req.headers['x-username'] || '').trim().toLowerCase();
+
+  if (!rawUserId && !rawUsername) {
+    return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
+  }
+  if (rawUsername === 'guest') {
     return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
   }
 
-  // Try to find user by UUID first, then by username
   var userData = null;
-  var userErr = null;
 
-  // Check if it looks like a UUID (contains hyphens and is long)
-  if (userId.includes('-') && userId.length > 30) {
-    var result = await supabase
+  // 1. Try lookup by UUID if it looks valid
+  if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
+    var r1 = await supabase
       .from('app_users')
-      .select('id, is_approved, is_blocked')
-      .eq('id', userId)
+      .select('id, username, is_approved, is_blocked')
+      .eq('id', rawUserId)
       .maybeSingle();
-    userData = result.data;
-    userErr = result.error;
+    if (r1.data) userData = r1.data;
   }
 
-  // Fallback: lookup by username
+  // 2. Fallback: lookup by username
+  if (!userData && rawUsername && rawUsername.length >= 2) {
+    var r2 = await supabase
+      .from('app_users')
+      .select('id, username, is_approved, is_blocked')
+      .eq('username', rawUsername)
+      .maybeSingle();
+    if (r2.data) userData = r2.data;
+  }
+
+  // 3. Fallback: try ilike match for username (case-insensitive safety)
+  if (!userData && rawUsername && rawUsername.length >= 2) {
+    var r3 = await supabase
+      .from('app_users')
+      .select('id, username, is_approved, is_blocked')
+      .ilike('username', rawUsername)
+      .maybeSingle();
+    if (r3.data) userData = r3.data;
+  }
+
   if (!userData) {
-    var result2 = await supabase
-      .from('app_users')
-      .select('id, is_approved, is_blocked')
-      .eq('username', userId.toLowerCase())
-      .maybeSingle();
-    userData = result2.data;
-    userErr = result2.error;
-  }
-
-  if (userErr || !userData) {
-    return res.status(403).json({ success: false, error: 'User tidak ditemukan.' });
+    return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
   }
 
   if (userData.is_blocked) {
