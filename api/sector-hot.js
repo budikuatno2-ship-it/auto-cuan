@@ -322,8 +322,8 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     }
 
     // 3. AI Confirmation for radar candidates (only if enableAI=true)
-    //    Radar = Swing Ready, Watchlist, Rebound Speculative (exclude Invalid)
-    //    Priority: Swing Ready > Rebound Speculative > Watchlist, then higher score
+    //    Radar = READY, REBOUND, WATCH (exclude INVALID/UNKNOWN)
+    //    Priority: READY > REBOUND > WATCH, then higher score
     var aiCalledCount = 0;
     var aiAttempted = 0;
     var aiEligibleCount = 0;
@@ -333,28 +333,22 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiParseDebug = null;
     var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '30', 10);
 
-    // Filter: only radar statuses (exclude Invalid)
-    var radarStatuses = ['Swing Ready', 'Watchlist', 'Rebound Speculative'];
+    // Filter: only radar statuses using normalized canonical values
     var aiEligible = results.filter(function(r) {
-      return radarStatuses.indexOf(r.status) !== -1;
+      var canonical = normalizeScreenerStatus(r.status);
+      return canonical === 'READY' || canonical === 'REBOUND' || canonical === 'WATCH';
     });
     aiEligibleCount = aiEligible.length;
 
-    // Priority sort: Swing Ready=1, Rebound Speculative=2, Watchlist=3, then score desc
-    function getStatusPriority(status) {
-      if (status === 'Swing Ready') return 1;
-      if (status === 'Rebound Speculative') return 2;
-      if (status === 'Watchlist') return 3;
-      return 4;
-    }
+    // Priority sort: READY=1, REBOUND=2, WATCH=3, then score desc
     aiEligible.sort(function(a, b) {
-      var pa = getStatusPriority(a.status);
-      var pb = getStatusPriority(b.status);
+      var pa = getCanonicalPriority(a.status);
+      var pb = getCanonicalPriority(b.status);
       if (pa !== pb) return pa - pb;
       return b.score - a.score;
     });
 
-    // Apply safety cap
+    // Apply safety cap (dynamic count up to env-configured max)
     var aiCandidates = aiEligible.slice(0, maxCandidates);
     aiSkippedCount = Math.max(0, aiEligibleCount - aiCandidates.length);
 
@@ -516,7 +510,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_eligible_count: aiEligibleCount,
       ai_attempted: aiAttempted,
       ai_called_count: aiCalledCount,
-      ai_candidates_sent: aiCandidates.slice(0, 10).map(function(c) { return c.ticker; }),
+      ai_candidates_sent: aiCandidates.map(function(c) { return c.ticker; }),
       ai_skipped_count: aiSkippedCount,
       ai_diagnostic: aiDiagnostic,
       ai_response_debug: aiResponseDebug || undefined,
@@ -1248,6 +1242,34 @@ async function fetchYahooQuote(ticker) {
 // ============================================================
 // SHARED HELPERS
 // ============================================================
+
+/**
+ * Normalize any screener status string to a canonical value.
+ * Handles exact internal values, short codes, UI labels, and edge cases.
+ * Returns: 'READY' | 'REBOUND' | 'WATCH' | 'INVALID' | 'UNKNOWN'
+ */
+function normalizeScreenerStatus(status) {
+  if (!status || typeof status !== 'string') return 'UNKNOWN';
+  var s = status.trim().toUpperCase();
+  // Exact internal values (from scoreAndClassify)
+  if (s === 'SWING READY' || s === 'READY') return 'READY';
+  if (s === 'REBOUND SPECULATIVE' || s === 'REBOUND SPEC.' || s === 'REBOUND SPEC' || s === 'REBOUND') return 'REBOUND';
+  if (s === 'WATCHLIST' || s === 'WATCH') return 'WATCH';
+  if (s === 'INVALID') return 'INVALID';
+  return 'UNKNOWN';
+}
+
+/**
+ * Get sort priority based on canonical status.
+ * Lower number = higher priority for AI analysis.
+ */
+function getCanonicalPriority(status) {
+  var canonical = normalizeScreenerStatus(status);
+  if (canonical === 'READY') return 1;
+  if (canonical === 'REBOUND') return 2;
+  if (canonical === 'WATCH') return 3;
+  return 4;
+}
 
 function calcScreenerMA(arr, period) {
   if (!arr || arr.length < period) return null;
