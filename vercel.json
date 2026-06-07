@@ -6,6 +6,10 @@
     {
       "path": "/api/sector-hot?action=refresh",
       "schedule": "0 12 * * 1-5"
+    },
+    {
+      "path": "/api/swing-screener?action=refresh",
+      "schedule": "10 12 * * 1-5"
     }
   ]
 }
