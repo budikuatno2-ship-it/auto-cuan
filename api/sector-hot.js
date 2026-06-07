@@ -326,6 +326,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiAttempted = 0;
     var aiDiagnostic = '';
     var aiResponseDebug = null;
+    var aiParseDebug = null;
     var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '15', 10);
     var aiCandidates = results
       .filter(function(r) { return r.score >= 78; })
@@ -338,6 +339,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       var aiResults = aiResult.data || [];
       aiDiagnostic = aiResult.diagnostic || '';
       var aiResponseDebug = aiResult.ai_response_debug || null;
+      var aiParseDebug = aiResult.ai_parse_debug || null;
 
       // Merge AI results back — normalize ticker matching (case-insensitive, trim, remove .JK)
       var aiMap = {};
@@ -488,6 +490,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_candidates_sent: aiCandidates.slice(0, 5).map(function(c) { return c.ticker; }),
       ai_diagnostic: aiDiagnostic,
       ai_response_debug: aiResponseDebug || undefined,
+      ai_parse_debug: aiParseDebug || undefined,
       save_error: saveError || null
     });
 
@@ -868,9 +871,9 @@ async function callAIConfirmation(candidates) {
     };
   });
 
-  var systemPrompt = 'Kamu adalah analis teknikal saham IDX. Tugasmu: validasi kandidat swing trading 3-7 hari. Output HANYA JSON array. Untuk setiap ticker, berikan: ticker, ai_status (CONFIRMED/CAUTION/REJECT), ai_reason (1 kalimat bahasa Indonesia), ai_red_flags (array string pendek). Jangan tambahkan narasi. Jangan recommend beli. Gunakan bahasa: pantau, waspadai, invalid jika.';
+  var systemPrompt = 'Kamu adalah analis teknikal saham IDX. Validasi kandidat swing trading 3-7 hari. ATURAN OUTPUT: 1) Return HANYA valid JSON array, bisa langsung di-parse oleh JSON.parse. 2) Semua key harus pakai double-quote. 3) Semua string value harus pakai double-quote. 4) Tidak boleh trailing comma. 5) Tidak boleh komentar. 6) Tidak boleh markdown atau penjelasan. Contoh format valid: [{"ticker":"BBCA","ai_status":"CONFIRMED","ai_reason":"Trend kuat di atas MA20","ai_red_flags":[],"final_status":"Swing Ready"}]';
 
-  var userPrompt = 'Validasi kandidat swing berikut. PENTING: gunakan ticker PERSIS seperti yang diberikan (tanpa .JK suffix).\n' + JSON.stringify(summaries) + '\n\nOutput JSON array saja. Setiap item harus punya field: ticker (PERSIS sama), ai_status, ai_reason, ai_red_flags.';
+  var userPrompt = 'Validasi kandidat berikut. Gunakan ticker PERSIS tanpa .JK.\n' + JSON.stringify(summaries) + '\n\nReturn HANYA JSON array. Setiap item: {"ticker":"...","ai_status":"CONFIRMED/CAUTION/REJECT","ai_reason":"...","ai_red_flags":[...],"final_status":"..."}. Jangan tambahkan teks lain.';
 
   try {
     var response = await fetch(baseUrl + '/chat/completions', {
@@ -1038,19 +1041,76 @@ async function callAIConfirmation(candidates) {
     if (arrayStart >= 0 && arrayEnd > arrayStart) {
       jsonStr = jsonStr.substring(arrayStart, arrayEnd + 1);
     }
+
     var parsed;
+    var firstParseError = null;
+    var repairAttempted = false;
+
+    // Step A: Try strict JSON.parse
     try {
       parsed = JSON.parse(jsonStr);
     } catch (parseErr) {
-      console.error('Screener AI parse error:', parseErr.message, 'Raw:', content.substring(0, 300));
-      return { data: [], diagnostic: 'AI JSON parse failed: ' + parseErr.message + '. Raw start: ' + content.substring(0, 80) };
+      firstParseError = parseErr.message;
+    }
+
+    // Step B: If failed, try conservative repair
+    if (!parsed) {
+      repairAttempted = true;
+      try {
+        var repaired = jsonStr
+          // Fix unquoted keys: word followed by colon → "word":
+          .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+          // Fix single-quoted strings → double quotes (simple cases)
+          .replace(/'([^'\\]*)'/g, '"$1"')
+          // Remove trailing commas before } or ]
+          .replace(/,\s*([}\]])/g, '$1');
+        parsed = JSON.parse(repaired);
+      } catch (repairErr) {
+        // Step C: Final attempt — try to extract individual objects
+        try {
+          // Match patterns like {..."ticker"..."ai_status"...}
+          var objMatches = jsonStr.match(/\{[^{}]*\}/g);
+          if (objMatches && objMatches.length > 0) {
+            var manualParsed = [];
+            for (var oi = 0; oi < objMatches.length; oi++) {
+              var objStr = objMatches[oi]
+                .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+                .replace(/'([^'\\]*)'/g, '"$1"')
+                .replace(/,\s*([}\]])/g, '$1');
+              try {
+                manualParsed.push(JSON.parse(objStr));
+              } catch (e3) { /* skip unparseable objects */ }
+            }
+            if (manualParsed.length > 0) {
+              parsed = manualParsed;
+            }
+          }
+        } catch (e4) { /* give up */ }
+
+        if (!parsed) {
+          return {
+            data: [],
+            diagnostic: 'AI JSON parse failed after repair.',
+            ai_parse_debug: {
+              extract_path: extractPath,
+              content_length: content.length,
+              array_start_found: arrayStart >= 0,
+              array_end_found: arrayEnd > arrayStart,
+              first_parse_error: firstParseError,
+              repair_attempted: true,
+              second_parse_error: repairErr.message,
+              raw_preview_300: jsonStr.substring(0, 300)
+            }
+          };
+        }
+      }
     }
 
     if (!Array.isArray(parsed)) {
       return { data: [], diagnostic: 'AI response not array. Type: ' + typeof parsed };
     }
 
-    return { data: parsed, diagnostic: 'OK. Received ' + parsed.length + ' items via ' + extractPath + '. finishReason: ' + finishReason };
+    return { data: parsed, diagnostic: 'OK. Received ' + parsed.length + ' items via ' + extractPath + '. finishReason: ' + finishReason + (repairAttempted ? '. JSON repaired.' : '') };
   } catch (e) {
     console.error('Screener AI confirmation error:', e.message);
     return { data: [], diagnostic: 'AI exception: ' + e.message };
