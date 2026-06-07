@@ -4753,14 +4753,14 @@ async function loadNkScreenerResults() {
 
     // Guard: do not call API if not logged in
     if (getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
         return;
     }
 
     var userId = localStorage.getItem('autocuan_user_id') || '';
     var username = getUsername();
 
-    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
 
     try {
         var response = await fetch('/api/sector-hot?action=nk-screener-results', {
@@ -4769,14 +4769,14 @@ async function loadNkScreenerResults() {
         var data = await response.json();
 
         if (response.status === 403 || !data.success) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
             return;
         }
 
         _nkScreenerCache = data;
 
         if (!data.results || data.results.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
             // Still update meta
             updateNkScreenerMeta(data.meta);
             return;
@@ -4798,7 +4798,7 @@ async function loadNkScreenerResults() {
             progressEl.classList.add('hidden');
         }
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
     }
 }
 

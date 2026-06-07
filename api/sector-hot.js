@@ -1956,12 +1956,22 @@ async function fetchNkQuoteData(ticker) {
     const rewardAmt = tp1 - entryMid;
     const riskReward = riskAmt > 0 ? rewardAmt / riskAmt : 0;
 
+    // Penalty signals (matching Konglo screener technical equivalence)
+    const lastCandle = validDays[lastIdx];
+    const candleBody = Math.abs(lastCandle.close - lastCandle.open);
+    const candleRange = lastCandle.high - lastCandle.low;
+    const isLargeRed = lastCandle.close < lastCandle.open && candleBody > candleRange * 0.6 && volumeRatioAvg20 >= 1.2;
+    const overextended = ma20 && lastClose > ma20 * 1.08; // >8% above MA20
+    const belowSupport = lastClose < support;
+    const slDistance = stopLoss > 0 ? ((entryMid - stopLoss) / entryMid) * 100 : 0;
+
     return {
       closes: closesArr,
       lastPrice: lastClose,
       changePct,
       tradedDays20d,
       avgTxValue20d,
+      avgVol20: avgVol20,
       volumeRatioAvg20,
       ma20,
       ma50,
@@ -1974,6 +1984,11 @@ async function fetchNkQuoteData(ticker) {
       tp1,
       tp2,
       riskReward,
+      // Penalty flags
+      isLargeRed: isLargeRed,
+      overextended: overextended,
+      belowSupport: belowSupport,
+      slDistance: slDistance,
       last_price: lastClose,
       change_pct: Number(changePct.toFixed(2)),
       volume_ratio_avg20: Number(volumeRatioAvg20.toFixed(2))
@@ -2062,6 +2077,12 @@ function calculateNkSetupScore(q) {
   else { liqPts = 1; }
   score += liqPts;
 
+  // 6. PENALTIES (matching Konglo screener technical penalties)
+  if (q.isLargeRed) { score -= 12; components.push('red candle distribusi'); }
+  if (q.overextended) { score -= 8; components.push('overextended >8% dari MA20'); }
+  if (q.belowSupport) { score -= 10; components.push('breakdown support'); }
+  if (q.slDistance > 5) { score -= 6; components.push('SL jauh ' + q.slDistance.toFixed(1) + '%'); }
+
   score = Math.max(0, Math.min(100, score));
 
   // GRADE: A >= 80, B >= 65, C >= 50, D < 50
@@ -2080,9 +2101,15 @@ function calculateNkSetupScore(q) {
   var isVolConfirmed = vr >= 1.0;
   var isRrGood = rr >= 2.0;
 
-  if (score >= 70 && isAboveMA20 && isRsiHealthy && isVolConfirmed && isRrGood) {
+  if (score >= 70 && isAboveMA20 && isRsiHealthy && isVolConfirmed && isRrGood && !q.isLargeRed && !q.belowSupport) {
     status = 'Swing Ready';
     statusReason = components.slice(0, 4).join(', ') + '. Setup lengkap.';
+  } else if (q.rsi14 !== null && q.rsi14 >= 30 && q.rsi14 <= 42 &&
+             q.lastPrice > q.support && q.volumeRatioAvg20 >= 0.8 &&
+             score >= 35 && !q.belowSupport) {
+    // Rebound Speculative: near oversold, above support, with some volume
+    status = 'Rebound Speculative';
+    statusReason = components.slice(0, 3).join(', ') + '. Potensi rebound dari support, risiko tinggi.';
   } else if (score >= 50) {
     status = 'Watchlist';
     var waitReasons = [];
