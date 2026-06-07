@@ -774,24 +774,29 @@
             </div>
             <!-- Table -->
             <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="nkScreenerTableWrap">
-                <table class="w-full text-xs border-collapse min-w-[800px]">
+                <table class="w-full text-xs border-collapse min-w-[1100px]">
                     <thead>
                         <tr class="bg-dark-700/70">
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">#</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Grade</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">R:R</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol Ratio</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Avg Tx 20D</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
+                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
                         </tr>
                     </thead>
                     <tbody id="nkScreenerTableBody">
-                        <tr><td colspan="11" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                        <tr><td colspan="16" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -4819,7 +4824,7 @@ function renderNkScreenerTable(results) {
     if (!tbody) return;
 
     if (!results || results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
         return;
     }
 
@@ -4830,31 +4835,50 @@ function renderNkScreenerTable(results) {
 
         var scoreColor = 'text-gray-400';
         if (r.score >= 80) scoreColor = 'text-emerald-400 font-bold';
-        else if (r.score >= 65) scoreColor = 'text-blue-400';
-        else if (r.score >= 45) scoreColor = 'text-amber-400';
-
-        var gradeColor = 'text-gray-400';
-        if (r.grade === 'A') gradeColor = 'text-emerald-400 font-bold';
-        else if (r.grade === 'B') gradeColor = 'text-blue-400';
-        else if (r.grade === 'C') gradeColor = 'text-amber-400';
+        else if (r.score >= 65) scoreColor = 'text-blue-400 font-semibold';
+        else if (r.score >= 50) scoreColor = 'text-amber-400';
 
         var statusClass = 'bg-gray-500/15 text-gray-400';
         if (r.status === 'Swing Ready') statusClass = 'bg-emerald-500/15 text-emerald-400';
         else if (r.status === 'Watchlist') statusClass = 'bg-blue-500/15 text-blue-400';
         else if (r.status === 'Speculative') statusClass = 'bg-amber-500/15 text-amber-400';
 
+        // Format avg tx value as Rp X.X B
+        var txValStr = '-';
+        if (r.avg_transaction_value_20d) {
+            var txB = r.avg_transaction_value_20d / 1e9;
+            txValStr = 'Rp ' + txB.toFixed(1).replace('.', ',') + ' B';
+        }
+
+        // RSI display (0 shows as 0.0, null shows as -)
+        var rsiStr = '-';
+        if (r.rsi14 !== null && r.rsi14 !== undefined) rsiStr = r.rsi14.toFixed(1);
+
+        // Entry area
+        var entryStr = '-';
+        if (r.entry_low != null && r.entry_high != null) entryStr = formatPrice(r.entry_low) + ' - ' + formatPrice(r.entry_high);
+
+        // Grade badge
+        var gradeStr = r.grade || 'D';
+        var scoreLabel = (r.score || 0) + ' (' + gradeStr + ')';
+
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
         html += '<td class="px-2 py-2 text-center text-gray-500">' + (r.rank || '-') + '</td>';
         html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '</td>';
-        html += '<td class="px-2 py-2 text-center text-gray-500 text-[10px]">' + (r.board || '-') + '</td>';
+        html += '<td class="px-2 py-2 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
+        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + (r.status || '-') + '</span></td>';
+        html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
         html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
-        html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + '</td>';
-        html += '<td class="px-2 py-2 text-center ' + gradeColor + ' whitespace-nowrap">' + (r.grade || '-') + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + rsiStr + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
-        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + (r.status || '-') + '</span></td>';
-        html += '<td class="px-2 py-2 text-left text-gray-500 text-[10px] max-w-[180px] truncate">' + escapeHtml(r.status_reason || '') + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + txValStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + entryStr + '</td>';
+        html += '<td class="px-2 py-2 text-right text-red-400 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
+        html += '<td class="px-2 py-2 text-right text-gray-200 font-semibold whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(2) : '-') + '</td>';
+        html += '<td class="px-2 py-2 text-left text-gray-500 text-[10px] max-w-[220px]" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml((r.status_reason || '').slice(0, 80)) + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;

@@ -1933,19 +1933,28 @@ async function fetchNkQuoteData(ticker) {
     // RSI14
     const rsi14 = nkCalcRSI(closesArr, 14);
 
-    // Support/Resistance (simple: 20d low/high)
+    // Support/Resistance (20d low/high)
     const last20Lows = last20.map(d => d.low);
     const last20Highs = last20.map(d => d.high);
     const support = Math.min(...last20Lows);
     const resistance = Math.max(...last20Highs);
 
-    // Entry, SL, TP
+    // Entry area: between support and Fib 0.382 retracement of range
     const entryLow = support;
-    const entryHigh = lastClose;
-    const stopLoss = support * 0.97; // 3% below support
-    const tp1 = lastClose + (lastClose - stopLoss) * 1.5;
-    const tp2 = lastClose + (lastClose - stopLoss) * 2.5;
-    const riskReward = stopLoss < lastClose ? (tp1 - lastClose) / (lastClose - stopLoss) : 0;
+    const entryHigh = Math.min(lastClose, support + (resistance - support) * 0.382);
+
+    // Stop loss: 3% below 20d support
+    const stopLoss = Math.round(support * 0.97);
+
+    // TP based on Fibonacci levels of the 20d range (not derived from fixed RR)
+    const tp1 = Math.round(support + (resistance - support) * 0.618);
+    const tp2 = Math.round(resistance);
+
+    // Risk/Reward: reward = TP1 - entry midpoint, risk = entry midpoint - SL
+    const entryMid = (entryLow + entryHigh) / 2;
+    const riskAmt = entryMid - stopLoss;
+    const rewardAmt = tp1 - entryMid;
+    const riskReward = riskAmt > 0 ? rewardAmt / riskAmt : 0;
 
     return {
       closes: closesArr,
@@ -1985,67 +1994,129 @@ function applyNkHardFilters(q) {
   return true;
 }
 
-// --- SCORING: deterministic 0-100 ---
+// --- SCORING: deterministic 0-100, multi-component ---
 function calculateNkSetupScore(q) {
-  let score = 0;
+  var components = [];
+  var score = 0;
 
-  // 1. Trend (30 pts max)
-  if (q.ma20 && q.lastPrice > q.ma20) score += 15;
-  if (q.ma50 && q.lastPrice > q.ma50) score += 10;
-  if (q.ma20 && q.ma50 && q.ma20 > q.ma50) score += 5;
+  // 1. TREND (0-25 pts)
+  var trendPts = 0;
+  if (q.ma20 && q.lastPrice > q.ma20) { trendPts += 8; components.push('close>MA20'); }
+  if (q.ma50 && q.lastPrice > q.ma50) { trendPts += 7; components.push('close>MA50'); }
+  if (q.ma20 && q.ma50 && q.ma20 > q.ma50) { trendPts += 5; components.push('MA20>MA50'); }
+  // Proximity bonus: close near MA20 (within 3%) = pullback setup
+  if (q.ma20 && q.lastPrice > q.ma20 && q.lastPrice < q.ma20 * 1.03) { trendPts += 3; components.push('near MA20 pullback'); }
+  // Above resistance midpoint bonus
+  if (q.lastPrice > (q.support + q.resistance) / 2) { trendPts += 2; }
+  trendPts = Math.min(25, trendPts);
+  score += trendPts;
 
-  // 2. Momentum / RSI (25 pts max)
+  // 2. MOMENTUM / RSI (0-20 pts)
+  var momPts = 0;
   if (q.rsi14 !== null) {
-    if (q.rsi14 >= 40 && q.rsi14 <= 65) score += 25; // ideal swing zone
-    else if (q.rsi14 >= 30 && q.rsi14 < 40) score += 15; // oversold bounce potential
-    else if (q.rsi14 > 65 && q.rsi14 <= 75) score += 10; // still ok
-    // >75 or <30 = 0 pts
+    if (q.rsi14 >= 50 && q.rsi14 <= 60) { momPts = 20; components.push('RSI ' + q.rsi14.toFixed(1) + ' ideal'); }
+    else if (q.rsi14 >= 45 && q.rsi14 < 50) { momPts = 17; components.push('RSI ' + q.rsi14.toFixed(1) + ' netral+'); }
+    else if (q.rsi14 > 60 && q.rsi14 <= 65) { momPts = 16; components.push('RSI ' + q.rsi14.toFixed(1) + ' kuat'); }
+    else if (q.rsi14 >= 40 && q.rsi14 < 45) { momPts = 13; components.push('RSI ' + q.rsi14.toFixed(1) + ' netral'); }
+    else if (q.rsi14 > 65 && q.rsi14 <= 70) { momPts = 10; components.push('RSI ' + q.rsi14.toFixed(1) + ' mendekati OB'); }
+    else if (q.rsi14 >= 35 && q.rsi14 < 40) { momPts = 9; components.push('RSI ' + q.rsi14.toFixed(1) + ' lemah'); }
+    else if (q.rsi14 > 70 && q.rsi14 <= 80) { momPts = 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' overbought'); }
+    else if (q.rsi14 >= 30 && q.rsi14 < 35) { momPts = 7; components.push('RSI ' + q.rsi14.toFixed(1) + ' oversold zone'); }
+    else if (q.rsi14 > 80) { momPts = 2; components.push('RSI ' + q.rsi14.toFixed(1) + ' extreme OB'); }
+    else { momPts = 4; components.push('RSI ' + q.rsi14.toFixed(1) + ' deep oversold'); }
   }
+  score += momPts;
 
-  // 3. Volume (20 pts max)
-  if (q.volumeRatioAvg20 >= 2.0) score += 20;
-  else if (q.volumeRatioAvg20 >= 1.5) score += 15;
-  else if (q.volumeRatioAvg20 >= 1.0) score += 10;
-  else if (q.volumeRatioAvg20 >= 0.7) score += 5;
+  // 3. VOLUME (0-20 pts)
+  var volPts = 0;
+  var vr = q.volumeRatioAvg20;
+  if (vr >= 2.5) { volPts = 20; components.push('vol ' + vr.toFixed(2) + 'x spike'); }
+  else if (vr >= 2.0) { volPts = 17; components.push('vol ' + vr.toFixed(2) + 'x tinggi'); }
+  else if (vr >= 1.5) { volPts = 14; components.push('vol ' + vr.toFixed(2) + 'x above avg'); }
+  else if (vr >= 1.2) { volPts = 11; components.push('vol ' + vr.toFixed(2) + 'x normal+'); }
+  else if (vr >= 1.0) { volPts = 8; components.push('vol ' + vr.toFixed(2) + 'x normal'); }
+  else if (vr >= 0.7) { volPts = 5; components.push('vol ' + vr.toFixed(2) + 'x rendah'); }
+  else { volPts = 2; }
+  score += volPts;
 
-  // 4. Risk/Reward (25 pts max)
-  if (q.riskReward >= 3.0) score += 25;
-  else if (q.riskReward >= 2.5) score += 20;
-  else if (q.riskReward >= 2.0) score += 15;
-  else if (q.riskReward >= 1.5) score += 10;
+  // 4. RISK/REWARD (0-20 pts)
+  var rrPts = 0;
+  var rr = q.riskReward;
+  if (rr >= 4.0) { rrPts = 20; components.push('RR ' + rr.toFixed(2)); }
+  else if (rr >= 3.5) { rrPts = 18; }
+  else if (rr >= 3.0) { rrPts = 16; components.push('RR ' + rr.toFixed(2) + ' baik'); }
+  else if (rr >= 2.5) { rrPts = 13; components.push('RR ' + rr.toFixed(2)); }
+  else if (rr >= 2.0) { rrPts = 10; components.push('RR ' + rr.toFixed(2)); }
+  else if (rr >= 1.5) { rrPts = 7; components.push('RR ' + rr.toFixed(2) + ' minimal'); }
+  else { rrPts = 3; }
+  score += rrPts;
 
-  // Determine grade
-  let grade = 'D';
+  // 5. LIQUIDITY BONUS (0-15 pts)
+  var liqPts = 0;
+  var txB = q.avgTxValue20d / 1e9;
+  if (txB >= 100) { liqPts = 15; }
+  else if (txB >= 50) { liqPts = 12; components.push('value Rp' + txB.toFixed(0) + 'B'); }
+  else if (txB >= 30) { liqPts = 9; components.push('value Rp' + txB.toFixed(0) + 'B'); }
+  else if (txB >= 20) { liqPts = 7; }
+  else if (txB >= 10) { liqPts = 4; }
+  else { liqPts = 1; }
+  score += liqPts;
+
+  score = Math.max(0, Math.min(100, score));
+
+  // GRADE: A >= 80, B >= 65, C >= 50, D < 50
+  var grade = 'D';
   if (score >= 80) grade = 'A';
   else if (score >= 65) grade = 'B';
-  else if (score >= 45) grade = 'C';
+  else if (score >= 50) grade = 'C';
 
-  // Determine status and reason
-  let status = 'Watchlist';
-  let statusReason = '';
-  if (score >= 70) {
+  // STATUS: based on score + additional quality checks
+  var status = 'Speculative';
+  var statusReason = '';
+
+  var isAboveMA20 = q.ma20 && q.lastPrice >= q.ma20;
+  var isAboveMA50 = q.ma50 && q.lastPrice >= q.ma50;
+  var isRsiHealthy = q.rsi14 !== null && q.rsi14 >= 40 && q.rsi14 <= 70;
+  var isVolConfirmed = vr >= 1.0;
+  var isRrGood = rr >= 2.0;
+
+  if (score >= 70 && isAboveMA20 && isRsiHealthy && isVolConfirmed && isRrGood) {
     status = 'Swing Ready';
-    statusReason = 'Setup kuat: trend + momentum + volume mendukung.';
-  } else if (score >= 45) {
+    statusReason = components.slice(0, 4).join(', ') + '. Setup lengkap.';
+  } else if (score >= 50) {
     status = 'Watchlist';
-    if (q.rsi14 !== null && q.rsi14 > 70) statusReason = 'RSI overbought, tunggu pullback.';
-    else if (q.volumeRatioAvg20 < 1.0) statusReason = 'Volume belum konfirmasi, pantau aktivitas.';
-    else if (q.riskReward < 2.0) statusReason = 'R:R masih minimal, tunggu entry lebih baik.';
-    else statusReason = 'Setup cukup, tunggu konfirmasi volume/breakout.';
+    var waitReasons = [];
+    if (!isAboveMA20) waitReasons.push('close < MA20');
+    if (!isVolConfirmed) waitReasons.push('vol < 1x avg');
+    if (!isRsiHealthy) waitReasons.push(q.rsi14 !== null ? 'RSI ' + q.rsi14.toFixed(0) + ' di luar zona ideal' : 'RSI N/A');
+    if (!isRrGood) waitReasons.push('RR ' + rr.toFixed(1) + ' minimal');
+    statusReason = 'Tunggu: ' + (waitReasons.length > 0 ? waitReasons.join(', ') : 'konfirmasi breakout') + '.';
   } else {
     status = 'Speculative';
-    if (q.rsi14 !== null && q.rsi14 < 35) statusReason = 'RSI oversold, potensi bounce spekulatif.';
-    else if (q.lastPrice && q.ma20 && q.lastPrice < q.ma20) statusReason = 'Price di bawah MA20, trend lemah.';
-    else statusReason = 'Setup lemah, risiko tinggi.';
+    var weakReasons = [];
+    if (!isAboveMA20 && !isAboveMA50) weakReasons.push('di bawah MA20/50');
+    if (q.rsi14 !== null && q.rsi14 > 75) weakReasons.push('RSI overbought');
+    if (q.rsi14 !== null && q.rsi14 < 35) weakReasons.push('RSI oversold');
+    if (vr < 0.8) weakReasons.push('vol lemah');
+    statusReason = weakReasons.length > 0 ? weakReasons.join(', ') + '. Setup belum valid.' : 'Setup belum memenuhi kriteria.';
   }
 
-  // Compute avg_volume_20d from avgTxValue and lastPrice
+  // Build detailed reason with key metrics
+  var detailParts = [];
+  detailParts.push('Vol/Avg20 ' + vr.toFixed(2) + 'x');
+  detailParts.push('Value20D Rp' + txB.toFixed(1) + 'B');
+  if (q.rsi14 !== null) detailParts.push('RSI ' + q.rsi14.toFixed(1));
+  if (isAboveMA20) detailParts.push('close>MA20');
+  detailParts.push('RR ' + rr.toFixed(2));
+  statusReason = detailParts.join(', ') + '. ' + statusReason;
+
+  // Compute avg_volume_20d
   var avgVolume20d = (q.lastPrice > 0) ? Math.round(q.avgTxValue20d / q.lastPrice) : 0;
 
   return {
-    score,
-    grade,
-    status,
+    score: score,
+    grade: grade,
+    status: status,
     status_reason: statusReason,
     last_price: q.last_price,
     change_pct: q.change_pct,
