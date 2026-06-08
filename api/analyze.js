@@ -94,6 +94,20 @@ module.exports = async function handler(req, res) {
     // Chat mode — use Intent Router
     if (source === 'chat_mode' && chatMessage) {
       var intent = routeIntent(chatMessage, body.context);
+
+      // === INITIAL ANALYSIS OVERRIDE ===
+      // When the frontend explicitly marks this as an initial analysis (user
+      // submitted a ticker/index from the analysis page, NOT a follow-up),
+      // force a full-template intent so we never fall into follow-up/chat mode.
+      // This guarantees IHSG/stock full templates always render on first analysis.
+      if (body.isInitialAnalysis === true) {
+        if (body.context && body.context.ticker === 'IHSG') {
+          intent = 'ticker_only'; // IHSG template path
+        } else {
+          intent = 'ticker_only'; // stock template path
+        }
+      }
+
       var prompt;
       var maxTokens = 1024;
 
@@ -670,12 +684,30 @@ async function callGroq(apiKey, systemPrompt, userMessage) {
 
 // === INTENT ROUTER ===
 function routeIntent(message, context) {
-  var msg = String(message || '').trim();
+  // CRITICAL: Strip appended enrichment blocks BEFORE keyword analysis.
+  // The frontend appends [Info: ...] and [Auto-Cuan Market Data] blocks that
+  // contain words like "Support", "Resistance", "Entry" — these would falsely
+  // trigger contextual_data_followup on an INITIAL analysis (bare ticker).
+  var rawMsg = String(message || '').trim();
+  var msg = rawMsg
+    .replace(/\n?\[Info:[^\]]*\]/gi, '')
+    .replace(/\n?\[Auto-Cuan[^\]]*\][\s\S]*$/i, '')
+    .trim();
   var msgLower = msg.toLowerCase();
+
+  // If, after stripping enrichment, the user's actual text is just a ticker
+  // symbol (1-5 uppercase letters) or an index alias, treat as ticker_only
+  // (which lets the deterministic template fire). Never a follow-up.
+  var bareTickerOnly = /^[A-Z]{1,5}$/i.test(msg) || /^(IHSG|JKSE|JCI|COMPOSITE)$/i.test(msg);
 
   // Full analysis request
   if (/analisis\s*(lengkap|penuh|detail|full|mendalam)|full\s*analysis|deep\s*analysis|bahas\s*(semua|lengkap|detail)/i.test(msgLower)) {
     return 'full_analysis_request';
+  }
+
+  // Bare ticker/index = initial analysis, never follow-up
+  if (bareTickerOnly) {
+    return 'ticker_only';
   }
 
   // Follow-up patterns (short conversational questions)

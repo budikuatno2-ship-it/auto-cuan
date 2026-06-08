@@ -815,11 +815,18 @@ async function handleRefresh(req, res, supabase) {
 
     const now = new Date().toISOString();
     var groupsProcessed = 0;
+    var memberUpsertErrors = [];
 
     for (var g = 0; g < groups.length; g++) {
       var group = groups[g];
       var groupMembers = members.filter(function(m) { return m.group_code === group.group_code; });
-      if (groupMembers.length === 0) continue;
+      if (groupMembers.length === 0) {
+        // Group has no active members (e.g. only delisted tickers like FREN).
+        // Clean up stale latest rows so it does not linger as an empty hot group.
+        await supabase.from('sector_hot_latest').delete().eq('group_code', group.group_code);
+        await supabase.from('sector_hot_members_latest').delete().eq('group_code', group.group_code);
+        continue;
+      }
 
       var memberRows = [];
       var validCount = 0;
@@ -856,7 +863,12 @@ async function handleRefresh(req, res, supabase) {
         }
       }
 
-      await supabase.from('sector_hot_members_latest').upsert(memberRows, { onConflict: 'group_code,ticker' });
+      if (memberRows.length > 0) {
+        var memberUpsert = await supabase.from('sector_hot_members_latest').upsert(memberRows, { onConflict: 'group_code,ticker' });
+        if (memberUpsert.error) {
+          memberUpsertErrors.push(group.group_code + ': ' + memberUpsert.error.message);
+        }
+      }
 
       var avgChangePct = validCount > 0 ? Math.round((totalChangePct / validCount) * 100) / 100 : null;
       var avgVolRatio = validCount > 0 ? Math.round((totalVolRatio / validCount) * 100) / 100 : null;
@@ -887,6 +899,7 @@ async function handleRefresh(req, res, supabase) {
       scannedCount: scannedCount,
       failedCount: failedCount,
       failedTickers: failedTickers.length > 0 ? failedTickers : undefined,
+      memberUpsertErrors: memberUpsertErrors.length > 0 ? memberUpsertErrors : undefined,
       groupsProcessed: groupsProcessed
     });
 

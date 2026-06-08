@@ -1609,6 +1609,7 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             body: JSON.stringify({
                 chatMessage: enrichedMsg,
                 source: 'chat_mode',
+                isInitialAnalysis: true,
                 username: localStorage.getItem('autocuan_user') || '',
                 isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
                 context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
@@ -1772,6 +1773,7 @@ async function handleAnalisisFollowUp(msg) {
             body: JSON.stringify({
                 chatMessage: enrichedMsg,
                 source: 'chat_mode',
+                isFollowUp: true,
                 username: localStorage.getItem('autocuan_user') || '',
                 isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
                 context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
@@ -4505,12 +4507,23 @@ async function loadSektorHot() {
             return;
         }
 
-        // Update subtitle with timestamp (explicit WIB)
+        // Update subtitle with timestamp + status (explicit WIB)
         var sub = document.getElementById('sektorSubtitle');
-        if (sub && data.meta && data.meta.calculated_at) {
-            var dt = new Date(data.meta.calculated_at);
-            var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-            sub.textContent = 'T+1 \u00B7 BY GROUP \u00B7 Update: ' + wibStr + ' WIB';
+        if (sub && data.meta) {
+            var mStatus = data.meta.status;
+            if (mStatus === 'scanning' || mStatus === 'refreshing') {
+                var scNum = data.meta.scanned_count != null ? data.meta.scanned_count : 0;
+                var txt = 'REFRESHING · Scanning: ' + scNum + ' ticker';
+                if (data.meta.failed_count > 0) txt += ' · ' + data.meta.failed_count + ' gagal';
+                sub.textContent = txt;
+            } else if (data.meta.calculated_at) {
+                var dt = new Date(data.meta.calculated_at);
+                var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+                var baseTxt = 'T+1 \u00B7 BY GROUP \u00B7 Update: ' + wibStr + ' WIB';
+                if (mStatus === 'failed') baseTxt = 'FAILED \u00B7 ' + (data.meta.message || 'Refresh gagal') + ' \u00B7 ' + baseTxt;
+                else if (data.meta.failed_count > 0) baseTxt += ' \u00B7 ' + data.meta.failed_count + ' ticker gagal';
+                sub.textContent = baseTxt;
+            }
         }
 
         // Render cards
