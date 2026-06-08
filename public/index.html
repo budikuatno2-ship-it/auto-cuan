@@ -315,7 +315,7 @@
         .ai-content .summary-rows { display: grid; gap: 6px; }
         .ai-content .summary-rows > div { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; border-bottom: 1px solid rgba(148, 163, 184, 0.08); }
         .ai-content .summary-rows > div:last-child { border-bottom: none; }
-        .ai-content .summary-rows > div > span:first-child { color: #94a3b8; font-size: 11px; }
+        .ai-content .summary-rows > div > span:first-child { color: #94a3b8; font-size: 11px; flex-shrink: 0; margin-right: 8px; }
         .ai-content .summary-rows > div > b { color: #e5e7eb; font-size: 12px; text-align: right; }
         /* ===== PREMIUM LAYOUT: MOBILE RESPONSIVE ===== */
         @media (max-width: 639px) {
@@ -1662,42 +1662,50 @@ function copyAnalisisResult() {
     if (!resultArea) return;
     var contentEl = resultArea.querySelector('.ai-content');
     if (!contentEl) return;
-    // Clone the element to manipulate without affecting the DOM
-    var clone = contentEl.cloneNode(true);
-    // Insert newlines after block-level elements for clean copy
-    var blocks = clone.querySelectorAll('div, p, br, li, h1, h2, h3, h4, h5, h6');
-    blocks.forEach(function(el) {
-        if (el.tagName === 'BR') {
-            el.replaceWith('\n');
-        }
-    });
-    // For decision-grid items: ensure label and value have separator
-    var gridItems = clone.querySelectorAll('.decision-grid > div, .summary-rows > div, .metric-grid > div > div, .level-grid > div > div, .volume-grid > div, .fibo-grid > div');
-    gridItems.forEach(function(item) {
-        var spanEl = item.querySelector('span');
-        var bEl = item.querySelector('b');
-        if (spanEl && bEl) {
-            // Add colon separator between label and value
-            spanEl.textContent = spanEl.textContent + ': ';
-        }
-    });
-    var text = clone.innerText || clone.textContent || '';
-    // Clean up: collapse multiple blank lines, trim
-    text = text.replace(/\n{3,}/g, '\n\n').trim();
-    // Remove any duplicate full sections (safety net)
-    var sections = text.split(/\n(?=Kesimpulan Cepat|Kesimpulan Final|Ringkasan|Potensi Besok)/);
-    var seen = {};
-    var deduped = [];
-    sections.forEach(function(s) {
-        var key = s.trim().substring(0, 60);
-        if (!seen[key]) { seen[key] = true; deduped.push(s); }
-    });
-    text = deduped.join('\n');
+    // Build clean text from HTML structure
+    var html = contentEl.innerHTML;
+    var text = htmlToCleanText(html);
     navigator.clipboard.writeText(text).then(function() {
         showToast('Hasil berhasil disalin.', 'success');
     }).catch(function() {
         showToast('Gagal menyalin. Coba lagi.', 'warning');
     });
+}
+
+// Convert structured analysis HTML to clean readable text
+function htmlToCleanText(html) {
+    if (!html) return '';
+    var o = html;
+    // 1. Replace <br> and <br/> with newlines
+    o = o.replace(/<br\s*\/?>/gi, '\n');
+    // 2. Add newlines before/after block elements
+    o = o.replace(/<\/(div|p|li|h[1-6]|tr)>/gi, '\n</$1>');
+    o = o.replace(/<(div|p|li|h[1-6]|tr)[^>]*>/gi, '\n<$1>');
+    // 3. For decision-grid/summary-rows items: <span>Label</span><b>Value</b> → "Label: Value"
+    o = o.replace(/<span[^>]*>([^<]*)<\/span>\s*<b[^>]*>([^<]*)<\/b>/gi, '$1: $2');
+    // 4. Strip all remaining HTML tags
+    o = o.replace(/<[^>]+>/g, '');
+    // 5. Decode HTML entities
+    o = o.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&nbsp;/g, ' ');
+    // 6. Clean up whitespace
+    o = o.replace(/[ \t]+/g, ' '); // collapse horizontal spaces
+    o = o.replace(/ ?\n ?/g, '\n'); // trim spaces around newlines
+    o = o.replace(/\n{3,}/g, '\n\n'); // max 2 consecutive newlines
+    o = o.trim();
+    // 7. Deduplicate repeated sections
+    var lines = o.split('\n');
+    var seen60 = {};
+    var result = [];
+    for (var i = 0; i < lines.length; i++) {
+        var key = lines[i].trim();
+        // Only deduplicate lines that look like section headers (starts with known headers)
+        if (/^(Kesimpulan Cepat|Kesimpulan Final|Ringkasan|Potensi Besok|Data Teknikal|Momentum|Resistance|Support|Skenario|Risk Guard|Invalidasi|News|Katalis|Implikasi)/.test(key)) {
+            if (seen60[key]) continue;
+            seen60[key] = true;
+        }
+        result.push(lines[i]);
+    }
+    return result.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function openNewsFromAnalisis(ticker) {
