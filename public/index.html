@@ -1662,9 +1662,37 @@ function copyAnalisisResult() {
     if (!resultArea) return;
     var contentEl = resultArea.querySelector('.ai-content');
     if (!contentEl) return;
-    var text = contentEl.innerText || contentEl.textContent || '';
+    // Clone the element to manipulate without affecting the DOM
+    var clone = contentEl.cloneNode(true);
+    // Insert newlines after block-level elements for clean copy
+    var blocks = clone.querySelectorAll('div, p, br, li, h1, h2, h3, h4, h5, h6');
+    blocks.forEach(function(el) {
+        if (el.tagName === 'BR') {
+            el.replaceWith('\n');
+        }
+    });
+    // For decision-grid items: ensure label and value have separator
+    var gridItems = clone.querySelectorAll('.decision-grid > div, .summary-rows > div, .metric-grid > div > div, .level-grid > div > div, .volume-grid > div, .fibo-grid > div');
+    gridItems.forEach(function(item) {
+        var spanEl = item.querySelector('span');
+        var bEl = item.querySelector('b');
+        if (spanEl && bEl) {
+            // Add colon separator between label and value
+            spanEl.textContent = spanEl.textContent + ': ';
+        }
+    });
+    var text = clone.innerText || clone.textContent || '';
     // Clean up: collapse multiple blank lines, trim
     text = text.replace(/\n{3,}/g, '\n\n').trim();
+    // Remove any duplicate full sections (safety net)
+    var sections = text.split(/\n(?=Kesimpulan Cepat|Kesimpulan Final|Ringkasan|Potensi Besok)/);
+    var seen = {};
+    var deduped = [];
+    sections.forEach(function(s) {
+        var key = s.trim().substring(0, 60);
+        if (!seen[key]) { seen[key] = true; deduped.push(s); }
+    });
+    text = deduped.join('\n');
     navigator.clipboard.writeText(text).then(function() {
         showToast('Hasil berhasil disalin.', 'success');
     }).catch(function() {
@@ -1749,6 +1777,12 @@ async function handleAnalisisFollowUp(msg) {
             var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
             if (typeof clientSanitizeFCA === 'function') html = clientSanitizeFCA(html);
             if (typeof sanitizeAIHtml === 'function') html = sanitizeAIHtml(html);
+
+            // === FOLLOW-UP GUARD: Strip full template elements if AI accidentally returned them ===
+            // Follow-up must NEVER show decision-card, decision-grid, metric-grid, trade-plan-grid, etc.
+            if (data.response_type === 'follow_up' || data.intent === 'follow_up_question' || data.intent === 'contextual_data_followup') {
+                html = stripFollowUpTemplate(html);
+            }
 
             resultArea.innerHTML += '<div class="mt-3 flex gap-3 fade-in-up"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%]">' + html + '</div></div>';
             if (typeof updateAnalysisContext === 'function') updateAnalysisContext(msg, html);
@@ -3320,6 +3354,7 @@ async function handleTickerQuestion(msg, ticker) {
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
             if (data.response_type === 'follow_up' || data.response_type === 'casual') {
                 html = sanitizeAIHtml(clientSanitizeFCA(html));
+                if (data.response_type === 'follow_up') html = stripFollowUpTemplate(html);
                 addAIBubble(html, false);
             } else {
                 addAIBubble(html, true);
@@ -3357,6 +3392,7 @@ async function handleChat(msg) {
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
             if (data.response_type === 'follow_up' || data.response_type === 'casual') {
                 html = sanitizeAIHtml(clientSanitizeFCA(html));
+                if (data.response_type === 'follow_up') html = stripFollowUpTemplate(html);
                 addAIBubble(html, false);
             } else {
                 addAIBubble(html, true);
@@ -5585,6 +5621,33 @@ function normalizeFinalStockHtml(html) {
     o = o.replace(/(\d+)\.(\d+)(x\b)/g, '$1,$2$3');
     // === PHASE 7: Cleanup ===
     o = o.replace(/(<br\s*\/?>)\s*(<br\s*\/?>)/gi, '<br>');
+    return o;
+}
+
+// ===== FOLLOW-UP TEMPLATE STRIPPER =====
+// Removes full analysis template elements from follow-up responses.
+// Ensures follow-up always renders as compact conversational answer.
+function stripFollowUpTemplate(html) {
+    if (!html) return html;
+    var o = html;
+    // If response contains decision-card (full template), extract only the text content
+    if (/class="decision-card"/.test(o) || /class="decision-grid"/.test(o)) {
+        // Strip all structured template containers and keep only paragraph text
+        o = o.replace(/<div[^>]*class="[^"]*(?:decision-card|decision-grid|metric-grid|level-grid|scenario-price-grid|trade-plan-grid|volume-card|volume-grid|fibo-card|fibo-grid|analytic-summary|summary-rows|scenario-list|key-level)[^"]*"[^>]*>[\s\S]*?(?:<\/div>\s*){1,6}/gi, '');
+        // Clean empty divs
+        o = o.replace(/<div[^>]*>\s*<\/div>/gi, '');
+    }
+    // Remove section headers that belong to full analysis
+    o = o.replace(/<(?:p|div)[^>]*>(?:(?!<\/(?:p|div)>)[\s\S])*?<strong>(?:Kesimpulan Cepat|Ringkasan Cepat|Skenario Harga|Setup Label|Setup|Data Teknikal|Moving Average|Momentum|Volume 3|Fibonacci|Resistance|Support|Rencana Trading|Entry|Stop Loss|Take Profit|Risk Guard|Kesimpulan Analitis|News|Invalidasi|Kesimpulan Final|Potensi Besok|Implikasi ke Saham|Skenario Trading|Breakout|Konfirmasi|Catatan)<\/strong>[\s\S]*?<\/(?:p|div)>/gi, '');
+    // Remove case-card divs
+    o = o.replace(/<div[^>]*class="[^"]*case-card[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
+    // If after stripping we have almost nothing, the AI probably returned only template — return a fallback
+    var textOnly = o.replace(/<[^>]+>/g, '').trim();
+    if (textOnly.length < 20) {
+        return '<p class="text-sm text-gray-300">Maaf, jawaban follow-up belum berhasil dihasilkan. Coba tanyakan ulang dengan kalimat lain.</p>';
+    }
+    // Clean up empty paragraphs
+    o = o.replace(/<p[^>]*>\s*<\/p>/gi, '');
     return o;
 }
 

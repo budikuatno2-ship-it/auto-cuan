@@ -1133,6 +1133,20 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   html += '</div><div class="key-level">Level kunci: R ' + v(r1) + ' / S ' + v(s1) + '</div></div>';
   // 2. Ringkasan Cepat
   html += '<p><strong>Ringkasan Cepat</strong><br>' + ticker + ' ' + changeText + ' dengan volume ' + ratio(volRatio) + ' rata-rata. Harga ' + maPosition.charAt(0).toLowerCase() + maPosition.slice(1) + ' dan RSI ' + rsiLabel + '. ' + pressureSummary + '.</p>';
+  // 2b. Potensi Besok
+  var arahBesok = bias === 'Bearish' ? 'Potensi tekanan berlanjut jika support ' + v(s1) + ' tidak bertahan' : bias === 'Bullish' ? 'Potensi lanjut naik jika momentum dan volume terjaga' : 'Arah belum jelas, menunggu konfirmasi di level kunci';
+  var entryAmanBesok = bias === 'Bearish' ? 'Belum ideal. Tunggu reclaim ' + v(reclaimLevel) + ' dengan volume.' : 'Area ' + v(s1) + '\u2013' + v(ma20 || r1) + ' jika ada konfirmasi volume.';
+  var reclaimTrigger = 'Close di atas ' + v(reclaimLevel || r1) + ' dengan volume di atas rata-rata';
+  var supportDiuji = 'Support terdekat ' + v(s1) + '. Jika jebol, risiko lanjut ke ' + v(s2) + '.';
+  var risikoBreakdownStock = 'Breakdown ' + v(s1) + ' dengan volume jual meningkat \u2192 tekanan ke ' + v(s2);
+  var syaratReboundStock = bias === 'Bearish' ? 'Bertahan di atas ' + v(s1) + ' + volume beli meningkat + RSI berbalik naik dari ' + idn(rsi14) : 'Konfirmasi breakout ' + v(r1) + ' atau bertahan di atas ' + v(ma20 || s1);
+  html += '<div class="scenario-list"><div><strong>Potensi Besok</strong><br><br>';
+  html += '<strong class="text-gray-400">Arah Utama Besok:</strong> ' + arahBesok + '<br><br>';
+  html += '<strong class="text-gray-400">Entry Aman / Area Pantau:</strong> ' + entryAmanBesok + '<br><br>';
+  html += '<strong class="text-gray-400">Reclaim / Breakout Trigger:</strong> ' + reclaimTrigger + '<br><br>';
+  html += '<strong class="text-gray-400">Support yang Diuji:</strong> ' + supportDiuji + '<br><br>';
+  html += '<strong class="text-gray-400">Risiko Breakdown:</strong> ' + risikoBreakdownStock + '<br><br>';
+  html += '<strong class="text-gray-400">Syarat Rebound:</strong> ' + syaratReboundStock + '</div></div>';
   // 3. Skenario Harga
   html += '<div class="scenario-price-grid">';
   html += '<div class="case-card bear"><span>BEAR</span><b>' + bearLevel + '</b><p>' + bearDesc + '</p></div>';
