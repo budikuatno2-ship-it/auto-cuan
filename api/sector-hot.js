@@ -359,7 +359,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiResponseDebug = null;
     var aiParseDebug = null;
     var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '40', 10);
-    var maxOutputTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '4000', 10);
+    var maxOutputTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '800', 10);
     var aiModelUsed = process.env.SCREENER_AI_MODEL || 'deepseek-v4-flash';
     // Cost-efficient: max 2 API calls total, split candidates into 2 halves
     var AI_MAX_CALLS = 2;
@@ -639,6 +639,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_batches_failed: aiBatchesFailed,
       ai_api_call_count: aiApiCallCount,
       ai_cost_saving_mode: true,
+      ai_output_format: 'line_protocol',
       ai_success_count: aiCalledCount,
       ai_failed_count: aiBatchesFailed > 0 ? aiAttempted - aiCalledCount - aiMissingTickers.length : 0,
       ai_missing_count: aiMissingTickers.length,
@@ -1013,17 +1014,19 @@ async function callAIConfirmation(candidates) {
   var apiKey = process.env.SCREENER_AI_API_KEY;
   var baseUrl = process.env.SCREENER_AI_BASE_URL || 'https://api.codecrafters.id/v1';
   var model = process.env.SCREENER_AI_MODEL || 'deepseek-v4-flash';
-  var maxTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '4000', 10);
+  var maxTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '800', 10);
 
   if (!apiKey) return { data: [], diagnostic: 'API key missing.' };
 
-  // Compact one-line summary per ticker (minimizes prompt tokens)
-  var lines = candidates.map(function(c) {
-    return c.ticker + ' ' + c.last_price + ' RSI=' + (c.rsi14 || '-') + ' Vol=' + c.volume_ratio_avg20 + 'x RR=' + c.risk_reward + ' S=' + c.status;
+  // Compact line protocol: ticker|status|score|last|chg|rsi|vol|tx1d|entry|sl|tp1|tp2|rr
+  var inputLines = candidates.map(function(c) {
+    var tx1dB = c.tx_value_1d ? (c.tx_value_1d / 1e9).toFixed(1) + 'B' : '-';
+    return c.ticker + '|' + (c.status || '-').replace('Swing Ready', 'READY').replace('Watchlist', 'WATCH').replace('Rebound Speculative', 'REBOUND').replace('Invalid', 'INV') + '|' + c.score + '|' + c.last_price + '|' + (c.change_pct || 0) + '|' + (c.rsi14 || '-') + '|' + c.volume_ratio_avg20 + '|' + tx1dB + '|' + c.entry_low + '-' + c.entry_high + '|' + c.stop_loss + '|' + c.tp1 + '|' + c.tp2 + '|' + c.risk_reward;
   });
 
-  var systemPrompt = 'IDX swing 3-7d validator. Return ONLY valid JSON array, no other text.';
-  var userPrompt = lines.join('\n') + '\n\nJSON: [{"ticker":"XXX","ai_status":"CONFIRMED|CAUTION|REJECT","ai_reason":"<max 80 chars>"}]';
+  var systemPrompt = 'You are an IDX swing 3-7D validator. Return ONLY compact lines.\nFormat: TICKER|STATUS|CODES\nSTATUS: C=CONFIRMED, W=CAUTION, R=REJECT.\nCODES max 3 from: TREND_OK,TREND_WEAK,RSI_OK,RSI_LOW,RSI_HIGH,VOL_OK,VOL_WEAK,VALUE_OK,RR_OK,RR_LOW,ENTRY_OK,ENTRY_FAR,OVEREXT,SUPPORT,BREAKOUT,REBOUND.\nReturn exactly one line per ticker, same order as input. No JSON. No markdown. No extra text.';
+
+  var userPrompt = 'Validate:\n' + inputLines.join('\n');
 
   try {
     var response = await fetch(baseUrl + '/chat/completions', {
@@ -1039,7 +1042,7 @@ async function callAIConfirmation(candidates) {
           { role: 'user', content: userPrompt }
         ],
         max_tokens: maxTokens,
-        temperature: 0.2
+        temperature: 0
       })
     });
 
@@ -1185,84 +1188,55 @@ async function callAIConfirmation(candidates) {
       };
     }
 
-    var jsonStr = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-    // Try to extract JSON array even if there's text before/after it
-    var arrayStart = jsonStr.indexOf('[');
-    var arrayEnd = jsonStr.lastIndexOf(']');
-    if (arrayStart >= 0 && arrayEnd > arrayStart) {
-      jsonStr = jsonStr.substring(arrayStart, arrayEnd + 1);
-    }
+    // === LINE PROTOCOL PARSER ===
+    // Expected format: TICKER|STATUS|CODES (one per line)
+    // STATUS: C=CONFIRMED, W=CAUTION, R=REJECT
+    var contentClean = content.replace(/```[a-z]*\s*/g, '').replace(/```\s*/g, '').trim();
+    var outputLines = contentClean.split('\n').filter(function(l) { return l.trim().length > 0 && l.includes('|'); });
 
-    var parsed;
-    var firstParseError = null;
-    var repairAttempted = false;
-
-    // Step A: Try strict JSON.parse
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch (parseErr) {
-      firstParseError = parseErr.message;
-    }
-
-    // Step B: If failed, try conservative repair
-    if (!parsed) {
-      repairAttempted = true;
+    if (outputLines.length === 0) {
+      // Fallback: try JSON parse if model returned JSON despite instructions
       try {
-        var repaired = jsonStr
-          // Fix unquoted keys: word followed by colon → "word":
-          .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
-          // Fix single-quoted strings → double quotes (simple cases)
-          .replace(/'([^'\\]*)'/g, '"$1"')
-          // Remove trailing commas before } or ]
-          .replace(/,\s*([}\]])/g, '$1');
-        parsed = JSON.parse(repaired);
-      } catch (repairErr) {
-        // Step C: Final attempt — try to extract individual objects
-        try {
-          // Match patterns like {..."ticker"..."ai_status"...}
-          var objMatches = jsonStr.match(/\{[^{}]*\}/g);
-          if (objMatches && objMatches.length > 0) {
-            var manualParsed = [];
-            for (var oi = 0; oi < objMatches.length; oi++) {
-              var objStr = objMatches[oi]
-                .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
-                .replace(/'([^'\\]*)'/g, '"$1"')
-                .replace(/,\s*([}\]])/g, '$1');
-              try {
-                manualParsed.push(JSON.parse(objStr));
-              } catch (e3) { /* skip unparseable objects */ }
-            }
-            if (manualParsed.length > 0) {
-              parsed = manualParsed;
-            }
-          }
-        } catch (e4) { /* give up */ }
-
-        if (!parsed) {
-          return {
-            data: [],
-            diagnostic: 'AI JSON parse failed after repair.',
-            ai_parse_debug: {
-              extract_path: extractPath,
-              content_length: content.length,
-              array_start_found: arrayStart >= 0,
-              array_end_found: arrayEnd > arrayStart,
-              first_parse_error: firstParseError,
-              repair_attempted: true,
-              second_parse_error: repairErr.message,
-              raw_preview_300: jsonStr.substring(0, 300)
-            },
-            usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason }
-          };
+        var jsonFallback = JSON.parse(contentClean.substring(contentClean.indexOf('['), contentClean.lastIndexOf(']') + 1));
+        if (Array.isArray(jsonFallback) && jsonFallback.length > 0) {
+          return { data: jsonFallback, diagnostic: 'Fallback JSON parsed. ' + jsonFallback.length + ' items.', usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason } };
         }
-      }
+      } catch (e) { /* not JSON either */ }
+
+      return { data: [], diagnostic: 'AI output has no parseable lines. Content length: ' + content.length + '. Preview: ' + content.substring(0, 100), usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason } };
     }
 
-    if (!Array.isArray(parsed)) {
-      return { data: [], diagnostic: 'AI response not array. Type: ' + typeof parsed, usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason } };
+    // Parse each line: TICKER|STATUS|CODES
+    var codeToReason = {
+      'TREND_OK': 'Trend bagus', 'TREND_WEAK': 'Trend lemah',
+      'RSI_OK': 'RSI sehat', 'RSI_LOW': 'RSI rendah', 'RSI_HIGH': 'RSI tinggi',
+      'VOL_OK': 'Volume kuat', 'VOL_WEAK': 'Volume lemah',
+      'VALUE_OK': 'Value aktif', 'RR_OK': 'RR valid', 'RR_LOW': 'RR rendah',
+      'ENTRY_OK': 'Entry baik', 'ENTRY_FAR': 'Entry belum ideal',
+      'OVEREXT': 'Overextended', 'SUPPORT': 'Dekat support',
+      'BREAKOUT': 'Breakout setup', 'REBOUND': 'Rebound setup'
+    };
+
+    var parsed = [];
+    for (var li = 0; li < outputLines.length; li++) {
+      var parts = outputLines[li].trim().split('|');
+      if (parts.length < 2) continue;
+      var ticker = parts[0].trim().toUpperCase().replace(/\.JK$/i, '');
+      var statusCode = parts[1].trim().toUpperCase();
+      var codes = parts.length >= 3 ? parts[2].trim().split(',').slice(0, 3) : [];
+
+      var aiStatus = 'CAUTION';
+      if (statusCode === 'C' || statusCode === 'CONFIRMED') aiStatus = 'CONFIRMED';
+      else if (statusCode === 'R' || statusCode === 'REJECT') aiStatus = 'REJECT';
+      else aiStatus = 'CAUTION';
+
+      var reasonParts = codes.map(function(c) { return codeToReason[c.trim()] || c.trim(); });
+      var aiReason = reasonParts.join(', ') || aiStatus;
+
+      parsed.push({ ticker: ticker, ai_status: aiStatus, ai_reason: aiReason, ai_red_flags: codes.filter(function(c) { var ct = c.trim(); return ct === 'TREND_WEAK' || ct === 'RSI_LOW' || ct === 'RSI_HIGH' || ct === 'VOL_WEAK' || ct === 'RR_LOW' || ct === 'ENTRY_FAR' || ct === 'OVEREXT'; }) });
     }
 
-    return { data: parsed, diagnostic: 'OK. Received ' + parsed.length + ' items via ' + extractPath + '. finishReason: ' + finishReason + (repairAttempted ? '. JSON repaired.' : ''), usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason } };
+    return { data: parsed, diagnostic: 'Line protocol OK. Parsed ' + parsed.length + ' items. finishReason: ' + finishReason, usage: data.usage ? Object.assign({}, data.usage, { _finish_reason: finishReason }) : { _finish_reason: finishReason } };
   } catch (e) {
     console.error('Screener AI confirmation error:', e.message);
     return { data: [], diagnostic: 'AI exception: ' + e.message };
