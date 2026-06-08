@@ -288,23 +288,24 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       scannedCount++;
       try {
         var candles = await fetchScreenerCandles(item.ticker);
-        if (!candles || candles.length < 55) {
+        if (!candles || !Array.isArray(candles) || candles.length < 55) {
           failedCount++;
           continue;
         }
         var analysis = calculateIndicators(candles);
+        if (!analysis || !analysis.last_price) { failedCount++; continue; }
         var scoring = scoreAndClassify(analysis);
 
         // Compute transaction value metrics from candle data
-        var _txCandles = candles;
+        var _txCandles = candles || [];
         var _txLastIdx = _txCandles.length - 1;
-        var _txValue1d = _txCandles[_txLastIdx].close * _txCandles[_txLastIdx].volume;
+        var _txValue1d = _txLastIdx >= 0 ? (_txCandles[_txLastIdx].close || 0) * (_txCandles[_txLastIdx].volume || 0) : 0;
         var _txLast3 = _txCandles.slice(-3);
-        var _avgTxValue3d = _txLast3.map(function(d) { return d.close * d.volume; }).reduce(function(a, b) { return a + b; }, 0) / _txLast3.length;
+        var _avgTxValue3d = _txLast3.length > 0 ? _txLast3.map(function(d) { return (d.close || 0) * (d.volume || 0); }).reduce(function(a, b) { return a + b; }, 0) / _txLast3.length : 0;
         var _txLast7 = _txCandles.slice(-7);
-        var _avgTxValue7d = _txLast7.map(function(d) { return d.close * d.volume; }).reduce(function(a, b) { return a + b; }, 0) / _txLast7.length;
+        var _avgTxValue7d = _txLast7.length > 0 ? _txLast7.map(function(d) { return (d.close || 0) * (d.volume || 0); }).reduce(function(a, b) { return a + b; }, 0) / _txLast7.length : 0;
         var _txLast20 = _txCandles.slice(-20);
-        var _avgTxValue20d = _txLast20.map(function(d) { return d.close * d.volume; }).reduce(function(a, b) { return a + b; }, 0) / _txLast20.length;
+        var _avgTxValue20d = _txLast20.length > 0 ? _txLast20.map(function(d) { return (d.close || 0) * (d.volume || 0); }).reduce(function(a, b) { return a + b; }, 0) / _txLast20.length : 0;
 
         results.push({
           ticker: item.ticker,
