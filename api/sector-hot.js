@@ -359,8 +359,8 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiResponseDebug = null;
     var aiParseDebug = null;
     var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '30', 10);
-    var aiBatchSize = parseInt(process.env.SCREENER_AI_BATCH_SIZE || '5', 10);
-    var maxOutputTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '2000', 10);
+    var aiBatchSize = 1; // Single ticker per call for maximum reliability
+    var maxOutputTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '500', 10);
     var aiModelUsed = process.env.SCREENER_AI_MODEL || 'deepseek-v4-flash';
 
     // Filter: only radar statuses using normalized canonical values
@@ -416,37 +416,27 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         if (aiResult.data && aiResult.data.length > 0) {
           aiBatchesSucceeded++;
           allAIResults = allAIResults.concat(aiResult.data);
-          aiBatchDiagnostics.push('Batch ' + (batchIdx + 1) + '/' + batches.length + ': OK ' + aiResult.data.length + ' items (' + batchTickers.join(',') + ')');
+          aiBatchDiagnostics.push('OK: ' + batchTickers.join(','));
         } else {
-          // RETRY: Split failed batch into individual calls (handles finish_reason=length)
-          var retryResults = [];
-          var retryFailed = [];
-          for (var ri = 0; ri < batchCandidates.length; ri++) {
-            await delay(300);
-            var singleResult = await callAIConfirmation([batchCandidates[ri]]);
-            if (singleResult.data && singleResult.data.length > 0) {
-              retryResults = retryResults.concat(singleResult.data);
-            } else {
-              retryFailed.push(batchCandidates[ri].ticker);
-            }
-          }
-
-          if (retryResults.length > 0) {
+          // Single ticker failed — retry once with delay
+          await delay(1000);
+          var retryResult = await callAIConfirmation(batchCandidates);
+          if (retryResult.data && retryResult.data.length > 0) {
             aiBatchesSucceeded++;
-            allAIResults = allAIResults.concat(retryResults);
-            aiBatchDiagnostics.push('Batch ' + (batchIdx + 1) + '/' + batches.length + ': RETRY OK ' + retryResults.length + '/' + batchTickers.length + ' (' + batchTickers.join(',') + ')' + (retryFailed.length > 0 ? ' | Still failed: ' + retryFailed.join(',') : ''));
+            allAIResults = allAIResults.concat(retryResult.data);
+            aiBatchDiagnostics.push('RETRY OK: ' + batchTickers.join(','));
           } else {
             aiBatchesFailed++;
-            var batchDiag = 'Batch ' + (batchIdx + 1) + '/' + batches.length + ': FAILED after retry (' + batchTickers.join(',') + ') — ' + (aiResult.diagnostic || 'unknown');
-            aiBatchDiagnostics.push(batchDiag);
-            if (!aiResponseDebug && aiResult.ai_response_debug) aiResponseDebug = aiResult.ai_response_debug;
-            if (!aiParseDebug && aiResult.ai_parse_debug) aiParseDebug = aiResult.ai_parse_debug;
+            aiBatchDiagnostics.push('FAILED: ' + batchTickers.join(','));
+            if (!aiResponseDebug && (aiResult.ai_response_debug || retryResult.ai_response_debug)) {
+              aiResponseDebug = aiResult.ai_response_debug || retryResult.ai_response_debug;
+            }
           }
         }
 
-        // Small delay between batches to avoid rate limiting
+        // Delay between individual AI calls
         if (batchIdx < batches.length - 1) {
-          await delay(500);
+          await delay(800);
         }
       }
 
@@ -637,6 +627,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_batches_attempted: aiBatchesAttempted,
       ai_batches_succeeded: aiBatchesSucceeded,
       ai_batches_failed: aiBatchesFailed,
+      ai_failed_tickers: aiBatchDiagnostics.filter(function(d) { return d.startsWith('FAILED:'); }).map(function(d) { return d.replace('FAILED: ', ''); }),
       ai_batch_diagnostics: aiBatchDiagnostics.length > 0 ? aiBatchDiagnostics : undefined,
       ai_usage_debug: aiUsageDebug || undefined,
       ai_diagnostic: aiDiagnostic,
@@ -1006,34 +997,18 @@ async function callAIConfirmation(candidates) {
   var apiKey = process.env.SCREENER_AI_API_KEY;
   var baseUrl = process.env.SCREENER_AI_BASE_URL || 'https://api.codecrafters.id/v1';
   var model = process.env.SCREENER_AI_MODEL || 'deepseek-v4-flash';
-  var maxTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '2000', 10);
+  var maxTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '500', 10);
 
   if (!apiKey) return { data: [], diagnostic: 'API key missing.' };
 
+  // Compact summary — only essential fields
   var summaries = candidates.map(function(c) {
-    return {
-      ticker: c.ticker,
-      last: c.last_price,
-      chg: c.change_pct + '%',
-      ma20: c.ma20,
-      ma50: c.ma50,
-      rsi: c.rsi14,
-      vol_ratio: c.volume_ratio_avg20,
-      support: c.support,
-      resistance: c.resistance,
-      entry: c.entry_low + '-' + c.entry_high,
-      sl: c.stop_loss,
-      tp1: c.tp1,
-      tp2: c.tp2,
-      rr: c.risk_reward,
-      score: c.score,
-      status: c.status
-    };
-  });
+    return c.ticker + ': ' + c.last_price + ' RSI=' + (c.rsi14 || '-') + ' Vol=' + c.volume_ratio_avg20 + 'x MA20=' + (c.ma20 || '-') + ' RR=' + c.risk_reward + ' Status=' + c.status;
+  }).join('; ');
 
-  var systemPrompt = 'Kamu adalah analis teknikal saham IDX. Validasi kandidat swing trading 3-7 hari. ATURAN OUTPUT: 1) Return HANYA valid JSON array, bisa langsung di-parse oleh JSON.parse. 2) Semua key harus pakai double-quote. 3) Semua string value harus pakai double-quote. 4) Tidak boleh trailing comma. 5) Tidak boleh komentar. 6) Tidak boleh markdown atau penjelasan. Contoh format valid: [{"ticker":"BBCA","ai_status":"CONFIRMED","ai_reason":"Trend kuat di atas MA20","ai_red_flags":[],"final_status":"Swing Ready"}]';
-
-  var userPrompt = 'Validasi kandidat berikut. Gunakan ticker PERSIS tanpa .JK.\n' + JSON.stringify(summaries) + '\n\nReturn HANYA JSON array. Setiap item: {"ticker":"...","ai_status":"CONFIRMED/CAUTION/REJECT","ai_reason":"...","ai_red_flags":[...],"final_status":"..."}. Jangan tambahkan teks lain.';
+  // Ultra-compact prompt for single/few tickers
+  var systemPrompt = 'IDX swing validator. Return ONLY valid JSON array. No markdown, no explanation.';
+  var userPrompt = summaries + '\n\nReturn: [{"ticker":"XXX","ai_status":"CONFIRMED|CAUTION|REJECT","ai_reason":"max 80 chars"}]';
 
   try {
     var response = await fetch(baseUrl + '/chat/completions', {
