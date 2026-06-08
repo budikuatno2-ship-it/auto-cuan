@@ -4480,9 +4480,13 @@ async function loadSektorHot() {
             html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + chgSign + formatPct(g.avg_change_pct) + '</span></div>';
             html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
             html += '<span>' + (g.stock_count || 0) + ' saham</span>';
-            html += '<span class="' + topChgColor + '">Top: ' + (g.top_ticker || '-') + ' ' + topChgSign + formatPct(g.top_change_pct) + '</span>';
+            if (g.top_ticker && g.top_change_pct != null) {
+                html += '<span class="' + topChgColor + '">Top: ' + g.top_ticker + ' ' + topChgSign + formatPct(g.top_change_pct) + '</span>';
+            } else if (g.valid_count === 0 || !g.top_ticker) {
+                html += '<span class="text-gray-600">Data belum tersedia</span>';
+            }
             html += '</div>';
-            html += '<div class="mt-2 text-xs text-gray-600">Vol aktif: ' + formatRatio(g.avg_volume_ratio) + '</div>';
+            html += '<div class="mt-2 text-xs text-gray-600">Vol aktif: ' + (g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-') + '</div>';
             html += '</div>';
         });
         grid.innerHTML = html;
