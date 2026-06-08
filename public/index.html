@@ -66,6 +66,11 @@
         .ai-content strong { font-size: inherit; font-weight: 700; }
         .ai-content br { display: block; content: ""; margin-top: 1px; }
         .ai-content br + br { display: none; }
+        /* ===== FOLLOW-UP BUBBLE: consistent, lighter typography ===== */
+        .ai-content.ai-followup p { font-size: 13px; font-weight: 400; line-height: 1.6; margin: 0 0 8px; }
+        .ai-content.ai-followup p:first-child { font-size: 13px; font-weight: 400; }
+        .ai-content.ai-followup p:last-child { margin-bottom: 0; }
+        .ai-content.ai-followup strong { font-weight: 600; }
         /* ===== PREMIUM LAYOUT: DECISION CARD ===== */
         .ai-content .decision-card {
             border: 1px solid rgba(148, 163, 184, 0.18);
@@ -1710,7 +1715,7 @@ function htmlToCleanText(html) {
     return result.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-function openNewsFromAnalisis(ticker) {
+async function openNewsFromAnalisis(ticker) {
     var resultArea = document.getElementById('analisisResult');
     if (!resultArea) return;
     // Check if news panel already exists
@@ -1718,6 +1723,26 @@ function openNewsFromAnalisis(ticker) {
     if (existingPanel) { existingPanel.remove(); return; }
     // Check if we have cached news for this ticker
     var newsItems = (window._stockNewsByTicker && window._stockNewsByTicker[ticker]) ? window._stockNewsByTicker[ticker] : null;
+
+    // On-demand fetch: news is no longer auto-fetched during analysis (cost control).
+    // Fetch it only when the user clicks "Lihat News".
+    if (!newsItems || newsItems.length === 0) {
+        var loadingPanel = '<div id="newsPanel_' + ticker + '" class="mt-3 bg-dark-700/40 border border-dark-600/20 rounded-xl p-4 fade-in-up"><div class="flex items-center justify-between mb-2"><h4 class="text-sm font-semibold text-gray-300">News ' + ticker + '</h4><button onclick="document.getElementById(\'newsPanel_' + ticker + '\').remove()" class="text-xs text-gray-500 hover:text-red-400 transition">&times; Tutup</button></div><p class="text-xs text-emerald-400 animate-pulse-glow"><span class="spinner-sm"></span> Mengambil news ' + ticker + '...</p></div>';
+        resultArea.innerHTML += loadingPanel;
+        resultArea.scrollTop = resultArea.scrollHeight;
+        try {
+            var resp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=1', { method: 'GET' });
+            var q = await resp.json();
+            if (q && q.news && Array.isArray(q.news.items) && q.news.items.length > 0) {
+                newsItems = q.news.items;
+                if (!window._stockNewsByTicker) window._stockNewsByTicker = {};
+                window._stockNewsByTicker[ticker] = newsItems;
+            }
+        } catch (e) { /* fall through to empty state */ }
+        var lp = document.getElementById('newsPanel_' + ticker);
+        if (lp) lp.remove();
+    }
+
     var panelHtml = '<div id="newsPanel_' + ticker + '" class="mt-3 bg-dark-700/40 border border-dark-600/20 rounded-xl p-4 fade-in-up">';
     panelHtml += '<div class="flex items-center justify-between mb-3"><h4 class="text-sm font-semibold text-gray-300">News ' + ticker + '</h4><button onclick="document.getElementById(\'newsPanel_' + ticker + '\').remove()" class="text-xs text-gray-500 hover:text-red-400 transition">&times; Tutup</button></div>';
     if (newsItems && newsItems.length > 0) {
@@ -1729,7 +1754,7 @@ function openNewsFromAnalisis(ticker) {
         });
         panelHtml += '</div>';
     } else {
-        panelHtml += '<p class="text-xs text-gray-500">News ' + ticker + ' sedang disiapkan.</p>';
+        panelHtml += '<p class="text-xs text-gray-500">Data katalis terbatas. News ' + ticker + ' belum tersedia saat ini.</p>';
     }
     panelHtml += '</div>';
     resultArea.innerHTML += panelHtml;
@@ -1795,7 +1820,7 @@ async function handleAnalisisFollowUp(msg) {
                 html = stripFollowUpTemplate(html);
             }
 
-            resultArea.innerHTML += '<div class="mt-3 flex gap-3 fade-in-up"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%]">' + html + '</div></div>';
+            resultArea.innerHTML += '<div class="mt-3 flex gap-3 fade-in-up"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="ai-content ai-followup bg-dark-700/40 border border-dark-600/20 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%]">' + html + '</div></div>';
             if (typeof updateAnalysisContext === 'function') updateAnalysisContext(msg, html);
             incrementChatUsage();
         } else {
@@ -2602,7 +2627,7 @@ async function fetchQuoteContext(ticker) {
 
     _quoteInflight[cacheKey] = (async function() {
     try {
-        var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=1', { method: 'GET' }).catch(function() { return null; });
+        var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=0', { method: 'GET' }).catch(function() { return null; });
 
         var lines = ['\n[Auto-Cuan Market Data]'];
         lines.push('Ticker: ' + ticker);
@@ -3769,7 +3794,8 @@ function addAIBubble(html, isStructured) {
         sanitizedHtml = normalizeFinalStockHtml(sanitizedHtml);
     }
 
-    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] sm:max-w-[88%] overflow-x-auto"><div class="ai-content">' + sanitizedHtml + '</div>' + copyBtnHtml + '</div>';
+    var aiContentClass = (isStructured === false) ? 'ai-content ai-followup' : 'ai-content';
+    div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] sm:max-w-[88%] overflow-x-auto"><div class="' + aiContentClass + '">' + sanitizedHtml + '</div>' + copyBtnHtml + '</div>';
     container.appendChild(div);
     // Hide empty sections
     var contentDiv = div.querySelector('.ai-content');
@@ -4742,12 +4768,19 @@ async function loadSwingScreener(silent) {
             if (statS) statS.textContent = m.scanned_count || '—';
             if (statF) statF.textContent = m.failed_count || '0';
 
-            // Update subtitle with time
+            // Update subtitle with time + scan summary
             var sub = document.getElementById('screenerSubtitle');
-            if (sub && m.calculated_at) {
-                var dt = new Date(m.calculated_at);
-                var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-                sub.textContent = 'Update: ' + wibStr + ' WIB · Swing 3-7 hari · Grup Konglomerat Hot';
+            if (sub) {
+                if (m.status === 'scanning') {
+                    sub.textContent = 'SCANNING: ' + (m.scanned_count || 0) + '/' + (m.universe_count || '?') + ' ticker · Swing 3-7 hari · Grup Konglomerat Hot';
+                } else if (m.calculated_at) {
+                    var dt = new Date(m.calculated_at);
+                    var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+                    var scanTxt = 'Update: ' + wibStr + ' WIB · Scan: ' + (m.scanned_count || 0) + '/' + (m.universe_count || 0);
+                    if (m.failed_count > 0) scanTxt += ' · ' + m.failed_count + ' gagal';
+                    scanTxt += ' · Swing 3-7 hari · Grup Konglomerat Hot';
+                    sub.textContent = scanTxt;
+                }
             }
 
             // Meta badge
