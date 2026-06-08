@@ -304,6 +304,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     // 2. Fetch candle data and calculate indicators for each ticker
     var scannedCount = 0;
     var failedCount = 0;
+    var screenerFailedTickers = [];
     var results = [];
 
     for (var i = 0; i < universe.length; i++) {
@@ -313,10 +314,11 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         var candles = await fetchScreenerCandles(item.ticker);
         if (!candles || !Array.isArray(candles) || candles.length < 55) {
           failedCount++;
+          screenerFailedTickers.push({ ticker: item.ticker, reason: !candles ? 'no_data' : 'insufficient_candles_' + (candles ? candles.length : 0) });
           continue;
         }
         var analysis = calculateIndicators(candles);
-        if (!analysis || !analysis.last_price) { failedCount++; continue; }
+        if (!analysis || !analysis.last_price) { failedCount++; screenerFailedTickers.push({ ticker: item.ticker, reason: 'analysis_failed' }); continue; }
         var scoring = scoreAndClassify(analysis);
 
         // Compute transaction value metrics from candle data
@@ -359,6 +361,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         });
       } catch (e) {
         failedCount++;
+        screenerFailedTickers.push({ ticker: item.ticker, reason: 'exception: ' + (e.message || 'unknown').substring(0, 80) });
       }
       // Rate limit: 250ms between Yahoo requests
       if (i < universe.length - 1) {
@@ -654,6 +657,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       generated_count: results.length,
       saved_count: savedCount,
       failed_count: failedCount,
+      screener_failed_tickers: screenerFailedTickers.length > 0 ? screenerFailedTickers : undefined,
       ai_eligible_count: aiEligibleCount,
       ai_attempted: aiAttempted,
       ai_called_count: aiCalledCount,
@@ -743,6 +747,7 @@ async function handleRefresh(req, res, supabase) {
     const quoteCache = {};
     var scannedCount = 0;
     var failedCount = 0;
+    var failedTickers = [];
 
     for (var i = 0; i < uniqueTickers.length; i++) {
       var ticker = uniqueTickers[i];
@@ -750,8 +755,8 @@ async function handleRefresh(req, res, supabase) {
       try {
         var quote = await fetchYahooQuote(ticker);
         if (quote) { quoteCache[ticker] = quote; }
-        else { failedCount++; }
-      } catch (e) { failedCount++; }
+        else { failedCount++; failedTickers.push(ticker); }
+      } catch (e) { failedCount++; failedTickers.push(ticker); }
       if (i < uniqueTickers.length - 1) {
         await delay(200);
       }
@@ -832,6 +837,7 @@ async function handleRefresh(req, res, supabase) {
       message: 'Refresh completed.',
       scannedCount: scannedCount,
       failedCount: failedCount,
+      failedTickers: failedTickers.length > 0 ? failedTickers : undefined,
       groupsProcessed: groupsProcessed
     });
 
