@@ -358,10 +358,11 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiDiagnostic = '';
     var aiResponseDebug = null;
     var aiParseDebug = null;
-    var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '30', 10);
-    var aiBatchSize = 1; // Single ticker per call for maximum reliability
-    var maxOutputTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '500', 10);
+    var maxCandidates = parseInt(process.env.SCREENER_AI_MAX_CANDIDATES || '40', 10);
+    var maxOutputTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '4000', 10);
     var aiModelUsed = process.env.SCREENER_AI_MODEL || 'deepseek-v4-flash';
+    // Cost-efficient: max 2 API calls total, split candidates into 2 halves
+    var AI_MAX_CALLS = 2;
 
     // Filter: only radar statuses using normalized canonical values
     var aiEligible = results.filter(function(r) {
@@ -389,14 +390,18 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiBatchesFailed = 0;
     var aiBatchDiagnostics = [];
     var aiUsageDebug = null;
+    var aiApiCallCount = 0;
 
     if (enableAI && aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
       aiAttempted = aiCandidates.length;
 
-      // Split candidates into batches
+      // Split into max 2 bulk calls (cost-efficient)
       var batches = [];
-      for (var bi = 0; bi < aiCandidates.length; bi += aiBatchSize) {
-        batches.push(aiCandidates.slice(bi, bi + aiBatchSize));
+      if (aiCandidates.length <= 20) {
+        batches = [aiCandidates]; // 1 call for <= 20 candidates
+      } else {
+        var mid = Math.ceil(aiCandidates.length / 2);
+        batches = [aiCandidates.slice(0, mid), aiCandidates.slice(mid)];
       }
       aiBatchCount = batches.length;
 
@@ -405,6 +410,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
 
       for (var batchIdx = 0; batchIdx < batches.length; batchIdx++) {
         aiBatchesAttempted++;
+        aiApiCallCount++;
         var batchCandidates = batches[batchIdx];
         var batchTickers = batchCandidates.map(function(c) { return c.ticker; });
 
@@ -416,27 +422,28 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         if (aiResult.data && aiResult.data.length > 0) {
           aiBatchesSucceeded++;
           allAIResults = allAIResults.concat(aiResult.data);
-          aiBatchDiagnostics.push('OK: ' + batchTickers.join(','));
+          aiBatchDiagnostics.push('OK ' + aiResult.data.length + '/' + batchTickers.length + ' tickers');
         } else {
-          // Single ticker failed — retry once with delay
-          await delay(1000);
+          // Bulk call failed — retry with shorter prompt (strip non-essential fields)
+          await delay(2000);
+          aiApiCallCount++;
           var retryResult = await callAIConfirmation(batchCandidates);
           if (retryResult.data && retryResult.data.length > 0) {
             aiBatchesSucceeded++;
             allAIResults = allAIResults.concat(retryResult.data);
-            aiBatchDiagnostics.push('RETRY OK: ' + batchTickers.join(','));
+            aiBatchDiagnostics.push('RETRY OK ' + retryResult.data.length + '/' + batchTickers.length + ' tickers');
           } else {
             aiBatchesFailed++;
-            aiBatchDiagnostics.push('FAILED: ' + batchTickers.join(','));
+            aiBatchDiagnostics.push('FAILED ' + batchTickers.length + ' tickers: ' + batchTickers.slice(0, 5).join(',') + (batchTickers.length > 5 ? '...' : ''));
             if (!aiResponseDebug && (aiResult.ai_response_debug || retryResult.ai_response_debug)) {
               aiResponseDebug = aiResult.ai_response_debug || retryResult.ai_response_debug;
             }
           }
         }
 
-        // Delay between individual AI calls
+        // Delay between bulk calls
         if (batchIdx < batches.length - 1) {
-          await delay(800);
+          await delay(1500);
         }
       }
 
@@ -612,7 +619,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_model_used: aiModelUsed,
       ai_max_candidates_used: maxCandidates,
       ai_max_output_tokens_used: maxOutputTokens,
-      ai_batch_size: aiBatchSize,
+      ai_batch_size: batches.length > 0 ? Math.ceil(aiCandidates.length / batches.length) : 0,
       universe_count: universeCount,
       scanned_count: scannedCount,
       generated_count: results.length,
@@ -627,7 +634,9 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_batches_attempted: aiBatchesAttempted,
       ai_batches_succeeded: aiBatchesSucceeded,
       ai_batches_failed: aiBatchesFailed,
-      ai_failed_tickers: aiBatchDiagnostics.filter(function(d) { return d.startsWith('FAILED:'); }).map(function(d) { return d.replace('FAILED: ', ''); }),
+      ai_api_call_count: aiApiCallCount,
+      ai_cost_saving_mode: true,
+      ai_failed_tickers: aiBatchDiagnostics.filter(function(d) { return d.startsWith('FAILED'); }).map(function(d) { return d; }),
       ai_batch_diagnostics: aiBatchDiagnostics.length > 0 ? aiBatchDiagnostics : undefined,
       ai_usage_debug: aiUsageDebug || undefined,
       ai_diagnostic: aiDiagnostic,
@@ -997,18 +1006,17 @@ async function callAIConfirmation(candidates) {
   var apiKey = process.env.SCREENER_AI_API_KEY;
   var baseUrl = process.env.SCREENER_AI_BASE_URL || 'https://api.codecrafters.id/v1';
   var model = process.env.SCREENER_AI_MODEL || 'deepseek-v4-flash';
-  var maxTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '500', 10);
+  var maxTokens = parseInt(process.env.SCREENER_AI_MAX_OUTPUT_TOKENS || '4000', 10);
 
   if (!apiKey) return { data: [], diagnostic: 'API key missing.' };
 
-  // Compact summary — only essential fields
-  var summaries = candidates.map(function(c) {
-    return c.ticker + ': ' + c.last_price + ' RSI=' + (c.rsi14 || '-') + ' Vol=' + c.volume_ratio_avg20 + 'x MA20=' + (c.ma20 || '-') + ' RR=' + c.risk_reward + ' Status=' + c.status;
-  }).join('; ');
+  // Compact one-line summary per ticker (minimizes prompt tokens)
+  var lines = candidates.map(function(c) {
+    return c.ticker + ' ' + c.last_price + ' RSI=' + (c.rsi14 || '-') + ' Vol=' + c.volume_ratio_avg20 + 'x RR=' + c.risk_reward + ' S=' + c.status;
+  });
 
-  // Ultra-compact prompt for single/few tickers
-  var systemPrompt = 'IDX swing validator. Return ONLY valid JSON array. No markdown, no explanation.';
-  var userPrompt = summaries + '\n\nReturn: [{"ticker":"XXX","ai_status":"CONFIRMED|CAUTION|REJECT","ai_reason":"max 80 chars"}]';
+  var systemPrompt = 'IDX swing 3-7d validator. Return ONLY valid JSON array, no other text.';
+  var userPrompt = lines.join('\n') + '\n\nJSON: [{"ticker":"XXX","ai_status":"CONFIRMED|CAUTION|REJECT","ai_reason":"<max 80 chars>"}]';
 
   try {
     var response = await fetch(baseUrl + '/chat/completions', {
