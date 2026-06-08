@@ -106,18 +106,22 @@ module.exports = async function handler(req, res) {
         mappingData.forEach(function(m) { sortMap[m.ticker] = m.sort_order; });
       }
 
-      // If sector_hot_members_latest has data, sort and return it
+      // Merge: use sector_hot_members_latest data where available,
+      // fill in missing members from mapping (so all active members always appear)
       var finalMembers;
+      var membersMap = {};
       if (membersData && membersData.length > 0) {
-        finalMembers = membersData.sort(function(a, b) {
-          const sa = sortMap[a.ticker] != null ? sortMap[a.ticker] : 999;
-          const sb = sortMap[b.ticker] != null ? sortMap[b.ticker] : 999;
-          return sa - sb;
-        });
-      } else if (mappingData && mappingData.length > 0) {
-        // Fallback: show active mapping members without market data
-        // This prevents "Belum ada data member" when group has known members but no quote refresh yet
+        membersData.forEach(function(m) { membersMap[m.ticker] = m; });
+      }
+      if (mappingData && mappingData.length > 0) {
         finalMembers = mappingData.map(function(m) {
+          var existing = membersMap[m.ticker];
+          if (existing && existing.last_price != null) {
+            // Use existing market data row
+            existing._sort = m.sort_order != null ? m.sort_order : 999;
+            return existing;
+          }
+          // Fallback: mapping member without market data
           return {
             group_code: code,
             ticker: m.ticker,
@@ -128,8 +132,16 @@ module.exports = async function handler(req, res) {
             avg_volume_30d: null,
             volume_ratio_30d: null,
             member_type: m.member_type || 'Member',
-            calculated_at: null
+            calculated_at: null,
+            _sort: m.sort_order != null ? m.sort_order : 999
           };
+        });
+        finalMembers.sort(function(a, b) { return (a._sort || 999) - (b._sort || 999); });
+      } else if (membersData && membersData.length > 0) {
+        finalMembers = membersData.sort(function(a, b) {
+          const sa = sortMap[a.ticker] != null ? sortMap[a.ticker] : 999;
+          const sb = sortMap[b.ticker] != null ? sortMap[b.ticker] : 999;
+          return sa - sb;
         });
       } else {
         finalMembers = [];
@@ -786,18 +798,21 @@ async function handleRefresh(req, res, supabase) {
         var member = groupMembers[m];
         var q = quoteCache[member.ticker];
 
-        memberRows.push({
-          group_code: group.group_code,
-          ticker: member.ticker,
-          stock_name: member.stock_name,
-          last_price: q ? q.lastPrice : null,
-          change_pct: q ? q.changePct : null,
-          volume_today: q ? q.volumeToday : null,
-          avg_volume_30d: q ? q.avgVolume30d : null,
-          volume_ratio_30d: q ? q.volumeRatio30d : null,
-          member_type: member.member_type,
-          calculated_at: now
-        });
+        // Only upsert member rows with valid market data (don't overwrite good data with nulls)
+        if (q) {
+          memberRows.push({
+            group_code: group.group_code,
+            ticker: member.ticker,
+            stock_name: member.stock_name,
+            last_price: q.lastPrice,
+            change_pct: q.changePct,
+            volume_today: q.volumeToday,
+            avg_volume_30d: q.avgVolume30d,
+            volume_ratio_30d: q.volumeRatio30d,
+            member_type: member.member_type,
+            calculated_at: now
+          });
+        }
 
         if (q) {
           validCount++;
@@ -1612,8 +1627,8 @@ async function handleNkScreenerStart(req, res, supabase) {
   await supabase.from('swing_screener_non_konglo_jobs').delete().eq('run_date', runDate);
   await supabase.from('swing_screener_non_konglo_staging').delete().eq('run_date', runDate);
 
-  // Create batches of 15
-  const BATCH_SIZE = 15;
+  // Create batches of 8 (smaller to avoid Vercel timeout)
+  const BATCH_SIZE = 8;
   const batches = [];
   for (let i = 0; i < universe.length; i += BATCH_SIZE) {
     const batch = universe.slice(i, i + BATCH_SIZE);
@@ -1982,9 +1997,13 @@ async function fetchNkQuoteData(ticker) {
     const from = now - 60 * 86400; // 60 days back
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${from}&period2=${now}&interval=1d`;
 
+    const controller = new AbortController();
+    const fetchTimeout = setTimeout(() => controller.abort(), 5000);
     const resp = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AutoCuan/1.0)' }
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AutoCuan/1.0)' },
+      signal: controller.signal
     });
+    clearTimeout(fetchTimeout);
     if (!resp.ok) return null;
 
     const json = await resp.json();

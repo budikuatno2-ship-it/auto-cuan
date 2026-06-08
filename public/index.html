@@ -1788,7 +1788,7 @@ async function handleAnalisisFollowUp(msg) {
 
             // === FOLLOW-UP GUARD: Strip full template elements if AI accidentally returned them ===
             // Follow-up must NEVER show decision-card, decision-grid, metric-grid, trade-plan-grid, etc.
-            if (data.response_type === 'follow_up' || data.intent === 'follow_up_question' || data.intent === 'contextual_data_followup') {
+            if (data.response_type === 'follow_up' || data.response_type === 'follow_up_answer' || data.intent === 'follow_up_question' || data.intent === 'contextual_data_followup') {
                 html = stripFollowUpTemplate(html);
             }
 
@@ -3360,9 +3360,9 @@ async function handleTickerQuestion(msg, ticker) {
         var data = await response.json();
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
-            if (data.response_type === 'follow_up' || data.response_type === 'casual') {
+            if (data.response_type === 'follow_up' || data.response_type === 'follow_up_answer' || data.response_type === 'casual') {
                 html = sanitizeAIHtml(clientSanitizeFCA(html));
-                if (data.response_type === 'follow_up') html = stripFollowUpTemplate(html);
+                if (data.response_type === 'follow_up' || data.response_type === 'follow_up_answer') html = stripFollowUpTemplate(html);
                 addAIBubble(html, false);
             } else {
                 addAIBubble(html, true);
@@ -3398,9 +3398,9 @@ async function handleChat(msg) {
         var data = await response.json();
         removeLoadingBubble();
         if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
-            if (data.response_type === 'follow_up' || data.response_type === 'casual') {
+            if (data.response_type === 'follow_up' || data.response_type === 'follow_up_answer' || data.response_type === 'casual') {
                 html = sanitizeAIHtml(clientSanitizeFCA(html));
-                if (data.response_type === 'follow_up') html = stripFollowUpTemplate(html);
+                if (data.response_type === 'follow_up' || data.response_type === 'follow_up_answer') html = stripFollowUpTemplate(html);
                 addAIBubble(html, false);
             } else {
                 addAIBubble(html, true);

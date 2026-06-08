@@ -111,17 +111,33 @@ module.exports = async function handler(req, res) {
       // Must run before AI to ensure deterministic structured output.
       if (detectedIHSG && intent !== 'follow_up_question' && intent !== 'casual_chat' && intent !== 'contextual_data_followup') {
         var ihsgData = parseMarketDataFromMessage(chatMessage);
-        // If market data unavailable, build minimal data from message
+        // If market data unavailable from message, try server-side fetch
         if (!ihsgData || !ihsgData.last) {
           var ihsgPriceMatch = chatMessage.match(/\b(\d{4,5}(?:\.\d+)?)\b/);
           if (ihsgPriceMatch) {
             ihsgData = { last: parseFloat(ihsgPriceMatch[1]), priceChange1D: null, volumeVsAvg20: null, rsi14: null, ma20: null, ma50: null, ma100: null, ma200: null, high: null, low: null, resistance1: null, resistance2: null, support1: null, support2: null, pivotPoint: null, fib382: null, fib500: null, fib618: null, fib786: null };
           }
         }
+        // Server-side fallback: fetch IHSG quote directly if still no data
+        if (!ihsgData || !ihsgData.last) {
+          try {
+            var ssQuote = await fetchServerSideQuote('IHSG');
+            if (ssQuote && ssQuote.last) {
+              ihsgData = {
+                last: ssQuote.last, priceChange1D: ssQuote.priceChange1D, volumeVsAvg20: ssQuote.volumeVsAvg20,
+                rsi14: ssQuote.rsi14, ma20: ssQuote.ma20, ma50: ssQuote.ma50, ma100: ssQuote.ma100, ma200: ssQuote.ma200,
+                high: ssQuote.high, low: ssQuote.low,
+                resistance1: ssQuote.resistance1, resistance2: ssQuote.resistance2,
+                support1: ssQuote.support1, support2: ssQuote.support2,
+                pivotPoint: ssQuote.pivotPoint, fib382: ssQuote.fib382, fib500: ssQuote.fib500, fib618: ssQuote.fib618, fib786: ssQuote.fib786
+              };
+            }
+          } catch (e) { /* server-side fetch failed, will fall through to AI */ }
+        }
         if (ihsgData && ihsgData.last) {
           var ihsgHtml = buildIHSGFixedTemplate(ihsgData, chatMessage);
           if (ihsgHtml) {
-            return res.status(200).json({ html: ihsgHtml, intent: 'ihsg_fixed_report', provider: 'template' });
+            return res.status(200).json({ html: ihsgHtml, intent: 'ihsg_fixed_report', response_type: 'full_market_analysis', provider: 'template' });
           }
         }
       }
@@ -142,11 +158,11 @@ module.exports = async function handler(req, res) {
       }
       if (detectedStockTicker) {
         var stockData = parseMarketDataFromMessage(chatMessage);
-        // If no market data from [Auto-Cuan Market Data] block, try to extract price from message
+        // If no market data from [Auto-Cuan Market Data] block, try context or server-side fetch
         if (!stockData || !stockData.last) {
+          var extractedPrice = null;
           var priceMatch = chatMessage.match(/\b(\d{2,6})\b/);
-          var extractedPrice = priceMatch ? parseFloat(priceMatch[1]) : null;
-          // Even without a price, if we have a valid ticker, use currentPrice from context or default
+          if (priceMatch) extractedPrice = parseFloat(priceMatch[1]);
           if (!extractedPrice && body.context && body.context.currentPrice) {
             extractedPrice = parseFloat(body.context.currentPrice);
           }
@@ -154,10 +170,26 @@ module.exports = async function handler(req, res) {
             stockData = { last: extractedPrice, priceChange1D: null, volumeVsAvg20: null, rsi14: null, ma20: null, ma50: null, ma100: null, ma200: null, high: null, low: null, resistance1: null, resistance2: null, support1: null, support2: null, pivotPoint: null, fib382: null, fib500: null, fib618: null, fib786: null };
           }
         }
+        // Server-side fallback: fetch stock quote directly if still no data
+        if (!stockData || !stockData.last) {
+          try {
+            var ssStockQuote = await fetchServerSideQuote(detectedStockTicker);
+            if (ssStockQuote && ssStockQuote.last) {
+              stockData = {
+                last: ssStockQuote.last, priceChange1D: ssStockQuote.priceChange1D, volumeVsAvg20: ssStockQuote.volumeVsAvg20,
+                rsi14: ssStockQuote.rsi14, ma20: ssStockQuote.ma20, ma50: ssStockQuote.ma50, ma100: ssStockQuote.ma100, ma200: ssStockQuote.ma200,
+                high: ssStockQuote.high, low: ssStockQuote.low,
+                resistance1: ssStockQuote.resistance1, resistance2: ssStockQuote.resistance2,
+                support1: ssStockQuote.support1, support2: ssStockQuote.support2,
+                pivotPoint: ssStockQuote.pivotPoint, fib382: ssStockQuote.fib382, fib500: ssStockQuote.fib500, fib618: ssStockQuote.fib618, fib786: ssStockQuote.fib786
+              };
+            }
+          } catch (e) { /* server-side fetch failed, will fall through to AI */ }
+        }
         if (stockData && stockData.last) {
           var stockHtml = buildStockFixedTemplate(stockData, detectedStockTicker, chatMessage);
           if (stockHtml) {
-            return res.status(200).json({ html: stockHtml, intent: 'stock_fixed_report', provider: 'template', ticker: detectedStockTicker });
+            return res.status(200).json({ html: stockHtml, intent: 'stock_fixed_report', response_type: 'full_stock_analysis', provider: 'template', ticker: detectedStockTicker });
           }
         }
       }
@@ -275,7 +307,7 @@ module.exports = async function handler(req, res) {
           }
         }
         if (html) {
-          var _responseType = (intent === 'follow_up_question' || intent === 'contextual_data_followup') ? 'follow_up' : (intent === 'casual_chat' ? 'casual' : 'full_analysis');
+          var _responseType = (intent === 'follow_up_question' || intent === 'contextual_data_followup') ? 'follow_up_answer' : (intent === 'casual_chat' ? 'casual' : 'full_stock_analysis');
           return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, response_type: _responseType, provider: 'deepseek' });
         }
       }
@@ -290,7 +322,7 @@ module.exports = async function handler(req, res) {
           }
         }
         if (html) {
-          var _responseType2 = (intent === 'follow_up_question' || intent === 'contextual_data_followup') ? 'follow_up' : (intent === 'casual_chat' ? 'casual' : 'full_analysis');
+          var _responseType2 = (intent === 'follow_up_question' || intent === 'contextual_data_followup') ? 'follow_up_answer' : (intent === 'casual_chat' ? 'casual' : 'full_stock_analysis');
           return res.status(200).json({ html: sanitizeOutput(html, fcaConfirmed, intent), intent: intent, response_type: _responseType2, provider: 'gemini-fallback' });
         }
       }
@@ -1219,6 +1251,99 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   html += '<p><strong>Konfirmasi</strong><br>' + setupValidFinal + '</p>';
   html += '<p><strong>Invalidasi</strong><br>' + invalidation + '</p>';
   return html;
+}
+
+// === SERVER-SIDE QUOTE FETCH (fallback when client-side context is missing) ===
+async function fetchServerSideQuote(ticker) {
+  var symbol = ticker === 'IHSG' ? '%5EJKSE' : ticker + '.JK';
+  var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=90d&interval=1d';
+  var controller = new AbortController();
+  var timeout = setTimeout(function() { controller.abort(); }, 6000);
+  try {
+    var response = await fetch(url, {
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (!response.ok) return null;
+    var json = await response.json();
+    var result = json && json.chart && json.chart.result && json.chart.result[0];
+    if (!result || !result.timestamp) return null;
+    var timestamps = result.timestamp || [];
+    var indicators = result.indicators && result.indicators.quote && result.indicators.quote[0];
+    if (!indicators || timestamps.length < 20) return null;
+    var closes = indicators.close || [];
+    var highs = indicators.high || [];
+    var lows = indicators.low || [];
+    var volumes = indicators.volume || [];
+    // Build valid candle array
+    var candles = [];
+    for (var i = 0; i < timestamps.length; i++) {
+      if (closes[i] != null && highs[i] != null && lows[i] != null) {
+        candles.push({ close: closes[i], high: highs[i], low: lows[i], volume: volumes[i] || 0 });
+      }
+    }
+    if (candles.length < 20) return null;
+    var lastIdx = candles.length - 1;
+    var last = Math.round(candles[lastIdx].close * 100) / 100;
+    var prevClose = candles[lastIdx - 1].close;
+    var priceChange1D = prevClose > 0 ? Math.round(((last - prevClose) / prevClose) * 10000) / 100 : null;
+    var high = Math.round(candles[lastIdx].high * 100) / 100;
+    var low = Math.round(candles[lastIdx].low * 100) / 100;
+    // MA calculations
+    function calcMALocal(arr, period) {
+      if (arr.length < period) return null;
+      var sum = 0; for (var j = arr.length - period; j < arr.length; j++) sum += arr[j];
+      return Math.round((sum / period) * 100) / 100;
+    }
+    var closesArr = candles.map(function(c) { return c.close; });
+    var volArr = candles.map(function(c) { return c.volume; });
+    var ma20 = calcMALocal(closesArr, 20);
+    var ma50 = calcMALocal(closesArr, 50);
+    var ma100 = closesArr.length >= 100 ? calcMALocal(closesArr, 100) : null;
+    var ma200 = closesArr.length >= 200 ? calcMALocal(closesArr, 200) : null;
+    // RSI14
+    var rsi14 = null;
+    if (closesArr.length >= 15) {
+      var gains = 0, losses = 0;
+      for (var k = closesArr.length - 14; k < closesArr.length; k++) {
+        var diff = closesArr[k] - closesArr[k - 1];
+        if (diff > 0) gains += diff; else losses -= diff;
+      }
+      var avgGain = gains / 14; var avgLoss = losses / 14;
+      rsi14 = avgLoss === 0 ? 100 : Math.round((100 - (100 / (1 + avgGain / avgLoss))) * 100) / 100;
+    }
+    // Volume
+    var volAvg20 = calcMALocal(volArr, 20);
+    var volumeVsAvg20 = volAvg20 > 0 ? Math.round((candles[lastIdx].volume / volAvg20) * 100) / 100 : null;
+    // Pivot + Support/Resistance
+    var pivotPoint = Math.round(((high + low + last) / 3) * 100) / 100;
+    var range = high - low;
+    var resistance1 = Math.round(((2 * pivotPoint) - low) * 100) / 100;
+    var resistance2 = Math.round((pivotPoint + range) * 100) / 100;
+    var support1 = Math.round(((2 * pivotPoint) - high) * 100) / 100;
+    var support2 = Math.round((pivotPoint - range) * 100) / 100;
+    // Fibonacci
+    var recent30High = Math.max.apply(null, candles.slice(-30).map(function(c) { return c.high; }));
+    var recent30Low = Math.min.apply(null, candles.slice(-30).map(function(c) { return c.low; }));
+    var fibRange = recent30High - recent30Low;
+    var fib382 = fibRange > 0 ? Math.round((recent30High - fibRange * 0.382) * 100) / 100 : null;
+    var fib500 = fibRange > 0 ? Math.round((recent30High - fibRange * 0.5) * 100) / 100 : null;
+    var fib618 = fibRange > 0 ? Math.round((recent30High - fibRange * 0.618) * 100) / 100 : null;
+    var fib786 = fibRange > 0 ? Math.round((recent30High - fibRange * 0.786) * 100) / 100 : null;
+    return {
+      last: last, priceChange1D: priceChange1D, volumeVsAvg20: volumeVsAvg20,
+      rsi14: rsi14, ma20: ma20, ma50: ma50, ma100: ma100, ma200: ma200,
+      high: high, low: low,
+      resistance1: resistance1, resistance2: resistance2,
+      support1: support1, support2: support2,
+      pivotPoint: pivotPoint, fib382: fib382, fib500: fib500, fib618: fib618, fib786: fib786
+    };
+  } catch (e) {
+    clearTimeout(timeout);
+    return null;
+  }
 }
 
 // === FCA STATUS CHECK ===
