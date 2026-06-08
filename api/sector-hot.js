@@ -96,7 +96,7 @@ module.exports = async function handler(req, res) {
 
       const { data: mappingData } = await supabase
         .from('sector_hot_group_members')
-        .select('ticker, sort_order')
+        .select('ticker, stock_name, member_type, sort_order')
         .eq('group_code', code)
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
@@ -106,16 +106,39 @@ module.exports = async function handler(req, res) {
         mappingData.forEach(function(m) { sortMap[m.ticker] = m.sort_order; });
       }
 
-      const sortedMembers = (membersData || []).sort(function(a, b) {
-        const sa = sortMap[a.ticker] != null ? sortMap[a.ticker] : 999;
-        const sb = sortMap[b.ticker] != null ? sortMap[b.ticker] : 999;
-        return sa - sb;
-      });
+      // If sector_hot_members_latest has data, sort and return it
+      var finalMembers;
+      if (membersData && membersData.length > 0) {
+        finalMembers = membersData.sort(function(a, b) {
+          const sa = sortMap[a.ticker] != null ? sortMap[a.ticker] : 999;
+          const sb = sortMap[b.ticker] != null ? sortMap[b.ticker] : 999;
+          return sa - sb;
+        });
+      } else if (mappingData && mappingData.length > 0) {
+        // Fallback: show active mapping members without market data
+        // This prevents "Belum ada data member" when group has known members but no quote refresh yet
+        finalMembers = mappingData.map(function(m) {
+          return {
+            group_code: code,
+            ticker: m.ticker,
+            stock_name: m.stock_name || m.ticker,
+            last_price: null,
+            change_pct: null,
+            volume_today: null,
+            avg_volume_30d: null,
+            volume_ratio_30d: null,
+            member_type: m.member_type || 'Member',
+            calculated_at: null
+          };
+        });
+      } else {
+        finalMembers = [];
+      }
 
       return res.status(200).json({
         success: true,
         group: groupData || null,
-        members: sortedMembers
+        members: finalMembers
       });
     }
 
@@ -1542,10 +1565,11 @@ async function handleNkScreenerStart(req, res, supabase) {
   // Update meta to scanning
   await updateNkMeta(supabase, { status: 'scanning', run_date: runDate, message: 'Building universe...', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 });
 
-  // Get excluded tickers (tickers already in Konglo groups)
+  // Get excluded tickers (tickers already in Konglo groups — only active members)
   const { data: kongloMembers } = await supabase
     .from('sector_hot_group_members')
-    .select('ticker');
+    .select('ticker')
+    .eq('is_active', true);
   const excludedTickers = new Set((kongloMembers || []).map(m => m.ticker));
 
   // Get eligible stocks from stock_boards

@@ -4528,7 +4528,7 @@ async function showGroupDetail(groupCode) {
 
         var members = data.members || [];
         if (members.length === 0) {
-            table.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data member.</p>';
+            table.innerHTML = '<p class="text-sm text-gray-500 py-4">Tidak ada member aktif untuk grup ini.</p>';
             return;
         }
 
@@ -4543,18 +4543,23 @@ async function showGroupDetail(groupCode) {
         tHtml += '</tr></thead><tbody>';
 
         members.forEach(function(m) {
-            var pctColor = (m.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-            var pctSign = (m.change_pct || 0) >= 0 ? '+' : '';
+            var hasData = m.last_price != null;
+            var pctColor = hasData ? ((m.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
+            var pctSign = hasData ? ((m.change_pct || 0) >= 0 ? '+' : '') : '';
+            var pctDisplay = hasData ? (pctSign + formatPct(m.change_pct)) : '-';
+            var priceDisplay = hasData ? formatPrice(m.last_price) : '<span class="text-gray-600">-</span>';
+            var volDisplay = hasData ? formatVolume(m.volume_today) : '-';
+            var ratioDisplay = hasData ? formatRatio(m.volume_ratio_30d) : '-';
             var isAnchor = m.member_type === 'ANCHOR';
             var tickerLabel = isAnchor ? m.ticker + ' \u2605' : m.ticker;
             tHtml += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30">';
             tHtml += '<td class="px-2 py-2 text-gray-200 font-semibold whitespace-nowrap">' + tickerLabel + '</td>';
             tHtml += '<td class="px-2 py-2 text-gray-400 whitespace-nowrap max-w-[150px] truncate">' + escapeHtml(m.stock_name || '-') + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(m.last_price) + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right font-semibold whitespace-nowrap ' + pctColor + '">' + pctSign + formatPct(m.change_pct) + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right text-gray-400 whitespace-nowrap">' + formatVolume(m.volume_today) + '</td>';
-            tHtml += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(m.volume_ratio_30d) + '</td>';
-            tHtml += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (isAnchor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/15 text-gray-500') + '">' + m.member_type + '</span></td>';
+            tHtml += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + priceDisplay + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right font-semibold whitespace-nowrap ' + pctColor + '">' + pctDisplay + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right text-gray-400 whitespace-nowrap">' + volDisplay + '</td>';
+            tHtml += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + ratioDisplay + '</td>';
+            tHtml += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ' + (isAnchor ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/15 text-gray-500') + '">' + (m.member_type || 'Member') + '</span></td>';
             tHtml += '</tr>';
         });
         tHtml += '</tbody></table>';
