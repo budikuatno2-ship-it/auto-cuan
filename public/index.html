@@ -3317,7 +3317,14 @@ async function handleTickerQuestion(msg, ticker) {
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+            if (data.response_type === 'follow_up' || data.response_type === 'casual') {
+                html = sanitizeAIHtml(clientSanitizeFCA(html));
+                addAIBubble(html, false);
+            } else {
+                addAIBubble(html, true);
+            }
+            updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage(ticker, 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage(ticker, 'chat_error'); }
     finally { enableSend(); saveChatHistoryImmediate(); }
@@ -3347,7 +3354,14 @@ async function handleChat(msg) {
             body: JSON.stringify({ chatMessage: enrichedMsg, source: 'chat_mode', username: localStorage.getItem('autocuan_user') || '', isAdmin: localStorage.getItem('autocuan_is_admin') === 'true', context: buildContextForApi() }) });
         var data = await response.json();
         removeLoadingBubble();
-        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, ''); addAIBubble(html); updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
+        if (data.html) { var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+            if (data.response_type === 'follow_up' || data.response_type === 'casual') {
+                html = sanitizeAIHtml(clientSanitizeFCA(html));
+                addAIBubble(html, false);
+            } else {
+                addAIBubble(html, true);
+            }
+            updateAnalysisContext(msg, html); incrementChatUsage(); updateUsageCounter(); logUsage('CHAT', 'chat_success'); }
         else { throw new Error('Tidak ada respons.'); }
     } catch(e) { removeLoadingBubble(); addAIError(isNetworkError(e) ? 'Koneksi ke server sedang bermasalah. Coba ulang beberapa saat lagi.' : 'Belum berhasil mendapatkan jawaban. Coba ulang beberapa saat lagi.'); logUsage('CHAT', 'chat_error'); }
     finally { enableSend(); saveChatHistoryImmediate(); }
@@ -3694,17 +3708,19 @@ function addAIBubble(html, isStructured) {
 
     // Client-side FCA sanitizer + security sanitizer + final technical label normalizer
     var sanitizedHtml = sanitizeAIHtml(clientSanitizeFCA(html));
-    sanitizedHtml = normalizeFinalStockHtml(sanitizedHtml);
-    // Determine if this is an index query — use ONLY current activeTicker (not stale latestAnalysisContext)
-    var _isIndexQuery = isIndexTicker(activeTicker);
-    // Strip remaining stock-specific sections from IHSG/index responses
-    if (_isIndexQuery) {
-        sanitizedHtml = sanitizeIHSGOutput(sanitizedHtml);
+    if (isStructured !== false) {
+        sanitizedHtml = normalizeFinalStockHtml(sanitizedHtml);
+        // Determine if this is an index query — use ONLY current activeTicker (not stale latestAnalysisContext)
+        var _isIndexQuery = isIndexTicker(activeTicker);
+        // Strip remaining stock-specific sections from IHSG/index responses
+        if (_isIndexQuery) {
+            sanitizedHtml = sanitizeIHSGOutput(sanitizedHtml);
+            sanitizedHtml = normalizeFinalStockHtml(sanitizedHtml);
+        }
+        // Reorder Broker CTA: extract from middle, append at bottom (or strip for index)
+        sanitizedHtml = reorderBrokerCTA(sanitizedHtml, _isIndexQuery);
         sanitizedHtml = normalizeFinalStockHtml(sanitizedHtml);
     }
-    // Reorder Broker CTA: extract from middle, append at bottom (or strip for index)
-    sanitizedHtml = reorderBrokerCTA(sanitizedHtml, _isIndexQuery);
-    sanitizedHtml = normalizeFinalStockHtml(sanitizedHtml);
 
     div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] sm:max-w-[88%] overflow-x-auto"><div class="ai-content">' + sanitizedHtml + '</div>' + copyBtnHtml + '</div>';
     container.appendChild(div);
