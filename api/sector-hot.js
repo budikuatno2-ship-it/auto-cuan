@@ -74,32 +74,40 @@ module.exports = async function handler(req, res) {
     if (groupCode) {
       const code = String(groupCode).toUpperCase().trim();
 
-      const { data: groupData, error: groupErr } = await supabase
-        .from('sector_hot_latest')
-        .select('*')
-        .eq('group_code', code)
-        .maybeSingle();
+      // Resilient fetch: capture data + errors but never hard-fail the whole page.
+      var groupData = null, membersData = null, mappingData = null;
+      var detailDiagnostics = { groupError: null, membersError: null, mappingError: null };
 
-      if (groupErr) {
-        return res.status(200).json({ success: false, error: 'Gagal memuat data grup.' });
-      }
+      try {
+        const gRes = await supabase
+          .from('sector_hot_latest')
+          .select('*')
+          .eq('group_code', code)
+          .maybeSingle();
+        if (gRes.error) detailDiagnostics.groupError = gRes.error.message;
+        else groupData = gRes.data;
+      } catch (e) { detailDiagnostics.groupError = e.message; }
 
-      const { data: membersData, error: membersErr } = await supabase
-        .from('sector_hot_members_latest')
-        .select('*')
-        .eq('group_code', code)
-        .order('calculated_at', { ascending: false });
+      try {
+        const mRes = await supabase
+          .from('sector_hot_members_latest')
+          .select('*')
+          .eq('group_code', code)
+          .order('calculated_at', { ascending: false });
+        if (mRes.error) detailDiagnostics.membersError = mRes.error.message;
+        else membersData = mRes.data;
+      } catch (e) { detailDiagnostics.membersError = e.message; }
 
-      if (membersErr) {
-        return res.status(200).json({ success: false, error: 'Gagal memuat data member.' });
-      }
-
-      const { data: mappingData } = await supabase
-        .from('sector_hot_group_members')
-        .select('ticker, stock_name, member_type, sort_order')
-        .eq('group_code', code)
-        .eq('is_active', true)
-        .order('sort_order', { ascending: true });
+      try {
+        const mapRes = await supabase
+          .from('sector_hot_group_members')
+          .select('ticker, stock_name, member_type, sort_order')
+          .eq('group_code', code)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        if (mapRes.error) detailDiagnostics.mappingError = mapRes.error.message;
+        else mappingData = mapRes.data;
+      } catch (e) { detailDiagnostics.mappingError = e.message; }
 
       const sortMap = {};
       if (mappingData) {
@@ -147,10 +155,33 @@ module.exports = async function handler(req, res) {
         finalMembers = [];
       }
 
+      // Synthesize a minimal group header from mapping if sector_hot_latest has no row yet.
+      // This prevents the frontend "Gagal memuat detail grup" when only mapping exists.
+      if (!groupData && mappingData && mappingData.length > 0) {
+        groupData = {
+          group_code: code,
+          group_name: code,
+          owner_label: null,
+          avg_change_pct: null,
+          stock_count: mappingData.length,
+          valid_count: 0,
+          top_ticker: null,
+          top_change_pct: null,
+          avg_volume_ratio: null,
+          status: 'no_data',
+          message: 'Header belum dihitung. Jalankan refresh Sektor Hot.'
+        };
+      }
+
+      // Success as long as we have a group header OR active members.
+      var detailSuccess = !!(groupData || (finalMembers && finalMembers.length > 0));
+
       return res.status(200).json({
-        success: true,
+        success: detailSuccess,
         group: groupData || null,
-        members: finalMembers
+        members: finalMembers,
+        diagnostics: (detailDiagnostics.groupError || detailDiagnostics.membersError || detailDiagnostics.mappingError) ? detailDiagnostics : undefined,
+        error: detailSuccess ? undefined : 'Grup tidak ditemukan atau belum ada data mapping.'
       });
     }
 
@@ -644,6 +675,9 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     // 5. Update meta — only mark ok if rows were saved
     var metaStatus = savedCount > 0 ? 'ok' : 'failed';
     var metaMsg = 'Scanned: ' + scannedCount + ', Generated: ' + results.length + ', Saved: ' + savedCount + ', AI: ' + aiCalledCount + '/' + aiAttempted;
+    if (screenerFailedTickers.length > 0) {
+      metaMsg += ' | Failed(' + screenerFailedTickers.length + '): ' + screenerFailedTickers.slice(0, 5).map(function(f) { return f.ticker + '(' + f.reason + ')'; }).join(', ');
+    }
     if (aiDiagnostic) metaMsg += ' | AI: ' + aiDiagnostic;
     if (saveError) metaMsg += ' | Error: ' + saveError;
 

@@ -684,6 +684,7 @@
                 <span id="screenerMetaBadge" class="px-2 py-1 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
             </div>
         </div>
+        <p id="screenerFailedDiag" class="hidden text-[10px] text-red-400/70 mt-1"></p>
         <!-- Disclaimer -->
         <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
             <p class="text-[11px] text-amber-400/80 leading-relaxed"><strong>Disclaimer:</strong> Ini bukan rekomendasi beli. Screener ini hanya watchlist setup high-probability untuk swing 3&ndash;7 hari. Selalu lakukan analisis sendiri dan kelola risiko. Invalid jika harga menembus level invalidasi.</p>
@@ -4740,8 +4741,22 @@ async function loadSwingScreener(silent) {
             var badge = document.getElementById('screenerMetaBadge');
             if (badge) {
                 if (m.status === 'ok') { badge.textContent = 'LIVE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'; }
+                else if (m.status === 'scanning') { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 animate-pulse-glow'; }
                 else if (m.status === 'failed') { badge.textContent = 'ERROR'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25'; }
                 else { badge.textContent = 'PENDING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
+            }
+
+            // Failed ticker diagnostics (extract from meta.message if present)
+            var diagEl = document.getElementById('screenerFailedDiag');
+            if (diagEl) {
+                if (m.failed_count > 0 && m.message && m.message.indexOf('Failed(') > -1) {
+                    var failMatch = m.message.match(/Failed\([0-9]+\):\s*([^|]+)/);
+                    diagEl.textContent = failMatch ? ('Gagal: ' + failMatch[1].trim()) : ('Gagal: ' + m.failed_count + ' ticker');
+                    diagEl.classList.remove('hidden');
+                } else {
+                    diagEl.textContent = '';
+                    diagEl.classList.add('hidden');
+                }
             }
 
             // Auto-poll while Konglo tab is active to detect external refreshes
@@ -4973,14 +4988,26 @@ function updateNkScreenerMeta(meta) {
     if (badge) {
         if (meta.status === 'published') { badge.textContent = 'LIVE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'; }
         else if (meta.status === 'failed') { badge.textContent = 'ERROR'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25'; }
-        else if (meta.status === 'scanning') { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25'; }
+        else if (meta.status === 'scanning' || meta.status === 'finalizing') { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25 animate-pulse-glow'; }
         else { badge.textContent = 'IDLE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
     }
     var sub = document.getElementById('nkScreenerSubtitle');
-    if (sub && meta.calculated_at) {
-        var dt = new Date(meta.calculated_at);
-        var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-        sub.textContent = 'Update: ' + wibStr + ' WIB · Non-Konglomerat · Papan Utama & Pengembangan';
+    if (sub) {
+        if (meta.status === 'scanning' || meta.status === 'finalizing') {
+            // Show live progress while scanning
+            var scanned = meta.scanned_count != null ? meta.scanned_count : 0;
+            var universe = meta.universe_count != null ? meta.universe_count : '?';
+            var progressText = 'Scanning: ' + scanned + '/' + universe + ' ticker';
+            if (meta.failed_count > 0) progressText += ' · ' + meta.failed_count + ' gagal';
+            if (meta.message) progressText += ' · ' + meta.message;
+            sub.textContent = progressText;
+        } else if (meta.calculated_at) {
+            var dt = new Date(meta.calculated_at);
+            var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+            sub.textContent = 'Update: ' + wibStr + ' WIB · Non-Konglomerat · Papan Utama & Pengembangan';
+        } else if (meta.status === 'failed') {
+            sub.textContent = 'Gagal: ' + (meta.message || 'Coba jalankan ulang. Proses bisa dilanjutkan (resume).');
+        }
     }
 }
 
