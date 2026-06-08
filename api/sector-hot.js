@@ -500,13 +500,16 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       });
 
       // Mark AI-eligible tickers that failed (not in aiMap) as FAILED
+      // Track missing tickers for diagnostics
+      var aiMissingTickers = [];
       var aiCandidateTickers = {};
       aiCandidates.forEach(function(c) { aiCandidateTickers[c.ticker.toUpperCase()] = true; });
       results = results.map(function(r) {
         var normalizedR = String(r.ticker).trim().toUpperCase();
         if (aiCandidateTickers[normalizedR] && !r.ai_status) {
           r.ai_status = 'FAILED';
-          r.ai_reason = 'AI call failed or returned empty.';
+          r.ai_reason = 'AI tidak mengembalikan hasil untuk ticker ini.';
+          aiMissingTickers.push(r.ticker);
         }
         return r;
       });
@@ -636,7 +639,11 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_batches_failed: aiBatchesFailed,
       ai_api_call_count: aiApiCallCount,
       ai_cost_saving_mode: true,
-      ai_failed_tickers: aiBatchDiagnostics.filter(function(d) { return d.startsWith('FAILED'); }).map(function(d) { return d; }),
+      ai_success_count: aiCalledCount,
+      ai_failed_count: aiBatchesFailed > 0 ? aiAttempted - aiCalledCount - aiMissingTickers.length : 0,
+      ai_missing_count: aiMissingTickers.length,
+      ai_missing_tickers: aiMissingTickers.length > 0 ? aiMissingTickers : undefined,
+      ai_failed_tickers: aiBatchDiagnostics.filter(function(d) { return d.startsWith('FAILED'); }).length > 0 ? aiBatchDiagnostics.filter(function(d) { return d.startsWith('FAILED'); }) : undefined,
       ai_batch_diagnostics: aiBatchDiagnostics.length > 0 ? aiBatchDiagnostics : undefined,
       ai_usage_debug: aiUsageDebug || undefined,
       ai_diagnostic: aiDiagnostic,
