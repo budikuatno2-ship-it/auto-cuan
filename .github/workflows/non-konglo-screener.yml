@@ -1,9 +1,14 @@
 name: Non-Konglo Swing Screener
 
+# NOTE: Automatic schedule DISABLED (manual-first policy).
+# Screeners are now manual-only. Trigger via workflow_dispatch or the
+# /api/sector-hot?action=nk-screener-run endpoint directly.
+# To re-enable automatic runs, uncomment the schedule block below.
+
 on:
-  schedule:
-    # Every 5 minutes, Mon-Fri 12:00-14:59 UTC (19:00-21:59 WIB)
-    - cron: '*/5 12-14 * * 1-5'
+  # schedule:
+  #   # Every 5 minutes, Mon-Fri 12:00-14:59 UTC (19:00-21:59 WIB)
+  #   - cron: '*/5 12-14 * * 1-5'
   workflow_dispatch:
     inputs:
       force_mode:

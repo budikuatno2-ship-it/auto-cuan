@@ -1256,20 +1256,15 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
 // === SERVER-SIDE QUOTE FETCH (fallback when client-side context is missing) ===
 async function fetchServerSideQuote(ticker) {
   var symbol = ticker === 'IHSG' ? '%5EJKSE' : ticker + '.JK';
-  var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + symbol + '?range=90d&interval=1d';
-  var controller = new AbortController();
-  var timeout = setTimeout(function() { controller.abort(); }, 6000);
+  // Try query1 first, then query2 as fallback (Yahoo load-balances across both)
+  var hosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+  var result = null;
+  for (var h = 0; h < hosts.length; h++) {
+    result = await fetchYahooChartOnce(hosts[h], symbol);
+    if (result && result.timestamp) break;
+  }
+  if (!result || !result.timestamp) return null;
   try {
-    var response = await fetch(url, {
-      method: 'GET',
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-    if (!response.ok) return null;
-    var json = await response.json();
-    var result = json && json.chart && json.chart.result && json.chart.result[0];
-    if (!result || !result.timestamp) return null;
     var timestamps = result.timestamp || [];
     var indicators = result.indicators && result.indicators.quote && result.indicators.quote[0];
     if (!indicators || timestamps.length < 20) return null;
@@ -1340,6 +1335,27 @@ async function fetchServerSideQuote(ticker) {
       support1: support1, support2: support2,
       pivotPoint: pivotPoint, fib382: fib382, fib500: fib500, fib618: fib618, fib786: fib786
     };
+  } catch (e) {
+    return null;
+  }
+}
+
+// Fetch Yahoo chart from a specific host with timeout. Returns chart.result[0] or null.
+async function fetchYahooChartOnce(host, symbol) {
+  var url = 'https://' + host + '/v8/finance/chart/' + symbol + '?range=90d&interval=1d';
+  var controller = new AbortController();
+  var timeout = setTimeout(function() { controller.abort(); }, 6000);
+  try {
+    var response = await fetch(url, {
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (!response.ok) return null;
+    var json = await response.json();
+    var result = json && json.chart && json.chart.result && json.chart.result[0];
+    return result || null;
   } catch (e) {
     clearTimeout(timeout);
     return null;
