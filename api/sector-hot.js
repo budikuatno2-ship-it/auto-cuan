@@ -837,10 +837,19 @@ function calculateIndicators(candles) {
     primarySupport = support;
   }
 
-  // Entry area
+  // Entry area — precision-based, tight actionable zone
+  // Range width based on price level (IDX tick-size awareness)
+  var pctWidth = 0.015; // default 1.5%
+  if (last_price < 200) pctWidth = 0.02;
+  else if (last_price < 1000) pctWidth = 0.015;
+  else if (last_price < 5000) pctWidth = 0.012;
+  else pctWidth = 0.008;
+
   var entryBase = Math.max(primarySupport, ma20 ? ma20 * 0.99 : primarySupport);
-  var entry_low = round0(Math.min(entryBase, last_price * 0.98));
-  var entry_high = round0(last_price * 1.005);
+  // Entry_low: near support/MA but capped close to current price (max 3% below)
+  var entry_low = round0(Math.min(entryBase, last_price * (1 - pctWidth)));
+  if (entry_low < last_price * 0.97) entry_low = round0(last_price * 0.97);
+  var entry_high = round0(entry_low + last_price * pctWidth);
 
   // Stop loss
   var entryMid = (entry_low + entry_high) / 2;
@@ -2055,45 +2064,52 @@ async function fetchNkQuoteData(ticker) {
 
     // Entry/SL based on setupType
     // RULE: For non-breakout setups, entry MUST be at or below current price.
-    // If calculated entry is above current price, fall back to current-price entry.
+    // Use percentage-based precision for tight actionable zones.
+    var pctWidth = 0.015; // default 1.5%
+    if (lastClose < 200) pctWidth = 0.02;
+    else if (lastClose < 1000) pctWidth = 0.015;
+    else if (lastClose < 5000) pctWidth = 0.012;
+    else pctWidth = 0.008;
+
     var entryLow, entryHigh, stopLoss;
     var range = resistance - support;
+
     if (setupType === 'rebound') {
+      // Tight entry near support
       entryLow = Math.round(support);
-      entryHigh = Math.round(Math.min(lastClose, support + range * 0.236));
+      entryHigh = Math.round(support + lastClose * pctWidth);
+      if (entryHigh > lastClose) entryHigh = Math.round(lastClose);
       stopLoss = Math.round(support * 0.96);
     } else if (setupType === 'pullback') {
-      var pullbackLow = ma20 ? Math.round(ma20 * 0.98) : Math.round(lastClose * 0.97);
-      var pullbackHigh = ma20 ? Math.round(ma20 * 1.01) : Math.round(lastClose);
-      // Validate: pullback entry must not be above current price
-      if (pullbackLow > lastClose) {
-        // MA20 is above current price — stock has dropped; use current-position entry
-        entryLow = Math.round(lastClose * 0.97);
+      // Tight entry near MA20 pullback zone
+      var pullbackCenter = ma20 ? Math.min(ma20, lastClose) : lastClose * 0.98;
+      entryLow = Math.round(pullbackCenter * (1 - pctWidth * 0.5));
+      entryHigh = Math.round(pullbackCenter * (1 + pctWidth * 0.5));
+      // Validate: must not be above current price
+      if (entryLow > lastClose) {
+        entryLow = Math.round(lastClose * (1 - pctWidth));
         entryHigh = Math.round(lastClose);
-        setupType = 'wait_pullback'; // reclassify
-      } else {
-        entryLow = pullbackLow;
-        entryHigh = Math.round(Math.min(lastClose, pullbackHigh));
+        setupType = 'wait_pullback';
       }
       stopLoss = Math.round(entryLow * 0.95);
     } else if (setupType === 'breakout') {
-      // Breakout: entry IS a trigger above current price — this is intentional
+      // Breakout trigger: entry IS above current price (intentional)
       entryLow = Math.round(resistance * 0.98);
-      entryHigh = Math.round(resistance * 1.02);
+      entryHigh = Math.round(resistance * (1 + pctWidth));
       stopLoss = Math.round(resistance * 0.95);
     } else {
-      // wait_pullback, watchlist, speculative — always at/below current price
-      entryLow = Math.round(lastClose * 0.97);
+      // wait_pullback, watchlist, speculative — tight zone at/below current price
+      entryLow = Math.round(lastClose * (1 - pctWidth));
       entryHigh = Math.round(lastClose);
       stopLoss = Math.round(entryLow * 0.96);
     }
 
     // Final safety: for non-breakout, clamp entry to not exceed current price
     if (setupType !== 'breakout' && entryLow > lastClose) {
-      entryLow = Math.round(lastClose * 0.97);
+      entryLow = Math.round(lastClose * (1 - pctWidth));
       entryHigh = Math.round(lastClose);
       stopLoss = Math.round(entryLow * 0.96);
-      setupType = 'speculative'; // setup is unclear
+      setupType = 'speculative';
     }
 
     // TP based on Fibonacci levels of the 20d range
