@@ -393,6 +393,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiBatchDiagnostics = [];
     var aiUsageDebug = null;
     var aiApiCallCount = 0;
+    var aiMissingTickers = [];
 
     var aiFeatureEnabled = process.env.SCREENER_AI_ENABLED === 'true'; // default: disabled
     if (enableAI && aiFeatureEnabled && aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
@@ -504,7 +505,6 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
 
       // Mark AI-eligible tickers that failed (not in aiMap) as FAILED
       // Track missing tickers for diagnostics
-      var aiMissingTickers = [];
       var aiCandidateTickers = {};
       aiCandidates.forEach(function(c) { aiCandidateTickers[c.ticker.toUpperCase()] = true; });
       results = results.map(function(r) {

@@ -4471,13 +4471,14 @@ async function loadSektorHot() {
         // Render cards
         var html = '';
         data.groups.forEach(function(g) {
-            var chgColor = (g.avg_change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-            var chgSign = (g.avg_change_pct || 0) >= 0 ? '+' : '';
-            var topChgColor = (g.top_change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-            var topChgSign = (g.top_change_pct || 0) >= 0 ? '+' : '';
+            var chgColor = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? 'text-emerald-400' : (g.avg_change_pct != null ? 'text-red-400' : 'text-gray-500');
+            var chgSign = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? '+' : '';
+            var topChgColor = (g.top_change_pct != null && g.top_change_pct >= 0) ? 'text-emerald-400' : (g.top_change_pct != null ? 'text-red-400' : 'text-gray-500');
+            var topChgSign = (g.top_change_pct != null && g.top_change_pct >= 0) ? '+' : '';
+            var avgChgDisplay = g.avg_change_pct != null ? (chgSign + formatPct(g.avg_change_pct)) : '-';
             html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
             html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold text-gray-200 leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
-            html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + chgSign + formatPct(g.avg_change_pct) + '</span></div>';
+            html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + avgChgDisplay + '</span></div>';
             html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
             html += '<span>' + (g.stock_count || 0) + ' saham</span>';
             if (g.top_ticker && g.top_change_pct != null) {
@@ -4517,11 +4518,13 @@ async function showGroupDetail(groupCode) {
         }
 
         var g = data.group;
-        var chgColor = (g.avg_change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-        var chgSign = (g.avg_change_pct || 0) >= 0 ? '+' : '';
+        var chgColor = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? 'text-emerald-400' : (g.avg_change_pct != null ? 'text-red-400' : 'text-gray-500');
+        var chgSign = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? '+' : '';
+        var avgDisplay = g.avg_change_pct != null ? (chgSign + formatPct(g.avg_change_pct)) : '-';
+        var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-';
         header.innerHTML = '<h2 class="text-base font-bold text-white">Grup ' + escapeHtml(groupCode) + '</h2>' +
             '<p class="text-xs text-gray-400 mt-0.5">' + escapeHtml(g.group_name || '') + ' \u00B7 ' + (g.stock_count || 0) + ' saham</p>' +
-            '<p class="text-sm mt-1 font-semibold ' + chgColor + '">Avg: ' + chgSign + formatPct(g.avg_change_pct) + ' \u00B7 Vol: ' + formatRatio(g.avg_volume_ratio) + '</p>';
+            '<p class="text-sm mt-1 font-semibold ' + chgColor + '">Avg: ' + avgDisplay + ' \u00B7 Vol: ' + volDisplay + '</p>';
 
         var members = data.members || [];
         if (members.length === 0) {
