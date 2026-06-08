@@ -201,7 +201,21 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: false, error: 'Gagal memuat data sektor.' });
     }
 
-    const groups = (groupsData || []).sort(function(a, b) {
+    // BUG 1 FIX: Only show groups that have >= 1 active member in the mapping.
+    // Hides zero-active groups (e.g. SINARMAS_HISTORICAL_MERGER after FREN was
+    // set inactive) even if a stale sector_hot_latest row still exists.
+    const { data: activeMembersList } = await supabase
+      .from('sector_hot_group_members')
+      .select('group_code')
+      .eq('is_active', true);
+    const activeGroupCounts = {};
+    (activeMembersList || []).forEach(function(m) { activeGroupCounts[m.group_code] = (activeGroupCounts[m.group_code] || 0) + 1; });
+
+    const filteredGroups = (groupsData || []).filter(function(g) {
+      return activeGroupCounts[g.group_code] > 0;
+    });
+
+    const groups = filteredGroups.sort(function(a, b) {
       const aChg = a.avg_change_pct != null ? a.avg_change_pct : -9999;
       const bChg = b.avg_change_pct != null ? b.avg_change_pct : -9999;
       if (bChg !== aChg) return bChg - aChg;
@@ -864,9 +878,12 @@ async function handleRefresh(req, res, supabase) {
       }
 
       if (memberRows.length > 0) {
-        var memberUpsert = await supabase.from('sector_hot_members_latest').upsert(memberRows, { onConflict: 'group_code,ticker' });
-        if (memberUpsert.error) {
-          memberUpsertErrors.push(group.group_code + ': ' + memberUpsert.error.message);
+        // Delete-then-insert per group (avoids dependency on a unique constraint
+        // for onConflict; guarantees member rows are persisted with market data).
+        await supabase.from('sector_hot_members_latest').delete().eq('group_code', group.group_code);
+        var memberInsert = await supabase.from('sector_hot_members_latest').insert(memberRows);
+        if (memberInsert.error) {
+          memberUpsertErrors.push(group.group_code + ': ' + memberInsert.error.message);
         }
       }
 
