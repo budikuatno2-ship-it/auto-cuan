@@ -14,6 +14,7 @@
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY — database
  *   CRON_SECRET — cron authentication
  *   SCREENER_AI_API_KEY — AI confirmation (server-side only, never exposed)
+ *   SCREENER_AI_ENABLED — 'true' to enable AI confirmation (default: disabled)
  *   SCREENER_AI_BASE_URL — OpenAI-compatible endpoint
  *   SCREENER_AI_MODEL — model name
  *   SCREENER_AI_MAX_CANDIDATES — max tickers sent to AI (default 15)
@@ -392,7 +393,8 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiUsageDebug = null;
     var aiApiCallCount = 0;
 
-    if (enableAI && aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
+    var aiFeatureEnabled = process.env.SCREENER_AI_ENABLED === 'true'; // default: disabled
+    if (enableAI && aiFeatureEnabled && aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
       aiAttempted = aiCandidates.length;
 
       // Split into max 2 bulk calls (cost-efficient)

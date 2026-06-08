@@ -693,7 +693,7 @@
             <p class="text-[11px] text-gray-400 leading-relaxed"><strong class="text-gray-300">Setup Score (0&ndash;100)</strong> adalah skor kualitas teknikal berdasarkan trend, momentum, volume, dan risk/reward. <strong>Bukan winrate</strong> atau jaminan profit. Score tinggi + status WATCH = ada filter yang belum terpenuhi (lihat kolom Catatan).</p>
         </div>
         <!-- Stats row -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="screenerStats">
+        <div class="grid grid-cols-3 gap-2" id="screenerStats">
             <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
                 <p class="text-[10px] text-gray-500 uppercase">Universe</p>
                 <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatUniverse">—</p>
@@ -705,10 +705,6 @@
             <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
                 <p class="text-[10px] text-gray-500 uppercase">Failed</p>
                 <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatFailed">—</p>
-            </div>
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
-                <p class="text-[10px] text-gray-500 uppercase">AI Confirmed</p>
-                <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatAI">—</p>
             </div>
         </div>
         <!-- Filter tabs -->
@@ -729,7 +725,6 @@
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
                         <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
                         <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">AI</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
@@ -744,7 +739,7 @@
                     </tr>
                 </thead>
                 <tbody id="screenerTableBody">
-                    <tr><td colspan="16" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                    <tr><td colspan="15" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -4615,7 +4610,7 @@ async function loadSwingScreener(silent) {
 
     // Guard: do not call API if not logged in (same check as Sektor Hot gate)
     if (getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
         return;
     }
 
@@ -4625,7 +4620,7 @@ async function loadSwingScreener(silent) {
 
     // Only show spinner on initial load (not silent poll)
     if (!silent) {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
     }
 
     try {
@@ -4635,7 +4630,7 @@ async function loadSwingScreener(silent) {
         var data = await response.json();
 
         if (response.status === 403 || !data.success) {
-            if (!silent) tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            if (!silent) tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
             return;
         }
 
@@ -4647,7 +4642,7 @@ async function loadSwingScreener(silent) {
         _screenerCache = data;
 
         if (!data.success || !data.results || data.results.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
             return;
         }
 
@@ -4657,11 +4652,9 @@ async function loadSwingScreener(silent) {
             var statU = document.getElementById('screenerStatUniverse');
             var statS = document.getElementById('screenerStatScanned');
             var statF = document.getElementById('screenerStatFailed');
-            var statA = document.getElementById('screenerStatAI');
             if (statU) statU.textContent = m.universe_count || '—';
             if (statS) statS.textContent = m.scanned_count || '—';
             if (statF) statF.textContent = m.failed_count || '0';
-            if (statA) statA.textContent = (m.ai_called_count != null ? m.ai_called_count : '—');
 
             // Update subtitle with time
             var sub = document.getElementById('screenerSubtitle');
@@ -4685,7 +4678,7 @@ async function loadSwingScreener(silent) {
 
         renderScreenerTable(data.results);
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
     }
 }
 
@@ -4711,7 +4704,7 @@ function renderScreenerTable(results) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" class="text-center py-8 text-gray-500">Tidak ada saham dengan status ini.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Tidak ada saham dengan status ini.</td></tr>';
         return;
     }
 
@@ -4728,13 +4721,6 @@ function renderScreenerTable(results) {
         else if (fs === 'Rebound Speculative') statusClass = 'bg-amber-500/15 text-amber-400';
         else statusClass = 'bg-red-500/10 text-red-400';
 
-        // AI badge
-        var aiBadge = '-';
-        if (r.ai_status === 'CONFIRMED') aiBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-400" title="' + escapeHtml(r.ai_reason || '') + '">OK</span>';
-        else if (r.ai_status === 'CAUTION') aiBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400" title="' + escapeHtml(r.ai_reason || '') + '">!</span>';
-        else if (r.ai_status === 'REJECT') aiBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/15 text-red-400" title="' + escapeHtml(r.ai_reason || '') + '">X</span>';
-        else if (r.ai_status === 'FAILED') aiBadge = '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/10 text-red-300" title="AI call gagal">F</span>';
-
         // Score color
         var scoreColor = 'text-gray-400';
         if (r.score >= 80) scoreColor = 'text-emerald-400 font-bold';
@@ -4747,7 +4733,6 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + screenerStatusShort(fs) + '</span></td>';
         html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + '</td>';
-        html += '<td class="px-2 py-2 text-center whitespace-nowrap">' + aiBadge + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
         html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
