@@ -417,13 +417,13 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var aiUsageDebug = null;
     var aiApiCallCount = 0;
     var aiMissingTickers = [];
+    var batches = [];
 
     var aiFeatureEnabled = process.env.SCREENER_AI_ENABLED === 'true'; // default: disabled
     if (enableAI && aiFeatureEnabled && aiCandidates.length > 0 && process.env.SCREENER_AI_API_KEY) {
       aiAttempted = aiCandidates.length;
 
       // Split into max 2 bulk calls (cost-efficient)
-      var batches = [];
       if (aiCandidates.length <= 20) {
         batches = [aiCandidates]; // 1 call for <= 20 candidates
       } else {
@@ -592,7 +592,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         status_reason: r.status_reason || null,
         ai_status: r.ai_status || null,
         ai_reason: r.ai_reason || null,
-        ai_red_flags: r.ai_red_flags ? '{' + r.ai_red_flags.map(function(f) { return '"' + String(f).replace(/"/g, '\\"') + '"'; }).join(',') + '}' : null,
+        ai_red_flags: (r.ai_red_flags && Array.isArray(r.ai_red_flags) && r.ai_red_flags.length > 0) ? '{' + r.ai_red_flags.map(function(f) { return '"' + String(f).replace(/"/g, '\\"') + '"'; }).join(',') + '}' : null,
         final_status: r.final_status,
         tx_value_1d: r.tx_value_1d || null,
         avg_tx_value_3d: r.avg_tx_value_3d || null,
@@ -682,7 +682,16 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
   } catch (e) {
     console.error('screener refresh error:', e.message);
     await updateScreenerMeta(supabase, { universe_count: 0, scanned_count: 0, failed_count: 0, ai_called_count: 0, status: 'failed', message: 'Refresh error: ' + e.message });
-    return res.status(200).json({ success: false, error: 'Screener refresh failed: ' + e.message });
+    return res.status(200).json({
+      success: false,
+      error: 'Screener refresh failed: ' + e.message,
+      error_message: e.message,
+      error_stack: e.stack ? e.stack.split('\n').slice(0, 5).join(' | ') : null,
+      error_phase: 'screener_refresh_main',
+      failed_tickers: typeof failedCount !== 'undefined' ? failedCount : null,
+      scanned_so_far: typeof scannedCount !== 'undefined' ? scannedCount : null,
+      results_so_far: typeof results !== 'undefined' ? results.length : null
+    });
   }
 }
 
