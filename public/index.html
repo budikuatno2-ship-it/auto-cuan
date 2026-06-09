@@ -6771,7 +6771,7 @@ function _pdfAddFooter(doc, orientation) {
     }
 }
 
-// ===== ANALYSIS PDF (jsPDF text-based) =====
+// ===== ANALYSIS PDF (compact 1-page executive summary) =====
 function exportAnalisisPDF(ticker) {
     var resultArea = document.getElementById('analisisResult');
     if (!resultArea) return;
@@ -6789,36 +6789,20 @@ function exportAnalisisPDF(ticker) {
         var maxW = 200; // 210 - 2*5mm margin
         var y = startY;
 
-        // Extract text content from analysis DOM
-        var text = _extractAnalysisText(contentEl);
-        var sections = _parseAnalysisSections(text);
+        // Smart extraction: pull key fields from the DOM text
+        var rawText = _extractAnalysisText(contentEl);
+        var fields = _extractKeyFields(rawText, isIndex);
 
-        sections.forEach(function(section) {
-            // Check page break
-            if (y > 275) { doc.addPage(); y = 10; }
+        // Render compact fields
+        y = _renderCompactAnalysis(doc, fields, y, maxW, isIndex);
 
-            if (section.heading) {
-                doc.setFontSize(9);
-                doc.setTextColor(16, 185, 129);
-                doc.setFont(undefined, 'bold');
-                var headLines = doc.splitTextToSize(section.heading, maxW);
-                doc.text(headLines, 5, y);
-                y += headLines.length * 3.8 + 1;
-            }
-            if (section.body) {
-                doc.setFontSize(8);
-                doc.setTextColor(50, 50, 50);
-                doc.setFont(undefined, 'normal');
-                var bodyLines = doc.splitTextToSize(section.body, maxW);
-                // Page break handling for long body
-                for (var i = 0; i < bodyLines.length; i++) {
-                    if (y > 285) { doc.addPage(); y = 10; }
-                    doc.text(bodyLines[i], 5, y);
-                    y += 3.2;
-                }
-                y += 2;
-            }
-        });
+        // If we still have space, add a compact note
+        if (y < 285) {
+            doc.setFontSize(6);
+            doc.setTextColor(150, 150, 150);
+            doc.setFont(undefined, 'italic');
+            doc.text('Ringkasan PDF compact. Lihat halaman analisis untuk detail lengkap.', 5, Math.min(y + 3, 288));
+        }
 
         _pdfAddFooter(doc, 'portrait');
         doc.save(filename);
@@ -6842,28 +6826,185 @@ function _extractAnalysisText(el) {
     return o.trim();
 }
 
-function _parseAnalysisSections(text) {
-    if (!text) return [{ heading: '', body: 'Tidak ada konten.' }];
-    var lines = text.split('\n');
-    var sections = [];
-    var current = { heading: '', body: '' };
-    var headingPattern = /^(Kesimpulan|Ringkasan|Potensi|Data Teknikal|Momentum|Resistance|Support|Skenario|Risk Guard|Invalidasi|News|Katalis|Implikasi|Bias|Status|Trend|Volume|Level|Entry|Stop Loss|Take Profit|Action|Confidence|Market|RSI|MACD|Fibonacci|Rekomendasi|Peluang|Warning|Disclaimer|Analisis|Overview|Summary|Key Level)/i;
-    for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line) { current.body += '\n'; continue; }
-        if (headingPattern.test(line) && line.length < 80) {
-            if (current.heading || current.body.trim()) {
-                sections.push({ heading: current.heading, body: current.body.trim() });
+function _extractKeyFields(text, isIndex) {
+    var f = {};
+    if (!text) return f;
+    // Helper: find value after a label pattern
+    function grab(patterns, maxLen) {
+        maxLen = maxLen || 120;
+        for (var p = 0; p < patterns.length; p++) {
+            var rx = new RegExp(patterns[p] + '[:\\s]*(.+)', 'im');
+            var m = text.match(rx);
+            if (m && m[1]) { var v = m[1].trim().substring(0, maxLen); if (v) return v; }
+        }
+        return '';
+    }
+    // Helper: grab a section block (from heading to next heading or max lines)
+    function grabSection(headings, maxLines) {
+        maxLines = maxLines || 5;
+        var lines = text.split('\n');
+        var found = false;
+        var result = [];
+        var hRx = new RegExp('^(' + headings.join('|') + ')', 'i');
+        var anyHead = /^(Kesimpulan|Ringkasan|Potensi|Data|Momentum|Resistance|Support|Skenario|Risk|Invalidasi|News|Katalis|Implikasi|Bias|Status|Trend|Volume|Level|Entry|Stop|Take|Action|Confidence|Market|RSI|MACD|Fib|Rekomendasi|Peluang|Warning|Disclaimer|Overview|Summary|Key)/i;
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!found) {
+                if (hRx.test(line)) { found = true; continue; }
+            } else {
+                if (!line) continue;
+                if (anyHead.test(line) && result.length > 0) break;
+                result.push(line);
+                if (result.length >= maxLines) break;
             }
-            current = { heading: line, body: '' };
-        } else {
-            current.body += line + '\n';
+        }
+        return result.join('\n');
+    }
+
+    f.status = grab(['Status Market', 'Status', 'Sikap']);
+    f.bias = grab(['Bias', 'Bias IHSG', 'Bias Saham']);
+    f.confidence = grab(['Confidence', 'Keyakinan']);
+    f.action = grab(['Action', 'Aksi', 'Sikap']);
+    f.last = grab(['Last', 'Harga Terakhir', 'Close']);
+    f.change = grab(['Change', 'Perubahan', 'Chg']);
+    f.resistance = grab(['Resistance', 'Resist']);
+    f.support = grab(['Support']);
+    f.entry = grab(['Entry', 'Area Entry', 'Entry Area']);
+    f.stopLoss = grab(['Stop Loss', 'SL', 'Invalidasi']);
+    f.tp1 = grab(['TP1', 'Take Profit 1', 'Target 1']);
+    f.tp2 = grab(['TP2', 'Take Profit 2', 'Target 2']);
+    f.rr = grab(['Risk.?Reward', 'RR', 'R:R', 'Risk/Reward']);
+    f.ringkasan = grabSection(['Ringkasan', 'Summary', 'Overview', 'Kesimpulan Cepat'], 4);
+    f.potensiBesok = grabSection(['Potensi Besok', 'Potensi'], 3);
+    f.skenarioBullish = grab(['Bullish', 'Bull Case', 'Best Case']);
+    f.skenarioNetral = grab(['Netral', 'Base Case', 'Neutral']);
+    f.skenarioBearish = grab(['Bearish', 'Bear Case', 'Worst Case']);
+    f.riskGuard = grabSection(['Risk Guard', 'Risk', 'Warning'], 3);
+    f.kesimpulan = grabSection(['Kesimpulan Final', 'Kesimpulan'], 4);
+
+    // IHSG specific
+    if (isIndex) {
+        f.ma20 = grab(['MA20', 'MA 20']);
+        f.ma50 = grab(['MA50', 'MA 50']);
+        f.ma100 = grab(['MA100', 'MA 100']);
+        f.ma200 = grab(['MA200', 'MA 200']);
+        f.rsi = grab(['RSI']);
+        f.volume = grab(['Volume']);
+    }
+    return f;
+}
+
+function _renderCompactAnalysis(doc, f, y, maxW, isIndex) {
+    // Helper: render a labeled row
+    function row(label, value, labelColor, valueColor) {
+        if (!value) return;
+        if (y > 282) return; // hard stop near page end
+        doc.setFontSize(7);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(labelColor[0], labelColor[1], labelColor[2]);
+        doc.text(label + ':', 5, y);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(valueColor[0], valueColor[1], valueColor[2]);
+        var valLines = doc.splitTextToSize(value, maxW - 30);
+        doc.text(valLines.slice(0, 2).join(' '), 32, y);
+        y += Math.min(valLines.length, 2) * 3 + 0.5;
+    }
+    // Helper: render a section heading + body
+    function section(heading, body, maxLines) {
+        if (!body) return;
+        if (y > 278) return;
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(16, 185, 129);
+        doc.text(heading, 5, y);
+        y += 3.5;
+        doc.setFontSize(7);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(60, 60, 60);
+        var lines = doc.splitTextToSize(body, maxW);
+        var max = maxLines || 4;
+        for (var i = 0; i < Math.min(lines.length, max); i++) {
+            if (y > 284) break;
+            doc.text(lines[i], 5, y);
+            y += 2.8;
+        }
+        y += 1.5;
+    }
+
+    var green = [16, 185, 129];
+    var gray = [80, 80, 80];
+    var dark = [40, 40, 40];
+
+    // === Key Metrics Grid ===
+    row('Status', f.status, green, dark);
+    row('Bias', f.bias, green, dark);
+    row('Confidence', f.confidence, green, dark);
+    row('Action/Sikap', f.action, green, dark);
+    row('Last', f.last + (f.change ? ' (' + f.change + ')' : ''), green, dark);
+    y += 1;
+
+    // === Levels ===
+    row('Resistance', f.resistance, gray, dark);
+    row('Support', f.support, gray, dark);
+    if (!isIndex) {
+        row('Entry', f.entry, gray, dark);
+        row('Stop Loss', f.stopLoss, [200, 50, 50], dark);
+        row('TP1', f.tp1, [16, 160, 100], dark);
+        row('TP2', f.tp2, [16, 160, 100], dark);
+        row('RR', f.rr, gray, dark);
+    }
+    y += 1;
+
+    // === IHSG Data Teknikal ===
+    if (isIndex && (f.ma20 || f.ma50 || f.rsi)) {
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(16, 185, 129);
+        doc.text('Data Teknikal', 5, y);
+        y += 3.5;
+        doc.setFontSize(7);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(60, 60, 60);
+        var techParts = [];
+        if (f.ma20) techParts.push('MA20: ' + f.ma20);
+        if (f.ma50) techParts.push('MA50: ' + f.ma50);
+        if (f.ma100) techParts.push('MA100: ' + f.ma100);
+        if (f.ma200) techParts.push('MA200: ' + f.ma200);
+        if (f.rsi) techParts.push('RSI: ' + f.rsi);
+        if (f.volume) techParts.push('Vol: ' + f.volume);
+        var techLine = techParts.join('  |  ');
+        var techLines = doc.splitTextToSize(techLine, maxW);
+        for (var t = 0; t < Math.min(techLines.length, 2); t++) {
+            doc.text(techLines[t], 5, y); y += 2.8;
+        }
+        y += 2;
+    }
+
+    // === Sections ===
+    section('Ringkasan', f.ringkasan, 4);
+    section('Potensi Besok', f.potensiBesok, 3);
+
+    // === Skenario (compact inline) ===
+    if (f.skenarioBullish || f.skenarioNetral || f.skenarioBearish) {
+        if (y < 275) {
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'bold');
+            doc.setTextColor(16, 185, 129);
+            doc.text('Skenario', 5, y);
+            y += 3.5;
+            doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
+            if (f.skenarioBullish) { doc.setTextColor(16, 160, 100); doc.text('\u2022 Bull: ' + f.skenarioBullish.substring(0, 90), 5, y); y += 2.8; }
+            if (f.skenarioNetral) { doc.setTextColor(80, 80, 80); doc.text('\u2022 Base: ' + f.skenarioNetral.substring(0, 90), 5, y); y += 2.8; }
+            if (f.skenarioBearish) { doc.setTextColor(200, 50, 50); doc.text('\u2022 Bear: ' + f.skenarioBearish.substring(0, 90), 5, y); y += 2.8; }
+            y += 1.5;
         }
     }
-    if (current.heading || current.body.trim()) {
-        sections.push({ heading: current.heading, body: current.body.trim() });
-    }
-    return sections.length > 0 ? sections : [{ heading: '', body: text }];
+
+    section('Risk Guard', f.riskGuard, 3);
+    section('Kesimpulan', f.kesimpulan, 4);
+
+    return y;
 }
 
 // ===== KONGLO SCREENER PDF (jsPDF autoTable) =====
