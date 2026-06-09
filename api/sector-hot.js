@@ -886,6 +886,10 @@ async function handleRefresh(req, res, supabase) {
         var member = groupMembers[m];
         var q = quoteCache[member.ticker];
 
+        // Normalize member_type for sector_hot_members_latest which has
+        // CHECK constraint IN ('ANCHOR', 'Member'). V2 mapping uses CORE/AFFILIATE/RADAR.
+        var normalizedMemberType = (member.member_type === 'CORE' || member.member_type === 'ANCHOR') ? 'ANCHOR' : 'Member';
+
         // Always insert a row for each active member.
         // Valid quote data populates fields; failed quotes get null fields.
         memberRows.push({
@@ -897,7 +901,7 @@ async function handleRefresh(req, res, supabase) {
           volume_today: q ? q.volumeToday : null,
           avg_volume_30d: q ? q.avgVolume30d : null,
           volume_ratio_30d: q ? q.volumeRatio30d : null,
-          member_type: member.member_type,
+          member_type: normalizedMemberType,
           calculated_at: now
         });
 
