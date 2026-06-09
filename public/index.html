@@ -867,6 +867,26 @@
                     <p class="text-sm font-bold text-gray-200 mt-0.5" id="dtStatRunMode">&mdash;</p>
                 </div>
             </div>
+            <!-- Progress bar (visible during scanning) -->
+            <div id="dtProgressWrap" class="hidden">
+                <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-cyan-400 flex items-center gap-1.5"><svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>Scanning...</span>
+                        <span class="text-[10px] text-gray-500" id="dtProgressLabel">0 / 0</span>
+                    </div>
+                    <div class="w-full h-2 bg-dark-600/50 rounded-full overflow-hidden">
+                        <div id="dtProgressBar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[10px] text-gray-500">
+                        <span id="dtProgressMsg">Memulai scan...</span>
+                        <span id="dtProgressBatch"></span>
+                    </div>
+                    <div class="flex items-center gap-3 text-[10px] text-gray-500 mt-1">
+                        <span>Passed: <strong class="text-emerald-400" id="dtProgressPassed">0</strong></span>
+                        <span>Failed: <strong class="text-red-400" id="dtProgressFailed">0</strong></span>
+                    </div>
+                </div>
+            </div>
             <!-- Filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
                 <button onclick="filterDtScreener('all')" class="dt-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
@@ -5069,6 +5089,7 @@ function switchScreenerType(type) {
     // Stop all pollings
     stopScreenerPolling();
     stopNkPolling();
+    stopDtPolling();
 
     if (type === 'konglo') {
         if (kongloPane) kongloPane.classList.remove('hidden');
@@ -7237,6 +7258,7 @@ function exportNonKongloScreenerPDF() {
 // ============================================================
 var _dtScreenerCache = null;
 var _dtScreenerFilter = 'all';
+var _dtPollInterval = null;
 
 async function loadDayTradeScreener() {
     var tbody = document.getElementById('dtScreenerTableBody');
@@ -7272,10 +7294,96 @@ async function loadDayTradeScreener() {
         if (statP) statP.textContent = meta.published_count || (data.results ? data.results.length : '—');
         if (statM) statM.textContent = meta.run_mode || '—';
 
+        // Handle scanning state — show progress and start polling
+        if (meta.status === 'scanning') {
+            showDtProgress(meta);
+            startDtPolling();
+        } else {
+            hideDtProgress();
+            stopDtPolling();
+        }
+
         renderDtTable(data.results || []);
     } catch (e) {
         tbody.innerHTML = '<tr><td colspan="19" class="text-center py-8 text-red-400">Error: ' + e.message + '</td></tr>';
     }
+}
+
+function showDtProgress(meta) {
+    var wrap = document.getElementById('dtProgressWrap');
+    if (wrap) wrap.classList.remove('hidden');
+
+    var universe = meta.universe_count || 0;
+    var scanned = meta.scanned_count || 0;
+    var pct = universe > 0 ? Math.round(scanned / universe * 100) : 0;
+
+    var bar = document.getElementById('dtProgressBar');
+    var label = document.getElementById('dtProgressLabel');
+    var msg = document.getElementById('dtProgressMsg');
+    var batch = document.getElementById('dtProgressBatch');
+    var passed = document.getElementById('dtProgressPassed');
+    var failed = document.getElementById('dtProgressFailed');
+
+    if (bar) bar.style.width = pct + '%';
+    if (label) label.textContent = scanned + ' / ' + universe + ' (' + pct + '%)';
+    if (msg) msg.textContent = meta.message || 'Scanning...';
+    if (batch) batch.textContent = meta.run_id ? 'Run: ' + meta.run_id : '';
+    if (passed) passed.textContent = meta.passed_count || 0;
+    if (failed) failed.textContent = meta.failed_count || 0;
+}
+
+function hideDtProgress() {
+    var wrap = document.getElementById('dtProgressWrap');
+    if (wrap) wrap.classList.add('hidden');
+}
+
+function startDtPolling() {
+    stopDtPolling();
+    _dtPollInterval = setInterval(async function() {
+        if (_currentScreenerType !== 'daytrade') { stopDtPolling(); return; }
+        try {
+            var response = await fetch('/api/sector-hot?action=daytrade-screener');
+            var data = await response.json();
+            if (!data.success) return;
+
+            var meta = data.meta || {};
+
+            // Update progress
+            if (meta.status === 'scanning') {
+                showDtProgress(meta);
+                // Update stats
+                var statS = document.getElementById('dtStatScanned');
+                if (statS) statS.textContent = meta.scanned_count || '—';
+            } else {
+                // Scanning done — stop polling, reload full data
+                hideDtProgress();
+                stopDtPolling();
+                _dtScreenerCache = data;
+                updateDtMetaUI(meta);
+                renderDtTable(data.results || []);
+            }
+        } catch (e) { /* silent retry next interval */ }
+    }, 3000);
+}
+
+function stopDtPolling() {
+    if (_dtPollInterval) { clearInterval(_dtPollInterval); _dtPollInterval = null; }
+}
+
+function updateDtMetaUI(meta) {
+    var badge = document.getElementById('dtMetaBadge');
+    if (badge) {
+        var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—';
+        badge.textContent = (meta.status || 'pending') + ' · ' + ts;
+    }
+    var statU = document.getElementById('dtStatUniverse');
+    var statS = document.getElementById('dtStatScanned');
+    var statP = document.getElementById('dtStatPublished');
+    var statM = document.getElementById('dtStatRunMode');
+    if (statU) statU.textContent = meta.universe_count || '—';
+    if (statS) statS.textContent = meta.scanned_count || '—';
+    if (statP) statP.textContent = meta.published_count || '—';
+    if (statM) statM.textContent = meta.run_mode || '—';
 }
 
 function renderDtTable(results) {

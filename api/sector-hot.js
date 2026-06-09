@@ -2620,49 +2620,65 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
   var modeOverride = req.query.mode || null;
   var runMode = dtEngine.getRunMode(modeOverride);
   var runDate = dtEngine.getWibDateStr();
-  var runId = 'dt-' + runDate + '-' + Date.now().toString(36);
+  var BATCH_SIZE = 50;
+  var batchIndex = parseInt(req.query.batch || '0', 10);
 
-  // 3. Check if already running (prevent double-run)
+  // 3. Read current meta state
   var { data: meta } = await supabase
     .from('daytrade_screener_meta')
     .select('*')
     .eq('id', 'latest')
     .maybeSingle();
 
-  if (meta && meta.status === 'scanning' && req.query.force !== '1') {
-    return res.status(200).json({
-      success: false,
-      status: 'already_running',
-      run_id: meta.run_id,
-      message: 'Day Trade scan sedang berjalan. Gunakan force=1 untuk override.',
-      meta: meta
-    });
-  }
+  var runId;
 
-  // Check if already published today (unless force=1)
-  if (meta && meta.status === 'published' && meta.run_date === runDate && req.query.force !== '1') {
-    return res.status(200).json({
-      success: true,
-      status: 'already_done',
-      run_id: meta.run_id,
-      message: 'Day Trade sudah di-publish hari ini (' + runDate + '). Gunakan force=1 untuk refresh.',
-      meta: meta
-    });
-  }
+  // 4. If batch > 0 and meta is scanning, continue existing run
+  if (batchIndex > 0 && meta && meta.status === 'scanning') {
+    runId = meta.run_id || ('dt-' + runDate + '-' + Date.now().toString(36));
+  } else if (batchIndex === 0) {
+    // Starting fresh
+    runId = 'dt-' + runDate + '-' + Date.now().toString(36);
 
-  // 4. Update meta to scanning
-  await updateDtMeta(supabase, {
-    status: 'scanning',
-    run_date: runDate,
-    run_mode: runMode,
-    run_id: runId,
-    universe_count: 0,
-    scanned_count: 0,
-    failed_count: 0,
-    passed_count: 0,
-    published_count: 0,
-    message: 'Building universe...'
-  });
+    // Check if already running (prevent accidental double-start)
+    if (meta && meta.status === 'scanning' && req.query.force !== '1') {
+      return res.status(200).json({
+        success: false,
+        status: 'already_running',
+        run_id: meta.run_id,
+        message: 'Day Trade scan sedang berjalan. Gunakan force=1 untuk override.',
+        meta: meta
+      });
+    }
+
+    // Check if already published today (unless force=1)
+    if (meta && meta.status === 'published' && meta.run_date === runDate && req.query.force !== '1') {
+      return res.status(200).json({
+        success: true,
+        status: 'already_done',
+        run_id: meta.run_id,
+        message: 'Day Trade sudah di-publish hari ini (' + runDate + '). Gunakan force=1 untuk refresh.',
+        meta: meta
+      });
+    }
+
+    // Initialize meta for new run
+    await updateDtMeta(supabase, {
+      status: 'scanning',
+      run_date: runDate,
+      run_mode: runMode,
+      run_id: runId,
+      universe_count: 0,
+      scanned_count: 0,
+      failed_count: 0,
+      passed_count: 0,
+      published_count: 0,
+      top_count: 0,
+      message: 'Building universe...'
+    });
+  } else {
+    // batch > 0 but meta is not scanning — stale request
+    runId = 'dt-' + runDate + '-' + Date.now().toString(36);
+  }
 
   // 5. Build universe
   var universeResult = await dtEngine.buildDayTradeUniverse(supabase);
@@ -2678,60 +2694,44 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
 
   var universe = universeResult.tickers;
   var universeCount = universe.length;
-
-  await updateDtMeta(supabase, {
-    universe_count: universeCount,
-    message: 'Scanning ' + universeCount + ' tickers...'
-  });
-
-  // 6. Process in batches (max ~60 tickers per serverless call to avoid timeout)
-  //    If universe > batch limit, process first batch and return progress
-  var BATCH_SIZE = 50;
-  var batchIndex = parseInt(req.query.batch || '0', 10);
+  var batchCount = Math.ceil(universeCount / BATCH_SIZE);
   var startIdx = batchIndex * BATCH_SIZE;
   var endIdx = Math.min(startIdx + BATCH_SIZE, universeCount);
-  var batchCount = Math.ceil(universeCount / BATCH_SIZE);
 
-  if (startIdx >= universeCount) {
-    return res.status(200).json({
-      success: true,
-      status: 'published',
-      run_id: runId,
-      message: 'All batches complete.',
-      batch_index: batchIndex,
-      batch_count: batchCount
+  // Update universe_count on first batch
+  if (batchIndex === 0) {
+    await updateDtMeta(supabase, {
+      universe_count: universeCount,
+      message: 'Scanning batch 1/' + batchCount + ' (' + universeCount + ' tickers)...'
     });
   }
 
+  if (startIdx >= universeCount) {
+    // All batches already processed — finalize
+    return await finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, meta);
+  }
+
+  // 6. Process this batch
   var batchTickers = universe.slice(startIdx, endIdx);
-
-  // Add stock_name from IDX lookup if available (not critical)
-  // Stock names will be populated from the board data or left as ticker
-
   var batchResult = await dtEngine.runDayTradeBatch(batchTickers, runMode);
   var results = batchResult.results;
   var failedTickers = batchResult.failed;
 
-  // 7. Filter: only keep score >= 50 for storage (AVOID with very low scores not stored)
-  //    Sort by score desc, then cap at Top 50 for publish.
-  var passedResults = results
-    .filter(function(r) { return r.daytrade_score >= 50; })
-    .sort(function(a, b) { return b.daytrade_score - a.daytrade_score; })
-    .slice(0, 50);
+  // 7. Save batch results to daytrade_screener_latest immediately (upsert per ticker)
+  //    Only keep candidates with score >= 50
+  var passedResults = results.filter(function(r) { return r.daytrade_score >= 50; });
+  var now = new Date().toISOString();
+  var batchSaveError = null;
 
-  // 8. Save to DB (if last batch or single batch)
-  var isLastBatch = (endIdx >= universeCount);
-  var savedCount = 0;
-  var saveError = null;
+  // On first batch, clear old data
+  if (batchIndex === 0) {
+    var { error: delErr } = await supabase.from('daytrade_screener_latest').delete().neq('ticker', '');
+    if (delErr) batchSaveError = 'Delete failed: ' + delErr.message;
+  }
 
-  if (isLastBatch || batchCount === 1) {
-    // For single-batch or final batch: clear + insert
-    // If multi-batch, we accumulate in staging approach
-    // For v1 simplicity with <50 tickers batch: clear and insert directly
-    var now = new Date().toISOString();
-
-    // Build rows for all passed results
-    var upsertRows = passedResults.map(function(r) {
+  // Insert passed results for this batch
+  if (!batchSaveError && passedResults.length > 0) {
+    var batchRows = passedResults.map(function(r) {
       return {
         ticker: r.ticker,
         stock_name: r.stock_name || r.ticker,
@@ -2777,112 +2777,141 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
       };
     });
 
-    if (upsertRows.length > 0) {
-      // Delete old data
-      var { error: delErr } = await supabase.from('daytrade_screener_latest').delete().neq('ticker', '');
-      if (delErr) {
-        saveError = 'Delete failed: ' + delErr.message;
-      }
-
-      if (!saveError) {
-        // Insert in batches of 50
-        for (var b = 0; b < upsertRows.length; b += 50) {
-          var batch = upsertRows.slice(b, b + 50);
-          var { error: insErr } = await supabase.from('daytrade_screener_latest').insert(batch);
-          if (insErr) {
-            saveError = 'Insert failed: ' + insErr.message + (insErr.details ? ' | ' + insErr.details : '');
-            break;
-          }
-          savedCount += batch.length;
-        }
-      }
+    var { error: insErr } = await supabase.from('daytrade_screener_latest').insert(batchRows);
+    if (insErr) {
+      batchSaveError = 'Insert failed: ' + insErr.message + (insErr.details ? ' | ' + insErr.details : '');
     }
+  }
 
-    // Top count: READY + PRE_SPIKE
-    var topCount = passedResults.filter(function(r) {
-      return r.status === 'READY_BREAKOUT' || r.status === 'PRE_SPIKE_WATCH';
-    }).length;
+  // 8. Accumulate meta counts
+  var prevScanned = (meta && meta.status === 'scanning') ? (meta.scanned_count || 0) : 0;
+  var prevFailed = (meta && meta.status === 'scanning') ? (meta.failed_count || 0) : 0;
+  var prevPassed = (meta && meta.status === 'scanning') ? (meta.passed_count || 0) : 0;
+  // On first batch, reset accumulators
+  var totalScanned = (batchIndex === 0 ? 0 : prevScanned) + batchTickers.length;
+  var totalFailed = (batchIndex === 0 ? 0 : prevFailed) + failedTickers.length;
+  var totalPassed = (batchIndex === 0 ? 0 : prevPassed) + passedResults.length;
 
-    // Update meta to published
-    var finalStatus = savedCount > 0 ? 'published' : (passedResults.length === 0 ? 'published' : 'failed');
-    await updateDtMeta(supabase, {
-      status: finalStatus,
-      run_date: runDate,
-      run_mode: runMode,
-      run_id: runId,
-      universe_count: universeCount,
-      scanned_count: endIdx,
-      failed_count: failedTickers.length,
-      passed_count: passedResults.length,
-      published_count: savedCount,
-      top_count: topCount,
-      message: 'Scan complete. Published ' + savedCount + ' candidates. Top ' + topCount + ' actionable.'
-    });
+  var isLastBatch = (endIdx >= universeCount);
 
-    // Save run history
-    try {
-      await supabase.from('daytrade_screener_runs').insert([{
-        run_id: runId,
-        run_date: runDate,
-        run_mode: runMode,
-        status: finalStatus,
-        universe_count: universeCount,
-        scanned_count: endIdx,
-        failed_count: failedTickers.length,
-        passed_count: passedResults.length,
-        published_count: savedCount,
-        message: 'Batch ' + (batchIndex + 1) + '/' + batchCount + ' complete.',
-        failed_tickers_sample: failedTickers.slice(0, 10),
-        completed_at: new Date().toISOString()
-      }]);
-    } catch (e) { /* non-critical */ }
-
-    return res.status(200).json({
-      success: true,
-      status: finalStatus,
-      run_id: runId,
-      run_mode: runMode,
-      run_date: runDate,
-      calculated_at_wib: dtEngine.getWibTimeStr(),
-      batch_index: batchIndex,
-      batch_count: batchCount,
-      universe_count: universeCount,
-      scanned_count: endIdx,
-      passed_count: passedResults.length,
-      failed_count: failedTickers.length,
-      saved_count: savedCount,
-      published_count: savedCount,
-      top_count: topCount,
-      message: 'Day Trade Screener run complete.',
-      failed_tickers: failedTickers.length > 0 ? failedTickers.slice(0, 15) : undefined,
-      save_error: saveError || null
-    });
-
-  } else {
-    // Multi-batch: return progress, Streamlit/caller should loop
-    await updateDtMeta(supabase, {
-      scanned_count: endIdx,
-      failed_count: failedTickers.length,
-      passed_count: passedResults.length,
-      message: 'Batch ' + (batchIndex + 1) + '/' + batchCount + ' done. ' + passedResults.length + ' passed.'
-    });
-
-    return res.status(200).json({
-      success: true,
-      status: 'running',
-      run_id: runId,
-      run_mode: runMode,
-      batch_index: batchIndex,
-      batch_count: batchCount,
-      universe_count: universeCount,
-      scanned_count: endIdx,
-      passed_count: passedResults.length,
-      failed_count: failedTickers.length,
-      message: 'Batch ' + (batchIndex + 1) + '/' + batchCount + ' processed. Call again with batch=' + (batchIndex + 1) + ' to continue.',
-      next_batch: batchIndex + 1,
-      failed_tickers: failedTickers.length > 0 ? failedTickers.slice(0, 10) : undefined
+  if (isLastBatch) {
+    // Finalize: trim to top 50 by score, delete extras
+    return await finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, {
+      scanned_count: totalScanned,
+      failed_count: totalFailed,
+      passed_count: totalPassed
     });
   }
+
+  // Update meta with accumulated progress
+  await updateDtMeta(supabase, {
+    status: 'scanning',
+    run_id: runId,
+    universe_count: universeCount,
+    scanned_count: totalScanned,
+    failed_count: totalFailed,
+    passed_count: totalPassed,
+    message: 'Batch ' + (batchIndex + 1) + '/' + batchCount + ' done. Scanned ' + totalScanned + '/' + universeCount + '. Passed: ' + totalPassed + '.'
+  });
+
+  return res.status(200).json({
+    success: true,
+    status: 'running',
+    run_id: runId,
+    run_mode: runMode,
+    run_date: runDate,
+    batch_index: batchIndex,
+    batch_count: batchCount,
+    universe_count: universeCount,
+    scanned_count: totalScanned,
+    failed_count: totalFailed,
+    passed_count: totalPassed,
+    message: 'Batch ' + (batchIndex + 1) + '/' + batchCount + ' done. Scanned ' + totalScanned + '/' + universeCount + '.',
+    next_batch: batchIndex + 1,
+    batch_save_error: batchSaveError || null,
+    failed_tickers: failedTickers.length > 0 ? failedTickers.slice(0, 10) : undefined
+  });
+}
+
+// ============================================================
+// DAY TRADE SCREENER — FINALIZE (trim to top 50, update status)
+// ============================================================
+async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, counters) {
+  // Read all rows currently in daytrade_screener_latest, keep only top 50 by score
+  var { data: allRows, error: readErr } = await supabase
+    .from('daytrade_screener_latest')
+    .select('ticker, daytrade_score, status')
+    .order('daytrade_score', { ascending: false });
+
+  var totalPassed = allRows ? allRows.length : 0;
+  var savedCount = Math.min(totalPassed, 50);
+
+  // If more than 50 rows, delete extras (keep top 50)
+  if (allRows && allRows.length > 50) {
+    var tickersToRemove = allRows.slice(50).map(function(r) { return r.ticker; });
+    if (tickersToRemove.length > 0) {
+      await supabase.from('daytrade_screener_latest').delete().in('ticker', tickersToRemove);
+    }
+    savedCount = 50;
+  }
+
+  // Top count: READY + PRE_SPIKE
+  var topCount = allRows ? allRows.slice(0, 50).filter(function(r) {
+    return r.status === 'READY_BREAKOUT' || r.status === 'PRE_SPIKE_WATCH';
+  }).length : 0;
+
+  var totalScanned = counters ? (counters.scanned_count || universeCount) : universeCount;
+  var totalFailed = counters ? (counters.failed_count || 0) : 0;
+
+  // Update meta to published
+  await updateDtMeta(supabase, {
+    status: 'published',
+    run_date: runDate,
+    run_mode: runMode,
+    run_id: runId,
+    universe_count: universeCount,
+    scanned_count: totalScanned,
+    failed_count: totalFailed,
+    passed_count: totalPassed,
+    published_count: savedCount,
+    top_count: topCount,
+    message: 'Scan complete. Published ' + savedCount + ' candidates. Top ' + topCount + ' actionable.'
+  });
+
+  // Save run history
+  try {
+    await supabase.from('daytrade_screener_runs').insert([{
+      run_id: runId,
+      run_date: runDate,
+      run_mode: runMode,
+      status: 'published',
+      universe_count: universeCount,
+      scanned_count: totalScanned,
+      failed_count: totalFailed,
+      passed_count: totalPassed,
+      published_count: savedCount,
+      message: batchCount + ' batches complete. Published top ' + savedCount + '.',
+      completed_at: new Date().toISOString()
+    }]);
+  } catch (e) { /* non-critical */ }
+
+  return res.status(200).json({
+    success: true,
+    status: 'published',
+    run_id: runId,
+    run_mode: runMode,
+    run_date: runDate,
+    calculated_at_wib: dtEngine.getWibTimeStr(),
+    batch_count: batchCount,
+    universe_count: universeCount,
+    scanned_count: totalScanned,
+    failed_count: totalFailed,
+    passed_count: totalPassed,
+    saved_count: savedCount,
+    published_count: savedCount,
+    top_count: topCount,
+    message: 'Day Trade Screener run complete. Top ' + savedCount + ' published.'
+  });
 }
 
 // ============================================================
