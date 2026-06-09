@@ -390,17 +390,9 @@
         @media (min-width: 768px) {
             .sidebar { width: 300px; }
         }
-        /* ===== PDF EXPORT MODE (temporary class during html2pdf capture) ===== */
-        .pdf-export-mode { position: fixed !important; top: 0; left: 0; z-index: 999999; background: #0b0e14; }
-        .pdf-export-mode .ai-content { font-size: 12px !important; line-height: 1.5 !important; }
-        .pdf-export-mode .ai-content .decision-grid,
-        .pdf-export-mode .ai-content .metric-grid,
-        .pdf-export-mode .ai-content .level-grid,
-        .pdf-export-mode .ai-content .trade-plan-grid { gap: 6px !important; }
-        .pdf-export-mode table { font-size: 9px !important; }
-        .pdf-export-mode th, .pdf-export-mode td { padding: 3px 4px !important; }
+        /* ===== PDF EXPORT: print fallback ===== */
         @media print {
-            body { background: #0b0e14 !important; color: #e5e7eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             nav, .nav-btn, #toastContainer, #analisisFollowUp, .spinner, .spinner-sm { display: none !important; }
         }
     </style>
@@ -1160,7 +1152,8 @@
 
 <script src="/assets/idx-tickers.js"></script>
 <script src="/assets/fca-stocks.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
 <script>
 // ===== DEVICE ID =====
 function getOrCreateDeviceId() {
@@ -6682,214 +6675,276 @@ function downloadChartPng(chartId, ticker) {
     }
 }
 
-// ===== PDF DOWNLOAD FUNCTIONS (html2pdf.js DOM capture) =====
+// ===== PDF DOWNLOAD FUNCTIONS (jsPDF + autoTable — programmatic, no screenshot) =====
 var _pdfDisclaimer = 'Ini bukan rekomendasi beli/jual. Gunakan sebagai bahan analisis mandiri dan kelola risiko.';
 
-function _ensureHtml2Pdf(cb) {
-    if (typeof html2pdf !== 'undefined') { cb(); return; }
-    var s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js';
-    s.onload = cb;
-    s.onerror = function() { showToast('PDF gagal dibuat. Coba gunakan Ctrl+P \u2192 Save as PDF.', 'warning'); };
-    document.head.appendChild(s);
+function _ensureJsPdf(cb) {
+    if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') { cb(); return; }
+    // Dynamic load fallback
+    var loaded = 0;
+    function check() { loaded++; if (loaded >= 2) cb(); }
+    var s1 = document.createElement('script');
+    s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
+    s1.onload = check;
+    s1.onerror = function() { showToast('PDF library gagal dimuat.', 'warning'); };
+    document.head.appendChild(s1);
+    var s2 = document.createElement('script');
+    s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+    s2.onload = check;
+    s2.onerror = function() { showToast('PDF library gagal dimuat.', 'warning'); };
+    document.head.appendChild(s2);
 }
 
-function _pdfTimestamp() {
-    return new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+function _pdfAddHeader(doc, title, orientation) {
+    var pageW = orientation === 'landscape' ? 297 : 210;
+    var now = new Date();
+    var ts = now.toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+    // Title
+    doc.setFontSize(14);
+    doc.setTextColor(16, 185, 129);
+    doc.text(title, 5, 9);
+    // Timestamp
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Dibuat: ' + ts + '  |  Auto-Cuan SMC Analysis Platform', 5, 13.5);
+    // Line
+    doc.setDrawColor(16, 185, 129);
+    doc.setLineWidth(0.3);
+    doc.line(5, 15, pageW - 5, 15);
+    return 17; // y position after header
 }
 
-function _pdfBaseStyle(width) {
-    return 'position:fixed;top:0;left:0;z-index:999999;' +
-        'width:' + (width || '680') + 'px;' +
-        'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
-        'background:#0b0e14;color:#e5e7eb;padding:14px;box-sizing:border-box;line-height:1.3;overflow:visible;';
+function _pdfAddFooter(doc, orientation) {
+    var pageW = orientation === 'landscape' ? 297 : 210;
+    var pageH = orientation === 'landscape' ? 210 : 297;
+    var pageCount = doc.internal.getNumberOfPages();
+    for (var i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(6);
+        doc.setTextColor(130, 130, 130);
+        doc.text(_pdfDisclaimer, 5, pageH - 5);
+        doc.text('Auto-Cuan | Halaman ' + i + '/' + pageCount, pageW - 45, pageH - 5);
+    }
 }
 
-function _pdfHeader(title) {
-    return '<div style="border-bottom:2px solid #10b981;padding-bottom:8px;margin-bottom:10px;">' +
-        '<div style="font-size:15px;font-weight:700;color:#6ee7b7;margin-bottom:3px;">' + title + '</div>' +
-        '<div style="font-size:9px;color:#9ca3af;">Dibuat: ' + _pdfTimestamp() + ' | Auto-Cuan SMC Analysis Platform</div></div>';
-}
-
-function _pdfFooter() {
-    return '<div style="border-top:1px solid #242d3d;padding-top:8px;margin-top:12px;font-size:8px;color:#6b7280;">' +
-        '<p>' + _pdfDisclaimer + '</p><p style="margin-top:3px;">Auto-Cuan &copy; ' + new Date().getFullYear() + '</p></div>';
-}
-
-function _downloadPdf(container, filename, orientation) {
-    document.body.appendChild(container);
-    void container.offsetHeight;
-
-    var textLen = (container.textContent || '').trim().length;
-    if (textLen === 0) { document.body.removeChild(container); showToast('PDF gagal: area laporan kosong.', 'warning'); return; }
-    var sw = container.scrollWidth;
-    var sh = container.scrollHeight;
-    if (sw === 0 || sh === 0) { document.body.removeChild(container); showToast('PDF gagal: area laporan belum ter-render.', 'warning'); return; }
-
-    setTimeout(function() {
-        var opt = {
-            margin: [4, 4, 4, 4],
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.95 },
-            html2canvas: {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: '#0b0e14',
-                logging: false,
-                scrollX: 0,
-                scrollY: 0,
-                windowWidth: sw,
-                windowHeight: sh,
-                width: sw,
-                height: sh
-            },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: orientation || 'portrait' }
-        };
-        html2pdf().set(opt).from(container).save().then(function() {
-            if (container.parentNode) document.body.removeChild(container);
-        }).catch(function() {
-            if (container.parentNode) document.body.removeChild(container);
-            showToast('PDF gagal dibuat. Coba gunakan Ctrl+P \u2192 Save as PDF.', 'warning');
-        });
-    }, 400);
-}
-
-// ===== ANALYSIS PDF =====
+// ===== ANALYSIS PDF (jsPDF text-based) =====
 function exportAnalisisPDF(ticker) {
     var resultArea = document.getElementById('analisisResult');
     if (!resultArea) return;
     var contentEl = resultArea.querySelector('.ai-content');
     if (!contentEl) { showToast('Belum ada hasil analisis untuk di-export.', 'warning'); return; }
-    _ensureHtml2Pdf(function() {
+
+    _ensureJsPdf(function() {
         var isIndex = isIndexTicker(ticker);
         var title = isIndex ? 'Analisis IHSG' : 'Analisis ' + ticker;
         var filename = isIndex ? 'Auto-Cuan-IHSG-Analysis.pdf' : 'Auto-Cuan-' + ticker + '-Analysis.pdf';
 
-        // Build compact analysis container (680px fits A4 portrait with 4mm margins)
-        var container = document.createElement('div');
-        container.style.cssText = _pdfBaseStyle('680') + 'font-size:11px;';
-        container.innerHTML = _pdfHeader(title);
+        var jsPDF = window.jspdf.jsPDF;
+        var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        var startY = _pdfAddHeader(doc, title, 'portrait');
+        var maxW = 200; // 210 - 2*5mm margin
+        var y = startY;
 
-        // Clone analysis content with compact sizing
-        var clone = contentEl.cloneNode(true);
-        clone.style.cssText = 'font-size:11px;line-height:1.4;overflow:visible;max-width:100%;';
-        clone.querySelectorAll('button').forEach(function(b) { b.remove(); });
-        clone.querySelectorAll('.hidden').forEach(function(el) { el.remove(); });
-        clone.querySelectorAll('[class*="grid"]').forEach(function(el) { el.style.gap = '6px'; });
-        clone.querySelectorAll('[class*="card"], [class*="Card"]').forEach(function(el) { el.style.padding = '8px 10px'; });
-        container.appendChild(clone);
-        container.insertAdjacentHTML('beforeend', _pdfFooter());
+        // Extract text content from analysis DOM
+        var text = _extractAnalysisText(contentEl);
+        var sections = _parseAnalysisSections(text);
 
-        showToast('Menyiapkan PDF...', 'success');
-        _downloadPdf(container, filename, 'portrait');
+        sections.forEach(function(section) {
+            // Check page break
+            if (y > 275) { doc.addPage(); y = 10; }
+
+            if (section.heading) {
+                doc.setFontSize(9);
+                doc.setTextColor(16, 185, 129);
+                doc.setFont(undefined, 'bold');
+                var headLines = doc.splitTextToSize(section.heading, maxW);
+                doc.text(headLines, 5, y);
+                y += headLines.length * 3.8 + 1;
+            }
+            if (section.body) {
+                doc.setFontSize(8);
+                doc.setTextColor(50, 50, 50);
+                doc.setFont(undefined, 'normal');
+                var bodyLines = doc.splitTextToSize(section.body, maxW);
+                // Page break handling for long body
+                for (var i = 0; i < bodyLines.length; i++) {
+                    if (y > 285) { doc.addPage(); y = 10; }
+                    doc.text(bodyLines[i], 5, y);
+                    y += 3.2;
+                }
+                y += 2;
+            }
+        });
+
+        _pdfAddFooter(doc, 'portrait');
+        doc.save(filename);
+        showToast('PDF berhasil diunduh.', 'success');
     });
 }
 
-// ===== KONGLO SCREENER PDF (builds a clean compact table from visible data) =====
+function _extractAnalysisText(el) {
+    if (!el) return '';
+    var html = el.innerHTML;
+    var o = html;
+    o = o.replace(/<br\s*\/?>/gi, '\n');
+    o = o.replace(/<\/(div|p|li|h[1-6]|tr)>/gi, '\n');
+    o = o.replace(/<(div|p|li|h[1-6]|tr)[^>]*>/gi, '\n');
+    o = o.replace(/<span[^>]*>([^<]*)<\/span>\s*<b[^>]*>([^<]*)<\/b>/gi, '$1: $2');
+    o = o.replace(/<[^>]+>/g, '');
+    o = o.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&nbsp;/g, ' ').replace(/&middot;/g, '\u00B7');
+    o = o.replace(/[ \t]+/g, ' ');
+    o = o.replace(/ ?\n ?/g, '\n');
+    o = o.replace(/\n{3,}/g, '\n\n');
+    return o.trim();
+}
+
+function _parseAnalysisSections(text) {
+    if (!text) return [{ heading: '', body: 'Tidak ada konten.' }];
+    var lines = text.split('\n');
+    var sections = [];
+    var current = { heading: '', body: '' };
+    var headingPattern = /^(Kesimpulan|Ringkasan|Potensi|Data Teknikal|Momentum|Resistance|Support|Skenario|Risk Guard|Invalidasi|News|Katalis|Implikasi|Bias|Status|Trend|Volume|Level|Entry|Stop Loss|Take Profit|Action|Confidence|Market|RSI|MACD|Fibonacci|Rekomendasi|Peluang|Warning|Disclaimer|Analisis|Overview|Summary|Key Level)/i;
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) { current.body += '\n'; continue; }
+        if (headingPattern.test(line) && line.length < 80) {
+            if (current.heading || current.body.trim()) {
+                sections.push({ heading: current.heading, body: current.body.trim() });
+            }
+            current = { heading: line, body: '' };
+        } else {
+            current.body += line + '\n';
+        }
+    }
+    if (current.heading || current.body.trim()) {
+        sections.push({ heading: current.heading, body: current.body.trim() });
+    }
+    return sections.length > 0 ? sections : [{ heading: '', body: text }];
+}
+
+// ===== KONGLO SCREENER PDF (jsPDF autoTable) =====
 function exportKongloScreenerPDF() {
     var tbody = document.getElementById('screenerTableBody');
     if (!tbody || !tbody.querySelector('tr td:not([colspan])')) {
         showToast('Belum ada data screener untuk di-export.', 'warning');
         return;
     }
-    _ensureHtml2Pdf(function() {
-        // Container: 1050px fits A4 landscape (~277mm - 8mm margins = 269mm ≈ 1016px at 96dpi, 1050 is safe with scale)
-        var container = document.createElement('div');
-        container.style.cssText = _pdfBaseStyle('1050') + 'font-size:8px;';
+    _ensureJsPdf(function() {
+        var jsPDF = window.jspdf.jsPDF;
+        var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        var startY = _pdfAddHeader(doc, 'Auto-Cuan Konglo Screener', 'landscape');
 
-        var html = _pdfHeader('Auto-Cuan Konglo Screener');
-
-        // Stats row
+        // Stats line
         var universe = (document.getElementById('screenerStatUniverse') || {}).textContent || '-';
         var scanned = (document.getElementById('screenerStatScanned') || {}).textContent || '-';
         var failed = (document.getElementById('screenerStatFailed') || {}).textContent || '-';
         var metaBadge = (document.getElementById('screenerMetaBadge') || {}).textContent || '';
-        html += '<div style="display:flex;gap:10px;margin-bottom:8px;">';
-        html += '<div style="border:1px solid #242d3d;border-radius:4px;padding:4px 8px;text-align:center;flex:1;"><div style="font-size:7px;color:#9ca3af;text-transform:uppercase;">Universe</div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">' + universe + '</div></div>';
-        html += '<div style="border:1px solid #242d3d;border-radius:4px;padding:4px 8px;text-align:center;flex:1;"><div style="font-size:7px;color:#9ca3af;text-transform:uppercase;">Scanned</div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">' + scanned + '</div></div>';
-        html += '<div style="border:1px solid #242d3d;border-radius:4px;padding:4px 8px;text-align:center;flex:1;"><div style="font-size:7px;color:#9ca3af;text-transform:uppercase;">Failed</div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">' + failed + '</div></div>';
-        html += '</div>';
-        if (metaBadge) html += '<div style="font-size:8px;color:#9ca3af;margin-bottom:6px;">Status: ' + metaBadge + '</div>';
-        if (_screenerFilter && _screenerFilter !== 'all') html += '<div style="font-size:8px;color:#6ee7b7;margin-bottom:6px;">Filter: ' + _screenerFilter + '</div>';
+        doc.setFontSize(7);
+        doc.setTextColor(80, 80, 80);
+        var statsText = 'Universe: ' + universe + '  |  Scanned: ' + scanned + '  |  Failed: ' + failed;
+        if (metaBadge) statsText += '  |  ' + metaBadge;
+        if (_screenerFilter && _screenerFilter !== 'all') statsText += '  |  Filter: ' + _screenerFilter;
+        doc.text(statsText, 5, startY);
+        startY += 4;
 
-        // Build compact fixed-layout table
-        html += '<table style="width:100%;border-collapse:collapse;font-size:7.5px;table-layout:fixed;">';
-        html += '<colgroup><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:5%"><col style="width:6%"><col style="width:5%"><col style="width:5%"><col style="width:6%"><col style="width:5%"><col style="width:9%"><col style="width:6%"><col style="width:6%"><col style="width:6%"><col style="width:5%"><col style="width:15%"></colgroup>';
-        html += '<thead><tr style="background:#151a23;">';
-        var hds = ['Ticker','Group','Status','Setup','Last','Chg%','RSI','Vol/Avg20','Tx 1D','Entry Area','SL','TP1','TP2','RR','Catatan'];
-        hds.forEach(function(h) { html += '<th style="padding:3px 2px;text-align:left;color:#9ca3af;font-size:7px;font-weight:600;border-bottom:1px solid #242d3d;">' + h + '</th>'; });
-        html += '</tr></thead><tbody>';
-
+        // Extract table data from DOM
+        var heads = [['Ticker', 'Group', 'Status', 'Setup', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Tx 1D', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Catatan']];
+        var body = [];
         var rows = document.querySelectorAll('#screenerTableBody tr');
         rows.forEach(function(row) {
             var cells = row.querySelectorAll('td');
             if (cells.length < 14) return;
-            html += '<tr style="border-bottom:1px solid #1c2333;">';
+            var rowData = [];
             for (var i = 0; i <= 14 && i < cells.length; i++) {
-                var text = cells[i] ? cells[i].textContent.trim() : '-';
-                var cs = 'padding:3px 2px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;';
-                if (i === 14) cs += 'white-space:normal;word-break:break-word;font-size:6.5px;color:#9ca3af;';
-                else cs += 'white-space:nowrap;';
-                html += '<td style="' + cs + '">' + text + '</td>';
+                rowData.push((cells[i].textContent || '').trim());
             }
-            html += '</tr>';
+            body.push(rowData);
         });
-        html += '</tbody></table>';
-        html += _pdfFooter();
-        container.innerHTML = html;
 
-        showToast('Menyiapkan PDF...', 'success');
-        _downloadPdf(container, 'Auto-Cuan-Konglo-Screener.pdf', 'landscape');
+        doc.autoTable({
+            startY: startY,
+            head: heads,
+            body: body,
+            theme: 'grid',
+            margin: { left: 5, right: 5 },
+            styles: { fontSize: 6, cellPadding: 1.2, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
+            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 6.5, fontStyle: 'bold', cellPadding: 1.5 },
+            columnStyles: { 14: { cellWidth: 35 } },
+            didParseCell: function(data) {
+                // Color status cells
+                if (data.column.index === 2 && data.section === 'body') {
+                    var val = (data.cell.raw || '').toUpperCase();
+                    if (val.indexOf('READY') >= 0) data.cell.styles.textColor = [16, 185, 129];
+                    else if (val.indexOf('WATCH') >= 0) data.cell.styles.textColor = [59, 130, 246];
+                    else if (val.indexOf('SPEC') >= 0) data.cell.styles.textColor = [245, 158, 11];
+                    else data.cell.styles.textColor = [239, 68, 68];
+                }
+            }
+        });
+
+        _pdfAddFooter(doc, 'landscape');
+        doc.save('Auto-Cuan-Konglo-Screener.pdf');
+        showToast('PDF berhasil diunduh.', 'success');
     });
 }
 
-// ===== NON-KONGLO SCREENER PDF (builds a clean compact table from visible data) =====
+// ===== NON-KONGLO SCREENER PDF (jsPDF autoTable) =====
 function exportNonKongloScreenerPDF() {
     var tbody = document.getElementById('nkScreenerTableBody');
     if (!tbody || !tbody.querySelector('tr td:not([colspan])')) {
         showToast('Belum ada data screener untuk di-export.', 'warning');
         return;
     }
-    _ensureHtml2Pdf(function() {
-        var container = document.createElement('div');
-        container.style.cssText = _pdfBaseStyle('1050') + 'font-size:8px;';
+    _ensureJsPdf(function() {
+        var jsPDF = window.jspdf.jsPDF;
+        var doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        var startY = _pdfAddHeader(doc, 'Auto-Cuan Non-Konglo Screener', 'landscape');
 
-        var html = _pdfHeader('Auto-Cuan Non-Konglo Screener');
-
-        // Meta
+        // Meta line
         var metaBadge = (document.getElementById('nkScreenerMetaBadge') || {}).textContent || '';
-        if (metaBadge) html += '<div style="font-size:8px;color:#9ca3af;margin-bottom:6px;">Status: ' + metaBadge + '</div>';
-        if (_nkScreenerFilter && _nkScreenerFilter !== 'all') html += '<div style="font-size:8px;color:#6ee7b7;margin-bottom:6px;">Filter: ' + _nkScreenerFilter + '</div>';
+        doc.setFontSize(7);
+        doc.setTextColor(80, 80, 80);
+        var metaText = metaBadge ? metaBadge : '';
+        if (_nkScreenerFilter && _nkScreenerFilter !== 'all') metaText += (metaText ? '  |  ' : '') + 'Filter: ' + _nkScreenerFilter;
+        if (metaText) { doc.text(metaText, 5, startY); startY += 4; }
 
-        // Build compact fixed-layout table
-        html += '<table style="width:100%;border-collapse:collapse;font-size:7px;table-layout:fixed;">';
-        html += '<colgroup><col style="width:3%"><col style="width:6%"><col style="width:5%"><col style="width:7%"><col style="width:5%"><col style="width:5.5%"><col style="width:5%"><col style="width:4.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:8.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:4.5%"><col style="width:12.5%"></colgroup>';
-        html += '<thead><tr style="background:#151a23;">';
-        var hds = ['#','Ticker','Board','Status','Score','Last','Chg%','RSI','Vol/Avg20','Tx 1D','Avg Tx 7D','Entry Area','SL','TP1','TP2','RR','Catatan'];
-        hds.forEach(function(h) { html += '<th style="padding:3px 2px;text-align:left;color:#9ca3af;font-size:6.5px;font-weight:600;border-bottom:1px solid #242d3d;">' + h + '</th>'; });
-        html += '</tr></thead><tbody>';
-
+        // Extract table data from DOM
+        var heads = [['#', 'Ticker', 'Board', 'Status', 'Score', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Tx 1D', 'Avg Tx 7D', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Catatan']];
+        var body = [];
         var rows = document.querySelectorAll('#nkScreenerTableBody tr');
         rows.forEach(function(row) {
             var cells = row.querySelectorAll('td');
             if (cells.length < 16) return;
-            html += '<tr style="border-bottom:1px solid #1c2333;">';
+            var rowData = [];
             for (var i = 0; i < cells.length; i++) {
-                var text = cells[i] ? cells[i].textContent.trim() : '-';
-                var cs = 'padding:3px 2px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;';
-                if (i === cells.length - 1) cs += 'white-space:normal;word-break:break-word;font-size:6px;color:#9ca3af;';
-                else cs += 'white-space:nowrap;';
-                html += '<td style="' + cs + '">' + text + '</td>';
+                rowData.push((cells[i].textContent || '').trim());
             }
-            html += '</tr>';
+            body.push(rowData);
         });
-        html += '</tbody></table>';
-        html += _pdfFooter();
-        container.innerHTML = html;
 
-        showToast('Menyiapkan PDF...', 'success');
-        _downloadPdf(container, 'Auto-Cuan-Non-Konglo-Screener.pdf', 'landscape');
+        doc.autoTable({
+            startY: startY,
+            head: heads,
+            body: body,
+            theme: 'grid',
+            margin: { left: 5, right: 5 },
+            styles: { fontSize: 5.5, cellPadding: 1, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
+            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 6, fontStyle: 'bold', cellPadding: 1.3 },
+            columnStyles: { 0: { cellWidth: 6 }, 16: { cellWidth: 30 } },
+            didParseCell: function(data) {
+                if (data.column.index === 3 && data.section === 'body') {
+                    var val = (data.cell.raw || '').toUpperCase();
+                    if (val.indexOf('READY') >= 0) data.cell.styles.textColor = [16, 185, 129];
+                    else if (val.indexOf('WATCH') >= 0) data.cell.styles.textColor = [59, 130, 246];
+                    else if (val.indexOf('SPEC') >= 0) data.cell.styles.textColor = [245, 158, 11];
+                    else data.cell.styles.textColor = [239, 68, 68];
+                }
+            }
+        });
+
+        _pdfAddFooter(doc, 'landscape');
+        doc.save('Auto-Cuan-Non-Konglo-Screener.pdf');
+        showToast('PDF berhasil diunduh.', 'success');
     });
 }
 </script>
