@@ -6694,117 +6694,41 @@ function _ensureHtml2Pdf(cb) {
     document.head.appendChild(s);
 }
 
-function _buildPdfContainer(sourceEl, opts) {
-    // Create a VISIBLE fixed container for html2canvas to capture correctly
-    var container = document.createElement('div');
-    container.id = '_pdfCaptureContainer';
-    container.style.position = 'fixed';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.width = opts.width || '780px';
-    container.style.minHeight = '100px';
-    container.style.background = '#0b0e14';
-    container.style.color = '#e5e7eb';
-    container.style.fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
-    container.style.padding = '20px';
-    container.style.boxSizing = 'border-box';
-    container.style.fontSize = '12px';
-    container.style.lineHeight = '1.5';
-    container.style.zIndex = '999999';
-    container.style.overflow = 'visible';
-    container.style.maxHeight = 'none';
+function _pdfTimestamp() {
+    return new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+}
 
-    // Header
-    var header = document.createElement('div');
-    header.style.borderBottom = '2px solid #10b981';
-    header.style.paddingBottom = '10px';
-    header.style.marginBottom = '14px';
-    var now = new Date();
-    var ts = now.toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
-    header.innerHTML = '<div style="font-size:16px;font-weight:700;color:#6ee7b7;margin-bottom:4px;">' + (opts.title || 'Auto-Cuan Report') + '</div>' +
-        '<div style="font-size:10px;color:#9ca3af;">Dibuat: ' + ts + ' | Auto-Cuan SMC Analysis Platform</div>';
-    container.appendChild(header);
+function _pdfBaseStyle(width) {
+    return 'position:fixed;top:0;left:0;z-index:999999;' +
+        'width:' + (width || '680') + 'px;' +
+        'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;' +
+        'background:#0b0e14;color:#e5e7eb;padding:14px;box-sizing:border-box;line-height:1.3;overflow:visible;';
+}
 
-    // Content (deep clone of source DOM)
-    var content = sourceEl.cloneNode(true);
-    content.style.display = 'block';
-    content.style.visibility = 'visible';
-    content.style.opacity = '1';
-    content.style.position = 'static';
-    content.style.overflow = 'visible';
-    content.style.maxHeight = 'none';
-    content.style.height = 'auto';
-    // Remove buttons from clone
-    content.querySelectorAll('button').forEach(function(b) { b.remove(); });
-    // Remove elements with .hidden class
-    content.querySelectorAll('.hidden').forEach(function(el) { el.remove(); });
-    // Make table containers fully visible (no horizontal scroll clip)
-    content.querySelectorAll('.overflow-x-auto, [class*="overflow"]').forEach(function(el) {
-        el.style.overflow = 'visible';
-        el.style.maxWidth = 'none';
-        el.style.width = 'auto';
-    });
-    // Remove sticky positioning
-    content.querySelectorAll('[class*="sticky"]').forEach(function(el) {
-        el.style.position = 'static';
-        el.style.left = 'auto';
-        el.style.zIndex = 'auto';
-    });
-    // Ensure table has proper display
-    content.querySelectorAll('table').forEach(function(t) {
-        t.style.width = '100%';
-        t.style.borderCollapse = 'collapse';
-        t.style.tableLayout = 'auto';
-    });
-    // Ensure all td/th are visible
-    content.querySelectorAll('td, th').forEach(function(cell) {
-        cell.style.overflow = 'visible';
-        cell.style.whiteSpace = 'nowrap';
-        cell.style.maxWidth = 'none';
-    });
-    container.appendChild(content);
+function _pdfHeader(title) {
+    return '<div style="border-bottom:2px solid #10b981;padding-bottom:8px;margin-bottom:10px;">' +
+        '<div style="font-size:15px;font-weight:700;color:#6ee7b7;margin-bottom:3px;">' + title + '</div>' +
+        '<div style="font-size:9px;color:#9ca3af;">Dibuat: ' + _pdfTimestamp() + ' | Auto-Cuan SMC Analysis Platform</div></div>';
+}
 
-    // Footer disclaimer
-    var footer = document.createElement('div');
-    footer.style.borderTop = '1px solid #242d3d';
-    footer.style.paddingTop = '10px';
-    footer.style.marginTop = '16px';
-    footer.style.fontSize = '9px';
-    footer.style.color = '#6b7280';
-    footer.innerHTML = '<p>' + _pdfDisclaimer + '</p><p style="margin-top:4px;">Auto-Cuan &copy; ' + now.getFullYear() + '</p>';
-    container.appendChild(footer);
-
-    return container;
+function _pdfFooter() {
+    return '<div style="border-top:1px solid #242d3d;padding-top:8px;margin-top:12px;font-size:8px;color:#6b7280;">' +
+        '<p>' + _pdfDisclaimer + '</p><p style="margin-top:3px;">Auto-Cuan &copy; ' + new Date().getFullYear() + '</p></div>';
 }
 
 function _downloadPdf(container, filename, orientation) {
-    // Append container visibly to body so html2canvas can render it
     document.body.appendChild(container);
-
-    // Force layout computation
     void container.offsetHeight;
-    void container.scrollHeight;
 
-    // Diagnostics: validate clone has content
     var textLen = (container.textContent || '').trim().length;
+    if (textLen === 0) { document.body.removeChild(container); showToast('PDF gagal: area laporan kosong.', 'warning'); return; }
     var sw = container.scrollWidth;
     var sh = container.scrollHeight;
-    if (textLen === 0) {
-        document.body.removeChild(container);
-        showToast('PDF gagal: area laporan kosong.', 'warning');
-        return;
-    }
-    if (sw === 0 || sh === 0) {
-        document.body.removeChild(container);
-        showToast('PDF gagal: area laporan belum ter-render.', 'warning');
-        return;
-    }
+    if (sw === 0 || sh === 0) { document.body.removeChild(container); showToast('PDF gagal: area laporan belum ter-render.', 'warning'); return; }
 
-    // Small delay to let fonts/layout settle, then capture
-    var captureDelay = 500;
     setTimeout(function() {
         var opt = {
-            margin: [4, 5, 4, 5],
+            margin: [4, 4, 4, 4],
             filename: filename,
             image: { type: 'jpeg', quality: 0.95 },
             html2canvas: {
@@ -6815,22 +6739,23 @@ function _downloadPdf(container, filename, orientation) {
                 logging: false,
                 scrollX: 0,
                 scrollY: 0,
-                windowWidth: container.scrollWidth,
-                windowHeight: container.scrollHeight,
-                width: container.scrollWidth,
-                height: container.scrollHeight
+                windowWidth: sw,
+                windowHeight: sh,
+                width: sw,
+                height: sh
             },
             jsPDF: { unit: 'mm', format: 'a4', orientation: orientation || 'portrait' }
         };
         html2pdf().set(opt).from(container).save().then(function() {
             if (container.parentNode) document.body.removeChild(container);
-        }).catch(function(err) {
+        }).catch(function() {
             if (container.parentNode) document.body.removeChild(container);
             showToast('PDF gagal dibuat. Coba gunakan Ctrl+P \u2192 Save as PDF.', 'warning');
         });
-    }, captureDelay);
+    }, 400);
 }
 
+// ===== ANALYSIS PDF =====
 function exportAnalisisPDF(ticker) {
     var resultArea = document.getElementById('analisisResult');
     if (!resultArea) return;
@@ -6840,37 +6765,129 @@ function exportAnalisisPDF(ticker) {
         var isIndex = isIndexTicker(ticker);
         var title = isIndex ? 'Analisis IHSG' : 'Analisis ' + ticker;
         var filename = isIndex ? 'Auto-Cuan-IHSG-Analysis.pdf' : 'Auto-Cuan-' + ticker + '-Analysis.pdf';
-        var container = _buildPdfContainer(contentEl, { title: title, width: '780px' });
+
+        // Build compact analysis container (680px fits A4 portrait with 4mm margins)
+        var container = document.createElement('div');
+        container.style.cssText = _pdfBaseStyle('680') + 'font-size:11px;';
+        container.innerHTML = _pdfHeader(title);
+
+        // Clone analysis content with compact sizing
+        var clone = contentEl.cloneNode(true);
+        clone.style.cssText = 'font-size:11px;line-height:1.4;overflow:visible;max-width:100%;';
+        clone.querySelectorAll('button').forEach(function(b) { b.remove(); });
+        clone.querySelectorAll('.hidden').forEach(function(el) { el.remove(); });
+        clone.querySelectorAll('[class*="grid"]').forEach(function(el) { el.style.gap = '6px'; });
+        clone.querySelectorAll('[class*="card"], [class*="Card"]').forEach(function(el) { el.style.padding = '8px 10px'; });
+        container.appendChild(clone);
+        container.insertAdjacentHTML('beforeend', _pdfFooter());
+
         showToast('Menyiapkan PDF...', 'success');
         _downloadPdf(container, filename, 'portrait');
     });
 }
 
+// ===== KONGLO SCREENER PDF (builds a clean compact table from visible data) =====
 function exportKongloScreenerPDF() {
-    var pane = document.getElementById('screenerKongloPane');
-    if (!pane) return;
     var tbody = document.getElementById('screenerTableBody');
     if (!tbody || !tbody.querySelector('tr td:not([colspan])')) {
         showToast('Belum ada data screener untuk di-export.', 'warning');
         return;
     }
     _ensureHtml2Pdf(function() {
-        var container = _buildPdfContainer(pane, { title: 'Auto-Cuan Konglo Screener', width: '1100px' });
+        // Container: 1050px fits A4 landscape (~277mm - 8mm margins = 269mm ≈ 1016px at 96dpi, 1050 is safe with scale)
+        var container = document.createElement('div');
+        container.style.cssText = _pdfBaseStyle('1050') + 'font-size:8px;';
+
+        var html = _pdfHeader('Auto-Cuan Konglo Screener');
+
+        // Stats row
+        var universe = (document.getElementById('screenerStatUniverse') || {}).textContent || '-';
+        var scanned = (document.getElementById('screenerStatScanned') || {}).textContent || '-';
+        var failed = (document.getElementById('screenerStatFailed') || {}).textContent || '-';
+        var metaBadge = (document.getElementById('screenerMetaBadge') || {}).textContent || '';
+        html += '<div style="display:flex;gap:10px;margin-bottom:8px;">';
+        html += '<div style="border:1px solid #242d3d;border-radius:4px;padding:4px 8px;text-align:center;flex:1;"><div style="font-size:7px;color:#9ca3af;text-transform:uppercase;">Universe</div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">' + universe + '</div></div>';
+        html += '<div style="border:1px solid #242d3d;border-radius:4px;padding:4px 8px;text-align:center;flex:1;"><div style="font-size:7px;color:#9ca3af;text-transform:uppercase;">Scanned</div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">' + scanned + '</div></div>';
+        html += '<div style="border:1px solid #242d3d;border-radius:4px;padding:4px 8px;text-align:center;flex:1;"><div style="font-size:7px;color:#9ca3af;text-transform:uppercase;">Failed</div><div style="font-size:11px;font-weight:700;color:#e5e7eb;">' + failed + '</div></div>';
+        html += '</div>';
+        if (metaBadge) html += '<div style="font-size:8px;color:#9ca3af;margin-bottom:6px;">Status: ' + metaBadge + '</div>';
+        if (_screenerFilter && _screenerFilter !== 'all') html += '<div style="font-size:8px;color:#6ee7b7;margin-bottom:6px;">Filter: ' + _screenerFilter + '</div>';
+
+        // Build compact fixed-layout table
+        html += '<table style="width:100%;border-collapse:collapse;font-size:7.5px;table-layout:fixed;">';
+        html += '<colgroup><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:5%"><col style="width:6%"><col style="width:5%"><col style="width:5%"><col style="width:6%"><col style="width:5%"><col style="width:9%"><col style="width:6%"><col style="width:6%"><col style="width:6%"><col style="width:5%"><col style="width:15%"></colgroup>';
+        html += '<thead><tr style="background:#151a23;">';
+        var hds = ['Ticker','Group','Status','Setup','Last','Chg%','RSI','Vol/Avg20','Tx 1D','Entry Area','SL','TP1','TP2','RR','Catatan'];
+        hds.forEach(function(h) { html += '<th style="padding:3px 2px;text-align:left;color:#9ca3af;font-size:7px;font-weight:600;border-bottom:1px solid #242d3d;">' + h + '</th>'; });
+        html += '</tr></thead><tbody>';
+
+        var rows = document.querySelectorAll('#screenerTableBody tr');
+        rows.forEach(function(row) {
+            var cells = row.querySelectorAll('td');
+            if (cells.length < 14) return;
+            html += '<tr style="border-bottom:1px solid #1c2333;">';
+            for (var i = 0; i <= 14 && i < cells.length; i++) {
+                var text = cells[i] ? cells[i].textContent.trim() : '-';
+                var cs = 'padding:3px 2px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;';
+                if (i === 14) cs += 'white-space:normal;word-break:break-word;font-size:6.5px;color:#9ca3af;';
+                else cs += 'white-space:nowrap;';
+                html += '<td style="' + cs + '">' + text + '</td>';
+            }
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        html += _pdfFooter();
+        container.innerHTML = html;
+
         showToast('Menyiapkan PDF...', 'success');
         _downloadPdf(container, 'Auto-Cuan-Konglo-Screener.pdf', 'landscape');
     });
 }
 
+// ===== NON-KONGLO SCREENER PDF (builds a clean compact table from visible data) =====
 function exportNonKongloScreenerPDF() {
-    var pane = document.getElementById('screenerNonKongloPane');
-    if (!pane) return;
     var tbody = document.getElementById('nkScreenerTableBody');
     if (!tbody || !tbody.querySelector('tr td:not([colspan])')) {
         showToast('Belum ada data screener untuk di-export.', 'warning');
         return;
     }
     _ensureHtml2Pdf(function() {
-        var container = _buildPdfContainer(pane, { title: 'Auto-Cuan Non-Konglo Screener', width: '1100px' });
+        var container = document.createElement('div');
+        container.style.cssText = _pdfBaseStyle('1050') + 'font-size:8px;';
+
+        var html = _pdfHeader('Auto-Cuan Non-Konglo Screener');
+
+        // Meta
+        var metaBadge = (document.getElementById('nkScreenerMetaBadge') || {}).textContent || '';
+        if (metaBadge) html += '<div style="font-size:8px;color:#9ca3af;margin-bottom:6px;">Status: ' + metaBadge + '</div>';
+        if (_nkScreenerFilter && _nkScreenerFilter !== 'all') html += '<div style="font-size:8px;color:#6ee7b7;margin-bottom:6px;">Filter: ' + _nkScreenerFilter + '</div>';
+
+        // Build compact fixed-layout table
+        html += '<table style="width:100%;border-collapse:collapse;font-size:7px;table-layout:fixed;">';
+        html += '<colgroup><col style="width:3%"><col style="width:6%"><col style="width:5%"><col style="width:7%"><col style="width:5%"><col style="width:5.5%"><col style="width:5%"><col style="width:4.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:8.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:5.5%"><col style="width:4.5%"><col style="width:12.5%"></colgroup>';
+        html += '<thead><tr style="background:#151a23;">';
+        var hds = ['#','Ticker','Board','Status','Score','Last','Chg%','RSI','Vol/Avg20','Tx 1D','Avg Tx 7D','Entry Area','SL','TP1','TP2','RR','Catatan'];
+        hds.forEach(function(h) { html += '<th style="padding:3px 2px;text-align:left;color:#9ca3af;font-size:6.5px;font-weight:600;border-bottom:1px solid #242d3d;">' + h + '</th>'; });
+        html += '</tr></thead><tbody>';
+
+        var rows = document.querySelectorAll('#nkScreenerTableBody tr');
+        rows.forEach(function(row) {
+            var cells = row.querySelectorAll('td');
+            if (cells.length < 16) return;
+            html += '<tr style="border-bottom:1px solid #1c2333;">';
+            for (var i = 0; i < cells.length; i++) {
+                var text = cells[i] ? cells[i].textContent.trim() : '-';
+                var cs = 'padding:3px 2px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;';
+                if (i === cells.length - 1) cs += 'white-space:normal;word-break:break-word;font-size:6px;color:#9ca3af;';
+                else cs += 'white-space:nowrap;';
+                html += '<td style="' + cs + '">' + text + '</td>';
+            }
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        html += _pdfFooter();
+        container.innerHTML = html;
+
         showToast('Menyiapkan PDF...', 'success');
         _downloadPdf(container, 'Auto-Cuan-Non-Konglo-Screener.pdf', 'landscape');
     });
