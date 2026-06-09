@@ -70,6 +70,28 @@ module.exports = async function handler(req, res) {
       return await handleRefresh(req, res, supabase);
     }
 
+    // === DEBUG: member diagnostics for a specific group (Preview QA only) ===
+    if (action === 'debug-members') {
+      var debugGroup = String(req.query.group || '').toUpperCase().trim();
+      if (!debugGroup) return res.status(200).json({ success: false, error: 'group parameter required' });
+      var dbMapping = await supabase.from('sector_hot_group_members').select('ticker, stock_name, member_type, is_active, sort_order').eq('group_code', debugGroup);
+      var dbLatest = await supabase.from('sector_hot_latest').select('*').eq('group_code', debugGroup).maybeSingle();
+      var dbMembers = await supabase.from('sector_hot_members_latest').select('*').eq('group_code', debugGroup);
+      var membersRows = dbMembers.data || [];
+      var withLastPrice = membersRows.filter(function(r) { return r.last_price != null; }).length;
+      var withChangePct = membersRows.filter(function(r) { return r.change_pct != null; }).length;
+      var withVolume = membersRows.filter(function(r) { return r.volume_today != null; }).length;
+      var withRatio = membersRows.filter(function(r) { return r.volume_ratio_30d != null; }).length;
+      return res.status(200).json({
+        success: true,
+        group_code: debugGroup,
+        mapping: { data: dbMapping.data, error: dbMapping.error ? dbMapping.error.message : null, active_count: (dbMapping.data || []).filter(function(m){return m.is_active;}).length },
+        latest_header: { data: dbLatest.data, error: dbLatest.error ? dbLatest.error.message : null },
+        members_latest: { row_count: membersRows.length, with_last_price: withLastPrice, with_change_pct: withChangePct, with_volume: withVolume, with_ratio: withRatio, error: dbMembers.error ? dbMembers.error.message : null, sample: membersRows.length > 0 ? membersRows[0] : null, field_names: membersRows.length > 0 ? Object.keys(membersRows[0]) : [] },
+        conclusion: withLastPrice > 0 ? 'DB_HAS_DATA' : (membersRows.length > 0 ? 'ROWS_EXIST_BUT_NULL_FIELDS' : 'NO_ROWS_IN_DB')
+      });
+    }
+
     // === DETAIL MODE: single group + members (existing) ===
     if (groupCode) {
       const code = String(groupCode).toUpperCase().trim();
@@ -864,21 +886,20 @@ async function handleRefresh(req, res, supabase) {
         var member = groupMembers[m];
         var q = quoteCache[member.ticker];
 
-        // Only upsert member rows with valid market data (don't overwrite good data with nulls)
-        if (q) {
-          memberRows.push({
-            group_code: group.group_code,
-            ticker: member.ticker,
-            stock_name: member.stock_name,
-            last_price: q.lastPrice,
-            change_pct: q.changePct,
-            volume_today: q.volumeToday,
-            avg_volume_30d: q.avgVolume30d,
-            volume_ratio_30d: q.volumeRatio30d,
-            member_type: member.member_type,
-            calculated_at: now
-          });
-        }
+        // Always insert a row for each active member.
+        // Valid quote data populates fields; failed quotes get null fields.
+        memberRows.push({
+          group_code: group.group_code,
+          ticker: member.ticker,
+          stock_name: member.stock_name,
+          last_price: q ? q.lastPrice : null,
+          change_pct: q ? q.changePct : null,
+          volume_today: q ? q.volumeToday : null,
+          avg_volume_30d: q ? q.avgVolume30d : null,
+          volume_ratio_30d: q ? q.volumeRatio30d : null,
+          member_type: member.member_type,
+          calculated_at: now
+        });
 
         if (q) {
           validCount++;
@@ -891,14 +912,17 @@ async function handleRefresh(req, res, supabase) {
       if (memberRows.length > 0) {
         memberRowsAttempted += memberRows.length;
         if (!sampleMemberRow) sampleMemberRow = memberRows[0];
-        // Delete-then-insert per group (avoids dependency on a unique constraint
-        // for onConflict; guarantees member rows are persisted with market data).
-        await supabase.from('sector_hot_members_latest').delete().eq('group_code', group.group_code);
-        var memberInsert = await supabase.from('sector_hot_members_latest').insert(memberRows).select('ticker');
+        // Delete old rows then insert fresh ones. No .select() chain (avoids
+        // RLS/returning issues that caused silent insert failures on Preview).
+        var delResult = await supabase.from('sector_hot_members_latest').delete().eq('group_code', group.group_code);
+        if (delResult.error) {
+          memberUpsertErrors.push(group.group_code + '_DEL: ' + delResult.error.message);
+        }
+        var memberInsert = await supabase.from('sector_hot_members_latest').insert(memberRows);
         if (memberInsert.error) {
-          memberUpsertErrors.push(group.group_code + ': ' + memberInsert.error.message);
+          memberUpsertErrors.push(group.group_code + ': ' + memberInsert.error.message + (memberInsert.error.details ? ' | ' + memberInsert.error.details : '') + (memberInsert.error.hint ? ' | hint: ' + memberInsert.error.hint : ''));
         } else {
-          memberRowsInserted += (memberInsert.data ? memberInsert.data.length : memberRows.length);
+          memberRowsInserted += memberRows.length;
         }
       }
 
