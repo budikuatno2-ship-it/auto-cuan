@@ -176,10 +176,16 @@ module.exports = async function handler(req, res) {
       // Success as long as we have a group header OR active members.
       var detailSuccess = !!(groupData || (finalMembers && finalMembers.length > 0));
 
+      var membersWithData = finalMembers.filter(function(m) { return m.last_price != null; }).length;
+
       return res.status(200).json({
         success: detailSuccess,
         group: groupData || null,
         members: finalMembers,
+        members_count: finalMembers.length,
+        members_with_market_data_count: membersWithData,
+        sample_member: finalMembers.length > 0 ? finalMembers[0] : undefined,
+        field_names_returned: finalMembers.length > 0 ? Object.keys(finalMembers[0]) : undefined,
         diagnostics: (detailDiagnostics.groupError || detailDiagnostics.membersError || detailDiagnostics.mappingError) ? detailDiagnostics : undefined,
         error: detailSuccess ? undefined : 'Grup tidak ditemukan atau belum ada data mapping.'
       });
@@ -830,6 +836,10 @@ async function handleRefresh(req, res, supabase) {
     const now = new Date().toISOString();
     var groupsProcessed = 0;
     var memberUpsertErrors = [];
+    var memberRowsAttempted = 0;
+    var memberRowsInserted = 0;
+    var zeroActiveGroupsCleaned = 0;
+    var sampleMemberRow = null;
 
     for (var g = 0; g < groups.length; g++) {
       var group = groups[g];
@@ -839,6 +849,7 @@ async function handleRefresh(req, res, supabase) {
         // Clean up stale latest rows so it does not linger as an empty hot group.
         await supabase.from('sector_hot_latest').delete().eq('group_code', group.group_code);
         await supabase.from('sector_hot_members_latest').delete().eq('group_code', group.group_code);
+        zeroActiveGroupsCleaned++;
         continue;
       }
 
@@ -878,12 +889,16 @@ async function handleRefresh(req, res, supabase) {
       }
 
       if (memberRows.length > 0) {
+        memberRowsAttempted += memberRows.length;
+        if (!sampleMemberRow) sampleMemberRow = memberRows[0];
         // Delete-then-insert per group (avoids dependency on a unique constraint
         // for onConflict; guarantees member rows are persisted with market data).
         await supabase.from('sector_hot_members_latest').delete().eq('group_code', group.group_code);
-        var memberInsert = await supabase.from('sector_hot_members_latest').insert(memberRows);
+        var memberInsert = await supabase.from('sector_hot_members_latest').insert(memberRows).select('ticker');
         if (memberInsert.error) {
           memberUpsertErrors.push(group.group_code + ': ' + memberInsert.error.message);
+        } else {
+          memberRowsInserted += (memberInsert.data ? memberInsert.data.length : memberRows.length);
         }
       }
 
@@ -917,6 +932,11 @@ async function handleRefresh(req, res, supabase) {
       failedCount: failedCount,
       failedTickers: failedTickers.length > 0 ? failedTickers : undefined,
       memberUpsertErrors: memberUpsertErrors.length > 0 ? memberUpsertErrors : undefined,
+      memberInsertErrors: memberUpsertErrors.length > 0 ? memberUpsertErrors : undefined,
+      memberRowsAttempted: memberRowsAttempted,
+      memberRowsInserted: memberRowsInserted,
+      zeroActiveGroupsCleaned: zeroActiveGroupsCleaned,
+      sample_member: sampleMemberRow || undefined,
       groupsProcessed: groupsProcessed
     });
 
