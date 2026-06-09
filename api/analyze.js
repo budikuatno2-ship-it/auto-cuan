@@ -124,19 +124,28 @@ module.exports = async function handler(req, res) {
       // Runs for ALL intents EXCEPT follow_up_question, casual_chat, and contextual_data_followup.
       // Must run before AI to ensure deterministic structured output.
       if (detectedIHSG && intent !== 'follow_up_question' && intent !== 'casual_chat' && intent !== 'contextual_data_followup') {
+        // QUOTE SOURCE PRIORITY: frontend market data block > regex > server fallback.
+        // The frontend [Auto-Cuan Market Data] block is the SAME /api/quote the live
+        // card uses, so it is authoritative. Server fallback only when truly absent.
+        var ihsgQuoteSource = null, ihsgServerLast = null, ihsgUsedFallback = false;
         var ihsgData = parseMarketDataFromMessage(chatMessage);
-        // If market data unavailable from message, try server-side fetch
+        var ihsgFrontendLast = (ihsgData && ihsgData.last != null) ? ihsgData.last : null;
+        if (ihsgData && ihsgData.last) { ihsgQuoteSource = 'frontend_market_data'; }
         if (!ihsgData || !ihsgData.last) {
           var ihsgPriceMatch = chatMessage.match(/\b(\d{4,5}(?:\.\d+)?)\b/);
           if (ihsgPriceMatch) {
             ihsgData = { last: parseFloat(ihsgPriceMatch[1]), priceChange1D: null, volumeVsAvg20: null, rsi14: null, ma20: null, ma50: null, ma100: null, ma200: null, high: null, low: null, resistance1: null, resistance2: null, support1: null, support2: null, pivotPoint: null, fib382: null, fib500: null, fib618: null, fib786: null };
+            ihsgQuoteSource = 'message_regex';
           }
         }
-        // Server-side fallback: fetch IHSG quote directly if still no data
+        // Server-side fallback: fetch IHSG quote directly only if still no data
         if (!ihsgData || !ihsgData.last) {
           try {
             var ssQuote = await fetchServerSideQuote('IHSG');
             if (ssQuote && ssQuote.last) {
+              ihsgServerLast = ssQuote.last;
+              ihsgUsedFallback = true;
+              ihsgQuoteSource = 'server_fallback';
               ihsgData = {
                 last: ssQuote.last, priceChange1D: ssQuote.priceChange1D, volumeVsAvg20: ssQuote.volumeVsAvg20,
                 rsi14: ssQuote.rsi14, ma20: ssQuote.ma20, ma50: ssQuote.ma50, ma100: ssQuote.ma100, ma200: ssQuote.ma200,
@@ -151,7 +160,15 @@ module.exports = async function handler(req, res) {
         if (ihsgData && ihsgData.last) {
           var ihsgHtml = buildIHSGFixedTemplate(ihsgData, chatMessage);
           if (ihsgHtml) {
-            return res.status(200).json({ html: ihsgHtml, intent: 'ihsg_fixed_report', response_type: 'full_market_analysis', provider: 'template' });
+            return res.status(200).json({
+              html: ihsgHtml, intent: 'ihsg_fixed_report', response_type: 'full_market_analysis', provider: 'template',
+              quote_source: ihsgQuoteSource,
+              quote_last_used: ihsgData.last,
+              frontend_quote_last: ihsgFrontendLast,
+              server_quote_last: ihsgServerLast,
+              used_fallback: ihsgUsedFallback,
+              analysis_response_type: 'full_market_analysis'
+            });
           }
         }
       }
@@ -171,7 +188,10 @@ module.exports = async function handler(req, res) {
         }
       }
       if (detectedStockTicker) {
+        var stockQuoteSource = null, stockServerLast = null, stockUsedFallback = false;
         var stockData = parseMarketDataFromMessage(chatMessage);
+        var stockFrontendLast = (stockData && stockData.last != null) ? stockData.last : null;
+        if (stockData && stockData.last) { stockQuoteSource = 'frontend_market_data'; }
         // If no market data from [Auto-Cuan Market Data] block, try context or server-side fetch
         if (!stockData || !stockData.last) {
           var extractedPrice = null;
@@ -182,13 +202,17 @@ module.exports = async function handler(req, res) {
           }
           if (extractedPrice && extractedPrice > 0) {
             stockData = { last: extractedPrice, priceChange1D: null, volumeVsAvg20: null, rsi14: null, ma20: null, ma50: null, ma100: null, ma200: null, high: null, low: null, resistance1: null, resistance2: null, support1: null, support2: null, pivotPoint: null, fib382: null, fib500: null, fib618: null, fib786: null };
+            stockQuoteSource = 'message_regex';
           }
         }
-        // Server-side fallback: fetch stock quote directly if still no data
+        // Server-side fallback: fetch stock quote directly only if still no data
         if (!stockData || !stockData.last) {
           try {
             var ssStockQuote = await fetchServerSideQuote(detectedStockTicker);
             if (ssStockQuote && ssStockQuote.last) {
+              stockServerLast = ssStockQuote.last;
+              stockUsedFallback = true;
+              stockQuoteSource = 'server_fallback';
               stockData = {
                 last: ssStockQuote.last, priceChange1D: ssStockQuote.priceChange1D, volumeVsAvg20: ssStockQuote.volumeVsAvg20,
                 rsi14: ssStockQuote.rsi14, ma20: ssStockQuote.ma20, ma50: ssStockQuote.ma50, ma100: ssStockQuote.ma100, ma200: ssStockQuote.ma200,
@@ -203,7 +227,15 @@ module.exports = async function handler(req, res) {
         if (stockData && stockData.last) {
           var stockHtml = buildStockFixedTemplate(stockData, detectedStockTicker, chatMessage);
           if (stockHtml) {
-            return res.status(200).json({ html: stockHtml, intent: 'stock_fixed_report', response_type: 'full_stock_analysis', provider: 'template', ticker: detectedStockTicker });
+            return res.status(200).json({
+              html: stockHtml, intent: 'stock_fixed_report', response_type: 'full_stock_analysis', provider: 'template', ticker: detectedStockTicker,
+              quote_source: stockQuoteSource,
+              quote_last_used: stockData.last,
+              frontend_quote_last: stockFrontendLast,
+              server_quote_last: stockServerLast,
+              used_fallback: stockUsedFallback,
+              analysis_response_type: 'full_stock_analysis'
+            });
           }
         }
       }

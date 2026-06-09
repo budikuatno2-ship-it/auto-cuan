@@ -1602,9 +1602,9 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
         var company = (typeof getCompanyName === 'function') ? getCompanyName(ticker) : null;
         var enrichedMsg = ticker + (company ? '\n[Info: ' + ticker + ' = ' + company + ']' : '');
 
-        // Fetch quote context
+        // Fetch quote context (forceFresh=true so initial analysis matches the live card, not stale cache)
         if (typeof fetchQuoteContext === 'function') {
-            var quoteCtx = await fetchQuoteContext(ticker);
+            var quoteCtx = await fetchQuoteContext(ticker, true);
             if (quoteCtx) enrichedMsg += quoteCtx;
         }
 
@@ -1824,12 +1824,21 @@ async function handleAnalisisFollowUp(msg) {
             if (typeof updateAnalysisContext === 'function') updateAnalysisContext(msg, html);
             incrementChatUsage();
         } else {
-            throw new Error('no response');
+            // AI returned no html — use deterministic fallback instead of failing
+            var fb = (typeof buildFollowUpFallback === 'function') ? buildFollowUpFallback() : '<p class="text-sm text-gray-300">Coba tanyakan ulang dengan menyebut level atau angka spesifik.</p>';
+            resultArea.innerHTML += '<div class="mt-3 flex gap-3 fade-in-up"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="ai-content ai-followup bg-dark-700/40 border border-dark-600/20 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%]">' + fb + '</div></div>';
+            incrementChatUsage();
         }
     } catch(e) {
         var loadEl2 = document.getElementById('analisisFollowUpLoading');
         if (loadEl2) loadEl2.remove();
-        resultArea.innerHTML += '<div class="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl p-3"><p class="text-xs text-red-400">Belum berhasil mendapatkan jawaban. Coba lagi.</p></div>';
+        // Network/parse error — still give a deterministic answer from context
+        var fbErr = (typeof buildFollowUpFallback === 'function') ? buildFollowUpFallback() : null;
+        if (fbErr) {
+            resultArea.innerHTML += '<div class="mt-3 flex gap-3 fade-in-up"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="ai-content ai-followup bg-dark-700/40 border border-dark-600/20 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%]">' + fbErr + '</div></div>';
+        } else {
+            resultArea.innerHTML += '<div class="mt-3 bg-red-500/10 border border-red-500/20 rounded-xl p-3"><p class="text-xs text-red-400">Belum berhasil mendapatkan jawaban. Coba lagi.</p></div>';
+        }
     }
     resultArea.scrollTop = resultArea.scrollHeight;
 }
@@ -1868,6 +1877,9 @@ async function loadChartPage() {
 
 // ===== MODE SYSTEM (simplified - always Chat, intent auto-detected from message) =====
 var currentMode = 'chat';
+// Build marker — helps confirm the deployed Preview commit (avoid stale-cache confusion).
+window.__AUTOCUAN_BUILD__ = 'preview-qa-2026-06-08-diagnostics';
+try { console.log('%cAuto-Cuan build: ' + window.__AUTOCUAN_BUILD__, 'color:#34d399;font-weight:bold'); } catch (e) {}
 
 function toggleModeMenu() { /* removed - no dropdown */ }
 function selectMode(mode) { currentMode = 'chat'; }
@@ -2610,19 +2622,20 @@ var _quoteContextCache = {};
 var _quoteInflight = {};
 var QUOTE_CONTEXT_CACHE_TTL = 4 * 60 * 1000;
 
-async function fetchQuoteContext(ticker) {
+async function fetchQuoteContext(ticker, forceFresh) {
     if (!ticker || !isValidTicker(ticker)) return '';
 
-    // Check frontend cache
+    // Check frontend cache (skipped when forceFresh — initial analysis must match live card)
     var cacheKey = ticker;
-    var cached = _quoteContextCache[cacheKey];
-    if (cached && (Date.now() - cached.ts < QUOTE_CONTEXT_CACHE_TTL)) {
-        return cached.ctx;
-    }
-
-    // Deduplicate inflight requests for same ticker
-    if (_quoteInflight[cacheKey]) {
-        return _quoteInflight[cacheKey];
+    if (!forceFresh) {
+        var cached = _quoteContextCache[cacheKey];
+        if (cached && (Date.now() - cached.ts < QUOTE_CONTEXT_CACHE_TTL)) {
+            return cached.ctx;
+        }
+        // Deduplicate inflight requests for same ticker
+        if (_quoteInflight[cacheKey]) {
+            return _quoteInflight[cacheKey];
+        }
     }
 
     _quoteInflight[cacheKey] = (async function() {
@@ -5705,6 +5718,43 @@ function normalizeFinalStockHtml(html) {
     return o;
 }
 
+// ===== FOLLOW-UP DETERMINISTIC FALLBACK =====
+// Builds a compact answer from the latest analysis context when the AI
+// follow-up fails or returns unusable output. Never shows a hard error.
+function buildFollowUpFallback() {
+    var c = (typeof latestAnalysisContext === 'object' && latestAnalysisContext) ? latestAnalysisContext : {};
+    var ticker = c.ticker || activeTicker || 'instrumen ini';
+    var parts = [];
+    var supports = (c.supportLevels && c.supportLevels.length) ? c.supportLevels : (c.support ? [].concat(c.support) : []);
+    var resists = (c.resistanceLevels && c.resistanceLevels.length) ? c.resistanceLevels : (c.resistance ? [].concat(c.resistance) : []);
+    var s1 = supports[0], s2 = supports[1];
+    var r1 = resists[0];
+    var rsi = c.rsiValue;
+
+    var first = 'Untuk ' + ticker + ', ';
+    if (s1) {
+        first += 'support terdekat ada di <strong class="text-red-400">' + s1 + '</strong>';
+        if (s2) first += ', lalu <strong class="text-red-400">' + s2 + '</strong>';
+        first += '. Penurunan lebih dalam baru terkonfirmasi kalau level itu jebol dengan volume jual yang meningkat.';
+    } else {
+        first += 'level risiko utama mengacu pada support terdekat dari analisis terakhir; penurunan lebih dalam butuh konfirmasi breakdown dengan volume jual.';
+    }
+    parts.push('<p class="text-sm text-gray-300">' + first + '</p>');
+
+    var second = 'Selama ';
+    second += (s1 ? ('<strong>' + s1 + '</strong> masih bertahan') : 'support belum ditembus');
+    second += ', skenario turun dalam belum jadi acuan utama';
+    if (r1) second += ' dan potensi rebound tetap ada jika harga reclaim <strong class="text-emerald-400">' + r1 + '</strong>';
+    second += '.';
+    if (rsi != null) {
+        var rsiNum = parseFloat(rsi);
+        if (!isNaN(rsiNum) && rsiNum < 35) second += ' RSI sudah oversold (' + rsi + '), jadi hati-hati fake breakdown — tunggu konfirmasi candle harian.';
+    }
+    parts.push('<p class="text-sm text-gray-300">' + second + '</p>');
+
+    return parts.join('');
+}
+
 // ===== FOLLOW-UP TEMPLATE STRIPPER =====
 // Removes full analysis template elements from follow-up responses.
 // Ensures follow-up always renders as compact conversational answer.
@@ -5725,7 +5775,8 @@ function stripFollowUpTemplate(html) {
     // If after stripping we have almost nothing, the AI probably returned only template — return a fallback
     var textOnly = o.replace(/<[^>]+>/g, '').trim();
     if (textOnly.length < 20) {
-        return '<p class="text-sm text-gray-300">Maaf, jawaban follow-up belum berhasil dihasilkan. Coba tanyakan ulang dengan kalimat lain.</p>';
+        // Deterministic fallback from latest analysis context (never show a hard error)
+        return buildFollowUpFallback();
     }
     // Clean up empty paragraphs
     o = o.replace(/<p[^>]*>\s*<\/p>/gi, '');
