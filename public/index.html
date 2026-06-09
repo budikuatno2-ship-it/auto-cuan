@@ -390,6 +390,12 @@
         @media (min-width: 768px) {
             .sidebar { width: 300px; }
         }
+        /* ===== PDF/PRINT EXPORT: @media print ===== */
+        @media print {
+            body { background: #fff !important; color: #000 !important; }
+            nav, .nav-btn, #toastContainer, button, .screener-tab, .nk-screener-tab,
+            #analisisFollowUp, .spinner, .spinner-sm { display: none !important; }
+        }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -687,6 +693,7 @@
             </div>
             <div class="flex items-center gap-2">
                 <span id="screenerMetaBadge" class="px-2 py-1 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+                <button onclick="exportKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Export PDF</button>
             </div>
         </div>
         <p id="screenerFailedDiag" class="hidden text-[10px] text-red-400/70 mt-1"></p>
@@ -760,6 +767,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <span id="nkScreenerMetaBadge" class="px-2 py-1 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+                    <button onclick="exportNonKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Export PDF</button>
                 </div>
             </div>
             <!-- Progress bar (hidden when not scanning) -->
@@ -1638,6 +1646,7 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
                 '<button onclick="openChartFromAnalisis(\'' + ticker + '\')" class="px-3 py-1.5 rounded-lg text-xs text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Lihat Chart ' + ticker + '</button>' +
                 '<button onclick="openNewsFromAnalisis(\'' + ticker + '\')" class="px-3 py-1.5 rounded-lg text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>Lihat News ' + ticker + '</button>' +
                 '<button onclick="copyAnalisisResult()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-gray-500/30 hover:bg-gray-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>Salin Hasil</button>' +
+                '<button onclick="exportAnalisisPDF(\'' + ticker + '\')" class="px-3 py-1.5 rounded-lg text-xs text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Export PDF</button>' +
                 '</div>';
 
             // Show follow-up input
@@ -6663,6 +6672,166 @@ function downloadChartPng(chartId, ticker) {
     } catch (e) {
         showToast('Download chart belum tersedia di browser ini. Gunakan screenshot atau buka TradingView.', 'warning');
     }
+}
+
+// ===== PDF/PRINT EXPORT FUNCTIONS =====
+var _pdfDisclaimer = 'Ini bukan rekomendasi beli/jual. Gunakan sebagai bahan analisis mandiri dan kelola risiko.';
+
+function openPrintableReport(title, htmlContent) {
+    var w = window.open('', '_blank');
+    if (!w) { showToast('Pop-up diblokir. Izinkan pop-up untuk export PDF.', 'warning'); return; }
+    var now = new Date();
+    var ts = now.toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+    var doc = '<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + title + '</title>' +
+    '<style>' +
+    '*, *::before, *::after { box-sizing: border-box; }' +
+    'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20mm 15mm; color: #1a1a1a; background: #fff; font-size: 11px; line-height: 1.5; }' +
+    '.report-header { border-bottom: 2px solid #10b981; padding-bottom: 10px; margin-bottom: 16px; }' +
+    '.report-header h1 { font-size: 18px; margin: 0 0 4px; color: #064e3b; }' +
+    '.report-header .meta { font-size: 10px; color: #6b7280; }' +
+    '.report-content { margin-bottom: 20px; }' +
+    '.report-content p { margin: 0 0 8px; white-space: pre-line; }' +
+    '.report-content strong { font-weight: 700; }' +
+    '.report-content ul, .report-content ol { margin: 4px 0 8px; padding-left: 16px; }' +
+    '.report-content li { margin: 2px 0; }' +
+    '.report-footer { border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 20px; font-size: 9px; color: #9ca3af; }' +
+    'table { width: 100%; border-collapse: collapse; font-size: 10px; margin: 8px 0; }' +
+    'th, td { border: 1px solid #d1d5db; padding: 4px 6px; text-align: left; }' +
+    'th { background: #f3f4f6; font-weight: 600; font-size: 9px; text-transform: uppercase; color: #374151; }' +
+    'td { color: #1f2937; }' +
+    'tr:nth-child(even) td { background: #f9fafb; }' +
+    '.stats-row { display: flex; gap: 12px; margin: 8px 0 12px; }' +
+    '.stats-row .stat-box { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 12px; text-align: center; flex: 1; }' +
+    '.stats-row .stat-box .label { font-size: 9px; color: #6b7280; text-transform: uppercase; }' +
+    '.stats-row .stat-box .value { font-size: 14px; font-weight: 700; color: #1f2937; }' +
+    '.badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; }' +
+    '.badge-ready { background: #d1fae5; color: #065f46; }' +
+    '.badge-watch { background: #dbeafe; color: #1e40af; }' +
+    '.badge-spec { background: #fef3c7; color: #92400e; }' +
+    '.badge-avoid { background: #fee2e2; color: #991b1b; }' +
+    '@media print { body { padding: 10mm; } @page { size: A4; margin: 10mm; } }' +
+    '</style></head><body>' +
+    '<div class="report-header"><h1>' + title + '</h1><p class="meta">Dibuat: ' + ts + ' | Auto-Cuan SMC Analysis Platform</p></div>' +
+    '<div class="report-content">' + htmlContent + '</div>' +
+    '<div class="report-footer"><p>' + _pdfDisclaimer + '</p><p>Auto-Cuan &copy; ' + now.getFullYear() + '</p></div>' +
+    '</body></html>';
+    w.document.write(doc);
+    w.document.close();
+    setTimeout(function() { w.print(); }, 400);
+}
+
+function exportAnalisisPDF(ticker) {
+    var resultArea = document.getElementById('analisisResult');
+    if (!resultArea) return;
+    var contentEl = resultArea.querySelector('.ai-content');
+    if (!contentEl) { showToast('Belum ada hasil analisis untuk di-export.', 'warning'); return; }
+    var isIndex = isIndexTicker(ticker);
+    var title = isIndex ? 'Analisis IHSG - Auto-Cuan' : 'Analisis ' + ticker + ' - Auto-Cuan';
+    // Build clean HTML for print
+    var html = contentEl.innerHTML;
+    // Convert dark-themed HTML to print-friendly: strip colors, simplify
+    var printHtml = buildAnalysisPrintHtml(html, ticker, isIndex);
+    openPrintableReport(title, printHtml);
+}
+
+function buildAnalysisPrintHtml(html, ticker, isIndex) {
+    if (!html) return '';
+    var o = html;
+    // Remove inline color styles that won't print well
+    o = o.replace(/style="[^"]*"/gi, '');
+    // Remove tailwind classes that reference colors but keep structure
+    o = o.replace(/class="[^"]*"/gi, '');
+    // Replace colored spans/divs with clean versions
+    // Keep the structure but make it printer-friendly
+    // Convert decision-card structure  
+    o = o.replace(/<div[^>]*decision-card[^>]*>/gi, '<div style="border:1px solid #d1d5db;border-radius:8px;padding:10px;margin:8px 0;">');
+    o = o.replace(/<div[^>]*decision-grid[^>]*>/gi, '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;">');
+    o = o.replace(/<div[^>]*metric-grid[^>]*>/gi, '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;">');
+    o = o.replace(/<div[^>]*level-grid[^>]*>/gi, '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;">');
+    // Clean out any remaining complex nested classes  
+    // The content should be readable as-is with basic styling
+    return '<div style="font-size:12px;line-height:1.6;">' + o + '</div>';
+}
+
+function exportKongloScreenerPDF() {
+    var tbody = document.getElementById('screenerTableBody');
+    if (!tbody || !tbody.querySelector('tr td:not([colspan])')) {
+        showToast('Belum ada data screener untuk di-export.', 'warning');
+        return;
+    }
+    var title = 'Auto-Cuan Konglo Screener';
+    var htmlContent = buildKongloScreenerPrintHtml();
+    openPrintableReport(title, htmlContent);
+}
+
+function buildKongloScreenerPrintHtml() {
+    var html = '';
+    // Stats
+    var universe = (document.getElementById('screenerStatUniverse') || {}).textContent || '-';
+    var scanned = (document.getElementById('screenerStatScanned') || {}).textContent || '-';
+    var failed = (document.getElementById('screenerStatFailed') || {}).textContent || '-';
+    var metaBadge = (document.getElementById('screenerMetaBadge') || {}).textContent || '';
+    if (metaBadge) html += '<p><strong>Status:</strong> ' + metaBadge + '</p>';
+    html += '<div class="stats-row"><div class="stat-box"><div class="label">Universe</div><div class="value">' + universe + '</div></div><div class="stat-box"><div class="label">Scanned</div><div class="value">' + scanned + '</div></div><div class="stat-box"><div class="label">Failed</div><div class="value">' + failed + '</div></div></div>';
+    // Active filter
+    var activeFilter = _screenerFilter || 'all';
+    if (activeFilter !== 'all') html += '<p><strong>Filter:</strong> ' + activeFilter + '</p>';
+    // Table
+    html += '<table><thead><tr><th>Ticker</th><th>Group</th><th>Status</th><th>Setup</th><th>Last</th><th>Chg%</th><th>RSI</th><th>Vol/Avg20</th><th>Entry Area</th><th>SL</th><th>TP1</th><th>TP2</th><th>RR</th><th>Catatan</th></tr></thead><tbody>';
+    var rows = document.querySelectorAll('#screenerTableBody tr');
+    rows.forEach(function(row) {
+        var cells = row.querySelectorAll('td');
+        if (cells.length < 14) return;
+        html += '<tr>';
+        // Ticker(0), Group(1), Status(2), Setup(3), Last(4), Chg%(5), RSI(6), Vol/Avg20(7), Tx1D(8-skip for PDF), Entry(9), SL(10), TP1(11), TP2(12), RR(13), Catatan(14)
+        var indices = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14];
+        indices.forEach(function(i) {
+            if (cells[i]) {
+                var text = cells[i].textContent.trim();
+                html += '<td>' + text + '</td>';
+            } else {
+                html += '<td>-</td>';
+            }
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+}
+
+function exportNonKongloScreenerPDF() {
+    var tbody = document.getElementById('nkScreenerTableBody');
+    if (!tbody || !tbody.querySelector('tr td:not([colspan])')) {
+        showToast('Belum ada data screener untuk di-export.', 'warning');
+        return;
+    }
+    var title = 'Auto-Cuan Non-Konglo Screener';
+    var htmlContent = buildNonKongloScreenerPrintHtml();
+    openPrintableReport(title, htmlContent);
+}
+
+function buildNonKongloScreenerPrintHtml() {
+    var html = '';
+    // Meta
+    var metaBadge = (document.getElementById('nkScreenerMetaBadge') || {}).textContent || '';
+    if (metaBadge) html += '<p><strong>Status:</strong> ' + metaBadge + '</p>';
+    // Active filter
+    var activeFilter = _nkScreenerFilter || 'all';
+    if (activeFilter !== 'all') html += '<p><strong>Filter:</strong> ' + activeFilter + '</p>';
+    // Table
+    html += '<table><thead><tr><th>#</th><th>Ticker</th><th>Board</th><th>Status</th><th>Score</th><th>Last</th><th>Chg%</th><th>RSI</th><th>Vol/Avg20</th><th>Tx 1D</th><th>Avg Tx 7D</th><th>Entry Area</th><th>SL</th><th>TP1</th><th>TP2</th><th>RR</th><th>Catatan</th></tr></thead><tbody>';
+    var rows = document.querySelectorAll('#nkScreenerTableBody tr');
+    rows.forEach(function(row) {
+        var cells = row.querySelectorAll('td');
+        if (cells.length < 16) return;
+        html += '<tr>';
+        for (var i = 0; i < cells.length; i++) {
+            html += '<td>' + (cells[i].textContent.trim() || '-') + '</td>';
+        }
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
 }
 </script>
 </body>
