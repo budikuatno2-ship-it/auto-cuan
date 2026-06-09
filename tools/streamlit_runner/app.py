@@ -147,8 +147,22 @@ with tab_a:
                     col6.metric("memberRowsInserted", data.get("memberRowsInserted", "N/A"))
 
                     col7, col8 = st.columns(2)
-                    col7.metric("memberInsertErrors", data.get("memberInsertErrors", "N/A"))
+                    member_errors = data.get("memberInsertErrors", data.get("memberUpsertErrors", []))
+                    error_count = len(member_errors) if isinstance(member_errors, list) else member_errors
+                    col7.metric("memberInsertErrors", error_count)
                     col8.metric("zeroActiveGroupsCleaned", data.get("zeroActiveGroupsCleaned", "N/A"))
+
+                    # Show member insert errors detail
+                    if member_errors and isinstance(member_errors, list) and len(member_errors) > 0:
+                        st.error(f"⚠️ {len(member_errors)} member insert error(s):")
+                        for me in member_errors[:10]:
+                            st.write(f"- `{me}`")
+
+                    # Show failed tickers
+                    failed_tickers = data.get("failedTickers", [])
+                    if failed_tickers:
+                        with st.expander(f"❌ Failed Tickers ({len(failed_tickers)})"):
+                            st.write(", ".join(failed_tickers[:50]))
 
                     sample = data.get("sample_member")
                     if sample:
@@ -167,10 +181,11 @@ with tab_b:
 
     if st.button("▶️ Run Konglo Screener", key="btn_konglo"):
         if validate_config():
-            with st.spinner("Running Konglo Screener (ai=0)..."):
+            with st.spinner("Running Konglo Screener (ai=0)... This may take 1-3 minutes."):
                 resp, err = call_api(
                     "/api/sector-hot",
                     params={"action": "refresh-screener", "ai": "0"},
+                    timeout=300,  # screener needs longer timeout
                 )
 
             if err:
@@ -185,32 +200,68 @@ with tab_b:
                     data = None
 
                 if data:
-                    col1, col2 = st.columns(2)
-                    col1.metric("success", str(data.get("success", "N/A")))
-                    col2.metric("scanned / universe", f"{data.get('scanned', 'N/A')} / {data.get('universe', 'N/A')}")
+                    # --- Key metrics (correct field names from API) ---
+                    success = data.get("success", False)
+                    universe_count = data.get("universe_count", 0)
+                    scanned_count = data.get("scanned_count", 0)
+                    generated_count = data.get("generated_count", 0)
+                    saved_count = data.get("saved_count", 0)
+                    failed_count = data.get("failed_count", 0)
+                    save_error = data.get("save_error")
+                    ai_diagnostic = data.get("ai_diagnostic", "")
 
-                    failed_count = data.get("failedCount", data.get("failed_count", 0))
-                    st.metric("Failed Count", failed_count)
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("success", str(success))
+                    col2.metric("Universe", universe_count)
+                    col3.metric("Scanned", scanned_count)
 
-                    # Show failed tickers
-                    failed_items = data.get("failed", data.get("failedTickers", []))
+                    col4, col5, col6 = st.columns(3)
+                    col4.metric("Generated (passed filters)", generated_count)
+                    col5.metric("Saved to DB", saved_count)
+                    col6.metric("Failed (fetch)", failed_count)
+
+                    # --- Critical warnings ---
+                    if success and saved_count == 0:
+                        st.error(
+                            "⚠️ **Run succeeded but 0 rows saved!** "
+                            "Web UI Konglo page will still show empty. "
+                            "Check `save_error` in raw JSON below."
+                        )
+                    elif not success and saved_count == 0:
+                        st.error(
+                            "❌ **Refresh failed — no rows saved.** "
+                            "Web UI Konglo page will remain empty."
+                        )
+                    elif success and saved_count > 0:
+                        st.success(
+                            f"✅ **{saved_count} rows saved successfully.** "
+                            f"Web UI Konglo page should show data after reload."
+                        )
+
+                    if save_error:
+                        st.error(f"💾 Save Error: `{save_error}`")
+
+                    # --- AI diagnostic ---
+                    if ai_diagnostic:
+                        st.info(f"🤖 AI: {ai_diagnostic}")
+
+                    # --- Failed tickers ---
+                    failed_items = data.get("screener_failed_tickers", [])
                     if failed_items:
-                        st.subheader("Failed Tickers")
+                        st.subheader(f"Failed Tickers ({len(failed_items)})")
                         for item in failed_items[:20]:
                             if isinstance(item, dict):
                                 st.write(f"- **{item.get('ticker', '?')}**: {item.get('reason', 'unknown')}")
                             else:
                                 st.write(f"- {item}")
+                        if len(failed_items) > 20:
+                            st.caption(f"... and {len(failed_items) - 20} more (see raw JSON)")
 
-                    # Top results
-                    top_results = data.get("topResults", data.get("top_results", data.get("results", [])))
-                    if top_results:
-                        st.subheader("Top Results")
-                        for r in top_results[:10]:
-                            if isinstance(r, dict):
-                                st.write(f"- **{r.get('ticker', '?')}** — score: {r.get('score', 'N/A')}")
-                            else:
-                                st.write(f"- {r}")
+                    # --- AI candidate tickers sent ---
+                    ai_candidates = data.get("ai_candidates_sent", [])
+                    if ai_candidates:
+                        with st.expander(f"🎯 AI Candidates Sent ({len(ai_candidates)})"):
+                            st.write(", ".join(ai_candidates))
 
                     show_raw_json(data)
 
@@ -271,27 +322,36 @@ with tab_c:
                 # Display live progress
                 with log_container:
                     step = data.get("step", data.get("status", "unknown"))
-                    processed = data.get("processed", "?")
-                    total_universe = data.get("totalUniverse", data.get("universe", "?"))
-                    batch_index = data.get("batchIndex", data.get("batch", "?"))
-                    total_batches = data.get("totalBatches", data.get("batches", "?"))
-                    passed = data.get("passedCount", data.get("passed", "?"))
-                    failed_c = data.get("failedCount", data.get("failed", "?"))
-                    published = data.get("publishedCount", data.get("published", "?"))
-                    top_count = data.get("topCount", data.get("top", "?"))
+                    processed = data.get("processed", data.get("scanned_count", "?"))
+                    total_universe = data.get("universe_count", data.get("totalUniverse", "?"))
+                    batch_index = data.get("batch_index", data.get("batchIndex", "?"))
+                    total_batches = data.get("batch_count", data.get("totalBatches", "?"))
+                    passed = data.get("passed", data.get("result_count", "?"))
+                    failed_c = data.get("failed", data.get("failed_count", "?"))
+                    published = data.get("published", data.get("published_count", "?"))
+                    top_score = data.get("top_score", "?")
+                    message = data.get("message", "")
 
                     st.markdown(
                         f"**Run #{run_num}** | step: `{step}` | "
                         f"processed: {processed}/{total_universe} | "
                         f"batch: {batch_index}/{total_batches} | "
                         f"passed: {passed} | failed: {failed_c} | "
-                        f"published: {published} | top: {top_count}"
+                        f"published: {published} | top_score: {top_score}"
                     )
+                    if message:
+                        st.caption(f"  ↳ {message}")
 
                 # Check for terminal states
                 status_val = str(data.get("step", data.get("status", ""))).lower()
-                if any(term in status_val for term in ["finalize", "already_done", "already_completed", "done", "completed"]):
+                if any(term in status_val for term in ["finalize", "already_done", "already_completed", "done", "completed", "published"]):
                     st.success(f"✅ Non-Konglo finished at run #{run_num} — status: `{step}`")
+                    stopped = True
+                    break
+
+                # Check if API returns success=false with specific messages
+                if not data.get("success", True) and data.get("skipped"):
+                    st.warning(f"⏭️ Skipped: {data.get('error', 'unknown reason')}")
                     stopped = True
                     break
 
@@ -345,24 +405,42 @@ with tab_d:
                         data = None
 
                     if data:
+                        # API returns nested structure:
+                        # mapping: {data, error, active_count}
+                        # latest_header: {data, error}
+                        # members_latest: {row_count, with_last_price, with_change_pct, with_volume, with_ratio, error, sample, field_names}
+                        # conclusion: string
+
+                        mapping = data.get("mapping", {})
+                        latest_header = data.get("latest_header", {})
+                        members_latest = data.get("members_latest", {})
+
                         col1, col2 = st.columns(2)
-                        col1.metric("Active Member Count", data.get("activeMemberCount", "N/A"))
-                        col2.metric("members_latest row_count", data.get("membersLatestRowCount", data.get("row_count", "N/A")))
+                        col1.metric("Active Member Count", mapping.get("active_count", "N/A"))
+                        col2.metric("members_latest row_count", members_latest.get("row_count", "N/A"))
 
                         col3, col4 = st.columns(2)
-                        col3.metric("with_last_price", data.get("with_last_price", "N/A"))
-                        col4.metric("with_change_pct", data.get("with_change_pct", "N/A"))
+                        col3.metric("with_last_price", members_latest.get("with_last_price", "N/A"))
+                        col4.metric("with_change_pct", members_latest.get("with_change_pct", "N/A"))
 
                         col5, col6 = st.columns(2)
-                        col5.metric("with_volume", data.get("with_volume", "N/A"))
-                        col6.metric("with_ratio", data.get("with_ratio", "N/A"))
+                        col5.metric("with_volume", members_latest.get("with_volume", "N/A"))
+                        col6.metric("with_ratio", members_latest.get("with_ratio", "N/A"))
 
-                        header = data.get("latestHeader", data.get("latest_header"))
-                        if header:
+                        # Show errors if any
+                        if mapping.get("error"):
+                            st.error(f"Mapping error: {mapping['error']}")
+                        if latest_header.get("error"):
+                            st.error(f"Latest header error: {latest_header['error']}")
+                        if members_latest.get("error"):
+                            st.error(f"Members latest error: {members_latest['error']}")
+
+                        header_data = latest_header.get("data")
+                        if header_data:
                             st.subheader("Latest Header")
-                            st.json(header)
+                            st.json(header_data)
 
-                        sample_row = data.get("sampleRow", data.get("sample_row"))
+                        sample_row = members_latest.get("sample")
                         if sample_row:
                             st.subheader("Sample Row")
                             st.json(sample_row)
@@ -370,7 +448,12 @@ with tab_d:
                         conclusion = data.get("conclusion")
                         if conclusion:
                             st.subheader("Conclusion")
-                            st.info(conclusion)
+                            if conclusion == "DB_HAS_DATA":
+                                st.success(f"✅ {conclusion}")
+                            elif conclusion == "ROWS_EXIST_BUT_NULL_FIELDS":
+                                st.warning(f"⚠️ {conclusion}")
+                            else:
+                                st.error(f"❌ {conclusion}")
 
                         show_raw_json(data)
 
