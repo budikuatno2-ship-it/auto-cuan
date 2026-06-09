@@ -2587,10 +2587,19 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       });
     }
 
+    // Sort by status priority (actionable first), then score desc
+    var statusPriority = { 'READY_BREAKOUT': 1, 'PRE_SPIKE_WATCH': 2, 'MOMENTUM_CONTINUATION': 3, 'RECLAIM_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'AVOID': 7 };
+    var sortedRows = (rows || []).sort(function(a, b) {
+      var pa = statusPriority[a.status] || 8;
+      var pb = statusPriority[b.status] || 8;
+      if (pa !== pb) return pa - pb;
+      return (b.daytrade_score || 0) - (a.daytrade_score || 0);
+    });
+
     return res.status(200).json({
       success: true,
       meta: meta || { calculated_at: null, status: 'pending', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 },
-      results: rows || [],
+      results: sortedRows,
       updated_at: meta ? meta.calculated_at : null,
       calculated_at: meta ? meta.calculated_at : null,
       status: meta ? meta.status : 'pending'
