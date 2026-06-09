@@ -1152,8 +1152,42 @@
 
 <script src="/assets/idx-tickers.js"></script>
 <script src="/assets/fca-stocks.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+<script>
+// ===== PDF LIBRARY LOADER (multi-CDN fallback) =====
+(function() {
+    var jspdfUrls = [
+        'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js',
+        'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',
+        'https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js'
+    ];
+    var autoTableUrls = [
+        'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
+        'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
+        'https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'
+    ];
+    window._pdfLibReady = false;
+    window._pdfLibError = false;
+
+    function loadScript(urls, idx, onDone) {
+        if (idx >= urls.length) { onDone(false); return; }
+        var s = document.createElement('script');
+        s.src = urls[idx];
+        s.onload = function() { onDone(true); };
+        s.onerror = function() { loadScript(urls, idx + 1, onDone); };
+        document.head.appendChild(s);
+    }
+
+    // Load jsPDF first, then autoTable (autoTable depends on jsPDF)
+    loadScript(jspdfUrls, 0, function(ok1) {
+        if (!ok1) { window._pdfLibError = true; console.warn('[PDF] jsPDF failed to load from all CDNs'); return; }
+        loadScript(autoTableUrls, 0, function(ok2) {
+            if (!ok2) { window._pdfLibError = true; console.warn('[PDF] autoTable failed to load from all CDNs'); return; }
+            window._pdfLibReady = true;
+            console.log('[PDF] jsPDF + autoTable loaded successfully');
+        });
+    });
+})();
+</script>
 <script>
 // ===== DEVICE ID =====
 function getOrCreateDeviceId() {
@@ -6679,20 +6713,30 @@ function downloadChartPng(chartId, ticker) {
 var _pdfDisclaimer = 'Ini bukan rekomendasi beli/jual. Gunakan sebagai bahan analisis mandiri dan kelola risiko.';
 
 function _ensureJsPdf(cb) {
+    // Check if already loaded
     if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') { cb(); return; }
-    // Dynamic load fallback
-    var loaded = 0;
-    function check() { loaded++; if (loaded >= 2) cb(); }
-    var s1 = document.createElement('script');
-    s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js';
-    s1.onload = check;
-    s1.onerror = function() { showToast('PDF library gagal dimuat.', 'warning'); };
-    document.head.appendChild(s1);
-    var s2 = document.createElement('script');
-    s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
-    s2.onload = check;
-    s2.onerror = function() { showToast('PDF library gagal dimuat.', 'warning'); };
-    document.head.appendChild(s2);
+    // If we know it errored out
+    if (window._pdfLibError) {
+        console.error('[PDF] Library load failed. jspdf:', typeof window.jspdf, 'autoTable:', typeof (window.jspdf && window.jspdf.jsPDF && new (window.jspdf.jsPDF)().autoTable));
+        showToast('PDF library belum siap. Refresh halaman lalu coba lagi.', 'warning');
+        return;
+    }
+    // Wait for async loader to finish (retry every 200ms, max 3s)
+    var attempts = 0;
+    var maxAttempts = 15;
+    var timer = setInterval(function() {
+        attempts++;
+        if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') {
+            clearInterval(timer);
+            cb();
+            return;
+        }
+        if (attempts >= maxAttempts || window._pdfLibError) {
+            clearInterval(timer);
+            console.error('[PDF] Library not available after wait. jspdf:', typeof window.jspdf, '_pdfLibReady:', window._pdfLibReady, '_pdfLibError:', window._pdfLibError);
+            showToast('PDF library belum siap. Refresh halaman lalu coba lagi.', 'warning');
+        }
+    }, 200);
 }
 
 function _pdfAddHeader(doc, title, orientation) {
