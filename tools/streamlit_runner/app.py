@@ -27,7 +27,7 @@ api_base = st.sidebar.text_input(
     "API Base URL",
     value=os.getenv("API_BASE_URL", ""),
     placeholder="https://your-preview-url.vercel.app",
-    help="Vercel Preview deployment URL"
+    help="Vercel Preview deployment URL (no trailing slash)"
 )
 
 cron_secret = st.sidebar.text_input(
@@ -37,39 +37,86 @@ cron_secret = st.sidebar.text_input(
     help="Bearer token for protected API actions"
 )
 
+vercel_bypass = st.sidebar.text_input(
+    "Vercel Protection Bypass Token (optional)",
+    value=os.getenv("VERCEL_BYPASS_TOKEN", ""),
+    type="password",
+    help="Needed only if Preview has Vercel Deployment Protection enabled"
+)
+
 st.sidebar.divider()
 st.sidebar.caption("⚠️ Secrets are stored in local session only. Never committed.")
+if vercel_bypass:
+    st.sidebar.success("🔓 Bypass token set — will bypass Vercel auth.")
+else:
+    st.sidebar.info("ℹ️ No bypass token. If Preview is protected, requests may fail.")
 
 # ============================================================
 # HELPERS
 # ============================================================
 
-def get_headers():
-    """Build auth headers with Bearer CRON_SECRET."""
-    return {"Authorization": f"Bearer {cron_secret}"} if cron_secret else {}
+def get_headers(auth=False):
+    """Build request headers."""
+    headers = {}
+    if auth and cron_secret:
+        headers["Authorization"] = f"Bearer {cron_secret}"
+    return headers
 
 
 def api_url(action, **params):
-    """Build full API URL."""
+    """Build full API URL with optional Vercel bypass params."""
     base = api_base.rstrip("/")
     query = f"action={action}"
     for k, v in params.items():
         if v is not None:
             query += f"&{k}={v}"
+    # Append Vercel Protection Bypass params if token is set
+    if vercel_bypass:
+        query += f"&x-vercel-set-bypass-cookie=true&x-vercel-protection-bypass={vercel_bypass}"
     return f"{base}/api/sector-hot?{query}"
 
 
 def call_api(action, auth=False, **params):
-    """Call API and return JSON response."""
+    """Call API and return JSON response with robust error handling."""
     url = api_url(action, **params)
-    headers = get_headers() if auth else {}
+    headers = get_headers(auth=auth)
     try:
         resp = requests.get(url, headers=headers, timeout=120)
-        return resp.json()
+
+        # Try JSON parse
+        try:
+            return resp.json()
+        except (ValueError, requests.exceptions.JSONDecodeError):
+            # Response is not JSON — likely Vercel auth page or error page
+            body_preview = resp.text[:300] if resp.text else "(empty)"
+            is_vercel_auth = (
+                "Authentication Required" in resp.text or
+                "Vercel Authentication" in resp.text or
+                "x-vercel-protection" in resp.text.lower() or
+                "vercel.com" in resp.text.lower() and resp.status_code in (401, 403, 200)
+            )
+
+            error_msg = f"Non-JSON response (HTTP {resp.status_code})"
+            if is_vercel_auth:
+                error_msg = (
+                    "Preview deployment is protected by Vercel Authentication. "
+                    "Add VERCEL_BYPASS_TOKEN in the sidebar or use an unprotected deployment."
+                )
+
+            return {
+                "success": False,
+                "error": error_msg,
+                "_http_status": resp.status_code,
+                "_response_preview": body_preview,
+                "_is_vercel_auth": is_vercel_auth
+            }
+
     except requests.exceptions.Timeout:
-        return {"success": False, "error": "Request timeout (120s)"}
+        return {"success": False, "error": "Request timeout (120s). The API may be processing a large batch."}
+    except requests.exceptions.ConnectionError as e:
+        return {"success": False, "error": f"Connection error: {str(e)[:200]}"}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": f"Request failed: {str(e)[:200]}"}
 
 
 def check_config():
@@ -81,6 +128,21 @@ def check_config():
         st.error("❌ CRON_SECRET belum diisi. Isi di sidebar kiri.")
         return False
     return True
+
+
+def show_error_details(data):
+    """Show detailed error info for debugging."""
+    if data.get("_is_vercel_auth"):
+        st.error(f"🔒 {data['error']}")
+    else:
+        st.error(f"❌ {data.get('error', 'Unknown error')}")
+
+    if data.get("_http_status") or data.get("_response_preview"):
+        with st.expander("🔍 Debug Details"):
+            if data.get("_http_status"):
+                st.write(f"**HTTP Status:** {data['_http_status']}")
+            if data.get("_response_preview"):
+                st.code(data["_response_preview"][:500], language="html")
 
 
 # ============================================================
@@ -135,8 +197,15 @@ with tab_dt:
 
             data = call_api("daytrade-screener-run", auth=True, **params)
 
+            # Check for non-JSON / auth errors first
+            if data.get("_is_vercel_auth") or data.get("_http_status"):
+                show_error_details(data)
+                final_status = "failed"
+                last_data = data
+                break
+
             if not data.get("success") and data.get("status") != "running":
-                st.error(f"❌ Error: {data.get('error') or data.get('message', 'Unknown error')}")
+                show_error_details(data)
                 final_status = "failed"
                 last_data = data
                 break
@@ -193,7 +262,7 @@ with tab_dt:
             status_text.success(f"✅ Published! {last_data.get('published_count', 0)} candidates.")
         elif final_status == "already_done":
             status_text.success(f"✅ Already done for today. {last_data.get('published_count', 0)} candidates.")
-        else:
+        elif final_status != "failed":
             status_text.error(f"❌ Run ended with status: {final_status}")
 
         # Show failed tickers if any
@@ -202,53 +271,56 @@ with tab_dt:
             with st.expander(f"⚠️ Failed Tickers ({len(failed_tickers)})"):
                 st.json(failed_tickers[:20])
 
-        # Load and display latest results
-        st.divider()
-        st.subheader("📊 Latest Day Trade Results")
-        read_data = call_api("daytrade-screener", auth=False)
+        # Load and display latest results (only if not auth failure)
+        if final_status in ("published", "already_done"):
+            st.divider()
+            st.subheader("📊 Latest Day Trade Results")
+            read_data = call_api("daytrade-screener", auth=False)
 
-        if read_data.get("success") and read_data.get("results"):
-            results = read_data["results"]
-            meta = read_data.get("meta", {})
+            if read_data.get("_is_vercel_auth"):
+                show_error_details(read_data)
+            elif read_data.get("success") and read_data.get("results"):
+                results = read_data["results"]
+                meta = read_data.get("meta", {})
 
-            # Status distribution
-            st.caption(f"Last updated: {meta.get('calculated_at', '—')} | Mode: {meta.get('run_mode', '—')}")
-            status_counts = {}
-            for r in results:
-                s = r.get("status", "UNKNOWN")
-                status_counts[s] = status_counts.get(s, 0) + 1
+                # Status distribution
+                st.caption(f"Last updated: {meta.get('calculated_at', '—')} | Mode: {meta.get('run_mode', '—')}")
+                status_counts = {}
+                for r in results:
+                    s = r.get("status", "UNKNOWN")
+                    status_counts[s] = status_counts.get(s, 0) + 1
 
-            scols = st.columns(len(status_counts))
-            for i, (s, c) in enumerate(sorted(status_counts.items(),
-                                               key=lambda x: ["READY_BREAKOUT", "PRE_SPIKE_WATCH",
-                                                              "MOMENTUM_CONTINUATION", "RECLAIM_CANDIDATE",
-                                                              "WAIT_PULLBACK", "SPECULATIVE", "AVOID"].index(x[0])
-                                               if x[0] in ["READY_BREAKOUT", "PRE_SPIKE_WATCH",
-                                                           "MOMENTUM_CONTINUATION", "RECLAIM_CANDIDATE",
-                                                           "WAIT_PULLBACK", "SPECULATIVE", "AVOID"] else 99)):
-                with scols[i]:
-                    st.metric(s.replace("_", " ").title(), c)
+                priority_order = ["READY_BREAKOUT", "PRE_SPIKE_WATCH", "MOMENTUM_CONTINUATION",
+                                  "RECLAIM_CANDIDATE", "WAIT_PULLBACK", "SPECULATIVE", "AVOID"]
+                sorted_counts = sorted(status_counts.items(),
+                                       key=lambda x: priority_order.index(x[0]) if x[0] in priority_order else 99)
 
-            # Build DataFrame
-            display_cols = [
-                "ticker", "board", "status", "daytrade_score", "setup",
-                "last_price", "change_pct", "volume_ratio_20d", "value_today",
-                "prespike_score", "momentum_score", "entry_low", "entry_high",
-                "stop_loss", "tp1", "tp2", "risk_reward", "time_plan", "notes"
-            ]
-            df = pd.DataFrame(results)
-            available_cols = [c for c in display_cols if c in df.columns]
-            df_display = df[available_cols].copy()
+                if sorted_counts:
+                    scols = st.columns(len(sorted_counts))
+                    for i, (s, c) in enumerate(sorted_counts):
+                        with scols[i]:
+                            st.metric(s.replace("_", " ").title(), c)
 
-            # Format value_today
-            if "value_today" in df_display.columns:
-                df_display["value_today"] = df_display["value_today"].apply(
-                    lambda v: f"{v/1e9:.1f}B" if v and v >= 1e9 else (f"{v/1e6:.0f}M" if v and v >= 1e6 else "—")
-                )
+                # Build DataFrame
+                display_cols = [
+                    "ticker", "board", "status", "daytrade_score", "setup",
+                    "last_price", "change_pct", "volume_ratio_20d", "value_today",
+                    "prespike_score", "momentum_score", "entry_low", "entry_high",
+                    "stop_loss", "tp1", "tp2", "risk_reward", "time_plan", "notes"
+                ]
+                df = pd.DataFrame(results)
+                available_cols = [c for c in display_cols if c in df.columns]
+                df_display = df[available_cols].copy()
 
-            st.dataframe(df_display, use_container_width=True, height=600)
-        else:
-            st.warning("Data belum tersedia atau gagal dimuat.")
+                # Format value_today
+                if "value_today" in df_display.columns:
+                    df_display["value_today"] = df_display["value_today"].apply(
+                        lambda v: f"{v/1e9:.1f}B" if v and v >= 1e9 else (f"{v/1e6:.0f}M" if v and v >= 1e6 else "—")
+                    )
+
+                st.dataframe(df_display, use_container_width=True, height=600)
+            else:
+                st.warning("Data belum tersedia atau gagal dimuat.")
 
     # Quick read (no run)
     st.divider()
@@ -257,7 +329,10 @@ with tab_dt:
             st.error("❌ API Base URL belum diisi.")
         else:
             read_data = call_api("daytrade-screener", auth=False)
-            if read_data.get("success") and read_data.get("results"):
+
+            if read_data.get("_is_vercel_auth"):
+                show_error_details(read_data)
+            elif read_data.get("success") and read_data.get("results"):
                 results = read_data["results"]
                 meta = read_data.get("meta", {})
                 st.info(f"Status: {meta.get('status', '—')} | Published: {meta.get('published_count', 0)} | "
@@ -269,7 +344,7 @@ with tab_dt:
                 available = [c for c in cols if c in df.columns]
                 st.dataframe(df[available], use_container_width=True, height=400)
             else:
-                st.warning(f"Tidak ada data: {read_data.get('error', read_data.get('meta', {}).get('message', '—'))}")
+                show_error_details(read_data)
 
 
 # ============================================================
@@ -287,14 +362,16 @@ with tab_sektor:
         with st.spinner("Refreshing Sektor Hot..."):
             data = call_api("refresh", auth=True)
 
-        if data.get("success"):
+        if data.get("_is_vercel_auth"):
+            show_error_details(data)
+        elif data.get("success"):
             st.success(f"✅ Refresh complete! Scanned: {data.get('scannedCount', '—')}, "
                        f"Failed: {data.get('failedCount', 0)}, Groups: {data.get('groupsProcessed', '—')}")
             if data.get("failedTickers"):
                 with st.expander("⚠️ Failed Tickers"):
                     st.write(data["failedTickers"])
         else:
-            st.error(f"❌ Refresh failed: {data.get('error', 'Unknown')}")
+            show_error_details(data)
 
         with st.expander("📋 Raw Response"):
             st.json(data)
@@ -317,11 +394,13 @@ with tab_konglo:
             # Explicitly NO ai=1 parameter — deterministic only
             data = call_api("refresh-screener", auth=True)
 
-        if data.get("success"):
+        if data.get("_is_vercel_auth"):
+            show_error_details(data)
+        elif data.get("success"):
             st.success(f"✅ Screener complete! Universe: {data.get('universe_count', '—')}, "
                        f"Saved: {data.get('saved_count', 0)}, Failed: {data.get('failed_count', 0)}")
         else:
-            st.error(f"❌ Screener failed: {data.get('error', 'Unknown')}")
+            show_error_details(data)
 
         with st.expander("📋 Raw Response"):
             st.json(data)
@@ -354,6 +433,13 @@ with tab_nk:
 
             data = call_api("nk-screener-run", auth=True, force="1")
 
+            # Check for auth/non-JSON errors
+            if data.get("_is_vercel_auth") or data.get("_http_status"):
+                show_error_details(data)
+                final_status = "failed"
+                last_data = data
+                break
+
             if not data.get("success") and not data.get("step"):
                 # Check if it's a skip (outside window but we used force=1)
                 if data.get("skipped"):
@@ -361,7 +447,7 @@ with tab_nk:
                     final_status = "skipped"
                     last_data = data
                     break
-                st.error(f"❌ Error: {data.get('error', 'Unknown')}")
+                show_error_details(data)
                 final_status = "failed"
                 last_data = data
                 break
@@ -399,7 +485,7 @@ with tab_nk:
             status_text.success(f"✅ Non-Konglo Screener published! {pub} candidates.")
         elif final_status == "done":
             status_text.success("✅ No further action needed.")
-        else:
+        elif final_status != "failed":
             status_text.error(f"❌ Ended with: {final_status}")
 
         with st.expander("📋 Last Response"):
@@ -413,8 +499,10 @@ with tab_nk:
         else:
             # NK results require login headers — for Streamlit we just show raw
             data = call_api("nk-screener-results", auth=False)
-            if data.get("success") and data.get("results"):
+            if data.get("_is_vercel_auth"):
+                show_error_details(data)
+            elif data.get("success") and data.get("results"):
                 df = pd.DataFrame(data["results"])
                 st.dataframe(df, use_container_width=True, height=400)
             else:
-                st.warning(f"Tidak ada data atau akses ditolak: {data.get('error', '—')}")
+                show_error_details(data)

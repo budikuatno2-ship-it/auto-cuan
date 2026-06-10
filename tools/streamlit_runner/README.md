@@ -39,10 +39,24 @@ App will open at http://localhost:8501
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `API_BASE_URL` | Vercel deployment URL (Preview recommended) | Yes |
-| `CRON_SECRET` | Bearer token for protected API actions | Yes |
+| `API_BASE_URL` | Vercel deployment URL, no trailing slash (Preview recommended) | Yes |
+| `CRON_SECRET` | Bearer token for protected API actions (same as Vercel env) | Yes |
+| `VERCEL_BYPASS_TOKEN` | Bypass token for Vercel Deployment Protection | Only if Preview is protected |
 
 You can also type these directly into the Streamlit sidebar.
+
+### Vercel Deployment Protection
+
+If your Preview deployment shows "Authentication Required" when accessed without login:
+
+1. Go to Vercel Project Settings → Deployment Protection
+2. Find "Protection Bypass for Automation"
+3. Copy the bypass token
+4. Add it to `.env` as `VERCEL_BYPASS_TOKEN=<token>` or type in sidebar
+
+The bypass token is appended as query parameters to every API request:
+- `x-vercel-set-bypass-cookie=true`
+- `x-vercel-protection-bypass=<token>`
 
 ## Security
 
