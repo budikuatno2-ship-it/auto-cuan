@@ -437,7 +437,10 @@ with tab_nk:
             call_count += 1
             status_text.info(f"⏳ NK Screener call #{call_count}...")
 
-            data = call_api("nk-screener-run", auth=True, force="1")
+            # force=1 only on first call to trigger clean start
+            # Subsequent calls use auto-mode (no force) to process batches naturally
+            params = {"force": "1"} if call_count == 1 else {}
+            data = call_api("nk-screener-run", auth=True, **params)
 
             # Check for auth/non-JSON errors
             if data.get("_is_vercel_auth") or (data.get("_http_status") and data.get("_http_status") not in (200, 401)):
@@ -459,11 +462,13 @@ with tab_nk:
                     final_status = "skipped"
                     break
 
-                # Cannot finalize: pending/processing remain — this means batches not done yet
-                # With force=1, stale processing jobs should be auto-reset. Keep looping.
-                if "pending/processing batches remain" in error_msg:
-                    detail_text.caption(f"⏳ Finalize attempted but batches remain ({data.get('pending', '?')} pending). Continuing...")
-                    time.sleep(1.0)
+                # Cannot finalize: pending/processing remain — batches still in progress
+                # This can happen if a batch is currently being processed by another request
+                # or if there's a race condition. Continue looping — next call will process batch.
+                if "pending/processing batches remain" in error_msg or "processing" in error_msg.lower():
+                    pending_count = data.get("pending", "?")
+                    detail_text.caption(f"⏳ Finalize attempted but {pending_count} batch(es) remain. Processing next...")
+                    time.sleep(1.5)
                     continue
 
                 # Blocked by stale processing without force (shouldn't happen since we use force=1)

@@ -1880,20 +1880,17 @@ async function handleNkScreenerRun(req, res, supabase) {
     return await handleNkScreenerStart(req, res, supabase);
   }
 
-  // If scanning, process next batch
-  if (meta.status === 'scanning') {
-    // force=1 safety: reset stale 'processing' jobs (stuck from crashed previous run)
-    // A job is stale if started_at > 3 minutes ago and still 'processing'
-    if (req.query.force === '1') {
-      var staleThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
-      await supabase
-        .from('swing_screener_non_konglo_jobs')
-        .update({ status: 'pending', started_at: null })
-        .eq('run_date', runDate)
-        .eq('status', 'processing')
-        .lt('started_at', staleThreshold);
-    }
+  // force=1 with scanning status: start a CLEAN fresh run
+  // This safely clears stale jobs/staging from a crashed previous run.
+  // handleNkScreenerStart already deletes old jobs + staging for today's runDate.
+  // Latest published rows (swing_screener_non_konglo_latest) are NOT wiped here —
+  // they are only replaced during finalize after new results are ready.
+  if (req.query.force === '1' && meta.status === 'scanning') {
+    return await handleNkScreenerStart(req, res, supabase);
+  }
 
+  // If scanning (without force), process next batch
+  if (meta.status === 'scanning') {
     // Check if pending batches exist
     const { data: pendingJobs } = await supabase
       .from('swing_screener_non_konglo_jobs')
@@ -1906,7 +1903,7 @@ async function handleNkScreenerRun(req, res, supabase) {
       return await handleNkScreenerBatch(req, res, supabase);
     }
 
-    // Check if there are still-stuck processing jobs (without force=1, these block finalize)
+    // Check if there are still-stuck processing jobs (block finalize)
     const { data: processingJobs } = await supabase
       .from('swing_screener_non_konglo_jobs')
       .select('id')
@@ -1915,8 +1912,6 @@ async function handleNkScreenerRun(req, res, supabase) {
       .limit(1);
 
     if (processingJobs && processingJobs.length > 0) {
-      // Still have processing jobs — if force=1, they were just reset above so shouldn't reach here
-      // If no force, report the blockage clearly
       return res.status(200).json({
         success: false,
         error: 'Batch masih dalam status processing (kemungkinan timeout). Gunakan force=1 untuk reset.',
