@@ -4951,6 +4951,19 @@ async function loadSwingScreener(silent) {
                 else if (m.status === 'scanning') { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25 animate-pulse-glow'; }
                 else if (m.status === 'failed') { badge.textContent = 'ERROR'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25'; }
                 else { badge.textContent = 'PENDING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
+                // V2 Freshness label: show STALE warning if data is not from today
+                if (m.calculated_at && m.status !== 'scanning') {
+                    var calcDate = new Date(m.calculated_at);
+                    var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
+                    var calcDateStr = calcDate.toISOString().slice(0, 10);
+                    var todayStr = nowWib.toISOString().slice(0, 10);
+                    if (calcDateStr !== todayStr) {
+                        badge.textContent = 'STALE';
+                        badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
+                        var staleSub = document.getElementById('screenerSubtitle');
+                        if (staleSub) { staleSub.textContent = '\u26A0 Data stale \u2014 hasil dari scan terakhir (' + calcDateStr + '). Refresh ulang sebelum entry. ' + (staleSub.textContent || ''); }
+                    }
+                }
             }
 
             // Failed ticker diagnostics (extract from meta.message if present)
@@ -5213,6 +5226,17 @@ function updateNkScreenerMeta(meta) {
         else if (meta.status === 'failed') { badge.textContent = 'ERROR'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25'; }
         else if (meta.status === 'scanning' || meta.status === 'finalizing') { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25 animate-pulse-glow'; }
         else { badge.textContent = 'IDLE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
+        // V2 Freshness label: show STALE warning if data is not from today
+        if (meta.calculated_at && meta.status !== 'scanning' && meta.status !== 'finalizing') {
+            var nkCalcDate = new Date(meta.calculated_at);
+            var nkNowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
+            var nkCalcDateStr = nkCalcDate.toISOString().slice(0, 10);
+            var nkTodayStr = nkNowWib.toISOString().slice(0, 10);
+            if (nkCalcDateStr !== nkTodayStr) {
+                badge.textContent = 'STALE';
+                badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
+            }
+        }
     }
     var sub = document.getElementById('nkScreenerSubtitle');
     if (sub) {
@@ -5227,7 +5251,14 @@ function updateNkScreenerMeta(meta) {
         } else if (meta.calculated_at) {
             var dt = new Date(meta.calculated_at);
             var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-            sub.textContent = 'Update: ' + wibStr + ' WIB · Non-Konglomerat · Papan Utama & Pengembangan';
+            var nkSubText = 'Update: ' + wibStr + ' WIB · Non-Konglomerat · Papan Utama & Pengembangan';
+            // V2 Freshness warning in subtitle
+            var nkCalcDate2 = new Date(meta.calculated_at);
+            var nkNowWib2 = new Date(Date.now() + 7 * 60 * 60 * 1000);
+            if (nkCalcDate2.toISOString().slice(0, 10) !== nkNowWib2.toISOString().slice(0, 10)) {
+                nkSubText = '\u26A0 Data stale \u2014 hasil dari scan terakhir. Refresh ulang sebelum entry. · ' + nkSubText;
+            }
+            sub.textContent = nkSubText;
         } else if (meta.status === 'failed') {
             sub.textContent = 'Gagal: ' + (meta.message || 'Coba jalankan ulang. Proses bisa dilanjutkan (resume).');
         }
@@ -7285,6 +7316,17 @@ async function loadDayTradeScreener() {
         if (badge) {
             var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—';
             badge.textContent = (meta.status || 'pending') + ' · ' + ts;
+            // V2 Freshness label: warn if Day Trade data is not from today
+            if (meta.calculated_at && meta.status !== 'scanning') {
+                var dtCalcDate = new Date(meta.calculated_at);
+                var dtNowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
+                var dtCalcDateStr = dtCalcDate.toISOString().slice(0, 10);
+                var dtTodayStr = dtNowWib.toISOString().slice(0, 10);
+                if (dtCalcDateStr !== dtTodayStr) {
+                    badge.textContent = '\u26A0 STALE · Data day trade bukan hari ini (' + dtCalcDateStr + '). Jangan dipakai untuk entry intraday. · ' + ts;
+                    badge.style.color = '#f59e0b';
+                }
+            }
         }
 
         var statU = document.getElementById('dtStatUniverse');

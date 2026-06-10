@@ -998,6 +998,7 @@ function calculateIndicators(candles) {
   var closes = candles.map(function(c) { return c.close; });
   var highs = candles.map(function(c) { return c.high; });
   var lows = candles.map(function(c) { return c.low; });
+  var opens = candles.map(function(c) { return c.open; });
   var volumes = candles.map(function(c) { return c.volume; });
 
   var lastIdx = closes.length - 1;
@@ -1042,11 +1043,56 @@ function calculateIndicators(candles) {
   if (entry_low < last_price * 0.97) entry_low = round0(last_price * 0.97);
   var entry_high = round0(entry_low + last_price * pctWidth);
 
-  // Stop loss
+  // === ATR14 CALCULATION (V2 Guard A4) ===
+  var atr14 = null;
+  if (candles.length >= 15) {
+    var trSum = 0;
+    var trCount = 0;
+    for (var ai = lastIdx - 13; ai <= lastIdx; ai++) {
+      if (ai < 1) continue;
+      var trHigh = highs[ai] - lows[ai];
+      var trHighPrev = Math.abs(highs[ai] - closes[ai - 1]);
+      var trLowPrev = Math.abs(lows[ai] - closes[ai - 1]);
+      var tr = Math.max(trHigh, trHighPrev, trLowPrev);
+      trSum += tr;
+      trCount++;
+    }
+    if (trCount > 0) atr14 = trSum / trCount;
+  }
+
+  // Stop loss — ATR-aware (V2 Guard A4)
   var entryMid = (entry_low + entry_high) / 2;
   var sl_candidate = round0(primarySupport * 0.985);
   var sl_max = round0(entryMid * 0.95);
   var stop_loss = Math.max(sl_candidate, sl_max);
+  if (stop_loss >= entry_low) {
+    stop_loss = round0(entry_low * 0.965);
+  }
+
+  // ATR-based SL refinement: use 1.5x ATR as guard
+  var atrSlUsed = false;
+  if (atr14 && atr14 > 0) {
+    var atrStop = round0(entryMid - (1.5 * atr14));
+    // Only tighten if existing SL is too far; don't widen excessively
+    var existingSlDist = entryMid - stop_loss;
+    var atrSlDist = entryMid - atrStop;
+    if (existingSlDist > atrSlDist * 1.3 && atrStop < entry_low && atrStop > entryMid * 0.92) {
+      // Tighten: ATR says existing SL is too far
+      stop_loss = atrStop;
+      atrSlUsed = true;
+    } else if (atrSlDist > existingSlDist * 1.5 && atrStop > entryMid * 0.92) {
+      // ATR says SL may be too close for this volatility — slightly widen
+      var widened = round0(entryMid - (1.2 * atr14));
+      if (widened < entry_low && widened > entryMid * 0.92) {
+        stop_loss = Math.min(widened, stop_loss);
+      }
+    }
+  }
+
+  // Final SL safety: max 5% from entry
+  if (stop_loss < entryMid * 0.95) {
+    stop_loss = round0(entryMid * 0.95);
+  }
   if (stop_loss >= entry_low) {
     stop_loss = round0(entry_low * 0.965);
   }
@@ -1056,21 +1102,88 @@ function calculateIndicators(candles) {
   var range = resistance - primarySupport;
   var tp2 = round0(resistance + range * 0.5);
 
-  // Risk/Reward
+  // Risk/Reward — recalculated after ATR adjustment
   var risk = entryMid - stop_loss;
   var reward1 = tp1 - entryMid;
   var risk_reward = risk > 0 ? round2(reward1 / risk) : 0;
 
   var invalidation = 'Close < ' + round0(stop_loss);
 
-  // Detect distribution candle
+  // === V2 CANDLE ANALYSIS (A1 + A2) ===
   var lastCandle = candles[lastIdx];
-  var bodySize = Math.abs(lastCandle.close - lastCandle.open);
-  var totalRange = lastCandle.high - lastCandle.low;
-  var isLargeRed = lastCandle.close < lastCandle.open && bodySize > totalRange * 0.6 && volumes[lastIdx] > volAvg20 * 1.5;
+  var candleOpen = lastCandle.open;
+  var candleHigh = lastCandle.high;
+  var candleLow = lastCandle.low;
+  var candleClose = lastCandle.close;
+  var candleRange = candleHigh - candleLow;
+  var body = Math.abs(candleClose - candleOpen);
+  var upperShadow = candleHigh - Math.max(candleOpen, candleClose);
+  var lowerShadow = Math.min(candleOpen, candleClose) - candleLow;
+  var closePosition = candleRange > 0 ? (candleClose - candleLow) / candleRange : 0.5;
+  var volRatio = volAvg20 > 0 ? volumes[lastIdx] / volAvg20 : 0;
+  var isBullish = candleClose > candleOpen;
 
-  // Detect overextended
-  var overextended = ma20 > 0 ? (last_price - ma20) / ma20 > 0.08 : false;
+  // A1: Volume Accumulation vs Distribution
+  var isAccumulation = isBullish && closePosition >= 0.55 && volRatio >= 1.0;
+  var isDistribution = false;
+  var distributionStrength = 0; // 0=none, 1=mild, 2=strong
+  if (!isBullish && volRatio >= 1.5) { isDistribution = true; distributionStrength = volRatio >= 2.0 ? 2 : 1; }
+  else if (volRatio >= 2.0 && closePosition < 0.5) { isDistribution = true; distributionStrength = 2; }
+  else if (upperShadow > body * 1.5 && volRatio >= 1.5) { isDistribution = true; distributionStrength = body > 0 && upperShadow > body * 2.0 ? 2 : 1; }
+  else if (upperShadow > body * 2.0 && closePosition < 0.6) { isDistribution = true; distributionStrength = 1; }
+
+  // Legacy isLargeRed (kept for backward compat in scoring — now subsumed by distribution guard)
+  var bodySize = body;
+  var totalRange = candleRange;
+  var isLargeRed = !isBullish && bodySize > totalRange * 0.6 && volumes[lastIdx] > volAvg20 * 1.5;
+
+  // A2: Candle Rejection / Indecision
+  var bodyRatio = candleRange > 0 ? body / candleRange : 0.5;
+  var isDoji = bodyRatio < 0.25 && volRatio < 1.3;
+  var isStrongRejection = upperShadow > body * 2.0 && closePosition < 0.6 && volRatio >= 1.2;
+
+  // Detect overextended (V2: stricter threshold for Konglo: >10% above MA20)
+  var overextended = ma20 > 0 ? (last_price - ma20) / ma20 > 0.10 : false;
+  // V2 A6: distance above MA20 for Wait Pullback
+  var distAboveMA20Pct = ma20 > 0 ? round2((last_price - ma20) / ma20 * 100) : 0;
+
+  // === V2 Trend Strength Proxy (A5 — light bonus/penalty only) ===
+  // NOTE: This is a lightweight DX-based proxy, NOT full Wilder-smoothed ADX14.
+  // Used only for ±3-5 bonus/penalty. Not exposed to UI as "ADX14".
+  var trendStrengthProxy = null;
+  if (candles.length >= 28) {
+    try {
+      var plusDMs = [];
+      var minusDMs = [];
+      var trs = [];
+      for (var di = 1; di <= lastIdx; di++) {
+        var trH = highs[di] - lows[di];
+        var trHP = Math.abs(highs[di] - closes[di - 1]);
+        var trLP = Math.abs(lows[di] - closes[di - 1]);
+        trs.push(Math.max(trH, trHP, trLP));
+        var upMove = highs[di] - highs[di - 1];
+        var downMove = lows[di - 1] - lows[di];
+        plusDMs.push(upMove > downMove && upMove > 0 ? upMove : 0);
+        minusDMs.push(downMove > upMove && downMove > 0 ? downMove : 0);
+      }
+      if (trs.length >= 14) {
+        // Simple 14-period averages (not full Wilder smoothing)
+        var startI = trs.length - 14;
+        var sumTR = 0, sumPlusDM = 0, sumMinusDM = 0;
+        for (var si = startI; si < trs.length; si++) {
+          sumTR += trs[si];
+          sumPlusDM += plusDMs[si];
+          sumMinusDM += minusDMs[si];
+        }
+        var avgTR14 = sumTR / 14;
+        var plusDI = avgTR14 > 0 ? (sumPlusDM / 14) / avgTR14 * 100 : 0;
+        var minusDI = avgTR14 > 0 ? (sumMinusDM / 14) / avgTR14 * 100 : 0;
+        var diSum = plusDI + minusDI;
+        var dx = diSum > 0 ? Math.abs(plusDI - minusDI) / diSum * 100 : 0;
+        trendStrengthProxy = round2(dx);
+      }
+    } catch (e) { trendStrengthProxy = null; } // Fail silently
+  }
 
   return {
     last_price: round0(last_price),
@@ -1092,7 +1205,21 @@ function calculateIndicators(candles) {
     _overextended: overextended,
     _belowMA50: ma50 ? last_price < ma50 : false,
     _belowSupport: last_price < primarySupport,
-    _slDistance: risk > 0 && entryMid > 0 ? round2(risk / entryMid * 100) : 99
+    _slDistance: risk > 0 && entryMid > 0 ? round2(risk / entryMid * 100) : 99,
+    // V2 Guard fields
+    _isAccumulation: isAccumulation,
+    _isDistribution: isDistribution,
+    _distributionStrength: distributionStrength,
+    _isDoji: isDoji,
+    _isStrongRejection: isStrongRejection,
+    _volRatio: round2(volRatio),
+    _closePosition: round2(closePosition),
+    _upperShadow: upperShadow,
+    _body: body,
+    _atr14: atr14 ? round2(atr14) : null,
+    _atrSlUsed: atrSlUsed,
+    _adx14: trendStrengthProxy,
+    _distAboveMA20Pct: distAboveMA20Pct
   };
 }
 
@@ -1102,6 +1229,7 @@ function calculateIndicators(candles) {
 
 function scoreAndClassify(data) {
   var score = 50;
+  var v2Notes = []; // Collect V2 guard notes for status_reason
 
   // TREND
   if (data.ma20 && data.last_price >= data.ma20) score += 10;
@@ -1112,21 +1240,42 @@ function scoreAndClassify(data) {
   else if (data.ma50 && data.last_price >= data.ma50 * 0.97) score += 3;
   else score -= 10;
 
-  // MOMENTUM / RSI
+  // MOMENTUM / RSI — V2 Guard A3: widened realistic range
   if (data.rsi14 !== null) {
-    if (data.rsi14 >= 45 && data.rsi14 <= 68) score += 15;
-    else if (data.rsi14 >= 40 && data.rsi14 < 45) score += 8;
-    else if (data.rsi14 > 68 && data.rsi14 <= 75) score += 5;
-    else if (data.rsi14 >= 30 && data.rsi14 < 40) score += 3;
-    else if (data.rsi14 > 75) score -= 5;
-    else score -= 10;
+    if (data.rsi14 >= 45 && data.rsi14 <= 70) score += 15;        // V2: widened from 68 to 70
+    else if (data.rsi14 >= 40 && data.rsi14 < 45) score += 8;     // early accumulation
+    else if (data.rsi14 > 70 && data.rsi14 <= 75) score += 5;     // momentum ok but caution
+    else if (data.rsi14 >= 30 && data.rsi14 < 40) score += 3;     // oversold zone
+    else if (data.rsi14 > 75 && data.rsi14 <= 80) score -= 5;     // V2: gradual penalty
+    else if (data.rsi14 > 80) score -= 12;                         // V2: strong overbought penalty
+    else score -= 10;                                               // extreme low
   }
 
-  // VOLUME
-  if (data.volume_ratio_avg20 >= 1.5) score += 15;
-  else if (data.volume_ratio_avg20 >= 1.2) score += 12;
-  else if (data.volume_ratio_avg20 >= 0.8) score += 5;
-  else score -= 5;
+  // VOLUME — V2 Guard A1: Volume bonus conditional on accumulation/distribution
+  if (data._isAccumulation) {
+    // Full volume bonus — bullish candle with good close position
+    if (data.volume_ratio_avg20 >= 1.5) score += 15;
+    else if (data.volume_ratio_avg20 >= 1.2) score += 12;
+    else if (data.volume_ratio_avg20 >= 0.8) score += 5;
+    else score -= 5;
+  } else if (data._isDistribution) {
+    // V2: Distribution candle — reduce or negate volume bonus, apply penalty
+    if (data._distributionStrength >= 2) {
+      // Strong distribution: no volume bonus + penalty
+      score -= 15;
+      v2Notes.push('Volume tinggi tetapi candle distribusi/rejection. Hati-hati false breakout.');
+    } else {
+      // Mild distribution: reduced bonus + small penalty
+      score -= 8;
+      v2Notes.push('Volume meningkat dengan tekanan jual. Waspadai distribusi.');
+    }
+  } else {
+    // Normal candle (no strong signal either way) — standard volume bonus
+    if (data.volume_ratio_avg20 >= 1.5) score += 12;  // slightly reduced vs accumulation
+    else if (data.volume_ratio_avg20 >= 1.2) score += 10;
+    else if (data.volume_ratio_avg20 >= 0.8) score += 5;
+    else score -= 5;
+  }
 
   // RISK/REWARD
   if (data.risk_reward >= 2.5) score += 15;
@@ -1135,11 +1284,42 @@ function scoreAndClassify(data) {
   else if (data.risk_reward >= 1.0) score += 3;
   else score -= 5;
 
-  // PENALTIES
-  if (data._isLargeRed) score -= 15;
+  // === V2 Guard A2: Candle Rejection / Indecision penalty ===
+  if (data._isStrongRejection) {
+    score -= 12;
+    v2Notes.push('Upper shadow besar dengan volume tinggi. Entry jangan dikejar.');
+  } else if (data._isDoji) {
+    score -= 5;
+    v2Notes.push('Candle indecision/doji. Tunggu konfirmasi arah.');
+  }
+
+  // === V2 Guard A5: Trend strength proxy (lightweight DX-based, NOT full ADX14) ===
+  if (data._adx14 !== null) {
+    if (data._adx14 > 25) { score += 5; }          // Strong trend
+    else if (data._adx14 > 20) { score += 3; }     // Moderate trend
+    else if (data._adx14 < 15) { score -= 5; }     // Weak/no trend
+    else if (data._adx14 < 18) { score -= 3; }     // Below threshold
+  }
+
+  // PENALTIES (legacy + enhanced)
+  if (data._isLargeRed && !data._isDistribution) score -= 15; // avoid double-penalty with distribution guard
   if (data._overextended) score -= 10;
   if (data._belowSupport) score -= 15;
   if (data._slDistance > 5) score -= 8;
+
+  // V2 Guard A4: ATR SL note
+  if (data._atrSlUsed) {
+    v2Notes.push('SL disesuaikan berbasis volatilitas ATR.');
+  }
+  if (data._slDistance > 5) {
+    v2Notes.push('Risk terlalu jauh dari entry. Tunggu setup lebih dekat.');
+  }
+
+  // V2 Guard A6: Wait Pullback for overextended above MA20 (>10%)
+  if (data._distAboveMA20Pct > 12) {
+    score -= 5; // additional penalty beyond _overextended
+    v2Notes.push('Harga sudah jauh di atas MA20 (+' + data._distAboveMA20Pct.toFixed(1) + '%). Tunggu pullback, jangan chase.');
+  }
 
   score = Math.max(0, Math.min(100, score));
 
@@ -1154,23 +1334,37 @@ function scoreAndClassify(data) {
   if (score < 80) { passesAllHardFilters = false; failReasons.push('Score < 80'); }
   if (!(data.ma20 && data.last_price >= data.ma20 * 0.99)) { passesAllHardFilters = false; failReasons.push('Di bawah MA20'); }
   if (!(data.ma50 && data.last_price >= data.ma50)) { passesAllHardFilters = false; failReasons.push('Di bawah MA50'); }
-  if (!(data.rsi14 !== null && data.rsi14 >= 45 && data.rsi14 <= 68)) {
+  // V2 Guard A3: RSI range for Swing Ready widened to 45-70, but >75 blocks, >80 hard block
+  if (!(data.rsi14 !== null && data.rsi14 >= 45 && data.rsi14 <= 70)) {
     passesAllHardFilters = false;
     if (data.rsi14 === null) failReasons.push('RSI tidak tersedia');
-    else if (data.rsi14 > 68) failReasons.push('RSI terlalu tinggi');
+    else if (data.rsi14 > 80) failReasons.push('RSI overbought (' + data.rsi14.toFixed(0) + ')');
+    else if (data.rsi14 > 70) failReasons.push('RSI tinggi (' + data.rsi14.toFixed(0) + ')');
     else if (data.rsi14 < 45) failReasons.push('RSI terlalu rendah');
     else failReasons.push('RSI tidak ideal');
   }
+  // V2: RSI >80 absolute block
+  if (data.rsi14 !== null && data.rsi14 > 80) { passesAllHardFilters = false; if (failReasons.indexOf('RSI overbought (' + data.rsi14.toFixed(0) + ')') < 0) failReasons.push('RSI overbought'); }
   if (!(data.volume_ratio_avg20 >= 1.0)) { passesAllHardFilters = false; failReasons.push('Volume belum cukup'); }
   if (!(data.risk_reward >= 1.5)) { passesAllHardFilters = false; failReasons.push('RR kurang layak'); }
   if (!(data._slDistance <= 5)) { passesAllHardFilters = false; failReasons.push('SL terlalu jauh'); }
   if (data._isLargeRed) { passesAllHardFilters = false; failReasons.push('Candle distribusi'); }
+  // V2 Guard A1: Strong distribution blocks Swing Ready
+  if (data._isDistribution && data._distributionStrength >= 2) { passesAllHardFilters = false; failReasons.push('Distribusi kuat'); }
+  // V2 Guard A2: Strong rejection blocks Swing Ready
+  if (data._isStrongRejection) { passesAllHardFilters = false; failReasons.push('Candle rejection kuat'); }
   if (data._overextended) { passesAllHardFilters = false; failReasons.push('Overextended'); }
+  // V2 Guard A6: >10% above MA20 blocks Swing Ready for Konglo
+  if (data._distAboveMA20Pct > 10) { passesAllHardFilters = false; failReasons.push('Jauh di atas MA20'); }
   if (data._belowSupport) { passesAllHardFilters = false; failReasons.push('Breakdown support'); }
 
   if (passesAllHardFilters) {
     status = 'Swing Ready';
     status_reason = 'Setup lengkap: trend, momentum, volume, RR layak.';
+  } else if (data._distAboveMA20Pct > 10 && score >= 55) {
+    // V2 Guard A6: Overextended — Wait Pullback
+    status = 'Watchlist';
+    status_reason = 'Harga jauh di atas MA20 (+' + data._distAboveMA20Pct.toFixed(1) + '%). Tunggu pullback.';
   } else if (data.rsi14 !== null && data.rsi14 >= 30 && data.rsi14 <= 40 &&
              data.last_price > data.support &&
              data.volume_ratio_avg20 >= 0.8 &&
@@ -1184,6 +1378,11 @@ function scoreAndClassify(data) {
   } else {
     status = 'Invalid';
     status_reason = failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : 'Setup tidak memenuhi kriteria.';
+  }
+
+  // Append V2 guard notes to status_reason
+  if (v2Notes.length > 0) {
+    status_reason += ' | ' + v2Notes.join(' ');
   }
 
   return { score: score, status: status, status_reason: status_reason };
@@ -2304,6 +2503,33 @@ async function fetchNkQuoteData(ticker) {
     const belowSupport = lastClose < support;
     const slDistance = stopLoss > 0 ? ((entryMid - stopLoss) / entryMid) * 100 : 0;
 
+    // === V2 CANDLE ANALYSIS for Non-Konglo (A1 + A2) ===
+    const nkOpen = lastCandle.open;
+    const nkHigh = lastCandle.high;
+    const nkLow = lastCandle.low;
+    const nkClose = lastCandle.close;
+    const nkUpperShadow = nkHigh - Math.max(nkOpen, nkClose);
+    const nkClosePosition = candleRange > 0 ? (nkClose - nkLow) / candleRange : 0.5;
+    const nkIsBullish = nkClose > nkOpen;
+    const nkVolRatio = volumeRatioAvg20;
+
+    // A1: Accumulation vs Distribution
+    const nkIsAccumulation = nkIsBullish && nkClosePosition >= 0.55 && nkVolRatio >= 1.0;
+    let nkIsDistribution = false;
+    let nkDistributionStrength = 0;
+    if (!nkIsBullish && nkVolRatio >= 1.5) { nkIsDistribution = true; nkDistributionStrength = nkVolRatio >= 2.0 ? 2 : 1; }
+    else if (nkVolRatio >= 2.0 && nkClosePosition < 0.5) { nkIsDistribution = true; nkDistributionStrength = 2; }
+    else if (nkUpperShadow > candleBody * 1.5 && nkVolRatio >= 1.5) { nkIsDistribution = true; nkDistributionStrength = nkUpperShadow > candleBody * 2.0 ? 2 : 1; }
+    else if (nkUpperShadow > candleBody * 2.0 && nkClosePosition < 0.6) { nkIsDistribution = true; nkDistributionStrength = 1; }
+
+    // A2: Candle Rejection / Indecision
+    const nkBodyRatio = candleRange > 0 ? candleBody / candleRange : 0.5;
+    const nkIsDoji = nkBodyRatio < 0.25 && nkVolRatio < 1.3;
+    const nkIsStrongRejection = nkUpperShadow > candleBody * 2.0 && nkClosePosition < 0.6 && nkVolRatio >= 1.2;
+
+    // A6: distance above MA20 for Wait Pullback
+    const nkDistAboveMA20Pct = ma20 > 0 ? ((lastClose - ma20) / ma20) * 100 : 0;
+
     return {
       closes: closesArr,
       lastPrice: lastClose,
@@ -2337,7 +2563,14 @@ async function fetchNkQuoteData(ticker) {
       entryDistancePct: Number(originalEntryDistancePct.toFixed(2)),
       last_price: lastClose,
       change_pct: Number(changePct.toFixed(2)),
-      volume_ratio_avg20: Number(volumeRatioAvg20.toFixed(2))
+      volume_ratio_avg20: Number(volumeRatioAvg20.toFixed(2)),
+      // V2 Guard fields
+      nkIsAccumulation: nkIsAccumulation,
+      nkIsDistribution: nkIsDistribution,
+      nkDistributionStrength: nkDistributionStrength,
+      nkIsDoji: nkIsDoji,
+      nkIsStrongRejection: nkIsStrongRejection,
+      nkDistAboveMA20Pct: Number(nkDistAboveMA20Pct.toFixed(2))
     };
   } catch (e) {
     return null;
@@ -2375,21 +2608,38 @@ function calculateNkSetupScore(q) {
   // Bonus: price in/near actionable entry zone (+3)
   if (q.priceInEntryZone) { score += 3; components.push('near entry'); }
 
-  // 2. MOMENTUM / RSI (same as Konglo: +15/+8/+5/+3/-5/-10)
+  // 2. MOMENTUM / RSI — V2 Guard A3: widened realistic range (same as Konglo V2)
   if (q.rsi14 !== null) {
-    if (q.rsi14 >= 45 && q.rsi14 <= 68) { score += 15; components.push('RSI ' + q.rsi14.toFixed(1) + ' ideal'); }
+    if (q.rsi14 >= 45 && q.rsi14 <= 70) { score += 15; components.push('RSI ' + q.rsi14.toFixed(1) + ' ideal'); }
     else if (q.rsi14 >= 40 && q.rsi14 < 45) { score += 8; components.push('RSI ' + q.rsi14.toFixed(1) + ' netral'); }
-    else if (q.rsi14 > 68 && q.rsi14 <= 75) { score += 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' kuat'); }
+    else if (q.rsi14 > 70 && q.rsi14 <= 75) { score += 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' kuat'); }
     else if (q.rsi14 >= 30 && q.rsi14 < 40) { score += 3; components.push('RSI ' + q.rsi14.toFixed(1) + ' oversold zone'); }
-    else if (q.rsi14 > 75) { score -= 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' overbought'); }
+    else if (q.rsi14 > 75 && q.rsi14 <= 80) { score -= 5; components.push('RSI ' + q.rsi14.toFixed(1) + ' overbought'); }
+    else if (q.rsi14 > 80) { score -= 12; components.push('RSI ' + q.rsi14.toFixed(1) + ' overbought kuat'); }
     else { score -= 10; components.push('RSI ' + q.rsi14.toFixed(1) + ' extreme'); }
   }
 
-  // 3. VOLUME (same as Konglo: +15/+12/+5/-5)
-  if (q.volumeRatioAvg20 >= 1.5) { score += 15; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x tinggi'); }
-  else if (q.volumeRatioAvg20 >= 1.2) { score += 12; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x above avg'); }
-  else if (q.volumeRatioAvg20 >= 0.8) { score += 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x normal'); }
-  else { score -= 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x rendah'); }
+  // 3. VOLUME — V2 Guard A1: conditional on accumulation/distribution
+  if (q.nkIsAccumulation) {
+    // Full volume bonus — bullish with good close position
+    if (q.volumeRatioAvg20 >= 1.5) { score += 15; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x akumulasi'); }
+    else if (q.volumeRatioAvg20 >= 1.2) { score += 12; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x above avg'); }
+    else if (q.volumeRatioAvg20 >= 0.8) { score += 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x normal'); }
+    else { score -= 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x rendah'); }
+  } else if (q.nkIsDistribution) {
+    // V2: Distribution — reduced/negated bonus + penalty
+    if (q.nkDistributionStrength >= 2) {
+      score -= 15; components.push('distribusi kuat vol ' + q.volumeRatioAvg20.toFixed(2) + 'x');
+    } else {
+      score -= 8; components.push('distribusi ringan vol ' + q.volumeRatioAvg20.toFixed(2) + 'x');
+    }
+  } else {
+    // Normal candle — standard volume bonus (slightly reduced)
+    if (q.volumeRatioAvg20 >= 1.5) { score += 12; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x tinggi'); }
+    else if (q.volumeRatioAvg20 >= 1.2) { score += 10; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x above avg'); }
+    else if (q.volumeRatioAvg20 >= 0.8) { score += 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x normal'); }
+    else { score -= 5; components.push('vol ' + q.volumeRatioAvg20.toFixed(2) + 'x rendah'); }
+  }
 
   // 4. RISK/REWARD (same as Konglo: +15/+12/+8/+3/-5)
   if (q.riskReward >= 2.5) { score += 15; components.push('RR ' + q.riskReward.toFixed(2) + ' baik'); }
@@ -2398,11 +2648,18 @@ function calculateNkSetupScore(q) {
   else if (q.riskReward >= 1.0) { score += 3; }
   else { score -= 5; }
 
-  // 5. PENALTIES (same as Konglo: -15/-10/-15/-8)
-  if (q.isLargeRed) { score -= 15; components.push('candle distribusi'); }
+  // 5. PENALTIES (same as Konglo: -15/-10/-15/-8) — V2: avoid double-penalty with distribution
+  if (q.isLargeRed && !q.nkIsDistribution) { score -= 15; components.push('candle distribusi'); }
   if (q.overextended && q.setupType !== 'breakout') { score -= 10; components.push('overextended'); }
   if (q.belowSupport) { score -= 15; components.push('breakdown support'); }
   if (q.slDistance > 5) { score -= 8; components.push('SL jauh ' + q.slDistance.toFixed(1) + '%'); }
+
+  // V2 Guard A2: Candle Rejection / Indecision penalty
+  if (q.nkIsStrongRejection) { score -= 12; components.push('rejection candle kuat'); }
+  else if (q.nkIsDoji) { score -= 5; components.push('candle indecision'); }
+
+  // V2 Guard A6: Wait Pullback for overextended above MA20 (>12% for non-konglo)
+  if (q.nkDistAboveMA20Pct > 12) { score -= 5; components.push('jauh di atas MA20 +' + q.nkDistAboveMA20Pct.toFixed(1) + '%'); }
 
   // 5b. ENTRY-DISTANCE PENALTY (strengthened guard)
   // Use entryDistancePct (from actual entry_high) for realistic penalty
@@ -2441,26 +2698,36 @@ function calculateNkSetupScore(q) {
   var failReasons = [];
   var edPctClassify = q.entryDistancePct || 0;
 
-  // Swing Ready hard filters (matching Konglo, score threshold 75)
+  // Swing Ready hard filters (matching Konglo V2, score threshold 75)
   var passesAllHardFilters = true;
   if (score < 75) { passesAllHardFilters = false; failReasons.push('Score < 75'); }
   if (!(q.ma20 && q.lastPrice >= q.ma20 * 0.99)) { passesAllHardFilters = false; failReasons.push('Di bawah MA20'); }
   if (!(q.ma50 && q.lastPrice >= q.ma50)) { passesAllHardFilters = false; failReasons.push('Di bawah MA50'); }
-  if (!(q.rsi14 !== null && q.rsi14 >= 45 && q.rsi14 <= 68)) {
+  // V2 Guard A3: RSI range widened to 45-70 for Swing Ready
+  if (!(q.rsi14 !== null && q.rsi14 >= 45 && q.rsi14 <= 70)) {
     passesAllHardFilters = false;
     if (q.rsi14 === null) failReasons.push('RSI N/A');
-    else if (q.rsi14 > 68) failReasons.push('RSI tinggi');
+    else if (q.rsi14 > 80) failReasons.push('RSI overbought (' + q.rsi14.toFixed(0) + ')');
+    else if (q.rsi14 > 70) failReasons.push('RSI tinggi (' + q.rsi14.toFixed(0) + ')');
     else if (q.rsi14 < 45) failReasons.push('RSI rendah');
   }
+  // V2: RSI >80 absolute block
+  if (q.rsi14 !== null && q.rsi14 > 80) { passesAllHardFilters = false; }
   if (!(q.volumeRatioAvg20 >= 1.0)) { passesAllHardFilters = false; failReasons.push('Vol < 1x'); }
   if (!(q.riskReward >= 1.5)) { passesAllHardFilters = false; failReasons.push('RR kurang'); }
   if (q.slDistance > 5) { passesAllHardFilters = false; failReasons.push('SL jauh'); }
   if (q.isLargeRed) { passesAllHardFilters = false; failReasons.push('Candle distribusi'); }
+  // V2 Guard A1: Strong distribution blocks Swing Ready
+  if (q.nkIsDistribution && q.nkDistributionStrength >= 2) { passesAllHardFilters = false; failReasons.push('Distribusi kuat'); }
+  // V2 Guard A2: Strong rejection blocks Swing Ready
+  if (q.nkIsStrongRejection) { passesAllHardFilters = false; failReasons.push('Candle rejection'); }
   if (q.overextended && q.setupType !== 'breakout') { passesAllHardFilters = false; failReasons.push('Overextended'); }
   if (q.belowSupport) { passesAllHardFilters = false; failReasons.push('Breakdown'); }
   // ENTRY-DISTANCE HARD FILTER: >5% above entry = NOT immediately actionable
   if (edPctClassify > 5) { passesAllHardFilters = false; failReasons.push('Entry distance +' + edPctClassify.toFixed(1) + '%'); }
   if (!q.priceInEntryZone && q.distanceAboveEntry > 10) { passesAllHardFilters = false; failReasons.push('Price jauh dari Fib entry'); }
+  // V2 Guard A6: >12% above MA20 blocks Swing Ready for Non-Konglo
+  if (q.nkDistAboveMA20Pct > 12) { passesAllHardFilters = false; failReasons.push('Jauh di atas MA20'); }
   // Breakout trigger: entry above current price — NOT immediate Swing Ready
   if (q.setupType === 'breakout') { passesAllHardFilters = false; failReasons.push('Breakout trigger (wait konfirmasi)'); }
   // wait_pullback setup — by definition not immediately actionable
