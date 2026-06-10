@@ -1,0 +1,420 @@
+"""
+Auto-Cuan Streamlit Manual Runner
+=================================
+Local tool for manually running screeners and refreshes.
+No secrets are committed. CRON_SECRET is read from .env or sidebar input.
+"""
+
+import os
+import time
+import streamlit as st
+import requests
+import pandas as pd
+from dotenv import load_dotenv
+
+# Load .env if present
+load_dotenv()
+
+# ============================================================
+# SIDEBAR — Configuration
+# ============================================================
+
+st.set_page_config(page_title="Auto-Cuan Runner", page_icon="📊", layout="wide")
+
+st.sidebar.title("⚙️ Configuration")
+
+api_base = st.sidebar.text_input(
+    "API Base URL",
+    value=os.getenv("API_BASE_URL", ""),
+    placeholder="https://your-preview-url.vercel.app",
+    help="Vercel Preview deployment URL"
+)
+
+cron_secret = st.sidebar.text_input(
+    "CRON_SECRET",
+    value=os.getenv("CRON_SECRET", ""),
+    type="password",
+    help="Bearer token for protected API actions"
+)
+
+st.sidebar.divider()
+st.sidebar.caption("⚠️ Secrets are stored in local session only. Never committed.")
+
+# ============================================================
+# HELPERS
+# ============================================================
+
+def get_headers():
+    """Build auth headers with Bearer CRON_SECRET."""
+    return {"Authorization": f"Bearer {cron_secret}"} if cron_secret else {}
+
+
+def api_url(action, **params):
+    """Build full API URL."""
+    base = api_base.rstrip("/")
+    query = f"action={action}"
+    for k, v in params.items():
+        if v is not None:
+            query += f"&{k}={v}"
+    return f"{base}/api/sector-hot?{query}"
+
+
+def call_api(action, auth=False, **params):
+    """Call API and return JSON response."""
+    url = api_url(action, **params)
+    headers = get_headers() if auth else {}
+    try:
+        resp = requests.get(url, headers=headers, timeout=120)
+        return resp.json()
+    except requests.exceptions.Timeout:
+        return {"success": False, "error": "Request timeout (120s)"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def check_config():
+    """Validate configuration."""
+    if not api_base:
+        st.error("❌ API Base URL belum diisi. Isi di sidebar kiri.")
+        return False
+    if not cron_secret:
+        st.error("❌ CRON_SECRET belum diisi. Isi di sidebar kiri.")
+        return False
+    return True
+
+
+# ============================================================
+# TABS
+# ============================================================
+
+st.title("📊 Auto-Cuan Manual Runner")
+
+tab_dt, tab_sektor, tab_konglo, tab_nk = st.tabs([
+    "🎯 Day Trade Screener",
+    "🔥 Sektor Hot Refresh",
+    "📈 Konglo Screener",
+    "📊 Non-Konglo Screener"
+])
+
+# ============================================================
+# TAB: DAY TRADE SCREENER
+# ============================================================
+
+with tab_dt:
+    st.header("Day Trade Screener")
+    st.caption("Intraday momentum & pre-spike radar. Deterministic, no AI.")
+
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        dt_mode = st.selectbox("Run Mode", ["auto", "morning", "midday", "afternoon"],
+                               help="Auto = detect from WIB time")
+    with col2:
+        st.write("")  # spacer
+
+    if st.button("🚀 Run Day Trade Screener", type="primary", use_container_width=True):
+        if not check_config():
+            st.stop()
+
+        # Initialize progress
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        metrics_cols = st.columns(5)
+        detail_text = st.empty()
+
+        batch = 0
+        max_batches = 100  # safety limit
+        final_status = None
+        last_data = None
+
+        while batch < max_batches:
+            status_text.info(f"⏳ Calling batch {batch}...")
+
+            params = {"force": "1", "batch": str(batch)}
+            if dt_mode != "auto":
+                params["mode"] = dt_mode
+
+            data = call_api("daytrade-screener-run", auth=True, **params)
+
+            if not data.get("success") and data.get("status") != "running":
+                st.error(f"❌ Error: {data.get('error') or data.get('message', 'Unknown error')}")
+                final_status = "failed"
+                last_data = data
+                break
+
+            status = data.get("status", "unknown")
+            universe = data.get("universe_count", 0)
+            scanned = data.get("scanned_count", 0)
+            passed = data.get("passed_count", 0)
+            failed = data.get("failed_count", 0)
+            batch_count = data.get("batch_count", 1)
+            published = data.get("published_count", 0)
+            message = data.get("message", "")
+
+            # Update progress
+            pct = scanned / universe if universe > 0 else 0
+            progress_bar.progress(min(pct, 1.0))
+
+            with metrics_cols[0]:
+                st.metric("Status", status.upper())
+            with metrics_cols[1]:
+                st.metric("Scanned", f"{scanned}/{universe}")
+            with metrics_cols[2]:
+                st.metric("Batch", f"{batch + 1}/{batch_count}")
+            with metrics_cols[3]:
+                st.metric("Passed", passed)
+            with metrics_cols[4]:
+                st.metric("Failed", failed)
+
+            detail_text.caption(f"📋 {message}")
+
+            # Check terminal states
+            if status in ("published", "already_done"):
+                final_status = status
+                last_data = data
+                break
+            elif status == "failed":
+                final_status = "failed"
+                last_data = data
+                break
+
+            # Continue to next batch
+            next_batch = data.get("next_batch")
+            if next_batch is not None and next_batch > batch:
+                batch = next_batch
+            else:
+                batch += 1
+
+            time.sleep(0.5)  # brief pause between batch calls
+
+        # Final result
+        progress_bar.progress(1.0)
+
+        if final_status == "published":
+            status_text.success(f"✅ Published! {last_data.get('published_count', 0)} candidates.")
+        elif final_status == "already_done":
+            status_text.success(f"✅ Already done for today. {last_data.get('published_count', 0)} candidates.")
+        else:
+            status_text.error(f"❌ Run ended with status: {final_status}")
+
+        # Show failed tickers if any
+        failed_tickers = last_data.get("failed_tickers") if last_data else None
+        if failed_tickers:
+            with st.expander(f"⚠️ Failed Tickers ({len(failed_tickers)})"):
+                st.json(failed_tickers[:20])
+
+        # Load and display latest results
+        st.divider()
+        st.subheader("📊 Latest Day Trade Results")
+        read_data = call_api("daytrade-screener", auth=False)
+
+        if read_data.get("success") and read_data.get("results"):
+            results = read_data["results"]
+            meta = read_data.get("meta", {})
+
+            # Status distribution
+            st.caption(f"Last updated: {meta.get('calculated_at', '—')} | Mode: {meta.get('run_mode', '—')}")
+            status_counts = {}
+            for r in results:
+                s = r.get("status", "UNKNOWN")
+                status_counts[s] = status_counts.get(s, 0) + 1
+
+            scols = st.columns(len(status_counts))
+            for i, (s, c) in enumerate(sorted(status_counts.items(),
+                                               key=lambda x: ["READY_BREAKOUT", "PRE_SPIKE_WATCH",
+                                                              "MOMENTUM_CONTINUATION", "RECLAIM_CANDIDATE",
+                                                              "WAIT_PULLBACK", "SPECULATIVE", "AVOID"].index(x[0])
+                                               if x[0] in ["READY_BREAKOUT", "PRE_SPIKE_WATCH",
+                                                           "MOMENTUM_CONTINUATION", "RECLAIM_CANDIDATE",
+                                                           "WAIT_PULLBACK", "SPECULATIVE", "AVOID"] else 99)):
+                with scols[i]:
+                    st.metric(s.replace("_", " ").title(), c)
+
+            # Build DataFrame
+            display_cols = [
+                "ticker", "board", "status", "daytrade_score", "setup",
+                "last_price", "change_pct", "volume_ratio_20d", "value_today",
+                "prespike_score", "momentum_score", "entry_low", "entry_high",
+                "stop_loss", "tp1", "tp2", "risk_reward", "time_plan", "notes"
+            ]
+            df = pd.DataFrame(results)
+            available_cols = [c for c in display_cols if c in df.columns]
+            df_display = df[available_cols].copy()
+
+            # Format value_today
+            if "value_today" in df_display.columns:
+                df_display["value_today"] = df_display["value_today"].apply(
+                    lambda v: f"{v/1e9:.1f}B" if v and v >= 1e9 else (f"{v/1e6:.0f}M" if v and v >= 1e6 else "—")
+                )
+
+            st.dataframe(df_display, use_container_width=True, height=600)
+        else:
+            st.warning("Data belum tersedia atau gagal dimuat.")
+
+    # Quick read (no run)
+    st.divider()
+    if st.button("📖 Read Latest Day Trade Results (no run)"):
+        if not api_base:
+            st.error("❌ API Base URL belum diisi.")
+        else:
+            read_data = call_api("daytrade-screener", auth=False)
+            if read_data.get("success") and read_data.get("results"):
+                results = read_data["results"]
+                meta = read_data.get("meta", {})
+                st.info(f"Status: {meta.get('status', '—')} | Published: {meta.get('published_count', 0)} | "
+                        f"Mode: {meta.get('run_mode', '—')} | Updated: {meta.get('calculated_at', '—')}")
+
+                df = pd.DataFrame(results)
+                cols = ["ticker", "status", "daytrade_score", "setup", "last_price",
+                        "change_pct", "volume_ratio_20d", "risk_reward", "notes"]
+                available = [c for c in cols if c in df.columns]
+                st.dataframe(df[available], use_container_width=True, height=400)
+            else:
+                st.warning(f"Tidak ada data: {read_data.get('error', read_data.get('meta', {}).get('message', '—'))}")
+
+
+# ============================================================
+# TAB: SEKTOR HOT REFRESH
+# ============================================================
+
+with tab_sektor:
+    st.header("Sektor Hot Refresh")
+    st.caption("Refresh data Grup Konglomerat Hot (harga, volume, ranking).")
+
+    if st.button("🔄 Refresh Sektor Hot", type="primary"):
+        if not check_config():
+            st.stop()
+
+        with st.spinner("Refreshing Sektor Hot..."):
+            data = call_api("refresh", auth=True)
+
+        if data.get("success"):
+            st.success(f"✅ Refresh complete! Scanned: {data.get('scannedCount', '—')}, "
+                       f"Failed: {data.get('failedCount', 0)}, Groups: {data.get('groupsProcessed', '—')}")
+            if data.get("failedTickers"):
+                with st.expander("⚠️ Failed Tickers"):
+                    st.write(data["failedTickers"])
+        else:
+            st.error(f"❌ Refresh failed: {data.get('error', 'Unknown')}")
+
+        with st.expander("📋 Raw Response"):
+            st.json(data)
+
+
+# ============================================================
+# TAB: KONGLO SCREENER
+# ============================================================
+
+with tab_konglo:
+    st.header("Konglo Swing Screener")
+    st.caption("Run Konglo screener (deterministic only, no AI).")
+    st.warning("⚠️ This calls refresh-screener WITHOUT ai=1. AI remains disabled.")
+
+    if st.button("🔬 Run Konglo Screener", type="primary"):
+        if not check_config():
+            st.stop()
+
+        with st.spinner("Running Konglo Screener (no AI)..."):
+            # Explicitly NO ai=1 parameter — deterministic only
+            data = call_api("refresh-screener", auth=True)
+
+        if data.get("success"):
+            st.success(f"✅ Screener complete! Universe: {data.get('universe_count', '—')}, "
+                       f"Saved: {data.get('saved_count', 0)}, Failed: {data.get('failed_count', 0)}")
+        else:
+            st.error(f"❌ Screener failed: {data.get('error', 'Unknown')}")
+
+        with st.expander("📋 Raw Response"):
+            st.json(data)
+
+
+# ============================================================
+# TAB: NON-KONGLO SCREENER
+# ============================================================
+
+with tab_nk:
+    st.header("Non-Konglo Swing Screener")
+    st.caption("Run Non-Konglo screener with automatic batch loop.")
+
+    if st.button("🚀 Run Non-Konglo Screener", type="primary", key="nk_run"):
+        if not check_config():
+            st.stop()
+
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        detail_text = st.empty()
+
+        max_calls = 200  # safety
+        call_count = 0
+        final_status = None
+        last_data = None
+
+        while call_count < max_calls:
+            call_count += 1
+            status_text.info(f"⏳ NK Screener call #{call_count}...")
+
+            data = call_api("nk-screener-run", auth=True, force="1")
+
+            if not data.get("success") and not data.get("step"):
+                # Check if it's a skip (outside window but we used force=1)
+                if data.get("skipped"):
+                    st.warning(f"⚠️ Skipped: {data.get('error', 'Outside run window')}")
+                    final_status = "skipped"
+                    last_data = data
+                    break
+                st.error(f"❌ Error: {data.get('error', 'Unknown')}")
+                final_status = "failed"
+                last_data = data
+                break
+
+            step = data.get("step", "auto")
+            last_data = data
+
+            # Detect completion states
+            if step == "finalize" or data.get("published", 0) > 0:
+                final_status = "published"
+                break
+
+            if data.get("message", "").startswith("No action needed"):
+                final_status = "done"
+                break
+
+            # Progress estimate
+            if step == "start":
+                universe = data.get("universe_count", 0)
+                detail_text.caption(f"Universe: {universe} tickers, {data.get('batch_count', '?')} batches")
+            elif step == "batch":
+                batch_idx = data.get("batch_index", 0)
+                batch_total = data.get("batch_count", 1) if "batch_count" in data else call_count
+                # Rough estimate
+                pct = min((batch_idx + 1) / max(batch_total, 1), 0.95)
+                progress_bar.progress(pct)
+                detail_text.caption(f"Batch {batch_idx + 1}: passed={data.get('passed', 0)}, failed={data.get('failed', 0)}")
+
+            time.sleep(0.3)
+
+        progress_bar.progress(1.0)
+
+        if final_status == "published":
+            pub = last_data.get("published", 0) if last_data else 0
+            status_text.success(f"✅ Non-Konglo Screener published! {pub} candidates.")
+        elif final_status == "done":
+            status_text.success("✅ No further action needed.")
+        else:
+            status_text.error(f"❌ Ended with: {final_status}")
+
+        with st.expander("📋 Last Response"):
+            st.json(last_data or {})
+
+    # Quick read
+    st.divider()
+    if st.button("📖 Read Latest Non-Konglo Results", key="nk_read"):
+        if not api_base:
+            st.error("❌ API Base URL belum diisi.")
+        else:
+            # NK results require login headers — for Streamlit we just show raw
+            data = call_api("nk-screener-results", auth=False)
+            if data.get("success") and data.get("results"):
+                df = pd.DataFrame(data["results"])
+                st.dataframe(df, use_container_width=True, height=400)
+            else:
+                st.warning(f"Tidak ada data atau akses ditolak: {data.get('error', '—')}")
