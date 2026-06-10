@@ -1133,6 +1133,7 @@
                 <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Login Logs</button>
                 <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">AI Analysis</button>
                 <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
+                <button onclick="generateShareLink()" class="px-4 py-2 rounded-lg text-sm font-medium text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 transition-all">🔗 Share Link</button>
             </div>
             <div id="adminLogsContainer" class="overflow-x-auto">
                 <p class="text-sm text-gray-500">Klik User Approval untuk melihat dan mengelola user pending.</p>
@@ -1482,8 +1483,169 @@ async function enterReviewMode() {
     } catch (e) { showDashboard(); }
 }
 
+// ===== PUBLIC SHARE MODE =====
+function enterShareMode(token) {
+    // Hide all normal UI, show minimal share page
+    document.title = 'Auto-Cuan Screener (Share)';
+    // Add noindex meta for SEO protection
+    var metaRobots = document.createElement('meta');
+    metaRobots.name = 'robots';
+    metaRobots.content = 'noindex, nofollow';
+    document.head.appendChild(metaRobots);
+
+    // Replace body content with share view
+    document.body.innerHTML = '<div id="shareApp" class="min-h-screen bg-dark-900 text-gray-200 p-4 sm:p-6 max-w-7xl mx-auto">' +
+        '<div class="flex items-center justify-between mb-4">' +
+        '<div><h1 class="text-xl font-bold text-white">📊 Auto-Cuan Screener</h1>' +
+        '<p id="shareExpiry" class="text-xs text-gray-500 mt-1"></p></div>' +
+        '<span class="px-2 py-1 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25">READ ONLY</span></div>' +
+        '<div class="mb-4 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">' +
+        '<p class="text-[11px] text-amber-400/90">⚠️ Ini hanya watchlist screener, bukan rekomendasi beli/jual. Selalu lakukan analisis sendiri dan kelola risiko.</p></div>' +
+        '<div id="shareLoading" class="text-center py-12"><div class="spinner mx-auto"></div><p class="text-sm text-gray-500 mt-4">Memuat data screener...</p></div>' +
+        '<div id="shareExpired" class="hidden text-center py-12"><div class="text-5xl mb-4">⏰</div><h2 class="text-lg font-bold text-white mb-2">Link Kedaluwarsa</h2><p id="shareExpiredMsg" class="text-sm text-gray-400">Link sudah kedaluwarsa. Minta link baru.</p></div>' +
+        '<div id="shareContent" class="hidden space-y-6">' +
+        '<div id="shareTabs" class="flex gap-2 flex-wrap">' +
+        '<button onclick="showShareTab(\'konglo\')" id="shareTabKonglo" class="share-tab active px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Konglo Swing</button>' +
+        '<button onclick="showShareTab(\'nk\')" id="shareTabNk" class="share-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200">Non-Konglo Swing</button>' +
+        '<button onclick="showShareTab(\'dt\')" id="shareTabDt" class="share-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200">Day Trade</button></div>' +
+        '<div id="shareKongloPane"></div>' +
+        '<div id="shareNkPane" class="hidden"></div>' +
+        '<div id="shareDtPane" class="hidden"></div>' +
+        '</div></div>';
+
+    // Fetch data
+    fetch('/api/sector-hot?action=public-screener-share&token=' + encodeURIComponent(token))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('shareLoading').classList.add('hidden');
+            if (!data.success) {
+                document.getElementById('shareExpired').classList.remove('hidden');
+                document.getElementById('shareExpiredMsg').textContent = data.error || 'Link tidak valid.';
+                return;
+            }
+            // Show expiry
+            if (data.expires_at) {
+                var exp = new Date(data.expires_at);
+                var expStr = exp.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                document.getElementById('shareExpiry').textContent = 'Link aktif sampai: ' + expStr + ' WIB';
+            }
+            document.getElementById('shareContent').classList.remove('hidden');
+            window._shareData = data;
+            renderShareKonglo(data.konglo);
+            renderShareNk(data.non_konglo);
+            renderShareDt(data.daytrade);
+        })
+        .catch(function(e) {
+            document.getElementById('shareLoading').classList.add('hidden');
+            document.getElementById('shareExpired').classList.remove('hidden');
+            document.getElementById('shareExpiredMsg').textContent = 'Gagal memuat: ' + e.message;
+        });
+}
+
+function showShareTab(tab) {
+    document.querySelectorAll('.share-tab').forEach(function(b) {
+        b.className = 'share-tab px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200';
+    });
+    document.getElementById('shareKongloPane').classList.add('hidden');
+    document.getElementById('shareNkPane').classList.add('hidden');
+    document.getElementById('shareDtPane').classList.add('hidden');
+    if (tab === 'konglo') { document.getElementById('shareKongloPane').classList.remove('hidden'); document.getElementById('shareTabKonglo').className = 'share-tab active px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'; }
+    if (tab === 'nk') { document.getElementById('shareNkPane').classList.remove('hidden'); document.getElementById('shareTabNk').className = 'share-tab active px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'; }
+    if (tab === 'dt') { document.getElementById('shareDtPane').classList.remove('hidden'); document.getElementById('shareTabDt').className = 'share-tab active px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'; }
+}
+
+function renderShareKonglo(d) {
+    var pane = document.getElementById('shareKongloPane');
+    if (!d || !d.results || d.results.length === 0) { pane.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data Konglo Screener.</p>'; return; }
+    var meta = d.meta || {};
+    var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · ' + d.results.length + ' ticker</p>';
+    html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-dark-600/30">';
+    html += '<th class="px-2 py-1 text-left">Ticker</th><th class="px-2 py-1">Score</th><th class="px-2 py-1 text-left">Status</th><th class="px-2 py-1">Price</th><th class="px-2 py-1">Chg%</th><th class="px-2 py-1">RSI</th><th class="px-2 py-1">Vol</th><th class="px-2 py-1">RR</th><th class="px-2 py-1 text-left">Catatan</th></tr></thead><tbody>';
+    d.results.forEach(function(r) {
+        var chgColor = r.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var statusColor = r.status === 'Swing Ready' ? 'text-emerald-400' : (r.status === 'Watchlist' ? 'text-blue-400' : 'text-gray-400');
+        html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/30">';
+        html += '<td class="px-2 py-1.5 font-medium text-white">' + r.ticker + '</td>';
+        html += '<td class="px-2 py-1.5 text-center font-bold">' + (r.score || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 ' + statusColor + '">' + (r.final_status || r.status || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.last_price || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center ' + chgColor + '">' + (r.change_pct != null ? (r.change_pct >= 0 ? '+' : '') + r.change_pct.toFixed(2) + '%' : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.rsi14 != null ? r.rsi14.toFixed(1) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.volume_ratio_avg20 != null ? r.volume_ratio_avg20.toFixed(2) + 'x' : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.risk_reward != null ? r.risk_reward.toFixed(2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-400 max-w-[200px] truncate" title="' + (r.status_reason || '').replace(/"/g, '&quot;') + '">' + (r.status_reason || '—') + '</td>';
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    pane.innerHTML = html;
+}
+
+function renderShareNk(d) {
+    var pane = document.getElementById('shareNkPane');
+    if (!d || !d.results || d.results.length === 0) { pane.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data Non-Konglo Screener.</p>'; return; }
+    var meta = d.meta || {};
+    var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Top ' + d.results.length + ' · Non-Konglomerat</p>';
+    html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-dark-600/30">';
+    html += '<th class="px-2 py-1">#</th><th class="px-2 py-1 text-left">Ticker</th><th class="px-2 py-1">Score</th><th class="px-2 py-1 text-left">Status</th><th class="px-2 py-1">Price</th><th class="px-2 py-1">Chg%</th><th class="px-2 py-1">RSI</th><th class="px-2 py-1">Vol</th><th class="px-2 py-1">RR</th><th class="px-2 py-1 text-left">Setup</th></tr></thead><tbody>';
+    d.results.forEach(function(r) {
+        var chgColor = r.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var statusColor = r.status === 'Swing Ready' ? 'text-emerald-400' : (r.status === 'Wait Pullback' ? 'text-amber-400' : (r.status === 'Watchlist' ? 'text-blue-400' : 'text-gray-400'));
+        html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/30">';
+        html += '<td class="px-2 py-1.5 text-center text-gray-500">' + (r.rank || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 font-medium text-white">' + r.ticker + '</td>';
+        html += '<td class="px-2 py-1.5 text-center font-bold">' + (r.score || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 ' + statusColor + '">' + (r.status || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.last_price || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center ' + chgColor + '">' + (r.change_pct != null ? (r.change_pct >= 0 ? '+' : '') + Number(r.change_pct).toFixed(2) + '%' : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-400">' + (r.setup_type || '—') + '</td>';
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    pane.innerHTML = html;
+}
+
+function renderShareDt(d) {
+    var pane = document.getElementById('shareDtPane');
+    if (!d || !d.results || d.results.length === 0) { pane.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data Day Trade Screener.</p>'; return; }
+    var meta = d.meta || {};
+    var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+    var statusPri = { 'READY_BREAKOUT': 1, 'PRE_SPIKE_WATCH': 2, 'MOMENTUM_CONTINUATION': 3, 'RECLAIM_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'AVOID': 7 };
+    var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] || 8) - (statusPri[b.status] || 8) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
+    var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Mode: ' + (meta.run_mode || '—') + ' · ' + sorted.length + ' kandidat</p>';
+    html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-dark-600/30">';
+    html += '<th class="px-2 py-1 text-left">Ticker</th><th class="px-2 py-1">Score</th><th class="px-2 py-1 text-left">Status</th><th class="px-2 py-1">Price</th><th class="px-2 py-1">Chg%</th><th class="px-2 py-1">Vol</th><th class="px-2 py-1">RR</th><th class="px-2 py-1 text-left">Setup</th><th class="px-2 py-1 text-left">Catatan</th></tr></thead><tbody>';
+    sorted.forEach(function(r) {
+        var chgColor = r.change_pct >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var stColor = r.status === 'READY_BREAKOUT' ? 'text-emerald-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'text-cyan-400' : (r.status === 'AVOID' ? 'text-red-400' : 'text-gray-400')));
+        html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/30">';
+        html += '<td class="px-2 py-1.5 font-medium text-white">' + r.ticker + '</td>';
+        html += '<td class="px-2 py-1.5 text-center font-bold">' + (r.daytrade_score || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 ' + stColor + ' whitespace-nowrap">' + (r.status || '—').replace(/_/g, ' ') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.last_price || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center ' + chgColor + '">' + (r.change_pct != null ? (r.change_pct >= 0 ? '+' : '') + r.change_pct.toFixed(2) + '%' : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.volume_ratio_20d != null ? r.volume_ratio_20d.toFixed(2) + 'x' : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center">' + (r.risk_reward != null ? r.risk_reward.toFixed(2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-400 whitespace-nowrap">' + (r.setup || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-400 max-w-[180px] truncate" title="' + (r.notes || '').replace(/"/g, '&quot;') + '">' + (r.notes || '—') + '</td>';
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    pane.innerHTML = html;
+}
+
 // ===== INITIALIZATION =====
 (async function init() {
+    // === PUBLIC SHARE MODE ===
+    var _shareParams = new URLSearchParams(window.location.search);
+    if (_shareParams.get('share') === 'screener' && _shareParams.get('token')) {
+        enterShareMode(_shareParams.get('token'));
+        return;
+    }
     if (isValidReviewMode()) { await enterReviewMode(); return; }
     var params = new URLSearchParams(window.location.search);
     if (params.get('review_access') === '1') { localStorage.removeItem('autocuan_blocked_until'); window.history.replaceState({}, document.title, window.location.pathname); }
@@ -4386,6 +4548,54 @@ window.addEventListener('resize', updateTvHeight); updateTvHeight();
 // ===== ADMIN LOGS =====
 var lastAdminLogType = 'login';
 var cachedAdminData = null;
+
+// ===== SHARE LINK GENERATOR =====
+async function generateShareLink() {
+    var container = document.getElementById('adminLogsContainer');
+    if (!container) return;
+    container.innerHTML = '<div class="py-4 text-center"><div class="spinner-sm"></div> Generating share link...</div>';
+
+    try {
+        // Use CRON_SECRET from the screener runner (admin has it configured)
+        // The API requires Bearer CRON_SECRET — we'll prompt or use a stored secret
+        var secret = prompt('Masukkan CRON_SECRET untuk generate share link:');
+        if (!secret) { container.innerHTML = '<p class="text-sm text-gray-500">Dibatalkan.</p>'; return; }
+
+        var resp = await fetch('/api/sector-hot?action=create-screener-share-link', {
+            headers: { 'Authorization': 'Bearer ' + secret }
+        });
+        var data = await resp.json();
+
+        if (!data.success) {
+            container.innerHTML = '<div class="p-4 rounded-lg bg-red-500/10 border border-red-500/20"><p class="text-sm text-red-400">' + (data.error || 'Gagal generate link.') + '</p></div>';
+            return;
+        }
+
+        container.innerHTML = '<div class="p-4 rounded-xl bg-dark-700/50 border border-amber-500/20 space-y-3">' +
+            '<h3 class="text-sm font-semibold text-amber-400">🔗 Public Screener Share Link</h3>' +
+            '<div class="flex gap-2 items-center">' +
+            '<input type="text" id="shareLinkInput" readonly value="' + data.url + '" class="flex-1 px-3 py-2 rounded-lg bg-dark-900 border border-dark-600/50 text-xs text-gray-300 font-mono">' +
+            '<button onclick="copyShareLink()" class="px-3 py-2 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition whitespace-nowrap">Copy</button></div>' +
+            '<div class="text-xs text-gray-500 space-y-1">' +
+            '<p>⏰ Berlaku sampai: <strong class="text-gray-300">' + data.expires_label + '</strong></p>' +
+            '<p>📋 Konten: Konglo + Non-Konglo + Day Trade (read-only)</p>' +
+            '<p>🔒 Besok link ini otomatis kedaluwarsa. Generate baru jika perlu.</p></div></div>';
+    } catch (e) {
+        container.innerHTML = '<div class="p-4 rounded-lg bg-red-500/10 border border-red-500/20"><p class="text-sm text-red-400">Error: ' + e.message + '</p></div>';
+    }
+}
+
+function copyShareLink() {
+    var input = document.getElementById('shareLinkInput');
+    if (!input) return;
+    navigator.clipboard.writeText(input.value).then(function() {
+        showToast('Link disalin ke clipboard.', 'success');
+    }).catch(function() {
+        input.select();
+        document.execCommand('copy');
+        showToast('Link disalin.', 'success');
+    });
+}
 
 async function loadAdminLogs(type) {
     lastAdminLogType = type;
