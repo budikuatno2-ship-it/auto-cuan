@@ -423,7 +423,9 @@ with tab_nk:
         metrics_row = st.columns(5)
         detail_text = st.empty()
 
-        max_calls = 50  # safety limit — NK has ~50-80 batches of 8 tickers
+        # Dynamic call limit: adjusted once batch_count is known
+        max_calls_fallback = 50  # fallback if batch_count unknown
+        max_calls = max_calls_fallback
         call_count = 0
         final_status = None
         last_data = None
@@ -432,10 +434,13 @@ with tab_nk:
         total_passed = 0
         total_failed = 0
         batch_count_est = 0
+        retry_count = 0  # retries for blocked/pending states
+        max_retries = 5  # max retries for stuck states before giving up
+        last_batch_idx = -1  # track progress stalls
 
         while call_count < max_calls:
             call_count += 1
-            status_text.info(f"⏳ NK Screener call #{call_count}...")
+            status_text.info(f"⏳ NK Screener call #{call_count}/{max_calls}...")
 
             # force=1 only on first call to trigger clean start
             # Subsequent calls use auto-mode (no force) to process batches naturally
@@ -451,30 +456,49 @@ with tab_nk:
 
             last_data = data
 
+            # === STRICT BREAK: check for any published/finalize signal ===
+            if data.get("step") == "finalize":
+                final_status = "published"
+                break
+            if data.get("status") == "published":
+                final_status = "published"
+                break
+            if data.get("success") and data.get("published") and data.get("published") > 0:
+                final_status = "published"
+                break
+
             # Handle non-success responses
             if not data.get("success"):
                 error_msg = data.get("error", "")
                 step = data.get("step", "")
 
-                # Skipped (outside time window) — should not happen with force=1
+                # Skipped (outside time window)
                 if data.get("skipped"):
                     st.warning(f"⚠️ Skipped: {error_msg}")
                     final_status = "skipped"
                     break
 
-                # Cannot finalize: pending/processing remain — batches still in progress
-                # This can happen if a batch is currently being processed by another request
-                # or if there's a race condition. Continue looping — next call will process batch.
+                # Cannot finalize: pending/processing remain — limited retries
                 if "pending/processing batches remain" in error_msg or "processing" in error_msg.lower():
+                    retry_count += 1
+                    if retry_count > max_retries:
+                        status_text.error(f"❌ Stopped: finalize blocked after {max_retries} retries. Possible stuck backend state.")
+                        final_status = "stuck"
+                        break
                     pending_count = data.get("pending", "?")
-                    detail_text.caption(f"⏳ Finalize attempted but {pending_count} batch(es) remain. Processing next...")
-                    time.sleep(1.5)
+                    detail_text.caption(f"⏳ Finalize blocked ({pending_count} pending). Retry {retry_count}/{max_retries}...")
+                    time.sleep(2.0)
                     continue
 
-                # Blocked by stale processing without force (shouldn't happen since we use force=1)
+                # Blocked by stale processing — limited retries
                 if step == "blocked":
-                    detail_text.caption(f"⚠️ Stale processing jobs detected. Retrying with force=1...")
-                    time.sleep(1.0)
+                    retry_count += 1
+                    if retry_count > max_retries:
+                        status_text.error(f"❌ Stopped: backend blocked after {max_retries} retries.")
+                        final_status = "stuck"
+                        break
+                    detail_text.caption(f"⚠️ Stale processing jobs. Retry {retry_count}/{max_retries}...")
+                    time.sleep(2.0)
                     continue
 
                 # Failed to publish (no candidates) — acceptable end state
@@ -483,19 +507,23 @@ with tab_nk:
                     status_text.warning(f"⚠️ {error_msg}")
                     break
 
-                # Other failures
+                # Other failures — stop immediately
                 show_error_details(data)
                 final_status = "failed"
                 break
 
-            # Success response — determine step and update progress
+            # Success response — reset retry counter on progress
+            retry_count = 0
             step = data.get("step", "auto")
 
             # START step: universe created, batches built
             if step == "start":
                 universe_count = data.get("universe_count", 0)
                 batch_count_est = data.get("batch_count", 0)
-                detail_text.caption(f"✅ Universe: {universe_count} tickers → {batch_count_est} batches created")
+                # Update dynamic max_calls based on actual batch count
+                if batch_count_est > 0:
+                    max_calls = batch_count_est + 8  # start + batches + finalize + small buffer
+                detail_text.caption(f"✅ Universe: {universe_count} tickers → {batch_count_est} batches (limit: {max_calls} calls)")
                 with metrics_row[0]:
                     st.metric("Universe", universe_count)
                 with metrics_row[1]:
@@ -511,14 +539,26 @@ with tab_nk:
                 total_failed += batch_failed
                 total_scanned += batch_processed
 
+                # Stall detection: if batch_index didn't advance
+                if batch_idx <= last_batch_idx:
+                    retry_count += 1
+                    if retry_count > max_retries:
+                        status_text.error(f"❌ Stopped: batch index stuck at {batch_idx}. Backend not advancing.")
+                        final_status = "stuck"
+                        break
+                else:
+                    last_batch_idx = batch_idx
+                    retry_count = 0  # Reset on actual progress
+
                 # Update progress bar
-                pct = min((batch_idx + 1) / max(batch_count_est, 1), 0.95) if batch_count_est > 0 else min(call_count / 50, 0.95)
+                pct = min((batch_idx + 1) / max(batch_count_est, 1), 0.95) if batch_count_est > 0 else min(call_count / max_calls, 0.95)
                 progress_bar.progress(pct)
 
                 detail_text.caption(
                     f"Batch {batch_idx + 1}/{batch_count_est or '?'}: "
                     f"+{batch_passed} passed, {batch_failed} failed | "
-                    f"Total: scanned={total_scanned}, passed={total_passed}"
+                    f"Total: scanned={total_scanned}, passed={total_passed} | "
+                    f"Call {call_count}/{max_calls}"
                 )
 
                 with metrics_row[0]:
@@ -530,15 +570,10 @@ with tab_nk:
                 with metrics_row[3]:
                     st.metric("Failed", total_failed)
                 with metrics_row[4]:
-                    st.metric("Call #", call_count)
+                    st.metric("Call", f"{call_count}/{max_calls}")
 
                 if data.get("staging_error"):
                     st.warning(f"⚠️ Staging error: {data['staging_error']}")
-
-            # FINALIZE step: done!
-            elif step == "finalize":
-                final_status = "published"
-                break
 
             # "No action needed" (already published today)
             elif data.get("message", "").startswith("No action needed"):
@@ -561,9 +596,11 @@ with tab_nk:
             pass  # warning already shown
         elif final_status == "skipped":
             pass  # warning already shown
+        elif final_status == "stuck":
+            pass  # error already shown
         elif final_status != "failed":
             if call_count >= max_calls:
-                status_text.error(f"❌ Reached max call limit ({max_calls}). NK scan may be too large or stalled.")
+                status_text.error(f"❌ Stopped: NK runner exceeded expected calls ({max_calls}). Possible stuck backend. Last step: {last_data.get('step', '?') if last_data else '?'}")
             else:
                 status_text.error(f"❌ Ended with unexpected state: {final_status}")
 
