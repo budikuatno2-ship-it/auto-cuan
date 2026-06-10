@@ -1742,8 +1742,17 @@ async function fetchYahooQuote(ticker) {
 // ============================================================
 
 /**
+ * Helper: get the signing secret for share tokens.
+ * Prefers SHARE_LINK_SECRET, falls back to CRON_SECRET.
+ * Returns null if neither is configured.
+ */
+function getShareSigningSecret() {
+  return process.env.SHARE_LINK_SECRET || process.env.CRON_SECRET || null;
+}
+
+/**
  * Create a signed share token (CRON_SECRET or admin-authenticated).
- * Token is HMAC-SHA256 signed with SHARE_LINK_SECRET env variable.
+ * Token is HMAC-SHA256 signed with share signing secret.
  * Expires at end of current WIB day (23:59:59 WIB).
  */
 async function handleCreateScreenerShareLink(req, res) {
@@ -1758,9 +1767,9 @@ async function handleCreateScreenerShareLink(req, res) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
-  var SHARE_SECRET = process.env.SHARE_LINK_SECRET;
+  var SHARE_SECRET = getShareSigningSecret();
   if (!SHARE_SECRET) {
-    return res.status(200).json({ success: false, error: 'SHARE_LINK_SECRET not configured.' });
+    return res.status(200).json({ success: false, error: 'Share link signing secret not configured (need SHARE_LINK_SECRET or CRON_SECRET).' });
   }
 
   // Calculate expiry: end of current WIB day (23:59:59 WIB = UTC+7)
@@ -1814,7 +1823,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
     return res.status(200).json({ success: false, error: 'Token tidak ditemukan.', expired: true });
   }
 
-  var SHARE_SECRET = process.env.SHARE_LINK_SECRET;
+  var SHARE_SECRET = getShareSigningSecret();
   if (!SHARE_SECRET) {
     return res.status(200).json({ success: false, error: 'Share link tidak dikonfigurasi.' });
   }
