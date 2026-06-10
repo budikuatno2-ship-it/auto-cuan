@@ -1985,7 +1985,6 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       tp2: c.tp2,
       support: c.support,
       resistance: c.resistance,
-      entry_distance_pct: c.entry_distance_pct || null,
       published_at: new Date().toISOString(),
       run_date: runDate
     }));
@@ -2564,8 +2563,7 @@ function calculateNkSetupScore(q) {
     tp1: Number(q.tp1.toFixed(2)),
     tp2: Number(q.tp2.toFixed(2)),
     support: Number(q.support.toFixed(2)),
-    resistance: Number(q.resistance.toFixed(2)),
-    entry_distance_pct: q.entryDistancePct || 0
+    resistance: Number(q.resistance.toFixed(2))
   };
 }
 
