@@ -420,12 +420,18 @@ with tab_nk:
 
         progress_bar = st.progress(0)
         status_text = st.empty()
+        metrics_row = st.columns(5)
         detail_text = st.empty()
 
-        max_calls = 200  # safety
+        max_calls = 50  # safety limit — NK has ~50-80 batches of 8 tickers
         call_count = 0
         final_status = None
         last_data = None
+        universe_count = 0
+        total_scanned = 0
+        total_passed = 0
+        total_failed = 0
+        batch_count_est = 0
 
         while call_count < max_calls:
             call_count += 1
@@ -434,64 +440,150 @@ with tab_nk:
             data = call_api("nk-screener-run", auth=True, force="1")
 
             # Check for auth/non-JSON errors
-            if data.get("_is_vercel_auth") or data.get("_http_status"):
+            if data.get("_is_vercel_auth") or (data.get("_http_status") and data.get("_http_status") not in (200, 401)):
                 show_error_details(data)
                 final_status = "failed"
                 last_data = data
                 break
 
-            if not data.get("success") and not data.get("step"):
-                # Check if it's a skip (outside window but we used force=1)
-                if data.get("skipped"):
-                    st.warning(f"⚠️ Skipped: {data.get('error', 'Outside run window')}")
-                    final_status = "skipped"
-                    last_data = data
-                    break
-                show_error_details(data)
-                final_status = "failed"
-                last_data = data
-                break
-
-            step = data.get("step", "auto")
             last_data = data
 
-            # Detect completion states
-            if step == "finalize" or data.get("published", 0) > 0:
+            # Handle non-success responses
+            if not data.get("success"):
+                error_msg = data.get("error", "")
+                step = data.get("step", "")
+
+                # Skipped (outside time window) — should not happen with force=1
+                if data.get("skipped"):
+                    st.warning(f"⚠️ Skipped: {error_msg}")
+                    final_status = "skipped"
+                    break
+
+                # Cannot finalize: pending/processing remain — this means batches not done yet
+                # With force=1, stale processing jobs should be auto-reset. Keep looping.
+                if "pending/processing batches remain" in error_msg:
+                    detail_text.caption(f"⏳ Finalize attempted but batches remain ({data.get('pending', '?')} pending). Continuing...")
+                    time.sleep(1.0)
+                    continue
+
+                # Blocked by stale processing without force (shouldn't happen since we use force=1)
+                if step == "blocked":
+                    detail_text.caption(f"⚠️ Stale processing jobs detected. Retrying with force=1...")
+                    time.sleep(1.0)
+                    continue
+
+                # Failed to publish (no candidates) — acceptable end state
+                if "No candidates passed filters" in error_msg or data.get("published") == 0:
+                    final_status = "no_candidates"
+                    status_text.warning(f"⚠️ {error_msg}")
+                    break
+
+                # Other failures
+                show_error_details(data)
+                final_status = "failed"
+                break
+
+            # Success response — determine step and update progress
+            step = data.get("step", "auto")
+
+            # START step: universe created, batches built
+            if step == "start":
+                universe_count = data.get("universe_count", 0)
+                batch_count_est = data.get("batch_count", 0)
+                detail_text.caption(f"✅ Universe: {universe_count} tickers → {batch_count_est} batches created")
+                with metrics_row[0]:
+                    st.metric("Universe", universe_count)
+                with metrics_row[1]:
+                    st.metric("Batches", batch_count_est)
+
+            # BATCH step: one batch processed
+            elif step == "batch":
+                batch_idx = data.get("batch_index", 0)
+                batch_passed = data.get("passed", 0)
+                batch_failed = data.get("failed", 0)
+                batch_processed = data.get("processed", 0)
+                total_passed += batch_passed
+                total_failed += batch_failed
+                total_scanned += batch_processed
+
+                # Update progress bar
+                pct = min((batch_idx + 1) / max(batch_count_est, 1), 0.95) if batch_count_est > 0 else min(call_count / 50, 0.95)
+                progress_bar.progress(pct)
+
+                detail_text.caption(
+                    f"Batch {batch_idx + 1}/{batch_count_est or '?'}: "
+                    f"+{batch_passed} passed, {batch_failed} failed | "
+                    f"Total: scanned={total_scanned}, passed={total_passed}"
+                )
+
+                with metrics_row[0]:
+                    st.metric("Scanned", total_scanned)
+                with metrics_row[1]:
+                    st.metric("Batches", f"{batch_idx + 1}/{batch_count_est or '?'}")
+                with metrics_row[2]:
+                    st.metric("Passed", total_passed)
+                with metrics_row[3]:
+                    st.metric("Failed", total_failed)
+                with metrics_row[4]:
+                    st.metric("Call #", call_count)
+
+                if data.get("staging_error"):
+                    st.warning(f"⚠️ Staging error: {data['staging_error']}")
+
+            # FINALIZE step: done!
+            elif step == "finalize":
                 final_status = "published"
                 break
 
-            if data.get("message", "").startswith("No action needed"):
-                final_status = "done"
+            # "No action needed" (already published today)
+            elif data.get("message", "").startswith("No action needed"):
+                final_status = "already_done"
                 break
 
-            # Progress estimate
-            if step == "start":
-                universe = data.get("universe_count", 0)
-                detail_text.caption(f"Universe: {universe} tickers, {data.get('batch_count', '?')} batches")
-            elif step == "batch":
-                batch_idx = data.get("batch_index", 0)
-                batch_total = data.get("batch_count", 1) if "batch_count" in data else call_count
-                # Rough estimate
-                pct = min((batch_idx + 1) / max(batch_total, 1), 0.95)
-                progress_bar.progress(pct)
-                detail_text.caption(f"Batch {batch_idx + 1}: passed={data.get('passed', 0)}, failed={data.get('failed', 0)}")
+            # Small delay between calls to avoid hammering API
+            time.sleep(0.5)
 
-            time.sleep(0.3)
-
+        # Final state
         progress_bar.progress(1.0)
 
         if final_status == "published":
-            pub = last_data.get("published", 0) if last_data else 0
-            status_text.success(f"✅ Non-Konglo Screener published! {pub} candidates.")
-        elif final_status == "done":
-            status_text.success("✅ No further action needed.")
+            pub_count = last_data.get("published", 0) if last_data else 0
+            staging = last_data.get("staging_count", 0) if last_data else 0
+            status_text.success(f"✅ Non-Konglo Screener published! {pub_count} top candidates (from {staging} staging).")
+        elif final_status == "already_done":
+            status_text.success("✅ Already published for today. No action needed.")
+        elif final_status == "no_candidates":
+            pass  # warning already shown
+        elif final_status == "skipped":
+            pass  # warning already shown
         elif final_status != "failed":
-            status_text.error(f"❌ Ended with: {final_status}")
+            if call_count >= max_calls:
+                status_text.error(f"❌ Reached max call limit ({max_calls}). NK scan may be too large or stalled.")
+            else:
+                status_text.error(f"❌ Ended with unexpected state: {final_status}")
 
-        with st.expander("📋 Last Response"):
+        with st.expander("📋 Last API Response"):
             st.json(last_data or {})
 
-    # Quick read
+        # Auto-read results if published
+        if final_status == "published":
+            st.divider()
+            st.subheader("📊 Latest Non-Konglo Results")
+            read_data = call_api("nk-screener-results", auth=False)
+            if read_data.get("success") and read_data.get("results"):
+                results = read_data["results"]
+                meta_nk = read_data.get("meta", {})
+                st.caption(f"Run date: {meta_nk.get('run_date', '—')} | Published: {meta_nk.get('published_count', 0)}")
+                df = pd.DataFrame(results)
+                cols = ["rank", "ticker", "status", "score", "grade", "setup_type",
+                        "last_price", "change_pct", "volume_ratio_avg20", "risk_reward",
+                        "entry_low", "entry_high", "stop_loss", "tp1", "status_reason"]
+                available = [c for c in cols if c in df.columns]
+                st.dataframe(df[available], use_container_width=True, height=500)
+            elif read_data.get("error"):
+                st.warning(f"Read results: {read_data.get('error', 'Unknown')}")
+
+    # Quick read (no run)
     st.divider()
     if st.button("📖 Read Latest Non-Konglo Results", key="nk_read"):
         if not api_base:

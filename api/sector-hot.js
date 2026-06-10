@@ -1882,6 +1882,18 @@ async function handleNkScreenerRun(req, res, supabase) {
 
   // If scanning, process next batch
   if (meta.status === 'scanning') {
+    // force=1 safety: reset stale 'processing' jobs (stuck from crashed previous run)
+    // A job is stale if started_at > 3 minutes ago and still 'processing'
+    if (req.query.force === '1') {
+      var staleThreshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+      await supabase
+        .from('swing_screener_non_konglo_jobs')
+        .update({ status: 'pending', started_at: null })
+        .eq('run_date', runDate)
+        .eq('status', 'processing')
+        .lt('started_at', staleThreshold);
+    }
+
     // Check if pending batches exist
     const { data: pendingJobs } = await supabase
       .from('swing_screener_non_konglo_jobs')
@@ -1894,15 +1906,26 @@ async function handleNkScreenerRun(req, res, supabase) {
       return await handleNkScreenerBatch(req, res, supabase);
     }
 
-    // No pending → check if all done
-    const { data: failedJobs } = await supabase
+    // Check if there are still-stuck processing jobs (without force=1, these block finalize)
+    const { data: processingJobs } = await supabase
       .from('swing_screener_non_konglo_jobs')
       .select('id')
       .eq('run_date', runDate)
-      .eq('status', 'failed')
+      .eq('status', 'processing')
       .limit(1);
 
-    // All batches done (none pending, possibly some failed) → finalize
+    if (processingJobs && processingJobs.length > 0) {
+      // Still have processing jobs — if force=1, they were just reset above so shouldn't reach here
+      // If no force, report the blockage clearly
+      return res.status(200).json({
+        success: false,
+        error: 'Batch masih dalam status processing (kemungkinan timeout). Gunakan force=1 untuk reset.',
+        step: 'blocked',
+        processing_count: processingJobs.length
+      });
+    }
+
+    // No pending, no processing → finalize
     return await handleNkScreenerFinalize(req, res, supabase);
   }
 
