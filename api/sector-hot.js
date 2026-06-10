@@ -1985,6 +1985,7 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       tp2: c.tp2,
       support: c.support,
       resistance: c.resistance,
+      entry_distance_pct: c.entry_distance_pct || null,
       published_at: new Date().toISOString(),
       run_date: runDate
     }));
@@ -2268,6 +2269,27 @@ async function fetchNkQuoteData(ticker) {
     const tp1 = Math.round(support + (resistance - support) * 0.618);
     const tp2 = Math.round(resistance);
 
+    // === ENTRY-DISTANCE GUARD ===
+    // Calculate entry_distance_pct from ACTUAL entry_high (not Fib zone)
+    // This measures how far current price is above the computed entry area.
+    var entryDistancePct = entryHigh > 0 ? ((lastClose - entryHigh) / entryHigh) * 100 : 0;
+    // Preserve original distance for scoring/catatan before recalculation
+    var originalEntryDistancePct = entryDistancePct;
+
+    // If entry is far below current price (>5%), force recalculate entry
+    // to be near current price and reclassify setup type.
+    // This prevents BULL/BUVA/WIFI/INET-like cases where entry is 15-25% below.
+    if (setupType !== 'breakout' && entryDistancePct > 5) {
+      // Reclassify: price has moved far above computed entry
+      if (entryDistancePct > 8) {
+        setupType = 'wait_pullback';
+      }
+      // Recalculate entry to realistic current-price zone (tight, near last price)
+      entryLow = Math.round(lastClose * (1 - pctWidth));
+      entryHigh = Math.round(lastClose);
+      stopLoss = Math.round(entryLow * 0.96);
+    }
+
     // Risk/Reward based on actual entry (current-price-aware)
     const entryMid = (entryLow + entryHigh) / 2;
     const riskAmt = entryMid - stopLoss;
@@ -2313,6 +2335,7 @@ async function fetchNkQuoteData(ticker) {
       slDistance: slDistance,
       distanceAboveEntry: distanceAboveEntry,
       priceInEntryZone: priceInEntryZone,
+      entryDistancePct: Number(originalEntryDistancePct.toFixed(2)),
       last_price: lastClose,
       change_pct: Number(changePct.toFixed(2)),
       volume_ratio_avg20: Number(volumeRatioAvg20.toFixed(2))
@@ -2382,8 +2405,14 @@ function calculateNkSetupScore(q) {
   if (q.belowSupport) { score -= 15; components.push('breakdown support'); }
   if (q.slDistance > 5) { score -= 8; components.push('SL jauh ' + q.slDistance.toFixed(1) + '%'); }
 
-  // 5b. DISTANCE-TO-ENTRY PENALTY (only >20%, lighter -3)
-  if (q.distanceAboveEntry > 20) { score -= 3; components.push('jauh dari entry'); }
+  // 5b. ENTRY-DISTANCE PENALTY (strengthened guard)
+  // Use entryDistancePct (from actual entry_high) for realistic penalty
+  var edPct = q.entryDistancePct || 0;
+  if (edPct > 10) { score -= 15; components.push('entry distance +' + edPct.toFixed(1) + '% — jangan chase'); }
+  else if (edPct > 8) { score -= 10; components.push('entry distance +' + edPct.toFixed(1) + '%'); }
+  else if (edPct > 5) { score -= 6; components.push('entry moderat +' + edPct.toFixed(1) + '%'); }
+  // Legacy distanceAboveEntry (Fib-based) — softer supplemental penalty
+  if (q.distanceAboveEntry > 20) { score -= 3; components.push('jauh dari Fib entry'); }
 
   // 6. LIQUIDITY BONUS (small tie-breaker, max +5 pts)
   var txB = q.avgTxValue20d / 1e9;
@@ -2407,9 +2436,11 @@ function calculateNkSetupScore(q) {
   else if (score >= 50) grade = 'C';
 
   // STATUS CLASSIFICATION (same logic as Konglo scoreAndClassify)
+  // ENHANCED: entry-distance guard prevents far-entry candidates from being actionable
   var status = 'Invalid';
   var statusReason = '';
   var failReasons = [];
+  var edPctClassify = q.entryDistancePct || 0;
 
   // Swing Ready hard filters (matching Konglo, score threshold 75)
   var passesAllHardFilters = true;
@@ -2428,9 +2459,13 @@ function calculateNkSetupScore(q) {
   if (q.isLargeRed) { passesAllHardFilters = false; failReasons.push('Candle distribusi'); }
   if (q.overextended && q.setupType !== 'breakout') { passesAllHardFilters = false; failReasons.push('Overextended'); }
   if (q.belowSupport) { passesAllHardFilters = false; failReasons.push('Breakdown'); }
-  if (!q.priceInEntryZone && q.distanceAboveEntry > 10) { passesAllHardFilters = false; failReasons.push('Price jauh dari entry area'); }
+  // ENTRY-DISTANCE HARD FILTER: >5% above entry = NOT immediately actionable
+  if (edPctClassify > 5) { passesAllHardFilters = false; failReasons.push('Entry distance +' + edPctClassify.toFixed(1) + '%'); }
+  if (!q.priceInEntryZone && q.distanceAboveEntry > 10) { passesAllHardFilters = false; failReasons.push('Price jauh dari Fib entry'); }
   // Breakout trigger: entry above current price — NOT immediate Swing Ready
   if (q.setupType === 'breakout') { passesAllHardFilters = false; failReasons.push('Breakout trigger (wait konfirmasi)'); }
+  // wait_pullback setup — by definition not immediately actionable
+  if (q.setupType === 'wait_pullback') { passesAllHardFilters = false; failReasons.push('Wait pullback'); }
 
   if (passesAllHardFilters) {
     status = 'Swing Ready';
@@ -2439,6 +2474,14 @@ function calculateNkSetupScore(q) {
     } else {
       statusReason = 'Setup lengkap: trend, momentum, volume, RR layak.';
     }
+  } else if (q.setupType === 'wait_pullback' || edPctClassify > 8) {
+    // WAIT_PULLBACK: price too far above entry — not actionable now
+    status = 'Wait Pullback';
+    statusReason = 'Entry terlewat — tunggu pullback, jangan chase. Entry distance: +' + edPctClassify.toFixed(1) + '%.';
+  } else if (edPctClassify > 5 && score >= 55) {
+    // Moderate distance — mark as Wait Pullback if score is decent
+    status = 'Wait Pullback';
+    statusReason = 'Harga sudah di atas entry area (+' + edPctClassify.toFixed(1) + '%). Tunggu pullback ke area entry.';
   } else if (q.rsi14 !== null && q.rsi14 >= 30 && q.rsi14 <= 42 &&
              q.lastPrice > q.support && q.volumeRatioAvg20 >= 0.8 && score >= 40) {
     status = 'Rebound Speculative';
@@ -2473,18 +2516,20 @@ function calculateNkSetupScore(q) {
 
   // Entry interpretation based on setupType and distance
   var entryNote = '';
-  if (q.setupType === 'rebound' && q.priceInEntryZone) {
+  if (q.setupType === 'wait_pullback' || edPctClassify > 8) {
+    entryNote = ' Entry distance: +' + edPctClassify.toFixed(1) + '%. Tunggu pullback. Jangan chase.';
+  } else if (edPctClassify > 5) {
+    entryNote = ' Entry distance: +' + edPctClassify.toFixed(1) + '%. Harga sudah jauh dari entry area.';
+  } else if (q.setupType === 'rebound' && q.priceInEntryZone) {
     entryNote = ' Entry rebound near support.';
   } else if (q.setupType === 'pullback' && q.priceInEntryZone) {
     entryNote = ' Entry pullback actionable.';
   } else if (q.setupType === 'breakout') {
     entryNote = ' BREAKOUT TRIGGER above current price — wait konfirmasi breakout.';
-  } else if (q.setupType === 'wait_pullback') {
-    entryNote = ' Price extended, wait pullback.';
-  } else if (q.distanceAboveEntry <= 5) {
+  } else if (edPctClassify <= 2) {
     entryNote = ' Entry dekat.';
-  } else if (q.distanceAboveEntry <= 10) {
-    entryNote = ' Entry moderat.';
+  } else if (edPctClassify <= 5) {
+    entryNote = ' Entry moderat (+' + edPctClassify.toFixed(1) + '%).';
   } else {
     entryNote = ' Price jauh dari entry ideal.';
   }
@@ -2519,7 +2564,8 @@ function calculateNkSetupScore(q) {
     tp1: Number(q.tp1.toFixed(2)),
     tp2: Number(q.tp2.toFixed(2)),
     support: Number(q.support.toFixed(2)),
-    resistance: Number(q.resistance.toFixed(2))
+    resistance: Number(q.resistance.toFixed(2)),
+    entry_distance_pct: q.entryDistancePct || 0
   };
 }
 

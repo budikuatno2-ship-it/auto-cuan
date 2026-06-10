@@ -5283,7 +5283,9 @@ function renderNkScreenerTable(results) {
 
         var statusClass = 'bg-gray-500/15 text-gray-400';
         if (r.status === 'Swing Ready') statusClass = 'bg-emerald-500/15 text-emerald-400';
+        else if (r.status === 'Wait Pullback') statusClass = 'bg-orange-500/15 text-orange-400';
         else if (r.status === 'Watchlist') statusClass = 'bg-blue-500/15 text-blue-400';
+        else if (r.status === 'Rebound Speculative') statusClass = 'bg-purple-500/15 text-purple-400';
         else if (r.status === 'Speculative') statusClass = 'bg-amber-500/15 text-amber-400';
 
         // RSI display (0 shows as 0.0, null shows as -)
