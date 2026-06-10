@@ -1854,10 +1854,12 @@ async function handleNkScreenerRun(req, res, supabase) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
-  // 2. Time-window guard (bypass with force=1)
-  if (req.query.force !== '1' && !isWithinNkRunWindow()) {
-    return res.status(200).json({ success: false, error: 'Di luar waktu operasi (19:30-21:30 WIB, Mon-Fri).', skipped: true });
-  }
+  // 2. Time-window note (informational only — no longer blocks authenticated manual runs)
+  // All calls here are already authenticated via CRON_SECRET (verified above).
+  // Cron/schedule is disabled. Only manual runners (Streamlit, GitHub Actions) call this.
+  // Removing hard block so manual testing works anytime.
+  var _nkOutsideWindow = !isWithinNkRunWindow();
+  var _nkTimeNote = _nkOutsideWindow ? 'Manual run outside recommended window (19:30-21:30 WIB, Mon-Fri).' : null;
 
   const step = req.query.step || 'auto';
 
