@@ -1772,44 +1772,43 @@ async function handleCreateScreenerShareLink(req, res) {
     return res.status(200).json({ success: false, error: 'Share link signing secret not configured (need SHARE_LINK_SECRET or CRON_SECRET).' });
   }
 
-  // Calculate expiry: end of current WIB day (23:59:59 WIB = UTC+7)
+  // Calculate WIB date
   var now = new Date();
   var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
   var wibNow = new Date(wibMs);
   var wibDateStr = wibNow.toISOString().slice(0, 10); // YYYY-MM-DD in WIB
-
-  // Expiry at 23:59:59 WIB = 16:59:59 UTC on the same WIB date
   var expiryWib = new Date(wibDateStr + 'T23:59:59+07:00');
-  var expiryTs = Math.floor(expiryWib.getTime() / 1000);
 
-  // Build payload
-  var payload = {
-    scope: 'screener_public_share',
-    sections: ['konglo', 'non_konglo', 'daytrade'],
-    date: wibDateStr,
-    exp: expiryTs
-  };
-
-  // Sign with HMAC-SHA256
+  // === COMPACT TOKEN: YYMMDD-<16char_base64url_hmac> ===
   var crypto = require('crypto');
-  var payloadStr = JSON.stringify(payload);
-  var payloadB64 = Buffer.from(payloadStr).toString('base64url');
-  var signature = crypto.createHmac('sha256', SHARE_SECRET).update(payloadB64).digest('base64url');
-  var token = payloadB64 + '.' + signature;
+  var yy = wibDateStr.slice(2, 4);
+  var mm = wibDateStr.slice(5, 7);
+  var dd = wibDateStr.slice(8, 10);
+  var dateCode = yy + mm + dd; // e.g. "260610"
+  var hmacInput = 'screener_share:' + dateCode;
+  var fullHmac = crypto.createHmac('sha256', SHARE_SECRET).update(hmacInput).digest();
+  var shortSig = fullHmac.slice(0, 12).toString('base64url'); // 12 bytes = 16 chars base64url
+  var compactToken = dateCode + '-' + shortSig;
 
-  // Build share URL
+  // Build compact URL (primary)
   var baseUrl = req.headers['x-forwarded-host'] || req.headers.host || '';
   var protocol = req.headers['x-forwarded-proto'] || 'https';
-  var shareUrl = protocol + '://' + baseUrl + '/?share=screener&token=' + encodeURIComponent(token);
+  var shareUrl = protocol + '://' + baseUrl + '/?s=' + compactToken;
+
+  // Also generate legacy long token for backward compat
+  var payload = { scope: 'screener_public_share', sections: ['konglo', 'non_konglo', 'daytrade'], date: wibDateStr, exp: Math.floor(expiryWib.getTime() / 1000) };
+  var payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  var legacySig = crypto.createHmac('sha256', SHARE_SECRET).update(payloadB64).digest('base64url');
+  var legacyUrl = protocol + '://' + baseUrl + '/?share=screener&token=' + payloadB64 + '.' + legacySig;
 
   return res.status(200).json({
     success: true,
     url: shareUrl,
-    token: token,
+    compact_token: compactToken,
+    legacy_url: legacyUrl,
     expires_at: expiryWib.toISOString(),
     expires_label: wibDateStr + ' 23:59 WIB',
-    date: wibDateStr,
-    sections: payload.sections
+    date: wibDateStr
   });
 }
 
@@ -1828,65 +1827,107 @@ async function handlePublicScreenerShare(req, res, supabase) {
     return res.status(200).json({ success: false, error: 'Share link tidak dikonfigurasi.' });
   }
 
-  // Parse token: payloadB64.signature
-  var parts = token.split('.');
-  if (parts.length !== 2) {
-    return res.status(200).json({ success: false, error: 'Token format invalid.', expired: true });
+  var crypto = require('crypto');
+  var isValid = false;
+  var tokenDate = null; // YYYY-MM-DD
+
+  // === TRY COMPACT FORMAT: YYMMDD-<16char_sig> ===
+  var compactMatch = token.match(/^(\d{6})-([A-Za-z0-9_-]{16})$/);
+  if (compactMatch) {
+    var dateCode = compactMatch[1]; // YYMMDD
+    var providedSig = compactMatch[2];
+
+    // Reconstruct date
+    var yy = dateCode.slice(0, 2);
+    var mm = dateCode.slice(2, 4);
+    var dd = dateCode.slice(4, 6);
+    tokenDate = '20' + yy + '-' + mm + '-' + dd;
+
+    // Check if today in WIB
+    var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
+    var todayWib = nowWib.toISOString().slice(0, 10);
+    if (tokenDate !== todayWib) {
+      return res.status(200).json({ success: false, error: 'Link sudah kedaluwarsa. Minta link baru.', expired: true });
+    }
+
+    // Verify HMAC (timing-safe comparison)
+    var hmacInput = 'screener_share:' + dateCode;
+    var expectedHmac = crypto.createHmac('sha256', SHARE_SECRET).update(hmacInput).digest();
+    var expectedSig = expectedHmac.slice(0, 12).toString('base64url');
+
+    try {
+      isValid = crypto.timingSafeEqual(Buffer.from(providedSig), Buffer.from(expectedSig));
+    } catch (e) {
+      isValid = (providedSig === expectedSig);
+    }
+
+    if (!isValid) {
+      return res.status(200).json({ success: false, error: 'Link tidak valid.', expired: true });
+    }
+  }
+  // === LEGACY FORMAT: payloadB64.signature ===
+  else {
+    var parts = token.split('.');
+    if (parts.length !== 2) {
+      return res.status(200).json({ success: false, error: 'Token format invalid.', expired: true });
+    }
+
+    var payloadB64 = parts[0];
+    var providedLegacySig = parts[1];
+
+    // Verify HMAC
+    var expectedLegacySig = crypto.createHmac('sha256', SHARE_SECRET).update(payloadB64).digest('base64url');
+    if (providedLegacySig !== expectedLegacySig) {
+      return res.status(200).json({ success: false, error: 'Link tidak valid.', expired: true });
+    }
+
+    // Decode payload
+    var payload;
+    try {
+      payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8'));
+    } catch (e) {
+      return res.status(200).json({ success: false, error: 'Token rusak.', expired: true });
+    }
+
+    if (payload.scope !== 'screener_public_share') {
+      return res.status(200).json({ success: false, error: 'Token scope invalid.', expired: true });
+    }
+
+    // Check expiry
+    var nowTs = Math.floor(Date.now() / 1000);
+    if (payload.exp && nowTs > payload.exp) {
+      return res.status(200).json({ success: false, error: 'Link sudah kedaluwarsa. Minta link baru.', expired: true });
+    }
+
+    isValid = true;
+    tokenDate = payload.date;
   }
 
-  var payloadB64 = parts[0];
-  var providedSig = parts[1];
-
-  // Verify HMAC
-  var crypto = require('crypto');
-  var expectedSig = crypto.createHmac('sha256', SHARE_SECRET).update(payloadB64).digest('base64url');
-  if (providedSig !== expectedSig) {
+  if (!isValid) {
     return res.status(200).json({ success: false, error: 'Link tidak valid.', expired: true });
   }
 
-  // Decode payload
-  var payload;
-  try {
-    var payloadStr = Buffer.from(payloadB64, 'base64url').toString('utf-8');
-    payload = JSON.parse(payloadStr);
-  } catch (e) {
-    return res.status(200).json({ success: false, error: 'Token rusak.', expired: true });
-  }
+  // Token valid — calculate expiry for display
+  var expiryDisplay = tokenDate ? tokenDate + ' 23:59 WIB' : null;
+  var expiryIso = tokenDate ? new Date(tokenDate + 'T23:59:59+07:00').toISOString() : null;
 
-  // Validate scope
-  if (payload.scope !== 'screener_public_share') {
-    return res.status(200).json({ success: false, error: 'Token scope invalid.', expired: true });
-  }
-
-  // Check expiry
-  var nowTs = Math.floor(Date.now() / 1000);
-  if (payload.exp && nowTs > payload.exp) {
-    return res.status(200).json({ success: false, error: 'Link sudah kedaluwarsa. Minta link baru.', expired: true });
-  }
-
-  // Token valid — fetch read-only screener data
-  var result = { success: true, expires_at: new Date(payload.exp * 1000).toISOString(), date: payload.date, sections: payload.sections };
+  // Fetch read-only screener data
+  var result = { success: true, expires_at: expiryIso, date: tokenDate, sections: ['konglo', 'non_konglo', 'daytrade'] };
 
   // Konglo Screener latest
-  if (payload.sections.indexOf('konglo') >= 0) {
-    var { data: kongloMeta } = await supabase.from('swing_screener_meta').select('*').eq('id', 'latest').maybeSingle();
-    var { data: kongloRows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false });
-    result.konglo = { meta: kongloMeta || null, results: kongloRows || [] };
-  }
+  var { data: kongloMeta } = await supabase.from('swing_screener_meta').select('*').eq('id', 'latest').maybeSingle();
+  var { data: kongloRows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false });
+  result.konglo = { meta: kongloMeta || null, results: kongloRows || [] };
 
   // Non-Konglo Screener latest
-  if (payload.sections.indexOf('non_konglo') >= 0) {
-    var { data: nkMeta } = await supabase.from('swing_screener_non_konglo_meta').select('*').eq('id', 'latest').maybeSingle();
-    var { data: nkRows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true });
-    result.non_konglo = { meta: nkMeta || null, results: nkRows || [] };
-  }
+  var { data: nkMeta } = await supabase.from('swing_screener_non_konglo_meta').select('*').eq('id', 'latest').maybeSingle();
+  var { data: nkRows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true });
+  result.non_konglo = { meta: nkMeta || null, results: nkRows || [] };
 
   // Day Trade Screener latest
-  if (payload.sections.indexOf('daytrade') >= 0) {
-    var { data: dtMeta } = await supabase.from('daytrade_screener_meta').select('*').eq('id', 'latest').maybeSingle();
-    var { data: dtRows } = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(50);
-    result.daytrade = { meta: dtMeta || null, results: dtRows || [] };
-  }
+  var { data: dtMeta } = await supabase.from('daytrade_screener_meta').select('*').eq('id', 'latest').maybeSingle();
+  var { data: dtRows } = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(50);
+  result.daytrade = { meta: dtMeta || null, results: dtRows || [] };
 
   return res.status(200).json(result);
 }

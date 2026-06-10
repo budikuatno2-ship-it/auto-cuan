@@ -1680,6 +1680,11 @@ function renderShareDt(d) {
         enterShareMode(_shareParams.get('token'));
         return;
     }
+    // Compact share format: ?s=YYMMDD-signature
+    if (_shareParams.get('s')) {
+        enterShareMode(_shareParams.get('s'));
+        return;
+    }
     if (isValidReviewMode()) { await enterReviewMode(); return; }
     var params = new URLSearchParams(window.location.search);
     if (params.get('review_access') === '1') { localStorage.removeItem('autocuan_blocked_until'); window.history.replaceState({}, document.title, window.location.pathname); }
@@ -4613,6 +4618,7 @@ async function generateShareLink() {
             '<div class="text-xs text-gray-500 space-y-1">' +
             '<p>⏰ Berlaku sampai: <strong class="text-gray-300">' + data.expires_label + '</strong></p>' +
             '<p>📋 Konten: Konglo + Non-Konglo + Day Trade (read-only)</p>' +
+            '<p>🔗 Compact: <code class="text-gray-400">' + data.compact_token + '</code></p>' +
             '<p>🔒 Besok link ini otomatis kedaluwarsa. Generate baru jika perlu.</p></div></div>';
     } catch (e) {
         container.innerHTML = '<div class="p-4 rounded-lg bg-red-500/10 border border-red-500/20"><p class="text-sm text-red-400">Error: ' + e.message + '</p></div>';
