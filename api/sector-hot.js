@@ -1927,7 +1927,9 @@ async function handlePublicScreenerShare(req, res, supabase) {
   // Day Trade Screener latest
   var { data: dtMeta } = await supabase.from('daytrade_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: dtRows } = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(50);
-  result.daytrade = { meta: dtMeta || null, results: dtRows || [] };
+  // Derive labels for public share results
+  var dtWithLabels = (dtRows || []).map(function(r) { var lbl = deriveDayTradeLabels(r); r.confidence = lbl.confidence; r.entry_timing = lbl.entry_timing; r.direction = lbl.direction; return r; });
+  result.daytrade = { meta: dtMeta || null, results: dtWithLabels };
 
   return res.status(200).json(result);
 }
@@ -3092,6 +3094,57 @@ function nkCalcRSI(closes, period) {
 
 
 // ============================================================
+// DAY TRADE: Derive labels from stored fields (no DB columns needed)
+// ============================================================
+function deriveDayTradeLabels(r) {
+  var status = r.status || 'AVOID';
+  var score = r.daytrade_score || 0;
+  var chg = r.change_pct || 0;
+  var vol = r.volume_ratio_20d || 0;
+  var rr = r.risk_reward || 0;
+  var entryLow = r.entry_low || 0;
+  var entryHigh = r.entry_high || 0;
+  var lastPrice = r.last_price || 0;
+  var riskDist = (entryLow > 0 && lastPrice > 0) ? ((lastPrice - entryLow) / lastPrice) * 100 : 0;
+
+  // Confidence tier
+  var confidence = 'C';
+  if (status === 'A_PLUS_SETUP') confidence = 'A+';
+  else if (status === 'READY_BREAKOUT') confidence = 'A';
+  else if (status === 'PRE_SPIKE_WATCH' || status === 'EARLY_RADAR') confidence = 'B';
+  else if (status === 'MOMENTUM_CONTINUATION' || status === 'RECLAIM_CANDIDATE') confidence = 'B';
+  else if (status === 'WAIT_PULLBACK' || status === 'SPECULATIVE') confidence = 'C';
+  else confidence = 'Avoid';
+
+  // Entry timing
+  var entryTiming = 'Hanya pantau';
+  if (status === 'A_PLUS_SETUP' || status === 'READY_BREAKOUT') {
+    entryTiming = (chg <= 3.0 && riskDist <= 3.0) ? 'Masih dekat entry' : 'Tunggu breakout';
+  } else if (status === 'PRE_SPIKE_WATCH' || status === 'EARLY_RADAR') {
+    entryTiming = 'Tunggu breakout';
+  } else if (status === 'WAIT_PULLBACK') {
+    entryTiming = 'Tunggu pullback';
+  } else if (status === 'MOMENTUM_CONTINUATION' && chg > 5.0) {
+    entryTiming = 'Sudah telat / jangan chase';
+  } else if (status === 'MOMENTUM_CONTINUATION') {
+    entryTiming = 'Masih dekat entry';
+  } else if (status === 'AVOID') {
+    entryTiming = 'Hindari';
+  }
+
+  // Direction prediction
+  var direction = 'Hindari';
+  if (confidence === 'A+' || confidence === 'A') direction = 'Potensi naik kuat';
+  else if (confidence === 'B' && score >= 70) direction = 'Potensi naik moderat';
+  else if (confidence === 'B') direction = 'Masih radar awal';
+  else if (status === 'WAIT_PULLBACK' || status === 'SPECULATIVE') direction = 'Rawan gagal lanjut';
+  else if (status === 'AVOID') direction = 'Hindari';
+  else direction = 'Masih radar awal';
+
+  return { confidence: confidence, entry_timing: entryTiming, direction: direction };
+}
+
+// ============================================================
 // DAY TRADE SCREENER v1 — READ (public, returns latest results)
 // ============================================================
 async function handleDayTradeScreenerRead(req, res, supabase) {
@@ -3128,12 +3181,21 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
     }
 
     // Sort by status priority (actionable first), then score desc
-    var statusPriority = { 'READY_BREAKOUT': 1, 'PRE_SPIKE_WATCH': 2, 'MOMENTUM_CONTINUATION': 3, 'RECLAIM_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'AVOID': 7 };
+    var statusPriority = { 'A_PLUS_SETUP': 0, 'READY_BREAKOUT': 1, 'EARLY_RADAR': 2, 'PRE_SPIKE_WATCH': 3, 'MOMENTUM_CONTINUATION': 4, 'RECLAIM_CANDIDATE': 5, 'WAIT_PULLBACK': 6, 'SPECULATIVE': 7, 'AVOID': 8 };
     var sortedRows = (rows || []).sort(function(a, b) {
-      var pa = statusPriority[a.status] || 8;
-      var pb = statusPriority[b.status] || 8;
+      var pa = statusPriority[a.status] || 9;
+      var pb = statusPriority[b.status] || 9;
       if (pa !== pb) return pa - pb;
       return (b.daytrade_score || 0) - (a.daytrade_score || 0);
+    });
+
+    // Derive computed labels (confidence, entry_timing, direction) from stored fields
+    sortedRows = sortedRows.map(function(r) {
+      var labels = deriveDayTradeLabels(r);
+      r.confidence = labels.confidence;
+      r.entry_timing = labels.entry_timing;
+      r.direction = labels.direction;
+      return r;
     });
 
     return res.status(200).json({

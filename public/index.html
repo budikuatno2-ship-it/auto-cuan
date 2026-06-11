@@ -905,6 +905,7 @@
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Board</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Conf</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Setup</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
@@ -917,12 +918,14 @@
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
+                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
+                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Time Plan</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
                         </tr>
                     </thead>
                     <tbody id="dtScreenerTableBody">
-                        <tr><td colspan="19" class="text-center py-8 text-gray-500">Data Day Trade Screener belum tersedia. Jalankan manual runner terlebih dahulu.</td></tr>
+                        <tr><td colspan="22" class="text-center py-8 text-gray-500">Data Day Trade Screener belum tersedia. Jalankan manual runner terlebih dahulu.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1638,20 +1641,26 @@ function renderShareDt(d) {
     if (!d || !d.results || d.results.length === 0) { pane.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data Day Trade Screener.</p>'; return; }
     var meta = d.meta || {};
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
-    var statusPri = { 'READY_BREAKOUT': 1, 'PRE_SPIKE_WATCH': 2, 'MOMENTUM_CONTINUATION': 3, 'RECLAIM_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'AVOID': 7 };
-    var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] || 8) - (statusPri[b.status] || 8) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
+    var statusPri = { 'A_PLUS_SETUP': 0, 'READY_BREAKOUT': 1, 'EARLY_RADAR': 2, 'PRE_SPIKE_WATCH': 3, 'MOMENTUM_CONTINUATION': 4, 'RECLAIM_CANDIDATE': 5, 'WAIT_PULLBACK': 6, 'SPECULATIVE': 7, 'AVOID': 8 };
+    var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] || 9) - (statusPri[b.status] || 9) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
     html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Mode: ' + (meta.run_mode || '—') + ' · ' + sorted.length + ' kandidat · Intraday Radar</p>';
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
-    html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Time Plan</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
+    html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5">Conf</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
     sorted.forEach(function(r) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-        var stColor = r.status === 'READY_BREAKOUT' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'bg-cyan-500/15 text-cyan-400' : (r.status === 'AVOID' ? 'bg-red-500/10 text-red-400' : (r.status === 'WAIT_PULLBACK' ? 'bg-orange-500/15 text-orange-400' : 'bg-gray-500/15 text-gray-400'))));
-        var scoreColor = r.daytrade_score >= 85 ? 'text-emerald-400 font-bold' : (r.daytrade_score >= 70 ? 'text-blue-400' : (r.daytrade_score >= 50 ? 'text-amber-400' : 'text-red-400'));
+        var stColor = r.status === 'A_PLUS_SETUP' ? 'bg-emerald-500/20 text-emerald-300' : (r.status === 'READY_BREAKOUT' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'EARLY_RADAR' ? 'bg-violet-500/15 text-violet-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'bg-cyan-500/15 text-cyan-400' : (r.status === 'AVOID' ? 'bg-red-500/10 text-red-400' : (r.status === 'WAIT_PULLBACK' ? 'bg-orange-500/15 text-orange-400' : 'bg-gray-500/15 text-gray-400'))))));
+        var scoreColor = r.daytrade_score >= 88 ? 'text-emerald-300 font-bold' : (r.daytrade_score >= 82 ? 'text-emerald-400 font-bold' : (r.daytrade_score >= 70 ? 'text-blue-400' : (r.daytrade_score >= 50 ? 'text-amber-400' : 'text-red-400')));
         var entryStr = (r.entry_low != null && r.entry_high != null) ? r.entry_low + '-' + r.entry_high : '—';
         var statusLabel = (r.status || '—').replace(/_/g, ' ');
+        var confLabel = r.confidence || '-';
+        var timingLabel = r.entry_timing || '-';
+        var dirLabel = r.direction || '-';
+        var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : 'text-gray-400'));
+        var dirColor = (dirLabel.indexOf('naik kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('naik moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('radar') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
         html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/20">';
         html += '<td class="px-2 py-1.5 font-medium text-white whitespace-nowrap">' + r.ticker + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + '">' + (r.daytrade_score || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + stColor + '">' + statusLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? r.change_pct.toFixed(2) : '0') + '%</td>';
@@ -1663,8 +1672,9 @@ function renderShareDt(d) {
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? r.risk_reward.toFixed(2) : '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-400 text-[10px] whitespace-nowrap">' + timingLabel + '</td>';
+        html += '<td class="px-2 py-1.5 ' + dirColor + ' text-[10px] whitespace-nowrap">' + dirLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-400 text-[10px] whitespace-nowrap">' + (r.setup || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-gray-400 text-[10px] max-w-[180px]" style="white-space:normal;word-break:break-word;">' + (r.time_plan || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-400 text-[10px] max-w-[220px]" style="white-space:normal;word-break:break-word;" title="' + (r.notes || '').replace(/"/g, '&quot;') + '">' + (r.notes || '—') + '</td>';
         html += '</tr>';
     });
@@ -7697,7 +7707,7 @@ function renderDtTable(results) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="19" class="text-center py-8 text-gray-500">Data Day Trade Screener belum tersedia. Jalankan manual runner terlebih dahulu.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="22" class="text-center py-8 text-gray-500">Data Day Trade Screener belum tersedia. Jalankan manual runner terlebih dahulu.</td></tr>';
         return;
     }
 
@@ -7710,6 +7720,12 @@ function renderDtTable(results) {
         var txStr = r.value_today ? formatTxValue(r.value_today) : '—';
         var entryStr = r.entry_low && r.entry_high ? r.entry_low.toLocaleString('id-ID') + '–' + r.entry_high.toLocaleString('id-ID') : '—';
         var rrStr = r.risk_reward != null ? r.risk_reward.toFixed(2) : '—';
+        // V3: Confidence/Timing/Direction labels (from API or derive client-side)
+        var confLabel = r.confidence || '-';
+        var timingLabel = r.entry_timing || '-';
+        var dirLabel = r.direction || '-';
+        var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-gray-400' : 'text-red-400')));
+        var dirColor = dirLabel.indexOf('naik kuat') >= 0 ? 'text-emerald-400' : (dirLabel.indexOf('naik moderat') >= 0 ? 'text-blue-400' : (dirLabel.indexOf('radar') >= 0 ? 'text-violet-400' : (dirLabel.indexOf('Rawan') >= 0 ? 'text-orange-400' : 'text-red-400')));
 
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 transition">';
         html += '<td class="px-2 py-2 text-gray-500 sticky left-0 bg-dark-800/90 z-10">' + (i + 1) + '</td>';
@@ -7717,6 +7733,7 @@ function renderDtTable(results) {
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + formatDtStatus(r.status) + '</span></td>';
         html += '<td class="px-2 py-2 text-center font-bold ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + '</td>';
+        html += '<td class="px-2 py-2 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-2 text-gray-300 text-[10px] max-w-[100px] truncate" title="' + (r.setup || '') + '">' + (r.setup || '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right ' + chgClass + '">' + (r.change_pct != null ? r.change_pct.toFixed(2) + '%' : '—') + '</td>';
@@ -7729,6 +7746,8 @@ function renderDtTable(results) {
         html += '<td class="px-2 py-2 text-right text-emerald-400">' + (r.tp1 ? r.tp1.toLocaleString('id-ID') : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-emerald-300">' + (r.tp2 ? r.tp2.toLocaleString('id-ID') : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right font-medium ' + (r.risk_reward >= 2.0 ? 'text-emerald-400' : r.risk_reward >= 1.5 ? 'text-yellow-400' : 'text-red-400') + '">' + rrStr + '</td>';
+        html += '<td class="px-2 py-2 text-gray-400 text-[10px] whitespace-nowrap">' + timingLabel + '</td>';
+        html += '<td class="px-2 py-2 ' + dirColor + ' text-[10px] whitespace-nowrap">' + dirLabel + '</td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + (r.time_plan || '') + '">' + (r.time_plan || '—') + '</td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + (r.notes || '') + '">' + (r.notes || '—') + '</td>';
         html += '</tr>';
@@ -7752,7 +7771,9 @@ function filterDtScreener(filter) {
 
 function getDtStatusClass(status) {
     switch (status) {
+        case 'A_PLUS_SETUP': return 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/40';
         case 'READY_BREAKOUT': return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        case 'EARLY_RADAR': return 'bg-violet-500/20 text-violet-400 border border-violet-500/30';
         case 'PRE_SPIKE_WATCH': return 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
         case 'WAIT_PULLBACK': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
         case 'RECLAIM_CANDIDATE': return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
@@ -7765,7 +7786,9 @@ function getDtStatusClass(status) {
 
 function formatDtStatus(status) {
     switch (status) {
+        case 'A_PLUS_SETUP': return 'A+ SETUP';
         case 'READY_BREAKOUT': return 'READY';
+        case 'EARLY_RADAR': return 'RADAR';
         case 'PRE_SPIKE_WATCH': return 'PRE-SPIKE';
         case 'WAIT_PULLBACK': return 'WAIT';
         case 'RECLAIM_CANDIDATE': return 'RECLAIM';
