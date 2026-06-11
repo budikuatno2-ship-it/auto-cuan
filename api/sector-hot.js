@@ -3110,6 +3110,7 @@ function deriveDayTradeLabels(r) {
   // Confidence tier
   var confidence = 'C';
   if (status === 'A_PLUS_SETUP') confidence = 'A+';
+  else if (status === 'TRADE_CANDIDATE') confidence = 'A';
   else if (status === 'READY_BREAKOUT') confidence = 'A';
   else if (status === 'PRE_SPIKE_WATCH' || status === 'EARLY_RADAR') confidence = 'B';
   else if (status === 'MOMENTUM_CONTINUATION' || status === 'RECLAIM_CANDIDATE') confidence = 'B';
@@ -3118,7 +3119,7 @@ function deriveDayTradeLabels(r) {
 
   // Entry timing
   var entryTiming = 'Hanya pantau';
-  if (status === 'A_PLUS_SETUP' || status === 'READY_BREAKOUT') {
+  if (status === 'A_PLUS_SETUP' || status === 'TRADE_CANDIDATE' || status === 'READY_BREAKOUT') {
     entryTiming = (chg <= 3.0 && riskDist <= 3.0) ? 'Masih dekat entry' : 'Tunggu breakout';
   } else if (status === 'PRE_SPIKE_WATCH' || status === 'EARLY_RADAR') {
     entryTiming = 'Tunggu breakout';
@@ -3181,7 +3182,7 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
     }
 
     // Sort by status priority (actionable first), then score desc
-    var statusPriority = { 'A_PLUS_SETUP': 0, 'READY_BREAKOUT': 1, 'EARLY_RADAR': 2, 'PRE_SPIKE_WATCH': 3, 'MOMENTUM_CONTINUATION': 4, 'RECLAIM_CANDIDATE': 5, 'WAIT_PULLBACK': 6, 'SPECULATIVE': 7, 'AVOID': 8 };
+    var statusPriority = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8, 'AVOID': 9 };
     var sortedRows = (rows || []).sort(function(a, b) {
       var pa = statusPriority[a.status] || 9;
       var pb = statusPriority[b.status] || 9;

@@ -1641,14 +1641,14 @@ function renderShareDt(d) {
     if (!d || !d.results || d.results.length === 0) { pane.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data Day Trade Screener.</p>'; return; }
     var meta = d.meta || {};
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
-    var statusPri = { 'A_PLUS_SETUP': 0, 'READY_BREAKOUT': 1, 'EARLY_RADAR': 2, 'PRE_SPIKE_WATCH': 3, 'MOMENTUM_CONTINUATION': 4, 'RECLAIM_CANDIDATE': 5, 'WAIT_PULLBACK': 6, 'SPECULATIVE': 7, 'AVOID': 8 };
-    var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] || 9) - (statusPri[b.status] || 9) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
+    var statusPri = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8, 'AVOID': 9 };
+    var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] || 10) - (statusPri[b.status] || 10) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
     html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Mode: ' + (meta.run_mode || '—') + ' · ' + sorted.length + ' kandidat · Intraday Radar</p>';
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5">Conf</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
     sorted.forEach(function(r) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-        var stColor = r.status === 'A_PLUS_SETUP' ? 'bg-emerald-500/20 text-emerald-300' : (r.status === 'READY_BREAKOUT' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'EARLY_RADAR' ? 'bg-violet-500/15 text-violet-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'bg-cyan-500/15 text-cyan-400' : (r.status === 'AVOID' ? 'bg-red-500/10 text-red-400' : (r.status === 'WAIT_PULLBACK' ? 'bg-orange-500/15 text-orange-400' : 'bg-gray-500/15 text-gray-400'))))));
+        var stColor = r.status === 'A_PLUS_SETUP' ? 'bg-emerald-500/20 text-emerald-300' : (r.status === 'TRADE_CANDIDATE' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'READY_BREAKOUT' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'EARLY_RADAR' ? 'bg-violet-500/15 text-violet-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'bg-cyan-500/15 text-cyan-400' : (r.status === 'AVOID' ? 'bg-red-500/10 text-red-400' : (r.status === 'WAIT_PULLBACK' ? 'bg-orange-500/15 text-orange-400' : 'bg-gray-500/15 text-gray-400')))))));
         var scoreColor = r.daytrade_score >= 88 ? 'text-emerald-300 font-bold' : (r.daytrade_score >= 82 ? 'text-emerald-400 font-bold' : (r.daytrade_score >= 70 ? 'text-blue-400' : (r.daytrade_score >= 50 ? 'text-amber-400' : 'text-red-400')));
         var entryStr = (r.entry_low != null && r.entry_high != null) ? r.entry_low + '-' + r.entry_high : '—';
         var statusLabel = (r.status || '—').replace(/_/g, ' ');
@@ -7772,7 +7772,8 @@ function filterDtScreener(filter) {
 function getDtStatusClass(status) {
     switch (status) {
         case 'A_PLUS_SETUP': return 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/40';
-        case 'READY_BREAKOUT': return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        case 'TRADE_CANDIDATE': return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        case 'READY_BREAKOUT': return 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25';
         case 'EARLY_RADAR': return 'bg-violet-500/20 text-violet-400 border border-violet-500/30';
         case 'PRE_SPIKE_WATCH': return 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
         case 'WAIT_PULLBACK': return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
@@ -7787,6 +7788,7 @@ function getDtStatusClass(status) {
 function formatDtStatus(status) {
     switch (status) {
         case 'A_PLUS_SETUP': return 'A+ SETUP';
+        case 'TRADE_CANDIDATE': return 'TRADE';
         case 'READY_BREAKOUT': return 'READY';
         case 'EARLY_RADAR': return 'RADAR';
         case 'PRE_SPIKE_WATCH': return 'PRE-SPIKE';
