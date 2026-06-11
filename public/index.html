@@ -734,28 +734,30 @@
         </div>
         <!-- Table -->
         <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="screenerTableWrap">
-            <table class="w-full text-xs border-collapse min-w-[900px]">
+            <table class="w-full text-xs border-collapse min-w-[1100px]">
                 <thead>
                     <tr class="bg-dark-700/70">
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Conf</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
-                        <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Tx 1D</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
+                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
+                        <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
                     </tr>
                 </thead>
                 <tbody id="screenerTableBody">
-                    <tr><td colspan="15" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                    <tr><td colspan="17" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -799,30 +801,31 @@
             </div>
             <!-- Table -->
             <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="nkScreenerTableWrap">
-                <table class="w-full text-xs border-collapse min-w-[1100px]">
+                <table class="w-full text-xs border-collapse min-w-[1200px]">
                     <thead>
                         <tr class="bg-dark-700/70">
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">#</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Conf</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Vol/Avg20</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Tx 1D</th>
-                            <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Avg Tx 7D</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Entry Area</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">SL</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP1</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">TP2</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RR</th>
+                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Timing</th>
+                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Arah</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Catatan</th>
                         </tr>
                     </thead>
                     <tbody id="nkScreenerTableBody">
-                        <tr><td colspan="17" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
+                        <tr><td colspan="18" class="text-center py-8 text-gray-500">Memuat data screener...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1564,34 +1567,62 @@ function renderShareKonglo(d) {
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · ' + d.results.length + ' ticker · Swing 3-7 Hari · Grup Konglomerat</p>';
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
-    html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5 text-left">Grup</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Tx 1D</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
+    html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5 text-left">Grup</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Conf</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-        var fs = r.final_status || r.status || 'Invalid';
-        var statusClass = fs === 'Swing Ready' ? 'bg-emerald-500/15 text-emerald-400' : (fs === 'Watchlist' ? 'bg-blue-500/15 text-blue-400' : (fs === 'Rebound Speculative' ? 'bg-amber-500/15 text-amber-400' : 'bg-gray-500/15 text-gray-400'));
-        var scoreColor = r.score >= 80 ? 'text-emerald-400 font-bold' : (r.score >= 65 ? 'text-blue-400' : (r.score >= 40 ? 'text-amber-400' : 'text-red-400'));
+        var tierLabel = r.swing_tier ? shareTierShort(r.swing_tier) : (r.final_status === 'Swing Ready' ? 'READY' : (r.final_status === 'Watchlist' ? 'WATCH' : 'AVOID'));
+        var tierClass = shareTierColor(r.swing_tier);
+        var confLabel = r.confidence || '-';
+        var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
+        var scoreColor = r.score >= 80 ? 'text-emerald-400 font-bold' : (r.score >= 65 ? 'text-blue-400' : (r.score >= 50 ? 'text-amber-400' : 'text-red-400'));
         var entryStr = (r.entry_low != null && r.entry_high != null) ? r.entry_low + '-' + r.entry_high : '—';
-        var txStr = r.tx_value_1d ? (r.tx_value_1d >= 1e9 ? (r.tx_value_1d/1e9).toFixed(1) + 'B' : (r.tx_value_1d/1e6).toFixed(0) + 'M') : '—';
+        var timingLabel = r.entry_timing || '-';
+        var timingColor = (timingLabel.indexOf('Masih dekat') >= 0) ? 'text-emerald-400' : ((timingLabel.indexOf('breakout') >= 0) ? 'text-blue-400' : ((timingLabel.indexOf('pullback') >= 0) ? 'text-orange-400' : ((timingLabel.indexOf('telat') >= 0 || timingLabel.indexOf('Hindari') >= 0) ? 'text-red-400' : 'text-gray-400')));
+        var dirLabel = r.direction || '-';
+        var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-gray-400'));
         html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/20">';
         html += '<td class="px-2 py-1.5 font-medium text-white whitespace-nowrap">' + r.ticker + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-500 text-[10px] whitespace-nowrap">' + (r.group_code || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + (fs === 'Swing Ready' ? 'READY' : (fs === 'Watchlist' ? 'WATCH' : (fs === 'Rebound Speculative' ? 'REBOUND' : 'AVOID'))) + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + '">' + (r.score || 0) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? r.change_pct.toFixed(2) : '0') + '%</td>';
+        html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? Number(r.change_pct).toFixed(2) : '0') + '%</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px]">' + txStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 || '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(1) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-left text-gray-400 text-[10px] max-w-[250px]" style="white-space:normal;word-break:break-word;" title="' + (r.status_reason || '').replace(/"/g, '&quot;') + '">' + (r.status_reason || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-left text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
+        html += '<td class="px-2 py-1.5 text-left text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '</tr>';
     });
     html += '</tbody></table></div>';
     pane.innerHTML = html;
+}
+
+// Public share helper functions for tier display
+function shareTierShort(tier) {
+    if (tier === 'A_PLUS_SWING') return 'A+ SWING';
+    if (tier === 'TRADE_CANDIDATE') return 'TRADE';
+    if (tier === 'SWING_READY') return 'READY';
+    if (tier === 'WATCHLIST') return 'WATCH';
+    if (tier === 'REBOUND_CANDIDATE') return 'REBOUND';
+    if (tier === 'WAIT_PULLBACK') return 'WAIT PB';
+    if (tier === 'SPECULATIVE') return 'SPEC';
+    return 'AVOID';
+}
+function shareTierColor(tier) {
+    if (tier === 'A_PLUS_SWING') return 'bg-emerald-500/20 text-emerald-300';
+    if (tier === 'TRADE_CANDIDATE') return 'bg-emerald-500/15 text-emerald-400';
+    if (tier === 'SWING_READY') return 'bg-emerald-500/10 text-emerald-400';
+    if (tier === 'WATCHLIST') return 'bg-blue-500/15 text-blue-400';
+    if (tier === 'REBOUND_CANDIDATE') return 'bg-purple-500/15 text-purple-400';
+    if (tier === 'WAIT_PULLBACK') return 'bg-orange-500/15 text-orange-400';
+    if (tier === 'SPECULATIVE') return 'bg-amber-500/15 text-amber-400';
+    return 'bg-red-500/10 text-red-400';
 }
 
 function renderShareNk(d) {
@@ -1601,35 +1632,40 @@ function renderShareNk(d) {
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Top ' + d.results.length + ' · Non-Konglomerat · Papan Utama & Pengembangan</p>';
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
-    html += '<th class="px-2 py-1.5">#</th><th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Board</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Tx 1D</th><th class="px-2 py-1.5 text-right">Avg Tx 7D</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
+    html += '<th class="px-2 py-1.5">#</th><th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Board</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Conf</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-        var statusClass = r.status === 'Swing Ready' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'Wait Pullback' ? 'bg-orange-500/15 text-orange-400' : (r.status === 'Watchlist' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'Rebound Speculative' ? 'bg-purple-500/15 text-purple-400' : 'bg-gray-500/15 text-gray-400')));
+        var tierLabel = r.swing_tier ? shareTierShort(r.swing_tier) : (r.status || '-');
+        var tierClass = shareTierColor(r.swing_tier);
+        var confLabel = r.confidence || '-';
+        var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
         var scoreColor = r.score >= 80 ? 'text-emerald-400 font-bold' : (r.score >= 65 ? 'text-blue-400' : (r.score >= 50 ? 'text-amber-400' : 'text-gray-400'));
         var entryStr = (r.entry_low != null && r.entry_high != null) ? Number(r.entry_low).toFixed(0) + '-' + Number(r.entry_high).toFixed(0) : '—';
-        var txStr = r.tx_value_1d ? (r.tx_value_1d >= 1e9 ? (r.tx_value_1d/1e9).toFixed(1) + 'B' : (r.tx_value_1d/1e6).toFixed(0) + 'M') : '—';
-        var tx7dStr = r.avg_tx_value_7d ? (r.avg_tx_value_7d >= 1e9 ? (r.avg_tx_value_7d/1e9).toFixed(1) + 'B' : (r.avg_tx_value_7d/1e6).toFixed(0) + 'M') : '—';
         var boardLabel = r.board === 'UTAMA' ? 'Utama' : (r.board === 'PENGEMBANGAN' ? 'Dev' : (r.board || '—'));
         var gradeStr = r.grade || '';
         var scoreLabel = (r.score || 0) + (gradeStr ? ' (' + gradeStr + ')' : '');
+        var timingLabel = r.entry_timing || '-';
+        var timingColor = (timingLabel.indexOf('Masih dekat') >= 0) ? 'text-emerald-400' : ((timingLabel.indexOf('breakout') >= 0) ? 'text-blue-400' : ((timingLabel.indexOf('pullback') >= 0) ? 'text-orange-400' : ((timingLabel.indexOf('telat') >= 0 || timingLabel.indexOf('Hindari') >= 0) ? 'text-red-400' : 'text-gray-400')));
+        var dirLabel = r.direction || '-';
+        var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-gray-400'));
         html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/20">';
         html += '<td class="px-2 py-1.5 text-center text-gray-500">' + (r.rank || '—') + '</td>';
         html += '<td class="px-2 py-1.5 font-medium text-white whitespace-nowrap">' + r.ticker + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + boardLabel + '</td>';
-        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + (r.status || '—') + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price != null ? Number(r.last_price).toFixed(0) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? Number(r.change_pct).toFixed(2) : '0') + '%</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px]">' + txStr + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px]">' + tx7dStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-red-400/80">' + (r.stop_loss != null ? Number(r.stop_loss).toFixed(0) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/80">' + (r.tp1 != null ? Number(r.tp1).toFixed(0) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400/60">' + (r.tp2 != null ? Number(r.tp2).toFixed(0) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-left text-gray-400 text-[10px] max-w-[280px]" style="white-space:normal;word-break:break-word;" title="' + (r.status_reason || '').replace(/"/g, '&quot;') + '">' + (r.status_reason || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-left text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
+        html += '<td class="px-2 py-1.5 text-left text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '</tr>';
     });
     html += '</tbody></table></div>';
@@ -5267,11 +5303,15 @@ function renderScreenerTable(results) {
 
     var filtered = results;
     if (_screenerFilter !== 'all') {
-        filtered = results.filter(function(r) { return r.final_status === _screenerFilter; });
+        filtered = results.filter(function(r) {
+            var tier = r.swing_tier || '';
+            var fs = r.final_status || r.status || 'Invalid';
+            return tier === _screenerFilter || fs === _screenerFilter;
+        });
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Tidak ada saham dengan status ini.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Tidak ada saham dengan status ini.</td></tr>';
         return;
     }
 
@@ -5280,46 +5320,87 @@ function renderScreenerTable(results) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
         var chgSign = (r.change_pct || 0) >= 0 ? '+' : '';
 
-        // Status badge color
-        var statusClass = 'bg-gray-500/15 text-gray-400';
-        var fs = r.final_status || r.status || 'Invalid';
-        if (fs === 'Swing Ready') statusClass = 'bg-emerald-500/15 text-emerald-400';
-        else if (fs === 'Watchlist') statusClass = 'bg-blue-500/15 text-blue-400';
-        else if (fs === 'Rebound Speculative') statusClass = 'bg-amber-500/15 text-amber-400';
-        else statusClass = 'bg-red-500/10 text-red-400';
+        // Tier badge color
+        var tierLabel = swingTierShort(r.swing_tier);
+        var tierClass = swingTierColor(r.swing_tier);
+
+        // Confidence color
+        var confLabel = r.confidence || '-';
+        var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
 
         // Score color
         var scoreColor = 'text-gray-400';
         if (r.score >= 80) scoreColor = 'text-emerald-400 font-bold';
         else if (r.score >= 65) scoreColor = 'text-blue-400';
-        else if (r.score >= 40) scoreColor = 'text-amber-400';
+        else if (r.score >= 50) scoreColor = 'text-amber-400';
         else scoreColor = 'text-red-400';
+
+        // Timing color
+        var timingLabel = r.entry_timing || '-';
+        var timingColor = 'text-gray-400';
+        if (timingLabel.indexOf('Masih dekat') >= 0) timingColor = 'text-emerald-400';
+        else if (timingLabel.indexOf('Tunggu breakout') >= 0) timingColor = 'text-blue-400';
+        else if (timingLabel.indexOf('Tunggu pullback') >= 0) timingColor = 'text-orange-400';
+        else if (timingLabel.indexOf('telat') >= 0 || timingLabel.indexOf('chase') >= 0) timingColor = 'text-red-400';
+        else if (timingLabel.indexOf('Hindari') >= 0) timingColor = 'text-red-400';
+
+        // Direction color
+        var dirLabel = r.direction || '-';
+        var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
         html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '</td>';
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
-        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + screenerStatusShort(fs) + '</span></td>';
+        html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
+        html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
         html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
-        html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatTxValue(r.tx_value_1d) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high) + '</td>';
         html += '<td class="px-2 py-2 text-right text-red-400/80 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
         html += '<td class="px-2 py-2 text-right text-emerald-400/80 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
         html += '<td class="px-2 py-2 text-right text-emerald-400/60 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
-        html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[150px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(r.status_reason || r.invalidation || '-') + '</td>';
+        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
+        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
+        html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(r.status_reason || r.invalidation || '-') + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;
 }
 
+// Swing tier display helpers
+function swingTierShort(tier) {
+    if (tier === 'A_PLUS_SWING') return 'A+ SWING';
+    if (tier === 'TRADE_CANDIDATE') return 'TRADE';
+    if (tier === 'SWING_READY') return 'READY';
+    if (tier === 'WATCHLIST') return 'WATCH';
+    if (tier === 'REBOUND_CANDIDATE') return 'REBOUND';
+    if (tier === 'WAIT_PULLBACK') return 'WAIT PB';
+    if (tier === 'SPECULATIVE') return 'SPEC';
+    if (tier === 'INVALID' || tier === 'AVOID') return 'AVOID';
+    return tier || '-';
+}
+
+function swingTierColor(tier) {
+    if (tier === 'A_PLUS_SWING') return 'bg-emerald-500/20 text-emerald-300';
+    if (tier === 'TRADE_CANDIDATE') return 'bg-emerald-500/15 text-emerald-400';
+    if (tier === 'SWING_READY') return 'bg-emerald-500/10 text-emerald-400';
+    if (tier === 'WATCHLIST') return 'bg-blue-500/15 text-blue-400';
+    if (tier === 'REBOUND_CANDIDATE') return 'bg-purple-500/15 text-purple-400';
+    if (tier === 'WAIT_PULLBACK') return 'bg-orange-500/15 text-orange-400';
+    if (tier === 'SPECULATIVE') return 'bg-amber-500/15 text-amber-400';
+    return 'bg-red-500/10 text-red-400';
+}
+
 function screenerStatusShort(status) {
     if (status === 'Swing Ready') return 'READY';
     if (status === 'Watchlist') return 'WATCH';
+    if (status === 'Wait Pullback') return 'WAIT PB';
     if (status === 'Rebound Speculative') return 'REBOUND';
+    if (status === 'Speculative') return 'SPEC';
     return 'AVOID';
 }
 
@@ -5398,14 +5479,14 @@ async function loadNkScreenerResults() {
 
     // Guard: do not call API if not logged in
     if (getUsername() === 'guest' || localStorage.getItem('autocuan_logged_in') !== 'true') {
-        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">Login diperlukan.</td></tr>';
         return;
     }
 
     var userId = localStorage.getItem('autocuan_user_id') || '';
     var username = getUsername();
 
-    tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
 
     try {
         var response = await fetch('/api/sector-hot?action=nk-screener-results', {
@@ -5414,7 +5495,7 @@ async function loadNkScreenerResults() {
         var data = await response.json();
 
         if (response.status === 403 || !data.success) {
-            tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">' + escapeHtml(data.error || 'Akses ditolak.') + '</td></tr>';
             return;
         }
 
@@ -5427,7 +5508,7 @@ async function loadNkScreenerResults() {
             } else if (data.meta && data.meta.status === 'scanning') {
                 emptyMsg = 'Scan sedang berjalan...';
             }
-            tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">' + escapeHtml(emptyMsg) + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">' + escapeHtml(emptyMsg) + '</td></tr>';
             // Still update meta
             updateNkScreenerMeta(data.meta);
             return;
@@ -5474,7 +5555,7 @@ async function loadNkScreenerResults() {
             progressEl.classList.add('hidden');
         }
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
     }
 }
 
@@ -5548,17 +5629,17 @@ function renderNkScreenerTable(results) {
     if (!tbody) return;
 
     if (!results || results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
         return;
     }
 
-    // Apply status filter
+    // Apply status filter (supports both old status and new swing_tier)
     var filtered = results;
     if (_nkScreenerFilter && _nkScreenerFilter !== 'all') {
-        filtered = results.filter(function(r) { return r.status === _nkScreenerFilter; });
+        filtered = results.filter(function(r) { return r.status === _nkScreenerFilter || r.swing_tier === _nkScreenerFilter; });
     }
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Tidak ada data untuk filter ini.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">Tidak ada data untuk filter ini.</td></tr>';
         return;
     }
 
@@ -5572,43 +5653,58 @@ function renderNkScreenerTable(results) {
         else if (r.score >= 65) scoreColor = 'text-blue-400 font-semibold';
         else if (r.score >= 50) scoreColor = 'text-amber-400';
 
-        var statusClass = 'bg-gray-500/15 text-gray-400';
-        if (r.status === 'Swing Ready') statusClass = 'bg-emerald-500/15 text-emerald-400';
-        else if (r.status === 'Wait Pullback') statusClass = 'bg-orange-500/15 text-orange-400';
-        else if (r.status === 'Watchlist') statusClass = 'bg-blue-500/15 text-blue-400';
-        else if (r.status === 'Rebound Speculative') statusClass = 'bg-purple-500/15 text-purple-400';
-        else if (r.status === 'Speculative') statusClass = 'bg-amber-500/15 text-amber-400';
+        // Tier badge using shared helper
+        var tierLabel = swingTierShort(r.swing_tier);
+        var tierClass = swingTierColor(r.swing_tier);
 
-        // RSI display (0 shows as 0.0, null shows as -)
+        // Confidence color
+        var confLabel = r.confidence || '-';
+        var confColor = confLabel === 'A+' ? 'text-emerald-300 font-bold' : (confLabel === 'A' ? 'text-emerald-400' : (confLabel === 'B' ? 'text-blue-400' : (confLabel === 'C' ? 'text-amber-400' : 'text-red-400')));
+
+        // RSI display
         var rsiStr = '-';
-        if (r.rsi14 !== null && r.rsi14 !== undefined) rsiStr = r.rsi14.toFixed(1);
+        if (r.rsi14 !== null && r.rsi14 !== undefined) rsiStr = Number(r.rsi14).toFixed(1);
 
         // Entry area
         var entryStr = '-';
         if (r.entry_low != null && r.entry_high != null) entryStr = formatPrice(r.entry_low) + ' - ' + formatPrice(r.entry_high);
 
         // Grade badge
-        var gradeStr = r.grade || 'D';
-        var scoreLabel = (r.score || 0) + ' (' + gradeStr + ')';
+        var gradeStr = r.grade || '';
+        var scoreLabel = (r.score || 0) + (gradeStr ? ' (' + gradeStr + ')' : '');
+
+        // Timing color
+        var timingLabel = r.entry_timing || '-';
+        var timingColor = 'text-gray-400';
+        if (timingLabel.indexOf('Masih dekat') >= 0) timingColor = 'text-emerald-400';
+        else if (timingLabel.indexOf('Tunggu breakout') >= 0) timingColor = 'text-blue-400';
+        else if (timingLabel.indexOf('Tunggu pullback') >= 0) timingColor = 'text-orange-400';
+        else if (timingLabel.indexOf('telat') >= 0 || timingLabel.indexOf('chase') >= 0) timingColor = 'text-red-400';
+        else if (timingLabel.indexOf('Hindari') >= 0) timingColor = 'text-red-400';
+
+        // Direction color
+        var dirLabel = r.direction || '-';
+        var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px]">' + (r.rank || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + statusClass + '">' + (r.status || '-') + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
+        html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
         html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + rsiStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatTxValue(r.tx_value_1d) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatTxValue(r.avg_tx_value_7d) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + entryStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-red-400 whitespace-nowrap">' + formatPrice(r.stop_loss) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(2) : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-left text-gray-500 text-[10px] whitespace-nowrap overflow-hidden max-w-[200px] truncate" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml((r.status_reason || '').slice(0, 60)) + '</td>';
+        html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold whitespace-nowrap">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
+        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
+        html += '<td class="px-2 py-1.5 text-left text-gray-500 text-[10px] whitespace-nowrap overflow-hidden max-w-[150px] truncate" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml((r.status_reason || '').slice(0, 50)) + '</td>';
         html += '</tr>';
     });
     tbody.innerHTML = html;
@@ -7446,14 +7542,14 @@ function exportKongloScreenerPDF() {
         startY += 4;
 
         // Extract table data from DOM
-        var heads = [['Ticker', 'Group', 'Status', 'Setup', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Tx 1D', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Catatan']];
+        var heads = [['Ticker', 'Group', 'Tier', 'Conf', 'Score', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Timing', 'Arah', 'Catatan']];
         var body = [];
         var rows = document.querySelectorAll('#screenerTableBody tr');
         rows.forEach(function(row) {
             var cells = row.querySelectorAll('td');
             if (cells.length < 14) return;
             var rowData = [];
-            for (var i = 0; i <= 14 && i < cells.length; i++) {
+            for (var i = 0; i < cells.length; i++) {
                 rowData.push((cells[i].textContent || '').trim());
             }
             body.push(rowData);
@@ -7465,16 +7561,17 @@ function exportKongloScreenerPDF() {
             body: body,
             theme: 'grid',
             margin: { left: 5, right: 5 },
-            styles: { fontSize: 6, cellPadding: 1.2, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
-            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 6.5, fontStyle: 'bold', cellPadding: 1.5 },
-            columnStyles: { 14: { cellWidth: 35 } },
+            styles: { fontSize: 5.5, cellPadding: 1.2, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
+            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 6, fontStyle: 'bold', cellPadding: 1.5 },
+            columnStyles: { 16: { cellWidth: 25 } },
             didParseCell: function(data) {
                 // Color status cells
                 if (data.column.index === 2 && data.section === 'body') {
                     var val = (data.cell.raw || '').toUpperCase();
-                    if (val.indexOf('READY') >= 0) data.cell.styles.textColor = [16, 185, 129];
+                    if (val.indexOf('READY') >= 0 || val.indexOf('A+') >= 0 || val.indexOf('TRADE') >= 0) data.cell.styles.textColor = [16, 185, 129];
                     else if (val.indexOf('WATCH') >= 0) data.cell.styles.textColor = [59, 130, 246];
-                    else if (val.indexOf('SPEC') >= 0) data.cell.styles.textColor = [245, 158, 11];
+                    else if (val.indexOf('SPEC') >= 0 || val.indexOf('REBOUND') >= 0) data.cell.styles.textColor = [245, 158, 11];
+                    else if (val.indexOf('WAIT') >= 0) data.cell.styles.textColor = [249, 115, 22];
                     else data.cell.styles.textColor = [239, 68, 68];
                 }
             }
@@ -7507,7 +7604,7 @@ function exportNonKongloScreenerPDF() {
         if (metaText) { doc.text(metaText, 5, startY); startY += 4; }
 
         // Extract table data from DOM
-        var heads = [['#', 'Ticker', 'Board', 'Status', 'Score', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Tx 1D', 'Avg Tx 7D', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Catatan']];
+        var heads = [['#', 'Ticker', 'Board', 'Tier', 'Conf', 'Score', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Timing', 'Arah', 'Catatan']];
         var body = [];
         var rows = document.querySelectorAll('#nkScreenerTableBody tr');
         rows.forEach(function(row) {
@@ -7526,15 +7623,16 @@ function exportNonKongloScreenerPDF() {
             body: body,
             theme: 'grid',
             margin: { left: 5, right: 5 },
-            styles: { fontSize: 5.5, cellPadding: 1, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
-            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 6, fontStyle: 'bold', cellPadding: 1.3 },
-            columnStyles: { 0: { cellWidth: 6 }, 16: { cellWidth: 30 } },
+            styles: { fontSize: 5, cellPadding: 1, lineColor: [40, 50, 60], lineWidth: 0.1, textColor: [50, 50, 50], overflow: 'linebreak' },
+            headStyles: { fillColor: [20, 30, 40], textColor: [180, 200, 210], fontSize: 5.5, fontStyle: 'bold', cellPadding: 1.3 },
+            columnStyles: { 0: { cellWidth: 6 }, 17: { cellWidth: 22 } },
             didParseCell: function(data) {
                 if (data.column.index === 3 && data.section === 'body') {
                     var val = (data.cell.raw || '').toUpperCase();
-                    if (val.indexOf('READY') >= 0) data.cell.styles.textColor = [16, 185, 129];
-                    else if (val.indexOf('WATCH') >= 0) data.cell.styles.textColor = [59, 130, 246];
-                    else if (val.indexOf('SPEC') >= 0) data.cell.styles.textColor = [245, 158, 11];
+                    if (val.indexOf('READY') >= 0 || val.indexOf('A+') >= 0 || val.indexOf('TRADE') >= 0) data.cell.styles.textColor = [16, 185, 129];
+                    else if (val.indexOf('WATCH') >= 0 && val.indexOf('WAIT') < 0) data.cell.styles.textColor = [59, 130, 246];
+                    else if (val.indexOf('SPEC') >= 0 || val.indexOf('REBOUND') >= 0) data.cell.styles.textColor = [245, 158, 11];
+                    else if (val.indexOf('WAIT') >= 0) data.cell.styles.textColor = [249, 115, 22];
                     else data.cell.styles.textColor = [239, 68, 68];
                 }
             }

@@ -370,10 +370,35 @@ async function handleScreenerRead(req, res, supabase) {
     return res.status(200).json({ success: false, error: 'Gagal memuat data screener.' });
   }
 
+  // Derive swing labels and sort by tier priority
+  var sortedRows = (rows || []).map(function(r) {
+    var labels = deriveSwingLabels(r, 'konglo');
+    r.swing_tier = labels.swing_tier;
+    r.confidence = labels.confidence;
+    r.entry_timing = labels.entry_timing;
+    r.tradeability = labels.tradeability;
+    r.direction = labels.direction;
+    return r;
+  });
+
+  // Sort by swing_tier priority, then score desc
+  var swingTierPriority = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
+  sortedRows.sort(function(a, b) {
+    var pa = swingTierPriority[a.swing_tier] != null ? swingTierPriority[a.swing_tier] : 9;
+    var pb = swingTierPriority[b.swing_tier] != null ? swingTierPriority[b.swing_tier] : 9;
+    if (pa !== pb) return pa - pb;
+    // Within same tier: tradeability > score > RR
+    var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2);
+    var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2);
+    if (ta !== tb) return ta - tb;
+    if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+    return (b.risk_reward || 0) - (a.risk_reward || 0);
+  });
+
   return res.status(200).json({
     success: true,
     meta: meta || { calculated_at: null, status: 'pending', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, ai_called_count: 0 },
-    results: rows || []
+    results: sortedRows
   });
 }
 
@@ -1335,6 +1360,24 @@ function scoreAndClassify(data) {
     v2Notes.push('Harga sudah jauh di atas MA20 (+' + data._distAboveMA20Pct.toFixed(1) + '%). Tunggu pullback, jangan chase.');
   }
 
+  // === V3 SCORING ENHANCEMENTS ===
+  // Entry closeness bonus: price near entry area is actionable
+  if (data.entry_high && data.last_price) {
+    var _entryDistPct = data.entry_high > 0 ? ((data.last_price - data.entry_high) / data.entry_high) * 100 : 0;
+    if (_entryDistPct <= 2) score += 5;       // Very close to entry
+    else if (_entryDistPct <= 4) score += 2;  // Moderate proximity
+    else if (_entryDistPct > 8) score -= 5;   // Too far above entry — chase risk
+    else if (_entryDistPct > 12) score -= 8;  // Extreme chase risk
+  }
+
+  // Close position health: bullish close above midpoint is positive
+  if (data._closePosition >= 0.7 && data._volRatio >= 1.0) score += 3;    // Strong close
+  else if (data._closePosition < 0.3 && data._volRatio >= 1.0) score -= 3; // Weak close with volume
+
+  // Transaction value / liquidity tie-breaker (from stored tx_value_1d in results)
+  // Not available at scoring time (scoring happens during refresh), but
+  // close position and volume ratio already capture this signal adequately.
+
   score = Math.max(0, Math.min(100, score));
 
   // CLASSIFICATION with hard filters and reason tracking
@@ -1345,7 +1388,7 @@ function scoreAndClassify(data) {
   var passesAllHardFilters = true;
   var failReasons = [];
 
-  if (score < 80) { passesAllHardFilters = false; failReasons.push('Score < 80'); }
+  if (score < 75) { passesAllHardFilters = false; failReasons.push('Score < 75'); }
   if (!(data.ma20 && data.last_price >= data.ma20 * 0.99)) { passesAllHardFilters = false; failReasons.push('Di bawah MA20'); }
   if (!(data.ma50 && data.last_price >= data.ma50)) { passesAllHardFilters = false; failReasons.push('Di bawah MA50'); }
   // V2 Guard A3: RSI range for Swing Ready widened to 45-70, but >75 blocks, >80 hard block
@@ -1377,18 +1420,24 @@ function scoreAndClassify(data) {
     status_reason = 'Setup lengkap: trend, momentum, volume, RR layak.';
   } else if (data._distAboveMA20Pct > 10 && score >= 55) {
     // V2 Guard A6: Overextended — Wait Pullback
-    status = 'Watchlist';
-    status_reason = 'Harga jauh di atas MA20 (+' + data._distAboveMA20Pct.toFixed(1) + '%). Tunggu pullback.';
-  } else if (data.rsi14 !== null && data.rsi14 >= 30 && data.rsi14 <= 40 &&
+    status = 'Wait Pullback';
+    status_reason = 'Harga jauh di atas MA20 (+' + data._distAboveMA20Pct.toFixed(1) + '%). Tunggu pullback, jangan chase.';
+  } else if (data._overextended && score >= 50) {
+    status = 'Wait Pullback';
+    status_reason = 'Overextended. Tunggu pullback ke area entry.';
+  } else if (data.rsi14 !== null && data.rsi14 >= 30 && data.rsi14 <= 42 &&
              data.last_price > data.support &&
              data.volume_ratio_avg20 >= 0.8 &&
              score >= 40) {
     status = 'Rebound Speculative';
-    status_reason = 'Potensi rebound dari support. Risiko tinggi.';
+    status_reason = 'Potensi rebound dari support. Konfirmasi bounce + volume.';
   } else if (score >= 65) {
     status = 'Watchlist';
     // Build reason from first 2 fail reasons
     status_reason = failReasons.length > 0 ? 'Tunggu: ' + failReasons.slice(0, 2).join(', ') : 'Menunggu konfirmasi.';
+  } else if (score >= 50) {
+    status = 'Watchlist';
+    status_reason = failReasons.length > 0 ? 'Pantau: ' + failReasons.slice(0, 2).join(', ') : 'Setup belum lengkap, pantau perkembangan.';
   } else {
     status = 'Invalid';
     status_reason = failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : 'Setup tidak memenuhi kriteria.';
@@ -1917,12 +1966,20 @@ async function handlePublicScreenerShare(req, res, supabase) {
   // Konglo Screener latest
   var { data: kongloMeta } = await supabase.from('swing_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: kongloRows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false });
-  result.konglo = { meta: kongloMeta || null, results: kongloRows || [] };
+  // Derive swing labels for public share (Konglo)
+  var kongloWithLabels = (kongloRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.confidence = lbl.confidence; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return r; });
+  var _swingPri = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
+  kongloWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; return (b.score || 0) - (a.score || 0); });
+  result.konglo = { meta: kongloMeta || null, results: kongloWithLabels };
 
   // Non-Konglo Screener latest
   var { data: nkMeta } = await supabase.from('swing_screener_non_konglo_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: nkRows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true });
-  result.non_konglo = { meta: nkMeta || null, results: nkRows || [] };
+  // Derive swing labels for public share (Non-Konglo)
+  var nkWithLabels = (nkRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.confidence = lbl.confidence; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return r; });
+  nkWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; return (b.score || 0) - (a.score || 0); });
+  nkWithLabels.forEach(function(r, idx) { r.rank = idx + 1; });
+  result.non_konglo = { meta: nkMeta || null, results: nkWithLabels };
 
   // Day Trade Screener latest
   var { data: dtMeta } = await supabase.from('daytrade_screener_meta').select('*').eq('id', 'latest').maybeSingle();
@@ -2335,15 +2392,15 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     return res.status(200).json({ success: false, error: 'Cannot finalize: pending/processing batches remain.', pending: pendingJobs.length });
   }
 
-  await updateNkMeta(supabase, { status: 'finalizing', message: 'Publishing top 15...' });
+  await updateNkMeta(supabase, { status: 'finalizing', message: 'Publishing top 30...' });
 
-  // Get top 15 from staging by score desc
+  // Get top 30 from staging by score desc
   const { data: topCandidates, error: stagErr } = await supabase
     .from('swing_screener_non_konglo_staging')
     .select('*')
     .eq('run_date', runDate)
     .order('score', { ascending: false })
-    .limit(15);
+    .limit(30);
 
   if (stagErr) {
     await updateNkMeta(supabase, { status: 'failed', message: 'Gagal membaca staging: ' + stagErr.message });
@@ -2373,7 +2430,7 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     });
   }
 
-  // Clear latest table and insert top 15
+  // Clear latest table and insert top 30
   // NOTE: This is not a true DB transaction (two separate calls).
   // If insert fails after delete, meta stays in "finalizing" (not "published").
   // User can retry nk-screener-run&force=1 to re-attempt finalize from staging.
@@ -2423,7 +2480,7 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     if (insErr) {
       // Insert failed — meta stays as "finalizing", NOT "published"
       // User can retry and finalize will re-attempt from staging
-      await updateNkMeta(supabase, { status: 'failed', message: 'Gagal publish Top 15: ' + insErr.message });
+      await updateNkMeta(supabase, { status: 'failed', message: 'Gagal publish Top 30: ' + insErr.message });
       return res.status(200).json({ success: false, error: 'Failed to publish. Retry will re-attempt from staging.' });
     }
     publishedCount = publishRows.length;
@@ -2521,10 +2578,36 @@ async function handleNkScreenerResults(req, res, supabase) {
     return res.status(200).json({ success: false, error: 'Gagal memuat data screener non-konglo.' });
   }
 
+  // Derive swing labels and re-sort by tier priority
+  var nkSorted = (rows || []).map(function(r) {
+    var labels = deriveSwingLabels(r, 'nonkonglo');
+    r.swing_tier = labels.swing_tier;
+    r.confidence = labels.confidence;
+    r.entry_timing = labels.entry_timing;
+    r.tradeability = labels.tradeability;
+    r.direction = labels.direction;
+    return r;
+  });
+
+  var swingTierPriority = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
+  nkSorted.sort(function(a, b) {
+    var pa = swingTierPriority[a.swing_tier] != null ? swingTierPriority[a.swing_tier] : 9;
+    var pb = swingTierPriority[b.swing_tier] != null ? swingTierPriority[b.swing_tier] : 9;
+    if (pa !== pb) return pa - pb;
+    var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2);
+    var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2);
+    if (ta !== tb) return ta - tb;
+    if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
+    return (b.risk_reward || 0) - (a.risk_reward || 0);
+  });
+
+  // Re-assign rank based on new sort order
+  nkSorted.forEach(function(r, idx) { r.rank = idx + 1; });
+
   return res.status(200).json({
     success: true,
     meta: meta || { calculated_at: null, status: 'idle', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 },
-    results: rows || []
+    results: nkSorted
   });
 }
 
@@ -2914,6 +2997,16 @@ function calculateNkSetupScore(q) {
   // 8. SETUP TYPE BONUS
   if ((q.setupType === 'pullback' || q.setupType === 'rebound') && q.priceInEntryZone) { score += 3; components.push('setup ' + q.setupType + ' near entry'); }
 
+  // 9. V3 ENHANCEMENTS: Close position health + entry closeness
+  if (q.nkIsAccumulation && q.volumeRatioAvg20 >= 1.0) {
+    // Candle close position bonus for confirmed accumulation
+    score += 2;
+  }
+  // Entry closeness — reward entries near current price (tight zone)
+  var nkEntryDist = q.entryDistancePct || 0;
+  if (nkEntryDist <= 2 && q.setupType !== 'breakout') { score += 3; components.push('entry dekat'); }
+  else if (nkEntryDist <= 4 && q.setupType !== 'breakout') { score += 1; }
+
   score = Math.max(0, Math.min(100, score));
 
   // GRADE (same thresholds)
@@ -2983,13 +3076,16 @@ function calculateNkSetupScore(q) {
              q.lastPrice > q.support && q.volumeRatioAvg20 >= 0.8 && score >= 40) {
     status = 'Rebound Speculative';
     statusReason = 'Near support, potensi rebound. Konfirmasi bounce + volume.';
-  } else if (score >= 60) {
+  } else if (score >= 55) {
     status = 'Watchlist';
     if (q.distanceAboveEntry > 10) {
       statusReason = 'Wait pullback ke entry area. ' + (failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : '');
     } else {
       statusReason = failReasons.length > 0 ? 'Tunggu: ' + failReasons.slice(0, 2).join(', ') : 'Menunggu konfirmasi.';
     }
+  } else if (score >= 40) {
+    status = 'Speculative';
+    statusReason = failReasons.length > 0 ? 'Pantau: ' + failReasons.slice(0, 2).join(', ') : 'Setup belum memenuhi kriteria.';
   } else {
     status = 'Speculative';
     statusReason = failReasons.length > 0 ? failReasons.slice(0, 2).join(', ') : 'Setup belum memenuhi kriteria.';
@@ -3092,6 +3188,133 @@ function nkCalcRSI(closes, period) {
   return 100 - (100 / (1 + rs));
 }
 
+
+// ============================================================
+// SWING SCREENER: Derive labels from stored fields (no DB columns needed)
+// Computes: swing_tier, confidence, entry_timing, tradeability, direction
+// Works for both Konglo and Non-Konglo screeners.
+// ============================================================
+function deriveSwingLabels(r, screenerType) {
+  var status = r.final_status || r.status || 'Invalid';
+  var score = r.score || 0;
+  var rr = r.risk_reward || 0;
+  var rsi = r.rsi14 != null ? Number(r.rsi14) : null;
+  var volRatio = r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20) : 0;
+  var entryLow = r.entry_low != null ? Number(r.entry_low) : 0;
+  var entryHigh = r.entry_high != null ? Number(r.entry_high) : 0;
+  var lastPrice = r.last_price != null ? Number(r.last_price) : 0;
+  var stopLoss = r.stop_loss != null ? Number(r.stop_loss) : 0;
+  var ma20 = r.ma20 != null ? Number(r.ma20) : 0;
+  var txValue1d = r.tx_value_1d != null ? Number(r.tx_value_1d) : 0;
+  var avgTxValue7d = r.avg_tx_value_7d != null ? Number(r.avg_tx_value_7d) : 0;
+  var statusReason = r.status_reason || '';
+
+  // Derived metrics
+  var entryMid = (entryLow + entryHigh) / 2 || lastPrice;
+  var entryDistancePct = entryHigh > 0 && lastPrice > 0 ? ((lastPrice - entryHigh) / entryHigh) * 100 : 0;
+  var slDistancePct = entryMid > 0 && stopLoss > 0 ? ((entryMid - stopLoss) / entryMid) * 100 : 0;
+  var distAboveMA20 = ma20 > 0 && lastPrice > 0 ? ((lastPrice - ma20) / ma20) * 100 : 0;
+
+  // Detect signals from status_reason text
+  var hasDistribution = statusReason.toLowerCase().indexOf('distribusi') >= 0 || statusReason.toLowerCase().indexOf('rejection') >= 0;
+  var hasPoorRR = rr < 1.5 || statusReason.indexOf('RR kurang') >= 0;
+  var hasRiskFar = slDistancePct > 5 || statusReason.indexOf('SL jauh') >= 0 || statusReason.indexOf('Risk terlalu jauh') >= 0;
+  var hasOverextended = distAboveMA20 > 10 || statusReason.indexOf('Overextended') >= 0 || statusReason.indexOf('jauh di atas MA20') >= 0;
+  var hasChaseRisk = entryDistancePct > 5 || statusReason.indexOf('jangan chase') >= 0;
+  var hasLiquidityRisk = statusReason.indexOf('liquidity') >= 0 || statusReason.indexOf('Volume belum') >= 0 || volRatio < 0.7;
+
+  // === SWING TIER ===
+  var swing_tier = 'INVALID';
+
+  if (status === 'Swing Ready' && score >= 85 && rr >= 2.0 && volRatio >= 1.2 &&
+      !hasDistribution && !hasOverextended && !hasChaseRisk && !hasPoorRR &&
+      entryDistancePct <= 3 && slDistancePct <= 4.5) {
+    swing_tier = 'A_PLUS_SWING';
+  } else if (status === 'Swing Ready' && score >= 75 && rr >= 1.5 && !hasDistribution && !hasOverextended) {
+    swing_tier = 'TRADE_CANDIDATE';
+  } else if (status === 'Swing Ready') {
+    swing_tier = 'SWING_READY';
+  } else if (status === 'Watchlist' && score >= 60) {
+    swing_tier = 'WATCHLIST';
+  } else if (status === 'Rebound Speculative' || (status === 'Watchlist' && rsi !== null && rsi >= 30 && rsi <= 42)) {
+    swing_tier = 'REBOUND_CANDIDATE';
+  } else if (status === 'Wait Pullback' || (hasOverextended && score >= 50) || (hasChaseRisk && score >= 50)) {
+    swing_tier = 'WAIT_PULLBACK';
+  } else if (status === 'Speculative' || (status === 'Watchlist' && score < 60 && score >= 40)) {
+    swing_tier = 'SPECULATIVE';
+  } else if (status === 'Invalid' || score < 30) {
+    swing_tier = 'AVOID';
+  } else {
+    swing_tier = 'SPECULATIVE';
+  }
+
+  // === CONFIDENCE ===
+  var confidence = 'C';
+  if (swing_tier === 'A_PLUS_SWING') confidence = 'A+';
+  else if (swing_tier === 'TRADE_CANDIDATE') confidence = 'A';
+  else if (swing_tier === 'SWING_READY') confidence = 'A';
+  else if (swing_tier === 'WATCHLIST' && score >= 70) confidence = 'B';
+  else if (swing_tier === 'WATCHLIST') confidence = 'B';
+  else if (swing_tier === 'REBOUND_CANDIDATE') confidence = 'B';
+  else if (swing_tier === 'WAIT_PULLBACK') confidence = 'C';
+  else if (swing_tier === 'SPECULATIVE') confidence = 'C';
+  else confidence = 'Avoid';
+
+  // === ENTRY TIMING ===
+  var entry_timing = 'Hanya pantau';
+  if (swing_tier === 'A_PLUS_SWING' || swing_tier === 'TRADE_CANDIDATE') {
+    if (entryDistancePct <= 2) entry_timing = 'Masih dekat entry';
+    else if (entryDistancePct <= 5) entry_timing = 'Tunggu breakout';
+    else entry_timing = 'Tunggu pullback';
+  } else if (swing_tier === 'SWING_READY') {
+    if (entryDistancePct <= 3) entry_timing = 'Masih dekat entry';
+    else entry_timing = 'Tunggu breakout';
+  } else if (swing_tier === 'WATCHLIST') {
+    entry_timing = 'Hanya pantau';
+  } else if (swing_tier === 'REBOUND_CANDIDATE') {
+    entry_timing = 'Tunggu breakout';
+  } else if (swing_tier === 'WAIT_PULLBACK') {
+    if (entryDistancePct > 8) entry_timing = 'Sudah telat / jangan chase';
+    else entry_timing = 'Tunggu pullback';
+  } else if (swing_tier === 'SPECULATIVE') {
+    entry_timing = 'Hanya pantau';
+  } else {
+    entry_timing = 'Hindari';
+  }
+
+  // === TRADEABILITY ===
+  var tradeability = 'Low';
+  if (swing_tier === 'A_PLUS_SWING') tradeability = 'High';
+  else if (swing_tier === 'TRADE_CANDIDATE') tradeability = 'High';
+  else if (swing_tier === 'SWING_READY' && rr >= 2.0 && volRatio >= 1.0) tradeability = 'High';
+  else if (swing_tier === 'SWING_READY') tradeability = 'Medium';
+  else if (swing_tier === 'WATCHLIST' && score >= 70 && rr >= 1.5) tradeability = 'Medium';
+  else if (swing_tier === 'WATCHLIST') tradeability = 'Low';
+  else if (swing_tier === 'REBOUND_CANDIDATE') tradeability = 'Medium';
+  else if (swing_tier === 'WAIT_PULLBACK') tradeability = 'Low';
+  else if (swing_tier === 'SPECULATIVE') tradeability = 'Low';
+  else tradeability = 'Avoid';
+
+  // === DIRECTION ===
+  var direction = 'Hindari';
+  if (swing_tier === 'A_PLUS_SWING') direction = 'Potensi swing kuat';
+  else if (swing_tier === 'TRADE_CANDIDATE') direction = 'Potensi swing kuat';
+  else if (swing_tier === 'SWING_READY') direction = 'Potensi swing moderat';
+  else if (swing_tier === 'WATCHLIST' && score >= 70) direction = 'Potensi swing moderat';
+  else if (swing_tier === 'WATCHLIST') direction = 'Watchlist awal';
+  else if (swing_tier === 'REBOUND_CANDIDATE') direction = 'Potensi swing moderat';
+  else if (swing_tier === 'WAIT_PULLBACK') direction = 'Rawan gagal lanjut';
+  else if (swing_tier === 'SPECULATIVE') direction = 'Rawan gagal lanjut';
+  else direction = 'Hindari';
+
+  return {
+    swing_tier: swing_tier,
+    confidence: confidence,
+    entry_timing: entry_timing,
+    tradeability: tradeability,
+    direction: direction
+  };
+}
 
 // ============================================================
 // DAY TRADE: Derive labels from stored fields (no DB columns needed)
