@@ -767,7 +767,7 @@
             <!-- Header -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                    <h2 class="text-lg font-bold text-white">Swing Screener Non-Konglo (Top 15)</h2>
+                    <h2 class="text-lg font-bold text-white">Swing Screener Non-Konglo</h2>
                     <p class="text-xs text-gray-500 mt-0.5" id="nkScreenerSubtitle">Watchlist swing setup dari saham non-konglomerat (papan Utama &amp; Pengembangan).</p>
                 </div>
                 <div class="flex items-center gap-2">
@@ -5516,6 +5516,12 @@ async function loadNkScreenerResults() {
 
         updateNkScreenerMeta(data.meta);
         renderNkScreenerTable(data.results);
+
+        // Update title with actual count
+        var nkTitle = document.querySelector('#screenerNonKongloPane h2');
+        if (nkTitle && data.results.length > 0) {
+            nkTitle.textContent = 'Swing Screener Non-Konglo \u2014 ' + data.results.length + ' dari maks. 30 kandidat';
+        }
 
         // TASK 7: Show info note if no Swing Ready rows
         var nkInfoNote = document.getElementById('nkNoSwingReadyNote');

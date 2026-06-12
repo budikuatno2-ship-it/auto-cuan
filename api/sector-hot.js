@@ -381,18 +381,19 @@ async function handleScreenerRead(req, res, supabase) {
     return r;
   });
 
-  // Sort by swing_tier priority, then score desc
-  var swingTierPriority = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
+  // Sort by swing_tier priority, then composite quality
+  var swingTierPriority = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
   sortedRows.sort(function(a, b) {
     var pa = swingTierPriority[a.swing_tier] != null ? swingTierPriority[a.swing_tier] : 9;
     var pb = swingTierPriority[b.swing_tier] != null ? swingTierPriority[b.swing_tier] : 9;
     if (pa !== pb) return pa - pb;
-    // Within same tier: tradeability > score > RR
+    // Within same tier group: tradeability > score > RR > entry closeness
     var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2);
     var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2);
     if (ta !== tb) return ta - tb;
     if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
-    return (b.risk_reward || 0) - (a.risk_reward || 0);
+    if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0);
+    return 0;
   });
 
   return res.status(200).json({
@@ -1968,8 +1969,8 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: kongloRows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false });
   // Derive swing labels for public share (Konglo)
   var kongloWithLabels = (kongloRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.confidence = lbl.confidence; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return r; });
-  var _swingPri = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
-  kongloWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; return (b.score || 0) - (a.score || 0); });
+  var _swingPri = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
+  kongloWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; return (b.score || 0) - (a.score || 0); });
   result.konglo = { meta: kongloMeta || null, results: kongloWithLabels };
 
   // Non-Konglo Screener latest
@@ -1977,7 +1978,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: nkRows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true });
   // Derive swing labels for public share (Non-Konglo)
   var nkWithLabels = (nkRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.confidence = lbl.confidence; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return r; });
-  nkWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; return (b.score || 0) - (a.score || 0); });
+  nkWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; return (b.score || 0) - (a.score || 0); });
   nkWithLabels.forEach(function(r, idx) { r.rank = idx + 1; });
   result.non_konglo = { meta: nkMeta || null, results: nkWithLabels };
 
@@ -2377,7 +2378,7 @@ async function handleNkScreenerBatch(req, res, supabase) {
   });
 }
 
-// --- FINALIZE: publish Top 15 ---
+// --- FINALIZE: publish Top 30 ---
 async function handleNkScreenerFinalize(req, res, supabase) {
   const runDate = getWibDateString();
 
@@ -2589,16 +2590,21 @@ async function handleNkScreenerResults(req, res, supabase) {
     return r;
   });
 
-  var swingTierPriority = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 4, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
+  var swingTierPriority = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
   nkSorted.sort(function(a, b) {
     var pa = swingTierPriority[a.swing_tier] != null ? swingTierPriority[a.swing_tier] : 9;
     var pb = swingTierPriority[b.swing_tier] != null ? swingTierPriority[b.swing_tier] : 9;
     if (pa !== pb) return pa - pb;
+    // Within same tier group: sort by composite quality
     var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2);
     var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2);
     if (ta !== tb) return ta - tb;
     if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0);
-    return (b.risk_reward || 0) - (a.risk_reward || 0);
+    if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0);
+    // Entry closeness: prefer lower entry_distance (price closer to entry)
+    var aEntry = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99;
+    var bEntry = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99;
+    return aEntry - bEntry;
   });
 
   // Re-assign rank based on new sort order
