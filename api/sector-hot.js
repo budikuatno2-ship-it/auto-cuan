@@ -31,6 +31,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const dtEngine = require('../lib/daytrade-screener-engine');
+const candleEngine = require('../lib/candle-pattern-engine');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -1262,7 +1263,12 @@ function calculateIndicators(candles) {
     _atr14: atr14 ? round2(atr14) : null,
     _atrSlUsed: atrSlUsed,
     _adx14: trendStrengthProxy,
-    _distAboveMA20Pct: distAboveMA20Pct
+    _distAboveMA20Pct: distAboveMA20Pct,
+    // V5: Candle Pattern Confirmation (computed at runtime, not DB)
+    _candlePattern: (function() {
+      var cpCtx = { volumeAvg20: volAvg20, support: primarySupport, resistance: resistance, ma20: ma20, rsi14: rsi14, changePct: change_pct, lastPrice: last_price };
+      return candleEngine.detectPattern(candles.slice(-3), cpCtx);
+    })()
   };
 }
 
@@ -1342,6 +1348,46 @@ function scoreAndClassify(data) {
     else if (data._adx14 > 20) { score += 3; }     // Moderate trend
     else if (data._adx14 < 15) { score -= 5; }     // Weak/no trend
     else if (data._adx14 < 18) { score -= 3; }     // Below threshold
+  }
+
+  // === V5: Candle Pattern Confirmation (Konglo Swing) ===
+  var _cp = data._candlePattern;
+  var _cpScore = 0;
+  if (_cp && _cp.pattern) {
+    var _nearSup = data.support && data.last_price ? Math.abs(data.last_price - data.support) / data.support <= 0.03 : false;
+    var _vr = data._volRatio || 0;
+
+    // Positive Swing boosts
+    if (_cp.pattern === 'Bullish Engulfing' && _nearSup) _cpScore += 5;
+    else if (_cp.pattern === 'Bullish Engulfing') _cpScore += 3;
+    if (_cp.pattern === 'Hammer' && _nearSup) _cpScore += 4;
+    if (_cp.pattern === 'Dragonfly Doji' && _nearSup) _cpScore += 4;
+    if (_cp.pattern === 'Morning Star') _cpScore += 5;
+    if (_cp.pattern === 'Bullish Marubozu' && _vr >= 1.0) _cpScore += 4;
+    if (_cp.pattern === 'Tweezer Bottom') _cpScore += 3;
+    if (_cp.pattern === 'Three White Soldiers' && _cp.risk !== 'Overextended') _cpScore += 4;
+
+    // Negative Swing downgrades
+    if (_cp.pattern === 'Shooting Star') _cpScore -= 5;
+    if (_cp.pattern === 'Hanging Man') _cpScore -= 4;
+    if (_cp.pattern === 'Bearish Engulfing') _cpScore -= 6;
+    if (_cp.pattern === 'Evening Star') _cpScore -= 6;
+    if (_cp.pattern === 'Gravestone Doji') _cpScore -= 5;
+    if (_cp.pattern === 'Three Black Crows') _cpScore -= 7;
+    if (_cp.pattern === 'Distribution candle') _cpScore -= 6;
+    if (_cp.pattern === 'Rejection candle') _cpScore -= 5;
+    if (_cp.pattern === 'Failed breakout candle') _cpScore -= 5;
+    if (_cp.pattern === 'Bearish Marubozu') _cpScore -= 5;
+
+    // Cap candle contribution
+    if (_cpScore > 6) _cpScore = 6;
+    if (_cpScore < -8) _cpScore = -8;
+    score += _cpScore;
+
+    // Append note
+    if (_cp.note && _cpScore !== 0) {
+      v2Notes.push(_cp.note);
+    }
   }
 
   // PENALTIES (legacy + enhanced)
@@ -2893,7 +2939,12 @@ async function fetchNkQuoteData(ticker) {
       nkDistributionStrength: nkDistributionStrength,
       nkIsDoji: nkIsDoji,
       nkIsStrongRejection: nkIsStrongRejection,
-      nkDistAboveMA20Pct: Number(nkDistAboveMA20Pct.toFixed(2))
+      nkDistAboveMA20Pct: Number(nkDistAboveMA20Pct.toFixed(2)),
+      // V5: Candle Pattern Confirmation (computed at runtime)
+      nkCandlePattern: (function() {
+        var cpCtx = { volumeAvg20: avgVol20, support: support, resistance: resistance, ma20: ma20, rsi14: rsi14, changePct: changePct, lastPrice: lastClose };
+        return candleEngine.detectPattern(validDays.slice(-3), cpCtx);
+      })()
     };
   } catch (e) {
     return null;
@@ -2983,6 +3034,55 @@ function calculateNkSetupScore(q) {
 
   // V2 Guard A6: Wait Pullback for overextended above MA20 (>12% for non-konglo)
   if (q.nkDistAboveMA20Pct > 12) { score -= 5; components.push('jauh di atas MA20 +' + q.nkDistAboveMA20Pct.toFixed(1) + '%'); }
+
+  // === V5: Candle Pattern Confirmation (Non-Konglo Swing — stricter than Konglo) ===
+  var _nkCp = q.nkCandlePattern;
+  var _nkCpScore = 0;
+  if (_nkCp && _nkCp.pattern) {
+    var _nkNearSup = q.support && q.lastPrice ? Math.abs(q.lastPrice - q.support) / q.support <= 0.03 : false;
+    var _nkVr = q.volumeRatioAvg20 || 0;
+
+    // Positive boosts (same as Konglo)
+    if (_nkCp.pattern === 'Bullish Engulfing' && _nkNearSup) _nkCpScore += 5;
+    else if (_nkCp.pattern === 'Bullish Engulfing') _nkCpScore += 3;
+    if (_nkCp.pattern === 'Hammer' && _nkNearSup) _nkCpScore += 4;
+    if (_nkCp.pattern === 'Dragonfly Doji' && _nkNearSup) _nkCpScore += 4;
+    if (_nkCp.pattern === 'Morning Star') _nkCpScore += 5;
+    if (_nkCp.pattern === 'Bullish Marubozu' && _nkVr >= 1.0) _nkCpScore += 4;
+    if (_nkCp.pattern === 'Tweezer Bottom') _nkCpScore += 3;
+    if (_nkCp.pattern === 'Three White Soldiers' && _nkCp.risk !== 'Overextended') _nkCpScore += 4;
+
+    // Negative downgrades (same as Konglo)
+    if (_nkCp.pattern === 'Shooting Star') _nkCpScore -= 5;
+    if (_nkCp.pattern === 'Hanging Man') _nkCpScore -= 4;
+    if (_nkCp.pattern === 'Bearish Engulfing') _nkCpScore -= 6;
+    if (_nkCp.pattern === 'Evening Star') _nkCpScore -= 6;
+    if (_nkCp.pattern === 'Gravestone Doji') _nkCpScore -= 5;
+    if (_nkCp.pattern === 'Three Black Crows') _nkCpScore -= 7;
+    if (_nkCp.pattern === 'Distribution candle') _nkCpScore -= 6;
+    if (_nkCp.pattern === 'Rejection candle') _nkCpScore -= 5;
+    if (_nkCp.pattern === 'Failed breakout candle') _nkCpScore -= 5;
+    if (_nkCp.pattern === 'Bearish Marubozu') _nkCpScore -= 5;
+
+    // STRICTER for Non-Konglo: if bullish but liquidity weak, reduce boost
+    if (_nkCpScore > 0 && _nkVr < 0.8) {
+      _nkCpScore = Math.max(0, Math.round(_nkCpScore * 0.4));
+      if (_nkCpScore > 0) components.push('candle boost reduced (vol rendah)');
+    }
+    // STRICTER for Non-Konglo: rejection/distribution extra penalty
+    if (_nkCp.risk === 'Rejection' || _nkCp.risk === 'Distribution') {
+      _nkCpScore -= 2;
+    }
+
+    // Cap: stricter than Konglo (+5 max, -10 max)
+    if (_nkCpScore > 5) _nkCpScore = 5;
+    if (_nkCpScore < -10) _nkCpScore = -10;
+    score += _nkCpScore;
+
+    if (_nkCp.note && _nkCpScore !== 0) {
+      components.push(_nkCp.note);
+    }
+  }
 
   // 5b. ENTRY-DISTANCE PENALTY (strengthened guard)
   // Use entryDistancePct (from actual entry_high) for realistic penalty
