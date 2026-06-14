@@ -3260,6 +3260,12 @@ function calculateNkSetupScore(q) {
 
   statusReason = metricLine + '.' + entryNote + ' ' + statusReason;
 
+  // V5: Append candle pattern note to statusReason if detected
+  var _nkCpFinal = q.nkCandlePattern;
+  if (_nkCpFinal && _nkCpFinal.pattern && _nkCpFinal.note) {
+    statusReason += ' | Candle: ' + _nkCpFinal.note;
+  }
+
   // Compute avg_volume_20d
   var avgVolume20d = (q.lastPrice > 0) ? Math.round(q.avgTxValue20d / q.lastPrice) : 0;
 
