@@ -706,7 +706,7 @@
         </div>
         <!-- Setup Score legend -->
         <div class="bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
-            <p class="text-[11px] text-gray-400 leading-relaxed"><strong class="text-gray-300">Setup Score (0&ndash;100)</strong> adalah skor kualitas teknikal berdasarkan trend, momentum, volume, dan risk/reward. <strong>Bukan winrate</strong> atau jaminan profit. Score tinggi + status WATCH = ada filter yang belum terpenuhi (lihat kolom Catatan).</p>
+            <p class="text-[11px] text-gray-400 leading-relaxed"><strong class="text-gray-300">Setup Score (0&ndash;100)</strong> menilai kekuatan setup teknikal (trend, momentum, volume, RR). <strong class="text-gray-300">Exec (A+/A/B/C)</strong> menilai kelayakan eksekusi saat ini. Score tinggi tetapi Exec C berarti setup menarik, tetapi entry sudah telat/risiko chase tinggi. <strong>Bukan winrate</strong> atau jaminan profit.</p>
         </div>
         <!-- Stats row -->
         <div class="grid grid-cols-3 gap-2" id="screenerStats">
@@ -740,8 +740,8 @@
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
                         <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Conf</th>
-                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
+                        <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
                         <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
@@ -808,8 +808,8 @@
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Conf</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">RSI</th>
@@ -849,7 +849,7 @@
             </div>
             <!-- Scoring info -->
             <div class="bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
-                <p class="text-[11px] text-gray-400 leading-relaxed"><strong class="text-gray-300">Day Trade Score (0&ndash;100)</strong> = Liquidity (25) + Pre-Spike (25) + Momentum (20) + Risk:Reward (15) + Trend (10) &minus; Penalty. <strong>READY_BREAKOUT</strong> = score &ge;85 + lolos semua hard guard. <strong>PRE_SPIKE_WATCH</strong> = pressure building, tunggu konfirmasi.</p>
+                <p class="text-[11px] text-gray-400 leading-relaxed"><strong class="text-gray-300">Setup Score (0&ndash;100)</strong> = Liquidity + Pre-Spike + Momentum + RR + Trend &minus; Penalty. <strong class="text-gray-300">Exec (A+/A/B/C)</strong> = kelayakan eksekusi saat ini. TRADE = kandidat serius untuk dipantau. READY = lebih dekat ke trigger entry/breakout. Tetap cek Entry Area, Timing, Volume, RR, dan Catatan.</p>
             </div>
             <!-- Stats row -->
             <div class="grid grid-cols-4 gap-2" id="dtScreenerStats">
@@ -907,8 +907,8 @@
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Ticker</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Board</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Score</th>
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Conf</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup Score</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Setup</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Last</th>
                             <th class="px-2 py-2.5 text-right text-gray-400 font-medium whitespace-nowrap">Chg%</th>
@@ -1567,7 +1567,7 @@ function renderShareKonglo(d) {
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · ' + d.results.length + ' ticker · Swing 3-7 Hari · Grup Konglomerat</p>';
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
-    html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5 text-left">Grup</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Conf</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
+    html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5 text-left">Grup</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
         var tierLabel = r.swing_tier ? shareTierShort(r.swing_tier) : (r.final_status === 'Swing Ready' ? 'READY' : (r.final_status === 'Watchlist' ? 'WATCH' : 'AVOID'));
@@ -1632,7 +1632,7 @@ function renderShareNk(d) {
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Top ' + d.results.length + ' · Non-Konglomerat · Papan Utama & Pengembangan</p>';
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
-    html += '<th class="px-2 py-1.5">#</th><th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Board</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Conf</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
+    html += '<th class="px-2 py-1.5">#</th><th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Board</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
         var tierLabel = r.swing_tier ? shareTierShort(r.swing_tier) : (r.status || '-');
@@ -1681,7 +1681,7 @@ function renderShareDt(d) {
     var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] || 10) - (statusPri[b.status] || 10) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
     html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Mode: ' + (meta.run_mode || '—') + ' · ' + sorted.length + ' kandidat · Intraday Radar</p>';
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
-    html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Score</th><th class="px-2 py-1.5">Conf</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
+    html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Setup Score</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
     sorted.forEach(function(r) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
         var stColor = r.status === 'A_PLUS_SETUP' ? 'bg-emerald-500/20 text-emerald-300' : (r.status === 'TRADE_CANDIDATE' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'READY_BREAKOUT' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'EARLY_RADAR' ? 'bg-violet-500/15 text-violet-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'bg-cyan-500/15 text-cyan-400' : (r.status === 'AVOID' ? 'bg-red-500/10 text-red-400' : (r.status === 'WAIT_PULLBACK' ? 'bg-orange-500/15 text-orange-400' : 'bg-gray-500/15 text-gray-400')))))));
@@ -7548,7 +7548,7 @@ function exportKongloScreenerPDF() {
         startY += 4;
 
         // Extract table data from DOM
-        var heads = [['Ticker', 'Group', 'Tier', 'Conf', 'Score', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Timing', 'Arah', 'Catatan']];
+        var heads = [['Ticker', 'Group', 'Tier', 'Exec', 'Setup', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Timing', 'Arah', 'Catatan']];
         var body = [];
         var rows = document.querySelectorAll('#screenerTableBody tr');
         rows.forEach(function(row) {
@@ -7610,7 +7610,7 @@ function exportNonKongloScreenerPDF() {
         if (metaText) { doc.text(metaText, 5, startY); startY += 4; }
 
         // Extract table data from DOM
-        var heads = [['#', 'Ticker', 'Board', 'Tier', 'Conf', 'Score', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Timing', 'Arah', 'Catatan']];
+        var heads = [['#', 'Ticker', 'Board', 'Tier', 'Exec', 'Setup', 'Last', 'Chg%', 'RSI', 'Vol/Avg20', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Timing', 'Arah', 'Catatan']];
         var body = [];
         var rows = document.querySelectorAll('#nkScreenerTableBody tr');
         rows.forEach(function(row) {
@@ -7941,7 +7941,7 @@ function exportDayTradePDF() {
         if (metaText) { doc.text(metaText, 5, startY); startY += 4; }
 
         // Extract table data from DOM
-        var heads = [['#', 'Ticker', 'Board', 'Status', 'Score', 'Setup', 'Last', 'Chg%', 'Vol/Avg', 'Tx', 'PreSpk', 'Mom', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Time Plan', 'Catatan']];
+        var heads = [['#', 'Ticker', 'Board', 'Status', 'Setup Score', 'Setup', 'Last', 'Chg%', 'Vol/Avg', 'Tx', 'PreSpk', 'Mom', 'Entry', 'SL', 'TP1', 'TP2', 'RR', 'Time Plan', 'Catatan']];
         var body = [];
         var rows = document.querySelectorAll('#dtScreenerTableBody tr');
         rows.forEach(function(row) {
