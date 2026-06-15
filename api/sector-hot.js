@@ -1141,15 +1141,36 @@ function calculateIndicators(candles) {
     stop_loss = round0(entry_low * 0.965);
   }
 
-  // TP levels
+  // TP levels — V1 Level Quality: use intermediate swing high if closer
+  var swingHigh10K = round0(Math.max.apply(null, highs.slice(-10)));
   var tp1 = round0(resistance);
+  // If swing high 10D is a valid intermediate target closer than full 20d resistance
+  if (swingHigh10K > entry_high && swingHigh10K < resistance && swingHigh10K > entry_high + (atr14 || range * 0.1) * 0.7) {
+    tp1 = swingHigh10K;
+  }
   var range = resistance - primarySupport;
   var tp2 = round0(resistance + range * 0.5);
+  // TP validation: TP1 must be > entry
+  if (tp1 <= entry_high) {
+    tp1 = round0(entryMid + (atr14 || range * 0.3) * 1.5);
+  }
+  // TP2 must be > TP1
+  if (tp2 <= tp1) {
+    tp2 = round0(tp1 + (atr14 || range * 0.2) * 0.5);
+  }
 
   // Risk/Reward — recalculated after ATR adjustment
   var risk = entryMid - stop_loss;
   var reward1 = tp1 - entryMid;
   var risk_reward = risk > 0 ? round2(reward1 / risk) : 0;
+
+  // === RR QUALITY GUARD (V1 Level Quality) ===
+  // If RR > 5 and TP1 exceeds resistance, cap at resistance
+  if (risk_reward > 5.0 && tp1 > resistance) {
+    tp1 = round0(resistance);
+    reward1 = tp1 - entryMid;
+    risk_reward = risk > 0 ? round2(reward1 / risk) : 0;
+  }
 
   var invalidation = 'Close < ' + round0(stop_loss);
 
@@ -2832,36 +2853,89 @@ async function fetchNkQuoteData(ticker) {
       setupType = 'speculative';
     }
 
+    // === NK ATR14 CALCULATION (V1 Level Quality Upgrade) ===
+    var nkAtr14 = null;
+    if (validDays.length >= 15) {
+      var nkTrSum = 0;
+      var nkTrCount = 0;
+      for (var nkAi = lastIdx - 13; nkAi <= lastIdx; nkAi++) {
+        if (nkAi < 1) continue;
+        var nkTrHigh = validDays[nkAi].high - validDays[nkAi].low;
+        var nkTrHighPrev = Math.abs(validDays[nkAi].high - validDays[nkAi - 1].close);
+        var nkTrLowPrev = Math.abs(validDays[nkAi].low - validDays[nkAi - 1].close);
+        var nkTr = Math.max(nkTrHigh, nkTrHighPrev, nkTrLowPrev);
+        nkTrSum += nkTr;
+        nkTrCount++;
+      }
+      if (nkTrCount > 0) nkAtr14 = nkTrSum / nkTrCount;
+    }
+    var nkAtrProxy = nkAtr14 || (validDays[lastIdx].high - validDays[lastIdx].low) || (lastClose * 0.02);
+    if (nkAtrProxy <= 0) nkAtrProxy = lastClose * 0.02;
+
+    // === NK SWING HIGH 10D (intermediate resistance for TP) ===
+    var nkSwingHigh10 = Math.max.apply(null, validDays.slice(-10).map(function(d) { return d.high; }));
+
     // TP based on Fibonacci levels of the 20d range
-    const tp1 = Math.round(support + (resistance - support) * 0.618);
-    const tp2 = Math.round(resistance);
+    var tp1 = Math.round(support + (resistance - support) * 0.618);
+    var tp2 = Math.round(resistance);
+
+    // === TP VALIDATION (V1 Level Quality): ensure TP1 > entry, use swing high if closer ===
+    if (nkSwingHigh10 > entryHigh && nkSwingHigh10 < tp1 && nkSwingHigh10 > entryHigh + nkAtrProxy * 0.7) {
+      tp1 = Math.round(nkSwingHigh10);
+    }
+    if (tp1 <= entryHigh) {
+      tp1 = Math.round(((entryLow + entryHigh) / 2) + nkAtrProxy * 1.5);
+    }
+    if (tp2 <= tp1) {
+      tp2 = Math.round(tp1 + nkAtrProxy * 0.5);
+    }
 
     // === ENTRY-DISTANCE GUARD ===
-    // Calculate entry_distance_pct from ACTUAL entry_high (not Fib zone)
-    // This measures how far current price is above the computed entry area.
     var entryDistancePct = entryHigh > 0 ? ((lastClose - entryHigh) / entryHigh) * 100 : 0;
-    // Preserve original distance for scoring/catatan before recalculation
     var originalEntryDistancePct = entryDistancePct;
 
-    // If entry is far below current price (>5%), force recalculate entry
-    // to be near current price and reclassify setup type.
-    // This prevents BULL/BUVA/WIFI/INET-like cases where entry is 15-25% below.
     if (setupType !== 'breakout' && entryDistancePct > 5) {
-      // Reclassify: price has moved far above computed entry
       if (entryDistancePct > 8) {
         setupType = 'wait_pullback';
       }
-      // Recalculate entry to realistic current-price zone (tight, near last price)
       entryLow = Math.round(lastClose * (1 - pctWidth));
       entryHigh = Math.round(lastClose);
       stopLoss = Math.round(entryLow * 0.96);
     }
 
-    // Risk/Reward based on actual entry (current-price-aware)
+    // === NK ATR-BASED SL REFINEMENT (V1 Level Quality Upgrade, parity with Konglo) ===
+    var nkEntryMidForAtr = (entryLow + entryHigh) / 2;
+    if (nkAtr14 && nkAtr14 > 0) {
+      var nkAtrStop = Math.round(nkEntryMidForAtr - (1.5 * nkAtr14));
+      var nkExistingSlDist = nkEntryMidForAtr - stopLoss;
+      var nkAtrSlDist = nkEntryMidForAtr - nkAtrStop;
+      if (nkExistingSlDist > nkAtrSlDist * 1.3 && nkAtrStop < entryLow && nkAtrStop > nkEntryMidForAtr * 0.92) {
+        stopLoss = nkAtrStop;
+      } else if (nkAtrSlDist > nkExistingSlDist * 1.5 && nkEntryMidForAtr - stopLoss < nkAtr14 * 0.5) {
+        var nkWidened = Math.round(nkEntryMidForAtr - (1.0 * nkAtr14));
+        if (nkWidened < entryLow && nkWidened > nkEntryMidForAtr * 0.92) {
+          stopLoss = nkWidened;
+        }
+      }
+    }
+    if (stopLoss < nkEntryMidForAtr * 0.95) {
+      stopLoss = Math.round(nkEntryMidForAtr * 0.95);
+    }
+    if (stopLoss >= entryLow) {
+      stopLoss = Math.round(entryLow * 0.965);
+    }
+
+    // Risk/Reward based on actual entry (post-ATR-adjustment)
     const entryMid = (entryLow + entryHigh) / 2;
     const riskAmt = entryMid - stopLoss;
     const rewardAmt = tp1 - entryMid;
-    const riskReward = riskAmt > 0 ? rewardAmt / riskAmt : 0;
+    var riskReward = riskAmt > 0 ? rewardAmt / riskAmt : 0;
+
+    // === RR QUALITY GUARD (V1 Level Quality) ===
+    if (riskReward > 5.0 && tp1 > resistance) {
+      tp1 = Math.round(resistance);
+      riskReward = riskAmt > 0 ? (tp1 - entryMid) / riskAmt : 0;
+    }
 
     // Penalty signals (matching Konglo screener technical equivalence)
     const lastCandle = validDays[lastIdx];
