@@ -1141,22 +1141,101 @@ function calculateIndicators(candles) {
     stop_loss = round0(entry_low * 0.965);
   }
 
-  // TP levels — V1 Level Quality: use intermediate swing high if closer
+  // TP levels — V1.1 Swing TP: best probable swing target + gap detection
   var swingHigh10K = round0(Math.max.apply(null, highs.slice(-10)));
-  var tp1 = round0(resistance);
-  // If swing high 10D is a valid intermediate target closer than full 20d resistance
-  if (swingHigh10K > entry_high && swingHigh10K < resistance && swingHigh10K > entry_high + (atr14 || range * 0.1) * 0.7) {
-    tp1 = swingHigh10K;
-  }
   var range = resistance - primarySupport;
-  var tp2 = round0(resistance + range * 0.5);
-  // TP validation: TP1 must be > entry
+  var atrForTP = atr14 || (range * 0.15);
+
+  // === OVERHEAD GAP DETECTION (unfilled gap-down above current price) ===
+  var overheadGap = null;
+  var downsideGap = null;
+  for (var gi = lastIdx - 1; gi >= Math.max(1, lastIdx - 19); gi--) {
+    // Overhead gap: previous candle low > next candle high (gap-down left unfilled)
+    var prevLow = lows[gi - 1];
+    var currHigh = highs[gi];
+    if (prevLow > currHigh && prevLow > last_price && !overheadGap) {
+      // Gap zone: currHigh (lower boundary) to prevLow (upper boundary)
+      // Only count if gap is meaningful (>0.3% of price)
+      var gapSize = prevLow - currHigh;
+      if (gapSize / last_price > 0.003) {
+        overheadGap = { lower: round0(currHigh), upper: round0(prevLow), size: round0(gapSize) };
+      }
+    }
+    // Downside gap: current candle low > previous candle high (gap-up left unfilled below)
+    var currLow = lows[gi];
+    var prevHigh2 = highs[gi - 1];
+    if (currLow > prevHigh2 && prevHigh2 < last_price && !downsideGap) {
+      var dGapSize = currLow - prevHigh2;
+      if (dGapSize / last_price > 0.003) {
+        downsideGap = { lower: round0(prevHigh2), upper: round0(currLow), size: round0(dGapSize) };
+      }
+    }
+  }
+
+  // === TP1: Best first swing target (not merely nearest tiny resistance) ===
+  // Candidates ranked by quality for Swing:
+  // 1. 20D resistance (primary if RR is good)
+  // 2. Overhead gap lower boundary (if exists and closer)
+  // 3. SwingHigh10 only if meaningful (gives RR >= 1.5 from entry)
+  var tp1 = round0(resistance);
+  var tp1Source = 'resistance_20d';
+
+  // Check if swingHigh10 is too close (RR would be poor)
+  var entryMidTP = entryMid;
+  var riskForTP = entryMidTP - stop_loss;
+  if (riskForTP <= 0) riskForTP = atrForTP;
+
+  var swingHigh10RR = riskForTP > 0 ? (swingHigh10K - entryMidTP) / riskForTP : 0;
+  var resistanceRR = riskForTP > 0 ? (resistance - entryMidTP) / riskForTP : 0;
+
+  // Use swingHigh10 as TP1 only if it gives RR >= 1.5 AND is meaningfully below resistance
+  if (swingHigh10K > entry_high && swingHigh10K < resistance * 0.97 && swingHigh10RR >= 1.5) {
+    tp1 = swingHigh10K;
+    tp1Source = 'swing_high_10d';
+  }
+  // Overhead gap lower boundary as TP1 if closer than resistance but still meaningful
+  if (overheadGap && overheadGap.lower > entry_high && overheadGap.lower < tp1) {
+    var gapRR = riskForTP > 0 ? (overheadGap.lower - entryMidTP) / riskForTP : 0;
+    if (gapRR >= 1.5) {
+      tp1 = overheadGap.lower;
+      tp1Source = 'gap_lower';
+    }
+  }
+  // If TP1 is too close (RR < 1.5), skip intermediate and use full resistance
+  var tp1RR = riskForTP > 0 ? (tp1 - entryMidTP) / riskForTP : 0;
+  if (tp1RR < 1.5 && resistance > entry_high) {
+    tp1 = round0(resistance);
+    tp1Source = 'resistance_20d';
+  }
+  // Final fallback: if TP1 still <= entry_high
   if (tp1 <= entry_high) {
-    tp1 = round0(entryMid + (atr14 || range * 0.3) * 1.5);
+    tp1 = round0(entryMidTP + atrForTP * 2.0);
+    tp1Source = 'atr_measured';
+  }
+
+  // === TP2: Best probable extended swing target ===
+  // Candidates: resistance, overhead gap upper, range extension
+  var tp2 = round0(resistance + range * 0.38);
+  var tp2Source = 'range_extension';
+
+  // If overhead gap exists and upper boundary is above TP1
+  if (overheadGap && overheadGap.upper > tp1) {
+    tp2 = round0(overheadGap.upper);
+    tp2Source = 'gap_upper';
+  }
+  // If tp1 already = resistance, tp2 = resistance + sensible extension (capped by ATR)
+  if (tp1Source === 'resistance_20d' || tp1 >= resistance) {
+    var tp2ext = round0(resistance + Math.min(range * 0.38, atrForTP * 3.0));
+    if (tp2ext > tp2) tp2 = tp2ext;
   }
   // TP2 must be > TP1
   if (tp2 <= tp1) {
-    tp2 = round0(tp1 + (atr14 || range * 0.2) * 0.5);
+    tp2 = round0(tp1 + atrForTP * 1.0);
+  }
+  // Cap: TP2 cannot exceed entry + 5×ATR (prevent unrealistic for swing)
+  var tp2Cap = round0(entryMidTP + atrForTP * 5.0);
+  if (tp2 > tp2Cap && tp2 > resistance * 1.1) {
+    tp2 = tp2Cap;
   }
 
   // Risk/Reward — recalculated after ATR adjustment
@@ -1164,12 +1243,32 @@ function calculateIndicators(candles) {
   var reward1 = tp1 - entryMid;
   var risk_reward = risk > 0 ? round2(reward1 / risk) : 0;
 
-  // === RR QUALITY GUARD (V1 Level Quality) ===
-  // If RR > 5 and TP1 exceeds resistance, cap at resistance
-  if (risk_reward > 5.0 && tp1 > resistance) {
+  // === RR QUALITY GUARD (V1.1) ===
+  // If RR > 5 and TP1 exceeds resistance without gap support, cap
+  if (risk_reward > 5.0 && tp1 > resistance && tp1Source !== 'gap_lower') {
     tp1 = round0(resistance);
     reward1 = tp1 - entryMid;
     risk_reward = risk > 0 ? round2(reward1 / risk) : 0;
+    tp1Source = 'resistance_20d_capped';
+  }
+  // If TP1 too close (RR < 1.2) after all logic, note for status_reason
+  var tpNote = '';
+  if (tp1Source === 'gap_lower' || tp1Source === 'gap_upper' || tp2Source === 'gap_upper') {
+    tpNote = 'TP mempertimbangkan area gap atas yang belum tertutup.';
+  } else if (tp1Source === 'swing_high_10d') {
+    tpNote = 'TP1 ke swing high 10D valid.';
+  } else if (tp1Source === 'resistance_20d') {
+    tpNote = 'TP1 ke resistance 20D.';
+  } else if (tp1Source === 'atr_measured') {
+    tpNote = 'TP1 berbasis measured move ATR.';
+  }
+  if (downsideGap && tpNote) {
+    tpNote += ' Ada gap bawah belum tertutup, waspadai pullback.';
+  } else if (downsideGap) {
+    tpNote = 'Ada gap bawah belum tertutup, waspadai pullback.';
+  }
+  if (risk_reward < 1.2 && risk_reward > 0) {
+    tpNote = 'TP terlalu dekat, RR kurang layak. Setup diturunkan.';
   }
 
   var invalidation = 'Close < ' + round0(stop_loss);
@@ -1283,6 +1382,9 @@ function calculateIndicators(candles) {
     _body: body,
     _atr14: atr14 ? round2(atr14) : null,
     _atrSlUsed: atrSlUsed,
+    _tpNote: tpNote || null,
+    _overheadGap: overheadGap,
+    _downsideGap: downsideGap,
     _adx14: trendStrengthProxy,
     _distAboveMA20Pct: distAboveMA20Pct,
     // V5: Candle Pattern Confirmation (computed at runtime, not DB)
@@ -1423,6 +1525,10 @@ function scoreAndClassify(data) {
   }
   if (data._slDistance > 5) {
     v2Notes.push('Risk terlalu jauh dari entry. Tunggu setup lebih dekat.');
+  }
+  // V1.1: TP quality note (gap/swing target info)
+  if (data._tpNote) {
+    v2Notes.push(data._tpNote);
   }
 
   // V2 Guard A6: Wait Pullback for overextended above MA20 (>10%)
@@ -2875,19 +2981,114 @@ async function fetchNkQuoteData(ticker) {
     // === NK SWING HIGH 10D (intermediate resistance for TP) ===
     var nkSwingHigh10 = Math.max.apply(null, validDays.slice(-10).map(function(d) { return d.high; }));
 
-    // TP based on Fibonacci levels of the 20d range
-    var tp1 = Math.round(support + (resistance - support) * 0.618);
-    var tp2 = Math.round(resistance);
+    // === NK OVERHEAD GAP DETECTION (unfilled gap-down above current price) ===
+    var nkOverheadGap = null;
+    var nkDownsideGap = null;
+    for (var nkGi = lastIdx - 1; nkGi >= Math.max(1, lastIdx - 19); nkGi--) {
+      var nkPrevLow = validDays[nkGi - 1].low;
+      var nkCurrHigh = validDays[nkGi].high;
+      if (nkPrevLow > nkCurrHigh && nkPrevLow > lastClose && !nkOverheadGap) {
+        var nkGapSize = nkPrevLow - nkCurrHigh;
+        if (nkGapSize / lastClose > 0.003) {
+          nkOverheadGap = { lower: Math.round(nkCurrHigh), upper: Math.round(nkPrevLow), size: Math.round(nkGapSize) };
+        }
+      }
+      var nkCurrLow2 = validDays[nkGi].low;
+      var nkPrevHigh2 = validDays[nkGi - 1].high;
+      if (nkCurrLow2 > nkPrevHigh2 && nkPrevHigh2 < lastClose && !nkDownsideGap) {
+        var nkDGapSize = nkCurrLow2 - nkPrevHigh2;
+        if (nkDGapSize / lastClose > 0.003) {
+          nkDownsideGap = { lower: Math.round(nkPrevHigh2), upper: Math.round(nkCurrLow2), size: Math.round(nkDGapSize) };
+        }
+      }
+    }
 
-    // === TP VALIDATION (V1 Level Quality): ensure TP1 > entry, use swing high if closer ===
-    if (nkSwingHigh10 > entryHigh && nkSwingHigh10 < tp1 && nkSwingHigh10 > entryHigh + nkAtrProxy * 0.7) {
-      tp1 = Math.round(nkSwingHigh10);
+    // === NK TP: Best probable swing target (V1.1 — not merely nearest resistance) ===
+    var nkRange = resistance - support;
+    var nkAtrForTP = nkAtr14 || (nkRange * 0.15);
+    var nkRiskForTP = ((entryLow + entryHigh) / 2) - (stopLoss || entryLow * 0.96);
+    if (nkRiskForTP <= 0) nkRiskForTP = nkAtrForTP;
+
+    // TP1 base: Fibonacci 0.618 (existing good logic for NK)
+    var tp1 = Math.round(support + nkRange * 0.618);
+    var nkTp1Source = 'fib_618';
+
+    // Check if swingHigh10 gives better RR than Fib (and is meaningful)
+    var nkSwH10RR = nkRiskForTP > 0 ? (nkSwingHigh10 - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
+    var nkFibRR = nkRiskForTP > 0 ? (tp1 - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
+
+    // Use swingHigh10 ONLY if it gives RR >= 1.5 AND is not too close (skip if too short)
+    if (nkSwingHigh10 > entryHigh && nkSwH10RR >= 1.5 && nkSwingHigh10 < resistance * 0.97) {
+      // Only replace Fib if swing high is ABOVE Fib level (better target)
+      if (nkSwingHigh10 > tp1) {
+        tp1 = Math.round(nkSwingHigh10);
+        nkTp1Source = 'swing_high_10d';
+      }
+      // If swing high is below Fib and gives poor RR, keep Fib
     }
+
+    // Overhead gap as TP1 candidate if closer than current TP1 but still gives RR >= 1.5
+    if (nkOverheadGap && nkOverheadGap.lower > entryHigh && nkOverheadGap.lower < tp1) {
+      var nkGapRR = nkRiskForTP > 0 ? (nkOverheadGap.lower - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
+      if (nkGapRR >= 1.5) {
+        tp1 = nkOverheadGap.lower;
+        nkTp1Source = 'gap_lower';
+      }
+    }
+
+    // If TP1 RR < 1.5, try to use resistance instead
+    var nkTp1FinalRR = nkRiskForTP > 0 ? (tp1 - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
+    if (nkTp1FinalRR < 1.5 && resistance > entryHigh) {
+      var resRR = nkRiskForTP > 0 ? (resistance - ((entryLow + entryHigh) / 2)) / nkRiskForTP : 0;
+      if (resRR >= 1.5) {
+        tp1 = Math.round(resistance);
+        nkTp1Source = 'resistance_20d';
+      }
+    }
+
+    // Fallback: TP1 must be > entry
     if (tp1 <= entryHigh) {
-      tp1 = Math.round(((entryLow + entryHigh) / 2) + nkAtrProxy * 1.5);
+      tp1 = Math.round(((entryLow + entryHigh) / 2) + nkAtrForTP * 2.0);
+      nkTp1Source = 'atr_measured';
     }
+
+    // === NK TP2: Extended target (stricter than Konglo due to liquidity) ===
+    var tp2 = Math.round(resistance);
+    var nkTp2Source = 'resistance_20d';
+
+    // If overhead gap upper is above TP1, use as TP2
+    if (nkOverheadGap && nkOverheadGap.upper > tp1) {
+      tp2 = Math.round(nkOverheadGap.upper);
+      nkTp2Source = 'gap_upper';
+    }
+    // If TP2 <= TP1, extend
     if (tp2 <= tp1) {
-      tp2 = Math.round(tp1 + nkAtrProxy * 0.5);
+      tp2 = Math.round(tp1 + nkAtrForTP * 1.0);
+      nkTp2Source = 'atr_extension';
+    }
+    // NK stricter cap: TP2 max = entry + 4×ATR (tighter than Konglo's 5×)
+    var nkTp2Cap = Math.round(((entryLow + entryHigh) / 2) + nkAtrForTP * 4.0);
+    if (tp2 > nkTp2Cap && tp2 > resistance * 1.05 && volumeRatioAvg20 < 1.5) {
+      tp2 = nkTp2Cap;
+      nkTp2Source = 'capped_liquidity';
+    }
+
+    // Build NK TP note
+    var nkTpNote = '';
+    if (nkTp1Source === 'gap_lower' || nkTp2Source === 'gap_upper') {
+      nkTpNote = 'TP mempertimbangkan area gap atas yang belum tertutup.';
+    } else if (nkTp1Source === 'swing_high_10d') {
+      nkTpNote = 'TP1 ke swing high valid.';
+    } else if (nkTp1Source === 'resistance_20d') {
+      nkTpNote = 'TP1 ke resistance 20D.';
+    } else if (nkTp1Source === 'fib_618') {
+      nkTpNote = 'TP1 ke Fib 61.8% area.';
+    }
+    if (nkDownsideGap) {
+      nkTpNote += (nkTpNote ? ' ' : '') + 'Ada gap bawah belum tertutup, waspadai pullback.';
+    }
+    if (nkTp2Source === 'capped_liquidity') {
+      nkTpNote += (nkTpNote ? ' ' : '') + 'TP dikonservatifkan karena volume belum mendukung.';
     }
 
     // === ENTRY-DISTANCE GUARD ===
@@ -2931,10 +3132,13 @@ async function fetchNkQuoteData(ticker) {
     const rewardAmt = tp1 - entryMid;
     var riskReward = riskAmt > 0 ? rewardAmt / riskAmt : 0;
 
-    // === RR QUALITY GUARD (V1 Level Quality) ===
-    if (riskReward > 5.0 && tp1 > resistance) {
+    // === RR QUALITY GUARD (V1.1) ===
+    if (riskReward > 5.0 && tp1 > resistance && nkTp1Source !== 'gap_lower') {
       tp1 = Math.round(resistance);
       riskReward = riskAmt > 0 ? (tp1 - entryMid) / riskAmt : 0;
+    }
+    if (riskReward < 1.2 && riskReward > 0 && !nkTpNote.includes('terlalu dekat')) {
+      nkTpNote = (nkTpNote ? nkTpNote + ' ' : '') + 'TP terlalu dekat, RR kurang layak.';
     }
 
     // Penalty signals (matching Konglo screener technical equivalence)
@@ -3014,6 +3218,10 @@ async function fetchNkQuoteData(ticker) {
       nkIsDoji: nkIsDoji,
       nkIsStrongRejection: nkIsStrongRejection,
       nkDistAboveMA20Pct: Number(nkDistAboveMA20Pct.toFixed(2)),
+      // V1.1: TP quality note
+      nkTpNote: nkTpNote || null,
+      nkOverheadGap: nkOverheadGap,
+      nkDownsideGap: nkDownsideGap,
       // V5: Candle Pattern Confirmation (computed at runtime)
       nkCandlePattern: (function() {
         var cpCtx = { volumeAvg20: avgVol20, support: support, resistance: resistance, ma20: ma20, rsi14: rsi14, changePct: changePct, lastPrice: lastClose };
@@ -3338,6 +3546,11 @@ function calculateNkSetupScore(q) {
   var _nkCpFinal = q.nkCandlePattern;
   if (_nkCpFinal && _nkCpFinal.pattern && _nkCpFinal.note) {
     statusReason += ' | Candle: ' + _nkCpFinal.note;
+  }
+
+  // V1.1: Append TP quality note
+  if (q.nkTpNote) {
+    statusReason += ' | ' + q.nkTpNote;
   }
 
   // Compute avg_volume_20d
