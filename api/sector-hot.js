@@ -34,8 +34,17 @@ const dtEngine = require('../lib/daytrade-screener-engine');
 const candleEngine = require('../lib/candle-pattern-engine');
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'GET') {
+  // Allow GET (all existing actions) and POST (admin-screener-proxy only)
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  // POST is only allowed for admin-screener-proxy
+  if (req.method === 'POST') {
+    var postAction = (req.query && req.query.action) || (req.body && req.body.action) || null;
+    if (postAction !== 'admin-screener-proxy') {
+      return res.status(405).json({ success: false, error: 'POST only allowed for admin-screener-proxy.' });
+    }
   }
 
   try {
@@ -93,6 +102,11 @@ module.exports = async function handler(req, res) {
     // === PUBLIC SCREENER SHARE: READ (token-validated, read-only) ===
     if (action === 'public-screener-share') {
       return await handlePublicScreenerShare(req, res, supabase);
+    }
+
+    // === ADMIN SCREENER PROXY (POST, X-Admin-Scan-Secret protected) ===
+    if (action === 'admin-screener-proxy') {
+      return await handleAdminScreenerProxy(req, res, supabase);
     }
 
     // === SEKTOR HOT REFRESH MODE (cron-protected, existing) ===
@@ -844,6 +858,57 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       results_so_far: typeof results !== 'undefined' ? results.length : null
     });
   }
+}
+
+// ============================================================
+// ADMIN SCREENER PROXY — Secure backend proxy for admin web buttons
+// Verifies X-Admin-Scan-Secret header against ADMIN_SCAN_SECRET or CRON_SECRET.
+// Internally delegates to existing scan handlers without exposing CRON_SECRET.
+// ============================================================
+async function handleAdminScreenerProxy(req, res, supabase) {
+  // 1. Verify admin scan secret — ADMIN_SCAN_SECRET only (no CRON_SECRET fallback)
+  var adminSecret = process.env.ADMIN_SCAN_SECRET || '';
+  if (!adminSecret) {
+    return res.status(500).json({ success: false, error: 'ADMIN_SCAN_SECRET is not configured.' });
+  }
+
+  var providedSecret = (req.headers['x-admin-scan-secret'] || '').trim();
+  if (!providedSecret || providedSecret !== adminSecret) {
+    return res.status(403).json({ success: false, error: 'Admin Scan Secret salah atau belum dikonfigurasi.' });
+  }
+
+  // 2. Parse target action from request body
+  var body = req.body || {};
+  var target = body.target; // 'refresh-screener', 'nk-screener-run', 'daytrade-screener-run'
+  if (!target) {
+    return res.status(400).json({ success: false, error: 'Missing target action.' });
+  }
+
+  // 3. Inject CRON_SECRET into Authorization header so existing handlers pass their own checks
+  var cronSecret = process.env.CRON_SECRET || '';
+  if (cronSecret) {
+    req.headers.authorization = 'Bearer ' + cronSecret;
+  }
+
+  // 4. Map query params from body (mode, batch, force, ai)
+  if (body.mode) req.query.mode = body.mode;
+  if (body.batch != null) req.query.batch = String(body.batch);
+  if (body.force) req.query.force = body.force;
+  // AI is always disabled for admin proxy — deterministic only
+  req.query.ai = '0';
+
+  // 5. Delegate to existing handler based on target
+  if (target === 'refresh-screener') {
+    return await handleScreenerRefresh(req, res, supabase, false);
+  }
+  if (target === 'nk-screener-run') {
+    return await handleNkScreenerRun(req, res, supabase);
+  }
+  if (target === 'daytrade-screener-run') {
+    return await handleDayTradeScreenerRun(req, res, supabase);
+  }
+
+  return res.status(400).json({ success: false, error: 'Unknown target: ' + target });
 }
 
 // ============================================================
