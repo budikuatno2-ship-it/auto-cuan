@@ -3913,7 +3913,9 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
   var modeOverride = req.query.mode || null;
   var runMode = dtEngine.getRunMode(modeOverride);
   var runDate = dtEngine.getWibDateStr();
-  var BATCH_SIZE = 50;
+  var speedMode = (req.query.speed || 'full').toLowerCase();
+  var isFastMode = (speedMode === 'fast');
+  var BATCH_SIZE = isFastMode ? 75 : 50;
   var batchIndex = parseInt(req.query.batch || '0', 10);
 
   // 3. Read current meta state
@@ -3973,8 +3975,13 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     runId = 'dt-' + runDate + '-' + Date.now().toString(36);
   }
 
-  // 5. Build universe
-  var universeResult = await dtEngine.buildDayTradeUniverse(supabase);
+  // 5. Build universe (fast mode uses curated liquid shortlist)
+  var universeResult;
+  if (isFastMode) {
+    universeResult = await dtEngine.buildFastDayTradeUniverse(supabase);
+  } else {
+    universeResult = await dtEngine.buildDayTradeUniverse(supabase);
+  }
   if (universeResult.error || universeResult.tickers.length === 0) {
     await updateDtMeta(supabase, { status: 'failed', message: 'Universe kosong: ' + (universeResult.error || 'No tickers') });
     return res.status(200).json({
@@ -4006,7 +4013,7 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
 
   // 6. Process this batch
   var batchTickers = universe.slice(startIdx, endIdx);
-  var batchResult = await dtEngine.runDayTradeBatch(batchTickers, runMode);
+  var batchResult = await dtEngine.runDayTradeBatch(batchTickers, runMode, { fastMode: isFastMode });
   var results = batchResult.results;
   var failedTickers = batchResult.failed;
 
@@ -4112,6 +4119,7 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     status: 'running',
     run_id: runId,
     run_mode: runMode,
+    speed_mode: isFastMode ? 'fast' : 'full',
     run_date: runDate,
     batch_index: batchIndex,
     batch_count: batchCount,

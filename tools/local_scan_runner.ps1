@@ -205,10 +205,15 @@ function Run-NonKonglo($cfg) {
 }
 
 function Run-DayTrade($cfg, $mode) {
+    $isFast = $mode.EndsWith("-fast")
+    $actualMode = $mode -replace "-fast$", ""
+    $speedLabel = if ($isFast) { "FAST" } else { "FULL" }
+
     Write-Host ""
-    Write-Host "  Running: Day Trade Screener (mode: $mode)"
+    Write-Host "  Running: Day Trade Screener (mode: $actualMode, speed: $speedLabel)"
     Write-Host "  NOTE: Day Trade scan saat ini berbasis candle harian sebagai radar awal."
     Write-Host "        Konfirmasi intraday tetap wajib."
+    if ($isFast) { Write-Host "  FAST MODE: Scan shortlist ~150 ticker liquid saja." }
     Write-Host "  $('-' * 50)"
 
     $maxBatches = 120
@@ -217,9 +222,10 @@ function Run-DayTrade($cfg, $mode) {
 
     while ($batch -lt $maxBatches) {
         $params = @{ force = "1"; batch = "$batch" }
-        if ($mode -and $mode -ne "full") { $params["mode"] = $mode }
+        if ($actualMode -and $actualMode -ne "full") { $params["mode"] = $actualMode }
+        if ($isFast) { $params["speed"] = "fast" }
 
-        Write-Host "`r  [DT/$mode] Batch $($batch + 1)..." -NoNewline
+        Write-Host "`r  [DT/$actualMode/$speedLabel] Batch $($batch + 1)..." -NoNewline
         $data = Call-Api $cfg "daytrade-screener-run" $params
 
         if (-not $data) { Write-Host "`n  ERROR: No response at batch $batch"; break }
@@ -235,7 +241,7 @@ function Run-DayTrade($cfg, $mode) {
         $failed = if ($data.failed_count) { $data.failed_count } else { "-" }
         $universe = if ($data.universe_count) { $data.universe_count } else { "-" }
         $bc = if ($data.batch_count) { $data.batch_count } else { "?" }
-        Write-Host "`r  [DT/$mode] Batch $($batch + 1)/$bc | Scanned: $scanned | Passed: $passed | Failed: $failed   " -NoNewline
+        Write-Host "`r  [DT/$actualMode/$speedLabel] Batch $($batch + 1)/$bc | Scanned: $scanned | Passed: $passed | Failed: $failed   " -NoNewline
 
         $status = $data.status
         if ($status -eq "published" -or $status -eq "already_done") {
@@ -317,9 +323,11 @@ switch ($Command) {
         }
     }
     "daytrade" {
-        $mode = if ($SubArg) { $SubArg } else { "morning" }
-        if ($mode -notin @("morning", "midday", "afternoon", "full")) {
-            Write-Host "  Invalid mode: $mode (valid: morning, midday, afternoon, full)"
+        $mode = if ($SubArg) { $SubArg } else { "morning-fast" }
+        $validModes = @("morning", "midday", "afternoon", "full", "morning-fast", "midday-fast", "afternoon-fast")
+        if ($mode -notin $validModes) {
+            Write-Host "  Invalid mode: $mode"
+            Write-Host "  Valid: morning, midday, afternoon, full, morning-fast, midday-fast, afternoon-fast"
             exit 1
         }
         $success = Run-DayTrade $cfg $mode

@@ -1,5 +1,5 @@
 @echo off
-title Auto-Cuan - Day Trade Full
+title Auto-Cuan - Day Trade Full Scan (all universe)
 cd /d "%~dp0\.."
-powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade full
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade morning
 pause
