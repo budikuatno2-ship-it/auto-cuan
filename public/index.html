@@ -4925,11 +4925,18 @@ function testMaintenanceScreen() {
 function normalizeDisplayLevels(r) {
     var el = r.entry_low || 0, eh = r.entry_high || 0;
     var t1v = r.tp1 || 0, t2v = r.tp2 || 0;
-    if (el > eh && eh > 0) { var tmp = el; el = eh; eh = tmp; }
-    if (t1v > t2v && t2v > 0) { var tmp2 = t1v; t1v = t2v; t2v = tmp2; }
+    // Entry 1 = upper/confirmation, Entry 2 = lower/pullback
+    var e1 = Math.max(el, eh);
+    var e2 = Math.min(el, eh);
+    if (e2 <= 0) e2 = e1;
+    // Target 1 = nearer, Target 2 = higher
+    var tLow = Math.min(t1v, t2v);
+    var tHigh = Math.max(t1v, t2v);
+    if (tLow <= 0) tLow = tHigh;
+    // R/R guard
     var rrv = r.risk_reward;
     if (!rrv || isNaN(rrv) || rrv <= 0) rrv = null;
-    return { e1: el, e2: eh, sl: r.stop_loss || 0, t1: t1v, t2: t2v, rr: rrv };
+    return { e1: e1, e2: e2, sl: r.stop_loss || 0, t1: tLow, t2: tHigh, rr: rrv };
 }
 function fmtLvl(v) { return v ? v.toLocaleString('id-ID') : '-'; }
 
@@ -5900,7 +5907,12 @@ function updateNkScreenerMeta(meta) {
     if (badge) {
         if (meta.status === 'published') { badge.textContent = 'LIVE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'; }
         else if (meta.status === 'failed') { badge.textContent = 'ERROR'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25'; }
-        else if (meta.status === 'scanning' || meta.status === 'finalizing') { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25 animate-pulse-glow'; }
+        else if (meta.status === 'scanning' || meta.status === 'finalizing') {
+            // Check if scanning is stale (> 10 minutes)
+            var scanAge = meta.updated_at ? (Date.now() - new Date(meta.updated_at).getTime()) / 60000 : 999;
+            if (scanAge > 10) { badge.textContent = 'STALE SCAN'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25'; }
+            else { badge.textContent = 'SCANNING'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25 animate-pulse-glow'; }
+        }
         else { badge.textContent = 'IDLE'; badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-gray-500/10 text-gray-400 border border-gray-500/25'; }
         // V2 Freshness label: show STALE warning if data is not from today
         if (meta.calculated_at && meta.status !== 'scanning' && meta.status !== 'finalizing') {

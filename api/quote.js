@@ -103,11 +103,11 @@ module.exports = async function handler(req, res) {
         var refined = dtEngine.refineLevelsWithRespectZones(baseLevels, quoteResult._candles, quoteResult.last);
         if (refined) {
           quoteResult.tradingPlan = {
-            entry_1: refined.entry_low,
-            entry_2: refined.entry_high,
+            entry_1: Math.max(refined.entry_low, refined.entry_high),
+            entry_2: Math.min(refined.entry_low, refined.entry_high),
             stop_loss: refined.stop_loss,
-            target_1: refined.tp1,
-            target_2: refined.tp2,
+            target_1: Math.min(refined.tp1, refined.tp2 || refined.tp1),
+            target_2: Math.max(refined.tp1, refined.tp2 || refined.tp1),
             risk_reward: refined.risk_reward,
             refinement_notes: refined.refinement_notes || null,
             respect_zone_notes: refined.respect_zone_notes || null

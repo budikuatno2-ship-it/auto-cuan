@@ -106,14 +106,26 @@ function Call-Api($cfg, $action, $extraParams = @{}) {
         $headers["Authorization"] = "Bearer $($cfg.CRON_SECRET)"
     }
 
-    try {
-        $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get -TimeoutSec 120
-        return $response
-    } catch {
-        $statusCode = $null
-        if ($_.Exception.Response) { $statusCode = [int]$_.Exception.Response.StatusCode }
-        return @{ success = $false; error = "HTTP $statusCode - $($_.Exception.Message)"; _http_status = $statusCode }
+    $maxRetries = 3
+    for ($attempt = 1; $attempt -le $maxRetries; $attempt++) {
+        try {
+            $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get -TimeoutSec 120
+            return $response
+        } catch {
+            $errMsg = $_.Exception.Message
+            $isDns = $errMsg -match "remote name could not be resolved|DNS|NameResolution"
+            $isTimeout = $errMsg -match "timed out|timeout"
+            if (($isDns -or $isTimeout) -and $attempt -lt $maxRetries) {
+                Write-Host "`n  Koneksi/DNS gagal sementara. Mencoba ulang ($attempt/$maxRetries)..."
+                Start-Sleep -Seconds (5 * $attempt)
+                continue
+            }
+            $statusCode = $null
+            if ($_.Exception.Response) { $statusCode = [int]$_.Exception.Response.StatusCode }
+            return @{ success = $false; error = "HTTP $statusCode - $errMsg"; _http_status = $statusCode }
+        }
     }
+    return @{ success = $false; error = "Gagal setelah $maxRetries percobaan. Periksa koneksi internet atau API URL." }
 }
 
 # === SCAN EXECUTORS ===
@@ -144,7 +156,7 @@ function Run-NonKonglo($cfg) {
     Write-Host "  Running: Non-Konglo Swing Screener"
     Write-Host "  $('-' * 50)"
 
-    $maxCalls = 60
+    $maxCalls = 150
     $callCount = 0
     $finalOk = $false
 
@@ -188,7 +200,9 @@ function Run-NonKonglo($cfg) {
         # Progress
         $step = $data.step
         if ($step -eq "start") {
-            Write-Host "`n  Universe: $($data.universe_count) tickers, $($data.batch_count) batches"
+            $batchCount = $data.batch_count
+            if ($batchCount -and $batchCount -gt 0) { $maxCalls = $batchCount + 20 }
+            Write-Host "`n  Universe: $($data.universe_count) tickers, $batchCount batches (max calls: $maxCalls)"
         } elseif ($step -eq "batch") {
             $bi = if ($data.batch_index -ne $null) { $data.batch_index + 1 } else { $callCount }
             $bc = if ($data.batch_count) { $data.batch_count } else { "?" }
