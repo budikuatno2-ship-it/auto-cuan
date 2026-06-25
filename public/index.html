@@ -400,6 +400,7 @@
         }
         .dt-card-item:hover { border-color: rgba(16,185,129,0.3) !important; box-shadow: 0 0 10px rgba(16,185,129,0.06); }
         .kg-card-item:hover { border-color: rgba(16,185,129,0.3) !important; box-shadow: 0 0 10px rgba(16,185,129,0.06); }
+        .nk-card-item:hover { border-color: rgba(16,185,129,0.3) !important; box-shadow: 0 0 10px rgba(16,185,129,0.06); }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -734,10 +735,6 @@
             <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
         </div>
-        <!-- View Toggle -->
-        <div class="flex items-center justify-end mb-3">
-            <div style="display:inline-flex;border:1px solid #1c2333;border-radius:8px;overflow:hidden"><button id="kgBtnCard" onclick="kgToggleView('card')" style="padding:4px 10px;font-size:11px;font-weight:500;color:#6ee7b7;background:rgba(16,185,129,0.1);border:none;cursor:pointer">Card</button><button id="kgBtnTable" onclick="kgToggleView('table')" style="padding:4px 10px;font-size:11px;font-weight:500;color:#6b7280;background:transparent;border:none;cursor:pointer">Tabel Detail</button></div>
-        </div>
         <!-- Konglo Card Grid -->
         <div id="kgCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
         <!-- Table (hidden by default) -->
@@ -807,8 +804,10 @@
                 <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
                 <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             </div>
-            <!-- Table -->
-            <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="nkScreenerTableWrap">
+            <!-- Non-Konglo Card Grid -->
+            <div id="nkCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;margin-bottom:12px"></div>
+            <!-- Table (hidden by default) -->
+            <div class="overflow-x-auto rounded-xl border border-dark-600/30 hidden" id="nkScreenerTableWrap">
                 <table class="w-full text-xs border-collapse min-w-[1200px]">
                     <thead>
                         <tr class="bg-dark-700/70">
@@ -906,11 +905,8 @@
                 <button onclick="filterDtScreener('WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="WATCH">Watch</button>
                 <button onclick="filterDtScreener('AVOID')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="AVOID">Avoid</button>
             </div>
-            <!-- View Toggle -->
-            <div class="flex items-center justify-between mb-3">
-                <p class="text-[10px] text-amber-400/70">Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.</p>
-                <div style="display:inline-flex;border:1px solid #1c2333;border-radius:8px;overflow:hidden;flex-shrink:0;margin-left:8px"><button id="dtBtnCard" onclick="dtToggleView('card')" style="padding:4px 10px;font-size:11px;font-weight:500;color:#6ee7b7;background:rgba(16,185,129,0.1);border:none;cursor:pointer">Card</button><button id="dtBtnTable" onclick="dtToggleView('table')" style="padding:4px 10px;font-size:11px;font-weight:500;color:#6b7280;background:transparent;border:none;cursor:pointer">Tabel Detail</button></div>
-            </div>
+            <!-- Day Trade notice -->
+            <p class="text-[10px] text-amber-400/70 mb-3">Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.</p>
             <!-- Day Trade Card Grid -->
             <div id="dtCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
             <!-- Table (hidden by default, shown via toggle) -->
@@ -1197,10 +1193,10 @@
 </footer>
 
 <!-- Day Trade Detail Modal -->
-<div id="dtDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="if(event.target===this)closeDtDetail()">
+<div id="scrDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="if(event.target===this)closeScrDetail()">
 <div style="background:#0f1319;border:1px solid #1c2333;border-radius:16px;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:22px;position:relative">
-<button onclick="closeDtDetail()" style="position:absolute;top:12px;right:12px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e2530;border:1px solid #2a3444;color:#9ca3af;font-size:16px;cursor:pointer">&times;</button>
-<div id="dtDetailContent"></div>
+<button onclick="closeScrDetail()" style="position:absolute;top:12px;right:12px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e2530;border:1px solid #2a3444;color:#9ca3af;font-size:16px;cursor:pointer">&times;</button>
+<div id="scrDetailContent"></div>
 </div>
 </div>
 
@@ -4969,19 +4965,19 @@ document.addEventListener('click', function(e) {
     var card = e.target.closest('.dt-card-item');
     if (!card) return;
     var ticker = card.getAttribute('data-ticker');
-    if (ticker && _dtCardData[ticker]) { openDtDetail(_dtCardData[ticker]); }
+    if (ticker && _dtCardData[ticker]) { openScrDetail(_dtCardData[ticker], 'daytrade'); }
 });
 
-function openDtDetail(r) {
-    var modal = document.getElementById('dtDetailModal');
+function openScrDetail(r, type) {
+    var modal = document.getElementById('scrDetailModal');
     if (!modal) return;
     var chg = r.change_pct || 0;
     var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
-    var sc = r.daytrade_score || 0;
+    var sc = r.daytrade_score || r.score || 0;
     var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
-    var st = r.status || '';
-    var stCol = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION') ? '#6ee7b7' : (st === 'AVOID' ? '#fca5a5' : '#fde047');
-    var stBg = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION') ? 'rgba(16,185,129,0.12)' : (st === 'AVOID' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)');
+    var st = r.status || r.swing_tier || '';
+    var stCol = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION' || st === 'Swing Ready') ? '#6ee7b7' : (st === 'AVOID' || st === 'Invalid' ? '#fca5a5' : '#fde047');
+    var stBg = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION' || st === 'Swing Ready') ? 'rgba(16,185,129,0.12)' : (st === 'AVOID' || st === 'Invalid' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)');
     var e1 = r.entry_low ? r.entry_low.toLocaleString('id-ID') : '-';
     var e2 = r.entry_high ? r.entry_high.toLocaleString('id-ID') : '-';
     var slVal = r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '-';
@@ -5001,20 +4997,24 @@ function openDtDetail(r) {
     html += '</div>';
     html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:10px">' + escapeHtml(r.notes || r.status_reason || '-') + '</div>';
     if (r.candle_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Candle:</span> ' + escapeHtml(r.candle_note) + '</div>';
-    if (r.time_plan) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.time_plan) + '</div>';
-    html += '<div style="font-size:9px;color:#6b7280;margin-bottom:14px;padding:8px;background:rgba(234,179,8,0.05);border:1px solid rgba(234,179,8,0.15);border-radius:8px">Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.</div>';
-    html += '<div style="display:flex;gap:8px"><button onclick="closeDtDetail()" style="flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:500;color:#9ca3af;background:#1a1f2b;border:1px solid #2a3444;cursor:pointer">Tutup</button><button onclick="closeDtDetail();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" style="flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:600;color:#6ee7b7;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);cursor:pointer">Buka Chart</button></div>';
-    document.getElementById('dtDetailContent').innerHTML = html;
+    if (r.gap_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Gap:</span> ' + escapeHtml(r.gap_note) + '</div>';
+    if (r.entry_timing || r.time_plan) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.entry_timing || r.time_plan) + '</div>';
+    if (r.direction) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Arah:</span> ' + escapeHtml(r.direction) + '</div>';
+    // Contextual warning by type
+    var warningText = type === 'daytrade' ? 'Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.' : 'Swing screener berbasis analisis teknikal harian. Entry bertahap dan konfirmasi manual tetap wajib.';
+    html += '<div style="font-size:9px;color:#6b7280;margin-bottom:14px;padding:8px;background:rgba(234,179,8,0.05);border:1px solid rgba(234,179,8,0.15);border-radius:8px">' + warningText + '</div>';
+    html += '<div style="display:flex;gap:8px"><button onclick="closeScrDetail()" style="flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:500;color:#9ca3af;background:#1a1f2b;border:1px solid #2a3444;cursor:pointer">Tutup</button><button onclick="closeScrDetail();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" style="flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:600;color:#6ee7b7;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);cursor:pointer">Buka Chart</button></div>';
+    document.getElementById('scrDetailContent').innerHTML = html;
     modal.classList.remove('hidden');
 }
 
-function closeDtDetail() {
-    var modal = document.getElementById('dtDetailModal');
+function closeScrDetail() {
+    var modal = document.getElementById('scrDetailModal');
     if (modal) modal.classList.add('hidden');
 }
 
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeDtDetail();
+    if (e.key === 'Escape') closeScrDetail();
 });
 
 // ===== KONGLO CARD GRID =====
@@ -5091,7 +5091,65 @@ document.addEventListener('click', function(e) {
     var card = e.target.closest('.kg-card-item');
     if (!card) return;
     var ticker = card.getAttribute('data-ticker');
-    if (ticker && _kgCardData[ticker]) openDtDetail(_kgCardData[ticker]);
+    if (ticker && _kgCardData[ticker]) openScrDetail(_kgCardData[ticker], 'konglo');
+});
+
+// ===== NON-KONGLO CARD GRID =====
+var _nkCardData = {};
+
+function renderNkCardGrid(results) {
+    var container = document.getElementById('nkCardGrid');
+    if (!container) return;
+    _nkCardData = {};
+    var filtered = results;
+    if (typeof _nkScreenerFilter !== 'undefined' && _nkScreenerFilter && _nkScreenerFilter !== 'all') {
+        filtered = results.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _nkScreenerFilter || fs === _nkScreenerFilter; });
+    }
+    if (!filtered || filtered.length === 0) { container.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">Tidak ada hasil untuk filter ini.</p>'; return; }
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+        var r = filtered[i];
+        _nkCardData[r.ticker] = r;
+        var tier = r.swing_tier || '';
+        var tierShort = swingTierShort(tier);
+        var tierCls = swingTierColor(tier);
+        var chg = r.change_pct || 0;
+        var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+        var sc = r.score || 0;
+        var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
+        var e1 = r.entry_low ? r.entry_low.toLocaleString('id-ID') : '-';
+        var e2 = r.entry_high ? r.entry_high.toLocaleString('id-ID') : '-';
+        var slVal = r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '-';
+        var t1 = r.tp1 ? r.tp1.toLocaleString('id-ID') : '-';
+        var t2 = r.tp2 ? r.tp2.toLocaleString('id-ID') : '-';
+        var rrVal = r.risk_reward != null ? r.risk_reward.toFixed(1) : '-';
+        var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
+        var notes = r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
+        html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
+        if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
+        html += '</div>';
+        html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
+        html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
+        html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
+        html += '<div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#d87171;margin-bottom:1px">Stop Loss</div><div style="font-size:11px;font-weight:600;color:#fca5a5">' + slVal + '</div></div>';
+        html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 1</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t1 + '</div></div>';
+        html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 2</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t2 + '</div></div>';
+        html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#a78bfa;margin-bottom:1px">R/R</div><div style="font-size:11px;font-weight:600;color:#c4b5fd">' + rrVal + '</div></div>';
+        html += '</div>';
+        if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
+        html += '<div style="font-size:9px;color:#4b5563;margin-top:6px;text-align:right">Klik untuk detail</div>';
+        html += '</div>';
+    }
+    container.innerHTML = html;
+}
+
+document.addEventListener('click', function(e) {
+    var card = e.target.closest('.nk-card-item');
+    if (!card) return;
+    var ticker = card.getAttribute('data-ticker');
+    if (ticker && _nkCardData[ticker]) openScrDetail(_nkCardData[ticker], 'nonkonglo');
 });
 
 // ===== TOAST SYSTEM =====
@@ -5740,6 +5798,7 @@ async function loadNkScreenerResults() {
 
         updateNkScreenerMeta(data.meta);
         renderNkScreenerTable(data.results);
+        renderNkCardGrid(data.results);
 
         // Update title with actual count
         var nkTitle = document.querySelector('#screenerNonKongloPane h2');
@@ -5851,6 +5910,7 @@ function filterNkScreener(filter) {
     // Re-render with filter
     if (_nkScreenerCache && _nkScreenerCache.results) {
         renderNkScreenerTable(_nkScreenerCache.results);
+        renderNkCardGrid(_nkScreenerCache.results);
     }
 }
 
