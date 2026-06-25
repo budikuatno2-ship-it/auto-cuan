@@ -4947,6 +4947,16 @@ function normalizeDisplayLevels(r) {
     return { e1: e1, e2: e2, sl: r.stop_loss || 0, t1: tLow, t2: tHigh, rr: rrv };
 }
 function fmtLvl(v) { return v ? v.toLocaleString('id-ID') : '-'; }
+// Format transaction value in Rupiah (M = Miliar, T = Triliun, jt = Juta)
+function fmtRpVal(v) {
+    if (!v || v <= 0) return '-';
+    if (v >= 1e12) return 'Rp' + (v / 1e12).toFixed(1).replace('.', ',') + ' T';
+    if (v >= 1e9) return 'Rp' + (v / 1e9).toFixed(1).replace('.', ',') + ' M';
+    if (v >= 1e6) return 'Rp' + Math.round(v / 1e6) + ' jt';
+    return 'Rp' + Math.round(v).toLocaleString('id-ID');
+}
+// Format volume ratio (x suffix)
+function fmtVolRatio(v) { return (v != null && !isNaN(v)) ? v.toFixed(2).replace('.', ',') + 'x' : '-'; }
 
 // ===== DAY TRADE CARD GRID =====
 var _dtCardData = {};
@@ -5072,10 +5082,13 @@ function openScrDetail(r, type) {
     html += '<div style="font-size:11px;color:' + vpCol + ';font-weight:600;margin-bottom:3px">' + escapeHtml(vpLabel) + '</div>';
     if (r.volume_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:3px">' + escapeHtml(r.volume_notes) + '</div>';
     var volLine = [];
-    if (r.volume_ratio_20d != null || r.volume_ratio) volLine.push('Vol/Avg20: ' + (r.volume_ratio_20d || r.volume_ratio || 0).toFixed(2) + 'x');
-    if (r.volume_today_vs_3d) volLine.push('vs3D: ' + r.volume_today_vs_3d.toFixed(2) + 'x');
-    if (r.volume_today_vs_7d) volLine.push('vs7D: ' + r.volume_today_vs_7d.toFixed(2) + 'x');
-    if (r.value_today) volLine.push('Val: ' + (r.value_today >= 1e9 ? (r.value_today/1e9).toFixed(1)+'B' : (r.value_today >= 1e6 ? (r.value_today/1e6).toFixed(0)+'M' : '-')));
+    if (r.value_today) volLine.push('Tx1D ' + fmtRpVal(r.value_today));
+    if (r.avg_tx_value_3d) volLine.push('Avg3D ' + fmtRpVal(r.avg_tx_value_3d));
+    if (r.avg_tx_value_7d) volLine.push('Avg7D ' + fmtRpVal(r.avg_tx_value_7d));
+    else if (r.avg_value_7d) volLine.push('Avg7D ' + fmtRpVal(r.avg_value_7d));
+    if (r.volume_ratio_20d != null || r.volume_ratio) volLine.push('Vol ' + fmtVolRatio(r.volume_ratio_20d || r.volume_ratio));
+    if (r.volume_today_vs_3d) volLine.push('3D ' + fmtVolRatio(r.volume_today_vs_3d));
+    if (r.volume_today_vs_7d) volLine.push('7D ' + fmtVolRatio(r.volume_today_vs_7d));
     if (volLine.length > 0) html += '<div style="font-size:9px;color:#6b7280">' + volLine.join(' · ') + '</div>';
     html += '</div>';
     // Timeframe context section

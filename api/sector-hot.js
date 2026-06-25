@@ -33,6 +33,7 @@ const { createClient } = require('@supabase/supabase-js');
 const dtEngine = require('../lib/daytrade-screener-engine');
 const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
+const telegramNotifier = require('../lib/telegram-notifier');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -4350,7 +4351,8 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     saved_count: savedCount,
     published_count: savedCount,
     top_count: topCount,
-    message: 'Day Trade Screener run complete. Top ' + savedCount + ' published.'
+    message: 'Day Trade Screener run complete. Top ' + savedCount + ' published.',
+    telegram: await sendDayTradeTelegramNotification(supabase, runId, runDate, savedCount)
   });
 }
 
@@ -4383,3 +4385,170 @@ async function updateDtMeta(supabase, fields) {
     console.error('updateDtMeta error:', e.message);
   }
 }
+
+// ============================================================
+// DAY TRADE TELEGRAM NOTIFICATION (Phase 2 — after publish only)
+// Never throws. Never breaks Day Trade flow.
+// ============================================================
+var _dtTelegramLastRunId = null; // Simple in-memory duplicate guard
+
+async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount) {
+  // Duplicate guard: same run_id = don't send twice
+  if (_dtTelegramLastRunId === runId) {
+    return { sent: false, skipped: true, reason: 'duplicate_run_id' };
+  }
+
+  // 0 candidates
+  if (publishedCount === 0) {
+    var zeroResult = await telegramNotifier.sendTelegramMessage('Auto-Cuan Day Trade: 0 kandidat lolos.');
+    _dtTelegramLastRunId = runId;
+    return zeroResult;
+  }
+
+  try {
+    // Fetch top 40 candidates (fetch MORE first, then filter to Top 10)
+    var { data: candidates, error: readErr } = await supabase
+      .from('daytrade_screener_latest')
+      .select('*')
+      .order('daytrade_score', { ascending: false })
+      .limit(40);
+
+    if (readErr || !candidates || candidates.length === 0) {
+      return { sent: false, skipped: true, reason: 'no_data_to_send' };
+    }
+
+    // === CANDIDATE SELECTION (priority filtering) ===
+    // Step 1: Exclude AVOID and Very High Risk (unless Grade A/B)
+    var acceptable = candidates.filter(function(r) {
+      if (r.status === 'AVOID' && r.quality_grade !== 'A' && r.quality_grade !== 'B') return false;
+      if (r.risk_label === 'Very High Risk' && r.quality_grade !== 'A' && r.quality_grade !== 'B') return false;
+      return true;
+    });
+
+    // Step 2: Prioritize Grade A/B first
+    var gradeAB = acceptable.filter(function(r) { return r.quality_grade === 'A' || r.quality_grade === 'B'; });
+    var gradeC = acceptable.filter(function(r) { return r.quality_grade === 'C' && r.status !== 'AVOID' && r.risk_label !== 'Very High Risk'; });
+
+    // Step 3: Build final list (A/B first, then C to fill up to 10)
+    var finalList = gradeAB.slice(0, 10);
+    if (finalList.length < 10) {
+      var remaining = 10 - finalList.length;
+      finalList = finalList.concat(gradeC.slice(0, remaining));
+    }
+
+    // Step 4: Sort by setup priority then score
+    var setupPriority = { 'READY_BREAKOUT': 0, 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'PRE_SPIKE_WATCH': 2, 'EARLY_RADAR': 3, 'MOMENTUM_CONTINUATION': 4, 'RECLAIM_CANDIDATE': 5, 'WAIT_PULLBACK': 6, 'SPECULATIVE': 7 };
+    finalList.sort(function(a, b) {
+      var pa = setupPriority[a.status] != null ? setupPriority[a.status] : 8;
+      var pb = setupPriority[b.status] != null ? setupPriority[b.status] : 8;
+      if (pa !== pb) return pa - pb;
+      return (b.daytrade_score || 0) - (a.daytrade_score || 0);
+    });
+    finalList = finalList.slice(0, 10);
+
+    // If 0 acceptable candidates after filtering
+    if (finalList.length === 0) {
+      var emptyResult = await telegramNotifier.sendTelegramMessage('Auto-Cuan Day Trade: 0 kandidat lolos.');
+      _dtTelegramLastRunId = runId;
+      return emptyResult;
+    }
+
+    // Format message
+    var msg = formatDayTradeTelegramMessage(finalList, runDate);
+
+    // Send
+    var result = await telegramNotifier.sendTelegramMessage(msg);
+    _dtTelegramLastRunId = runId;
+    return result;
+  } catch (e) {
+    // Never break Day Trade
+    return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) };
+  }
+}
+
+function formatDayTradeTelegramMessage(results, runDate) {
+  var now = new Date();
+  var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
+  var wib = new Date(wibMs);
+  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
+
+  var lines = [];
+  lines.push('Auto-Cuan \u2014 Day Trade Top ' + results.length);
+  lines.push('Update: ' + timeStr);
+  lines.push('');
+
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    var idx = i + 1;
+    var e1 = Math.max(r.entry_low || 0, r.entry_high || 0);
+    var e2 = Math.min(r.entry_low || 0, r.entry_high || 0);
+    if (e2 <= 0) e2 = e1;
+
+    var statusLabel = (r.status || '-').replace(/_/g, ' ');
+    var gradeLabel = r.quality_grade ? 'Grade ' + r.quality_grade : '-';
+    var riskLabel = r.risk_label || '-';
+
+    lines.push(idx + '. ' + (r.ticker || '-') + ' \u2014 ' + statusLabel + ' | ' + gradeLabel + ' | ' + riskLabel);
+    lines.push('   Last: ' + fmtPrice(r.last_price));
+    lines.push('   Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
+    lines.push('   SL: ' + fmtPrice(r.stop_loss) + ' | TP: ' + fmtPrice(r.tp1) + ' / ' + fmtPrice(r.tp2));
+    lines.push('   RR: ' + (r.risk_reward ? r.risk_reward.toFixed(2) : '-'));
+
+    // Transaction value line (Rp units)
+    var txParts = [];
+    if (r.value_today) txParts.push('Tx1D ' + fmtRpValue(r.value_today));
+    if (r.avg_tx_value_3d) txParts.push('Avg3D ' + fmtRpValue(r.avg_tx_value_3d));
+    if (r.avg_tx_value_7d) txParts.push('Avg7D ' + fmtRpValue(r.avg_tx_value_7d));
+    else if (r.avg_value_7d) txParts.push('Avg7D ' + fmtRpValue(r.avg_value_7d));
+    if (txParts.length > 0) lines.push('   Value: ' + txParts.join(' | '));
+
+    // Volume ratio line (x suffix only)
+    var volParts = [];
+    if (r.volume_ratio_20d) volParts.push('1D ' + fmtRatio(r.volume_ratio_20d));
+    if (r.volume_today_vs_3d) volParts.push('3D ' + fmtRatio(r.volume_today_vs_3d));
+    if (r.volume_today_vs_7d) volParts.push('7D ' + fmtRatio(r.volume_today_vs_7d));
+    if (volParts.length > 0) lines.push('   Vol: ' + volParts.join(' | '));
+
+    // Candle/MTF line (clean labels, no truncation)
+    var mtfParts = [];
+    if (r.daily_candle_context) mtfParts.push('D ' + shortenContext(r.daily_candle_context));
+    if (r.weekly_candle_context) mtfParts.push('W Approx ' + shortenContext(r.weekly_candle_context));
+    if (r.monthly_candle_context) mtfParts.push('M Approx ' + shortenContext(r.monthly_candle_context));
+    if (mtfParts.length > 0) lines.push('   Candle: ' + mtfParts.join(' | '));
+
+    // Volume phase (only if meaningful)
+    if (r.volume_phase && r.volume_phase !== 'NORMAL') {
+      lines.push('   Phase: ' + r.volume_phase);
+    }
+
+    lines.push('');
+  }
+
+  lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
+  return lines.join('\n');
+}
+
+// Shorten context label for Telegram (remove "(approx 5D)"/"(approx 20D)" suffix, keep meaning)
+function shortenContext(ctx) {
+  if (!ctx) return '-';
+  // Remove "(approx XD)" suffix
+  var clean = ctx.replace(/\s*\(approx \d+D\)/g, '').trim();
+  // Capitalize first letter
+  if (clean.length > 0) clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+  return clean || '-';
+}
+
+function fmtPrice(v) { return v ? v.toLocaleString('id-ID') : '-'; }
+
+// Format transaction value in Rupiah (Indonesian units: M = Miliar, T = Triliun)
+function fmtRpValue(v) {
+  if (!v || v <= 0) return '-';
+  if (v >= 1e12) return 'Rp' + (v / 1e12).toFixed(1).replace('.', ',') + ' T';
+  if (v >= 1e9) return 'Rp' + (v / 1e9).toFixed(1).replace('.', ',') + ' M';
+  if (v >= 1e6) return 'Rp' + (v / 1e6).toFixed(0) + ' jt';
+  return 'Rp' + Math.round(v).toLocaleString('id-ID');
+}
+
+// Format volume ratio (always with "x" suffix)
+function fmtRatio(v) { return (v != null && !isNaN(v)) ? v.toFixed(2).replace('.', ',') + 'x' : '-'; }
