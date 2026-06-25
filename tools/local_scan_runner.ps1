@@ -170,10 +170,27 @@ function Run-NonKonglo($cfg) {
 
         if (-not $data) { Write-Host "`n  ERROR: No response at call $callCount"; break }
 
-        # Terminal: finalize/published
-        if ($data.step -eq "finalize" -or $data.status -eq "published" -or ($data.success -and $data.published -gt 0)) {
+        # Terminal: finalize/published - only if actually published candidates
+        if ($data.step -eq "finalize" -and $data.published -gt 0) {
             Write-Host "`n  Status: PUBLISHED"
             Write-Host "  Published: $($data.published)"
+            $finalOk = $true
+            break
+        }
+        if ($data.step -eq "finalize" -and ($data.published -eq 0 -or $data.published -eq $null)) {
+            Write-Host "`n  Finalize: 0 kandidat lolos filter."
+            if ($data.staging_count) { Write-Host "  Staging: $($data.staging_count)" }
+            $finalOk = $false
+            break
+        }
+        if ($data.status -eq "published" -and $data.published_count -gt 0) {
+            Write-Host "`n  Status: PUBLISHED"
+            Write-Host "  Published: $($data.published_count)"
+            $finalOk = $true
+            break
+        }
+        if ($data.status -eq "published" -and $data.step -ne "start" -and $callCount -gt 1) {
+            Write-Host "`n  Status: PUBLISHED (from meta)"
             $finalOk = $true
             break
         }

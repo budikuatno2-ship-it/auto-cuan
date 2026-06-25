@@ -2385,8 +2385,13 @@ async function handleNkScreenerRun(req, res, supabase) {
     return await handleNkScreenerFinalize(req, res, supabase);
   }
 
-  // If already finalizing or failed (retry finalize from staging)
+  // If already finalizing or failed:
+  // With force=1: start fresh (don't re-finalize stale staging)
+  // Without force: attempt finalize from existing staging
   if (meta.status === 'finalizing' || meta.status === 'failed') {
+    if (req.query.force === '1') {
+      return await handleNkScreenerStart(req, res, supabase);
+    }
     return await handleNkScreenerFinalize(req, res, supabase);
   }
 
