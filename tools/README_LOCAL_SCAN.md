@@ -2,15 +2,17 @@
 
 Jalankan screener scan dari CMD lokal. Hasil langsung update ke website.
 
+**Tidak perlu install Node.js, npm, npx, atau Vercel CLI.**
+
 ## Cara Pakai Paling Gampang
 
-1. Pull latest branch.
-2. Jalankan `tools\SETUP_LOCAL_SCAN_ENV.bat` **sekali saja** (setup env).
-3. Double-click `tools\AUTO_CUAN_SCAN_MENU.bat`.
+1. Pull/download repo terbaru.
+2. Double-click `tools\AUTO_CUAN_SCAN_MENU.bat`.
+3. Pertama kali: isi API URL dan CRON_SECRET (sekali saja).
 4. Pilih scan dari menu.
-5. Buka/refresh website untuk lihat hasil.
+5. Buka/refresh website Auto-Cuan untuk lihat hasil.
 
-Setelah setup selesai, kamu hanya perlu double-click `AUTO_CUAN_SCAN_MENU.bat` setiap kali mau scan.
+Setelah setup pertama, kamu hanya perlu double-click `AUTO_CUAN_SCAN_MENU.bat`.
 
 ## Desktop Shortcut
 
@@ -18,47 +20,35 @@ Biar lebih gampang:
 
 1. Klik kanan `tools\AUTO_CUAN_SCAN_MENU.bat`
 2. Pilih "Send to" > "Desktop (create shortcut)"
-3. Rename shortcut jadi "Auto-Cuan Scan Menu"
+3. Rename shortcut jadi "Auto-Cuan Scan"
 
-## Setup (Sekali Saja)
+## Setup Pertama Kali
 
-### Opsi 1: Pull otomatis dari Vercel (recommended)
+Saat pertama kali menjalankan menu, kamu akan diminta:
 
-Jika sudah install Vercel CLI dan sudah login:
+| Input | Keterangan | Contoh |
+|-------|-----------|--------|
+| API Base URL | URL deployment Vercel | `https://auto-cuan-xxxx.vercel.app` |
+| CRON_SECRET | Secret dari Vercel Env Variables | (tersembunyi saat diketik) |
+| Bypass Token | Opsional — kosongkan jika tidak perlu | (kosong) |
 
-```
-cd auto-cuan
-npx vercel env pull .env.local --environment=preview
-```
+Nilai disimpan di: `%USERPROFILE%\.auto-cuan-scan.env`
+(di luar repo, tidak pernah ter-commit)
 
-Atau double-click `tools\SETUP_LOCAL_SCAN_ENV.bat` dan pilih "y" saat ditanya.
+Untuk mengubah config, pilih menu **8. Settings**.
 
-### Opsi 2: Buat manual
+## Tidak Perlu Install Apapun
 
-Buat file `.env.local` di ROOT project dengan isi:
+- Tidak perlu Node.js
+- Tidak perlu npm / npx
+- Tidak perlu Vercel CLI
+- Tidak perlu Supabase key di laptop
+- Cukup Windows + PowerShell (sudah ada di semua Windows 10/11)
 
-```
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-CRON_SECRET=your-cron-secret
-```
+## Cara Kerja
 
-Nilai bisa dicopy dari:
-- Vercel Dashboard > Project > Settings > Environment Variables
-- Supabase Dashboard > Settings > API
-
-## Kenapa Butuh Environment Variables?
-
-Runner ini menjalankan logic scan yang sama persis dengan yang berjalan di server (Vercel).
-Hasilnya ditulis langsung ke Supabase, sehingga website otomatis menampilkan hasil terbaru.
-
-Variable yang diperlukan:
-
-| Variable | Keterangan |
-|----------|-----------|
-| `SUPABASE_URL` | URL project Supabase (untuk baca/tulis data) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key Supabase (akses penuh) |
-| `CRON_SECRET` | Secret autentikasi scan (sama dengan Vercel env) |
+Runner ini memanggil API Vercel yang sudah jalan (endpoint yang sama dengan Streamlit runner).
+Hasilnya langsung tersimpan di Supabase, sehingga website otomatis menampilkan data terbaru.
 
 ## Menu Scan
 
@@ -71,7 +61,8 @@ Variable yang diperlukan:
 | 5 | Run Day Trade Midday | Day Trade mode Midday |
 | 6 | Run Day Trade Afternoon | Day Trade mode Afternoon |
 | 7 | Run Day Trade Full | Day Trade Full Scan |
-| 8 | Exit | Keluar |
+| 8 | Settings | Ubah config |
+| 9 | Exit | Keluar |
 
 ## Shortcut Langsung (Opsional)
 
@@ -95,6 +86,6 @@ Variable yang diperlukan:
 
 - Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.
 - Secret tidak pernah di-print ke console.
-- Jangan share `.env.local` ke siapapun.
-- Jangan commit `.env.local` ke git (sudah otomatis di-ignore).
-- `.bat` file hanya bisa jalan dari folder project (butuh `node_modules`, `api/`, `lib/`).
+- Config tersimpan di `%USERPROFILE%\.auto-cuan-scan.env` (luar repo).
+- Jangan share config file ke siapapun.
+- File `.bat` hanya memanggil PowerShell runner, tidak mengandung secret.

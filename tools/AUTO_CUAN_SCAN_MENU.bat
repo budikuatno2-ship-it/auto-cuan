@@ -1,24 +1,7 @@
 @echo off
 title Auto-Cuan Scan Menu
 color 0A
-
 cd /d "%~dp0\.."
-
-:: Check if .env.local exists
-if not exist ".env.local" (
-    echo.
-    echo  ========================================================
-    echo   File .env.local belum ada.
-    echo.
-    echo   Jalankan SETUP_LOCAL_SCAN_ENV.bat dulu untuk setup
-    echo   sekali saja.
-    echo.
-    echo   File ada di: tools\SETUP_LOCAL_SCAN_ENV.bat
-    echo  ========================================================
-    echo.
-    pause
-    exit /b 1
-)
 
 :menu
 cls
@@ -34,11 +17,12 @@ echo   4. Run Day Trade Morning
 echo   5. Run Day Trade Midday
 echo   6. Run Day Trade Afternoon
 echo   7. Run Day Trade Full
-echo   8. Exit
+echo   8. Settings (setup/ubah config)
+echo   9. Exit
 echo.
 echo  ========================================================
 echo.
-set /p choice="  Pilih nomor (1-8): "
+set /p choice="  Pilih nomor (1-9): "
 
 if "%choice%"=="1" goto konglo
 if "%choice%"=="2" goto nonkonglo
@@ -47,7 +31,8 @@ if "%choice%"=="4" goto dt_morning
 if "%choice%"=="5" goto dt_midday
 if "%choice%"=="6" goto dt_afternoon
 if "%choice%"=="7" goto dt_full
-if "%choice%"=="8" goto exitapp
+if "%choice%"=="8" goto settings
+if "%choice%"=="9" goto exitapp
 
 echo.
 echo   Pilihan tidak valid. Coba lagi.
@@ -55,32 +40,37 @@ pause
 goto menu
 
 :konglo
-node tools/local_scan_runner.js konglo
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 konglo
 goto done
 
 :nonkonglo
-node tools/local_scan_runner.js nonkonglo
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 nonkonglo
 goto done
 
 :swingall
-node tools/local_scan_runner.js swing-all
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 swing-all
 goto done
 
 :dt_morning
-node tools/local_scan_runner.js daytrade morning
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade morning
 goto done
 
 :dt_midday
-node tools/local_scan_runner.js daytrade midday
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade midday
 goto done
 
 :dt_afternoon
-node tools/local_scan_runner.js daytrade afternoon
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade afternoon
 goto done
 
 :dt_full
-node tools/local_scan_runner.js daytrade full
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade full
 goto done
+
+:settings
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 setup
+pause
+goto menu
 
 :done
 echo.
