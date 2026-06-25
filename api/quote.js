@@ -8,6 +8,7 @@
  */
 
 var dtEngine = require('../lib/daytrade-screener-engine');
+var idxTick = require('../lib/idx-tick-normalization');
 
 var quoteCache = {};
 var QUOTE_CACHE_TTL = 5 * 60 * 1000;
@@ -131,6 +132,42 @@ module.exports = async function handler(req, res) {
 
     // Remove internal candles from response (too large)
     delete quoteResult._candles;
+
+    // === V6: RISK LABEL + TICK NORMALIZATION on tradingPlan ===
+    if (quoteResult.tradingPlan) {
+      var _tp = quoteResult.tradingPlan;
+      // Apply IDX tick normalization to trading plan levels
+      var _tpTickResult = idxTick.normalizeLevelsToIdxTicks({
+        entry_low: Math.min(_tp.entry_1 || 0, _tp.entry_2 || 0),
+        entry_high: Math.max(_tp.entry_1 || 0, _tp.entry_2 || 0),
+        stop_loss: _tp.stop_loss,
+        tp1: _tp.target_1,
+        tp2: _tp.target_2,
+        risk_reward: _tp.risk_reward
+      }, { mode: 'swing' });
+      if (_tpTickResult.tick_normalized) {
+        _tp.entry_1 = _tpTickResult.entry_high;
+        _tp.entry_2 = _tpTickResult.entry_low;
+        _tp.stop_loss = _tpTickResult.stop_loss;
+        _tp.target_1 = _tpTickResult.tp1;
+        _tp.target_2 = _tpTickResult.tp2;
+        _tp.risk_reward = _tpTickResult.risk_reward;
+      }
+      _tp.tick_normalized = _tpTickResult.tick_normalized;
+
+      // Risk label for the trading plan
+      var _boardStr = (boardResult && boardResult.board) || null;
+      var _riskLbl = idxTick.calculateRiskLabel({
+        risk_reward: _tp.risk_reward,
+        mode: 'swing',
+        volume_ratio_20d: quoteResult.volumeVsAvg20,
+        board: _boardStr,
+        is_fca: boardResult ? boardResult.isFca : false,
+        rsi14: quoteResult.rsi14,
+        chase_distance_pct: _tp.entry_1 > 0 ? Math.max(0, ((quoteResult.last - _tp.entry_1) / _tp.entry_1) * 100) : 0
+      });
+      quoteResult.riskLabel = _riskLbl;
+    }
 
     return res.status(200).json(quoteResult);
 
@@ -288,13 +325,17 @@ async function fetchYahooQuote(ticker) {
   var prevL = latest.low;
   var prevC = latest.close;
   var prevO = latest.open;
-  var pivotPoint = roundPrice((prevH + prevL + prevC) / 3);
-  var ohlcPivot = roundPrice((prevO + prevH + prevL + prevC) / 4);
+  var pivotPoint = idxTick.roundToIdxTick((prevH + prevL + prevC) / 3, 'nearest');
+  var ohlcPivot = idxTick.roundToIdxTick((prevO + prevH + prevL + prevC) / 4, 'nearest');
   var range = prevH - prevL;
-  var r1 = roundPrice((2 * pivotPoint) - prevL);
-  var s1 = roundPrice((2 * pivotPoint) - prevH);
-  var r2 = roundPrice(pivotPoint + range);
-  var s2 = roundPrice(pivotPoint - range);
+  var r1 = idxTick.roundToIdxTick((2 * pivotPoint) - prevL, 'up');
+  var s1 = idxTick.roundToIdxTick((2 * pivotPoint) - prevH, 'down');
+  var r2 = idxTick.roundToIdxTick(pivotPoint + range, 'up');
+  var s2 = idxTick.roundToIdxTick(pivotPoint - range, 'down');
+
+  // Post-normalization ordering validation
+  if (s1 != null && s2 != null && s2 >= s1) { s2 = s1 - idxTick.getIdxTickSize(s1); }
+  if (r1 != null && r2 != null && r2 <= r1) { r2 = r1 + idxTick.getIdxTickSize(r1); }
 
   result.pivot = {
     pivotPoint: pivotPoint,
@@ -309,7 +350,8 @@ async function fetchYahooQuote(ticker) {
     prevClose: prevC,
     pivotMethod: 'classic',
     pivotSourceDate: latest.date,
-    flatRange: (range === 0 || range < 1)
+    flatRange: (range === 0 || range < 1),
+    tickNormalized: true
   };
 
   // === FIBONACCI INTELLIGENCE (from OHLCV candles) ===
@@ -2299,11 +2341,11 @@ function calculateFibonacciLevels(candles) {
   // For upward retracement: levels measured from swing high down
   // fib236 = swingHigh - 0.236 * range (closest to high)
   // fib786 = swingHigh - 0.786 * range (closest to low)
-  var fib236 = roundPrice(swingHigh - 0.236 * fibRange);
-  var fib382 = roundPrice(swingHigh - 0.382 * fibRange);
-  var fib500 = roundPrice(swingHigh - 0.500 * fibRange);
-  var fib618 = roundPrice(swingHigh - 0.618 * fibRange);
-  var fib786 = roundPrice(swingHigh - 0.786 * fibRange);
+  var fib236 = idxTick.roundToIdxTick(swingHigh - 0.236 * fibRange, 'nearest');
+  var fib382 = idxTick.roundToIdxTick(swingHigh - 0.382 * fibRange, 'nearest');
+  var fib500 = idxTick.roundToIdxTick(swingHigh - 0.500 * fibRange, 'nearest');
+  var fib618 = idxTick.roundToIdxTick(swingHigh - 0.618 * fibRange, 'nearest');
+  var fib786 = idxTick.roundToIdxTick(swingHigh - 0.786 * fibRange, 'nearest');
 
   // Find nearest Fibonacci level
   var fibLevels = [

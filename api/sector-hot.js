@@ -32,6 +32,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const dtEngine = require('../lib/daytrade-screener-engine');
 const candleEngine = require('../lib/candle-pattern-engine');
+const idxTick = require('../lib/idx-tick-normalization');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -488,6 +489,77 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           _refinedLevels = dtEngine.refineLevelsWithRespectZones(_baseLvl, candles, analysis.last_price, 'konglo');
         }
 
+        // === V6: IDX TICK NORMALIZATION (after respect zone refinement) ===
+        var _finalEntry_low = _refinedLevels ? _refinedLevels.entry_low : analysis.entry_low;
+        var _finalEntry_high = _refinedLevels ? _refinedLevels.entry_high : analysis.entry_high;
+        var _finalStop_loss = _refinedLevels ? _refinedLevels.stop_loss : analysis.stop_loss;
+        var _finalTp1 = _refinedLevels ? _refinedLevels.tp1 : analysis.tp1;
+        var _finalTp2 = _refinedLevels ? _refinedLevels.tp2 : analysis.tp2;
+        var _finalRR = _refinedLevels ? _refinedLevels.risk_reward : analysis.risk_reward;
+
+        var _tickResult = idxTick.normalizeLevelsToIdxTicks(
+          { entry_low: _finalEntry_low, entry_high: _finalEntry_high, stop_loss: _finalStop_loss, tp1: _finalTp1, tp2: _finalTp2, risk_reward: _finalRR, support: analysis.support, resistance: analysis.resistance },
+          { mode: 'swing' }
+        );
+        if (_tickResult.tick_normalized) {
+          _finalEntry_low = _tickResult.entry_low;
+          _finalEntry_high = _tickResult.entry_high;
+          _finalStop_loss = _tickResult.stop_loss;
+          _finalTp1 = _tickResult.tp1;
+          _finalTp2 = _tickResult.tp2;
+          _finalRR = _tickResult.risk_reward;
+        }
+
+        // === V6: MTF CONTEXT ===
+        var _mtfCtx = idxTick.deriveMultiTimeframeContext(candles);
+
+        // === V6: VOLUME-PRICE ACTION ===
+        var _lastC = candles[candles.length - 1];
+        var _lcR = _lastC.high - _lastC.low;
+        var _lcCP = _lcR > 0 ? (_lastC.close - _lastC.low) / _lcR : 0.5;
+        var _lcBR = _lcR > 0 ? Math.abs(_lastC.close - _lastC.open) / _lcR : 0.5;
+        var _vpaResult = idxTick.analyzeVolumePriceAction({
+          volume_today: _lastC.volume || 0,
+          avg_volume_20d: analysis._volAvg20 || 1,
+          change_pct: analysis.change_pct,
+          close_position: _lcCP,
+          body_ratio: _lcBR,
+          is_green: _lastC.close > _lastC.open,
+          near_resistance: analysis.last_price >= analysis.resistance * 0.97,
+          failed_breakout: false
+        });
+
+        // === V6: RISK LABEL ===
+        var _chaseDist = _finalEntry_high > 0 ? ((analysis.last_price - _finalEntry_high) / _finalEntry_high) * 100 : 0;
+        var _riskResult = idxTick.calculateRiskLabel({
+          risk_reward: _finalRR,
+          mode: 'swing',
+          weekly_bias: _mtfCtx._weekly ? _mtfCtx._weekly.bias : null,
+          monthly_bias: _mtfCtx._monthly ? _mtfCtx._monthly.bias : null,
+          monthly_downtrend: _mtfCtx._monthly ? _mtfCtx._monthly.downtrend : false,
+          volume_phase: _vpaResult.volume_phase,
+          chase_distance_pct: Math.max(0, _chaseDist),
+          supply_nearby: analysis.last_price >= analysis.resistance * 0.97,
+          volume_ratio_20d: analysis.volume_ratio_avg20,
+          board: null,
+          avg_tx_value_7d: _avgTxValue7d,
+          candle_failed_breakout: false,
+          rsi14: analysis.rsi14,
+          multi_timeframe_bias: _mtfCtx.multi_timeframe_bias
+        });
+
+        // === V6: QUALITY GRADE ===
+        var _gradeResult = idxTick.calculateQualityGrade({
+          risk_reward: _finalRR,
+          risk_label: _riskResult.risk_label,
+          volume_phase: _vpaResult.volume_phase,
+          multi_timeframe_bias: _mtfCtx.multi_timeframe_bias,
+          tick_normalized: _tickResult.tick_normalized,
+          chase_distance_pct: Math.max(0, _chaseDist),
+          volume_ratio_20d: analysis.volume_ratio_avg20,
+          mode: 'swing'
+        });
+
         results.push({
           ticker: item.ticker,
           group_code: item.group_code,
@@ -498,14 +570,14 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           ma50: analysis.ma50,
           rsi14: analysis.rsi14,
           volume_ratio_avg20: analysis.volume_ratio_avg20,
-          support: analysis.support,
-          resistance: analysis.resistance,
-          entry_low: _refinedLevels ? _refinedLevels.entry_low : analysis.entry_low,
-          entry_high: _refinedLevels ? _refinedLevels.entry_high : analysis.entry_high,
-          stop_loss: _refinedLevels ? _refinedLevels.stop_loss : analysis.stop_loss,
-          tp1: _refinedLevels ? _refinedLevels.tp1 : analysis.tp1,
-          tp2: _refinedLevels ? _refinedLevels.tp2 : analysis.tp2,
-          risk_reward: _refinedLevels ? _refinedLevels.risk_reward : analysis.risk_reward,
+          support: _tickResult.tick_normalized ? _tickResult.support : analysis.support,
+          resistance: _tickResult.tick_normalized ? _tickResult.resistance : analysis.resistance,
+          entry_low: _finalEntry_low,
+          entry_high: _finalEntry_high,
+          stop_loss: _finalStop_loss,
+          tp1: _finalTp1,
+          tp2: _finalTp2,
+          risk_reward: _finalRR,
           invalidation: analysis.invalidation,
           score: scoring.score,
           status: scoring.status,
@@ -515,7 +587,22 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           tx_value_1d: Math.round(_txValue1d),
           avg_tx_value_3d: Math.round(_avgTxValue3d),
           avg_tx_value_7d: Math.round(_avgTxValue7d),
-          avg_tx_value_20d: Math.round(_avgTxValue20d)
+          avg_tx_value_20d: Math.round(_avgTxValue20d),
+          // V6 fields
+          tick_normalized: _tickResult.tick_normalized,
+          tick_notes: _tickResult.tick_notes,
+          daily_candle_context: _mtfCtx.daily_candle_context,
+          weekly_candle_context: _mtfCtx.weekly_candle_context,
+          monthly_candle_context: _mtfCtx.monthly_candle_context,
+          multi_timeframe_bias: _mtfCtx.multi_timeframe_bias,
+          multi_timeframe_notes: _mtfCtx.multi_timeframe_notes,
+          volume_signal: _vpaResult.volume_signal,
+          volume_phase: _vpaResult.volume_phase,
+          volume_notes: _vpaResult.volume_notes,
+          risk_label: _riskResult.risk_label,
+          risk_score: _riskResult.risk_score,
+          quality_grade: _gradeResult.grade,
+          grade_reason: _gradeResult.grade_reason
         });
       } catch (e) {
         failedCount++;
@@ -2535,6 +2622,22 @@ async function handleNkScreenerBatch(req, res, supabase) {
           scored.risk_reward = nkRefined.risk_reward;
         }
         // Do NOT add refinement_notes/respect_zone_notes to scored — staging table does not have those columns
+      }
+
+      // === V6: IDX TICK NORMALIZATION (Non-Konglo — after respect zone refinement) ===
+      if (scored.entry_low && scored.stop_loss && scored.tp1) {
+        var _nkTickResult = idxTick.normalizeLevelsToIdxTicks(
+          { entry_low: scored.entry_low, entry_high: scored.entry_high, stop_loss: scored.stop_loss, tp1: scored.tp1, tp2: scored.tp2, risk_reward: scored.risk_reward },
+          { mode: 'swing' }
+        );
+        if (_nkTickResult.tick_normalized) {
+          scored.entry_low = _nkTickResult.entry_low;
+          scored.entry_high = _nkTickResult.entry_high;
+          scored.stop_loss = _nkTickResult.stop_loss;
+          scored.tp1 = _nkTickResult.tp1;
+          scored.tp2 = _nkTickResult.tp2;
+          scored.risk_reward = _nkTickResult.risk_reward;
+        }
       }
 
       results.push(scored);

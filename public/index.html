@@ -3267,6 +3267,14 @@ async function fetchQuoteContext(ticker, forceFresh) {
                 lines.push('[Auto-Cuan BSJP]');
                 lines.push(q.bsjpLabel);
             }
+            // === V6: RISK LABEL (from server-side deterministic calculation) ===
+            if (q.riskLabel && q.riskLabel.risk_label) {
+                lines.push('');
+                lines.push('[Auto-Cuan Risk Label]');
+                lines.push('Risk: ' + q.riskLabel.risk_label);
+                lines.push('Score: ' + q.riskLabel.risk_score + '/100');
+                if (q.riskLabel.risk_notes && q.riskLabel.risk_notes.length > 0) lines.push('Notes: ' + q.riskLabel.risk_notes.join('; '));
+            }
         } else {
             lines.push('Data historis belum berhasil diambil.');
         }
@@ -4989,6 +4997,14 @@ function renderDtCardGrid(results) {
         html += '<div class="dt-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(st.replace(/_/g, ' ')) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
+        // V6: Risk / Grade / MTF compact badges
+        var _rlBadge = ''; var _grBadge = ''; var _vpBadge = ''; var _mtfBadge = '';
+        if (r.risk_label) { var _rlC = r.risk_label === 'Low Risk' ? '#6ee7b7' : (r.risk_label === 'Medium Risk' ? '#fbbf24' : (r.risk_label === 'High Risk' ? '#fb923c' : '#fca5a5')); _rlBadge = '<span style="color:' + _rlC + ';font-weight:600">' + escapeHtml(r.risk_label.replace(' Risk','')) + '</span>'; }
+        if (r.quality_grade) { var _gC = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); _grBadge = '<span style="font-weight:700;color:' + _gC + '">' + escapeHtml(r.quality_grade) + '</span>'; }
+        if (r.volume_phase && r.volume_phase !== 'NORMAL') { _vpBadge = '<span style="color:#a78bfa">' + escapeHtml(r.volume_phase.replace(/_/g,' ').substring(0,12)) + '</span>'; }
+        if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _mbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _mtfBadge = '<span style="color:' + _mbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
+        var _badgeLine = [_grBadge, _rlBadge, _vpBadge, _mtfBadge].filter(function(b){return b;}).join(' · ');
+        if (_badgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _badgeLine + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
@@ -5041,6 +5057,12 @@ function openScrDetail(r, type) {
     if (r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
     if (r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:6px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
     if (r.bsjp_label) html += '<div style="font-size:11px;color:#fbbf24;margin-bottom:8px;padding:6px 10px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-weight:500">' + escapeHtml(r.bsjp_label) + '</div>';
+    if (r.risk_label) { var _rlCol = r.risk_label === 'Low Risk' ? '#6ee7b7' : (r.risk_label === 'Medium Risk' ? '#fbbf24' : (r.risk_label === 'High Risk' ? '#fb923c' : '#fca5a5')); html += '<div style="font-size:10px;margin-bottom:6px"><span style="color:#6b7280">Risk:</span> <span style="color:' + _rlCol + ';font-weight:600">' + escapeHtml(r.risk_label) + '</span></div>'; }
+    if (r.risk_notes) { html += '<div style="font-size:9px;color:#6b7280;margin-bottom:6px;padding-left:8px">' + escapeHtml(typeof r.risk_notes === 'string' ? r.risk_notes : (r.risk_notes.join ? r.risk_notes.join('; ') : '')) + '</div>'; }
+    if (r.quality_grade) { var _gCol = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); html += '<div style="font-size:10px;margin-bottom:6px"><span style="color:#6b7280">Grade:</span> <span style="color:' + _gCol + ';font-weight:700">' + escapeHtml(r.quality_grade) + '</span>' + (r.grade_reason ? ' <span style="color:#6b7280">— ' + escapeHtml(r.grade_reason) + '</span>' : '') + '</div>'; }
+    if (r.volume_phase && r.volume_phase !== 'NORMAL') html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Volume:</span> ' + escapeHtml(r.volume_phase.replace(/_/g,' ')) + (r.volume_notes ? ' — ' + escapeHtml(r.volume_notes) : '') + '</div>';
+    if (r.weekly_candle_context) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Weekly:</span> ' + escapeHtml(r.weekly_candle_context) + '</div>';
+    if (r.monthly_candle_context) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Monthly:</span> ' + escapeHtml(r.monthly_candle_context) + '</div>';
     if (r.entry_timing || r.time_plan) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.entry_timing || r.time_plan) + '</div>';
     if (r.direction) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Arah:</span> ' + escapeHtml(r.direction) + '</div>';
     // Contextual warning by type
@@ -5110,6 +5132,14 @@ function renderKgCardGrid(results) {
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.group_code) html += '<span style="color:#6b7280">' + escapeHtml(r.group_code) + '</span>';
         html += '</div>';
+        // V6: Risk / Grade / Volume / MTF compact badges
+        var _krlBadge = ''; var _kgrBadge = ''; var _kvpBadge = ''; var _kmtfBadge = '';
+        if (r.risk_label) { var _krlC = r.risk_label === 'Low Risk' ? '#6ee7b7' : (r.risk_label === 'Medium Risk' ? '#fbbf24' : (r.risk_label === 'High Risk' ? '#fb923c' : '#fca5a5')); _krlBadge = '<span style="color:' + _krlC + ';font-weight:600">' + escapeHtml(r.risk_label.replace(' Risk','')) + '</span>'; }
+        if (r.quality_grade) { var _kgC = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); _kgrBadge = '<span style="font-weight:700;color:' + _kgC + '">' + escapeHtml(r.quality_grade) + '</span>'; }
+        if (r.volume_phase && r.volume_phase !== 'NORMAL') { _kvpBadge = '<span style="color:#a78bfa">' + escapeHtml(r.volume_phase.replace(/_/g,' ').substring(0,12)) + '</span>'; }
+        if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _kmbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _kmtfBadge = '<span style="color:' + _kmbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
+        var _kBadgeLine = [_kgrBadge, _krlBadge, _kvpBadge, _kmtfBadge].filter(function(b){return b;}).join(' · ');
+        if (_kBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _kBadgeLine + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
@@ -5165,6 +5195,14 @@ function renderNkCardGrid(results) {
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
         html += '</div>';
+        // V6: Risk / Grade / Volume / MTF compact badges
+        var _nrlBadge = ''; var _ngrBadge = ''; var _nvpBadge = ''; var _nmtfBadge = '';
+        if (r.risk_label) { var _nrlC = r.risk_label === 'Low Risk' ? '#6ee7b7' : (r.risk_label === 'Medium Risk' ? '#fbbf24' : (r.risk_label === 'High Risk' ? '#fb923c' : '#fca5a5')); _nrlBadge = '<span style="color:' + _nrlC + ';font-weight:600">' + escapeHtml(r.risk_label.replace(' Risk','')) + '</span>'; }
+        if (r.quality_grade) { var _ngC = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); _ngrBadge = '<span style="font-weight:700;color:' + _ngC + '">' + escapeHtml(r.quality_grade) + '</span>'; }
+        if (r.volume_phase && r.volume_phase !== 'NORMAL') { _nvpBadge = '<span style="color:#a78bfa">' + escapeHtml(r.volume_phase.replace(/_/g,' ').substring(0,12)) + '</span>'; }
+        if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _nmbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _nmtfBadge = '<span style="color:' + _nmbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
+        var _nBadgeLine = [_ngrBadge, _nrlBadge, _nvpBadge, _nmtfBadge].filter(function(b){return b;}).join(' · ');
+        if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _nBadgeLine + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';

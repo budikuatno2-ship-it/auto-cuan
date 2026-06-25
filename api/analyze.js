@@ -4,7 +4,10 @@
  * Primary AI: DeepSeek V4 Flash via CodeCrafters
  * Fallback: Gemini (also used for vision/image tasks)
  * Includes: Intent Router, Output Sanitizer, FCA Guard.
+ * IDX Tick Size normalization applied to trading plan levels.
  */
+
+var _idxTick = require('../lib/idx-tick-normalization');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -1084,10 +1087,10 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   var ma200 = d.ma200;
   var high = d.high || '\u2014';
   var low = d.low || '\u2014';
-  var r1 = d.resistance1;
-  var r2 = d.resistance2;
-  var s1 = d.support1;
-  var s2 = d.support2;
+  var r1 = d.resistance1 ? _idxTick.roundToIdxTick(d.resistance1, 'up') : null;
+  var r2 = d.resistance2 ? _idxTick.roundToIdxTick(d.resistance2, 'up') : null;
+  var s1 = d.support1 ? _idxTick.roundToIdxTick(d.support1, 'down') : null;
+  var s2 = d.support2 ? _idxTick.roundToIdxTick(d.support2, 'down') : null;
 
   // Need at least last price (rsi/ma/support are filled with defaults if null)
   if (!last) return null;
@@ -1171,16 +1174,7 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   var scenBearish = s1 ? 'Breakdown ' + s1 + ', tekanan lanjut ke ' + v(s2) : 'Breakdown support terdekat';
   var entryPlan, stopLoss, tp1, tp2, catatan;
   // reclaimLevel: use pivot from data; fallback to midpoint(S1,R1) rounded to IDX tick
-  function roundToIdxTick(price) {
-    if (!price || price <= 0) return price;
-    // IDX tick: <=200 → multiple of 1; 200-500 → multiple of 2; 500-2000 → multiple of 5; 2000-5000 → multiple of 10; >5000 → multiple of 25
-    if (price > 5000) return Math.round(price / 25) * 25;
-    if (price > 2000) return Math.round(price / 10) * 10;
-    if (price > 500) return Math.round(price / 5) * 5;
-    if (price > 200) return Math.round(price / 2) * 2;
-    return Math.round(price);
-  }
-  var reclaimLevel = d.pivotPoint || (s1 && r1 ? roundToIdxTick((s1 + r1) / 2) : null) || ma20 || r1 || s1;
+  var reclaimLevel = d.pivotPoint || (s1 && r1 ? _idxTick.roundToIdxTick((s1 + r1) / 2, 'nearest') : null) || ma20 || r1 || s1;
   if (bias === 'Bearish') { entryPlan = 'Tunggu konfirmasi rebound di atas ' + v(reclaimLevel) + ' dengan volume.'; stopLoss = s1 ? 'Di bawah ' + v(s1) : '\u2014'; tp1 = v(r1); tp2 = v(r2); catatan = 'Hindari beli saat tekanan jual masih dominan dan RSI ' + rsiLabel + ' tanpa konfirmasi.'; }
   else if (bias === 'Bullish') { entryPlan = 'Area ' + v(s1) + '\u2013' + v(ma20) + ' jika ada konfirmasi volume.'; stopLoss = s1 ? 'Di bawah ' + v(s1) : '\u2014'; tp1 = v(r1); tp2 = v(r2); catatan = 'Entry valid jika volume meningkat dan harga bertahan di atas support.'; }
   else { entryPlan = 'Tunggu konfirmasi breakout ' + v(r1) + ' atau rebound dari ' + v(s1) + '.'; stopLoss = s1 ? 'Di bawah ' + v(s1) : '\u2014'; tp1 = v(r1); tp2 = v(r2); catatan = 'Kondisi netral, perlu trigger arah sebelum ambil posisi.'; }
