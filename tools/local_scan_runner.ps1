@@ -323,11 +323,32 @@ switch ($Command) {
         }
     }
     "daytrade" {
-        $mode = if ($SubArg) { $SubArg } else { "morning-fast" }
+        $mode = if ($SubArg) { $SubArg } else { "auto-fast" }
+
+        # Auto time detection for WIB
+        $autoModes = @("auto-fast", "auto-full", "auto")
+        if ($mode -in $autoModes) {
+            $isFast = ($mode -eq "auto-fast" -or $mode -eq "auto")
+            $utcNow = [DateTime]::UtcNow
+            $wibNow = $utcNow.AddHours(7)
+            $wibHour = $wibNow.Hour
+            $wibMin = $wibNow.Minute
+            $totalMin = $wibHour * 60 + $wibMin
+
+            $detectedMode = "afternoon"
+            if ($totalMin -ge 540 -and $totalMin -le 630) { $detectedMode = "morning" }
+            elseif ($totalMin -gt 630 -and $totalMin -le 780) { $detectedMode = "midday" }
+            elseif ($totalMin -gt 780 -and $totalMin -le 930) { $detectedMode = "afternoon" }
+
+            Write-Host "  Auto mode selected: $detectedMode (WIB $($wibNow.ToString('HH:mm')))"
+            $mode = if ($isFast) { "$detectedMode-fast" } else { $detectedMode }
+        }
+
         $validModes = @("morning", "midday", "afternoon", "full", "morning-fast", "midday-fast", "afternoon-fast")
         if ($mode -notin $validModes) {
             Write-Host "  Invalid mode: $mode"
             Write-Host "  Valid: morning, midday, afternoon, full, morning-fast, midday-fast, afternoon-fast"
+            Write-Host "  Auto: auto-fast, auto-full"
             exit 1
         }
         $success = Run-DayTrade $cfg $mode
