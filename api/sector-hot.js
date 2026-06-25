@@ -592,9 +592,12 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           // V6 fields
           tick_normalized: _tickResult.tick_normalized,
           tick_notes: _tickResult.tick_notes,
-          daily_candle_context: _mtfCtx.daily_candle_context,
-          weekly_candle_context: _mtfCtx.weekly_candle_context,
-          monthly_candle_context: _mtfCtx.monthly_candle_context,
+          tf_1d_context: _mtfCtx.tf_1d_context,
+          tf_2d_context: _mtfCtx.tf_2d_context,
+          tf_3d_context: _mtfCtx.tf_3d_context,
+          tf_5d_context: _mtfCtx.tf_5d_context,
+          tf_10d_context: _mtfCtx.tf_10d_context,
+          tf_20d_context: _mtfCtx.tf_20d_context,
           multi_timeframe_bias: _mtfCtx.multi_timeframe_bias,
           multi_timeframe_notes: _mtfCtx.multi_timeframe_notes,
           volume_signal: _vpaResult.volume_signal,
@@ -3967,6 +3970,52 @@ function deriveDayTradeLabels(r) {
 }
 
 // ============================================================
+// DAY TRADE TIMEFRAME CONTEXT (derived from persisted fields at read-time)
+// Since multi-candle data is not persisted, we derive 1D context from
+// change_pct, volume_ratio, range_position, rsi14.
+// 2D-20D require schema update to persist (reported as limitation).
+// ============================================================
+function deriveDayTradeTimeframeContext(r) {
+  var chg = r.change_pct || 0;
+  var volR = r.volume_ratio_20d || 0;
+  var rp = r.range_position || 50; // 0=low, 100=high
+  var rsi = r.rsi14 || 50;
+  var status = r.status || '';
+
+  // 1D context from persisted single-candle fields
+  var tf1d = 'Netral';
+  if (chg >= 2 && volR >= 1.3 && rp >= 70) tf1d = 'Bullish close near high';
+  else if (chg >= 1 && rp >= 60) tf1d = 'Bullish';
+  else if (chg >= 0.3 && rp >= 50) tf1d = 'Slight bullish';
+  else if (chg <= -3 && volR >= 1.3 && rp <= 30) tf1d = 'Distribution pressure';
+  else if (chg <= -2 && rp <= 30) tf1d = 'Bearish close near low';
+  else if (chg <= -1) tf1d = 'Bearish';
+  else if (chg <= -0.3) tf1d = 'Slight bearish';
+  else if (rp >= 80 && chg >= 0) tf1d = 'Close near high';
+  else if (rp <= 20 && chg <= 0) tf1d = 'Close near low';
+  else tf1d = 'Netral / sideways';
+
+  // Volume-price action for 1D
+  if (volR >= 1.5 && chg <= -1 && rp <= 30) tf1d = 'Distribution pressure (vol tinggi)';
+  else if (volR >= 1.5 && chg >= 1 && rp >= 70) tf1d = 'Markup confirmation (vol tinggi)';
+  else if (volR >= 1.5 && Math.abs(chg) < 1) tf1d = 'Absorption / battle zone (vol tinggi)';
+
+  // Summary (compact for card)
+  var summary = tf1d;
+  if (status === 'AVOID') summary = tf1d + ' — setup AVOID';
+  else if (status === 'WAIT_PULLBACK') summary = tf1d + ' — tunggu pullback';
+
+  // Derived risk from 1D context
+  var derivedRisk = null;
+  if (tf1d.indexOf('Distribution') >= 0) derivedRisk = 'High Risk';
+  else if (tf1d.indexOf('Bearish close near low') >= 0 && volR >= 1.3) derivedRisk = 'High Risk';
+  else if (tf1d.indexOf('Bullish') >= 0 && volR >= 1.0) derivedRisk = 'Low Risk';
+  else derivedRisk = 'Medium Risk';
+
+  return { tf_1d: tf1d, summary: summary, derived_risk: derivedRisk };
+}
+
+// ============================================================
 // DAY TRADE SCREENER v1 — READ (public, returns latest results)
 // ============================================================
 async function handleDayTradeScreenerRead(req, res, supabase) {
@@ -4011,12 +4060,17 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       return (b.daytrade_score || 0) - (a.daytrade_score || 0);
     });
 
-    // Derive computed labels (confidence, entry_timing, direction) from stored fields
+    // Derive computed labels (confidence, entry_timing, direction, timeframe) from stored fields
     sortedRows = sortedRows.map(function(r) {
       var labels = deriveDayTradeLabels(r);
       r.confidence = labels.confidence;
       r.entry_timing = labels.entry_timing;
       r.direction = labels.direction;
+      // Derive 1D candle context from persisted fields
+      var tfCtx = deriveDayTradeTimeframeContext(r);
+      r.tf_1d_context = tfCtx.tf_1d;
+      r.tf_summary = tfCtx.summary;
+      r.derived_risk = tfCtx.derived_risk;
       return r;
     });
 
@@ -4213,7 +4267,19 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
         notes: r.notes,
         run_mode: runMode,
         calculated_at: now,
-        run_id: runId
+        run_id: runId,
+        // V6: Persisted context fields
+        tf_1d_context: r.daily_candle_context || r.tf_1d_context || null,
+        tf_2d_context: r.tf_2d_context || null,
+        tf_3d_context: r.tf_3d_context || null,
+        tf_5d_context: r.weekly_candle_context || r.tf_5d_context || null,
+        tf_10d_context: r.tf_10d_context || null,
+        tf_20d_context: r.monthly_candle_context || r.tf_20d_context || null,
+        multi_timeframe_bias: r.multi_timeframe_bias || null,
+        multi_timeframe_notes: r.multi_timeframe_notes || null,
+        volume_phase: r.volume_phase || null,
+        risk_label: r.risk_label || null,
+        quality_grade: r.quality_grade || null
       };
     });
 
@@ -4494,10 +4560,6 @@ function formatDayTradeTelegramMessage(results, runDate, headerNote, meta) {
   var lines = [];
   lines.push('\uD83D\uDE80 Day Trade Signal');
   lines.push('Update: ' + timeStr);
-  var metaLine = [];
-  if (meta.run_mode) metaLine.push('Mode: ' + meta.run_mode);
-  if (meta.published_count) metaLine.push('Published: ' + meta.published_count);
-  if (metaLine.length > 0) lines.push(metaLine.join(' | '));
   if (headerNote) lines.push(headerNote);
   lines.push('');
 
@@ -4531,17 +4593,22 @@ function formatDayTradeTelegramMessage(results, runDate, headerNote, meta) {
     if (r.volume_today_vs_7d) volParts.push('7D ' + fmtRatio(r.volume_today_vs_7d));
     if (volParts.length > 0) lines.push('   Vol: ' + volParts.join(' | '));
 
-    // Candle/MTF line (clean labels, no truncation)
-    var mtfParts = [];
-    if (r.daily_candle_context) mtfParts.push('D ' + shortenContext(r.daily_candle_context));
-    if (r.weekly_candle_context) mtfParts.push('W Approx ' + shortenContext(r.weekly_candle_context));
-    if (r.monthly_candle_context) mtfParts.push('M Approx ' + shortenContext(r.monthly_candle_context));
-    if (mtfParts.length > 0) lines.push('   Candle: ' + mtfParts.join(' | '));
+    // Candle/TF line (use persisted TF context fields)
+    var tfParts = [];
+    if (r.tf_1d_context) tfParts.push('1D ' + r.tf_1d_context);
+    if (r.tf_3d_context) tfParts.push('3D ' + r.tf_3d_context);
+    if (r.tf_5d_context) tfParts.push('5D ' + r.tf_5d_context);
+    if (r.tf_20d_context) tfParts.push('20D ' + r.tf_20d_context);
+    if (tfParts.length > 0) lines.push('   TF: ' + tfParts.join(' | '));
 
-    // Volume phase (only if meaningful)
+    // Volume phase (from persisted field)
     if (r.volume_phase && r.volume_phase !== 'NORMAL') {
       lines.push('   Phase: ' + r.volume_phase);
     }
+
+    // Setup meaning (short)
+    var _tgMeaning = getTelegramSetupMeaning(r.status);
+    if (_tgMeaning) lines.push('   Arti: ' + _tgMeaning);
 
     lines.push('');
   }
@@ -4558,6 +4625,25 @@ function shortenContext(ctx) {
   // Capitalize first letter
   if (clean.length > 0) clean = clean.charAt(0).toUpperCase() + clean.slice(1);
   return clean || '-';
+}
+
+// Short setup meaning for Telegram (compact)
+function getTelegramSetupMeaning(status) {
+  if (!status) return null;
+  var s = status.toUpperCase().replace(/[_\s]+/g, '_');
+  var map = {
+    'A_PLUS_SETUP': 'Setup A+, konfirmasi lengkap.',
+    'TRADE_CANDIDATE': 'Kandidat trade kuat, butuh chart confirm.',
+    'READY_BREAKOUT': 'Siap pantau breakout, entry jika konfirmasi.',
+    'PRE_SPIKE_WATCH': 'Radar pre-spike, tunggu volume confirm.',
+    'EARLY_RADAR': 'Sinyal awal, belum entry.',
+    'MOMENTUM_CONTINUATION': 'Momentum berjalan, jangan chase.',
+    'RECLAIM_CANDIDATE': 'Kandidat reclaim, valid jika hold.',
+    'WAIT_PULLBACK': 'Tunggu pullback, jangan chase.',
+    'SPECULATIVE': 'Spekulatif, size kecil wajib.',
+    'AVOID': 'Hindari, risiko tinggi.'
+  };
+  return map[s] || null;
 }
 
 function fmtPrice(v) { return v ? v.toLocaleString('id-ID') : '-'; }

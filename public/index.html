@@ -5038,6 +5038,35 @@ document.addEventListener('click', function(e) {
     if (ticker && _dtCardData[ticker]) { openScrDetail(_dtCardData[ticker], 'daytrade'); }
 });
 
+// Setup meaning helper (deterministic, all screeners)
+function getSetupMeaning(status, type) {
+    if (!status) return null;
+    var s = status.toUpperCase().replace(/[_\s]+/g, '_');
+    var map = {
+        'A_PLUS_SETUP': 'Setup A+ — semua konfirmasi terpenuhi. Potensi naik kuat.',
+        'TRADE_CANDIDATE': 'Kandidat trade kuat — butuh konfirmasi chart/orderbook.',
+        'READY_BREAKOUT': 'Siap pantau breakout/reclaim. Entry hanya jika harga dan volume tetap konfirmasi.',
+        'READY': 'Siap pantau breakout/reclaim. Entry hanya jika harga dan volume tetap konfirmasi.',
+        'PRE_SPIKE_WATCH': 'Radar awal sebelum potensi spike. Butuh konfirmasi volume dan candle lanjutan.',
+        'PRE_SPIKE': 'Radar awal sebelum potensi spike. Butuh konfirmasi volume dan candle lanjutan.',
+        'EARLY_RADAR': 'Sinyal awal sedang terbentuk. Belum cukup konfirmasi untuk entry.',
+        'MOMENTUM_CONTINUATION': 'Momentum sedang berjalan. Jangan chase; entry hanya jika masih dekat area entry.',
+        'RECLAIM_CANDIDATE': 'Kandidat reclaim level penting. Valid jika harga bertahan di atas level konfirmasi.',
+        'WAIT_PULLBACK': 'Tunggu harga turun ke area entry/pullback. Jangan beli terlalu jauh dari entry.',
+        'WATCHLIST': 'Masih pantauan. Setup belum cukup kuat untuk agresif entry.',
+        'WATCH': 'Masih pantauan. Setup belum cukup kuat untuk agresif entry.',
+        'REBOUND_CANDIDATE': 'Spekulasi rebound. Butuh konfirmasi candle hijau dan volume beli.',
+        'REBOUND_SPEC': 'Spekulasi rebound. Butuh konfirmasi candle hijau dan volume beli.',
+        'SPECULATIVE': 'Spekulatif. Risiko lebih tinggi, wajib ukuran posisi kecil dan konfirmasi ketat.',
+        'SPEC': 'Spekulatif. Risiko lebih tinggi, wajib ukuran posisi kecil.',
+        'AVOID': 'Hindari dulu. Setup belum valid atau risiko terlalu tinggi.',
+        'INVALID': 'Hindari dulu. Setup belum valid atau risiko terlalu tinggi.',
+        'SWING_READY': 'Swing siap pantau. Entry bertahap jika konfirmasi hold di atas support.',
+        'A_PLUS_SWING': 'Swing A+ — setup lengkap, konfirmasi volume dan candle kuat.'
+    };
+    return map[s] || null;
+}
+
 function openScrDetail(r, type) {
     var modal = document.getElementById('scrDetailModal');
     if (!modal) return;
@@ -5051,19 +5080,43 @@ function openScrDetail(r, type) {
     var _l = normalizeDisplayLevels(r);
     var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
     var _rlCol = '#9ca3af'; var _gCol = '#9ca3af';
-    if (r.risk_label) { _rlCol = r.risk_label === 'Low Risk' ? '#6ee7b7' : (r.risk_label === 'Medium Risk' ? '#fbbf24' : (r.risk_label === 'High Risk' ? '#fb923c' : '#fca5a5')); }
-    if (r.quality_grade) { _gCol = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); }
+    // Derive grade from available fields (quality_grade not persisted in DB)
+    var _grade = r.quality_grade || r.exec_grade || r.execution_grade || r.confidence || null;
+    if (!_grade && sc > 0) {
+      // Derive from score + status
+      if (sc >= 82 && (st === 'A_PLUS_SETUP' || st === 'TRADE_CANDIDATE' || st === 'READY_BREAKOUT')) _grade = 'A';
+      else if (sc >= 70 && st !== 'AVOID' && st !== 'SPECULATIVE') _grade = 'B';
+      else if (sc >= 50 && st !== 'AVOID') _grade = 'C';
+      else _grade = 'Avoid';
+    }
+    // Derive risk from available fields (risk_label not persisted in DB)
+    var _risk = r.risk_label || r.risk || r.risk_level || null;
+    if (!_risk) {
+      var _rr = r.risk_reward || 0;
+      var _isSwing = (type === 'konglo' || type === 'nonkonglo');
+      var _minRR = _isSwing ? 1.5 : 1.2;
+      if (st === 'AVOID' || st === 'INVALID' || _rr <= 0) _risk = 'Very High Risk';
+      else if (_rr < _minRR || st === 'WAIT_PULLBACK' || (r.notes && /chase|late|distribusi|failed/i.test(r.notes))) _risk = 'High Risk';
+      else if (st === 'SPECULATIVE' || st === 'RECLAIM_CANDIDATE' || st === 'EARLY_RADAR' || (_rr < _minRR * 1.3)) _risk = 'Medium Risk';
+      else _risk = 'Low Risk';
+    }
+    if (_risk) { _rlCol = _risk === 'Low Risk' ? '#6ee7b7' : (_risk === 'Medium Risk' ? '#fbbf24' : (_risk === 'High Risk' ? '#fb923c' : '#fca5a5')); }
+    if (_grade) { _gCol = _grade === 'A' || _grade === 'A+' ? '#6ee7b7' : (_grade === 'B' || _grade === 'B+' || _grade === 'B-' ? '#60a5fa' : (_grade === 'C' ? '#fbbf24' : '#fca5a5')); }
+    // Setup meaning
+    var _setupMeaning = getSetupMeaning(st, type);
     var html = '';
     // Header
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:20px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(st.replace(/_/g,' ')) + '</span></div>';
     html += '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:14px;color:#9ca3af"><span>' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
     // Grade/Risk/RR summary bar
     html += '<div style="display:flex;gap:10px;margin-bottom:12px;padding:8px 12px;background:rgba(30,35,50,0.6);border:1px solid #2a3444;border-radius:10px">';
-    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Grade</div><div style="font-size:16px;font-weight:800;color:' + _gCol + '">' + escapeHtml(r.quality_grade || '-') + '</div></div>';
-    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Risk</div><div style="font-size:11px;font-weight:600;color:' + _rlCol + '">' + escapeHtml(r.risk_label || '-') + '</div></div>';
+    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Grade</div><div style="font-size:16px;font-weight:800;color:' + _gCol + '">' + escapeHtml(_grade || '-') + '</div></div>';
+    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Risk</div><div style="font-size:11px;font-weight:600;color:' + _rlCol + '">' + escapeHtml(_risk || '-') + '</div></div>';
     html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">R/R</div><div style="font-size:14px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
     html += '</div>';
     if (r.grade_reason) html += '<div style="font-size:9px;color:#6b7280;margin-bottom:10px">' + escapeHtml(r.grade_reason) + '</div>';
+    // Setup meaning
+    if (_setupMeaning) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:10px;padding:6px 10px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:8px"><span style="color:#818cf8;font-weight:500">Arti:</span> ' + escapeHtml(_setupMeaning) + '</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">';
     html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 1</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e1 + '</div></div>';
     html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 2</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e2 + '</div></div>';
@@ -5094,9 +5147,18 @@ function openScrDetail(r, type) {
     // Timeframe context section
     html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.12);border-radius:8px">';
     html += '<div style="font-size:9px;font-weight:600;color:#60a5fa;margin-bottom:4px">TIMEFRAME</div>';
-    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">Daily:</span> ' + escapeHtml(r.daily_candle_context || r.candle_pattern || '-') + '</div>';
-    if (r.weekly_candle_context) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">Weekly 5D:</span> ' + escapeHtml(r.weekly_candle_context) + '</div>';
-    if (r.monthly_candle_context) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">Monthly 20D:</span> ' + escapeHtml(r.monthly_candle_context) + '</div>';
+    var _dailyCtx = r.tf_1d_context || r.daily_candle_context || r.candle_pattern || (r.candle_note ? r.candle_note.substring(0, 40) : null) || 'Belum cukup data';
+    var _tf2d = r.tf_2d_context || 'Belum cukup data';
+    var _tf3d = r.tf_3d_context || 'Belum cukup data';
+    var _tf5d = r.tf_5d_context || r.weekly_candle_context || 'Belum cukup data';
+    var _tf10d = r.tf_10d_context || 'Belum cukup data';
+    var _tf20d = r.tf_20d_context || r.monthly_candle_context || 'Belum cukup data';
+    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">1D:</span> ' + escapeHtml(_dailyCtx) + '</div>';
+    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">2D:</span> ' + escapeHtml(_tf2d) + '</div>';
+    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">3D:</span> ' + escapeHtml(_tf3d) + '</div>';
+    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">5D Approx:</span> ' + escapeHtml(_tf5d) + '</div>';
+    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">10D:</span> ' + escapeHtml(_tf10d) + '</div>';
+    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">20D Approx:</span> ' + escapeHtml(_tf20d) + '</div>';
     if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown') { var _mtbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); html += '<div style="font-size:10px;margin-top:3px"><span style="color:#6b7280">MTF:</span> <span style="color:' + _mtbC + ';font-weight:600">' + escapeHtml(r.multi_timeframe_bias) + '</span></div>'; }
     if (r.multi_timeframe_notes) html += '<div style="font-size:9px;color:#6b7280;margin-top:2px">' + escapeHtml(r.multi_timeframe_notes) + '</div>';
     html += '</div>';
