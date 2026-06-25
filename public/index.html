@@ -932,6 +932,8 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Day Trade Card Grid (compact, below table) -->
+            <div id="dtCardGrid" class="mt-4" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:8px"></div>
         </div><!-- /screenerDayTradePane -->
     </div>
 </div>
@@ -4872,6 +4874,46 @@ function testMaintenanceScreen() {
     document.getElementById('maintenancePreviewModal').classList.remove('hidden');
 }
 
+// ===== DAY TRADE CARD GRID =====
+function renderDtCardGrid(results) {
+    var container = document.getElementById('dtCardGrid');
+    if (!container) return;
+    var filtered = results;
+    if (_dtScreenerFilter && _dtScreenerFilter !== 'all') {
+        if (_dtScreenerFilter === 'WATCH') { filtered = results.filter(function(r) { return r.status === 'WATCH_PULLBACK' || r.status === 'WAIT_PULLBACK'; }); }
+        else { filtered = results.filter(function(r) { return r.status === _dtScreenerFilter; }); }
+    }
+    if (!filtered || filtered.length === 0) { container.innerHTML = ''; return; }
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+        var r = filtered[i];
+        var st = r.status || '';
+        var stCol = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION') ? '#6ee7b7' : (st === 'AVOID' ? '#fca5a5' : '#fde047');
+        var stBg = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION') ? 'rgba(16,185,129,0.12)' : (st === 'AVOID' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)');
+        var chg = r.change_pct || 0;
+        var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+        var sc = r.daytrade_score || 0;
+        var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
+        var entry = r.entry_low ? r.entry_low.toLocaleString('id-ID') : '-';
+        var sl = r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '-';
+        var tp1 = r.tp1 ? r.tp1.toLocaleString('id-ID') : '-';
+        var rrVal = r.risk_reward != null ? r.risk_reward.toFixed(1) : '-';
+        var notes = r.notes || ''; if (notes.length > 50) notes = notes.substring(0, 47) + '...';
+        html += '<div style="background:#151a23;border:1px solid #1c2333;border-radius:10px;padding:10px 12px">';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:9px;padding:1px 6px;border-radius:4px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(st.replace(/_/g,' ')) + '</span></div>';
+        html += '<div style="display:flex;gap:6px;align-items:center;font-size:10px;margin-bottom:5px"><span style="color:' + scCol + ';font-weight:600">' + sc + '</span><span style="color:#d1d5db">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">';
+        html += '<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:rgba(59,130,246,0.12);color:#93c5fd;font-weight:600">E ' + entry + '</span>';
+        html += '<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:rgba(239,68,68,0.1);color:#fca5a5;font-weight:600">SL ' + sl + '</span>';
+        html += '<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:rgba(16,185,129,0.1);color:#6ee7b7;font-weight:600">TP ' + tp1 + '</span>';
+        html += '<span style="font-size:8px;padding:1px 5px;border-radius:4px;background:rgba(139,92,246,0.1);color:#c4b5fd;font-weight:600">RR ' + rrVal + '</span>';
+        html += '</div>';
+        if (notes) html += '<div style="font-size:8px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(notes) + '</div>';
+        html += '</div>';
+    }
+    container.innerHTML = html;
+}
+
 // ===== TOAST SYSTEM =====
 function showToast(message, type) {
     type = type || 'success';
@@ -7712,6 +7754,7 @@ async function loadDayTradeScreener() {
         }
 
         renderDtTable(data.results || []);
+        renderDtCardGrid(data.results || []);
     } catch (e) {
         tbody.innerHTML = '<tr><td colspan="19" class="text-center py-8 text-red-400">Error: ' + e.message + '</td></tr>';
     }
@@ -7769,6 +7812,7 @@ function startDtPolling() {
                 _dtScreenerCache = data;
                 updateDtMetaUI(meta);
                 renderDtTable(data.results || []);
+                renderDtCardGrid(data.results || []);
             }
         } catch (e) { /* silent retry next interval */ }
     }, 3000);
@@ -7870,6 +7914,7 @@ function filterDtScreener(filter) {
     });
     if (_dtScreenerCache && _dtScreenerCache.results) {
         renderDtTable(_dtScreenerCache.results);
+        renderDtCardGrid(_dtScreenerCache.results);
     }
 }
 
