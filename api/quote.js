@@ -7,6 +7,8 @@
  * Yahoo cache: 5-minute TTL. Board cache: 12-hour TTL. News cache: 30-day TTL (Supabase).
  */
 
+var dtEngine = require('../lib/daytrade-screener-engine');
+
 var quoteCache = {};
 var QUOTE_CACHE_TTL = 5 * 60 * 1000;
 
@@ -76,6 +78,59 @@ module.exports = async function handler(req, res) {
 
     // === RISK GUARD (deterministic, conservative risk assessment) ===
     quoteResult.riskGuard = calculateRiskGuard(quoteResult, boardResult);
+
+    // === RESPECT ZONE ANALYSIS (multi-window candle + volume) ===
+    if (quoteResult.success && quoteResult._candles && quoteResult._candles.length >= 10) {
+      var rzResult = dtEngine.detectRespectZones(quoteResult._candles);
+      quoteResult.respectZone = { notes: rzResult.notes || [] };
+
+      // Refined trading plan using respect zones
+      var pivot = quoteResult.pivot;
+      if (pivot && pivot.support1 && pivot.resistance1) {
+        var baseLevels = {
+          entry_low: pivot.support1,
+          entry_high: Math.round((pivot.pivotPoint + pivot.support1) / 2),
+          stop_loss: pivot.support2 || Math.round(pivot.support1 * 0.97),
+          tp1: pivot.resistance1,
+          tp2: pivot.resistance2 || Math.round(pivot.resistance1 * 1.02),
+          risk_reward: null
+        };
+        // Calculate initial RR
+        var midEntry = (baseLevels.entry_low + baseLevels.entry_high) / 2;
+        var risk = midEntry - baseLevels.stop_loss;
+        if (risk > 0) baseLevels.risk_reward = Math.round(((baseLevels.tp1 - midEntry) / risk) * 100) / 100;
+
+        var refined = dtEngine.refineLevelsWithRespectZones(baseLevels, quoteResult._candles, quoteResult.last);
+        if (refined) {
+          quoteResult.tradingPlan = {
+            entry_1: refined.entry_low,
+            entry_2: refined.entry_high,
+            stop_loss: refined.stop_loss,
+            target_1: refined.tp1,
+            target_2: refined.tp2,
+            risk_reward: refined.risk_reward,
+            refinement_notes: refined.refinement_notes || null,
+            respect_zone_notes: refined.respect_zone_notes || null
+          };
+        }
+      }
+
+      // BSJP potential (strict conditions)
+      if (quoteResult.autoCuanScore && quoteResult.last) {
+        var bsjpCheck = {
+          daytrade_score: quoteResult.autoCuanScore.score || 0,
+          risk_reward: quoteResult.tradingPlan ? quoteResult.tradingPlan.risk_reward : 0,
+          status: (quoteResult.setupLabel && quoteResult.setupLabel.status) || '',
+          refinement_notes: quoteResult.tradingPlan ? quoteResult.tradingPlan.refinement_notes : ''
+        };
+        var bsjpAnalysis = { volume_ratio_20d: quoteResult.volumeVsAvg20 || 0, change_pct: quoteResult.priceChange1D || 0, distance_to_breakout_pct: null };
+        var bsjpLabel = dtEngine.detectBsjpPotential ? dtEngine.detectBsjpPotential(bsjpCheck, bsjpAnalysis) : null;
+        if (bsjpLabel) quoteResult.bsjpLabel = bsjpLabel;
+      }
+    }
+
+    // Remove internal candles from response (too large)
+    delete quoteResult._candles;
 
     return res.status(200).json(quoteResult);
 
@@ -259,6 +314,9 @@ async function fetchYahooQuote(ticker) {
 
   // === FIBONACCI INTELLIGENCE (from OHLCV candles) ===
   result.fibonacci = calculateFibonacciLevels(candles);
+
+  // Store candles for respect zone analysis (will be deleted before response)
+  result._candles = candles;
 
   quoteCache[ticker] = { data: result, timestamp: Date.now() };
   return result;

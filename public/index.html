@@ -3242,6 +3242,31 @@ async function fetchQuoteContext(ticker, forceFresh) {
                 if (bc.reasons && bc.reasons.length > 0) lines.push('Reasons: ' + bc.reasons.join('; '));
                 if (bc.warnings && bc.warnings.length > 0) lines.push('Warnings: ' + bc.warnings.join('; '));
             }
+
+            // === RESPECT ZONE & TRADING PLAN (from server-side) ===
+            if (q.respectZone && q.respectZone.notes && q.respectZone.notes.length > 0) {
+                lines.push('');
+                lines.push('[Auto-Cuan Respect Zone]');
+                q.respectZone.notes.forEach(function(n) { lines.push('- ' + n); });
+            }
+            if (q.tradingPlan) {
+                var tp = q.tradingPlan;
+                lines.push('');
+                lines.push('[Auto-Cuan Trading Plan]');
+                lines.push('Entry 1: ' + (tp.entry_1 || '-'));
+                lines.push('Entry 2: ' + (tp.entry_2 || '-'));
+                lines.push('Stop Loss: ' + (tp.stop_loss || '-'));
+                lines.push('Target 1: ' + (tp.target_1 || '-'));
+                lines.push('Target 2: ' + (tp.target_2 || '-'));
+                lines.push('R/R: ' + (tp.risk_reward || '-'));
+                if (tp.refinement_notes) lines.push('Refinement: ' + tp.refinement_notes);
+                if (tp.respect_zone_notes) lines.push('Zone Context: ' + tp.respect_zone_notes);
+            }
+            if (q.bsjpLabel) {
+                lines.push('');
+                lines.push('[Auto-Cuan BSJP]');
+                lines.push(q.bsjpLabel);
+            }
         } else {
             lines.push('Data historis belum berhasil diambil.');
         }
