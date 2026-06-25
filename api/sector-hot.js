@@ -4406,76 +4406,99 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
   }
 
   try {
-    // Fetch top 40 candidates (fetch MORE first, then filter to Top 10)
+    // Fetch top 50 published Day Trade rows (same data web displays)
     var { data: candidates, error: readErr } = await supabase
       .from('daytrade_screener_latest')
       .select('*')
       .order('daytrade_score', { ascending: false })
-      .limit(40);
+      .limit(50);
 
     if (readErr || !candidates || candidates.length === 0) {
-      return { sent: false, skipped: true, reason: 'no_data_to_send' };
+      return { sent: false, skipped: true, reason: 'no_data_to_send', published_count: publishedCount, raw_candidate_count: 0 };
     }
 
-    // === CANDIDATE SELECTION (priority filtering) ===
-    // Step 1: Exclude AVOID and Very High Risk (unless Grade A/B)
-    var acceptable = candidates.filter(function(r) {
-      if (r.status === 'AVOID' && r.quality_grade !== 'A' && r.quality_grade !== 'B') return false;
-      if (r.risk_label === 'Very High Risk' && r.quality_grade !== 'A' && r.quality_grade !== 'B') return false;
-      return true;
+    var rawCount = candidates.length;
+
+    // === CANDIDATE SELECTION (using REAL DB fields only) ===
+    // Real columns: status, daytrade_score, risk_reward, volume_ratio_20d, entry_low, entry_high, etc.
+    // quality_grade/risk_label are NOT in DB — use status + score for selection.
+
+    // Step 1: Exclude AVOID status
+    var nonAvoid = candidates.filter(function(r) { return r.status !== 'AVOID'; });
+
+    // Step 2: Prioritize actionable setups
+    var setupPriority = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8 };
+    var actionable = nonAvoid.filter(function(r) {
+      var pri = setupPriority[r.status];
+      return pri != null && pri <= 6;
     });
 
-    // Step 2: Prioritize Grade A/B first
-    var gradeAB = acceptable.filter(function(r) { return r.quality_grade === 'A' || r.quality_grade === 'B'; });
-    var gradeC = acceptable.filter(function(r) { return r.quality_grade === 'C' && r.status !== 'AVOID' && r.risk_label !== 'Very High Risk'; });
-
-    // Step 3: Build final list (A/B first, then C to fill up to 10)
-    var finalList = gradeAB.slice(0, 10);
-    if (finalList.length < 10) {
-      var remaining = 10 - finalList.length;
-      finalList = finalList.concat(gradeC.slice(0, remaining));
+    // Step 3: If not enough, include WAIT_PULLBACK/SPECULATIVE with decent score
+    if (actionable.length < 10) {
+      var watchlist = nonAvoid.filter(function(r) {
+        return (r.status === 'WAIT_PULLBACK' || r.status === 'SPECULATIVE') && (r.daytrade_score || 0) >= 60;
+      });
+      actionable = actionable.concat(watchlist);
     }
 
-    // Step 4: Sort by setup priority then score
-    var setupPriority = { 'READY_BREAKOUT': 0, 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'PRE_SPIKE_WATCH': 2, 'EARLY_RADAR': 3, 'MOMENTUM_CONTINUATION': 4, 'RECLAIM_CANDIDATE': 5, 'WAIT_PULLBACK': 6, 'SPECULATIVE': 7 };
-    finalList.sort(function(a, b) {
-      var pa = setupPriority[a.status] != null ? setupPriority[a.status] : 8;
-      var pb = setupPriority[b.status] != null ? setupPriority[b.status] : 8;
+    // Step 4: Sort by priority then score
+    actionable.sort(function(a, b) {
+      var pa = setupPriority[a.status] != null ? setupPriority[a.status] : 9;
+      var pb = setupPriority[b.status] != null ? setupPriority[b.status] : 9;
       if (pa !== pb) return pa - pb;
       return (b.daytrade_score || 0) - (a.daytrade_score || 0);
     });
-    finalList = finalList.slice(0, 10);
 
-    // If 0 acceptable candidates after filtering
+    var finalList = actionable.slice(0, 10);
+    var headerNote = '';
+
+    // Step 5: Fallback — if still empty but published_count > 0
+    if (finalList.length === 0 && nonAvoid.length > 0) {
+      nonAvoid.sort(function(a, b) { return (b.daytrade_score || 0) - (a.daytrade_score || 0); });
+      finalList = nonAvoid.slice(0, 10);
+      headerNote = 'Tidak ada kandidat A/B bersih, menampilkan watchlist terbaik.';
+    }
+
+    // Step 6: If EVERYTHING is AVOID
     if (finalList.length === 0) {
-      var emptyResult = await telegramNotifier.sendTelegramMessage('Auto-Cuan Day Trade: 0 kandidat lolos.');
+      var avoidMsg = await telegramNotifier.sendTelegramMessage('Auto-Cuan Day Trade: semua kandidat AVOID. Tidak ada setup valid.');
       _dtTelegramLastRunId = runId;
-      return emptyResult;
+      return { sent: avoidMsg.sent, skipped: avoidMsg.skipped, reason: avoidMsg.reason || 'all_avoid', published_count: publishedCount, raw_candidate_count: rawCount, selected_count: 0 };
     }
 
     // Format message
-    var msg = formatDayTradeTelegramMessage(finalList, runDate);
+    var dtRunMode = (finalList[0] && finalList[0].run_mode) ? finalList[0].run_mode.toUpperCase() : null;
+    var msg = formatDayTradeTelegramMessage(finalList, runDate, headerNote, { run_mode: dtRunMode, published_count: publishedCount });
 
     // Send
     var result = await telegramNotifier.sendTelegramMessage(msg);
     _dtTelegramLastRunId = runId;
+    result.published_count = publishedCount;
+    result.raw_candidate_count = rawCount;
+    result.selected_count = finalList.length;
+    result.filtered_out_count = rawCount - finalList.length;
     return result;
   } catch (e) {
-    // Never break Day Trade
-    return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) };
+    return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80), published_count: publishedCount };
   }
 }
 
-function formatDayTradeTelegramMessage(results, runDate) {
+function formatDayTradeTelegramMessage(results, runDate, headerNote, meta) {
   var now = new Date();
   var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
   var wib = new Date(wibMs);
   var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
 
+  meta = meta || {};
   var lines = [];
-  lines.push('Auto-Cuan \u2014 Day Trade Top ' + results.length);
+  lines.push('\uD83D\uDE80 Day Trade Signal');
   lines.push('Update: ' + timeStr);
+  var metaLine = [];
+  if (meta.run_mode) metaLine.push('Mode: ' + meta.run_mode);
+  if (meta.published_count) metaLine.push('Published: ' + meta.published_count);
+  if (metaLine.length > 0) lines.push(metaLine.join(' | '));
+  if (headerNote) lines.push(headerNote);
   lines.push('');
 
   for (var i = 0; i < results.length; i++) {
@@ -4486,10 +4509,8 @@ function formatDayTradeTelegramMessage(results, runDate) {
     if (e2 <= 0) e2 = e1;
 
     var statusLabel = (r.status || '-').replace(/_/g, ' ');
-    var gradeLabel = r.quality_grade ? 'Grade ' + r.quality_grade : '-';
-    var riskLabel = r.risk_label || '-';
-
-    lines.push(idx + '. ' + (r.ticker || '-') + ' \u2014 ' + statusLabel + ' | ' + gradeLabel + ' | ' + riskLabel);
+    var setupLabel = r.setup || r.status || '-';
+    lines.push(idx + '. ' + (r.ticker || '-') + ' \u2014 ' + statusLabel + ' | Score ' + (r.daytrade_score || 0));
     lines.push('   Last: ' + fmtPrice(r.last_price));
     lines.push('   Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
     lines.push('   SL: ' + fmtPrice(r.stop_loss) + ' | TP: ' + fmtPrice(r.tp1) + ' / ' + fmtPrice(r.tp2));
