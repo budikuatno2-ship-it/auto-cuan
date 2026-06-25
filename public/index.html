@@ -5040,9 +5040,20 @@ function openScrDetail(r, type) {
     var stBg = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION' || st === 'Swing Ready') ? 'rgba(16,185,129,0.12)' : (st === 'AVOID' || st === 'Invalid' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)');
     var _l = normalizeDisplayLevels(r);
     var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
+    var _rlCol = '#9ca3af'; var _gCol = '#9ca3af';
+    if (r.risk_label) { _rlCol = r.risk_label === 'Low Risk' ? '#6ee7b7' : (r.risk_label === 'Medium Risk' ? '#fbbf24' : (r.risk_label === 'High Risk' ? '#fb923c' : '#fca5a5')); }
+    if (r.quality_grade) { _gCol = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); }
     var html = '';
+    // Header
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:20px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(st.replace(/_/g,' ')) + '</span></div>';
-    html += '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:14px;color:#9ca3af"><span>' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span></div>';
+    html += '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:14px;color:#9ca3af"><span>' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
+    // Grade/Risk/RR summary bar
+    html += '<div style="display:flex;gap:10px;margin-bottom:12px;padding:8px 12px;background:rgba(30,35,50,0.6);border:1px solid #2a3444;border-radius:10px">';
+    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Grade</div><div style="font-size:16px;font-weight:800;color:' + _gCol + '">' + escapeHtml(r.quality_grade || '-') + '</div></div>';
+    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Risk</div><div style="font-size:11px;font-weight:600;color:' + _rlCol + '">' + escapeHtml(r.risk_label || '-') + '</div></div>';
+    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">R/R</div><div style="font-size:14px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
+    html += '</div>';
+    if (r.grade_reason) html += '<div style="font-size:9px;color:#6b7280;margin-bottom:10px">' + escapeHtml(r.grade_reason) + '</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">';
     html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 1</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e1 + '</div></div>';
     html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 2</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e2 + '</div></div>';
@@ -5051,19 +5062,48 @@ function openScrDetail(r, type) {
     html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#4ead8a;margin-bottom:3px">Target 2</div><div style="font-size:13px;font-weight:700;color:#6ee7b7">' + t2 + '</div></div>';
     html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#a78bfa;margin-bottom:3px">R/R</div><div style="font-size:13px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
     html += '</div>';
+    // Setup reasoning
     html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:10px">' + escapeHtml(r.notes || r.status_reason || '-') + '</div>';
-    if (r.candle_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Candle:</span> ' + escapeHtml(r.candle_note) + '</div>';
-    if (r.gap_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Gap:</span> ' + escapeHtml(r.gap_note) + '</div>';
-    if (r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
-    if (r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:6px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
+    // Volume context section
+    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,0.04);border:1px solid rgba(139,92,246,0.15);border-radius:8px">';
+    html += '<div style="font-size:9px;font-weight:600;color:#a78bfa;margin-bottom:4px">VOLUME</div>';
+    var vpLabel = r.volume_phase ? r.volume_phase.replace(/_/g,' ') : 'NORMAL';
+    var vpCol = (r.volume_phase === 'DISTRIBUTION_RISK' || r.volume_phase === 'FAILED_BREAKOUT_RISK') ? '#fca5a5' : (r.volume_phase === 'MARKUP_CONFIRMATION' || r.volume_phase === 'ACCUMULATION_WATCH') ? '#6ee7b7' : (r.volume_phase === 'WEAK_VOLUME') ? '#fbbf24' : '#9ca3af';
+    html += '<div style="font-size:11px;color:' + vpCol + ';font-weight:600;margin-bottom:3px">' + escapeHtml(vpLabel) + '</div>';
+    if (r.volume_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:3px">' + escapeHtml(r.volume_notes) + '</div>';
+    var volLine = [];
+    if (r.volume_ratio_20d != null || r.volume_ratio) volLine.push('Vol/Avg20: ' + (r.volume_ratio_20d || r.volume_ratio || 0).toFixed(2) + 'x');
+    if (r.volume_today_vs_3d) volLine.push('vs3D: ' + r.volume_today_vs_3d.toFixed(2) + 'x');
+    if (r.volume_today_vs_7d) volLine.push('vs7D: ' + r.volume_today_vs_7d.toFixed(2) + 'x');
+    if (r.value_today) volLine.push('Val: ' + (r.value_today >= 1e9 ? (r.value_today/1e9).toFixed(1)+'B' : (r.value_today >= 1e6 ? (r.value_today/1e6).toFixed(0)+'M' : '-')));
+    if (volLine.length > 0) html += '<div style="font-size:9px;color:#6b7280">' + volLine.join(' · ') + '</div>';
+    html += '</div>';
+    // Timeframe context section
+    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.12);border-radius:8px">';
+    html += '<div style="font-size:9px;font-weight:600;color:#60a5fa;margin-bottom:4px">TIMEFRAME</div>';
+    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">Daily:</span> ' + escapeHtml(r.daily_candle_context || r.candle_pattern || '-') + '</div>';
+    if (r.weekly_candle_context) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">Weekly 5D:</span> ' + escapeHtml(r.weekly_candle_context) + '</div>';
+    if (r.monthly_candle_context) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">Monthly 20D:</span> ' + escapeHtml(r.monthly_candle_context) + '</div>';
+    if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown') { var _mtbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); html += '<div style="font-size:10px;margin-top:3px"><span style="color:#6b7280">MTF:</span> <span style="color:' + _mtbC + ';font-weight:600">' + escapeHtml(r.multi_timeframe_bias) + '</span></div>'; }
+    if (r.multi_timeframe_notes) html += '<div style="font-size:9px;color:#6b7280;margin-top:2px">' + escapeHtml(r.multi_timeframe_notes) + '</div>';
+    html += '</div>';
+    // Risk notes section
+    if (r.risk_notes || r.risk_label) {
+      var _rnBgC = r.risk_label === 'Low Risk' ? '16,185,129' : (r.risk_label === 'Medium Risk' ? '234,179,8' : '239,68,68');
+      html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(' + _rnBgC + ',0.04);border:1px solid rgba(' + _rnBgC + ',0.15);border-radius:8px">';
+      html += '<div style="font-size:9px;font-weight:600;color:' + _rlCol + ';margin-bottom:3px">RISK: ' + escapeHtml(r.risk_label || '-') + '</div>';
+      var _rn = r.risk_notes ? (typeof r.risk_notes === 'string' ? r.risk_notes : (r.risk_notes.join ? r.risk_notes.join('; ') : '')) : 'Tidak ada faktor risiko signifikan.';
+      html += '<div style="font-size:10px;color:#9ca3af">' + escapeHtml(_rn) + '</div>';
+      html += '</div>';
+    }
+    // Technical context (candle, gap, zone, refinement)
+    if (r.candle_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Candle:</span> ' + escapeHtml(r.candle_note) + '</div>';
+    if (r.gap_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Gap:</span> ' + escapeHtml(r.gap_note) + '</div>';
+    if (r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
+    if (r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:4px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
+    // BSJP + Timing + Direction
     if (r.bsjp_label) html += '<div style="font-size:11px;color:#fbbf24;margin-bottom:8px;padding:6px 10px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-weight:500">' + escapeHtml(r.bsjp_label) + '</div>';
-    if (r.risk_label) { var _rlCol = r.risk_label === 'Low Risk' ? '#6ee7b7' : (r.risk_label === 'Medium Risk' ? '#fbbf24' : (r.risk_label === 'High Risk' ? '#fb923c' : '#fca5a5')); html += '<div style="font-size:10px;margin-bottom:6px"><span style="color:#6b7280">Risk:</span> <span style="color:' + _rlCol + ';font-weight:600">' + escapeHtml(r.risk_label) + '</span></div>'; }
-    if (r.risk_notes) { html += '<div style="font-size:9px;color:#6b7280;margin-bottom:6px;padding-left:8px">' + escapeHtml(typeof r.risk_notes === 'string' ? r.risk_notes : (r.risk_notes.join ? r.risk_notes.join('; ') : '')) + '</div>'; }
-    if (r.quality_grade) { var _gCol = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); html += '<div style="font-size:10px;margin-bottom:6px"><span style="color:#6b7280">Grade:</span> <span style="color:' + _gCol + ';font-weight:700">' + escapeHtml(r.quality_grade) + '</span>' + (r.grade_reason ? ' <span style="color:#6b7280">— ' + escapeHtml(r.grade_reason) + '</span>' : '') + '</div>'; }
-    if (r.volume_phase && r.volume_phase !== 'NORMAL') html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Volume:</span> ' + escapeHtml(r.volume_phase.replace(/_/g,' ')) + (r.volume_notes ? ' — ' + escapeHtml(r.volume_notes) : '') + '</div>';
-    if (r.weekly_candle_context) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Weekly:</span> ' + escapeHtml(r.weekly_candle_context) + '</div>';
-    if (r.monthly_candle_context) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Monthly:</span> ' + escapeHtml(r.monthly_candle_context) + '</div>';
-    if (r.entry_timing || r.time_plan) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.entry_timing || r.time_plan) + '</div>';
+    if (r.entry_timing || r.time_plan) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.entry_timing || r.time_plan) + '</div>';
     if (r.direction) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Arah:</span> ' + escapeHtml(r.direction) + '</div>';
     // Contextual warning by type
     var warningText = type === 'daytrade' ? 'Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.' : 'Swing screener berbasis analisis teknikal harian. Entry bertahap dan konfirmasi manual tetap wajib.';
