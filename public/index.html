@@ -398,24 +398,6 @@
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             nav, .nav-btn, #toastContainer, #analisisFollowUp, .spinner, .spinner-sm { display: none !important; }
         }
-        /* ===== Screener Card View ===== */
-        .scr-card-grid { display:grid; grid-template-columns:1fr; gap:10px; }
-        @media(min-width:640px) { .scr-card-grid { grid-template-columns:repeat(2,1fr); } }
-        @media(min-width:1024px) { .scr-card-grid { grid-template-columns:repeat(3,1fr); } }
-        .scr-card { background:#151a23; border:1px solid #1c2333; border-radius:12px; padding:12px 14px; cursor:pointer; transition:border-color .15s,box-shadow .15s; }
-        .scr-card:hover { border-color:rgba(16,185,129,0.35); box-shadow:0 0 12px rgba(16,185,129,0.08); }
-        .scr-level-box { display:inline-block; padding:2px 7px; border-radius:6px; font-size:10px; font-weight:600; line-height:1.4; }
-        .scr-detail-overlay { position:fixed; inset:0; z-index:50; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:16px; }
-        .scr-detail-drawer { background:#0f1319; border:1px solid #1c2333; border-radius:16px; max-width:480px; width:100%; max-height:85vh; overflow-y:auto; padding:20px; position:relative; }
-        .scr-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; line-height:1.5; }
-        .scr-badge-green { background:rgba(16,185,129,0.15); color:#6ee7b7; }
-        .scr-badge-yellow { background:rgba(234,179,8,0.15); color:#fde047; }
-        .scr-badge-orange { background:rgba(249,115,22,0.15); color:#fb923c; }
-        .scr-badge-red { background:rgba(239,68,68,0.15); color:#fca5a5; }
-        .scr-view-toggle { display:inline-flex; border:1px solid #1c2333; border-radius:8px; overflow:hidden; }
-        .scr-view-toggle button { padding:4px 10px; font-size:11px; font-weight:500; color:#9ca3af; background:transparent; border:none; cursor:pointer; transition:background .15s,color .15s; }
-        .scr-view-toggle button.active { background:rgba(16,185,129,0.12); color:#6ee7b7; }
-        .scr-view-toggle button:hover:not(.active) { color:#e5e7eb; }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -750,12 +732,6 @@
             <button onclick="filterScreener('Speculative')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             <button onclick="filterScreener('Invalid')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Invalid">Invalid</button>
         </div>
-        <!-- View Toggle -->
-        <div class="flex items-center justify-end mb-2">
-            <div class="scr-view-toggle"><button data-view="card" onclick="toggleScreenerView('konglo','card')">Card</button><button data-view="table" class="active" onclick="toggleScreenerView('konglo','table')">Table</button></div>
-        </div>
-        <!-- Card View (hidden by default) -->
-        <div id="screenerKongloCards" class="scr-card-grid hidden"></div>
         <!-- Table -->
         <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="screenerTableWrap">
             <table class="w-full text-xs border-collapse min-w-[1100px]">
@@ -823,12 +799,6 @@
                 <button onclick="filterNkScreener('Rebound Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Rebound Speculative">Rebound Spec.</button>
                 <button onclick="filterNkScreener('Speculative')" class="nk-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="Speculative">Speculative</button>
             </div>
-            <!-- View Toggle -->
-            <div class="flex items-center justify-end mb-2">
-                <div class="scr-view-toggle"><button data-view="card" onclick="toggleScreenerView('nk','card')">Card</button><button data-view="table" class="active" onclick="toggleScreenerView('nk','table')">Table</button></div>
-            </div>
-            <!-- Card View (hidden by default) -->
-            <div id="nkScreenerCards" class="scr-card-grid hidden"></div>
             <!-- Table -->
             <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="nkScreenerTableWrap">
                 <table class="w-full text-xs border-collapse min-w-[1200px]">
@@ -928,13 +898,6 @@
                 <button onclick="filterDtScreener('WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="WATCH">Watch</button>
                 <button onclick="filterDtScreener('AVOID')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="AVOID">Avoid</button>
             </div>
-            <!-- Table -->
-            <!-- View Toggle -->
-            <div class="flex items-center justify-end mb-2">
-                <div class="scr-view-toggle"><button data-view="card" onclick="toggleScreenerView('dt','card')">Card</button><button data-view="table" class="active" onclick="toggleScreenerView('dt','table')">Table</button></div>
-            </div>
-            <!-- Card View (hidden by default) -->
-            <div id="dtScreenerCards" class="scr-card-grid hidden"></div>
             <!-- Table -->
             <div class="overflow-x-auto rounded-xl border border-dark-600/30" id="dtScreenerTableWrap">
                 <table class="w-full text-xs border-collapse min-w-[1100px]">
@@ -1216,19 +1179,6 @@
         <p class="text-[10px] text-gray-600">Auto-Cuan &copy; 2024–2026 &bull; Bukan merupakan saran investasi.</p>
     </div>
 </footer>
-
-<!-- Screener Detail Modal -->
-<div id="scrDetailModal" class="scr-detail-overlay hidden" onclick="if(event.target===this)closeScreenerDetail()">
-    <div class="scr-detail-drawer">
-        <button onclick="closeScreenerDetail()" class="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-full bg-dark-700 border border-dark-600 text-gray-400 hover:text-white hover:border-gray-500 transition text-sm">&times;</button>
-        <div class="mb-4"><div class="flex items-center gap-2 mb-1"><span id="scrDetTicker" class="text-lg font-bold text-white"></span><span id="scrDetTierBadge" class="scr-badge"></span></div><div class="flex items-center gap-2 text-xs text-gray-400"><span id="scrDetBoard"></span><span>-</span><span>Score: <strong id="scrDetScore" class="text-gray-200"></strong></span><span>-</span><span>Exec: <strong id="scrDetExec" class="text-gray-200"></strong></span></div></div>
-        <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 mb-3"><p class="text-[10px] text-gray-500 uppercase mb-1">Price Info</p><div class="grid grid-cols-2 gap-2 text-xs"><div><span class="text-gray-500">Last:</span> <span id="scrDetPrice" class="text-gray-200 font-semibold"></span></div><div><span class="text-gray-500">Change:</span> <span id="scrDetChange" class="font-semibold"></span></div><div><span class="text-gray-500">Vol Ratio:</span> <span id="scrDetVolRatio" class="text-gray-200"></span></div><div><span class="text-gray-500">RSI:</span> <span id="scrDetRsi" class="text-gray-200"></span></div></div></div>
-        <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 mb-3"><p class="text-[10px] text-gray-500 uppercase mb-2">Levels</p><div class="flex flex-wrap gap-2"><span class="scr-level-box" style="background:rgba(59,130,246,0.15);color:#93c5fd;" id="scrDetEntry"></span><span class="scr-level-box" style="background:rgba(239,68,68,0.15);color:#fca5a5;" id="scrDetSL"></span><span class="scr-level-box" style="background:rgba(16,185,129,0.15);color:#6ee7b7;" id="scrDetTP1"></span><span class="scr-level-box" style="background:rgba(16,185,129,0.10);color:#6ee7b7;" id="scrDetTP2"></span><span class="scr-level-box" style="background:rgba(139,92,246,0.15);color:#c4b5fd;" id="scrDetRR"></span></div></div>
-        <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 mb-3 space-y-2 text-xs"><div><span class="text-gray-500">Timing:</span> <span id="scrDetTiming" class="text-gray-200"></span></div><div><span class="text-gray-500">Direction:</span> <span id="scrDetDirection" class="text-gray-200"></span></div><div><span class="text-gray-500">Catatan:</span> <span id="scrDetNotes" class="text-gray-300"></span></div><div id="scrDetCandleRow"><span class="text-gray-500">Candle:</span> <span id="scrDetCandle" class="text-gray-300"></span></div><div id="scrDetGapRow"><span class="text-gray-500">Gap:</span> <span id="scrDetGap" class="text-gray-300"></span></div></div>
-        <button onclick="openChartForTicker(document.getElementById('scrDetTicker').textContent)" class="w-full py-2.5 rounded-xl text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition mb-3">Buka Chart</button>
-        <p class="text-[10px] text-gray-600 leading-relaxed text-center">Bukan rekomendasi beli/jual. Selalu lakukan analisis sendiri dan kelola risiko.</p>
-    </div>
-</div>
 
 </div><!-- end dashboardScreen -->
 
@@ -4922,103 +4872,6 @@ function testMaintenanceScreen() {
     document.getElementById('maintenancePreviewModal').classList.remove('hidden');
 }
 
-// ===== CARD VIEW: Screener Card/Table Toggle =====
-function getScreenerViewMode() { try { return localStorage.getItem('autocuan_screener_view') || 'table'; } catch(e) { return 'table'; } }
-function setScreenerViewMode(mode) { try { localStorage.setItem('autocuan_screener_view', mode); } catch(e) {} }
-function toggleScreenerView(paneType, mode) {
-    setScreenerViewMode(mode);
-    var tableId, cardId;
-    if (paneType === 'konglo') { tableId = 'screenerTableWrap'; cardId = 'screenerKongloCards'; }
-    else if (paneType === 'nk') { tableId = 'nkScreenerTableWrap'; cardId = 'nkScreenerCards'; }
-    else if (paneType === 'dt') { tableId = 'dtScreenerTableWrap'; cardId = 'dtScreenerCards'; }
-    else { return; }
-    var tableEl = document.getElementById(tableId); var cardEl = document.getElementById(cardId);
-    if (!tableEl || !cardEl) return;
-    if (mode === 'card') { tableEl.classList.add('hidden'); cardEl.classList.remove('hidden'); }
-    else { tableEl.classList.remove('hidden'); cardEl.classList.add('hidden'); }
-    var paneEl = tableEl.closest('[id$="Pane"]');
-    if (paneEl) { paneEl.querySelectorAll('.scr-view-toggle button').forEach(function(btn) { btn.classList.toggle('active', btn.getAttribute('data-view') === mode); }); }
-}
-function renderKongloCards(results) {
-    var container = document.getElementById('screenerKongloCards'); if (!container) return;
-    var filtered = results;
-    if (_screenerFilter && _screenerFilter !== 'all') { filtered = results.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _screenerFilter || fs === _screenerFilter; }); }
-    if (filtered.length === 0) { container.innerHTML = '<p class="text-center py-8 text-gray-500 col-span-full text-sm">Tidak ada saham dengan status ini.</p>'; return; }
-    var html = ''; filtered.forEach(function(r) { html += buildScreenerCard(r, 'konglo'); }); container.innerHTML = html;
-}
-function renderNkCards(results) {
-    var container = document.getElementById('nkScreenerCards'); if (!container) return;
-    var filtered = results;
-    if (typeof _nkScreenerFilter !== 'undefined' && _nkScreenerFilter && _nkScreenerFilter !== 'all') { filtered = results.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _nkScreenerFilter || fs === _nkScreenerFilter; }); }
-    if (filtered.length === 0) { container.innerHTML = '<p class="text-center py-8 text-gray-500 col-span-full text-sm">Tidak ada saham dengan status ini.</p>'; return; }
-    var html = ''; filtered.forEach(function(r) { html += buildScreenerCard(r, 'nk'); }); container.innerHTML = html;
-}
-function renderDtCards(results) {
-    var container = document.getElementById('dtScreenerCards'); if (!container) return;
-    var filtered = results;
-    if (typeof _dtScreenerFilter !== 'undefined' && _dtScreenerFilter && _dtScreenerFilter !== 'all') { if (_dtScreenerFilter === 'WATCH') { filtered = results.filter(function(r) { return r.status === 'WATCH_PULLBACK' || r.status === 'WAIT_PULLBACK'; }); } else { filtered = results.filter(function(r) { return r.status === _dtScreenerFilter; }); } }
-    if (filtered.length === 0) { container.innerHTML = '<p class="text-center py-8 text-gray-500 col-span-full text-sm">Tidak ada saham dengan status ini.</p>'; return; }
-    var html = ''; filtered.forEach(function(r) { html += buildScreenerCard(r, 'dt'); }); container.innerHTML = html;
-}
-function buildScreenerCard(r, type) {
-    var ticker = r.ticker || '-';
-    var dataJson = JSON.stringify(r).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
-    var boardOrGroup = '', tierLabel = '', tierClass = '', score = 0, exec = '-', lastPrice = r.last_price || 0, changePct = r.change_pct || 0, volRatio = 0, entryLow = r.entry_low || 0, entrySL = r.stop_loss || 0, tp1Val = r.tp1 || 0, rrVal = r.risk_reward || 0, notes = '', timing = '', statusBadge = '';
-    if (type === 'konglo') { boardOrGroup = r.group_code || '-'; tierLabel = swingTierShort(r.swing_tier); tierClass = swingTierColor(r.swing_tier); score = r.score || 0; exec = r.confidence || '-'; volRatio = r.volume_ratio || 0; notes = r.status_reason || ''; timing = r.entry_timing || ''; }
-    else if (type === 'nk') { boardOrGroup = r.board || '-'; tierLabel = swingTierShort(r.swing_tier); tierClass = swingTierColor(r.swing_tier); score = r.score || 0; exec = r.confidence || '-'; volRatio = r.volume_ratio || 0; notes = r.status_reason || ''; timing = r.entry_timing || ''; }
-    else if (type === 'dt') { boardOrGroup = r.board || '-'; score = r.daytrade_score || 0; exec = r.confidence || '-'; volRatio = r.volume_ratio_20d || 0; notes = r.notes || ''; timing = r.time_plan || ''; var st = r.status || ''; var stColor = 'scr-badge-yellow'; if (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION') stColor = 'scr-badge-green'; else if (st === 'AVOID') stColor = 'scr-badge-red'; statusBadge = '<span class="scr-badge ' + stColor + '">' + escapeHtml(st.replace(/_/g, ' ')) + '</span>'; }
-    var chgColor = changePct >= 0 ? 'color:#6ee7b7' : 'color:#fca5a5'; var chgSign = changePct >= 0 ? '+' : '';
-    var scoreStyle = 'color:#9ca3af'; if (score >= 80) scoreStyle = 'color:#6ee7b7;font-weight:700'; else if (score >= 65) scoreStyle = 'color:#60a5fa'; else if (score >= 50) scoreStyle = 'color:#fbbf24'; else if (score > 0) scoreStyle = 'color:#fca5a5';
-    var shortNotes = notes.length > 60 ? notes.substring(0, 57) + '...' : notes;
-    var html = '<div class="scr-card" onclick="openScreenerDetail(\'' + dataJson + '\')">';
-    html += '<div class="flex items-center justify-between mb-2"><span class="text-sm font-bold text-white">' + escapeHtml(ticker) + '</span><div class="flex items-center gap-1">';
-    if (boardOrGroup && boardOrGroup !== '-') html += '<span class="text-[9px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(boardOrGroup) + '</span>';
-    if (tierLabel) html += '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span>';
-    if (statusBadge) html += statusBadge;
-    html += '</div></div>';
-    html += '<div class="flex items-center gap-3 mb-2 text-xs"><span style="' + scoreStyle + '">' + score + '</span><span class="text-gray-500">' + escapeHtml(exec) + '</span><span class="text-gray-200">' + formatPrice(lastPrice) + '</span><span style="' + chgColor + '">' + chgSign + formatPct(changePct) + '</span><span class="text-gray-500">' + formatRatio(volRatio) + 'x</span></div>';
-    html += '<div class="flex flex-wrap gap-1 mb-2">';
-    if (entryLow) html += '<span class="scr-level-box" style="background:rgba(59,130,246,0.15);color:#93c5fd;">E ' + formatPrice(entryLow) + '</span>';
-    if (entrySL) html += '<span class="scr-level-box" style="background:rgba(239,68,68,0.12);color:#fca5a5;">SL ' + formatPrice(entrySL) + '</span>';
-    if (tp1Val) html += '<span class="scr-level-box" style="background:rgba(16,185,129,0.12);color:#6ee7b7;">TP ' + formatPrice(tp1Val) + '</span>';
-    if (rrVal) html += '<span class="scr-level-box" style="background:rgba(139,92,246,0.12);color:#c4b5fd;">RR ' + (typeof rrVal === 'number' ? rrVal.toFixed(1) : rrVal) + '</span>';
-    html += '</div>';
-    html += '<div class="flex items-center justify-between text-[10px]"><span class="text-gray-500 truncate max-w-[70%]">' + escapeHtml(shortNotes || '-') + '</span><span class="text-gray-600 whitespace-nowrap">' + escapeHtml(timing || '') + '</span></div>';
-    html += '</div>'; return html;
-}
-function openScreenerDetail(dataJson) {
-    var modal = document.getElementById('scrDetailModal'); if (!modal) return;
-    var r; try { r = JSON.parse(dataJson); } catch(e) { return; }
-    document.getElementById('scrDetTicker').textContent = r.ticker || '-';
-    var tierBadge = document.getElementById('scrDetTierBadge');
-    var tl = swingTierShort(r.swing_tier || r.status || ''); var tc = swingTierColor(r.swing_tier || '');
-    if (r.status && !r.swing_tier) { tl = (r.status || '').replace(/_/g, ' '); tc = 'scr-badge-green'; }
-    tierBadge.textContent = tl; tierBadge.className = 'scr-badge ' + tc;
-    document.getElementById('scrDetBoard').textContent = r.board || r.group_code || '-';
-    document.getElementById('scrDetScore').textContent = r.score || r.daytrade_score || '0';
-    document.getElementById('scrDetExec').textContent = r.confidence || '-';
-    document.getElementById('scrDetPrice').textContent = formatPrice(r.last_price);
-    var changeEl = document.getElementById('scrDetChange'); var cp = r.change_pct || 0;
-    changeEl.textContent = (cp >= 0 ? '+' : '') + formatPct(cp); changeEl.style.color = cp >= 0 ? '#6ee7b7' : '#fca5a5';
-    document.getElementById('scrDetVolRatio').textContent = formatRatio(r.volume_ratio || r.volume_ratio_20d || 0) + 'x';
-    document.getElementById('scrDetRsi').textContent = r.rsi != null ? Number(r.rsi).toFixed(1) : (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-');
-    document.getElementById('scrDetEntry').textContent = 'Entry: ' + formatPrice(r.entry_low) + ' - ' + formatPrice(r.entry_high);
-    document.getElementById('scrDetSL').textContent = 'SL: ' + formatPrice(r.stop_loss);
-    document.getElementById('scrDetTP1').textContent = 'TP1: ' + formatPrice(r.tp1);
-    document.getElementById('scrDetTP2').textContent = 'TP2: ' + formatPrice(r.tp2);
-    document.getElementById('scrDetRR').textContent = 'RR: ' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(1) : '-');
-    document.getElementById('scrDetTiming').textContent = r.entry_timing || r.time_plan || '-';
-    document.getElementById('scrDetDirection').textContent = r.direction || r.setup || '-';
-    document.getElementById('scrDetNotes').textContent = r.status_reason || r.notes || '-';
-    var candleRow = document.getElementById('scrDetCandleRow'); var candleEl = document.getElementById('scrDetCandle');
-    if (r.candle_note) { candleRow.style.display = ''; candleEl.textContent = r.candle_note; } else { candleRow.style.display = 'none'; }
-    var gapRow = document.getElementById('scrDetGapRow'); var gapEl = document.getElementById('scrDetGap');
-    if (r.gap_note) { gapRow.style.display = ''; gapEl.textContent = r.gap_note; } else { gapRow.style.display = 'none'; }
-    modal.classList.remove('hidden');
-}
-function closeScreenerDetail() { var modal = document.getElementById('scrDetailModal'); if (modal) modal.classList.add('hidden'); }
-function openChartForTicker(ticker) { if (!ticker) return; closeScreenerDetail(); navigateTo('chart'); setTimeout(function() { var input = document.getElementById('chartTickerInput'); if (input) { input.value = ticker.trim().toUpperCase(); loadChartPage(); } }, 200); }
-
 // ===== TOAST SYSTEM =====
 function showToast(message, type) {
     type = type || 'success';
@@ -5427,7 +5280,6 @@ async function loadSwingScreener(silent) {
         }
 
         renderScreenerTable(data.results);
-        renderKongloCards(data.results);
     } catch (e) {
         tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
     }
@@ -5442,7 +5294,7 @@ function filterScreener(filter) {
     });
     if (_screenerCache && _screenerCache.results) {
         renderScreenerTable(_screenerCache.results);
-        renderKongloCards(_screenerCache.results);
+    }
 }
 
 function renderScreenerTable(results) {
@@ -5664,7 +5516,7 @@ async function loadNkScreenerResults() {
 
         updateNkScreenerMeta(data.meta);
         renderNkScreenerTable(data.results);
-        renderNkCards(data.results);
+
         // Update title with actual count
         var nkTitle = document.querySelector('#screenerNonKongloPane h2');
         if (nkTitle && data.results.length > 0) {
@@ -5775,7 +5627,6 @@ function filterNkScreener(filter) {
     // Re-render with filter
     if (_nkScreenerCache && _nkScreenerCache.results) {
         renderNkScreenerTable(_nkScreenerCache.results);
-        renderNkCards(_nkScreenerCache.results);
     }
 }
 
@@ -7861,7 +7712,6 @@ async function loadDayTradeScreener() {
         }
 
         renderDtTable(data.results || []);
-        renderDtCards(data.results || []);
     } catch (e) {
         tbody.innerHTML = '<tr><td colspan="19" class="text-center py-8 text-red-400">Error: ' + e.message + '</td></tr>';
     }
@@ -7919,7 +7769,6 @@ function startDtPolling() {
                 _dtScreenerCache = data;
                 updateDtMetaUI(meta);
                 renderDtTable(data.results || []);
-                renderDtCards(data.results || []);
             }
         } catch (e) { /* silent retry next interval */ }
     }, 3000);
@@ -8021,7 +7870,6 @@ function filterDtScreener(filter) {
     });
     if (_dtScreenerCache && _dtScreenerCache.results) {
         renderDtTable(_dtScreenerCache.results);
-        renderDtCards(_dtScreenerCache.results);
     }
 }
 
