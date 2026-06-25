@@ -401,6 +401,9 @@
         .dt-card-item:hover { border-color: rgba(16,185,129,0.3) !important; box-shadow: 0 0 10px rgba(16,185,129,0.06); }
         .kg-card-item:hover { border-color: rgba(16,185,129,0.3) !important; box-shadow: 0 0 10px rgba(16,185,129,0.06); }
         .nk-card-item:hover { border-color: rgba(16,185,129,0.3) !important; box-shadow: 0 0 10px rgba(16,185,129,0.06); }
+        @keyframes scrFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        .scr-pane-anim { animation: scrFadeIn 0.2s ease-out; }
+        @media (prefers-reduced-motion: reduce) { .scr-pane-anim { animation: none; } }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -4998,6 +5001,8 @@ function openScrDetail(r, type) {
     html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:10px">' + escapeHtml(r.notes || r.status_reason || '-') + '</div>';
     if (r.candle_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Candle:</span> ' + escapeHtml(r.candle_note) + '</div>';
     if (r.gap_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Gap:</span> ' + escapeHtml(r.gap_note) + '</div>';
+    if (r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
+    if (r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:6px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
     if (r.entry_timing || r.time_plan) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.entry_timing || r.time_plan) + '</div>';
     if (r.direction) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Arah:</span> ' + escapeHtml(r.direction) + '</div>';
     // Contextual warning by type
@@ -5728,16 +5733,16 @@ function switchScreenerType(type) {
     stopDtPolling();
 
     if (type === 'konglo') {
-        if (kongloPane) kongloPane.classList.remove('hidden');
+        if (kongloPane) { kongloPane.classList.remove('hidden'); kongloPane.classList.remove('scr-pane-anim'); void kongloPane.offsetWidth; kongloPane.classList.add('scr-pane-anim'); }
         if (btnKonglo) btnKonglo.className = activeClass;
         loadSwingScreener();
         startScreenerPolling();
     } else if (type === 'nonkonglo') {
-        if (nkPane) nkPane.classList.remove('hidden');
+        if (nkPane) { nkPane.classList.remove('hidden'); nkPane.classList.remove('scr-pane-anim'); void nkPane.offsetWidth; nkPane.classList.add('scr-pane-anim'); }
         if (btnNk) btnNk.className = activeClass;
         loadNkScreenerResults();
     } else if (type === 'daytrade') {
-        if (dtPane) dtPane.classList.remove('hidden');
+        if (dtPane) { dtPane.classList.remove('hidden'); dtPane.classList.remove('scr-pane-anim'); void dtPane.offsetWidth; dtPane.classList.add('scr-pane-anim'); }
         if (btnDt) btnDt.className = activeClass;
         loadDayTradeScreener();
     }

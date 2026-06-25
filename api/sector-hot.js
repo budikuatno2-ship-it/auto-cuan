@@ -476,6 +476,18 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         var _txLast20 = _txCandles.slice(-20);
         var _avgTxValue20d = _txLast20.length > 0 ? _txLast20.map(function(d) { return (d.close || 0) * (d.volume || 0); }).reduce(function(a, b) { return a + b; }, 0) / _txLast20.length : 0;
 
+        // Respect zone detection and level refinement
+        var _rzResult = dtEngine.detectRespectZones(candles);
+        var _rzNotes = (_rzResult && _rzResult.notes && _rzResult.notes.length > 0) ? _rzResult.notes.join('; ') : null;
+
+        // Refine levels using respect zones
+        var _refinedLevels = null;
+        var _refinementNotes = null;
+        if (analysis.entry_low && analysis.stop_loss && analysis.tp1) {
+          var _baseLvl = { entry_low: analysis.entry_low, entry_high: analysis.entry_high, stop_loss: analysis.stop_loss, tp1: analysis.tp1, tp2: analysis.tp2, risk_reward: analysis.risk_reward };
+          _refinedLevels = dtEngine.refineLevelsWithRespectZones(_baseLvl, candles, analysis.last_price);
+        }
+
         results.push({
           ticker: item.ticker,
           group_code: item.group_code,
@@ -488,16 +500,18 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           volume_ratio_avg20: analysis.volume_ratio_avg20,
           support: analysis.support,
           resistance: analysis.resistance,
-          entry_low: analysis.entry_low,
-          entry_high: analysis.entry_high,
-          stop_loss: analysis.stop_loss,
-          tp1: analysis.tp1,
-          tp2: analysis.tp2,
-          risk_reward: analysis.risk_reward,
+          entry_low: _refinedLevels ? _refinedLevels.entry_low : analysis.entry_low,
+          entry_high: _refinedLevels ? _refinedLevels.entry_high : analysis.entry_high,
+          stop_loss: _refinedLevels ? _refinedLevels.stop_loss : analysis.stop_loss,
+          tp1: _refinedLevels ? _refinedLevels.tp1 : analysis.tp1,
+          tp2: _refinedLevels ? _refinedLevels.tp2 : analysis.tp2,
+          risk_reward: _refinedLevels ? _refinedLevels.risk_reward : analysis.risk_reward,
           invalidation: analysis.invalidation,
           score: scoring.score,
           status: scoring.status,
           status_reason: scoring.status_reason,
+          respect_zone_notes: _rzNotes,
+          refinement_notes: _refinedLevels ? _refinedLevels.refinement_notes : null,
           tx_value_1d: Math.round(_txValue1d),
           avg_tx_value_3d: Math.round(_avgTxValue3d),
           avg_tx_value_7d: Math.round(_avgTxValue7d),
@@ -2502,6 +2516,22 @@ async function handleNkScreenerBatch(req, res, supabase) {
       scored.run_date = runDate;
       scored.calculated_at = new Date().toISOString();
 
+      // Respect zone level refinement for Non-Konglo
+      if (scored.entry_low && scored.stop_loss && scored.tp1 && quoteData.candles && quoteData.candles.length >= 10) {
+        var nkBaseLvl = { entry_low: scored.entry_low, entry_high: scored.entry_high, stop_loss: scored.stop_loss, tp1: scored.tp1, tp2: scored.tp2, risk_reward: scored.risk_reward };
+        var nkRefined = dtEngine.refineLevelsWithRespectZones(nkBaseLvl, quoteData.candles, quoteData.lastPrice || scored.last_price);
+        if (nkRefined) {
+          scored.entry_low = nkRefined.entry_low;
+          scored.entry_high = nkRefined.entry_high;
+          scored.stop_loss = nkRefined.stop_loss;
+          scored.tp1 = nkRefined.tp1;
+          scored.tp2 = nkRefined.tp2;
+          scored.risk_reward = nkRefined.risk_reward;
+          if (nkRefined.refinement_notes) scored.refinement_notes = nkRefined.refinement_notes;
+          if (nkRefined.respect_zone_notes) scored.respect_zone_notes = nkRefined.respect_zone_notes;
+        }
+      }
+
       results.push(scored);
     } catch (e) {
       failedCount++;
@@ -3179,6 +3209,7 @@ async function fetchNkQuoteData(ticker) {
 
     return {
       closes: closesArr,
+      candles: validDays,
       lastPrice: lastClose,
       changePct,
       tradedDays20d,
