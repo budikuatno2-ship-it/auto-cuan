@@ -225,9 +225,10 @@ function Run-DayTrade($cfg, $mode) {
 
     Write-Host ""
     Write-Host "  Running: Day Trade Screener (mode: $actualMode, speed: $speedLabel)"
-    Write-Host "  NOTE: Day Trade scan saat ini berbasis candle harian sebagai radar awal."
+    Write-Host "  NOTE: Day Trade scan berbasis candle harian sebagai radar awal."
     Write-Host "        Konfirmasi intraday tetap wajib."
-    if ($isFast) { Write-Host "  FAST MODE: Scan shortlist ~150 ticker liquid saja." }
+    if ($isFast) { Write-Host "  FAST MODE: Scan shortlist saham aktif/likuid (~150 ticker) untuk radar cepat." }
+    else { Write-Host "  FULL MODE: Scan seluruh universe (semua Papan Utama + Pengembangan)." }
     Write-Host "  $('-' * 50)"
 
     $maxBatches = 120

@@ -485,7 +485,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         var _refinementNotes = null;
         if (analysis.entry_low && analysis.stop_loss && analysis.tp1) {
           var _baseLvl = { entry_low: analysis.entry_low, entry_high: analysis.entry_high, stop_loss: analysis.stop_loss, tp1: analysis.tp1, tp2: analysis.tp2, risk_reward: analysis.risk_reward };
-          _refinedLevels = dtEngine.refineLevelsWithRespectZones(_baseLvl, candles, analysis.last_price);
+          _refinedLevels = dtEngine.refineLevelsWithRespectZones(_baseLvl, candles, analysis.last_price, 'konglo');
         }
 
         results.push({
@@ -2517,19 +2517,19 @@ async function handleNkScreenerBatch(req, res, supabase) {
       scored.calculated_at = new Date().toISOString();
 
       // Respect zone level refinement for Non-Konglo
+      // Only refine levels; do NOT add unknown columns to scored object (staging schema is fixed)
       if (scored.entry_low && scored.stop_loss && scored.tp1 && quoteData.candles && quoteData.candles.length >= 10) {
         var nkBaseLvl = { entry_low: scored.entry_low, entry_high: scored.entry_high, stop_loss: scored.stop_loss, tp1: scored.tp1, tp2: scored.tp2, risk_reward: scored.risk_reward };
-        var nkRefined = dtEngine.refineLevelsWithRespectZones(nkBaseLvl, quoteData.candles, quoteData.lastPrice || scored.last_price);
-        if (nkRefined) {
+        var nkRefined = dtEngine.refineLevelsWithRespectZones(nkBaseLvl, quoteData.candles, quoteData.lastPrice || scored.last_price, 'nonkonglo');
+        if (nkRefined && nkRefined.risk_reward >= 1.5) {
           scored.entry_low = nkRefined.entry_low;
           scored.entry_high = nkRefined.entry_high;
           scored.stop_loss = nkRefined.stop_loss;
           scored.tp1 = nkRefined.tp1;
           scored.tp2 = nkRefined.tp2;
           scored.risk_reward = nkRefined.risk_reward;
-          if (nkRefined.refinement_notes) scored.refinement_notes = nkRefined.refinement_notes;
-          if (nkRefined.respect_zone_notes) scored.respect_zone_notes = nkRefined.respect_zone_notes;
         }
+        // Do NOT add refinement_notes/respect_zone_notes to scored — staging table does not have those columns
       }
 
       results.push(scored);

@@ -100,7 +100,7 @@ module.exports = async function handler(req, res) {
         var risk = midEntry - baseLevels.stop_loss;
         if (risk > 0) baseLevels.risk_reward = Math.round(((baseLevels.tp1 - midEntry) / risk) * 100) / 100;
 
-        var refined = dtEngine.refineLevelsWithRespectZones(baseLevels, quoteResult._candles, quoteResult.last);
+        var refined = dtEngine.refineLevelsWithRespectZones(baseLevels, quoteResult._candles, quoteResult.last, 'analysis');
         if (refined) {
           quoteResult.tradingPlan = {
             entry_1: Math.max(refined.entry_low, refined.entry_high),
