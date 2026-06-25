@@ -43,7 +43,7 @@ function Load-Config {
 
 function Save-Config($cfg) {
     $lines = @(
-        "# Auto-Cuan Scan Config (generated — do not commit)",
+        "# Auto-Cuan Scan Config (generated - do not commit)",
         "API_BASE_URL=$($cfg.API_BASE_URL)",
         "CRON_SECRET=$($cfg.CRON_SECRET)",
         "VERCEL_BYPASS_TOKEN=$($cfg.VERCEL_BYPASS_TOKEN)"
