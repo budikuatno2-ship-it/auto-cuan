@@ -653,6 +653,7 @@
             <div class="mb-4">
                 <h2 class="text-lg font-bold text-white">Grup Konglomerat Hot</h2>
                 <p class="text-xs text-gray-500 mt-1" id="sektorSubtitle">T+1 · BY GROUP · Kinerja rata-rata per grup konglomerat besar. Klik grup untuk detail.</p>
+                <p id="sektorStaleWarn" class="text-[11px] mt-1" style="display:none"></p>
             </div>
             <div id="sektorGroupsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <!-- Cards rendered dynamically -->
@@ -5288,6 +5289,24 @@ async function loadSektorHot() {
                 if (mStatus === 'failed') baseTxt = 'FAILED \u00B7 ' + (data.meta.message || 'Refresh gagal') + ' \u00B7 ' + baseTxt;
                 else if (data.meta.failed_count > 0) baseTxt += ' \u00B7 ' + data.meta.failed_count + ' ticker gagal';
                 sub.textContent = baseTxt;
+            }
+        }
+
+        // Stale data warning
+        var staleWarnEl = document.getElementById('sektorStaleWarn');
+        if (staleWarnEl && data.meta && data.meta.calculated_at) {
+            var ageMs = Date.now() - new Date(data.meta.calculated_at).getTime();
+            var ageHours = ageMs / (1000 * 60 * 60);
+            if (ageHours > 72) {
+                staleWarnEl.textContent = 'Data Sektor Hot sangat lama (' + Math.round(ageHours / 24) + ' hari). Refresh disarankan sebelum dipakai.';
+                staleWarnEl.style.display = '';
+                staleWarnEl.style.color = '#fca5a5';
+            } else if (ageHours > 24) {
+                staleWarnEl.textContent = 'Data Sektor Hot sudah lebih dari 24 jam. Jalankan Refresh Sektor Hot dari CMD.';
+                staleWarnEl.style.display = '';
+                staleWarnEl.style.color = '#fde047';
+            } else {
+                staleWarnEl.style.display = 'none';
             }
         }
 

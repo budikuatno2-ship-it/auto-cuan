@@ -268,6 +268,27 @@ function Run-DayTrade($cfg, $mode) {
     return $finalOk
 }
 
+function Run-SektorHot($cfg) {
+    Write-Host ""
+    Write-Host "  Running: Refresh Sektor Hot / Group Hot"
+    Write-Host "  $('-' * 50)"
+
+    $data = Call-Api $cfg "refresh"
+
+    if ($data.success) {
+        Write-Host "  Status: SUCCESS"
+        Write-Host "  Scanned: $($data.scannedCount)"
+        Write-Host "  Failed: $($data.failedCount)"
+        Write-Host "  Groups: $($data.groupsProcessed)"
+        if ($data.message) { Write-Host "  Message: $($data.message)" }
+        return $true
+    } else {
+        Write-Host "  Status: FAILED"
+        Write-Host "  Error: $($data.error)"
+        return $false
+    }
+}
+
 # === MAIN ===
 $startTime = Get-Date
 
@@ -321,6 +342,20 @@ switch ($Command) {
                 $success = $true
             }
         }
+    }
+    "sektor-hot" { $success = Run-SektorHot $cfg }
+    { $_ -eq "sektor" } { $success = Run-SektorHot $cfg }
+    "refresh-all" {
+        Write-Host "`n  Mode: Refresh All Ringan"
+        Write-Host "  (Sektor Hot -> Konglo -> Non-Konglo -> Day Trade Fast)"
+        $success = Run-SektorHot $cfg
+        if ($success) { Write-Host "`n  Sektor Hot OK. Memulai Konglo..." }
+        $kongloOk = Run-Konglo $cfg
+        if ($kongloOk) { Write-Host "`n  Konglo OK. Memulai Non-Konglo..." }
+        $nkOk = Run-NonKonglo $cfg
+        if ($nkOk) { Write-Host "`n  Non-Konglo OK. Memulai Day Trade Fast..." }
+        Run-DayTrade $cfg "auto-fast" | Out-Null
+        $success = $true
     }
     "daytrade" {
         $mode = if ($SubArg) { $SubArg } else { "auto-fast" }
