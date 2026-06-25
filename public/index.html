@@ -401,8 +401,8 @@
         .dt-card-item:hover { border-color: rgba(16,185,129,0.3) !important; box-shadow: 0 0 10px rgba(16,185,129,0.06); }
         .kg-card-item:hover { border-color: rgba(16,185,129,0.3) !important; box-shadow: 0 0 10px rgba(16,185,129,0.06); }
         .nk-card-item:hover { border-color: rgba(16,185,129,0.3) !important; box-shadow: 0 0 10px rgba(16,185,129,0.06); }
-        @keyframes scrFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-        .scr-pane-anim { animation: scrFadeIn 0.2s ease-out; }
+        @keyframes scrFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+        .scr-pane-anim { animation: scrFadeIn 0.12s ease-out; }
         @media (prefers-reduced-motion: reduce) { .scr-pane-anim { animation: none; } }
     </style>
 </head>
@@ -4895,6 +4895,18 @@ function testMaintenanceScreen() {
     document.getElementById('maintenancePreviewModal').classList.remove('hidden');
 }
 
+// ===== SCREENER DISPLAY HELPERS =====
+function normalizeDisplayLevels(r) {
+    var el = r.entry_low || 0, eh = r.entry_high || 0;
+    var t1v = r.tp1 || 0, t2v = r.tp2 || 0;
+    if (el > eh && eh > 0) { var tmp = el; el = eh; eh = tmp; }
+    if (t1v > t2v && t2v > 0) { var tmp2 = t1v; t1v = t2v; t2v = tmp2; }
+    var rrv = r.risk_reward;
+    if (!rrv || isNaN(rrv) || rrv <= 0) rrv = null;
+    return { e1: el, e2: eh, sl: r.stop_loss || 0, t1: t1v, t2: t2v, rr: rrv };
+}
+function fmtLvl(v) { return v ? v.toLocaleString('id-ID') : '-'; }
+
 // ===== DAY TRADE CARD GRID =====
 var _dtCardData = {};
 
@@ -4937,12 +4949,8 @@ function renderDtCardGrid(results) {
         var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
         var sc = r.daytrade_score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
-        var e1 = r.entry_low ? r.entry_low.toLocaleString('id-ID') : '-';
-        var e2 = r.entry_high ? r.entry_high.toLocaleString('id-ID') : '-';
-        var slVal = r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '-';
-        var t1 = r.tp1 ? r.tp1.toLocaleString('id-ID') : '-';
-        var t2 = r.tp2 ? r.tp2.toLocaleString('id-ID') : '-';
-        var rrVal = r.risk_reward != null ? r.risk_reward.toFixed(1) : '-';
+        var _l = normalizeDisplayLevels(r);
+        var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
         var volR = r.volume_ratio_20d ? r.volume_ratio_20d.toFixed(1) + 'x' : '-';
         var notes = r.notes || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="dt-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
@@ -4981,12 +4989,8 @@ function openScrDetail(r, type) {
     var st = r.status || r.swing_tier || '';
     var stCol = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION' || st === 'Swing Ready') ? '#6ee7b7' : (st === 'AVOID' || st === 'Invalid' ? '#fca5a5' : '#fde047');
     var stBg = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION' || st === 'Swing Ready') ? 'rgba(16,185,129,0.12)' : (st === 'AVOID' || st === 'Invalid' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)');
-    var e1 = r.entry_low ? r.entry_low.toLocaleString('id-ID') : '-';
-    var e2 = r.entry_high ? r.entry_high.toLocaleString('id-ID') : '-';
-    var slVal = r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '-';
-    var t1 = r.tp1 ? r.tp1.toLocaleString('id-ID') : '-';
-    var t2 = r.tp2 ? r.tp2.toLocaleString('id-ID') : '-';
-    var rrVal = r.risk_reward != null ? r.risk_reward.toFixed(1) : '-';
+    var _l = normalizeDisplayLevels(r);
+    var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
     var html = '';
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:20px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(st.replace(/_/g,' ')) + '</span></div>';
     html += '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:14px;color:#9ca3af"><span>' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span></div>';
@@ -5003,6 +5007,7 @@ function openScrDetail(r, type) {
     if (r.gap_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Gap:</span> ' + escapeHtml(r.gap_note) + '</div>';
     if (r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
     if (r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:6px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
+    if (r.bsjp_label) html += '<div style="font-size:11px;color:#fbbf24;margin-bottom:8px;padding:6px 10px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-weight:500">' + escapeHtml(r.bsjp_label) + '</div>';
     if (r.entry_timing || r.time_plan) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.entry_timing || r.time_plan) + '</div>';
     if (r.direction) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Arah:</span> ' + escapeHtml(r.direction) + '</div>';
     // Contextual warning by type
@@ -5063,12 +5068,8 @@ function renderKgCardGrid(results) {
         var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
-        var e1 = r.entry_low ? r.entry_low.toLocaleString('id-ID') : '-';
-        var e2 = r.entry_high ? r.entry_high.toLocaleString('id-ID') : '-';
-        var slVal = r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '-';
-        var t1 = r.tp1 ? r.tp1.toLocaleString('id-ID') : '-';
-        var t2 = r.tp2 ? r.tp2.toLocaleString('id-ID') : '-';
-        var rrVal = r.risk_reward != null ? r.risk_reward.toFixed(1) : '-';
+        var _l = normalizeDisplayLevels(r);
+        var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
@@ -5122,12 +5123,8 @@ function renderNkCardGrid(results) {
         var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
-        var e1 = r.entry_low ? r.entry_low.toLocaleString('id-ID') : '-';
-        var e2 = r.entry_high ? r.entry_high.toLocaleString('id-ID') : '-';
-        var slVal = r.stop_loss ? r.stop_loss.toLocaleString('id-ID') : '-';
-        var t1 = r.tp1 ? r.tp1.toLocaleString('id-ID') : '-';
-        var t2 = r.tp2 ? r.tp2.toLocaleString('id-ID') : '-';
-        var rrVal = r.risk_reward != null ? r.risk_reward.toFixed(1) : '-';
+        var _l = normalizeDisplayLevels(r);
+        var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
