@@ -850,7 +850,19 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         avg_tx_value_3d: r.avg_tx_value_3d || null,
         avg_tx_value_7d: r.avg_tx_value_7d || null,
         avg_tx_value_20d: r.avg_tx_value_20d || null,
-        calculated_at: now
+        calculated_at: now,
+        // V6: Persisted context fields
+        tf_1d_context: r.tf_1d_context || null,
+        tf_2d_context: r.tf_2d_context || null,
+        tf_3d_context: r.tf_3d_context || null,
+        tf_5d_context: r.tf_5d_context || null,
+        tf_10d_context: r.tf_10d_context || null,
+        tf_20d_context: r.tf_20d_context || null,
+        multi_timeframe_bias: r.multi_timeframe_bias || null,
+        multi_timeframe_notes: r.multi_timeframe_notes || null,
+        volume_phase: r.volume_phase || null,
+        risk_label: r.risk_label || null,
+        quality_grade: r.quality_grade || null
       };
     });
 
@@ -2644,6 +2656,36 @@ async function handleNkScreenerBatch(req, res, supabase) {
         }
       }
 
+      // === V6: MULTI-TIMEFRAME CONTEXT (Non-Konglo — persist to staging) ===
+      if (quoteData.candles && quoteData.candles.length >= 5) {
+        var _nkMtf = idxTick.deriveMultiTimeframeContext(quoteData.candles);
+        scored.tf_1d_context = _nkMtf.tf_1d_context;
+        scored.tf_2d_context = _nkMtf.tf_2d_context;
+        scored.tf_3d_context = _nkMtf.tf_3d_context;
+        scored.tf_5d_context = _nkMtf.tf_5d_context;
+        scored.tf_10d_context = _nkMtf.tf_10d_context;
+        scored.tf_20d_context = _nkMtf.tf_20d_context;
+        scored.multi_timeframe_bias = _nkMtf.multi_timeframe_bias;
+        scored.multi_timeframe_notes = _nkMtf.multi_timeframe_notes;
+        // Volume phase
+        var _nkLc = quoteData.candles[quoteData.candles.length - 1];
+        var _nkLcR = _nkLc.high - _nkLc.low;
+        var _nkVpa = idxTick.analyzeVolumePriceAction({
+          volume_today: _nkLc.volume || 0,
+          avg_volume_20d: quoteData.avgVol20 || 1,
+          change_pct: scored.change_pct || 0,
+          close_position: _nkLcR > 0 ? (_nkLc.close - _nkLc.low) / _nkLcR : 0.5,
+          body_ratio: _nkLcR > 0 ? Math.abs(_nkLc.close - _nkLc.open) / _nkLcR : 0.5,
+          is_green: _nkLc.close > _nkLc.open
+        });
+        scored.volume_phase = _nkVpa.volume_phase;
+        // Risk label + quality grade
+        var _nkRisk = idxTick.calculateRiskLabel({ risk_reward: scored.risk_reward, mode: 'swing', weekly_bias: _nkMtf._weekly ? _nkMtf._weekly.bias : null, monthly_bias: _nkMtf._monthly ? _nkMtf._monthly.bias : null, volume_phase: _nkVpa.volume_phase, volume_ratio_20d: scored.volume_ratio_avg20, rsi14: scored.rsi14, multi_timeframe_bias: _nkMtf.multi_timeframe_bias });
+        scored.risk_label = _nkRisk.risk_label;
+        var _nkGrade = idxTick.calculateQualityGrade({ risk_reward: scored.risk_reward, risk_label: _nkRisk.risk_label, volume_phase: _nkVpa.volume_phase, multi_timeframe_bias: _nkMtf.multi_timeframe_bias, tick_normalized: true, mode: 'swing', volume_ratio_20d: scored.volume_ratio_avg20 });
+        scored.quality_grade = _nkGrade.grade;
+      }
+
       results.push(scored);
     } catch (e) {
       failedCount++;
@@ -2792,7 +2834,19 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       support: c.support,
       resistance: c.resistance,
       published_at: new Date().toISOString(),
-      run_date: runDate
+      run_date: runDate,
+      // V6: Persisted context fields from staging
+      tf_1d_context: c.tf_1d_context || null,
+      tf_2d_context: c.tf_2d_context || null,
+      tf_3d_context: c.tf_3d_context || null,
+      tf_5d_context: c.tf_5d_context || null,
+      tf_10d_context: c.tf_10d_context || null,
+      tf_20d_context: c.tf_20d_context || null,
+      multi_timeframe_bias: c.multi_timeframe_bias || null,
+      multi_timeframe_notes: c.multi_timeframe_notes || null,
+      volume_phase: c.volume_phase || null,
+      risk_label: c.risk_label || null,
+      quality_grade: c.quality_grade || null
     }));
 
     var { error: insErr } = await supabase.from('swing_screener_non_konglo_latest').insert(publishRows);
