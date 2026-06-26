@@ -5739,11 +5739,18 @@ async function loadSwingScreener(silent) {
                     var nowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
                     var calcDateStr = calcDate.toISOString().slice(0, 10);
                     var todayStr = nowWib.toISOString().slice(0, 10);
-                    if (calcDateStr !== todayStr) {
+                    var yesterdayWib = new Date(nowWib.getTime() - 86400000);
+                    var yesterdayStr = yesterdayWib.toISOString().slice(0, 10);
+                    // Daily/EOD screener: T-1 data is fresh if scan is from today or yesterday
+                    if (calcDateStr !== todayStr && calcDateStr !== yesterdayStr) {
                         badge.textContent = 'STALE';
                         badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
                         var staleSub = document.getElementById('screenerSubtitle');
-                        if (staleSub) { staleSub.textContent = '\u26A0 Data stale \u2014 hasil dari scan terakhir (' + calcDateStr + '). Refresh ulang sebelum entry. ' + (staleSub.textContent || ''); }
+                        if (staleSub) { staleSub.textContent = '\u26A0 Data stale \u2014 scan terakhir sudah lama (' + calcDateStr + '). Refresh wajib sebelum analisis. ' + (staleSub.textContent || ''); }
+                    } else if (calcDateStr === yesterdayStr) {
+                        // T-1 data, show as FRESH DAILY
+                        badge.textContent = 'DAILY';
+                        badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
                     }
                 }
             }
@@ -6076,9 +6083,14 @@ function updateNkScreenerMeta(meta) {
             var nkNowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
             var nkCalcDateStr = nkCalcDate.toISOString().slice(0, 10);
             var nkTodayStr = nkNowWib.toISOString().slice(0, 10);
-            if (nkCalcDateStr !== nkTodayStr) {
+            var nkYesterdayWib = new Date(nkNowWib.getTime() - 86400000);
+            var nkYesterdayStr = nkYesterdayWib.toISOString().slice(0, 10);
+            if (nkCalcDateStr !== nkTodayStr && nkCalcDateStr !== nkYesterdayStr) {
                 badge.textContent = 'STALE';
                 badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/25';
+            } else if (nkCalcDateStr === nkYesterdayStr) {
+                badge.textContent = 'DAILY';
+                badge.className = 'px-2 py-1 rounded-md text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/25';
             }
         }
     }
@@ -6099,8 +6111,8 @@ function updateNkScreenerMeta(meta) {
             // V2 Freshness warning in subtitle
             var nkCalcDate2 = new Date(meta.calculated_at);
             var nkNowWib2 = new Date(Date.now() + 7 * 60 * 60 * 1000);
-            if (nkCalcDate2.toISOString().slice(0, 10) !== nkNowWib2.toISOString().slice(0, 10)) {
-                nkSubText = '\u26A0 Data stale \u2014 hasil dari scan terakhir. Refresh ulang sebelum entry. · ' + nkSubText;
+            if (nkCalcDate2.toISOString().slice(0, 10) !== nkNowWib2.toISOString().slice(0, 10) && nkCalcDate2.toISOString().slice(0, 10) !== new Date(nkNowWib2.getTime() - 86400000).toISOString().slice(0, 10)) {
+                nkSubText = '\u26A0 Data stale \u2014 scan sudah lama. Refresh wajib sebelum analisis. \u00b7 ' + nkSubText;
             }
             sub.textContent = nkSubText;
         } else if (meta.status === 'failed') {
@@ -8184,8 +8196,9 @@ async function loadDayTradeScreener() {
                 var dtNowWib = new Date(Date.now() + 7 * 60 * 60 * 1000);
                 var dtCalcDateStr = dtCalcDate.toISOString().slice(0, 10);
                 var dtTodayStr = dtNowWib.toISOString().slice(0, 10);
-                if (dtCalcDateStr !== dtTodayStr) {
-                    badge.textContent = '\u26A0 STALE · Data day trade bukan hari ini (' + dtCalcDateStr + '). Jangan dipakai untuk entry intraday. · ' + ts;
+                var dtYesterdayStr = new Date(dtNowWib.getTime() - 86400000).toISOString().slice(0, 10);
+                if (dtCalcDateStr !== dtTodayStr && dtCalcDateStr !== dtYesterdayStr) {
+                    badge.textContent = '\u26A0 STALE \u00b7 Data day trade sudah lama (' + dtCalcDateStr + '). Refresh wajib sebelum entry. \u00b7 ' + ts;
                     badge.style.color = '#f59e0b';
                 }
             }

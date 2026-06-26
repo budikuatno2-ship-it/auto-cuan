@@ -944,7 +944,8 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_diagnostic: aiDiagnostic,
       ai_response_debug: aiResponseDebug || undefined,
       ai_parse_debug: aiParseDebug || undefined,
-      save_error: saveError || null
+      save_error: saveError || null,
+      telegram: savedCount > 0 ? await sendSwingKongloTelegramNotification(supabase, savedCount) : { skipped: true, reason: 'no_saved_rows' }
     });
 
   } catch (e) {
@@ -2874,7 +2875,8 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     staging_count: totalStagingCount || 0,
     run_date: runDate,
     top_ticker: publishedCount > 0 ? topCandidates[0].ticker : null,
-    top_score: publishedCount > 0 ? topCandidates[0].score : null
+    top_score: publishedCount > 0 ? topCandidates[0].score : null,
+    telegram: publishedCount > 0 ? await sendSwingNkTelegramNotification(supabase, publishedCount) : { skipped: true, reason: 'no_published_rows' }
   });
 }
 
@@ -4713,3 +4715,155 @@ function fmtRpValue(v) {
 
 // Format volume ratio (always with "x" suffix)
 function fmtRatio(v) { return (v != null && !isNaN(v)) ? v.toFixed(2).replace('.', ',') + 'x' : '-'; }
+
+// ============================================================
+// SWING KONGLO TELEGRAM NOTIFICATION (after manual refresh publish)
+// ============================================================
+async function sendSwingKongloTelegramNotification(supabase, savedCount) {
+  if (savedCount === 0) return { skipped: true, reason: 'no_saved_rows' };
+  try {
+    var { data: rows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false }).limit(40);
+    if (!rows || rows.length === 0) return { skipped: true, reason: 'no_data' };
+
+    // Strict selection for Swing Konglo
+    var nonAvoid = rows.filter(function(r) { var s = (r.status || r.final_status || '').toUpperCase(); return s.indexOf('INVALID') < 0 && s.indexOf('AVOID') < 0; });
+
+    // Tier 1: Ready/Swing Ready with good RR and Grade A/B
+    var tier1 = nonAvoid.filter(function(r) {
+      var s = (r.status || r.final_status || '').toUpperCase();
+      var isReady = s.indexOf('READY') >= 0 || s.indexOf('SWING_READY') >= 0 || s === 'TRADE_CANDIDATE' || s === 'A_PLUS_SWING';
+      var gradeOk = r.quality_grade === 'A' || r.quality_grade === 'B' || (r.score || 0) >= 75;
+      var rrOk = (r.risk_reward || 0) >= 1.5;
+      return isReady && gradeOk && rrOk;
+    });
+
+    // Tier 2: Watchlist/Rebound with decent score and RR
+    var tier2 = nonAvoid.filter(function(r) {
+      var s = (r.status || r.final_status || '').toUpperCase();
+      var notSpec = s.indexOf('SPECULATIVE') < 0;
+      return notSpec && (r.score || 0) >= 65 && (r.risk_reward || 0) >= 1.3;
+    });
+
+    // Build final: tier1 first, then tier2 to fill
+    var finalList = tier1.slice(0, 10);
+    if (finalList.length < 10) {
+      var seen = {}; finalList.forEach(function(r) { seen[r.ticker] = true; });
+      var fill = tier2.filter(function(r) { return !seen[r.ticker]; }).slice(0, 10 - finalList.length);
+      finalList = finalList.concat(fill);
+    }
+
+    var headerNote = '';
+    if (finalList.length === 0 && nonAvoid.length > 0) {
+      nonAvoid.sort(function(a, b) { return (b.score || 0) - (a.score || 0); });
+      finalList = nonAvoid.slice(0, 10);
+      headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
+    }
+    if (finalList.length === 0) { var m = await telegramNotifier.sendTelegramMessage('\uD83D\uDCC8 Swing Konglo: 0 kandidat lolos.'); return m; }
+
+    var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', headerNote);
+    var result = await telegramNotifier.sendTelegramMessage(msg);
+    result.selected_count = finalList.length;
+    return result;
+  } catch (e) { return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) }; }
+}
+
+// ============================================================
+// SWING NON-KONGLO TELEGRAM NOTIFICATION (after manual finalize publish)
+// ============================================================
+async function sendSwingNkTelegramNotification(supabase, publishedCount) {
+  if (publishedCount === 0) return { skipped: true, reason: 'no_published_rows' };
+  try {
+    var { data: rows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
+    if (!rows || rows.length === 0) return { skipped: true, reason: 'no_data' };
+
+    // Strict selection for Non-Konglo (stricter than Konglo)
+    var nonAvoid = rows.filter(function(r) {
+      var s = (r.status || '').toUpperCase();
+      return s.indexOf('INVALID') < 0 && s.indexOf('AVOID') < 0;
+    });
+    // Exclude Very High Risk
+    nonAvoid = nonAvoid.filter(function(r) { return r.risk_label !== 'Very High Risk'; });
+
+    // Tier 1: Ready with RR >= 1.5 and Grade A/B
+    var tier1 = nonAvoid.filter(function(r) {
+      var s = (r.status || '').toUpperCase();
+      var isReady = s.indexOf('READY') >= 0 || s === 'TRADE_CANDIDATE' || s === 'A_PLUS_SWING';
+      var gradeOk = r.quality_grade === 'A' || r.quality_grade === 'B' || r.grade === 'A' || r.grade === 'B' || (r.score || 0) >= 75;
+      var rrOk = (r.risk_reward || 0) >= 1.5;
+      return isReady && gradeOk && rrOk;
+    });
+
+    // Tier 2: Other non-speculative with decent RR
+    var tier2 = nonAvoid.filter(function(r) {
+      var s = (r.status || '').toUpperCase();
+      return s.indexOf('SPECULATIVE') < 0 && (r.score || 0) >= 65 && (r.risk_reward || 0) >= 1.3;
+    });
+
+    // Build final
+    var finalList = tier1.slice(0, 10);
+    if (finalList.length < 10) {
+      var seen = {}; finalList.forEach(function(r) { seen[r.ticker] = true; });
+      var fill = tier2.filter(function(r) { return !seen[r.ticker]; }).slice(0, 10 - finalList.length);
+      finalList = finalList.concat(fill);
+    }
+
+    var headerNote = '';
+    if (finalList.length === 0 && nonAvoid.length > 0) {
+      nonAvoid.sort(function(a, b) { return (b.score || 0) - (a.score || 0); });
+      finalList = nonAvoid.slice(0, 10);
+      headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
+    }
+    if (finalList.length === 0) { var m = await telegramNotifier.sendTelegramMessage('\uD83D\uDCCA Swing Non-Konglo: 0 kandidat lolos.'); return m; }
+
+    var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCCA Swing Non-Konglo Signal', headerNote);
+    var result = await telegramNotifier.sendTelegramMessage(msg);
+    result.selected_count = finalList.length;
+    return result;
+  } catch (e) { return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) }; }
+}
+
+// Shared swing Telegram formatter (Konglo + Non-Konglo)
+function formatSwingTelegramMessage(results, title, headerNote) {
+  var now = new Date(); var wibMs = now.getTime() + 7*60*60*1000; var wib = new Date(wibMs);
+  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11,16) + ' WIB';
+  var lines = [];
+  lines.push(title);
+  lines.push('Update: ' + timeStr);
+  if (headerNote) lines.push(headerNote);
+  lines.push('');
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i]; var idx = i + 1;
+    var e1 = Math.max(r.entry_low || 0, r.entry_high || 0);
+    var e2 = Math.min(r.entry_low || 0, r.entry_high || 0);
+    if (e2 <= 0) e2 = e1;
+    var grade = r.quality_grade || r.grade || '-';
+    var risk = r.risk_label || '-';
+    var sc = r.score || 0;
+    lines.push(idx + '. ' + (r.ticker || '-') + ' \u2014 ' + ((r.status || r.final_status || '-').replace(/_/g,' ')) + ' | ' + grade + ' | ' + risk + ' | Score ' + sc);
+    lines.push('   Last: ' + fmtPrice(r.last_price));
+    lines.push('   Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
+    lines.push('   SL: ' + fmtPrice(r.stop_loss) + ' | TP: ' + fmtPrice(r.tp1) + ' / ' + fmtPrice(r.tp2));
+    lines.push('   RR: ' + (r.risk_reward ? r.risk_reward.toFixed(2) : '-'));
+    // Value/Volume
+    var txParts = [];
+    if (r.tx_value_1d) txParts.push('Tx1D ' + fmtRpValue(r.tx_value_1d));
+    else if (r.value_today) txParts.push('Tx1D ' + fmtRpValue(r.value_today));
+    if (r.avg_tx_value_7d) txParts.push('Avg7D ' + fmtRpValue(r.avg_tx_value_7d));
+    if (txParts.length > 0) lines.push('   Value: ' + txParts.join(' | '));
+    if (r.volume_ratio_avg20 || r.volume_ratio_20d) lines.push('   Vol: 1D ' + fmtRatio(r.volume_ratio_avg20 || r.volume_ratio_20d));
+    // TF
+    var tfParts = [];
+    if (r.tf_1d_context) tfParts.push('1D ' + r.tf_1d_context);
+    if (r.tf_5d_context) tfParts.push('5D ' + r.tf_5d_context);
+    if (r.tf_20d_context) tfParts.push('20D ' + r.tf_20d_context);
+    if (tfParts.length > 0) lines.push('   TF: ' + tfParts.join(' | '));
+    if (r.volume_phase && r.volume_phase !== 'NORMAL') lines.push('   Phase: ' + r.volume_phase);
+    // Meaning
+    var meaning = getTelegramSetupMeaning(r.status || r.final_status);
+    if (meaning) lines.push('   Arti: ' + meaning);
+    lines.push('');
+  }
+  lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
+  return lines.join('\n');
+}
