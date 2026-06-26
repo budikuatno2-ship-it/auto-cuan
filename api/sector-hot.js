@@ -4567,10 +4567,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     // Step 4: Sort by priority then score
     actionable.sort(function(a, b) {
-      var pa = setupPriority[a.status] != null ? setupPriority[a.status] : 9;
-      var pb = setupPriority[b.status] != null ? setupPriority[b.status] : 9;
-      if (pa !== pb) return pa - pb;
-      return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.daytrade_score || 0) - (a.daytrade_score || 0);
+      return compareTelegramCandidates(a, b, 'daytrade');
     });
 
     var finalList = actionable.slice(0, 5);
@@ -4578,7 +4575,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     // Step 5: Fallback — if still empty but published_count > 0
     if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
+      nonAvoid.sort(function(a, b) { return compareTelegramCandidates(a, b, 'daytrade'); });
       finalList = nonAvoid.slice(0, 5);
       headerNote = 'Tidak ada kandidat A/B bersih, menampilkan watchlist terbaik.';
     }
@@ -4827,6 +4824,71 @@ function hasStrongTelegramConfirmation(r, mode) {
   return score >= 80 && rr >= (mode === 'swing' ? 1.5 : 1.3) && statusOk && (tfOk || (vol != null && vol >= 1.2) || value >= 5000000000);
 }
 
+function getTelegramGradeRank(r) {
+  var g = getTelegramGrade(r).toUpperCase();
+  if (g === 'A') return 3;
+  if (g === 'B') return 2;
+  if (g === 'C') return 1;
+  return 0;
+}
+
+function getTelegramStatusRank(r) {
+  var s = safeTelegramText(r.status || r.final_status, 100, '').toUpperCase();
+  if (s.indexOf('A_PLUS') >= 0 || s.indexOf('TRADE_CANDIDATE') >= 0) return 5;
+  if (s.indexOf('READY') >= 0 || s.indexOf('BREAKOUT') >= 0 || s.indexOf('RECLAIM') >= 0) return 4;
+  if (s.indexOf('MOMENTUM_CONTINUATION') >= 0) return 3;
+  if (s.indexOf('WAIT_PULLBACK') >= 0) return 2;
+  if (s.indexOf('WATCH') >= 0 || s.indexOf('EARLY') >= 0 || s.indexOf('SPECULATIVE') >= 0) return 1;
+  return 0;
+}
+
+function getTelegramTfRank(r) {
+  var tf1 = safeTelegramText(r.tf_1d_context, 80, '').toLowerCase();
+  var tf5 = safeTelegramText(r.tf_5d_context, 80, '').toLowerCase();
+  var tf20 = safeTelegramText(r.tf_20d_context, 80, '').toLowerCase();
+  var rank = 0;
+  if (includesAny(tf1, ['bullish', 'hijau', 'reclaim', 'breakout'])) rank += 3;
+  if (includesAny(tf5, ['bullish', 'hijau', 'uptrend', 'support'])) rank += 2;
+  if (includesAny(tf20, ['bullish', 'hijau', 'uptrend', 'support'])) rank += 1;
+  return rank;
+}
+
+function compareTelegramCandidates(a, b, mode) {
+  return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) ||
+    getTelegramGradeRank(b) - getTelegramGradeRank(a) ||
+    getTelegramStatusRank(b) - getTelegramStatusRank(a) ||
+    getTelegramTfRank(b) - getTelegramTfRank(a) ||
+    (getTelegramVolumeRatio(b) || 0) - (getTelegramVolumeRatio(a) || 0) ||
+    getTelegramValue(b) - getTelegramValue(a) ||
+    getTelegramScore(b, mode) - getTelegramScore(a, mode);
+}
+
+function hasSwingThresholdException(r, conviction) {
+  return conviction >= 65 && conviction < 70 &&
+    getTelegramGrade(r).toUpperCase() === 'A' &&
+    (toNum(r.risk_reward) || 0) >= 2 &&
+    (getTelegramVolumeRatio(r) || 0) >= 1.0 &&
+    getTelegramValue(r) >= 3000000000 &&
+    isTelegramTfSupportive(r);
+}
+
+function buildTelegramVerdict(r, status, strong, mode) {
+  var value = getTelegramValue(r);
+  var vol = getTelegramVolumeRatio(r);
+  var tfOk = isTelegramTfSupportive(r);
+  var parts = [];
+  if (value >= 3000000000) parts.push('value kuat');
+  if (vol != null && vol >= 1.0) parts.push('volume mendukung');
+  if (tfOk) parts.push('TF suportif');
+  var reason = parts.length > 0 ? parts.slice(0, 2).join(' + ') : 'konfirmasi belum penuh';
+  if (status.indexOf('WAIT_PULLBACK') >= 0) return 'Tunggu pullback valid; ' + reason + '. Jangan chase.';
+  if (status.indexOf('MOMENTUM_CONTINUATION') >= 0) return 'Momentum kuat; ' + reason + '. Jangan chase harga extended.';
+  if (status.indexOf('BREAKOUT') >= 0 || status.indexOf('RECLAIM') >= 0 || status.indexOf('READY') >= 0) return 'Butuh konfirmasi breakout/reclaim; ' + reason + '.';
+  if (status.indexOf('TRADE_CANDIDATE') >= 0 || status.indexOf('A_PLUS') >= 0) return 'Entry valid bisa dipantau; ' + reason + '.';
+  if (strong) return 'Sinyal kuat relatif; ' + reason + '.';
+  return 'Tunggu konfirmasi; ' + reason + '.';
+}
+
 function computeTelegramConvictionScore(r, mode) {
   var score = getTelegramScore(r, mode);
   var rr = toNum(r.risk_reward) || 0;
@@ -4870,25 +4932,24 @@ function verifyHighConvictionTelegramSignal(row, mode) {
 
   var conviction = computeTelegramConvictionScore(r, mode);
   r.telegram_conviction_score = conviction;
-  if (conviction < (mode === 'swing' ? 62 : 58)) return null;
+  if (mode === 'swing') {
+    if (conviction < 65) return null;
+    if (conviction < 70 && !hasSwingThresholdException(r, conviction)) return null;
+  } else if (conviction < 58) return null;
   if (r.telegram_action_label === 'Pantau dulu' && !(conviction >= 82 && strong)) return null;
 
   if (status.indexOf('WAIT_PULLBACK') >= 0) {
     r.telegram_action_label = 'Tunggu pullback valid';
-    r.telegram_verdict = 'Tunggu pullback valid, jangan chase.';
   } else if (status.indexOf('MOMENTUM_CONTINUATION') >= 0) {
-    r.telegram_action_label = 'Pantau momentum valid';
-    r.telegram_verdict = 'Momentum berjalan. Jangan chase, entry hanya jika pullback/volume valid.';
-  } else if (status.indexOf('BREAKOUT') >= 0 || status.indexOf('RECLAIM') >= 0) {
-    r.telegram_action_label = 'Pantau breakout/reclaim';
-    r.telegram_verdict = 'Pantau breakout/reclaim valid dengan volume.';
-  } else if (strong) {
+    r.telegram_action_label = 'Momentum kuat, jangan chase';
+  } else if (status.indexOf('TRADE_CANDIDATE') >= 0 || status.indexOf('A_PLUS') >= 0) {
     r.telegram_action_label = 'Siap pantau entry valid';
-    r.telegram_verdict = 'Siap pantau entry valid jika harga dan volume tetap konfirmasi.';
-  } else {
+  } else if (status.indexOf('BREAKOUT') >= 0 || status.indexOf('RECLAIM') >= 0 || status.indexOf('READY') >= 0) {
     r.telegram_action_label = 'Pantau breakout/reclaim';
-    r.telegram_verdict = 'Pantau hanya jika konfirmasi lanjutan muncul.';
+  } else {
+    r.telegram_action_label = 'Tunggu konfirmasi';
   }
+  r.telegram_verdict = buildTelegramVerdict(r, status, strong, mode);
   return r;
 }
 
@@ -4951,34 +5012,14 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
     var nonAvoid = highConvictionRows;
 
-    // Tier 1: Ready/Swing Ready with good RR and Grade A/B
-    var tier1 = nonAvoid.filter(function(r) {
-      var s = (r.status || r.final_status || '').toUpperCase();
-      var isReady = s.indexOf('READY') >= 0 || s.indexOf('SWING_READY') >= 0 || s === 'TRADE_CANDIDATE' || s === 'A_PLUS_SWING';
-      var gradeOk = r.quality_grade === 'A' || r.quality_grade === 'B' || (r.score || 0) >= 75;
-      var rrOk = (toNum(r.risk_reward) || 0) >= 1.5;
-      return isReady && gradeOk && rrOk;
-    });
-
-    // Tier 2: Watchlist/Rebound with decent score and RR
-    var tier2 = nonAvoid.filter(function(r) {
-      var s = (r.status || r.final_status || '').toUpperCase();
-      var notSpec = s.indexOf('SPECULATIVE') < 0;
-      return notSpec && (toNum(r.score) || 0) >= 65 && (toNum(r.risk_reward) || 0) >= 1.3;
-    });
-
-    // Build final: tier1 first, then tier2 to fill
-    var finalList = tier1.slice(0, 5);
-    if (finalList.length < 5) {
-      var seen = {}; finalList.forEach(function(r) { seen[r.ticker] = true; });
-      var fill = tier2.filter(function(r) { return !seen[r.ticker]; }).slice(0, 5 - finalList.length);
-      finalList = finalList.concat(fill);
-    }
+    // Rank high-conviction Swing Konglo candidates by Telegram quality, not raw score
+    nonAvoid.sort(function(a, b) { return compareTelegramCandidates(a, b, 'swing'); });
+    var finalList = nonAvoid.slice(0, 3);
 
     var headerNote = '';
     if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.score || 0) - (a.score || 0); });
-      finalList = nonAvoid.slice(0, 5);
+      nonAvoid.sort(function(a, b) { return compareTelegramCandidates(a, b, 'swing'); });
+      finalList = nonAvoid.slice(0, 3);
       headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
     }
     if (finalList.length === 0) return { sent: false, skipped: true, reason: 'no_high_conviction_candidates', verified_count: verifiedRows.length, selected_count: 0 };
@@ -5006,33 +5047,14 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
     var nonAvoid = highConvictionRows;
 
-    // Tier 1: Ready with RR >= 1.5 and Grade A/B
-    var tier1 = nonAvoid.filter(function(r) {
-      var s = (r.status || '').toUpperCase();
-      var isReady = s.indexOf('READY') >= 0 || s === 'TRADE_CANDIDATE' || s === 'A_PLUS_SWING';
-      var gradeOk = r.quality_grade === 'A' || r.quality_grade === 'B' || r.grade === 'A' || r.grade === 'B' || (r.score || 0) >= 75;
-      var rrOk = (toNum(r.risk_reward) || 0) >= 1.5;
-      return isReady && gradeOk && rrOk;
-    });
-
-    // Tier 2: Other non-speculative with decent RR
-    var tier2 = nonAvoid.filter(function(r) {
-      var s = (r.status || '').toUpperCase();
-      return s.indexOf('SPECULATIVE') < 0 && (toNum(r.score) || 0) >= 65 && (toNum(r.risk_reward) || 0) >= 1.3;
-    });
-
-    // Build final
-    var finalList = tier1.slice(0, 5);
-    if (finalList.length < 5) {
-      var seen = {}; finalList.forEach(function(r) { seen[r.ticker] = true; });
-      var fill = tier2.filter(function(r) { return !seen[r.ticker]; }).slice(0, 5 - finalList.length);
-      finalList = finalList.concat(fill);
-    }
+    // Rank high-conviction Swing Non-Konglo candidates by Telegram quality, not raw score
+    nonAvoid.sort(function(a, b) { return compareTelegramCandidates(a, b, 'swing'); });
+    var finalList = nonAvoid.slice(0, 3);
 
     var headerNote = '';
     if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.score || 0) - (a.score || 0); });
-      finalList = nonAvoid.slice(0, 5);
+      nonAvoid.sort(function(a, b) { return compareTelegramCandidates(a, b, 'swing'); });
+      finalList = nonAvoid.slice(0, 3);
       headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
     }
     if (finalList.length === 0) return { sent: false, skipped: true, reason: 'no_high_conviction_candidates', verified_count: verifiedRows.length, selected_count: 0 };
