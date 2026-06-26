@@ -4622,17 +4622,18 @@ function formatDayTradeTelegramMessage(results, runDate, headerNote, meta) {
   for (var i = 0; i < results.length; i++) {
     var r = results[i];
     var idx = i + 1;
-    var e1 = Math.max(r.entry_low || 0, r.entry_high || 0);
-    var e2 = Math.min(r.entry_low || 0, r.entry_high || 0);
+    var entryLow = toNum(r.entry_low);
+    var entryHigh = toNum(r.entry_high);
+    var e1 = Math.max(entryLow || 0, entryHigh || 0);
+    var e2 = Math.min(entryLow || 0, entryHigh || 0);
     if (e2 <= 0) e2 = e1;
 
-    var statusLabel = (r.status || '-').replace(/_/g, ' ');
-    var setupLabel = r.setup || r.status || '-';
-    lines.push(idx + '. ' + (r.ticker || '-') + ' \u2014 ' + statusLabel + ' | Score ' + (r.daytrade_score || 0));
+    var statusLabel = safeTelegramText(r.status, 80, '-').replace(/_/g, ' ');
+    lines.push(idx + '. ' + safeTelegramText(r.ticker, 16, '-') + ' \u2014 ' + statusLabel + ' | Score ' + fmtScore(r.daytrade_score));
     lines.push('   Last: ' + fmtPrice(r.last_price));
     lines.push('   Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
     lines.push('   SL: ' + fmtPrice(r.stop_loss) + ' | TP: ' + fmtPrice(r.tp1) + ' / ' + fmtPrice(r.tp2));
-    lines.push('   RR: ' + (r.risk_reward ? r.risk_reward.toFixed(2) : '-'));
+    lines.push('   RR: ' + fmtRR(r.risk_reward));
 
     // Transaction value line (Rp units)
     var txParts = [];
@@ -4651,15 +4652,16 @@ function formatDayTradeTelegramMessage(results, runDate, headerNote, meta) {
 
     // Candle/TF line (use persisted TF context fields)
     var tfParts = [];
-    if (r.tf_1d_context) tfParts.push('1D ' + r.tf_1d_context);
-    if (r.tf_3d_context) tfParts.push('3D ' + r.tf_3d_context);
-    if (r.tf_5d_context) tfParts.push('5D ' + r.tf_5d_context);
-    if (r.tf_20d_context) tfParts.push('20D ' + r.tf_20d_context);
+    if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 60, ''));
+    if (hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 60, ''));
+    if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 60, ''));
+    if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 60, ''));
     if (tfParts.length > 0) lines.push('   TF: ' + tfParts.join(' | '));
 
     // Volume phase (from persisted field)
-    if (r.volume_phase && r.volume_phase !== 'NORMAL') {
-      lines.push('   Phase: ' + r.volume_phase);
+    var phase = safeTelegramText(r.volume_phase, 60, '');
+    if (phase && phase !== 'NORMAL') {
+      lines.push('   Phase: ' + phase);
     }
 
     // Setup meaning (short)
@@ -4685,6 +4687,7 @@ function shortenContext(ctx) {
 
 // Short setup meaning for Telegram (compact)
 function getTelegramSetupMeaning(status) {
+  status = safeTelegramText(status, 80, '');
   if (!status) return null;
   var s = status.toUpperCase().replace(/[_\s]+/g, '_');
   var map = {
@@ -4702,19 +4705,48 @@ function getTelegramSetupMeaning(status) {
   return map[s] || null;
 }
 
-function fmtPrice(v) { return v ? v.toLocaleString('id-ID') : '-'; }
+function toNum(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  if (typeof v === 'string') {
+    var cleaned = v.trim().replace(/,/g, '.');
+    if (!cleaned || cleaned.toLowerCase() === 'null' || cleaned.toLowerCase() === 'undefined' || cleaned === '[object Object]') return null;
+    var n = Number(cleaned);
+    return isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function fmtPrice(v) { var n = toNum(v); return n != null && n > 0 ? n.toLocaleString('id-ID') : '-'; }
+function fmtRR(v) { var n = toNum(v); return n != null ? n.toFixed(2) : '-'; }
+function fmtScore(v) { var n = toNum(v); return n != null ? Math.round(n) : 0; }
+
+function safeTelegramText(value, maxLen, fallback) {
+  fallback = fallback == null ? '-' : fallback;
+  if (value == null) return fallback;
+  if (typeof value === 'object') return fallback;
+  var text = String(value).replace(/[\r\n\t]+/g, ' ').replace(/<[^>]*>/g, '').replace(/\s{2,}/g, ' ').trim();
+  var low = text.toLowerCase();
+  if (!text || low === 'undefined' || low === 'null' || text === '[object Object]' || low === 'nan') return fallback;
+  maxLen = maxLen || 80;
+  if (text.length > maxLen) text = text.slice(0, Math.max(0, maxLen - 1)).trim() + '…';
+  return text;
+}
+
+function hasTelegramText(value) { return safeTelegramText(value, 80, '') !== ''; }
 
 // Format transaction value in Rupiah (Indonesian units: M = Miliar, T = Triliun)
 function fmtRpValue(v) {
-  if (!v || v <= 0) return '-';
-  if (v >= 1e12) return 'Rp' + (v / 1e12).toFixed(1).replace('.', ',') + ' T';
-  if (v >= 1e9) return 'Rp' + (v / 1e9).toFixed(1).replace('.', ',') + ' M';
-  if (v >= 1e6) return 'Rp' + (v / 1e6).toFixed(0) + ' jt';
-  return 'Rp' + Math.round(v).toLocaleString('id-ID');
+  var n = toNum(v);
+  if (n == null || n <= 0) return '-';
+  if (n >= 1e12) return 'Rp' + (n / 1e12).toFixed(1).replace('.', ',') + ' T';
+  if (n >= 1e9) return 'Rp' + (n / 1e9).toFixed(1).replace('.', ',') + ' M';
+  if (n >= 1e6) return 'Rp' + (n / 1e6).toFixed(0) + ' jt';
+  return 'Rp' + Math.round(n).toLocaleString('id-ID');
 }
 
 // Format volume ratio (always with "x" suffix)
-function fmtRatio(v) { return (v != null && !isNaN(v)) ? v.toFixed(2).replace('.', ',') + 'x' : '-'; }
+function fmtRatio(v) { var n = toNum(v); return n != null ? n.toFixed(2).replace('.', ',') + 'x' : '-'; }
 
 // ============================================================
 // SWING KONGLO TELEGRAM NOTIFICATION (after manual refresh publish)
@@ -4834,17 +4866,20 @@ function formatSwingTelegramMessage(results, title, headerNote) {
   lines.push('');
   for (var i = 0; i < results.length; i++) {
     var r = results[i]; var idx = i + 1;
-    var e1 = Math.max(r.entry_low || 0, r.entry_high || 0);
-    var e2 = Math.min(r.entry_low || 0, r.entry_high || 0);
+    var entryLow = toNum(r.entry_low);
+    var entryHigh = toNum(r.entry_high);
+    var e1 = Math.max(entryLow || 0, entryHigh || 0);
+    var e2 = Math.min(entryLow || 0, entryHigh || 0);
     if (e2 <= 0) e2 = e1;
-    var grade = r.quality_grade || r.grade || '-';
-    var risk = r.risk_label || '-';
-    var sc = r.score || 0;
-    lines.push(idx + '. ' + (r.ticker || '-') + ' \u2014 ' + ((r.status || r.final_status || '-').replace(/_/g,' ')) + ' | ' + grade + ' | ' + risk + ' | Score ' + sc);
+    var grade = safeTelegramText(r.quality_grade || r.grade, 30, '-');
+    var risk = safeTelegramText(r.risk_label, 50, '-');
+    var sc = fmtScore(r.score);
+    var swingStatus = safeTelegramText(r.status || r.final_status, 80, '-').replace(/_/g,' ');
+    lines.push(idx + '. ' + safeTelegramText(r.ticker, 16, '-') + ' \u2014 ' + swingStatus + ' | ' + grade + ' | ' + risk + ' | Score ' + sc);
     lines.push('   Last: ' + fmtPrice(r.last_price));
     lines.push('   Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
     lines.push('   SL: ' + fmtPrice(r.stop_loss) + ' | TP: ' + fmtPrice(r.tp1) + ' / ' + fmtPrice(r.tp2));
-    lines.push('   RR: ' + (r.risk_reward ? r.risk_reward.toFixed(2) : '-'));
+    lines.push('   RR: ' + fmtRR(r.risk_reward));
     // Value/Volume
     var txParts = [];
     if (r.tx_value_1d) txParts.push('Tx1D ' + fmtRpValue(r.tx_value_1d));
@@ -4854,11 +4889,12 @@ function formatSwingTelegramMessage(results, title, headerNote) {
     if (r.volume_ratio_avg20 || r.volume_ratio_20d) lines.push('   Vol: 1D ' + fmtRatio(r.volume_ratio_avg20 || r.volume_ratio_20d));
     // TF
     var tfParts = [];
-    if (r.tf_1d_context) tfParts.push('1D ' + r.tf_1d_context);
-    if (r.tf_5d_context) tfParts.push('5D ' + r.tf_5d_context);
-    if (r.tf_20d_context) tfParts.push('20D ' + r.tf_20d_context);
+    if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 60, ''));
+    if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 60, ''));
+    if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 60, ''));
     if (tfParts.length > 0) lines.push('   TF: ' + tfParts.join(' | '));
-    if (r.volume_phase && r.volume_phase !== 'NORMAL') lines.push('   Phase: ' + r.volume_phase);
+    var swingPhase = safeTelegramText(r.volume_phase, 60, '');
+    if (swingPhase && swingPhase !== 'NORMAL') lines.push('   Phase: ' + swingPhase);
     // Meaning
     var meaning = getTelegramSetupMeaning(r.status || r.final_status);
     if (meaning) lines.push('   Arti: ' + meaning);
