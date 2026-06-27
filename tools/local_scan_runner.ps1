@@ -92,6 +92,27 @@ function Run-Setup {
     Write-Host ""
 }
 
+function Normalize-ForeignCsvLines($lines) {
+    $requiredHeader = "date,ticker,open,high,low,close,volume,freq,valuasi,nbsa"
+    $cleanLines = @($lines | Where-Object { $_ -and $_.Trim() })
+    if ($cleanLines.Count -eq 0) { return @($requiredHeader) }
+
+    $first = $cleanLines[0].Trim()
+    $normalizedFirst = (($first -split ',') | ForEach-Object { $_.Trim().Trim('<').Trim('>').ToLowerInvariant() }) -join ','
+    if ($normalizedFirst -eq $requiredHeader) {
+        $cleanLines[0] = $requiredHeader
+        return $cleanLines
+    }
+
+    $cols = $first -split ','
+    $firstLooksLikeData = $cols.Count -ge 10 -and ($cols[0].Trim() -match '^(\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})$')
+    if ($firstLooksLikeData) {
+        return @($requiredHeader) + $cleanLines
+    }
+
+    return $cleanLines
+}
+
 function Invoke-ForeignImport($cfg, $csvPath) {
     if (-not (Test-Path $csvPath)) {
         Write-Host "  Status: FAILED"
@@ -105,38 +126,66 @@ function Invoke-ForeignImport($cfg, $csvPath) {
     }
 
     $headers = @{ Authorization = "Bearer $($cfg.CRON_SECRET)" }
-    $csvText = Get-Content -Path $csvPath -Raw -Encoding UTF8
+    $rawLines = Get-Content -Path $csvPath -Encoding UTF8
+    $lines = @(Normalize-ForeignCsvLines $rawLines)
+    $header = "date,ticker,open,high,low,close,volume,freq,valuasi,nbsa"
+    if ($lines.Count -lt 2) {
+        Write-Host "  Status: FAILED"
+        Write-Host "  Error : CSV kosong atau tidak berisi data."
+        return $false
+    }
+
+    $dataRows = @($lines | Select-Object -Skip 1)
+    $batchSize = 300
+    $totalBatches = [Math]::Ceiling($dataRows.Count / $batchSize)
+    $totalImported = 0
+    $totalUpserted = 0
+    $totalDeleted = 0
 
     Write-Host ""
     Write-Host "  Uploading CSV ke Vercel API: $($cfg.API_BASE_URL)/api/sector-hot?action=foreign-import-upload"
     Write-Host "  Source: $csvPath"
+    Write-Host "  Rows  : $($dataRows.Count) data rows in $totalBatches batch(es)"
     Write-Host "  $('-' * 50)"
 
-    try {
-        $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Post -Body $csvText -ContentType "text/csv; charset=utf-8" -TimeoutSec 180
-        if ($response.success) {
-            Write-Host "  Status: SUCCESS"
-            Write-Host "  Imported rows : $($response.imported_count)"
-            Write-Host "  Upserted rows : $($response.upserted_count)"
-            Write-Host "  Deleted old   : $($response.deleted_old_count)"
-            if ($response.errors -and $response.errors.Count -gt 0) { Write-Host "  Warnings      : $($response.errors -join '; ')" }
-            Write-Host "  $('-' * 50)"
-            return $true
-        }
+    for ($i = 0; $i -lt $totalBatches; $i++) {
+        $start = $i * $batchSize
+        $end = [Math]::Min($start + $batchSize - 1, $dataRows.Count - 1)
+        $batchRows = @($dataRows[$start..$end])
+        $csvText = (@($header) + $batchRows) -join "`r`n"
+        $batchNo = $i + 1
+        Write-Host "  Uploading batch $batchNo/$totalBatches ..."
 
-        Write-Host "  Status: FAILED"
-        if ($response.error) { Write-Host "  Error : $($response.error)" }
-        if ($response.errors) { Write-Host "  Errors: $($response.errors -join '; ')" }
-        Write-Host "  $('-' * 50)"
-        return $false
-    } catch {
-        $statusCode = $null
-        if ($_.Exception.Response) { $statusCode = [int]$_.Exception.Response.StatusCode }
-        Write-Host "  Status: FAILED"
-        Write-Host "  Error : HTTP $statusCode - $($_.Exception.Message)"
-        Write-Host "  $('-' * 50)"
-        return $false
+        try {
+            $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Post -Body $csvText -ContentType "text/csv; charset=utf-8" -TimeoutSec 300
+            if (-not $response.success) {
+                Write-Host "  Status: FAILED"
+                Write-Host "  Failed batch: $batchNo/$totalBatches"
+                if ($response.error) { Write-Host "  Error : $($response.error)" }
+                if ($response.errors) { Write-Host "  Errors: $($response.errors -join '; ')" }
+                Write-Host "  $('-' * 50)"
+                return $false
+            }
+            if ($null -ne $response.imported_count) { $totalImported += [int]$response.imported_count }
+            if ($null -ne $response.upserted_count) { $totalUpserted += [int]$response.upserted_count }
+            if ($null -ne $response.deleted_old_count) { $totalDeleted += [int]$response.deleted_old_count }
+        } catch {
+            $statusCode = $null
+            if ($_.Exception.Response) { $statusCode = [int]$_.Exception.Response.StatusCode }
+            Write-Host "  Status: FAILED"
+            Write-Host "  Failed batch: $batchNo/$totalBatches"
+            Write-Host "  Error : HTTP $statusCode - $($_.Exception.Message)"
+            Write-Host "  $('-' * 50)"
+            return $false
+        }
     }
+
+    Write-Host "  Status: SUCCESS"
+    Write-Host "  Total imported rows: $totalImported"
+    Write-Host "  Total upserted rows: $totalUpserted"
+    Write-Host "  Total deleted old rows: $totalDeleted"
+    Write-Host "  $('-' * 50)"
+    return $true
 }
 
 function Read-ForeignCsvPaste {
