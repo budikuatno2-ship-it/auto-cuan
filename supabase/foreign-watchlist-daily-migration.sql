@@ -21,5 +21,12 @@ CREATE TABLE IF NOT EXISTS foreign_watchlist_daily (
 CREATE INDEX IF NOT EXISTS idx_foreign_watchlist_daily_ticker ON foreign_watchlist_daily (ticker);
 CREATE INDEX IF NOT EXISTS idx_foreign_watchlist_daily_trade_date ON foreign_watchlist_daily (trade_date);
 
+ALTER TABLE foreign_watchlist_daily ADD COLUMN IF NOT EXISTS close NUMERIC;
+ALTER TABLE foreign_watchlist_daily ADD COLUMN IF NOT EXISTS volume NUMERIC;
+ALTER TABLE foreign_watchlist_daily ADD COLUMN IF NOT EXISTS freq NUMERIC;
+ALTER TABLE foreign_watchlist_daily ADD COLUMN IF NOT EXISTS valuasi NUMERIC;
+ALTER TABLE foreign_watchlist_daily ADD COLUMN IF NOT EXISTS nbsa NUMERIC;
+
+
 -- Deny direct client access. Service role bypasses RLS for server/local import tools.
 ALTER TABLE foreign_watchlist_daily ENABLE ROW LEVEL SECURITY;

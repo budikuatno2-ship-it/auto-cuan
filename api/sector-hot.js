@@ -2436,7 +2436,7 @@ function parseForeignImportCsv(csvText) {
   var lines = text.split(/\r?\n/).filter(function(line) { return line.trim() !== ''; });
   if (lines.length < 2) return [];
 
-  var headers = parseForeignCsvLine(lines[0]).map(function(h) { return h.toLowerCase(); });
+  var headers = parseForeignCsvLine(lines[0]).map(function(h) { return String(h || '').trim().replace(/^<|>$/g, '').toLowerCase(); });
   var required = ['date', 'ticker', 'open', 'high', 'low', 'close', 'volume', 'freq', 'valuasi', 'nbsa'];
   required.forEach(function(h) {
     if (headers.indexOf(h) === -1) throw new Error('Missing CSV column: ' + h);
@@ -2463,6 +2463,11 @@ function parseForeignImportCsv(csvText) {
       foreign_buy: null,
       foreign_sell: null,
       foreign_net: (nbsa == null || close == null) ? null : nbsa * close,
+      close: close,
+      volume: parseForeignNumber(obj.volume, 'volume', rowNum),
+      freq: parseForeignNumber(obj.freq, 'freq', rowNum),
+      valuasi: parseForeignNumber(obj.valuasi, 'valuasi', rowNum),
+      nbsa: nbsa,
       source: 'csv',
       uploaded_at: new Date().toISOString()
     });
@@ -2548,12 +2553,27 @@ function formatForeignNumber(value) {
   if (value == null || value === '') return 'N/A';
   var n = Number(value);
   if (!isFinite(n)) return String(value);
+  return n.toLocaleString('id-ID', { maximumFractionDigits: 0 });
+}
+
+function formatForeignRupiah(value) {
+  if (value == null || value === '') return 'N/A';
+  var n = Number(value);
+  if (!isFinite(n)) return String(value);
   var abs = Math.abs(n);
   var sign = n < 0 ? '-' : '';
-  if (abs >= 1000000000000) return sign + (abs / 1000000000000).toFixed(2).replace(/\.00$/, '') + 'T';
-  if (abs >= 1000000000) return sign + (abs / 1000000000).toFixed(2).replace(/\.00$/, '') + 'B';
-  if (abs >= 1000000) return sign + (abs / 1000000).toFixed(2).replace(/\.00$/, '') + 'M';
-  return n.toLocaleString('en-US');
+  if (abs >= 1000000000) return sign + 'Rp ' + (abs / 1000000000).toFixed(1) + ' miliar';
+  if (abs >= 1000000) return sign + 'Rp ' + (abs / 1000000).toFixed(1) + ' juta';
+  if (abs >= 1000) return sign + 'Rp ' + (abs / 1000).toFixed(1) + ' ribu';
+  return sign + 'Rp ' + abs.toLocaleString('id-ID', { maximumFractionDigits: 0 });
+}
+
+function formatForeignNetWithSide(value) {
+  if (value == null || value === '') return 'N/A';
+  var n = Number(value);
+  if (!isFinite(n)) return String(value);
+  var side = n > 0 ? 'net buy' : (n < 0 ? 'net sell' : 'netral');
+  return formatForeignRupiah(n) + ' (' + side + ')';
 }
 
 function getForeignTrendLabel(net3d, net7d) {
@@ -2568,12 +2588,12 @@ async function buildForeignLookupMessage(supabase, ticker) {
 
   var { data: rows, error } = await supabase
     .from('foreign_watchlist_daily')
-    .select('trade_date,ticker,foreign_buy,foreign_sell,foreign_net')
+    .select('trade_date,ticker,foreign_buy,foreign_sell,foreign_net,close,volume,freq,valuasi,nbsa')
     .eq('ticker', safeTicker)
     .order('trade_date', { ascending: false })
     .limit(7);
 
-  if (error) return 'Gagal membaca data foreign untuk ' + safeTicker + '.';
+  if (error) return 'Gagal ambil data foreign untuk ' + safeTicker + '.';
   if (!rows || rows.length === 0) return 'Belum ada data foreign untuk ' + safeTicker + '. Upload CSV dulu.';
 
   var latest = rows[0];
@@ -2582,14 +2602,80 @@ async function buildForeignLookupMessage(supabase, ticker) {
   var trend = getForeignTrendLabel(net3d, net7d);
 
   return [
-    'Foreign Watchlist: ' + safeTicker,
-    'Tanggal: ' + latest.trade_date,
-    'Foreign Net: ' + formatForeignNumber(latest.foreign_net),
-    'Foreign Buy: ' + formatForeignNumber(latest.foreign_buy),
-    'Foreign Sell: ' + formatForeignNumber(latest.foreign_sell),
-    '3D Net: ' + formatForeignNumber(net3d),
-    '7D Net: ' + formatForeignNumber(net7d),
-    'Trend: ' + trend
+    'Foreign Watchlist — ' + safeTicker,
+    'Latest date: ' + latest.trade_date,
+    'Close: ' + formatForeignNumber(latest.close),
+    'NBSA: ' + formatForeignNumber(latest.nbsa),
+    'Foreign net: ' + formatForeignNetWithSide(latest.foreign_net),
+    'Volume: ' + formatForeignNumber(latest.volume),
+    'Freq: ' + formatForeignNumber(latest.freq),
+    'Value: ' + formatForeignRupiah(latest.valuasi),
+    rows.length >= 7 ? ('Trend 7 hari: ' + trend + ' (' + formatForeignNetWithSide(net7d) + ')') : ('Trend 7 hari: data belum lengkap (' + rows.length + '/7 hari)')
+  ].join('\n');
+}
+
+
+function buildTelegramStartMessage() {
+  return [
+    '🚀 Selamat datang di Auto-Cuan Bot',
+    '',
+    'Gunakan menu "/" untuk memilih fitur bot.',
+    '',
+    'Command yang tersedia:',
+    '',
+    '/top',
+    'Melihat Top 10 saham potensial hari ini.',
+    '',
+    '/screener swing konglo',
+    'Melihat screener Swing Konglo.',
+    '',
+    '/screener swing non konglo',
+    'Melihat screener Swing Non-Konglo.',
+    '',
+    '/screener day trade',
+    'Melihat screener Day Trade.',
+    '',
+    '/foreign BBCA',
+    'Melihat foreign flow saham tertentu.',
+    '',
+    'Butuh panduan?',
+    'Ketik /help',
+    '',
+    'Disclaimer: bukan rekomendasi beli/jual. DYOR.'
+  ].join('\n');
+}
+
+function buildTelegramHelpMessage() {
+  return [
+    '📘 Panduan Auto-Cuan Bot',
+    '',
+    'Gunakan tanda "/" di kolom chat untuk membuka menu command.',
+    '',
+    'Daftar command:',
+    '',
+    '1. /top',
+    'Menampilkan Top 10 saham potensial hari ini.',
+    '',
+    '2. /screener swing konglo',
+    'Menampilkan saham kategori Swing Konglo.',
+    '',
+    '3. /screener swing non konglo',
+    'Menampilkan saham kategori Swing Non-Konglo.',
+    '',
+    '4. /screener day trade',
+    'Menampilkan saham kategori Day Trade.',
+    '',
+    '5. /foreign TICKER',
+    'Menampilkan foreign flow saham tertentu.',
+    'Contoh:',
+    '/foreign BBCA',
+    '/foreign BBRI',
+    '/foreign WINS',
+    '',
+    'Catatan:',
+    '- Data foreign muncul setelah CSV berhasil di-upload.',
+    '- Jika data belum ada, bot harus membalas bahwa data belum tersedia.',
+    '- Semua output bukan rekomendasi beli/jual. DYOR.'
   ].join('\n');
 }
 
@@ -2607,11 +2693,29 @@ async function handleTelegramWebhook(req, res, supabase) {
   var text = String(msg.text || '').trim();
   var chatId = msg.chat && msg.chat.id != null ? String(msg.chat.id) : '';
 
-  var match = text.match(/^\/foreign(?:@\w+)?(?:\s+(.+))?$/i);
-  if (!match) return res.status(200).json({ success: true, ignored: true });
+  var startMatch = text.match(/^\/start(?:@\w+)?(?:\s+.*)?$/i);
+  var helpMatch = text.match(/^\/help(?:@\w+)?(?:\s+.*)?$/i);
+  var foreignMatch = text.match(/^\/foreign(?:@\w+)?(?:\s+(.+))?$/i);
 
-  var ticker = normalizeForeignTicker(match[1] || '');
-  var reply = ticker ? await buildForeignLookupMessage(supabase, ticker) : 'Format salah. Gunakan: /foreign TICKER';
+  if (!startMatch && !helpMatch && !foreignMatch) return res.status(200).json({ success: true, ignored: true });
+
+  var reply = '';
+  if (startMatch) {
+    reply = buildTelegramStartMessage();
+  } else if (helpMatch) {
+    reply = buildTelegramHelpMessage();
+  } else {
+    var ticker = normalizeForeignTicker(foreignMatch[1] || '');
+    reply = 'Format: /foreign TICKER\nContoh: /foreign BBCA';
+    if (ticker) {
+      try {
+        reply = await buildForeignLookupMessage(supabase, ticker);
+      } catch (err) {
+        reply = 'Gagal ambil data foreign untuk ' + ticker + '.';
+      }
+    }
+  }
+
   var sendResult = chatId ? await telegramNotifier.sendTelegramMessage(reply, { chat_id: chatId }) : { skipped: true, reason: 'missing_chat_id' };
   return res.status(200).json({ success: true, handled: true, sent: !!sendResult.sent, skipped: !!sendResult.skipped, reason: sendResult.reason || null });
 }
