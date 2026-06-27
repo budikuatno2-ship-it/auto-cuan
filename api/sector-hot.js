@@ -2402,10 +2402,18 @@ function parseForeignNumber(value, field, rowNum) {
 
 function normalizeForeignDate(value, rowNum) {
   var s = String(value || '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) throw new Error('Invalid date at row ' + rowNum + ': ' + value);
-  var d = new Date(s + 'T00:00:00Z');
-  if (isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s) throw new Error('Invalid date at row ' + rowNum + ': ' + value);
-  return s;
+  var normalized = s;
+  var mdY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdY) {
+    var month = mdY[1].padStart(2, '0');
+    var day = mdY[2].padStart(2, '0');
+    normalized = mdY[3] + '-' + month + '-' + day;
+  } else if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    throw new Error('Invalid date at row ' + rowNum + ': ' + value);
+  }
+  var d = new Date(normalized + 'T00:00:00Z');
+  if (isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== normalized) throw new Error('Invalid date at row ' + rowNum + ': ' + value);
+  return normalized;
 }
 
 function getRawRequestBody(req) {
