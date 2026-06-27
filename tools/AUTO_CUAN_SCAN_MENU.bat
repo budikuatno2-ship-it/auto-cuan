@@ -17,13 +17,14 @@ echo   4. Start Day Trade Fast AUTO LOOP
 echo   5. Start Day Trade Full AUTO LOOP
 echo   6. Refresh Sektor Hot / Group Hot
 echo   7. Refresh All Ringan
+echo   8. Import / Upload Foreign Data
 echo.
 echo   S. Settings (setup/ubah config)
 echo   X. Exit
 echo.
 echo  ========================================================
 echo.
-set /p choice="  Pilih (1-7, S, X): "
+set /p choice="  Pilih (1-8, S, X): "
 
 if "%choice%"=="1" goto konglo
 if "%choice%"=="2" goto nonkonglo
@@ -32,6 +33,7 @@ if "%choice%"=="4" goto dt_fast
 if "%choice%"=="5" goto dt_full
 if "%choice%"=="6" goto sektor
 if "%choice%"=="7" goto refreshall
+if "%choice%"=="8" goto foreignimport
 if /i "%choice%"=="s" goto settings
 if /i "%choice%"=="x" goto exitapp
 
@@ -66,6 +68,10 @@ goto done
 
 :refreshall
 powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 refresh-all
+goto done
+
+:foreignimport
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 foreign-import
 goto done
 
 :settings
