@@ -4998,6 +4998,15 @@ function normalizeActionLabel(label) {
     return text.replace(/_/g, ' ');
 }
 function getActionLabel(r) { return r ? normalizeActionLabel(r.telegram_action_label || r.telegram_verdict || r.final_status || r.status || '') : ''; }
+function getSignalQualityGrade(r) { return r ? safeDisplayText(r.quality_grade || r.grade || r.signal_grade || '', '') : ''; }
+function getSignalQualityColor(grade) {
+    var g = safeDisplayText(grade, '').toUpperCase();
+    if (g === 'A' || g === 'A+') return '#6ee7b7';
+    if (g === 'B' || g === 'B+' || g === 'B-') return '#60a5fa';
+    if (g === 'C' || g === 'C+' || g === 'C-') return '#fbbf24';
+    return '#fca5a5';
+}
+function getSignalReason(r) { return r ? safeDisplayText(r.risk_reason || r.action_reason || r.notes || r.verdict || r.telegram_verdict || '', '') : ''; }
 function getStatusLabel(r, fallbackStatus) { return normalizeActionLabel((r && (r.final_status || r.status)) || fallbackStatus || '') || '-'; }
 
 // ===== DAY TRADE CARD GRID =====
@@ -5045,14 +5054,15 @@ function renderDtCardGrid(results) {
         var _l = normalizeDisplayLevels(r);
         var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
         var volR = r.volume_ratio_20d ? r.volume_ratio_20d.toFixed(1) + 'x' : '-';
-        var notes = r.notes || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
+        var notes = getSignalReason(r); if (notes.length > 110) notes = notes.substring(0, 107) + '...';
         html += '<div class="dt-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(getStatusLabel(r, st)) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
         // V6: Risk / Grade / MTF compact badges
         var _rlBadge = ''; var _grBadge = ''; var _vpBadge = ''; var _mtfBadge = '';
         var _cardRisk = getRiskLabel(r); if (_cardRisk) { var _rlC = getRiskColor(_cardRisk); _rlBadge = '<span style="color:' + _rlC + ';font-weight:600">' + escapeHtml(_cardRisk) + '</span>'; }
-        if (r.quality_grade) { var _gC = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); _grBadge = '<span style="font-weight:700;color:' + _gC + '">' + escapeHtml(r.quality_grade) + '</span>'; }
+        var _qualityGrade = getSignalQualityGrade(r);
+        if (_qualityGrade) { _grBadge = '<span title="Signal quality grade" style="font-weight:700;color:' + getSignalQualityColor(_qualityGrade) + '">Grade ' + escapeHtml(_qualityGrade) + '</span>'; }
         if (r.volume_phase && r.volume_phase !== 'NORMAL') { _vpBadge = '<span style="color:#a78bfa">' + escapeHtml(r.volume_phase.replace(/_/g,' ').substring(0,12)) + '</span>'; }
         if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _mbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _mtfBadge = '<span style="color:' + _mbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
         var _actionBadge = getActionLabel(r); if (_actionBadge && _actionBadge !== getStatusLabel(r, st)) _vpBadge = (_vpBadge ? _vpBadge + ' · ' : '') + '<span style="color:#93c5fd">' + escapeHtml(_actionBadge) + '</span>';
@@ -5123,15 +5133,8 @@ function openScrDetail(r, type) {
     var _l = normalizeDisplayLevels(r);
     var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
     var _rlCol = '#9ca3af'; var _gCol = '#9ca3af';
-    // Derive grade from available fields (quality_grade not persisted in DB)
-    var _grade = r.quality_grade || r.exec_grade || r.execution_grade || r.confidence || null;
-    if (!_grade && sc > 0) {
-      // Derive from score + status
-      if (sc >= 82 && (st === 'A_PLUS_SETUP' || st === 'TRADE_CANDIDATE' || st === 'READY_BREAKOUT')) _grade = 'A';
-      else if (sc >= 70 && st !== 'AVOID' && st !== 'SPECULATIVE') _grade = 'B';
-      else if (sc >= 50 && st !== 'AVOID') _grade = 'C';
-      else _grade = 'Avoid';
-    }
+    // Show only quality grade already supplied by the API payload.
+    var _grade = getSignalQualityGrade(r) || null;
     // Derive risk from available fields (risk_label not persisted in DB)
     var _risk = getRiskLabel(r) || null;
     if (!_risk) {
@@ -5144,7 +5147,7 @@ function openScrDetail(r, type) {
       else _risk = 'Low Risk';
     }
     if (_risk) { _risk = normalizeRiskLabel(_risk); _rlCol = getRiskColor(_risk); }
-    if (_grade) { _gCol = _grade === 'A' || _grade === 'A+' ? '#6ee7b7' : (_grade === 'B' || _grade === 'B+' || _grade === 'B-' ? '#60a5fa' : (_grade === 'C' ? '#fbbf24' : '#fca5a5')); }
+    if (_grade) { _gCol = getSignalQualityColor(_grade); }
     // Setup meaning
     var _setupMeaning = getSetupMeaning(st, type);
     var html = '';
@@ -5160,6 +5163,8 @@ function openScrDetail(r, type) {
     if (_actionLabel) html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Action</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + escapeHtml(_actionLabel) + '</div></div>';
     html += '</div>';
     if (r.grade_reason) html += '<div style="font-size:9px;color:#6b7280;margin-bottom:10px">' + escapeHtml(r.grade_reason) + '</div>';
+    var _signalReason = getSignalReason(r);
+    if (_signalReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45;margin-bottom:10px;padding:7px 10px;background:rgba(15,23,42,0.35);border:1px solid rgba(148,163,184,0.16);border-radius:8px"><span style="color:#94a3b8;font-weight:600">Alasan risk/action:</span> ' + escapeHtml(_signalReason) + '</div>';
     // Setup meaning
     if (_setupMeaning) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:10px;padding:6px 10px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:8px"><span style="color:#818cf8;font-weight:500">Arti:</span> ' + escapeHtml(_setupMeaning) + '</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">';
@@ -5171,7 +5176,7 @@ function openScrDetail(r, type) {
     html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#a78bfa;margin-bottom:3px">R/R</div><div style="font-size:13px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
     html += '</div>';
     // Setup reasoning
-    html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:10px">' + escapeHtml(r.notes || r.status_reason || '-') + '</div>';
+    html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:10px">' + escapeHtml(r.status_reason || r.notes || '-') + '</div>';
     // Volume context section
     html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,0.04);border:1px solid rgba(139,92,246,0.15);border-radius:8px">';
     html += '<div style="font-size:9px;font-weight:600;color:#a78bfa;margin-bottom:4px">VOLUME</div>';
@@ -5287,7 +5292,7 @@ function renderKgCardGrid(results) {
         var _l = normalizeDisplayLevels(r);
         var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
-        var notes = r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
+        var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
@@ -5296,7 +5301,7 @@ function renderKgCardGrid(results) {
         // V6: Risk / Grade / Volume / MTF compact badges
         var _krlBadge = ''; var _kgrBadge = ''; var _kvpBadge = ''; var _kmtfBadge = '';
         var _kgRisk = getRiskLabel(r); if (_kgRisk) { var _krlC = getRiskColor(_kgRisk); _krlBadge = '<span style="color:' + _krlC + ';font-weight:600">' + escapeHtml(_kgRisk) + '</span>'; }
-        if (r.quality_grade) { var _kgC = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); _kgrBadge = '<span style="font-weight:700;color:' + _kgC + '">' + escapeHtml(r.quality_grade) + '</span>'; }
+        var _kg = getSignalQualityGrade(r); if (_kg) { _kgrBadge = '<span style="font-weight:700;color:' + getSignalQualityColor(_kg) + '">Grade ' + escapeHtml(_kg) + '</span>'; }
         if (r.volume_phase && r.volume_phase !== 'NORMAL') { _kvpBadge = '<span style="color:#a78bfa">' + escapeHtml(r.volume_phase.replace(/_/g,' ').substring(0,12)) + '</span>'; }
         if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _kmbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _kmtfBadge = '<span style="color:' + _kmbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
         var _kActionBadge = getActionLabel(r); if (_kActionBadge && _kActionBadge !== getStatusLabel(r, tier)) _kvpBadge = (_kvpBadge ? _kvpBadge + ' · ' : '') + '<span style="color:#93c5fd">' + escapeHtml(_kActionBadge) + '</span>';
@@ -5351,7 +5356,7 @@ function renderNkCardGrid(results) {
         var _l = normalizeDisplayLevels(r);
         var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
-        var notes = r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
+        var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
@@ -5360,7 +5365,7 @@ function renderNkCardGrid(results) {
         // V6: Risk / Grade / Volume / MTF compact badges
         var _nrlBadge = ''; var _ngrBadge = ''; var _nvpBadge = ''; var _nmtfBadge = '';
         var _nkRisk = getRiskLabel(r); if (_nkRisk) { var _nrlC = getRiskColor(_nkRisk); _nrlBadge = '<span style="color:' + _nrlC + ';font-weight:600">' + escapeHtml(_nkRisk) + '</span>'; }
-        if (r.quality_grade) { var _ngC = r.quality_grade === 'A' ? '#6ee7b7' : (r.quality_grade === 'B' ? '#60a5fa' : (r.quality_grade === 'C' ? '#fbbf24' : '#fca5a5')); _ngrBadge = '<span style="font-weight:700;color:' + _ngC + '">' + escapeHtml(r.quality_grade) + '</span>'; }
+        var _ng = getSignalQualityGrade(r); if (_ng) { _ngrBadge = '<span style="font-weight:700;color:' + getSignalQualityColor(_ng) + '">Grade ' + escapeHtml(_ng) + '</span>'; }
         if (r.volume_phase && r.volume_phase !== 'NORMAL') { _nvpBadge = '<span style="color:#a78bfa">' + escapeHtml(r.volume_phase.replace(/_/g,' ').substring(0,12)) + '</span>'; }
         if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _nmbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _nmtfBadge = '<span style="color:' + _nmbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
         var _nActionBadge = getActionLabel(r); if (_nActionBadge && _nActionBadge !== getStatusLabel(r, tier)) _nvpBadge = (_nvpBadge ? _nvpBadge + ' · ' : '') + '<span style="color:#93c5fd">' + escapeHtml(_nActionBadge) + '</span>';
@@ -8414,7 +8419,8 @@ function renderDtTable(results) {
         html += '<td class="px-2 py-2 text-gray-400 text-[10px] whitespace-nowrap">' + timingLabel + '</td>';
         html += '<td class="px-2 py-2 ' + dirColor + ' text-[10px] whitespace-nowrap">' + dirLabel + '</td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + (r.time_plan || '') + '">' + (r.time_plan || '—') + '</td>';
-        html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + (r.notes || '') + '">' + (r.notes || '—') + '</td>';
+        var _dtReason = getSignalReason(r);
+        html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + escapeHtml(_dtReason) + '">' + escapeHtml(_dtReason || '—') + '</td>';
         html += '</tr>';
     }
     tbody.innerHTML = html;
