@@ -61,6 +61,15 @@ module.exports = async function handler(req, res) {
       return await handleTelegramWebhook(req, res, supabase);
     }
 
+    // === TELEGRAM DAILY TOP 5 / MONITOR (cron-protected) ===
+    if (action === 'telegram-daily-picks') {
+      return await handleTelegramDailyPicks(req, res, supabase);
+    }
+
+    if (action === 'telegram-monitor-picks') {
+      return await handleTelegramMonitorPicks(req, res, supabase);
+    }
+
     // === SCREENER READ MODE (login-gated) ===
     if (action === 'screener') {
       return await handleScreenerRead(req, res, supabase);
@@ -2615,6 +2624,317 @@ async function buildForeignLookupMessage(supabase, ticker) {
 }
 
 
+function getWibDateString() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function getWibHourString() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(11, 16) + ' WIB';
+}
+
+
+function getJakartaNow() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000);
+}
+
+function getJakartaDateString() {
+  return getJakartaNow().toISOString().slice(0, 10);
+}
+
+function isJakartaWeekday() {
+  var day = getJakartaNow().getUTCDay();
+  return day >= 1 && day <= 5;
+}
+
+function getJakartaDateFromTimestamp(value) {
+  if (!value) return null;
+  var s = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var d = new Date(s);
+  if (isNaN(d.getTime())) return null;
+  return new Date(d.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function isFreshForJakartaDate(value, tradingDate) {
+  return getJakartaDateFromTimestamp(value) === tradingDate;
+}
+
+function buildReadinessItem(meta, latestRows, tradingDate, sourceFields) {
+  meta = meta || null;
+  latestRows = latestRows || [];
+  sourceFields = sourceFields || [];
+  var latest = null;
+  if (meta) {
+    for (var i = 0; i < sourceFields.length; i++) {
+      if (meta[sourceFields[i]]) { latest = meta[sourceFields[i]]; break; }
+    }
+    if (!latest) latest = meta.run_date || meta.calculated_at || meta.updated_at;
+  }
+  if (!latest && latestRows[0]) latest = latestRows[0].calculated_at || latestRows[0].run_date || latestRows[0].trade_date || null;
+  var status = meta && meta.status ? String(meta.status).toLowerCase() : '';
+  var badStatus = ['failed', 'scanning', 'running', 'idle', 'pending'].indexOf(status) >= 0;
+  var ready = !!latest && isFreshForJakartaDate(latest, tradingDate) && latestRows.length > 0 && !badStatus;
+  return {
+    ready: ready,
+    latest_date_or_timestamp: latest || null,
+    row_count: latestRows.length,
+    status: status || null
+  };
+}
+
+async function getScreenerReadiness(supabase) {
+  var tradingDate = getJakartaDateString();
+  var dayMetaRes = await supabase.from('daytrade_screener_meta').select('run_date,calculated_at,updated_at,status,published_count,top_count').eq('id', 'latest').maybeSingle();
+  var dayRowsRes = await supabase.from('daytrade_screener_latest').select('ticker,calculated_at,run_id').order('daytrade_score', { ascending: false }).limit(1);
+  var kongloMetaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,status,scanned_count').eq('id', 'latest').maybeSingle();
+  var kongloRowsRes = await supabase.from('swing_screener_latest').select('ticker,calculated_at').order('score', { ascending: false }).limit(1);
+  var nkMetaRes = await supabase.from('swing_screener_non_konglo_meta').select('run_date,calculated_at,updated_at,status,published_count').eq('id', 'latest').maybeSingle();
+  var nkRowsRes = await supabase.from('swing_screener_non_konglo_latest').select('ticker,calculated_at').order('rank', { ascending: true }).limit(1);
+
+  var readiness = {
+    day_trade: buildReadinessItem(dayMetaRes.data, dayRowsRes.data || [], tradingDate, ['run_date', 'calculated_at']),
+    swing_konglo: buildReadinessItem(kongloMetaRes.data, kongloRowsRes.data || [], tradingDate, ['calculated_at']),
+    swing_non_konglo: buildReadinessItem(nkMetaRes.data, nkRowsRes.data || [], tradingDate, ['run_date', 'calculated_at'])
+  };
+  readiness.ready = readiness.day_trade.ready && readiness.swing_konglo.ready && readiness.swing_non_konglo.ready;
+  readiness.trading_date = tradingDate;
+  return readiness;
+}
+
+function pctFrom(base, value) {
+  var b = toNum(base), v = toNum(value);
+  return b && v ? Math.round(((v - b) / b * 100) * 10) / 10 : null;
+}
+
+function formatPct(v) { return v == null || !isFinite(v) ? '-' : (v > 0 ? '+' : '') + v.toFixed(1) + '%'; }
+
+function chartLink(ticker) { return 'https://www.tradingview.com/chart/?symbol=IDX:' + encodeURIComponent(String(ticker || '').toUpperCase()); }
+
+function getEntry1(row) {
+  var low = toNum(row.entry_low), high = toNum(row.entry_high);
+  if (high != null && high > 0) return high;
+  if (low != null && low > 0) return low;
+  return toNum(row.last_price);
+}
+
+function getEntry2(row) {
+  var low = toNum(row.entry_low), high = toNum(row.entry_high);
+  if (low != null && low > 0) return low;
+  if (high != null && high > 0) return high;
+  return toNum(row.last_price);
+}
+
+function normalizeCombinedCandidate(row, category) {
+  var r = Object.assign({}, row || {});
+  r.category = category;
+  r.ticker = normalizeForeignTicker(r.ticker || '');
+  r.entry1 = getEntry1(r);
+  r.entry2 = getEntry2(r);
+  r.sl = toNum(r.stop_loss);
+  r.tp1n = toNum(r.tp1);
+  r.tp2n = toNum(r.tp2);
+  r.lastn = toNum(r.last_price);
+  r.score_norm = getTelegramScore(r, category === 'Day Trade' ? 'daytrade' : 'swing');
+  var verified = verifyTelegramSignal(r, category === 'Day Trade' ? 'daytrade' : 'swing');
+  if (verified) r = Object.assign(r, verified);
+  var high = verified ? verifyHighConvictionTelegramSignal(r, category === 'Day Trade' ? 'daytrade' : 'swing') : null;
+  if (high) r = Object.assign(r, high);
+  r.tp1_upside = pctFrom(r.entry1, r.tp1n);
+  r.tp2_upside = pctFrom(r.entry1, r.tp2n);
+  r.sl_risk = pctFrom(r.entry1, r.sl);
+  r.combined_score = (toNum(r.telegram_conviction_score) || r.score_norm || 0)
+    + (r.tp1_upside >= 2 ? 8 : -4)
+    + (r.tp2_upside >= 5 ? 6 : 0)
+    + ((toNum(r.risk_reward) || 0) >= 1.5 ? 6 : -4)
+    + (category === 'Day Trade' ? 4 : 0)
+    + (getTelegramValue(r) >= 10000000000 ? 4 : 0)
+    - (includesAny(joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan]), ['chase', 'telat', 'late']) ? 8 : 0);
+  return r;
+}
+
+async function fetchCombinedScreenerCandidates(supabase) {
+  var pools = [];
+  var dt = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(40);
+  (dt.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Day Trade')); });
+  var kg = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false }).limit(40);
+  (kg.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Swing Konglo')); });
+  var nk = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
+  (nk.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Swing Non-Konglo')); });
+  var byTicker = {};
+  pools.filter(function(r) { return r.ticker && r.entry1 && r.tp1n && r.tp2n && r.sl; }).forEach(function(r) {
+    if (!byTicker[r.ticker] || (r.combined_score || 0) > (byTicker[r.ticker].combined_score || 0)) byTicker[r.ticker] = r;
+  });
+  return Object.keys(byTicker).map(function(k) { return byTicker[k]; }).sort(function(a, b) { return (b.combined_score || 0) - (a.combined_score || 0) || a.ticker.localeCompare(b.ticker); });
+}
+
+async function fetchForeignSummary(supabase, ticker) {
+  try {
+    var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,nbsa').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(7);
+    var rows = res.data || [];
+    if (res.error || rows.length === 0) return { text: 'Foreign: belum ada data', score: 0 };
+    var latest = rows[0];
+    var avg = rows.reduce(function(s, r) { return s + (Number(r.foreign_net) || 0); }, 0) / rows.length;
+    var side = latest.foreign_net > 0 ? 'net buy' : (latest.foreign_net < 0 ? 'net sell' : 'netral');
+    var trend = avg > 0 ? 'Accumulation' : (avg < 0 ? 'Distribution' : 'Neutral');
+    return { latest: latest, avg: avg, trend: trend, score: avg > 0 ? 5 : (avg < 0 ? -4 : 0), text: 'Foreign: ' + latest.trade_date + ' NBSA ' + formatForeignNumber(latest.nbsa) + ' · ' + formatForeignNetWithSide(latest.foreign_net) + ' · Avg7 ' + formatForeignNetWithSide(avg) + ' (' + trend + ')' };
+  } catch (e) { return { text: 'Foreign: belum ada data', score: 0 }; }
+}
+
+function candidateReason(r) {
+  return safeTelegramText(r.telegram_verdict || r.status_reason || r.notes || r.setup || r.status || r.final_status, 130, 'Skor, RR, likuiditas, dan level plan relatif lebih kuat.');
+}
+
+async function formatCandidateBlock(supabase, r, idx, compact) {
+  var f = await fetchForeignSummary(supabase, r.ticker);
+  var setup = safeTelegramText(r.setup || r.setup_type || r.status || r.final_status, 60, '-').replace(/_/g, ' ');
+  var risk = deriveTelegramRiskLabel(r, r.category === 'Day Trade' ? 'daytrade' : 'swing');
+  var lines = [];
+  lines.push(idx + '. ' + r.ticker + ' — ' + r.category);
+  lines.push('Setup: ' + setup + ' · Risk: ' + risk);
+  lines.push('Close: ' + fmtPrice(r.lastn) + ' · Entry 1/2: ' + fmtPrice(r.entry1) + ' / ' + fmtPrice(r.entry2));
+  lines.push('TP1/TP2: ' + fmtPrice(r.tp1n) + ' (' + formatPct(r.tp1_upside) + ') / ' + fmtPrice(r.tp2n) + ' (' + formatPct(r.tp2_upside) + ')');
+  lines.push('SL: ' + fmtPrice(r.sl) + ' (' + formatPct(r.sl_risk) + ') · RR: ' + fmtRR(r.risk_reward));
+  lines.push(f.text);
+  lines.push('Alasan: ' + candidateReason(r));
+  if (!compact) lines.push('Chart: ' + chartLink(r.ticker));
+  return lines.join('\n');
+}
+
+async function buildTelegramTopMessage(supabase) {
+  var rows = (await fetchCombinedScreenerCandidates(supabase)).slice(0, 10);
+  var lines = ['🔥 TOP 10 GABUNGAN SCREENER — ' + getWibDateString(), ''];
+  if (rows.length === 0) lines.push('Belum ada kandidat dari cache screener. Jalankan/refresh screener dulu.');
+  for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, true)); lines.push(''); }
+  lines.push('Bukan rekomendasi beli/jual. DYOR.');
+  return lines.join('\n');
+}
+
+async function buildTelegramScreenerMessage(supabase, modeText) {
+  var mode = String(modeText || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!mode) return 'Format:\n/screener day trade\n/screener swing konglo\n/screener swing non konglo';
+  var category, table, orderCol, asc = false;
+  if (mode === 'day trade') { category = 'Day Trade'; table = 'daytrade_screener_latest'; orderCol = 'daytrade_score'; }
+  else if (mode === 'swing konglo') { category = 'Swing Konglo'; table = 'swing_screener_latest'; orderCol = 'score'; }
+  else if (mode === 'swing non konglo' || mode === 'swing non-konglo') { category = 'Swing Non-Konglo'; table = 'swing_screener_non_konglo_latest'; orderCol = 'rank'; asc = true; }
+  else return 'Format:\n/screener day trade\n/screener swing konglo\n/screener swing non konglo';
+  var res = await supabase.from(table).select('*').order(orderCol, { ascending: asc }).limit(20);
+  var rows = (res.data || []).map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker; }).sort(function(a, b) { return (b.combined_score || 0) - (a.combined_score || 0); }).slice(0, 10);
+  var lines = ['📊 SCREENER ' + category.toUpperCase() + ' — ' + getWibDateString(), ''];
+  if (rows.length === 0) lines.push('Belum ada kandidat dari cache screener.');
+  for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, false)); lines.push(''); }
+  lines.push('Bukan rekomendasi beli/jual. DYOR.');
+  return lines.join('\n');
+}
+
+
+async function selectDailyTop5(supabase) {
+  var rows = await fetchCombinedScreenerCandidates(supabase);
+  for (var i = 0; i < rows.length; i++) {
+    var f = await fetchForeignSummary(supabase, rows[i].ticker);
+    rows[i].daily_score = (rows[i].combined_score || 0) + (f.score || 0)
+      + (rows[i].entry1 && rows[i].lastn && Math.abs((rows[i].lastn - rows[i].entry1) / rows[i].entry1) <= 0.03 ? 8 : -4)
+      + (rows[i].tp1_upside >= 2 ? 10 : -8)
+      + (rows[i].tp2_upside >= 5 ? 8 : 0)
+      + ((toNum(rows[i].risk_reward) || 0) >= 1.8 ? 6 : 0);
+  }
+  return rows.sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
+}
+
+async function handleTelegramDailyPicks(req, res, supabase) {
+  if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, picked_count: 0, error: 'Unauthorized.' });
+  try {
+    if (!isJakartaWeekday()) {
+      return res.status(200).json({ success: true, skipped: true, reason: 'weekend', sent_count: 0, picked_count: 0 });
+    }
+    var force = req.query && req.query.force === '1';
+    var readiness = await getScreenerReadiness(supabase);
+    if (!force && !readiness.ready) {
+      return res.status(200).json({ success: true, skipped: true, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0 });
+    }
+    var picks = await selectDailyTop5(supabase);
+    var date = getJakartaDateString();
+    var lines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Jam: 08:00 WIB', 'Tanggal: ' + date, ''];
+    if (picks.length === 0) lines.push('Belum ada kandidat yang memenuhi syarat dari cache screener.');
+    for (var i = 0; i < picks.length; i++) { lines.push(await formatCandidateBlock(supabase, picks[i], i + 1, false)); lines.push(''); }
+    lines.push('Chart v1: fallback link TradingView/dasbor per ticker, bukan image.');
+    lines.push('Bukan rekomendasi beli/jual. DYOR.');
+    var msg = lines.join('\n');
+    var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(msg) : { sent: false, skipped: true, reason: 'no_picks' };
+    if (picks.length > 0) {
+      await supabase.from('telegram_daily_picks').delete().eq('date', date);
+      var nowIso = new Date().toISOString();
+      var rows = picks.map(function(r) { return { date: date, ticker: r.ticker, category: r.category, entry1: r.entry1, entry2: r.entry2, tp1: r.tp1n, tp2: r.tp2n, sl: r.sl, status: 'WAITING', first_sent_at: nowIso, raw_payload: r }; });
+      var ins = await supabase.from('telegram_daily_picks').insert(rows);
+      if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
+    }
+    return res.status(200).json({ success: true, skipped: false, forced: force, readiness: readiness, sent_count: sendResult.sent ? 1 : 0, picked_count: picks.length, error: null, telegram: sendResult });
+  } catch (e) {
+    return res.status(200).json({ success: false, sent_count: 0, picked_count: 0, error: e.message || String(e) });
+  }
+}
+
+async function fetchLatestPriceForMonitor(supabase, ticker) {
+  var dt = await supabase.from('daytrade_screener_latest').select('last_price,high_price,low_price,calculated_at').eq('ticker', ticker).maybeSingle();
+  if (dt.data && dt.data.last_price != null) return { last: toNum(dt.data.last_price), high: toNum(dt.data.high_price), low: toNum(dt.data.low_price), at: dt.data.calculated_at, bestEffort: false };
+  var f = await supabase.from('foreign_watchlist_daily').select('close,trade_date').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(1);
+  if (f.data && f.data[0]) return { last: toNum(f.data[0].close), high: toNum(f.data[0].close), low: toNum(f.data[0].close), at: f.data[0].trade_date, bestEffort: true };
+  return { last: null, high: null, low: null, at: null, bestEffort: true };
+}
+
+function evaluateMonitorStatus(pick, px) {
+  var status = String(pick.status || 'WAITING').toUpperCase();
+  var finalBefore = pick.is_final || ['TP1_HIT','TP2_HIT','SL_HIT'].indexOf(status) >= 0;
+  if (!px || px.last == null) return { status: status === 'WAITING' ? 'STALE' : status, isFinal: finalBefore, note: 'stale/no price update' };
+  var active = status === 'ACTIVE' || status.indexOf('TP') >= 0 || (px.low != null && px.high != null && px.low <= pick.entry1 && px.high >= pick.entry1) || px.last >= pick.entry1;
+  if (active && px.low != null && pick.sl != null && px.low <= pick.sl) return { status: 'SL_HIT', isFinal: true, note: 'SL tersentuh' };
+  if (active && px.high != null && pick.tp2 != null && px.high >= pick.tp2) return { status: 'TP2_HIT', isFinal: true, note: 'TP2 tersentuh' };
+  if (active && px.high != null && pick.tp1 != null && px.high >= pick.tp1) return { status: 'TP1_HIT', isFinal: true, note: 'TP1 tersentuh' };
+  if (active) return { status: 'ACTIVE', isFinal: false, note: 'Entry 1 sudah tersentuh' };
+  return { status: 'WAITING', isFinal: false, note: 'Belum masuk entry' };
+}
+
+async function handleTelegramMonitorPicks(req, res, supabase) {
+  if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, checked_count: 0, error: 'Unauthorized.' });
+  try {
+    if (!isJakartaWeekday()) {
+      return res.status(200).json({ success: true, skipped: true, reason: 'weekend', sent_count: 0, checked_count: 0 });
+    }
+    var date = getJakartaDateString();
+    var hour = getWibHourString();
+    var isFinal = hour.indexOf('15:') === 0 || req.query.final === '1';
+    var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true });
+    if (q.error) throw new Error(q.error.message);
+    var rows = q.data || [];
+    if (rows.length === 0) return res.status(200).json({ success: true, skipped: true, reason: 'daily_picks_not_found', sent_count: 0, checked_count: 0, error: null });
+    var lines = [(isFinal ? '🏁' : '⏱') + ' AUTO-CUAN MONITOR ' + hour, ''];
+    var shown = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var pck = rows[i];
+      if (!isFinal && pck.is_final) continue;
+      var px = await fetchLatestPriceForMonitor(supabase, pck.ticker);
+      var ev = evaluateMonitorStatus(pck, px);
+      var update = { status: ev.status, is_final: ev.isFinal || isFinal, last_checked_at: new Date().toISOString() };
+      if (ev.status === 'ACTIVE' && !pck.hit_entry_at) update.hit_entry_at = update.last_checked_at;
+      if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) update.hit_tp1_at = update.last_checked_at;
+      if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) update.hit_tp2_at = update.last_checked_at;
+      if (ev.status === 'SL_HIT' && !pck.hit_sl_at) update.hit_sl_at = update.last_checked_at;
+      await supabase.from('telegram_daily_picks').update(update).eq('id', pck.id);
+      lines.push(pck.ticker + ' — ' + ev.status.replace(/_/g, ' '));
+      lines.push(ev.note + (px.bestEffort ? ' (best effort)' : ''));
+      lines.push('Entry 1: ' + fmtPrice(pck.entry1) + ' · Last: ' + fmtPrice(px.last));
+      lines.push('TP1/TP2: ' + fmtPrice(pck.tp1) + ' / ' + fmtPrice(pck.tp2) + ' · SL: ' + fmtPrice(pck.sl));
+      if (ev.isFinal && !isFinal) lines.push('Status: selesai, tidak akan dimonitor di update berikutnya.');
+      lines.push('');
+      shown++;
+    }
+    if (shown === 0) lines.push('Tidak ada ticker aktif yang perlu dimonitor (sudah final).');
+    lines.push('Bukan rekomendasi beli/jual. DYOR.');
+    var sendResult = await telegramNotifier.sendTelegramMessage(lines.join('\n'));
+    return res.status(200).json({ success: true, sent_count: sendResult.sent ? 1 : 0, checked_count: rows.length, shown_count: shown, error: null, telegram: sendResult });
+  } catch (e) { return res.status(200).json({ success: false, sent_count: 0, checked_count: 0, error: e.message || String(e) }); }
+}
+
+
 function buildTelegramStartMessage() {
   return [
     '🚀 Selamat datang di Auto-Cuan Bot',
@@ -2624,24 +2944,22 @@ function buildTelegramStartMessage() {
     'Command yang tersedia:',
     '',
     '/top',
-    'Melihat Top 10 saham potensial hari ini.',
-    '',
-    '/screener swing konglo',
-    'Melihat screener Swing Konglo.',
-    '',
-    '/screener swing non konglo',
-    'Melihat screener Swing Non-Konglo.',
+    'Top 10 gabungan screener: Day Trade + Swing Konglo + Swing Non-Konglo.',
     '',
     '/screener day trade',
-    'Melihat screener Day Trade.',
+    '/screener swing konglo',
+    '/screener swing non konglo',
+    'Screener saham per kategori (maks. 10 kandidat).',
     '',
     '/foreign BBCA',
     'Melihat foreign flow saham tertentu.',
     '',
-    'Butuh panduan?',
-    'Ketik /help',
+    'Auto-Cuan Top 5 Saham Pilihan dikirim otomatis Senin-Jumat setelah semua data screener siap.',
+    'Top 5 Saham Pilihan = pilihan otomatis yang lebih ketat dan dipantau intraday setelah terkirim.',
     '',
-    'Disclaimer: bukan rekomendasi beli/jual. DYOR.'
+    'Butuh panduan? Ketik /help',
+    '',
+    'Disclaimer: Bukan rekomendasi beli/jual. DYOR.'
   ].join('\n');
 }
 
@@ -2649,33 +2967,31 @@ function buildTelegramHelpMessage() {
   return [
     '📘 Panduan Auto-Cuan Bot',
     '',
-    'Gunakan tanda "/" di kolom chat untuk membuka menu command.',
+    '/top',
+    'Menampilkan Top 10 gabungan screener dari Day Trade + Swing Konglo + Swing Non-Konglo. Ini ranking umum dan tidak dimonitor otomatis.',
     '',
-    'Daftar command:',
+    '/screener day trade',
+    'Menampilkan kandidat Day Trade (maks. 10).',
     '',
-    '1. /top',
-    'Menampilkan Top 10 saham potensial hari ini.',
+    '/screener swing konglo',
+    'Menampilkan kandidat Swing Konglo (maks. 10).',
     '',
-    '2. /screener swing konglo',
-    'Menampilkan saham kategori Swing Konglo.',
+    '/screener swing non konglo',
+    'Menampilkan kandidat Swing Non-Konglo (maks. 10).',
     '',
-    '3. /screener swing non konglo',
-    'Menampilkan saham kategori Swing Non-Konglo.',
-    '',
-    '4. /screener day trade',
-    'Menampilkan saham kategori Day Trade.',
-    '',
-    '5. /foreign TICKER',
-    'Menampilkan foreign flow saham tertentu.',
-    'Contoh:',
     '/foreign BBCA',
-    '/foreign BBRI',
-    '/foreign WINS',
+    'Menampilkan foreign flow saham tertentu.',
+    '',
+    'Otomatis:',
+    '- Top 5 Saham Pilihan dikirim Senin-Jumat setelah Day Trade, Swing Konglo, dan Swing Non-Konglo siap untuk tanggal trading yang sama.',
+    '- Top 5 Saham Pilihan = pilihan otomatis yang lebih ketat dan dipantau intraday.',
+    '- Monitoring baru mulai setelah Top 5 terkirim.',
+    '- Jadwal monitor: 10:00, 11:00, 14:00, dan 15:00 WIB.',
     '',
     'Catatan:',
     '- Data foreign muncul setelah CSV berhasil di-upload.',
-    '- Jika data belum ada, bot harus membalas bahwa data belum tersedia.',
-    '- Semua output bukan rekomendasi beli/jual. DYOR.'
+    '- Missing foreign data tidak menggagalkan screener.',
+    '- Bukan rekomendasi beli/jual. DYOR.'
   ].join('\n');
 }
 
@@ -2693,17 +3009,23 @@ async function handleTelegramWebhook(req, res, supabase) {
   var text = String(msg.text || '').trim();
   var chatId = msg.chat && msg.chat.id != null ? String(msg.chat.id) : '';
 
+  var topMatch = text.match(/^\/top(?:@\w+)?(?:\s+.*)?$/i);
+  var screenerMatch = text.match(/^\/screener(?:@\w+)?(?:\s+(.+))?$/i);
   var startMatch = text.match(/^\/start(?:@\w+)?(?:\s+.*)?$/i);
   var helpMatch = text.match(/^\/help(?:@\w+)?(?:\s+.*)?$/i);
   var foreignMatch = text.match(/^\/foreign(?:@\w+)?(?:\s+(.+))?$/i);
 
-  if (!startMatch && !helpMatch && !foreignMatch) return res.status(200).json({ success: true, ignored: true });
+  if (!startMatch && !helpMatch && !foreignMatch && !topMatch && !screenerMatch) return res.status(200).json({ success: true, ignored: true });
 
   var reply = '';
   if (startMatch) {
     reply = buildTelegramStartMessage();
   } else if (helpMatch) {
     reply = buildTelegramHelpMessage();
+  } else if (topMatch) {
+    reply = await buildTelegramTopMessage(supabase);
+  } else if (screenerMatch) {
+    reply = await buildTelegramScreenerMessage(supabase, screenerMatch[1] || '');
   } else {
     var ticker = normalizeForeignTicker(foreignMatch[1] || '');
     reply = 'Format: /foreign TICKER\nContoh: /foreign BBCA';
@@ -2755,7 +3077,10 @@ function verifyCronSecret(req) {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   const secret = process.env.CRON_SECRET || '';
-  if (!secret || !token) return false;
+  if (!secret) return false;
+  var querySecret = req && req.query ? String(req.query.secret || '').trim() : '';
+  if (querySecret && querySecret === secret) return true;
+  if (!token) return false;
   return token === secret;
 }
 

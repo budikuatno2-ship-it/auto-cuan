@@ -47,7 +47,7 @@ if (-not $BotToken.Trim()) {
 $commands = @(
     @{ command = "start"; description = "Mulai dan panduan bot" },
     @{ command = "help"; description = "Bantuan penggunaan bot" },
-    @{ command = "top"; description = "Top 10 saham potensial" },
+    @{ command = "top"; description = "Top 10 gabungan screener" },
     @{ command = "screener"; description = "Screener saham per kategori" },
     @{ command = "foreign"; description = "Foreign flow per saham" }
 )
