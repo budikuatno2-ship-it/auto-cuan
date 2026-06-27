@@ -1,7 +1,7 @@
 # Auto-Cuan Local Scan Runner (PowerShell)
 # ==========================================
 # Calls existing Vercel API endpoints from CMD.
-# No Node.js, npm, npx, or Vercel CLI needed.
+# Scan commands need no Node.js, npm, npx, or Vercel CLI. Foreign import uses local Node.js.
 # Config stored at: %USERPROFILE%\.auto-cuan-scan.env
 #
 # Usage:
@@ -11,6 +11,7 @@
 #   powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade morning
 #   powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade midday
 #   powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade afternoon
+#   powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 foreign-import
 #   powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 setup
 
 param(
@@ -89,6 +90,41 @@ function Run-Setup {
     Write-Host "  [OK] Config tersimpan di: $ConfigPath"
     Write-Host "  Kamu bisa langsung double-click AUTO_CUAN_SCAN_MENU.bat."
     Write-Host ""
+}
+
+function Run-ForeignImport {
+    do {
+        Write-Host ""
+        Write-Host "  ========================================================"
+        Write-Host "       IMPORT / UPLOAD FOREIGN DATA"
+        Write-Host "  ========================================================"
+        Write-Host "  CSV format: trade_date,ticker,foreign_buy,foreign_sell,foreign_net"
+        Write-Host "  Default   : data/foreign-watchlist.csv"
+        Write-Host ""
+
+        $inputPath = Read-Host "  CSV path (kosongkan untuk default)"
+        if ($inputPath.Trim()) { $csvPath = $inputPath.Trim().Trim('"') }
+        else { $csvPath = "data/foreign-watchlist.csv" }
+
+        Write-Host ""
+        Write-Host "  Running: node tools/import-foreign-watchlist.js `"$csvPath`""
+        Write-Host "  $('-' * 50)"
+
+        & node "tools/import-foreign-watchlist.js" $csvPath
+        $exitCode = $LASTEXITCODE
+
+        Write-Host "  $('-' * 50)"
+        if ($exitCode -eq 0) {
+            Write-Host "  Import selesai."
+        } else {
+            Write-Host "  Import gagal. Exit code: $exitCode"
+        }
+
+        Write-Host ""
+        $again = Read-Host "  Upload foreign lagi? (Y/N)"
+    } while ($again -match '^[Yy]$')
+
+    return $true
 }
 
 # === API CALL HELPER ===
@@ -484,13 +520,18 @@ if ($Command -eq "setup") {
     exit 0
 }
 
+if ($Command -eq "foreign-import" -or $Command -eq "foreign") {
+    Run-ForeignImport | Out-Null
+    exit 0
+}
+
 # Load config
 $cfg = Load-Config
 if (-not $cfg.API_BASE_URL -or -not $cfg.CRON_SECRET) {
     Write-Host ""
     Write-Host "  ========================================================"
     Write-Host "  Config belum lengkap."
-    Write-Host "  Jalankan setup dulu (pilih menu 8 atau ketik 'setup')."
+    Write-Host "  Jalankan setup dulu (pilih Settings atau ketik 'setup')."
     Write-Host "  Config path: $ConfigPath"
     Write-Host "  ========================================================"
     Write-Host ""
@@ -588,6 +629,7 @@ switch ($Command) {
         Write-Host "    .\local_scan_runner.ps1 daytrade midday"
         Write-Host "    .\local_scan_runner.ps1 daytrade afternoon"
         Write-Host "    .\local_scan_runner.ps1 daytrade full"
+        Write-Host "    .\local_scan_runner.ps1 foreign-import"
         Write-Host "    .\local_scan_runner.ps1 setup"
         exit 0
     }
