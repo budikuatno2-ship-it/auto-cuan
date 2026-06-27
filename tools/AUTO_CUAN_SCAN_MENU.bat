@@ -72,7 +72,7 @@ goto done
 
 :foreignimport
 powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 foreign-import
-goto done
+goto menu
 
 :settings
 powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 setup

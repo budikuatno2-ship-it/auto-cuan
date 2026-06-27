@@ -92,39 +92,88 @@ function Run-Setup {
     Write-Host ""
 }
 
+function Invoke-ForeignImport($csvPath) {
+    Write-Host ""
+    Write-Host "  Running: node tools/import-foreign-watchlist.js `"$csvPath`""
+    Write-Host "  $('-' * 50)"
+
+    & node "tools/import-foreign-watchlist.js" $csvPath
+    $exitCode = $LASTEXITCODE
+
+    Write-Host "  $('-' * 50)"
+    if ($exitCode -eq 0) {
+        Write-Host "  Import selesai."
+    } else {
+        Write-Host "  Import gagal. Exit code: $exitCode"
+    }
+
+    return ($exitCode -eq 0)
+}
+
+function Read-ForeignCsvPaste {
+    $csvPath = "data/foreign-watchlist.csv"
+    $csvDir = Split-Path -Parent $csvPath
+    if ($csvDir -and -not (Test-Path $csvDir)) {
+        New-Item -ItemType Directory -Path $csvDir -Force | Out-Null
+    }
+
+    Write-Host ""
+    Write-Host "  Paste full CSV content di bawah ini."
+    Write-Host "  CSV format: date,ticker,open,high,low,close,volume,freq,valuasi,nbsa"
+    Write-Host "  Ketik ENDCSV pada baris baru untuk selesai."
+    Write-Host ""
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    while ($true) {
+        $line = Read-Host
+        if ($line -ceq "ENDCSV") { break }
+        $lines.Add($line)
+    }
+
+    $lines | Set-Content -Path $csvPath -Encoding UTF8
+    Write-Host ""
+    Write-Host "  CSV tersimpan otomatis ke: $csvPath"
+    return $csvPath
+}
+
 function Run-ForeignImport {
-    do {
+    while ($true) {
         Write-Host ""
         Write-Host "  ========================================================"
         Write-Host "       IMPORT / UPLOAD FOREIGN DATA"
         Write-Host "  ========================================================"
-        Write-Host "  CSV format: trade_date,ticker,foreign_buy,foreign_sell,foreign_net"
-        Write-Host "  Default   : data/foreign-watchlist.csv"
+        Write-Host "  1. Paste CSV directly here"
+        Write-Host "  2. Import from CSV file path"
+        Write-Host "  3. Back to main menu"
         Write-Host ""
 
-        $inputPath = Read-Host "  CSV path (kosongkan untuk default)"
-        if ($inputPath.Trim()) { $csvPath = $inputPath.Trim().Trim('"') }
-        else { $csvPath = "data/foreign-watchlist.csv" }
+        $mode = Read-Host "  Pilih (1-3)"
+        if ($mode -eq "1") {
+            $csvPath = Read-ForeignCsvPaste
+            [void](Invoke-ForeignImport $csvPath)
+        } elseif ($mode -eq "2") {
+            Write-Host ""
+            Write-Host "  CSV format: date,ticker,open,high,low,close,volume,freq,valuasi,nbsa"
+            Write-Host "  Default   : data/foreign-watchlist.csv"
+            Write-Host ""
 
-        Write-Host ""
-        Write-Host "  Running: node tools/import-foreign-watchlist.js `"$csvPath`""
-        Write-Host "  $('-' * 50)"
+            $inputPath = Read-Host "  CSV path (kosongkan untuk default)"
+            if ($inputPath.Trim()) { $csvPath = $inputPath.Trim().Trim('"') }
+            else { $csvPath = "data/foreign-watchlist.csv" }
 
-        & node "tools/import-foreign-watchlist.js" $csvPath
-        $exitCode = $LASTEXITCODE
-
-        Write-Host "  $('-' * 50)"
-        if ($exitCode -eq 0) {
-            Write-Host "  Import selesai."
+            [void](Invoke-ForeignImport $csvPath)
+        } elseif ($mode -eq "3") {
+            return $true
         } else {
-            Write-Host "  Import gagal. Exit code: $exitCode"
+            Write-Host ""
+            Write-Host "  Pilihan tidak valid. Coba lagi."
+            continue
         }
 
         Write-Host ""
         $again = Read-Host "  Upload foreign lagi? (Y/N)"
-    } while ($again -match '^[Yy]$')
-
-    return $true
+        if ($again -notmatch '^[Yy]$') { return $true }
+    }
 }
 
 # === API CALL HELPER ===
