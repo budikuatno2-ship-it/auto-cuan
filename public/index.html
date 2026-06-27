@@ -730,6 +730,13 @@
                 <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatFailed">—</p>
             </div>
         </div>
+        <!-- Lightweight result filters -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
+            <input id="kgTickerSearch" oninput="applyScreenerUiFilters('konglo')" placeholder="Search ticker..." class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <select id="kgRiskFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <select id="kgActionFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Action/Status: All</option><option value="Buy">Buy</option><option value="Wait Pullback">Wait Pullback</option><option value="Breakout">Breakout</option><option value="Avoid">Avoid</option><option value="Watchlist">Watchlist</option></select>
+            <select id="kgGradeFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Grade: All</option><option value="A+">A+</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select>
+        </div>
         <!-- Filter tabs -->
         <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
             <button onclick="filterScreener('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
@@ -799,6 +806,13 @@
             <!-- Disclaimer -->
             <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
                 <p class="text-[11px] text-amber-400/80 leading-relaxed"><strong>Disclaimer:</strong> Ini bukan rekomendasi beli. Screener ini hanya watchlist setup high-probability untuk swing trading. Selalu lakukan analisis sendiri dan kelola risiko.</p>
+            </div>
+            <!-- Lightweight result filters -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
+            <input id="nkTickerSearch" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Search ticker..." class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <select id="nkRiskFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <select id="nkActionFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Action/Status: All</option><option value="Buy">Buy</option><option value="Wait Pullback">Wait Pullback</option><option value="Breakout">Breakout</option><option value="Avoid">Avoid</option><option value="Watchlist">Watchlist</option></select>
+            <select id="nkGradeFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Grade: All</option><option value="A+">A+</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select>
             </div>
             <!-- Status filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -900,6 +914,13 @@
                         <span>Failed: <strong class="text-red-400" id="dtProgressFailed">0</strong></span>
                     </div>
                 </div>
+            </div>
+            <!-- Lightweight result filters -->
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
+            <input id="dtTickerSearch" oninput="applyScreenerUiFilters('daytrade')" placeholder="Search ticker..." class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <select id="dtRiskFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <select id="dtActionFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Action/Status: All</option><option value="Buy">Buy</option><option value="Wait Pullback">Wait Pullback</option><option value="Breakout">Breakout</option><option value="Avoid">Avoid</option><option value="Watchlist">Watchlist</option></select>
+            <select id="dtGradeFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Grade: All</option><option value="A+">A+</option><option value="A">A</option><option value="B">B</option><option value="C">C</option></select>
             </div>
             <!-- Filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -5009,6 +5030,54 @@ function getSignalQualityColor(grade) {
 function getSignalReason(r) { return r ? safeDisplayText(r.risk_reason || r.action_reason || r.notes || r.verdict || r.telegram_verdict || '', '') : ''; }
 function getStatusLabel(r, fallbackStatus) { return normalizeActionLabel((r && (r.final_status || r.status)) || fallbackStatus || '') || '-'; }
 
+
+function normalizeFilterToken(value) {
+    return safeDisplayText(value, '').toLowerCase().replace(/[^a-z0-9+]+/g, ' ').trim();
+}
+function getScreenerUiFilterValues(type) {
+    var prefix = type === 'daytrade' ? 'dt' : (type === 'nonkonglo' ? 'nk' : 'kg');
+    function val(id, fallback) { var el = document.getElementById(prefix + id); return el ? el.value : fallback; }
+    return {
+        ticker: normalizeFilterToken(val('TickerSearch', '')),
+        risk: val('RiskFilter', 'all'),
+        action: val('ActionFilter', 'all'),
+        grade: val('GradeFilter', 'all')
+    };
+}
+function getScreenerActionText(r) {
+    if (!r) return '';
+    return [getActionLabel(r), getStatusLabel(r, ''), r.status, r.final_status, r.swing_tier, r.setup].map(function(v) { return normalizeFilterToken(v); }).join(' ');
+}
+function screenerActionMatches(r, filter) {
+    if (!filter || filter === 'all') return true;
+    var text = getScreenerActionText(r);
+    if (filter === 'Buy') return /\b(buy|beli|trade candidate|a plus setup|swing ready)\b/.test(text);
+    if (filter === 'Wait Pullback') return /\b(wait pullback|tunggu pullback|pullback|reclaim candidate)\b/.test(text);
+    if (filter === 'Breakout') return /\b(breakout|ready breakout|pre spike|momentum continuation)\b/.test(text);
+    if (filter === 'Avoid') return /\b(avoid|hindari|invalid)\b/.test(text);
+    if (filter === 'Watchlist') return /\b(watchlist|watch|radar|early radar|pre spike watch|speculative)\b/.test(text);
+    return true;
+}
+function applyScreenerUiFilters(type, results) {
+    var cache = type === 'daytrade' ? _dtScreenerCache : (type === 'nonkonglo' ? _nkScreenerCache : _screenerCache);
+    var source = results || (cache && cache.results) || [];
+    if (!results) {
+        if (type === 'daytrade') { renderDtTable(source); renderDtCardGrid(source); }
+        else if (type === 'nonkonglo') { renderNkScreenerTable(source); renderNkCardGrid(source); }
+        else { renderScreenerTable(source); renderKgCardGrid(source); }
+        return;
+    }
+    var f = getScreenerUiFilterValues(type);
+    return source.filter(function(r) {
+        var ticker = normalizeFilterToken(r && r.ticker);
+        if (f.ticker && ticker.indexOf(f.ticker) === -1) return false;
+        if (f.risk !== 'all' && getRiskLabel(r) !== f.risk) return false;
+        if (f.grade !== 'all' && getSignalQualityGrade(r).toUpperCase() !== f.grade) return false;
+        if (!screenerActionMatches(r, f.action)) return false;
+        return true;
+    });
+}
+
 // ===== DAY TRADE CARD GRID =====
 var _dtCardData = {};
 
@@ -5034,10 +5103,10 @@ function renderDtCardGrid(results) {
     var container = document.getElementById('dtCardGrid');
     if (!container) return;
     _dtCardData = {};
-    var filtered = results;
+    var filtered = applyScreenerUiFilters('daytrade', results || []);
     if (_dtScreenerFilter && _dtScreenerFilter !== 'all') {
-        if (_dtScreenerFilter === 'WATCH') { filtered = results.filter(function(r) { return r.status === 'WATCH_PULLBACK' || r.status === 'WAIT_PULLBACK'; }); }
-        else { filtered = results.filter(function(r) { return r.status === _dtScreenerFilter; }); }
+        if (_dtScreenerFilter === 'WATCH') { filtered = filtered.filter(function(r) { return r.status === 'WATCH_PULLBACK' || r.status === 'WAIT_PULLBACK'; }); }
+        else { filtered = filtered.filter(function(r) { return r.status === _dtScreenerFilter; }); }
     }
     if (!filtered || filtered.length === 0) { container.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">Tidak ada hasil untuk filter ini.</p>'; return; }
     var html = '';
@@ -5273,9 +5342,9 @@ function renderKgCardGrid(results) {
     var container = document.getElementById('kgCardGrid');
     if (!container) return;
     _kgCardData = {};
-    var filtered = results;
+    var filtered = applyScreenerUiFilters('konglo', results || []);
     if (_screenerFilter && _screenerFilter !== 'all') {
-        filtered = results.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _screenerFilter || fs === _screenerFilter; });
+        filtered = filtered.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _screenerFilter || fs === _screenerFilter; });
     }
     if (!filtered || filtered.length === 0) { container.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">Tidak ada hasil untuk filter ini.</p>'; return; }
     var html = '';
@@ -5337,9 +5406,9 @@ function renderNkCardGrid(results) {
     var container = document.getElementById('nkCardGrid');
     if (!container) return;
     _nkCardData = {};
-    var filtered = results;
+    var filtered = applyScreenerUiFilters('nonkonglo', results || []);
     if (typeof _nkScreenerFilter !== 'undefined' && _nkScreenerFilter && _nkScreenerFilter !== 'all') {
-        filtered = results.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _nkScreenerFilter || fs === _nkScreenerFilter; });
+        filtered = filtered.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _nkScreenerFilter || fs === _nkScreenerFilter; });
     }
     if (!filtered || filtered.length === 0) { container.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">Tidak ada hasil untuk filter ini.</p>'; return; }
     var html = '';
@@ -5849,9 +5918,9 @@ function renderScreenerTable(results) {
     var tbody = document.getElementById('screenerTableBody');
     if (!tbody) return;
 
-    var filtered = results;
+    var filtered = applyScreenerUiFilters('konglo', results || []);
     if (_screenerFilter !== 'all') {
-        filtered = results.filter(function(r) {
+        filtered = filtered.filter(function(r) {
             var tier = r.swing_tier || '';
             var fs = r.final_status || r.status || 'Invalid';
             return tier === _screenerFilter || fs === _screenerFilter;
@@ -6203,9 +6272,9 @@ function renderNkScreenerTable(results) {
     }
 
     // Apply status filter (supports both old status and new swing_tier)
-    var filtered = results;
+    var filtered = applyScreenerUiFilters('nonkonglo', results || []);
     if (_nkScreenerFilter && _nkScreenerFilter !== 'all') {
-        filtered = results.filter(function(r) { return r.status === _nkScreenerFilter || r.swing_tier === _nkScreenerFilter; });
+        filtered = filtered.filter(function(r) { return r.status === _nkScreenerFilter || r.swing_tier === _nkScreenerFilter; });
     }
     if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">Tidak ada data untuk filter ini.</td></tr>';
@@ -8365,14 +8434,14 @@ function renderDtTable(results) {
     if (!tbody) return;
 
     // Apply filter
-    var filtered = results;
+    var filtered = applyScreenerUiFilters('daytrade', results || []);
     if (_dtScreenerFilter && _dtScreenerFilter !== 'all') {
         if (_dtScreenerFilter === 'WATCH') {
-            filtered = results.filter(function(r) {
+            filtered = filtered.filter(function(r) {
                 return r.status === 'WAIT_PULLBACK' || r.status === 'RECLAIM_CANDIDATE' || r.status === 'MOMENTUM_CONTINUATION' || r.status === 'SPECULATIVE';
             });
         } else {
-            filtered = results.filter(function(r) { return r.status === _dtScreenerFilter; });
+            filtered = filtered.filter(function(r) { return r.status === _dtScreenerFilter; });
         }
     }
 
