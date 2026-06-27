@@ -1,7 +1,7 @@
 # Auto-Cuan Local Scan Runner (PowerShell)
 # ==========================================
 # Calls existing Vercel API endpoints from CMD.
-# Scan commands need no Node.js, npm, npx, or Vercel CLI. Foreign import uses local Node.js.
+# Scan and foreign import commands need no Node.js, npm, npx, local Supabase keys, or Vercel CLI.
 # Config stored at: %USERPROFILE%\.auto-cuan-scan.env
 #
 # Usage:
@@ -92,22 +92,51 @@ function Run-Setup {
     Write-Host ""
 }
 
-function Invoke-ForeignImport($csvPath) {
-    Write-Host ""
-    Write-Host "  Running: node tools/import-foreign-watchlist.js `"$csvPath`""
-    Write-Host "  $('-' * 50)"
-
-    & node "tools/import-foreign-watchlist.js" $csvPath
-    $exitCode = $LASTEXITCODE
-
-    Write-Host "  $('-' * 50)"
-    if ($exitCode -eq 0) {
-        Write-Host "  Import selesai."
-    } else {
-        Write-Host "  Import gagal. Exit code: $exitCode"
+function Invoke-ForeignImport($cfg, $csvPath) {
+    if (-not (Test-Path $csvPath)) {
+        Write-Host "  Status: FAILED"
+        Write-Host "  Error : CSV file tidak ditemukan: $csvPath"
+        return $false
     }
 
-    return ($exitCode -eq 0)
+    $url = "$($cfg.API_BASE_URL)/api/sector-hot?action=foreign-import-upload"
+    if ($cfg.VERCEL_BYPASS_TOKEN) {
+        $url += "&x-vercel-protection-bypass=$($cfg.VERCEL_BYPASS_TOKEN)"
+    }
+
+    $headers = @{ Authorization = "Bearer $($cfg.CRON_SECRET)" }
+    $csvText = Get-Content -Path $csvPath -Raw -Encoding UTF8
+
+    Write-Host ""
+    Write-Host "  Uploading CSV ke Vercel API: $($cfg.API_BASE_URL)/api/sector-hot?action=foreign-import-upload"
+    Write-Host "  Source: $csvPath"
+    Write-Host "  $('-' * 50)"
+
+    try {
+        $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Post -Body $csvText -ContentType "text/csv; charset=utf-8" -TimeoutSec 180
+        if ($response.success) {
+            Write-Host "  Status: SUCCESS"
+            Write-Host "  Imported rows : $($response.imported_count)"
+            Write-Host "  Upserted rows : $($response.upserted_count)"
+            Write-Host "  Deleted old   : $($response.deleted_old_count)"
+            if ($response.errors -and $response.errors.Count -gt 0) { Write-Host "  Warnings      : $($response.errors -join '; ')" }
+            Write-Host "  $('-' * 50)"
+            return $true
+        }
+
+        Write-Host "  Status: FAILED"
+        if ($response.error) { Write-Host "  Error : $($response.error)" }
+        if ($response.errors) { Write-Host "  Errors: $($response.errors -join '; ')" }
+        Write-Host "  $('-' * 50)"
+        return $false
+    } catch {
+        $statusCode = $null
+        if ($_.Exception.Response) { $statusCode = [int]$_.Exception.Response.StatusCode }
+        Write-Host "  Status: FAILED"
+        Write-Host "  Error : HTTP $statusCode - $($_.Exception.Message)"
+        Write-Host "  $('-' * 50)"
+        return $false
+    }
 }
 
 function Read-ForeignCsvPaste {
@@ -136,7 +165,7 @@ function Read-ForeignCsvPaste {
     return $csvPath
 }
 
-function Run-ForeignImport {
+function Run-ForeignImport($cfg) {
     while ($true) {
         Write-Host ""
         Write-Host "  ========================================================"
@@ -150,7 +179,7 @@ function Run-ForeignImport {
         $mode = Read-Host "  Pilih (1-3)"
         if ($mode -eq "1") {
             $csvPath = Read-ForeignCsvPaste
-            [void](Invoke-ForeignImport $csvPath)
+            [void](Invoke-ForeignImport $cfg $csvPath)
         } elseif ($mode -eq "2") {
             Write-Host ""
             Write-Host "  CSV format: date,ticker,open,high,low,close,volume,freq,valuasi,nbsa"
@@ -161,7 +190,7 @@ function Run-ForeignImport {
             if ($inputPath.Trim()) { $csvPath = $inputPath.Trim().Trim('"') }
             else { $csvPath = "data/foreign-watchlist.csv" }
 
-            [void](Invoke-ForeignImport $csvPath)
+            [void](Invoke-ForeignImport $cfg $csvPath)
         } elseif ($mode -eq "3") {
             return $true
         } else {
@@ -569,11 +598,6 @@ if ($Command -eq "setup") {
     exit 0
 }
 
-if ($Command -eq "foreign-import" -or $Command -eq "foreign") {
-    Run-ForeignImport | Out-Null
-    exit 0
-}
-
 # Load config
 $cfg = Load-Config
 if (-not $cfg.API_BASE_URL -or -not $cfg.CRON_SECRET) {
@@ -590,6 +614,11 @@ if (-not $cfg.API_BASE_URL -or -not $cfg.CRON_SECRET) {
         Write-Host "  Setup belum selesai. Coba lagi."
         exit 1
     }
+}
+
+if ($Command -eq "foreign-import" -or $Command -eq "foreign") {
+    Run-ForeignImport $cfg | Out-Null
+    exit 0
 }
 
 Write-Host ""

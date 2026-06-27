@@ -13,6 +13,7 @@
  * Modes (Day Trade Screener v1):
  *   GET /api/sector-hot?action=daytrade-screener           → read latest Day Trade results (public)
  *   GET /api/sector-hot?action=daytrade-screener-run       → protected: run Day Trade scan (Bearer CRON_SECRET)
+ *   POST /api/sector-hot?action=foreign-import-upload        → protected: upload foreign CSV (Bearer CRON_SECRET)
  *
  * Modes (Public Screener Share):
  *   GET /api/sector-hot?action=create-screener-share-link  → protected: generate 1-day share token (Bearer CRON_SECRET)
@@ -80,6 +81,11 @@ module.exports = async function handler(req, res) {
     // === NON-KONGLO SCREENER: READ (login-gated, same as Konglo screener) ===
     if (action === 'nk-screener-results') {
       return await handleNkScreenerResults(req, res, supabase);
+    }
+
+    // === FOREIGN WATCHLIST IMPORT: UPLOAD CSV (Bearer CRON_SECRET protected) ===
+    if (action === 'foreign-import-upload') {
+      return await handleForeignImportUpload(req, res, supabase);
     }
 
     // === DAY TRADE SCREENER: READ (public — returns latest results) ===
@@ -2358,6 +2364,176 @@ function normalizeForeignTicker(input) {
   var ticker = String(input || '').trim().toUpperCase().replace(/\.JK$/, '');
   if (!/^[A-Z0-9]{2,12}$/.test(ticker)) return '';
   return ticker;
+}
+
+
+function parseForeignCsvLine(line) {
+  var out = [];
+  var cur = '';
+  var inQuotes = false;
+  for (var i = 0; i < line.length; i++) {
+    var ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      out.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out.map(function(v) { return String(v || '').trim(); });
+}
+
+function parseForeignNumber(value, field, rowNum) {
+  var raw = String(value == null ? '' : value).trim();
+  if (raw === '') return null;
+  var cleaned = raw.replace(/,/g, '');
+  var n = Number(cleaned);
+  if (!isFinite(n)) throw new Error('Invalid numeric value at row ' + rowNum + ' field ' + field + ': ' + raw);
+  return n;
+}
+
+function normalizeForeignDate(value, rowNum) {
+  var s = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) throw new Error('Invalid date at row ' + rowNum + ': ' + value);
+  var d = new Date(s + 'T00:00:00Z');
+  if (isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s) throw new Error('Invalid date at row ' + rowNum + ': ' + value);
+  return s;
+}
+
+function getRawRequestBody(req) {
+  if (typeof req.body === 'string') return Promise.resolve(req.body);
+  if (Buffer.isBuffer(req.body)) return Promise.resolve(req.body.toString('utf8'));
+  if (req.body && typeof req.body === 'object') {
+    if (typeof req.body.csv === 'string') return Promise.resolve(req.body.csv);
+    if (typeof req.body.text === 'string') return Promise.resolve(req.body.text);
+  }
+  return new Promise(function(resolve, reject) {
+    var chunks = [];
+    req.on('data', function(chunk) { chunks.push(Buffer.from(chunk)); });
+    req.on('end', function() { resolve(Buffer.concat(chunks).toString('utf8')); });
+    req.on('error', reject);
+  });
+}
+
+function parseForeignImportCsv(csvText) {
+  var text = String(csvText || '').replace(/^\uFEFF/, '');
+  var lines = text.split(/\r?\n/).filter(function(line) { return line.trim() !== ''; });
+  if (lines.length < 2) return [];
+
+  var headers = parseForeignCsvLine(lines[0]).map(function(h) { return h.toLowerCase(); });
+  var required = ['date', 'ticker', 'open', 'high', 'low', 'close', 'volume', 'freq', 'valuasi', 'nbsa'];
+  required.forEach(function(h) {
+    if (headers.indexOf(h) === -1) throw new Error('Missing CSV column: ' + h);
+  });
+
+  var rows = [];
+  var seen = {};
+  for (var i = 1; i < lines.length; i++) {
+    var rowNum = i + 1;
+    var cols = parseForeignCsvLine(lines[i]);
+    var obj = {};
+    headers.forEach(function(h, idx) { obj[h] = cols[idx]; });
+    var tradeDate = normalizeForeignDate(obj.date, rowNum);
+    var ticker = normalizeForeignTicker(obj.ticker);
+    if (!ticker) throw new Error('Invalid ticker at row ' + rowNum + ': ' + obj.ticker);
+    var close = parseForeignNumber(obj.close, 'close', rowNum);
+    var nbsa = parseForeignNumber(obj.nbsa, 'nbsa', rowNum);
+    var key = tradeDate + '|' + ticker;
+    if (seen[key]) throw new Error('Duplicate CSV row for ' + key + ' at row ' + rowNum);
+    seen[key] = true;
+    rows.push({
+      trade_date: tradeDate,
+      ticker: ticker,
+      foreign_buy: null,
+      foreign_sell: null,
+      foreign_net: (nbsa == null || close == null) ? null : nbsa * close,
+      source: 'csv',
+      uploaded_at: new Date().toISOString()
+    });
+  }
+  return rows;
+}
+
+async function deleteOldForeignRows(supabase, tickers) {
+  var deleted = 0;
+  for (var i = 0; i < tickers.length; i++) {
+    var ticker = tickers[i];
+    var dateRes = await supabase
+      .from('foreign_watchlist_daily')
+      .select('trade_date')
+      .eq('ticker', ticker)
+      .order('trade_date', { ascending: false });
+    if (dateRes.error) throw new Error('Retention read failed for ' + ticker + ': ' + dateRes.error.message);
+
+    var uniqueMap = {};
+    var uniqueDates = [];
+    (dateRes.data || []).forEach(function(r) {
+      if (r.trade_date && !uniqueMap[r.trade_date]) {
+        uniqueMap[r.trade_date] = true;
+        uniqueDates.push(r.trade_date);
+      }
+    });
+    var keepDates = uniqueDates.slice(0, 7);
+    if (uniqueDates.length <= 7) continue;
+
+    var oldRes = await supabase
+      .from('foreign_watchlist_daily')
+      .select('id')
+      .eq('ticker', ticker)
+      .not('trade_date', 'in', '(' + keepDates.join(',') + ')');
+    if (oldRes.error) throw new Error('Retention lookup failed for ' + ticker + ': ' + oldRes.error.message);
+    var oldIds = (oldRes.data || []).map(function(r) { return r.id; });
+    if (oldIds.length === 0) continue;
+
+    var delRes = await supabase.from('foreign_watchlist_daily').delete().in('id', oldIds);
+    if (delRes.error) throw new Error('Retention delete failed for ' + ticker + ': ' + delRes.error.message);
+    deleted += oldIds.length;
+  }
+  return deleted;
+}
+
+async function handleForeignImportUpload(req, res, supabase) {
+  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
+  if (!verifyCronSecret(req)) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+
+  var errors = [];
+  try {
+    var csvText = await getRawRequestBody(req);
+    var rows = parseForeignImportCsv(csvText);
+    if (rows.length === 0) {
+      return res.status(200).json({ success: false, imported_count: 0, upserted_count: 0, deleted_old_count: 0, errors: ['CSV kosong atau tidak berisi data.'] });
+    }
+
+    var upsertRes = await supabase
+      .from('foreign_watchlist_daily')
+      .upsert(rows, { onConflict: 'trade_date,ticker' })
+      .select('ticker,trade_date');
+    if (upsertRes.error) throw new Error('Upsert failed: ' + upsertRes.error.message);
+
+    var tickerMap = {};
+    rows.forEach(function(r) { tickerMap[r.ticker] = true; });
+    var tickers = Object.keys(tickerMap).sort();
+    var deleted = await deleteOldForeignRows(supabase, tickers);
+
+    return res.status(200).json({
+      success: true,
+      imported_count: rows.length,
+      upserted_count: (upsertRes.data && upsertRes.data.length) || rows.length,
+      deleted_old_count: deleted,
+      errors: errors
+    });
+  } catch (err) {
+    errors.push(err.message || String(err));
+    return res.status(200).json({ success: false, imported_count: 0, upserted_count: 0, deleted_old_count: 0, errors: errors, error: errors[0] });
+  }
 }
 
 function formatForeignNumber(value) {
