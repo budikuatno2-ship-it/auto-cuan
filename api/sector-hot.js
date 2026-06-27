@@ -2614,6 +2614,71 @@ async function buildForeignLookupMessage(supabase, ticker) {
   ].join('\n');
 }
 
+
+function buildTelegramStartMessage() {
+  return [
+    '🚀 Selamat datang di Auto-Cuan Bot',
+    '',
+    'Gunakan menu "/" untuk memilih fitur bot.',
+    '',
+    'Command yang tersedia:',
+    '',
+    '/top',
+    'Melihat Top 10 saham potensial hari ini.',
+    '',
+    '/screener swing konglo',
+    'Melihat screener Swing Konglo.',
+    '',
+    '/screener swing non konglo',
+    'Melihat screener Swing Non-Konglo.',
+    '',
+    '/screener day trade',
+    'Melihat screener Day Trade.',
+    '',
+    '/foreign BBCA',
+    'Melihat foreign flow saham tertentu.',
+    '',
+    'Butuh panduan?',
+    'Ketik /help',
+    '',
+    'Disclaimer: bukan rekomendasi beli/jual. DYOR.'
+  ].join('\n');
+}
+
+function buildTelegramHelpMessage() {
+  return [
+    '📘 Panduan Auto-Cuan Bot',
+    '',
+    'Gunakan tanda "/" di kolom chat untuk membuka menu command.',
+    '',
+    'Daftar command:',
+    '',
+    '1. /top',
+    'Menampilkan Top 10 saham potensial hari ini.',
+    '',
+    '2. /screener swing konglo',
+    'Menampilkan saham kategori Swing Konglo.',
+    '',
+    '3. /screener swing non konglo',
+    'Menampilkan saham kategori Swing Non-Konglo.',
+    '',
+    '4. /screener day trade',
+    'Menampilkan saham kategori Day Trade.',
+    '',
+    '5. /foreign TICKER',
+    'Menampilkan foreign flow saham tertentu.',
+    'Contoh:',
+    '/foreign BBCA',
+    '/foreign BBRI',
+    '/foreign WINS',
+    '',
+    'Catatan:',
+    '- Data foreign muncul setelah CSV berhasil di-upload.',
+    '- Jika data belum ada, bot harus membalas bahwa data belum tersedia.',
+    '- Semua output bukan rekomendasi beli/jual. DYOR.'
+  ].join('\n');
+}
+
 async function handleTelegramWebhook(req, res, supabase) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
@@ -2628,18 +2693,29 @@ async function handleTelegramWebhook(req, res, supabase) {
   var text = String(msg.text || '').trim();
   var chatId = msg.chat && msg.chat.id != null ? String(msg.chat.id) : '';
 
-  var match = text.match(/^\/foreign(?:@\w+)?(?:\s+(.+))?$/i);
-  if (!match) return res.status(200).json({ success: true, ignored: true });
+  var startMatch = text.match(/^\/start(?:@\w+)?(?:\s+.*)?$/i);
+  var helpMatch = text.match(/^\/help(?:@\w+)?(?:\s+.*)?$/i);
+  var foreignMatch = text.match(/^\/foreign(?:@\w+)?(?:\s+(.+))?$/i);
 
-  var ticker = normalizeForeignTicker(match[1] || '');
-  var reply = 'Format: /foreign TICKER\nContoh: /foreign BBCA';
-  if (ticker) {
-    try {
-      reply = await buildForeignLookupMessage(supabase, ticker);
-    } catch (err) {
-      reply = 'Gagal ambil data foreign untuk ' + ticker + '.';
+  if (!startMatch && !helpMatch && !foreignMatch) return res.status(200).json({ success: true, ignored: true });
+
+  var reply = '';
+  if (startMatch) {
+    reply = buildTelegramStartMessage();
+  } else if (helpMatch) {
+    reply = buildTelegramHelpMessage();
+  } else {
+    var ticker = normalizeForeignTicker(foreignMatch[1] || '');
+    reply = 'Format: /foreign TICKER\nContoh: /foreign BBCA';
+    if (ticker) {
+      try {
+        reply = await buildForeignLookupMessage(supabase, ticker);
+      } catch (err) {
+        reply = 'Gagal ambil data foreign untuk ' + ticker + '.';
+      }
     }
   }
+
   var sendResult = chatId ? await telegramNotifier.sendTelegramMessage(reply, { chat_id: chatId }) : { skipped: true, reason: 'missing_chat_id' };
   return res.status(200).json({ success: true, handled: true, sent: !!sendResult.sent, skipped: !!sendResult.skipped, reason: sendResult.reason || null });
 }

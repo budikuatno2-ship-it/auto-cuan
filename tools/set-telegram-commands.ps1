@@ -45,10 +45,10 @@ if (-not $BotToken.Trim()) {
 }
 
 $commands = @(
-    @{ command = "top"; description = "Top 10 signal hari ini" },
-    @{ command = "signal"; description = "Detail per saham" },
-    @{ command = "screener"; description = "Saham per tier" },
-    @{ command = "sectors"; description = "Top sektor dan saham unggulan" },
+    @{ command = "start"; description = "Mulai dan panduan bot" },
+    @{ command = "help"; description = "Bantuan penggunaan bot" },
+    @{ command = "top"; description = "Top 10 saham potensial" },
+    @{ command = "screener"; description = "Screener saham per kategori" },
     @{ command = "foreign"; description = "Foreign flow per saham" }
 )
 
@@ -59,7 +59,7 @@ try {
     $response = Invoke-RestMethod -Uri $url -Method Post -Body $body -ContentType "application/json; charset=utf-8" -TimeoutSec 60
     if ($response.ok) {
         Write-Host "Status: SUCCESS"
-        Write-Host "Registered commands: /top, /signal, /screener, /sectors, /foreign"
+        Write-Host "Registered commands: /start, /help, /top, /screener, /foreign"
         exit 0
     }
     Write-Host "Status: FAILED"
