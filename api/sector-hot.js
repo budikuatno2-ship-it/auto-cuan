@@ -2644,7 +2644,7 @@ async function handleNkScreenerBatch(req, res, supabase) {
       // === V6: IDX TICK NORMALIZATION (Non-Konglo — after respect zone refinement) ===
       if (scored.entry_low && scored.stop_loss && scored.tp1) {
         var _nkTickResult = idxTick.normalizeLevelsToIdxTicks(
-          { entry_low: scored.entry_low, entry_high: scored.entry_high, stop_loss: scored.stop_loss, tp1: scored.tp1, tp2: scored.tp2, risk_reward: scored.risk_reward },
+          { entry_low: scored.entry_low, entry_high: scored.entry_high, stop_loss: scored.stop_loss, tp1: scored.tp1, tp2: scored.tp2, risk_reward: scored.risk_reward, support: scored.support, resistance: scored.resistance },
           { mode: 'swing' }
         );
         if (_nkTickResult.tick_normalized) {
@@ -2654,6 +2654,8 @@ async function handleNkScreenerBatch(req, res, supabase) {
           scored.tp1 = _nkTickResult.tp1;
           scored.tp2 = _nkTickResult.tp2;
           scored.risk_reward = _nkTickResult.risk_reward;
+          scored.support = _nkTickResult.support;
+          scored.resistance = _nkTickResult.resistance;
         }
       }
 
@@ -4715,6 +4717,11 @@ function getTelegramGrade(r) {
   return safeTelegramText(r.quality_grade || r.grade, 20, '-');
 }
 
+function isTelegramWaitPullbackStatus(status) {
+  var s = safeTelegramText(status, 100, '').toUpperCase().replace(/[_-]+/g, ' ');
+  return s.indexOf('WAIT PULLBACK') >= 0;
+}
+
 function isBadTelegramStatus(status) {
   var s = safeTelegramText(status, 100, '').toUpperCase();
   return s.indexOf('INVALID') >= 0 || s.indexOf('AVOID') >= 0;
@@ -4730,8 +4737,19 @@ function joinTelegramTexts(parts) {
   return parts.map(function(p) { return safeTelegramText(p, 120, ''); }).filter(Boolean).join(' | ');
 }
 
+function normalizeTelegramRiskLabel(value) {
+  var raw = safeTelegramText(value, 50, '').trim();
+  if (!raw) return '';
+  var key = raw.toUpperCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (key === 'LOW' || key === 'LOW RISK' || key === 'RISIKO RENDAH') return 'Low Risk';
+  if (key === 'MEDIUM' || key === 'MEDIUM RISK' || key === 'MODERATE' || key === 'MODERATE RISK' || key === 'RISIKO SEDANG') return 'Medium Risk';
+  if (key === 'HIGH' || key === 'HIGH RISK' || key === 'RISIKO TINGGI') return 'High Risk';
+  if (key === 'VERY HIGH' || key === 'VERY HIGH RISK' || key === 'EXTREME' || key === 'EXTREME RISK') return 'Very High Risk';
+  return raw;
+}
+
 function deriveTelegramRiskLabel(r, mode) {
-  var risk = safeTelegramText(r.risk_label || r.verified_risk_label, 40, '');
+  var risk = normalizeTelegramRiskLabel(r.risk_label || r.verified_risk_label);
   var rr = toNum(r.risk_reward) || 0;
   var score = getTelegramScore(r, mode);
   if (!risk) {
@@ -4772,15 +4790,16 @@ function verifyTelegramSignal(row, mode) {
   var tp1 = toNum(r.tp1);
   var closeToTp = last != null && tp1 != null && last > 0 && tp1 > last && ((tp1 - last) / last) < 0.03;
   var badNotes = includesAny(noteText, ['chase', 'late', 'telat', 'failed', 'gagal', 'distribusi']);
-  var weakMomentum = includesAny(tfText + ' ' + volPhase + ' ' + noteText, ['weak', 'lemah', 'mixed', 'bearish', 'merah', 'distribution', 'distribusi']);
+  var cautionText = tfText + ' ' + volPhase + ' ' + noteText;
+  var weakMomentum = includesAny(cautionText, ['weak', 'lemah', 'mixed', 'doji', 'indecision', 'ragu', 'bearish', 'merah', 'distribution', 'distribusi']);
   var supportive = rr >= 1.5 && score >= 70 && (!volRatio || volRatio >= 1.0) && !weakMomentum && !closeToTp && !badNotes;
 
   if (badNotes || closeToTp) {
     r.telegram_action_label = badNotes && includesAny(noteText, ['failed', 'gagal', 'distribusi']) ? 'Skip dulu' : 'Pantau saja';
     r.telegram_verdict = closeToTp ? 'Pantau saja. Entry terlalu dekat TP/resistance, tunggu pullback valid.' : 'Skip dulu. Ada sinyal chase/late/failed/distribusi.';
-  } else if (s.indexOf('WAIT_PULLBACK') >= 0) {
-    r.telegram_action_label = 'Pantau saja';
-    r.telegram_verdict = 'Tunggu pullback, jangan chase.';
+  } else if (isTelegramWaitPullbackStatus(s)) {
+    r.telegram_action_label = 'Tunggu pullback valid';
+    r.telegram_verdict = 'Tunggu pullback valid, jangan chase.';
   } else if (s.indexOf('MOMENTUM_CONTINUATION') >= 0) {
     r.telegram_action_label = 'Pantau saja';
     r.telegram_verdict = 'Momentum berjalan. Jangan chase, tunggu entry valid.';
@@ -4831,7 +4850,7 @@ function computeTelegramConvictionScore(r, mode) {
   var score = getTelegramScore(r, mode);
   var rr = toNum(r.risk_reward) || 0;
   var grade = getTelegramGrade(r).toUpperCase();
-  var risk = safeTelegramText(r.verified_risk_label || r.risk_label, 40, '').toUpperCase();
+  var risk = normalizeTelegramRiskLabel(r.verified_risk_label || r.risk_label).toUpperCase();
   var value = getTelegramValue(r);
   var vol = getTelegramVolumeRatio(r);
   var status = safeTelegramText(r.status || r.final_status, 100, '').toUpperCase();
@@ -4873,7 +4892,7 @@ function verifyHighConvictionTelegramSignal(row, mode) {
   if (conviction < (mode === 'swing' ? 62 : 58)) return null;
   if (r.telegram_action_label === 'Pantau dulu' && !(conviction >= 82 && strong)) return null;
 
-  if (status.indexOf('WAIT_PULLBACK') >= 0) {
+  if (isTelegramWaitPullbackStatus(status)) {
     r.telegram_action_label = 'Tunggu pullback valid';
     r.telegram_verdict = 'Tunggu pullback valid, jangan chase.';
   } else if (status.indexOf('MOMENTUM_CONTINUATION') >= 0) {
@@ -4902,7 +4921,7 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   var statusLabel = safeTelegramText(r.status || r.final_status, 80, '-').replace(/_/g, ' ');
   var action = safeTelegramText(r.telegram_action_label, 40, 'Pantau dulu');
   var grade = getTelegramGrade(r);
-  var risk = safeTelegramText(r.verified_risk_label || r.risk_label, 50, '-');
+  var risk = normalizeTelegramRiskLabel(r.verified_risk_label || r.risk_label) || '-';
   var lines = [];
   lines.push(idx + '. ' + safeTelegramText(r.ticker, 16, '-') + ' — ' + action);
   lines.push('Status: ' + statusLabel);
