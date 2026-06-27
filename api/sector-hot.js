@@ -36,7 +36,7 @@ const idxTick = require('../lib/idx-tick-normalization');
 const telegramNotifier = require('../lib/telegram-notifier');
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'GET') {
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
@@ -54,6 +54,11 @@ module.exports = async function handler(req, res) {
 
     const action = req.query.action || null;
     const groupCode = req.query.group || null;
+
+    // === TELEGRAM WEBHOOK: /foreign TICKER lookup (uses this existing endpoint) ===
+    if (action === 'telegram-webhook') {
+      return await handleTelegramWebhook(req, res, supabase);
+    }
 
     // === SCREENER READ MODE (login-gated) ===
     if (action === 'screener') {
@@ -2344,6 +2349,88 @@ function calcScreenerRSI(closes, period) {
 function round2(val) { return Math.round(val * 100) / 100; }
 function round0(val) { return Math.round(val); }
 function delay(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
+
+
+// ============================================================
+// TELEGRAM /foreign TICKER LOOKUP (Foreign Watchlist Import v1)
+// ============================================================
+function normalizeForeignTicker(input) {
+  var ticker = String(input || '').trim().toUpperCase().replace(/\.JK$/, '');
+  if (!/^[A-Z0-9]{2,12}$/.test(ticker)) return '';
+  return ticker;
+}
+
+function formatForeignNumber(value) {
+  if (value == null || value === '') return 'N/A';
+  var n = Number(value);
+  if (!isFinite(n)) return String(value);
+  var abs = Math.abs(n);
+  var sign = n < 0 ? '-' : '';
+  if (abs >= 1000000000000) return sign + (abs / 1000000000000).toFixed(2).replace(/\.00$/, '') + 'T';
+  if (abs >= 1000000000) return sign + (abs / 1000000000).toFixed(2).replace(/\.00$/, '') + 'B';
+  if (abs >= 1000000) return sign + (abs / 1000000).toFixed(2).replace(/\.00$/, '') + 'M';
+  return n.toLocaleString('en-US');
+}
+
+function getForeignTrendLabel(net3d, net7d) {
+  if (net3d > 0 && net7d > 0) return 'Accumulation';
+  if (net3d < 0 && net7d < 0) return 'Distribution';
+  return 'Mixed';
+}
+
+async function buildForeignLookupMessage(supabase, ticker) {
+  var safeTicker = normalizeForeignTicker(ticker);
+  if (!safeTicker) return 'Format salah. Gunakan: /foreign TICKER';
+
+  var { data: rows, error } = await supabase
+    .from('foreign_watchlist_daily')
+    .select('trade_date,ticker,foreign_buy,foreign_sell,foreign_net')
+    .eq('ticker', safeTicker)
+    .order('trade_date', { ascending: false })
+    .limit(7);
+
+  if (error) return 'Gagal membaca data foreign untuk ' + safeTicker + '.';
+  if (!rows || rows.length === 0) return 'Belum ada data foreign untuk ' + safeTicker + '. Upload CSV dulu.';
+
+  var latest = rows[0];
+  var net3d = rows.slice(0, 3).reduce(function(sum, r) { return sum + (Number(r.foreign_net) || 0); }, 0);
+  var net7d = rows.slice(0, 7).reduce(function(sum, r) { return sum + (Number(r.foreign_net) || 0); }, 0);
+  var trend = getForeignTrendLabel(net3d, net7d);
+
+  return [
+    'Foreign Watchlist: ' + safeTicker,
+    'Tanggal: ' + latest.trade_date,
+    'Foreign Net: ' + formatForeignNumber(latest.foreign_net),
+    'Foreign Buy: ' + formatForeignNumber(latest.foreign_buy),
+    'Foreign Sell: ' + formatForeignNumber(latest.foreign_sell),
+    '3D Net: ' + formatForeignNumber(net3d),
+    '7D Net: ' + formatForeignNumber(net7d),
+    'Trend: ' + trend
+  ].join('\n');
+}
+
+async function handleTelegramWebhook(req, res, supabase) {
+  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
+
+  var secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (secret) {
+    var got = req.headers['x-telegram-bot-api-secret-token'];
+    if (got !== secret) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  var body = req.body || {};
+  var msg = body.message || body.edited_message || {};
+  var text = String(msg.text || '').trim();
+  var chatId = msg.chat && msg.chat.id != null ? String(msg.chat.id) : '';
+
+  var match = text.match(/^\/foreign(?:@\w+)?(?:\s+(.+))?$/i);
+  if (!match) return res.status(200).json({ success: true, ignored: true });
+
+  var ticker = normalizeForeignTicker(match[1] || '');
+  var reply = ticker ? await buildForeignLookupMessage(supabase, ticker) : 'Format salah. Gunakan: /foreign TICKER';
+  var sendResult = chatId ? await telegramNotifier.sendTelegramMessage(reply, { chat_id: chatId }) : { skipped: true, reason: 'missing_chat_id' };
+  return res.status(200).json({ success: true, handled: true, sent: !!sendResult.sent, skipped: !!sendResult.skipped, reason: sendResult.reason || null });
+}
 
 async function updateMeta(supabase, scannedCount, failedCount, status, message) {
   await supabase.from('sector_hot_meta').upsert([{
