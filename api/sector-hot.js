@@ -2632,6 +2632,75 @@ function getWibHourString() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(11, 16) + ' WIB';
 }
 
+
+function getJakartaNow() {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000);
+}
+
+function getJakartaDateString() {
+  return getJakartaNow().toISOString().slice(0, 10);
+}
+
+function isJakartaWeekday() {
+  var day = getJakartaNow().getUTCDay();
+  return day >= 1 && day <= 5;
+}
+
+function getJakartaDateFromTimestamp(value) {
+  if (!value) return null;
+  var s = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var d = new Date(s);
+  if (isNaN(d.getTime())) return null;
+  return new Date(d.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function isFreshForJakartaDate(value, tradingDate) {
+  return getJakartaDateFromTimestamp(value) === tradingDate;
+}
+
+function buildReadinessItem(meta, latestRows, tradingDate, sourceFields) {
+  meta = meta || null;
+  latestRows = latestRows || [];
+  sourceFields = sourceFields || [];
+  var latest = null;
+  if (meta) {
+    for (var i = 0; i < sourceFields.length; i++) {
+      if (meta[sourceFields[i]]) { latest = meta[sourceFields[i]]; break; }
+    }
+    if (!latest) latest = meta.run_date || meta.calculated_at || meta.updated_at;
+  }
+  if (!latest && latestRows[0]) latest = latestRows[0].calculated_at || latestRows[0].run_date || latestRows[0].trade_date || null;
+  var status = meta && meta.status ? String(meta.status).toLowerCase() : '';
+  var badStatus = ['failed', 'scanning', 'running', 'idle', 'pending'].indexOf(status) >= 0;
+  var ready = !!latest && isFreshForJakartaDate(latest, tradingDate) && latestRows.length > 0 && !badStatus;
+  return {
+    ready: ready,
+    latest_date_or_timestamp: latest || null,
+    row_count: latestRows.length,
+    status: status || null
+  };
+}
+
+async function getScreenerReadiness(supabase) {
+  var tradingDate = getJakartaDateString();
+  var dayMetaRes = await supabase.from('daytrade_screener_meta').select('run_date,calculated_at,updated_at,status,published_count,top_count').eq('id', 'latest').maybeSingle();
+  var dayRowsRes = await supabase.from('daytrade_screener_latest').select('ticker,calculated_at,run_id').order('daytrade_score', { ascending: false }).limit(1);
+  var kongloMetaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,status,scanned_count').eq('id', 'latest').maybeSingle();
+  var kongloRowsRes = await supabase.from('swing_screener_latest').select('ticker,calculated_at').order('score', { ascending: false }).limit(1);
+  var nkMetaRes = await supabase.from('swing_screener_non_konglo_meta').select('run_date,calculated_at,updated_at,status,published_count').eq('id', 'latest').maybeSingle();
+  var nkRowsRes = await supabase.from('swing_screener_non_konglo_latest').select('ticker,calculated_at').order('rank', { ascending: true }).limit(1);
+
+  var readiness = {
+    day_trade: buildReadinessItem(dayMetaRes.data, dayRowsRes.data || [], tradingDate, ['run_date', 'calculated_at']),
+    swing_konglo: buildReadinessItem(kongloMetaRes.data, kongloRowsRes.data || [], tradingDate, ['calculated_at']),
+    swing_non_konglo: buildReadinessItem(nkMetaRes.data, nkRowsRes.data || [], tradingDate, ['run_date', 'calculated_at'])
+  };
+  readiness.ready = readiness.day_trade.ready && readiness.swing_konglo.ready && readiness.swing_non_konglo.ready;
+  readiness.trading_date = tradingDate;
+  return readiness;
+}
+
 function pctFrom(base, value) {
   var b = toNum(base), v = toNum(value);
   return b && v ? Math.round(((v - b) / b * 100) * 10) / 10 : null;
@@ -2774,8 +2843,16 @@ async function selectDailyTop5(supabase) {
 async function handleTelegramDailyPicks(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, picked_count: 0, error: 'Unauthorized.' });
   try {
+    if (!isJakartaWeekday()) {
+      return res.status(200).json({ success: true, skipped: true, reason: 'weekend', sent_count: 0, picked_count: 0 });
+    }
+    var force = req.query && req.query.force === '1';
+    var readiness = await getScreenerReadiness(supabase);
+    if (!force && !readiness.ready) {
+      return res.status(200).json({ success: true, skipped: true, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0 });
+    }
     var picks = await selectDailyTop5(supabase);
-    var date = getWibDateString();
+    var date = getJakartaDateString();
     var lines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Jam: 08:00 WIB', 'Tanggal: ' + date, ''];
     if (picks.length === 0) lines.push('Belum ada kandidat yang memenuhi syarat dari cache screener.');
     for (var i = 0; i < picks.length; i++) { lines.push(await formatCandidateBlock(supabase, picks[i], i + 1, false)); lines.push(''); }
@@ -2790,7 +2867,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       var ins = await supabase.from('telegram_daily_picks').insert(rows);
       if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
     }
-    return res.status(200).json({ success: true, sent_count: sendResult.sent ? 1 : 0, picked_count: picks.length, error: null, telegram: sendResult });
+    return res.status(200).json({ success: true, skipped: false, forced: force, readiness: readiness, sent_count: sendResult.sent ? 1 : 0, picked_count: picks.length, error: null, telegram: sendResult });
   } catch (e) {
     return res.status(200).json({ success: false, sent_count: 0, picked_count: 0, error: e.message || String(e) });
   }
@@ -2819,13 +2896,16 @@ function evaluateMonitorStatus(pick, px) {
 async function handleTelegramMonitorPicks(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, checked_count: 0, error: 'Unauthorized.' });
   try {
-    var date = getWibDateString();
+    if (!isJakartaWeekday()) {
+      return res.status(200).json({ success: true, skipped: true, reason: 'weekend', sent_count: 0, checked_count: 0 });
+    }
+    var date = getJakartaDateString();
     var hour = getWibHourString();
     var isFinal = hour.indexOf('15:') === 0 || req.query.final === '1';
     var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true });
     if (q.error) throw new Error(q.error.message);
     var rows = q.data || [];
-    if (rows.length === 0) return res.status(200).json({ success: true, sent_count: 0, checked_count: 0, error: null, skipped: 'no_daily_picks' });
+    if (rows.length === 0) return res.status(200).json({ success: true, skipped: true, reason: 'daily_picks_not_found', sent_count: 0, checked_count: 0, error: null });
     var lines = [(isFinal ? '🏁' : '⏱') + ' AUTO-CUAN MONITOR ' + hour, ''];
     var shown = 0;
     for (var i = 0; i < rows.length; i++) {
@@ -2874,8 +2954,8 @@ function buildTelegramStartMessage() {
     '/foreign BBCA',
     'Melihat foreign flow saham tertentu.',
     '',
-    'Auto-Cuan Top 5 Saham Pilihan dikirim otomatis sekitar 08:00 WIB.',
-    'Top 5 otomatis itu saja yang dimonitor pada 10:00, 11:00, 14:00, dan 15:00 WIB.',
+    'Auto-Cuan Top 5 Saham Pilihan dikirim otomatis Senin-Jumat setelah semua data screener siap.',
+    'Top 5 Saham Pilihan = pilihan otomatis yang lebih ketat dan dipantau intraday setelah terkirim.',
     '',
     'Butuh panduan? Ketik /help',
     '',
@@ -2903,8 +2983,9 @@ function buildTelegramHelpMessage() {
     'Menampilkan foreign flow saham tertentu.',
     '',
     'Otomatis:',
-    '- Top 5 Saham Pilihan dikirim sekitar 08:00 WIB.',
-    '- Hanya Top 5 otomatis yang dimonitor intraday.',
+    '- Top 5 Saham Pilihan dikirim Senin-Jumat setelah Day Trade, Swing Konglo, dan Swing Non-Konglo siap untuk tanggal trading yang sama.',
+    '- Top 5 Saham Pilihan = pilihan otomatis yang lebih ketat dan dipantau intraday.',
+    '- Monitoring baru mulai setelah Top 5 terkirim.',
     '- Jadwal monitor: 10:00, 11:00, 14:00, dan 15:00 WIB.',
     '',
     'Catatan:',
