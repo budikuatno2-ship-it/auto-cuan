@@ -89,3 +89,39 @@ Hasilnya langsung tersimpan di Supabase, sehingga website otomatis menampilkan d
 - Config tersimpan di `%USERPROFILE%\.auto-cuan-scan.env` (luar repo).
 - Jangan share config file ke siapapun.
 - File `.bat` hanya memanggil PowerShell runner, tidak mengandung secret.
+
+
+## Day Trade Auto Loop
+
+Menu `4` dan `5` sekarang menjalankan Day Trade otomatis berulang:
+
+- `4. Start Day Trade Fast AUTO LOOP`
+- `5. Start Day Trade Full AUTO LOOP`
+
+Default:
+- Mulai: `09:10` WIB
+- Stop: `15:40` WIB
+- Interval: `30` menit
+
+Cara stop manual: tekan `Ctrl+C` atau tutup jendela CMD.
+
+Opsional override sebelum membuka menu dari CMD:
+
+```cmd
+set AUTO_RUN_START=09:10
+set AUTO_RUN_END=15:40
+set AUTO_RUN_INTERVAL_MINUTES=30
+tools\AUTO_CUAN_SCAN_MENU.bat
+```
+
+Tidak perlu Node.js, npm, npx, atau Vercel CLI.
+
+
+## Jam Istirahat Otomatis
+
+Day Trade auto loop tidak akan memulai scan baru pada jam istirahat:
+
+- Senin-Kamis: 12:00-13:30 WIB
+- Jumat: 11:30-14:00 WIB
+
+Kalau jadwal next run jatuh di jam istirahat, runner otomatis menunggu sampai jam istirahat selesai, lalu lanjut lagi.

@@ -321,6 +321,160 @@ function Run-SektorHot($cfg) {
     }
 }
 
+
+function Parse-HhMmToMinutes($value, $fallback) {
+    $raw = if ($value) { "$value".Trim() } else { "$fallback" }
+    if ($raw -notmatch '^\d{1,2}:\d{2}$') { return $null }
+    $parts = $raw -split ':', 2
+    $h = [int]$parts[0]
+    $m = [int]$parts[1]
+    if ($h -lt 0 -or $h -gt 23 -or $m -lt 0 -or $m -gt 59) { return $null }
+    return ($h * 60 + $m)
+}
+
+function Get-WibNow {
+    return ([DateTime]::UtcNow).AddHours(7)
+}
+
+function Get-WibMinutesNow {
+    $wibNow = Get-WibNow
+    return ($wibNow.Hour * 60 + $wibNow.Minute)
+}
+
+
+function Get-WibLunchBreakWindow($wibNow) {
+    # DayOfWeek: Sunday=0, Monday=1, ..., Friday=5
+    $day = [int]$wibNow.DayOfWeek
+    if ($day -ge 1 -and $day -le 4) {
+        return @{ Start = (12 * 60); End = (13 * 60 + 30); Label = "Senin-Kamis 12:00-13:30 WIB" }
+    }
+    if ($day -eq 5) {
+        return @{ Start = (11 * 60 + 30); End = (14 * 60); Label = "Jumat 11:30-14:00 WIB" }
+    }
+    return $null
+}
+
+function Is-WibLunchBreak($wibNow) {
+    $breakWindow = Get-WibLunchBreakWindow $wibNow
+    if ($null -eq $breakWindow) { return $false }
+    $minutes = $wibNow.Hour * 60 + $wibNow.Minute
+    return ($minutes -ge $breakWindow.Start -and $minutes -lt $breakWindow.End)
+}
+
+function Get-WibLunchBreakEnd($wibNow) {
+    $breakWindow = Get-WibLunchBreakWindow $wibNow
+    if ($null -eq $breakWindow) { return $null }
+    return $wibNow.Date.AddMinutes($breakWindow.End)
+}
+
+function Move-NextRunOutOfLunchBreak($candidateTime) {
+    $breakWindow = Get-WibLunchBreakWindow $candidateTime
+    if ($null -eq $breakWindow) { return $candidateTime }
+    $minutes = $candidateTime.Hour * 60 + $candidateTime.Minute
+    if ($minutes -ge $breakWindow.Start -and $minutes -lt $breakWindow.End) {
+        return $candidateTime.Date.AddMinutes($breakWindow.End)
+    }
+    return $candidateTime
+}
+
+function Wait-SecondsWithProgress($seconds, $label) {
+    $remaining = [int][Math]::Max(0, $seconds)
+    while ($remaining -gt 0) {
+        $chunk = [Math]::Min($remaining, 60)
+        $mins = [Math]::Ceiling($remaining / 60)
+        Write-Host "`r  $label ($mins menit lagi)   " -NoNewline
+        Start-Sleep -Seconds $chunk
+        $remaining -= $chunk
+    }
+    Write-Host ""
+}
+
+function Run-DayTradeAutoLoop($cfg, $loopMode) {
+    $isFull = ($loopMode -eq "full" -or $loopMode -eq "auto-full")
+    $runMode = if ($isFull) { "auto-full" } else { "auto-fast" }
+    $label = if ($isFull) { "FULL" } else { "FAST" }
+
+    $startText = if ($env:AUTO_RUN_START) { $env:AUTO_RUN_START } else { "09:10" }
+    $endText = if ($env:AUTO_RUN_END) { $env:AUTO_RUN_END } else { "15:40" }
+    $intervalMin = if ($env:AUTO_RUN_INTERVAL_MINUTES) { [int]$env:AUTO_RUN_INTERVAL_MINUTES } else { 30 }
+
+    $startMin = Parse-HhMmToMinutes $startText "09:10"
+    $endMin = Parse-HhMmToMinutes $endText "15:40"
+    if ($startMin -eq $null -or $endMin -eq $null -or $endMin -le $startMin) {
+        Write-Host "  Invalid auto loop time. Use HH:mm and ensure end > start."
+        return $false
+    }
+    if ($intervalMin -le 0) {
+        Write-Host "  Invalid AUTO_RUN_INTERVAL_MINUTES. Must be positive."
+        return $false
+    }
+
+    Write-Host ""
+    Write-Host "  ========================================================"
+    Write-Host "       DAY TRADE AUTO LOOP ($label)"
+    Write-Host "  ========================================================"
+    Write-Host "  Window  : $startText - $endText WIB"
+    Write-Host "  Interval: $intervalMin menit"
+    Write-Host "  Mode    : otomatis morning/midday/afternoon sesuai jam WIB"
+    Write-Host "  Istirahat: Senin-Kamis 12:00-13:30 WIB; Jumat 11:30-14:00 WIB"
+    Write-Host "  Stop    : otomatis setelah $endText WIB, atau tekan Ctrl+C"
+    Write-Host "  ========================================================"
+    Write-Host ""
+
+    while ($true) {
+        $nowMin = Get-WibMinutesNow
+        $wibNow = Get-WibNow
+
+        if ($nowMin -gt $endMin) {
+            Write-Host "  Market window sudah lewat ($($wibNow.ToString('HH:mm')) WIB). Auto loop berhenti."
+            return $true
+        }
+
+        if ($nowMin -lt $startMin) {
+            $waitSec = ($startMin - $nowMin) * 60 - $wibNow.Second
+            Wait-SecondsWithProgress $waitSec "Menunggu start window $startText WIB"
+            continue
+        }
+
+        if (Is-WibLunchBreak $wibNow) {
+            $breakEnd = Get-WibLunchBreakEnd $wibNow
+            $breakWait = [int][Math]::Max(1, ($breakEnd - $wibNow).TotalSeconds)
+            Write-Host ""
+            Write-Host "  [$($wibNow.ToString('HH:mm:ss')) WIB] Jam istirahat. Tidak mulai scan baru."
+            Write-Host "  Next boleh mulai: $($breakEnd.ToString('HH:mm:ss')) WIB"
+            Wait-SecondsWithProgress $breakWait "Menunggu jam istirahat selesai"
+            continue
+        }
+
+        Write-Host ""
+        Write-Host "  [$($wibNow.ToString('HH:mm:ss')) WIB] Auto run Day Trade $label dimulai..."
+        $ok = Run-DayTrade $cfg $runMode
+        if (-not $ok) {
+            Write-Host "  Auto run selesai dengan warning/error. Loop tetap lanjut sampai window berakhir."
+        }
+
+        $afterRun = Get-WibNow
+        $afterMin = $afterRun.Hour * 60 + $afterRun.Minute
+        if ($afterMin -ge $endMin) {
+            Write-Host "  Window selesai setelah run terakhir. Auto loop berhenti."
+            return $true
+        }
+
+        $next = $afterRun.AddMinutes($intervalMin)
+        $next = Move-NextRunOutOfLunchBreak $next
+        $endToday = $afterRun.Date.AddMinutes($endMin)
+        if ($next -gt $endToday) {
+            Write-Host "  Next run akan melewati $endText WIB. Auto loop berhenti."
+            return $true
+        }
+
+        $wait = [int][Math]::Max(1, ($next - $afterRun).TotalSeconds)
+        Write-Host ""
+        Write-Host "  Next Day Trade $label run: $($next.ToString('HH:mm:ss')) WIB"
+        Wait-SecondsWithProgress $wait "Menunggu next run"
+    }
+}
+
 # === MAIN ===
 $startTime = Get-Date
 
@@ -388,6 +542,10 @@ switch ($Command) {
         if ($nkOk) { Write-Host "`n  Non-Konglo OK. Memulai Day Trade Fast..." }
         Run-DayTrade $cfg "auto-fast" | Out-Null
         $success = $true
+    }
+    "daytrade-auto" {
+        $loopMode = if ($SubArg) { $SubArg } else { "fast" }
+        $success = Run-DayTradeAutoLoop $cfg $loopMode
     }
     "daytrade" {
         $mode = if ($SubArg) { $SubArg } else { "auto-fast" }

@@ -13,8 +13,8 @@ echo.
 echo   1. Run Konglo
 echo   2. Run Non-Konglo
 echo   3. Run Swing All (Konglo + Non-Konglo)
-echo   4. Run Day Trade Fast (Auto Waktu)
-echo   5. Run Day Trade Full (Auto Waktu)
+echo   4. Start Day Trade Fast AUTO LOOP
+echo   5. Start Day Trade Full AUTO LOOP
 echo   6. Refresh Sektor Hot / Group Hot
 echo   7. Refresh All Ringan
 echo.
@@ -53,11 +53,11 @@ powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 swing-all
 goto done
 
 :dt_fast
-powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade auto-fast
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade-auto fast
 goto done
 
 :dt_full
-powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade auto-full
+powershell -ExecutionPolicy Bypass -File tools\local_scan_runner.ps1 daytrade-auto full
 goto done
 
 :sektor
