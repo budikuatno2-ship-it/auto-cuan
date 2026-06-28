@@ -2727,6 +2727,42 @@ function getEntry2(row) {
   return toNum(row.last_price);
 }
 
+
+function getMinTp1UpsideForCategory(category) {
+  var cat = String(category || '').toLowerCase();
+  var envName = cat.indexOf('day') >= 0 ? 'DAYTRADE_MIN_TP1_UPSIDE_PCT' : (cat.indexOf('non') >= 0 ? 'SWING_NON_KONGLO_MIN_TP1_UPSIDE_PCT' : 'SWING_KONGLO_MIN_TP1_UPSIDE_PCT');
+  var fallback = cat.indexOf('day') >= 0 ? 3 : 5;
+  var configured = toNum(process.env[envName]);
+  return configured != null && configured >= 0 ? configured : fallback;
+}
+
+function candidatePassesMinUpside(candidate) {
+  if (!candidate || !candidate.ticker) return false;
+  var entry = toNum(candidate.entry1) || getEntry1(candidate);
+  var tp1 = toNum(candidate.tp1n || candidate.tp1);
+  if (!(entry > 0) || !(tp1 > 0) || tp1 <= entry) return false;
+  var upside = candidate.tp1_upside != null ? toNum(candidate.tp1_upside) : pctFrom(entry, tp1);
+  if (upside == null || !isFinite(upside)) return false;
+  if (!candidate.entry1) candidate.entry1 = entry;
+  if (!candidate.tp1n) candidate.tp1n = tp1;
+  candidate.tp1_upside = upside;
+  return upside >= getMinTp1UpsideForCategory(candidate.category);
+}
+
+function rankCandidatesByPotential(candidate) {
+  if (!candidate) return -999999;
+  var stalePenalty = 0;
+  if (!candidate.ticker || !candidate.entry1 || !candidate.tp1n || !candidate.sl) stalePenalty -= 1000;
+  if (includesAny(joinTelegramTexts([candidate.notes, candidate.status_reason, candidate.entry_timing, candidate.time_plan, candidate.telegram_verdict]), ['chase', 'telat', 'late', 'failed', 'gagal', 'distribusi', 'avoid', 'invalid'])) stalePenalty -= 35;
+  var upside = toNum(candidate.tp1_upside);
+  if (upside == null) upside = pctFrom(toNum(candidate.entry1) || getEntry1(candidate), toNum(candidate.tp1n || candidate.tp1));
+  var rr = toNum(candidate.risk_reward) || 0;
+  var score = toNum(candidate.combined_score || candidate.telegram_conviction_score || candidate.score || candidate.daytrade_score) || 0;
+  var volume = getTelegramValue(candidate) > 0 ? Math.min(20, Math.log10(getTelegramValue(candidate))) : 0;
+  var volRatio = getTelegramVolumeRatio(candidate) || 0;
+  return ((upside || 0) * 100) + (rr * 25) + score + (volume * 3) + (volRatio * 5) + stalePenalty;
+}
+
 function normalizeCombinedCandidate(row, category) {
   var r = Object.assign({}, row || {});
   r.category = category;
@@ -2764,10 +2800,10 @@ async function fetchCombinedScreenerCandidates(supabase) {
   var nk = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
   (nk.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Swing Non-Konglo')); });
   var byTicker = {};
-  pools.filter(function(r) { return r.ticker && r.entry1 && r.tp1n && r.tp2n && r.sl; }).forEach(function(r) {
-    if (!byTicker[r.ticker] || (r.combined_score || 0) > (byTicker[r.ticker].combined_score || 0)) byTicker[r.ticker] = r;
+  pools.filter(function(r) { return r.ticker && r.entry1 && r.tp1n && r.tp2n && r.sl && candidatePassesMinUpside(r); }).forEach(function(r) {
+    if (!byTicker[r.ticker] || rankCandidatesByPotential(r) > rankCandidatesByPotential(byTicker[r.ticker])) byTicker[r.ticker] = r;
   });
-  return Object.keys(byTicker).map(function(k) { return byTicker[k]; }).sort(function(a, b) { return (b.combined_score || 0) - (a.combined_score || 0) || a.ticker.localeCompare(b.ticker); });
+  return Object.keys(byTicker).map(function(k) { return byTicker[k]; }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
 }
 
 async function fetchForeignSummary(supabase, ticker) {
@@ -2818,9 +2854,9 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
 }
 
 async function buildTelegramTopMessage(supabase) {
-  var rows = (await fetchCombinedScreenerCandidates(supabase)).slice(0, 10);
+  var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidatePassesMinUpside).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
   var lines = ['🔥 TOP 10 GABUNGAN SCREENER — ' + getWibDateString(), ''];
-  if (rows.length === 0) lines.push('Belum ada kandidat dari cache screener. Jalankan/refresh screener dulu.');
+  if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
   for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, true)); lines.push(''); }
   lines.push('Bukan rekomendasi beli/jual. DYOR.');
   return lines.join('\n');
@@ -2835,10 +2871,10 @@ async function buildTelegramScreenerMessage(supabase, modeText) {
   else if (mode === 'swing non konglo' || mode === 'swing non-konglo') { category = 'Swing Non-Konglo'; table = 'swing_screener_non_konglo_latest'; orderCol = 'rank'; asc = true; }
   else return 'Format:\n/screener day trade\n/screener swing konglo\n/screener swing non konglo';
   var res = await supabase.from(table).select('*').order(orderCol, { ascending: asc }).limit(20);
-  var rows = (res.data || []).map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker; }).sort(function(a, b) { return (b.combined_score || 0) - (a.combined_score || 0); }).slice(0, 10);
+  var rows = (res.data || []).map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker && candidatePassesMinUpside(r); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
   var lines = ['📊 SCREENER ' + category.toUpperCase() + ' — ' + getWibDateString(), ''];
-  if (rows.length === 0) lines.push('Belum ada kandidat dari cache screener.');
-  for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, false)); lines.push(''); }
+  if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
+  for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, category === 'Day Trade')); lines.push(''); }
   lines.push('Bukan rekomendasi beli/jual. DYOR.');
   return lines.join('\n');
 }
@@ -3128,7 +3164,7 @@ async function selectDailyTop5(supabase) {
       + (rows[i].tp2_upside >= 5 ? 8 : 0)
       + ((toNum(rows[i].risk_reward) || 0) >= 1.8 ? 6 : 0);
   }
-  return rows.sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
+  return rows.filter(candidatePassesMinUpside).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
 }
 
 async function handleTelegramDailyPicks(req, res, supabase) {
@@ -3147,7 +3183,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     var picks = await selectDailyTop5(supabase);
     var date = getJakartaDateString();
     var header = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date, 'Bukan rekomendasi beli/jual. DYOR.'].join('\n');
-    var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage('🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5\nTanggal: ' + date + '\n\nBelum ada kandidat yang memenuhi syarat dari cache screener.');
+    var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage('🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5\nTanggal: ' + date + '\n\nBelum ada kandidat yang lolos filter potensi TP minimal.');
     var detailSent = 0;
     for (var i = 0; i < picks.length; i++) {
       var detailText = await formatCandidateBlock(supabase, picks[i], i + 1, false);
@@ -5546,7 +5582,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     // Step 1: Deterministic Telegram verification filters INVALID/AVOID, very high risk, and weak RR before output
     var verifiedCandidates = candidates.map(function(r) { return verifyTelegramSignal(r, 'daytrade'); }).filter(Boolean);
     var highConvictionCandidates = verifiedCandidates.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'daytrade'); }).filter(Boolean);
-    var nonAvoid = highConvictionCandidates;
+    var nonAvoid = highConvictionCandidates.map(function(r) { return normalizeCombinedCandidate(r, 'Day Trade'); }).filter(candidatePassesMinUpside);
 
     // Step 2: Prioritize actionable setups
     var setupPriority = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8 };
@@ -5572,12 +5608,13 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.daytrade_score || 0) - (a.daytrade_score || 0);
     });
 
+    actionable.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = actionable.slice(0, 5);
     var headerNote = '';
 
     // Step 5: Fallback — if still empty but published_count > 0
     if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
+      nonAvoid.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
       finalList = nonAvoid.slice(0, 5);
       headerNote = 'Tidak ada kandidat A/B bersih, menampilkan watchlist terbaik.';
     }
@@ -5585,7 +5622,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     // Step 6: If EVERYTHING is AVOID
     if (finalList.length === 0) {
       _dtTelegramLastRunId = runId;
-      return { sent: false, skipped: true, reason: 'no_high_conviction_candidates', published_count: publishedCount, raw_candidate_count: rawCount, verified_count: verifiedCandidates.length, selected_count: 0 };
+      return { sent: false, skipped: true, reason: 'no_min_tp1_upside_candidates', message: 'Belum ada kandidat yang lolos filter potensi TP minimal.', published_count: publishedCount, raw_candidate_count: rawCount, verified_count: verifiedCandidates.length, selected_count: 0 };
     }
 
     // Format message
@@ -5965,7 +6002,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
     // Deterministic Telegram verification for Swing Konglo
     var verifiedRows = rows.map(function(r) { return verifyTelegramSignal(r, 'swing'); }).filter(Boolean);
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
-    var nonAvoid = highConvictionRows;
+    var nonAvoid = highConvictionRows.map(function(r) { return normalizeCombinedCandidate(r, 'Swing Konglo'); }).filter(candidatePassesMinUpside);
 
     // Tier 1: Ready/Swing Ready with good RR and Grade A/B
     var tier1 = nonAvoid.filter(function(r) {
@@ -5984,6 +6021,8 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
     });
 
     // Build final: tier1 first, then tier2 to fill
+    tier1.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
+    tier2.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = tier1.slice(0, 5);
     if (finalList.length < 5) {
       var seen = {}; finalList.forEach(function(r) { seen[r.ticker] = true; });
@@ -5993,11 +6032,11 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
 
     var headerNote = '';
     if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.score || 0) - (a.score || 0); });
+      nonAvoid.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
       finalList = nonAvoid.slice(0, 5);
       headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
     }
-    if (finalList.length === 0) return { sent: false, skipped: true, reason: 'no_high_conviction_candidates', verified_count: verifiedRows.length, selected_count: 0 };
+    if (finalList.length === 0) return { sent: false, skipped: true, reason: 'no_min_tp1_upside_candidates', message: 'Belum ada kandidat yang lolos filter potensi TP minimal.', verified_count: verifiedRows.length, selected_count: 0 };
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', headerNote);
     var result = await telegramNotifier.sendTelegramMessage(msg);
@@ -6020,7 +6059,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     // Deterministic Telegram verification for Swing Non-Konglo
     var verifiedRows = rows.map(function(r) { return verifyTelegramSignal(r, 'swing'); }).filter(Boolean);
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
-    var nonAvoid = highConvictionRows;
+    var nonAvoid = highConvictionRows.map(function(r) { return normalizeCombinedCandidate(r, 'Swing Non-Konglo'); }).filter(candidatePassesMinUpside);
 
     // Tier 1: Ready with RR >= 1.5 and Grade A/B
     var tier1 = nonAvoid.filter(function(r) {
@@ -6038,6 +6077,8 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     });
 
     // Build final
+    tier1.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
+    tier2.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = tier1.slice(0, 5);
     if (finalList.length < 5) {
       var seen = {}; finalList.forEach(function(r) { seen[r.ticker] = true; });
@@ -6047,11 +6088,11 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
 
     var headerNote = '';
     if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.score || 0) - (a.score || 0); });
+      nonAvoid.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
       finalList = nonAvoid.slice(0, 5);
       headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
     }
-    if (finalList.length === 0) return { sent: false, skipped: true, reason: 'no_high_conviction_candidates', verified_count: verifiedRows.length, selected_count: 0 };
+    if (finalList.length === 0) return { sent: false, skipped: true, reason: 'no_min_tp1_upside_candidates', message: 'Belum ada kandidat yang lolos filter potensi TP minimal.', verified_count: verifiedRows.length, selected_count: 0 };
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCCA Swing Non-Konglo Signal', headerNote);
     var result = await telegramNotifier.sendTelegramMessage(msg);
