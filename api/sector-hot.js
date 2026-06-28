@@ -2382,6 +2382,52 @@ function derivePatternLabel(row) {
   return { pattern_label: 'No Clear Pattern', pattern_notes: 'Belum ada pola deterministic yang cukup jelas.' };
 }
 
+
+async function fetchForeignConfluenceMap(supabase, tickers) {
+  var out = {};
+  var uniq = [];
+  var seen = {};
+  (tickers || []).forEach(function(t) {
+    var safe = normalizeForeignTicker(t);
+    if (safe && !seen[safe]) { seen[safe] = true; uniq.push(safe); }
+  });
+  if (uniq.length === 0) return out;
+  try {
+    for (var i = 0; i < uniq.length; i += 50) {
+      var chunk = uniq.slice(i, i + 50);
+      var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,close,nbsa').in('ticker', chunk).order('trade_date', { ascending: false });
+      if (res.error) continue;
+      var grouped = {};
+      (res.data || []).forEach(function(r) {
+        var t = normalizeForeignTicker(r.ticker);
+        if (!grouped[t]) grouped[t] = [];
+        if (grouped[t].length < 7) grouped[t].push(r);
+      });
+      Object.keys(grouped).forEach(function(t) { out[t] = deriveForeignConfluenceFromRows(grouped[t]); });
+    }
+  } catch (e) {}
+  return out;
+}
+
+function deriveForeignConfluenceFromRows(rows) {
+  rows = rows || [];
+  if (rows.length === 0) return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
+  var n1 = cleanFiniteNumber(rows[0].foreign_net) || 0;
+  var n3 = rows.slice(0,3).reduce(function(a,r){ return a + (cleanFiniteNumber(r.foreign_net) || 0); },0);
+  var n7 = rows.slice(0,7).reduce(function(a,r){ return a + (cleanFiniteNumber(r.foreign_net) || 0); },0);
+  var latestClose = cleanFiniteNumber(rows[0].close);
+  var oldestClose = cleanFiniteNumber(rows[Math.min(rows.length-1,6)].close) || latestClose;
+  var priceRising = latestClose != null && oldestClose != null && latestClose >= oldestClose * 1.005;
+  var priceMildDown = latestClose != null && oldestClose != null && latestClose >= oldestClose * 0.97;
+  var signs = [n1,n3,n7].map(function(n){ return n > 0 ? 1 : (n < 0 ? -1 : 0); });
+  var label = 'Foreign Neutral';
+  if (n1 > 0 && n3 > 0 && n7 > 0 && priceRising) label = 'Foreign Accumulation';
+  else if (n3 > 0 && n7 > 0 && priceMildDown) label = 'Foreign Absorption';
+  else if (n1 < 0 && n3 < 0 && n7 < 0 && !priceMildDown) label = 'Foreign Distribution';
+  else if (signs.indexOf(1) !== -1 && signs.indexOf(-1) !== -1) label = 'Foreign Mixed';
+  return { foreign_1d: Math.round(n1), foreign_3d: Math.round(n3), foreign_7d: Math.round(n7), foreign_label: label, foreign_notes: 'Foreign 1D/3D/7D dihitung dari nbsa × close.' };
+}
+
 async function fetchForeignConfluence(supabase, ticker, lastPrice) {
   try {
     var safe = normalizeForeignTicker(ticker);
@@ -2407,13 +2453,15 @@ async function fetchForeignConfluence(supabase, ticker, lastPrice) {
 }
 
 async function enrichConfluenceRows(supabase, rows, includeForeign) {
+  rows = rows || [];
+  var foreignMap = includeForeign ? await fetchForeignConfluenceMap(supabase, rows.map(function(r) { return r && r.ticker; })) : {};
   var out = [];
-  for (var i = 0; i < (rows || []).length; i++) {
+  for (var i = 0; i < rows.length; i++) {
     var r = Object.assign({}, rows[i]);
     Object.assign(r, classifyTrendAlignment(r));
     Object.assign(r, classifyVolumeThrust(r));
     Object.assign(r, derivePatternLabel(r));
-    if (includeForeign) Object.assign(r, await fetchForeignConfluence(supabase, r.ticker, r.last_price));
+    if (includeForeign) Object.assign(r, foreignMap[normalizeForeignTicker(r.ticker)] || { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' });
     out.push(r);
   }
   return out;
@@ -2973,8 +3021,8 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
 }
 
 async function buildTelegramTopMessage(supabase) {
-  var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidatePassesMinUpside).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
-  var lines = ['Top 5 Screener — ' + getWibDateString(), ''];
+  var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidatePassesMinUpside).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
+  var lines = ['Top 10 Screener — ' + getWibDateString(), ''];
   if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
   for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, true)); lines.push(''); }
   lines.push('Bukan rekomendasi beli/jual. DYOR.');
