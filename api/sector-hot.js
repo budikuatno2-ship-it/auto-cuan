@@ -425,6 +425,8 @@ async function handleScreenerRead(req, res, supabase) {
     return aEntry - bEntry;
   });
 
+  sortedRows = await enrichConfluenceRows(supabase, sortedRows, true);
+
   return res.status(200).json({
     success: true,
     meta: meta || { calculated_at: null, status: 'pending', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, ai_called_count: 0 },
@@ -2318,6 +2320,105 @@ async function handlePublicScreenerShare(req, res, supabase) {
  * Handles exact internal values, short codes, UI labels, and edge cases.
  * Returns: 'READY' | 'REBOUND' | 'WATCH' | 'INVALID' | 'UNKNOWN'
  */
+
+function cleanFiniteNumber(value) {
+  var n = Number(value);
+  return isFinite(n) ? n : null;
+}
+
+function compactSafeText(value, fallback) {
+  var s = String(value == null ? '' : value).replace(/undefined|null|NaN/g, '').replace(/\s+/g, ' ').trim();
+  return s || (fallback || '-');
+}
+
+function classifyTrendAlignment(row) {
+  var close = cleanFiniteNumber(row.last_price || row.close);
+  var ma20 = cleanFiniteNumber(row.ma20);
+  var ma50 = cleanFiniteNumber(row.ma50);
+  if (close == null || ma20 == null || ma50 == null) return { trend_label: 'Trend Data Unavailable', trend_notes: 'MA20/MA50 belum cukup untuk konfirmasi trend.' };
+  if (close > ma20 && ma20 >= ma50) return { trend_label: 'Bullish Trend', trend_notes: 'Close > MA20 >= MA50.' };
+  if (close > ma20 && ma20 < ma50) return { trend_label: 'Improving Trend', trend_notes: 'Close > MA20, namun MA20 masih di bawah MA50.' };
+  if (close < ma20 && ma20 < ma50) return { trend_label: 'Bearish Trend', trend_notes: 'Close < MA20 < MA50.' };
+  return { trend_label: 'Weak Trend', trend_notes: 'Close masih di bawah salah satu MA utama.' };
+}
+
+function classifyVolumeThrust(row) {
+  var ratio = cleanFiniteNumber(row.volume_ratio_20d || row.volume_ratio_avg20 || row.volume_ratio);
+  var valueToday = cleanFiniteNumber(row.value_today || row.tx_value_1d);
+  var avg7 = cleanFiniteNumber(row.avg_value_7d || row.avg_tx_value_7d);
+  var close = cleanFiniteNumber(row.last_price || row.close);
+  var open = cleanFiniteNumber(row.open);
+  var change = cleanFiniteNumber(row.change_pct);
+  var high = cleanFiniteNumber(row.high), low = cleanFiniteNumber(row.low);
+  var green = (open != null && close != null) ? close >= open : (change != null ? change >= 0 : true);
+  var closePos = (high != null && low != null && close != null && high > low) ? (close - low) / (high - low) : (green ? 0.7 : 0.3);
+  var highVol = (ratio != null && ratio >= 1.2) || (valueToday != null && avg7 != null && valueToday > avg7 * 1.2);
+  var lowVol = (ratio != null && ratio < 0.8) || (valueToday != null && avg7 != null && valueToday < avg7 * 0.8);
+  var label = 'Neutral Volume';
+  var notes = 'Volume relatif normal; tunggu konfirmasi lanjutan.';
+  if (highVol && green && closePos >= 0.55) { label = 'Accumulation Volume'; notes = 'Volume di atas rata-rata dengan candle positif/close sehat.'; }
+  else if (highVol && (!green || closePos <= 0.35)) { label = 'Distribution Volume'; notes = 'Volume tinggi muncul bersama tekanan jual atau close dekat low.'; }
+  else if (highVol) { label = 'Strong Volume'; notes = 'Aktivitas volume/value di atas rata-rata.'; }
+  else if (lowVol) { label = 'Weak Volume'; notes = 'Volume/value belum mengonfirmasi pergerakan harga.'; }
+  return { volume_label: label, volume_notes: notes };
+}
+
+function derivePatternLabel(row) {
+  var trend = row.trend_label || classifyTrendAlignment(row).trend_label;
+  var vol = row.volume_label || classifyVolumeThrust(row).volume_label;
+  var close = cleanFiniteNumber(row.last_price || row.close);
+  var resistance = cleanFiniteNumber(row.resistance);
+  var support = cleanFiniteNumber(row.support);
+  var change = cleanFiniteNumber(row.change_pct);
+  var ratio = cleanFiniteNumber(row.volume_ratio_20d || row.volume_ratio_avg20 || row.volume_ratio);
+  if (close == null || resistance == null || support == null || resistance <= support) return { pattern_label: 'Insufficient Data', pattern_notes: 'Not enough candle history for pattern confirmation.' };
+  var rangePct = (resistance - support) / close;
+  var nearRes = close >= resistance * 0.96;
+  var aboveRes = close > resistance * 1.005;
+  if (aboveRes && (change == null || change < 0.5)) return { pattern_label: 'Failed Breakout', pattern_notes: 'Harga mencoba breakout tetapi konfirmasi candle belum kuat.' };
+  if (nearRes && /Bullish|Improving/.test(trend) && /Accumulation|Strong/.test(vol)) return { pattern_label: 'Breakout Consolidation', pattern_notes: 'Harga dekat resistance dengan trend/volume membaik.' };
+  if (nearRes && support > close * 0.88) return { pattern_label: 'Ascending Triangle', pattern_notes: 'Resistance relatif dekat dan support bertahan naik/ketat.' };
+  if (rangePct <= 0.18 && /Bullish|Improving/.test(trend)) return { pattern_label: 'VCP-like Base', pattern_notes: 'Range makin ketat dan harga bertahan di area base.' };
+  return { pattern_label: 'No Clear Pattern', pattern_notes: 'Belum ada pola deterministic yang cukup jelas.' };
+}
+
+async function fetchForeignConfluence(supabase, ticker, lastPrice) {
+  try {
+    var safe = normalizeForeignTicker(ticker);
+    if (!safe) return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
+    var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,close,nbsa').eq('ticker', safe).order('trade_date', { ascending: false }).limit(7);
+    var rows = res.data || [];
+    if (res.error || rows.length === 0) return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
+    var n1 = cleanFiniteNumber(rows[0].foreign_net) || 0;
+    var n3 = rows.slice(0,3).reduce(function(a,r){ return a + (cleanFiniteNumber(r.foreign_net) || 0); },0);
+    var n7 = rows.slice(0,7).reduce(function(a,r){ return a + (cleanFiniteNumber(r.foreign_net) || 0); },0);
+    var latestClose = cleanFiniteNumber(rows[0].close) || cleanFiniteNumber(lastPrice);
+    var oldestClose = cleanFiniteNumber(rows[Math.min(rows.length-1,6)].close) || latestClose;
+    var priceRising = latestClose != null && oldestClose != null && latestClose >= oldestClose * 1.005;
+    var priceMildDown = latestClose != null && oldestClose != null && latestClose >= oldestClose * 0.97;
+    var signs = [n1,n3,n7].map(function(n){ return n > 0 ? 1 : (n < 0 ? -1 : 0); });
+    var label = 'Foreign Neutral';
+    if (n1 > 0 && n3 > 0 && n7 > 0 && priceRising) label = 'Foreign Accumulation';
+    else if (n3 > 0 && n7 > 0 && priceMildDown) label = 'Foreign Absorption';
+    else if (n1 < 0 && n3 < 0 && n7 < 0 && !priceMildDown) label = 'Foreign Distribution';
+    else if (signs.indexOf(1) !== -1 && signs.indexOf(-1) !== -1) label = 'Foreign Mixed';
+    return { foreign_1d: Math.round(n1), foreign_3d: Math.round(n3), foreign_7d: Math.round(n7), foreign_label: label, foreign_notes: 'Foreign 1D/3D/7D dihitung dari nbsa × close.' };
+  } catch (e) { return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' }; }
+}
+
+async function enrichConfluenceRows(supabase, rows, includeForeign) {
+  var out = [];
+  for (var i = 0; i < (rows || []).length; i++) {
+    var r = Object.assign({}, rows[i]);
+    Object.assign(r, classifyTrendAlignment(r));
+    Object.assign(r, classifyVolumeThrust(r));
+    Object.assign(r, derivePatternLabel(r));
+    if (includeForeign) Object.assign(r, await fetchForeignConfluence(supabase, r.ticker, r.last_price));
+    out.push(r);
+  }
+  return out;
+}
+
 function normalizeScreenerStatus(status) {
   if (!status || typeof status !== 'string') return 'UNKNOWN';
   var s = status.trim().toUpperCase();
@@ -2760,7 +2861,17 @@ function rankCandidatesByPotential(candidate) {
   var score = toNum(candidate.combined_score || candidate.telegram_conviction_score || candidate.score || candidate.daytrade_score) || 0;
   var volume = getTelegramValue(candidate) > 0 ? Math.min(20, Math.log10(getTelegramValue(candidate))) : 0;
   var volRatio = getTelegramVolumeRatio(candidate) || 0;
-  return ((upside || 0) * 100) + (rr * 25) + score + (volume * 3) + (volRatio * 5) + stalePenalty;
+  var trend = classifyTrendAlignment(candidate).trend_label;
+  var volCtx = classifyVolumeThrust(candidate).volume_label;
+  var pattern = derivePatternLabel(Object.assign({}, candidate, { trend_label: trend, volume_label: volCtx })).pattern_label;
+  var confluence = 0;
+  if (trend === 'Bullish Trend') confluence += 10; else if (trend === 'Improving Trend') confluence += 5; else if (trend === 'Bearish Trend') confluence -= 15; else if (trend === 'Weak Trend') confluence -= 8;
+  if (volCtx === 'Accumulation Volume' || volCtx === 'Strong Volume') confluence += 8;
+  if (volCtx === 'Weak Volume') confluence -= 8;
+  if (volCtx === 'Distribution Volume') confluence -= 15;
+  if (pattern === 'VCP-like Base' || pattern === 'Ascending Triangle' || pattern === 'Breakout Consolidation') confluence += 8;
+  if (pattern === 'Failed Breakout') confluence -= 15;
+  return ((upside || 0) * 100) + (rr * 25) + score + (volume * 3) + (volRatio * 5) + confluence + stalePenalty;
 }
 
 function normalizeCombinedCandidate(row, category) {
@@ -2838,24 +2949,32 @@ function buildTop5PhotoCaption(detailText) {
 }
 
 async function formatCandidateBlock(supabase, r, idx, compact) {
-  var f = await fetchForeignSummary(supabase, r.ticker);
-  var setup = safeTelegramText(r.setup || r.setup_type || r.status || r.final_status, 60, '-').replace(/_/g, ' ');
-  var risk = deriveTelegramRiskLabel(r, r.category === 'Day Trade' ? 'daytrade' : 'swing');
+  if (!r.trend_label) Object.assign(r, classifyTrendAlignment(r));
+  if (!r.volume_label) Object.assign(r, classifyVolumeThrust(r));
+  if (!r.pattern_label) Object.assign(r, derivePatternLabel(r));
+  var includeForeign = r.category !== 'Day Trade';
+  var f = includeForeign ? await fetchForeignConfluence(supabase, r.ticker, r.lastn || r.last_price) : null;
+  var setup = compactSafeText(r.setup || r.setup_type || r.status || r.final_status, '-').replace(/_/g, ' ');
+  var risk = deriveTelegramRiskLabel(r, r.category === 'Day Trade' ? 'daytrade' : 'swing').replace(' Risk','');
+  var grade = compactSafeText(r.quality_grade || r.grade || getTelegramGrade(r), '-');
+  var score = fmtScore(r.combined_score || r.telegram_conviction_score || r.score || r.daytrade_score);
   var lines = [];
-  lines.push(idx + '. ' + r.ticker + ' — ' + r.category);
-  lines.push('Setup: ' + setup + ' · Risk: ' + risk);
-  lines.push('Close: ' + fmtPrice(r.lastn) + ' · Entry 1/2: ' + fmtPrice(r.entry1) + ' / ' + fmtPrice(r.entry2));
-  lines.push('TP1/TP2: ' + fmtPrice(r.tp1n) + ' (' + formatPct(r.tp1_upside) + ') / ' + fmtPrice(r.tp2n) + ' (' + formatPct(r.tp2_upside) + ')');
-  lines.push('SL: ' + fmtPrice(r.sl) + ' (' + formatPct(r.sl_risk) + ') · RR: ' + fmtRR(r.risk_reward));
-  lines.push(f.text);
-  lines.push('Alasan: ' + candidateReason(r));
+  lines.push(idx + '. ' + r.ticker + ' — ' + r.category + ' | ' + setup);
+  lines.push('G:' + grade + ' · Risk:' + risk + ' · Score:' + score + ' · RR:' + fmtRR(r.risk_reward));
+  lines.push('Harga ' + fmtPrice(r.lastn || r.last_price) + ' | E ' + fmtPrice(r.entry1) + '/' + fmtPrice(r.entry2) + ' | SL ' + fmtPrice(r.sl) + ' | TP ' + fmtPrice(r.tp1n) + '/' + fmtPrice(r.tp2n));
+  lines.push('Vol ' + fmtRatio(getTelegramVolumeRatio(r)) + ' · Tx ' + fmtRpValue(getTelegramValue(r)) + ' · Trend ' + compactSafeText((r.trend_label || '').replace(' Trend',''), '-'));
+  var confluence = [];
+  if (r.pattern_label && r.pattern_label !== 'Insufficient Data' && r.pattern_label !== 'No Clear Pattern') confluence.push('Pattern: ' + r.pattern_label.replace('VCP-like Base','VCP-like'));
+  if (f && f.foreign_label && f.foreign_label !== 'Foreign Data Unavailable') confluence.push('Foreign 7D: ' + f.foreign_label.replace('Foreign ','') + ' ' + formatForeignRupiah(f.foreign_7d));
+  if (confluence.length) lines.push(confluence.join(' · '));
+  lines.push('Verdict: ' + candidateReason(r));
   if (!compact) lines.push('Chart: ' + chartLink(r.ticker));
-  return lines.join('\n');
+  return lines.map(function(line){ return compactSafeText(line, '-'); }).join('\n');
 }
 
 async function buildTelegramTopMessage(supabase) {
-  var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidatePassesMinUpside).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
-  var lines = ['🔥 TOP 10 GABUNGAN SCREENER — ' + getWibDateString(), ''];
+  var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidatePassesMinUpside).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
+  var lines = ['Top 5 Screener — ' + getWibDateString(), ''];
   if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
   for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, true)); lines.push(''); }
   lines.push('Bukan rekomendasi beli/jual. DYOR.');
@@ -2872,7 +2991,7 @@ async function buildTelegramScreenerMessage(supabase, modeText) {
   else return 'Format:\n/screener day trade\n/screener swing konglo\n/screener swing non konglo';
   var res = await supabase.from(table).select('*').order(orderCol, { ascending: asc }).limit(20);
   var rows = (res.data || []).map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker && candidatePassesMinUpside(r); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
-  var lines = ['📊 SCREENER ' + category.toUpperCase() + ' — ' + getWibDateString(), ''];
+  var lines = ['Screener ' + category + ' — ' + getWibDateString(), ''];
   if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
   for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, category === 'Day Trade')); lines.push(''); }
   lines.push('Bukan rekomendasi beli/jual. DYOR.');
@@ -4019,6 +4138,8 @@ async function handleNkScreenerResults(req, res, supabase) {
   // Re-assign rank based on new sort order
   nkSorted.forEach(function(r, idx) { r.rank = idx + 1; });
 
+  nkSorted = await enrichConfluenceRows(supabase, nkSorted, true);
+
   return res.status(200).json({
     success: true,
     meta: meta || { calculated_at: null, status: 'idle', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 },
@@ -5164,6 +5285,8 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       r.derived_risk = tfCtx.derived_risk;
       return r;
     });
+
+    sortedRows = await enrichConfluenceRows(supabase, sortedRows, false);
 
     return res.status(200).json({
       success: true,

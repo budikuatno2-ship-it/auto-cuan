@@ -5018,6 +5018,35 @@ function normalizeActionLabel(label) {
     if (compact === 'wait pullback' || compact === 'wait pullback valid' || compact === 'tunggu pullback' || compact === 'tunggu pullback valid') return 'Tunggu pullback valid';
     return text.replace(/_/g, ' ');
 }
+
+function fmtForeignFlowVal(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return '-';
+    var side = n > 0 ? 'Net Buy ' : (n < 0 ? 'Net Sell ' : 'Netral ');
+    return side + formatIndonesianRupiah(Math.abs(n));
+}
+function buildConfluenceHtml(r, includeForeign) {
+    if (!r) return '';
+    var html = '';
+    if (includeForeign && (r.foreign_label || r.foreign_1d != null || r.foreign_3d != null || r.foreign_7d != null)) {
+        html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.15);border-radius:8px">';
+        html += '<div style="font-size:9px;font-weight:600;color:#6ee7b7;margin-bottom:4px">FOREIGN FLOW</div>';
+        html += '<div style="font-size:10px;color:#d1d5db">1D: ' + escapeHtml(fmtForeignFlowVal(r.foreign_1d)) + ' · 3D: ' + escapeHtml(fmtForeignFlowVal(r.foreign_3d)) + ' · 7D: ' + escapeHtml(fmtForeignFlowVal(r.foreign_7d)) + '</div>';
+        html += '<div style="font-size:10px;color:#9ca3af;margin-top:2px">Label: ' + escapeHtml(r.foreign_label || 'Foreign Data Unavailable') + '</div></div>';
+    }
+    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.15);border-radius:8px">';
+    html += '<div style="font-size:9px;font-weight:600;color:#60a5fa;margin-bottom:4px">PATTERN / TREND</div>';
+    html += '<div style="font-size:10px;color:#d1d5db">Pattern: ' + escapeHtml(r.pattern_label || 'Insufficient Data') + '</div>';
+    html += '<div style="font-size:10px;color:#9ca3af">' + escapeHtml(r.pattern_notes || 'Data belum cukup untuk konfirmasi pattern.') + '</div>';
+    html += '<div style="font-size:10px;color:#d1d5db;margin-top:3px">Trend: ' + escapeHtml(r.trend_label || 'Trend Data Unavailable') + '</div>';
+    html += '<div style="font-size:10px;color:#9ca3af">' + escapeHtml(r.trend_notes || 'MA20/MA50 belum cukup.') + '</div></div>';
+    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,0.04);border:1px solid rgba(139,92,246,0.15);border-radius:8px">';
+    html += '<div style="font-size:9px;font-weight:600;color:#a78bfa;margin-bottom:4px">VOLUME</div>';
+    html += '<div style="font-size:10px;color:#d1d5db">Volume: ' + escapeHtml(r.volume_label || 'Neutral Volume') + '</div>';
+    html += '<div style="font-size:10px;color:#9ca3af">' + escapeHtml(r.volume_notes || 'Data volume terbatas.') + '</div></div>';
+    return html;
+}
+
 function getActionLabel(r) { return r ? normalizeActionLabel(r.telegram_action_label || r.telegram_verdict || r.final_status || r.status || '') : ''; }
 function getSignalQualityGrade(r) { return r ? safeDisplayText(r.quality_grade || r.grade || r.signal_grade || '', '') : ''; }
 function getSignalQualityColor(grade) {
@@ -5246,6 +5275,7 @@ function openScrDetail(r, type) {
     html += '</div>';
     // Setup reasoning
     html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:10px">' + escapeHtml(r.status_reason || r.notes || '-') + '</div>';
+    html += buildConfluenceHtml(r, type === 'konglo' || type === 'nonkonglo');
     // Volume context section
     html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,0.04);border:1px solid rgba(139,92,246,0.15);border-radius:8px">';
     html += '<div style="font-size:9px;font-weight:600;color:#a78bfa;margin-bottom:4px">VOLUME</div>';
@@ -5375,6 +5405,8 @@ function renderKgCardGrid(results) {
         if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _kmbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _kmtfBadge = '<span style="color:' + _kmbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
         var _kActionBadge = getActionLabel(r); if (_kActionBadge && _kActionBadge !== getStatusLabel(r, tier)) _kvpBadge = (_kvpBadge ? _kvpBadge + ' · ' : '') + '<span style="color:#93c5fd">' + escapeHtml(_kActionBadge) + '</span>';
         var _kBadgeLine = [_kgrBadge, _krlBadge, _kvpBadge, _kmtfBadge].filter(function(b){return b;}).join(' · ');
+        if (r.pattern_label) _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
+        if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
         if (_kBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _kBadgeLine + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
@@ -5439,6 +5471,8 @@ function renderNkCardGrid(results) {
         if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _nmbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _nmtfBadge = '<span style="color:' + _nmbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
         var _nActionBadge = getActionLabel(r); if (_nActionBadge && _nActionBadge !== getStatusLabel(r, tier)) _nvpBadge = (_nvpBadge ? _nvpBadge + ' · ' : '') + '<span style="color:#93c5fd">' + escapeHtml(_nActionBadge) + '</span>';
         var _nBadgeLine = [_ngrBadge, _nrlBadge, _nvpBadge, _nmtfBadge].filter(function(b){return b;}).join(' · ');
+        if (r.pattern_label) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
+        if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
         if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _nBadgeLine + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
