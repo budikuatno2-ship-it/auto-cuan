@@ -6013,7 +6013,7 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '</td>';
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
-        html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]">' + confLabel + '</td>';
+        html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
         html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
@@ -6024,7 +6024,7 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-right text-emerald-400/80 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
         html += '<td class="px-2 py-2 text-right text-emerald-400/60 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.risk_reward != null ? r.risk_reward.toFixed(1) : '-') + '</td>';
-        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
+        html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml((r.entry_window_label || timingLabel || '-')) + '</td>';
         html += '<td class="px-2 py-2 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '<td class="px-2 py-2 text-left text-gray-500 whitespace-nowrap text-[10px] max-w-[120px] truncate" title="' + escapeHtml((r.status_reason || '') + (r.invalidation ? ' | ' + r.invalidation : '')) + '">' + escapeHtml(r.status_reason || r.invalidation || '-') + '</td>';
         html += '</tr>';
@@ -6373,7 +6373,7 @@ function renderNkScreenerTable(results) {
         html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
-        html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]">' + confLabel + '</td>';
+        html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
         html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
@@ -6384,7 +6384,7 @@ function renderNkScreenerTable(results) {
         html += '<td class="px-2 py-1.5 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp1) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-emerald-400 whitespace-nowrap">' + formatPrice(r.tp2) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 font-semibold whitespace-nowrap">' + (r.risk_reward != null ? Number(r.risk_reward).toFixed(2) : '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + timingColor + '">' + timingLabel + '</td>';
+        html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + timingColor + '" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml((r.entry_window_label || timingLabel || '-')) + '</td>';
         html += '<td class="px-2 py-1.5 text-left whitespace-nowrap text-[10px] ' + dirColor + '">' + dirLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-left text-gray-500 text-[10px] whitespace-nowrap overflow-hidden max-w-[150px] truncate" title="' + escapeHtml(r.status_reason || '') + '">' + escapeHtml((r.status_reason || '').slice(0, 50)) + '</td>';
         html += '</tr>';
@@ -8516,7 +8516,7 @@ function renderDtTable(results) {
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(getStatusLabel(r, formatDtStatus(r.status))) + '</span></td>';
         html += '<td class="px-2 py-2 text-center font-bold ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + '</td>';
-        html += '<td class="px-2 py-2 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
+        html += '<td class="px-2 py-2 text-center ' + confColor + ' text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-2 text-gray-300 text-[10px] max-w-[100px] truncate" title="' + (r.setup || '') + '">' + (r.setup || '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right ' + chgClass + '">' + (r.change_pct != null ? r.change_pct.toFixed(2) + '%' : '—') + '</td>';
@@ -8529,7 +8529,7 @@ function renderDtTable(results) {
         html += '<td class="px-2 py-2 text-right text-emerald-400">' + (r.tp1 ? r.tp1.toLocaleString('id-ID') : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right text-emerald-300">' + (r.tp2 ? r.tp2.toLocaleString('id-ID') : '—') + '</td>';
         html += '<td class="px-2 py-2 text-right font-medium ' + (r.risk_reward >= 2.0 ? 'text-emerald-400' : r.risk_reward >= 1.5 ? 'text-yellow-400' : 'text-red-400') + '">' + rrStr + '</td>';
-        html += '<td class="px-2 py-2 text-gray-400 text-[10px] whitespace-nowrap">' + timingLabel + '</td>';
+        html += '<td class="px-2 py-2 text-gray-400 text-[10px] whitespace-nowrap" title="ENTRY WINDOW: ' + escapeHtml((r.entry_window_notes || '') + ' Liq: ' + (r.liquidity_label || '-') + '. ' + (r.liquidity_notes || '') + ' ' + (r.stale_notes || '')) + '">' + escapeHtml((r.entry_window_label || timingLabel || '-')) + '</td>';
         html += '<td class="px-2 py-2 ' + dirColor + ' text-[10px] whitespace-nowrap">' + dirLabel + '</td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px] max-w-[120px] truncate" title="' + (r.time_plan || '') + '">' + (r.time_plan || '—') + '</td>';
         var _dtReason = getSignalReason(r);

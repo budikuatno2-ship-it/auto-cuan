@@ -400,11 +400,10 @@ async function handleScreenerRead(req, res, supabase) {
   var sortedRows = (rows || []).map(function(r) {
     var labels = deriveSwingLabels(r, 'konglo');
     r.swing_tier = labels.swing_tier;
-    r.confidence = labels.confidence;
     r.entry_timing = labels.entry_timing;
     r.tradeability = labels.tradeability;
     r.direction = labels.direction;
-    return r;
+    return enrichSignalQuality(r, 'Swing Konglo');
   });
 
   // Sort by swing_tier priority, then composite quality
@@ -2287,7 +2286,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: kongloMeta } = await supabase.from('swing_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: kongloRows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false });
   // Derive swing labels for public share (Konglo)
-  var kongloWithLabels = (kongloRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.confidence = lbl.confidence; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return r; });
+  var kongloWithLabels = (kongloRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return enrichSignalQuality(r, 'Swing Konglo'); });
   var _swingPri = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
   kongloWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
   result.konglo = { meta: kongloMeta || null, results: kongloWithLabels };
@@ -2296,7 +2295,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: nkMeta } = await supabase.from('swing_screener_non_konglo_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: nkRows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true });
   // Derive swing labels for public share (Non-Konglo)
-  var nkWithLabels = (nkRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.confidence = lbl.confidence; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return r; });
+  var nkWithLabels = (nkRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return enrichSignalQuality(r, 'Swing Non-Konglo'); });
   nkWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
   nkWithLabels.forEach(function(r, idx) { r.rank = idx + 1; });
   result.non_konglo = { meta: nkMeta || null, results: nkWithLabels };
@@ -2305,7 +2304,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: dtMeta } = await supabase.from('daytrade_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: dtRows } = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(50);
   // Derive labels for public share results
-  var dtWithLabels = (dtRows || []).map(function(r) { var lbl = deriveDayTradeLabels(r); r.confidence = lbl.confidence; r.entry_timing = lbl.entry_timing; r.direction = lbl.direction; return r; });
+  var dtWithLabels = (dtRows || []).map(function(r) { var lbl = deriveDayTradeLabels(r); r.entry_timing = lbl.entry_timing; r.direction = lbl.direction; return enrichSignalQuality(r, 'Day Trade'); });
   result.daytrade = { meta: dtMeta || null, results: dtWithLabels };
 
   return res.status(200).json(result);
@@ -2885,6 +2884,130 @@ function getMinTp1UpsideForCategory(category) {
   return configured != null && configured >= 0 ? configured : fallback;
 }
 
+
+function getMinRRForCategory(category) {
+  var cat = String(category || '').toLowerCase();
+  return cat.indexOf('day') >= 0 ? 1.3 : 1.5;
+}
+
+function countWeekdaysBetween(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  var s = new Date(startDate + 'T00:00:00Z');
+  var e = new Date(endDate + 'T00:00:00Z');
+  if (isNaN(s.getTime()) || isNaN(e.getTime()) || s > e) return null;
+  var days = 0;
+  for (var d = new Date(s.getTime()); d < e; d.setUTCDate(d.getUTCDate() + 1)) {
+    var wd = d.getUTCDay();
+    if (wd >= 1 && wd <= 5) days++;
+  }
+  return days;
+}
+
+function deriveStaleLiquidityLabels(row) {
+  row = row || {};
+  var latestDate = row.latest_date || row.last_trade_date || row.trade_date || row.run_date || row.calculated_at || row.updated_at || row.published_at;
+  var dateStr = getJakartaDateFromTimestamp(latestDate);
+  var today = getJakartaDateString();
+  var staleDays = dateStr ? countWeekdaysBetween(dateStr, today) : null;
+  var isStale = staleDays != null && staleDays > 0;
+  var staleLabel = isStale ? 'Stale Data' : (dateStr ? 'Fresh Data' : 'Stale Check Limited');
+  var staleNotes = dateStr ? ('Latest market data: ' + dateStr + (isStale ? ' (' + staleDays + ' trading day(s) behind).' : '.')) : 'Liquidity/stale check limited by available data.';
+
+  var tradedDays = toNum(row.traded_days_20d);
+  var valueToday = toNum(row.value_today || row.tx_value_1d || row.valuasi);
+  var avg7 = toNum(row.avg_value_7d || row.avg_tx_value_7d);
+  var freq = toNum(row.freq || row.frequency);
+  var volumeRatio = toNum(row.volume_ratio_20d || row.volume_ratio_avg20 || row.volume_ratio);
+  var notes = [];
+  var limited = tradedDays == null && valueToday == null && avg7 == null && freq == null && volumeRatio == null;
+  var risk = false;
+  var moderate = false;
+  if (tradedDays != null && tradedDays < 15) { risk = true; notes.push('Traded days 20D < 15.'); }
+  if (valueToday != null && valueToday < 750000000) { risk = true; notes.push('Value today very low.'); }
+  else if (valueToday != null && valueToday < 3000000000) moderate = true;
+  if (avg7 != null && avg7 < 1000000000) { risk = true; notes.push('Avg value 7D very low.'); }
+  else if (avg7 != null && avg7 < 3000000000) moderate = true;
+  if (freq != null && freq < 1000) { risk = true; notes.push('Frequency low.'); }
+  else if (freq != null && freq < 3000) moderate = true;
+  if (volumeRatio != null && volumeRatio < 0.7) { risk = true; notes.push('Volume ratio weak.'); }
+  var label = limited ? 'Liquidity Check Limited' : (risk ? 'Illiquid / Thin Trading' : (moderate ? 'Moderate Liquidity' : 'Liquid'));
+  if (limited) notes.push('Liquidity/stale check limited by available data.');
+  return {
+    liquidity_label: label,
+    liquidity_notes: notes.join(' ') || 'Liquidity data looks acceptable.',
+    stale_label: staleLabel,
+    stale_notes: staleNotes,
+    is_stale: !!isStale,
+    stale_trading_days: staleDays,
+    is_liquidity_risk: !!risk,
+    liquidity_check_limited: !!limited,
+    cannot_be_a_tier: !!(risk || (valueToday != null && valueToday < 3000000000) || (avg7 != null && avg7 < 3000000000) || (freq != null && freq < 3000))
+  };
+}
+
+function getEntryWindow(category) {
+  var isDay = String(category || '').toLowerCase().indexOf('day') >= 0;
+  if (isDay) return { entry_window_label: '09:15–10:30 / 13:45–14:30', entry_window_notes: 'Best: 09:15–10:30 / 13:45–14:30 WIB. Avoid first 5–10 minutes after open, lunch break, and late pre-close entry unless already in plan.' };
+  return { entry_window_label: 'Near planned entry zone', entry_window_notes: 'Entry valid near planned entry zone. Do not chase far above Entry 1. Prefer confirmation near close or after pullback.' };
+}
+
+function deriveConfidenceTier(row, category) {
+  row = row || {};
+  var rr = toNum(row.risk_reward) || 0;
+  var minRR = getMinRRForCategory(category);
+  var entry = getEntry1(row);
+  var tp1 = toNum(row.tp1n || row.tp1);
+  var upside = row.tp1_upside != null ? toNum(row.tp1_upside) : pctFrom(entry, tp1);
+  var minUpside = getMinTp1UpsideForCategory(category);
+  var score = toNum(row.combined_score || row.telegram_conviction_score || row.score || row.daytrade_score) || 0;
+  var risk = normalizeTelegramRiskLabel(row.risk_label || row.verified_risk_label).toUpperCase();
+  var status = safeTelegramText(row.status || row.final_status || row.swing_tier, 100, '').toUpperCase();
+  var trend = (row.trend_label || classifyTrendAlignment(row).trend_label || '').toUpperCase();
+  var vol = (row.volume_label || classifyVolumeThrust(row).volume_label || '').toUpperCase();
+  var liq = deriveStaleLiquidityLabels(row);
+  var notes = [];
+  var rrOk = rr >= minRR;
+  var upsideOk = upside != null && upside >= minUpside;
+  var badStatus = status.indexOf('AVOID') >= 0 || status.indexOf('INVALID') >= 0;
+  var bearish = trend.indexOf('BEARISH') >= 0;
+  var weakVol = vol.indexOf('WEAK') >= 0 || vol.indexOf('DISTRIBUTION') >= 0;
+  if (!rrOk) notes.push('Radar only — RR belum ideal.');
+  if (!upsideOk) notes.push('TP1 upside belum memenuhi minimum.');
+  if (liq.is_stale) notes.push('Data stale.');
+  if (liq.is_liquidity_risk) notes.push('Likuiditas tipis.');
+  if (risk === 'VERY HIGH RISK') notes.push('Very High Risk.');
+  if (badStatus) notes.push('Setup/status avoid atau invalid.');
+  var tier = 'C';
+  if (rrOk && upsideOk && !liq.is_stale && !liq.cannot_be_a_tier && risk !== 'VERY HIGH RISK' && !badStatus && !bearish && !weakVol && score >= (String(category).indexOf('Day') >= 0 ? 75 : 72)) tier = 'A';
+  else if (rrOk && upsideOk && !badStatus && !liq.is_liquidity_risk && risk !== 'VERY HIGH RISK' && score >= 58) tier = 'B';
+  return { confidence: tier, confidence_label: tier === 'A' ? 'High Conviction' : (tier === 'B' ? 'Qualified' : 'Radar Only'), confidence_notes: notes.join(' ') || (tier === 'A' ? 'High conviction, konfirmasi kuat.' : (tier === 'B' ? 'Qualified, tunggu konfirmasi entry.' : 'Radar only, jangan agresif.')) };
+}
+
+function enrichSignalQuality(row, category) {
+  var r = Object.assign({}, row || {});
+  Object.assign(r, deriveStaleLiquidityLabels(r));
+  Object.assign(r, getEntryWindow(category));
+  var conf = deriveConfidenceTier(r, category);
+  r.confidence = conf.confidence;
+  r.confidence_label = conf.confidence_label;
+  r.confidence_notes = conf.confidence_notes;
+  r.rr_minimum = getMinRRForCategory(category);
+  r.rr_gate_pass = (toNum(r.risk_reward) || 0) >= r.rr_minimum;
+  if (!r.rr_gate_pass && !r.confidence_notes) r.confidence_notes = 'Radar only — RR belum ideal.';
+  return r;
+}
+
+function candidatePassesRRGate(candidate) {
+  return (toNum(candidate && candidate.risk_reward) || 0) >= getMinRRForCategory(candidate && candidate.category);
+}
+
+function candidateTelegramEligible(candidate) {
+  if (!candidate || !candidatePassesRRGate(candidate) || !candidatePassesMinUpside(candidate)) return false;
+  var q = deriveStaleLiquidityLabels(candidate);
+  if (q.stale_trading_days != null && q.stale_trading_days > 2) return false;
+  return !q.is_liquidity_risk;
+}
+
 function candidatePassesMinUpside(candidate) {
   if (!candidate || !candidate.ticker) return false;
   var entry = toNum(candidate.entry1) || getEntry1(candidate);
@@ -2947,7 +3070,7 @@ function normalizeCombinedCandidate(row, category) {
     + (category === 'Day Trade' ? 4 : 0)
     + (getTelegramValue(r) >= 10000000000 ? 4 : 0)
     - (includesAny(joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan]), ['chase', 'telat', 'late']) ? 8 : 0);
-  return r;
+  return enrichSignalQuality(r, category);
 }
 
 async function fetchCombinedScreenerCandidates(supabase) {
@@ -2959,7 +3082,7 @@ async function fetchCombinedScreenerCandidates(supabase) {
   var nk = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
   (nk.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Swing Non-Konglo')); });
   var byTicker = {};
-  pools.filter(function(r) { return r.ticker && r.entry1 && r.tp1n && r.tp2n && r.sl && candidatePassesMinUpside(r); }).forEach(function(r) {
+  pools.filter(function(r) { return r.ticker && r.entry1 && r.tp1n && r.tp2n && r.sl && candidateTelegramEligible(r); }).forEach(function(r) {
     if (!byTicker[r.ticker] || rankCandidatesByPotential(r) > rankCandidatesByPotential(byTicker[r.ticker])) byTicker[r.ticker] = r;
   });
   return Object.keys(byTicker).map(function(k) { return byTicker[k]; }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
@@ -3004,16 +3127,19 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   var f = includeForeign ? await fetchForeignConfluence(supabase, r.ticker, r.lastn || r.last_price) : null;
   var setup = compactSafeText(r.setup || r.setup_type || r.status || r.final_status, '-').replace(/_/g, ' ');
   var risk = deriveTelegramRiskLabel(r, r.category === 'Day Trade' ? 'daytrade' : 'swing').replace(' Risk','');
-  var grade = compactSafeText(r.quality_grade || r.grade || getTelegramGrade(r), '-');
+  var grade = compactSafeText(r.confidence || r.quality_grade || r.grade || getTelegramGrade(r), '-');
   var score = fmtScore(r.combined_score || r.telegram_conviction_score || r.score || r.daytrade_score);
   var lines = [];
   lines.push(idx + '. ' + r.ticker + ' — ' + r.category + ' | ' + setup);
-  lines.push('G:' + grade + ' · Risk:' + risk + ' · Score:' + score + ' · RR:' + fmtRR(r.risk_reward));
+  lines.push('G:' + grade + ' · Risk:' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + compactSafeText(r.liquidity_label, '-'));
+  lines.push('Window: ' + compactSafeText(r.entry_window_label, '-'));
   lines.push('Harga ' + fmtPrice(r.lastn || r.last_price) + ' | E ' + fmtPrice(r.entry1) + '/' + fmtPrice(r.entry2) + ' | SL ' + fmtPrice(r.sl) + ' | TP ' + fmtPrice(r.tp1n) + '/' + fmtPrice(r.tp2n));
   lines.push('Vol ' + fmtRatio(getTelegramVolumeRatio(r)) + ' · Tx ' + fmtRpValue(getTelegramValue(r)) + ' · Trend ' + compactSafeText((r.trend_label || '').replace(' Trend',''), '-'));
   var confluence = [];
   if (r.pattern_label && r.pattern_label !== 'Insufficient Data' && r.pattern_label !== 'No Clear Pattern') confluence.push('Pattern: ' + r.pattern_label.replace('VCP-like Base','VCP-like'));
   if (f && f.foreign_label && f.foreign_label !== 'Foreign Data Unavailable') confluence.push('Foreign 7D: ' + f.foreign_label.replace('Foreign ','') + ' ' + formatForeignRupiah(f.foreign_7d));
+  if (r.is_stale) confluence.push('Stale: ' + compactSafeText(r.stale_label, 'Stale Data'));
+  if (r.confidence === 'C') confluence.push('Radar Only');
   if (confluence.length) lines.push(confluence.join(' · '));
   lines.push('Verdict: ' + candidateReason(r));
   if (!compact) lines.push('Chart: ' + chartLink(r.ticker));
@@ -3021,7 +3147,7 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
 }
 
 async function buildTelegramTopMessage(supabase) {
-  var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidatePassesMinUpside).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
+  var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidateTelegramEligible).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
   var lines = ['Top 10 Screener — ' + getWibDateString(), ''];
   if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
   for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, true)); lines.push(''); }
@@ -3038,7 +3164,7 @@ async function buildTelegramScreenerMessage(supabase, modeText) {
   else if (mode === 'swing non konglo' || mode === 'swing non-konglo') { category = 'Swing Non-Konglo'; table = 'swing_screener_non_konglo_latest'; orderCol = 'rank'; asc = true; }
   else return 'Format:\n/screener day trade\n/screener swing konglo\n/screener swing non konglo';
   var res = await supabase.from(table).select('*').order(orderCol, { ascending: asc }).limit(20);
-  var rows = (res.data || []).map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker && candidatePassesMinUpside(r); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
+  var rows = (res.data || []).map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker && candidateTelegramEligible(r); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
   var lines = ['Screener ' + category + ' — ' + getWibDateString(), ''];
   if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
   for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, category === 'Day Trade')); lines.push(''); }
@@ -3331,7 +3457,7 @@ async function selectDailyTop5(supabase) {
       + (rows[i].tp2_upside >= 5 ? 8 : 0)
       + ((toNum(rows[i].risk_reward) || 0) >= 1.8 ? 6 : 0);
   }
-  return rows.filter(candidatePassesMinUpside).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
+  return rows.filter(candidateTelegramEligible).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
 }
 
 async function handleTelegramDailyPicks(req, res, supabase) {
@@ -4159,11 +4285,10 @@ async function handleNkScreenerResults(req, res, supabase) {
   var nkSorted = (rows || []).map(function(r) {
     var labels = deriveSwingLabels(r, 'nonkonglo');
     r.swing_tier = labels.swing_tier;
-    r.confidence = labels.confidence;
     r.entry_timing = labels.entry_timing;
     r.tradeability = labels.tradeability;
     r.direction = labels.direction;
-    return r;
+    return enrichSignalQuality(r, 'Swing Non-Konglo');
   });
 
   var swingTierPriority = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
@@ -5088,19 +5213,10 @@ function deriveSwingLabels(r, screenerType) {
     swing_tier = 'SPECULATIVE';
   }
 
-  // === CONFIDENCE === (V4: more granular within tiers)
+  // === CONFIDENCE === standardized A/B/C only
   var confidence = 'C';
-  if (swing_tier === 'A_PLUS_SWING') confidence = 'A+';
-  else if (swing_tier === 'TRADE_CANDIDATE') confidence = 'A';
-  else if (swing_tier === 'SWING_READY' && score >= 80) confidence = 'A';
-  else if (swing_tier === 'SWING_READY') confidence = 'B+';
-  else if (swing_tier === 'WATCHLIST' && score >= 70) confidence = 'B';
-  else if (swing_tier === 'WATCHLIST') confidence = 'B-';
-  else if (swing_tier === 'REBOUND_CANDIDATE' && rr >= 2.0) confidence = 'B';
-  else if (swing_tier === 'REBOUND_CANDIDATE') confidence = 'B-';
-  else if (swing_tier === 'WAIT_PULLBACK') confidence = 'C';
-  else if (swing_tier === 'SPECULATIVE') confidence = 'C';
-  else confidence = 'Avoid';
+  if (swing_tier === 'A_PLUS_SWING' || swing_tier === 'TRADE_CANDIDATE' || (swing_tier === 'SWING_READY' && score >= 80)) confidence = 'A';
+  else if (swing_tier === 'SWING_READY' || swing_tier === 'WATCHLIST' || swing_tier === 'REBOUND_CANDIDATE') confidence = 'B';
 
   // === ENTRY TIMING === (V4: explicit anti-chase messaging)
   var entry_timing = 'Hanya pantau';
@@ -5180,18 +5296,10 @@ function deriveDayTradeLabels(r) {
   var lastPrice = r.last_price || 0;
   var riskDist = (entryLow > 0 && lastPrice > 0) ? ((lastPrice - entryLow) / lastPrice) * 100 : 0;
 
-  // Confidence tier (V4: more granular)
+  // Confidence tier standardized A/B/C only
   var confidence = 'C';
-  if (status === 'A_PLUS_SETUP') confidence = 'A+';
-  else if (status === 'TRADE_CANDIDATE') confidence = 'A';
-  else if (status === 'READY_BREAKOUT') confidence = 'A';
-  else if (status === 'PRE_SPIKE_WATCH' && score >= 75) confidence = 'B+';
-  else if (status === 'PRE_SPIKE_WATCH' || status === 'EARLY_RADAR') confidence = 'B';
-  else if (status === 'MOMENTUM_CONTINUATION' && chg <= 4.0) confidence = 'B';
-  else if (status === 'MOMENTUM_CONTINUATION') confidence = 'B-';
-  else if (status === 'RECLAIM_CANDIDATE') confidence = 'B-';
-  else if (status === 'WAIT_PULLBACK' || status === 'SPECULATIVE') confidence = 'C';
-  else confidence = 'Avoid';
+  if (status === 'A_PLUS_SETUP' || status === 'TRADE_CANDIDATE' || status === 'READY_BREAKOUT') confidence = 'A';
+  else if (status === 'PRE_SPIKE_WATCH' || status === 'EARLY_RADAR' || status === 'MOMENTUM_CONTINUATION' || status === 'RECLAIM_CANDIDATE') confidence = 'B';
 
   // Entry timing (V4: anti-chase explicit messaging)
   var entryTiming = 'Hanya pantau';
@@ -5216,11 +5324,9 @@ function deriveDayTradeLabels(r) {
 
   // Direction prediction (V4: risk-aware)
   var direction = 'Hindari';
-  if (confidence === 'A+') direction = 'Potensi naik kuat — konfirmasi lengkap';
-  else if (confidence === 'A') direction = 'Potensi naik kuat';
-  else if (confidence === 'B+') direction = 'Potensi naik moderat';
+  if (confidence === 'A') direction = 'Potensi naik kuat';
   else if (confidence === 'B' && score >= 72) direction = 'Potensi naik moderat';
-  else if (confidence === 'B' || confidence === 'B-') direction = 'Radar awal — belum konfirmasi';
+  else if (confidence === 'B') direction = 'Radar awal — belum konfirmasi';
   else if (status === 'WAIT_PULLBACK') direction = 'Rawan gagal lanjut — jangan chase';
   else if (status === 'SPECULATIVE') direction = 'Rawan gagal lanjut';
   else if (status === 'AVOID') direction = 'Hindari — risiko tinggi';
@@ -5323,7 +5429,6 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
     // Derive computed labels (confidence, entry_timing, direction, timeframe) from stored fields
     sortedRows = sortedRows.map(function(r) {
       var labels = deriveDayTradeLabels(r);
-      r.confidence = labels.confidence;
       r.entry_timing = labels.entry_timing;
       r.direction = labels.direction;
       // Derive 1D candle context from persisted fields
@@ -5331,7 +5436,7 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       r.tf_1d_context = tfCtx.tf_1d;
       r.tf_summary = tfCtx.summary;
       r.derived_risk = tfCtx.derived_risk;
-      return r;
+      return enrichSignalQuality(r, 'Day Trade');
     });
 
     sortedRows = await enrichConfluenceRows(supabase, sortedRows, false);
@@ -6125,17 +6230,18 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   var score = getTelegramScore(r, mode);
   var statusLabel = safeTelegramText(r.status || r.final_status, 80, '-').replace(/_/g, ' ');
   var action = safeTelegramText(r.telegram_action_label, 40, 'Pantau dulu');
-  var grade = getTelegramGrade(r);
+  var enrichedForGrade = enrichSignalQuality(r, mode === 'daytrade' ? 'Day Trade' : 'Swing');
+  var grade = enrichedForGrade.confidence || getTelegramGrade(r);
   var risk = normalizeTelegramRiskLabel(r.verified_risk_label || r.risk_label) || '-';
   var lines = [];
   lines.push(idx + '. ' + safeTelegramText(r.ticker, 16, '-') + ' — ' + action);
   lines.push('Status: ' + statusLabel);
-  lines.push('Grade ' + grade + ' · ' + risk + ' · Score ' + score + ' · Conviction ' + fmtScore(r.telegram_conviction_score));
+  lines.push('G:' + grade + ' · ' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + safeTelegramText(enrichedForGrade.liquidity_label, 40, '-'));
+  lines.push('Window: ' + safeTelegramText(enrichedForGrade.entry_window_label, 60, '-'));
   lines.push('Harga: ' + fmtPrice(r.last_price));
   lines.push('Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
   lines.push('SL: ' + fmtPrice(r.stop_loss));
   lines.push('TP: ' + fmtPrice(r.tp1) + ' / ' + fmtPrice(r.tp2));
-  lines.push('RR: ' + fmtRR(r.risk_reward));
 
   var txParts = [];
   if (r.tx_value_1d) txParts.push('Tx1D ' + fmtRpValue(r.tx_value_1d));
