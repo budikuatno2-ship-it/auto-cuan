@@ -2927,22 +2927,35 @@ function deriveStaleLiquidityLabels(row) {
   var freq = toNum(row.freq || row.frequency);
   var volumeRatio = toNum(row.volume_ratio_20d || row.volume_ratio_avg20 || row.volume_ratio);
   var notes = [];
-  var limited = tradedDays == null && valueToday == null && avg7 == null && freq == null && volumeRatio == null;
+  var volumeNotes = [];
+  var hasLiquidityData = tradedDays != null || valueToday != null || avg7 != null || freq != null;
+  var limited = !hasLiquidityData;
+  var veryHighValue = (valueToday != null && valueToday >= 10000000000) || (avg7 != null && avg7 >= 10000000000);
+  var moderateValue = (valueToday != null && valueToday >= 3000000000) || (avg7 != null && avg7 >= 3000000000);
+  var lowValueToday = valueToday != null && valueToday < 750000000;
+  var lowAvg7 = avg7 != null && avg7 < 1000000000;
   var risk = false;
   var moderate = false;
-  if (tradedDays != null && tradedDays < 15) { risk = true; notes.push('Traded days 20D < 15.'); }
-  if (valueToday != null && valueToday < 750000000) { risk = true; notes.push('Value today very low.'); }
-  else if (valueToday != null && valueToday < 3000000000) moderate = true;
-  if (avg7 != null && avg7 < 1000000000) { risk = true; notes.push('Avg value 7D very low.'); }
-  else if (avg7 != null && avg7 < 3000000000) moderate = true;
-  if (freq != null && freq < 1000) { risk = true; notes.push('Frequency low.'); }
-  else if (freq != null && freq < 3000) moderate = true;
-  if (volumeRatio != null && volumeRatio < 0.7) { risk = true; notes.push('Volume ratio weak.'); }
-  var label = limited ? 'Liquidity Check Limited' : (risk ? 'Illiquid / Thin Trading' : (moderate ? 'Moderate Liquidity' : 'Liquid'));
-  if (limited) notes.push('Liquidity/stale check limited by available data.');
+  if (tradedDays != null && tradedDays < 15) { risk = true; notes.push('Hari perdagangan 20D < 15.'); }
+  if (!veryHighValue && lowValueToday && (avg7 == null || lowAvg7)) { risk = true; notes.push('Nilai transaksi harian sangat rendah.'); }
+  if (!veryHighValue && lowAvg7 && (valueToday == null || lowValueToday)) { risk = true; notes.push('Rata-rata nilai transaksi 7D sangat rendah.'); }
+  if (!veryHighValue && freq != null && freq < 1000) { risk = true; notes.push('Frekuensi transaksi rendah.'); }
+  else if (!veryHighValue && freq != null && freq < 3000) moderate = true;
+  if (!veryHighValue && !risk && !moderateValue) moderate = true;
+  var volumeLabel = 'Volume normal';
+  if (volumeRatio == null) { volumeLabel = 'Data volume terbatas'; volumeNotes.push('Data rasio volume belum tersedia.'); }
+  else if (volumeRatio < 0.7) { volumeLabel = 'Volume belum konfirmasi'; volumeNotes.push('Volume belum mengonfirmasi pergerakan harga.'); }
+  else if (volumeRatio < 1.0) { volumeLabel = 'Volume lemah'; volumeNotes.push('Volume masih di bawah rata-rata.'); }
+  else if (volumeRatio >= 1.2) { volumeLabel = 'Volume kuat'; volumeNotes.push('Volume di atas rata-rata.'); }
+  else { volumeNotes.push('Volume relatif normal.'); }
+  var label = limited ? 'Likuiditas: Data terbatas' : (risk ? 'Likuiditas Tipis' : (moderate ? 'Likuiditas Sedang' : 'Liquid'));
+  if (veryHighValue && !risk) label = 'Liquid';
+  if (limited) notes.push('Data likuiditas terbatas.');
   return {
     liquidity_label: label,
-    liquidity_notes: notes.join(' ') || 'Liquidity data looks acceptable.',
+    liquidity_notes: notes.join(' ') || (limited ? 'Data likuiditas terbatas.' : 'Likuiditas transaksi memadai.'),
+    volume_confirmation_label: volumeLabel,
+    volume_confirmation_notes: volumeNotes.join(' ') || 'Volume relatif normal.',
     stale_label: staleLabel,
     stale_notes: staleNotes,
     is_stale: !!isStale,
@@ -3274,34 +3287,38 @@ async function buildSignalMessage(supabase, ticker) {
   var risk = deriveTelegramRiskLabel(row, row.category === 'Day Trade' ? 'daytrade' : 'swing').replace(' Risk', '');
   var support = toNum(row.support);
   var resistance = toNum(row.resistance);
-  var trigger = resistance ? ('close > ' + fmtPrice(resistance) + ' + volume valid') : 'konfirmasi breakout/pullback + volume valid';
-  var invalidasi = support ? ('breakdown ' + fmtPrice(support) + ' / SL kena') : 'SL kena';
-  var verdict = eligible ? 'Watchlist, tunggu konfirmasi.' : 'Radar Only — data belum lolos semua filter, jangan agresif.';
+  var trigger = resistance ? ('close > ' + fmtPrice(resistance) + ' dengan volume valid') : 'konfirmasi breakout/pullback dengan volume valid';
+  var invalidasi = support ? ('breakdown ' + fmtPrice(support) + ' atau SL kena') : 'SL kena';
+  var verdict = eligible ? 'Watchlist — tunggu konfirmasi.' : 'Pantauan — belum layak entry agresif.';
+  var trendText = String(row.trend_label || '').replace('Bullish Trend', 'Kuat').replace('Improving Trend', 'Mulai membaik').replace('Bearish Trend', 'Melemah').replace('Weak Trend', 'Lemah').replace(' Trend', '');
+  var patternText = String(row.pattern_label || 'No Clear Pattern').replace('No Clear Pattern', 'Belum ada pola kuat').replace('Insufficient Data', 'Data pola terbatas').replace('VCP-like Base', 'VCP-like');
+  var volumeNote = compactSafeText(row.volume_confirmation_notes || row.volume_notes, 'Volume relatif normal.').replace('Volume/value belum mengonfirmasi pergerakan harga.', 'Volume belum mengonfirmasi pergerakan harga.');
+  var warning = eligible ? '' : compactSafeText(row.volume_confirmation_label === 'Volume belum konfirmasi' || row.volume_confirmation_label === 'Volume lemah' ? 'Volume belum kuat, tunggu konfirmasi.' : row.confidence_notes, 'Tunggu konfirmasi.').replace('Radar only, jangan agresif.', 'Belum layak entry agresif.').replace('Radar only — RR belum ideal.', 'RR belum ideal.');
   var lines = [
     'SIGNAL ' + safeTicker + ' — ' + compactSafeText(row.category, 'Screener'),
-    'G:' + compactSafeText(row.confidence, 'C') + ' · Risk:' + risk + ' · RR:' + fmtRR(row.risk_reward) + ' · Liq:' + compactSafeText(row.liquidity_label, '-'),
-    'Window: ' + compactSafeText(row.entry_window_label, '-'),
+    'Grade ' + compactSafeText(row.confidence, 'C') + ' · Risiko ' + risk + ' · RR ' + fmtRR(row.risk_reward),
+    'Likuiditas: ' + compactSafeText(row.liquidity_label, '-') + ' · Waktu Entry: ' + compactSafeText(row.entry_window_label, '-').replace('Near planned entry zone', 'dekat area entry'),
     '',
     'Harga ' + fmtPrice(row.lastn || row.last_price),
     'Entry ' + fmtPrice(row.entry1) + '/' + fmtPrice(row.entry2) + ' · SL ' + fmtPrice(row.sl) + ' · TP ' + fmtPrice(row.tp1n) + '/' + fmtPrice(row.tp2n),
-    'TP1 Upside: ' + formatPct(row.tp1_upside),
+    'Potensi TP1: ' + formatPct(row.tp1_upside),
     '',
-    'Trend: ' + compactSafeText(String(row.trend_label || '').replace(' Trend', ''), '-') + (row.trend_notes ? ' · ' + compactSafeText(row.trend_notes, '') : ''),
-    'Volume: ' + fmtRatio(getTelegramVolumeRatio(row)) + ' · Tx ' + fmtRpValue(getTelegramValue(row)) + (row.volume_notes ? ' · ' + compactSafeText(row.volume_notes, '') : ''),
-    fs2 ? ('Foreign 7D: ' + compactSafeText(row.foreign_label, '-') + ' ' + formatForeignRupiah(row.foreign_7d)) : '',
-    'Pattern: ' + compactSafeText(String(row.pattern_label || 'No Clear Pattern').replace('VCP-like Base', 'VCP-like'), 'No Clear Pattern'),
+    'Trend: ' + compactSafeText(trendText, '-'),
+    'Volume: ' + fmtRatio(getTelegramVolumeRatio(row)) + ' · transaksi ' + fmtRpValue(getTelegramValue(row)),
+    'Catatan volume: ' + volumeNote.charAt(0).toLowerCase() + volumeNote.slice(1),
+    fs2 ? ('Foreign 7D: ' + compactSafeText(row.foreign_label, '-').replace('Accumulation', 'Akumulasi').replace('Distribution', 'Distribusi').replace('Mixed', 'Campuran').replace('Neutral', 'Netral') + ' ' + formatForeignRupiah(row.foreign_7d)) : '',
+    'Pattern: ' + compactSafeText(patternText, 'Belum ada pola kuat'),
     '',
-    support ? ('Support: ' + fmtPrice(support)) : '',
-    resistance ? ('Resistance: ' + fmtPrice(resistance)) : '',
-    'Trigger: ' + trigger,
-    'Invalidasi: ' + invalidasi,
+    support && resistance ? ('Support: ' + fmtPrice(support) + ' · Resistance: ' + fmtPrice(resistance)) : (support ? ('Support: ' + fmtPrice(support)) : (resistance ? ('Resistance: ' + fmtPrice(resistance)) : '')),
+    'Konfirmasi: ' + trigger,
+    'Batal jika: ' + invalidasi,
     '',
-    'Bull: breakout/resume ke TP1/TP2',
-    'Base: tunggu pullback/konfirmasi',
-    'Bear: breakdown support/SL',
+    'Skenario Naik: tembus resistance, peluang lanjut ke TP1/TP2',
+    'Skenario Netral: tunggu pullback atau konfirmasi volume',
+    'Skenario Turun: breakdown support/SL',
     '',
-    'Verdict: ' + verdict,
-    eligible ? '' : ('Warning: ' + compactSafeText(row.confidence_notes, 'Radar only.')),
+    'Kesimpulan: ' + verdict,
+    warning ? ('Catatan: ' + warning) : '',
     'Bukan rekomendasi beli/jual. DYOR.'
   ];
   return signalCleanLines(lines);
