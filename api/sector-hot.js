@@ -2893,21 +2893,85 @@ function buildTop5ChartSvg(ticker, date, ohlcRows, pick, source) {
   return parts.join('');
 }
 
+
+function makeCrcTable() {
+  var c, table = [];
+  for (var n = 0; n < 256; n++) {
+    c = n;
+    for (var k = 0; k < 8; k++) c = ((c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1));
+    table[n] = c >>> 0;
+  }
+  return table;
+}
+var PNG_CRC_TABLE = makeCrcTable();
+function crc32(buf) {
+  var c = 0xffffffff;
+  for (var i = 0; i < buf.length; i++) c = PNG_CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+function pngChunk(type, data) {
+  var typeBuf = Buffer.from(type, 'ascii');
+  var len = Buffer.alloc(4); len.writeUInt32BE(data.length, 0);
+  var crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])), 0);
+  return Buffer.concat([len, typeBuf, data, crc]);
+}
+function encodeRgbaPng(width, height, rgba) {
+  var zlib = require('zlib');
+  var raw = Buffer.alloc((width * 4 + 1) * height);
+  for (var yy = 0; yy < height; yy++) { raw[yy * (width * 4 + 1)] = 0; rgba.copy(raw, yy * (width * 4 + 1) + 1, yy * width * 4, (yy + 1) * width * 4); }
+  var ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 6;
+  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), pngChunk('IHDR', ihdr), pngChunk('IDAT', zlib.deflateSync(raw)), pngChunk('IEND', Buffer.alloc(0))]);
+}
+function hexToRgb(hex) { hex = String(hex || '#000000').replace('#', ''); return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]; }
+function buildTop5ChartPng(ticker, date, ohlcRows, pick, source) {
+  var rows = (ohlcRows || []).slice(-30);
+  if (rows.length === 0) throw new Error('no_ohlc_rows');
+  var levels = planLevelsForChart(pick), prices = [];
+  rows.forEach(function(r) { prices.push(r.open, r.high, r.low, r.close); }); levels.forEach(function(l) { prices.push(l.value); });
+  var minP = Math.min.apply(null, prices.filter(function(v) { return v != null && isFinite(v); }));
+  var maxP = Math.max.apply(null, prices.filter(function(v) { return v != null && isFinite(v); }));
+  if (!isFinite(minP) || !isFinite(maxP)) throw new Error('invalid_price_range');
+  if (minP === maxP) { minP *= 0.98; maxP *= 1.02; }
+  var pad = (maxP - minP) * 0.08; minP -= pad; maxP += pad;
+  var w = 920, h = 540, left = 72, right = 126, top = 58, bottom = 74, plotW = w - left - right, plotH = h - top - bottom;
+  var rgba = Buffer.alloc(w * h * 4, 255);
+  function setPx(px, py, color) { px = Math.round(px); py = Math.round(py); if (px < 0 || py < 0 || px >= w || py >= h) return; var idx = (py * w + px) * 4; rgba[idx] = color[0]; rgba[idx + 1] = color[1]; rgba[idx + 2] = color[2]; rgba[idx + 3] = 255; }
+  function rect(x1, y1, x2, y2, color) { x1 = Math.max(0, Math.floor(x1)); x2 = Math.min(w - 1, Math.ceil(x2)); y1 = Math.max(0, Math.floor(y1)); y2 = Math.min(h - 1, Math.ceil(y2)); for (var ry = y1; ry <= y2; ry++) for (var rx = x1; rx <= x2; rx++) setPx(rx, ry, color); }
+  function line(x1, y1, x2, y2, color, width) { width = width || 1; var dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1), sx = x1 < x2 ? 1 : -1, sy = y1 < y2 ? 1 : -1, err = dx - dy; while (true) { rect(x1 - width / 2, y1 - width / 2, x1 + width / 2, y1 + width / 2, color); if (Math.round(x1) === Math.round(x2) && Math.round(y1) === Math.round(y2)) break; var e2 = 2 * err; if (e2 > -dy) { err -= dy; x1 += sx; } if (e2 < dx) { err += dx; y1 += sy; } } }
+  function x(i) { return left + (rows.length === 1 ? plotW / 2 : (i * plotW / (rows.length - 1))); } function y(v) { return top + ((maxP - v) / (maxP - minP)) * plotH; }
+  for (var g = 0; g <= 4; g++) line(left, top + g * plotH / 4, w - right, top + g * plotH / 4, hexToRgb('#e5e7eb'), 1);
+  levels.forEach(function(l) { line(left, y(l.value), w - right, y(l.value), hexToRgb(l.color), 2); });
+  var cw = Math.max(8, Math.min(18, plotW / Math.max(rows.length, 8) * 0.55));
+  rows.forEach(function(r, i) { var cx = x(i), up = r.close >= r.open, color = hexToRgb(up ? '#16a34a' : '#dc2626'), fill = hexToRgb(up ? '#dcfce7' : '#fee2e2'); line(cx, y(r.high), cx, y(r.low), color, 2); var by = Math.min(y(r.open), y(r.close)), bh = Math.max(2, Math.abs(y(r.open) - y(r.close))); rect(cx - cw / 2, by, cx + cw / 2, by + bh, fill); line(cx - cw / 2, by, cx + cw / 2, by, color, 1); line(cx - cw / 2, by + bh, cx + cw / 2, by + bh, color, 1); line(cx - cw / 2, by, cx - cw / 2, by + bh, color, 1); line(cx + cw / 2, by, cx + cw / 2, by + bh, color, 1); });
+  line(left, top + plotH, w - right, top + plotH, hexToRgb('#9ca3af'), 1);
+  return encodeRgbaPng(w, h, rgba);
+}
+
 async function sendTop5ChartAttachments(supabase, picks, date) {
-  var sent = 0, errors = [];
+  var sent = 0, detailSent = 0, errors = [];
   for (var i = 0; i < picks.length; i++) {
     var ticker = picks[i].ticker;
     try {
       var ohlc = await fetchChartOhlcRows(supabase, picks[i]);
-      var svg = buildTop5ChartSvg(ticker, date, ohlc.rows, picks[i], ohlc.source);
-      var result = await telegramNotifier.sendTelegramDocument(Buffer.from(svg, 'utf8'), ticker + '-top5-chart.svg', { caption: ticker + ' chart Top 5 — ' + date, content_type: 'image/svg+xml' });
+      var png = buildTop5ChartPng(ticker, date, ohlc.rows, picks[i], ohlc.source);
+      var caption = String(picks[i]._photo_caption || (ticker + ' chart Top 5 — ' + date)).slice(0, 1024);
+      var result = await telegramNotifier.sendTelegramPhoto(png, ticker + '-top5-chart.png', caption, { content_type: 'image/png' });
       if (result.sent) sent++;
       else errors.push({ ticker: ticker, reason: result.reason || 'send_failed', telegram: result });
+      if (picks[i]._detail_text) {
+        var detailResult = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text);
+        if (detailResult.sent) detailSent++;
+      }
     } catch (e) {
       errors.push({ ticker: ticker, reason: e.message || String(e) });
+      if (picks[i]._detail_text) {
+        var fallbackDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text);
+        if (fallbackDetail.sent) detailSent++;
+      }
     }
   }
-  return { sent_count: sent, errors: errors, method: 'sendDocument SVG' };
+  return { sent_count: sent, detail_sent_count: detailSent, errors: errors, method: 'sendPhoto PNG' };
 }
 
 async function selectDailyTop5(supabase) {
@@ -2938,14 +3002,15 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     }
     var picks = await selectDailyTop5(supabase);
     var date = getJakartaDateString();
-    var lines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Jam: 08:00 WIB', 'Tanggal: ' + date, ''];
-    if (picks.length === 0) lines.push('Belum ada kandidat yang memenuhi syarat dari cache screener.');
-    for (var i = 0; i < picks.length; i++) { lines.push(await formatCandidateBlock(supabase, picks[i], i + 1, false)); lines.push(''); }
-    lines.push('Chart: attachment SVG per ticker dikirim setelah ringkasan (sendDocument). Link TradingView tetap ada sebagai fallback bacaan.');
-    lines.push('Bukan rekomendasi beli/jual. DYOR.');
-    var msg = lines.join('\n');
-    var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(msg) : { sent: false, skipped: true, reason: 'no_picks' };
-    var chartResult = picks.length > 0 ? await sendTop5ChartAttachments(supabase, picks, date) : { sent_count: 0, errors: [], method: 'sendDocument SVG' };
+    var header = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Jam: 08:00 WIB', 'Tanggal: ' + date, '', 'Chart dikirim inline sebagai PNG per ticker jika berhasil.', 'Bukan rekomendasi beli/jual. DYOR.'].join('\n');
+    var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage('🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5\nTanggal: ' + date + '\n\nBelum ada kandidat yang memenuhi syarat dari cache screener.');
+    var detailSent = 0;
+    for (var i = 0; i < picks.length; i++) {
+      picks[i]._detail_text = await formatCandidateBlock(supabase, picks[i], i + 1, true);
+      picks[i]._photo_caption = (i + 1) + '. ' + picks[i].ticker + ' — ' + picks[i].category;
+    }
+    var chartResult = picks.length > 0 ? await sendTop5ChartAttachments(supabase, picks, date) : { sent_count: 0, detail_sent_count: 0, errors: [], method: 'sendPhoto PNG' };
+    detailSent = chartResult.detail_sent_count || 0;
     if (picks.length > 0) {
       await supabase.from('telegram_daily_picks').delete().eq('date', date);
       var nowIso = new Date().toISOString();
@@ -2953,7 +3018,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       var ins = await supabase.from('telegram_daily_picks').insert(rows);
       if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
     }
-    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: sendResult.sent ? 1 : 0, picked_count: picks.length, chart_sent_count: chartResult.sent_count, chart_error_count: chartResult.errors.length, chart_errors: chartResult.errors, chart_method: chartResult.method, error: null, telegram: sendResult });
+    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: (sendResult.sent ? 1 : 0) + detailSent + chartResult.sent_count, picked_count: picks.length, chart_sent_count: chartResult.sent_count, chart_error_count: chartResult.errors.length, chart_errors: chartResult.errors, chart_method: chartResult.method, error: null, telegram: sendResult });
   } catch (e) {
     return res.status(200).json({ success: false, sent_count: 0, picked_count: 0, error: e.message || String(e) });
   }
