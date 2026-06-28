@@ -35,6 +35,7 @@ const dtEngine = require('../lib/daytrade-screener-engine');
 const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
 const telegramNotifier = require('../lib/telegram-notifier');
+const crypto = require('crypto');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -64,6 +65,10 @@ module.exports = async function handler(req, res) {
     // === TELEGRAM DAILY TOP 5 / MONITOR (cron-protected) ===
     if (action === 'telegram-daily-picks') {
       return await handleTelegramDailyPicks(req, res, supabase);
+    }
+
+    if (action === 'telegram-top5-chart-image') {
+      return await handleTelegramTop5ChartImage(req, res, supabase);
     }
 
     if (action === 'telegram-monitor-picks') {
@@ -2858,7 +2863,8 @@ function planLevelsForChart(row) {
   ].filter(function(x) { return x.value != null && isFinite(x.value) && x.value > 0; });
 }
 
-async function fetchChartOhlcRows(supabase, pick) {
+async function fetchChartOhlcRows(supabase, pick, options) {
+  options = options || {};
   var ticker = normalizeForeignTicker(pick.ticker || '');
   if (!ticker) return { rows: [], source: 'missing_ticker', skipped: true, reason: 'missing_ticker' };
 
@@ -2867,7 +2873,7 @@ async function fetchChartOhlcRows(supabase, pick) {
     var symbol = ticker + '.JK';
     var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) + '?range=1y&interval=1d';
     var controller = new AbortController();
-    var timeout = setTimeout(function() { controller.abort(); }, 10000);
+    var timeout = setTimeout(function() { controller.abort(); }, Number(options.timeout_ms || options.timeoutMs || 10000));
     var response = await fetch(url, {
       method: 'GET',
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
@@ -3037,45 +3043,81 @@ function buildTop5ChartPng(ticker, date, ohlcRows, pick, source) {
 }
 
 
-async function sendTop5ChartAttachments(supabase, picks, date) {
+function getRequestBaseUrl(req) {
+  var proto = req.headers['x-forwarded-proto'] || 'https';
+  var host = req.headers['x-forwarded-host'] || req.headers.host;
+  return proto + '://' + host;
+}
+
+function makeTop5ChartToken(ticker, ttlSeconds) {
+  var secret = process.env.TOP5_CHART_TOKEN_SECRET || process.env.CRON_SECRET || '';
+  if (!secret) return null;
+  var exp = Math.floor(Date.now() / 1000) + (ttlSeconds || 900);
+  var payload = normalizeForeignTicker(ticker) + ':' + exp;
+  var sig = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+  return Buffer.from(payload).toString('base64url') + '.' + sig;
+}
+
+function verifyTop5ChartToken(ticker, token) {
+  var secret = process.env.TOP5_CHART_TOKEN_SECRET || process.env.CRON_SECRET || '';
+  if (!secret || !token || String(token).indexOf('.') === -1) return false;
+  var parts = String(token).split('.');
+  var payload;
+  try { payload = Buffer.from(parts[0], 'base64url').toString('utf8'); } catch (e) { return false; }
+  var expectedPayload = normalizeForeignTicker(ticker) + ':';
+  if (payload.indexOf(expectedPayload) !== 0) return false;
+  var exp = Number(payload.slice(expectedPayload.length));
+  if (!isFinite(exp) || exp < Math.floor(Date.now() / 1000)) return false;
+  var expected = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+  try { return crypto.timingSafeEqual(Buffer.from(parts[1]), Buffer.from(expected)); } catch (e2) { return false; }
+}
+
+async function handleTelegramTop5ChartImage(req, res, supabase) {
+  var ticker = normalizeForeignTicker(req.query.ticker || '');
+  if (!ticker || !verifyTop5ChartToken(ticker, req.query.token)) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  try {
+    var ohlc = await fetchChartOhlcRows(supabase, { ticker: ticker }, { timeout_ms: 2500 });
+    if (!ohlc.rows || ohlc.rows.length < 20 || ohlc.skipped) return res.status(422).json({ success: false, skipped: true, reason: ohlc.reason || 'insufficient_historical_ohlc', source: ohlc.source });
+    var png = buildTop5ChartPng(ticker, getJakartaDateString(), ohlc.rows, { ticker: ticker }, ohlc.source);
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    return res.status(200).send(png);
+  } catch (e) {
+    return res.status(504).json({ success: false, skipped: true, reason: e && e.name === 'AbortError' ? 'yahoo_timeout_2500ms' : (e.message || 'chart_error') });
+  }
+}
+
+async function sendTop5ChartAttachments(req, picks) {
   var sent = 0, detailSent = 0, errors = [], skipped = 0;
+  var started = Date.now();
+  var baseUrl = getRequestBaseUrl(req);
   for (var i = 0; i < picks.length; i++) {
     var ticker = picks[i].ticker;
+    if (Date.now() - started > 8500) {
+      skipped += (picks.length - i);
+      errors.push({ ticker: ticker, reason: 'timeout_guard_text_fallback' });
+      for (var j = i; j < picks.length; j++) if (picks[j]._detail_text) { var guardDetail = await telegramNotifier.sendTelegramMessage(picks[j]._detail_text, { timeout_ms: 2500 }); if (guardDetail.sent) detailSent++; }
+      break;
+    }
     try {
-      var ohlc = await fetchChartOhlcRows(supabase, picks[i]);
-      if (!ohlc.rows || ohlc.rows.length < 20 || ohlc.skipped) {
-        skipped++;
-        errors.push({ ticker: ticker, reason: ohlc.reason || ('insufficient_historical_ohlc_' + ((ohlc.rows && ohlc.rows.length) || 0)), source: ohlc.source });
-        if (picks[i]._detail_text) {
-          var skippedDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text);
-          if (skippedDetail.sent) detailSent++;
-        }
-        continue;
-      }
-      var png = buildTop5ChartPng(ticker, date, ohlc.rows, picks[i], ohlc.source);
+      var token = makeTop5ChartToken(ticker, 900);
+      if (!token) throw new Error('missing_chart_token_secret');
+      var photoUrl = baseUrl + '/api/sector-hot?action=telegram-top5-chart-image&ticker=' + encodeURIComponent(ticker) + '&token=' + encodeURIComponent(token);
       var captionParts = buildTop5PhotoCaption(picks[i]._detail_text || ((i + 1) + '. ' + ticker + ' — ' + picks[i].category));
-      var result = await telegramNotifier.sendTelegramPhoto(png, ticker + '-top5-chart.png', captionParts.caption, { content_type: 'image/png' });
+      var result = await telegramNotifier.sendTelegramPhotoUrl(photoUrl, captionParts.caption, { timeout_ms: 3500 });
       if (result.sent) sent++;
       else {
+        skipped++;
         errors.push({ ticker: ticker, reason: result.reason || 'send_failed', telegram: result });
-        if (picks[i]._detail_text) {
-          var failedDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text);
-          if (failedDetail.sent) detailSent++;
-        }
-      }
-      if (result.sent && captionParts.followup) {
-        var follow = await telegramNotifier.sendTelegramMessage(captionParts.followup);
-        if (follow.sent) detailSent++;
+        if (picks[i]._detail_text) { var failedDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text, { timeout_ms: 2500 }); if (failedDetail.sent) detailSent++; }
       }
     } catch (e) {
+      skipped++;
       errors.push({ ticker: ticker, reason: e.message || String(e) });
-      if (picks[i]._detail_text) {
-        var fallbackDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text);
-        if (fallbackDetail.sent) detailSent++;
-      }
+      if (picks[i]._detail_text) { var fallbackDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text, { timeout_ms: 2500 }); if (fallbackDetail.sent) detailSent++; }
     }
   }
-  return { sent_count: sent, detail_sent_count: detailSent, skipped_count: skipped, errors: errors, method: 'sendPhoto PNG with compact caption' };
+  return { sent_count: sent, detail_sent_count: detailSent, skipped_count: skipped, errors: errors, method: sent > 0 ? 'sendPhoto chart-url per ticker' : 'text fallback no-chart due timeout guard' };
 }
 
 async function selectDailyTop5(supabase) {
@@ -3097,12 +3139,12 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     var force = req.query && req.query.force === '1';
     var weekendBypassed = false;
     if (!isJakartaWeekday()) {
-      if (!force) return res.status(200).json({ success: true, skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, picked_count: 0, chart_sent_count: 0, chart_error_count: 0 });
+      if (!force) return res.status(200).json({ success: true, build_marker: 'top5-chart-timeout-safe-pr59', skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, picked_count: 0, chart_sent_count: 0, chart_error_count: 0 });
       weekendBypassed = true;
     }
     var readiness = await getScreenerReadiness(supabase);
     if (!force && !readiness.ready) {
-      return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0, chart_sent_count: 0, chart_error_count: 0, telegram: null });
+      return res.status(200).json({ success: true, build_marker: 'top5-chart-timeout-safe-pr59', skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0, chart_sent_count: 0, chart_error_count: 0, telegram: null });
     }
     var picks = await selectDailyTop5(supabase);
     var date = getJakartaDateString();
@@ -3112,7 +3154,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     for (var i = 0; i < picks.length; i++) {
       picks[i]._detail_text = await formatCandidateBlock(supabase, picks[i], i + 1, true);
     }
-    var chartResult = picks.length > 0 ? await sendTop5ChartAttachments(supabase, picks, date) : { sent_count: 0, detail_sent_count: 0, errors: [], method: 'sendPhoto PNG' };
+    var chartResult = picks.length > 0 ? await sendTop5ChartAttachments(req, picks) : { sent_count: 0, detail_sent_count: 0, skipped_count: 0, errors: [], method: 'sendPhoto chart-url per ticker' };
     detailSent = chartResult.detail_sent_count || 0;
     if (picks.length > 0) {
       await supabase.from('telegram_daily_picks').delete().eq('date', date);
@@ -3121,7 +3163,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       var ins = await supabase.from('telegram_daily_picks').insert(rows);
       if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
     }
-    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: (sendResult.sent ? 1 : 0) + detailSent + chartResult.sent_count, picked_count: picks.length, chart_sent_count: chartResult.sent_count, chart_error_count: chartResult.errors.length, chart_skipped_count: chartResult.skipped_count || 0, chart_errors: chartResult.errors, chart_method: chartResult.method, error: null, telegram: sendResult });
+    return res.status(200).json({ success: true, build_marker: 'top5-chart-timeout-safe-pr59', skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: (sendResult.sent ? 1 : 0) + detailSent + chartResult.sent_count, picked_count: picks.length, chart_sent_count: chartResult.sent_count, chart_error_count: chartResult.errors.length, chart_skipped_count: chartResult.skipped_count || 0, chart_errors: chartResult.errors, chart_method: chartResult.method, error: null, telegram: sendResult });
   } catch (e) {
     return res.status(200).json({ success: false, sent_count: 0, picked_count: 0, error: e.message || String(e) });
   }
