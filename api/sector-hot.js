@@ -67,9 +67,7 @@ module.exports = async function handler(req, res) {
       return await handleTelegramDailyPicks(req, res, supabase);
     }
 
-    if (action === 'telegram-top5-chart-image') {
-      return await handleTelegramTop5ChartImage(req, res, supabase);
-    }
+    // Top 5 automatic Telegram delivery is text-only; chart image endpoint routing is disabled.
 
     if (action === 'telegram-monitor-picks') {
       return await handleTelegramMonitorPicks(req, res, supabase);
@@ -3139,12 +3137,12 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     var force = req.query && req.query.force === '1';
     var weekendBypassed = false;
     if (!isJakartaWeekday()) {
-      if (!force) return res.status(200).json({ success: true, build_marker: 'top5-chart-timeout-safe-pr59', skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, picked_count: 0, chart_sent_count: 0, chart_error_count: 0 });
+      if (!force) return res.status(200).json({ success: true, build_marker: 'top5-text-only-no-chart-pr60', skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, picked_count: 0, chart_method: 'chart_links_only', chart_sent_count: 0, chart_error_count: 0, chart_skipped_count: 0, chart_skip_reason: 'image_charts_disabled_timeout_safe' });
       weekendBypassed = true;
     }
     var readiness = await getScreenerReadiness(supabase);
     if (!force && !readiness.ready) {
-      return res.status(200).json({ success: true, build_marker: 'top5-chart-timeout-safe-pr59', skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0, chart_sent_count: 0, chart_error_count: 0, telegram: null });
+      return res.status(200).json({ success: true, build_marker: 'top5-text-only-no-chart-pr60', skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0, chart_method: 'chart_links_only', chart_sent_count: 0, chart_error_count: 0, chart_skipped_count: 0, chart_skip_reason: 'image_charts_disabled_timeout_safe', telegram: null });
     }
     var picks = await selectDailyTop5(supabase);
     var date = getJakartaDateString();
@@ -3152,10 +3150,10 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage('🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5\nTanggal: ' + date + '\n\nBelum ada kandidat yang memenuhi syarat dari cache screener.');
     var detailSent = 0;
     for (var i = 0; i < picks.length; i++) {
-      picks[i]._detail_text = await formatCandidateBlock(supabase, picks[i], i + 1, true);
+      var detailText = await formatCandidateBlock(supabase, picks[i], i + 1, false);
+      var detailResult = await telegramNotifier.sendTelegramMessage(detailText, { timeout_ms: 2500 });
+      if (detailResult.sent) detailSent++;
     }
-    var chartResult = picks.length > 0 ? await sendTop5ChartAttachments(req, picks) : { sent_count: 0, detail_sent_count: 0, skipped_count: 0, errors: [], method: 'sendPhoto chart-url per ticker' };
-    detailSent = chartResult.detail_sent_count || 0;
     if (picks.length > 0) {
       await supabase.from('telegram_daily_picks').delete().eq('date', date);
       var nowIso = new Date().toISOString();
@@ -3163,9 +3161,9 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       var ins = await supabase.from('telegram_daily_picks').insert(rows);
       if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
     }
-    return res.status(200).json({ success: true, build_marker: 'top5-chart-timeout-safe-pr59', skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: (sendResult.sent ? 1 : 0) + detailSent + chartResult.sent_count, picked_count: picks.length, chart_sent_count: chartResult.sent_count, chart_error_count: chartResult.errors.length, chart_skipped_count: chartResult.skipped_count || 0, chart_errors: chartResult.errors, chart_method: chartResult.method, error: null, telegram: sendResult });
+    return res.status(200).json({ success: true, build_marker: 'top5-text-only-no-chart-pr60', skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: (sendResult.sent ? 1 : 0) + detailSent, picked_count: picks.length, chart_method: 'chart_links_only', chart_sent_count: 0, chart_error_count: 0, chart_skipped_count: picks.length, chart_skip_reason: 'image_charts_disabled_timeout_safe', error: null, telegram: sendResult });
   } catch (e) {
-    return res.status(200).json({ success: false, sent_count: 0, picked_count: 0, error: e.message || String(e) });
+    return res.status(200).json({ success: false, build_marker: 'top5-text-only-no-chart-pr60', sent_count: 0, picked_count: 0, chart_method: 'chart_links_only', chart_sent_count: 0, chart_error_count: 0, chart_skipped_count: 0, chart_skip_reason: 'image_charts_disabled_timeout_safe', error: e.message || String(e) });
   }
 }
 
