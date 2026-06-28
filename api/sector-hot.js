@@ -2827,6 +2827,160 @@ async function buildTelegramScreenerMessage(supabase, modeText) {
 }
 
 
+
+function chartHexToRgb(hex) {
+  var h = String(hex || '#000000').replace('#', '');
+  return [parseInt(h.slice(0, 2), 16) || 0, parseInt(h.slice(2, 4), 16) || 0, parseInt(h.slice(4, 6), 16) || 0];
+}
+
+function planLevelsForChart(row) {
+  return [
+    { key: 'Entry 1', value: toNum(row.entry1), color: '#2563eb' },
+    { key: 'Entry 2', value: toNum(row.entry2), color: '#7c3aed' },
+    { key: 'TP1', value: toNum(row.tp1n || row.tp1), color: '#16a34a' },
+    { key: 'TP2', value: toNum(row.tp2n || row.tp2), color: '#15803d' },
+    { key: 'SL', value: toNum(row.sl), color: '#dc2626' }
+  ].filter(function(x) { return x.value != null && isFinite(x.value) && x.value > 0; });
+}
+
+async function fetchChartOhlcRows(supabase, pick) {
+  var ticker = normalizeForeignTicker(pick.ticker || '');
+  try {
+    var fw = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,open,high,low,close').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(30);
+    var rows = (fw.data || []).filter(function(r) { return toNum(r.close) != null; }).map(function(r) {
+      var close = toNum(r.close);
+      return { date: r.trade_date, open: toNum(r.open) || close, high: toNum(r.high) || close, low: toNum(r.low) || close, close: close };
+    }).reverse();
+    if (!fw.error && rows.length > 0) return { rows: rows, source: 'foreign_watchlist_daily.open/high/low/close' };
+  } catch (e) { /* best-effort fallback below */ }
+
+  var last = toNum(pick.lastn || pick.last_price || pick.entry1 || pick.entry2 || pick.tp1n || pick.tp1);
+  if (!last || !isFinite(last)) last = 100;
+  var open = toNum(pick.open_price) || last;
+  var high = Math.max(toNum(pick.high_price) || last, open, last, toNum(pick.tp1n || pick.tp1) || 0);
+  var low = Math.min(toNum(pick.low_price) || last, open, last, toNum(pick.sl) || last);
+  return { rows: [{ date: getJakartaDateString(), open: open, high: high, low: low, close: last }], source: 'screener latest price fields fallback' };
+}
+
+function pngCrc32(buf) {
+  var table = pngCrc32.table;
+  if (!table) {
+    table = pngCrc32.table = [];
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n] = c >>> 0;
+    }
+  }
+  var crc = 0xffffffff;
+  for (var i = 0; i < buf.length; i++) crc = table[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type, data) {
+  var typeBuf = Buffer.from(type, 'ascii');
+  var len = Buffer.alloc(4); len.writeUInt32BE(data.length, 0);
+  var crc = Buffer.alloc(4); crc.writeUInt32BE(pngCrc32(Buffer.concat([typeBuf, data])), 0);
+  return Buffer.concat([len, typeBuf, data, crc]);
+}
+
+function encodePngRgb(width, height, pixels) {
+  var zlib = require('zlib');
+  var stride = width * 3;
+  var raw = Buffer.alloc((stride + 1) * height);
+  for (var y = 0; y < height; y++) {
+    raw[y * (stride + 1)] = 0;
+    pixels.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
+  }
+  var ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), pngChunk('IHDR', ihdr), pngChunk('IDAT', zlib.deflateSync(raw)), pngChunk('IEND', Buffer.alloc(0))]);
+}
+
+function buildTop5ChartPng(ticker, date, ohlcRows, pick, source) {
+  var rows = (ohlcRows || []).slice(-30);
+  if (rows.length === 0) throw new Error('no_ohlc_rows');
+  var levels = planLevelsForChart(pick);
+  var prices = [];
+  rows.forEach(function(r) { prices.push(r.open, r.high, r.low, r.close); });
+  levels.forEach(function(l) { prices.push(l.value); });
+  var validPrices = prices.filter(function(v) { return v != null && isFinite(v); });
+  var minP = Math.min.apply(null, validPrices), maxP = Math.max.apply(null, validPrices);
+  if (!isFinite(minP) || !isFinite(maxP)) throw new Error('invalid_price_range');
+  if (minP === maxP) { minP *= 0.98; maxP *= 1.02; }
+  var pad = (maxP - minP) * 0.08;
+  minP -= pad; maxP += pad;
+
+  var w = 920, h = 540, left = 72, right = 126, top = 58, bottom = 74;
+  var plotW = w - left - right, plotH = h - top - bottom;
+  var pixels = Buffer.alloc(w * h * 3, 255);
+  function put(px, py, rgb) {
+    px = Math.round(px); py = Math.round(py);
+    if (px < 0 || px >= w || py < 0 || py >= h) return;
+    var off = (py * w + px) * 3; pixels[off] = rgb[0]; pixels[off + 1] = rgb[1]; pixels[off + 2] = rgb[2];
+  }
+  function rect(x1, y1, x2, y2, rgb) {
+    var ax = x1, bx = x2, ay = y1, by = y2;
+    x1 = Math.max(0, Math.round(Math.min(ax, bx))); x2 = Math.min(w - 1, Math.round(Math.max(ax, bx)));
+    y1 = Math.max(0, Math.round(Math.min(ay, by))); y2 = Math.min(h - 1, Math.round(Math.max(ay, by)));
+    for (var yy = y1; yy <= y2; yy++) for (var xx = x1; xx <= x2; xx++) put(xx, yy, rgb);
+  }
+  function line(x1, y1, x2, y2, rgb) {
+    x1 = Math.round(x1); y1 = Math.round(y1); x2 = Math.round(x2); y2 = Math.round(y2);
+    var dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1), sx = x1 < x2 ? 1 : -1, sy = y1 < y2 ? 1 : -1, err = dx - dy;
+    while (true) { put(x1, y1, rgb); if (x1 === x2 && y1 === y2) break; var e2 = 2 * err; if (e2 > -dy) { err -= dy; x1 += sx; } if (e2 < dx) { err += dx; y1 += sy; } }
+  }
+  function x(i) { return left + (rows.length === 1 ? plotW / 2 : (i * plotW / (rows.length - 1))); }
+  function y(v) { return top + ((maxP - v) / (maxP - minP)) * plotH; }
+
+  rect(left - 1, top - 1, w - right + 1, top + plotH + 1, [249, 250, 251]);
+  for (var g = 0; g <= 4; g++) line(left, top + g * plotH / 4, w - right, top + g * plotH / 4, [229, 231, 235]);
+  levels.forEach(function(l) { var ly = y(l.value); var rgb = chartHexToRgb(l.color); for (var xx = left; xx <= w - right; xx += 12) line(xx, ly, Math.min(xx + 6, w - right), ly, rgb); });
+  var cw = Math.max(8, Math.min(18, plotW / Math.max(rows.length, 8) * 0.55));
+  rows.forEach(function(r, i) {
+    var cx = x(i); var up = r.close >= r.open; var stroke = up ? [22, 163, 74] : [220, 38, 38]; var fill = up ? [220, 252, 231] : [254, 226, 226];
+    line(cx, y(r.high), cx, y(r.low), stroke);
+    var by1 = Math.min(y(r.open), y(r.close)), by2 = Math.max(y(r.open), y(r.close));
+    rect(cx - cw / 2, by1, cx + cw / 2, Math.max(by1 + 2, by2), fill);
+    line(cx - cw / 2, by1, cx + cw / 2, by1, stroke); line(cx - cw / 2, by2, cx + cw / 2, by2, stroke); line(cx - cw / 2, by1, cx - cw / 2, by2, stroke); line(cx + cw / 2, by1, cx + cw / 2, by2, stroke);
+  });
+  line(left, top + plotH, w - right, top + plotH, [156, 163, 175]);
+  line(left, top, left, top + plotH, [156, 163, 175]);
+  return { buffer: encodePngRgb(w, h, pixels), source: source || 'fallback', width: w, height: h };
+}
+
+async function sendTop5ChartPhotos(supabase, picks, date) {
+  var sent = 0, textSent = 0, errors = [];
+  for (var i = 0; i < picks.length; i++) {
+    var ticker = picks[i].ticker;
+    var details = await formatCandidateBlock(supabase, picks[i], i + 1, true);
+    var caption = details.length <= 1000 ? details : ((i + 1) + '. ' + ticker + ' — ' + picks[i].category);
+    try {
+      var ohlc = await fetchChartOhlcRows(supabase, picks[i]);
+      var png = buildTop5ChartPng(ticker, date, ohlc.rows, picks[i], ohlc.source);
+      var result = await telegramNotifier.sendTelegramPhoto(png.buffer, ticker + '-top5-chart.png', { caption: caption, content_type: 'image/png' });
+      if (result.sent) {
+        sent++;
+        if (details.length > 1000) {
+          var textResult = await telegramNotifier.sendTelegramMessage(details);
+          if (textResult.sent) textSent++;
+          else errors.push({ ticker: ticker, reason: 'detail_text_' + (textResult.reason || 'send_failed'), telegram: textResult });
+        }
+      } else {
+        errors.push({ ticker: ticker, reason: result.reason || 'send_failed', telegram: result });
+        var fallbackText = await telegramNotifier.sendTelegramMessage(details);
+        if (fallbackText.sent) textSent++;
+      }
+    } catch (e) {
+      errors.push({ ticker: ticker, reason: e.message || String(e) });
+      var textOnly = await telegramNotifier.sendTelegramMessage(details);
+      if (textOnly.sent) textSent++;
+    }
+  }
+  return { sent_count: sent, text_sent_count: textSent, errors: errors, method: 'sendPhoto PNG' };
+}
+
 async function selectDailyTop5(supabase) {
   var rows = await fetchCombinedScreenerCandidates(supabase);
   for (var i = 0; i < rows.length; i++) {
@@ -2843,23 +2997,25 @@ async function selectDailyTop5(supabase) {
 async function handleTelegramDailyPicks(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, picked_count: 0, error: 'Unauthorized.' });
   try {
-    if (!isJakartaWeekday()) {
-      return res.status(200).json({ success: true, skipped: true, reason: 'weekend', sent_count: 0, picked_count: 0 });
-    }
     var force = req.query && req.query.force === '1';
+    var weekendBypassed = false;
+    if (!isJakartaWeekday()) {
+      if (!force) return res.status(200).json({ success: true, skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, picked_count: 0, chart_sent_count: 0, chart_error_count: 0 });
+      weekendBypassed = true;
+    }
     var readiness = await getScreenerReadiness(supabase);
     if (!force && !readiness.ready) {
-      return res.status(200).json({ success: true, skipped: true, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0 });
+      return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0, chart_sent_count: 0, chart_error_count: 0, telegram: null });
     }
     var picks = await selectDailyTop5(supabase);
     var date = getJakartaDateString();
     var lines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Jam: 08:00 WIB', 'Tanggal: ' + date, ''];
     if (picks.length === 0) lines.push('Belum ada kandidat yang memenuhi syarat dari cache screener.');
-    for (var i = 0; i < picks.length; i++) { lines.push(await formatCandidateBlock(supabase, picks[i], i + 1, false)); lines.push(''); }
-    lines.push('Chart v1: fallback link TradingView/dasbor per ticker, bukan image.');
+    lines.push('Chart PNG dikirim inline per ticker setelah ringkasan ini.');
     lines.push('Bukan rekomendasi beli/jual. DYOR.');
     var msg = lines.join('\n');
     var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(msg) : { sent: false, skipped: true, reason: 'no_picks' };
+    var chartResult = picks.length > 0 ? await sendTop5ChartPhotos(supabase, picks, date) : { sent_count: 0, text_sent_count: 0, errors: [], method: 'sendPhoto PNG' };
     if (picks.length > 0) {
       await supabase.from('telegram_daily_picks').delete().eq('date', date);
       var nowIso = new Date().toISOString();
@@ -2867,7 +3023,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       var ins = await supabase.from('telegram_daily_picks').insert(rows);
       if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
     }
-    return res.status(200).json({ success: true, skipped: false, forced: force, readiness: readiness, sent_count: sendResult.sent ? 1 : 0, picked_count: picks.length, error: null, telegram: sendResult });
+    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: sendResult.sent ? 1 : 0, picked_count: picks.length, chart_sent_count: chartResult.sent_count, chart_text_sent_count: chartResult.text_sent_count || 0, chart_error_count: chartResult.errors.length, chart_errors: chartResult.errors, chart_method: chartResult.method, error: null, telegram: sendResult });
   } catch (e) {
     return res.status(200).json({ success: false, sent_count: 0, picked_count: 0, error: e.message || String(e) });
   }
@@ -2896,8 +3052,11 @@ function evaluateMonitorStatus(pick, px) {
 async function handleTelegramMonitorPicks(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, checked_count: 0, error: 'Unauthorized.' });
   try {
+    var force = req.query && req.query.force === '1';
+    var weekendBypassed = false;
     if (!isJakartaWeekday()) {
-      return res.status(200).json({ success: true, skipped: true, reason: 'weekend', sent_count: 0, checked_count: 0 });
+      if (!force) return res.status(200).json({ success: true, skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, checked_count: 0 });
+      weekendBypassed = true;
     }
     var date = getJakartaDateString();
     var hour = getWibHourString();
@@ -2905,7 +3064,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true });
     if (q.error) throw new Error(q.error.message);
     var rows = q.data || [];
-    if (rows.length === 0) return res.status(200).json({ success: true, skipped: true, reason: 'daily_picks_not_found', sent_count: 0, checked_count: 0, error: null });
+    if (rows.length === 0) return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'daily_picks_not_found', sent_count: 0, checked_count: 0, error: null });
     var lines = [(isFinal ? '🏁' : '⏱') + ' AUTO-CUAN MONITOR ' + hour, ''];
     var shown = 0;
     for (var i = 0; i < rows.length; i++) {
@@ -2930,7 +3089,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     if (shown === 0) lines.push('Tidak ada ticker aktif yang perlu dimonitor (sudah final).');
     lines.push('Bukan rekomendasi beli/jual. DYOR.');
     var sendResult = await telegramNotifier.sendTelegramMessage(lines.join('\n'));
-    return res.status(200).json({ success: true, sent_count: sendResult.sent ? 1 : 0, checked_count: rows.length, shown_count: shown, error: null, telegram: sendResult });
+    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, sent_count: sendResult.sent ? 1 : 0, checked_count: rows.length, shown_count: shown, error: null, telegram: sendResult });
   } catch (e) { return res.status(200).json({ success: false, sent_count: 0, checked_count: 0, error: e.message || String(e) }); }
 }
 
