@@ -2784,6 +2784,20 @@ function candidateReason(r) {
   return safeTelegramText(r.telegram_verdict || r.status_reason || r.notes || r.setup || r.status || r.final_status, 130, 'Skor, RR, likuiditas, dan level plan relatif lebih kuat.');
 }
 
+function buildTop5PhotoCaption(detailText) {
+  var full = String(detailText || '').trim();
+  if (full.length <= 1024) return { caption: full, followup: null };
+  var alasanIdx = full.indexOf('\nAlasan: ');
+  if (alasanIdx !== -1) {
+    var prefix = full.slice(0, alasanIdx);
+    var alasan = full.slice(alasanIdx + 9).replace(/\s+/g, ' ').trim();
+    var room = 1024 - prefix.length - 10;
+    if (room > 24) return { caption: prefix + '\nAlasan: ' + alasan.slice(0, room - 1).trim() + '…', followup: null };
+    if (prefix.length <= 1024) return { caption: prefix, followup: null };
+  }
+  return { caption: full.slice(0, 1023).trim() + '…', followup: null };
+}
+
 async function formatCandidateBlock(supabase, r, idx, compact) {
   var f = await fetchForeignSummary(supabase, r.ticker);
   var setup = safeTelegramText(r.setup || r.setup_type || r.status || r.final_status, 60, '-').replace(/_/g, ' ');
@@ -2846,21 +2860,57 @@ function planLevelsForChart(row) {
 
 async function fetchChartOhlcRows(supabase, pick) {
   var ticker = normalizeForeignTicker(pick.ticker || '');
+  if (!ticker) return { rows: [], source: 'missing_ticker', skipped: true, reason: 'missing_ticker' };
+
+  // Match the web Chart page data source (/api/candles): Yahoo Finance 1y daily OHLCV.
   try {
-    var fw = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,open,high,low,close').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(30);
-    var rows = (fw.data || []).filter(function(r) { return toNum(r.close) != null; }).map(function(r) {
-      var close = toNum(r.close);
-      return { date: r.trade_date, open: toNum(r.open) || close, high: toNum(r.high) || close, low: toNum(r.low) || close, close: close };
-    }).reverse();
-    if (!fw.error && rows.length > 0) return { rows: rows, source: 'foreign_watchlist_daily.open/high/low/close' };
+    var symbol = ticker + '.JK';
+    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(symbol) + '?range=1y&interval=1d';
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 10000);
+    var response = await fetch(url, {
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (response.ok) {
+      var json = await response.json();
+      var result = json && json.chart && json.chart.result && json.chart.result[0];
+      var timestamps = result && result.timestamp || [];
+      var q = result && result.indicators && result.indicators.quote && result.indicators.quote[0];
+      if (q) {
+        var rows = [];
+        for (var i = 0; i < timestamps.length; i++) {
+          var o = q.open && q.open[i], h = q.high && q.high[i], l = q.low && q.low[i], c = q.close && q.close[i], v = q.volume && q.volume[i];
+          if (o != null && h != null && l != null && c != null && isFinite(o) && isFinite(h) && isFinite(l) && isFinite(c)) {
+            rows.push({
+              date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
+              open: Math.round(o * 100) / 100,
+              high: Math.round(h * 100) / 100,
+              low: Math.round(l * 100) / 100,
+              close: Math.round(c * 100) / 100,
+              volume: v || 0
+            });
+          }
+        }
+        if (rows.length >= 20) return { rows: rows, source: 'Yahoo Finance 1y daily OHLCV (/api/candles parity)' };
+        return { rows: rows, source: 'Yahoo Finance 1y daily OHLCV (/api/candles parity)', skipped: true, reason: 'insufficient_historical_ohlc_' + rows.length };
+      }
+    }
   } catch (e) { /* best-effort fallback below */ }
 
-  var last = toNum(pick.lastn || pick.last_price || pick.entry1 || pick.entry2 || pick.tp1n || pick.tp1);
-  if (!last || !isFinite(last)) last = 100;
-  var open = toNum(pick.open_price) || last;
-  var high = Math.max(toNum(pick.high_price) || last, open, last, toNum(pick.tp1n || pick.tp1) || 0);
-  var low = Math.min(toNum(pick.low_price) || last, open, last, toNum(pick.sl) || last);
-  return { rows: [{ date: getJakartaDateString(), open: open, high: high, low: low, close: last }], source: 'screener latest price fields fallback' };
+  // Secondary real-data fallback only: local foreign table when it has enough OHLC rows.
+  try {
+    var fw = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,open,high,low,close,volume').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(80);
+    var localRows = (fw.data || []).filter(function(r) { return toNum(r.open) != null && toNum(r.high) != null && toNum(r.low) != null && toNum(r.close) != null; }).map(function(r) {
+      return { date: r.trade_date, open: toNum(r.open), high: toNum(r.high), low: toNum(r.low), close: toNum(r.close), volume: toNum(r.volume) || 0 };
+    }).reverse();
+    if (!fw.error && localRows.length >= 20) return { rows: localRows, source: 'foreign_watchlist_daily OHLCV fallback' };
+    return { rows: localRows, source: 'foreign_watchlist_daily OHLCV fallback', skipped: true, reason: 'insufficient_historical_ohlc_' + localRows.length };
+  } catch (err) {
+    return { rows: [], source: 'none', skipped: true, reason: 'historical_ohlc_unavailable' };
+  }
 }
 
 function buildTop5ChartSvg(ticker, date, ohlcRows, pick, source) {
@@ -2925,43 +2975,97 @@ function encodeRgbaPng(width, height, rgba) {
 }
 function hexToRgb(hex) { hex = String(hex || '#000000').replace('#', ''); return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]; }
 function buildTop5ChartPng(ticker, date, ohlcRows, pick, source) {
-  var rows = (ohlcRows || []).slice(-30);
-  if (rows.length === 0) throw new Error('no_ohlc_rows');
+  var rows = (ohlcRows || []).slice(-120);
+  if (rows.length < 20) throw new Error('insufficient_historical_ohlc_' + rows.length);
   var levels = planLevelsForChart(pick), prices = [];
-  rows.forEach(function(r) { prices.push(r.open, r.high, r.low, r.close); }); levels.forEach(function(l) { prices.push(l.value); });
+  rows.forEach(function(r) { prices.push(r.open, r.high, r.low, r.close); });
+  levels.forEach(function(l) { prices.push(l.value); });
   var minP = Math.min.apply(null, prices.filter(function(v) { return v != null && isFinite(v); }));
   var maxP = Math.max.apply(null, prices.filter(function(v) { return v != null && isFinite(v); }));
   if (!isFinite(minP) || !isFinite(maxP)) throw new Error('invalid_price_range');
   if (minP === maxP) { minP *= 0.98; maxP *= 1.02; }
-  var pad = (maxP - minP) * 0.08; minP -= pad; maxP += pad;
-  var w = 920, h = 540, left = 72, right = 126, top = 58, bottom = 74, plotW = w - left - right, plotH = h - top - bottom;
-  var rgba = Buffer.alloc(w * h * 4, 255);
-  function setPx(px, py, color) { px = Math.round(px); py = Math.round(py); if (px < 0 || py < 0 || px >= w || py >= h) return; var idx = (py * w + px) * 4; rgba[idx] = color[0]; rgba[idx + 1] = color[1]; rgba[idx + 2] = color[2]; rgba[idx + 3] = 255; }
-  function rect(x1, y1, x2, y2, color) { x1 = Math.max(0, Math.floor(x1)); x2 = Math.min(w - 1, Math.ceil(x2)); y1 = Math.max(0, Math.floor(y1)); y2 = Math.min(h - 1, Math.ceil(y2)); for (var ry = y1; ry <= y2; ry++) for (var rx = x1; rx <= x2; rx++) setPx(rx, ry, color); }
+  var pad = (maxP - minP) * 0.10; minP -= pad; maxP += pad;
+
+  var w = 1080, h = 720, left = 64, right = 96, top = 54, mainH = 410, volH = 84, rsiTop = 574, rsiH = 82;
+  var plotW = w - left - right, bottomMain = top + mainH;
+  var rgba = Buffer.alloc(w * h * 4);
+  function setPx(px, py, color) { px = Math.round(px); py = Math.round(py); if (px < 0 || py < 0 || px >= w || py >= h) return; var idx = (py * w + px) * 4; rgba[idx] = color[0]; rgba[idx + 1] = color[1]; rgba[idx + 2] = color[2]; rgba[idx + 3] = color.length > 3 ? color[3] : 255; }
+  function blendRect(x1, y1, x2, y2, color) { x1 = Math.max(0, Math.floor(x1)); x2 = Math.min(w - 1, Math.ceil(x2)); y1 = Math.max(0, Math.floor(y1)); y2 = Math.min(h - 1, Math.ceil(y2)); for (var ry = y1; ry <= y2; ry++) for (var rx = x1; rx <= x2; rx++) setPx(rx, ry, color); }
+  function rect(x1, y1, x2, y2, color) { blendRect(x1, y1, x2, y2, color); }
   function line(x1, y1, x2, y2, color, width) { width = width || 1; var dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1), sx = x1 < x2 ? 1 : -1, sy = y1 < y2 ? 1 : -1, err = dx - dy; while (true) { rect(x1 - width / 2, y1 - width / 2, x1 + width / 2, y1 + width / 2, color); if (Math.round(x1) === Math.round(x2) && Math.round(y1) === Math.round(y2)) break; var e2 = 2 * err; if (e2 > -dy) { err -= dy; x1 += sx; } if (e2 < dx) { err += dx; y1 += sy; } } }
-  function x(i) { return left + (rows.length === 1 ? plotW / 2 : (i * plotW / (rows.length - 1))); } function y(v) { return top + ((maxP - v) / (maxP - minP)) * plotH; }
-  for (var g = 0; g <= 4; g++) line(left, top + g * plotH / 4, w - right, top + g * plotH / 4, hexToRgb('#e5e7eb'), 1);
-  levels.forEach(function(l) { line(left, y(l.value), w - right, y(l.value), hexToRgb(l.color), 2); });
-  var cw = Math.max(8, Math.min(18, plotW / Math.max(rows.length, 8) * 0.55));
-  rows.forEach(function(r, i) { var cx = x(i), up = r.close >= r.open, color = hexToRgb(up ? '#16a34a' : '#dc2626'), fill = hexToRgb(up ? '#dcfce7' : '#fee2e2'); line(cx, y(r.high), cx, y(r.low), color, 2); var by = Math.min(y(r.open), y(r.close)), bh = Math.max(2, Math.abs(y(r.open) - y(r.close))); rect(cx - cw / 2, by, cx + cw / 2, by + bh, fill); line(cx - cw / 2, by, cx + cw / 2, by, color, 1); line(cx - cw / 2, by + bh, cx + cw / 2, by + bh, color, 1); line(cx - cw / 2, by, cx - cw / 2, by + bh, color, 1); line(cx + cw / 2, by, cx + cw / 2, by + bh, color, 1); });
-  line(left, top + plotH, w - right, top + plotH, hexToRgb('#9ca3af'), 1);
+  function x(i) { return left + (rows.length === 1 ? plotW / 2 : (i * plotW / (rows.length - 1))); }
+  function y(v) { return top + ((maxP - v) / (maxP - minP)) * mainH; }
+  function ma(period) { var out = []; for (var i = period - 1; i < rows.length; i++) { var sum = 0; for (var j = i - period + 1; j <= i; j++) sum += rows[j].close; out.push({ i: i, v: sum / period }); } return out; }
+  function drawMA(period, color) { var data = ma(period); for (var i = 1; i < data.length; i++) line(x(data[i - 1].i), y(data[i - 1].v), x(data[i].i), y(data[i].v), color, period >= 100 ? 2 : 1); }
+  function rsiData() { var out = []; for (var i = 14; i < rows.length; i++) { var gains = 0, losses = 0; for (var k = i - 13; k <= i; k++) { var d = rows[k].close - rows[k - 1].close; if (d > 0) gains += d; else losses -= d; } var ag = gains / 14, al = losses / 14; out.push({ i: i, v: al === 0 ? 100 : 100 - 100 / (1 + ag / al) }); } return out; }
+  function yr(v) { return rsiTop + ((100 - v) / 100) * rsiH; }
+
+  rect(0, 0, w, h, hexToRgb('#0f1319'));
+  rect(left, top, w - right, bottomMain, hexToRgb('#0b0e14'));
+  rect(left, bottomMain + 8, w - right, bottomMain + 8 + volH, hexToRgb('#0b0e14'));
+  rect(left, rsiTop, w - right, rsiTop + rsiH, hexToRgb('#0b0e14'));
+  for (var g = 0; g <= 4; g++) { var gy = top + g * mainH / 4; line(left, gy, w - right, gy, hexToRgb('#1c2333'), 1); }
+  for (var vg = 0; vg <= 6; vg++) { var gx = left + vg * plotW / 6; line(gx, top, gx, rsiTop + rsiH, hexToRgb('#151b29'), 1); }
+
+  // Fibonacci-like range levels from visible high/low, styled as subtle amber dashed guides.
+  [0.382, 0.5, 0.618, 0.786].forEach(function(f) { var fy = y(maxP - pad - ((maxP - minP - pad * 2) * f)); for (var xx = left; xx < w - right; xx += 14) line(xx, fy, Math.min(xx + 7, w - right), fy, hexToRgb('#a16207'), 1); });
+  levels.forEach(function(l) { var ly = y(l.value); for (var xx = left; xx < w - right; xx += 16) line(xx, ly, Math.min(xx + 9, w - right), ly, hexToRgb(l.color), 2); });
+
+  if (rows.length >= 20) drawMA(20, hexToRgb('#10b981'));
+  if (rows.length >= 50) drawMA(50, hexToRgb('#eab308'));
+  if (rows.length >= 100) drawMA(100, hexToRgb('#3b82f6'));
+  if (rows.length >= 200) drawMA(200, hexToRgb('#a855f7'));
+
+  var maxVol = Math.max.apply(null, rows.map(function(r) { return r.volume || 0; }).concat([1]));
+  var cw = Math.max(3, Math.min(10, plotW / Math.max(rows.length, 40) * 0.62));
+  rows.forEach(function(r, i) {
+    var cx = x(i), up = r.close >= r.open, color = hexToRgb(up ? '#10b981' : '#ef4444'), fill = hexToRgb(up ? '#10b981' : '#ef4444');
+    var vh = Math.max(1, ((r.volume || 0) / maxVol) * volH);
+    rect(cx - cw / 2, bottomMain + 8 + volH - vh, cx + cw / 2, bottomMain + 8 + volH, hexToRgb(up ? '#064e3b' : '#7f1d1d'));
+    line(cx, y(r.high), cx, y(r.low), color, 1);
+    var by = Math.min(y(r.open), y(r.close)), bh = Math.max(2, Math.abs(y(r.open) - y(r.close)));
+    rect(cx - cw / 2, by, cx + cw / 2, by + bh, fill);
+  });
+
+  var rsi = rsiData();
+  line(left, yr(70), w - right, yr(70), hexToRgb('#7f1d1d'), 1); line(left, yr(30), w - right, yr(30), hexToRgb('#064e3b'), 1);
+  for (var ri = 1; ri < rsi.length; ri++) line(x(rsi[ri - 1].i), yr(rsi[ri - 1].v), x(rsi[ri].i), yr(rsi[ri].v), hexToRgb('#f97316'), 2);
+  line(left, bottomMain, w - right, bottomMain, hexToRgb('#1c2333'), 1); line(w - right, top, w - right, rsiTop + rsiH, hexToRgb('#1c2333'), 1);
+  var last = rows[rows.length - 1];
+  if (last && isFinite(last.close)) { var ly2 = y(last.close); rect(w - right + 4, ly2 - 8, w - 18, ly2 + 8, hexToRgb(last.close >= last.open ? '#047857' : '#b91c1c')); line(w - right - 8, ly2, w - right + 4, ly2, hexToRgb(last.close >= last.open ? '#10b981' : '#ef4444'), 2); }
   return encodeRgbaPng(w, h, rgba);
 }
 
+
 async function sendTop5ChartAttachments(supabase, picks, date) {
-  var sent = 0, detailSent = 0, errors = [];
+  var sent = 0, detailSent = 0, errors = [], skipped = 0;
   for (var i = 0; i < picks.length; i++) {
     var ticker = picks[i].ticker;
     try {
       var ohlc = await fetchChartOhlcRows(supabase, picks[i]);
+      if (!ohlc.rows || ohlc.rows.length < 20 || ohlc.skipped) {
+        skipped++;
+        errors.push({ ticker: ticker, reason: ohlc.reason || ('insufficient_historical_ohlc_' + ((ohlc.rows && ohlc.rows.length) || 0)), source: ohlc.source });
+        if (picks[i]._detail_text) {
+          var skippedDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text);
+          if (skippedDetail.sent) detailSent++;
+        }
+        continue;
+      }
       var png = buildTop5ChartPng(ticker, date, ohlc.rows, picks[i], ohlc.source);
-      var caption = String(picks[i]._photo_caption || (ticker + ' chart Top 5 — ' + date)).slice(0, 1024);
-      var result = await telegramNotifier.sendTelegramPhoto(png, ticker + '-top5-chart.png', caption, { content_type: 'image/png' });
+      var captionParts = buildTop5PhotoCaption(picks[i]._detail_text || ((i + 1) + '. ' + ticker + ' — ' + picks[i].category));
+      var result = await telegramNotifier.sendTelegramPhoto(png, ticker + '-top5-chart.png', captionParts.caption, { content_type: 'image/png' });
       if (result.sent) sent++;
-      else errors.push({ ticker: ticker, reason: result.reason || 'send_failed', telegram: result });
-      if (picks[i]._detail_text) {
-        var detailResult = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text);
-        if (detailResult.sent) detailSent++;
+      else {
+        errors.push({ ticker: ticker, reason: result.reason || 'send_failed', telegram: result });
+        if (picks[i]._detail_text) {
+          var failedDetail = await telegramNotifier.sendTelegramMessage(picks[i]._detail_text);
+          if (failedDetail.sent) detailSent++;
+        }
+      }
+      if (result.sent && captionParts.followup) {
+        var follow = await telegramNotifier.sendTelegramMessage(captionParts.followup);
+        if (follow.sent) detailSent++;
       }
     } catch (e) {
       errors.push({ ticker: ticker, reason: e.message || String(e) });
@@ -2971,7 +3075,7 @@ async function sendTop5ChartAttachments(supabase, picks, date) {
       }
     }
   }
-  return { sent_count: sent, detail_sent_count: detailSent, errors: errors, method: 'sendPhoto PNG' };
+  return { sent_count: sent, detail_sent_count: detailSent, skipped_count: skipped, errors: errors, method: 'sendPhoto PNG with compact caption' };
 }
 
 async function selectDailyTop5(supabase) {
@@ -3002,12 +3106,11 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     }
     var picks = await selectDailyTop5(supabase);
     var date = getJakartaDateString();
-    var header = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Jam: 08:00 WIB', 'Tanggal: ' + date, '', 'Chart dikirim inline sebagai PNG per ticker jika berhasil.', 'Bukan rekomendasi beli/jual. DYOR.'].join('\n');
+    var header = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date, 'Bukan rekomendasi beli/jual. DYOR.'].join('\n');
     var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage('🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5\nTanggal: ' + date + '\n\nBelum ada kandidat yang memenuhi syarat dari cache screener.');
     var detailSent = 0;
     for (var i = 0; i < picks.length; i++) {
       picks[i]._detail_text = await formatCandidateBlock(supabase, picks[i], i + 1, true);
-      picks[i]._photo_caption = (i + 1) + '. ' + picks[i].ticker + ' — ' + picks[i].category;
     }
     var chartResult = picks.length > 0 ? await sendTop5ChartAttachments(supabase, picks, date) : { sent_count: 0, detail_sent_count: 0, errors: [], method: 'sendPhoto PNG' };
     detailSent = chartResult.detail_sent_count || 0;
@@ -3018,7 +3121,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       var ins = await supabase.from('telegram_daily_picks').insert(rows);
       if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
     }
-    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: (sendResult.sent ? 1 : 0) + detailSent + chartResult.sent_count, picked_count: picks.length, chart_sent_count: chartResult.sent_count, chart_error_count: chartResult.errors.length, chart_errors: chartResult.errors, chart_method: chartResult.method, error: null, telegram: sendResult });
+    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: (sendResult.sent ? 1 : 0) + detailSent + chartResult.sent_count, picked_count: picks.length, chart_sent_count: chartResult.sent_count, chart_error_count: chartResult.errors.length, chart_skipped_count: chartResult.skipped_count || 0, chart_errors: chartResult.errors, chart_method: chartResult.method, error: null, telegram: sendResult });
   } catch (e) {
     return res.status(200).json({ success: false, sent_count: 0, picked_count: 0, error: e.message || String(e) });
   }
