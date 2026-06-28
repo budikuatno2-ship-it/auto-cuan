@@ -2460,7 +2460,15 @@ async function enrichConfluenceRows(supabase, rows, includeForeign) {
     Object.assign(r, classifyTrendAlignment(r));
     Object.assign(r, classifyVolumeThrust(r));
     Object.assign(r, derivePatternLabel(r));
-    if (includeForeign) Object.assign(r, foreignMap[normalizeForeignTicker(r.ticker)] || { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' });
+    if (includeForeign) {
+      Object.assign(r, foreignMap[normalizeForeignTicker(r.ticker)] || { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' });
+      if (r.confidence) {
+        var confAfterForeign = deriveConfidenceTier(r, 'Swing');
+        r.confidence = confAfterForeign.confidence;
+        r.confidence_label = confAfterForeign.confidence_label;
+        r.confidence_notes = confAfterForeign.confidence_notes;
+      }
+    }
     out.push(r);
   }
   return out;
@@ -2968,8 +2976,17 @@ function deriveConfidenceTier(row, category) {
   var notes = [];
   var rrOk = rr >= minRR;
   var upsideOk = upside != null && upside >= minUpside;
-  var badStatus = status.indexOf('AVOID') >= 0 || status.indexOf('INVALID') >= 0;
+  var setupStatusText = joinTelegramTexts([row.setup, row.setup_type, row.status, row.final_status, row.swing_tier]);
+  var reasonText = joinTelegramTexts([row.telegram_verdict, row.verdict, row.reason, row.status_reason, row.notes, row.grade_reason, row.confidence_notes]);
+  var reasonLower = reasonText.toLowerCase();
+  var setupLower = setupStatusText.toLowerCase();
+  var badReason = includesAny(reasonLower, ['skip', 'avoid', 'invalid', 'failed', 'distribusi', 'distribution', 'chase', 'late', 'telat']);
+  var poorRRStatus = setupLower.indexOf('wait - poor rr') >= 0 || setupLower.indexOf('poor rr') >= 0;
+  var invalidStatus = includesAny(setupLower, ['avoid', 'invalid', 'failed breakout']);
+  var badStatus = status.indexOf('AVOID') >= 0 || status.indexOf('INVALID') >= 0 || invalidStatus;
   var bearish = trend.indexOf('BEARISH') >= 0;
+  var weakTrend = trend.indexOf('WEAK') >= 0;
+  var foreignDistribution = String(category || '').toLowerCase().indexOf('day') < 0 && String(row.foreign_label || '').toUpperCase().indexOf('FOREIGN DISTRIBUTION') >= 0;
   var weakVol = vol.indexOf('WEAK') >= 0 || vol.indexOf('DISTRIBUTION') >= 0;
   if (!rrOk) notes.push('Radar only — RR belum ideal.');
   if (!upsideOk) notes.push('TP1 upside belum memenuhi minimum.');
@@ -2977,9 +2994,19 @@ function deriveConfidenceTier(row, category) {
   if (liq.is_liquidity_risk) notes.push('Likuiditas tipis.');
   if (risk === 'VERY HIGH RISK') notes.push('Very High Risk.');
   if (badStatus) notes.push('Setup/status avoid atau invalid.');
+  if (badReason) notes.push('Verdict/reason kontradiktif untuk A-tier.');
+  if (poorRRStatus) notes.push('Setup/status Poor RR.');
+  if (weakTrend) notes.push('Trend lemah.');
+  if (bearish) notes.push('Trend bearish.');
+  if (foreignDistribution) notes.push('Foreign Distribution.');
   var tier = 'C';
-  if (rrOk && upsideOk && !liq.is_stale && !liq.cannot_be_a_tier && risk !== 'VERY HIGH RISK' && !badStatus && !bearish && !weakVol && score >= (String(category).indexOf('Day') >= 0 ? 75 : 72)) tier = 'A';
+  if (rrOk && upsideOk && !liq.is_stale && !liq.cannot_be_a_tier && risk !== 'VERY HIGH RISK' && !badStatus && !bearish && !weakTrend && !weakVol && score >= (String(category).indexOf('Day') >= 0 ? 75 : 72)) tier = 'A';
   else if (rrOk && upsideOk && !badStatus && !liq.is_liquidity_risk && risk !== 'VERY HIGH RISK' && score >= 58) tier = 'B';
+  if (tier === 'A') {
+    if (badReason || poorRRStatus) tier = 'C';
+    else if (bearish) tier = (risk.indexOf('HIGH') >= 0 || reasonLower.indexOf('risk') >= 0) ? 'C' : 'B';
+    else if (weakTrend || foreignDistribution) tier = 'B';
+  }
   return { confidence: tier, confidence_label: tier === 'A' ? 'High Conviction' : (tier === 'B' ? 'Qualified' : 'Radar Only'), confidence_notes: notes.join(' ') || (tier === 'A' ? 'High conviction, konfirmasi kuat.' : (tier === 'B' ? 'Qualified, tunggu konfirmasi entry.' : 'Radar only, jangan agresif.')) };
 }
 
@@ -3125,6 +3152,13 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   if (!r.pattern_label) Object.assign(r, derivePatternLabel(r));
   var includeForeign = r.category !== 'Day Trade';
   var f = includeForeign ? await fetchForeignConfluence(supabase, r.ticker, r.lastn || r.last_price) : null;
+  if (f) {
+    Object.assign(r, f);
+    var confAfterForeign = deriveConfidenceTier(r, r.category);
+    r.confidence = confAfterForeign.confidence;
+    r.confidence_label = confAfterForeign.confidence_label;
+    r.confidence_notes = confAfterForeign.confidence_notes;
+  }
   var setup = compactSafeText(r.setup || r.setup_type || r.status || r.final_status, '-').replace(/_/g, ' ');
   var risk = deriveTelegramRiskLabel(r, r.category === 'Day Trade' ? 'daytrade' : 'swing').replace(' Risk','');
   var grade = compactSafeText(r.confidence || r.quality_grade || r.grade || getTelegramGrade(r), '-');
@@ -3133,7 +3167,7 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   lines.push(idx + '. ' + r.ticker + ' — ' + r.category + ' | ' + setup);
   lines.push('G:' + grade + ' · Risk:' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + compactSafeText(r.liquidity_label, '-'));
   lines.push('Window: ' + compactSafeText(r.entry_window_label, '-'));
-  lines.push('Harga ' + fmtPrice(r.lastn || r.last_price) + ' | E ' + fmtPrice(r.entry1) + '/' + fmtPrice(r.entry2) + ' | SL ' + fmtPrice(r.sl) + ' | TP ' + fmtPrice(r.tp1n) + '/' + fmtPrice(r.tp2n));
+  lines.push('Harga ' + fmtPrice(r.lastn || r.last_price) + ' | Entry ' + fmtPrice(r.entry1) + '/' + fmtPrice(r.entry2) + ' | SL ' + fmtPrice(r.sl) + ' | TP ' + fmtPrice(r.tp1n) + '/' + fmtPrice(r.tp2n));
   lines.push('Vol ' + fmtRatio(getTelegramVolumeRatio(r)) + ' · Tx ' + fmtRpValue(getTelegramValue(r)) + ' · Trend ' + compactSafeText((r.trend_label || '').replace(' Trend',''), '-'));
   var confluence = [];
   if (r.pattern_label && r.pattern_label !== 'Insufficient Data' && r.pattern_label !== 'No Clear Pattern') confluence.push('Pattern: ' + r.pattern_label.replace('VCP-like Base','VCP-like'));
