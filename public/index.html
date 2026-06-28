@@ -2072,7 +2072,8 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             if (typeof reorderBrokerCTA === 'function') html = reorderBrokerCTA(html, isIndex);
 
             // Render result
-            resultArea.innerHTML = '<div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up">' + html + '</div>' +
+            var confluenceHtml = isIndex ? '' : buildManualConfluenceHtml(ticker);
+            resultArea.innerHTML = confluenceHtml + '<div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up">' + html + '</div>' +
                 '<div class="mt-3 flex flex-wrap gap-2">' +
                 '<button onclick="openChartFromAnalisis(\'' + ticker + '\')" class="px-3 py-1.5 rounded-lg text-xs text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Lihat Chart ' + ticker + '</button>' +
                 '<button onclick="openNewsFromAnalisis(\'' + ticker + '\')" class="px-3 py-1.5 rounded-lg text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>Lihat News ' + ticker + '</button>' +
@@ -5018,6 +5019,61 @@ function normalizeActionLabel(label) {
     if (compact === 'wait pullback' || compact === 'wait pullback valid' || compact === 'tunggu pullback' || compact === 'tunggu pullback valid') return 'Tunggu pullback valid';
     return text.replace(/_/g, ' ');
 }
+
+function fmtForeignFlowVal(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return '-';
+    var side = n > 0 ? 'Net Buy ' : (n < 0 ? 'Net Sell ' : 'Netral ');
+    return side + formatIndonesianRupiah(Math.abs(n));
+}
+function buildConfluenceHtml(r, includeForeign) {
+    if (!r) return '';
+    var html = '';
+    if (includeForeign && (r.foreign_label || r.foreign_1d != null || r.foreign_3d != null || r.foreign_7d != null)) {
+        html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.15);border-radius:8px">';
+        html += '<div style="font-size:9px;font-weight:600;color:#6ee7b7;margin-bottom:4px">FOREIGN FLOW</div>';
+        html += '<div style="font-size:10px;color:#d1d5db">1D: ' + escapeHtml(fmtForeignFlowVal(r.foreign_1d)) + ' · 3D: ' + escapeHtml(fmtForeignFlowVal(r.foreign_3d)) + ' · 7D: ' + escapeHtml(fmtForeignFlowVal(r.foreign_7d)) + '</div>';
+        html += '<div style="font-size:10px;color:#9ca3af;margin-top:2px">Label: ' + escapeHtml(r.foreign_label || 'Foreign Data Unavailable') + '</div></div>';
+    }
+    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.15);border-radius:8px">';
+    html += '<div style="font-size:9px;font-weight:600;color:#60a5fa;margin-bottom:4px">PATTERN / TREND</div>';
+    html += '<div style="font-size:10px;color:#d1d5db">Pattern: ' + escapeHtml(r.pattern_label || 'Insufficient Data') + '</div>';
+    html += '<div style="font-size:10px;color:#9ca3af">' + escapeHtml(r.pattern_notes || 'Data belum cukup untuk konfirmasi pattern.') + '</div>';
+    html += '<div style="font-size:10px;color:#d1d5db;margin-top:3px">Trend: ' + escapeHtml(r.trend_label || 'Trend Data Unavailable') + '</div>';
+    html += '<div style="font-size:10px;color:#9ca3af">' + escapeHtml(r.trend_notes || 'MA20/MA50 belum cukup.') + '</div></div>';
+    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,0.04);border:1px solid rgba(139,92,246,0.15);border-radius:8px">';
+    html += '<div style="font-size:9px;font-weight:600;color:#a78bfa;margin-bottom:4px">VOLUME</div>';
+    html += '<div style="font-size:10px;color:#d1d5db">Volume: ' + escapeHtml(r.volume_label || (r.volume_phase ? r.volume_phase.replace(/_/g, ' ') : 'Neutral Volume')) + '</div>';
+    html += '<div style="font-size:10px;color:#9ca3af">' + escapeHtml(r.volume_notes || 'Data volume terbatas.') + '</div>';
+    var volLine = [];
+    if (r.value_today) volLine.push('Tx1D ' + fmtRpVal(r.value_today));
+    else if (r.tx_value_1d) volLine.push('Tx1D ' + fmtRpVal(r.tx_value_1d));
+    if (r.avg_tx_value_3d) volLine.push('Avg3D ' + fmtRpVal(r.avg_tx_value_3d));
+    if (r.avg_tx_value_7d) volLine.push('Avg7D ' + fmtRpVal(r.avg_tx_value_7d));
+    else if (r.avg_value_7d) volLine.push('Avg7D ' + fmtRpVal(r.avg_value_7d));
+    if (r.volume_ratio_20d != null || r.volume_ratio_avg20 != null || r.volume_ratio) volLine.push('Vol ' + fmtVolRatio(r.volume_ratio_20d || r.volume_ratio_avg20 || r.volume_ratio));
+    if (volLine.length > 0) html += '<div style="font-size:9px;color:#6b7280;margin-top:3px">' + volLine.join(' · ') + '</div>';
+    html += '</div>';
+    return html;
+}
+
+function findManualConfluenceRow(ticker) {
+    var t = String(ticker || '').toUpperCase().replace(/\.JK$/, '');
+    if (!t) return null;
+    if (window._kgCardData && window._kgCardData[t]) return window._kgCardData[t];
+    if (window._nkCardData && window._nkCardData[t]) return window._nkCardData[t];
+    if (window._dtCardData && window._dtCardData[t]) return window._dtCardData[t];
+    return null;
+}
+function buildManualConfluenceHtml(ticker) {
+    var row = findManualConfluenceRow(ticker);
+    if (!row) {
+        return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30 text-xs text-gray-400">Data belum cukup untuk konfirmasi foreign/pattern.</div>';
+    }
+    var type = row.group_code ? 'konglo' : (row.board ? 'nonkonglo' : 'daytrade');
+    return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30">' + buildConfluenceHtml(row, type === 'konglo' || type === 'nonkonglo') + '</div>';
+}
+
 function getActionLabel(r) { return r ? normalizeActionLabel(r.telegram_action_label || r.telegram_verdict || r.final_status || r.status || '') : ''; }
 function getSignalQualityGrade(r) { return r ? safeDisplayText(r.quality_grade || r.grade || r.signal_grade || '', '') : ''; }
 function getSignalQualityColor(grade) {
@@ -5246,23 +5302,7 @@ function openScrDetail(r, type) {
     html += '</div>';
     // Setup reasoning
     html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:10px">' + escapeHtml(r.status_reason || r.notes || '-') + '</div>';
-    // Volume context section
-    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,0.04);border:1px solid rgba(139,92,246,0.15);border-radius:8px">';
-    html += '<div style="font-size:9px;font-weight:600;color:#a78bfa;margin-bottom:4px">VOLUME</div>';
-    var vpLabel = r.volume_phase ? r.volume_phase.replace(/_/g,' ') : 'NORMAL';
-    var vpCol = (r.volume_phase === 'DISTRIBUTION_RISK' || r.volume_phase === 'FAILED_BREAKOUT_RISK') ? '#fca5a5' : (r.volume_phase === 'MARKUP_CONFIRMATION' || r.volume_phase === 'ACCUMULATION_WATCH') ? '#6ee7b7' : (r.volume_phase === 'WEAK_VOLUME') ? '#fbbf24' : '#9ca3af';
-    html += '<div style="font-size:11px;color:' + vpCol + ';font-weight:600;margin-bottom:3px">' + escapeHtml(vpLabel) + '</div>';
-    if (r.volume_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:3px">' + escapeHtml(r.volume_notes) + '</div>';
-    var volLine = [];
-    if (r.value_today) volLine.push('Tx1D ' + fmtRpVal(r.value_today));
-    if (r.avg_tx_value_3d) volLine.push('Avg3D ' + fmtRpVal(r.avg_tx_value_3d));
-    if (r.avg_tx_value_7d) volLine.push('Avg7D ' + fmtRpVal(r.avg_tx_value_7d));
-    else if (r.avg_value_7d) volLine.push('Avg7D ' + fmtRpVal(r.avg_value_7d));
-    if (r.volume_ratio_20d != null || r.volume_ratio) volLine.push('Vol ' + fmtVolRatio(r.volume_ratio_20d || r.volume_ratio));
-    if (r.volume_today_vs_3d) volLine.push('3D ' + fmtVolRatio(r.volume_today_vs_3d));
-    if (r.volume_today_vs_7d) volLine.push('7D ' + fmtVolRatio(r.volume_today_vs_7d));
-    if (volLine.length > 0) html += '<div style="font-size:9px;color:#6b7280">' + volLine.join(' · ') + '</div>';
-    html += '</div>';
+    html += buildConfluenceHtml(r, type === 'konglo' || type === 'nonkonglo');
     // Timeframe context section
     html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.12);border-radius:8px">';
     html += '<div style="font-size:9px;font-weight:600;color:#60a5fa;margin-bottom:4px">TIMEFRAME</div>';
@@ -5375,6 +5415,8 @@ function renderKgCardGrid(results) {
         if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _kmbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _kmtfBadge = '<span style="color:' + _kmbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
         var _kActionBadge = getActionLabel(r); if (_kActionBadge && _kActionBadge !== getStatusLabel(r, tier)) _kvpBadge = (_kvpBadge ? _kvpBadge + ' · ' : '') + '<span style="color:#93c5fd">' + escapeHtml(_kActionBadge) + '</span>';
         var _kBadgeLine = [_kgrBadge, _krlBadge, _kvpBadge, _kmtfBadge].filter(function(b){return b;}).join(' · ');
+        if (r.pattern_label) _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
+        if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
         if (_kBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _kBadgeLine + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
@@ -5439,6 +5481,8 @@ function renderNkCardGrid(results) {
         if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown' && r.multi_timeframe_bias !== 'neutral') { var _nmbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); _nmtfBadge = '<span style="color:' + _nmbC + '">MTF:' + escapeHtml(r.multi_timeframe_bias.substring(0,5)) + '</span>'; }
         var _nActionBadge = getActionLabel(r); if (_nActionBadge && _nActionBadge !== getStatusLabel(r, tier)) _nvpBadge = (_nvpBadge ? _nvpBadge + ' · ' : '') + '<span style="color:#93c5fd">' + escapeHtml(_nActionBadge) + '</span>';
         var _nBadgeLine = [_ngrBadge, _nrlBadge, _nvpBadge, _nmtfBadge].filter(function(b){return b;}).join(' · ');
+        if (r.pattern_label) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
+        if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
         if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _nBadgeLine + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
