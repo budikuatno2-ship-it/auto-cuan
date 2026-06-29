@@ -3760,39 +3760,170 @@ async function selectDailyTop5(supabase) {
   return rows.filter(candidateTelegramEligible).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
 }
 
+function getTelegramConfigStatus() {
+  return {
+    enabled: process.env.TELEGRAM_ENABLED === '1',
+    has_bot_token: !!(process.env.TELEGRAM_BOT_TOKEN && String(process.env.TELEGRAM_BOT_TOKEN).trim()),
+    has_chat_id: !!(process.env.TELEGRAM_CHAT_ID && String(process.env.TELEGRAM_CHAT_ID).trim())
+  };
+}
+
+function pickWasSentToTelegram(row) {
+  var raw = (row && row.raw_payload) || {};
+  return !!(raw.telegram_daily_sent_at || raw.telegram_sent_at || raw.sent_to_telegram_at);
+}
+
+function markRawPayloadTelegramSent(raw, sentAt) {
+  var next = Object.assign({}, raw || {});
+  next.telegram_daily_sent_at = sentAt;
+  next.telegram_daily_send_source = 'telegram-daily-picks';
+  return next;
+}
+
+function candidateDiagnostic(candidate) {
+  return {
+    ticker: candidate.ticker,
+    category: candidate.category,
+    daily_score: candidate.daily_score || null,
+    tp1_upside: candidate.tp1_upside != null ? candidate.tp1_upside : null,
+    risk_reward: candidate.risk_reward != null ? candidate.risk_reward : null,
+    reason: candidateReason(candidate)
+  };
+}
+
+function rowToDailyPickCandidate(row) {
+  var raw = Object.assign({}, row.raw_payload || {});
+  raw.ticker = row.ticker || raw.ticker;
+  raw.category = row.category || raw.category;
+  raw.entry1 = row.entry1 != null ? row.entry1 : raw.entry1;
+  raw.entry2 = row.entry2 != null ? row.entry2 : raw.entry2;
+  raw.tp1n = row.tp1 != null ? row.tp1 : (raw.tp1n != null ? raw.tp1n : raw.tp1);
+  raw.tp2n = row.tp2 != null ? row.tp2 : (raw.tp2n != null ? raw.tp2n : raw.tp2);
+  raw.sl = row.sl != null ? row.sl : raw.sl;
+  raw._daily_pick_row_id = row.id;
+  return raw;
+}
+
+async function sendDailyTop5Telegram(supabase, picks, date) {
+  var header = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date, 'Bukan rekomendasi beli/jual. DYOR.'].join('\n');
+  var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage('🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5\nTanggal: ' + date + '\n\nBelum ada kandidat yang lolos filter potensi TP minimal.');
+  var detailSent = 0;
+  var detailResults = [];
+  for (var i = 0; i < picks.length; i++) {
+    var detailText = await formatCandidateBlock(supabase, picks[i], i + 1, false);
+    var detailResult = await telegramNotifier.sendTelegramMessage(detailText, { timeout_ms: 2500 });
+    detailResults.push({ ticker: picks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null });
+    if (detailResult.sent) detailSent++;
+  }
+  return { header: sendResult, detail_sent_count: detailSent, detail_results: detailResults, sent_count: (sendResult.sent ? 1 : 0) + detailSent };
+}
+
 async function handleTelegramDailyPicks(req, res, supabase) {
-  if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, picked_count: 0, error: 'Unauthorized.' });
+  if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent: false, skipped: false, reason: 'unauthorized', sent_count: 0, picked_count: 0, candidate_count: 0, inserted_count: 0, error: 'Unauthorized.' });
   try {
+    var dryRun = req.query && (req.query.dry_run === '1' || req.query.dryRun === '1');
     var force = req.query && req.query.force === '1';
-    var weekendBypassed = false;
-    if (!isJakartaWeekday()) {
-      if (!force) return res.status(200).json({ success: true, build_marker: 'top5-text-only-no-chart-pr60', skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, picked_count: 0, chart_method: 'chart_links_only', chart_sent_count: 0, chart_error_count: 0, chart_skipped_count: 0, chart_skip_reason: 'image_charts_disabled_timeout_safe' });
-      weekendBypassed = true;
-    }
-    var readiness = await getScreenerReadiness(supabase);
-    if (!force && !readiness.ready) {
-      return res.status(200).json({ success: true, build_marker: 'top5-text-only-no-chart-pr60', skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0, chart_method: 'chart_links_only', chart_sent_count: 0, chart_error_count: 0, chart_skipped_count: 0, chart_skip_reason: 'image_charts_disabled_timeout_safe', telegram: null });
-    }
-    var picks = await selectDailyTop5(supabase);
     var date = getJakartaDateString();
-    var header = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date, 'Bukan rekomendasi beli/jual. DYOR.'].join('\n');
-    var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage('🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5\nTanggal: ' + date + '\n\nBelum ada kandidat yang lolos filter potensi TP minimal.');
-    var detailSent = 0;
-    for (var i = 0; i < picks.length; i++) {
-      var detailText = await formatCandidateBlock(supabase, picks[i], i + 1, false);
-      var detailResult = await telegramNotifier.sendTelegramMessage(detailText, { timeout_ms: 2500 });
-      if (detailResult.sent) detailSent++;
+    var jakartaWeekday = isJakartaWeekday();
+    var weekendBypassed = false;
+    var diagnosticsBase = {
+      build_marker: 'top5-daily-diagnostics-v1',
+      date: date,
+      weekday: jakartaWeekday,
+      weekend_guard: { allowed: jakartaWeekday, bypassed: false },
+      forced: force,
+      dry_run: dryRun,
+      telegram_config: getTelegramConfigStatus()
+    };
+    if (!jakartaWeekday) {
+      if (!force) return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'weekend', sent_count: 0, picked_count: 0, candidate_count: 0, inserted_count: 0 }, diagnosticsBase));
+      weekendBypassed = true;
+      diagnosticsBase.weekend_guard.bypassed = true;
     }
-    if (picks.length > 0) {
-      await supabase.from('telegram_daily_picks').delete().eq('date', date);
-      var nowIso = new Date().toISOString();
-      var rows = picks.map(function(r) { return { date: date, ticker: r.ticker, category: r.category, entry1: r.entry1, entry2: r.entry2, tp1: r.tp1n, tp2: r.tp2n, sl: r.sl, status: 'WAITING', first_sent_at: nowIso, raw_payload: r }; });
-      var ins = await supabase.from('telegram_daily_picks').insert(rows);
-      if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
+
+    var readiness = await getScreenerReadiness(supabase);
+    var existingRes = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
+    if (existingRes.error) throw new Error(existingRes.error.message);
+    var existingRows = existingRes.data || [];
+    var alreadySent = existingRows.length > 0 && existingRows.every(pickWasSentToTelegram);
+
+    if (!force && !readiness.ready && existingRows.length === 0) {
+      return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0, candidate_count: 0, inserted_count: 0, telegram: null }, diagnosticsBase));
     }
-    return res.status(200).json({ success: true, build_marker: 'top5-text-only-no-chart-pr60', skipped: false, forced: force, weekend_bypassed: weekendBypassed, readiness: readiness, sent_count: (sendResult.sent ? 1 : 0) + detailSent, picked_count: picks.length, chart_method: 'chart_links_only', chart_sent_count: 0, chart_error_count: 0, chart_skipped_count: picks.length, chart_skip_reason: 'image_charts_disabled_timeout_safe', error: null, telegram: sendResult });
+
+    var picks = [];
+    var source = 'selected_candidates';
+    var insertedCount = 0;
+    if (existingRows.length > 0) {
+      source = 'locked_rows';
+      picks = existingRows.map(rowToDailyPickCandidate);
+    } else {
+      picks = await selectDailyTop5(supabase);
+    }
+
+    if (dryRun) {
+      return res.status(200).json(Object.assign({
+        success: true,
+        sent: false,
+        skipped: true,
+        reason: 'dry_run',
+        source: source,
+        readiness: readiness,
+        candidate_count: picks.length,
+        picked_count: picks.length,
+        inserted_count: 0,
+        selected_tickers: picks.map(function(p) { return p.ticker; }),
+        candidates: picks.map(candidateDiagnostic),
+        existing_locked_count: existingRows.length,
+        already_sent: alreadySent,
+        telegram: null
+      }, diagnosticsBase));
+    }
+
+    if (alreadySent && !force) {
+      return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'already_sent', source: source, readiness: readiness, sent_count: 0, picked_count: existingRows.length, candidate_count: existingRows.length, inserted_count: 0, existing_locked_count: existingRows.length, telegram: null }, diagnosticsBase));
+    }
+
+    var notifier = await sendDailyTop5Telegram(supabase, picks, date);
+    var telegramSent = notifier.sent_count > 0;
+    var nowIso = new Date().toISOString();
+    if (picks.length > 0 && telegramSent) {
+      if (existingRows.length > 0) {
+        for (var u = 0; u < existingRows.length; u++) {
+          await supabase.from('telegram_daily_picks').update({ first_sent_at: existingRows[u].first_sent_at || nowIso, raw_payload: markRawPayloadTelegramSent(existingRows[u].raw_payload, nowIso) }).eq('id', existingRows[u].id);
+        }
+      } else {
+        var rows = picks.map(function(r) {
+          var row = dailyPickInsertRowFromCandidate(r, date, nowIso);
+          row.raw_payload = markRawPayloadTelegramSent(row.raw_payload, nowIso);
+          return row;
+        });
+        var ins = await supabase.from('telegram_daily_picks').insert(rows);
+        if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
+        insertedCount = rows.length;
+      }
+    }
+
+    var reason = telegramSent ? null : ((notifier.header && notifier.header.reason) || (picks.length ? 'telegram_send_failed' : 'no_candidates'));
+    return res.status(200).json(Object.assign({
+      success: telegramSent,
+      sent: telegramSent,
+      skipped: !telegramSent,
+      reason: reason,
+      source: source,
+      readiness: readiness,
+      sent_count: notifier.sent_count,
+      picked_count: picks.length,
+      candidate_count: picks.length,
+      inserted_count: insertedCount,
+      existing_locked_count: existingRows.length,
+      selected_tickers: picks.map(function(p) { return p.ticker; }),
+      notifier: notifier,
+      telegram: notifier.header || null,
+      error: telegramSent ? null : reason
+    }, diagnosticsBase));
   } catch (e) {
-    return res.status(200).json({ success: false, build_marker: 'top5-text-only-no-chart-pr60', sent_count: 0, picked_count: 0, chart_method: 'chart_links_only', chart_sent_count: 0, chart_error_count: 0, chart_skipped_count: 0, chart_skip_reason: 'image_charts_disabled_timeout_safe', error: e.message || String(e) });
+    return res.status(200).json({ success: false, build_marker: 'top5-daily-diagnostics-v1', sent: false, skipped: false, reason: 'exception', date: getJakartaDateString(), weekday: isJakartaWeekday(), sent_count: 0, picked_count: 0, candidate_count: 0, inserted_count: 0, telegram_config: getTelegramConfigStatus(), error: e.message || String(e) });
   }
 }
 
@@ -3993,8 +4124,8 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
   };
 }
 
-function dailyPickInsertRowFromCandidate(candidate, date, nowIso) {
-  return { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: nowIso, raw_payload: candidate };
+function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
+  return { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: firstSentAt || null, raw_payload: candidate };
 }
 
 async function lockWebDailyPicksIfDue(supabase, date) {
@@ -4002,7 +4133,11 @@ async function lockWebDailyPicksIfDue(supabase, date) {
   var picks = await selectDailyTop5(supabase);
   if (!picks.length) return [];
   var nowIso = new Date().toISOString();
-  var rowsToInsert = picks.slice(0, 5).map(function(r) { return dailyPickInsertRowFromCandidate(r, date, nowIso); });
+  var rowsToInsert = picks.slice(0, 5).map(function(r) {
+    var row = dailyPickInsertRowFromCandidate(r, date, null);
+    row.raw_payload = Object.assign({}, row.raw_payload || {}, { web_daily_locked_at: nowIso, telegram_daily_sent_at: null });
+    return row;
+  });
   var ins = await supabase.from('telegram_daily_picks').insert(rowsToInsert).select('*');
   if (ins.error) throw new Error('Simpan daily picks web fallback gagal: ' + ins.error.message);
   return (ins.data || []).sort(function(a, b) { return (a.id || 0) - (b.id || 0); });
