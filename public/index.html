@@ -6806,7 +6806,8 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
     var el = document.getElementById('dashboardMonitorList');
     var upd = document.getElementById('dashboardMonitorUpdated');
     meta = meta || {};
-    if (upd) upd.textContent = meta.monitor_is_stale ? 'Terakhir update: ' + dashWibTime(lastUpdatedAt) + ' WIB · stale' : 'Terakhir update: ' + dashWibTime(lastUpdatedAt) + ' WIB';
+    var onlyDailyLockFallback = meta.monitor_source_label === 'daily lock fallback';
+    if (upd) upd.textContent = onlyDailyLockFallback ? 'Terakhir update: belum ada update monitor terbaru' : 'Terakhir update: ' + dashWibTime(lastUpdatedAt) + ' WIB';
     if (!el) return;
     var rows = picks || [];
     if (rows.length === 0) {

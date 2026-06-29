@@ -3928,11 +3928,15 @@ async function lockWebDailyPicksIfDue(supabase, date) {
 }
 
 
-function isJakartaMarketMonitorWindow() {
-  if (!isJakartaWeekday()) return false;
+function isJakartaActiveMonitorSession() {
   var now = getJakartaNow();
+  var day = now.getUTCDay();
+  if (day < 1 || day > 5) return false;
   var minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-  return minutes >= (9 * 60) && minutes <= (15 * 60);
+  if (day >= 1 && day <= 4) {
+    return (minutes >= (9 * 60 + 30) && minutes <= (12 * 60)) || (minutes >= (13 * 60 + 30) && minutes <= (16 * 60));
+  }
+  return (minutes >= (9 * 60 + 30) && minutes <= (11 * 60 + 30)) || (minutes >= (14 * 60) && minutes <= (16 * 60));
 }
 
 function isMonitorTimestampStale(value, sourceLabel) {
@@ -3940,7 +3944,7 @@ function isMonitorTimestampStale(value, sourceLabel) {
   if (sourceLabel === 'daily lock fallback') return true;
   var d = new Date(value);
   if (isNaN(d.getTime())) return true;
-  if (!isJakartaMarketMonitorWindow()) return false;
+  if (!isJakartaActiveMonitorSession()) return false;
   return (Date.now() - d.getTime()) > (45 * 60 * 1000);
 }
 
