@@ -589,6 +589,34 @@
                 <p class="text-[11px] text-gray-500 mt-0.5">Pantau posisi saham manual</p>
             </button>
         </div>
+
+        <!-- Compact Top 5 + Monitor -->
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
+            <section class="lg:col-span-3 bg-dark-700/45 border border-dark-600/30 rounded-2xl p-3">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Top 5 Hari Ini</h3>
+                        <p class="text-[11px] text-gray-500">Ringkas untuk scan cepat. Detail lengkap ada di modal.</p>
+                    </div>
+                    <button onclick="loadDashboardTop5Monitor(true)" class="px-2.5 py-1 rounded-lg text-[11px] text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/10 transition">Refresh</button>
+                </div>
+                <div id="dashboardTop5List" class="space-y-2">
+                    <div class="py-4 text-center text-xs text-gray-500">Memuat Top 5...</div>
+                </div>
+            </section>
+            <aside class="lg:col-span-2 bg-dark-700/45 border border-dark-600/30 rounded-2xl p-3">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Auto Monitor</h3>
+                        <p class="text-[11px] text-gray-500">Update berkala tiap 1 jam</p>
+                    </div>
+                    <span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap">Terakhir update: — WIB</span>
+                </div>
+                <div id="dashboardMonitorList" class="space-y-2">
+                    <div class="py-3 text-center text-xs text-gray-500">Memuat monitor...</div>
+                </div>
+            </aside>
+        </div>
     </div>
 </div>
 
@@ -1918,6 +1946,7 @@ function showDashboard() {
     loadChatHistory();
     // Update dashboard greeting
     updateDashGreeting();
+    loadDashboardTop5Monitor(true);
 }
 
 // ===== PAGE NAVIGATION =====
@@ -5302,6 +5331,10 @@ function openScrDetail(r, type) {
     html += '</div>';
     // Setup reasoning
     html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:10px">' + escapeHtml(r.status_reason || r.notes || '-') + '</div>';
+    var _top5Reason = r.top5_reason || r.telegram_pick_reason || r.pick_reason || r.reason || r.grade_reason || r.status_reason || r.notes;
+    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.15);border-radius:8px">';
+    html += '<div style="font-size:9px;font-weight:700;color:#6ee7b7;margin-bottom:4px">ALASAN MASUK TOP 5</div>';
+    html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45">' + escapeHtml(_top5Reason || 'Skor, RR, likuiditas, dan level plan relatif lebih kuat dibanding kandidat lain hari ini.') + '</div></div>';
     html += buildConfluenceHtml(r, type === 'konglo' || type === 'nonkonglo');
     // Timeframe context section
     html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.12);border-radius:8px">';
@@ -6697,6 +6730,100 @@ function formatRupiah(num) {
 function formatNumber(n) {
     if (n === null || n === undefined || isNaN(n)) return '0';
     return Number(n).toLocaleString('id-ID');
+}
+
+
+// ===== DASHBOARD TOP 5 + HOURLY MONITOR =====
+var _dashboardPickData = {};
+function dashFmtPrice(v) { var n = Number(v); return isFinite(n) && n > 0 ? n.toLocaleString('id-ID') : '—'; }
+function dashShortText(v, max) { var t = safeDisplayText(v, ''); if (!t) return '—'; return t.length > max ? t.slice(0, max - 1) + '…' : t; }
+function dashWibTime(v) {
+    if (!v) return '—';
+    var d = new Date(v);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false });
+}
+function normalizeDashboardPick(p) {
+    var raw = p.raw_payload || {};
+    var r = Object.assign({}, raw);
+    r.ticker = p.ticker || raw.ticker;
+    r.category = p.category || raw.category || raw.source || '-';
+    r.last_price = p.current_price || raw.lastn || raw.last_price;
+    r.entry1 = p.entry1 || raw.entry1;
+    r.entry2 = p.entry2 || raw.entry2;
+    r.stop_loss = p.sl || raw.stop_loss || raw.sl;
+    r.tp1 = p.tp1 || raw.tp1n || raw.tp1;
+    r.tp2 = p.tp2 || raw.tp2n || raw.tp2;
+    r.risk_reward = raw.risk_reward || raw.rr;
+    return r;
+}
+function renderDashboardTop5(picks) {
+    var el = document.getElementById('dashboardTop5List');
+    if (!el) return;
+    _dashboardPickData = {};
+    if (!picks || picks.length === 0) {
+        el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Top 5 Hari Ini belum tersedia.</div>';
+        return;
+    }
+    var html = '';
+    picks.slice(0, 5).forEach(function(p, idx) {
+        var r = normalizeDashboardPick(p);
+        _dashboardPickData[r.ticker] = r;
+        var sc = Number(r.combined_score || r.telegram_conviction_score || r.daytrade_score || r.score || 0);
+        var grade = getSignalQualityGrade(r) || '—';
+        var risk = getRiskLabel(r) || '—';
+        var rr = Number(r.risk_reward || r.rr);
+        var action = getActionLabel(r) || getStatusLabel(r, r.status || r.final_status || '') || '—';
+        var reason = dashShortText(getSignalReason(r) || r.status_reason || r.grade_reason || r.notes, 96);
+        var rank = p.rank || (idx + 1);
+        html += '<article class="rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 hover:border-emerald-500/25 transition">';
+        html += '<div class="flex items-start gap-2"><div class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-bold flex items-center justify-center flex-shrink-0">' + rank + '</div>';
+        html += '<div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-xs text-gray-300">' + dashFmtPrice(r.last_price) + '</span><span class="text-[11px] text-gray-400">Score <b class="text-emerald-400">' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
+        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span><span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span><span>RR <b class="text-purple-300">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '—') + '</b></span><span class="text-blue-300">' + escapeHtml(action) + '</span></div>';
+        html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
+        html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p></div>';
+        html += '<button onclick="openDashboardPickDetail(\'' + escapeHtml(r.ticker) + '\')" class="px-2.5 py-1.5 rounded-lg text-[11px] text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/10 flex-shrink-0">Detail</button></div></article>';
+    });
+    el.innerHTML = html;
+}
+function renderDashboardMonitor(picks, lastUpdatedAt) {
+    var el = document.getElementById('dashboardMonitorList');
+    var upd = document.getElementById('dashboardMonitorUpdated');
+    if (upd) upd.textContent = 'Terakhir update: ' + dashWibTime(lastUpdatedAt) + ' WIB';
+    if (!el) return;
+    var active = (picks || []).filter(function(p) { return !/TP2_HIT|SL_HIT/i.test(p.status || ''); });
+    if (active.length === 0) {
+        el.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada signal aktif yang dipantau.<br><span class="text-[11px] text-gray-600">Update berkala tiap 1 jam.</span></div>';
+        return;
+    }
+    var html = '';
+    active.forEach(function(p) {
+        var r = normalizeDashboardPick(p);
+        _dashboardPickData[r.ticker] = r;
+        html += '<article class="rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml((p.status || 'WAITING').replace(/_/g, ' ')) + '</span></div>';
+        html += '<div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-gray-400"><span>Last <b class="text-gray-200">' + dashFmtPrice(p.current_price) + '</b></span><span>Entry <b class="text-blue-300">' + dashFmtPrice(p.entry1) + '</b></span><span>SL <b class="text-red-300">' + dashFmtPrice(p.sl) + '</b></span><span>TP1/TP2 <b class="text-emerald-300">' + dashFmtPrice(p.tp1) + '/' + dashFmtPrice(p.tp2) + '</b></span></div>';
+        html += '<div class="mt-1 text-[10px] text-gray-500">' + escapeHtml(p.progress || '-') + ' · ' + dashWibTime(p.last_updated_at) + ' WIB</div></div>';
+        html += '<button onclick="openDashboardPickDetail(\'' + escapeHtml(r.ticker) + '\')" class="px-2 py-1.5 rounded-lg text-[11px] text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/10 flex-shrink-0">Detail</button></div></article>';
+    });
+    el.innerHTML = html;
+}
+function openDashboardPickDetail(ticker) {
+    var r = _dashboardPickData[ticker];
+    if (r) openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo');
+}
+async function loadDashboardTop5Monitor(silent) {
+    try {
+        var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now());
+        var data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
+        renderDashboardTop5(data.picks || []);
+        renderDashboardMonitor(data.picks || [], data.last_updated_at);
+    } catch (e) {
+        var top = document.getElementById('dashboardTop5List');
+        var mon = document.getElementById('dashboardMonitorList');
+        if (top) top.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Top 5 Hari Ini belum tersedia.</div>';
+        if (mon) mon.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada signal aktif yang dipantau.<br><span class="text-[11px] text-gray-600">Update berkala tiap 1 jam.</span></div>';
+    }
 }
 
 // ===== IHSG DASHBOARD LIVE INDICATOR =====
