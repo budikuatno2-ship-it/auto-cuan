@@ -3795,6 +3795,59 @@ function isJakartaAtOrAfter(hour, minute) {
   return h > hour || (h === hour && m >= minute);
 }
 
+function isJakartaActiveMonitorSession() {
+  var now = getJakartaNow();
+  var day = now.getUTCDay();
+  var minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  if (day >= 1 && day <= 4) {
+    return (minutes >= 9 * 60 + 30 && minutes <= 12 * 60) || (minutes >= 13 * 60 + 30 && minutes <= 16 * 60);
+  }
+  if (day === 5) {
+    return (minutes >= 9 * 60 + 30 && minutes <= 11 * 60 + 30) || (minutes >= 14 * 60 && minutes <= 16 * 60);
+  }
+  return false;
+}
+
+function isMonitorTimestampStale(timestamp, sourceLabel) {
+  if (sourceLabel === 'daily_lock_fallback') return true;
+  if (!timestamp) return true;
+  var d = new Date(timestamp);
+  if (isNaN(d.getTime())) return true;
+  if (isJakartaActiveMonitorSession()) {
+    return (Date.now() - d.getTime()) > 45 * 60 * 1000;
+  }
+  return false;
+}
+
+function getMonitorTimestampInfo(row, px) {
+  if (px && px.at) return { at: px.at, source: 'latest_price' };
+  if (row && row.last_checked_at) return { at: row.last_checked_at, source: 'monitor_run' };
+  if (row && row.first_sent_at) return { at: row.first_sent_at, source: 'daily_lock_fallback' };
+  return { at: null, source: 'missing' };
+}
+
+function getMonitorEntryBasis(pick, px) {
+  var entry1 = toNum(pick && pick.entry1);
+  var entry2 = toNum(pick && pick.entry2);
+  var current = px && px.last != null ? toNum(px.last) : null;
+  var high = px && px.high != null ? toNum(px.high) : current;
+  var low = px && px.low != null ? toNum(px.low) : current;
+  var touched2 = entry2 > 0 && high != null && low != null && low <= entry2 && high >= entry2;
+  var touched1 = entry1 > 0 && high != null && low != null && low <= entry1 && high >= entry1;
+  if (touched2) return { type: 'entry2', label: 'Entry 2', price: entry2, touched: true };
+  if (touched1) return { type: 'entry1', label: 'Entry 1', price: entry1, touched: true };
+  return { type: 'distance_entry1', label: 'Entry 1', price: entry1, touched: false };
+}
+
+function getMonitorPlDisplay(pick, px) {
+  var basis = getMonitorEntryBasis(pick, px);
+  var current = px && px.last != null ? toNum(px.last) : null;
+  if (!(current > 0) || !(basis.price > 0)) return { text: '-', pct: null, basis: basis };
+  var pct = ((current - basis.price) / basis.price) * 100;
+  if (basis.touched) return { text: 'Dari ' + basis.label + ': ' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%', pct: pct, basis: basis };
+  return { text: 'Belum kena entry · Jarak ke E1: ' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%', pct: pct, basis: basis };
+}
+
 function evaluateMonitorStatus(pick, px) {
   var status = String(pick.status || 'WAITING').toUpperCase();
   var finalBefore = pick.is_final || ['TP1_HIT','TP2_HIT','SL_HIT'].indexOf(status) >= 0;
@@ -3883,6 +3936,9 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
   var open = px && px.open != null ? px.open : (toNum(raw.open_price) || null);
   var changeFromOpen = open != null && current != null ? current - open : null;
   var changeFromOpenPct = open != null && open > 0 && changeFromOpen != null ? (changeFromOpen / open) * 100 : null;
+  var ts = getMonitorTimestampInfo(row, px);
+  var stale = isMonitorTimestampStale(ts.at, ts.source);
+  var pl = getMonitorPlDisplay(row, px);
   return {
     id: row.id || null,
     rank: rank,
@@ -3907,7 +3963,15 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
     entry_status: raw.entry_status,
     entry_status_label: raw.entry_status_label,
     entry_status_note: raw.entry_status_note,
-    last_updated_at: row.last_checked_at || (px && px.at) || row.first_sent_at || null,
+    last_updated_at: ts.at,
+    monitor_last_updated_at: ts.at,
+    monitor_source_label: ts.source,
+    monitor_is_stale: stale,
+    monitor_stale_note: stale ? 'Data monitor belum update terbaru.' : '',
+    monitor_pl_display: pl.text,
+    monitor_pl_pct: pl.pct,
+    monitor_entry_basis: pl.basis && pl.basis.label,
+    monitor_entry_touched: pl.basis && pl.basis.touched,
     progress: buildMonitorProgressLabel(row, px),
     raw_payload: raw,
     detail: raw
@@ -3942,14 +4006,17 @@ async function handleWebDailyPicks(req, res, supabase) {
     }
     var top5 = [];
     var monitor = [];
-    var lastAt = null;
+    var latestPriceAt = null;
+    var monitorRunAt = null;
+    var dailyLockAt = null;
     if (locked) {
       for (var i = 0; i < rows.length; i++) {
         var p = rows[i];
         var px = await fetchLatestPriceForMonitor(supabase, p.ticker);
         var ev = evaluateMonitorStatus(p, px);
-        if (px && px.at && (!lastAt || String(px.at) > String(lastAt))) lastAt = px.at;
-        if (p.last_checked_at && (!lastAt || String(p.last_checked_at) > String(lastAt))) lastAt = p.last_checked_at;
+        if (px && px.at && (!latestPriceAt || String(px.at) > String(latestPriceAt))) latestPriceAt = px.at;
+        if (p.last_checked_at && (!monitorRunAt || String(p.last_checked_at) > String(monitorRunAt))) monitorRunAt = p.last_checked_at;
+        if (p.first_sent_at && (!dailyLockAt || String(p.first_sent_at) > String(dailyLockAt))) dailyLockAt = p.first_sent_at;
         top5.push(buildDashboardPickRow(p, i + 1, px));
         monitor.push(buildDashboardMonitorRow(p, i + 1, px, ev));
       }
@@ -3957,9 +4024,12 @@ async function handleWebDailyPicks(req, res, supabase) {
       var fallback = await selectDailyTop5(supabase);
       for (var j = 0; j < fallback.length; j++) top5.push(buildFallbackDashboardPickRow(fallback[j], j + 1));
     }
-    return res.status(200).json({ success: true, date: date, top5: top5, monitor: monitor, top5_locked: locked, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: lastAt, picks: top5 });
+    var monitorTs = latestPriceAt || monitorRunAt || dailyLockAt || null;
+    var monitorSource = latestPriceAt ? 'latest_price' : (monitorRunAt ? 'monitor_run' : (dailyLockAt ? 'daily_lock_fallback' : 'missing'));
+    var monitorStale = isMonitorTimestampStale(monitorTs, monitorSource);
+    return res.status(200).json({ success: true, date: date, top5: top5, monitor: monitor, top5_locked: locked, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: monitorTs, monitor_last_updated_at: monitorTs, monitor_source_label: monitorSource, monitor_is_stale: monitorStale, monitor_stale_note: monitorStale ? 'Data monitor belum update terbaru.' : '', picks: top5 });
   } catch (e) {
-    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: null, picks: [], error: e.message || String(e) });
+    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: 'missing', monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
   }
 }
 
