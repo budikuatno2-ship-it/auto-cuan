@@ -5262,6 +5262,33 @@ function dtToggleView(mode) {
     }
 }
 
+
+function freshnessText(r) {
+    if (!r || !r.freshness_label) return '';
+    var label = r.freshness_label;
+    var age = r.freshness_age_minutes;
+    var ageTxt = '';
+    if (age != null && isFinite(Number(age)) && label !== 'Unknown') {
+        age = Number(age);
+        ageTxt = age < 60 ? (age + 'm ago') : (Math.round(age / 60) + 'h ago');
+    }
+    return label + (ageTxt && label !== 'Market Close Snapshot' ? ' · ' + ageTxt : '');
+}
+function freshnessColor(r) {
+    var label = (r && r.freshness_label) || 'Unknown';
+    if (label === 'Fresh') return '#6ee7b7';
+    if (label === 'Delayed') return '#fbbf24';
+    if (label === 'Stale') return '#fca5a5';
+    if (label === 'Market Close Snapshot') return '#93c5fd';
+    return '#9ca3af';
+}
+function freshnessChipHtml(r) {
+    var txt = freshnessText(r);
+    if (!txt) return '';
+    var c = freshnessColor(r);
+    return '<span title="' + escapeHtml(r.freshness_reason || txt) + '" style="font-size:9px;padding:2px 6px;border-radius:999px;border:1px solid ' + c + '55;color:' + c + ';background:' + c + '14;white-space:nowrap">' + escapeHtml(txt) + '</span>';
+}
+
 function renderDtCardGrid(results) {
     var container = document.getElementById('dtCardGrid');
     if (!container) return;
@@ -5289,6 +5316,7 @@ function renderDtCardGrid(results) {
         var notes = getSignalReason(r); if (notes.length > 110) notes = notes.substring(0, 107) + '...';
         html += '<div class="dt-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(getStatusLabel(r, st)) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
         // V6: Risk / Grade / MTF compact badges
         var _rlBadge = ''; var _grBadge = ''; var _vpBadge = ''; var _mtfBadge = '';
@@ -5398,7 +5426,8 @@ function openScrDetail(r, type) {
     var html = '';
     // Header
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:20px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(getStatusLabel(r, st)) + '</span></div>';
-    html += '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:14px;color:#9ca3af"><span>' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
+    html += '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:8px;color:#9ca3af"><span>' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
+    if (freshnessText(r)) html += '<div style="font-size:10px;color:' + freshnessColor(r) + ';margin-bottom:10px">' + freshnessChipHtml(r) + '<div style="color:#9ca3af;margin-top:4px">' + escapeHtml(r.freshness_reason || '') + '</div></div>';
     // Grade/Risk/RR summary bar
     html += '<div style="display:flex;gap:10px;margin-bottom:12px;padding:8px 12px;background:rgba(30,35,50,0.6);border:1px solid #2a3444;border-radius:10px">';
     html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Grade</div><div style="font-size:16px;font-weight:800;color:' + _gCol + '">' + escapeHtml(_grade || '-') + '</div></div>';
@@ -5559,6 +5588,7 @@ function renderKgCardGrid(results) {
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.group_code) html += '<span style="color:#6b7280">' + escapeHtml(r.group_code) + '</span>';
         html += '</div>';
@@ -5628,6 +5658,7 @@ function renderNkCardGrid(results) {
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
         html += '</div>';
@@ -6171,7 +6202,7 @@ function renderScreenerTable(results) {
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
-        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '</td>';
+        html += '<td class="px-2 py-2 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-500 whitespace-nowrap text-[10px]">' + (r.group_code || '-') + '</td>';
         html += '<td class="px-2 py-2 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
@@ -6531,7 +6562,7 @@ function renderNkScreenerTable(results) {
 
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px]">' + (r.rank || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
@@ -6923,6 +6954,11 @@ function normalizeDashboardPick(p) {
     r.signal_verdict = p.signal_verdict || raw.signal_verdict;
     r.signal_reason = p.signal_reason || raw.signal_reason;
     r.signal_badges = p.signal_badges || raw.signal_badges || [];
+    r.freshness_label = p.freshness_label || raw.freshness_label;
+    r.freshness_reason = p.freshness_reason || raw.freshness_reason;
+    r.freshness_age_minutes = p.freshness_age_minutes != null ? p.freshness_age_minutes : raw.freshness_age_minutes;
+    r.freshness_priority = p.freshness_priority != null ? p.freshness_priority : raw.freshness_priority;
+    r.freshness_is_stale = !!(p.freshness_is_stale || raw.freshness_is_stale);
     return r;
 }
 function getPlanWarningLine(r) {
@@ -6974,6 +7010,7 @@ function renderDashboardTop5(picks) {
         html += '<article role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')" class="cursor-pointer rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 hover:border-emerald-500/30 hover:bg-emerald-500/5 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition">';
         html += '<div class="flex items-start gap-2"><div class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-bold flex items-center justify-center flex-shrink-0">' + rank + '</div>';
         html += '<div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-xs text-gray-300">' + dashFmtPrice(r.last_price) + '</span><span class="text-[11px] text-gray-400">Score <b class="text-emerald-400">' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
+        html += '<div class="mt-1">' + freshnessChipHtml(r) + '</div>';
         html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span><span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span><span>RR <b class="text-purple-300">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '—') + '</b></span><span class="text-blue-300">' + escapeHtml(action) + '</span></div>';
         html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
         var planWarn = getPlanWarningLine(r);
@@ -7015,7 +7052,7 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
         if (p.active_entry_price != null) monitorParts.push('<span class="' + basisClass + '">Dari ' + escapeHtml(p.active_entry_label || 'Entry') + ': ' + escapeHtml(basisPctTxt || '—') + '</span>');
         else { monitorParts.push('<span class="text-gray-400">Belum kena entry</span>'); if (basisPctTxt) monitorParts.push('<span class="' + basisClass + '">Jarak ke E1: ' + escapeHtml(basisPctTxt) + '</span>'); }
         var openTxt = (p.open_price != null && isFinite(Number(p.open_price))) ? 'Open ' + dashFmtPrice(p.open_price) : '';
-        html += '<article' + cardAttrs + ' class="' + cardClass + '"><div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(statusText) + '</span></div>';
+        html += '<article' + cardAttrs + ' class="' + cardClass + '"><div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(statusText) + '</span>' + freshnessChipHtml(r) + '</div>';
         if (monitorParts.length) html += '<div class="mt-1 text-[11px] text-gray-400">' + monitorParts.join(' · ') + '</div>';
         if (openTxt) html += '<div class="mt-0.5 text-[10px] text-gray-600">' + escapeHtml(openTxt) + '</div>';
         html += '<div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-gray-400"><span>Entry <b class="text-blue-300">' + dashFmtPrice(p.entry1) + '</b></span><span>E2 <b class="text-blue-300">' + dashFmtPrice(p.entry2) + '</b></span><span>SL <b class="text-red-300">' + dashFmtPrice(p.sl) + '</b></span><span>TP1/TP2 <b class="text-emerald-300">' + dashFmtPrice(p.tp1) + '/' + dashFmtPrice(p.tp2) + '</b></span></div>';
@@ -7066,7 +7103,7 @@ function renderTop5History(activeRows, tpRows) {
         var entryUsed = p.entry_used_label || p.active_entry_label || 'Belum kena Entry 1';
         html += '<article class="rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 hover:border-emerald-500/30 transition">';
         html += '<div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2"><div role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')" onkeydown="dashOpenKey(event, \'' + historyKeyJs + '\')" class="min-w-0 flex-1 cursor-pointer">';
-        html += '<div class="flex flex-wrap items-center gap-2"><span class="text-[11px] text-gray-500">' + escapeHtml(p.date || '-') + '</span><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(p.category || r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(p.status_label || '-') + '</span></div>';
+        html += '<div class="flex flex-wrap items-center gap-2"><span class="text-[11px] text-gray-500">' + escapeHtml(p.date || '-') + '</span><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(p.category || r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(p.status_label || '-') + '</span>' + freshnessChipHtml(r) + '</div>';
         html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-6 gap-1 text-[10px]"><span class="text-blue-300">' + escapeHtml(entryUsed) + ' ' + dashFmtPrice(p.active_entry_price) + '</span><span class="text-blue-300">E1 ' + dashFmtPrice(p.entry1) + '</span><span class="text-red-300">SL ' + dashFmtPrice(p.sl) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(p.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(p.tp2) + '</span><span class="text-gray-300">Last ' + dashFmtPrice(p.last_price || p.current_price) + '</span></div>';
         html += '<div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400"><span class="' + pctClass + '">' + escapeHtml(pctText) + '</span><span>Action <b class="text-blue-300">' + escapeHtml(action) + '</b></span><span>Risk <b class="text-amber-300">' + escapeHtml(p.risk_label_v2 || '—') + '</b></span><span>Plan <b class="text-purple-300">' + escapeHtml(p.plan_label || p.plan_quality_label || '—') + '</b></span></div>';
         html += '</div><div class="flex gap-1"><button onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')" class="px-2 py-1 rounded text-[10px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10">Detail</button>' + adminBtn + '</div></div></article>';
@@ -8946,7 +8983,7 @@ function renderDtTable(results) {
 
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 transition">';
         html += '<td class="px-2 py-2 text-gray-500 sticky left-0 bg-dark-800/90 z-10">' + (i + 1) + '</td>';
-        html += '<td class="px-2 py-2 font-medium text-white">' + r.ticker + '</td>';
+        html += '<td class="px-2 py-2 font-medium text-white">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(getStatusLabel(r, formatDtStatus(r.status))) + '</span></td>';
         html += '<td class="px-2 py-2 text-center font-bold ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + '</td>';

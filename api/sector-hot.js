@@ -416,7 +416,7 @@ async function handleScreenerRead(req, res, supabase) {
     r.entry_timing = labels.entry_timing;
     r.tradeability = labels.tradeability;
     r.direction = labels.direction;
-    return enrichSignalQuality(r, 'Swing Konglo');
+    return attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), meta);
   });
 
   // Sort by swing_tier priority, then composite quality
@@ -2353,7 +2353,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: kongloMeta } = await supabase.from('swing_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: kongloRows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false });
   // Derive swing labels for public share (Konglo)
-  var kongloWithLabels = (kongloRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return enrichSignalQuality(r, 'Swing Konglo'); });
+  var kongloWithLabels = (kongloRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), kongloMeta); });
   var _swingPri = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
   kongloWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
   result.konglo = { meta: kongloMeta || null, results: redactAdvancedScreenerRows(kongloWithLabels) };
@@ -2362,7 +2362,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: nkMeta } = await supabase.from('swing_screener_non_konglo_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: nkRows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true });
   // Derive swing labels for public share (Non-Konglo)
-  var nkWithLabels = (nkRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return enrichSignalQuality(r, 'Swing Non-Konglo'); });
+  var nkWithLabels = (nkRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return attachFreshness(enrichSignalQuality(r, 'Swing Non-Konglo'), nkMeta); });
   nkWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
   nkWithLabels.forEach(function(r, idx) { r.rank = idx + 1; });
   nkWithLabels = await enrichNonKongloHalfCandleDebt(nkWithLabels);
@@ -2372,7 +2372,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: dtMeta } = await supabase.from('daytrade_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: dtRows } = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(50);
   // Derive labels for public share results
-  var dtWithLabels = (dtRows || []).map(function(r) { var lbl = deriveDayTradeLabels(r); r.entry_timing = lbl.entry_timing; r.direction = lbl.direction; return enrichSignalQuality(r, 'Day Trade'); });
+  var dtWithLabels = (dtRows || []).map(function(r) { var lbl = deriveDayTradeLabels(r); r.entry_timing = lbl.entry_timing; r.direction = lbl.direction; return attachFreshness(enrichSignalQuality(r, 'Day Trade'), dtMeta); });
   result.daytrade = { meta: dtMeta || null, results: redactAdvancedScreenerRows(dtWithLabels) };
 
   return res.status(200).json(result);
@@ -2923,6 +2923,60 @@ function getWibHourString() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(11, 16) + ' WIB';
 }
 
+
+
+function isIdxRegularMarketOpenJakarta(now) {
+  now = now || getJakartaNow();
+  var day = now.getUTCDay();
+  if (day < 1 || day > 5) return false;
+  var minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  return minutes >= (9 * 60) && minutes <= (15 * 60 + 15);
+}
+
+function deriveFreshness(row, meta, opts) {
+  opts = opts || {};
+  row = row || {};
+  meta = meta || {};
+  var ts = row.freshness_timestamp || row.calculated_at || row.updated_at || row.last_updated_at || row.last_checked_at || row.first_sent_at || row.run_at || row.created_at || meta.calculated_at || meta.updated_at || meta.last_updated_at || meta.created_at || null;
+  if (!ts) {
+    return { freshness_label: 'Unknown', freshness_reason: 'Timestamp data tidak tersedia; freshness tidak bisa dipastikan.', freshness_age_minutes: null, freshness_priority: 99, freshness_is_stale: false };
+  }
+  var d = new Date(ts);
+  if (isNaN(d.getTime())) {
+    return { freshness_label: 'Unknown', freshness_reason: 'Timestamp data tidak bisa diparse; freshness tidak bisa dipastikan.', freshness_age_minutes: null, freshness_priority: 99, freshness_is_stale: false };
+  }
+  var now = new Date();
+  var age = Math.max(0, Math.round((now.getTime() - d.getTime()) / 60000));
+  var marketOpen = isIdxRegularMarketOpenJakarta();
+  var dataDate = getJakartaDateFromTimestamp(ts);
+  var today = getJakartaDateString();
+  var closeSnapshot = !marketOpen && dataDate === today;
+  if (closeSnapshot) {
+    return { freshness_label: 'Market Close Snapshot', freshness_reason: 'Bursa sedang di luar jam reguler; data ditampilkan sebagai snapshot sesi/close terbaru yang tersedia.', freshness_age_minutes: age, freshness_priority: 3, freshness_is_stale: false };
+  }
+  if (marketOpen && age <= 45) return { freshness_label: 'Fresh', freshness_reason: 'Timestamp data masih dalam batas fresh saat jam bursa reguler (≤45 menit).', freshness_age_minutes: age, freshness_priority: 0, freshness_is_stale: false };
+  if (marketOpen && age <= 120) return { freshness_label: 'Delayed', freshness_reason: 'Timestamp data sudah tertunda namun masih dalam rentang pemantauan (46–120 menit).', freshness_age_minutes: age, freshness_priority: 1, freshness_is_stale: false };
+  if (marketOpen && age > 120) return { freshness_label: 'Stale', freshness_reason: 'Timestamp data lebih dari 120 menit saat jam bursa; validasi ulang harga/volume intraday sebelum eksekusi.', freshness_age_minutes: age, freshness_priority: 2, freshness_is_stale: true };
+  if (dataDate !== today) return { freshness_label: 'Stale', freshness_reason: 'Data bukan dari tanggal WIB hari ini; gunakan sebagai referensi historis dan validasi ulang.', freshness_age_minutes: age, freshness_priority: 2, freshness_is_stale: true };
+  return { freshness_label: 'Market Close Snapshot', freshness_reason: 'Bursa sedang di luar jam reguler; data hari ini ditampilkan sebagai snapshot terbaru.', freshness_age_minutes: age, freshness_priority: 3, freshness_is_stale: false };
+}
+
+function attachFreshness(row, meta) {
+  var f = deriveFreshness(row, meta);
+  row.freshness_label = f.freshness_label;
+  row.freshness_reason = f.freshness_reason;
+  row.freshness_age_minutes = f.freshness_age_minutes;
+  row.freshness_priority = f.freshness_priority;
+  row.freshness_is_stale = f.freshness_is_stale;
+  if (f.freshness_is_stale) {
+    var staleMsg = 'Data stale — validasi ulang harga/volume sebelum entry.';
+    if (!row.stale_notes) row.stale_notes = staleMsg;
+    if (!row.data_stale) row.data_stale = true;
+    if (row.action_reason && row.action_reason.indexOf('validasi ulang') < 0) row.action_reason += ' ' + staleMsg;
+    if (row.plan_reason && row.plan_reason.indexOf('validasi ulang') < 0) row.plan_reason += ' ' + staleMsg;
+  }
+  return row;
+}
 
 function getJakartaNow() {
   return new Date(Date.now() + 7 * 60 * 60 * 1000);
@@ -4150,7 +4204,7 @@ function buildDashboardPickRow(row, rank, px) {
   var rr = toNum(raw.risk_reward || raw.rr) || null;
   attachEntryStatus(Object.assign(raw, { current_price: current, last_price: current }));
   var reason = raw.top5_reason || raw.alasan_top5 || raw.telegram_pick_reason || raw.pick_reason || raw.reason || raw.grade_reason || raw.status_reason || raw.notes || raw.verdict || raw.telegram_verdict || null;
-  return {
+  var out = {
     id: row.id || null,
     rank: rank,
     date: row.date || getJakartaDateString(),
@@ -4202,6 +4256,7 @@ function buildDashboardPickRow(row, rank, px) {
     rr_quality_label: raw.rr_quality_label,
     raw_payload: raw
   };
+  return attachFreshness(out, { calculated_at: (px && px.at) || row.last_checked_at || row.first_sent_at || raw.calculated_at || raw.updated_at || row.date });
 }
 
 function buildFallbackDashboardPickRow(candidate, rank) {
@@ -4267,7 +4322,7 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
   var changeFromOpen = open != null && current != null ? current - open : null;
   var changeFromOpenPct = open != null && open > 0 && changeFromOpen != null ? (changeFromOpen / open) * 100 : null;
   var pl = getMonitorPlDisplay(row, px, ev);
-  return {
+  var out = {
     id: row.id || null,
     rank: rank,
     date: row.date,
@@ -4316,6 +4371,7 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
     raw_payload: raw,
     detail: raw
   };
+  return attachFreshness(out, { calculated_at: (px && px.at) || row.last_checked_at || row.first_sent_at || row.date });
 }
 
 function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
@@ -4501,7 +4557,7 @@ function buildWebTop5HistoryRow(row, rank, px, ev) {
   };
   var entry = getHistoryEntryUsage(normalized, effectivePx);
   var cls = ev || classifyWebTop5History(normalized, effectivePx);
-  return {
+  var out = {
     id: normalized.id,
     rank: rank,
     date: normalized.date,
@@ -4543,6 +4599,7 @@ function buildWebTop5HistoryRow(row, rank, px, ev) {
     entry2_touched: entry.entry2_touched,
     detail: raw
   };
+  return attachFreshness(out, { calculated_at: effectivePx.at || normalized.last_checked_at || normalized.first_sent_at || normalized.date });
 }
 
 async function handleWebTop5History(req, res, supabase) {
@@ -5401,7 +5458,7 @@ async function handleNkScreenerResults(req, res, supabase) {
     r.entry_timing = labels.entry_timing;
     r.tradeability = labels.tradeability;
     r.direction = labels.direction;
-    return enrichSignalQuality(r, 'Swing Non-Konglo');
+    return attachFreshness(enrichSignalQuality(r, 'Swing Non-Konglo'), meta);
   });
 
   var swingTierPriority = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
@@ -6551,7 +6608,7 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       r.tf_1d_context = tfCtx.tf_1d;
       r.tf_summary = tfCtx.summary;
       r.derived_risk = tfCtx.derived_risk;
-      return enrichSignalQuality(r, 'Day Trade');
+      return attachFreshness(enrichSignalQuality(r, 'Day Trade'), meta);
     });
 
     sortedRows = await enrichConfluenceRows(supabase, sortedRows, false);
