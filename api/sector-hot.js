@@ -616,6 +616,22 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           liquidity_label: _avgTxValue7d >= 500000000 ? 'Liquid' : 'Likuiditas Tipis',
           volume_label: analysis.volume_ratio_avg20 >= 1 ? 'Volume valid' : 'Volume lemah'
         }));
+        var _respectQuality = dtEngine.scoreRespectCandleQuality(candles, {
+          entry_low: _finalEntry_low,
+          entry_high: _finalEntry_high,
+          stop_loss: _finalStop_loss,
+          tp1: _finalTp1,
+          tp2: _finalTp2,
+          risk_reward: _finalRR,
+          support: _tickResult.tick_normalized ? _tickResult.support : analysis.support,
+          resistance: _tickResult.tick_normalized ? _tickResult.resistance : analysis.resistance,
+          half_candle_level: _refinedLevels ? _refinedLevels.half_candle_level : null
+        }, {
+          multi_timeframe_bias: _mtfCtx.multi_timeframe_bias,
+          rsi14: analysis.rsi14,
+          avg_tx_value_7d: _avgTxValue7d,
+          liquidity_label: _avgTxValue7d >= 500000000 ? 'Liquid' : 'Likuiditas Tipis'
+        }) || {};
 
         results.push({
           ticker: item.ticker,
@@ -645,6 +661,11 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           half_candle_label: _refinedLevels ? _refinedLevels.half_candle_label : null,
           half_candle_note: _refinedLevels ? _refinedLevels.half_candle_note : null,
           half_candle_chase_risk: _refinedLevels ? _refinedLevels.half_candle_chase_risk : false,
+          respect_quality_score: _respectQuality.respect_quality_score,
+          respect_quality_label: _respectQuality.respect_quality_label || null,
+          respect_quality_factors: _respectQuality.respect_quality_factors || [],
+          respect_invalid_reason: _respectQuality.respect_invalid_reason || null,
+          bearish_respect_warning: _respectQuality.bearish_respect_warning || null,
           tx_value_1d: Math.round(_txValue1d),
           avg_tx_value_3d: Math.round(_avgTxValue3d),
           avg_tx_value_7d: Math.round(_avgTxValue7d),
@@ -3500,6 +3521,11 @@ function redactAdvancedScreenerFields(row) {
   delete r.half_candle_distance_pct;
   delete r.respect_zone_notes;
   delete r.refinement_notes;
+  delete r.respect_quality_score;
+  delete r.respect_quality_label;
+  delete r.respect_quality_factors;
+  delete r.respect_invalid_reason;
+  delete r.bearish_respect_warning;
   var advancedTiming = /half-candle|1\/2 candle|reclaim 1\/2|failed respect|long candle/i;
   if (r.entry_timing && advancedTiming.test(String(r.entry_timing))) r.entry_timing = 'Tunggu konfirmasi entry';
   if (r.direction && /long candle|respect candle|half-candle|1\/2 candle/i.test(String(r.direction))) r.direction = 'Pantau setup';

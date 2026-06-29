@@ -3339,6 +3339,12 @@ async function fetchQuoteContext(ticker, forceFresh) {
                 if (isLoggedInUser() && tp.half_candle_note) lines.push('Half Candle Note: ' + tp.half_candle_note);
                 if (isLoggedInUser() && tp.refinement_notes) lines.push('Refinement: ' + tp.refinement_notes);
                 if (isLoggedInUser() && tp.respect_zone_notes) lines.push('Zone Context: ' + tp.respect_zone_notes);
+                if (isLoggedInUser() && tp.respect_quality_label) {
+                    lines.push('Respect v2: ' + tp.respect_quality_label + (tp.respect_quality_score != null ? ' (' + tp.respect_quality_score + '/100)' : ''));
+                    if (tp.respect_quality_factors && tp.respect_quality_factors.length) lines.push('Respect Factors: ' + tp.respect_quality_factors.slice(0, 4).join('; '));
+                    if (tp.respect_invalid_reason) lines.push('Respect Invalid: ' + tp.respect_invalid_reason);
+                    if (tp.bearish_respect_warning) lines.push('Bearish Respect: ' + tp.bearish_respect_warning);
+                }
             }
             if (q.bsjpLabel) {
                 lines.push('');
@@ -5297,6 +5303,8 @@ function renderDtCardGrid(results) {
         if (r.entry_status_label) html += '<div style="font-size:10px;margin-bottom:8px;color:#d1d5db"><span style="color:#94a3b8">Status Entry:</span> ' + escapeHtml(r.entry_status_label) + '</div>';
         var _planWarn = getPlanWarningLine(r);
         if (_planWarn) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Plan:</span> ' + escapeHtml(_planWarn.replace(/^Plan:\\s*/, '')) + '</div>';
+        var _respectLine = buildRespectQualityLine(r);
+        if (_respectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_respectLine) + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
@@ -5348,6 +5356,13 @@ function getSetupMeaning(status, type) {
         'A_PLUS_SWING': 'Swing A+ — setup lengkap, konfirmasi volume dan candle kuat.'
     };
     return map[s] || null;
+}
+
+function buildRespectQualityLine(r) {
+    if (!isLoggedInUser() || !r || !r.respect_quality_label) return '';
+    var score = r.respect_quality_score != null ? (' (' + Number(r.respect_quality_score).toFixed(0) + ')') : '';
+    var warn = r.bearish_respect_warning ? ' · TP warning' : (r.respect_invalid_reason ? ' · ' + r.respect_invalid_reason : '');
+    return (r.respect_quality_label + score + warn);
 }
 
 function openScrDetail(r, type) {
@@ -5471,6 +5486,10 @@ function openScrDetail(r, type) {
     if (r.gap_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Gap:</span> ' + escapeHtml(r.gap_note) + '</div>';
     if (isLoggedInUser() && r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
     if (isLoggedInUser() && r.half_candle_level) html += '<div style="font-size:10px;color:#fbbf24;margin-bottom:4px"><span style="color:#6b7280">1/2 Candle:</span> ' + escapeHtml((r.half_candle_label || 'Entry pullback 1/2 candle') + ' @ ' + r.half_candle_level) + '</div>';
+    if (isLoggedInUser() && r.respect_quality_label) {
+      var _rqFactors = (r.respect_quality_factors && r.respect_quality_factors.slice) ? r.respect_quality_factors.slice(0, 4) : [];
+      html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:4px;padding:7px 10px;background:rgba(251,191,36,0.04);border:1px solid rgba(251,191,36,0.16);border-radius:8px"><span style="color:#fbbf24;font-weight:600">Respect v2:</span> ' + escapeHtml(r.respect_quality_label + (r.respect_quality_score != null ? ' (' + r.respect_quality_score + '/100)' : '')) + (_rqFactors.length ? '<br><span style="color:#94a3b8">Factors:</span> ' + escapeHtml(_rqFactors.join('; ')) : '') + (r.respect_invalid_reason ? '<br><span style="color:#fca5a5">Invalid:</span> ' + escapeHtml(r.respect_invalid_reason) : '') + (r.bearish_respect_warning ? '<br><span style="color:#fca5a5">IDX long-only:</span> ' + escapeHtml(r.bearish_respect_warning) : '') + '</div>';
+    }
     if (isLoggedInUser() && r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:4px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
     // BSJP + Timing + Direction
     if (r.bsjp_label) html += '<div style="font-size:11px;color:#fbbf24;margin-bottom:8px;padding:6px 10px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-weight:500">' + escapeHtml(r.bsjp_label) + '</div>';
@@ -5554,6 +5573,8 @@ function renderKgCardGrid(results) {
         if (r.pattern_label) _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
         if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _kBadgeLine += (_kBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
         if (_kBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _kBadgeLine + '</div>';
+        var _kRespectLine = buildRespectQualityLine(r);
+        if (_kRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_kRespectLine) + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
@@ -5621,6 +5642,8 @@ function renderNkCardGrid(results) {
         if (r.pattern_label) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
         if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
         if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _nBadgeLine + '</div>';
+        var _nRespectLine = buildRespectQualityLine(r);
+        if (_nRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_nRespectLine) + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
