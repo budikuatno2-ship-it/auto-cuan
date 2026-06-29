@@ -35,6 +35,11 @@ function redactAdvancedQuoteFields(result) {
     delete result.tradingPlan.half_candle_chase_risk;
     delete result.tradingPlan.refinement_notes;
     delete result.tradingPlan.respect_zone_notes;
+    delete result.tradingPlan.respect_quality_score;
+    delete result.tradingPlan.respect_quality_label;
+    delete result.tradingPlan.respect_quality_factors;
+    delete result.tradingPlan.respect_invalid_reason;
+    delete result.tradingPlan.bearish_respect_warning;
   }
   return result;
 }
@@ -136,7 +141,12 @@ module.exports = async function handler(req, res) {
             half_candle_level: refined.half_candle_level || null,
             half_candle_label: refined.half_candle_label || null,
             half_candle_note: refined.half_candle_note || null,
-            half_candle_chase_risk: refined.half_candle_chase_risk || false
+            half_candle_chase_risk: refined.half_candle_chase_risk || false,
+            respect_quality_score: refined.respect_quality_score,
+            respect_quality_label: refined.respect_quality_label || null,
+            respect_quality_factors: refined.respect_quality_factors || [],
+            respect_invalid_reason: refined.respect_invalid_reason || null,
+            bearish_respect_warning: refined.bearish_respect_warning || null
           };
         }
       }
