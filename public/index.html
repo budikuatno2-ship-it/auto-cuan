@@ -5059,7 +5059,12 @@ function normalizeRiskLabel(label) {
     if (compact === 'very high' || compact === 'very high risk') return 'Very High Risk';
     return text;
 }
-function getRiskLabel(r) { return r ? normalizeRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label || r.risk || r.risk_level || '') : ''; }
+function getRiskLabel(r) {
+    if (!r) return '';
+    var camelRisk = r.riskLabel;
+    if (camelRisk && typeof camelRisk === 'object') camelRisk = camelRisk.risk_label_v2 || camelRisk.risk_label || camelRisk.label || camelRisk.risk || '';
+    return normalizeRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label || camelRisk || r.risk || r.risk_level || '');
+}
 function getRiskColor(label) {
     var risk = normalizeRiskLabel(label);
     if (risk === 'Low Risk') return '#6ee7b7';
