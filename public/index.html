@@ -6932,19 +6932,20 @@ function renderTop5History(rows) {
     var html = '';
     rows.forEach(function(p) {
         var r = normalizeDashboardPick(p);
-        _dashboardPickData[r.ticker] = Object.assign({}, r, p.raw_payload || {}, p);
-        var tickerJs = dashJsString(r.ticker);
+        var historyKey = 'history-' + p.id;
+        _dashboardPickData[historyKey] = Object.assign({}, r, p.raw_payload || {}, p);
+        var historyKeyJs = dashJsString(historyKey);
         var pctText = top5HistoryPctLine(p);
         var pctNum = p.active_entry_price != null ? Number(p.return_from_entry_pct) : Number(p.distance_to_entry1_pct);
         var pctClass = pctNum >= 0 ? 'text-emerald-300' : 'text-red-300';
         var action = p.signal_action_label || p.signal_verdict || getActionLabel(r) || '—';
         var adminBtn = isAdmin() ? '<button onclick="event.stopPropagation(); archiveTop5History(' + Number(p.id) + ')" class="px-2 py-1 rounded text-[10px] text-red-300 border border-red-500/30 hover:bg-red-500/10">Archive</button>' : '';
         html += '<article class="rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 hover:border-emerald-500/30 transition">';
-        html += '<div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2"><div role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')" class="min-w-0 flex-1 cursor-pointer">';
+        html += '<div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2"><div role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')" onkeydown="dashOpenKey(event, \'' + historyKeyJs + '\')" class="min-w-0 flex-1 cursor-pointer">';
         html += '<div class="flex flex-wrap items-center gap-2"><span class="text-[11px] text-gray-500">' + escapeHtml(p.date || '-') + '</span><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(p.category || r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(p.status_label || '-') + '</span></div>';
         html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-6 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(p.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(p.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(p.sl) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(p.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(p.tp2) + '</span><span class="text-gray-300">Last ' + dashFmtPrice(p.last_price || p.current_price) + '</span></div>';
         html += '<div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400"><span class="' + pctClass + '">' + escapeHtml(pctText) + '</span><span>Action <b class="text-blue-300">' + escapeHtml(action) + '</b></span><span>Risk <b class="text-amber-300">' + escapeHtml(p.risk_label_v2 || '—') + '</b></span><span>Plan <b class="text-purple-300">' + escapeHtml(p.plan_quality_label || '—') + '</b></span></div>';
-        html += '</div><div class="flex gap-1"><button onclick="openDashboardPickDetail(\'' + tickerJs + '\')" class="px-2 py-1 rounded text-[10px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10">Detail</button>' + adminBtn + '</div></div></article>';
+        html += '</div><div class="flex gap-1"><button onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')" class="px-2 py-1 rounded text-[10px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10">Detail</button>' + adminBtn + '</div></div></article>';
     });
     el.innerHTML = html;
 }
