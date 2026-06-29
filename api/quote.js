@@ -111,7 +111,11 @@ module.exports = async function handler(req, res) {
             target_2: Math.max(refined.tp1, refined.tp2 || refined.tp1),
             risk_reward: refined.risk_reward,
             refinement_notes: refined.refinement_notes || null,
-            respect_zone_notes: refined.respect_zone_notes || null
+            respect_zone_notes: refined.respect_zone_notes || null,
+            half_candle_level: refined.half_candle_level || null,
+            half_candle_label: refined.half_candle_label || null,
+            half_candle_note: refined.half_candle_note || null,
+            half_candle_chase_risk: refined.half_candle_chase_risk || false
           };
         }
       }

@@ -3330,6 +3330,8 @@ async function fetchQuoteContext(ticker, forceFresh) {
                 lines.push('Target 1: ' + (tp.target_1 || '-'));
                 lines.push('Target 2: ' + (tp.target_2 || '-'));
                 lines.push('R/R: ' + (tp.risk_reward || '-'));
+                if (tp.half_candle_level) lines.push('Half Candle Debt: ' + tp.half_candle_level + ' — ' + (tp.half_candle_label || 'Entry pullback 1/2 candle'));
+                if (tp.half_candle_note) lines.push('Half Candle Note: ' + tp.half_candle_note);
                 if (tp.refinement_notes) lines.push('Refinement: ' + tp.refinement_notes);
                 if (tp.respect_zone_notes) lines.push('Zone Context: ' + tp.respect_zone_notes);
             }
@@ -5412,6 +5414,7 @@ function openScrDetail(r, type) {
     if (r.candle_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Candle:</span> ' + escapeHtml(r.candle_note) + '</div>';
     if (r.gap_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Gap:</span> ' + escapeHtml(r.gap_note) + '</div>';
     if (r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
+    if (r.half_candle_level) html += '<div style="font-size:10px;color:#fbbf24;margin-bottom:4px"><span style="color:#6b7280">1/2 Candle:</span> ' + escapeHtml((r.half_candle_label || 'Entry pullback 1/2 candle') + ' @ ' + r.half_candle_level) + '</div>';
     if (r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:4px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
     // BSJP + Timing + Direction
     if (r.bsjp_label) html += '<div style="font-size:11px;color:#fbbf24;margin-bottom:8px;padding:6px 10px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-weight:500">' + escapeHtml(r.bsjp_label) + '</div>';
