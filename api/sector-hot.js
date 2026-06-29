@@ -589,6 +589,19 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           volume_ratio_20d: analysis.volume_ratio_avg20,
           mode: 'swing'
         });
+        var _planQuality = idxTick.derivePlanQuality({
+          mode: 'swing',
+          current_price: analysis.last_price,
+          last_price: analysis.last_price,
+          entry_low: _finalEntry_low,
+          entry_high: _finalEntry_high,
+          stop_loss: _finalStop_loss,
+          tp1: _finalTp1,
+          tp2: _finalTp2,
+          support: _tickResult.tick_normalized ? _tickResult.support : analysis.support,
+          resistance: _tickResult.tick_normalized ? _tickResult.resistance : analysis.resistance,
+          risk_reward: _finalRR
+        });
 
         results.push({
           ticker: item.ticker,
@@ -635,7 +648,13 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           risk_label: _riskResult.risk_label,
           risk_score: _riskResult.risk_score,
           quality_grade: _gradeResult.grade,
-          grade_reason: _gradeResult.grade_reason
+          grade_reason: _gradeResult.grade_reason,
+          plan_quality_status: _planQuality.plan_quality_status,
+          plan_quality_label: _planQuality.plan_quality_label,
+          plan_quality_note: _planQuality.plan_quality_note,
+          sl_quality_label: _planQuality.sl_quality_label,
+          tp_quality_label: _planQuality.tp_quality_label,
+          rr_quality_label: _planQuality.rr_quality_label
         });
       } catch (e) {
         failedCount++;
@@ -3055,6 +3074,16 @@ function attachEntryStatus(row) {
   r.entry_status_note = es.entry_status_note;
   r.entry_distance_pct = es.entry_distance_pct;
   r.chase_risk_label = es.chase_risk_label;
+  var pq = idxTick.derivePlanQuality(Object.assign({}, r, {
+    mode: /day/i.test(r.category || '') ? 'daytrade' : 'swing',
+    rr_minimum: getMinRRForCategory(r.category)
+  }));
+  r.plan_quality_status = pq.plan_quality_status;
+  r.plan_quality_label = pq.plan_quality_label;
+  r.plan_quality_note = pq.plan_quality_note;
+  r.sl_quality_label = pq.sl_quality_label;
+  r.tp_quality_label = pq.tp_quality_label;
+  r.rr_quality_label = pq.rr_quality_label;
   if ({ CHASE_RISK: true, EXTENDED: true, TP1_NEAR: true, TP1_HIT: true, TP2_HIT: true }[es.entry_status]) {
     if (r.confidence === 'A+' || r.confidence === 'A') r.confidence = es.entry_status === 'CHASE_RISK' ? 'B' : 'C';
     if (!r.telegram_verdict || /buy|beli/i.test(r.telegram_verdict)) r.telegram_verdict = 'Watchlist — Harga sudah menjauh dari entry, tunggu pullback.';
@@ -3063,6 +3092,16 @@ function attachEntryStatus(row) {
     r.confidence = 'C';
     r.telegram_verdict = 'Wait — setup invalid / SL kena.';
     r.entry_timing = 'Hindari — setup tidak valid';
+  }
+  if (pq.plan_quality_status === 'INVALID') {
+    r.confidence = 'C';
+    r.telegram_verdict = 'Wait / Invalid — ' + pq.plan_quality_note;
+    r.entry_timing = 'Hindari — setup tidak valid';
+  } else if (pq.rr_quality_label === 'RR kurang menarik') {
+    r.confidence = 'C';
+    if (!r.telegram_verdict || /buy|beli/i.test(r.telegram_verdict)) r.telegram_verdict = 'Wait - Poor RR';
+  } else if ((pq.sl_quality_label === 'SL terlalu mepet' || pq.tp_quality_label === 'TP terlalu jauh' || pq.tp_quality_label === 'TP ambisius') && (r.confidence === 'A+' || r.confidence === 'A')) {
+    r.confidence = 'B';
   }
   return r;
 }
@@ -3080,6 +3119,20 @@ function enrichSignalQuality(row, category) {
   r.rr_gate_pass = (toNum(r.risk_reward) || 0) >= r.rr_minimum;
   if (!r.rr_gate_pass && !r.confidence_notes) r.confidence_notes = 'Radar only — RR belum ideal.';
   attachEntryStatus(r);
+  return r;
+}
+
+function applyPlanQualityConfidenceGuard(r) {
+  if (!r) return r;
+  if (r.plan_quality_status === 'INVALID') {
+    r.confidence = 'C';
+    if (!r.telegram_verdict || /buy|beli/i.test(r.telegram_verdict)) r.telegram_verdict = 'Wait / Invalid — ' + (r.plan_quality_note || 'Plan invalid.');
+  } else if (r.rr_quality_label === 'RR kurang menarik') {
+    r.confidence = 'C';
+    if (!r.telegram_verdict || /buy|beli/i.test(r.telegram_verdict)) r.telegram_verdict = 'Wait - Poor RR';
+  } else if ((r.sl_quality_label === 'SL terlalu mepet' || r.tp_quality_label === 'TP terlalu jauh' || r.tp_quality_label === 'TP ambisius') && (r.confidence === 'A+' || r.confidence === 'A')) {
+    r.confidence = 'B';
+  }
   return r;
 }
 
@@ -3158,7 +3211,7 @@ function normalizeCombinedCandidate(row, category) {
     + (category === 'Day Trade' ? 4 : 0)
     + (getTelegramValue(r) >= 10000000000 ? 4 : 0)
     - (includesAny(joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan]), ['chase', 'telat', 'late']) ? 8 : 0);
-  return enrichSignalQuality(r, category);
+  return applyPlanQualityConfidenceGuard(enrichSignalQuality(r, category));
 }
 
 async function fetchCombinedScreenerCandidates(supabase) {
@@ -3219,6 +3272,7 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
     r.confidence = confAfterForeign.confidence;
     r.confidence_label = confAfterForeign.confidence_label;
     r.confidence_notes = confAfterForeign.confidence_notes;
+    applyPlanQualityConfidenceGuard(r);
   }
   var setup = compactSafeText(r.setup || r.setup_type || r.status || r.final_status, '-').replace(/_/g, ' ');
   var risk = deriveTelegramRiskLabel(r, r.category === 'Day Trade' ? 'daytrade' : 'swing').replace(' Risk','');
@@ -3227,6 +3281,7 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   var lines = [];
   lines.push(idx + '. ' + r.ticker + ' — ' + r.category + ' | ' + setup);
   lines.push('G:' + grade + ' · Risk:' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + compactSafeText(r.liquidity_label, '-'));
+  lines.push('Plan: ' + compactSafeText(r.rr_quality_label, 'RR sehat') + ' · ' + compactSafeText(r.sl_quality_label, 'SL wajar') + ' · ' + compactSafeText(r.tp_quality_label, 'TP realistis'));
   lines.push('Window: ' + compactSafeText(r.entry_window_label, '-'));
   lines.push('Harga ' + fmtPrice(r.lastn || r.last_price) + ' | Entry ' + fmtPrice(r.entry1) + '/' + fmtPrice(r.entry2) + ' | SL ' + fmtPrice(r.sl) + ' | TP ' + fmtPrice(r.tp1n) + '/' + fmtPrice(r.tp2n));
   lines.push('Vol ' + fmtRatio(getTelegramVolumeRatio(r)) + ' · Tx ' + fmtRpValue(getTelegramValue(r)) + ' · Trend ' + compactSafeText((r.trend_label || '').replace(' Trend',''), '-'));
@@ -3328,6 +3383,7 @@ async function buildSignalMessage(supabase, ticker) {
   row.confidence = confAfter.confidence;
   row.confidence_label = confAfter.confidence_label;
   row.confidence_notes = confAfter.confidence_notes;
+  applyPlanQualityConfidenceGuard(row);
   Object.assign(row, deriveStaleLiquidityLabels(row));
   Object.assign(row, getEntryWindow(row.category));
 
@@ -3349,6 +3405,7 @@ async function buildSignalMessage(supabase, ticker) {
     '',
     'Harga ' + fmtPrice(row.lastn || row.last_price),
     'Entry ' + fmtPrice(row.entry1) + '/' + fmtPrice(row.entry2) + ' · SL ' + fmtPrice(row.sl) + ' · TP ' + fmtPrice(row.tp1n) + '/' + fmtPrice(row.tp2n),
+    'Plan: ' + compactSafeText(row.rr_quality_label, 'RR sehat') + ' · ' + compactSafeText(row.sl_quality_label, 'SL wajar') + ' · ' + compactSafeText(row.tp_quality_label, 'TP realistis'),
     'Potensi TP1: ' + formatPct(row.tp1_upside),
     row.entry_status_label ? ('Status Entry: ' + row.entry_status_label + ' — ' + String(row.entry_status_note || '').replace(/^Harga/, 'harga')) : '',
     '',
