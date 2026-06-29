@@ -1987,7 +1987,7 @@ function navigateTo(page) {
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
     // Sektor Hot login gate
-    if (page === 'dashboard') { loadDashboardTop5Monitor(true); loadTop5History(true); startDashboardMonitorAutoRefresh(); }
+    if (page === 'dashboard') { loadDashboardTop5Monitor(true); loadTop5History(true); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
     else { stopDashboardMonitorAutoRefresh(); }
     if (page === 'sektor') {
         var isLoggedIn = isLoggedInUser();
@@ -6785,6 +6785,23 @@ function formatNumber(n) {
 // ===== DASHBOARD TOP 5 + HOURLY MONITOR =====
 var _dashboardPickData = {};
 var _dashboardMonitorRefreshTimer = null;
+function getDashboardLoginCtaHtml() {
+    return '<div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-4 text-center text-xs text-gray-300">Login untuk melihat Top 5 screener dan Auto Monitor.<br><button onclick="logout()" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-500 text-dark-900 font-semibold text-[11px] hover:bg-emerald-400 transition">Login</button></div>';
+}
+function renderDashboardGuestGate() {
+    var top = document.getElementById('dashboardTop5List');
+    var mon = document.getElementById('dashboardMonitorList');
+    var hist = document.getElementById('top5HistoryList');
+    var note = document.getElementById('dashboardTop5LockNote');
+    var upd = document.getElementById('dashboardMonitorUpdated');
+    if (note) note.textContent = 'Login diperlukan untuk melihat detail screener.';
+    if (upd) upd.textContent = 'Terakhir update: — WIB';
+    if (top) top.innerHTML = getDashboardLoginCtaHtml();
+    if (mon) mon.innerHTML = getDashboardLoginCtaHtml();
+    if (hist) hist.innerHTML = getDashboardLoginCtaHtml();
+    _dashboardPickData = {};
+}
+
 function dashFmtPrice(v) { var n = Number(v); return isFinite(n) && n > 0 ? n.toLocaleString('id-ID') : '—'; }
 function dashShortText(v, max) { var t = safeDisplayText(v, ''); if (!t) return '—'; return t.length > max ? t.slice(0, max - 1) + '…' : t; }
 function dashJsString(v) { return String(v || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
@@ -6973,10 +6990,11 @@ function renderTop5History(activeRows, tpRows) {
     el.innerHTML = html;
 }
 async function loadTop5History(silent) {
+    if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     var el = document.getElementById('top5HistoryList');
     if (el && !silent) el.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Memuat Top 5 History...</div>';
     try {
-        var resp = await fetch('/api/sector-hot?action=web-top5-history&limit=100&t=' + Date.now());
+        var resp = await fetch('/api/sector-hot?action=web-top5-history&limit=100&t=' + Date.now(), { headers: getAuthHeaders() });
         var data = await resp.json();
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5 History.');
         renderTop5History(data.active_history || data.rows || data.history || [], data.tp_history || []);
@@ -7000,8 +7018,9 @@ function openDashboardPickDetail(ticker) {
     if (r) openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo');
 }
 async function loadDashboardTop5Monitor(silent) {
+    if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     try {
-        var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now());
+        var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getAuthHeaders() });
         var data = await resp.json();
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
         var note = document.getElementById('dashboardTop5LockNote');
@@ -7021,7 +7040,7 @@ async function loadDashboardTop5Monitor(silent) {
 
 function startDashboardMonitorAutoRefresh() {
     if (_dashboardMonitorRefreshTimer) clearInterval(_dashboardMonitorRefreshTimer);
-    if (currentPage !== 'dashboard') return;
+    if (currentPage !== 'dashboard' || !isLoggedInUser()) return;
     _dashboardMonitorRefreshTimer = setInterval(function() {
         if (currentPage === 'dashboard' && !document.hidden) loadDashboardTop5Monitor(true);
     }, 60 * 1000);

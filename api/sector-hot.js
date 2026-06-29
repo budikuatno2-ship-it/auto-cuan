@@ -4280,7 +4280,35 @@ function isMonitorTimestampStale(value, sourceLabel) {
   return (Date.now() - d.getTime()) > (45 * 60 * 1000);
 }
 
+
+function isDashboardScreenerLoggedIn(req) {
+  var rawUserId = String(req.headers['x-user-id'] || '').trim();
+  var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
+  return !!((rawUserId || rawUsername) && rawUsername !== 'guest');
+}
+
+function sendDashboardScreenerGate(res, extra) {
+  return res.status(200).json(Object.assign({
+    success: true,
+    auth_required: true,
+    gated: true,
+    message: 'Login diperlukan untuk melihat Top 5 screener dan Auto Monitor.',
+    top5: [],
+    picks: [],
+    monitor: [],
+    rows: [],
+    history: [],
+    active_history: [],
+    tp_history: [],
+    count: 0,
+    tp_count: 0
+  }, extra || {}));
+}
+
 async function handleWebDailyPicks(req, res, supabase) {
+  if (!isDashboardScreenerLoggedIn(req)) {
+    return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_locked: false, last_updated_at: null, monitor_last_updated_at: null });
+  }
   try {
     var date = getJakartaDateString();
     var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
@@ -4435,6 +4463,9 @@ function buildWebTop5HistoryRow(row, rank, px, ev) {
 }
 
 async function handleWebTop5History(req, res, supabase) {
+  if (!isDashboardScreenerLoggedIn(req)) {
+    return sendDashboardScreenerGate(res, { limit: 0, show_archived: false, data_source: 'redacted_guest_dashboard' });
+  }
   try {
     var limit = parseInt(req.query.limit || '100', 10);
     if (!isFinite(limit) || limit <= 0) limit = 100;
