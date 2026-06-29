@@ -37,6 +37,9 @@ const idxTick = require('../lib/idx-tick-normalization');
 const telegramNotifier = require('../lib/telegram-notifier');
 const crypto = require('crypto');
 
+const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
+const DAYTRADE_RUNNING_SKIP_MESSAGE = 'Day Trade scan already running; skipped to avoid overlap.';
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -6630,6 +6633,9 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
 // DAY TRADE SCREENER v1 — RUN (Bearer CRON_SECRET protected)
 // ============================================================
 async function handleDayTradeScreenerRun(req, res, supabase) {
+  var runId = null;
+  var runDate = null;
+
   // 1. Verify CRON_SECRET
   var CRON_SECRET = process.env.CRON_SECRET;
   if (!CRON_SECRET) {
@@ -6642,14 +6648,16 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
+  try {
   // 2. Determine run mode
   var modeOverride = req.query.mode || null;
   var runMode = dtEngine.getRunMode(modeOverride);
-  var runDate = dtEngine.getWibDateStr();
+  runDate = dtEngine.getWibDateStr();
   var speedMode = (req.query.speed || 'full').toLowerCase();
   var isFastMode = (speedMode === 'fast');
   var BATCH_SIZE = isFastMode ? 75 : 50;
   var batchIndex = parseInt(req.query.batch || '0', 10);
+  var isFullScanStart = !isFastMode && batchIndex === 0;
 
   // 3. Read current meta state
   var { data: meta } = await supabase
@@ -6658,8 +6666,6 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     .eq('id', 'latest')
     .maybeSingle();
 
-  var runId;
-
   // 4. If batch > 0 and meta is scanning, continue existing run
   if (batchIndex > 0 && meta && meta.status === 'scanning') {
     runId = meta.run_id || ('dt-' + runDate + '-' + Date.now().toString(36));
@@ -6667,8 +6673,30 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     // Starting fresh
     runId = 'dt-' + runDate + '-' + Date.now().toString(36);
 
-    // Check if already running (prevent accidental double-start)
-    if (meta && meta.status === 'scanning' && req.query.force !== '1') {
+    // Day Trade full scan anti-overlap guard: never start a new full 760-stock
+    // scan while the previous full scan lock is still fresh.
+    var staleFullScanLock = false;
+    if (isFullScanStart && meta && meta.status === 'scanning') {
+      var runningStartedAt = getDtRunningStartedAt(meta);
+      var runningAgeMs = runningStartedAt ? (Date.now() - new Date(runningStartedAt).getTime()) : 0;
+      if (runningStartedAt && runningAgeMs < DAYTRADE_FULL_SCAN_STALE_LOCK_MS) {
+        console.log('[daytrade-screener-run] ' + DAYTRADE_RUNNING_SKIP_MESSAGE + ' running_started_at=' + runningStartedAt + ' run_id=' + (meta.run_id || 'unknown'));
+        return res.status(200).json({
+          success: true,
+          status: 'skipped',
+          skipped_due_to_running: true,
+          running_started_at: runningStartedAt,
+          run_id: meta.run_id,
+          message: DAYTRADE_RUNNING_SKIP_MESSAGE,
+          meta: meta
+        });
+      }
+      staleFullScanLock = true;
+      console.warn('[daytrade-screener-run] stale Day Trade full scan lock expired; allowing new run. previous_run_id=' + (meta.run_id || 'unknown') + ' running_started_at=' + (runningStartedAt || 'unknown'));
+    }
+
+    // Check if already running for non-full modes (prevent accidental double-start)
+    if (!isFullScanStart && meta && meta.status === 'scanning' && req.query.force !== '1') {
       return res.status(200).json({
         success: false,
         status: 'already_running',
@@ -6701,7 +6729,7 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
       passed_count: 0,
       published_count: 0,
       top_count: 0,
-      message: 'Building universe...'
+      message: staleFullScanLock ? 'Previous Day Trade full scan lock was stale/expired; starting new scan...' : 'Building universe...'
     });
   } else {
     // batch > 0 but meta is not scanning — stale request
@@ -6877,6 +6905,23 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     batch_save_error: batchSaveError || null,
     failed_tickers: failedTickers.length > 0 ? failedTickers.slice(0, 10) : undefined
   });
+  } catch (e) {
+    console.error('daytrade screener run error:', e.message);
+    if (runId) {
+      await updateDtMeta(supabase, {
+        status: 'failed',
+        run_date: runDate,
+        run_id: runId,
+        message: 'Day Trade scan failed: ' + e.message
+      });
+    }
+    return res.status(200).json({
+      success: false,
+      status: 'failed',
+      run_id: runId,
+      message: 'Day Trade scan failed: ' + e.message
+    });
+  }
 }
 
 // ============================================================
@@ -6959,6 +7004,12 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     message: 'Day Trade Screener run complete. Top ' + savedCount + ' published.',
     telegram: await sendDayTradeTelegramNotification(supabase, runId, runDate, savedCount)
   });
+}
+
+
+function getDtRunningStartedAt(meta) {
+  if (!meta) return null;
+  return meta.calculated_at || meta.updated_at || null;
 }
 
 // ============================================================

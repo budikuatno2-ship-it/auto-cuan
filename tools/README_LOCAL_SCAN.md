@@ -101,7 +101,7 @@ Menu `4` dan `5` sekarang menjalankan Day Trade otomatis berulang:
 Default:
 - Mulai: `09:10` WIB
 - Stop: `15:40` WIB
-- Interval: `30` menit
+- Interval: `25` menit
 
 Cara stop manual: tekan `Ctrl+C` atau tutup jendela CMD.
 
@@ -110,7 +110,7 @@ Opsional override sebelum membuka menu dari CMD:
 ```cmd
 set AUTO_RUN_START=09:10
 set AUTO_RUN_END=15:40
-set AUTO_RUN_INTERVAL_MINUTES=30
+set AUTO_RUN_INTERVAL_MINUTES=25
 tools\AUTO_CUAN_SCAN_MENU.bat
 ```
 
