@@ -3819,6 +3819,51 @@ function buildFallbackDashboardPickRow(candidate, rank) {
   return buildDashboardPickRow({ date: getJakartaDateString(), ticker: raw.ticker, category: raw.category || raw.source || '-', entry1: raw.entry1 != null ? raw.entry1 : raw.entry_low, entry2: raw.entry2 != null ? raw.entry2 : raw.entry_high, sl: raw.sl != null ? raw.sl : raw.stop_loss, tp1: raw.tp1n != null ? raw.tp1n : raw.tp1, tp2: raw.tp2n != null ? raw.tp2n : raw.tp2, raw_payload: raw }, rank, { last: toNum(raw.lastn || raw.last_price || raw.current_price) || null });
 }
 
+function getMonitorEntryBasis(row, px, ev) {
+  var status = String((ev && ev.status) || row.status || '').toUpperCase();
+  var last = px && px.last != null ? toNum(px.last) : null;
+  var high = px && px.high != null ? toNum(px.high) : last;
+  var low = px && px.low != null ? toNum(px.low) : last;
+  var entry1 = toNum(row.entry1);
+  var entry2 = toNum(row.entry2);
+  var entry1Touched = entry1 != null && high != null && low != null && low <= entry1 && high >= entry1;
+  var entry2Touched = entry2 != null && high != null && low != null && low <= entry2 && high >= entry2;
+  var finalOrActive = status === 'ACTIVE' || status.indexOf('TP') >= 0 || status === 'SL_HIT' || row.hit_entry_at;
+  if (!entry1Touched && finalOrActive && entry1 != null) entry1Touched = true;
+  if (entry2Touched) return { price: entry2, label: 'Entry 2', entry1_touched: entry1Touched, entry2_touched: true };
+  if (entry1Touched) return { price: entry1, label: 'Entry 1', entry1_touched: true, entry2_touched: false };
+  return { price: null, label: null, entry1_touched: false, entry2_touched: false };
+}
+
+function getMonitorPlDisplay(row, px, ev) {
+  var current = px && px.last != null ? toNum(px.last) : null;
+  var entry1 = toNum(row.entry1);
+  var basis = getMonitorEntryBasis(row, px, ev);
+  var status = String((ev && ev.status) || row.status || '').toUpperCase();
+  var statusLabel = ev && ev.label ? ev.label : null;
+  var finalLabel = ['TP1_HIT','TP2_HIT','SL_HIT'].indexOf(status) >= 0 ? (statusLabel || status.replace(/_/g, ' ')) : null;
+  var pct = null;
+  var label = 'Belum kena entry';
+  if (current != null && basis.price != null && basis.price > 0) {
+    pct = ((current - basis.price) / basis.price) * 100;
+    label = 'Dari ' + basis.label;
+  } else if (current != null && entry1 != null && entry1 > 0) {
+    pct = ((current - entry1) / entry1) * 100;
+    label = 'Jarak ke Entry 1';
+  }
+  return {
+    active_entry_price: basis.price,
+    active_entry_label: basis.label,
+    entry1_touched: basis.entry1_touched,
+    entry2_touched: basis.entry2_touched,
+    return_from_entry_pct: basis.price != null ? pct : null,
+    distance_to_entry1_pct: basis.price == null ? pct : null,
+    monitor_pl_label: label,
+    monitor_final_label: finalLabel,
+    monitor_pl_pct: pct
+  };
+}
+
 function buildDashboardMonitorRow(row, rank, px, ev) {
   var raw = row.raw_payload || {};
   var current = px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null);
@@ -3826,6 +3871,7 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
   var open = px && px.open != null ? px.open : (toNum(raw.open_price) || null);
   var changeFromOpen = open != null && current != null ? current - open : null;
   var changeFromOpenPct = open != null && open > 0 && changeFromOpen != null ? (changeFromOpen / open) * 100 : null;
+  var pl = getMonitorPlDisplay(row, px, ev);
   return {
     id: row.id || null,
     rank: rank,
@@ -3838,6 +3884,15 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
     last_price: current,
     change_from_open: changeFromOpen,
     change_from_open_pct: changeFromOpenPct,
+    active_entry_price: pl.active_entry_price,
+    active_entry_label: pl.active_entry_label,
+    entry1_touched: pl.entry1_touched,
+    entry2_touched: pl.entry2_touched,
+    return_from_entry_pct: pl.return_from_entry_pct,
+    distance_to_entry1_pct: pl.distance_to_entry1_pct,
+    monitor_pl_label: pl.monitor_pl_label,
+    monitor_final_label: pl.monitor_final_label,
+    monitor_pl_pct: pl.monitor_pl_pct,
     entry1: toNum(row.entry1),
     entry: toNum(row.entry1),
     entry2: toNum(row.entry2),
@@ -3850,7 +3905,7 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
     entry_status: raw.entry_status,
     entry_status_label: raw.entry_status_label,
     entry_status_note: raw.entry_status_note,
-    last_updated_at: row.last_checked_at || (px && px.at) || row.first_sent_at || null,
+    last_updated_at: (px && px.at) || row.last_checked_at || row.first_sent_at || null,
     progress: buildMonitorProgressLabel(row, px),
     raw_payload: raw,
     detail: raw
@@ -3872,6 +3927,27 @@ async function lockWebDailyPicksIfDue(supabase, date) {
   return (ins.data || []).sort(function(a, b) { return (a.id || 0) - (b.id || 0); });
 }
 
+
+function isJakartaActiveMonitorSession() {
+  var now = getJakartaNow();
+  var day = now.getUTCDay();
+  if (day < 1 || day > 5) return false;
+  var minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  if (day >= 1 && day <= 4) {
+    return (minutes >= (9 * 60 + 30) && minutes <= (12 * 60)) || (minutes >= (13 * 60 + 30) && minutes <= (16 * 60));
+  }
+  return (minutes >= (9 * 60 + 30) && minutes <= (11 * 60 + 30)) || (minutes >= (14 * 60) && minutes <= (16 * 60));
+}
+
+function isMonitorTimestampStale(value, sourceLabel) {
+  if (!value) return true;
+  if (sourceLabel === 'daily lock fallback') return true;
+  var d = new Date(value);
+  if (isNaN(d.getTime())) return true;
+  if (!isJakartaActiveMonitorSession()) return false;
+  return (Date.now() - d.getTime()) > (45 * 60 * 1000);
+}
+
 async function handleWebDailyPicks(req, res, supabase) {
   try {
     var date = getJakartaDateString();
@@ -3886,13 +3962,18 @@ async function handleWebDailyPicks(req, res, supabase) {
     var top5 = [];
     var monitor = [];
     var lastAt = null;
+    var monitorSourceLabel = null;
+    var latestPriceAt = null;
+    var latestMonitorRunAt = null;
+    var dailyLockFallbackAt = null;
     if (locked) {
       for (var i = 0; i < rows.length; i++) {
         var p = rows[i];
         var px = await fetchLatestPriceForMonitor(supabase, p.ticker);
         var ev = evaluateMonitorStatus(p, px);
-        if (px && px.at && (!lastAt || String(px.at) > String(lastAt))) lastAt = px.at;
-        if (p.last_checked_at && (!lastAt || String(p.last_checked_at) > String(lastAt))) lastAt = p.last_checked_at;
+        if (px && px.at && (!latestPriceAt || String(px.at) > String(latestPriceAt))) latestPriceAt = px.at;
+        if (p.last_checked_at && (!latestMonitorRunAt || String(p.last_checked_at) > String(latestMonitorRunAt))) latestMonitorRunAt = p.last_checked_at;
+        if (p.first_sent_at && (!dailyLockFallbackAt || String(p.first_sent_at) > String(dailyLockFallbackAt))) dailyLockFallbackAt = p.first_sent_at;
         top5.push(buildDashboardPickRow(p, i + 1, px));
         monitor.push(buildDashboardMonitorRow(p, i + 1, px, ev));
       }
@@ -3900,9 +3981,14 @@ async function handleWebDailyPicks(req, res, supabase) {
       var fallback = await selectDailyTop5(supabase);
       for (var j = 0; j < fallback.length; j++) top5.push(buildFallbackDashboardPickRow(fallback[j], j + 1));
     }
-    return res.status(200).json({ success: true, date: date, top5: top5, monitor: monitor, top5_locked: locked, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: lastAt, picks: top5 });
+    if (latestPriceAt) { lastAt = latestPriceAt; monitorSourceLabel = 'latest price'; }
+    else if (latestMonitorRunAt) { lastAt = latestMonitorRunAt; monitorSourceLabel = 'monitor run'; }
+    else if (dailyLockFallbackAt) { lastAt = dailyLockFallbackAt; monitorSourceLabel = 'daily lock fallback'; }
+    var monitorStale = isMonitorTimestampStale(lastAt, monitorSourceLabel);
+    var staleNote = monitorStale ? 'Data monitor belum update terbaru.' : null;
+    return res.status(200).json({ success: true, date: date, top5: top5, monitor: monitor, top5_locked: locked, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: lastAt, monitor_last_updated_at: lastAt, monitor_source_label: monitorSourceLabel, monitor_is_stale: monitorStale, monitor_stale_note: staleNote, picks: top5 });
   } catch (e) {
-    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: null, picks: [], error: e.message || String(e) });
+    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
   }
 }
 

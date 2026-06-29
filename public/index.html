@@ -1946,6 +1946,7 @@ function showDashboard() {
     // Update dashboard greeting
     updateDashGreeting();
     loadDashboardTop5Monitor(true);
+    startDashboardMonitorAutoRefresh();
 }
 
 // ===== PAGE NAVIGATION =====
@@ -1966,6 +1967,8 @@ function navigateTo(page) {
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
     // Sektor Hot login gate
+    if (page === 'dashboard') { loadDashboardTop5Monitor(true); startDashboardMonitorAutoRefresh(); }
+    else { stopDashboardMonitorAutoRefresh(); }
     if (page === 'sektor') {
         var isLoggedIn = getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true';
         var loginGate = document.getElementById('sektorLoginGate');
@@ -6739,6 +6742,7 @@ function formatNumber(n) {
 
 // ===== DASHBOARD TOP 5 + HOURLY MONITOR =====
 var _dashboardPickData = {};
+var _dashboardMonitorRefreshTimer = null;
 function dashFmtPrice(v) { var n = Number(v); return isFinite(n) && n > 0 ? n.toLocaleString('id-ID') : '—'; }
 function dashShortText(v, max) { var t = safeDisplayText(v, ''); if (!t) return '—'; return t.length > max ? t.slice(0, max - 1) + '…' : t; }
 function dashJsString(v) { return String(v || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
@@ -6797,17 +6801,20 @@ function renderDashboardTop5(picks) {
     });
     el.innerHTML = html;
 }
-function renderDashboardMonitor(picks, lastUpdatedAt) {
+function dashSignedPct(v) { var n = Number(v); return isFinite(n) ? ((n >= 0 ? '+' : '') + n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%') : ''; }
+function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
     var el = document.getElementById('dashboardMonitorList');
     var upd = document.getElementById('dashboardMonitorUpdated');
-    if (upd) upd.textContent = 'Terakhir update: ' + dashWibTime(lastUpdatedAt) + ' WIB';
+    meta = meta || {};
+    var onlyDailyLockFallback = meta.monitor_source_label === 'daily lock fallback';
+    if (upd) upd.textContent = onlyDailyLockFallback ? 'Terakhir update: belum ada update monitor terbaru' : 'Terakhir update: ' + dashWibTime(lastUpdatedAt) + ' WIB';
     if (!el) return;
     var rows = picks || [];
     if (rows.length === 0) {
         el.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada Top 5 terkunci untuk dipantau.<br><span class="text-[11px] text-gray-600">Monitor aktif setelah Top 5 dikunci.</span></div>';
         return;
     }
-    var html = '';
+    var html = meta.monitor_is_stale ? '<div class="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">' + escapeHtml(meta.monitor_stale_note || 'Data monitor belum update terbaru.') + '</div>' : '';
     rows.forEach(function(p) {
         var r = normalizeDashboardPick(p);
         _dashboardPickData[r.ticker] = r;
@@ -6817,14 +6824,18 @@ function renderDashboardMonitor(picks, lastUpdatedAt) {
         var cardClass = 'rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 transition';
         if (hasDetailPayload) cardClass += ' cursor-pointer hover:border-emerald-500/30 hover:bg-emerald-500/5 focus:outline-none focus:ring-1 focus:ring-emerald-500/40';
         var statusText = p.status_label || (p.status || 'WAITING').replace(/_/g, ' ');
-        var changePct = Number(p.change_from_open_pct);
-        var changeTxt = isFinite(changePct) ? ((changePct >= 0 ? '+' : '') + changePct.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '% dari open') : '';
-        var openLastParts = [];
-        if (p.open_price != null && isFinite(Number(p.open_price))) openLastParts.push('Open <b class="text-gray-200">' + dashFmtPrice(p.open_price) + '</b>');
-        if (p.current_price != null && isFinite(Number(p.current_price))) openLastParts.push('Last <b class="text-gray-200">' + dashFmtPrice(p.current_price) + '</b>');
-        if (changeTxt) openLastParts.push('<span class="' + (changePct >= 0 ? 'text-emerald-300' : 'text-red-300') + '">' + escapeHtml(changeTxt) + '</span>');
+        var basisPct = p.active_entry_price != null ? Number(p.return_from_entry_pct) : Number(p.distance_to_entry1_pct);
+        var basisPctTxt = dashSignedPct(basisPct);
+        var basisClass = basisPct >= 0 ? 'text-emerald-300' : 'text-red-300';
+        var monitorParts = [];
+        if (p.current_price != null && isFinite(Number(p.current_price))) monitorParts.push('Last <b class="text-gray-200">' + dashFmtPrice(p.current_price) + '</b>');
+        if (p.monitor_final_label) monitorParts.push('<span class="text-blue-300">' + escapeHtml(p.monitor_final_label) + '</span>');
+        if (p.active_entry_price != null) monitorParts.push('<span class="' + basisClass + '">Dari ' + escapeHtml(p.active_entry_label || 'Entry') + ': ' + escapeHtml(basisPctTxt || '—') + '</span>');
+        else { monitorParts.push('<span class="text-gray-400">Belum kena entry</span>'); if (basisPctTxt) monitorParts.push('<span class="' + basisClass + '">Jarak ke E1: ' + escapeHtml(basisPctTxt) + '</span>'); }
+        var openTxt = (p.open_price != null && isFinite(Number(p.open_price))) ? 'Open ' + dashFmtPrice(p.open_price) : '';
         html += '<article' + cardAttrs + ' class="' + cardClass + '"><div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(statusText) + '</span></div>';
-        if (openLastParts.length) html += '<div class="mt-1 text-[11px] text-gray-400">' + openLastParts.join(' · ') + '</div>';
+        if (monitorParts.length) html += '<div class="mt-1 text-[11px] text-gray-400">' + monitorParts.join(' · ') + '</div>';
+        if (openTxt) html += '<div class="mt-0.5 text-[10px] text-gray-600">' + escapeHtml(openTxt) + '</div>';
         html += '<div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-gray-400"><span>Entry <b class="text-blue-300">' + dashFmtPrice(p.entry1) + '</b></span><span>E2 <b class="text-blue-300">' + dashFmtPrice(p.entry2) + '</b></span><span>SL <b class="text-red-300">' + dashFmtPrice(p.sl) + '</b></span><span>TP1/TP2 <b class="text-emerald-300">' + dashFmtPrice(p.tp1) + '/' + dashFmtPrice(p.tp2) + '</b></span></div>';
         html += '<div class="mt-1 text-[10px] text-gray-500">' + escapeHtml(p.status_note || p.progress || '-') + ' · ' + escapeHtml(p.progress || '-') + ' · ' + dashWibTime(p.last_updated_at) + ' WIB</div></div></div></article>';
     });
@@ -6842,7 +6853,7 @@ async function loadDashboardTop5Monitor(silent) {
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = data.top5_locked ? 'Top 5 dikunci sampai penutupan · Monitor update tiap 30 menit saat jam bursa.' : 'Belum terkunci. Menampilkan kandidat Top 5 sementara dari screener.';
         renderDashboardTop5(data.top5 || data.picks || []);
-        renderDashboardMonitor(data.monitor || [], data.last_updated_at);
+        renderDashboardMonitor(data.monitor || [], data.monitor_last_updated_at || data.last_updated_at, data);
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
@@ -6851,6 +6862,18 @@ async function loadDashboardTop5Monitor(silent) {
         if (note) note.textContent = 'Belum terkunci. Menampilkan kandidat Top 5 sementara dari screener.';
         if (mon) mon.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada Top 5 terkunci untuk dipantau.<br><span class="text-[11px] text-gray-600">Monitor aktif setelah Top 5 dikunci.</span></div>';
     }
+}
+
+
+function startDashboardMonitorAutoRefresh() {
+    if (_dashboardMonitorRefreshTimer) clearInterval(_dashboardMonitorRefreshTimer);
+    if (currentPage !== 'dashboard') return;
+    _dashboardMonitorRefreshTimer = setInterval(function() {
+        if (currentPage === 'dashboard' && !document.hidden) loadDashboardTop5Monitor(true);
+    }, 60 * 1000);
+}
+function stopDashboardMonitorAutoRefresh() {
+    if (_dashboardMonitorRefreshTimer) { clearInterval(_dashboardMonitorRefreshTimer); _dashboardMonitorRefreshTimer = null; }
 }
 
 // ===== IHSG DASHBOARD LIVE INDICATOR =====
