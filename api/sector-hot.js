@@ -3119,6 +3119,9 @@ function attachEntryStatus(row) {
     r.confidence = 'B';
   }
   idxTick.applyRiskV2ConfidenceGuard(r);
+  var sv = idxTick.deriveSignalVerdict(r);
+  Object.assign(r, sv);
+  if (sv.signal_confidence) r.confidence = sv.signal_confidence;
   return r;
 }
 
@@ -3307,7 +3310,9 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   if (r.is_stale) confluence.push('Stale: ' + compactSafeText(r.stale_label, 'Stale Data'));
   if (r.confidence === 'C') confluence.push('Radar Only');
   if (confluence.length) lines.push(confluence.join(' · '));
-  lines.push('Verdict: ' + candidateReason(r));
+  var sv = idxTick.deriveSignalVerdict(r);
+  Object.assign(r, sv);
+  lines.push('Verdict: ' + compactSafeText(r.signal_action_label || 'Watchlist', 'Watchlist'));
   if (!compact) lines.push('Chart: ' + chartLink(r.ticker));
   return lines.map(function(line){ return compactSafeText(line, '-'); }).join('\n');
 }
@@ -3409,7 +3414,9 @@ async function buildSignalMessage(supabase, ticker) {
   var resistance = toNum(row.resistance);
   var trigger = resistance ? ('close > ' + fmtPrice(resistance) + ' dengan volume valid') : 'konfirmasi breakout/pullback dengan volume valid';
   var invalidasi = support ? ('breakdown ' + fmtPrice(support) + ' atau SL kena') : 'SL kena';
-  var verdict = eligible ? 'Watchlist — tunggu konfirmasi.' : 'Pantauan — belum layak entry agresif.';
+  var sv = idxTick.deriveSignalVerdict(row);
+  Object.assign(row, sv);
+  var verdict = row.signal_verdict || (eligible ? 'Watchlist — tunggu konfirmasi.' : 'Pantauan — belum layak entry agresif.');
   var trendText = String(row.trend_label || '').replace('Bullish Trend', 'Kuat').replace('Improving Trend', 'Mulai membaik').replace('Bearish Trend', 'Melemah').replace('Weak Trend', 'Lemah').replace(' Trend', '');
   var patternText = String(row.pattern_label || 'No Clear Pattern').replace('No Clear Pattern', 'Belum ada pola kuat').replace('Insufficient Data', 'Data pola terbatas').replace('VCP-like Base', 'VCP-like');
   var volumeNote = compactSafeText(row.volume_confirmation_notes || row.volume_notes, 'Volume relatif normal.').replace('Volume/value belum mengonfirmasi pergerakan harga.', 'Volume belum mengonfirmasi pergerakan harga.');
@@ -3998,7 +4005,13 @@ function buildDashboardPickRow(row, rank, px) {
     rr: rr,
     risk_reward: rr,
     action: raw.action || raw.verdict || raw.telegram_verdict || raw.status || null,
-    verdict: raw.verdict || raw.telegram_verdict || raw.action || null,
+    verdict: raw.signal_verdict || raw.verdict || raw.telegram_verdict || raw.action || null,
+    signal_action: raw.signal_action || null,
+    signal_action_label: raw.signal_action_label || null,
+    signal_verdict: raw.signal_verdict || null,
+    signal_reason: raw.signal_reason || null,
+    signal_priority: raw.signal_priority || null,
+    signal_badges: raw.signal_badges || [],
     entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_low)),
     entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_high)),
     sl: toNum(row.sl != null ? row.sl : (raw.sl != null ? raw.sl : raw.stop_loss)),
@@ -4114,6 +4127,11 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
     status: ev.status,
     status_label: ev.label || ev.status,
     status_note: ev.note,
+    signal_action: raw.signal_action || null,
+    signal_action_label: raw.signal_action_label || null,
+    signal_verdict: raw.signal_verdict || null,
+    signal_reason: raw.signal_reason || null,
+    signal_badges: raw.signal_badges || [],
     entry_status: raw.entry_status,
     entry_status_label: raw.entry_status_label,
     entry_status_note: raw.entry_status_note,
