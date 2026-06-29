@@ -3028,8 +3028,48 @@ function deriveConfidenceTier(row, category) {
   return { confidence: tier, confidence_label: tier === 'A' ? 'High Conviction' : (tier === 'B' ? 'Qualified' : 'Radar Only'), confidence_notes: notes.join(' ') || (tier === 'A' ? 'High conviction, konfirmasi kuat.' : (tier === 'B' ? 'Qualified, tunggu konfirmasi entry.' : 'Radar only, jangan agresif.')) };
 }
 
+
+function attachEntryStatus(row) {
+  var r = row || {};
+  var es = idxTick.deriveEntryStatus({
+    current_price: r.current_price,
+    last_price: r.last_price || r.lastn,
+    close: r.close,
+    entry_low: r.entry_low,
+    entry_high: r.entry_high,
+    entry1: r.entry1,
+    entry2: r.entry2,
+    entry_1: r.entry_1,
+    entry_2: r.entry_2,
+    stop_loss: r.stop_loss,
+    sl: r.sl,
+    tp1: r.tp1,
+    tp1n: r.tp1n,
+    target_1: r.target_1,
+    tp2: r.tp2,
+    tp2n: r.tp2n,
+    target_2: r.target_2
+  });
+  r.entry_status = es.entry_status;
+  r.entry_status_label = es.entry_status_label;
+  r.entry_status_note = es.entry_status_note;
+  r.entry_distance_pct = es.entry_distance_pct;
+  r.chase_risk_label = es.chase_risk_label;
+  if ({ CHASE_RISK: true, EXTENDED: true, TP1_NEAR: true, TP1_HIT: true, TP2_HIT: true }[es.entry_status]) {
+    if (r.confidence === 'A+' || r.confidence === 'A') r.confidence = es.entry_status === 'CHASE_RISK' ? 'B' : 'C';
+    if (!r.telegram_verdict || /buy|beli/i.test(r.telegram_verdict)) r.telegram_verdict = 'Watchlist — Harga sudah menjauh dari entry, tunggu pullback.';
+    if (!r.entry_timing || /entry|buy|beli/i.test(r.entry_timing)) r.entry_timing = 'Tunggu pullback — jangan chase';
+  } else if (es.entry_status === 'INVALID_BELOW_SL') {
+    r.confidence = 'C';
+    r.telegram_verdict = 'Wait — setup invalid / SL kena.';
+    r.entry_timing = 'Hindari — setup tidak valid';
+  }
+  return r;
+}
+
 function enrichSignalQuality(row, category) {
   var r = Object.assign({}, row || {});
+  attachEntryStatus(r);
   Object.assign(r, deriveStaleLiquidityLabels(r));
   Object.assign(r, getEntryWindow(category));
   var conf = deriveConfidenceTier(r, category);
@@ -3039,6 +3079,7 @@ function enrichSignalQuality(row, category) {
   r.rr_minimum = getMinRRForCategory(category);
   r.rr_gate_pass = (toNum(r.risk_reward) || 0) >= r.rr_minimum;
   if (!r.rr_gate_pass && !r.confidence_notes) r.confidence_notes = 'Radar only — RR belum ideal.';
+  attachEntryStatus(r);
   return r;
 }
 
@@ -3101,6 +3142,7 @@ function normalizeCombinedCandidate(row, category) {
   r.tp2n = toNum(r.tp2);
   r.lastn = toNum(r.last_price);
   r = idxTick.normalizeTradingPlanLevels(r);
+  attachEntryStatus(r);
   r.score_norm = getTelegramScore(r, category === 'Day Trade' ? 'daytrade' : 'swing');
   var verified = verifyTelegramSignal(r, category === 'Day Trade' ? 'daytrade' : 'swing');
   if (verified) r = Object.assign(r, verified);
@@ -3308,6 +3350,7 @@ async function buildSignalMessage(supabase, ticker) {
     'Harga ' + fmtPrice(row.lastn || row.last_price),
     'Entry ' + fmtPrice(row.entry1) + '/' + fmtPrice(row.entry2) + ' · SL ' + fmtPrice(row.sl) + ' · TP ' + fmtPrice(row.tp1n) + '/' + fmtPrice(row.tp2n),
     'Potensi TP1: ' + formatPct(row.tp1_upside),
+    row.entry_status_label ? ('Status Entry: ' + row.entry_status_label + ' — ' + String(row.entry_status_note || '').replace(/^Harga/, 'harga')) : '',
     '',
     'Trend: ' + compactSafeText(trendText, '-'),
     'Volume: ' + fmtRatio(getTelegramVolumeRatio(row)) + ' · transaksi ' + fmtRpValue(getTelegramValue(row)),
@@ -3730,6 +3773,7 @@ function buildDashboardPickRow(row, rank, px) {
   var raw = row.raw_payload || {};
   var current = px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null);
   var rr = toNum(raw.risk_reward || raw.rr) || null;
+  attachEntryStatus(Object.assign(raw, { current_price: current, last_price: current }));
   var reason = raw.top5_reason || raw.alasan_top5 || raw.telegram_pick_reason || raw.pick_reason || raw.reason || raw.grade_reason || raw.status_reason || raw.notes || raw.verdict || raw.telegram_verdict || null;
   return {
     id: row.id || null,
@@ -3756,6 +3800,11 @@ function buildDashboardPickRow(row, rank, px) {
     short_reason: reason,
     alasan_top5: raw.alasan_top5 || raw.top5_reason || reason,
     top5_reason: raw.top5_reason || raw.alasan_top5 || reason,
+    entry_status: raw.entry_status,
+    entry_status_label: raw.entry_status_label,
+    entry_status_note: raw.entry_status_note,
+    entry_distance_pct: raw.entry_distance_pct,
+    chase_risk_label: raw.chase_risk_label,
     raw_payload: raw
   };
 }
@@ -3773,6 +3822,7 @@ function buildFallbackDashboardPickRow(candidate, rank) {
 function buildDashboardMonitorRow(row, rank, px, ev) {
   var raw = row.raw_payload || {};
   var current = px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null);
+  attachEntryStatus(Object.assign(raw, { current_price: current }));
   var open = px && px.open != null ? px.open : (toNum(raw.open_price) || null);
   var changeFromOpen = open != null && current != null ? current - open : null;
   var changeFromOpenPct = open != null && open > 0 && changeFromOpen != null ? (changeFromOpen / open) * 100 : null;
@@ -3797,6 +3847,9 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
     status: ev.status,
     status_label: ev.label || ev.status,
     status_note: ev.note,
+    entry_status: raw.entry_status,
+    entry_status_label: raw.entry_status_label,
+    entry_status_note: raw.entry_status_note,
     last_updated_at: row.last_checked_at || (px && px.at) || row.first_sent_at || null,
     progress: buildMonitorProgressLabel(row, px),
     raw_payload: raw,
@@ -5797,6 +5850,7 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       var labels = deriveDayTradeLabels(r);
       r.entry_timing = labels.entry_timing;
       r.direction = labels.direction;
+      attachEntryStatus(r);
       // Derive 1D candle context from persisted fields
       var tfCtx = deriveDayTradeTimeframeContext(r);
       r.tf_1d_context = tfCtx.tf_1d;
@@ -6604,6 +6658,7 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   lines.push('Status: ' + statusLabel);
   lines.push('G:' + grade + ' · ' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + safeTelegramText(enrichedForGrade.liquidity_label, 40, '-'));
   lines.push('Window: ' + safeTelegramText(enrichedForGrade.entry_window_label, 60, '-'));
+  if (r.entry_status_label) lines.push('Status Entry: ' + safeTelegramText(r.entry_status_label, 40, '-') + ' — ' + safeTelegramText(r.entry_status_note, 90, '-').replace(/^Harga/, 'harga'));
   lines.push('Harga: ' + fmtPrice(r.last_price));
   lines.push('Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
   lines.push('SL: ' + fmtPrice(r.stop_loss));
