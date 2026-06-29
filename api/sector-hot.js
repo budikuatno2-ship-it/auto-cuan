@@ -73,6 +73,11 @@ module.exports = async function handler(req, res) {
       return await handleTelegramMonitorPicks(req, res, supabase);
     }
 
+    // === WEB SIGNAL DASHBOARD: Top 5 + TP/SL monitor (public web read-only) ===
+    if (action === 'web-signal-dashboard') {
+      return await handleWebSignalDashboard(req, res, supabase);
+    }
+
     // === SCREENER READ MODE (login-gated) ===
     if (action === 'screener') {
       return await handleScreenerRead(req, res, supabase);
@@ -3636,6 +3641,93 @@ async function selectDailyTop5(supabase) {
       + ((toNum(rows[i].risk_reward) || 0) >= 1.8 ? 6 : 0);
   }
   return rows.filter(candidateTelegramEligible).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
+}
+
+
+function pctClean(from, to) {
+  var a = toNum(from); var b = toNum(to);
+  if (!(a > 0) || !(b > 0)) return null;
+  var pct = ((b - a) / a) * 100;
+  return isFinite(pct) ? pct : null;
+}
+
+function buildTop5Reasons(row) {
+  row = row || {};
+  var bullets = [];
+  var score = toNum(row.combined_score || row.telegram_conviction_score || row.score || row.daytrade_score);
+  var grade = compactSafeText(row.confidence || row.quality_grade || row.grade || getTelegramGrade(row), '');
+  if (score != null) bullets.push('Score ' + fmtScore(score) + (grade ? ' dengan Grade ' + grade : '') + ', masuk kandidat kuat dibanding saham lain hari ini.');
+  var risk = deriveTelegramRiskLabel(row, row.category === 'Day Trade' ? 'daytrade' : 'swing');
+  var rr = toNum(row.risk_reward);
+  if (risk || rr != null) bullets.push('Risiko ' + compactSafeText(risk, 'terukur') + (rr != null ? ' dan RR ' + fmtRR(rr) : '') + ' tetap perlu dipantau sesuai rencana.');
+  var dist = pctClean(row.entry1, row.lastn || row.last_price);
+  if (dist != null) bullets.push(Math.abs(dist) <= 3 ? 'Harga masih dekat area entry, jadi belum terlalu jauh dari rencana.' : (dist > 3 ? 'Harga sudah di atas area entry sekitar ' + dist.toFixed(1) + '%, jangan chase dan tunggu pullback/konfirmasi.' : 'Harga masih di bawah entry sekitar ' + Math.abs(dist).toFixed(1) + '%, jadi perlu konfirmasi entry tersentuh.'));
+  if (row.trend_label || row.pattern_label) bullets.push('Trend ' + compactSafeText(row.trend_label, 'belum jelas').replace(' Trend','') + ' dan pattern ' + compactSafeText(row.pattern_label, 'belum jelas') + ' menjadi faktor teknikal utama.');
+  if (row.volume_label || row.volume_confirmation_label) bullets.push(compactSafeText(row.volume_label || row.volume_confirmation_label, 'Volume belum lengkap') + (row.volume_notes || row.volume_confirmation_notes ? ', ' + compactSafeText(row.volume_notes || row.volume_confirmation_notes, '') : '') + '.');
+  if (row.foreign_label && row.foreign_label !== 'Foreign Data Unavailable') bullets.push(row.foreign_label === 'Foreign Neutral' ? 'Foreign netral, jadi belum menjadi katalis utama.' : 'Foreign flow: ' + row.foreign_label + ', perlu dikonfirmasi bersama price action.');
+  if (row.liquidity_label || row.stale_label) bullets.push('Kualitas data: ' + compactSafeText(row.liquidity_label, '') + (row.stale_label ? ' · ' + row.stale_label : '') + '.');
+  var tp1Up = row.tp1_upside != null ? toNum(row.tp1_upside) : pctClean(row.entry1, row.tp1n || row.tp1);
+  if (tp1Up != null) bullets.push('Upside ke TP1 sekitar ' + tp1Up.toFixed(1) + '%, sehingga potensi tetap dibandingkan dengan risiko.');
+  var clean = [];
+  for (var i = 0; i < bullets.length && clean.length < 6; i++) { var b = compactSafeText(bullets[i], ''); if (b && !/undefined|null|NaN/.test(b)) clean.push(b); }
+  return clean;
+}
+
+async function serializeWebSignalCandidate(supabase, row, rank) {
+  var r = Object.assign({}, row || {});
+  if (!r.trend_label) Object.assign(r, classifyTrendAlignment(r));
+  if (!r.volume_label) Object.assign(r, classifyVolumeThrust(r));
+  if (!r.pattern_label) Object.assign(r, derivePatternLabel(r));
+  Object.assign(r, deriveStaleLiquidityLabels(r));
+  Object.assign(r, getEntryWindow(r.category));
+  if (r.category !== 'Day Trade' || r.foreign_label == null) Object.assign(r, await fetchForeignConfluence(supabase, r.ticker, r.lastn || r.last_price));
+  var conf = deriveConfidenceTier(r, r.category);
+  r.confidence = conf.confidence; r.confidence_label = conf.confidence_label; r.confidence_notes = conf.confidence_notes;
+  var score = toNum(r.combined_score || r.telegram_conviction_score || r.score || r.daytrade_score);
+  var grade = compactSafeText(r.confidence || r.quality_grade || r.grade || getTelegramGrade(r), '-');
+  var risk = deriveTelegramRiskLabel(r, r.category === 'Day Trade' ? 'daytrade' : 'swing');
+  var action = (typeof normalizeTelegramStatusLabel === 'function') ? normalizeTelegramStatusLabel(r.telegram_action_label || r.telegram_verdict || r.final_status || r.status || r.setup || 'Watchlist') : compactSafeText(r.telegram_verdict || r.status || 'Watchlist', 'Watchlist');
+  r.rank = rank; r.current_price = toNum(r.lastn || r.last_price); r.score = score; r.grade = grade; r.risk_label = risk; r.action_label = action; r.short_reason = candidateReason(r); r.alasan_top5 = buildTop5Reasons(r);
+  r.entry1 = toNum(r.entry1); r.entry2 = toNum(r.entry2); r.stop_loss = toNum(r.sl || r.stop_loss); r.tp1 = toNum(r.tp1n || r.tp1); r.tp2 = toNum(r.tp2n || r.tp2);
+  return r;
+}
+
+function webMonitorStatusLabel(status) {
+  var s = String(status || '').toUpperCase();
+  if (s === 'WAITING') return 'Menunggu Entry';
+  if (s === 'ACTIVE') return 'Entry Tersentuh';
+  if (s === 'TP1_HIT') return 'TP1 Tercapai';
+  if (s === 'TP2_HIT') return 'TP2 Tercapai';
+  if (s === 'SL_HIT') return 'SL Kena';
+  if (s === 'STALE') return 'Data Terbatas';
+  if (s === 'EXPIRED') return 'Expired';
+  return s.replace(/_/g, ' ') || 'Data Terbatas';
+}
+
+async function handleWebSignalDashboard(req, res, supabase) {
+  try {
+    var picks = await selectDailyTop5(supabase);
+    var top5 = [];
+    for (var i = 0; i < picks.length; i++) top5.push(await serializeWebSignalCandidate(supabase, picks[i], i + 1));
+    var date = getJakartaDateString();
+    var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true });
+    var monitor = [];
+    var rows = q.data || [];
+    for (var j = 0; j < rows.length; j++) {
+      var p = rows[j];
+      var px = await fetchLatestPriceForMonitor(supabase, p.ticker);
+      var ev = evaluateMonitorStatus(p, px);
+      var raw = p.raw_payload || {};
+      var detail = await serializeWebSignalCandidate(supabase, Object.assign({}, raw, { ticker: p.ticker, category: p.category, entry1: p.entry1, entry2: p.entry2, tp1n: p.tp1, tp2n: p.tp2, sl: p.sl, last_price: px.last || raw.last_price || raw.lastn }), null);
+      var progress = null;
+      if (px.last != null && p.entry1 != null && p.tp1 != null && px.last >= p.entry1 && p.tp1 > p.entry1) progress = Math.max(0, Math.min(100, ((px.last - p.entry1) / (p.tp1 - p.entry1)) * 100));
+      else if (px.last != null && p.entry1 != null && p.sl != null && px.last < p.entry1 && p.entry1 > p.sl) progress = -Math.max(0, Math.min(100, ((p.entry1 - px.last) / (p.entry1 - p.sl)) * 100));
+      monitor.push({ ticker: p.ticker, category: p.category, current_price: px.last, entry: p.entry1, sl: p.sl, tp1: p.tp1, tp2: p.tp2, status: webMonitorStatusLabel(ev.status), raw_status: ev.status, last_updated: p.last_checked_at || px.at || p.first_sent_at, progress_to_tp_sl: progress, detail: detail });
+    }
+    return res.status(200).json({ success: true, top5: top5, monitor: monitor, updatedAt: new Date().toISOString(), date: date });
+  } catch (e) {
+    return res.status(200).json({ success: false, error: 'Gagal memuat data dashboard signal.', detail: e.message || String(e), top5: [], monitor: [], updatedAt: new Date().toISOString() });
+  }
 }
 
 async function handleTelegramDailyPicks(req, res, supabase) {

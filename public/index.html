@@ -551,6 +551,28 @@
             </div>
         </div>
 
+        <!-- Signal Dashboard: Top 5 + Monitor -->
+        <div id="signalDashboardCard" class="bg-dark-700/50 border border-dark-600/30 rounded-2xl p-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <div>
+                    <h3 class="text-sm font-bold text-white">Top 5 Hari Ini + Monitor TP/SL</h3>
+                    <p id="signalDashboardUpdated" class="text-[11px] text-gray-500 mt-0.5">Memuat Top 5 dan monitor...</p>
+                </div>
+                <button onclick="loadSignalDashboard(true)" class="px-3 py-1.5 rounded-lg text-[11px] text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/10 transition">Refresh</button>
+            </div>
+            <div id="signalDashboardError" class="hidden mb-3 text-xs text-red-400 bg-red-500/5 border border-red-500/20 rounded-xl p-3">Gagal memuat data dashboard signal.</div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <div>
+                    <div class="flex items-center justify-between mb-2"><h4 class="text-xs font-semibold text-gray-300">Top 5 Hari Ini</h4><span class="text-[10px] text-gray-600">Klik kartu untuk detail</span></div>
+                    <div id="webTop5List" class="space-y-2"><div class="text-xs text-gray-500 py-4">Memuat Top 5 dan monitor...</div></div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-2"><h4 class="text-xs font-semibold text-gray-300">Monitor TP/SL</h4><span class="text-[10px] text-gray-600">Dari Top 5 Telegram aktif</span></div>
+                    <div id="webMonitorList" class="space-y-2"><div class="text-xs text-gray-500 py-4">Memuat Top 5 dan monitor...</div></div>
+                </div>
+            </div>
+        </div>
+
         <!-- Action Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <button onclick="navigateTo('analisis')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group">
@@ -1934,6 +1956,7 @@ function navigateTo(page) {
         btn.classList.remove('active');
         if (btn.getAttribute('data-page') === page) btn.classList.add('active');
     });
+    if (page === 'dashboard') setTimeout(function(){ loadSignalDashboard(false); }, 100);
     // Show admin panel only on dashboard
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
@@ -5292,6 +5315,11 @@ function openScrDetail(r, type) {
     if (_signalReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45;margin-bottom:10px;padding:7px 10px;background:rgba(15,23,42,0.35);border:1px solid rgba(148,163,184,0.16);border-radius:8px"><span style="color:#94a3b8;font-weight:600">Alasan risk/action:</span> ' + escapeHtml(_signalReason) + '</div>';
     // Setup meaning
     if (_setupMeaning) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:10px;padding:6px 10px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:8px"><span style="color:#818cf8;font-weight:500">Arti:</span> ' + escapeHtml(_setupMeaning) + '</div>';
+    if (r.alasan_top5 && r.alasan_top5.length) {
+      html += '<div style="margin-bottom:12px;padding:10px 12px;background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.18);border-radius:10px"><div style="font-size:10px;font-weight:800;color:#6ee7b7;margin-bottom:6px;letter-spacing:.02em">ALASAN MASUK TOP 5</div><ul style="margin:0;padding-left:16px;color:#d1d5db;font-size:10px;line-height:1.5">';
+      for (var _ai = 0; _ai < r.alasan_top5.length; _ai++) html += '<li>' + escapeHtml(r.alasan_top5[_ai]) + '</li>';
+      html += '</ul></div>';
+    }
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">';
     html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 1</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e1 + '</div></div>';
     html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 2</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e2 + '</div></div>';
@@ -6736,15 +6764,85 @@ function refreshIHSGCard() {
     _ihsgRefreshTimer = setTimeout(refreshIHSGCard, 10 * 60 * 1000);
 }
 
+
+
+// ===== WEB SIGNAL DASHBOARD (Top 5 + Monitor) =====
+var _webTop5Data = {};
+var _webMonitorData = {};
+var _signalDashboardLoaded = false;
+function signalFmtPrice(v) { var n = Number(v); return isFinite(n) && n > 0 ? n.toLocaleString('id-ID') : '-'; }
+function signalFmtRR(v) { var n = Number(v); return isFinite(n) ? n.toFixed(1) : '-'; }
+function signalFmtScore(v) { var n = Number(v); return isFinite(n) ? Math.round(n) : '-'; }
+function signalShort(text, max) { text = safeDisplayText(text, ''); return text.length > max ? text.substring(0, max - 1) + '…' : text; }
+function signalTypeForCategory(cat) { cat = String(cat || '').toLowerCase(); if (cat.indexOf('day') >= 0) return 'daytrade'; if (cat.indexOf('non') >= 0) return 'nonkonglo'; return 'konglo'; }
+function normalizeWebSignalRow(r) {
+    r = r || {};
+    r.last_price = r.current_price || r.last_price || r.lastn;
+    r.daytrade_score = r.score;
+    r.quality_grade = r.grade || r.quality_grade || r.confidence;
+    r.risk_label = r.risk_label || r.risk;
+    r.telegram_action_label = r.action_label || r.telegram_action_label || r.telegram_verdict;
+    r.status_reason = r.status_reason || r.short_reason || r.reason;
+    r.stop_loss = r.stop_loss || r.sl;
+    r.entry_low = r.entry_low || r.entry2 || r.entry1;
+    r.entry_high = r.entry_high || r.entry1 || r.entry2;
+    r.tp1 = r.tp1 || r.tp1n;
+    r.tp2 = r.tp2 || r.tp2n;
+    return r;
+}
+function renderTop5Item(r) {
+    r = normalizeWebSignalRow(r);
+    _webTop5Data[r.ticker] = r;
+    var rr = r.risk_reward != null ? r.risk_reward : r.rr;
+    var riskCol = getRiskColor(r.risk_label || r.risk);
+    return '<div class="web-top5-item bg-dark-800/70 border border-dark-600/30 rounded-xl p-3 cursor-pointer hover:border-emerald-500/30 transition" data-ticker="' + escapeHtml(r.ticker) + '">' +
+        '<div class="flex items-start justify-between gap-2"><div class="flex items-center gap-2"><span class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xs font-bold">#' + escapeHtml(r.rank || '-') + '</span><div><div class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</div><div class="text-[10px] text-gray-500">' + escapeHtml(r.category || '-') + '</div></div></div><div class="text-right"><div class="text-sm font-semibold text-gray-200">' + signalFmtPrice(r.current_price || r.last_price) + '</div><div class="text-[10px] text-gray-500">Score ' + signalFmtScore(r.score) + ' · G ' + escapeHtml(r.grade || '-') + '</div></div></div>' +
+        '<div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400"><span style="color:' + riskCol + '">' + escapeHtml(r.risk_label || '-') + '</span><span>RR ' + signalFmtRR(rr) + '</span><span>' + escapeHtml(r.action_label || r.telegram_verdict || r.status || '-') + '</span></div>' +
+        '<div class="mt-2 grid grid-cols-3 gap-1 text-center text-[10px]"><span class="rounded bg-blue-500/10 text-blue-300 py-1">E1 ' + signalFmtPrice(r.entry1) + '</span><span class="rounded bg-blue-500/10 text-blue-300 py-1">E2 ' + signalFmtPrice(r.entry2) + '</span><span class="rounded bg-red-500/10 text-red-300 py-1">SL ' + signalFmtPrice(r.stop_loss || r.sl) + '</span><span class="rounded bg-emerald-500/10 text-emerald-300 py-1">TP1 ' + signalFmtPrice(r.tp1 || r.tp1n) + '</span><span class="rounded bg-emerald-500/10 text-emerald-300 py-1">TP2 ' + signalFmtPrice(r.tp2 || r.tp2n) + '</span><span class="rounded bg-purple-500/10 text-purple-300 py-1">Detail</span></div>' +
+        '<div class="mt-2 text-[10px] text-gray-500 leading-relaxed">' + escapeHtml(signalShort(r.short_reason || r.status_reason || r.notes, 120)) + '</div></div>';
+}
+function renderMonitorItem(m) {
+    m = m || {}; var d = normalizeWebSignalRow(m.detail || {}); _webMonitorData[m.ticker] = d;
+    var prog = Number(m.progress_to_tp_sl); var progTxt = isFinite(prog) ? (prog >= 0 ? Math.round(prog) + '% ke TP1' : Math.abs(Math.round(prog)) + '% ke SL') : '-';
+    return '<div class="web-monitor-item bg-dark-800/70 border border-dark-600/30 rounded-xl p-3 cursor-pointer hover:border-cyan-500/30 transition" data-ticker="' + escapeHtml(m.ticker) + '">' +
+      '<div class="flex items-start justify-between gap-2"><div><div class="text-sm font-bold text-white">' + escapeHtml(m.ticker || '-') + '</div><div class="text-[10px] text-gray-500">' + escapeHtml(m.category || '-') + '</div></div><div class="text-right"><div class="text-xs font-semibold text-cyan-300">' + escapeHtml(m.status || '-') + '</div><div class="text-[10px] text-gray-500">' + escapeHtml(m.last_updated ? new Date(m.last_updated).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-') + '</div></div></div>' +
+      '<div class="mt-2 grid grid-cols-3 gap-1 text-center text-[10px]"><span class="rounded bg-dark-700 text-gray-300 py-1">Last ' + signalFmtPrice(m.current_price) + '</span><span class="rounded bg-blue-500/10 text-blue-300 py-1">Entry ' + signalFmtPrice(m.entry) + '</span><span class="rounded bg-red-500/10 text-red-300 py-1">SL ' + signalFmtPrice(m.sl) + '</span><span class="rounded bg-emerald-500/10 text-emerald-300 py-1">TP1 ' + signalFmtPrice(m.tp1) + '</span><span class="rounded bg-emerald-500/10 text-emerald-300 py-1">TP2 ' + signalFmtPrice(m.tp2) + '</span><span class="rounded bg-purple-500/10 text-purple-300 py-1">' + escapeHtml(progTxt) + '</span></div></div>';
+}
+async function loadSignalDashboard(force) {
+    if (_signalDashboardLoaded && !force) return;
+    var topEl = document.getElementById('webTop5List'), monEl = document.getElementById('webMonitorList'), errEl = document.getElementById('signalDashboardError'), upEl = document.getElementById('signalDashboardUpdated');
+    if (!topEl || !monEl) return;
+    if (errEl) errEl.classList.add('hidden');
+    topEl.innerHTML = '<div class="text-xs text-gray-500 py-4">Memuat Top 5 dan monitor...</div>'; monEl.innerHTML = topEl.innerHTML;
+    try {
+        var resp = await fetch('/api/sector-hot?action=web-signal-dashboard&t=' + Date.now());
+        var data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Gagal memuat data dashboard signal.');
+        _signalDashboardLoaded = true; _webTop5Data = {}; _webMonitorData = {};
+        topEl.innerHTML = (data.top5 || []).length ? data.top5.map(renderTop5Item).join('') : '<div class="text-xs text-gray-500 py-4">Belum ada kandidat Top 5 hari ini.</div>';
+        monEl.innerHTML = (data.monitor || []).length ? data.monitor.map(renderMonitorItem).join('') : '<div class="text-xs text-gray-500 py-4">Belum ada signal aktif yang dipantau.</div>';
+        if (upEl) upEl.textContent = 'Update: ' + (data.updatedAt ? new Date(data.updatedAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-');
+    } catch (e) {
+        if (errEl) errEl.classList.remove('hidden');
+        if (upEl) upEl.textContent = 'Gagal memuat data dashboard signal.';
+        topEl.innerHTML = '<div class="text-xs text-gray-500 py-4">Belum ada kandidat Top 5 hari ini.</div>'; monEl.innerHTML = '<div class="text-xs text-gray-500 py-4">Belum ada signal aktif yang dipantau.</div>';
+    }
+}
+document.addEventListener('click', function(e) {
+    var t = e.target.closest('.web-top5-item'); if (t) { var row = _webTop5Data[t.getAttribute('data-ticker')]; if (row) openScrDetail(row, signalTypeForCategory(row.category)); return; }
+    var m = e.target.closest('.web-monitor-item'); if (m) { var row2 = _webMonitorData[m.getAttribute('data-ticker')]; if (row2) openScrDetail(row2, signalTypeForCategory(row2.category)); }
+});
+
 // Auto-load on dashboard show
 (function() {
     var origShowDash = window.showDashboard;
     window.showDashboard = function() {
         if (origShowDash) origShowDash.apply(this, arguments);
         setTimeout(refreshIHSGCard, 300);
+        setTimeout(function(){ loadSignalDashboard(false); }, 450);
     };
     // Also load on init if dashboard is visible
-    setTimeout(function() { if (currentPage === 'dashboard') refreshIHSGCard(); }, 800);
+    setTimeout(function() { if (currentPage === 'dashboard') { refreshIHSGCard(); loadSignalDashboard(false); } }, 800);
 })();
 
 // ===== BUILD VERSION MARKER =====
