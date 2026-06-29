@@ -3773,7 +3773,7 @@ function buildDashboardPickRow(row, rank, px) {
   var raw = row.raw_payload || {};
   var current = px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null);
   var rr = toNum(raw.risk_reward || raw.rr) || null;
-  attachEntryStatus(raw);
+  attachEntryStatus(Object.assign(raw, { current_price: current, last_price: current }));
   var reason = raw.top5_reason || raw.alasan_top5 || raw.telegram_pick_reason || raw.pick_reason || raw.reason || raw.grade_reason || raw.status_reason || raw.notes || raw.verdict || raw.telegram_verdict || null;
   return {
     id: row.id || null,
