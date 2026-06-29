@@ -3100,6 +3100,7 @@ function normalizeCombinedCandidate(row, category) {
   r.tp1n = toNum(r.tp1);
   r.tp2n = toNum(r.tp2);
   r.lastn = toNum(r.last_price);
+  r = idxTick.normalizeTradingPlanLevels(r);
   r.score_norm = getTelegramScore(r, category === 'Day Trade' ? 'daytrade' : 'swing');
   var verified = verifyTelegramSignal(r, category === 'Day Trade' ? 'daytrade' : 'swing');
   if (verified) r = Object.assign(r, verified);
