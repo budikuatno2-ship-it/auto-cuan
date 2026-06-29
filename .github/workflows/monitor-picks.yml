@@ -1,0 +1,54 @@
+name: Monitor Locked Top 5 Picks
+
+on:
+  schedule:
+    # Monday-Thursday IDX sessions (UTC): 02:30-05:00 and 06:30-09:00
+    - cron: '30 2-4 * * 1-4'
+    - cron: '0 3-5 * * 1-4'
+    - cron: '30 6-8 * * 1-4'
+    - cron: '0 7-9 * * 1-4'
+    # Friday IDX sessions (UTC): 02:30-04:30 and 07:00-09:00
+    - cron: '30 2-4 * * 5'
+    - cron: '0 3-4,7-9 * * 5'
+    - cron: '30 7-8 * * 5'
+  workflow_dispatch:
+
+jobs:
+  monitor-picks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Validate secrets
+        env:
+          AUTO_CUAN_BASE_URL: ${{ secrets.AUTO_CUAN_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "${AUTO_CUAN_BASE_URL}" ]; then
+            echo "::error::AUTO_CUAN_BASE_URL secret is not set"
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::CRON_SECRET secret is not set"
+            exit 1
+          fi
+          echo "Secrets validated successfully."
+
+      - name: Call telegram monitor endpoint
+        env:
+          AUTO_CUAN_BASE_URL: ${{ secrets.AUTO_CUAN_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          BASE_URL="${AUTO_CUAN_BASE_URL%/}"
+          ENDPOINT="${BASE_URL}/api/sector-hot?action=telegram-monitor-picks"
+
+          echo "Current UTC time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Target endpoint: ${ENDPOINT}"
+
+          RESPONSE_BODY=$(curl -fsS \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            --max-time 150 \
+            "${ENDPOINT}")
+
+          echo "Response body:"
+          printf '%s\n' "${RESPONSE_BODY}"
