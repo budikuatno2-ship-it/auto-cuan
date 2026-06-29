@@ -4303,16 +4303,25 @@ async function handleWebTop5History(req, res, supabase) {
     if (!isFinite(limit) || limit <= 0) limit = 100;
     if (limit > 300) limit = 300;
     var showArchived = String(req.query.show_archived || '') === '1';
-    var q = await supabase.from('telegram_daily_picks').select('*').order('date', { ascending: false }).order('id', { ascending: true }).limit(limit);
+    var q = await supabase.from('telegram_daily_picks').select('*').order('date', { ascending: false }).order('id', { ascending: false }).limit(300);
     if (q.error) throw new Error(q.error.message);
     var rows = (q.data || []).filter(function(r) { return showArchived || !((r.raw_payload || {}).history_archived_at); });
+    var seenTickers = {};
+    rows = rows.filter(function(r) {
+      var raw = r.raw_payload || {};
+      var tickerKey = String(r.ticker || raw.ticker || '').trim().toUpperCase();
+      if (!tickerKey) tickerKey = 'row-' + String(r.id || '');
+      if (seenTickers[tickerKey]) return false;
+      seenTickers[tickerKey] = true;
+      return true;
+    }).slice(0, limit);
     var history = [];
     for (var i = 0; i < rows.length; i++) {
       var px = await fetchLatestPriceForMonitor(supabase, rows[i].ticker);
       var ev = evaluateMonitorStatus(rows[i], px);
       history.push(buildWebTop5HistoryRow(rows[i], i + 1, px, ev));
     }
-    return res.status(200).json({ success: true, rows: history, history: history, count: history.length, limit: limit, show_archived: showArchived, data_source: 'telegram_daily_picks.raw_payload' });
+    return res.status(200).json({ success: true, rows: history, history: history, count: history.length, limit: limit, show_archived: showArchived, dedupe: 'ticker_latest_date_id', data_source: 'telegram_daily_picks.raw_payload' });
   } catch (e) {
     return res.status(200).json({ success: false, rows: [], history: [], count: 0, error: e.message || String(e) });
   }
