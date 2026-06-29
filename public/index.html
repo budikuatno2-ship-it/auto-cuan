@@ -6797,13 +6797,13 @@ function renderDashboardMonitor(picks, lastUpdatedAt) {
     var upd = document.getElementById('dashboardMonitorUpdated');
     if (upd) upd.textContent = 'Terakhir update: ' + dashWibTime(lastUpdatedAt) + ' WIB';
     if (!el) return;
-    var active = (picks || []).filter(function(p) { return !/TP2_HIT|SL_HIT/i.test(p.status || ''); });
-    if (active.length === 0) {
-        el.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada signal aktif yang dipantau.<br><span class="text-[11px] text-gray-600">Update berkala tiap 1 jam.</span></div>';
+    var rows = picks || [];
+    if (rows.length === 0) {
+        el.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada Top 5 terkunci untuk dipantau.<br><span class="text-[11px] text-gray-600">Monitor aktif setelah Top 5 dikunci.</span></div>';
         return;
     }
     var html = '';
-    active.forEach(function(p) {
+    rows.forEach(function(p) {
         var r = normalizeDashboardPick(p);
         _dashboardPickData[r.ticker] = r;
         var hasDetailPayload = !!(p.raw_payload && Object.keys(p.raw_payload).length);
@@ -6811,9 +6811,17 @@ function renderDashboardMonitor(picks, lastUpdatedAt) {
         var cardAttrs = hasDetailPayload ? ' role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')"' : '';
         var cardClass = 'rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 transition';
         if (hasDetailPayload) cardClass += ' cursor-pointer hover:border-emerald-500/30 hover:bg-emerald-500/5 focus:outline-none focus:ring-1 focus:ring-emerald-500/40';
-        html += '<article' + cardAttrs + ' class="' + cardClass + '"><div class="flex items-start justify-between gap-2"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml((p.status || 'WAITING').replace(/_/g, ' ')) + '</span></div>';
-        html += '<div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-gray-400"><span>Last <b class="text-gray-200">' + dashFmtPrice(p.current_price) + '</b></span><span>Entry <b class="text-blue-300">' + dashFmtPrice(p.entry1) + '</b></span><span>SL <b class="text-red-300">' + dashFmtPrice(p.sl) + '</b></span><span>TP1/TP2 <b class="text-emerald-300">' + dashFmtPrice(p.tp1) + '/' + dashFmtPrice(p.tp2) + '</b></span></div>';
-        html += '<div class="mt-1 text-[10px] text-gray-500">' + escapeHtml(p.progress || '-') + ' · ' + dashWibTime(p.last_updated_at) + ' WIB</div></div></div></article>';
+        var statusText = p.status_label || (p.status || 'WAITING').replace(/_/g, ' ');
+        var changePct = Number(p.change_from_open_pct);
+        var changeTxt = isFinite(changePct) ? ((changePct >= 0 ? '+' : '') + changePct.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '% dari open') : '';
+        var openLastParts = [];
+        if (p.open_price != null && isFinite(Number(p.open_price))) openLastParts.push('Open <b class="text-gray-200">' + dashFmtPrice(p.open_price) + '</b>');
+        if (p.current_price != null && isFinite(Number(p.current_price))) openLastParts.push('Last <b class="text-gray-200">' + dashFmtPrice(p.current_price) + '</b>');
+        if (changeTxt) openLastParts.push('<span class="' + (changePct >= 0 ? 'text-emerald-300' : 'text-red-300') + '">' + escapeHtml(changeTxt) + '</span>');
+        html += '<article' + cardAttrs + ' class="' + cardClass + '"><div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(statusText) + '</span></div>';
+        if (openLastParts.length) html += '<div class="mt-1 text-[11px] text-gray-400">' + openLastParts.join(' · ') + '</div>';
+        html += '<div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-gray-400"><span>Entry <b class="text-blue-300">' + dashFmtPrice(p.entry1) + '</b></span><span>E2 <b class="text-blue-300">' + dashFmtPrice(p.entry2) + '</b></span><span>SL <b class="text-red-300">' + dashFmtPrice(p.sl) + '</b></span><span>TP1/TP2 <b class="text-emerald-300">' + dashFmtPrice(p.tp1) + '/' + dashFmtPrice(p.tp2) + '</b></span></div>';
+        html += '<div class="mt-1 text-[10px] text-gray-500">' + escapeHtml(p.status_note || p.progress || '-') + ' · ' + escapeHtml(p.progress || '-') + ' · ' + dashWibTime(p.last_updated_at) + ' WIB</div></div></div></article>';
     });
     el.innerHTML = html;
 }
@@ -6827,7 +6835,7 @@ async function loadDashboardTop5Monitor(silent) {
         var data = await resp.json();
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
         var note = document.getElementById('dashboardTop5LockNote');
-        if (note) note.textContent = data.top5_locked ? 'Top 5 dikunci sampai penutupan · Monitor update tiap 1 jam' : 'Belum terkunci. Menampilkan kandidat Top 5 sementara dari screener.';
+        if (note) note.textContent = data.top5_locked ? 'Top 5 dikunci sampai penutupan · Monitor update tiap 30 menit saat jam bursa.' : 'Belum terkunci. Menampilkan kandidat Top 5 sementara dari screener.';
         renderDashboardTop5(data.top5 || data.picks || []);
         renderDashboardMonitor(data.monitor || [], data.last_updated_at);
     } catch (e) {
@@ -6836,7 +6844,7 @@ async function loadDashboardTop5Monitor(silent) {
         if (top) top.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Belum ada kandidat Top 5 hari ini.</div>';
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = 'Belum terkunci. Menampilkan kandidat Top 5 sementara dari screener.';
-        if (mon) mon.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada signal aktif yang dipantau.<br><span class="text-[11px] text-gray-600">Update berkala tiap 1 jam.</span></div>';
+        if (mon) mon.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada Top 5 terkunci untuk dipantau.<br><span class="text-[11px] text-gray-600">Monitor aktif setelah Top 5 dikunci.</span></div>';
     }
 }
 

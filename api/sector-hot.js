@@ -3680,25 +3680,46 @@ async function handleTelegramDailyPicks(req, res, supabase) {
 }
 
 async function fetchLatestPriceForMonitor(supabase, ticker) {
-  var dt = await supabase.from('daytrade_screener_latest').select('last_price,high_price,low_price,calculated_at').eq('ticker', ticker).maybeSingle();
-  if (dt.data && dt.data.last_price != null) return { last: toNum(dt.data.last_price), high: toNum(dt.data.high_price), low: toNum(dt.data.low_price), at: dt.data.calculated_at, bestEffort: false };
+  var dt = await supabase.from('daytrade_screener_latest').select('last_price,open_price,high_price,low_price,calculated_at').eq('ticker', ticker).maybeSingle();
+  if (dt.data && dt.data.last_price != null) return { last: toNum(dt.data.last_price), open: toNum(dt.data.open_price), high: toNum(dt.data.high_price), low: toNum(dt.data.low_price), at: dt.data.calculated_at, bestEffort: false };
   var f = await supabase.from('foreign_watchlist_daily').select('close,trade_date').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(1);
-  if (f.data && f.data[0]) return { last: toNum(f.data[0].close), high: toNum(f.data[0].close), low: toNum(f.data[0].close), at: f.data[0].trade_date, bestEffort: true };
-  return { last: null, high: null, low: null, at: null, bestEffort: true };
+  if (f.data && f.data[0]) return { last: toNum(f.data[0].close), open: null, high: toNum(f.data[0].close), low: toNum(f.data[0].close), at: f.data[0].trade_date, bestEffort: true };
+  return { last: null, open: null, high: null, low: null, at: null, bestEffort: true };
+}
+
+function isJakartaAtOrAfter(hour, minute) {
+  var now = getJakartaNow();
+  var h = now.getUTCHours();
+  var m = now.getUTCMinutes();
+  return h > hour || (h === hour && m >= minute);
 }
 
 function evaluateMonitorStatus(pick, px) {
   var status = String(pick.status || 'WAITING').toUpperCase();
   var finalBefore = pick.is_final || ['TP1_HIT','TP2_HIT','SL_HIT'].indexOf(status) >= 0;
-  if (!px || px.last == null) return { status: status === 'WAITING' ? 'STALE' : status, isFinal: finalBefore, note: 'stale/no price update' };
-  var active = status === 'ACTIVE' || status.indexOf('TP') >= 0 || (px.low != null && px.high != null && px.low <= pick.entry1 && px.high >= pick.entry1) || px.last >= pick.entry1;
-  if (active && px.low != null && pick.sl != null && px.low <= pick.sl) return { status: 'SL_HIT', isFinal: true, note: 'SL tersentuh' };
-  if (active && px.high != null && pick.tp2 != null && px.high >= pick.tp2) return { status: 'TP2_HIT', isFinal: true, note: 'TP2 tersentuh' };
-  if (active && px.high != null && pick.tp1 != null && px.high >= pick.tp1) return { status: 'TP1_HIT', isFinal: true, note: 'TP1 tersentuh' };
-  if (active) return { status: 'ACTIVE', isFinal: false, note: 'Entry 1 sudah tersentuh' };
-  return { status: 'WAITING', isFinal: false, note: 'Belum masuk entry' };
-}
+  if (!px || px.last == null) return { status: status === 'WAITING' ? 'STALE' : status, label: 'Data terbatas', isFinal: finalBefore, note: 'Data harga terbaru belum tersedia' };
 
+  var last = toNum(px.last);
+  var high = px.high != null ? toNum(px.high) : last;
+  var low = px.low != null ? toNum(px.low) : last;
+  var entry1 = toNum(pick.entry1);
+  var entry2 = toNum(pick.entry2);
+  var tp1 = toNum(pick.tp1);
+  var tp2 = toNum(pick.tp2);
+  var sl = toNum(pick.sl);
+  var entryTouched = entry1 != null && high != null && low != null && low <= entry1 && high >= entry1;
+  var active = status === 'ACTIVE' || status.indexOf('TP') >= 0 || entryTouched;
+
+  if (active && sl != null && low != null && low <= sl) return { status: 'SL_HIT', label: 'SL kena', isFinal: true, note: 'SL tersentuh' };
+  if (active && tp2 != null && high != null && high >= tp2) return { status: 'TP2_HIT', label: 'TP2 tercapai', isFinal: true, note: 'TP2 tersentuh' };
+  if (active && tp1 != null && high != null && high >= tp1) return { status: 'TP1_HIT', label: 'TP1 tercapai', isFinal: true, note: 'TP1 tersentuh' };
+  if (entryTouched) return { status: 'ACTIVE', label: 'Entry tersentuh', isFinal: false, note: 'Entry 1 sudah tersentuh' };
+  if (entry1 != null && entry2 != null && last <= entry1 && last >= entry2) return { status: 'ACTIVE', label: 'Masuk area entry', isFinal: false, note: 'Harga berada di area Entry 1–Entry 2' };
+  if (entry2 != null && sl != null && last < entry2 && last > sl) return { status: 'WAITING', label: 'Di bawah area entry, pantau risiko', isFinal: false, note: 'Harga di bawah Entry 2 namun masih di atas SL' };
+  if (entry1 != null && last > entry1) return { status: status === 'ACTIVE' ? 'ACTIVE' : 'WAITING', label: status === 'ACTIVE' ? 'Menuju TP1' : 'Menunggu pullback ke entry', isFinal: false, note: 'Harga masih di atas Entry 1' };
+  if (entry1 != null && last < entry1) return { status: 'WAITING', label: 'Mendekati area entry', isFinal: false, note: 'Harga belum menyentuh area entry' };
+  return { status: 'WAITING', label: 'Belum masuk area entry', isFinal: false, note: 'Belum masuk area entry' };
+}
 
 function webPickScore(raw) {
   return toNum(raw.combined_score || raw.telegram_conviction_score || raw.daytrade_score || raw.score || raw.daily_score) || null;
@@ -3750,6 +3771,10 @@ function buildFallbackDashboardPickRow(candidate, rank) {
 
 function buildDashboardMonitorRow(row, rank, px, ev) {
   var raw = row.raw_payload || {};
+  var current = px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null);
+  var open = px && px.open != null ? px.open : (toNum(raw.open_price) || null);
+  var changeFromOpen = open != null && current != null ? current - open : null;
+  var changeFromOpenPct = open != null && open > 0 && changeFromOpen != null ? (changeFromOpen / open) * 100 : null;
   return {
     id: row.id || null,
     rank: rank,
@@ -3757,7 +3782,11 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
     ticker: row.ticker,
     category: row.category || raw.category || raw.source || '-',
     source: row.category || raw.category || raw.source || '-',
-    current_price: px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null),
+    open_price: open,
+    current_price: current,
+    last_price: current,
+    change_from_open: changeFromOpen,
+    change_from_open_pct: changeFromOpenPct,
     entry1: toNum(row.entry1),
     entry: toNum(row.entry1),
     entry2: toNum(row.entry2),
@@ -3765,6 +3794,7 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
     tp1: toNum(row.tp1),
     tp2: toNum(row.tp2),
     status: ev.status,
+    status_label: ev.label || ev.status,
     status_note: ev.note,
     last_updated_at: row.last_checked_at || (px && px.at) || row.first_sent_at || null,
     progress: buildMonitorProgressLabel(row, px),
@@ -3773,16 +3803,36 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
   };
 }
 
+function dailyPickInsertRowFromCandidate(candidate, date, nowIso) {
+  return { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: nowIso, raw_payload: candidate };
+}
+
+async function lockWebDailyPicksIfDue(supabase, date) {
+  if (!isJakartaAtOrAfter(8, 0)) return [];
+  var picks = await selectDailyTop5(supabase);
+  if (!picks.length) return [];
+  var nowIso = new Date().toISOString();
+  var rowsToInsert = picks.slice(0, 5).map(function(r) { return dailyPickInsertRowFromCandidate(r, date, nowIso); });
+  var ins = await supabase.from('telegram_daily_picks').insert(rowsToInsert).select('*');
+  if (ins.error) throw new Error('Simpan daily picks web fallback gagal: ' + ins.error.message);
+  return (ins.data || []).sort(function(a, b) { return (a.id || 0) - (b.id || 0); });
+}
+
 async function handleWebDailyPicks(req, res, supabase) {
   try {
     var date = getJakartaDateString();
     var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
     if (q.error) throw new Error(q.error.message);
     var rows = q.data || [];
+    var locked = rows.length > 0;
+    if (!locked && isJakartaAtOrAfter(8, 0)) {
+      rows = await lockWebDailyPicksIfDue(supabase, date);
+      locked = rows.length > 0;
+    }
     var top5 = [];
     var monitor = [];
     var lastAt = null;
-    if (rows.length > 0) {
+    if (locked) {
       for (var i = 0; i < rows.length; i++) {
         var p = rows[i];
         var px = await fetchLatestPriceForMonitor(supabase, p.ticker);
@@ -3796,9 +3846,9 @@ async function handleWebDailyPicks(req, res, supabase) {
       var fallback = await selectDailyTop5(supabase);
       for (var j = 0; j < fallback.length; j++) top5.push(buildFallbackDashboardPickRow(fallback[j], j + 1));
     }
-    return res.status(200).json({ success: true, date: date, top5: top5, monitor: monitor, top5_locked: rows.length > 0, update_note: 'Update berkala tiap 1 jam', last_updated_at: lastAt, picks: top5 });
+    return res.status(200).json({ success: true, date: date, top5: top5, monitor: monitor, top5_locked: locked, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: lastAt, picks: top5 });
   } catch (e) {
-    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Update berkala tiap 1 jam', last_updated_at: null, picks: [], error: e.message || String(e) });
+    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: null, picks: [], error: e.message || String(e) });
   }
 }
 
