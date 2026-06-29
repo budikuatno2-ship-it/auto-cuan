@@ -78,6 +78,14 @@ module.exports = async function handler(req, res) {
       return await handleWebDailyPicks(req, res, supabase);
     }
 
+    if (action === 'web-top5-history') {
+      return await handleWebTop5History(req, res, supabase);
+    }
+
+    if (action === 'web-top5-history-archive') {
+      return await handleWebTop5HistoryArchive(req, res, supabase);
+    }
+
     // === SCREENER READ MODE (login-gated) ===
     if (action === 'screener') {
       return await handleScreenerRead(req, res, supabase);
@@ -4224,6 +4232,168 @@ async function handleWebDailyPicks(req, res, supabase) {
   } catch (e) {
     return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
   }
+}
+
+
+function getHistoryEntryUsage(normalized, px) {
+  var current = px && px.last != null ? toNum(px.last) : null;
+  var low = px && px.low != null ? toNum(px.low) : current;
+  var entry1 = toNum(normalized.entry1);
+  var entry2 = toNum(normalized.entry2);
+  var usedPrice = null;
+  var usedLabel = null;
+  if (low != null && entry2 != null && low <= entry2) {
+    usedPrice = entry2;
+    usedLabel = 'Entry 2';
+  } else if (low != null && entry1 != null && low <= entry1) {
+    usedPrice = entry1;
+    usedLabel = 'Entry 1';
+  }
+  var returnPct = current != null && usedPrice != null && usedPrice > 0 ? ((current - usedPrice) / usedPrice) * 100 : null;
+  var distancePct = current != null && usedPrice == null && entry1 != null && entry1 > 0 ? ((current - entry1) / entry1) * 100 : null;
+  return {
+    active_entry_price: usedPrice,
+    active_entry_label: usedLabel,
+    entry_used_label: usedLabel,
+    entry1_touched: usedLabel === 'Entry 1' || usedLabel === 'Entry 2',
+    entry2_touched: usedLabel === 'Entry 2',
+    return_from_entry_pct: returnPct,
+    distance_to_entry1_pct: distancePct,
+    monitor_pl_label: usedLabel ? ('Dari ' + usedLabel) : 'Belum kena Entry 1'
+  };
+}
+
+function classifyWebTop5History(normalized, px) {
+  var current = px && px.last != null ? toNum(px.last) : null;
+  var high = px && px.high != null ? toNum(px.high) : current;
+  var low = px && px.low != null ? toNum(px.low) : current;
+  var status = String(normalized.status || '').toUpperCase();
+  var slHit = !!((normalized.sl != null && low != null && low <= normalized.sl) || status === 'SL_HIT');
+  var tp2Hit = !slHit && !!((normalized.tp2 != null && high != null && high >= normalized.tp2) || status === 'TP2_HIT');
+  var tp1Hit = !slHit && !tp2Hit && !!((normalized.tp1 != null && high != null && high >= normalized.tp1) || status === 'TP1_HIT');
+  var hasPrice = !!(px && px.last != null);
+  if (slHit) return { bucket: 'failed', status: 'SL_HIT', status_label: 'SL kena', status_note: 'SL tersentuh', tp1_hit: false, tp2_hit: false, sl_hit: true };
+  if (tp2Hit) return { bucket: 'tp', status: 'TP2_HIT', status_label: 'TP2 tercapai', status_note: 'TP2 tersentuh', tp1_hit: true, tp2_hit: true, sl_hit: false };
+  if (tp1Hit) return { bucket: 'tp', status: 'TP1_HIT', status_label: 'TP1 tercapai', status_note: 'TP1 tersentuh', tp1_hit: true, tp2_hit: false, sl_hit: false };
+  if (!hasPrice) return { bucket: 'active', status: 'PRICE_LIMITED', status_label: 'Data harga terbatas', status_note: 'Data harga terbaru belum tersedia', tp1_hit: false, tp2_hit: false, sl_hit: false };
+  return { bucket: 'active', status: 'ACTIVE_TRACKING', status_label: 'Aktif dipantau', status_note: 'Belum TP/SL', tp1_hit: false, tp2_hit: false, sl_hit: false };
+}
+
+function buildWebTop5HistoryRow(row, rank, px, ev) {
+  var raw = row.raw_payload || {};
+  var current = px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null);
+  var normalized = {
+    id: row.id || null,
+    date: row.date || null,
+    ticker: row.ticker || raw.ticker || null,
+    category: row.category || raw.category || raw.source || '-',
+    entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_low)),
+    entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_high)),
+    sl: toNum(row.sl != null ? row.sl : (raw.sl != null ? raw.sl : raw.stop_loss)),
+    tp1: toNum(row.tp1 != null ? row.tp1 : (raw.tp1 != null ? raw.tp1 : raw.tp1n)),
+    tp2: toNum(row.tp2 != null ? row.tp2 : (raw.tp2 != null ? raw.tp2 : raw.tp2n)),
+    status: row.status || 'WAITING',
+    first_sent_at: row.first_sent_at || null,
+    last_checked_at: row.last_checked_at || null,
+    raw_payload: raw
+  };
+  var effectivePx = {
+    last: current,
+    high: px && px.high != null ? px.high : (toNum(raw.high_price || raw.high || raw.highn) || current),
+    low: px && px.low != null ? px.low : (toNum(raw.low_price || raw.low || raw.lown) || current),
+    at: px && px.at ? px.at : null
+  };
+  var entry = getHistoryEntryUsage(normalized, effectivePx);
+  var cls = ev || classifyWebTop5History(normalized, effectivePx);
+  return {
+    id: normalized.id,
+    rank: rank,
+    date: normalized.date,
+    ticker: normalized.ticker,
+    category: normalized.category,
+    entry1: normalized.entry1,
+    entry2: normalized.entry2,
+    sl: normalized.sl,
+    tp1: normalized.tp1,
+    tp2: normalized.tp2,
+    current_price: current,
+    last_price: current,
+    status: cls.status,
+    status_label: cls.status_label,
+    status_note: cls.status_note,
+    history_bucket: cls.bucket,
+    first_sent_at: normalized.first_sent_at,
+    last_checked_at: row.last_checked_at || effectivePx.at || null,
+    raw_payload: raw,
+    signal_action_label: raw.signal_action_label || null,
+    signal_verdict: raw.signal_verdict || raw.verdict || raw.telegram_verdict || null,
+    risk_label_v2: raw.risk_label_v2 || null,
+    plan_quality_label: raw.plan_quality_label || raw.plan_quality_status || null,
+    active_entry_price: entry.active_entry_price,
+    active_entry_label: entry.active_entry_label,
+    entry_used_label: entry.entry_used_label,
+    entry_status_label: entry.active_entry_price != null ? (entry.entry_used_label + ' tersentuh') : 'Belum kena Entry 1',
+    return_from_entry_pct: entry.return_from_entry_pct,
+    distance_to_entry1_pct: entry.distance_to_entry1_pct,
+    tp1_hit: cls.tp1_hit,
+    tp2_hit: cls.tp2_hit,
+    sl_hit: cls.sl_hit,
+    entry1_touched: entry.entry1_touched,
+    entry2_touched: entry.entry2_touched,
+    detail: raw
+  };
+}
+
+async function handleWebTop5History(req, res, supabase) {
+  try {
+    var limit = parseInt(req.query.limit || '100', 10);
+    if (!isFinite(limit) || limit <= 0) limit = 100;
+    if (limit > 300) limit = 300;
+    var showArchived = String(req.query.show_archived || '') === '1';
+    var q = await supabase.from('telegram_daily_picks').select('*').order('date', { ascending: false }).order('id', { ascending: false }).limit(300);
+    if (q.error) throw new Error(q.error.message);
+    var rows = (q.data || []).filter(function(r) { return showArchived || !((r.raw_payload || {}).history_archived_at); });
+    var activeRows = [];
+    var tpRows = [];
+    for (var i = 0; i < rows.length; i++) {
+      var px = await fetchLatestPriceForMonitor(supabase, rows[i].ticker);
+      var row = buildWebTop5HistoryRow(rows[i], 0, px, null);
+      if (row.history_bucket === 'tp') tpRows.push(row);
+      else if (row.history_bucket === 'active') activeRows.push(row);
+    }
+    var seenTickers = {};
+    var activeHistory = [];
+    for (var a = 0; a < activeRows.length; a++) {
+      var tickerKey = String(activeRows[a].ticker || '').trim().toUpperCase();
+      if (!tickerKey) tickerKey = 'row-' + String(activeRows[a].id || '');
+      if (seenTickers[tickerKey]) continue;
+      seenTickers[tickerKey] = true;
+      activeRows[a].rank = activeHistory.length + 1;
+      activeHistory.push(activeRows[a]);
+      if (activeHistory.length >= limit) break;
+    }
+    tpRows = tpRows.slice(0, 10).map(function(r, idx) { r.rank = idx + 1; return r; });
+    return res.status(200).json({ success: true, rows: activeHistory, history: activeHistory, active_history: activeHistory, tp_history: tpRows, count: activeHistory.length, tp_count: tpRows.length, limit: limit, show_archived: showArchived, dedupe: 'active_ticker_latest_date_id_after_status_filter', data_source: 'telegram_daily_picks.raw_payload' });
+  } catch (e) {
+    return res.status(200).json({ success: false, rows: [], history: [], count: 0, error: e.message || String(e) });
+  }
+}
+
+async function handleWebTop5HistoryArchive(req, res, supabase) {
+  var CRON_SECRET = process.env.CRON_SECRET;
+  var authHeader = req.headers.authorization || '';
+  var providedSecret = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!CRON_SECRET || providedSecret !== CRON_SECRET) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  var id = parseInt((req.body && req.body.id) || req.query.id || '', 10);
+  if (!isFinite(id) || id <= 0) return res.status(200).json({ success: false, error: 'id wajib diisi.' });
+  var existing = await supabase.from('telegram_daily_picks').select('id,raw_payload').eq('id', id).maybeSingle();
+  if (existing.error) return res.status(200).json({ success: false, error: existing.error.message });
+  if (!existing.data) return res.status(404).json({ success: false, error: 'Row tidak ditemukan.' });
+  var archivedAt = new Date().toISOString();
+  var raw = Object.assign({}, existing.data.raw_payload || {}, { history_archived_at: archivedAt, history_archived_by: 'web-admin' });
+  var upd = await supabase.from('telegram_daily_picks').update({ raw_payload: raw }).eq('id', id);
+  if (upd.error) return res.status(200).json({ success: false, error: upd.error.message });
+  return res.status(200).json({ success: true, id: id, archived_at: archivedAt });
 }
 
 function buildMonitorProgressLabel(pick, px) {
