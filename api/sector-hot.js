@@ -3202,6 +3202,45 @@ function attachEntryStatus(row) {
   return r;
 }
 
+function deriveRiskReasonDetails(row, category) {
+  var r = row || {};
+  var factors = [];
+  function add(label) { if (label && factors.indexOf(label) === -1) factors.push(label); }
+  var rr = toNum(r.risk_reward);
+  var rrMin = getMinRRForCategory(category);
+  var last = toNum(r.last_price || r.current_price || r.close);
+  var entryLow = toNum(r.entry_low || r.entry1 || r.entry_1);
+  var entryHigh = toNum(r.entry_high || r.entry2 || r.entry_2 || entryLow);
+  var stop = toNum(r.stop_loss || r.sl);
+  var vol = toNum(r.volume_ratio_20d || r.volume_ratio_avg20 || r.volume_today_vs_7d || r.volume_today_vs_3d || r.volume_ratio);
+  var value = toNum(r.value_today || r.tx_value_1d || r.avg_tx_value_7d || r.avg_value_7d);
+  var status = String(r.status || r.final_status || r.swing_tier || '').toUpperCase();
+  var entryStatus = String(r.entry_status || '').toUpperCase();
+  var notes = joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan, r.telegram_verdict, r.candle_note, r.respect_zone_notes, r.entry_status_note, r.plan_quality_note, r.liquidity_notes, r.stale_notes]).toLowerCase();
+  if (status === 'AVOID' || status === 'INVALID') add('Failed respect candle');
+  if (rr != null && rr < rrMin) add('RR too low');
+  if (last && stop && Math.abs(last - stop) / last <= 0.025) add('SL rawan noise');
+  if (entryStatus === 'CHASE_RISK' || entryStatus === 'EXTENDED' || includesAny(notes, ['chase', 'telat', 'late', 'extended'])) add('Chase risk after long candle / half-candle debt not paid');
+  else if (last && entryHigh && last > entryHigh && ((last - entryHigh) / entryHigh) > 0.04) add('Price too far from Entry 1');
+  if (entryStatus === 'WAIT_PULLBACK' || entryStatus === 'ABOVE_ENTRY' || (last && entryLow && last > entryLow)) add('Entry not touched yet');
+  if (includesAny(notes, ['failed respect', 'gagal respect', 'failed breakout', 'breakout gagal'])) add('Failed respect candle');
+  if (includesAny(notes, ['below half', 'close below 1/2', 'close below half', 'reclaim 1/2', 'half candle'])) add('Close below 1/2 candle');
+  if (includesAny(notes, ['near supply', 'resistance', 'tp1 near', 'dekat tp', 'dekat resistance'])) add('Near supply/resistance');
+  if ((vol != null && vol < 0.8) || includesAny(notes, ['volume weak', 'volume lemah', 'weak volume', 'likuiditas lemah'])) add('Volume/liquidity weak');
+  if (r.is_stale || includesAny(notes, ['stale', 'data lama'])) add('Stale data');
+  if (String(r.board || '').toUpperCase().indexOf('PENGEMBANGAN') >= 0 || (value != null && value > 0 && value < 750000000) || r.is_liquidity_risk) add('Board/liquidity risk');
+  if (includesAny(notes, ['volatile', 'long candle', 'candle risk', 'doji', 'marubozu']) || Math.abs(toNum(r.change_pct) || 0) >= 5) add('Candle risk / volatile candle');
+  if (factors.length === 0) {
+    var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label);
+    if (risk === 'Low Risk') add('RR cukup, entry area dekat');
+    else if (risk === 'Medium Risk') add('RR cukup, tunggu konfirmasi entry');
+    else add('Setup perlu konfirmasi lebih kuat');
+  }
+  r.risk_reason_factors = factors.slice(0, 4);
+  r.risk_reason = factors.slice(0, 2).join(' + ');
+  return r;
+}
+
 function enrichSignalQuality(row, category) {
   var r = Object.assign({}, row || {});
   attachEntryStatus(r);
@@ -3215,6 +3254,7 @@ function enrichSignalQuality(row, category) {
   r.rr_gate_pass = (toNum(r.risk_reward) || 0) >= r.rr_minimum;
   if (!r.rr_gate_pass && !r.confidence_notes) r.confidence_notes = 'Radar only — RR belum ideal.';
   attachEntryStatus(r);
+  deriveRiskReasonDetails(r, category);
   return r;
 }
 
