@@ -5034,7 +5034,7 @@ function normalizeRiskLabel(label) {
     if (compact === 'very high' || compact === 'very high risk') return 'Very High Risk';
     return text;
 }
-function getRiskLabel(r) { return r ? normalizeRiskLabel(r.verified_risk_label || r.risk_label || r.risk || r.risk_level || '') : ''; }
+function getRiskLabel(r) { return r ? normalizeRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label || r.risk || r.risk_level || '') : ''; }
 function getRiskColor(label) {
     var risk = normalizeRiskLabel(label);
     if (risk === 'Low Risk') return '#6ee7b7';
@@ -5316,7 +5316,7 @@ function openScrDetail(r, type) {
     // Grade/Risk/RR summary bar
     html += '<div style="display:flex;gap:10px;margin-bottom:12px;padding:8px 12px;background:rgba(30,35,50,0.6);border:1px solid #2a3444;border-radius:10px">';
     html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Grade</div><div style="font-size:16px;font-weight:800;color:' + _gCol + '">' + escapeHtml(_grade || '-') + '</div></div>';
-    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Risk</div><div style="font-size:11px;font-weight:600;color:' + _rlCol + '">' + escapeHtml(_risk || '-') + '</div></div>';
+    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Risk v2</div><div style="font-size:11px;font-weight:600;color:' + _rlCol + '">' + escapeHtml(_risk || '-') + '</div></div>';
     var _actionLabel = getActionLabel(r);
     html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">R/R</div><div style="font-size:14px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
     if (_actionLabel) html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Action</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + escapeHtml(_actionLabel) + '</div></div>';
@@ -5373,12 +5373,12 @@ function openScrDetail(r, type) {
     if (r.multi_timeframe_notes) html += '<div style="font-size:9px;color:#6b7280;margin-top:2px">' + escapeHtml(r.multi_timeframe_notes) + '</div>';
     html += '</div>';
     // Risk notes section
-    if (r.risk_notes || getRiskLabel(r)) {
+    if (r.risk_notes_v2 || r.risk_notes || getRiskLabel(r)) {
       var _rnRisk = getRiskLabel(r);
       var _rnBgC = _rnRisk === 'Low Risk' ? '16,185,129' : (_rnRisk === 'Medium Risk' ? '234,179,8' : '239,68,68');
       html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(' + _rnBgC + ',0.04);border:1px solid rgba(' + _rnBgC + ',0.15);border-radius:8px">';
-      html += '<div style="font-size:9px;font-weight:600;color:' + _rlCol + ';margin-bottom:3px">RISK: ' + escapeHtml(_rnRisk || '-') + '</div>';
-      var _rn = r.risk_notes ? (typeof r.risk_notes === 'string' ? r.risk_notes : (r.risk_notes.join ? r.risk_notes.join('; ') : '')) : 'Tidak ada faktor risiko signifikan.';
+      html += '<div style="font-size:9px;font-weight:600;color:' + _rlCol + ';margin-bottom:3px">RISK v2: ' + escapeHtml(_rnRisk || '-') + '</div>';
+      var _rn = r.risk_notes_v2 || (r.risk_factors_v2 && r.risk_factors_v2.join ? r.risk_factors_v2.join('; ') : '') || (r.risk_notes ? (typeof r.risk_notes === 'string' ? r.risk_notes : (r.risk_notes.join ? r.risk_notes.join('; ') : '')) : 'Tidak ada faktor risiko signifikan.');
       html += '<div style="font-size:10px;color:#9ca3af">' + escapeHtml(_rn) + '</div>';
       html += '</div>';
     }

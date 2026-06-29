@@ -602,6 +602,12 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           resistance: _tickResult.tick_normalized ? _tickResult.resistance : analysis.resistance,
           risk_reward: _finalRR
         });
+        var _riskV2Result = idxTick.deriveRiskLabelV2(Object.assign({}, _planQuality, {
+          entry_status: null,
+          risk_reward: _finalRR,
+          liquidity_label: _avgTxValue7d >= 500000000 ? 'Liquid' : 'Likuiditas Tipis',
+          volume_label: analysis.volume_ratio_avg20 >= 1 ? 'Volume valid' : 'Volume lemah'
+        }));
 
         results.push({
           ticker: item.ticker,
@@ -647,6 +653,10 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           volume_notes: _vpaResult.volume_notes,
           risk_label: _riskResult.risk_label,
           risk_score: _riskResult.risk_score,
+          risk_label_v2: _riskV2Result.risk_label_v2,
+          risk_score_v2: _riskV2Result.risk_score_v2,
+          risk_notes_v2: _riskV2Result.risk_notes_v2,
+          risk_factors_v2: _riskV2Result.risk_factors_v2,
           quality_grade: _gradeResult.grade,
           grade_reason: _gradeResult.grade_reason,
           plan_quality_status: _planQuality.plan_quality_status,
@@ -3005,7 +3015,7 @@ function deriveConfidenceTier(row, category) {
   var upside = row.tp1_upside != null ? toNum(row.tp1_upside) : pctFrom(entry, tp1);
   var minUpside = getMinTp1UpsideForCategory(category);
   var score = toNum(row.combined_score || row.telegram_conviction_score || row.score || row.daytrade_score) || 0;
-  var risk = normalizeTelegramRiskLabel(row.risk_label || row.verified_risk_label).toUpperCase();
+  var risk = normalizeTelegramRiskLabel(row.risk_label_v2 || row.risk_label || row.verified_risk_label).toUpperCase();
   var status = safeTelegramText(row.status || row.final_status || row.swing_tier, 100, '').toUpperCase();
   var trend = (row.trend_label || classifyTrendAlignment(row).trend_label || '').toUpperCase();
   var vol = (row.volume_label || classifyVolumeThrust(row).volume_label || '').toUpperCase();
@@ -3093,6 +3103,11 @@ function attachEntryStatus(row) {
     r.telegram_verdict = 'Wait — setup invalid / SL kena.';
     r.entry_timing = 'Hindari — setup tidak valid';
   }
+  var rv2 = idxTick.deriveRiskLabelV2(r);
+  r.risk_label_v2 = rv2.risk_label_v2;
+  r.risk_score_v2 = rv2.risk_score_v2;
+  r.risk_notes_v2 = rv2.risk_notes_v2;
+  r.risk_factors_v2 = rv2.risk_factors_v2;
   if (pq.plan_quality_status === 'INVALID') {
     r.confidence = 'C';
     r.telegram_verdict = 'Wait / Invalid — ' + pq.plan_quality_note;
@@ -3103,6 +3118,7 @@ function attachEntryStatus(row) {
   } else if ((pq.sl_quality_label === 'SL terlalu mepet' || pq.tp_quality_label === 'TP terlalu jauh' || pq.tp_quality_label === 'TP ambisius') && (r.confidence === 'A+' || r.confidence === 'A')) {
     r.confidence = 'B';
   }
+  idxTick.applyRiskV2ConfidenceGuard(r);
   return r;
 }
 
@@ -3388,7 +3404,7 @@ async function buildSignalMessage(supabase, ticker) {
   Object.assign(row, getEntryWindow(row.category));
 
   var eligible = candidateTelegramEligible(row);
-  var risk = deriveTelegramRiskLabel(row, row.category === 'Day Trade' ? 'daytrade' : 'swing').replace(' Risk', '');
+  var risk = (normalizeTelegramRiskLabel(row.risk_label_v2) || deriveTelegramRiskLabel(row, row.category === 'Day Trade' ? 'daytrade' : 'swing')).replace(' Risk', '');
   var support = toNum(row.support);
   var resistance = toNum(row.resistance);
   var trigger = resistance ? ('close > ' + fmtPrice(resistance) + ' dengan volume valid') : 'konfirmasi breakout/pullback dengan volume valid';
@@ -3843,7 +3859,11 @@ function buildDashboardPickRow(row, rank, px) {
     score: webPickScore(raw),
     grade: raw.confidence || raw.grade || raw.quality_grade || null,
     confidence: raw.confidence || raw.grade || raw.quality_grade || null,
-    risk: raw.risk_label || raw.risk || null,
+    risk: raw.risk_label_v2 || raw.risk_label || raw.risk || null,
+    risk_label_v2: raw.risk_label_v2 || null,
+    risk_score_v2: raw.risk_score_v2 || null,
+    risk_notes_v2: raw.risk_notes_v2 || null,
+    risk_factors_v2: raw.risk_factors_v2 || null,
     rr: rr,
     risk_reward: rr,
     action: raw.action || raw.verdict || raw.telegram_verdict || raw.status || null,
@@ -3862,6 +3882,10 @@ function buildDashboardPickRow(row, rank, px) {
     entry_status_note: raw.entry_status_note,
     entry_distance_pct: raw.entry_distance_pct,
     chase_risk_label: raw.chase_risk_label,
+    plan_quality_status: raw.plan_quality_status,
+    sl_quality_label: raw.sl_quality_label,
+    tp_quality_label: raw.tp_quality_label,
+    rr_quality_label: raw.rr_quality_label,
     raw_payload: raw
   };
 }
@@ -6622,7 +6646,7 @@ function normalizeTelegramRiskLabel(value) {
 }
 
 function deriveTelegramRiskLabel(r, mode) {
-  var risk = normalizeTelegramRiskLabel(r.risk_label || r.verified_risk_label);
+  var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.risk_label || r.verified_risk_label);
   var rr = toNum(r.risk_reward) || 0;
   var score = getTelegramScore(r, mode);
   if (!risk) {
@@ -6723,7 +6747,7 @@ function computeTelegramConvictionScore(r, mode) {
   var score = getTelegramScore(r, mode);
   var rr = toNum(r.risk_reward) || 0;
   var grade = getTelegramGrade(r).toUpperCase();
-  var risk = normalizeTelegramRiskLabel(r.verified_risk_label || r.risk_label).toUpperCase();
+  var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label).toUpperCase();
   var value = getTelegramValue(r);
   var vol = getTelegramVolumeRatio(r);
   var status = safeTelegramText(r.status || r.final_status, 100, '').toUpperCase();
@@ -6795,7 +6819,7 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   var action = safeTelegramText(r.telegram_action_label, 40, 'Pantau dulu');
   var enrichedForGrade = enrichSignalQuality(r, mode === 'daytrade' ? 'Day Trade' : 'Swing');
   var grade = enrichedForGrade.confidence || getTelegramGrade(r);
-  var risk = normalizeTelegramRiskLabel(r.verified_risk_label || r.risk_label) || '-';
+  var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label) || '-';
   var lines = [];
   lines.push(idx + '. ' + safeTelegramText(r.ticker, 16, '-') + ' — ' + action);
   lines.push('Status: ' + statusLabel);
