@@ -5221,6 +5221,7 @@ function renderDtCardGrid(results) {
         var _actionBadge = getActionLabel(r); if (_actionBadge && _actionBadge !== getStatusLabel(r, st)) _vpBadge = (_vpBadge ? _vpBadge + ' · ' : '') + '<span style="color:#93c5fd">' + escapeHtml(_actionBadge) + '</span>';
         var _badgeLine = [_grBadge, _rlBadge, _vpBadge, _mtfBadge].filter(function(b){return b;}).join(' · ');
         if (_badgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _badgeLine + '</div>';
+        if (r.entry_status_label) html += '<div style="font-size:10px;margin-bottom:8px;color:#d1d5db"><span style="color:#94a3b8">Status Entry:</span> ' + escapeHtml(r.entry_status_label) + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
@@ -5318,6 +5319,10 @@ function openScrDetail(r, type) {
     if (r.grade_reason) html += '<div style="font-size:9px;color:#6b7280;margin-bottom:10px">' + escapeHtml(r.grade_reason) + '</div>';
     var _signalReason = getSignalReason(r);
     if (_signalReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45;margin-bottom:10px;padding:7px 10px;background:rgba(15,23,42,0.35);border:1px solid rgba(148,163,184,0.16);border-radius:8px"><span style="color:#94a3b8;font-weight:600">Alasan risk/action:</span> ' + escapeHtml(_signalReason) + '</div>';
+    if (r.entry_status_label) {
+      var _ed = r.entry_distance_pct != null ? (Number(r.entry_distance_pct).toFixed(2) + '%') : '-';
+      html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45;margin-bottom:10px;padding:7px 10px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.14);border-radius:8px"><span style="color:#6ee7b7;font-weight:600">Entry Status:</span> ' + escapeHtml(r.entry_status_label) + '<br><span style="color:#94a3b8">Entry distance %:</span> ' + escapeHtml(_ed) + '<br><span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.entry_status_note || '-') + '</div>';
+    }
     // Setup meaning
     if (_setupMeaning) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:10px;padding:6px 10px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:8px"><span style="color:#818cf8;font-weight:500">Arti:</span> ' + escapeHtml(_setupMeaning) + '</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">';
