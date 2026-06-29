@@ -6810,6 +6810,22 @@ function getPlanWarningLine(r) {
     if (r.tp_quality_label && r.tp_quality_label !== 'TP realistis') parts.push(r.tp_quality_label);
     return parts.length ? ('Plan: ' + parts.join(' / ')) : '';
 }
+function buildDashboardActionLine(r) {
+    if (!r) return '';
+    var actionLabel = safeDisplayText(r.signal_action_label || getActionLabel(r), '');
+    if (!actionLabel) return '';
+    var verdictText = safeDisplayText(r.signal_verdict || '', '');
+    var suffix = verdictText;
+    var actionLower = actionLabel.toLowerCase();
+    var verdictLower = verdictText.toLowerCase();
+    if (suffix && verdictLower.indexOf(actionLower) === 0) {
+        suffix = suffix.slice(actionLabel.length).replace(/^\s*(dulu)?\s*[—\-:,.]?\s*/i, '');
+    } else if (suffix && r.signal_action === 'WAIT_CONFIRMATION' && /^tunggu\s*[—\-:,.]?\s*/i.test(suffix)) {
+        suffix = suffix.replace(/^tunggu\s*[—\-:,.]?\s*/i, '');
+    }
+    suffix = suffix.replace(/^entry\s+baru\s+/i, '').replace(/^trading\s+plan\s+/i, 'trading plan ');
+    return 'Action: ' + actionLabel + (suffix ? ' — ' + suffix.charAt(0).toLowerCase() + suffix.slice(1) : '');
+}
 function renderDashboardTop5(picks) {
     var el = document.getElementById('dashboardTop5List');
     if (!el) return;
@@ -6827,7 +6843,7 @@ function renderDashboardTop5(picks) {
         var risk = getRiskLabel(r) || '—';
         var rr = Number(r.risk_reward || r.rr);
         var action = getActionLabel(r) || getStatusLabel(r, r.status || r.final_status || '') || '—';
-        var verdictLine = r.signal_verdict || '';
+        var actionLine = buildDashboardActionLine(r);
         var reason = dashShortText(getSignalReason(r) || r.status_reason || r.grade_reason || r.notes, 96);
         var rank = p.rank || (idx + 1);
         var tickerJs = dashJsString(r.ticker);
@@ -6838,7 +6854,7 @@ function renderDashboardTop5(picks) {
         html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
         var planWarn = getPlanWarningLine(r);
         if (planWarn) html += '<div class="mt-1 text-[10px] text-amber-300">' + escapeHtml(planWarn) + '</div>';
-        if (verdictLine) html += '<div class="mt-1 text-[11px] text-blue-200 truncate">Action: ' + escapeHtml(verdictLine.replace(/^Area entry/i, 'Area Entry').replace(/^Tunggu pullback/i, 'Tunggu Pullback')) + '</div>';
+        if (actionLine) html += '<div class="mt-1 text-[11px] text-blue-200 truncate">' + escapeHtml(actionLine) + '</div>';
         html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p></div></div></article>';
     });
     el.innerHTML = html;
