@@ -1507,6 +1507,8 @@ function stripBase64FromHtml(html) {
 
 // ===== DAILY USAGE LIMIT SYSTEM =====
 function getUsername() { return (localStorage.getItem('autocuan_user') || 'guest').toLowerCase(); }
+function isLoggedInUser() { return getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true'; }
+function getAuthHeaders() { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; }
 function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
@@ -1988,7 +1990,7 @@ function navigateTo(page) {
     if (page === 'dashboard') { loadDashboardTop5Monitor(true); loadTop5History(true); startDashboardMonitorAutoRefresh(); }
     else { stopDashboardMonitorAutoRefresh(); }
     if (page === 'sektor') {
-        var isLoggedIn = getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true';
+        var isLoggedIn = isLoggedInUser();
         var loginGate = document.getElementById('sektorLoginGate');
         var sektorContent = document.getElementById('sektorContent');
         if (loginGate && sektorContent) {
@@ -1998,7 +2000,7 @@ function navigateTo(page) {
     }
     // Portofolio login gate
     if (page === 'portofolio') {
-        var isLoggedIn2 = getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true';
+        var isLoggedIn2 = isLoggedInUser();
         var portLoginGate = document.getElementById('portofolioLoginGate');
         var portContent = document.getElementById('portofolioContent');
         if (portLoginGate && portContent) {
@@ -2008,7 +2010,7 @@ function navigateTo(page) {
     }
     // Screener login gate (same auth check as Sektor Hot)
     if (page === 'screener') {
-        var scrIsLoggedIn = getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true';
+        var scrIsLoggedIn = isLoggedInUser();
         var scrLoginGate = document.getElementById('screenerLoginGate');
         var scrContent = document.getElementById('screenerContent');
         if (scrLoginGate && scrContent) {
@@ -2221,7 +2223,7 @@ async function openNewsFromAnalisis(ticker) {
         resultArea.innerHTML += loadingPanel;
         resultArea.scrollTop = resultArea.scrollHeight;
         try {
-            var resp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=1', { method: 'GET' });
+            var resp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=1', { method: 'GET', headers: getAuthHeaders() });
             var q = await resp.json();
             if (q && q.news && Array.isArray(q.news.items) && q.news.items.length > 0) {
                 newsItems = q.news.items;
@@ -3130,7 +3132,7 @@ async function fetchQuoteContext(ticker, forceFresh) {
 
     _quoteInflight[cacheKey] = (async function() {
     try {
-        var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=0', { method: 'GET' }).catch(function() { return null; });
+        var quoteResp = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&includeNews=0', { method: 'GET', headers: getAuthHeaders() }).catch(function() { return null; });
 
         var lines = ['\n[Auto-Cuan Market Data]'];
         lines.push('Ticker: ' + ticker);
@@ -3330,10 +3332,10 @@ async function fetchQuoteContext(ticker, forceFresh) {
                 lines.push('Target 1: ' + (tp.target_1 || '-'));
                 lines.push('Target 2: ' + (tp.target_2 || '-'));
                 lines.push('R/R: ' + (tp.risk_reward || '-'));
-                if (tp.half_candle_level) lines.push('Half Candle Debt: ' + tp.half_candle_level + ' — ' + (tp.half_candle_label || 'Entry pullback 1/2 candle'));
-                if (tp.half_candle_note) lines.push('Half Candle Note: ' + tp.half_candle_note);
-                if (tp.refinement_notes) lines.push('Refinement: ' + tp.refinement_notes);
-                if (tp.respect_zone_notes) lines.push('Zone Context: ' + tp.respect_zone_notes);
+                if (isLoggedInUser() && tp.half_candle_level) lines.push('Half Candle Debt: ' + tp.half_candle_level + ' — ' + (tp.half_candle_label || 'Entry pullback 1/2 candle'));
+                if (isLoggedInUser() && tp.half_candle_note) lines.push('Half Candle Note: ' + tp.half_candle_note);
+                if (isLoggedInUser() && tp.refinement_notes) lines.push('Refinement: ' + tp.refinement_notes);
+                if (isLoggedInUser() && tp.respect_zone_notes) lines.push('Zone Context: ' + tp.respect_zone_notes);
             }
             if (q.bsjpLabel) {
                 lines.push('');
@@ -5413,9 +5415,9 @@ function openScrDetail(r, type) {
     // Technical context (candle, gap, zone, refinement)
     if (r.candle_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Candle:</span> ' + escapeHtml(r.candle_note) + '</div>';
     if (r.gap_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Gap:</span> ' + escapeHtml(r.gap_note) + '</div>';
-    if (r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
-    if (r.half_candle_level) html += '<div style="font-size:10px;color:#fbbf24;margin-bottom:4px"><span style="color:#6b7280">1/2 Candle:</span> ' + escapeHtml((r.half_candle_label || 'Entry pullback 1/2 candle') + ' @ ' + r.half_candle_level) + '</div>';
-    if (r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:4px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
+    if (isLoggedInUser() && r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
+    if (isLoggedInUser() && r.half_candle_level) html += '<div style="font-size:10px;color:#fbbf24;margin-bottom:4px"><span style="color:#6b7280">1/2 Candle:</span> ' + escapeHtml((r.half_candle_label || 'Entry pullback 1/2 candle') + ' @ ' + r.half_candle_level) + '</div>';
+    if (isLoggedInUser() && r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:4px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
     // BSJP + Timing + Direction
     if (r.bsjp_label) html += '<div style="font-size:11px;color:#fbbf24;margin-bottom:8px;padding:6px 10px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-weight:500">' + escapeHtml(r.bsjp_label) + '</div>';
     if (r.entry_timing || r.time_plan) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.entry_timing || r.time_plan) + '</div>';
@@ -6650,7 +6652,7 @@ async function refreshPortfolioPrices() {
 
     // Fetch prices in parallel (max 10 concurrent)
     var fetches = uniqueTickers.map(function(ticker) {
-        return fetch('/api/quote?ticker=' + encodeURIComponent(ticker))
+        return fetch('/api/quote?ticker=' + encodeURIComponent(ticker), { headers: getAuthHeaders() })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data && data.success && data.last) {
@@ -7032,7 +7034,7 @@ function stopDashboardMonitorAutoRefresh() {
 var _ihsgRefreshTimer = null;
 
 function refreshIHSGCard() {
-    fetch('/api/quote?ticker=IHSG')
+    fetch('/api/quote?ticker=IHSG', { headers: getAuthHeaders() })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var lastEl = document.getElementById('ihsgLast');
@@ -7998,7 +8000,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker) {
     try {
         var fibTicker = ticker || chartId.replace('ychart_', '').replace(/^\d+$/, '');
         if (fibTicker) {
-        var fibResp = await fetch('/api/quote?ticker=' + encodeURIComponent(fibTicker)).then(function(r) { return r.json(); }).catch(function() { return null; });
+        var fibResp = await fetch('/api/quote?ticker=' + encodeURIComponent(fibTicker), { headers: getAuthHeaders() }).then(function(r) { return r.json(); }).catch(function() { return null; });
         fibQuote = (fibResp && fibResp.fibonacci) ? fibResp.fibonacci : null;
         if (fibQuote && fibQuote.levels && candles.length >= 10) {
             // Use createPriceLine on candlestick series for reliable horizontal Fib lines

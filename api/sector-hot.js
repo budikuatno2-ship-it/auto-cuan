@@ -2335,7 +2335,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var kongloWithLabels = (kongloRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; return enrichSignalQuality(r, 'Swing Konglo'); });
   var _swingPri = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
   kongloWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
-  result.konglo = { meta: kongloMeta || null, results: kongloWithLabels };
+  result.konglo = { meta: kongloMeta || null, results: redactAdvancedScreenerRows(kongloWithLabels) };
 
   // Non-Konglo Screener latest
   var { data: nkMeta } = await supabase.from('swing_screener_non_konglo_meta').select('*').eq('id', 'latest').maybeSingle();
@@ -2345,14 +2345,14 @@ async function handlePublicScreenerShare(req, res, supabase) {
   nkWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
   nkWithLabels.forEach(function(r, idx) { r.rank = idx + 1; });
   nkWithLabels = await enrichNonKongloHalfCandleDebt(nkWithLabels);
-  result.non_konglo = { meta: nkMeta || null, results: nkWithLabels };
+  result.non_konglo = { meta: nkMeta || null, results: redactAdvancedScreenerRows(nkWithLabels) };
 
   // Day Trade Screener latest
   var { data: dtMeta } = await supabase.from('daytrade_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: dtRows } = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(50);
   // Derive labels for public share results
   var dtWithLabels = (dtRows || []).map(function(r) { var lbl = deriveDayTradeLabels(r); r.entry_timing = lbl.entry_timing; r.direction = lbl.direction; return enrichSignalQuality(r, 'Day Trade'); });
-  result.daytrade = { meta: dtMeta || null, results: dtWithLabels };
+  result.daytrade = { meta: dtMeta || null, results: redactAdvancedScreenerRows(dtWithLabels) };
 
   return res.status(200).json(result);
 }
@@ -3448,6 +3448,27 @@ function signalForeignSummaryFromRows(rows) {
     foreign_label: getForeignTrendLabel(n3, n7),
     foreign_notes: rows.length >= 7 ? 'Foreign 1D/3D/7D dari foreign_watchlist_daily.' : ('Foreign data belum lengkap (' + rows.length + '/7 hari).')
   };
+}
+
+
+function redactAdvancedScreenerFields(row) {
+  var r = Object.assign({}, row || {});
+  delete r.half_candle_level;
+  delete r.half_candle_label;
+  delete r.half_candle_note;
+  delete r.half_candle_chase_risk;
+  delete r.half_candle_distance_pct;
+  delete r.respect_zone_notes;
+  delete r.refinement_notes;
+  var advancedTiming = /half-candle|1\/2 candle|reclaim 1\/2|failed respect|long candle/i;
+  if (r.entry_timing && advancedTiming.test(String(r.entry_timing))) r.entry_timing = 'Tunggu konfirmasi entry';
+  if (r.direction && /long candle|respect candle|half-candle|1\/2 candle/i.test(String(r.direction))) r.direction = 'Pantau setup';
+  if (r.notes && /half-candle|1\/2 candle|respect zone|failed respect/i.test(String(r.notes))) r.notes = String(r.notes).replace(/\s*\|?\s*(Entry pullback 1\/2 candle|Pullback-to-midpoint candle|Chase candle \/ extended candle|Failed respect candle)[^|;.]*/gi, '').trim();
+  return r;
+}
+
+function redactAdvancedScreenerRows(rows) {
+  return (rows || []).map(redactAdvancedScreenerFields);
 }
 
 async function buildSignalMessage(supabase, ticker) {
