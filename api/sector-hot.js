@@ -78,6 +78,14 @@ module.exports = async function handler(req, res) {
       return await handleWebDailyPicks(req, res, supabase);
     }
 
+    if (action === 'web-top5-history') {
+      return await handleWebTop5History(req, res, supabase);
+    }
+
+    if (action === 'web-top5-history-archive') {
+      return await handleWebTop5HistoryArchive(req, res, supabase);
+    }
+
     // === SCREENER READ MODE (login-gated) ===
     if (action === 'screener') {
       return await handleScreenerRead(req, res, supabase);
@@ -4224,6 +4232,107 @@ async function handleWebDailyPicks(req, res, supabase) {
   } catch (e) {
     return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
   }
+}
+
+
+function buildWebTop5HistoryRow(row, rank, px, ev) {
+  var raw = row.raw_payload || {};
+  var current = px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null);
+  var normalized = {
+    id: row.id || null,
+    date: row.date || null,
+    ticker: row.ticker || raw.ticker || null,
+    category: row.category || raw.category || raw.source || '-',
+    entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_low)),
+    entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_high)),
+    sl: toNum(row.sl != null ? row.sl : (raw.sl != null ? raw.sl : raw.stop_loss)),
+    tp1: toNum(row.tp1 != null ? row.tp1 : (raw.tp1 != null ? raw.tp1 : raw.tp1n)),
+    tp2: toNum(row.tp2 != null ? row.tp2 : (raw.tp2 != null ? raw.tp2 : raw.tp2n)),
+    status: row.status || 'WAITING',
+    first_sent_at: row.first_sent_at || null,
+    last_checked_at: row.last_checked_at || null,
+    raw_payload: raw
+  };
+  var statusEval = ev || evaluateMonitorStatus(normalized, px);
+  var pl = getMonitorPlDisplay(normalized, px, statusEval);
+  var hasPrice = !!(px && px.last != null);
+  var statusLabel = hasPrice ? statusEval.label : 'Data harga terbatas';
+  if (statusLabel === 'Entry tersentuh' || statusLabel === 'Masuk area entry') statusLabel = 'Aktif / Entry tersentuh';
+  var high = px && px.high != null ? toNum(px.high) : current;
+  var low = px && px.low != null ? toNum(px.low) : current;
+  var entryTouched = !!(pl.entry1_touched || pl.entry2_touched || String(statusEval.status || '').toUpperCase() === 'ACTIVE');
+  return {
+    id: normalized.id,
+    rank: rank,
+    date: normalized.date,
+    ticker: normalized.ticker,
+    category: normalized.category,
+    entry1: normalized.entry1,
+    entry2: normalized.entry2,
+    sl: normalized.sl,
+    tp1: normalized.tp1,
+    tp2: normalized.tp2,
+    current_price: current,
+    last_price: current,
+    status: hasPrice ? statusEval.status : 'PRICE_LIMITED',
+    status_label: statusLabel,
+    status_note: hasPrice ? statusEval.note : 'Data harga terbaru belum tersedia',
+    first_sent_at: normalized.first_sent_at,
+    last_checked_at: row.last_checked_at || (px && px.at) || null,
+    raw_payload: raw,
+    signal_action_label: raw.signal_action_label || null,
+    signal_verdict: raw.signal_verdict || raw.verdict || raw.telegram_verdict || null,
+    risk_label_v2: raw.risk_label_v2 || null,
+    plan_quality_label: raw.plan_quality_label || raw.plan_quality_status || null,
+    active_entry_price: pl.active_entry_price,
+    active_entry_label: pl.active_entry_label,
+    return_from_entry_pct: pl.return_from_entry_pct,
+    distance_to_entry1_pct: pl.distance_to_entry1_pct,
+    tp1_hit: !!(entryTouched && normalized.tp1 != null && high != null && high >= normalized.tp1),
+    tp2_hit: !!(entryTouched && normalized.tp2 != null && high != null && high >= normalized.tp2),
+    sl_hit: !!(entryTouched && normalized.sl != null && low != null && low <= normalized.sl),
+    entry1_touched: !!pl.entry1_touched,
+    entry2_touched: !!pl.entry2_touched,
+    detail: raw
+  };
+}
+
+async function handleWebTop5History(req, res, supabase) {
+  try {
+    var limit = parseInt(req.query.limit || '100', 10);
+    if (!isFinite(limit) || limit <= 0) limit = 100;
+    if (limit > 300) limit = 300;
+    var showArchived = String(req.query.show_archived || '') === '1';
+    var q = await supabase.from('telegram_daily_picks').select('*').order('date', { ascending: false }).order('id', { ascending: true }).limit(limit);
+    if (q.error) throw new Error(q.error.message);
+    var rows = (q.data || []).filter(function(r) { return showArchived || !((r.raw_payload || {}).history_archived_at); });
+    var history = [];
+    for (var i = 0; i < rows.length; i++) {
+      var px = await fetchLatestPriceForMonitor(supabase, rows[i].ticker);
+      var ev = evaluateMonitorStatus(rows[i], px);
+      history.push(buildWebTop5HistoryRow(rows[i], i + 1, px, ev));
+    }
+    return res.status(200).json({ success: true, rows: history, history: history, count: history.length, limit: limit, show_archived: showArchived, data_source: 'telegram_daily_picks.raw_payload' });
+  } catch (e) {
+    return res.status(200).json({ success: false, rows: [], history: [], count: 0, error: e.message || String(e) });
+  }
+}
+
+async function handleWebTop5HistoryArchive(req, res, supabase) {
+  var CRON_SECRET = process.env.CRON_SECRET;
+  var authHeader = req.headers.authorization || '';
+  var providedSecret = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!CRON_SECRET || providedSecret !== CRON_SECRET) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  var id = parseInt((req.body && req.body.id) || req.query.id || '', 10);
+  if (!isFinite(id) || id <= 0) return res.status(200).json({ success: false, error: 'id wajib diisi.' });
+  var existing = await supabase.from('telegram_daily_picks').select('id,raw_payload').eq('id', id).maybeSingle();
+  if (existing.error) return res.status(200).json({ success: false, error: existing.error.message });
+  if (!existing.data) return res.status(404).json({ success: false, error: 'Row tidak ditemukan.' });
+  var archivedAt = new Date().toISOString();
+  var raw = Object.assign({}, existing.data.raw_payload || {}, { history_archived_at: archivedAt, history_archived_by: 'web-admin' });
+  var upd = await supabase.from('telegram_daily_picks').update({ raw_payload: raw }).eq('id', id);
+  if (upd.error) return res.status(200).json({ success: false, error: upd.error.message });
+  return res.status(200).json({ success: true, id: id, archived_at: archivedAt });
 }
 
 function buildMonitorProgressLabel(pick, px) {
