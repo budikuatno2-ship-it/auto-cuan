@@ -73,6 +73,11 @@ module.exports = async function handler(req, res) {
       return await handleTelegramMonitorPicks(req, res, supabase);
     }
 
+    // === WEB DASHBOARD TOP 5 / MONITOR (read-only, uses existing daily picks data) ===
+    if (action === 'web-daily-picks') {
+      return await handleWebDailyPicks(req, res, supabase);
+    }
+
     // === SCREENER READ MODE (login-gated) ===
     if (action === 'screener') {
       return await handleScreenerRead(req, res, supabase);
@@ -3692,6 +3697,60 @@ function evaluateMonitorStatus(pick, px) {
   if (active && px.high != null && pick.tp1 != null && px.high >= pick.tp1) return { status: 'TP1_HIT', isFinal: true, note: 'TP1 tersentuh' };
   if (active) return { status: 'ACTIVE', isFinal: false, note: 'Entry 1 sudah tersentuh' };
   return { status: 'WAITING', isFinal: false, note: 'Belum masuk entry' };
+}
+
+
+async function handleWebDailyPicks(req, res, supabase) {
+  try {
+    var date = getJakartaDateString();
+    var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
+    if (q.error) throw new Error(q.error.message);
+    var rows = q.data || [];
+    var out = [];
+    var lastAt = null;
+    for (var i = 0; i < rows.length; i++) {
+      var p = rows[i];
+      var raw = p.raw_payload || {};
+      var px = await fetchLatestPriceForMonitor(supabase, p.ticker);
+      var ev = evaluateMonitorStatus(p, px);
+      if (px && px.at && (!lastAt || String(px.at) > String(lastAt))) lastAt = px.at;
+      out.push({
+        id: p.id,
+        rank: i + 1,
+        date: p.date,
+        ticker: p.ticker,
+        category: p.category || raw.category || '-',
+        source: p.category || raw.category || '-',
+        current_price: px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price) || null),
+        entry1: toNum(p.entry1),
+        entry2: toNum(p.entry2),
+        sl: toNum(p.sl),
+        tp1: toNum(p.tp1),
+        tp2: toNum(p.tp2),
+        status: ev.status,
+        status_note: ev.note,
+        last_updated_at: p.last_checked_at || px.at || p.first_sent_at || null,
+        progress: buildMonitorProgressLabel(p, px),
+        raw_payload: raw
+      });
+      if (p.last_checked_at && (!lastAt || String(p.last_checked_at) > String(lastAt))) lastAt = p.last_checked_at;
+    }
+    return res.status(200).json({ success: true, date: date, update_note: 'Update berkala tiap 1 jam', last_updated_at: lastAt, picks: out });
+  } catch (e) {
+    return res.status(200).json({ success: false, date: getJakartaDateString(), update_note: 'Update berkala tiap 1 jam', last_updated_at: null, picks: [], error: e.message || String(e) });
+  }
+}
+
+function buildMonitorProgressLabel(pick, px) {
+  if (!px || px.last == null) return '-';
+  var last = toNum(px.last);
+  var entry = toNum(pick.entry1);
+  var tp1 = toNum(pick.tp1);
+  var sl = toNum(pick.sl);
+  if (!(last > 0) || !(entry > 0)) return '-';
+  if (tp1 > entry && last >= entry) return Math.max(0, Math.min(100, ((last - entry) / (tp1 - entry)) * 100)).toFixed(0) + '% ke TP1';
+  if (entry > sl && last < entry) return Math.max(0, Math.min(100, ((entry - last) / (entry - sl)) * 100)).toFixed(0) + '% ke SL';
+  return 'Menunggu entry';
 }
 
 async function handleTelegramMonitorPicks(req, res, supabase) {
