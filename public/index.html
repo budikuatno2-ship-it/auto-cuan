@@ -5225,6 +5225,8 @@ function renderDtCardGrid(results) {
         var _badgeLine = [_grBadge, _rlBadge, _vpBadge, _mtfBadge].filter(function(b){return b;}).join(' · ');
         if (_badgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _badgeLine + '</div>';
         if (r.entry_status_label) html += '<div style="font-size:10px;margin-bottom:8px;color:#d1d5db"><span style="color:#94a3b8">Status Entry:</span> ' + escapeHtml(r.entry_status_label) + '</div>';
+        var _planWarn = getPlanWarningLine(r);
+        if (_planWarn) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Plan:</span> ' + escapeHtml(_planWarn.replace(/^Plan:\\s*/, '')) + '</div>';
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
@@ -5325,6 +5327,15 @@ function openScrDetail(r, type) {
     if (r.entry_status_label) {
       var _ed = r.entry_distance_pct != null ? (Number(r.entry_distance_pct).toFixed(2) + '%') : '-';
       html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45;margin-bottom:10px;padding:7px 10px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.14);border-radius:8px"><span style="color:#6ee7b7;font-weight:600">Entry Status:</span> ' + escapeHtml(r.entry_status_label) + '<br><span style="color:#94a3b8">Entry distance %:</span> ' + escapeHtml(_ed) + '<br><span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.entry_status_note || '-') + '</div>';
+    }
+    if (r.plan_quality_label || r.sl_quality_label || r.tp_quality_label || r.rr_quality_label) {
+      html += '<div style="font-size:10px;color:#d1d5db;line-height:1.55;margin-bottom:10px;padding:7px 10px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.16);border-radius:8px">';
+      html += '<span style="color:#fbbf24;font-weight:600">Plan Quality:</span> ' + escapeHtml(r.plan_quality_label || '-') + '<br>';
+      html += '<span style="color:#94a3b8">SL Quality:</span> ' + escapeHtml(r.sl_quality_label || '-') + '<br>';
+      html += '<span style="color:#94a3b8">TP Quality:</span> ' + escapeHtml(r.tp_quality_label || '-') + '<br>';
+      html += '<span style="color:#94a3b8">RR Quality:</span> ' + escapeHtml(r.rr_quality_label || '-') + '<br>';
+      html += '<span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.plan_quality_note || '-');
+      html += '</div>';
     }
     // Setup meaning
     if (_setupMeaning) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:10px;padding:6px 10px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:8px"><span style="color:#818cf8;font-weight:500">Arti:</span> ' + escapeHtml(_setupMeaning) + '</div>';
@@ -6770,7 +6781,21 @@ function normalizeDashboardPick(p) {
     r.tp1 = p.tp1 || raw.tp1n || raw.tp1;
     r.tp2 = p.tp2 || raw.tp2n || raw.tp2;
     r.risk_reward = raw.risk_reward || raw.rr;
+    r.plan_quality_status = raw.plan_quality_status;
+    r.plan_quality_label = raw.plan_quality_label;
+    r.plan_quality_note = raw.plan_quality_note;
+    r.sl_quality_label = raw.sl_quality_label;
+    r.tp_quality_label = raw.tp_quality_label;
+    r.rr_quality_label = raw.rr_quality_label;
     return r;
+}
+function getPlanWarningLine(r) {
+    if (!r) return '';
+    var parts = [];
+    if (r.rr_quality_label && r.rr_quality_label !== 'RR sehat') parts.push(r.rr_quality_label);
+    if (r.sl_quality_label && r.sl_quality_label !== 'SL wajar') parts.push(r.sl_quality_label);
+    if (r.tp_quality_label && r.tp_quality_label !== 'TP realistis') parts.push(r.tp_quality_label);
+    return parts.length ? ('Plan: ' + parts.join(' / ')) : '';
 }
 function renderDashboardTop5(picks) {
     var el = document.getElementById('dashboardTop5List');
@@ -6797,6 +6822,8 @@ function renderDashboardTop5(picks) {
         html += '<div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-xs text-gray-300">' + dashFmtPrice(r.last_price) + '</span><span class="text-[11px] text-gray-400">Score <b class="text-emerald-400">' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
         html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span><span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span><span>RR <b class="text-purple-300">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '—') + '</b></span><span class="text-blue-300">' + escapeHtml(action) + '</span></div>';
         html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
+        var planWarn = getPlanWarningLine(r);
+        if (planWarn) html += '<div class="mt-1 text-[10px] text-amber-300">' + escapeHtml(planWarn) + '</div>';
         html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p></div></div></article>';
     });
     el.innerHTML = html;
