@@ -9,34 +9,6 @@
     {
       "path": "/api/sector-hot?action=telegram-daily-picks",
       "schedule": "0 1 * * 1-5"
-    },
-    {
-      "path": "/api/sector-hot?action=telegram-monitor-picks",
-      "schedule": "30 2-4 * * 1-4"
-    },
-    {
-      "path": "/api/sector-hot?action=telegram-monitor-picks",
-      "schedule": "0 3-5 * * 1-4"
-    },
-    {
-      "path": "/api/sector-hot?action=telegram-monitor-picks",
-      "schedule": "30 6-8 * * 1-4"
-    },
-    {
-      "path": "/api/sector-hot?action=telegram-monitor-picks",
-      "schedule": "0 7-9 * * 1-4"
-    },
-    {
-      "path": "/api/sector-hot?action=telegram-monitor-picks",
-      "schedule": "30 2-4 * * 5"
-    },
-    {
-      "path": "/api/sector-hot?action=telegram-monitor-picks",
-      "schedule": "0 3-4,7-9 * * 5"
-    },
-    {
-      "path": "/api/sector-hot?action=telegram-monitor-picks",
-      "schedule": "30 7-8 * * 5"
     }
   ]
 }
