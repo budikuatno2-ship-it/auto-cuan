@@ -3700,44 +3700,105 @@ function evaluateMonitorStatus(pick, px) {
 }
 
 
+function webPickScore(raw) {
+  return toNum(raw.combined_score || raw.telegram_conviction_score || raw.daytrade_score || raw.score || raw.daily_score) || null;
+}
+
+function buildDashboardPickRow(row, rank, px) {
+  var raw = row.raw_payload || {};
+  var current = px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null);
+  var rr = toNum(raw.risk_reward || raw.rr) || null;
+  var reason = raw.top5_reason || raw.alasan_top5 || raw.telegram_pick_reason || raw.pick_reason || raw.reason || raw.grade_reason || raw.status_reason || raw.notes || raw.verdict || raw.telegram_verdict || null;
+  return {
+    id: row.id || null,
+    rank: rank,
+    date: row.date || getJakartaDateString(),
+    ticker: row.ticker || raw.ticker,
+    category: row.category || raw.category || raw.source || '-',
+    source: row.category || raw.category || raw.source || '-',
+    current_price: current,
+    score: webPickScore(raw),
+    grade: raw.confidence || raw.grade || raw.quality_grade || null,
+    confidence: raw.confidence || raw.grade || raw.quality_grade || null,
+    risk: raw.risk_label || raw.risk || null,
+    rr: rr,
+    risk_reward: rr,
+    action: raw.action || raw.verdict || raw.telegram_verdict || raw.status || null,
+    verdict: raw.verdict || raw.telegram_verdict || raw.action || null,
+    entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_low)),
+    entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_high)),
+    sl: toNum(row.sl != null ? row.sl : (raw.sl != null ? raw.sl : raw.stop_loss)),
+    tp1: toNum(row.tp1 != null ? row.tp1 : (raw.tp1 != null ? raw.tp1 : raw.tp1n)),
+    tp2: toNum(row.tp2 != null ? row.tp2 : (raw.tp2 != null ? raw.tp2 : raw.tp2n)),
+    reason: reason,
+    short_reason: reason,
+    alasan_top5: raw.alasan_top5 || raw.top5_reason || reason,
+    top5_reason: raw.top5_reason || raw.alasan_top5 || reason,
+    raw_payload: raw
+  };
+}
+
+function buildFallbackDashboardPickRow(candidate, rank) {
+  var raw = Object.assign({}, candidate || {});
+  if (!raw.top5_reason && !raw.alasan_top5) {
+    var rr = toNum(raw.risk_reward) || 0;
+    var score = webPickScore(raw) || 0;
+    raw.top5_reason = 'Skor screener ' + (score ? score.toFixed(0) : '-') + (rr ? ' · RR ' + rr.toFixed(1) : '') + (raw.category ? ' · ' + raw.category : '');
+  }
+  return buildDashboardPickRow({ date: getJakartaDateString(), ticker: raw.ticker, category: raw.category || raw.source || '-', entry1: raw.entry1 != null ? raw.entry1 : raw.entry_low, entry2: raw.entry2 != null ? raw.entry2 : raw.entry_high, sl: raw.sl != null ? raw.sl : raw.stop_loss, tp1: raw.tp1n != null ? raw.tp1n : raw.tp1, tp2: raw.tp2n != null ? raw.tp2n : raw.tp2, raw_payload: raw }, rank, { last: toNum(raw.lastn || raw.last_price || raw.current_price) || null });
+}
+
+function buildDashboardMonitorRow(row, rank, px, ev) {
+  var raw = row.raw_payload || {};
+  return {
+    id: row.id || null,
+    rank: rank,
+    date: row.date,
+    ticker: row.ticker,
+    category: row.category || raw.category || raw.source || '-',
+    source: row.category || raw.category || raw.source || '-',
+    current_price: px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null),
+    entry1: toNum(row.entry1),
+    entry: toNum(row.entry1),
+    entry2: toNum(row.entry2),
+    sl: toNum(row.sl),
+    tp1: toNum(row.tp1),
+    tp2: toNum(row.tp2),
+    status: ev.status,
+    status_note: ev.note,
+    last_updated_at: row.last_checked_at || (px && px.at) || row.first_sent_at || null,
+    progress: buildMonitorProgressLabel(row, px),
+    raw_payload: raw,
+    detail: raw
+  };
+}
+
 async function handleWebDailyPicks(req, res, supabase) {
   try {
     var date = getJakartaDateString();
     var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
     if (q.error) throw new Error(q.error.message);
     var rows = q.data || [];
-    var out = [];
+    var top5 = [];
+    var monitor = [];
     var lastAt = null;
-    for (var i = 0; i < rows.length; i++) {
-      var p = rows[i];
-      var raw = p.raw_payload || {};
-      var px = await fetchLatestPriceForMonitor(supabase, p.ticker);
-      var ev = evaluateMonitorStatus(p, px);
-      if (px && px.at && (!lastAt || String(px.at) > String(lastAt))) lastAt = px.at;
-      out.push({
-        id: p.id,
-        rank: i + 1,
-        date: p.date,
-        ticker: p.ticker,
-        category: p.category || raw.category || '-',
-        source: p.category || raw.category || '-',
-        current_price: px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price) || null),
-        entry1: toNum(p.entry1),
-        entry2: toNum(p.entry2),
-        sl: toNum(p.sl),
-        tp1: toNum(p.tp1),
-        tp2: toNum(p.tp2),
-        status: ev.status,
-        status_note: ev.note,
-        last_updated_at: p.last_checked_at || px.at || p.first_sent_at || null,
-        progress: buildMonitorProgressLabel(p, px),
-        raw_payload: raw
-      });
-      if (p.last_checked_at && (!lastAt || String(p.last_checked_at) > String(lastAt))) lastAt = p.last_checked_at;
+    if (rows.length > 0) {
+      for (var i = 0; i < rows.length; i++) {
+        var p = rows[i];
+        var px = await fetchLatestPriceForMonitor(supabase, p.ticker);
+        var ev = evaluateMonitorStatus(p, px);
+        if (px && px.at && (!lastAt || String(px.at) > String(lastAt))) lastAt = px.at;
+        if (p.last_checked_at && (!lastAt || String(p.last_checked_at) > String(lastAt))) lastAt = p.last_checked_at;
+        top5.push(buildDashboardPickRow(p, i + 1, px));
+        monitor.push(buildDashboardMonitorRow(p, i + 1, px, ev));
+      }
+    } else {
+      var fallback = await selectDailyTop5(supabase);
+      for (var j = 0; j < fallback.length; j++) top5.push(buildFallbackDashboardPickRow(fallback[j], j + 1));
     }
-    return res.status(200).json({ success: true, date: date, update_note: 'Update berkala tiap 1 jam', last_updated_at: lastAt, picks: out });
+    return res.status(200).json({ success: true, date: date, top5: top5, monitor: monitor, top5_locked: rows.length > 0, update_note: 'Update berkala tiap 1 jam', last_updated_at: lastAt, picks: top5 });
   } catch (e) {
-    return res.status(200).json({ success: false, date: getJakartaDateString(), update_note: 'Update berkala tiap 1 jam', last_updated_at: null, picks: [], error: e.message || String(e) });
+    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Update berkala tiap 1 jam', last_updated_at: null, picks: [], error: e.message || String(e) });
   }
 }
 

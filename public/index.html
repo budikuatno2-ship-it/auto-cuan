@@ -596,7 +596,7 @@
                 <div class="flex items-center justify-between gap-2 mb-2">
                     <div>
                         <h3 class="text-sm font-bold text-white">Top 5 Hari Ini</h3>
-                        <p class="text-[11px] text-gray-500">Ringkas untuk scan cepat. Detail lengkap ada di modal.</p>
+                        <p id="dashboardTop5LockNote" class="text-[11px] text-gray-500">Ringkas untuk scan cepat. Detail lengkap ada di modal.</p>
                     </div>
                     <button onclick="loadDashboardTop5Monitor(true)" class="px-2.5 py-1 rounded-lg text-[11px] text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/10 transition">Refresh</button>
                 </div>
@@ -6762,7 +6762,7 @@ function renderDashboardTop5(picks) {
     if (!el) return;
     _dashboardPickData = {};
     if (!picks || picks.length === 0) {
-        el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Top 5 Hari Ini belum tersedia.</div>';
+        el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Belum ada kandidat Top 5 hari ini.</div>';
         return;
     }
     var html = '';
@@ -6816,12 +6816,16 @@ async function loadDashboardTop5Monitor(silent) {
         var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now());
         var data = await resp.json();
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
-        renderDashboardTop5(data.picks || []);
-        renderDashboardMonitor(data.picks || [], data.last_updated_at);
+        var note = document.getElementById('dashboardTop5LockNote');
+        if (note) note.textContent = data.top5_locked ? 'Top 5 dikunci sejak 08:00 WIB sampai penutupan.' : 'Belum terkunci. Menampilkan kandidat Top 5 sementara dari screener.';
+        renderDashboardTop5(data.top5 || data.picks || []);
+        renderDashboardMonitor(data.monitor || [], data.last_updated_at);
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
-        if (top) top.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Top 5 Hari Ini belum tersedia.</div>';
+        if (top) top.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Belum ada kandidat Top 5 hari ini.</div>';
+        var note = document.getElementById('dashboardTop5LockNote');
+        if (note) note.textContent = 'Belum terkunci. Menampilkan kandidat Top 5 sementara dari screener.';
         if (mon) mon.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada signal aktif yang dipantau.<br><span class="text-[11px] text-gray-600">Update berkala tiap 1 jam.</span></div>';
     }
 }
