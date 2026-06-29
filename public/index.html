@@ -5141,7 +5141,7 @@ function buildManualConfluenceHtml(ticker) {
     return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30">' + buildConfluenceHtml(row, type === 'konglo' || type === 'nonkonglo') + '</div>';
 }
 
-function getActionLabel(r) { if (!r) return ''; return r.signal_action_label ? safeDisplayText(r.signal_action_label, '') : normalizeActionLabel(r.telegram_action_label || r.telegram_verdict || r.final_status || r.status || ''); }
+function getActionLabel(r) { if (!r) return ''; return r.action_label ? safeDisplayText(r.action_label, '') : (r.signal_action_label ? safeDisplayText(r.signal_action_label, '') : normalizeActionLabel(r.telegram_action_label || r.telegram_verdict || r.final_status || r.status || '')); }
 function getSignalQualityGrade(r) { return r ? safeDisplayText(r.quality_grade || r.grade || r.signal_grade || '', '') : ''; }
 function getSignalQualityColor(grade) {
     var g = safeDisplayText(grade, '').toUpperCase();
@@ -5150,7 +5150,7 @@ function getSignalQualityColor(grade) {
     if (g === 'C' || g === 'C+' || g === 'C-') return '#fbbf24';
     return '#fca5a5';
 }
-function getSignalReason(r) { return r ? safeDisplayText(r.signal_reason || r.risk_reason || r.action_reason || r.notes || r.verdict || r.telegram_verdict || '', '') : ''; }
+function getSignalReason(r) { return r ? safeDisplayText(r.action_reason || r.signal_reason || r.risk_reason || r.notes || r.verdict || r.telegram_verdict || '', '') : ''; }
 function getStatusLabel(r, fallbackStatus) { return normalizeActionLabel((r && (r.final_status || r.status)) || fallbackStatus || '') || '-'; }
 
 
@@ -5414,11 +5414,11 @@ function openScrDetail(r, type) {
     }
     if (r.grade_reason) html += '<div style="font-size:9px;color:#6b7280;margin-bottom:10px">' + escapeHtml(r.grade_reason) + '</div>';
     var _signalReason = getSignalReason(r);
-    if (r.signal_action_label || r.signal_verdict || r.signal_reason) {
+    if (r.action_label || r.signal_action_label || r.signal_verdict || r.action_reason || r.signal_reason) {
       html += '<div style="font-size:10px;color:#d1d5db;line-height:1.55;margin-bottom:10px;padding:7px 10px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.18);border-radius:8px">';
-      html += '<span style="color:#93c5fd;font-weight:600">Action:</span> ' + escapeHtml(r.signal_action_label || '-') + '<br>';
+      html += '<span style="color:#93c5fd;font-weight:600">Action:</span> ' + escapeHtml(r.action_label || r.signal_action_label || '-') + '<br>';
       html += '<span style="color:#94a3b8">Verdict:</span> ' + escapeHtml(r.signal_verdict || '-') + '<br>';
-      html += '<span style="color:#94a3b8">Reason:</span> ' + escapeHtml(r.signal_reason || '-') + '<br>';
+      html += '<span style="color:#94a3b8">Reason:</span> ' + escapeHtml(r.action_reason || r.signal_reason || '-') + '<br>';
       html += '<span style="color:#94a3b8">Badges:</span> ' + escapeHtml((r.signal_badges || []).join(' / ') || '-');
       html += '</div>';
     }
@@ -5427,13 +5427,13 @@ function openScrDetail(r, type) {
       var _ed = r.entry_distance_pct != null ? (Number(r.entry_distance_pct).toFixed(2) + '%') : '-';
       html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45;margin-bottom:10px;padding:7px 10px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.14);border-radius:8px"><span style="color:#6ee7b7;font-weight:600">Entry Status:</span> ' + escapeHtml(r.entry_status_label) + '<br><span style="color:#94a3b8">Entry distance %:</span> ' + escapeHtml(_ed) + '<br><span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.entry_status_note || '-') + '</div>';
     }
-    if (r.plan_quality_label || r.sl_quality_label || r.tp_quality_label || r.rr_quality_label) {
+    if (r.plan_label || r.plan_quality_label || r.sl_quality_label || r.tp_quality_label || r.rr_quality_label) {
       html += '<div style="font-size:10px;color:#d1d5db;line-height:1.55;margin-bottom:10px;padding:7px 10px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.16);border-radius:8px">';
-      html += '<span style="color:#fbbf24;font-weight:600">Plan Quality:</span> ' + escapeHtml(r.plan_quality_label || '-') + '<br>';
+      html += '<span style="color:#fbbf24;font-weight:600">Plan:</span> ' + escapeHtml(r.plan_label || r.plan_quality_label || '-') + '<br>';
       html += '<span style="color:#94a3b8">SL Quality:</span> ' + escapeHtml(r.sl_quality_label || '-') + '<br>';
       html += '<span style="color:#94a3b8">TP Quality:</span> ' + escapeHtml(r.tp_quality_label || '-') + '<br>';
       html += '<span style="color:#94a3b8">RR Quality:</span> ' + escapeHtml(r.rr_quality_label || '-') + '<br>';
-      html += '<span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.plan_quality_note || '-');
+      html += '<span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.plan_reason || r.plan_quality_note || '-');
       html += '</div>';
     }
     // Setup meaning
@@ -6915,6 +6915,10 @@ function normalizeDashboardPick(p) {
     r.tp_quality_label = raw.tp_quality_label;
     r.rr_quality_label = raw.rr_quality_label;
     r.signal_action = p.signal_action || raw.signal_action;
+    r.action_label = p.action_label || raw.action_label;
+    r.action_reason = p.action_reason || raw.action_reason;
+    r.plan_label = p.plan_label || raw.plan_label;
+    r.plan_reason = p.plan_reason || raw.plan_reason;
     r.signal_action_label = p.signal_action_label || raw.signal_action_label;
     r.signal_verdict = p.signal_verdict || raw.signal_verdict;
     r.signal_reason = p.signal_reason || raw.signal_reason;
@@ -6923,6 +6927,7 @@ function normalizeDashboardPick(p) {
 }
 function getPlanWarningLine(r) {
     if (!r) return '';
+    if (r.plan_label) return 'Plan: ' + safeDisplayText(r.plan_label, '');
     var parts = [];
     if (r.rr_quality_label && r.rr_quality_label !== 'RR sehat') parts.push(r.rr_quality_label);
     if (r.sl_quality_label && r.sl_quality_label !== 'SL wajar') parts.push(r.sl_quality_label);
@@ -6931,7 +6936,7 @@ function getPlanWarningLine(r) {
 }
 function buildDashboardActionLine(r) {
     if (!r) return '';
-    var actionLabel = safeDisplayText(r.signal_action_label || getActionLabel(r), '');
+    var actionLabel = safeDisplayText(r.action_label || r.signal_action_label || getActionLabel(r), '');
     if (!actionLabel) return '';
     var verdictText = safeDisplayText(r.signal_verdict || '', '');
     var suffix = verdictText;
@@ -7056,14 +7061,14 @@ function renderTop5History(activeRows, tpRows) {
         var pctText = top5HistoryPctLine(p);
         var pctNum = p.active_entry_price != null ? Number(p.return_from_entry_pct) : Number(p.distance_to_entry1_pct);
         var pctClass = pctNum >= 0 ? 'text-emerald-300' : 'text-red-300';
-        var action = p.signal_action_label || p.signal_verdict || getActionLabel(r) || '—';
+        var action = p.action_label || p.signal_action_label || getActionLabel(r) || '—';
         var adminBtn = isAdmin() ? '<button onclick="event.stopPropagation(); archiveTop5History(' + Number(p.id) + ')" class="px-2 py-1 rounded text-[10px] text-red-300 border border-red-500/30 hover:bg-red-500/10">Archive</button>' : '';
         var entryUsed = p.entry_used_label || p.active_entry_label || 'Belum kena Entry 1';
         html += '<article class="rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 hover:border-emerald-500/30 transition">';
         html += '<div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2"><div role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')" onkeydown="dashOpenKey(event, \'' + historyKeyJs + '\')" class="min-w-0 flex-1 cursor-pointer">';
         html += '<div class="flex flex-wrap items-center gap-2"><span class="text-[11px] text-gray-500">' + escapeHtml(p.date || '-') + '</span><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(p.category || r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(p.status_label || '-') + '</span></div>';
         html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-6 gap-1 text-[10px]"><span class="text-blue-300">' + escapeHtml(entryUsed) + ' ' + dashFmtPrice(p.active_entry_price) + '</span><span class="text-blue-300">E1 ' + dashFmtPrice(p.entry1) + '</span><span class="text-red-300">SL ' + dashFmtPrice(p.sl) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(p.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(p.tp2) + '</span><span class="text-gray-300">Last ' + dashFmtPrice(p.last_price || p.current_price) + '</span></div>';
-        html += '<div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400"><span class="' + pctClass + '">' + escapeHtml(pctText) + '</span><span>Action <b class="text-blue-300">' + escapeHtml(action) + '</b></span><span>Risk <b class="text-amber-300">' + escapeHtml(p.risk_label_v2 || '—') + '</b></span><span>Plan <b class="text-purple-300">' + escapeHtml(p.plan_quality_label || '—') + '</b></span></div>';
+        html += '<div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400"><span class="' + pctClass + '">' + escapeHtml(pctText) + '</span><span>Action <b class="text-blue-300">' + escapeHtml(action) + '</b></span><span>Risk <b class="text-amber-300">' + escapeHtml(p.risk_label_v2 || '—') + '</b></span><span>Plan <b class="text-purple-300">' + escapeHtml(p.plan_label || p.plan_quality_label || '—') + '</b></span></div>';
         html += '</div><div class="flex gap-1"><button onclick="openDashboardPickDetail(\'' + historyKeyJs + '\')" class="px-2 py-1 rounded text-[10px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10">Detail</button>' + adminBtn + '</div></div></article>';
     });
     el.innerHTML = html;
