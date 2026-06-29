@@ -19,9 +19,30 @@ var BOARD_CACHE_TTL = 12 * 60 * 60 * 1000;
 var NEWS_CACHE_TTL_DAYS = 30;
 var NEWS_PERIOD = '6m';
 
+function hasLoggedInHeaders(req) {
+  var username = String((req.headers && req.headers['x-username']) || '').trim().toLowerCase();
+  var userId = String((req.headers && req.headers['x-user-id']) || '').trim();
+  return !!((username && username !== 'guest') || (userId && userId.length > 10));
+}
+
+function redactAdvancedQuoteFields(result) {
+  if (!result) return result;
+  if (result.respectZone) delete result.respectZone;
+  if (result.tradingPlan) {
+    delete result.tradingPlan.half_candle_level;
+    delete result.tradingPlan.half_candle_label;
+    delete result.tradingPlan.half_candle_note;
+    delete result.tradingPlan.half_candle_chase_risk;
+    delete result.tradingPlan.refinement_notes;
+    delete result.tradingPlan.respect_zone_notes;
+  }
+  return result;
+}
+
 module.exports = async function handler(req, res) {
   var ticker = null;
   try {
+    var allowAdvancedEntryAnalysis = hasLoggedInHeaders(req);
     var includeNews = false;
 
     if (req.method === 'GET') {
@@ -55,7 +76,7 @@ module.exports = async function handler(req, res) {
       isIndex ? Promise.resolve(makeIndexBoard(ticker)) : fetchBoardData(ticker)
     ]);
 
-    var quoteResult = baseResults[0];
+    var quoteResult = baseResults[0] ? JSON.parse(JSON.stringify(baseResults[0])) : baseResults[0];
     var boardResult = baseResults[1];
 
     // Attach board to quote result
@@ -111,7 +132,11 @@ module.exports = async function handler(req, res) {
             target_2: Math.max(refined.tp1, refined.tp2 || refined.tp1),
             risk_reward: refined.risk_reward,
             refinement_notes: refined.refinement_notes || null,
-            respect_zone_notes: refined.respect_zone_notes || null
+            respect_zone_notes: refined.respect_zone_notes || null,
+            half_candle_level: refined.half_candle_level || null,
+            half_candle_label: refined.half_candle_label || null,
+            half_candle_note: refined.half_candle_note || null,
+            half_candle_chase_risk: refined.half_candle_chase_risk || false
           };
         }
       }
@@ -169,6 +194,7 @@ module.exports = async function handler(req, res) {
       quoteResult.riskLabel = _riskLbl;
     }
 
+    if (!allowAdvancedEntryAnalysis) redactAdvancedQuoteFields(quoteResult);
     return res.status(200).json(quoteResult);
 
   } catch (err) {
