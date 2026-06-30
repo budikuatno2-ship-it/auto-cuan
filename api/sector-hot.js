@@ -4504,7 +4504,7 @@ function sendDashboardScreenerGate(res, extra) {
 
 async function handleWebDailyPicks(req, res, supabase) {
   if (!isDashboardScreenerLoggedIn(req)) {
-    return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_locked: false, last_updated_at: null, monitor_last_updated_at: null });
+    return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_source: 'provisional_candidates', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: true, update_note: 'Login diperlukan; Top 5 Radar web dapat muncul sebelum jadwal Telegram untuk user yang sudah login.', last_updated_at: null, monitor_last_updated_at: null });
   }
   try {
     var date = getJakartaDateString();
@@ -4512,10 +4512,8 @@ async function handleWebDailyPicks(req, res, supabase) {
     if (q.error) throw new Error(q.error.message);
     var rows = q.data || [];
     var locked = rows.length > 0;
-    if (!locked && isJakartaAtOrAfter(8, 0)) {
-      rows = await lockWebDailyPicksIfDue(supabase, date);
-      locked = rows.length > 0;
-    }
+    var top5Source = locked ? 'locked_rows' : 'provisional_candidates';
+    var webProvisional = !locked;
     var top5 = [];
     var monitor = [];
     var lastAt = null;
@@ -4543,9 +4541,26 @@ async function handleWebDailyPicks(req, res, supabase) {
     else if (dailyLockFallbackAt) { lastAt = dailyLockFallbackAt; monitorSourceLabel = 'daily lock fallback'; }
     var monitorStale = isMonitorTimestampStale(lastAt, monitorSourceLabel);
     var staleNote = monitorStale ? 'Data monitor belum update terbaru.' : null;
-    return res.status(200).json({ success: true, date: date, top5: top5, monitor: monitor, top5_locked: locked, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: lastAt, monitor_last_updated_at: lastAt, monitor_source_label: monitorSourceLabel, monitor_is_stale: monitorStale, monitor_stale_note: staleNote, picks: top5 });
+    return res.status(200).json({
+      success: true,
+      date: date,
+      top5: top5,
+      monitor: monitor,
+      top5_source: top5Source,
+      top5_locked: locked,
+      telegram_scheduled_only: true,
+      telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.',
+      web_provisional: webProvisional,
+      update_note: locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.',
+      last_updated_at: lastAt,
+      monitor_last_updated_at: lastAt,
+      monitor_source_label: monitorSourceLabel,
+      monitor_is_stale: monitorStale,
+      monitor_stale_note: staleNote,
+      picks: top5
+    });
   } catch (e) {
-    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_locked: false, update_note: 'Monitor update tiap 30 menit saat jam bursa.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
+    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_source: 'provisional_candidates', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: true, update_note: 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
   }
 }
 
