@@ -1523,6 +1523,7 @@ function stripBase64FromHtml(html) {
 function getUsername() { return (localStorage.getItem('autocuan_user') || 'guest').toLowerCase(); }
 function isLoggedInUser() { return getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true'; }
 function getAuthHeaders() { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; }
+function getDashboardAuthHeaders() { return { 'X-Username': localStorage.getItem('autocuan_user') || '', 'X-User-Id': localStorage.getItem('autocuan_user_id') || '' }; }
 function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
@@ -1975,11 +1976,11 @@ function showDashboard() {
     // Admin panel
     if (isAdm && !isReview) { document.getElementById('adminPanel').classList.remove('hidden'); } else { document.getElementById('adminPanel').classList.add('hidden'); }
     updateUsageCounter();
-    loadChatHistory();
+    setTimeout(function() { loadChatHistory(); }, 0);
     // Update dashboard greeting
     updateDashGreeting();
     loadDashboardTop5Monitor(true);
-    loadTop5History(true);
+    setTimeout(function() { loadTop5History(true); }, 700);
     startDashboardMonitorAutoRefresh();
 }
 
@@ -2001,7 +2002,7 @@ function navigateTo(page) {
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
     // Sektor Hot login gate
-    if (page === 'dashboard') { loadDashboardTop5Monitor(true); loadTop5History(true); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
+    if (page === 'dashboard') { loadDashboardTop5Monitor(true); setTimeout(function() { loadTop5History(true); }, 700); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
     else { stopDashboardMonitorAutoRefresh(); }
     if (page === 'sektor') {
         var isLoggedIn = isLoggedInUser();
@@ -5144,12 +5145,44 @@ function findManualConfluenceRow(ticker) {
     return null;
 }
 function buildManualConfluenceHtml(ticker) {
+    var t = String(ticker || '').toUpperCase().replace(/\.JK$/, '');
     var row = findManualConfluenceRow(ticker);
     if (!row) {
-        return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30 text-xs text-gray-400">Data belum cukup untuk konfirmasi foreign/pattern.</div>';
+        var id = 'manualConfluenceLookup-' + t;
+        setTimeout(function() { fetchManualConfluenceRow(t, id); }, 0);
+        return '<div id="' + id + '" class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30 text-xs text-gray-400">Data confluence belum dimuat dari screener. Mencoba mengambil data…</div>';
     }
     var type = row.group_code ? 'konglo' : (row.board ? 'nonkonglo' : 'daytrade');
     return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30">' + buildConfluenceHtml(row, type === 'konglo' || type === 'nonkonglo') + '</div>';
+}
+
+
+async function fetchManualConfluenceRow(ticker, targetId) {
+    var t = String(ticker || '').toUpperCase().replace(/\.JK$/, '');
+    var sources = [
+        { url: '/api/sector-hot?action=screener', cache: '_kgCardData', includeForeign: true, keys: ['results', 'rows', 'data'] },
+        { url: '/api/sector-hot?action=nk-screener-results', cache: '_nkCardData', includeForeign: true, keys: ['results', 'rows', 'data'] },
+        { url: '/api/sector-hot?action=daytrade-screener', cache: '_dtCardData', includeForeign: false, keys: ['results', 'rows', 'data'] }
+    ];
+    for (var i = 0; i < sources.length; i++) {
+        try {
+            var resp = await fetch(sources[i].url + '&t=' + Date.now(), { headers: getAuthHeaders() });
+            if (resp.status === 403) continue;
+            var data = await resp.json();
+            if (!data || data.success === false) continue;
+            var rows = [];
+            for (var k = 0; k < sources[i].keys.length; k++) if (Array.isArray(data[sources[i].keys[k]])) rows = rows.concat(data[sources[i].keys[k]]);
+            var row = rows.find(function(r) { return String((r && r.ticker) || '').toUpperCase().replace(/\.JK$/, '') === t; });
+            if (!row) continue;
+            window[sources[i].cache] = window[sources[i].cache] || {};
+            window[sources[i].cache][t] = row;
+            var el = document.getElementById(targetId);
+            if (el) el.innerHTML = buildConfluenceHtml(row, sources[i].includeForeign);
+            return;
+        } catch(e) {}
+    }
+    var fallbackEl = document.getElementById(targetId);
+    if (fallbackEl) fallbackEl.textContent = 'Belum ada row screener untuk ticker ini atau akses screener belum valid untuk session ini.';
 }
 
 function getActionLabel(r) { if (!r) return ''; return r.action_label ? safeDisplayText(r.action_label, '') : (r.signal_action_label ? safeDisplayText(r.signal_action_label, '') : normalizeActionLabel(r.telegram_action_label || r.telegram_verdict || r.final_status || r.status || '')); }
@@ -6906,8 +6939,12 @@ function formatNumber(n) {
 // ===== DASHBOARD TOP 5 + HOURLY MONITOR =====
 var _dashboardPickData = {};
 var _dashboardMonitorRefreshTimer = null;
+var _dashboardTop5Cache = { at: 0, data: null };
+var _top5HistoryCache = { at: 0, data: null };
+var _dashboardTop5InFlight = null;
+var _top5HistoryInFlight = null;
 function getDashboardLoginCtaHtml() {
-    return '<div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-4 text-center text-xs text-gray-300">Login untuk melihat Top 5 screener dan Auto Monitor.<br><button onclick="logout()" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-500 text-dark-900 font-semibold text-[11px] hover:bg-emerald-400 transition">Login</button></div>';
+    return '<div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-4 text-center text-xs text-gray-300">Login untuk melihat Top 5 screener dan Auto Monitor.<br><button onclick="openLoginModal()" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-500 text-dark-900 font-semibold text-[11px] hover:bg-emerald-400 transition">Login</button></div>';
 }
 function renderDashboardGuestGate() {
     var top = document.getElementById('dashboardTop5List');
@@ -7206,15 +7243,21 @@ function renderTop5History(activeRows, tpRows) {
 async function loadTop5History(silent) {
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     var el = document.getElementById('top5HistoryList');
+    if (_top5HistoryCache.data && Date.now() - _top5HistoryCache.at < 180000) { renderTop5History(_top5HistoryCache.data.active_history || _top5HistoryCache.data.rows || _top5HistoryCache.data.history || [], _top5HistoryCache.data.tp_history || []); return; }
+    if (_top5HistoryInFlight) return _top5HistoryInFlight;
     if (el && !silent) el.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Memuat Top 5 History...</div>';
-    try {
-        var resp = await fetch('/api/sector-hot?action=web-top5-history&limit=100&t=' + Date.now(), { headers: getAuthHeaders() });
-        var data = await resp.json();
-        if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5 History.');
-        renderTop5History(data.active_history || data.rows || data.history || [], data.tp_history || []);
-    } catch (e) {
-        if (el) el.innerHTML = '<div class="py-4 text-center text-xs text-red-400">Gagal memuat Top 5 History.</div>';
-    }
+    _top5HistoryInFlight = (async function() {
+        try {
+            var resp = await fetch('/api/sector-hot?action=web-top5-history&limit=100&t=' + Date.now(), { headers: getAuthHeaders() });
+            var data = await resp.json();
+            if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5 History.');
+            _top5HistoryCache = { at: Date.now(), data: data };
+            renderTop5History(data.active_history || data.rows || data.history || [], data.tp_history || []);
+        } catch (e) {
+            if (el) el.innerHTML = '<div class="py-4 text-center text-xs text-red-400">Gagal memuat Top 5 History.</div>';
+        } finally { _top5HistoryInFlight = null; }
+    })();
+    return _top5HistoryInFlight;
 }
 async function archiveTop5History(id) {
     if (!isAdmin()) return;
@@ -7233,24 +7276,50 @@ function openDashboardPickDetail(ticker) {
 }
 async function loadDashboardTop5Monitor(silent) {
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
+    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
+    if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
+    _dashboardTop5InFlight = (async function() {
     try {
-        var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': localStorage.getItem('autocuan_user') || '' } });
+        var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() });
         var data = await resp.json();
+        if ((!data.success || data.auth_required) && isLoggedInUser()) {
+            resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() });
+            data = await resp.json();
+            if (data && data.auth_required) throw new Error('Session perlu refresh/login ulang');
+        }
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
+        _dashboardTop5Cache = { at: Date.now(), data: data };
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = data.top5_locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
-        renderDashboardTop5(data.top5 || data.picks || []);
-        renderAdminNextTop5Preview(data);
-        renderDashboardMonitor(data.monitor || [], data.monitor_last_updated_at || data.last_updated_at, data);
+        renderDashboardTop5MonitorData(data);
+        loadAdminNextTop5Preview();
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
-        if (top) top.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Belum ada kandidat Top 5 hari ini.</div>';
+        if (top) top.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">' + (e && e.message === 'Session perlu refresh/login ulang' ? 'Session perlu refresh/login ulang' : 'Belum ada kandidat Top 5 hari ini.') + '</div>';
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.';
         if (mon) mon.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada Top 5 terkunci untuk dipantau.<br><span class="text-[11px] text-gray-600">Monitor aktif setelah Top 5 dikunci.</span></div>';
         renderAdminNextTop5Preview(null);
-    }
+    } finally { _dashboardTop5InFlight = null; }
+    })();
+    return _dashboardTop5InFlight;
+}
+
+function renderDashboardTop5MonitorData(data) {
+    var note = document.getElementById('dashboardTop5LockNote');
+    if (note) note.textContent = data.top5_locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
+    renderDashboardTop5(data.top5 || data.picks || []);
+    renderDashboardMonitor(data.monitor || [], data.monitor_last_updated_at || data.last_updated_at, data);
+}
+
+async function loadAdminNextTop5Preview() {
+    if (!isAdmin()) { renderAdminNextTop5Preview(null); return; }
+    try {
+        var resp = await fetch('/api/sector-hot?action=web-daily-picks&admin_preview=1&t=' + Date.now(), { headers: getDashboardAuthHeaders() });
+        var data = await resp.json();
+        if (data && data.success) renderAdminNextTop5Preview(data);
+    } catch(e) {}
 }
 
 

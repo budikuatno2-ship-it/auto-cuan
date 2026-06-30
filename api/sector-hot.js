@@ -352,6 +352,7 @@ async function handleScreenerRead(req, res, supabase) {
     return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
   }
 
+  var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req);
   var userData = null;
 
   // 1. Try lookup by UUID if it looks valid
@@ -384,15 +385,15 @@ async function handleScreenerRead(req, res, supabase) {
     if (r3.data) userData = r3.data;
   }
 
-  if (!userData) {
+  if (!userData && !legacyBudiReadAllowed) {
     return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
   }
 
-  if (userData.is_blocked) {
+  if (userData && userData.is_blocked) {
     return res.status(403).json({ success: false, error: 'Akun diblokir.' });
   }
 
-  if (userData.is_approved === false) {
+  if (userData && userData.is_approved === false) {
     return res.status(403).json({ success: false, error: 'Akun belum di-approve.' });
   }
 
@@ -4652,6 +4653,13 @@ function isLikelyUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
 }
 
+function isLegacyBudiReadAllowed(req) {
+  var rawUsername = String(req.headers['x-username'] || '').trim();
+  if (rawUsername !== 'budi') return false;
+  var adminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
+  return adminUsernames.indexOf('budi') >= 0 || process.env.ADMIN_LEGACY_BUDI_PREVIEW === 'true';
+}
+
 async function lookupDashboardAdminAppUser(req, supabase) {
   var rawUserId = String(req.headers['x-user-id'] || '').trim();
   var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
@@ -4758,7 +4766,7 @@ async function handleWebDailyPicks(req, res, supabase) {
     var monitorStale = isMonitorTimestampStale(lastAt, monitorSourceLabel);
     var staleNote = monitorStale ? 'Data monitor belum update terbaru.' : null;
     var adminPreviewExtra = {};
-    if (await isDashboardAdminUser(req, supabase)) {
+    if (req.query.admin_preview === '1' && await isDashboardAdminUser(req, supabase)) {
       var previewCandidates = await selectDailyTop5(supabase);
       var previewRows = [];
       for (var k = 0; k < previewCandidates.length; k++) previewRows.push(buildFallbackDashboardPickRow(previewCandidates[k], k + 1));
@@ -5705,6 +5713,7 @@ async function handleNkScreenerResults(req, res, supabase) {
     return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
   }
 
+  var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req);
   var userData = null;
 
   // 1. Try lookup by UUID if it looks valid
@@ -5737,15 +5746,15 @@ async function handleNkScreenerResults(req, res, supabase) {
     if (r3.data) userData = r3.data;
   }
 
-  if (!userData) {
+  if (!userData && !legacyBudiReadAllowed) {
     return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
   }
 
-  if (userData.is_blocked) {
+  if (userData && userData.is_blocked) {
     return res.status(403).json({ success: false, error: 'Akun diblokir.' });
   }
 
-  if (userData.is_approved === false) {
+  if (userData && userData.is_approved === false) {
     return res.status(403).json({ success: false, error: 'Akun belum di-approve.' });
   }
 
