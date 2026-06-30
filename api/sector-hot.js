@@ -3384,6 +3384,112 @@ function applyPlanQualityConfidenceGuard(r) {
   return r;
 }
 
+
+function textHasFatalTopGuard(value) {
+  return includesAny(String(value || '').toLowerCase(), ['failed respect', 'gagal respect', 'failed breakout', 'breakout gagal', 'distribusi', 'distribution', 'invalid', 'avoid']);
+}
+
+function deriveFinalTopQualityGate(candidate, context) {
+  var r = candidate || {};
+  var chips = [];
+  var adjustment = 0;
+  function addChip(label, delta) {
+    if (label && chips.indexOf(label) === -1) chips.push(label);
+    adjustment += delta || 0;
+  }
+  function block(reason) {
+    return { pass: false, hard_block: true, reason: reason, excluded_reason: 'Tidak lolos final quality gate: ' + reason + '.', quality_score_adjustment: adjustment, quality_chips: chips };
+  }
+
+  var grade = String(r.confidence || r.grade || r.quality_grade || '').trim().toUpperCase();
+  var signalAction = String(r.signal_action || '').trim().toUpperCase();
+  var actionLabel = String(r.action_label || r.signal_action_label || r.telegram_action_label || '').trim().toLowerCase();
+  var verdictText = joinTelegramTexts([r.signal_verdict, r.telegram_verdict, r.verdict]);
+  var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.risk_label || r.verified_risk_label).toLowerCase();
+  var planStatus = String(r.plan_quality_status || '').trim().toUpperCase();
+  var entryStatus = String(r.entry_status || '').trim().toUpperCase();
+  var entryQuality = String(r.entry_quality_status || '').trim().toUpperCase();
+  var liq = deriveStaleLiquidityLabels(r);
+  var respect = String(r.respect_quality_label || '').trim().toLowerCase();
+  var breakout = String(r.breakout_confirmation_status || '').trim().toLowerCase();
+  var volumeLabel = String(r.volume_label || r.volume_confirmation_label || '').trim().toLowerCase();
+  var patternLabel = String(r.pattern_label || '').trim().toLowerCase();
+  var fatalText = joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan, r.reason, r.action_reason, r.signal_reason, r.plan_quality_note]);
+
+  if (grade === 'AVOID') return block('Grade Avoid');
+  if (signalAction === 'AVOID') return block('Signal action AVOID');
+  if (actionLabel === 'hindari') return block('Action Hindari');
+  if (includesAny(verdictText.toLowerCase(), ['hard avoid', 'invalid', 'failed respect', 'failed breakout', 'distribusi'])) return block('Verdict mengandung fatal guard');
+  if (risk === 'very high risk') return block('Very High Risk');
+  if (planStatus === 'INVALID') return block('Trading plan invalid');
+  if (r.trading_plan_valid === false) return block('Trading plan tidak valid');
+  if (entryStatus === 'INVALID_BELOW_SL') return block('Entry invalid di bawah SL');
+  if (entryQuality === 'NEEDS_REVALIDATION') return block('Entry perlu revalidasi');
+  if (liq.stale_trading_days != null && liq.stale_trading_days > 2) return block('Data stale > 2 trading days');
+  if (liq.is_liquidity_risk) return block('Likuiditas berisiko');
+  if (respect === 'weak' || respect === 'ignore') return block('Respect candle Weak/Ignore');
+  if (r.respect_invalid_reason) return block('Respect candle invalid: ' + safeTelegramText(r.respect_invalid_reason, 80, 'invalid'));
+  if (r.false_breakout_risk === true && breakout !== 'confirmed') return block('False breakout risk belum confirmed');
+  if (volumeLabel === 'distribution volume') return block('Distribution Volume');
+  if (patternLabel === 'failed breakout') return block('Failed Breakout');
+  if (textHasFatalTopGuard(fatalText)) return block('Catatan mengandung fatal guard');
+
+  var trend = String(r.trend_label || '').toLowerCase();
+  var foreign = String(r.foreign_label || '').toLowerCase();
+  var rrLabel = String(r.rr_quality_label || '').toLowerCase();
+  var slLabel = String(r.sl_quality_label || '').toLowerCase();
+  var tpLabel = String(r.tp_quality_label || '').toLowerCase();
+  var entryLabel = String(r.entry_status_label || r.entry_quality_label || '').toLowerCase();
+  var noteText = joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan, r.chase_risk_label, r.setup_expiry_note, r.breakout_confirmation_label]).toLowerCase();
+
+  if (respect === 'valid respect') addChip('Valid Respect', 8);
+  if (respect === 'strong respect') addChip('Strong Respect', 10);
+  if (String(r.half_candle_label || '').toLowerCase().indexOf('valid') >= 0 || includesAny(noteText, ['pullback-to-midpoint valid', 'half-candle level respected'])) addChip('Half-candle respected', 6);
+  if (patternLabel === 'vcp-like base') addChip('VCP-like Base', 7);
+  if (patternLabel === 'breakout consolidation') addChip('Breakout Consolidation', 7);
+  if (patternLabel === 'ascending triangle') addChip('Ascending Triangle', 7);
+  if (volumeLabel === 'accumulation volume') addChip('Accumulation Volume', 8);
+  if (volumeLabel === 'strong volume') addChip('Strong Volume', 6);
+  if (trend === 'bullish trend') addChip('Bullish Trend', 7);
+  if (trend === 'improving trend') addChip('Improving Trend', 4);
+  if (foreign === 'foreign accumulation') addChip('Foreign Accumulation', 5);
+  if (foreign === 'foreign absorption') addChip('Foreign Absorption', 4);
+  if (breakout === 'confirmed') addChip('Breakout Confirmed', 6);
+  if (includesAny(entryLabel, ['near entry', 'in entry', 'area entry'])) addChip('Entry near E1/E2', 5);
+  if (rrLabel.indexOf('sehat') >= 0 || (toNum(r.risk_reward) || 0) >= getMinRRForCategory(r.category)) addChip('Healthy RR', 4);
+  if (tpLabel.indexOf('realistis') >= 0) addChip('TP realistic', 3);
+
+  if (includesAny(noteText, ['chase', 'extended', 'telat', 'late'])) addChip('Chase risk / Extended', -12);
+  if (includesAny(noteText, ['needs close confirmation', 'close confirmation'])) addChip('Needs Close Confirmation', -5);
+  if (volumeLabel === 'weak volume' || volumeLabel.indexOf('lemah') >= 0) addChip('Weak Volume', -7);
+  if (trend === 'weak trend') addChip('Weak Trend', -7);
+  if (foreign === 'foreign distribution') addChip('Foreign Distribution', -8);
+  if (includesAny(noteText + ' ' + tpLabel, ['near supply', 'tp1 near', 'dekat tp', 'dekat resistance'])) addChip('Near supply / TP1 near', -6);
+  if (slLabel.indexOf('rawan') >= 0 || includesAny(noteText, ['sl rawan noise'])) addChip('SL rawan noise', -5);
+  if (includesAny(noteText, ['invalidation near', 'invalidasi dekat'])) addChip('Invalidation near', -5);
+  if (includesAny(noteText, ['setup expired', 'needs revalidation'])) addChip('Setup expired / Needs Revalidation', -10);
+
+  return { pass: true, hard_block: false, reason: chips.length ? chips.join(', ') : 'Final quality gate passed.', excluded_reason: null, quality_score_adjustment: adjustment, quality_chips: chips };
+}
+
+function applyFinalTopQualityGate(candidate, context) {
+  var gate = deriveFinalTopQualityGate(candidate, context);
+  if (candidate) {
+    candidate.final_top_quality_gate = gate;
+    candidate.quality_score_adjustment = gate.quality_score_adjustment;
+    candidate.quality_chips = gate.quality_chips;
+    candidate.excluded_reason = gate.excluded_reason;
+    if (!gate.pass) {
+      candidate.signal_action = 'AVOID';
+      candidate.signal_action_label = 'Hindari';
+      candidate.action_label = 'Hindari';
+      candidate.signal_verdict = gate.excluded_reason;
+      candidate.telegram_verdict = gate.excluded_reason;
+    }
+  }
+  return gate;
+}
+
 function candidatePassesRRGate(candidate) {
   return (toNum(candidate && candidate.risk_reward) || 0) >= getMinRRForCategory(candidate && candidate.category);
 }
@@ -3392,7 +3498,8 @@ function candidateTelegramEligible(candidate) {
   if (!candidate || !candidatePassesRRGate(candidate) || !candidatePassesMinUpside(candidate)) return false;
   var q = deriveStaleLiquidityLabels(candidate);
   if (q.stale_trading_days != null && q.stale_trading_days > 2) return false;
-  return !q.is_liquidity_risk;
+  if (q.is_liquidity_risk) return false;
+  return applyFinalTopQualityGate(candidate, 'telegram').pass;
 }
 
 function candidatePassesMinUpside(candidate) {
@@ -3429,7 +3536,8 @@ function rankCandidatesByPotential(candidate) {
   if (volCtx === 'Distribution Volume') confluence -= 15;
   if (pattern === 'VCP-like Base' || pattern === 'Ascending Triangle' || pattern === 'Breakout Consolidation') confluence += 8;
   if (pattern === 'Failed Breakout') confluence -= 15;
-  return ((upside || 0) * 100) + (rr * 25) + score + (volume * 3) + (volRatio * 5) + confluence + stalePenalty;
+  var gate = deriveFinalTopQualityGate(candidate, 'rank');
+  return ((upside || 0) * 100) + (rr * 25) + score + (volume * 3) + (volRatio * 5) + confluence + stalePenalty + (gate.quality_score_adjustment || 0);
 }
 
 function normalizeCombinedCandidate(row, category) {
@@ -3459,10 +3567,12 @@ function normalizeCombinedCandidate(row, category) {
     + (category === 'Day Trade' ? 4 : 0)
     + (getTelegramValue(r) >= 10000000000 ? 4 : 0)
     - (includesAny(joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan]), ['chase', 'telat', 'late']) ? 8 : 0);
-  return applyPlanQualityConfidenceGuard(enrichSignalQuality(r, category));
+  r = applyPlanQualityConfidenceGuard(enrichSignalQuality(r, category));
+  applyFinalTopQualityGate(r, 'normalize');
+  return r;
 }
 
-async function fetchCombinedScreenerCandidates(supabase) {
+async function fetchCombinedScreenerCandidates(supabase, includeExcluded) {
   var pools = [];
   var dt = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(40);
   (dt.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Day Trade')); });
@@ -3471,7 +3581,7 @@ async function fetchCombinedScreenerCandidates(supabase) {
   var nk = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
   (nk.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Swing Non-Konglo')); });
   var byTicker = {};
-  pools.filter(function(r) { return r.ticker && r.entry1 && r.tp1n && r.tp2n && r.sl && candidateTelegramEligible(r); }).forEach(function(r) {
+  pools.filter(function(r) { return r.ticker && r.entry1 && r.tp1n && r.tp2n && r.sl && (includeExcluded || candidateTelegramEligible(r)); }).forEach(function(r) {
     if (!byTicker[r.ticker] || rankCandidatesByPotential(r) > rankCandidatesByPotential(byTicker[r.ticker])) byTicker[r.ticker] = r;
   });
   return Object.keys(byTicker).map(function(k) { return byTicker[k]; }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
@@ -3491,6 +3601,8 @@ async function fetchForeignSummary(supabase, ticker) {
 }
 
 function candidateReason(r) {
+  var gate = deriveFinalTopQualityGate(r, 'reason');
+  if (!gate.pass) return safeTelegramText(gate.excluded_reason, 130, 'Tidak lolos final quality gate.');
   return safeTelegramText(r.telegram_verdict || r.status_reason || r.notes || r.setup || r.status || r.final_status, 130, 'Skor, RR, likuiditas, dan level plan relatif lebih kuat.');
 }
 
@@ -4019,6 +4131,8 @@ async function selectDailyTop5(supabase) {
       + (rows[i].tp1_upside >= 2 ? 10 : -8)
       + (rows[i].tp2_upside >= 5 ? 8 : 0)
       + ((toNum(rows[i].risk_reward) || 0) >= 1.8 ? 6 : 0);
+    var gate = applyFinalTopQualityGate(rows[i], 'daily_top5');
+    rows[i].daily_score += gate.quality_score_adjustment || 0;
   }
   return rows.filter(candidateTelegramEligible).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
 }
@@ -4253,7 +4367,15 @@ function buildDashboardPickRow(row, rank, px) {
   var current = px && px.last != null ? px.last : (toNum(raw.lastn || raw.last_price || raw.current_price) || null);
   var rr = toNum(raw.risk_reward || raw.rr) || null;
   attachEntryStatus(Object.assign(raw, { current_price: current, last_price: current }));
-  var reason = raw.top5_reason || raw.alasan_top5 || raw.telegram_pick_reason || raw.pick_reason || raw.reason || raw.grade_reason || raw.status_reason || raw.notes || raw.verdict || raw.telegram_verdict || null;
+  var gate = deriveFinalTopQualityGate(raw, 'dashboard');
+  if (!gate.pass) {
+    raw.signal_action = 'AVOID';
+    raw.signal_action_label = 'Hindari';
+    raw.action_label = 'Hindari';
+    raw.signal_verdict = gate.excluded_reason;
+    raw.telegram_verdict = gate.excluded_reason;
+  }
+  var reason = !gate.pass ? gate.excluded_reason : (raw.top5_reason || raw.alasan_top5 || raw.telegram_pick_reason || raw.pick_reason || raw.reason || raw.grade_reason || raw.status_reason || raw.notes || raw.verdict || raw.telegram_verdict || null);
   var out = {
     id: row.id || null,
     rank: rank,
@@ -4293,6 +4415,7 @@ function buildDashboardPickRow(row, rank, px) {
     tp2: toNum(row.tp2 != null ? row.tp2 : (raw.tp2 != null ? raw.tp2 : raw.tp2n)),
     reason: reason,
     short_reason: reason,
+    quality_chips: raw.quality_chips || gate.quality_chips || [],
     alasan_top5: raw.alasan_top5 || raw.top5_reason || reason,
     top5_reason: raw.top5_reason || raw.alasan_top5 || reason,
     entry_status: raw.entry_status,
@@ -4603,10 +4726,18 @@ async function handleWebDailyPicks(req, res, supabase) {
       var previewCandidates = await selectDailyTop5(supabase);
       var previewRows = [];
       for (var k = 0; k < previewCandidates.length; k++) previewRows.push(buildFallbackDashboardPickRow(previewCandidates[k], k + 1));
+      var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
+      var excludedRows = [];
+      for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
+        var eg = deriveFinalTopQualityGate(allPreviewCandidates[ex], 'admin_preview_excluded');
+        if (!eg.pass) excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, excluded_reason: eg.excluded_reason });
+      }
       adminPreviewExtra = {
         admin_next_top5_preview: previewRows,
         admin_next_top5_preview_count: previewRows.length,
-        admin_next_top5_preview_note: 'Preview calon Top 5 besok khusus admin; belum resmi dan tidak dikirim Telegram.',
+        admin_next_top5_excluded_preview: excludedRows,
+        admin_next_top5_excluded_count: excludedRows.length,
+        admin_next_top5_preview_note: 'Preview calon Top 5 besok khusus admin; hanya kandidat lolos final quality gate. Excluded by Guard ditampilkan ringkas untuk audit admin.',
         admin_next_top5_preview_generated_at: new Date().toISOString()
       };
     }
