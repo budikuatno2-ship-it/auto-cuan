@@ -595,8 +595,8 @@
             <section class="lg:col-span-3 bg-dark-700/45 border border-dark-600/30 rounded-2xl p-3">
                 <div class="flex items-center justify-between gap-2 mb-2">
                     <div>
-                        <h3 class="text-sm font-bold text-white">Top 5 Hari Ini</h3>
-                        <p id="dashboardTop5LockNote" class="text-[11px] text-gray-500">Top 5 dikunci sampai penutupan · Monitor update tiap 30 menit saat jam bursa</p>
+                        <h3 class="text-sm font-bold text-white">Top 5 Radar</h3>
+                        <p id="dashboardTop5LockNote" class="text-[11px] text-gray-500">Setup Watchlist dikunci sampai penutupan · Monitor update tiap 30 menit saat jam bursa</p>
                     </div>
                 </div>
                 <div id="dashboardTop5List" class="space-y-2">
@@ -6942,6 +6942,14 @@ function normalizeDashboardPick(p) {
     r.plan_quality_status = raw.plan_quality_status;
     r.plan_quality_label = raw.plan_quality_label;
     r.plan_quality_note = raw.plan_quality_note;
+    r.entry_quality_status = raw.entry_quality_status || raw.entry_status;
+    r.entry_quality_label = raw.entry_quality_label || raw.entry_status_label;
+    r.entry_safety_note = raw.entry_safety_note || raw.entry_status_note;
+    r.invalidation_distance_pct = raw.invalidation_distance_pct;
+    r.invalidation_distance_label = raw.invalidation_distance_label;
+    r.invalidation_note = raw.invalidation_note;
+    r.trading_plan_valid = raw.trading_plan_valid;
+    r.trading_plan_note = raw.trading_plan_note;
     r.sl_quality_label = raw.sl_quality_label;
     r.tp_quality_label = raw.tp_quality_label;
     r.rr_quality_label = raw.rr_quality_label;
@@ -7012,6 +7020,8 @@ function renderDashboardTop5(picks) {
         html += '<div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-xs text-gray-300">' + dashFmtPrice(r.last_price) + '</span><span class="text-[11px] text-gray-400">Score <b class="text-emerald-400">' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
         html += '<div class="mt-1">' + freshnessChipHtml(r) + '</div>';
         html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span><span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span><span>RR <b class="text-purple-300">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '—') + '</b></span><span class="text-blue-300">' + escapeHtml(action) + '</span></div>';
+        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>EntryQ <b class="text-blue-300">' + escapeHtml(r.entry_quality_label || r.entry_status_label || '—') + '</b></span><span>PlanQ <b class="text-purple-300">' + escapeHtml(r.plan_quality_label || '—') + '</b></span><span>Invalidation <b class="text-amber-300">' + escapeHtml(r.invalidation_distance_label || '—') + '</b></span></div>';
+        if (r.entry_safety_note || r.invalidation_note || r.trading_plan_note) html += '<div class="mt-1 text-[10px] text-gray-500 truncate">' + escapeHtml(r.entry_safety_note || r.invalidation_note || r.trading_plan_note || '') + '</div>';
         html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
         var planWarn = getPlanWarningLine(r);
         if (planWarn) html += '<div class="mt-1 text-[10px] text-amber-300">' + escapeHtml(planWarn) + '</div>';

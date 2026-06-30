@@ -2975,6 +2975,12 @@ function attachFreshness(row, meta) {
     var staleMsg = 'Data stale — validasi ulang harga/volume sebelum entry.';
     if (!row.stale_notes) row.stale_notes = staleMsg;
     if (!row.data_stale) row.data_stale = true;
+    row.entry_quality_status = 'NEEDS_REVALIDATION';
+    row.entry_quality_label = 'Needs Revalidation';
+    row.entry_safety_note = staleMsg + ' Tidak ditampilkan sebagai Entry/Ready.';
+    row.entry_status = 'NEEDS_REVALIDATION';
+    row.entry_status_label = 'Needs Revalidation';
+    row.entry_status_note = row.entry_safety_note;
     if (row.action_reason && row.action_reason.indexOf('validasi ulang') < 0) row.action_reason += ' ' + staleMsg;
     if (row.plan_reason && row.plan_reason.indexOf('validasi ulang') < 0) row.plan_reason += ' ' + staleMsg;
   }
@@ -3237,8 +3243,16 @@ function attachEntryStatus(row) {
   r.entry_status = es.entry_status;
   r.entry_status_label = es.entry_status_label;
   r.entry_status_note = es.entry_status_note;
+  r.entry_quality_status = es.entry_quality_status;
+  r.entry_quality_label = es.entry_quality_label;
+  r.entry_safety_note = es.entry_safety_note;
   r.entry_distance_pct = es.entry_distance_pct;
   r.chase_risk_label = es.chase_risk_label;
+  Object.assign(r, idxTick.deriveInvalidationDistance(r));
+  var sanity = idxTick.validateTradingPlanSanity(r);
+  r.trading_plan_valid = sanity.trading_plan_valid;
+  r.trading_plan_status = sanity.trading_plan_status;
+  r.trading_plan_note = sanity.trading_plan_note;
   var pq = idxTick.derivePlanQuality(Object.assign({}, r, {
     mode: /day/i.test(r.category || '') ? 'daytrade' : 'swing',
     rr_minimum: getMinRRForCategory(r.category)
@@ -3263,7 +3277,14 @@ function attachEntryStatus(row) {
   r.risk_score_v2 = rv2.risk_score_v2;
   r.risk_notes_v2 = rv2.risk_notes_v2;
   r.risk_factors_v2 = rv2.risk_factors_v2;
-  if (pq.plan_quality_status === 'INVALID') {
+  if (!sanity.trading_plan_valid) {
+    r.confidence = 'C';
+    r.telegram_verdict = 'Wait / Level belum rapi — ' + sanity.trading_plan_note;
+    r.entry_timing = 'Wait — level belum rapi';
+    r.plan_quality_status = 'INVALID';
+    r.plan_quality_label = 'Wait / Level belum rapi';
+    r.plan_quality_note = sanity.trading_plan_note;
+  } else if (pq.plan_quality_status === 'INVALID') {
     r.confidence = 'C';
     r.telegram_verdict = 'Wait / Invalid — ' + pq.plan_quality_note;
     r.entry_timing = 'Hindari — setup tidak valid';
@@ -3277,6 +3298,12 @@ function attachEntryStatus(row) {
   var sv = idxTick.deriveSignalVerdict(r);
   Object.assign(r, sv);
   if (sv.signal_confidence) r.confidence = sv.signal_confidence;
+  if (r.entry_quality_status === 'NEEDS_REVALIDATION') {
+    r.confidence = 'C';
+    r.telegram_action_label = 'Needs revalidation';
+    r.telegram_verdict = 'Needs Revalidation — data stale, validasi ulang harga/volume sebelum entry.';
+    r.entry_timing = 'Needs Revalidation — jangan entry dari data stale';
+  }
   return r;
 }
 
@@ -3495,6 +3522,7 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   var lines = [];
   lines.push(idx + '. ' + r.ticker + ' — ' + r.category + ' | ' + setup);
   lines.push('G:' + grade + ' · Risk:' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + compactSafeText(r.liquidity_label, '-'));
+  lines.push('EntryQ: ' + compactSafeText(r.entry_quality_label || r.entry_status_label, '-') + ' · PlanQ: ' + compactSafeText(r.plan_quality_label || r.plan_label, '-'));
   lines.push('Plan: ' + compactSafeText(r.rr_quality_label, 'RR sehat') + ' · ' + compactSafeText(r.sl_quality_label, 'SL wajar') + ' · ' + compactSafeText(r.tp_quality_label, 'TP realistis'));
   lines.push('Window: ' + compactSafeText(r.entry_window_label, '-'));
   lines.push('Harga ' + fmtPrice(r.lastn || r.last_price) + ' | Entry ' + fmtPrice(r.entry1) + '/' + fmtPrice(r.entry2) + ' | SL ' + fmtPrice(r.sl) + ' | TP ' + fmtPrice(r.tp1n) + '/' + fmtPrice(r.tp2n));
@@ -3502,7 +3530,7 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   var confluence = [];
   if (r.pattern_label && r.pattern_label !== 'Insufficient Data' && r.pattern_label !== 'No Clear Pattern') confluence.push('Pattern: ' + r.pattern_label.replace('VCP-like Base','VCP-like'));
   if (f && f.foreign_label && f.foreign_label !== 'Foreign Data Unavailable') confluence.push('Foreign 7D: ' + f.foreign_label.replace('Foreign ','') + ' ' + formatForeignRupiah(f.foreign_7d));
-  if (r.is_stale) confluence.push('Stale: ' + compactSafeText(r.stale_label, 'Stale Data'));
+  if (r.is_stale || r.data_stale || r.freshness_is_stale) confluence.push('Needs Revalidation: data stale');
   if (r.confidence === 'C') confluence.push('Radar Only');
   if (confluence.length) lines.push(confluence.join(' · '));
   var sv = idxTick.deriveSignalVerdict(r);
@@ -7460,8 +7488,9 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   lines.push(idx + '. ' + safeTelegramText(r.ticker, 16, '-') + ' — ' + action);
   lines.push('Status: ' + statusLabel);
   lines.push('G:' + grade + ' · ' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + safeTelegramText(enrichedForGrade.liquidity_label, 40, '-'));
+  lines.push('EntryQ: ' + safeTelegramText(r.entry_quality_label || r.entry_status_label, 40, '-') + ' · PlanQ: ' + safeTelegramText(r.plan_quality_label || r.plan_label, 40, '-'));
   lines.push('Window: ' + safeTelegramText(enrichedForGrade.entry_window_label, 60, '-'));
-  if (r.entry_status_label) lines.push('Status Entry: ' + safeTelegramText(r.entry_status_label, 40, '-') + ' — ' + safeTelegramText(r.entry_status_note, 90, '-').replace(/^Harga/, 'harga'));
+  if (r.entry_status_label) lines.push('Entry Safety: ' + safeTelegramText(r.entry_status_label, 40, '-') + ' — ' + safeTelegramText(r.entry_status_note, 90, '-').replace(/^Harga/, 'harga'));
   lines.push('Harga: ' + fmtPrice(r.last_price));
   lines.push('Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
   lines.push('SL: ' + fmtPrice(r.stop_loss));
