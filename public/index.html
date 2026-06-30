@@ -617,6 +617,17 @@
             </aside>
         </div>
 
+        <section id="adminNextTop5PreviewSection" class="hidden bg-dark-700/45 border border-amber-500/20 rounded-2xl p-3">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <div>
+                    <h3 class="text-sm font-bold text-white">Preview Top 5 Besok</h3>
+                    <p class="text-[11px] text-amber-200/80">Khusus admin · belum resmi · tidak dikirim Telegram</p>
+                </div>
+                <span id="adminNextTop5PreviewUpdated" class="text-[10px] text-gray-500 whitespace-nowrap">Preview: — WIB</span>
+            </div>
+            <div id="adminNextTop5PreviewList" class="space-y-2"></div>
+        </section>
+
         <section class="bg-dark-700/45 border border-dark-600/30 rounded-2xl p-3">
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                 <div>
@@ -6909,6 +6920,7 @@ function renderDashboardGuestGate() {
     if (top) top.innerHTML = getDashboardLoginCtaHtml();
     if (mon) mon.innerHTML = getDashboardLoginCtaHtml();
     if (hist) hist.innerHTML = getDashboardLoginCtaHtml();
+    renderAdminNextTop5Preview(null);
     _dashboardPickData = {};
 }
 
@@ -7038,6 +7050,43 @@ function renderDashboardTop5(picks) {
     el.innerHTML = html;
 }
 function dashSignedPct(v) { var n = Number(v); return isFinite(n) ? ((n >= 0 ? '+' : '') + n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%') : ''; }
+
+function renderAdminNextTop5Preview(data) {
+    var section = document.getElementById('adminNextTop5PreviewSection');
+    var list = document.getElementById('adminNextTop5PreviewList');
+    var updated = document.getElementById('adminNextTop5PreviewUpdated');
+    if (!section || !list) return;
+    var rows = data && Array.isArray(data.admin_next_top5_preview) ? data.admin_next_top5_preview : [];
+    if (!rows.length) {
+        section.classList.add('hidden');
+        list.innerHTML = '';
+        if (updated) updated.textContent = 'Preview: — WIB';
+        return;
+    }
+    section.classList.remove('hidden');
+    if (updated) updated.textContent = 'Preview: ' + dashWibTime(data.admin_next_top5_preview_generated_at) + ' WIB';
+    var html = '';
+    rows.slice(0, 5).forEach(function(p, idx) {
+        var r = normalizeDashboardPick(p);
+        var sc = Number(r.combined_score || r.telegram_conviction_score || r.daytrade_score || r.score || 0);
+        var grade = getSignalQualityGrade(r) || '—';
+        var risk = getRiskLabel(r) || '—';
+        var rr = Number(r.risk_reward || r.rr);
+        var action = getActionLabel(r) || getStatusLabel(r, r.status || r.final_status || '') || '—';
+        var verdict = safeDisplayText(r.signal_verdict || r.verdict || '', '');
+        var reason = dashShortText(getSignalReason(r) || r.action_reason || r.status_reason || r.grade_reason || r.notes, 120);
+        html += '<article class="rounded-xl border border-amber-500/15 bg-amber-500/5 px-3 py-2">';
+        html += '<div class="flex items-start gap-2"><div class="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-bold flex items-center justify-center flex-shrink-0">' + (p.rank || idx + 1) + '</div>';
+        html += '<div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-xs text-gray-300">' + dashFmtPrice(r.last_price) + '</span><span class="text-[11px] text-gray-400">Score <b class="text-amber-300">' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
+        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span><span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span><span>RR <b class="text-purple-300">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '—') + '</b></span><span class="text-blue-300">' + escapeHtml(action) + '</span></div>';
+        html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
+        html += '<div class="mt-1 text-[11px] text-blue-200 truncate">Action/Verdict: ' + escapeHtml(action + (verdict ? ' — ' + verdict : '')) + '</div>';
+        if (reason) html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p>';
+        html += '</div></div></article>';
+    });
+    list.innerHTML = html;
+}
+
 function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
     var el = document.getElementById('dashboardMonitorList');
     var upd = document.getElementById('dashboardMonitorUpdated');
@@ -7165,6 +7214,7 @@ async function loadDashboardTop5Monitor(silent) {
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = data.top5_locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
         renderDashboardTop5(data.top5 || data.picks || []);
+        renderAdminNextTop5Preview(data);
         renderDashboardMonitor(data.monitor || [], data.monitor_last_updated_at || data.last_updated_at, data);
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
@@ -7173,6 +7223,7 @@ async function loadDashboardTop5Monitor(silent) {
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.';
         if (mon) mon.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada Top 5 terkunci untuk dipantau.<br><span class="text-[11px] text-gray-600">Monitor aktif setelah Top 5 dikunci.</span></div>';
+        renderAdminNextTop5Preview(null);
     }
 }
 

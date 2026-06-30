@@ -4484,6 +4484,66 @@ function isDashboardScreenerLoggedIn(req) {
   return !!((rawUserId || rawUsername) && rawUsername !== 'guest');
 }
 
+
+function parseAdminAllowlist(value) {
+  return String(value || '').split(',').map(function(v) { return v.trim().toLowerCase(); }).filter(Boolean);
+}
+
+async function lookupDashboardAppUser(req, supabase) {
+  var rawUserId = String(req.headers['x-user-id'] || '').trim();
+  var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
+  if ((!rawUserId && !rawUsername) || rawUsername === 'guest') return null;
+
+  var userData = null;
+  if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
+    var r1 = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('id', rawUserId)
+      .maybeSingle();
+    if (!r1.error && r1.data) userData = r1.data;
+  }
+  if (!userData && rawUsername && rawUsername.length >= 2) {
+    var r2 = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('username', rawUsername)
+      .maybeSingle();
+    if (!r2.error && r2.data) userData = r2.data;
+  }
+  if (!userData && rawUsername && rawUsername.length >= 2) {
+    var r3 = await supabase
+      .from('app_users')
+      .select('*')
+      .ilike('username', rawUsername)
+      .maybeSingle();
+    if (!r3.error && r3.data) userData = r3.data;
+  }
+  return userData;
+}
+
+async function isDashboardAdminUser(req, supabase) {
+  try {
+    if (!isDashboardScreenerLoggedIn(req)) return false;
+    var userData = await lookupDashboardAppUser(req, supabase);
+    if (!userData || userData.is_blocked || userData.is_approved === false) return false;
+
+    if (userData.is_admin === true) return true;
+    var role = String(userData.role || userData.user_role || '').trim().toLowerCase();
+    if (role === 'admin' || role === 'owner' || role === 'superadmin') return true;
+
+    var username = String(userData.username || req.headers['x-username'] || '').trim().toLowerCase();
+    var userId = String(userData.id || req.headers['x-user-id'] || '').trim().toLowerCase();
+    var adminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
+    var adminUserIds = parseAdminAllowlist(process.env.ADMIN_USER_IDS);
+    if (username && adminUsernames.indexOf(username) >= 0) return true;
+    if (userId && adminUserIds.indexOf(userId) >= 0) return true;
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 function sendDashboardScreenerGate(res, extra) {
   return res.status(200).json(Object.assign({
     success: true,
@@ -4541,7 +4601,19 @@ async function handleWebDailyPicks(req, res, supabase) {
     else if (dailyLockFallbackAt) { lastAt = dailyLockFallbackAt; monitorSourceLabel = 'daily lock fallback'; }
     var monitorStale = isMonitorTimestampStale(lastAt, monitorSourceLabel);
     var staleNote = monitorStale ? 'Data monitor belum update terbaru.' : null;
-    return res.status(200).json({
+    var adminPreviewExtra = {};
+    if (await isDashboardAdminUser(req, supabase)) {
+      var previewCandidates = await selectDailyTop5(supabase);
+      var previewRows = [];
+      for (var k = 0; k < previewCandidates.length; k++) previewRows.push(buildFallbackDashboardPickRow(previewCandidates[k], k + 1));
+      adminPreviewExtra = {
+        admin_next_top5_preview: previewRows,
+        admin_next_top5_preview_count: previewRows.length,
+        admin_next_top5_preview_note: 'Preview calon Top 5 besok khusus admin; belum resmi dan tidak dikirim Telegram.',
+        admin_next_top5_preview_generated_at: new Date().toISOString()
+      };
+    }
+    return res.status(200).json(Object.assign({
       success: true,
       date: date,
       top5: top5,
@@ -4558,7 +4630,7 @@ async function handleWebDailyPicks(req, res, supabase) {
       monitor_is_stale: monitorStale,
       monitor_stale_note: staleNote,
       picks: top5
-    });
+    }, adminPreviewExtra));
   } catch (e) {
     return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_source: 'provisional_candidates', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: true, update_note: 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
   }
