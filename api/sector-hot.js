@@ -4489,51 +4489,39 @@ function parseAdminAllowlist(value) {
   return String(value || '').split(',').map(function(v) { return v.trim().toLowerCase(); }).filter(Boolean);
 }
 
-async function lookupDashboardAppUser(req, supabase) {
+function isLikelyUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+}
+
+async function lookupDashboardAdminAppUser(req, supabase) {
   var rawUserId = String(req.headers['x-user-id'] || '').trim();
   var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
-  if ((!rawUserId && !rawUsername) || rawUsername === 'guest') return null;
+  if (!isLikelyUuid(rawUserId) || rawUsername === 'guest') return null;
 
-  var userData = null;
-  if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
-    var r1 = await supabase
-      .from('app_users')
-      .select('*')
-      .eq('id', rawUserId)
-      .maybeSingle();
-    if (!r1.error && r1.data) userData = r1.data;
-  }
-  if (!userData && rawUsername && rawUsername.length >= 2) {
-    var r2 = await supabase
-      .from('app_users')
-      .select('*')
-      .eq('username', rawUsername)
-      .maybeSingle();
-    if (!r2.error && r2.data) userData = r2.data;
-  }
-  if (!userData && rawUsername && rawUsername.length >= 2) {
-    var r3 = await supabase
-      .from('app_users')
-      .select('*')
-      .ilike('username', rawUsername)
-      .maybeSingle();
-    if (!r3.error && r3.data) userData = r3.data;
-  }
-  return userData;
+  var r = await supabase
+    .from('app_users')
+    .select('*')
+    .eq('id', rawUserId)
+    .maybeSingle();
+  if (r.error || !r.data) return null;
+
+  var dbUsername = String(r.data.username || '').trim().toLowerCase();
+  if (rawUsername && rawUsername !== dbUsername) return null;
+  return r.data;
 }
 
 async function isDashboardAdminUser(req, supabase) {
   try {
     if (!isDashboardScreenerLoggedIn(req)) return false;
-    var userData = await lookupDashboardAppUser(req, supabase);
+    var userData = await lookupDashboardAdminAppUser(req, supabase);
     if (!userData || userData.is_blocked || userData.is_approved === false) return false;
 
     if (userData.is_admin === true) return true;
     var role = String(userData.role || userData.user_role || '').trim().toLowerCase();
     if (role === 'admin' || role === 'owner' || role === 'superadmin') return true;
 
-    var username = String(userData.username || req.headers['x-username'] || '').trim().toLowerCase();
-    var userId = String(userData.id || req.headers['x-user-id'] || '').trim().toLowerCase();
+    var username = String(userData.username || '').trim().toLowerCase();
+    var userId = String(userData.id || '').trim().toLowerCase();
     var adminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
     var adminUserIds = parseAdminAllowlist(process.env.ADMIN_USER_IDS);
     if (username && adminUsernames.indexOf(username) >= 0) return true;

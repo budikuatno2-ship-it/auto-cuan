@@ -7208,7 +7208,7 @@ function openDashboardPickDetail(ticker) {
 async function loadDashboardTop5Monitor(silent) {
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     try {
-        var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getAuthHeaders() });
+        var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': localStorage.getItem('autocuan_user') || '' } });
         var data = await resp.json();
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
         var note = document.getElementById('dashboardTop5LockNote');
