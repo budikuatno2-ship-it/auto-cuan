@@ -2137,9 +2137,6 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             if (typeof reorderBrokerCTA === 'function') html = reorderBrokerCTA(html, isIndex);
 
             // Render result
-            if (!isIndex && typeof ensureManualConfluenceData === 'function') {
-                await ensureManualConfluenceData(ticker);
-            }
             var confluenceHtml = isIndex ? '' : buildManualConfluenceHtml(ticker);
             resultArea.innerHTML = confluenceHtml + '<div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up">' + html + '</div>' +
                 '<div class="mt-3 flex flex-wrap gap-2">' +
@@ -5153,36 +5150,6 @@ function buildManualConfluenceHtml(ticker) {
     }
     var type = row.group_code ? 'konglo' : (row.board ? 'nonkonglo' : 'daytrade');
     return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30">' + buildConfluenceHtml(row, type === 'konglo' || type === 'nonkonglo') + '</div>';
-}
-
-async function ensureManualConfluenceData(ticker) {
-    var t = String(ticker || '').toUpperCase().replace(/\.JK$/, '');
-    if (!t || findManualConfluenceRow(t)) return;
-
-    var sources = [
-        { type: 'konglo', url: '/api/sector-hot?action=screener&t=' + Date.now(), cache: '_screenerCache', card: '_kgCardData' },
-        { type: 'nonkonglo', url: '/api/sector-hot?action=nk-screener-results&t=' + Date.now(), cache: '_nkScreenerCache', card: '_nkCardData' },
-        { type: 'daytrade', url: '/api/sector-hot?action=daytrade-screener&t=' + Date.now(), cache: '_dtScreenerCache', card: '_dtCardData' }
-    ];
-
-    for (var i = 0; i < sources.length; i++) {
-        var src = sources[i];
-        try {
-            var resp = await fetch(src.url, { headers: getAuthHeaders() });
-            var data = await resp.json();
-            if (resp.status === 403 || !data || !data.success) continue;
-            window[src.cache] = data;
-            var rows = data.results || [];
-            window[src.card] = window[src.card] || {};
-            for (var j = 0; j < rows.length; j++) {
-                var key = String(rows[j].ticker || '').toUpperCase().replace(/\.JK$/, '');
-                if (key) window[src.card][key] = rows[j];
-            }
-            if (findManualConfluenceRow(t)) return;
-        } catch (e) {
-            continue;
-        }
-    }
 }
 
 function getActionLabel(r) { if (!r) return ''; return r.action_label ? safeDisplayText(r.action_label, '') : (r.signal_action_label ? safeDisplayText(r.signal_action_label, '') : normalizeActionLabel(r.telegram_action_label || r.telegram_verdict || r.final_status || r.status || '')); }
