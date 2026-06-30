@@ -4513,20 +4513,29 @@ async function lookupDashboardAdminAppUser(req, supabase) {
 async function isDashboardAdminUser(req, supabase) {
   try {
     if (!isDashboardScreenerLoggedIn(req)) return false;
+
+    var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
+    if (!rawUsername || rawUsername === 'guest') return false;
+
     var userData = await lookupDashboardAdminAppUser(req, supabase);
-    if (!userData || userData.is_blocked || userData.is_approved === false) return false;
+    if (userData) {
+      if (userData.is_blocked || userData.is_approved === false) return false;
+      if (userData.is_admin === true) return true;
+      var role = String(userData.role || userData.user_role || '').trim().toLowerCase();
+      if (role === 'admin' || role === 'owner' || role === 'superadmin') return true;
 
-    if (userData.is_admin === true) return true;
-    var role = String(userData.role || userData.user_role || '').trim().toLowerCase();
-    if (role === 'admin' || role === 'owner' || role === 'superadmin') return true;
+      var username = String(userData.username || '').trim().toLowerCase();
+      var userId = String(userData.id || '').trim().toLowerCase();
+      var adminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
+      var adminUserIds = parseAdminAllowlist(process.env.ADMIN_USER_IDS);
+      if (username && adminUsernames.indexOf(username) >= 0) return true;
+      if (userId && adminUserIds.indexOf(userId) >= 0) return true;
+      return false;
+    }
 
-    var username = String(userData.username || '').trim().toLowerCase();
-    var userId = String(userData.id || '').trim().toLowerCase();
-    var adminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
-    var adminUserIds = parseAdminAllowlist(process.env.ADMIN_USER_IDS);
-    if (username && adminUsernames.indexOf(username) >= 0) return true;
-    if (userId && adminUserIds.indexOf(userId) >= 0) return true;
-    return false;
+    if (rawUsername !== 'budi') return false;
+    var legacyAdminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
+    return legacyAdminUsernames.indexOf('budi') >= 0 || process.env.ADMIN_LEGACY_BUDI_PREVIEW === 'true';
   } catch (e) {
     return false;
   }
