@@ -355,46 +355,48 @@ async function handleScreenerRead(req, res, supabase) {
   var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req);
   var userData = null;
 
-  // 1. Try lookup by UUID if it looks valid
-  if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
-    var r1 = await supabase
-      .from('app_users')
-      .select('id, username, is_approved, is_blocked')
-      .eq('id', rawUserId)
-      .maybeSingle();
-    if (r1.data) userData = r1.data;
-  }
+  if (!legacyBudiReadAllowed) {
+    // 1. Try lookup by UUID if it looks valid
+    if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
+      var r1 = await supabase
+        .from('app_users')
+        .select('id, username, is_approved, is_blocked')
+        .eq('id', rawUserId)
+        .maybeSingle();
+      if (r1.data) userData = r1.data;
+    }
 
-  // 2. Fallback: lookup by username
-  if (!userData && rawUsername && rawUsername.length >= 2) {
-    var r2 = await supabase
-      .from('app_users')
-      .select('id, username, is_approved, is_blocked')
-      .eq('username', rawUsername)
-      .maybeSingle();
-    if (r2.data) userData = r2.data;
-  }
+    // 2. Fallback: lookup by username
+    if (!userData && rawUsername && rawUsername.length >= 2) {
+      var r2 = await supabase
+        .from('app_users')
+        .select('id, username, is_approved, is_blocked')
+        .eq('username', rawUsername)
+        .maybeSingle();
+      if (r2.data) userData = r2.data;
+    }
 
-  // 3. Fallback: try ilike match for username (case-insensitive safety)
-  if (!userData && rawUsername && rawUsername.length >= 2) {
-    var r3 = await supabase
-      .from('app_users')
-      .select('id, username, is_approved, is_blocked')
-      .ilike('username', rawUsername)
-      .maybeSingle();
-    if (r3.data) userData = r3.data;
-  }
+    // 3. Fallback: try ilike match for username (case-insensitive safety)
+    if (!userData && rawUsername && rawUsername.length >= 2) {
+      var r3 = await supabase
+        .from('app_users')
+        .select('id, username, is_approved, is_blocked')
+        .ilike('username', rawUsername)
+        .maybeSingle();
+      if (r3.data) userData = r3.data;
+    }
 
-  if (!userData && !legacyBudiReadAllowed) {
-    return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
-  }
+    if (!userData) {
+      return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
+    }
 
-  if (userData && userData.is_blocked) {
-    return res.status(403).json({ success: false, error: 'Akun diblokir.' });
-  }
+    if (userData.is_blocked) {
+      return res.status(403).json({ success: false, error: 'Akun diblokir.' });
+    }
 
-  if (userData && userData.is_approved === false) {
-    return res.status(403).json({ success: false, error: 'Akun belum di-approve.' });
+    if (userData.is_approved === false) {
+      return res.status(403).json({ success: false, error: 'Akun belum di-approve.' });
+    }
   }
 
   // User verified — return cached screener data
@@ -5716,46 +5718,48 @@ async function handleNkScreenerResults(req, res, supabase) {
   var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req);
   var userData = null;
 
-  // 1. Try lookup by UUID if it looks valid
-  if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
-    var r1 = await supabase
-      .from('app_users')
-      .select('id, username, is_approved, is_blocked')
-      .eq('id', rawUserId)
-      .maybeSingle();
-    if (r1.data) userData = r1.data;
-  }
+  if (!legacyBudiReadAllowed) {
+    // 1. Try lookup by UUID if it looks valid
+    if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
+      var r1 = await supabase
+        .from('app_users')
+        .select('id, username, is_approved, is_blocked')
+        .eq('id', rawUserId)
+        .maybeSingle();
+      if (r1.data) userData = r1.data;
+    }
 
-  // 2. Fallback: lookup by username
-  if (!userData && rawUsername && rawUsername.length >= 2) {
-    var r2 = await supabase
-      .from('app_users')
-      .select('id, username, is_approved, is_blocked')
-      .eq('username', rawUsername)
-      .maybeSingle();
-    if (r2.data) userData = r2.data;
-  }
+    // 2. Fallback: lookup by username
+    if (!userData && rawUsername && rawUsername.length >= 2) {
+      var r2 = await supabase
+        .from('app_users')
+        .select('id, username, is_approved, is_blocked')
+        .eq('username', rawUsername)
+        .maybeSingle();
+      if (r2.data) userData = r2.data;
+    }
 
-  // 3. Fallback: try ilike match for username (case-insensitive safety)
-  if (!userData && rawUsername && rawUsername.length >= 2) {
-    var r3 = await supabase
-      .from('app_users')
-      .select('id, username, is_approved, is_blocked')
-      .ilike('username', rawUsername)
-      .maybeSingle();
-    if (r3.data) userData = r3.data;
-  }
+    // 3. Fallback: try ilike match for username (case-insensitive safety)
+    if (!userData && rawUsername && rawUsername.length >= 2) {
+      var r3 = await supabase
+        .from('app_users')
+        .select('id, username, is_approved, is_blocked')
+        .ilike('username', rawUsername)
+        .maybeSingle();
+      if (r3.data) userData = r3.data;
+    }
 
-  if (!userData && !legacyBudiReadAllowed) {
-    return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
-  }
+    if (!userData) {
+      return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
+    }
 
-  if (userData && userData.is_blocked) {
-    return res.status(403).json({ success: false, error: 'Akun diblokir.' });
-  }
+    if (userData.is_blocked) {
+      return res.status(403).json({ success: false, error: 'Akun diblokir.' });
+    }
 
-  if (userData && userData.is_approved === false) {
-    return res.status(403).json({ success: false, error: 'Akun belum di-approve.' });
+    if (userData.is_approved === false) {
+      return res.status(403).json({ success: false, error: 'Akun belum di-approve.' });
+    }
   }
 
   // User verified — return cached NK screener data

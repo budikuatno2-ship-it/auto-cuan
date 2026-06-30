@@ -1979,7 +1979,7 @@ function showDashboard() {
     setTimeout(function() { loadChatHistory(); }, 0);
     // Update dashboard greeting
     updateDashGreeting();
-    loadDashboardTop5Monitor(true);
+    loadDashboardTop5Monitor(true, { loadAdminPreview: true });
     setTimeout(function() { loadTop5History(true); }, 700);
     startDashboardMonitorAutoRefresh();
 }
@@ -2002,7 +2002,7 @@ function navigateTo(page) {
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
     // Sektor Hot login gate
-    if (page === 'dashboard') { loadDashboardTop5Monitor(true); setTimeout(function() { loadTop5History(true); }, 700); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
+    if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: true }); setTimeout(function() { loadTop5History(true); }, 700); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
     else { stopDashboardMonitorAutoRefresh(); }
     if (page === 'sektor') {
         var isLoggedIn = isLoggedInUser();
@@ -5157,6 +5157,22 @@ function buildManualConfluenceHtml(ticker) {
 }
 
 
+function sanitizeConfluenceLookupRow(row) {
+    var clean = Object.assign({}, row || {});
+    delete clean.raw_payload;
+    delete clean.admin_notes;
+    delete clean.admin_note;
+    delete clean.admin_next_top5_preview;
+    delete clean.admin_next_top5_excluded_preview;
+    delete clean.admin_next_top5_preview_count;
+    delete clean.admin_next_top5_excluded_count;
+    delete clean.admin_next_top5_preview_note;
+    delete clean.admin_next_top5_preview_generated_at;
+    delete clean.excluded_preview;
+    delete clean.excluded_reason_admin;
+    return clean;
+}
+
 async function fetchManualConfluenceRow(ticker, targetId) {
     var t = String(ticker || '').toUpperCase().replace(/\.JK$/, '');
     var sources = [
@@ -5174,6 +5190,7 @@ async function fetchManualConfluenceRow(ticker, targetId) {
             for (var k = 0; k < sources[i].keys.length; k++) if (Array.isArray(data[sources[i].keys[k]])) rows = rows.concat(data[sources[i].keys[k]]);
             var row = rows.find(function(r) { return String((r && r.ticker) || '').toUpperCase().replace(/\.JK$/, '') === t; });
             if (!row) continue;
+            row = sanitizeConfluenceLookupRow(row);
             window[sources[i].cache] = window[sources[i].cache] || {};
             window[sources[i].cache][t] = row;
             var el = document.getElementById(targetId);
@@ -7274,25 +7291,26 @@ function openDashboardPickDetail(ticker) {
     var r = _dashboardPickData[ticker];
     if (r) openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo');
 }
-async function loadDashboardTop5Monitor(silent) {
+async function loadDashboardTop5Monitor(silent, opts) {
+    opts = opts || {};
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
-    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
+    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); if (opts.loadAdminPreview === true) loadAdminNextTop5Preview(); return; }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
     _dashboardTop5InFlight = (async function() {
     try {
         var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() });
         var data = await resp.json();
-        if ((!data.success || data.auth_required) && isLoggedInUser()) {
+        if ((!data.success || data.auth_required || data.gated) && isLoggedInUser()) {
             resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() });
             data = await resp.json();
-            if (data && data.auth_required) throw new Error('Session perlu refresh/login ulang');
+            if (data && (data.auth_required || data.gated)) throw new Error('Session perlu refresh/login ulang');
         }
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
         _dashboardTop5Cache = { at: Date.now(), data: data };
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = data.top5_locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
         renderDashboardTop5MonitorData(data);
-        loadAdminNextTop5Preview();
+        if (opts.loadAdminPreview === true) loadAdminNextTop5Preview();
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
@@ -7327,7 +7345,7 @@ function startDashboardMonitorAutoRefresh() {
     if (_dashboardMonitorRefreshTimer) clearInterval(_dashboardMonitorRefreshTimer);
     if (currentPage !== 'dashboard' || !isLoggedInUser()) return;
     _dashboardMonitorRefreshTimer = setInterval(function() {
-        if (currentPage === 'dashboard' && !document.hidden) loadDashboardTop5Monitor(true);
+        if (currentPage === 'dashboard' && !document.hidden) loadDashboardTop5Monitor(true, { loadAdminPreview: false });
     }, 60 * 1000);
 }
 function stopDashboardMonitorAutoRefresh() {
