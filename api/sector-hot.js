@@ -3996,6 +3996,32 @@ function getTelegramConfigStatus() {
   };
 }
 
+function buildReadinessWarning(readiness) {
+  var missing = [];
+  ['day_trade', 'swing_konglo', 'swing_non_konglo'].forEach(function(key) {
+    if (!readiness || !readiness[key] || !readiness[key].ready) missing.push(key);
+  });
+  return missing.length ? { code: 'partial_readiness', message: 'Top 5 delivery allowed from available candidates; incomplete screeners are warnings only.', not_ready: missing } : null;
+}
+
+function cronAuthSupported() {
+  return !!(process.env.CRON_SECRET && String(process.env.CRON_SECRET).trim());
+}
+
+function getCronAuthDiagnostic(req) {
+  var authHeader = (req && req.headers && req.headers['authorization']) || '';
+  var hasBearer = /^Bearer\s+\S+/i.test(String(authHeader));
+  var hasQuerySecret = !!(req && req.query && String(req.query.secret || '').trim());
+  return {
+    cron_auth_supported: cronAuthSupported(),
+    accepts_bearer_header: true,
+    accepts_secret_query: true,
+    request_has_bearer_header: hasBearer,
+    request_has_secret_query: hasQuerySecret,
+    vercel_cron_note: 'Vercel Cron can authenticate through Authorization: Bearer CRON_SECRET when the environment variable is configured; no query secret is required in vercel.json.'
+  };
+}
+
 function pickWasSentToTelegram(row) {
   var raw = (row && row.raw_payload) || {};
   return !!(raw.telegram_daily_sent_at || raw.telegram_sent_at || raw.sent_to_telegram_at);
@@ -4075,9 +4101,8 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     var existingRows = existingRes.data || [];
     var alreadySent = existingRows.length > 0 && existingRows.every(pickWasSentToTelegram);
 
-    if (!force && !readiness.ready && existingRows.length === 0) {
-      return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'screeners_not_ready', readiness: readiness, sent_count: 0, picked_count: 0, candidate_count: 0, inserted_count: 0, telegram: null }, diagnosticsBase));
-    }
+    var partialReadiness = !readiness.ready;
+    var readinessWarning = partialReadiness ? buildReadinessWarning(readiness) : null;
 
     var picks = [];
     var source = 'selected_candidates';
@@ -4087,6 +4112,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       picks = existingRows.map(rowToDailyPickCandidate);
     } else {
       picks = await selectDailyTop5(supabase);
+      if (partialReadiness && picks.length > 0) source = 'partial_readiness_candidates';
     }
 
     if (dryRun) {
@@ -4104,12 +4130,16 @@ async function handleTelegramDailyPicks(req, res, supabase) {
         candidates: picks.map(candidateDiagnostic),
         existing_locked_count: existingRows.length,
         already_sent: alreadySent,
+        partial_readiness: partialReadiness,
+        warning: readinessWarning,
+        cron_auth_supported: cronAuthSupported(),
+        auth: getCronAuthDiagnostic(req),
         telegram: null
       }, diagnosticsBase));
     }
 
     if (alreadySent && !force) {
-      return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'already_sent', source: source, readiness: readiness, sent_count: 0, picked_count: existingRows.length, candidate_count: existingRows.length, inserted_count: 0, existing_locked_count: existingRows.length, telegram: null }, diagnosticsBase));
+      return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'already_sent', source: source, readiness: readiness, sent_count: 0, picked_count: existingRows.length, candidate_count: existingRows.length, inserted_count: 0, existing_locked_count: existingRows.length, already_sent: alreadySent, partial_readiness: partialReadiness, warning: readinessWarning, telegram: null }, diagnosticsBase));
     }
 
     var notifier = await sendDailyTop5Telegram(supabase, picks, date);
@@ -4145,6 +4175,9 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       candidate_count: picks.length,
       inserted_count: insertedCount,
       existing_locked_count: existingRows.length,
+      already_sent: alreadySent,
+      partial_readiness: partialReadiness,
+      warning: readinessWarning,
       selected_tickers: picks.map(function(p) { return p.ticker; }),
       notifier: notifier,
       telegram: notifier.header || null,
