@@ -6967,6 +6967,12 @@ function normalizeDashboardPick(p) {
     r.freshness_age_minutes = p.freshness_age_minutes != null ? p.freshness_age_minutes : raw.freshness_age_minutes;
     r.freshness_priority = p.freshness_priority != null ? p.freshness_priority : raw.freshness_priority;
     r.freshness_is_stale = !!(p.freshness_is_stale || raw.freshness_is_stale);
+    r.breakout_confirmation_label = p.breakout_confirmation_label || raw.breakout_confirmation_label;
+    r.breakout_confirmation_note = p.breakout_confirmation_note || raw.breakout_confirmation_note;
+    r.false_breakout_risk = !!(p.false_breakout_risk || raw.false_breakout_risk);
+    r.setup_freshness_label = p.setup_freshness_label || raw.setup_freshness_label;
+    r.setup_expiry_note = p.setup_expiry_note || raw.setup_expiry_note;
+    r.setup_age_minutes = p.setup_age_minutes != null ? p.setup_age_minutes : raw.setup_age_minutes;
     return r;
 }
 function getPlanWarningLine(r) {
@@ -7021,6 +7027,7 @@ function renderDashboardTop5(picks) {
         html += '<div class="mt-1">' + freshnessChipHtml(r) + '</div>';
         html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span><span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span><span>RR <b class="text-purple-300">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '—') + '</b></span><span class="text-blue-300">' + escapeHtml(action) + '</span></div>';
         html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>EntryQ <b class="text-blue-300">' + escapeHtml(r.entry_quality_label || r.entry_status_label || '—') + '</b></span><span>PlanQ <b class="text-purple-300">' + escapeHtml(r.plan_quality_label || '—') + '</b></span><span>Invalidation <b class="text-amber-300">' + escapeHtml(r.invalidation_distance_label || '—') + '</b></span></div>';
+        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Breakout <b class="text-cyan-300">' + escapeHtml(r.breakout_confirmation_label || 'Watch') + '</b></span><span>Setup Age <b class="text-amber-300">' + escapeHtml(r.setup_freshness_label || 'Needs Revalidation') + '</b></span></div>';
         if (r.entry_safety_note || r.invalidation_note || r.trading_plan_note) html += '<div class="mt-1 text-[10px] text-gray-500 truncate">' + escapeHtml(r.entry_safety_note || r.invalidation_note || r.trading_plan_note || '') + '</div>';
         html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
         var planWarn = getPlanWarningLine(r);
@@ -7064,6 +7071,7 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
         var openTxt = (p.open_price != null && isFinite(Number(p.open_price))) ? 'Open ' + dashFmtPrice(p.open_price) : '';
         html += '<article' + cardAttrs + ' class="' + cardClass + '"><div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(statusText) + '</span>' + freshnessChipHtml(r) + '</div>';
         if (monitorParts.length) html += '<div class="mt-1 text-[11px] text-gray-400">' + monitorParts.join(' · ') + '</div>';
+        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Breakout <b class="text-cyan-300">' + escapeHtml(r.breakout_confirmation_label || 'Watch') + '</b></span><span>Setup Age <b class="text-amber-300">' + escapeHtml(r.setup_freshness_label || 'Needs Revalidation') + '</b></span></div>';
         if (openTxt) html += '<div class="mt-0.5 text-[10px] text-gray-600">' + escapeHtml(openTxt) + '</div>';
         html += '<div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-gray-400"><span>Entry <b class="text-blue-300">' + dashFmtPrice(p.entry1) + '</b></span><span>E2 <b class="text-blue-300">' + dashFmtPrice(p.entry2) + '</b></span><span>SL <b class="text-red-300">' + dashFmtPrice(p.sl) + '</b></span><span>TP1/TP2 <b class="text-emerald-300">' + dashFmtPrice(p.tp1) + '/' + dashFmtPrice(p.tp2) + '</b></span></div>';
         html += '<div class="mt-1 text-[10px] text-gray-500">' + escapeHtml(p.status_note || p.progress || '-') + ' · ' + escapeHtml(p.progress || '-') + ' · ' + dashWibTime(p.last_updated_at) + ' WIB</div></div></div></article>';
