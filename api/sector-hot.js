@@ -4758,7 +4758,7 @@ async function handleWebDailyPicks(req, res, supabase) {
     var monitorStale = isMonitorTimestampStale(lastAt, monitorSourceLabel);
     var staleNote = monitorStale ? 'Data monitor belum update terbaru.' : null;
     var adminPreviewExtra = {};
-    if (await isDashboardAdminUser(req, supabase)) {
+    if (String((req.query && req.query.admin_preview) || '') === '1' && await isDashboardAdminUser(req, supabase)) {
       var previewCandidates = await selectDailyTop5(supabase);
       var previewRows = [];
       for (var k = 0; k < previewCandidates.length; k++) previewRows.push(buildFallbackDashboardPickRow(previewCandidates[k], k + 1));
