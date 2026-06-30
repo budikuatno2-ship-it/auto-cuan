@@ -2971,6 +2971,12 @@ function attachFreshness(row, meta) {
   row.freshness_age_minutes = f.freshness_age_minutes;
   row.freshness_priority = f.freshness_priority;
   row.freshness_is_stale = f.freshness_is_stale;
+  var sf = idxTick.deriveSetupFreshness(row, meta);
+  row.setup_age_minutes = sf.setup_age_minutes != null ? sf.setup_age_minutes : f.freshness_age_minutes;
+  row.setup_age_hours = sf.setup_age_hours != null ? sf.setup_age_hours : (f.freshness_age_minutes != null ? Math.round((f.freshness_age_minutes / 60) * 100) / 100 : null);
+  row.setup_freshness_status = f.freshness_is_stale ? 'NEEDS_REVALIDATION' : sf.setup_freshness_status;
+  row.setup_freshness_label = f.freshness_is_stale ? 'Needs Revalidation' : sf.setup_freshness_label;
+  row.setup_expiry_note = f.freshness_is_stale ? f.freshness_reason : sf.setup_expiry_note;
   if (f.freshness_is_stale) {
     var staleMsg = 'Data stale — validasi ulang harga/volume sebelum entry.';
     if (!row.stale_notes) row.stale_notes = staleMsg;
@@ -3248,6 +3254,7 @@ function attachEntryStatus(row) {
   r.entry_safety_note = es.entry_safety_note;
   r.entry_distance_pct = es.entry_distance_pct;
   r.chase_risk_label = es.chase_risk_label;
+  Object.assign(r, idxTick.deriveBreakoutConfirmation(r));
   Object.assign(r, idxTick.deriveInvalidationDistance(r));
   var sanity = idxTick.validateTradingPlanSanity(r);
   r.trading_plan_valid = sanity.trading_plan_valid;
@@ -4201,7 +4208,17 @@ function isJakartaAtOrAfter(hour, minute) {
 function evaluateMonitorStatus(pick, px) {
   var status = String(pick.status || 'WAITING').toUpperCase();
   var finalBefore = pick.is_final || ['TP1_HIT','TP2_HIT','SL_HIT'].indexOf(status) >= 0;
-  if (!px || px.last == null) return { status: status === 'WAITING' ? 'STALE' : status, label: 'Data terbatas', isFinal: finalBefore, note: 'Data harga terbaru belum tersedia' };
+  var raw = pick.raw_payload || {};
+  var fresh = idxTick.deriveSetupFreshness(Object.assign({}, raw, {
+    first_sent_at: pick.first_sent_at,
+    last_checked_at: pick.last_checked_at,
+    created_at: pick.created_at,
+    entry1: pick.entry1,
+    entry2: pick.entry2,
+    sl: pick.sl,
+    current_price: px && px.last
+  }));
+  if (!px || px.last == null) return { status: 'NEEDS_REVALIDATION', label: 'Needs Revalidation', isFinal: finalBefore, note: 'Data harga terbaru belum tersedia' };
 
   var last = toNum(px.last);
   var high = px.high != null ? toNum(px.high) : last;
@@ -4212,17 +4229,19 @@ function evaluateMonitorStatus(pick, px) {
   var tp2 = toNum(pick.tp2);
   var sl = toNum(pick.sl);
   var entryTouched = entry1 != null && high != null && low != null && low <= entry1 && high >= entry1;
-  var active = status === 'ACTIVE' || status.indexOf('TP') >= 0 || entryTouched;
+  var active = status === 'RUNNING' || status === 'ACTIVE' || status.indexOf('TP') >= 0 || entryTouched || pick.hit_entry_at;
 
-  if (active && sl != null && low != null && low <= sl) return { status: 'SL_HIT', label: 'SL kena', isFinal: true, note: 'SL tersentuh' };
-  if (active && tp2 != null && high != null && high >= tp2) return { status: 'TP2_HIT', label: 'TP2 tercapai', isFinal: true, note: 'TP2 tersentuh' };
-  if (active && tp1 != null && high != null && high >= tp1) return { status: 'TP1_HIT', label: 'TP1 tercapai', isFinal: true, note: 'TP1 tersentuh' };
-  if (entryTouched) return { status: 'ACTIVE', label: 'Entry tersentuh', isFinal: false, note: 'Entry 1 sudah tersentuh' };
-  if (entry1 != null && entry2 != null && last <= entry1 && last >= entry2) return { status: 'ACTIVE', label: 'Masuk area entry', isFinal: false, note: 'Harga berada di area Entry 1–Entry 2' };
-  if (entry2 != null && sl != null && last < entry2 && last > sl) return { status: 'WAITING', label: 'Di bawah area entry, pantau risiko', isFinal: false, note: 'Harga di bawah Entry 2 namun masih di atas SL' };
-  if (entry1 != null && last > entry1) return { status: status === 'ACTIVE' ? 'ACTIVE' : 'WAITING', label: status === 'ACTIVE' ? 'Menuju TP1' : 'Menunggu pullback ke entry', isFinal: false, note: 'Harga masih di atas Entry 1' };
-  if (entry1 != null && last < entry1) return { status: 'WAITING', label: 'Mendekati area entry', isFinal: false, note: 'Harga belum menyentuh area entry' };
-  return { status: 'WAITING', label: 'Belum masuk area entry', isFinal: false, note: 'Belum masuk area entry' };
+  if (sl != null && low != null && low <= sl) return { status: active ? 'SL_HIT' : 'INVALID', label: active ? 'SL kena' : 'Invalid', isFinal: true, note: active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry' };
+  if (active && tp2 != null && high != null && high >= tp2) return { status: 'TP2_HIT', label: 'TP2 Hit', isFinal: true, note: pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh' };
+  if (active && tp1 != null && high != null && high >= tp1) return { status: 'TP1_HIT', label: 'TP1 Hit', isFinal: false, note: pick.hit_tp1_at ? 'TP1 sudah tercatat sebelumnya' : 'TP1 tersentuh' };
+  if (fresh.setup_freshness_status === 'EXPIRED') return { status: 'EXPIRED', label: 'Expired', isFinal: false, note: fresh.setup_expiry_note };
+  if (fresh.setup_freshness_status === 'NEEDS_REVALIDATION') return { status: 'NEEDS_REVALIDATION', label: 'Needs Revalidation', isFinal: false, note: fresh.setup_expiry_note };
+  if (entryTouched) return { status: 'RUNNING', label: 'Running', isFinal: false, note: 'Entry sudah tersentuh; monitor TP/SL' };
+  if (entry1 != null && entry2 != null && last <= entry1 && last >= entry2) return { status: 'IN_ENTRY_ZONE', label: 'In Entry Zone', isFinal: false, note: 'Harga berada di area Entry 1–Entry 2' };
+  if (entry2 != null && sl != null && last < entry2 && last > sl) return { status: 'WATCHLIST', label: 'Watchlist', isFinal: false, note: 'Harga di bawah Entry 2 namun masih di atas SL' };
+  if (entry1 != null && last > entry1) return { status: active ? 'RUNNING' : 'ENTRY_MISSED', label: active ? 'Running' : 'Entry Missed', isFinal: false, note: active ? 'Menuju TP1' : 'Harga di atas Entry 1 tanpa touch area; wait pullback' };
+  if (entry1 != null && last < entry1) return { status: 'ENTRY_READY', label: 'Entry Ready', isFinal: false, note: 'Mendekati area entry; tunggu harga masuk zone' };
+  return { status: 'WATCHLIST', label: 'Watchlist', isFinal: false, note: 'Belum masuk area entry' };
 }
 
 function webPickScore(raw) {
@@ -4281,6 +4300,15 @@ function buildDashboardPickRow(row, rank, px) {
     entry_status_note: raw.entry_status_note,
     entry_distance_pct: raw.entry_distance_pct,
     chase_risk_label: raw.chase_risk_label,
+    breakout_confirmation_status: raw.breakout_confirmation_status,
+    breakout_confirmation_label: raw.breakout_confirmation_label,
+    breakout_confirmation_note: raw.breakout_confirmation_note,
+    false_breakout_risk: raw.false_breakout_risk,
+    setup_age_minutes: raw.setup_age_minutes,
+    setup_age_hours: raw.setup_age_hours,
+    setup_freshness_status: raw.setup_freshness_status,
+    setup_freshness_label: raw.setup_freshness_label,
+    setup_expiry_note: raw.setup_expiry_note,
     plan_quality_status: raw.plan_quality_status,
     sl_quality_label: raw.sl_quality_label,
     tp_quality_label: raw.tp_quality_label,
@@ -4397,6 +4425,10 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
     entry_status: raw.entry_status,
     entry_status_label: raw.entry_status_label,
     entry_status_note: raw.entry_status_note,
+    breakout_confirmation_status: raw.breakout_confirmation_status,
+    breakout_confirmation_label: raw.breakout_confirmation_label,
+    breakout_confirmation_note: raw.breakout_confirmation_note,
+    false_breakout_risk: raw.false_breakout_risk,
     last_updated_at: (px && px.at) || row.last_checked_at || row.first_sent_at || null,
     progress: buildMonitorProgressLabel(row, px),
     raw_payload: raw,
@@ -4724,7 +4756,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       var px = await fetchLatestPriceForMonitor(supabase, pck.ticker);
       var ev = evaluateMonitorStatus(pck, px);
       var update = { status: ev.status, is_final: ev.isFinal || isFinal, last_checked_at: new Date().toISOString() };
-      if (ev.status === 'ACTIVE' && !pck.hit_entry_at) update.hit_entry_at = update.last_checked_at;
+      if ((ev.status === 'RUNNING' || ev.status === 'IN_ENTRY_ZONE') && !pck.hit_entry_at) update.hit_entry_at = update.last_checked_at;
       if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) update.hit_tp1_at = update.last_checked_at;
       if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) update.hit_tp2_at = update.last_checked_at;
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) update.hit_sl_at = update.last_checked_at;
@@ -7489,6 +7521,7 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   lines.push('Status: ' + statusLabel);
   lines.push('G:' + grade + ' · ' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + safeTelegramText(enrichedForGrade.liquidity_label, 40, '-'));
   lines.push('EntryQ: ' + safeTelegramText(r.entry_quality_label || r.entry_status_label, 40, '-') + ' · PlanQ: ' + safeTelegramText(r.plan_quality_label || r.plan_label, 40, '-'));
+  lines.push('Breakout: ' + safeTelegramText((r.breakout_confirmation_label || 'Breakout Watch').replace(/^Breakout /, ''), 40, '-') + (r.resistance ? ', needs close > ' + fmtPrice(r.resistance) : '') + ' · Setup Age: ' + safeTelegramText(r.setup_freshness_label || 'Needs Revalidation', 30, '-'));
   lines.push('Window: ' + safeTelegramText(enrichedForGrade.entry_window_label, 60, '-'));
   if (r.entry_status_label) lines.push('Entry Safety: ' + safeTelegramText(r.entry_status_label, 40, '-') + ' — ' + safeTelegramText(r.entry_status_note, 90, '-').replace(/^Harga/, 'harga'));
   lines.push('Harga: ' + fmtPrice(r.last_price));
