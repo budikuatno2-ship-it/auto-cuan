@@ -5146,7 +5146,7 @@ function findManualConfluenceRow(ticker) {
 function buildManualConfluenceHtml(ticker) {
     var row = findManualConfluenceRow(ticker);
     if (!row) {
-        return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30 text-xs text-gray-400">Belum ada row screener untuk ticker ini atau akses screener belum valid untuk session ini.</div>';
+        return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30 text-xs text-gray-400">Data belum cukup untuk konfirmasi foreign/pattern.</div>';
     }
     var type = row.group_code ? 'konglo' : (row.board ? 'nonkonglo' : 'daytrade');
     return '<div class="mb-3 p-3 rounded-xl bg-dark-800/60 border border-dark-600/30">' + buildConfluenceHtml(row, type === 'konglo' || type === 'nonkonglo') + '</div>';
