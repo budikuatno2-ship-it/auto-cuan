@@ -6985,7 +6985,14 @@ function normalizeDashboardPick(p) {
     r.setup_freshness_label = p.setup_freshness_label || raw.setup_freshness_label;
     r.setup_expiry_note = p.setup_expiry_note || raw.setup_expiry_note;
     r.setup_age_minutes = p.setup_age_minutes != null ? p.setup_age_minutes : raw.setup_age_minutes;
+    r.quality_chips = Array.isArray(p.quality_chips) ? p.quality_chips : (Array.isArray(raw.quality_chips) ? raw.quality_chips : []);
     return r;
+}
+function dashQualityChipsHtml(chips) {
+    if (!Array.isArray(chips) || chips.length === 0) return '';
+    return '<div class="mt-1 flex flex-wrap gap-1">' + chips.slice(0, 6).map(function(c) {
+        return '<span class="text-[9px] px-1.5 py-0.5 rounded-full border border-emerald-500/15 bg-emerald-500/5 text-emerald-200">' + escapeHtml(c) + '</span>';
+    }).join('') + '</div>';
 }
 function getPlanWarningLine(r) {
     if (!r) return '';
@@ -7045,7 +7052,9 @@ function renderDashboardTop5(picks) {
         var planWarn = getPlanWarningLine(r);
         if (planWarn) html += '<div class="mt-1 text-[10px] text-amber-300">' + escapeHtml(planWarn) + '</div>';
         if (actionLine) html += '<div class="mt-1 text-[11px] text-blue-200 truncate">' + escapeHtml(actionLine) + '</div>';
-        html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p></div></div></article>';
+        html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p>';
+        html += dashQualityChipsHtml(r.quality_chips);
+        html += '</div></div></article>';
     });
     el.innerHTML = html;
 }
@@ -7057,15 +7066,19 @@ function renderAdminNextTop5Preview(data) {
     var updated = document.getElementById('adminNextTop5PreviewUpdated');
     if (!section || !list) return;
     var rows = data && Array.isArray(data.admin_next_top5_preview) ? data.admin_next_top5_preview : [];
-    if (!rows.length) {
+    var excludedRows = data && Array.isArray(data.admin_next_top5_excluded_preview) ? data.admin_next_top5_excluded_preview : [];
+    if (!rows.length && !excludedRows.length) {
         section.classList.add('hidden');
         list.innerHTML = '';
         if (updated) updated.textContent = 'Preview: — WIB';
         return;
     }
     section.classList.remove('hidden');
-    if (updated) updated.textContent = 'Preview: ' + dashWibTime(data.admin_next_top5_preview_generated_at) + ' WIB';
+    if (updated) updated.textContent = 'Preview: ' + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
     var html = '';
+    if (!rows.length && excludedRows.length) {
+        html += '<div class="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-3 text-[11px] text-amber-100">Belum ada kandidat yang lolos final quality gate untuk preview Top 5. Lihat daftar Excluded by Guard di bawah.</div>';
+    }
     rows.slice(0, 5).forEach(function(p, idx) {
         var r = normalizeDashboardPick(p);
         var sc = Number(r.combined_score || r.telegram_conviction_score || r.daytrade_score || r.score || 0);
@@ -7082,8 +7095,21 @@ function renderAdminNextTop5Preview(data) {
         html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
         html += '<div class="mt-1 text-[11px] text-blue-200 truncate">Action/Verdict: ' + escapeHtml(action + (verdict ? ' — ' + verdict : '')) + '</div>';
         if (reason) html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p>';
+        html += dashQualityChipsHtml(r.quality_chips);
         html += '</div></div></article>';
     });
+    if (excludedRows.length) {
+        html += '<div class="mt-3 rounded-xl border border-red-500/15 bg-red-500/5 px-3 py-2">';
+        html += '<div class="mb-2 text-[11px] font-semibold text-red-200">Excluded by Guard</div>';
+        excludedRows.slice(0, 5).forEach(function(ex) {
+            var rr = Number(ex.rr);
+            html += '<div class="border-t border-red-500/10 py-2 first:border-t-0">';
+            html += '<div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]"><span class="font-bold text-white">' + escapeHtml(ex.ticker || '-') + '</span><span class="text-gray-400">' + escapeHtml(ex.category || '-') + '</span><span class="text-gray-400">Grade <b class="text-red-200">' + escapeHtml(ex.grade || '-') + '</b></span><span class="text-gray-400">Risk <b class="text-red-200">' + escapeHtml(ex.risk || '-') + '</b></span><span class="text-gray-400">RR <b class="text-purple-200">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '-') + '</b></span><span class="text-blue-200">' + escapeHtml(ex.action || '-') + '</span></div>';
+            html += '<div class="mt-1 text-[10px] text-red-100/80">' + escapeHtml(ex.excluded_reason || '-') + '</div>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
     list.innerHTML = html;
 }
 

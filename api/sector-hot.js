@@ -3386,7 +3386,45 @@ function applyPlanQualityConfidenceGuard(r) {
 
 
 function textHasFatalTopGuard(value) {
-  return includesAny(String(value || '').toLowerCase(), ['failed respect', 'gagal respect', 'failed breakout', 'breakout gagal', 'distribusi', 'distribution', 'invalid', 'avoid']);
+  var t = String(value || '').toLowerCase().replace(/[\s_\-]+/g, ' ').trim();
+  return includesAny(t, [
+    'failed respect',
+    'gagal respect',
+    'failed breakout',
+    'breakout gagal',
+    'distribution volume',
+    'distribusi terdeteksi',
+    'hard avoid',
+    'setup avoid',
+    'status avoid',
+    'setup invalid',
+    'invalid plan',
+    'trading plan invalid',
+    'level invalid'
+  ]);
+}
+
+function hasAvoidGrade(candidate) {
+  var r = candidate || {};
+  return [r.confidence, r.grade, r.quality_grade, r.signal_confidence].some(function(v) {
+    return String(v || '').trim().toUpperCase() === 'AVOID';
+  });
+}
+
+function isHindariActionLabel(value) {
+  var t = String(value || '').trim().toLowerCase();
+  if (!t) return false;
+  return /^hindari(\b|\s|[—\-:,.])/.test(t) || /(^|[—\-:,.]\s*)hindari(\b|\s|[—\-:,.])/.test(t);
+}
+
+function hasHindariAction(candidate) {
+  var r = candidate || {};
+  return [r.action, r.action_label, r.signal_action_label, r.telegram_action_label].some(isHindariActionLabel);
+}
+
+function isWeakOrFailedRespectLabel(value) {
+  var t = String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  return t === 'weak' || t === 'ignore' || t === 'weak ignore' || includesAny(t, ['failed respect', 'gagal respect']);
 }
 
 function deriveFinalTopQualityGate(candidate, context) {
@@ -3401,9 +3439,7 @@ function deriveFinalTopQualityGate(candidate, context) {
     return { pass: false, hard_block: true, reason: reason, excluded_reason: 'Tidak lolos final quality gate: ' + reason + '.', quality_score_adjustment: adjustment, quality_chips: chips };
   }
 
-  var grade = String(r.confidence || r.grade || r.quality_grade || '').trim().toUpperCase();
   var signalAction = String(r.signal_action || '').trim().toUpperCase();
-  var actionLabel = String(r.action_label || r.signal_action_label || r.telegram_action_label || '').trim().toLowerCase();
   var verdictText = joinTelegramTexts([r.signal_verdict, r.telegram_verdict, r.verdict]);
   var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.risk_label || r.verified_risk_label).toLowerCase();
   var planStatus = String(r.plan_quality_status || '').trim().toUpperCase();
@@ -3416,10 +3452,10 @@ function deriveFinalTopQualityGate(candidate, context) {
   var patternLabel = String(r.pattern_label || '').trim().toLowerCase();
   var fatalText = joinTelegramTexts([r.notes, r.status_reason, r.entry_timing, r.time_plan, r.reason, r.action_reason, r.signal_reason, r.plan_quality_note]);
 
-  if (grade === 'AVOID') return block('Grade Avoid');
+  if (hasAvoidGrade(r)) return block('Grade Avoid');
   if (signalAction === 'AVOID') return block('Signal action AVOID');
-  if (actionLabel === 'hindari') return block('Action Hindari');
-  if (includesAny(verdictText.toLowerCase(), ['hard avoid', 'invalid', 'failed respect', 'failed breakout', 'distribusi'])) return block('Verdict mengandung fatal guard');
+  if (hasHindariAction(r)) return block('Action Hindari');
+  if (textHasFatalTopGuard(verdictText) || includesAny(verdictText.toLowerCase(), ['failed respect', 'failed breakout', 'distribusi terdeteksi', 'distribution volume'])) return block('Verdict mengandung fatal guard');
   if (risk === 'very high risk') return block('Very High Risk');
   if (planStatus === 'INVALID') return block('Trading plan invalid');
   if (r.trading_plan_valid === false) return block('Trading plan tidak valid');
@@ -3427,9 +3463,9 @@ function deriveFinalTopQualityGate(candidate, context) {
   if (entryQuality === 'NEEDS_REVALIDATION') return block('Entry perlu revalidasi');
   if (liq.stale_trading_days != null && liq.stale_trading_days > 2) return block('Data stale > 2 trading days');
   if (liq.is_liquidity_risk) return block('Likuiditas berisiko');
-  if (respect === 'weak' || respect === 'ignore') return block('Respect candle Weak/Ignore');
+  if (isWeakOrFailedRespectLabel(respect)) return block('Respect candle Weak/Ignore');
   if (r.respect_invalid_reason) return block('Respect candle invalid: ' + safeTelegramText(r.respect_invalid_reason, 80, 'invalid'));
-  if (r.false_breakout_risk === true && breakout !== 'confirmed') return block('False breakout risk belum confirmed');
+  if (r.false_breakout_risk === true && breakout.indexOf('confirmed') < 0) return block('False breakout risk belum confirmed');
   if (volumeLabel === 'distribution volume') return block('Distribution Volume');
   if (patternLabel === 'failed breakout') return block('Failed Breakout');
   if (textHasFatalTopGuard(fatalText)) return block('Catatan mengandung fatal guard');
@@ -3454,7 +3490,7 @@ function deriveFinalTopQualityGate(candidate, context) {
   if (trend === 'improving trend') addChip('Improving Trend', 4);
   if (foreign === 'foreign accumulation') addChip('Foreign Accumulation', 5);
   if (foreign === 'foreign absorption') addChip('Foreign Absorption', 4);
-  if (breakout === 'confirmed') addChip('Breakout Confirmed', 6);
+  if (breakout.indexOf('confirmed') >= 0) addChip('Breakout Confirmed', 6);
   if (includesAny(entryLabel, ['near entry', 'in entry', 'area entry'])) addChip('Entry near E1/E2', 5);
   if (rrLabel.indexOf('sehat') >= 0 || (toNum(r.risk_reward) || 0) >= getMinRRForCategory(r.category)) addChip('Healthy RR', 4);
   if (tpLabel.indexOf('realistis') >= 0) addChip('TP realistic', 3);
