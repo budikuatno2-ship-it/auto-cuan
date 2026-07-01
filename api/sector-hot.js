@@ -3334,6 +3334,20 @@ function attachEntryStatus(row) {
     r.confidence = 'B';
   }
   idxTick.applyRiskV2ConfidenceGuard(r);
+  var execReality = idxTick.deriveCandlePotentialRange(Object.assign({}, r, {
+    reference_price: r.previous_close || r.prev_close || r.close_prev || (r.change_pct != null && (r.last_price || r.lastn || r.current_price) ? (r.last_price || r.lastn || r.current_price) / (1 + (r.change_pct / 100)) : null),
+    current_price: r.current_price || r.last_price || r.lastn || r.close,
+    mode: /day/i.test(r.category || '') ? 'daytrade' : 'swing'
+  }));
+  Object.assign(r, execReality);
+  if (/day/i.test(r.category || '') && r.near_ara) {
+    if (r.confidence === 'A+' || r.confidence === 'A') r.confidence = 'B';
+    r.entry_timing = 'Watchlist — jangan chase dekat ARA';
+    if (!r.telegram_verdict || /entry|buy|beli/i.test(r.telegram_verdict)) r.telegram_verdict = 'Watchlist — jangan chase dekat ARA.';
+  }
+  if (/day/i.test(r.category || '') && (r.tp1_beyond_ara || (r.candle_potential_high && (r.tp1 || r.tp1n) > r.candle_potential_high))) {
+    if (r.confidence === 'A+' || r.confidence === 'A') r.confidence = 'B';
+  }
   var sv = idxTick.deriveSignalVerdict(r);
   Object.assign(r, sv);
   if (sv.signal_confidence) r.confidence = sv.signal_confidence;
@@ -3720,8 +3734,29 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   if (r.is_stale || r.data_stale || r.freshness_is_stale) confluence.push('Needs Revalidation: data stale');
   if (r.confidence === 'C') confluence.push('Radar Only');
   if (confluence.length) lines.push(confluence.join(' · '));
+  var execReality = idxTick.deriveCandlePotentialRange(Object.assign({}, r, {
+    reference_price: r.previous_close || r.prev_close || r.close_prev || (r.change_pct != null && (r.last_price || r.lastn || r.current_price) ? (r.last_price || r.lastn || r.current_price) / (1 + (r.change_pct / 100)) : null),
+    current_price: r.current_price || r.last_price || r.lastn || r.close,
+    mode: /day/i.test(r.category || '') ? 'daytrade' : 'swing'
+  }));
+  Object.assign(r, execReality);
+  if (/day/i.test(r.category || '') && r.near_ara) {
+    if (r.confidence === 'A+' || r.confidence === 'A') r.confidence = 'B';
+    r.entry_timing = 'Watchlist — jangan chase dekat ARA';
+    if (!r.telegram_verdict || /entry|buy|beli/i.test(r.telegram_verdict)) r.telegram_verdict = 'Watchlist — jangan chase dekat ARA.';
+  }
+  if (/day/i.test(r.category || '') && (r.tp1_beyond_ara || (r.candle_potential_high && (r.tp1 || r.tp1n) > r.candle_potential_high))) {
+    if (r.confidence === 'A+' || r.confidence === 'A') r.confidence = 'B';
+  }
   var sv = idxTick.deriveSignalVerdict(r);
   Object.assign(r, sv);
+  if (r.candle_potential_low && r.candle_potential_high) {
+    var roomTxt = r.ara_room_pct != null ? ' · ARA room ' + ((Number(r.ara_room_pct) >= 0 ? '+' : '') + Number(r.ara_room_pct).toFixed(1) + '%') : '';
+    lines.push('Potensi Candle: ' + fmtPrice(r.candle_potential_low) + '–' + fmtPrice(r.candle_potential_high) + roomTxt);
+    if (r.tp_realism_note) lines.push('Note: ' + r.tp_realism_note);
+    else if (r.category === 'Day Trade' && r.near_ara) lines.push('Note: Jangan chase dekat ARA.');
+    else if (r.tp2_beyond_ara) lines.push('Note: TP2 multi-day jika lewat ARA.');
+  }
   lines.push('Verdict: ' + compactSafeText(r.signal_action_label || 'Watchlist', 'Watchlist'));
   if (!compact) lines.push('Chart: ' + chartLink(r.ticker));
   return lines.map(function(line){ return compactSafeText(line, '-'); }).join('\n');

@@ -1281,6 +1281,15 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   html += '<div><strong>Entry</strong><br><br>' + entryPlan + '</div>';
   html += '<div><strong>Stop Loss</strong><br><br>' + stopLoss + '</div>';
   html += '<div><strong>TP</strong><br><br><div>TP1: ' + tp1 + '</div><div>TP2: ' + tp2 + '</div></div>';
+  var execReality = _idxTick.deriveCandlePotentialRange({ reference_price: d.previousClose || d.previous_close || d.prev_close || d.close, current_price: d.last || d.close || d.currentPrice, last_price: d.last || d.close || d.currentPrice, high_price: d.high, low_price: d.low, support: s1, resistance: r1, tp1: r1, tp2: r2, stop_loss: s1 });
+  if (execReality.ara_price || execReality.candle_potential_low) {
+    html += '<div><strong>Execution Reality</strong><br><br>';
+    html += '<div>Entry Basis: ' + (execReality.entry_basis_note || 'Entry basis mengikuti level deterministic screener.') + '</div>';
+    html += '<div>ARA/ARB: ' + v(execReality.ara_price) + ' / ' + v(execReality.arb_price) + '</div>';
+    html += '<div>Room ARA/ARB: ' + (execReality.ara_room_pct != null ? execReality.ara_room_pct + '%' : '—') + ' / ' + (execReality.arb_room_pct != null ? execReality.arb_room_pct + '%' : '—') + '</div>';
+    html += '<div>Potensi Candle: ' + v(execReality.candle_potential_low) + '–' + v(execReality.candle_potential_high) + '</div>';
+    html += '<div>TP Realism: ' + (execReality.tp_realism_note || 'TP mengikuti target deterministic screener.') + '</div></div>';
+  }
   html += '<div><strong>Catatan</strong><br><br>' + catatan + '</div></div>';
   // 11. Risk Guard
   html += '<p><strong>Risk Guard</strong><br>' + riskGuard + '</p>';
