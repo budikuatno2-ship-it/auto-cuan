@@ -7154,7 +7154,9 @@ function dashExecutionRealityLine(r) {
     return parts.join(' · ');
 }
 function dashTpRealismLine(r) {
-    var line = r && r.tp_realism_note ? r.tp_realism_note : (r && r.tp2_beyond_ara ? 'TP1 realistis · TP2 lanjutan/multi-day' : '');
+    var line = r && r.tp_realism_note ? r.tp_realism_note : '';
+    if (r && r.tp2_intraday_realistic === true && (!line || /TP2 lanjutan\/multi-day/i.test(line))) line = 'TP1 realistis · TP2 realistis intraday jika momentum lanjut.';
+    else if (!line && r && r.tp2_beyond_ara) line = 'TP1 realistis · TP2 lanjutan/multi-day.';
     return line.replace(/^ARA\/ARB belum tersedia;\s*/i, '');
 }
 
