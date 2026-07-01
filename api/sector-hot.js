@@ -4897,6 +4897,66 @@ function isLegacyBudiReadAllowed(req) {
   return adminUsernames.indexOf('budi') >= 0 || process.env.ADMIN_LEGACY_BUDI_PREVIEW === 'true';
 }
 
+
+var TOP5_INTERNAL_RESPONSE_FIELDS = [
+  'raw_payload', 'detail', 'sample_rejected', 'top_rejection_reasons', 'stageByTicker',
+  'debug_notes', 'internal_notes', 'internal_diagnostics', 'preview_diagnostics',
+  'admin_notes', 'admin_note', 'excluded_reason_admin', 'excluded_preview'
+];
+var TOP5_ADMIN_PREVIEW_FIELDS = [
+  'admin_next_top5_preview', 'admin_next_top5_excluded_preview', 'admin_next_top5_preview_count',
+  'admin_next_top5_excluded_count', 'admin_next_top5_preview_note', 'admin_next_top5_preview_generated_at'
+];
+function isTop5PreviewOrProvisionalRow(row) {
+  if (!row) return false;
+  var source = String(row.top5_source || row.source_type || row.visibility || row.publication_status || row.status_label || '').toLowerCase();
+  return row.web_provisional === true || row.is_provisional === true || row.provisional === true ||
+    row.preview === true || row.is_preview === true || row.admin_only === true ||
+    source.indexOf('provisional') >= 0 || source.indexOf('preview') >= 0 || source.indexOf('admin') >= 0;
+}
+function sanitizeTop5RowForPublic(row, opts) {
+  if (!row || typeof row !== 'object') return row;
+  var allowPreview = !!(opts && opts.allowPreview);
+  var clean = Object.assign({}, row);
+  for (var i = 0; i < TOP5_INTERNAL_RESPONSE_FIELDS.length; i++) delete clean[TOP5_INTERNAL_RESPONSE_FIELDS[i]];
+  for (var j = 0; j < TOP5_ADMIN_PREVIEW_FIELDS.length; j++) delete clean[TOP5_ADMIN_PREVIEW_FIELDS[j]];
+  if (!allowPreview) {
+    delete clean.web_provisional; delete clean.is_provisional; delete clean.provisional;
+    delete clean.preview; delete clean.is_preview; delete clean.admin_only;
+  } else if (isTop5PreviewOrProvisionalRow(row)) {
+    clean.visibility = clean.visibility || 'admin_preview';
+    clean.publication_status = clean.publication_status || 'provisional';
+    clean.preview_label = clean.preview_label || 'Preview';
+    clean.provisional_label = clean.provisional_label || 'Provisional';
+  }
+  return clean;
+}
+function sanitizeTop5RowsForAudience(rows, opts) {
+  if (!Array.isArray(rows)) return [];
+  var allowPreview = !!(opts && opts.allowPreview);
+  return rows.filter(function(row) { return allowPreview || !isTop5PreviewOrProvisionalRow(row); })
+    .map(function(row) { return sanitizeTop5RowForPublic(row, { allowPreview: allowPreview }); });
+}
+function sanitizeTop5ResponseForAudience(payload, opts) {
+  var allowAdminPreview = !!(opts && opts.allowAdminPreview);
+  var clean = Object.assign({}, payload || {});
+  ['top5','picks','monitor','rows','history','active_history','tp_history'].forEach(function(k) {
+    if (Array.isArray(clean[k])) clean[k] = sanitizeTop5RowsForAudience(clean[k], { allowPreview: allowAdminPreview });
+  });
+  if (!allowAdminPreview) {
+    TOP5_ADMIN_PREVIEW_FIELDS.forEach(function(k) { delete clean[k]; });
+    if (!clean.top5_locked) {
+      clean.top5_source = 'awaiting_locked_rows';
+      clean.web_provisional = false;
+      clean.update_note = clean.update_note || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.';
+    }
+  } else {
+    if (Array.isArray(clean.admin_next_top5_preview)) clean.admin_next_top5_preview = sanitizeTop5RowsForAudience(clean.admin_next_top5_preview, { allowPreview: true });
+    if (Array.isArray(clean.admin_next_top5_excluded_preview)) clean.admin_next_top5_excluded_preview = sanitizeTop5RowsForAudience(clean.admin_next_top5_excluded_preview, { allowPreview: true });
+  }
+  return clean;
+}
+
 async function lookupDashboardAdminAppUser(req, supabase) {
   var rawUserId = String(req.headers['x-user-id'] || '').trim();
   var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
@@ -4965,7 +5025,7 @@ function sendDashboardScreenerGate(res, extra) {
 
 async function handleWebDailyPicks(req, res, supabase) {
   if (!isDashboardScreenerLoggedIn(req)) {
-    return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_source: 'provisional_candidates', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: true, update_note: 'Login diperlukan; Top 5 Radar web dapat muncul sebelum jadwal Telegram untuk user yang sudah login.', last_updated_at: null, monitor_last_updated_at: null });
+    return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.', last_updated_at: null, monitor_last_updated_at: null });
   }
   try {
     var date = getJakartaDateString();
@@ -5007,7 +5067,7 @@ async function handleWebDailyPicks(req, res, supabase) {
     if (req.query.admin_preview === '1' && await isDashboardAdminUser(req, supabase)) {
       var previewCandidates = await selectDailyTop5(supabase);
       var previewRows = [];
-      for (var k = 0; k < previewCandidates.length; k++) previewRows.push(buildFallbackDashboardPickRow(previewCandidates[k], k + 1));
+      for (var k = 0; k < previewCandidates.length; k++) { var pr = buildFallbackDashboardPickRow(previewCandidates[k], k + 1); pr.is_preview = true; pr.is_provisional = true; pr.visibility = 'admin_preview'; pr.publication_status = 'provisional'; pr.preview_label = 'Preview'; pr.provisional_label = 'Provisional'; previewRows.push(pr); }
       var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
       var excludedRows = [];
       for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
@@ -5023,7 +5083,7 @@ async function handleWebDailyPicks(req, res, supabase) {
         admin_next_top5_preview_generated_at: new Date().toISOString()
       };
     }
-    return res.status(200).json(Object.assign({
+    var responsePayload = Object.assign({
       success: true,
       date: date,
       top5: top5,
@@ -5040,9 +5100,10 @@ async function handleWebDailyPicks(req, res, supabase) {
       monitor_is_stale: monitorStale,
       monitor_stale_note: staleNote,
       picks: top5
-    }, adminPreviewExtra));
+    }, adminPreviewExtra);
+    return res.status(200).json(sanitizeTop5ResponseForAudience(responsePayload, { allowAdminPreview: !!adminPreviewExtra.admin_next_top5_preview }));
   } catch (e) {
-    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
+    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
   }
 }
 
@@ -5194,7 +5255,7 @@ async function handleWebTop5History(req, res, supabase) {
       if (activeHistory.length >= limit) break;
     }
     tpRows = tpRows.slice(0, 10).map(function(r, idx) { r.rank = idx + 1; return r; });
-    return res.status(200).json({ success: true, rows: activeHistory, history: activeHistory, active_history: activeHistory, tp_history: tpRows, count: activeHistory.length, tp_count: tpRows.length, limit: limit, show_archived: showArchived, dedupe: 'active_ticker_latest_date_id_after_status_filter', data_source: 'telegram_daily_picks.raw_payload' });
+    return res.status(200).json(sanitizeTop5ResponseForAudience({ success: true, rows: activeHistory, history: activeHistory, active_history: activeHistory, tp_history: tpRows, count: activeHistory.length, tp_count: tpRows.length, limit: limit, show_archived: showArchived, dedupe: 'active_ticker_latest_date_id_after_status_filter', data_source: 'telegram_daily_picks.locked_rows' }, { allowAdminPreview: false }));
   } catch (e) {
     return res.status(200).json({ success: false, rows: [], history: [], count: 0, error: e.message || String(e) });
   }
@@ -8767,5 +8828,8 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 module.exports.__test = {
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
   candidateTelegramEligible: candidateTelegramEligible,
-  formatCandidateBlock: formatCandidateBlock
+  formatCandidateBlock: formatCandidateBlock,
+  sanitizeTop5ResponseForAudience: sanitizeTop5ResponseForAudience,
+  sanitizeTop5RowForPublic: sanitizeTop5RowForPublic,
+  isTop5PreviewOrProvisionalRow: isTop5PreviewOrProvisionalRow
 };

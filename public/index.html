@@ -607,7 +607,7 @@
                 <div class="flex items-center justify-between gap-2 mb-2">
                     <div>
                         <h3 class="text-sm font-bold text-white">Top 5 Radar</h3>
-                        <p id="dashboardTop5LockNote" class="text-[11px] text-gray-500">Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.</p>
+                        <p id="dashboardTop5LockNote" class="text-[11px] text-gray-500">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p>
                     </div>
                 </div>
                 <div id="dashboardTop5List" class="space-y-2">
@@ -6974,7 +6974,7 @@ var _dashboardTop5InFlight = null;
 var _top5HistoryInFlight = null;
 
 function dashboardAwaitingLockedHtml(note) {
-    return '<div class="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-4 text-center text-xs text-amber-100">' + escapeHtml(note || 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.') + '</div>';
+    return '<div class="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-4 text-center text-xs text-amber-100">' + escapeHtml(note || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.') + '</div>';
 }
 async function fetchDashboardJson(url, options, timeoutMs) {
     var controller = new AbortController();
@@ -7107,7 +7107,7 @@ function renderDashboardTop5(picks) {
     if (!el) return;
     _dashboardPickData = {};
     if (!picks || picks.length === 0) {
-        el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Belum ada kandidat Top 5 hari ini.</div>';
+        el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</div>';
         return;
     }
     var html = '';
@@ -7360,15 +7360,15 @@ async function loadDashboardTop5Monitor(silent, opts) {
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
         _dashboardTop5Cache = { at: Date.now(), data: data };
         var note = document.getElementById('dashboardTop5LockNote');
-        if (note) note.textContent = data.top5_locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
+        if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
         renderDashboardTop5MonitorData(data);
         if (opts.loadAdminPreview === true) loadAdminNextTop5Preview();
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
-        if (top) top.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">' + (e && e.message === 'Session perlu refresh/login ulang' ? 'Session perlu refresh/login ulang' : 'Belum ada kandidat Top 5 hari ini.') + '</div>';
+        if (top) top.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">' + (e && e.message === 'Session perlu refresh/login ulang' ? 'Session perlu refresh/login ulang' : 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.') + '</div>';
         var note = document.getElementById('dashboardTop5LockNote');
-        if (note) note.textContent = 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.';
+        if (note) note.textContent = 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.';
         if (mon) mon.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada Top 5 terkunci untuk dipantau.<br><span class="text-[11px] text-gray-600">Monitor aktif setelah Top 5 dikunci.</span></div>';
         renderAdminNextTop5Preview(null);
     } finally { _dashboardTop5InFlight = null; }
@@ -7378,7 +7378,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
 
 function renderDashboardTop5MonitorData(data) {
     var note = document.getElementById('dashboardTop5LockNote');
-    if (note) note.textContent = data.top5_locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
+    if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
     if (data.top5_source === 'awaiting_locked_rows') {
         var topEl = document.getElementById('dashboardTop5List');
         if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data.update_note);
