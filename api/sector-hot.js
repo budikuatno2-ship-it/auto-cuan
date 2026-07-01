@@ -8456,7 +8456,7 @@ function normalizeTelegramRiskLabel(value) {
   if (key === 'LOW' || key === 'LOW RISK' || key === 'RISIKO RENDAH') return 'Low Risk';
   if (key === 'MEDIUM' || key === 'MEDIUM RISK' || key === 'MODERATE' || key === 'MODERATE RISK' || key === 'RISIKO SEDANG') return 'Medium Risk';
   if (key === 'HIGH' || key === 'HIGH RISK' || key === 'RISIKO TINGGI') return 'High Risk';
-  if (key === 'VERY HIGH' || key === 'VERY HIGH RISK' || key === 'EXTREME' || key === 'EXTREME RISK') return 'Very High Risk';
+  if (key === 'VERY HIGH' || key === 'VERY HIGH RISK' || key === 'EXTREME' || key === 'EXTREME RISK' || key === 'RISIKO SANGAT TINGGI') return 'Very High Risk';
   return raw;
 }
 
@@ -8848,5 +8848,6 @@ module.exports.__test = {
   formatCandidateBlock: formatCandidateBlock,
   sanitizeTop5ResponseForAudience: sanitizeTop5ResponseForAudience,
   sanitizeTop5RowForPublic: sanitizeTop5RowForPublic,
-  isTop5PreviewOrProvisionalRow: isTop5PreviewOrProvisionalRow
+  isTop5PreviewOrProvisionalRow: isTop5PreviewOrProvisionalRow,
+  normalizeTelegramRiskLabel: normalizeTelegramRiskLabel
 };
