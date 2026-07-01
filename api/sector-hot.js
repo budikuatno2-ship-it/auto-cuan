@@ -3581,12 +3581,79 @@ function candidatePassesRRGate(candidate) {
   return (toNum(candidate && candidate.risk_reward) || 0) >= getMinRRForCategory(candidate && candidate.category);
 }
 
+function publicTelegramSafetyTextHasReject(text) {
+  return includesAny(String(text || '').toLowerCase(), ['hindari', 'avoid', 'rejected', 'reject', 'failed', 'fail', 'tidak lolos final quality gate']);
+}
+
+function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
+  if (!candidate) return false;
+  var finalGate = candidate.final_top_quality_gate || candidate.final_quality_gate || candidate.top_quality_gate || null;
+  if (candidate.final_quality_pass === false ||
+      candidate.final_gate_pass === false ||
+      candidate.quality_gate_pass === false ||
+      (finalGate && finalGate.pass === false)) return false;
+
+  var statusVerdictText = joinTelegramTexts([
+    candidate.status,
+    candidate.final_status,
+    candidate.verdict,
+    candidate.signal_verdict,
+    candidate.telegram_verdict,
+    candidate.reason,
+    candidate.status_reason,
+    candidate.action_reason,
+    candidate.signal_reason,
+    candidate.excluded_reason,
+    candidate.final_quality_status,
+    candidate.final_gate_status,
+    candidate.quality_gate_status,
+    candidate.action
+  ]);
+  if (publicTelegramSafetyTextHasReject(statusVerdictText)) return false;
+
+  var actionText = joinTelegramTexts([
+    candidate.action_label,
+    candidate.signal_action_label,
+    candidate.telegram_action_label,
+    candidate.action,
+    candidate.signal_action
+  ]);
+  if (includesAny(actionText.toLowerCase(), ['hindari', 'avoid'])) return false;
+
+  var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || '', 80, '').toUpperCase();
+  if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') return false;
+  if (candidate.is_stale === true || candidate.data_stale === true || candidate.freshness_is_stale === true || candidate.stale === true) return false;
+
+  var freshnessText = joinTelegramTexts([
+    candidate.setup_freshness_label,
+    candidate.freshness_label,
+    candidate.setup_expiry_note,
+    candidate.stale_notes,
+    candidate.freshness_note,
+    candidate.freshness_status,
+    candidate.setup_freshness_status
+  ]);
+  if (includesAny(freshnessText.toLowerCase(), ['stale', 'expired', 'needs revalidation'])) return false;
+
+  if (candidate.trading_plan_valid === false) return false;
+  var guardText = joinTelegramTexts([
+    candidate.action_guard_label,
+    candidate.action_guard_status,
+    candidate.plan_quality_label,
+    candidate.plan_quality_note
+  ]);
+  if (includesAny(guardText.toLowerCase(), ['level belum rapi', 'invalid plan', 'plan invalid'])) return false;
+
+  if (mode !== 'daytrade') return applyFinalTopQualityGate(candidate, mode || 'public_telegram').pass;
+  return true;
+}
+
 function candidateTelegramEligible(candidate) {
   if (!candidate || !candidatePassesRRGate(candidate) || !candidatePassesMinUpside(candidate)) return false;
   var q = deriveStaleLiquidityLabels(candidate);
   if (q.stale_trading_days != null && q.stale_trading_days > 2) return false;
   if (q.is_liquidity_risk) return false;
-  return applyFinalTopQualityGate(candidate, 'telegram').pass;
+  return candidatePassesPublicTelegramSafetyGate(candidate, 'telegram');
 }
 
 function candidatePassesMinUpside(candidate) {
@@ -3934,6 +4001,7 @@ async function buildSignalMessage(supabase, ticker) {
 }
 
 async function buildTelegramTopMessage(supabase) {
+  // Public Top 10 uses the shared candidateTelegramEligible() path, which includes candidatePassesPublicTelegramSafetyGate().
   var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidateTelegramEligible).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
   var lines = ['Top 10 Screener — ' + getWibDateString(), ''];
   if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
@@ -4301,17 +4369,18 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   var header = headerLines.join('\n');
   var emptyLines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date];
   if (options.previous_close_snapshot) emptyLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
-  emptyLines.push('', 'Belum ada kandidat yang lolos filter potensi TP minimal.');
-  var sendResult = picks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage(emptyLines.join('\n'));
+  emptyLines.push('', 'Belum ada kandidat yang lolos final quality gate hari ini.', 'Bukan rekomendasi beli/jual. DYOR.');
+  var safePicks = (picks || []).filter(function(p) { return candidatePassesPublicTelegramSafetyGate(p, 'daily_top5_send') && candidatePassesMinUpside(p); });
+  var sendResult = safePicks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage(emptyLines.join('\n'));
   var detailSent = 0;
   var detailResults = [];
-  for (var i = 0; i < picks.length; i++) {
-    var detailText = await formatCandidateBlock(supabase, picks[i], i + 1, false);
+  for (var i = 0; i < safePicks.length; i++) {
+    var detailText = await formatCandidateBlock(supabase, safePicks[i], i + 1, false);
     var detailResult = await telegramNotifier.sendTelegramMessage(detailText, { timeout_ms: 2500 });
-    detailResults.push({ ticker: picks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null });
+    detailResults.push({ ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null });
     if (detailResult.sent) detailSent++;
   }
-  return { header: sendResult, detail_sent_count: detailSent, detail_results: detailResults, sent_count: (sendResult.sent ? 1 : 0) + detailSent };
+  return { header: sendResult, detail_sent_count: detailSent, detail_results: detailResults, sent_count: (sendResult.sent ? 1 : 0) + detailSent, public_picks: safePicks, public_filtered_count: (picks || []).length - safePicks.length };
 }
 
 async function handleTelegramDailyPicks(req, res, supabase) {
@@ -4357,6 +4426,8 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       picks = await selectDailyTop5(supabase);
     }
 
+    picks = (picks || []).filter(function(p) { return candidatePassesPublicTelegramSafetyGate(p, 'daily_top5') && candidatePassesMinUpside(p); });
+
     if (dryRun) {
       return res.status(200).json(Object.assign({
         success: true,
@@ -4383,12 +4454,16 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     var notifier = await sendDailyTop5Telegram(supabase, picks, date, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' });
     var telegramSent = notifier.sent_count > 0;
     var nowIso = new Date().toISOString();
-    if (picks.length > 0 && telegramSent) {
+    if (telegramSent) {
       if (existingRows.length > 0) {
+        var publicPickIds = {};
+        (notifier.public_picks || picks).forEach(function(p) { if (p && p._daily_pick_row_id) publicPickIds[p._daily_pick_row_id] = true; });
         for (var u = 0; u < existingRows.length; u++) {
-          await supabase.from('telegram_daily_picks').update({ first_sent_at: existingRows[u].first_sent_at || nowIso, raw_payload: markRawPayloadTelegramSent(existingRows[u].raw_payload, nowIso) }).eq('id', existingRows[u].id);
+          var rawPayload = markRawPayloadTelegramSent(existingRows[u].raw_payload, nowIso);
+          if (!publicPickIds[existingRows[u].id]) rawPayload.public_filtered_from_send = true;
+          await supabase.from('telegram_daily_picks').update({ first_sent_at: existingRows[u].first_sent_at || nowIso, raw_payload: rawPayload }).eq('id', existingRows[u].id);
         }
-      } else {
+      } else if (picks.length > 0) {
         var rows = picks.map(function(r) {
           var row = dailyPickInsertRowFromCandidate(r, date, nowIso);
           row.raw_payload = markRawPayloadTelegramSent(row.raw_payload, nowIso);
@@ -7599,7 +7674,7 @@ function candidatePassesDayTradeTelegramFinalGate(candidate) {
   ]).toLowerCase();
   if (includesAny(guardText, ['level belum rapi', 'invalid plan', 'plan invalid'])) return false;
 
-  return applyFinalTopQualityGate(candidate, 'daytrade_telegram_final_filter').pass;
+  return candidatePassesPublicTelegramSafetyGate(candidate, 'daytrade') && applyFinalTopQualityGate(candidate, 'daytrade_telegram_final_filter').pass;
 }
 
 async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount) {
@@ -8079,6 +8154,14 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   return lines.join('\n');
 }
 
+function formatSwingNoCandidateTelegramMessage(title) {
+  var now = new Date(); var wibMs = now.getTime() + 7*60*60*1000; var wib = new Date(wibMs);
+  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11,16) + ' WIB';
+  var label = String(title || '').replace(/^\s*[📈📊]+\s*/, '').replace(/ Signal\s*$/, '');
+  return [title, 'Update: ' + timeStr, '', 'Belum ada kandidat ' + label + ' yang lolos final quality gate hari ini.', 'Bukan rekomendasi beli. Konfirmasi manual wajib.'].join('\n');
+}
+
 // ============================================================
 // SWING KONGLO TELEGRAM NOTIFICATION (after manual refresh publish)
 // ============================================================
@@ -8088,10 +8171,16 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
     var { data: rows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false }).limit(40);
     if (!rows || rows.length === 0) return { skipped: true, reason: 'no_data' };
 
+    var metaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,run_date,status').eq('id', 'latest').maybeSingle();
+    var swingMeta = metaRes && metaRes.data ? metaRes.data : { calculated_at: null };
+
     // Deterministic Telegram verification for Swing Konglo
     var verifiedRows = rows.map(function(r) { return verifyTelegramSignal(r, 'swing'); }).filter(Boolean);
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
-    var nonAvoid = highConvictionRows.map(function(r) { return normalizeCombinedCandidate(r, 'Swing Konglo'); }).filter(candidatePassesMinUpside);
+    var nonAvoid = highConvictionRows
+      .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta); })
+      .filter(candidatePassesMinUpside)
+      .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_konglo'); });
 
     // Tier 1: Ready/Swing Ready with good RR and Grade A/B
     var tier1 = nonAvoid.filter(function(r) {
@@ -8125,7 +8214,16 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
       finalList = nonAvoid.slice(0, 5);
       headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
     }
-    if (finalList.length === 0) return { sent: false, skipped: true, reason: 'no_min_tp1_upside_candidates', message: 'Belum ada kandidat yang lolos filter potensi TP minimal.', verified_count: verifiedRows.length, selected_count: 0 };
+    if (finalList.length === 0) {
+      var emptyMsg = formatSwingNoCandidateTelegramMessage('📈 Swing Konglo Signal');
+      var emptyResult = await telegramNotifier.sendTelegramMessage(emptyMsg);
+      emptyResult.reason = emptyResult.sent ? 'no_final_quality_gate_candidates' : (emptyResult.reason || 'telegram_send_failed');
+      emptyResult.message = emptyMsg;
+      emptyResult.verified_count = verifiedRows.length;
+      emptyResult.high_conviction_count = highConvictionRows.length;
+      emptyResult.selected_count = 0;
+      return emptyResult;
+    }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', headerNote);
     var result = await telegramNotifier.sendTelegramMessage(msg);
@@ -8145,10 +8243,16 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     var { data: rows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
     if (!rows || rows.length === 0) return { skipped: true, reason: 'no_data' };
 
+    var metaRes = await supabase.from('swing_screener_non_konglo_meta').select('calculated_at,updated_at,run_date,status').eq('id', 'latest').maybeSingle();
+    var swingMeta = metaRes && metaRes.data ? metaRes.data : { calculated_at: null };
+
     // Deterministic Telegram verification for Swing Non-Konglo
     var verifiedRows = rows.map(function(r) { return verifyTelegramSignal(r, 'swing'); }).filter(Boolean);
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
-    var nonAvoid = highConvictionRows.map(function(r) { return normalizeCombinedCandidate(r, 'Swing Non-Konglo'); }).filter(candidatePassesMinUpside);
+    var nonAvoid = highConvictionRows
+      .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta); })
+      .filter(candidatePassesMinUpside)
+      .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_non_konglo'); });
 
     // Tier 1: Ready with RR >= 1.5 and Grade A/B
     var tier1 = nonAvoid.filter(function(r) {
@@ -8181,7 +8285,16 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       finalList = nonAvoid.slice(0, 5);
       headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
     }
-    if (finalList.length === 0) return { sent: false, skipped: true, reason: 'no_min_tp1_upside_candidates', message: 'Belum ada kandidat yang lolos filter potensi TP minimal.', verified_count: verifiedRows.length, selected_count: 0 };
+    if (finalList.length === 0) {
+      var emptyMsg = formatSwingNoCandidateTelegramMessage('📈 Swing Non-Konglo Signal');
+      var emptyResult = await telegramNotifier.sendTelegramMessage(emptyMsg);
+      emptyResult.reason = emptyResult.sent ? 'no_final_quality_gate_candidates' : (emptyResult.reason || 'telegram_send_failed');
+      emptyResult.message = emptyMsg;
+      emptyResult.verified_count = verifiedRows.length;
+      emptyResult.high_conviction_count = highConvictionRows.length;
+      emptyResult.selected_count = 0;
+      return emptyResult;
+    }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCCA Swing Non-Konglo Signal', headerNote);
     var result = await telegramNotifier.sendTelegramMessage(msg);
