@@ -25,7 +25,7 @@ $ConfigPath = Join-Path $env:USERPROFILE ".auto-cuan-scan.env"
 
 # === CONFIG HELPERS ===
 function Load-Config {
-    $cfg = @{ API_BASE_URL = ""; CRON_SECRET = ""; VERCEL_BYPASS_TOKEN = "" }
+    $cfg = @{ API_BASE_URL = ""; CRON_SECRET = ""; VERCEL_BYPASS_TOKEN = ""; DAYTRADE_SEND_RADAR = "0" }
     if (Test-Path $ConfigPath) {
         Get-Content $ConfigPath | ForEach-Object {
             $line = $_.Trim()
@@ -47,7 +47,8 @@ function Save-Config($cfg) {
         "# Auto-Cuan Scan Config (generated - do not commit)",
         "API_BASE_URL=$($cfg.API_BASE_URL)",
         "CRON_SECRET=$($cfg.CRON_SECRET)",
-        "VERCEL_BYPASS_TOKEN=$($cfg.VERCEL_BYPASS_TOKEN)"
+        "VERCEL_BYPASS_TOKEN=$($cfg.VERCEL_BYPASS_TOKEN)",
+        "DAYTRADE_SEND_RADAR=$($cfg.DAYTRADE_SEND_RADAR)"
     )
     $lines | Set-Content -Path $ConfigPath -Encoding UTF8
 }
@@ -84,6 +85,12 @@ function Run-Setup {
     Write-Host "  3. Vercel Protection Bypass Token (optional, kosongkan jika tidak perlu)"
     $inputBypass = Read-Host "     Token"
     $cfg.VERCEL_BYPASS_TOKEN = $inputBypass.Trim()
+
+    Write-Host ""
+    Write-Host "  4. Day Trade Radar fallback default (optional)"
+    Write-Host "     Isi 1 hanya jika ingin manual Day Trade selalu request Radar fallback."
+    $inputRadar = Read-Host "     DAYTRADE_SEND_RADAR [$($cfg.DAYTRADE_SEND_RADAR)]"
+    if ($inputRadar.Trim()) { $cfg.DAYTRADE_SEND_RADAR = $inputRadar.Trim() }
 
     Save-Config $cfg
     Write-Host ""
@@ -409,6 +416,12 @@ function Run-NonKonglo($cfg) {
 }
 
 function Run-DayTrade($cfg, $mode) {
+    $sendRadar = $false
+    if ($mode.EndsWith("-radar")) {
+        $sendRadar = $true
+        $mode = $mode -replace "-radar$", ""
+    }
+    if ($cfg.DAYTRADE_SEND_RADAR -eq "1" -or $env:AUTO_CUAN_DAYTRADE_SEND_RADAR -eq "1") { $sendRadar = $true }
     $isFast = $mode.EndsWith("-fast")
     $actualMode = $mode -replace "-fast$", ""
     $speedLabel = if ($isFast) { "FAST" } else { "FULL" }
@@ -417,6 +430,7 @@ function Run-DayTrade($cfg, $mode) {
     Write-Host "  Running: Day Trade Screener (mode: $actualMode, speed: $speedLabel)"
     Write-Host "  NOTE: Day Trade scan berbasis candle harian sebagai radar awal."
     Write-Host "        Konfirmasi intraday tetap wajib."
+    if ($sendRadar) { Write-Host "  RADAR FALLBACK: ON (send_radar=1 untuk no-signal diagnostics/fallback)." }
     if ($isFast) { Write-Host "  FAST MODE: Scan shortlist saham aktif/likuid (~150 ticker) untuk radar cepat." }
     else { Write-Host "  FULL MODE: Scan seluruh universe (semua Papan Utama + Pengembangan)." }
     Write-Host "  $('-' * 50)"
@@ -429,6 +443,7 @@ function Run-DayTrade($cfg, $mode) {
         $params = @{ force = "1"; batch = "$batch" }
         if ($actualMode -and $actualMode -ne "full") { $params["mode"] = $actualMode }
         if ($isFast) { $params["speed"] = "fast" }
+        if ($sendRadar) { $params["send_radar"] = "1" }
 
         Write-Host "`r  [DT/$actualMode/$speedLabel] Batch $($batch + 1)..." -NoNewline
         $data = Call-Api $cfg "daytrade-screener-run" $params
@@ -452,6 +467,15 @@ function Run-DayTrade($cfg, $mode) {
         if ($status -eq "published" -or $status -eq "already_done") {
             Write-Host "`n  Status: $($status.ToUpper())"
             Write-Host "  Published: $($data.published_count)"
+            if ($data.telegram -and $data.telegram.reason) { Write-Host "  Telegram reason: $($data.telegram.reason)" }
+            if ($null -ne $data.radar_requested) { Write-Host "  Radar requested: $($data.radar_requested)" }
+            if ($null -ne $data.radar_count) { Write-Host "  Radar count: $($data.radar_count)" }
+            if ($data.radar_candidates) { Write-Host "  Radar candidates: $($data.radar_candidates -join ', ')" }
+            if ($data.radar_rejection_reasons) {
+                $reasonProps = $data.radar_rejection_reasons.PSObject.Properties | Select-Object -First 5
+                $reasons = @($reasonProps | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ", "
+                if ($reasons) { Write-Host "  Top radar rejection reasons: $reasons" }
+            }
             $finalOk = $true
             break
         }
@@ -747,10 +771,10 @@ switch ($Command) {
             $mode = if ($isFast) { "$detectedMode-fast" } else { $detectedMode }
         }
 
-        $validModes = @("morning", "midday", "afternoon", "full", "morning-fast", "midday-fast", "afternoon-fast")
+        $validModes = @("morning", "midday", "afternoon", "full", "morning-fast", "midday-fast", "afternoon-fast", "morning-radar", "midday-radar", "afternoon-radar", "full-radar", "morning-fast-radar", "midday-fast-radar", "afternoon-fast-radar")
         if ($mode -notin $validModes) {
             Write-Host "  Invalid mode: $mode"
-            Write-Host "  Valid: morning, midday, afternoon, full, morning-fast, midday-fast, afternoon-fast"
+            Write-Host "  Valid: morning, midday, afternoon, full, morning-fast, midday-fast, afternoon-fast (append -radar to request Radar fallback)"
             Write-Host "  Auto: auto-fast, auto-full"
             exit 1
         }
