@@ -7540,7 +7540,7 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     }]);
   } catch (e) { /* non-critical */ }
 
-  var telegramResult = await sendDayTradeTelegramNotification(supabase, runId, runDate, savedCount, getDayTradeEmptyNoticeRequested(req));
+  var telegramResult = await sendDayTradeTelegramNotification(supabase, runId, runDate, savedCount, getDayTradeEmptyNoticeRequested(req), getDayTradeRadarRequested(req));
   var responsePayload = {
     success: true,
     status: 'published',
@@ -7564,6 +7564,10 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     responsePayload.reason = 'no_final_quality_gate_candidates';
     if (telegramResult.diagnostics) responsePayload.diagnostics = telegramResult.diagnostics;
     if (telegramResult.admin_radar_summary) responsePayload.admin_radar_summary = telegramResult.admin_radar_summary;
+    if (telegramResult.signal_safe_count !== undefined) responsePayload.signal_safe_count = telegramResult.signal_safe_count;
+    if (telegramResult.radar_sent !== undefined) responsePayload.radar_sent = telegramResult.radar_sent;
+    if (telegramResult.radar_count !== undefined) responsePayload.radar_count = telegramResult.radar_count;
+    if (telegramResult.radar_candidates) responsePayload.radar_candidates = telegramResult.radar_candidates;
   }
   return res.status(200).json(responsePayload);
 }
@@ -7638,6 +7642,12 @@ function getDayTradeEmptyNoticeRequested(req) {
   var q = (req && req.query) || {};
   var b = (req && req.body && typeof req.body === 'object') ? req.body : {};
   return q.debug_telegram === '1' || q.send_empty_notice === '1' || b.debug_telegram === '1' || b.debug_telegram === 1 || b.debug_telegram === true || b.send_empty_notice === '1' || b.send_empty_notice === 1 || b.send_empty_notice === true;
+}
+
+function getDayTradeRadarRequested(req) {
+  var q = (req && req.query) || {};
+  var b = (req && req.body && typeof req.body === 'object') ? req.body : {};
+  return q.send_radar === '1' || q.radar_telegram === '1' || b.send_radar === '1' || b.send_radar === 1 || b.send_radar === true || b.radar_telegram === '1' || b.radar_telegram === 1 || b.radar_telegram === true;
 }
 
 function candidatePassesDayTradeTelegramFinalGate(candidate) {
@@ -7751,7 +7761,95 @@ function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
   };
 }
 
-async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount, sendEmptyNotice) {
+
+function getDayTradeRadarStatus(candidate) {
+  var raw = safeTelegramText(candidate && (candidate.status || candidate.final_status || candidate.action || candidate.signal_action || candidate.telegram_action_label || candidate.action_label), 120, '').toUpperCase().replace(/[\s-]+/g, '_');
+  var allowed = { MOMENTUM_CONTINUATION: true, WAIT_PULLBACK: true, EARLY_RADAR: true, PRE_SPIKE_WATCH: true, RECLAIM_CANDIDATE: true, WATCHLIST: true };
+  if (allowed[raw]) return raw;
+  if (raw.indexOf('MOMENTUM') >= 0) return 'MOMENTUM_CONTINUATION';
+  if (raw.indexOf('WAIT_PULLBACK') >= 0 || raw.indexOf('PULLBACK') >= 0) return 'WAIT_PULLBACK';
+  if (raw.indexOf('EARLY_RADAR') >= 0) return 'EARLY_RADAR';
+  if (raw.indexOf('PRE_SPIKE') >= 0) return 'PRE_SPIKE_WATCH';
+  if (raw.indexOf('RECLAIM') >= 0) return 'RECLAIM_CANDIDATE';
+  if (raw.indexOf('WATCHLIST') >= 0 || raw.indexOf('PANTAU') >= 0) return 'WATCHLIST';
+  return null;
+}
+
+function candidatePassesDayTradeRadarFallbackGate(candidate) {
+  if (!candidate || !candidate.ticker) return false;
+  var status = getDayTradeRadarStatus(candidate);
+  if (!status) return false;
+  var allText = joinTelegramTexts([
+    candidate.status, candidate.final_status, candidate.action_label, candidate.signal_action_label, candidate.telegram_action_label,
+    candidate.action, candidate.signal_action, candidate.telegram_verdict, candidate.signal_verdict, candidate.verdict, candidate.reason,
+    candidate.status_reason, candidate.action_reason, candidate.signal_reason, candidate.excluded_reason, candidate.final_quality_status,
+    candidate.final_gate_status, candidate.quality_gate_status, candidate.plan_quality_label, candidate.plan_quality_note,
+    candidate.entry_quality_label, candidate.entry_status_label, candidate.entry_safety_note, candidate.stale_notes, candidate.liquidity_notes
+  ]).toLowerCase();
+  if (includesAny(allText, ['hindari', 'avoid', 'very high risk', 'invalid plan', 'plan invalid', 'level belum rapi', 'stale', 'expired', 'needs revalidation', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'volume lemah', 'weak volume'])) return false;
+  if (candidate.trading_plan_valid === false) return false;
+  var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || candidate.entry_quality_status || '', 80, '').toUpperCase();
+  if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') return false;
+  if (candidate.is_stale === true || candidate.data_stale === true || candidate.freshness_is_stale === true || candidate.stale === true) return false;
+  if (deriveTelegramRiskLabel(candidate, 'daytrade').toUpperCase() === 'VERY HIGH RISK') return false;
+  var liq = deriveStaleLiquidityLabels(candidate);
+  if (liq.is_stale || liq.is_liquidity_risk) return false;
+  var entry1 = toNum(candidate.entry1) || getEntry1(candidate);
+  var entry2 = toNum(candidate.entry2) || getEntry2(candidate);
+  var sl = toNum(candidate.sl || candidate.stop_loss);
+  var tp1 = toNum(candidate.tp1n || candidate.tp1);
+  if (!(entry1 > 0) || !(entry2 > 0) || !(sl > 0) || !(tp1 > 0)) return false;
+  if (!((toNum(candidate.risk_reward) || 0) > 0)) return false;
+  if (!candidatePassesMinUpside(candidate)) return false;
+  var finalRejected = candidate.final_quality_pass === false || candidate.final_gate_pass === false || candidate.quality_gate_pass === false || (candidate.final_top_quality_gate && candidate.final_top_quality_gate.pass === false);
+  if (finalRejected) {
+    var benign = includesAny(allText, ['not entry-ready yet', 'not entry ready yet', 'needs close confirmation', 'close confirmation', 'watchlist only', 'tunggu konfirmasi', 'tunggu close', 'belum entry']);
+    if (!benign) return false;
+  }
+  return true;
+}
+
+function sortDayTradeRadarCandidates(a, b) {
+  function gradeRank(x) { var g = safeTelegramText(x.confidence || x.quality_grade || x.grade || getTelegramGrade(x), 10, 'C').toUpperCase(); return g.indexOf('A') === 0 ? 0 : (g.indexOf('B') === 0 ? 1 : 2); }
+  function riskRank(x) { var r = deriveTelegramRiskLabel(x, 'daytrade').toUpperCase(); return r.indexOf('MEDIUM') >= 0 ? 0 : (r.indexOf('HIGH') >= 0 ? 1 : (r.indexOf('LOW') >= 0 ? 2 : 3)); }
+  var ga = gradeRank(a), gb = gradeRank(b); if (ga !== gb) return ga - gb;
+  var ra = riskRank(a), rb = riskRank(b); if (ra !== rb) return ra - rb;
+  if ((toNum(b.risk_reward) || 0) !== (toNum(a.risk_reward) || 0)) return (toNum(b.risk_reward) || 0) - (toNum(a.risk_reward) || 0);
+  var ae = Math.abs(toNum(a.entry_distance_pct) || 0), be = Math.abs(toNum(b.entry_distance_pct) || 0); if (ae !== be) return ae - be;
+  return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || String(a.ticker || '').localeCompare(String(b.ticker || ''));
+}
+
+function sanitizeDayTradeRadarText(value, maxLen, fallback) {
+  return safeTelegramText(value, maxLen, fallback)
+    .replace(/siap\s+beli/ig, 'tunggu konfirmasi')
+    .replace(/entry\s+valid/ig, 'konfirmasi entry')
+    .replace(/valid\s+entry/ig, 'konfirmasi entry');
+}
+
+function formatDayTradeRadarTelegramMessage(results) {
+  var now = new Date();
+  var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
+  var wib = new Date(wibMs);
+  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
+  var lines = ['🚀 Day Trade Radar', 'Update: ' + timeStr, '', 'Belum ada kandidat yang lolos final safety gate.', 'Radar pantauan berikut belum menjadi sinyal entry.', ''];
+  results.forEach(function(r, i) {
+    var setup = getDayTradeRadarStatus(r) || 'WATCHLIST';
+    var trigger = sanitizeDayTradeRadarText(r.breakout_confirmation_label || r.breakout_confirmation_note || r.entry_timing || r.telegram_verdict, 100, 'Tunggu close confirmation / volume tetap masuk');
+    var note = sanitizeDayTradeRadarText(r.entry_safety_note || r.plan_quality_note || 'Radar pantauan, bukan sinyal entry.', 110, 'Radar pantauan, bukan sinyal entry.');
+    lines.push((i + 1) + '. ' + r.ticker + ' — ' + setup.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); }));
+    lines.push('Harga: ' + fmtPrice(r.lastn || r.last_price) + ' | Entry: ' + fmtPrice(r.entry1) + ' / ' + fmtPrice(r.entry2) + ' | SL: ' + fmtPrice(r.sl) + ' | TP: ' + fmtPrice(r.tp1n) + ' / ' + fmtPrice(r.tp2n || r.tp2));
+    lines.push('EntryQ: ' + compactSafeText(r.entry_quality_label || r.entry_status_label, '-') + ' · PlanQ: ' + compactSafeText(r.plan_quality_label || r.plan_label, '-'));
+    lines.push('Trigger: ' + trigger);
+    lines.push('Note: ' + note);
+    lines.push('');
+  });
+  if (lines[lines.length - 1] === '') lines.pop();
+  lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
+  return lines.join('\n');
+}
+
+async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount, sendEmptyNotice, sendRadarFallback) {
   // Duplicate guard: same run_id = don't send twice
   if (_dtTelegramLastRunId === runId) {
     return { sent: false, skipped: true, reason: 'duplicate_run_id' };
@@ -7808,6 +7906,8 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       if (candidatePassesMinUpside(normalized)) minTp1Candidates.push(normalized);
       else stageByTicker[ticker] = { stage: 'min_tp1', candidate: normalized };
     });
+    var radarCandidates = minTp1Candidates.map(function(normalized) { return Object.assign({}, normalized); }).filter(candidatePassesDayTradeRadarFallbackGate).sort(sortDayTradeRadarCandidates).slice(0, 3);
+
     var nonAvoid = [];
     minTp1Candidates.forEach(function(normalized) {
       var ticker = safeTelegramText(normalized && normalized.ticker, 16, '');
@@ -7875,16 +7975,27 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
         filtered_out_count: rawCount,
         diagnostics: diagnostics,
         admin_radar_summary: [
-          'Belum ada kandidat Entry valid.',
+          'Belum ada kandidat yang lolos final safety gate.',
           'Radar pantauan tersedia di web screener, tetapi belum lolos public Telegram safety gate.'
         ]
       };
+      silentResult.signal_safe_count = 0;
+      silentResult.radar_count = radarCandidates.length;
+      silentResult.radar_sent = false;
+      silentResult.radar_candidates = radarCandidates.map(function(r) { return r.ticker; });
+      if (sendRadarFallback && radarCandidates.length > 0) {
+        var radarMsg = formatDayTradeRadarTelegramMessage(radarCandidates);
+        var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
+        radarResult.reason = 'no_final_quality_gate_candidates';
+        radarResult.message = radarMsg;
+        return Object.assign(silentResult, radarResult, { skipped: !radarResult.sent, radar_sent: !!radarResult.sent, radar_count: radarCandidates.length, radar_candidates: radarCandidates.map(function(r) { return r.ticker; }) });
+      }
       if (!sendEmptyNotice) return silentResult;
       var emptyMsg = formatDayTradeNoCandidateTelegramMessage();
       var emptyResult = await telegramNotifier.sendTelegramMessage(emptyMsg);
       emptyResult.reason = emptyResult.sent ? 'no_final_quality_gate_candidates' : (emptyResult.reason || 'telegram_send_failed');
       emptyResult.message = emptyMsg;
-      return Object.assign(silentResult, emptyResult, { skipped: !emptyResult.sent, debug_empty_notice: true });
+      return Object.assign(silentResult, emptyResult, { skipped: !emptyResult.sent, debug_empty_notice: true, radar_sent: false, radar_count: radarCandidates.length, radar_candidates: radarCandidates.map(function(r) { return r.ticker; }) });
     }
 
     // Format message
