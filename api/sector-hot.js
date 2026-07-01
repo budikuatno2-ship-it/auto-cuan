@@ -3634,6 +3634,23 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   ]);
   if (includesAny(actionText.toLowerCase(), ['hindari', 'avoid'])) return false;
 
+  var executionStatus = String(candidate.execution_reality_status || '').trim().toUpperCase();
+  if ({ UNKNOWN_LIMITS: true, NEAR_ARA: true, ARA_HIT: true, NEAR_ARB: true, ARB_HIT: true }[executionStatus]) return false;
+  if (candidate.buy_execution_realistic === false || candidate.near_ara === true || candidate.ara_hit === true ||
+      candidate.entry_near_ara === true || candidate.trigger_near_ara === true || candidate.near_arb === true ||
+      candidate.arb_hit === true || candidate.sell_risk_near_arb === true) return false;
+  var executionText = joinTelegramTexts([
+    candidate.execution_reality_label,
+    candidate.execution_reality_note,
+    candidate.ara_arb_note,
+    candidate.tp_realism_note
+  ]).toLowerCase();
+  if (includesAny(executionText, [
+    'ara hit', 'near ara', 'arb hit', 'near arb', 'execution not realistic',
+    'tidak realistis dieksekusi', 'tidak realistis', 'rawan auto reject',
+    'mentok ara', 'mentok arb', 'dekat ara', 'dekat arb', 'rawan ara', 'rawan arb'
+  ])) return false;
+
   var breakoutStatus = String(candidate.breakout_confirmation_status || '').trim().toUpperCase();
   if ({ FALSE_BREAKOUT_RISK: true, NEEDS_CLOSE_CONFIRMATION: true, BREAKOUT_WATCH: true }[breakoutStatus]) return false;
   if (candidate.false_breakout_risk === true) return false;
