@@ -3335,7 +3335,12 @@ function attachEntryStatus(row) {
   }
   idxTick.applyRiskV2ConfidenceGuard(r);
   var execReality = idxTick.deriveCandlePotentialRange(Object.assign({}, r, {
-    reference_price: r.previous_close || r.prev_close || r.close_prev || (r.change_pct != null && (r.last_price || r.lastn || r.current_price) ? (r.last_price || r.lastn || r.current_price) / (1 + (r.change_pct / 100)) : null),
+    previous_close: r.previous_close,
+    prev_close: r.prev_close,
+    prior_close: r.prior_close,
+    close_prev: r.close_prev,
+    prevClose: r.prevClose,
+    previousClose: r.previousClose,
     current_price: r.current_price || r.last_price || r.lastn || r.close,
     mode: /day/i.test(r.category || '') ? 'daytrade' : 'swing'
   }));
@@ -3735,7 +3740,12 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   if (r.confidence === 'C') confluence.push('Radar Only');
   if (confluence.length) lines.push(confluence.join(' · '));
   var execReality = idxTick.deriveCandlePotentialRange(Object.assign({}, r, {
-    reference_price: r.previous_close || r.prev_close || r.close_prev || (r.change_pct != null && (r.last_price || r.lastn || r.current_price) ? (r.last_price || r.lastn || r.current_price) / (1 + (r.change_pct / 100)) : null),
+    previous_close: r.previous_close,
+    prev_close: r.prev_close,
+    prior_close: r.prior_close,
+    close_prev: r.close_prev,
+    prevClose: r.prevClose,
+    previousClose: r.previousClose,
     current_price: r.current_price || r.last_price || r.lastn || r.close,
     mode: /day/i.test(r.category || '') ? 'daytrade' : 'swing'
   }));

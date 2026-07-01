@@ -1281,7 +1281,7 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   html += '<div><strong>Entry</strong><br><br>' + entryPlan + '</div>';
   html += '<div><strong>Stop Loss</strong><br><br>' + stopLoss + '</div>';
   html += '<div><strong>TP</strong><br><br><div>TP1: ' + tp1 + '</div><div>TP2: ' + tp2 + '</div></div>';
-  var execReality = _idxTick.deriveCandlePotentialRange({ reference_price: d.previousClose || d.previous_close || d.prev_close || d.close, current_price: d.last || d.close || d.currentPrice, last_price: d.last || d.close || d.currentPrice, high_price: d.high, low_price: d.low, support: s1, resistance: r1, tp1: r1, tp2: r2, stop_loss: s1 });
+  var execReality = _idxTick.deriveCandlePotentialRange({ previousClose: d.previousClose, previous_close: d.previous_close, prev_close: d.prev_close, prior_close: d.prior_close, close_prev: d.close_prev, current_price: d.last || d.close || d.currentPrice, last_price: d.last || d.close || d.currentPrice, high_price: d.high, low_price: d.low, support: s1, resistance: r1, tp1: r1, tp2: r2, stop_loss: s1 });
   if (execReality.ara_price || execReality.candle_potential_low) {
     html += '<div><strong>Execution Reality</strong><br><br>';
     html += '<div>Entry Basis: ' + (execReality.entry_basis_note || 'Entry basis mengikuti level deterministic screener.') + '</div>';
