@@ -7176,6 +7176,10 @@ function dashSignedPct(v) { var n = Number(v); return isFinite(n) ? ((n >= 0 ? '
 function dashExecutionRealityLine(r) {
     if (!r) return '';
     var parts = [];
+    if (r.execution_reality_label && r.execution_reality_label !== 'Eksekusi realistis') parts.push(r.execution_reality_label);
+    if (r.execution_reality_status === 'NEAR_ARA' || r.execution_reality_status === 'ARA_HIT' || r.near_ara || r.ara_hit || r.entry_near_ara || r.trigger_near_ara) parts.push('Pantau, bukan entry langsung');
+    else if (r.execution_reality_status === 'NEAR_ARB' || r.execution_reality_status === 'ARB_HIT' || r.near_arb || r.arb_hit || r.sell_risk_near_arb) parts.push('Butuh harga realistis');
+    else if (r.execution_reality_status === 'UNKNOWN_LIMITS') parts.push('Butuh harga realistis');
     if (r.candle_potential_low && r.candle_potential_high) parts.push('Potensi: Candle ' + dashFmtPrice(r.candle_potential_low) + '–' + dashFmtPrice(r.candle_potential_high));
     if (r.ara_room_pct != null) parts.push('ARA room ' + dashSignedPct(r.ara_room_pct));
     return parts.join(' · ');
