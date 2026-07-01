@@ -3620,6 +3620,14 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   ]);
   if (includesAny(actionText.toLowerCase(), ['hindari', 'avoid'])) return false;
 
+  var risk = normalizeTelegramRiskLabel(candidate.risk_label_v2 || candidate.risk_label || candidate.verified_risk_label).toLowerCase();
+  if (risk === 'very high risk') return false;
+
+  var entryStatus = String(candidate.entry_status || '').trim().toUpperCase();
+  var entryQuality = String(candidate.entry_quality_status || '').trim().toUpperCase();
+  if ({ CHASE_RISK: true, EXTENDED: true, TP1_NEAR: true, TP1_HIT: true, TP2_HIT: true, INVALID_BELOW_SL: true }[entryStatus]) return false;
+  if (entryQuality === 'NEEDS_REVALIDATION') return false;
+
   var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || '', 80, '').toUpperCase();
   if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') return false;
   if (candidate.is_stale === true || candidate.data_stale === true || candidate.freshness_is_stale === true || candidate.stale === true) return false;
@@ -3635,14 +3643,33 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   ]);
   if (includesAny(freshnessText.toLowerCase(), ['stale', 'expired', 'needs revalidation'])) return false;
 
+  var liquidityText = joinTelegramTexts([
+    candidate.liquidity_label,
+    candidate.liquidity_notes,
+    candidate.liquidity_status
+  ]);
+  if (candidate.is_liquidity_risk === true || includesAny(liquidityText.toLowerCase(), ['weak liquidity', 'likuiditas lemah', 'likuiditas tipis'])) return false;
+
+  var volumeText = joinTelegramTexts([
+    candidate.volume_label,
+    candidate.volume_confirmation_label,
+    candidate.volume_notes,
+    candidate.volume_confirmation_notes
+  ]);
+  if (includesAny(volumeText.toLowerCase(), ['weak volume', 'volume lemah'])) return false;
+
   if (candidate.trading_plan_valid === false) return false;
   var guardText = joinTelegramTexts([
     candidate.action_guard_label,
     candidate.action_guard_status,
     candidate.plan_quality_label,
-    candidate.plan_quality_note
+    candidate.plan_quality_note,
+    candidate.entry_timing,
+    candidate.time_plan,
+    candidate.entry_status_label,
+    candidate.entry_status_note
   ]);
-  if (includesAny(guardText.toLowerCase(), ['level belum rapi', 'invalid plan', 'plan invalid'])) return false;
+  if (includesAny(guardText.toLowerCase(), ['level belum rapi', 'invalid plan', 'plan invalid', 'chase', 'extended', 'tp near', 'tp1 near', 'below sl', 'invalidation hit'])) return false;
 
   if (mode !== 'daytrade') return applyFinalTopQualityGate(candidate, mode || 'public_telegram').pass;
   return true;
@@ -8683,3 +8710,9 @@ function formatSwingTelegramMessage(results, title, headerNote) {
   lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
   return lines.join('\n');
 }
+
+module.exports.__test = {
+  candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
+  candidateTelegramEligible: candidateTelegramEligible,
+  formatCandidateBlock: formatCandidateBlock
+};

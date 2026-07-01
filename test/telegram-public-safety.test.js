@@ -1,0 +1,103 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const sectorHot = require('../api/sector-hot');
+
+const {
+  candidatePassesPublicTelegramSafetyGate,
+  candidateTelegramEligible,
+  formatCandidateBlock
+} = sectorHot.__test;
+
+function safeCandidate(overrides) {
+  return Object.assign({
+    ticker: 'BBRI',
+    category: 'Day Trade',
+    status: 'READY',
+    setup: 'Signal',
+    risk_label: 'Low Risk',
+    risk_reward: 1.8,
+    entry1: 5000,
+    entry2: 5050,
+    sl: 4900,
+    tp1n: 5150,
+    tp2n: 5300,
+    tp1_upside: 3,
+    last_price: 5025,
+    value_today: 20000000000,
+    volume_ratio_20d: 1.4,
+    volume_confirmation_label: 'Volume kuat',
+    liquidity_label: 'Liquid',
+    trading_plan_valid: true,
+    plan_quality_status: 'VALID',
+    plan_quality_label: 'Plan valid',
+    rr_quality_label: 'RR sehat',
+    sl_quality_label: 'SL wajar',
+    tp_quality_label: 'TP realistis',
+    entry_quality_status: 'IN_ENTRY_AREA',
+    entry_status: 'IN_ENTRY_AREA',
+    entry_status_label: 'Entry area',
+    signal_action_label: 'Watchlist',
+    telegram_verdict: 'Watchlist — tunggu konfirmasi.'
+  }, overrides || {});
+}
+
+test('public Telegram safety gate allows a valid signal candidate', () => {
+  assert.equal(candidatePassesPublicTelegramSafetyGate(safeCandidate(), 'daytrade'), true);
+  assert.equal(candidateTelegramEligible(safeCandidate()), true);
+});
+
+const blockedCases = [
+  ['action Hindari', { action: 'Hindari' }],
+  ['status AVOID', { status: 'AVOID' }],
+  ['risk Very High', { risk_label: 'Very High' }],
+  ['risk Very High Risk', { risk_label: 'Very High Risk' }],
+  ['weak liquidity flag', { is_liquidity_risk: true }],
+  ['weak liquidity reason', { liquidity_notes: 'weak liquidity' }],
+  ['weak volume label', { volume_confirmation_label: 'Weak Volume' }],
+  ['weak volume reason', { volume_confirmation_notes: 'weak volume' }],
+  ['invalid plan flag', { trading_plan_valid: false }],
+  ['invalid plan text', { plan_quality_note: 'invalid plan' }],
+  ['stale flag', { is_stale: true }],
+  ['Needs Revalidation status', { entry_quality_status: 'NEEDS_REVALIDATION' }],
+  ['Needs Revalidation label', { setup_freshness_label: 'Needs Revalidation' }],
+  ['entry chase status', { entry_status: 'CHASE_RISK' }],
+  ['extended entry status', { entry_status: 'EXTENDED' }],
+  ['TP near status', { entry_status: 'TP1_NEAR' }],
+  ['below SL status', { entry_status: 'INVALID_BELOW_SL' }],
+  ['chase note', { entry_timing: 'entry chase / extended' }]
+];
+
+for (const [name, overrides] of blockedCases) {
+  test('public Telegram safety gate blocks ' + name, () => {
+    assert.equal(candidatePassesPublicTelegramSafetyGate(safeCandidate(overrides), 'daytrade'), false);
+    assert.equal(candidateTelegramEligible(safeCandidate(overrides)), false);
+  });
+}
+
+test('public Telegram formatter does not expose unsafe/internal diagnostics text', async () => {
+  const candidate = safeCandidate({
+    top_rejection_reasons: ['internal'],
+    sample_rejected: [{ ticker: 'BAD' }],
+    stageByTicker: { BBRI: { debug: true } },
+    debug_notes: 'raw debug/internal notes',
+    internal_diagnostics: { leak: true },
+    notes: undefined,
+    status_reason: null
+  });
+  const text = await formatCandidateBlock(null, candidate, 1, true);
+  const forbidden = [
+    'undefined',
+    'null',
+    '[object Object]',
+    'top_rejection_reasons',
+    'sample_rejected',
+    'stageByTicker',
+    'raw debug/internal notes',
+    'internal_diagnostics'
+  ];
+  for (const needle of forbidden) {
+    assert.equal(text.includes(needle), false, 'formatter leaked ' + needle + '\n' + text);
+  }
+});
