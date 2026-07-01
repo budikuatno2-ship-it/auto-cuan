@@ -7747,7 +7747,22 @@ function getDayTradeTelegramRejectionReason(candidate, stage) {
   if (includesAny(freshnessText, ['needs revalidation', 'expired', 'stale'])) return 'stale / Needs Revalidation';
   var guardText = joinTelegramTexts([r.action_guard_label, r.action_guard_status, r.plan_quality_label, r.plan_quality_note]).toLowerCase();
   if (includesAny(guardText, ['level belum rapi', 'invalid plan', 'plan invalid'])) return 'invalid plan / level belum rapi';
+  var text = joinTelegramTexts([r.status, r.final_status, r.action_label, r.signal_action_label, r.telegram_action_label, r.action, r.signal_action, r.telegram_verdict, r.signal_verdict, r.verdict, r.reason, r.status_reason, r.action_reason, r.signal_reason, r.excluded_reason, r.final_quality_status, r.final_gate_status, r.quality_gate_status, r.plan_quality_label, r.plan_quality_note, r.entry_quality_label, r.entry_status_label, r.entry_safety_note, r.stale_notes, r.liquidity_notes]).toLowerCase();
+  if (includesAny(text, ['very high risk'])) return 'Very High Risk blocked';
+  if (includesAny(text, ['weak liquidity', 'likuiditas lemah', 'likuiditas tipis'])) return 'weak liquidity blocked';
+  if (includesAny(text, ['weak volume', 'volume lemah'])) return 'weak volume blocked';
+  if (includesAny(text, ['missing entry', 'missing sl', 'missing tp', 'invalid rr'])) return 'invalid plan / missing Entry-SL-TP';
+  if (includesAny(text, ['needs close confirmation', 'close confirmation', 'entry not touched', 'not entry-ready', 'not entry ready', 'watchlist only', 'mtf mixed', 'chase warning', 'tunggu konfirmasi', 'belum entry'])) return 'soft watchlist only';
   return 'public safety gate failed';
+}
+
+function classifyDayTradeTelegramRejection(candidate, stage, reason) {
+  var r = candidate || {};
+  var text = joinTelegramTexts([r.status, r.final_status, r.action_label, r.signal_action_label, r.telegram_action_label, r.action, r.signal_action, r.telegram_verdict, r.signal_verdict, r.verdict, r.reason, r.status_reason, r.action_reason, r.signal_reason, r.excluded_reason, r.final_quality_status, r.final_gate_status, r.quality_gate_status, r.plan_quality_label, r.plan_quality_note, r.entry_quality_label, r.entry_status_label, r.entry_safety_note, r.stale_notes, r.liquidity_notes, reason]).toLowerCase();
+  if (stage === 'min_tp1' || includesAny(text, ['min tp1'])) return 'min_tp1_failed';
+  if (dayTradeTelegramTextHasAvoid(text) || includesAny(text, ['very high risk', 'stale', 'expired', 'needs revalidation', 'invalid plan', 'plan invalid', 'level belum rapi', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'weak volume', 'volume lemah']) || r.trading_plan_valid === false || r.is_stale === true || r.data_stale === true || r.freshness_is_stale === true || r.stale === true) return 'hard_block';
+  if (includesAny(text, ['watchlist', 'pantau', 'needs close confirmation', 'close confirmation', 'entry not touched', 'not entry-ready', 'not entry ready', 'mtf mixed', 'chase warning', 'tunggu konfirmasi', 'belum entry'])) return 'soft_watchlist';
+  return 'final_gate_failed_unknown';
 }
 
 function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
@@ -7763,6 +7778,9 @@ function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
     var c = stageInfo.candidate || raw;
     var reason = getDayTradeTelegramRejectionReason(c, stageInfo.stage);
     topReasons[reason] = (topReasons[reason] || 0) + 1;
+    var rejectionType = classifyDayTradeTelegramRejection(c, stageInfo.stage, reason);
+    if (!counts.rejection_types) counts.rejection_types = {};
+    counts.rejection_types[rejectionType] = (counts.rejection_types[rejectionType] || 0) + 1;
     if (sample.length < 10) sample.push({
       ticker: ticker || null,
       action_label: c.telegram_action_label || c.action_label || c.signal_action_label || null,
@@ -7775,7 +7793,8 @@ function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
       plan_quality_label: c.plan_quality_label || c.plan_label || null,
       trading_plan_valid: c.trading_plan_valid,
       final_quality_reason: (c.final_top_quality_gate && c.final_top_quality_gate.reason) || c.excluded_reason || null,
-      rejection_reason: reason
+      rejection_reason: reason,
+      rejection_type: rejectionType
     });
   }
   var radarRejected = counts.radar_rejected || [];
@@ -7820,6 +7839,7 @@ function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
     radar_rejection_reasons: radarReasons,
     sample_radar_rejected: sampleRadar,
     top_rejection_reasons: topReasons,
+    rejection_types: counts.rejection_types || {},
     sample_rejected: sample
   };
 }
@@ -7866,7 +7886,7 @@ function candidatePassesDayTradeRadarFallbackGate(candidate) {
   if (!candidatePassesMinUpside(candidate)) return false;
   var finalRejected = candidate.final_quality_pass === false || candidate.final_gate_pass === false || candidate.quality_gate_pass === false || (candidate.final_top_quality_gate && candidate.final_top_quality_gate.pass === false);
   if (finalRejected) {
-    var benign = includesAny(allText, ['not entry-ready yet', 'not entry ready yet', 'needs close confirmation', 'close confirmation', 'watchlist only', 'tunggu konfirmasi', 'tunggu close', 'belum entry']);
+    var benign = includesAny(allText, ['not entry-ready yet', 'not entry ready yet', 'needs close confirmation', 'close confirmation', 'watchlist only', 'entry not touched', 'mtf mixed', 'chase warning', 'tunggu konfirmasi', 'tunggu close', 'belum entry']);
     if (!benign) return false;
   }
   return true;
@@ -7895,7 +7915,7 @@ function formatDayTradeRadarTelegramMessage(results) {
   var wib = new Date(wibMs);
   var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
-  var lines = ['🚀 Day Trade Radar', 'Update: ' + timeStr, '', 'Belum ada kandidat yang lolos final safety gate.', 'Radar pantauan berikut belum menjadi sinyal entry.', ''];
+  var lines = ['🚀 Day Trade Radar', 'Update: ' + timeStr, '', 'Belum ada kandidat Entry valid yang lolos final safety gate.', 'Radar pantauan berikut belum menjadi sinyal entry.', ''];
   results.forEach(function(r, i) {
     var setup = getDayTradeRadarStatus(r) || 'WATCHLIST';
     var trigger = sanitizeDayTradeRadarText(r.breakout_confirmation_label || r.breakout_confirmation_note || r.entry_timing || r.telegram_verdict, 100, 'Tunggu close confirmation / volume tetap masuk');
@@ -8058,7 +8078,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
         force_radar_debug: forceRadarDebug,
         diagnostics: diagnostics,
         admin_radar_summary: [
-          'Belum ada kandidat yang lolos final safety gate.',
+          'Belum ada kandidat Entry valid yang lolos final safety gate.',
           'Radar pantauan tersedia di web screener, tetapi belum lolos public Telegram safety gate.'
         ]
       };

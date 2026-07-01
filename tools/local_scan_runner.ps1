@@ -25,7 +25,7 @@ $ConfigPath = Join-Path $env:USERPROFILE ".auto-cuan-scan.env"
 
 # === CONFIG HELPERS ===
 function Load-Config {
-    $cfg = @{ API_BASE_URL = ""; CRON_SECRET = ""; VERCEL_BYPASS_TOKEN = ""; DAYTRADE_SEND_RADAR = "0" }
+    $cfg = @{ API_BASE_URL = ""; CRON_SECRET = ""; VERCEL_BYPASS_TOKEN = ""; DAYTRADE_SEND_RADAR = "" }
     if (Test-Path $ConfigPath) {
         Get-Content $ConfigPath | ForEach-Object {
             $line = $_.Trim()
@@ -88,7 +88,7 @@ function Run-Setup {
 
     Write-Host ""
     Write-Host "  4. Day Trade Radar fallback default (optional)"
-    Write-Host "     Isi 1 hanya jika ingin manual Day Trade selalu request Radar fallback."
+    Write-Host "     Default manual/local Day Trade: ON. Isi 0 untuk mematikan Radar fallback."
     $inputRadar = Read-Host "     DAYTRADE_SEND_RADAR [$($cfg.DAYTRADE_SEND_RADAR)]"
     if ($inputRadar.Trim()) { $cfg.DAYTRADE_SEND_RADAR = $inputRadar.Trim() }
 
@@ -415,13 +415,67 @@ function Run-NonKonglo($cfg) {
     return $finalOk
 }
 
+function Format-TopReasons($value, $limit = 5) {
+    if (-not $value) { return "" }
+    if ($value -is [System.Array]) {
+        return @($value | Select-Object -First $limit | ForEach-Object {
+            if ($_.reason -ne $null -and $_.count -ne $null) { "$($_.reason)=$($_.count)" }
+            elseif ($_.Name -ne $null -and $_.Value -ne $null) { "$($_.Name)=$($_.Value)" }
+            else { "$($_)" }
+        }) -join ", "
+    }
+    return @($value.PSObject.Properties | Select-Object -First $limit | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ", "
+}
+
+function Format-RejectedSamples($value, $limit = 5) {
+    if (-not $value) { return "" }
+    return @($value | Select-Object -First $limit | ForEach-Object {
+        $ticker = if ($_.ticker) { $_.ticker } else { "-" }
+        $reason = if ($_.rejection_reason) { $_.rejection_reason } elseif ($_.reason) { $_.reason } else { "-" }
+        "$ticker=[$reason]"
+    }) -join ", "
+}
+
+function Print-DayTradeTelegramDiagnostics($data) {
+    if ($data.telegram -and $data.telegram.reason) { Write-Host "  Telegram reason: $($data.telegram.reason)" }
+    elseif ($data.reason) { Write-Host "  Telegram reason: $($data.reason)" }
+    if ($null -ne $data.radar_requested) { Write-Host "  Radar requested: $($data.radar_requested)" }
+    elseif ($data.telegram -and $null -ne $data.telegram.radar_requested) { Write-Host "  Radar requested: $($data.telegram.radar_requested)" }
+    if ($null -ne $data.radar_count) { Write-Host "  Radar count: $($data.radar_count)" }
+    elseif ($data.telegram -and $null -ne $data.telegram.radar_count) { Write-Host "  Radar count: $($data.telegram.radar_count)" }
+    if ($data.radar_candidates) { Write-Host "  Radar candidates: $($data.radar_candidates -join ', ')" }
+    elseif ($data.telegram -and $data.telegram.radar_candidates) { Write-Host "  Radar candidates: $($data.telegram.radar_candidates -join ', ')" }
+    if ($null -ne $data.radar_blocked_count) { Write-Host "  Radar blocked count: $($data.radar_blocked_count)" }
+    elseif ($data.telegram -and $null -ne $data.telegram.radar_blocked_count) { Write-Host "  Radar blocked count: $($data.telegram.radar_blocked_count)" }
+    $radarReasons = if ($data.radar_rejection_reasons) { $data.radar_rejection_reasons } elseif ($data.telegram) { $data.telegram.radar_rejection_reasons } else { $null }
+    $radarReasonText = Format-TopReasons $radarReasons 5
+    if ($radarReasonText) { Write-Host "  Top radar rejection reasons: $radarReasonText" }
+    $diag = if ($data.diagnostics) { $data.diagnostics } elseif ($data.telegram) { $data.telegram.diagnostics } else { $null }
+    if ($diag) {
+        $topText = Format-TopReasons $diag.top_rejection_reasons 5
+        if ($topText) { Write-Host "  Top rejection reasons: $topText" }
+        $sampleText = Format-RejectedSamples $diag.sample_rejected 5
+        if ($sampleText) { Write-Host "  Sample rejected: $sampleText" }
+        $sampleRadarText = Format-RejectedSamples $diag.sample_radar_rejected 5
+        if ($sampleRadarText) { Write-Host "  Sample radar rejected: $sampleRadarText" }
+    }
+    $sampleRadar = if ($data.sample_radar_rejected) { $data.sample_radar_rejected } elseif ($data.telegram) { $data.telegram.sample_radar_rejected } else { $null }
+    $sampleRadarText2 = Format-RejectedSamples $sampleRadar 5
+    if ($sampleRadarText2 -and -not ($diag -and $diag.sample_radar_rejected)) { Write-Host "  Sample radar rejected: $sampleRadarText2" }
+}
+
 function Run-DayTrade($cfg, $mode) {
-    $sendRadar = $false
+    $sendRadar = $true
+    if ($mode.EndsWith("-no-radar")) {
+        $sendRadar = $false
+        $mode = $mode -replace "-no-radar$", ""
+    }
     if ($mode.EndsWith("-radar")) {
         $sendRadar = $true
         $mode = $mode -replace "-radar$", ""
     }
-    if ($cfg.DAYTRADE_SEND_RADAR -eq "1" -or $env:AUTO_CUAN_DAYTRADE_SEND_RADAR -eq "1") { $sendRadar = $true }
+    if ($cfg.DAYTRADE_SEND_RADAR -eq "0" -or $env:DAYTRADE_SEND_RADAR -eq "0" -or $env:AUTO_CUAN_DAYTRADE_SEND_RADAR -eq "0") { $sendRadar = $false }
+    if ($cfg.DAYTRADE_SEND_RADAR -eq "1" -or $env:DAYTRADE_SEND_RADAR -eq "1" -or $env:AUTO_CUAN_DAYTRADE_SEND_RADAR -eq "1") { $sendRadar = $true }
     $isFast = $mode.EndsWith("-fast")
     $actualMode = $mode -replace "-fast$", ""
     $speedLabel = if ($isFast) { "FAST" } else { "FULL" }
@@ -431,6 +485,7 @@ function Run-DayTrade($cfg, $mode) {
     Write-Host "  NOTE: Day Trade scan berbasis candle harian sebagai radar awal."
     Write-Host "        Konfirmasi intraday tetap wajib."
     if ($sendRadar) { Write-Host "  RADAR FALLBACK: ON (send_radar=1 untuk no-signal diagnostics/fallback)." }
+    else { Write-Host "  RADAR FALLBACK: OFF" }
     if ($isFast) { Write-Host "  FAST MODE: Scan shortlist saham aktif/likuid (~150 ticker) untuk radar cepat." }
     else { Write-Host "  FULL MODE: Scan seluruh universe (semua Papan Utama + Pengembangan)." }
     Write-Host "  $('-' * 50)"
@@ -467,15 +522,7 @@ function Run-DayTrade($cfg, $mode) {
         if ($status -eq "published" -or $status -eq "already_done") {
             Write-Host "`n  Status: $($status.ToUpper())"
             Write-Host "  Published: $($data.published_count)"
-            if ($data.telegram -and $data.telegram.reason) { Write-Host "  Telegram reason: $($data.telegram.reason)" }
-            if ($null -ne $data.radar_requested) { Write-Host "  Radar requested: $($data.radar_requested)" }
-            if ($null -ne $data.radar_count) { Write-Host "  Radar count: $($data.radar_count)" }
-            if ($data.radar_candidates) { Write-Host "  Radar candidates: $($data.radar_candidates -join ', ')" }
-            if ($data.radar_rejection_reasons) {
-                $reasonProps = $data.radar_rejection_reasons.PSObject.Properties | Select-Object -First 5
-                $reasons = @($reasonProps | ForEach-Object { "$($_.Name)=$($_.Value)" }) -join ", "
-                if ($reasons) { Write-Host "  Top radar rejection reasons: $reasons" }
-            }
+            Print-DayTradeTelegramDiagnostics $data
             $finalOk = $true
             break
         }
@@ -771,10 +818,10 @@ switch ($Command) {
             $mode = if ($isFast) { "$detectedMode-fast" } else { $detectedMode }
         }
 
-        $validModes = @("morning", "midday", "afternoon", "full", "morning-fast", "midday-fast", "afternoon-fast", "morning-radar", "midday-radar", "afternoon-radar", "full-radar", "morning-fast-radar", "midday-fast-radar", "afternoon-fast-radar")
+        $validModes = @("morning", "midday", "afternoon", "full", "morning-fast", "midday-fast", "afternoon-fast", "morning-radar", "midday-radar", "afternoon-radar", "full-radar", "morning-fast-radar", "midday-fast-radar", "afternoon-fast-radar", "morning-no-radar", "midday-no-radar", "afternoon-no-radar", "full-no-radar", "morning-fast-no-radar", "midday-fast-no-radar", "afternoon-fast-no-radar")
         if ($mode -notin $validModes) {
             Write-Host "  Invalid mode: $mode"
-            Write-Host "  Valid: morning, midday, afternoon, full, morning-fast, midday-fast, afternoon-fast (append -radar to request Radar fallback)"
+            Write-Host "  Valid: morning, midday, afternoon, full, morning-fast, midday-fast, afternoon-fast (append -no-radar to disable local Radar fallback)"
             Write-Host "  Auto: auto-fast, auto-full"
             exit 1
         }
