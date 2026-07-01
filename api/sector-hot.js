@@ -7527,6 +7527,81 @@ async function updateDtMeta(supabase, fields) {
 // ============================================================
 var _dtTelegramLastRunId = null; // Simple in-memory duplicate guard
 
+function dayTradeTelegramTextHasAvoid(text) {
+  return includesAny(text, ['hindari', 'avoid']);
+}
+
+function isDayTradeTelegramFinalGateRejected(r) {
+  r = r || {};
+  var finalGate = r.final_top_quality_gate || r.final_quality_gate || r.top_quality_gate || null;
+  var finalStatus = safeTelegramText(r.final_quality_status || r.final_gate_status || r.quality_gate_status || '', 120, '').toLowerCase();
+  var finalText = joinTelegramTexts([
+    finalStatus,
+    r.excluded_reason,
+    r.signal_verdict,
+    r.telegram_verdict,
+    r.verdict,
+    r.reason,
+    r.status_reason
+  ]).toLowerCase();
+  return r.final_quality_pass === false ||
+    r.final_gate_pass === false ||
+    r.quality_gate_pass === false ||
+    (finalGate && finalGate.pass === false) ||
+    includesAny(finalText, ['rejected', 'reject', 'failed', 'fail', 'tidak lolos final quality gate', 'hindari', 'avoid']);
+}
+
+function candidatePassesDayTradeTelegramFinalGate(candidate) {
+  if (!candidate) return false;
+
+  if (isDayTradeTelegramFinalGateRejected(candidate)) return false;
+  if (candidate.trading_plan_valid === false) return false;
+
+  var actionText = joinTelegramTexts([
+    candidate.action_label,
+    candidate.signal_action_label,
+    candidate.telegram_action_label,
+    candidate.action,
+    candidate.signal_action,
+    candidate.telegram_verdict
+  ]).toLowerCase();
+  if (dayTradeTelegramTextHasAvoid(actionText)) return false;
+
+  var riskStatusText = joinTelegramTexts([
+    candidate.risk,
+    candidate.risk_label,
+    candidate.risk_label_v2,
+    candidate.verified_risk_label,
+    candidate.status,
+    candidate.final_status,
+    candidate.grade,
+    candidate.quality_grade
+  ]).toLowerCase();
+  if (includesAny(riskStatusText, ['avoid'])) return false;
+
+  var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || '', 80, '').toUpperCase();
+  if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') return false;
+  if (candidate.is_stale === true || candidate.data_stale === true || candidate.freshness_is_stale === true || candidate.stale === true) return false;
+
+  var freshnessText = joinTelegramTexts([
+    candidate.setup_freshness_label,
+    candidate.freshness_label,
+    candidate.setup_expiry_note,
+    candidate.stale_notes
+  ]).toLowerCase();
+  if (includesAny(freshnessText, ['needs revalidation', 'expired', 'stale'])) return false;
+
+  var guardText = joinTelegramTexts([
+    candidate.action_guard_label,
+    candidate.action_guard_status,
+    candidate.plan_quality_label,
+    candidate.plan_quality_note
+  ]).toLowerCase();
+  if (includesAny(guardText, ['level belum rapi', 'invalid plan', 'plan invalid'])) return false;
+
+  return applyFinalTopQualityGate(candidate, 'daytrade_telegram_final_filter').pass;
+}
+
 async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount) {
   // Duplicate guard: same run_id = don't send twice
   if (_dtTelegramLastRunId === runId) {
@@ -7557,10 +7632,17 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     // Real columns: status, daytrade_score, risk_reward, volume_ratio_20d, entry_low, entry_high, etc.
     // quality_grade/risk_label are NOT in DB — use status + score for selection.
 
-    // Step 1: Deterministic Telegram verification filters INVALID/AVOID, very high risk, and weak RR before output
+    var metaRes = await supabase.from('daytrade_screener_meta').select('calculated_at,updated_at,run_date,run_id,status').eq('id', 'latest').maybeSingle();
+    var daytradeMeta = metaRes && metaRes.data ? metaRes.data : { calculated_at: null };
+
+    // Step 1: Deterministic Telegram verification filters INVALID/AVOID, very high risk, weak RR,
+    // stale/revalidation setups, and final quality-gate failures before public output.
     var verifiedCandidates = candidates.map(function(r) { return verifyTelegramSignal(r, 'daytrade'); }).filter(Boolean);
     var highConvictionCandidates = verifiedCandidates.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'daytrade'); }).filter(Boolean);
-    var nonAvoid = highConvictionCandidates.map(function(r) { return normalizeCombinedCandidate(r, 'Day Trade'); }).filter(candidatePassesMinUpside);
+    var nonAvoid = highConvictionCandidates
+      .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Day Trade'), daytradeMeta); })
+      .filter(candidatePassesMinUpside)
+      .filter(candidatePassesDayTradeTelegramFinalGate);
 
     // Step 2: Prioritize actionable setups
     var setupPriority = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8 };
@@ -7597,10 +7679,20 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       headerNote = 'Tidak ada kandidat A/B bersih, menampilkan watchlist terbaik.';
     }
 
-    // Step 6: If EVERYTHING is AVOID
+    // Step 6: If no candidate survives the public Telegram final gate, send a safe no-candidate notice.
     if (finalList.length === 0) {
+      var emptyMsg = formatDayTradeNoCandidateTelegramMessage();
+      var emptyResult = await telegramNotifier.sendTelegramMessage(emptyMsg);
       _dtTelegramLastRunId = runId;
-      return { sent: false, skipped: true, reason: 'no_min_tp1_upside_candidates', message: 'Belum ada kandidat yang lolos filter potensi TP minimal.', published_count: publishedCount, raw_candidate_count: rawCount, verified_count: verifiedCandidates.length, selected_count: 0 };
+      emptyResult.reason = emptyResult.sent ? 'no_final_quality_gate_candidates' : (emptyResult.reason || 'telegram_send_failed');
+      emptyResult.message = emptyMsg;
+      emptyResult.published_count = publishedCount;
+      emptyResult.raw_candidate_count = rawCount;
+      emptyResult.verified_count = verifiedCandidates.length;
+      emptyResult.high_conviction_count = highConvictionCandidates.length;
+      emptyResult.selected_count = 0;
+      emptyResult.filtered_out_count = rawCount;
+      return emptyResult;
     }
 
     // Format message
@@ -7644,6 +7736,21 @@ function formatDayTradeTelegramMessage(results, runDate, headerNote, meta) {
   if (lines[lines.length - 1] === '') lines.pop();
   lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
   return lines.join('\n');
+}
+
+function formatDayTradeNoCandidateTelegramMessage() {
+  var now = new Date();
+  var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
+  var wib = new Date(wibMs);
+  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
+  return [
+    '\uD83D\uDE80 Day Trade Signal',
+    'Update: ' + timeStr,
+    '',
+    'Belum ada kandidat day trade yang lolos final quality gate hari ini.',
+    'Bukan rekomendasi beli. Konfirmasi manual wajib.'
+  ].join('\n');
 }
 
 // Shorten context label for Telegram (remove "(approx 5D)"/"(approx 20D)" suffix, keep meaning)
@@ -7905,10 +8012,10 @@ function verifyHighConvictionTelegramSignal(row, mode) {
   if (r.telegram_action_label === 'Pantau dulu' && !(conviction >= 82 && strong)) return null;
 
   if (isTelegramWaitPullbackStatus(status)) {
-    r.telegram_action_label = 'Tunggu pullback valid';
+    r.telegram_action_label = 'Tunggu pullback';
     r.telegram_verdict = 'Tunggu pullback valid, jangan chase.';
   } else if (status.indexOf('MOMENTUM_CONTINUATION') >= 0) {
-    r.telegram_action_label = 'Pantau momentum valid';
+    r.telegram_action_label = 'Pantau entry valid jika konfirmasi';
     r.telegram_verdict = 'Momentum berjalan. Jangan chase, entry hanya jika pullback/volume valid.';
   } else if (status.indexOf('BREAKOUT') >= 0 || status.indexOf('RECLAIM') >= 0) {
     r.telegram_action_label = 'Pantau breakout/reclaim';
