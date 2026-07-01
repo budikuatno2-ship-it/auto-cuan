@@ -3582,7 +3582,21 @@ function candidatePassesRRGate(candidate) {
 }
 
 function publicTelegramSafetyTextHasReject(text) {
-  return includesAny(String(text || '').toLowerCase(), ['hindari', 'avoid', 'rejected', 'reject', 'failed', 'fail', 'tidak lolos final quality gate']);
+  return includesAny(String(text || '').toLowerCase(), [
+    'hindari',
+    'avoid',
+    'rejected',
+    'reject',
+    'failed',
+    'fail',
+    'tidak lolos final quality gate',
+    'below sl',
+    'sl kena',
+    'invalidation hit',
+    'invalidation terlalu dekat',
+    'terlalu mepet',
+    'rawan noise'
+  ]);
 }
 
 function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
@@ -3654,6 +3668,9 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   var risk = normalizeTelegramRiskLabel(candidate.risk_label_v2 || candidate.risk_label || candidate.verified_risk_label).toLowerCase();
   if (risk === 'very high risk') return false;
 
+  var invalidationDistanceStatus = String(candidate.invalidation_distance_status || '').trim().toUpperCase();
+  if ({ INVALID_BELOW_SL: true, TOO_CLOSE_TO_SL: true }[invalidationDistanceStatus]) return false;
+
   var entryStatus = String(candidate.entry_status || '').trim().toUpperCase();
   var entryQuality = String(candidate.entry_quality_status || '').trim().toUpperCase();
   if ({ CHASE_RISK: true, EXTENDED: true, TP1_NEAR: true, TP1_HIT: true, TP2_HIT: true, INVALID_BELOW_SL: true, NEEDS_REVALIDATION: true }[entryStatus]) return false;
@@ -3700,9 +3717,12 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
     candidate.entry_timing,
     candidate.time_plan,
     candidate.entry_status_label,
-    candidate.entry_status_note
+    candidate.entry_status_note,
+    candidate.invalidation_distance_label,
+    candidate.invalidation_note
   ]);
-  if (includesAny(guardText.toLowerCase(), ['level belum rapi', 'invalid plan', 'plan invalid', 'chase', 'extended', 'tp near', 'tp1 near', 'below sl', 'invalidation hit'])) return false;
+  if (publicTelegramSafetyTextHasReject(guardText)) return false;
+  if (includesAny(guardText.toLowerCase(), ['level belum rapi', 'invalid plan', 'plan invalid', 'chase', 'extended', 'tp near', 'tp1 near'])) return false;
 
   if (mode !== 'daytrade') return applyFinalTopQualityGate(candidate, mode || 'public_telegram').pass;
   return true;
