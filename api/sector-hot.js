@@ -5296,9 +5296,11 @@ async function handleNkScreenerRun(req, res, supabase) {
     .maybeSingle();
 
   const runDate = getWibDateString();
+  const forceRun = req.query.force === '1';
 
-  // If no meta or different date or status is idle/published → start fresh
-  if (!meta || meta.run_date !== runDate || meta.status === 'published' || meta.status === 'idle') {
+  // If no meta or different date or status is idle/published → start fresh.
+  // completed_no_candidates is also terminal, but same-day rerun should be explicit via force=1.
+  if (!meta || meta.run_date !== runDate || meta.status === 'published' || meta.status === 'idle' || (meta.status === 'completed_no_candidates' && forceRun)) {
     return await handleNkScreenerStart(req, res, supabase);
   }
 
@@ -5307,7 +5309,7 @@ async function handleNkScreenerRun(req, res, supabase) {
   // handleNkScreenerStart already deletes old jobs + staging for today's runDate.
   // Latest published rows (swing_screener_non_konglo_latest) are NOT wiped here —
   // they are only replaced during finalize after new results are ready.
-  if (req.query.force === '1' && meta.status === 'scanning') {
+  if (forceRun && meta.status === 'scanning') {
     return await handleNkScreenerStart(req, res, supabase);
   }
 
@@ -5350,7 +5352,7 @@ async function handleNkScreenerRun(req, res, supabase) {
   // With force=1: start fresh (don't re-finalize stale staging)
   // Without force: attempt finalize from existing staging
   if (meta.status === 'finalizing' || meta.status === 'failed') {
-    if (req.query.force === '1') {
+    if (forceRun) {
       return await handleNkScreenerStart(req, res, supabase);
     }
     return await handleNkScreenerFinalize(req, res, supabase);
@@ -5603,6 +5605,9 @@ function buildNkNoCandidateDiagnostics(rows, totalScanned) {
   rows = Array.isArray(rows) ? rows : [];
   var reasons = {};
   var samples = [];
+  if (rows.length === 0) {
+    reasons.no_staging_rows = 1;
+  }
   function addReason(ticker, reason) {
     reason = reason || 'final_quality_gate';
     reasons[reason] = (reasons[reason] || 0) + 1;
@@ -5685,7 +5690,17 @@ async function handleNkScreenerFinalize(req, res, supabase) {
 
   // If no candidates passed filters, classify as a successful no-candidate run, not a system error.
   if (!topCandidates || topCandidates.length === 0) {
-    var emptyDiagnostics = buildNkNoCandidateDiagnostics([], nkTotalScanned);
+    var { data: diagnosticRows, error: diagErr } = await supabase
+      .from('swing_screener_non_konglo_staging')
+      .select('*')
+      .eq('run_date', runDate)
+      .order('score', { ascending: false })
+      .limit(200);
+    if (diagErr) {
+      await updateNkMeta(supabase, { status: 'failed', message: 'Gagal membaca staging diagnostics: ' + diagErr.message });
+      return res.status(200).json({ success: false, error: 'Failed to read staging diagnostics.', staging_error: diagErr.message });
+    }
+    var emptyDiagnostics = buildNkNoCandidateDiagnostics(diagnosticRows || [], nkTotalScanned);
     await updateNkMeta(supabase, {
       status: 'completed_no_candidates',
       published_count: 0,
