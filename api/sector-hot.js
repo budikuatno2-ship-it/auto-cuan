@@ -3595,7 +3595,14 @@ function publicTelegramSafetyTextHasReject(text) {
     'invalidation hit',
     'invalidation terlalu dekat',
     'terlalu mepet',
-    'rawan noise'
+    'rawan noise',
+    'riwayat data pendek',
+    'reference price',
+    'data perdagangan tidak utuh',
+    'candle tidak valid',
+    'corporate action',
+    'perlu validasi ulang',
+    'data tidak valid'
   ]);
 }
 
@@ -3680,6 +3687,24 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
     'gagal bertahan',
     'wick pierced',
     'pierce resistance'
+  ])) return false;
+
+  var dataQualityStatus = String(candidate.data_quality_status || '').trim().toUpperCase();
+  if (candidate.data_quality_valid === false || candidate.data_quality_needs_revalidation === true) return false;
+  if ({ SHORT_HISTORY: true, MISSING_REFERENCE: true, SPARSE_TRADING_DAYS: true, INVALID_CANDLE: true, CORPORATE_ACTION_RISK: true, NEEDS_REVALIDATION: true }[dataQualityStatus]) return false;
+  var dataQualityText = joinTelegramTexts([
+    candidate.data_quality_label,
+    candidate.data_quality_note,
+    candidate.data_quality_status
+  ]).toLowerCase();
+  if (includesAny(dataQualityText, [
+    'riwayat data pendek',
+    'reference price',
+    'data perdagangan tidak utuh',
+    'candle tidak valid',
+    'corporate action',
+    'perlu validasi ulang',
+    'data tidak valid'
   ])) return false;
 
   var risk = normalizeTelegramRiskLabel(candidate.risk_label_v2 || candidate.risk_label || candidate.verified_risk_label).toLowerCase();
