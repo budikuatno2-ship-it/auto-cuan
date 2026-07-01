@@ -4001,6 +4001,7 @@ async function buildSignalMessage(supabase, ticker) {
 }
 
 async function buildTelegramTopMessage(supabase) {
+  // Public Top 10 uses the shared candidateTelegramEligible() path, which includes candidatePassesPublicTelegramSafetyGate().
   var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidateTelegramEligible).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
   var lines = ['Top 10 Screener — ' + getWibDateString(), ''];
   if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
