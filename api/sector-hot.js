@@ -3690,6 +3690,8 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   if (includesAny(volumeText.toLowerCase(), ['weak volume', 'volume lemah'])) return false;
 
   if (candidate.trading_plan_valid === false) return false;
+  var planQualityStatus = String(candidate.plan_quality_status || candidate.trading_plan_status || '').trim().toUpperCase();
+  if ({ INVALID: true, POOR_RR: true }[planQualityStatus]) return false;
   var guardText = joinTelegramTexts([
     candidate.action_guard_label,
     candidate.action_guard_status,
