@@ -65,7 +65,10 @@ const blockedCases = [
   ['entry chase status', { entry_status: 'CHASE_RISK' }],
   ['extended entry status', { entry_status: 'EXTENDED' }],
   ['TP near status', { entry_status: 'TP1_NEAR' }],
+  ['TP1 hit status', { entry_status: 'TP1_HIT' }],
+  ['TP2 hit status', { entry_status: 'TP2_HIT' }],
   ['below SL status', { entry_status: 'INVALID_BELOW_SL' }],
+  ['entry status needs revalidation', { entry_status: 'NEEDS_REVALIDATION' }],
   ['chase note', { entry_timing: 'entry chase / extended' }]
 ];
 
