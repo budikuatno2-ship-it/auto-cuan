@@ -4454,15 +4454,16 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     var notifier = await sendDailyTop5Telegram(supabase, picks, date, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' });
     var telegramSent = notifier.sent_count > 0;
     var nowIso = new Date().toISOString();
-    if (picks.length > 0 && telegramSent) {
+    if (telegramSent) {
       if (existingRows.length > 0) {
-        var sentPickIds = {};
-        (notifier.public_picks || picks).forEach(function(p) { if (p && p._daily_pick_row_id) sentPickIds[p._daily_pick_row_id] = true; });
+        var publicPickIds = {};
+        (notifier.public_picks || picks).forEach(function(p) { if (p && p._daily_pick_row_id) publicPickIds[p._daily_pick_row_id] = true; });
         for (var u = 0; u < existingRows.length; u++) {
-          if (!sentPickIds[existingRows[u].id]) continue;
-          await supabase.from('telegram_daily_picks').update({ first_sent_at: existingRows[u].first_sent_at || nowIso, raw_payload: markRawPayloadTelegramSent(existingRows[u].raw_payload, nowIso) }).eq('id', existingRows[u].id);
+          var rawPayload = markRawPayloadTelegramSent(existingRows[u].raw_payload, nowIso);
+          if (!publicPickIds[existingRows[u].id]) rawPayload.public_filtered_from_send = true;
+          await supabase.from('telegram_daily_picks').update({ first_sent_at: existingRows[u].first_sent_at || nowIso, raw_payload: rawPayload }).eq('id', existingRows[u].id);
         }
-      } else {
+      } else if (picks.length > 0) {
         var rows = picks.map(function(r) {
           var row = dailyPickInsertRowFromCandidate(r, date, nowIso);
           row.raw_payload = markRawPayloadTelegramSent(row.raw_payload, nowIso);
