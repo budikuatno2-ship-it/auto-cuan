@@ -7540,7 +7540,10 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     }]);
   } catch (e) { /* non-critical */ }
 
-  var telegramResult = await sendDayTradeTelegramNotification(supabase, runId, runDate, savedCount, getDayTradeEmptyNoticeRequested(req), getDayTradeRadarRequested(req));
+  var sendEmptyNoticeRequested = getDayTradeEmptyNoticeRequested(req);
+  var radarRequested = getDayTradeRadarRequested(req);
+  var forceRadarDebug = getDayTradeForceRadarDebugRequested(req);
+  var telegramResult = await sendDayTradeTelegramNotification(supabase, runId, runDate, savedCount, sendEmptyNoticeRequested, radarRequested, { force_radar_debug: forceRadarDebug });
   var responsePayload = {
     success: true,
     status: 'published',
@@ -7557,8 +7560,19 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     published_count: savedCount,
     top_count: topCount,
     message: 'Day Trade Screener run complete. Top ' + savedCount + ' published.',
+    radar_requested: radarRequested,
+    send_empty_notice_requested: sendEmptyNoticeRequested,
+    duplicate_guard_hit: !!(telegramResult && (telegramResult.duplicate_guard_hit || telegramResult.reason === 'duplicate_run_id' || telegramResult.reason === 'duplicate_radar_run_id')),
     telegram: telegramResult
   };
+  if (telegramResult) {
+    if (telegramResult.diagnostics) responsePayload.diagnostics = telegramResult.diagnostics;
+    if (telegramResult.radar_count !== undefined) responsePayload.radar_count = telegramResult.radar_count;
+    if (telegramResult.radar_candidates) responsePayload.radar_candidates = telegramResult.radar_candidates;
+    if (telegramResult.radar_blocked_count !== undefined) responsePayload.radar_blocked_count = telegramResult.radar_blocked_count;
+    if (telegramResult.radar_rejection_reasons) responsePayload.radar_rejection_reasons = telegramResult.radar_rejection_reasons;
+    if (telegramResult.sample_radar_rejected) responsePayload.sample_radar_rejected = telegramResult.sample_radar_rejected;
+  }
   if (telegramResult && telegramResult.reason === 'no_final_quality_gate_candidates') {
     responsePayload.skipped = true;
     responsePayload.reason = 'no_final_quality_gate_candidates';
@@ -7568,6 +7582,9 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     if (telegramResult.radar_sent !== undefined) responsePayload.radar_sent = telegramResult.radar_sent;
     if (telegramResult.radar_count !== undefined) responsePayload.radar_count = telegramResult.radar_count;
     if (telegramResult.radar_candidates) responsePayload.radar_candidates = telegramResult.radar_candidates;
+    if (telegramResult.radar_blocked_count !== undefined) responsePayload.radar_blocked_count = telegramResult.radar_blocked_count;
+    if (telegramResult.radar_rejection_reasons) responsePayload.radar_rejection_reasons = telegramResult.radar_rejection_reasons;
+    if (telegramResult.sample_radar_rejected) responsePayload.sample_radar_rejected = telegramResult.sample_radar_rejected;
   }
   return res.status(200).json(responsePayload);
 }
@@ -7613,6 +7630,8 @@ async function updateDtMeta(supabase, fields) {
 // Never throws. Never breaks Day Trade flow.
 // ============================================================
 var _dtTelegramLastRunId = null; // Simple in-memory duplicate guard
+var _dtTelegramLastRunReason = null;
+var _dtTelegramLastRadarRunId = null;
 
 function dayTradeTelegramTextHasAvoid(text) {
   return includesAny(text, ['hindari', 'avoid']);
@@ -7644,10 +7663,20 @@ function getDayTradeEmptyNoticeRequested(req) {
   return q.debug_telegram === '1' || q.send_empty_notice === '1' || b.debug_telegram === '1' || b.debug_telegram === 1 || b.debug_telegram === true || b.send_empty_notice === '1' || b.send_empty_notice === 1 || b.send_empty_notice === true;
 }
 
+function dayTradeFlagEnabled(value) {
+  return value === '1' || value === 1 || value === true || String(value || '').toLowerCase() === 'true';
+}
+
 function getDayTradeRadarRequested(req) {
   var q = (req && req.query) || {};
   var b = (req && req.body && typeof req.body === 'object') ? req.body : {};
-  return q.send_radar === '1' || q.radar_telegram === '1' || b.send_radar === '1' || b.send_radar === 1 || b.send_radar === true || b.radar_telegram === '1' || b.radar_telegram === 1 || b.radar_telegram === true;
+  return dayTradeFlagEnabled(q.send_radar) || dayTradeFlagEnabled(q.radar_telegram) || dayTradeFlagEnabled(b.send_radar) || dayTradeFlagEnabled(b.radar_telegram);
+}
+
+function getDayTradeForceRadarDebugRequested(req) {
+  var q = (req && req.query) || {};
+  var b = (req && req.body && typeof req.body === 'object') ? req.body : {};
+  return dayTradeFlagEnabled(q.force_radar_debug) || dayTradeFlagEnabled(b.force_radar_debug);
 }
 
 function candidatePassesDayTradeTelegramFinalGate(candidate) {
@@ -7749,6 +7778,34 @@ function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
       rejection_reason: reason
     });
   }
+  var radarRejected = counts.radar_rejected || [];
+  var radarReasons = {};
+  radarRejected.forEach(function(c) {
+    var reason = getDayTradeTelegramRejectionReason(c, 'radar_fallback');
+    radarReasons[reason] = (radarReasons[reason] || 0) + 1;
+  });
+  var sampleRadar = radarRejected.slice(0, 10).map(function(c) {
+    var reason = getDayTradeTelegramRejectionReason(c, 'radar_fallback');
+    var entry1 = toNum(c.entry1) || getEntry1(c);
+    var entry2 = toNum(c.entry2) || getEntry2(c);
+    var sl = toNum(c.sl || c.stop_loss);
+    var tp1 = toNum(c.tp1n || c.tp1);
+    var liq = deriveStaleLiquidityLabels(c);
+    return {
+      ticker: safeTelegramText(c.ticker, 16, '') || null,
+      status: c.status || c.final_status || null,
+      action: c.action || c.signal_action || c.telegram_action_label || c.action_label || null,
+      risk_label: deriveTelegramRiskLabel(c, 'daytrade'),
+      freshness: c.setup_freshness_status || c.freshness_status || c.setup_freshness_label || c.freshness_label || null,
+      liquidity_label: liq.liquidity_label || c.liquidity_label || null,
+      has_entry: !!((entry1 > 0) && (entry2 > 0)),
+      has_sl: !!(sl > 0),
+      has_tp1: !!(tp1 > 0),
+      rr: toNum(c.risk_reward) || null,
+      min_tp1_pass: candidatePassesMinUpside(c),
+      rejection_reason: reason
+    };
+  });
   return {
     scanned_count: counts.scanned_count,
     published_count: counts.published_count,
@@ -7756,6 +7813,12 @@ function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
     min_tp1_pass_count: counts.min_tp1_pass_count || 0,
     public_safe_count: counts.public_safe_count || 0,
     filtered_count: Math.max(0, candidates.length - (counts.public_safe_count || 0)),
+    radar_requested: !!counts.radar_requested,
+    radar_count: (counts.radar_candidates || []).length,
+    radar_candidates: (counts.radar_candidates || []).map(function(r) { return r.ticker; }),
+    radar_blocked_count: radarRejected.length,
+    radar_rejection_reasons: radarReasons,
+    sample_radar_rejected: sampleRadar,
     top_rejection_reasons: topReasons,
     sample_rejected: sample
   };
@@ -7849,16 +7912,21 @@ function formatDayTradeRadarTelegramMessage(results) {
   return lines.join('\n');
 }
 
-async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount, sendEmptyNotice, sendRadarFallback) {
-  // Duplicate guard: same run_id = don't send twice
-  if (_dtTelegramLastRunId === runId) {
-    return { sent: false, skipped: true, reason: 'duplicate_run_id' };
+async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount, sendEmptyNotice, sendRadarFallback, options) {
+  options = options || {};
+  var forceRadarDebug = options.force_radar_debug === true;
+  var duplicateRunHit = _dtTelegramLastRunId === runId;
+  var allowRadarRetry = duplicateRunHit && sendRadarFallback && _dtTelegramLastRunReason === 'no_final_quality_gate_candidates' && _dtTelegramLastRadarRunId !== runId;
+  // Duplicate guard: same run_id = don't send the normal Signal twice, but allow one explicit radar retry after a silent no-signal result.
+  if (duplicateRunHit && !allowRadarRetry && !forceRadarDebug) {
+    return { sent: false, skipped: true, reason: (_dtTelegramLastRadarRunId === runId && sendRadarFallback) ? 'duplicate_radar_run_id' : 'duplicate_run_id', duplicate_guard_hit: true, radar_requested: !!sendRadarFallback };
   }
 
   // 0 candidates: do not send empty/no-signal Telegram messages
   if (publishedCount === 0) {
     _dtTelegramLastRunId = runId;
-    return { sent: false, skipped: true, reason: 'no_published_rows' };
+    _dtTelegramLastRunReason = 'no_published_rows';
+    return { sent: false, skipped: true, reason: 'no_published_rows', radar_requested: !!sendRadarFallback, duplicate_guard_hit: duplicateRunHit };
   }
 
   try {
@@ -7870,7 +7938,9 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       .limit(50);
 
     if (readErr || !candidates || candidates.length === 0) {
-      return { sent: false, skipped: true, reason: 'no_data_to_send', published_count: publishedCount, raw_candidate_count: 0 };
+      _dtTelegramLastRunId = runId;
+      _dtTelegramLastRunReason = 'no_data_to_send';
+      return { sent: false, skipped: true, reason: 'no_data_to_send', published_count: publishedCount, raw_candidate_count: 0, radar_requested: !!sendRadarFallback, duplicate_guard_hit: duplicateRunHit };
     }
 
     var rawCount = candidates.length;
@@ -7906,7 +7976,13 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       if (candidatePassesMinUpside(normalized)) minTp1Candidates.push(normalized);
       else stageByTicker[ticker] = { stage: 'min_tp1', candidate: normalized };
     });
-    var radarCandidates = minTp1Candidates.map(function(normalized) { return Object.assign({}, normalized); }).filter(candidatePassesDayTradeRadarFallbackGate).sort(sortDayTradeRadarCandidates).slice(0, 3);
+    var radarPool = minTp1Candidates.map(function(normalized) { return Object.assign({}, normalized); });
+    var radarRejected = [];
+    var radarCandidates = radarPool.filter(function(r) {
+      var pass = candidatePassesDayTradeRadarFallbackGate(r);
+      if (!pass) radarRejected.push(r);
+      return pass;
+    }).sort(sortDayTradeRadarCandidates).slice(0, 3);
 
     var nonAvoid = [];
     minTp1Candidates.forEach(function(normalized) {
@@ -7954,12 +8030,16 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       scanned_count: publishedCount,
       published_count: publishedCount,
       min_tp1_pass_count: minTp1Candidates.length,
-      public_safe_count: nonAvoid.length
+      public_safe_count: nonAvoid.length,
+      radar_requested: !!sendRadarFallback,
+      radar_candidates: radarCandidates,
+      radar_rejected: radarRejected
     });
 
     // Step 6: If no candidate survives the public Telegram final gate, stay silent by default.
     if (finalList.length === 0) {
       _dtTelegramLastRunId = runId;
+      _dtTelegramLastRunReason = 'no_final_quality_gate_candidates';
       var silentResult = {
         sent: false,
         skipped: true,
@@ -7973,6 +8053,9 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
         public_safe_count: 0,
         selected_count: 0,
         filtered_out_count: rawCount,
+        duplicate_guard_hit: duplicateRunHit,
+        radar_requested: !!sendRadarFallback,
+        force_radar_debug: forceRadarDebug,
         diagnostics: diagnostics,
         admin_radar_summary: [
           'Belum ada kandidat yang lolos final safety gate.',
@@ -7983,11 +8066,17 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       silentResult.radar_count = radarCandidates.length;
       silentResult.radar_sent = false;
       silentResult.radar_candidates = radarCandidates.map(function(r) { return r.ticker; });
+      silentResult.radar_blocked_count = diagnostics.radar_blocked_count;
+      silentResult.radar_rejection_reasons = diagnostics.radar_rejection_reasons;
+      silentResult.sample_radar_rejected = diagnostics.sample_radar_rejected;
+      if (sendRadarFallback && _dtTelegramLastRadarRunId === runId) return Object.assign(silentResult, { reason: 'duplicate_radar_run_id', duplicate_guard_hit: true });
+      if (forceRadarDebug && duplicateRunHit && !allowRadarRetry) return silentResult;
       if (sendRadarFallback && radarCandidates.length > 0) {
         var radarMsg = formatDayTradeRadarTelegramMessage(radarCandidates);
         var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
         radarResult.reason = 'no_final_quality_gate_candidates';
         radarResult.message = radarMsg;
+        if (radarResult.sent) _dtTelegramLastRadarRunId = runId;
         return Object.assign(silentResult, radarResult, { skipped: !radarResult.sent, radar_sent: !!radarResult.sent, radar_count: radarCandidates.length, radar_candidates: radarCandidates.map(function(r) { return r.ticker; }) });
       }
       if (!sendEmptyNotice) return silentResult;
@@ -7998,6 +8087,26 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       return Object.assign(silentResult, emptyResult, { skipped: !emptyResult.sent, debug_empty_notice: true, radar_sent: false, radar_count: radarCandidates.length, radar_candidates: radarCandidates.map(function(r) { return r.ticker; }) });
     }
 
+    if (duplicateRunHit && forceRadarDebug) {
+      return {
+        sent: false,
+        skipped: true,
+        reason: 'duplicate_run_id',
+        duplicate_guard_hit: true,
+        radar_requested: !!sendRadarFallback,
+        force_radar_debug: true,
+        published_count: publishedCount,
+        raw_candidate_count: rawCount,
+        selected_count: finalList.length,
+        diagnostics: diagnostics,
+        radar_count: radarCandidates.length,
+        radar_candidates: radarCandidates.map(function(r) { return r.ticker; }),
+        radar_blocked_count: diagnostics.radar_blocked_count,
+        radar_rejection_reasons: diagnostics.radar_rejection_reasons,
+        sample_radar_rejected: diagnostics.sample_radar_rejected
+      };
+    }
+
     // Format message
     var dtRunMode = (finalList[0] && finalList[0].run_mode) ? finalList[0].run_mode.toUpperCase() : null;
     var msg = formatDayTradeTelegramMessage(finalList, runDate, headerNote, { run_mode: dtRunMode, published_count: publishedCount });
@@ -8005,6 +8114,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     // Send
     var result = await telegramNotifier.sendTelegramMessage(msg);
     _dtTelegramLastRunId = runId;
+    _dtTelegramLastRunReason = result.sent ? 'sent_signal' : (result.reason || 'telegram_send_failed');
     result.published_count = publishedCount;
     result.raw_candidate_count = rawCount;
     result.selected_count = finalList.length;
