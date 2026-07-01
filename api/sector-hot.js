@@ -3672,7 +3672,7 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
     candidate.freshness_status,
     candidate.setup_freshness_status
   ]);
-  if (includesAny(freshnessText.toLowerCase(), ['stale', 'expired', 'needs revalidation'])) return false;
+  if (includesAny(freshnessText.toLowerCase(), ['stale', 'expired', 'needs revalidation', 'perlu validasi ulang', 'data basi', 'setup terlalu lama'])) return false;
 
   var liquidityText = joinTelegramTexts([
     candidate.liquidity_label,
