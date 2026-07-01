@@ -5549,6 +5549,7 @@ function openScrDetail(r, type) {
       html += '<div style="font-size:9px;font-weight:600;color:#6ee7b7;margin-bottom:4px">EXECUTION REALITY</div>';
       if (r.entry_basis_note) html += '<div style="font-size:10px;color:#d1d5db">Entry Basis: ' + escapeHtml(r.entry_basis_note) + '</div>';
       if (r.ara_price || r.arb_price) html += '<div style="font-size:10px;color:#d1d5db">ARA/ARB: ' + dashFmtPrice(r.ara_price) + ' / ' + dashFmtPrice(r.arb_price) + '</div>';
+      else if (r.ara_arb_source === 'missing_reference' || /belum tersedia/i.test(r.tp_realism_note || '')) html += '<div style="font-size:10px;color:#d1d5db">ARA/ARB: Belum tersedia</div>';
       if (execLineDetail) html += '<div style="font-size:10px;color:#d1d5db">' + escapeHtml(execLineDetail) + '</div>';
       if (realismLineDetail) html += '<div style="font-size:10px;color:#fbbf24">TP Realism: ' + escapeHtml(realismLineDetail) + '</div>';
       html += '</div>';
@@ -7135,7 +7136,7 @@ function renderDashboardTop5(picks) {
         var execLine = dashExecutionRealityLine(r);
         var realismLine = dashTpRealismLine(r);
         if (execLine) html += '<div class="mt-1 text-[10px] text-emerald-200">' + escapeHtml(execLine) + '</div>';
-        if (realismLine) html += '<div class="mt-1 text-[10px] text-amber-300">' + escapeHtml(realismLine) + '</div>';
+        if (realismLine) html += '<div class="mt-1 text-[10px] text-amber-300">TP Realism: ' + escapeHtml(realismLine) + '</div>';
         if (planWarn) html += '<div class="mt-1 text-[10px] text-amber-300">' + escapeHtml(planWarn) + '</div>';
         if (actionLine) html += '<div class="mt-1 text-[11px] text-blue-200 truncate">' + escapeHtml(actionLine) + '</div>';
         html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p>';
@@ -7148,11 +7149,16 @@ function dashSignedPct(v) { var n = Number(v); return isFinite(n) ? ((n >= 0 ? '
 function dashExecutionRealityLine(r) {
     if (!r) return '';
     var parts = [];
-    if (r.candle_potential_low && r.candle_potential_high) parts.push('Potensi Candle: ' + dashFmtPrice(r.candle_potential_low) + '–' + dashFmtPrice(r.candle_potential_high));
+    if (r.candle_potential_low && r.candle_potential_high) parts.push('Potensi: Candle ' + dashFmtPrice(r.candle_potential_low) + '–' + dashFmtPrice(r.candle_potential_high));
     if (r.ara_room_pct != null) parts.push('ARA room ' + dashSignedPct(r.ara_room_pct));
     return parts.join(' · ');
 }
-function dashTpRealismLine(r) { return r && r.tp_realism_note ? r.tp_realism_note : (r && r.tp2_beyond_ara ? 'TP1 realistis · TP2 multi-day' : ''); }
+function dashTpRealismLine(r) {
+    var line = r && r.tp_realism_note ? r.tp_realism_note : '';
+    if (r && r.tp2_intraday_realistic === true && (!line || /TP2 lanjutan\/multi-day/i.test(line))) line = 'TP1 realistis · TP2 realistis intraday jika momentum lanjut.';
+    else if (!line && r && r.tp2_beyond_ara) line = 'TP1 realistis · TP2 lanjutan/multi-day.';
+    return line.replace(/^ARA\/ARB belum tersedia;\s*/i, '');
+}
 
 function renderAdminNextTop5Preview(data) {
     var section = document.getElementById('adminNextTop5PreviewSection');
@@ -7244,7 +7250,7 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
         var execLine = dashExecutionRealityLine(r);
         var realismLine = dashTpRealismLine(r);
         if (execLine) html += '<div class="mt-0.5 text-[10px] text-emerald-200">' + escapeHtml(execLine) + '</div>';
-        if (realismLine) html += '<div class="mt-0.5 text-[10px] text-amber-300">' + escapeHtml(realismLine) + '</div>';
+        if (realismLine) html += '<div class="mt-0.5 text-[10px] text-amber-300">TP Realism: ' + escapeHtml(realismLine) + '</div>';
         if (openTxt) html += '<div class="mt-0.5 text-[10px] text-gray-600">' + escapeHtml(openTxt) + '</div>';
         html += '<div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-gray-400"><span>Entry <b class="text-blue-300">' + dashFmtPrice(p.entry1) + '</b></span><span>E2 <b class="text-blue-300">' + dashFmtPrice(p.entry2) + '</b></span><span>SL <b class="text-red-300">' + dashFmtPrice(p.sl) + '</b></span><span>TP1/TP2 <b class="text-emerald-300">' + dashFmtPrice(p.tp1) + '/' + dashFmtPrice(p.tp2) + '</b></span></div>';
         html += '<div class="mt-1 text-[10px] text-gray-500">' + escapeHtml(p.status_note || p.progress || '-') + ' · ' + escapeHtml(p.progress || '-') + ' · ' + dashWibTime(p.last_updated_at) + ' WIB</div></div></div></article>';
