@@ -7540,7 +7540,8 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     }]);
   } catch (e) { /* non-critical */ }
 
-  return res.status(200).json({
+  var telegramResult = await sendDayTradeTelegramNotification(supabase, runId, runDate, savedCount, getDayTradeEmptyNoticeRequested(req));
+  var responsePayload = {
     success: true,
     status: 'published',
     run_id: runId,
@@ -7556,8 +7557,15 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     published_count: savedCount,
     top_count: topCount,
     message: 'Day Trade Screener run complete. Top ' + savedCount + ' published.',
-    telegram: await sendDayTradeTelegramNotification(supabase, runId, runDate, savedCount)
-  });
+    telegram: telegramResult
+  };
+  if (telegramResult && telegramResult.reason === 'no_final_quality_gate_candidates') {
+    responsePayload.skipped = true;
+    responsePayload.reason = 'no_final_quality_gate_candidates';
+    if (telegramResult.diagnostics) responsePayload.diagnostics = telegramResult.diagnostics;
+    if (telegramResult.admin_radar_summary) responsePayload.admin_radar_summary = telegramResult.admin_radar_summary;
+  }
+  return res.status(200).json(responsePayload);
 }
 
 
@@ -7626,6 +7634,12 @@ function isDayTradeTelegramFinalGateRejected(r) {
     includesAny(finalText, ['rejected', 'reject', 'failed', 'fail', 'tidak lolos final quality gate', 'hindari', 'avoid']);
 }
 
+function getDayTradeEmptyNoticeRequested(req) {
+  var q = (req && req.query) || {};
+  var b = (req && req.body && typeof req.body === 'object') ? req.body : {};
+  return q.debug_telegram === '1' || q.send_empty_notice === '1' || b.debug_telegram === '1' || b.debug_telegram === 1 || b.debug_telegram === true || b.send_empty_notice === '1' || b.send_empty_notice === 1 || b.send_empty_notice === true;
+}
+
 function candidatePassesDayTradeTelegramFinalGate(candidate) {
   if (!candidate) return false;
 
@@ -7677,7 +7691,67 @@ function candidatePassesDayTradeTelegramFinalGate(candidate) {
   return candidatePassesPublicTelegramSafetyGate(candidate, 'daytrade') && applyFinalTopQualityGate(candidate, 'daytrade_telegram_final_filter').pass;
 }
 
-async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount) {
+function getDayTradeTelegramRejectionReason(candidate, stage) {
+  var r = candidate || {};
+  if (stage === 'verify_signal') return 'basic telegram verification failed';
+  if (stage === 'high_conviction') return 'high conviction filter failed';
+  if (stage === 'min_tp1') return 'min TP1 upside gate failed';
+  if (isDayTradeTelegramFinalGateRejected(r)) return safeTelegramText(r.excluded_reason || r.telegram_verdict || r.verdict, 120, 'final quality gate failed');
+  if (r.trading_plan_valid === false) return 'invalid trading plan';
+  var actionText = joinTelegramTexts([r.action_label, r.signal_action_label, r.telegram_action_label, r.action, r.signal_action, r.telegram_verdict]).toLowerCase();
+  if (dayTradeTelegramTextHasAvoid(actionText)) return 'Hindari/Avoid action blocked';
+  var riskStatusText = joinTelegramTexts([r.risk, r.risk_label, r.risk_label_v2, r.verified_risk_label, r.status, r.final_status, r.grade, r.quality_grade]).toLowerCase();
+  if (includesAny(riskStatusText, ['avoid'])) return 'Avoid risk/status blocked';
+  var freshnessStatus = safeTelegramText(r.setup_freshness_status || r.freshness_status || '', 80, '').toUpperCase();
+  if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION' || r.is_stale === true || r.data_stale === true || r.freshness_is_stale === true || r.stale === true) return 'stale / Needs Revalidation';
+  var freshnessText = joinTelegramTexts([r.setup_freshness_label, r.freshness_label, r.setup_expiry_note, r.stale_notes]).toLowerCase();
+  if (includesAny(freshnessText, ['needs revalidation', 'expired', 'stale'])) return 'stale / Needs Revalidation';
+  var guardText = joinTelegramTexts([r.action_guard_label, r.action_guard_status, r.plan_quality_label, r.plan_quality_note]).toLowerCase();
+  if (includesAny(guardText, ['level belum rapi', 'invalid plan', 'plan invalid'])) return 'invalid plan / level belum rapi';
+  return 'public safety gate failed';
+}
+
+function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
+  candidates = candidates || [];
+  stageByTicker = stageByTicker || {};
+  counts = counts || {};
+  var topReasons = {};
+  var sample = [];
+  for (var i = 0; i < candidates.length; i++) {
+    var raw = candidates[i] || {};
+    var ticker = safeTelegramText(raw.ticker, 16, '');
+    var stageInfo = stageByTicker[ticker] || { stage: 'public_safety', candidate: raw };
+    var c = stageInfo.candidate || raw;
+    var reason = getDayTradeTelegramRejectionReason(c, stageInfo.stage);
+    topReasons[reason] = (topReasons[reason] || 0) + 1;
+    if (sample.length < 10) sample.push({
+      ticker: ticker || null,
+      action_label: c.telegram_action_label || c.action_label || c.signal_action_label || null,
+      action: c.action || c.signal_action || null,
+      verdict: c.signal_verdict || c.verdict || c.telegram_verdict || null,
+      status: c.status || c.final_status || null,
+      setup_freshness_status: c.setup_freshness_status || c.freshness_status || null,
+      setup_freshness_label: c.setup_freshness_label || c.freshness_label || null,
+      entry_quality_label: c.entry_quality_label || c.entry_status_label || null,
+      plan_quality_label: c.plan_quality_label || c.plan_label || null,
+      trading_plan_valid: c.trading_plan_valid,
+      final_quality_reason: (c.final_top_quality_gate && c.final_top_quality_gate.reason) || c.excluded_reason || null,
+      rejection_reason: reason
+    });
+  }
+  return {
+    scanned_count: counts.scanned_count,
+    published_count: counts.published_count,
+    raw_candidates_count: candidates.length,
+    min_tp1_pass_count: counts.min_tp1_pass_count || 0,
+    public_safe_count: counts.public_safe_count || 0,
+    filtered_count: Math.max(0, candidates.length - (counts.public_safe_count || 0)),
+    top_rejection_reasons: topReasons,
+    sample_rejected: sample
+  };
+}
+
+async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount, sendEmptyNotice) {
   // Duplicate guard: same run_id = don't send twice
   if (_dtTelegramLastRunId === runId) {
     return { sent: false, skipped: true, reason: 'duplicate_run_id' };
@@ -7712,12 +7786,34 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     // Step 1: Deterministic Telegram verification filters INVALID/AVOID, very high risk, weak RR,
     // stale/revalidation setups, and final quality-gate failures before public output.
-    var verifiedCandidates = candidates.map(function(r) { return verifyTelegramSignal(r, 'daytrade'); }).filter(Boolean);
-    var highConvictionCandidates = verifiedCandidates.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'daytrade'); }).filter(Boolean);
-    var nonAvoid = highConvictionCandidates
-      .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Day Trade'), daytradeMeta); })
-      .filter(candidatePassesMinUpside)
-      .filter(candidatePassesDayTradeTelegramFinalGate);
+    var stageByTicker = {};
+    var verifiedCandidates = [];
+    candidates.forEach(function(raw) {
+      var ticker = safeTelegramText(raw && raw.ticker, 16, '');
+      var verified = verifyTelegramSignal(raw, 'daytrade');
+      if (verified) verifiedCandidates.push(verified);
+      else stageByTicker[ticker] = { stage: 'verify_signal', candidate: raw };
+    });
+    var highConvictionCandidates = [];
+    verifiedCandidates.forEach(function(verified) {
+      var ticker = safeTelegramText(verified && verified.ticker, 16, '');
+      var high = verifyHighConvictionTelegramSignal(verified, 'daytrade');
+      if (high) highConvictionCandidates.push(high);
+      else stageByTicker[ticker] = { stage: 'high_conviction', candidate: verified };
+    });
+    var normalizedCandidates = highConvictionCandidates.map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Day Trade'), daytradeMeta); });
+    var minTp1Candidates = [];
+    normalizedCandidates.forEach(function(normalized) {
+      var ticker = safeTelegramText(normalized && normalized.ticker, 16, '');
+      if (candidatePassesMinUpside(normalized)) minTp1Candidates.push(normalized);
+      else stageByTicker[ticker] = { stage: 'min_tp1', candidate: normalized };
+    });
+    var nonAvoid = [];
+    minTp1Candidates.forEach(function(normalized) {
+      var ticker = safeTelegramText(normalized && normalized.ticker, 16, '');
+      if (candidatePassesDayTradeTelegramFinalGate(normalized)) nonAvoid.push(normalized);
+      else stageByTicker[ticker] = { stage: 'public_safety', candidate: normalized };
+    });
 
     // Step 2: Prioritize actionable setups
     var setupPriority = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8 };
@@ -7754,20 +7850,41 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       headerNote = 'Tidak ada kandidat A/B bersih, menampilkan watchlist terbaik.';
     }
 
-    // Step 6: If no candidate survives the public Telegram final gate, send a safe no-candidate notice.
+    var diagnostics = buildDayTradeTelegramDiagnostics(candidates, stageByTicker, {
+      scanned_count: publishedCount,
+      published_count: publishedCount,
+      min_tp1_pass_count: minTp1Candidates.length,
+      public_safe_count: nonAvoid.length
+    });
+
+    // Step 6: If no candidate survives the public Telegram final gate, stay silent by default.
     if (finalList.length === 0) {
+      _dtTelegramLastRunId = runId;
+      var silentResult = {
+        sent: false,
+        skipped: true,
+        reason: 'no_final_quality_gate_candidates',
+        published_count: publishedCount,
+        raw_candidate_count: rawCount,
+        raw_candidates_count: rawCount,
+        verified_count: verifiedCandidates.length,
+        high_conviction_count: highConvictionCandidates.length,
+        min_tp1_pass_count: minTp1Candidates.length,
+        public_safe_count: 0,
+        selected_count: 0,
+        filtered_out_count: rawCount,
+        diagnostics: diagnostics,
+        admin_radar_summary: [
+          'Belum ada kandidat Entry valid.',
+          'Radar pantauan tersedia di web screener, tetapi belum lolos public Telegram safety gate.'
+        ]
+      };
+      if (!sendEmptyNotice) return silentResult;
       var emptyMsg = formatDayTradeNoCandidateTelegramMessage();
       var emptyResult = await telegramNotifier.sendTelegramMessage(emptyMsg);
-      _dtTelegramLastRunId = runId;
       emptyResult.reason = emptyResult.sent ? 'no_final_quality_gate_candidates' : (emptyResult.reason || 'telegram_send_failed');
       emptyResult.message = emptyMsg;
-      emptyResult.published_count = publishedCount;
-      emptyResult.raw_candidate_count = rawCount;
-      emptyResult.verified_count = verifiedCandidates.length;
-      emptyResult.high_conviction_count = highConvictionCandidates.length;
-      emptyResult.selected_count = 0;
-      emptyResult.filtered_out_count = rawCount;
-      return emptyResult;
+      return Object.assign(silentResult, emptyResult, { skipped: !emptyResult.sent, debug_empty_notice: true });
     }
 
     // Format message
@@ -7783,6 +7900,8 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     result.filtered_out_count = rawCount - finalList.length;
     result.verified_count = verifiedCandidates.length;
     result.high_conviction_count = highConvictionCandidates.length;
+    result.min_tp1_pass_count = minTp1Candidates.length;
+    result.public_safe_count = nonAvoid.length;
     return result;
   } catch (e) {
     return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80), published_count: publishedCount };
