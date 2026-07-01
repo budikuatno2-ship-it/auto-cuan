@@ -102,7 +102,16 @@ const blockedCases = [
   ['failed close breakout note', { breakout_confirmation_note: 'High pierced resistance but close failed to hold above it.' }],
   ['needs close confirmation action text', { signal_action_label: 'Signal', telegram_verdict: 'Needs close confirmation before entry.' }],
   ['false breakout action text', { action: 'False breakout risk - wait, do not entry.' }],
-  ['wick pierced resistance but close failed', { high_price: 102, close: 99, resistance: 100, breakout_confirmation_note: 'Wick pierced resistance but close failed.' }]
+  ['wick pierced resistance but close failed', { high_price: 102, close: 99, resistance: 100, breakout_confirmation_note: 'Wick pierced resistance but close failed.' }],
+  ['data quality valid false', { data_quality_valid: false }],
+  ['data quality needs revalidation true', { data_quality_needs_revalidation: true }],
+  ['data quality short history status', { data_quality_status: 'SHORT_HISTORY' }],
+  ['data quality missing reference status', { data_quality_status: 'MISSING_REFERENCE' }],
+  ['data quality sparse trading days status', { data_quality_status: 'SPARSE_TRADING_DAYS' }],
+  ['data quality invalid candle status', { data_quality_status: 'INVALID_CANDLE' }],
+  ['data quality corporate action status', { data_quality_status: 'CORPORATE_ACTION_RISK' }],
+  ['data quality needs revalidation status', { data_quality_status: 'NEEDS_REVALIDATION' }],
+  ['data quality unsafe wording', { data_quality_note: 'Riwayat data pendek; reference price belum valid; perlu validasi ulang.' }]
 ];
 
 for (const [name, overrides] of blockedCases) {
