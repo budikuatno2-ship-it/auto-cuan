@@ -3625,8 +3625,8 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
 
   var entryStatus = String(candidate.entry_status || '').trim().toUpperCase();
   var entryQuality = String(candidate.entry_quality_status || '').trim().toUpperCase();
-  if ({ CHASE_RISK: true, EXTENDED: true, TP1_NEAR: true, TP1_HIT: true, TP2_HIT: true, INVALID_BELOW_SL: true }[entryStatus]) return false;
-  if (entryQuality === 'NEEDS_REVALIDATION') return false;
+  if ({ CHASE_RISK: true, EXTENDED: true, TP1_NEAR: true, TP1_HIT: true, TP2_HIT: true, INVALID_BELOW_SL: true, NEEDS_REVALIDATION: true }[entryStatus]) return false;
+  if ({ CHASE_RISK: true, EXTENDED: true, TP1_NEAR: true, TP1_HIT: true, TP2_HIT: true, INVALID_BELOW_SL: true, NEEDS_REVALIDATION: true }[entryQuality]) return false;
 
   var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || '', 80, '').toUpperCase();
   if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') return false;
