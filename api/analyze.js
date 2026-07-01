@@ -1285,10 +1285,10 @@ function buildStockFixedTemplate(d, ticker, rawMsg) {
   if (execReality.ara_price || execReality.candle_potential_low) {
     html += '<div><strong>Execution Reality</strong><br><br>';
     html += '<div>Entry Basis: ' + (execReality.entry_basis_note || 'Entry basis mengikuti level deterministic screener.') + '</div>';
-    html += '<div>ARA/ARB: ' + v(execReality.ara_price) + ' / ' + v(execReality.arb_price) + '</div>';
+    html += '<div>ARA/ARB: ' + (execReality.ara_price || execReality.arb_price ? (v(execReality.ara_price) + ' / ' + v(execReality.arb_price)) : 'Belum tersedia') + '</div>';
     html += '<div>Room ARA/ARB: ' + (execReality.ara_room_pct != null ? execReality.ara_room_pct + '%' : '—') + ' / ' + (execReality.arb_room_pct != null ? execReality.arb_room_pct + '%' : '—') + '</div>';
-    html += '<div>Potensi Candle: ' + v(execReality.candle_potential_low) + '–' + v(execReality.candle_potential_high) + '</div>';
-    html += '<div>TP Realism: ' + (execReality.tp_realism_note || 'TP mengikuti target deterministic screener.') + '</div></div>';
+    html += '<div>Potensi: Candle ' + v(execReality.candle_potential_low) + '–' + v(execReality.candle_potential_high) + '</div>';
+    html += '<div>TP Realism: ' + ((execReality.tp_realism_note || 'TP mengikuti target deterministic screener.').replace(/^ARA\/ARB belum tersedia;\s*/i, '')) + '</div></div>';
   }
   html += '<div><strong>Catatan</strong><br><br>' + catatan + '</div></div>';
   // 11. Risk Guard

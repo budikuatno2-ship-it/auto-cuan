@@ -3761,11 +3761,10 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
   var sv = idxTick.deriveSignalVerdict(r);
   Object.assign(r, sv);
   if (r.candle_potential_low && r.candle_potential_high) {
-    var roomTxt = r.ara_room_pct != null ? ' · ARA room ' + ((Number(r.ara_room_pct) >= 0 ? '+' : '') + Number(r.ara_room_pct).toFixed(1) + '%') : '';
-    lines.push('Potensi Candle: ' + fmtPrice(r.candle_potential_low) + '–' + fmtPrice(r.candle_potential_high) + roomTxt);
-    if (r.tp_realism_note) lines.push('Note: ' + r.tp_realism_note);
-    else if (r.category === 'Day Trade' && r.near_ara) lines.push('Note: Jangan chase dekat ARA.');
-    else if (r.tp2_beyond_ara) lines.push('Note: TP2 multi-day jika lewat ARA.');
+    var roomTxt = r.ara_room_pct != null ? ' · ARA room ' + ((Number(r.ara_room_pct) >= 0 ? '+' : '') + Number(r.ara_room_pct).toFixed(1).replace('.', ',') + '%') : '';
+    lines.push('Potensi: Candle ' + fmtPrice(r.candle_potential_low) + '–' + fmtPrice(r.candle_potential_high) + roomTxt);
+    if (r.tp_realism_note) lines.push('TP Realism: ' + r.tp_realism_note);
+    if (r.category === 'Day Trade' && r.near_ara) lines.push('Note: Dekat ARA, jangan chase agresif.');
   }
   lines.push('Verdict: ' + compactSafeText(r.signal_action_label || 'Watchlist', 'Watchlist'));
   if (!compact) lines.push('Chart: ' + chartLink(r.ticker));
