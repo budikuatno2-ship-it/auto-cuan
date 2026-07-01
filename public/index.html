@@ -6960,6 +6960,23 @@ var _dashboardTop5Cache = { at: 0, data: null };
 var _top5HistoryCache = { at: 0, data: null };
 var _dashboardTop5InFlight = null;
 var _top5HistoryInFlight = null;
+
+function dashboardAwaitingLockedHtml(note) {
+    return '<div class="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-4 text-center text-xs text-amber-100">' + escapeHtml(note || 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.') + '</div>';
+}
+async function fetchDashboardJson(url, options, timeoutMs) {
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, timeoutMs || 12000);
+    try {
+        var merged = Object.assign({}, options || {}, { signal: controller.signal });
+        var resp = await fetch(url, merged);
+        var data = await resp.json();
+        return { resp: resp, data: data };
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 function getDashboardLoginCtaHtml() {
     return '<div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-4 text-center text-xs text-gray-300">Login untuk melihat Top 5 screener dan Auto Monitor.<br><button onclick="openLoginModal()" class="mt-3 px-3 py-1.5 rounded-lg bg-emerald-500 text-dark-900 font-semibold text-[11px] hover:bg-emerald-400 transition">Login</button></div>';
 }
@@ -7298,11 +7315,13 @@ async function loadDashboardTop5Monitor(silent, opts) {
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
     _dashboardTop5InFlight = (async function() {
     try {
-        var resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() });
-        var data = await resp.json();
+        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 12000);
+        var resp = fetched.resp;
+        var data = fetched.data;
         if ((!data.success || data.auth_required || data.gated) && isLoggedInUser()) {
-            resp = await fetch('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() });
-            data = await resp.json();
+            fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 12000);
+            resp = fetched.resp;
+            data = fetched.data;
             if (data && (data.auth_required || data.gated)) throw new Error('Session perlu refresh/login ulang');
         }
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
@@ -7327,15 +7346,20 @@ async function loadDashboardTop5Monitor(silent, opts) {
 function renderDashboardTop5MonitorData(data) {
     var note = document.getElementById('dashboardTop5LockNote');
     if (note) note.textContent = data.top5_locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar sementara. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
-    renderDashboardTop5(data.top5 || data.picks || []);
+    if (data.top5_source === 'awaiting_locked_rows') {
+        var topEl = document.getElementById('dashboardTop5List');
+        if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data.update_note);
+    } else {
+        renderDashboardTop5(data.top5 || data.picks || []);
+    }
     renderDashboardMonitor(data.monitor || [], data.monitor_last_updated_at || data.last_updated_at, data);
 }
 
 async function loadAdminNextTop5Preview() {
     if (!isAdmin()) { renderAdminNextTop5Preview(null); return; }
     try {
-        var resp = await fetch('/api/sector-hot?action=web-daily-picks&admin_preview=1&t=' + Date.now(), { headers: getDashboardAuthHeaders() });
-        var data = await resp.json();
+        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&admin_preview=1&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
+        var data = fetched.data;
         if (data && data.success) renderAdminNextTop5Preview(data);
     } catch(e) {}
 }

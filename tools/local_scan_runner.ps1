@@ -340,10 +340,20 @@ function Run-NonKonglo($cfg) {
             $finalOk = $true
             break
         }
-        if ($data.step -eq "finalize" -and ($data.published -eq 0 -or $data.published -eq $null)) {
-            Write-Host "`n  Finalize: 0 kandidat lolos filter."
-            if ($data.staging_count) { Write-Host "  Staging: $($data.staging_count)" }
-            $finalOk = $false
+        if ($data.step -eq "finalize" -and ($data.status -eq "COMPLETED_NO_CANDIDATES" -or $data.published -eq 0 -or $data.published -eq $null)) {
+            Write-Host "`n  Status: COMPLETED_NO_CANDIDATES"
+            Write-Host "  Finalize: 0 kandidat lolos filter."
+            if ($data.message) { Write-Host "  Message: $($data.message)" }
+            if ($data.staging_count -ne $null) { Write-Host "  Staging: $($data.staging_count)" }
+            if ($data.telegram -and $data.telegram.reason) { Write-Host "  Telegram skipped: $($data.telegram.reason)" }
+            if ($data.diagnostics) {
+                Write-Host "  Diagnostics: scanned=$($data.diagnostics.total_scanned), raw=$($data.diagnostics.raw_candidates_count), minTP1=$($data.diagnostics.after_min_tp1_upside_count), risk=$($data.diagnostics.after_risk_gate_count), liquidity=$($data.diagnostics.after_liquidity_gate_count), final=$($data.diagnostics.after_final_quality_gate_count)"
+                if ($data.diagnostics.top_rejection_reasons) {
+                    $reasons = @($data.diagnostics.top_rejection_reasons | Select-Object -First 5 | ForEach-Object { "$($_.reason)=$($_.count)" }) -join ", "
+                    if ($reasons) { Write-Host "  Top rejection reasons: $reasons" }
+                }
+            }
+            $finalOk = $true
             break
         }
         if ($data.status -eq "published" -and $data.published_count -gt 0) {

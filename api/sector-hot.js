@@ -4774,8 +4774,9 @@ async function handleWebDailyPicks(req, res, supabase) {
     if (q.error) throw new Error(q.error.message);
     var rows = q.data || [];
     var locked = rows.length > 0;
-    var top5Source = locked ? 'locked_rows' : 'provisional_candidates';
-    var webProvisional = !locked;
+    var allowProvisional = (req.query.admin_preview === '1' || req.query.provisional === '1') && await isDashboardAdminUser(req, supabase);
+    var top5Source = locked ? 'locked_rows' : (allowProvisional ? 'provisional_candidates' : 'awaiting_locked_rows');
+    var webProvisional = !locked && allowProvisional;
     var top5 = [];
     var monitor = [];
     var lastAt = null;
@@ -4794,7 +4795,7 @@ async function handleWebDailyPicks(req, res, supabase) {
         top5.push(buildDashboardPickRow(p, i + 1, px));
         monitor.push(buildDashboardMonitorRow(p, i + 1, px, ev));
       }
-    } else {
+    } else if (allowProvisional) {
       var fallback = await selectDailyTop5(supabase);
       for (var j = 0; j < fallback.length; j++) top5.push(buildFallbackDashboardPickRow(fallback[j], j + 1));
     }
@@ -4833,7 +4834,7 @@ async function handleWebDailyPicks(req, res, supabase) {
       telegram_scheduled_only: true,
       telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.',
       web_provisional: webProvisional,
-      update_note: locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.',
+      update_note: locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (allowProvisional ? 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.' : 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.'),
       last_updated_at: lastAt,
       monitor_last_updated_at: lastAt,
       monitor_source_label: monitorSourceLabel,
@@ -4842,7 +4843,7 @@ async function handleWebDailyPicks(req, res, supabase) {
       picks: top5
     }, adminPreviewExtra));
   } catch (e) {
-    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_source: 'provisional_candidates', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: true, update_note: 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
+    return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
   }
 }
 
@@ -5295,9 +5296,11 @@ async function handleNkScreenerRun(req, res, supabase) {
     .maybeSingle();
 
   const runDate = getWibDateString();
+  const forceRun = req.query.force === '1';
 
-  // If no meta or different date or status is idle/published → start fresh
-  if (!meta || meta.run_date !== runDate || meta.status === 'published' || meta.status === 'idle') {
+  // If no meta or different date or status is idle/published → start fresh.
+  // completed_no_candidates is also terminal, but same-day rerun should be explicit via force=1.
+  if (!meta || meta.run_date !== runDate || meta.status === 'published' || meta.status === 'idle' || (meta.status === 'completed_no_candidates' && forceRun)) {
     return await handleNkScreenerStart(req, res, supabase);
   }
 
@@ -5306,7 +5309,7 @@ async function handleNkScreenerRun(req, res, supabase) {
   // handleNkScreenerStart already deletes old jobs + staging for today's runDate.
   // Latest published rows (swing_screener_non_konglo_latest) are NOT wiped here —
   // they are only replaced during finalize after new results are ready.
-  if (req.query.force === '1' && meta.status === 'scanning') {
+  if (forceRun && meta.status === 'scanning') {
     return await handleNkScreenerStart(req, res, supabase);
   }
 
@@ -5349,7 +5352,7 @@ async function handleNkScreenerRun(req, res, supabase) {
   // With force=1: start fresh (don't re-finalize stale staging)
   // Without force: attempt finalize from existing staging
   if (meta.status === 'finalizing' || meta.status === 'failed') {
-    if (req.query.force === '1') {
+    if (forceRun) {
       return await handleNkScreenerStart(req, res, supabase);
     }
     return await handleNkScreenerFinalize(req, res, supabase);
@@ -5597,6 +5600,51 @@ async function handleNkScreenerBatch(req, res, supabase) {
   });
 }
 
+
+function buildNkNoCandidateDiagnostics(rows, totalScanned) {
+  rows = Array.isArray(rows) ? rows : [];
+  var reasons = {};
+  var samples = [];
+  if (rows.length === 0) {
+    reasons.no_staging_rows = 1;
+  }
+  function addReason(ticker, reason) {
+    reason = reason || 'final_quality_gate';
+    reasons[reason] = (reasons[reason] || 0) + 1;
+    if (samples.length < 10) samples.push({ ticker: ticker || '-', reason: reason });
+  }
+  var afterMin = [];
+  var afterRisk = [];
+  var afterLiquidity = [];
+  var afterFinal = [];
+  rows.forEach(function(row) {
+    var c = normalizeCombinedCandidate(row, 'Swing Non-Konglo');
+    if (!candidatePassesMinUpside(c)) { addReason(row.ticker, 'min_tp1_upside'); return; }
+    afterMin.push(row);
+    var risk = String(row.risk_label || row.risk_label_v2 || row.verified_risk_label || '').toLowerCase();
+    if (risk.indexOf('very high') >= 0) { addReason(row.ticker, 'very_high_risk'); return; }
+    afterRisk.push(row);
+    var liq = toNum(row.avg_transaction_value_20d || row.avg_tx_value_7d || row.tx_value_1d) || 0;
+    if (liq > 0 && liq < 1000000000) { addReason(row.ticker, 'liquidity_gate'); return; }
+    afterLiquidity.push(row);
+    var verified = verifyTelegramSignal(row, 'swing');
+    var high = verified ? verifyHighConvictionTelegramSignal(verified, 'swing') : null;
+    if (!high) { addReason(row.ticker, 'final_quality_gate'); return; }
+    afterFinal.push(row);
+  });
+  var topReasons = Object.keys(reasons).map(function(k) { return { reason: k, count: reasons[k] }; }).sort(function(a, b) { return b.count - a.count || a.reason.localeCompare(b.reason); });
+  return {
+    total_scanned: totalScanned || 0,
+    raw_candidates_count: rows.length,
+    after_min_tp1_upside_count: afterMin.length,
+    after_risk_gate_count: afterRisk.length,
+    after_liquidity_gate_count: afterLiquidity.length,
+    after_final_quality_gate_count: afterFinal.length,
+    top_rejection_reasons: topReasons,
+    sample_rejected: samples
+  };
+}
+
 // --- FINALIZE: publish Top 30 ---
 async function handleNkScreenerFinalize(req, res, supabase) {
   const runDate = getWibDateString();
@@ -5611,6 +5659,13 @@ async function handleNkScreenerFinalize(req, res, supabase) {
   if (pendingJobs && pendingJobs.length > 0) {
     return res.status(200).json({ success: false, error: 'Cannot finalize: pending/processing batches remain.', pending: pendingJobs.length });
   }
+
+  const { data: finalizeMeta } = await supabase
+    .from('swing_screener_non_konglo_meta')
+    .select('universe_count, scanned_count, failed_count')
+    .eq('id', 'latest')
+    .maybeSingle();
+  var nkTotalScanned = finalizeMeta && finalizeMeta.scanned_count != null ? finalizeMeta.scanned_count : 0;
 
   await updateNkMeta(supabase, { status: 'finalizing', message: 'Publishing top 30...' });
 
@@ -5633,20 +5688,35 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     .select('*', { count: 'exact', head: true })
     .eq('run_date', runDate);
 
-  // If no candidates passed filters, do NOT mark as published
+  // If no candidates passed filters, classify as a successful no-candidate run, not a system error.
   if (!topCandidates || topCandidates.length === 0) {
+    var { data: diagnosticRows, error: diagErr } = await supabase
+      .from('swing_screener_non_konglo_staging')
+      .select('*')
+      .eq('run_date', runDate)
+      .order('score', { ascending: false })
+      .limit(200);
+    if (diagErr) {
+      await updateNkMeta(supabase, { status: 'failed', message: 'Gagal membaca staging diagnostics: ' + diagErr.message });
+      return res.status(200).json({ success: false, error: 'Failed to read staging diagnostics.', staging_error: diagErr.message });
+    }
+    var emptyDiagnostics = buildNkNoCandidateDiagnostics(diagnosticRows || [], nkTotalScanned);
     await updateNkMeta(supabase, {
-      status: 'failed',
+      status: 'completed_no_candidates',
       published_count: 0,
-      message: 'No candidates passed filters. Staging count: ' + (totalStagingCount || 0)
+      message: 'Belum ada kandidat yang lolos filter potensi TP minimal.',
+      calculated_at: new Date().toISOString()
     });
     return res.status(200).json({
-      success: false,
+      success: true,
       step: 'finalize',
-      error: 'No candidates passed filters.',
+      status: 'COMPLETED_NO_CANDIDATES',
+      message: 'Belum ada kandidat yang lolos filter potensi TP minimal.',
       published: 0,
       staging_count: totalStagingCount || 0,
-      run_date: runDate
+      run_date: runDate,
+      diagnostics: emptyDiagnostics,
+      telegram: { sent: false, skipped: true, reason: 'no_min_tp1_upside_candidates', message: 'Belum ada kandidat yang lolos filter potensi TP minimal.' }
     });
   }
 
@@ -5726,15 +5796,20 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     calculated_at: new Date().toISOString()
   });
 
+  var nkTelegram = publishedCount > 0 ? await sendSwingNkTelegramNotification(supabase, publishedCount) : { skipped: true, reason: 'no_published_rows' };
+  var nkDiagnostics = buildNkNoCandidateDiagnostics(topCandidates || [], nkTotalScanned);
   return res.status(200).json({
     success: true,
     step: 'finalize',
+    status: publishedCount > 0 ? 'PUBLISHED' : 'COMPLETED_NO_CANDIDATES',
+    message: publishedCount > 0 ? ('Published ' + publishedCount + ' top candidates.') : 'Belum ada kandidat yang lolos filter potensi TP minimal.',
     published: publishedCount,
     staging_count: totalStagingCount || 0,
     run_date: runDate,
     top_ticker: publishedCount > 0 ? topCandidates[0].ticker : null,
     top_score: publishedCount > 0 ? topCandidates[0].score : null,
-    telegram: publishedCount > 0 ? await sendSwingNkTelegramNotification(supabase, publishedCount) : { skipped: true, reason: 'no_published_rows' }
+    diagnostics: nkDiagnostics,
+    telegram: nkTelegram
   });
 }
 
