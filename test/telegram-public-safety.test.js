@@ -69,7 +69,16 @@ const blockedCases = [
   ['TP2 hit status', { entry_status: 'TP2_HIT' }],
   ['below SL status', { entry_status: 'INVALID_BELOW_SL' }],
   ['entry status needs revalidation', { entry_status: 'NEEDS_REVALIDATION' }],
-  ['chase note', { entry_timing: 'entry chase / extended' }]
+  ['chase note', { entry_timing: 'entry chase / extended' }],
+  ['false breakout confirmation status', { breakout_confirmation_status: 'FALSE_BREAKOUT_RISK' }],
+  ['needs close confirmation status', { breakout_confirmation_status: 'NEEDS_CLOSE_CONFIRMATION' }],
+  ['breakout watch status', { breakout_confirmation_status: 'BREAKOUT_WATCH' }],
+  ['false breakout risk flag', { false_breakout_risk: true }],
+  ['false breakout label', { breakout_confirmation_label: 'False Breakout Risk' }],
+  ['failed close breakout note', { breakout_confirmation_note: 'High pierced resistance but close failed to hold above it.' }],
+  ['needs close confirmation action text', { signal_action_label: 'Signal', telegram_verdict: 'Needs close confirmation before entry.' }],
+  ['false breakout action text', { action: 'False breakout risk - wait, do not entry.' }],
+  ['wick pierced resistance but close failed', { high_price: 102, close: 99, resistance: 100, breakout_confirmation_note: 'Wick pierced resistance but close failed.' }]
 ];
 
 for (const [name, overrides] of blockedCases) {

@@ -3620,6 +3620,37 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   ]);
   if (includesAny(actionText.toLowerCase(), ['hindari', 'avoid'])) return false;
 
+  var breakoutStatus = String(candidate.breakout_confirmation_status || '').trim().toUpperCase();
+  if ({ FALSE_BREAKOUT_RISK: true, NEEDS_CLOSE_CONFIRMATION: true, BREAKOUT_WATCH: true }[breakoutStatus]) return false;
+  if (candidate.false_breakout_risk === true) return false;
+  var breakoutSafetyText = joinTelegramTexts([
+    candidate.breakout_confirmation_label,
+    candidate.breakout_confirmation_note,
+    candidate.notes,
+    candidate.status_reason,
+    candidate.entry_timing,
+    candidate.time_plan,
+    candidate.telegram_verdict,
+    candidate.action_label,
+    candidate.signal_action_label,
+    candidate.telegram_action_label,
+    candidate.action,
+    candidate.signal_action
+  ]).toLowerCase();
+  if (includesAny(breakoutSafetyText, [
+    'false breakout',
+    'needs close confirmation',
+    'butuh close',
+    'close confirmation',
+    'close failed',
+    'failed close',
+    'close gagal',
+    'gagal close',
+    'gagal bertahan',
+    'wick pierced',
+    'pierce resistance'
+  ])) return false;
+
   var risk = normalizeTelegramRiskLabel(candidate.risk_label_v2 || candidate.risk_label || candidate.verified_risk_label).toLowerCase();
   if (risk === 'very high risk') return false;
 
