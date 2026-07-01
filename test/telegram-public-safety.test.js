@@ -137,3 +137,20 @@ test('public Telegram formatter does not expose unsafe/internal diagnostics text
     assert.equal(text.includes(needle), false, 'formatter leaked ' + needle + '\n' + text);
   }
 });
+
+test('Telegram risk label normalization variants stay canonical and unsafe stays unsafe', () => {
+  const normalize = sectorHot.__test.normalizeTelegramRiskLabel;
+  const cases = [
+    ['LOW', 'Low Risk'],
+    ['low risk', 'Low Risk'],
+    ['MEDIUM', 'Medium Risk'],
+    ['moderate_risk', 'Medium Risk'],
+    ['HIGH-RISK', 'High Risk'],
+    ['very high', 'Very High Risk'],
+    ['EXTREME_RISK', 'Very High Risk'],
+    ['Risiko Sangat Tinggi', 'Very High Risk']
+  ];
+  for (const [input, expected] of cases) assert.equal(normalize(input), expected);
+  assert.equal(candidatePassesPublicTelegramSafetyGate(safeCandidate({ risk_label: 'EXTREME_RISK' }), 'daytrade'), false);
+  assert.equal(candidatePassesPublicTelegramSafetyGate(safeCandidate({ risk_label: 'Risiko Sangat Tinggi' }), 'daytrade'), false);
+});

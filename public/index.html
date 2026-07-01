@@ -5071,10 +5071,11 @@ function normalizeRiskLabel(label) {
     var text = safeDisplayText(label, '');
     var compact = text.toLowerCase().replace(/[\s_-]+/g, ' ').trim();
     if (!compact) return '';
-    if (compact === 'low' || compact === 'low risk') return 'Low Risk';
-    if (compact === 'medium' || compact === 'med' || compact === 'medium risk') return 'Medium Risk';
-    if (compact === 'high' || compact === 'high risk') return 'High Risk';
-    if (compact === 'very high' || compact === 'very high risk') return 'Very High Risk';
+    if (compact === 'low' || compact === 'low risk' || compact === 'risiko rendah') return 'Low Risk';
+    if (compact === 'medium' || compact === 'med' || compact === 'moderate' || compact === 'medium risk' || compact === 'moderate risk' || compact === 'risiko sedang') return 'Medium Risk';
+    if (compact === 'high' || compact === 'high risk' || compact === 'risiko tinggi') return 'High Risk';
+    if (compact === 'very high' || compact === 'very high risk' || compact === 'extreme' || compact === 'extreme risk' || compact === 'risiko sangat tinggi') return 'Very High Risk';
+    if (compact === 'avoid' || compact === 'avoid dulu' || compact === 'hindari' || compact === 'hindari dulu') return 'Hindari';
     return text;
 }
 function getRiskLabel(r) {
@@ -5088,7 +5089,7 @@ function getRiskColor(label) {
     if (risk === 'Low Risk') return '#6ee7b7';
     if (risk === 'Medium Risk') return '#fbbf24';
     if (risk === 'High Risk') return '#fb923c';
-    if (risk === 'Very High Risk') return '#fca5a5';
+    if (risk === 'Very High Risk' || risk === 'Hindari') return '#fca5a5';
     return '#9ca3af';
 }
 function normalizeActionLabel(label) {
@@ -5096,6 +5097,13 @@ function normalizeActionLabel(label) {
     var compact = text.toLowerCase().replace(/[\s_-]+/g, ' ').trim();
     if (!compact) return '';
     if (compact === 'wait pullback' || compact === 'wait pullback valid' || compact === 'tunggu pullback' || compact === 'tunggu pullback valid') return 'Tunggu pullback valid';
+    if (compact === 'avoid' || compact === 'avoid dulu' || compact === 'hindari' || compact === 'hindari dulu') return 'Hindari';
+    if (compact === 'watch' || compact === 'watchlist') return 'Watchlist';
+    if (compact === 'pantau') return 'Pantau';
+    if (compact === 'signal' || compact === 'sinyal') return 'Signal';
+    if (compact === 'radar' || compact === 'early radar') return 'Radar';
+    if (compact === 'final' || compact === 'locked' || compact === 'final locked') return 'Final / Locked';
+    if (compact === 'preview' || compact === 'provisional' || compact === 'preview provisional') return 'Preview / Provisional';
     return text.replace(/_/g, ' ');
 }
 
@@ -7182,6 +7190,8 @@ function dashExecutionRealityLine(r) {
     else if (r.execution_reality_status === 'UNKNOWN_LIMITS') parts.push('Butuh harga realistis');
     if (r.candle_potential_low && r.candle_potential_high) parts.push('Potensi: Candle ' + dashFmtPrice(r.candle_potential_low) + '–' + dashFmtPrice(r.candle_potential_high));
     if (r.ara_room_pct != null) parts.push('ARA room ' + dashSignedPct(r.ara_room_pct));
+    var seen = {};
+    parts = parts.filter(function(part) { var key = safeDisplayText(part, '').toLowerCase(); if (!key || seen[key]) return false; seen[key] = true; return true; });
     return parts.join(' · ');
 }
 function dashTpRealismLine(r) {
