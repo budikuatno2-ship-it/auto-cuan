@@ -1022,7 +1022,7 @@
                         </tr>
                     </thead>
                     <tbody id="dtScreenerTableBody">
-                        <tr><td colspan="22" class="text-center py-8 text-gray-500">Data Day Trade Screener belum tersedia. Jalankan manual runner terlebih dahulu.</td></tr>
+                        <tr><td colspan="22" class="text-center py-8 text-gray-500">Belum ada Radar Day Trade yang layak dipantau. Tunggu setup baru atau close confirmation.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -5359,7 +5359,7 @@ function renderDtCardGrid(results) {
         if (_dtScreenerFilter === 'WATCH') { filtered = filtered.filter(function(r) { return r.status === 'WATCH_PULLBACK' || r.status === 'WAIT_PULLBACK'; }); }
         else { filtered = filtered.filter(function(r) { return r.status === _dtScreenerFilter; }); }
     }
-    if (!filtered || filtered.length === 0) { container.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">Tidak ada hasil untuk filter ini.</p>'; return; }
+    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(DAYTRADE_EMPTY_TEXT); return; }
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
@@ -5643,7 +5643,7 @@ function renderKgCardGrid(results) {
     if (_screenerFilter && _screenerFilter !== 'all') {
         filtered = filtered.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _screenerFilter || fs === _screenerFilter; });
     }
-    if (!filtered || filtered.length === 0) { container.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">Tidak ada hasil untuk filter ini.</p>'; return; }
+    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(STRICT_EMPTY_TEXT); return; }
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
@@ -5713,7 +5713,7 @@ function renderNkCardGrid(results) {
     if (typeof _nkScreenerFilter !== 'undefined' && _nkScreenerFilter && _nkScreenerFilter !== 'all') {
         filtered = filtered.filter(function(r) { var tier = r.swing_tier || ''; var fs = r.final_status || r.status || 'Invalid'; return tier === _nkScreenerFilter || fs === _nkScreenerFilter; });
     }
-    if (!filtered || filtered.length === 0) { container.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">Tidak ada hasil untuk filter ini.</p>'; return; }
+    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(STRICT_EMPTY_TEXT); return; }
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
@@ -5902,7 +5902,7 @@ async function loadSektorHot() {
                 var dt = new Date(data.meta.calculated_at);
                 var wibStr = dt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
                 var baseTxt = 'T+1 \u00B7 BY GROUP \u00B7 Update: ' + wibStr + ' WIB';
-                if (mStatus === 'failed') baseTxt = 'FAILED \u00B7 ' + (data.meta.message || 'Refresh gagal') + ' \u00B7 ' + baseTxt;
+                if (mStatus === 'failed') baseTxt = 'FAILED \u00B7 ' + DASHBOARD_ERROR_TEXT + ' \u00B7 ' + baseTxt;
                 else if (data.meta.failed_count > 0) baseTxt += ' \u00B7 ' + data.meta.failed_count + ' ticker gagal';
                 sub.textContent = baseTxt;
             }
@@ -6091,6 +6091,7 @@ function stopScreenerPolling() {
 }
 
 async function loadSwingScreener(silent) {
+    if (_screenerInFlight) return _screenerInFlight;
     var tbody = document.getElementById('screenerTableBody');
     if (!tbody) return;
 
@@ -6106,9 +6107,10 @@ async function loadSwingScreener(silent) {
 
     // Only show spinner on initial load (not silent poll)
     if (!silent) {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
     }
 
+    _screenerInFlight = (async function() {
     try {
         var response = await fetch('/api/sector-hot?action=screener&t=' + Date.now(), {
             headers: { 'X-User-Id': scrUserId, 'X-Username': scrUsername }
@@ -6128,7 +6130,7 @@ async function loadSwingScreener(silent) {
         _screenerCache = data;
 
         if (!data.success || !data.results || data.results.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-gray-500">Data screener belum tersedia. Menunggu kalkulasi pertama.</td></tr>';
+            tbody.innerHTML = screenerEmptyRowHtml(17, STRICT_EMPTY_TEXT);
             return;
         }
 
@@ -6206,8 +6208,10 @@ async function loadSwingScreener(silent) {
         renderScreenerTable(data.results);
         renderKgCardGrid(data.results);
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="15" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
-    }
+        tbody.innerHTML = screenerEmptyRowHtml(17, DASHBOARD_ERROR_TEXT, 'error');
+    } finally { _screenerInFlight = null; }
+    })();
+    return _screenerInFlight;
 }
 
 function filterScreener(filter) {
@@ -6237,7 +6241,7 @@ function renderScreenerTable(results) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500">Tidak ada saham dengan status ini.</td></tr>';
+        tbody.innerHTML = screenerEmptyRowHtml(17, STRICT_EMPTY_TEXT);
         return;
     }
 
@@ -6400,6 +6404,7 @@ function stopNkPolling() {
 }
 
 async function loadNkScreenerResults() {
+    if (_nkScreenerInFlight) return _nkScreenerInFlight;
     var tbody = document.getElementById('nkScreenerTableBody');
     if (!tbody) return;
 
@@ -6412,8 +6417,9 @@ async function loadNkScreenerResults() {
     var userId = localStorage.getItem('autocuan_user_id') || '';
     var username = getUsername();
 
-    tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
 
+    _nkScreenerInFlight = (async function() {
     try {
         var response = await fetch('/api/sector-hot?action=nk-screener-results', {
             headers: { 'X-User-Id': userId, 'X-Username': username }
@@ -6428,11 +6434,11 @@ async function loadNkScreenerResults() {
         _nkScreenerCache = data;
 
         if (!data.results || data.results.length === 0) {
-            var emptyMsg = 'Scan terbaru selesai. Tidak ada saham yang memenuhi kriteria saat ini.';
+            var emptyMsg = STRICT_EMPTY_TEXT;
             if (data.meta && data.meta.status === 'scanning') {
-                emptyMsg = 'Scan sedang berjalan...';
-            } else if (data.meta && data.meta.status === 'failed' && data.meta.message) {
-                emptyMsg = data.meta.message;
+                emptyMsg = DASHBOARD_LOADING_TEXT;
+            } else if (data.meta && data.meta.status === 'failed') {
+                emptyMsg = DASHBOARD_ERROR_TEXT;
             }
             tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">' + escapeHtml(emptyMsg) + '</td></tr>';
             var nkCardContainer = document.getElementById('nkCardGrid');
@@ -6491,8 +6497,10 @@ async function loadNkScreenerResults() {
             progressEl.classList.add('hidden');
         }
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-red-400">Gagal memuat data screener.</td></tr>';
-    }
+        tbody.innerHTML = screenerEmptyRowHtml(18, DASHBOARD_ERROR_TEXT, 'error');
+    } finally { _nkScreenerInFlight = null; }
+    })();
+    return _nkScreenerInFlight;
 }
 
 function updateNkScreenerMeta(meta) {
@@ -6576,7 +6584,7 @@ function renderNkScreenerTable(results) {
     if (!tbody) return;
 
     if (!results || results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">Tidak ada data.</td></tr>';
+        tbody.innerHTML = screenerEmptyRowHtml(18, STRICT_EMPTY_TEXT);
         return;
     }
 
@@ -6586,7 +6594,7 @@ function renderNkScreenerTable(results) {
         filtered = filtered.filter(function(r) { return r.status === _nkScreenerFilter || r.swing_tier === _nkScreenerFilter; });
     }
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">Tidak ada data untuk filter ini.</td></tr>';
+        tbody.innerHTML = screenerEmptyRowHtml(18, STRICT_EMPTY_TEXT);
         return;
     }
 
@@ -6972,9 +6980,28 @@ var _dashboardTop5Cache = { at: 0, data: null };
 var _top5HistoryCache = { at: 0, data: null };
 var _dashboardTop5InFlight = null;
 var _top5HistoryInFlight = null;
+var _screenerInFlight = null;
+var _nkScreenerInFlight = null;
+var _dtScreenerInFlight = null;
+var DASHBOARD_LOADING_TEXT = 'Memuat data terbaru...';
+var STRICT_EMPTY_TEXT = 'Belum ada kandidat yang lolos filter ketat saat ini. Ini normal saat market belum mendukung.';
+var DAYTRADE_EMPTY_TEXT = 'Belum ada Radar Day Trade yang layak dipantau. Tunggu setup baru atau close confirmation.';
+var MONITOR_EMPTY_TEXT = 'Monitor aktif setelah Top 5 dikunci.';
+var DASHBOARD_ERROR_TEXT = 'Gagal memuat data. Coba refresh beberapa saat lagi.';
+function dashboardEmptyHtml(message, tone) {
+    var cls = tone === 'error' ? 'border-red-500/20 bg-red-500/5 text-red-200' : (tone === 'amber' ? 'border-amber-500/20 bg-amber-500/5 text-amber-100' : 'border-dark-600/25 bg-dark-800/45 text-gray-400');
+    return '<div class="rounded-xl border ' + cls + ' px-3 py-4 text-center text-xs">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</div>';
+}
+function screenerEmptyRowHtml(colspan, message, tone) {
+    var color = tone === 'error' ? 'text-red-400' : 'text-gray-500';
+    return '<tr><td colspan="' + Number(colspan || 1) + '" class="text-center py-8 ' + color + '">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</td></tr>';
+}
+function screenerEmptyCardHtml(message) {
+    return '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p>';
+}
 
 function dashboardAwaitingLockedHtml(note) {
-    return '<div class="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-4 text-center text-xs text-amber-100">' + escapeHtml(note || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.') + '</div>';
+    return dashboardEmptyHtml(note || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.', 'amber');
 }
 async function fetchDashboardJson(url, options, timeoutMs) {
     var controller = new AbortController();
@@ -7107,7 +7134,7 @@ function renderDashboardTop5(picks) {
     if (!el) return;
     _dashboardPickData = {};
     if (!picks || picks.length === 0) {
-        el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</div>';
+        el.innerHTML = dashboardEmptyHtml('Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.', 'amber');
         return;
     }
     var html = '';
@@ -7222,7 +7249,7 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
     if (!el) return;
     var rows = picks || [];
     if (rows.length === 0) {
-        el.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada Top 5 terkunci untuk dipantau.<br><span class="text-[11px] text-gray-600">Monitor aktif setelah Top 5 dikunci.</span></div>';
+        el.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
         return;
     }
     var html = meta.monitor_is_stale ? '<div class="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">' + escapeHtml(meta.monitor_stale_note || 'Data monitor belum update terbaru.') + '</div>' : '';
@@ -7312,7 +7339,7 @@ async function loadTop5History(silent) {
     var el = document.getElementById('top5HistoryList');
     if (_top5HistoryCache.data && Date.now() - _top5HistoryCache.at < 180000) { renderTop5History(_top5HistoryCache.data.active_history || _top5HistoryCache.data.rows || _top5HistoryCache.data.history || [], _top5HistoryCache.data.tp_history || []); return; }
     if (_top5HistoryInFlight) return _top5HistoryInFlight;
-    if (el && !silent) el.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Memuat Top 5 History...</div>';
+    if (el && !silent) el.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">' + DASHBOARD_LOADING_TEXT + '</div>';
     _top5HistoryInFlight = (async function() {
         try {
             var resp = await fetch('/api/sector-hot?action=web-top5-history&limit=100&t=' + Date.now(), { headers: getAuthHeaders() });
@@ -7366,10 +7393,10 @@ async function loadDashboardTop5Monitor(silent, opts) {
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
-        if (top) top.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">' + (e && e.message === 'Session perlu refresh/login ulang' ? 'Session perlu refresh/login ulang' : 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.') + '</div>';
+        if (top) top.innerHTML = dashboardEmptyHtml(e && e.message === 'Session perlu refresh/login ulang' ? 'Session perlu refresh/login ulang' : DASHBOARD_ERROR_TEXT, e && e.message === 'Session perlu refresh/login ulang' ? 'amber' : 'error');
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.';
-        if (mon) mon.innerHTML = '<div class="rounded-xl border border-dark-600/25 bg-dark-800/45 px-3 py-3 text-xs text-gray-500">Belum ada Top 5 terkunci untuk dipantau.<br><span class="text-[11px] text-gray-600">Monitor aktif setelah Top 5 dikunci.</span></div>';
+        if (mon) mon.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
         renderAdminNextTop5Preview(null);
     } finally { _dashboardTop5InFlight = null; }
     })();
@@ -9044,17 +9071,19 @@ var _dtScreenerFilter = 'all';
 var _dtPollInterval = null;
 
 async function loadDayTradeScreener() {
+    if (_dtScreenerInFlight) return _dtScreenerInFlight;
     var tbody = document.getElementById('dtScreenerTableBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="19" class="text-center py-8"><div class="spinner mx-auto"></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="22" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
 
+    _dtScreenerInFlight = (async function() {
     try {
         var response = await fetch('/api/sector-hot?action=daytrade-screener');
         var data = await response.json();
 
         if (!data.success) {
-            tbody.innerHTML = '<tr><td colspan="19" class="text-center py-8 text-gray-500">' + (data.error || 'Gagal memuat data.') + '</td></tr>';
+            tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error');
             return;
         }
 
@@ -9101,8 +9130,10 @@ async function loadDayTradeScreener() {
         renderDtTable(data.results || []);
         renderDtCardGrid(data.results || []);
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="19" class="text-center py-8 text-red-400">Error: ' + e.message + '</td></tr>';
-    }
+        tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error');
+    } finally { _dtScreenerInFlight = null; }
+    })();
+    return _dtScreenerInFlight;
 }
 
 function showDtProgress(meta) {
@@ -9200,7 +9231,7 @@ function renderDtTable(results) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="22" class="text-center py-8 text-gray-500">Data Day Trade Screener belum tersedia. Jalankan manual runner terlebih dahulu.</td></tr>';
+        tbody.innerHTML = screenerEmptyRowHtml(22, DAYTRADE_EMPTY_TEXT);
         return;
     }
 
