@@ -117,13 +117,19 @@ test('Test 6: Top 10 — below SL does not pass digest gate', function() {
 });
 
 // ============================================================
-// TEST 7: Impossible ARA/ARB / UNKNOWN_LIMITS does NOT pass digest gate
+// TEST 7: Impossible ARA/ARB does NOT pass digest gate (UNKNOWN_LIMITS alone is warning, not fatal)
 // ============================================================
-test('Test 7: Top 10 — impossible ARA/ARB / UNKNOWN_LIMITS does not pass digest gate', function() {
-  assert.equal(candidatePassesTelegramCandidateDigestGate(validCandidate({ execution_reality_status: 'UNKNOWN_LIMITS' }), 'top10'), false);
+test('Test 7: Top 10 — impossible ARA/ARB does not pass digest gate', function() {
+  // UNKNOWN_LIMITS alone (missing prev_close data) is allowed as warning
+  assert.equal(candidatePassesTelegramCandidateDigestGate(validCandidate({ execution_reality_status: 'UNKNOWN_LIMITS' }), 'top10'), true);
+  // Actual ARA/ARB hits are fatal
   assert.equal(candidatePassesTelegramCandidateDigestGate(validCandidate({ execution_reality_status: 'ARA_HIT' }), 'top10'), false);
   assert.equal(candidatePassesTelegramCandidateDigestGate(validCandidate({ execution_reality_status: 'ARB_HIT' }), 'top10'), false);
-  assert.equal(candidatePassesTelegramCandidateDigestGate(validCandidate({ buy_execution_realistic: false }), 'top10'), false);
+  // buy_execution_realistic=false WITH non-UNKNOWN status is fatal
+  assert.equal(candidatePassesTelegramCandidateDigestGate(validCandidate({ buy_execution_realistic: false, execution_reality_status: 'ARA_HIT' }), 'top10'), false);
+  // buy_execution_realistic=false WITH UNKNOWN_LIMITS is allowed (just missing data)
+  assert.equal(candidatePassesTelegramCandidateDigestGate(validCandidate({ buy_execution_realistic: false, execution_reality_status: 'UNKNOWN_LIMITS' }), 'top10'), true);
+  // sell_risk_near_arb is always fatal
   assert.equal(candidatePassesTelegramCandidateDigestGate(validCandidate({ sell_risk_near_arb: true }), 'top10'), false);
 });
 

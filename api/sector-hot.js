@@ -3344,6 +3344,13 @@ function attachEntryStatus(row) {
     current_price: r.current_price || r.last_price || r.lastn || r.close,
     mode: /day/i.test(r.category || '') ? 'daytrade' : 'swing'
   }));
+  // Do not assign UNKNOWN_LIMITS/buy_execution_realistic=false when caused by missing reference data
+  if (execReality.ara_arb_source === 'missing_reference') {
+    delete execReality.execution_reality_status;
+    delete execReality.buy_execution_realistic;
+    delete execReality.execution_reality_label;
+    delete execReality.execution_reality_note;
+  }
   Object.assign(r, execReality);
   if (/day/i.test(r.category || '') && r.near_ara) {
     if (r.confidence === 'A+' || r.confidence === 'A') r.confidence = 'B';
@@ -3913,10 +3920,10 @@ function candidatePassesTelegramCandidateDigestGate(candidate, mode) {
   if (entryStatus === 'INVALID_BELOW_SL') return false;
   var invalidationDistanceStatus = String(r.invalidation_distance_status || '').trim().toUpperCase();
   if (invalidationDistanceStatus === 'INVALID_BELOW_SL') return false;
-  // Impossible ARA/ARB execution
+  // Impossible ARA/ARB execution — only block confirmed hits, not unknown/missing data
   var executionStatus = String(r.execution_reality_status || '').trim().toUpperCase();
-  if (executionStatus === 'UNKNOWN_LIMITS' || executionStatus === 'ARA_HIT' || executionStatus === 'ARB_HIT') return false;
-  if (r.buy_execution_realistic === false) return false;
+  if (executionStatus === 'ARA_HIT' || executionStatus === 'ARB_HIT') return false;
+  if (r.buy_execution_realistic === false && executionStatus !== 'UNKNOWN_LIMITS') return false;
   if (r.sell_risk_near_arb === true) return false;
   // Invalid candle / data rusak berat
   var dataQualityStatus = String(r.data_quality_status || '').trim().toUpperCase();
@@ -4015,7 +4022,7 @@ function normalizeCombinedCandidate(row, category) {
   r.entry2 = getEntry2(r);
   r.sl = toNum(r.stop_loss);
   r.tp1n = toNum(r.tp1);
-  r.tp2n = toNum(r.tp2);
+  r.tp2n = toNum(r.tp2) || toNum(r.tp1); // TP2 fallback to TP1 if missing (prevents validateTradingPlanSanity rejection)
   r.lastn = toNum(r.last_price);
   r = idxTick.normalizeTradingPlanLevels(r);
   attachEntryStatus(r);
