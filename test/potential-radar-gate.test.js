@@ -160,7 +160,7 @@ test('Day Trade candidate formatter includes risk volume pullback and Hindari wa
     base({ ticker: 'WEAK', status: 'RADAR', volume_confirmation_label: 'Weak Volume' }),
     base({ ticker: 'HIND', status: 'WAIT_PULLBACK', action_label: 'Hindari - Tunggu pullback valid', entry_status: 'WAIT_PULLBACK', mtf_status: 'MTF mixed', plan_quality_note: 'SL rawan noise' })
   ]);
-  assert.match(msg, /Day Trade Signal Candidate/);
+  assert.match(msg, /Day Trade Signal/);
   assert.match(msg, /Very High Risk/);
   assert.match(msg, /Weak Volume/);
   assert.match(msg, /Hindari/);
@@ -178,10 +178,10 @@ test('Day Trade fallback blocks missing SL, invalid plan, below SL, and impossib
 
 test('Day Trade fallback message is Signal Candidate and does not leak diagnostics', () => {
   const msg = formatDayTradeRadarTelegramMessage([base({ breakout_confirmation_status: 'BREAKOUT_WATCH', sample_rejected: [{ ticker: 'BAD' }], stageByTicker: { BBRI: {} }, debug_notes: 'secret' })]);
-  assert.match(msg, /Day Trade Signal Candidate/);
+  assert.match(msg, /Day Trade Signal/);
   assert.doesNotMatch(msg, /RADAR — BUKAN SINYAL ENTRY/);
   assert.doesNotMatch(msg, /Belum ada kandidat Entry valid yang lolos final safety gate/);
-  assert.match(msg, /Bukan rekomendasi beli otomatis\. Konfirmasi manual wajib\./);
+  assert.match(msg, /Bukan rekomendasi beli\. Konfirmasi manual wajib\./);
   for (const forbidden of ['sample_rejected', 'stageByTicker', 'debug_notes', 'secret', '[object Object]', 'SL: -', 'EntryQ: -', 'PlanQ: -', 'undefined', 'null']) assert.equal(msg.includes(forbidden), false);
 });
 

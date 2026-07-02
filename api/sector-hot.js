@@ -3940,7 +3940,7 @@ function formatCandidateDigestWarnings(candidate, mode) {
     r.entry_status, r.entry_timing, r.entry_quality_label, r.entry_status_label,
     r.breakout_confirmation_status, r.breakout_confirmation_label,
     r.plan_quality_note, r.invalidation_note, r.telegram_verdict, r.status_reason,
-    r.multi_timeframe_bias, r.multi_timeframe_notes
+    r.multi_timeframe_bias, r.multi_timeframe_notes, r.mtf_status, r.mtf_label, r.mtf_context
   ]).toLowerCase();
   var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.risk_label || r.verified_risk_label).toLowerCase();
   if (risk === 'very high risk') add('Very High Risk');
@@ -4048,7 +4048,7 @@ async function fetchCombinedScreenerCandidates(supabase, includeExcluded) {
   var nk = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
   (nk.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Swing Non-Konglo')); });
   var byTicker = {};
-  pools.filter(function(r) { return r.ticker && r.entry1 && r.tp1n && r.tp2n && r.sl && (includeExcluded || candidateTelegramEligible(r)); }).forEach(function(r) {
+  pools.filter(function(r) { return r.ticker && r.entry1 && r.tp1n && r.sl && (includeExcluded || candidateTelegramEligible(r)); }).forEach(function(r) {
     if (!byTicker[r.ticker] || rankCandidatesByPotential(r) > rankCandidatesByPotential(byTicker[r.ticker])) byTicker[r.ticker] = r;
   });
   return Object.keys(byTicker).map(function(k) { return byTicker[k]; }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
@@ -4101,74 +4101,8 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
     r.confidence_notes = confAfterForeign.confidence_notes;
     applyPlanQualityConfidenceGuard(r);
   }
-  var setup = compactSafeText(r.setup || r.setup_type || r.status || r.final_status, 'Watchlist').replace(/_/g, ' ');
-  var risk = deriveTelegramRiskLabel(r, r.category === 'Day Trade' ? 'daytrade' : 'swing').replace(' Risk','');
-  var grade = compactSafeText(r.confidence || r.quality_grade || r.grade || getTelegramGrade(r), 'C');
-  var score = fmtScore(r.combined_score || r.telegram_conviction_score || r.score || r.daytrade_score);
-  var entryQLabel = compactSafeText(r.entry_quality_label || r.entry_status_label, '');
-  var planQLabel = compactSafeText(r.plan_quality_label || r.plan_label, '');
-  var lines = [];
-  lines.push(idx + '. ' + r.ticker + ' — ' + r.category + ' | ' + setup);
-  lines.push('G:' + grade + ' · Risk:' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + compactSafeText(r.liquidity_label, 'N/A'));
-  if ((entryQLabel && entryQLabel !== '-') || (planQLabel && planQLabel !== '-')) {
-    var eqParts = [];
-    if (entryQLabel && entryQLabel !== '-') eqParts.push('EntryQ: ' + entryQLabel);
-    if (planQLabel && planQLabel !== '-') eqParts.push('PlanQ: ' + planQLabel);
-    lines.push(eqParts.join(' · '));
-  }
-  var planParts = [];
-  var rrQual = compactSafeText(r.rr_quality_label, '');
-  var slQual = compactSafeText(r.sl_quality_label, '');
-  var tpQual = compactSafeText(r.tp_quality_label, '');
-  if ((rrQual && rrQual !== '-') || (slQual && slQual !== '-') || (tpQual && tpQual !== '-')) {
-    if (rrQual && rrQual !== '-') planParts.push(rrQual);
-    if (slQual && slQual !== '-') planParts.push(slQual);
-    if (tpQual && tpQual !== '-') planParts.push(tpQual);
-    lines.push('Plan: ' + planParts.join(' · '));
-  }
-  var windowLabel = compactSafeText(r.entry_window_label, '');
-  if (windowLabel && windowLabel !== '-') lines.push('Window: ' + windowLabel);
-  lines.push('Harga ' + fmtPrice(r.lastn || r.last_price) + ' | Entry ' + fmtPrice(r.entry1) + '/' + fmtPrice(r.entry2) + ' | SL ' + fmtPrice(r.sl) + ' | TP ' + fmtPrice(r.tp1n) + '/' + fmtPrice(r.tp2n));
-  lines.push('Vol ' + fmtRatio(getTelegramVolumeRatio(r)) + ' · Tx ' + fmtRpValue(getTelegramValue(r)) + ' · Trend ' + compactSafeText((r.trend_label || '').replace(' Trend',''), '-'));
-  var confluence = [];
-  if (r.pattern_label && r.pattern_label !== 'Insufficient Data' && r.pattern_label !== 'No Clear Pattern') confluence.push('Pattern: ' + r.pattern_label.replace('VCP-like Base','VCP-like'));
-  if (f && f.foreign_label && f.foreign_label !== 'Foreign Data Unavailable') confluence.push('Foreign 7D: ' + f.foreign_label.replace('Foreign ','') + ' ' + formatForeignRupiah(f.foreign_7d));
-  if (r.is_stale || r.data_stale || r.freshness_is_stale) confluence.push('Needs Revalidation: data stale');
-  if (r.confidence === 'C') confluence.push('Radar Only');
-  if (confluence.length) lines.push(confluence.join(' · '));
-  var execReality = idxTick.deriveCandlePotentialRange(Object.assign({}, r, {
-    previous_close: r.previous_close,
-    prev_close: r.prev_close,
-    prior_close: r.prior_close,
-    close_prev: r.close_prev,
-    prevClose: r.prevClose,
-    previousClose: r.previousClose,
-    current_price: r.current_price || r.last_price || r.lastn || r.close,
-    mode: /day/i.test(r.category || '') ? 'daytrade' : 'swing'
-  }));
-  Object.assign(r, execReality);
-  if (/day/i.test(r.category || '') && r.near_ara) {
-    if (r.confidence === 'A+' || r.confidence === 'A') r.confidence = 'B';
-    r.entry_timing = 'Watchlist — jangan chase dekat ARA';
-    if (!r.telegram_verdict || /entry|buy|beli/i.test(r.telegram_verdict)) r.telegram_verdict = 'Watchlist — jangan chase dekat ARA.';
-  }
-  if (/day/i.test(r.category || '') && (r.tp1_beyond_ara || (r.candle_potential_high && (r.tp1 || r.tp1n) > r.candle_potential_high))) {
-    if (r.confidence === 'A+' || r.confidence === 'A') r.confidence = 'B';
-  }
-  var sv = idxTick.deriveSignalVerdict(r);
-  Object.assign(r, sv);
-  if (r.candle_potential_low && r.candle_potential_high) {
-    var roomTxt = r.ara_room_pct != null ? ' · ARA room ' + ((Number(r.ara_room_pct) >= 0 ? '+' : '') + Number(r.ara_room_pct).toFixed(1).replace('.', ',') + '%') : '';
-    lines.push('Potensi: Candle ' + fmtPrice(r.candle_potential_low) + '–' + fmtPrice(r.candle_potential_high) + roomTxt);
-    if (r.tp_realism_note) lines.push('TP Realism: ' + r.tp_realism_note);
-    if (r.category === 'Day Trade' && r.near_ara) lines.push('Note: Dekat ARA, jangan chase agresif.');
-  }
-  lines.push('Verdict: ' + compactSafeText(r.signal_action_label || 'Watchlist', 'Watchlist'));
-  var digestWarnings = formatCandidateDigestWarnings(r, r.category === 'Day Trade' ? 'daytrade' : 'swing');
-  if (digestWarnings.length > 0) lines.push('Warning: ' + digestWarnings.join('; '));
-  if (!compact) lines.push('Chart: ' + chartLink(r.ticker));
-  lines.push('Bukan rekomendasi beli otomatis. Konfirmasi manual wajib.');
-  return lines.map(function(line){ return compactSafeText(line, ''); }).filter(Boolean).join('\n');
+  var mode = /day/i.test(r.category || '') ? 'daytrade' : (/non.?konglo/i.test(r.category || '') ? 'swing_non_konglo' : 'swing');
+  return formatRichTelegramCandidateBlock(r, idx, mode);
 }
 
 
@@ -8517,12 +8451,21 @@ function candidatePassesDayTradeRadarFallbackGate(candidate) {
 }
 
 function sortDayTradeRadarCandidates(a, b) {
+  // Heavily prioritize RR: candidates with RR >= 1.5 always rank above RR < 1.5
+  var rrA = toNum(a && a.risk_reward) || 0;
+  var rrB = toNum(b && b.risk_reward) || 0;
+  var rrTierA = rrA >= 2.0 ? 0 : (rrA >= 1.5 ? 1 : (rrA >= 1.0 ? 2 : 3));
+  var rrTierB = rrB >= 2.0 ? 0 : (rrB >= 1.5 ? 1 : (rrB >= 1.0 ? 2 : 3));
+  if (rrTierA !== rrTierB) return rrTierA - rrTierB;
+  // Within same RR tier, sort by actual RR desc
+  if (rrB !== rrA) return rrB - rrA;
+  // Then grade as tiebreaker
   function gradeRank(x) { var g = safeTelegramText(x.confidence || x.quality_grade || x.grade || getTelegramGrade(x), 10, 'C').toUpperCase(); return g.indexOf('A') === 0 ? 0 : (g.indexOf('B') === 0 ? 1 : 2); }
-  function riskRank(x) { var r = deriveTelegramRiskLabel(x, 'daytrade').toUpperCase(); return r.indexOf('MEDIUM') >= 0 ? 0 : (r.indexOf('HIGH') >= 0 ? 1 : (r.indexOf('LOW') >= 0 ? 2 : 3)); }
   var ga = gradeRank(a), gb = gradeRank(b); if (ga !== gb) return ga - gb;
-  var ra = riskRank(a), rb = riskRank(b); if (ra !== rb) return ra - rb;
-  if ((toNum(b.risk_reward) || 0) !== (toNum(a.risk_reward) || 0)) return (toNum(b.risk_reward) || 0) - (toNum(a.risk_reward) || 0);
-  var ae = Math.abs(toNum(a.entry_distance_pct) || 0), be = Math.abs(toNum(b.entry_distance_pct) || 0); if (ae !== be) return ae - be;
+  // Then liquidity/value
+  var liqA = getTelegramValue(a) || 0;
+  var liqB = getTelegramValue(b) || 0;
+  if (liqB !== liqA) return liqB - liqA;
   return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || String(a.ticker || '').localeCompare(String(b.ticker || ''));
 }
 
@@ -8566,27 +8509,13 @@ function formatDayTradeRadarTelegramMessage(results) {
   var wib = new Date(wibMs);
   var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
-  var lines = ['🚀 Day Trade Signal Candidate', 'Update: ' + timeStr, 'Kandidat berbasis screener deterministic.', 'Konfirmasi manual wajib.', 'Perhatikan warning entry/risk/volume sebelum transaksi.', ''];
+  var lines = ['\uD83D\uDE80 Day Trade Signal', 'Update: ' + timeStr, ''];
   results.forEach(function(r, i) {
-    var setup = getDayTradeRadarStatus(r) || r.status || 'WATCHLIST';
-    var entry1 = toNum(r.entry1) || toNum(r.entry_high) || toNum(r.entry_low);
-    var entry2 = toNum(r.entry2) || toNum(r.entry_low) || toNum(r.entry_high);
-    var sl = toNum(r.sl) || toNum(r.stop_loss);
-    var tp1 = toNum(r.tp1n) || toNum(r.tp1);
-    var tp2 = toNum(r.tp2n) || toNum(r.tp2);
-    var risk = deriveTelegramRiskLabel(r, 'daytrade');
-    var warnings = formatDayTradeCandidateWarningList(r);
-    var action = sanitizeDayTradeRadarText(r.action_label || r.telegram_action_label || r.signal_action_label || r.entry_timing || r.telegram_verdict, 100, 'Pantau / tunggu konfirmasi manual');
-    lines.push((i + 1) + '. ' + safeTelegramText(r.ticker, 16, '-') + ' — ' + setup.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); }));
-    lines.push('Harga: ' + fmtPrice(r.lastn || r.last_price) + ' | Entry: ' + fmtPrice(entry1) + (entry2 > 0 && entry2 !== entry1 ? ' / ' + fmtPrice(entry2) : '') + ' | SL: ' + fmtPrice(sl));
-    lines.push('TP1/TP2: ' + fmtPrice(tp1) + (tp2 > 0 ? ' / ' + fmtPrice(tp2) : '') + ' | RR: ' + fmtRR(r.risk_reward));
-    lines.push('Status/Action: ' + action);
-    lines.push('Risk: ' + safeTelegramText(risk, 40, 'High Risk'));
-    lines.push('Warnings: ' + (warnings.length ? warnings.join('; ') : 'Konfirmasi manual tetap wajib'));
+    lines.push(formatRichTelegramCandidateBlock(r, i + 1, 'daytrade'));
     lines.push('');
   });
   if (lines[lines.length - 1] === '') lines.pop();
-  lines.push('Bukan rekomendasi beli otomatis. Konfirmasi manual wajib.');
+  lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
   return lines.join('\n');
 }
 
@@ -9121,6 +9050,88 @@ function verifyHighConvictionTelegramSignal(row, mode) {
   return r;
 }
 
+function formatRichTelegramCandidateBlock(r, idx, mode) {
+  var enriched = enrichSignalQuality(r, mode === 'daytrade' ? 'Day Trade' : (mode === 'swing_non_konglo' ? 'Swing Non-Konglo' : 'Swing'));
+  var entryLow = toNum(r.entry_low);
+  var entryHigh = toNum(r.entry_high);
+  var e1 = Math.max(entryLow || 0, entryHigh || 0);
+  var e2 = Math.min(entryLow || 0, entryHigh || 0);
+  if (e2 <= 0) e2 = e1;
+  var statusLabel = safeTelegramText(r.status || r.final_status, 80, '').replace(/_/g, ' ');
+  var action = safeTelegramText(r.telegram_action_label || r.action_label || r.signal_action_label || r.entry_timing, 60, 'Pantau dulu');
+  var grade = enriched.confidence || safeTelegramText(r.confidence || r.quality_grade || r.grade || getTelegramGrade(r), 10, 'C');
+  var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.verified_risk_label || r.risk_label) || deriveTelegramRiskLabel(r, mode);
+  var liq = safeTelegramText(enriched.liquidity_label || r.liquidity_label, 40, '');
+  var entryQ = safeTelegramText(r.entry_quality_label || r.entry_status_label || enriched.entry_quality_label || enriched.entry_status_label, 50, '');
+  var planQ = safeTelegramText(r.plan_quality_label || r.plan_label || enriched.plan_quality_label, 50, '');
+  var breakoutLabel = safeTelegramText(r.breakout_confirmation_label || enriched.breakout_confirmation_label, 60, '');
+  var setupAge = safeTelegramText(r.setup_freshness_label || enriched.setup_freshness_label, 40, '');
+  var windowLabel = safeTelegramText(enriched.entry_window_label || r.entry_window_label, 70, '');
+  var entrySafetyLabel = safeTelegramText(r.entry_status_label || enriched.entry_status_label, 50, '');
+  var entrySafetyNote = safeTelegramText(r.entry_status_note || enriched.entry_status_note, 100, '');
+
+  var lines = [];
+  lines.push(idx + '. ' + safeTelegramText(r.ticker, 16, '-') + ' \u2014 ' + action);
+  if (statusLabel) lines.push('Status: ' + statusLabel);
+  var metaLine = 'G:' + grade + ' \u00B7 ' + risk + ' \u00B7 RR:' + fmtRR(r.risk_reward);
+  if (liq && liq !== '-') metaLine += ' \u00B7 Liq:' + liq;
+  lines.push(metaLine);
+  if ((entryQ && entryQ !== '-') || (planQ && planQ !== '-')) {
+    var eqParts = [];
+    if (entryQ && entryQ !== '-') eqParts.push('EntryQ: ' + entryQ);
+    if (planQ && planQ !== '-') eqParts.push('PlanQ: ' + planQ);
+    lines.push(eqParts.join(' \u00B7 '));
+  }
+  if ((breakoutLabel && breakoutLabel !== '-') || (setupAge && setupAge !== '-')) {
+    var bParts = [];
+    if (breakoutLabel && breakoutLabel !== '-') {
+      var bText = breakoutLabel.replace(/^Breakout /, '');
+      if (r.resistance) bText += ', needs close > ' + fmtPrice(r.resistance);
+      bParts.push('Breakout: ' + bText);
+    }
+    if (setupAge && setupAge !== '-') bParts.push('Setup Age: ' + setupAge);
+    lines.push(bParts.join(' \u00B7 '));
+  }
+  if (windowLabel && windowLabel !== '-') lines.push('Window: ' + windowLabel);
+  if (entrySafetyLabel && entrySafetyLabel !== '-') {
+    var safetyLine = 'Entry Safety: ' + entrySafetyLabel;
+    if (entrySafetyNote && entrySafetyNote !== '-') safetyLine += ' \u2014 ' + entrySafetyNote.replace(/^Harga/, 'harga');
+    lines.push(safetyLine);
+  }
+  lines.push('Harga: ' + fmtPrice(r.lastn || r.last_price));
+  lines.push('Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));
+  lines.push('SL: ' + fmtPrice(r.stop_loss || r.sl));
+  lines.push('TP: ' + fmtPrice(r.tp1 || r.tp1n) + (toNum(r.tp2 || r.tp2n) > 0 ? ' / ' + fmtPrice(r.tp2 || r.tp2n) : ''));
+
+  var txParts = [];
+  if (r.tx_value_1d || r.value_today) txParts.push('Tx1D ' + fmtRpValue(r.tx_value_1d || r.value_today));
+  if (r.avg_tx_value_7d || r.avg_value_7d) txParts.push('Avg7D ' + fmtRpValue(r.avg_tx_value_7d || r.avg_value_7d));
+  if (txParts.length > 0) lines.push('Value: ' + txParts.join(' \u00B7 '));
+
+  var volParts = [];
+  var volR = toNum(r.volume_ratio_20d || r.volume_ratio_avg20);
+  if (volR != null) volParts.push(fmtRatio(volR));
+  if (volParts.length > 0) lines.push('Vol: ' + volParts.join(' \u00B7 '));
+
+  var tfParts = [];
+  if (hasTelegramText(r.tf_1d_context)) tfParts.push('1D ' + safeTelegramText(r.tf_1d_context, 50, ''));
+  if (mode === 'daytrade' && hasTelegramText(r.tf_3d_context)) tfParts.push('3D ' + safeTelegramText(r.tf_3d_context, 50, ''));
+  if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 50, ''));
+  if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 50, ''));
+  if (tfParts.length > 0) lines.push('TF: ' + tfParts.join(' \u00B7 '));
+
+  var verdict = safeTelegramText(r.telegram_verdict || r.signal_verdict || r.verdict || r.excluded_reason, 140, 'Pantau dulu. Tunggu konfirmasi.');
+  lines.push('Verdict: ' + verdict);
+  // Digest warnings
+  var digestWarnings = formatCandidateDigestWarnings(r, mode);
+  if (digestWarnings.length > 0) lines.push('Warning: ' + digestWarnings.join('; '));
+  // RR warning for low-RR candidates
+  var rr = toNum(r.risk_reward) || 0;
+  if (rr > 0 && rr < 1.0) lines.push('Warning: RR rendah (' + fmtRR(rr) + '), pantau saja.');
+  else if (rr >= 1.0 && rr < 1.5 && digestWarnings.length === 0) lines.push('Warning: RR moderat (' + fmtRR(rr) + '), konfirmasi kuat wajib.');
+  return lines.filter(Boolean).join('\n');
+}
+
 function fmtTelegramSignalBlock(r, idx, mode) {
   var entryLow = toNum(r.entry_low);
   var entryHigh = toNum(r.entry_high);
@@ -9361,6 +9372,8 @@ module.exports.__test = {
   classifyCandidateGateBucket: classifyCandidateGateBucket,
   buildGateCalibrationDiagnostics: buildGateCalibrationDiagnostics,
   formatDayTradeRadarTelegramMessage: formatDayTradeRadarTelegramMessage,
+  formatRichTelegramCandidateBlock: formatRichTelegramCandidateBlock,
+  sortDayTradeRadarCandidates: sortDayTradeRadarCandidates,
   getRadarDigestSortScore: getRadarDigestSortScore,
   selectRadarDigestCandidates: selectRadarDigestCandidates,
   formatRadarDigestTelegramMessage: formatRadarDigestTelegramMessage,

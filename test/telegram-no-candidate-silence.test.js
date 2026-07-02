@@ -85,7 +85,7 @@ test('Day Trade with radar ON and eligible candidate sends Signal Candidate', as
     assert.equal(result.radar_sent, true);
     assert.equal(result.reason, 'daytrade_signal_candidate_fallback_sent');
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /Day Trade Signal Candidate/);
+    assert.match(calls[0], /Day Trade Signal/);
   });
 });
 
@@ -96,6 +96,6 @@ test('Day Trade with radar ON sends caution Signal Candidate for non-fatal Hinda
     assert.equal(result.radar_sent, true);
     assert.equal(result.reason, 'daytrade_signal_candidate_fallback_sent');
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /Day Trade Signal Candidate/);
+    assert.match(calls[0], /Day Trade Signal/);
   });
 });
