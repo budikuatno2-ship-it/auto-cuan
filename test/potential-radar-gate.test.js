@@ -86,6 +86,25 @@ test('Day Trade radar fallback gate cannot be bypassed by radar status when Pote
   assert.equal(candidatePassesDayTradeRadarFallbackGate(c), false);
 });
 
+
+test('Day Trade secondary radar fallback selection still uses the stricter fallback gate', () => {
+  const lowUpside = base({ ticker: 'LOWU', status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK', tp1: 5010, tp1n: 5010, tp1_upside: 0.2 });
+  const valid = base({ ticker: 'GOOD', status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH', breakout_confirmation_label: 'Breakout watch' });
+  assert.equal(candidatePassesPotentialRadarGate(lowUpside, 'daytrade'), true);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(lowUpside), false);
+  const selected = [lowUpside, valid].filter(function(r) { return candidatePassesDayTradeRadarFallbackGate(r); });
+  assert.deepEqual(selected.map(function(r) { return r.ticker; }), ['GOOD']);
+});
+
+test('low-upside or invalid TP1 candidates are not public Day Trade radar fallback candidates', () => {
+  const lowUpside = base({ status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK', tp1: 5010, tp1n: 5010, tp1_upside: 0.2 });
+  const invalidTp = base({ status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH', tp1: 4990, tp1n: 4990, tp1_upside: -0.2 });
+  assert.equal(candidatePassesPotentialRadarGate(lowUpside, 'daytrade'), true);
+  assert.equal(candidatePassesPotentialRadarGate(invalidTp, 'daytrade'), true);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(lowUpside), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(invalidTp), false);
+});
+
 test('Day Trade radar fallback gate accepts valid borderline BREAKOUT_WATCH/WAIT_PULLBACK candidates', () => {
   assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH', breakout_confirmation_label: 'Breakout watch' })), true);
   assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK' })), true);

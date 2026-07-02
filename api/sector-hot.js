@@ -8261,7 +8261,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       return pass;
     }).sort(sortDayTradeRadarCandidates).slice(0, 3);
     if (sendRadarFallback && radarCandidates.length === 0) {
-      radarCandidates = radarPool.filter(function(r) { return candidatePassesPotentialRadarGate(r, 'daytrade'); }).sort(sortDayTradeRadarCandidates).slice(0, 3);
+      radarCandidates = radarPool.filter(function(r) { return candidatePassesDayTradeRadarFallbackGate(r); }).sort(sortDayTradeRadarCandidates).slice(0, 3);
     }
 
     var nonAvoid = [];
