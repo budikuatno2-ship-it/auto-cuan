@@ -3577,6 +3577,71 @@ function applyFinalTopQualityGate(candidate, context) {
   return gate;
 }
 
+
+function getPotentialRadarReason(candidate) {
+  var r = candidate || {};
+  var status = String(r.breakout_confirmation_status || r.entry_status || r.entry_quality_status || r.status || r.final_status || '').toUpperCase();
+  var text = joinTelegramTexts([
+    r.breakout_confirmation_label, r.breakout_confirmation_note, r.entry_timing, r.time_plan,
+    r.chase_risk_label, r.setup_expiry_note, r.data_quality_label, r.data_quality_note,
+    r.volume_label, r.volume_confirmation_label, r.mtf_label, r.trend_label, r.execution_reality_label, r.execution_reality_note, r.ara_arb_note, r.telegram_verdict,
+    r.signal_verdict, r.verdict, r.notes, r.status_reason
+  ]).toLowerCase();
+  if (status === 'BREAKOUT_WATCH' || includesAny(text, ['breakout watch'])) return 'WATCH_BREAKOUT';
+  if (status === 'NEEDS_CLOSE_CONFIRMATION' || includesAny(text, ['needs close confirmation', 'close confirmation', 'tunggu close', 'butuh close'])) return 'WAIT_CLOSE_CONFIRMATION';
+  if (status === 'WAIT_PULLBACK' || includesAny(text, ['wait pullback', 'tunggu pullback'])) return 'WAIT_PULLBACK';
+  if (status === 'CHASE_RISK' || status === 'EXTENDED' || includesAny(text, ['chase', 'extended', 'telat', 'late'])) return 'CHASE_RISK_MONITOR';
+  if (includesAny(text, ['ara', 'arb', 'auto reject'])) return 'ARA_ARB_MONITOR';
+  if (String(r.data_quality_status || '').toUpperCase() === 'NEEDS_REVALIDATION' || r.data_quality_needs_revalidation === true || includesAny(text, ['needs revalidation', 'perlu validasi ulang', 'missing reference'])) return 'DATA_NEEDS_REVALIDATION';
+  if (includesAny(text, ['volume belum', 'volume confirmation', 'weak volume mulai', 'volume mulai'])) return 'VOLUME_CONFIRMATION_NEEDED';
+  if (includesAny(text, ['mtf mixed', 'mixed timeframe'])) return 'MTF_MIXED';
+  return 'WATCHLIST_MONITOR';
+}
+
+function candidatePassesPotentialRadarGate(candidate, mode) {
+  if (!candidate || !candidate.ticker) return false;
+  var r = candidate;
+  var allText = joinTelegramTexts([
+    r.status, r.final_status, r.verdict, r.signal_verdict, r.telegram_verdict, r.reason,
+    r.status_reason, r.action_reason, r.signal_reason, r.excluded_reason, r.action,
+    r.action_label, r.signal_action_label, r.telegram_action_label, r.signal_action,
+    r.risk, r.risk_label, r.risk_label_v2, r.verified_risk_label, r.grade, r.quality_grade,
+    r.liquidity_label, r.liquidity_notes, r.liquidity_status, r.volume_label,
+    r.volume_confirmation_label, r.volume_notes, r.volume_confirmation_notes,
+    r.plan_quality_label, r.plan_quality_note, r.data_quality_label, r.data_quality_note,
+    r.entry_status_label, r.entry_status_note, r.invalidation_note
+  ]).toLowerCase();
+  var hardActionText = joinTelegramTexts([
+    r.action, r.action_label, r.signal_action, r.signal_action_label, r.telegram_action_label,
+    r.status, r.final_status, r.verdict, r.signal_verdict, r.telegram_verdict, r.reason,
+    r.status_reason, r.action_reason, r.signal_reason, r.excluded_reason
+  ]).toLowerCase();
+  if (hasAvoidGrade(r) || hasHindariAction(r)) return false;
+  if (String(r.signal_action || '').trim().toUpperCase() === 'AVOID') return false;
+  if (includesAny(hardActionText, ['hindari', 'avoid', 'signal action avoid', 'action avoid'])) return false;
+  if (includesAny(allText, ['very high risk', 'extreme risk', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'weak volume', 'volume lemah', 'invalid plan', 'plan invalid', 'trading plan invalid', 'below sl', 'sl kena', 'invalidation hit', 'candle tidak valid', 'invalid candle', 'data rusak berat'])) return false;
+  if (r.trading_plan_valid === false) return false;
+  var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.risk_label || r.verified_risk_label).toLowerCase();
+  if (risk === 'very high risk') return false;
+  var planStatus = String(r.plan_quality_status || r.trading_plan_status || '').trim().toUpperCase();
+  if (planStatus === 'INVALID') return false;
+  var entryStatus = String(r.entry_status || '').trim().toUpperCase();
+  var entryQuality = String(r.entry_quality_status || '').trim().toUpperCase();
+  if (entryStatus === 'INVALID_BELOW_SL' || entryQuality === 'INVALID_BELOW_SL') return false;
+  var invalidationDistanceStatus = String(r.invalidation_distance_status || '').trim().toUpperCase();
+  if (invalidationDistanceStatus === 'INVALID_BELOW_SL') return false;
+  var dataQualityStatus = String(r.data_quality_status || '').trim().toUpperCase();
+  if (dataQualityStatus === 'INVALID_CANDLE' || r.data_quality_valid === false) return false;
+  var liq = deriveStaleLiquidityLabels(r);
+  if (liq.is_liquidity_risk) return false;
+  var entry1 = toNum(r.entry1) || getEntry1(r);
+  var sl = toNum(r.sl || r.stop_loss);
+  if (entry1 > 0 && sl > 0 && (toNum(r.last_price || r.lastn) || entry1) < sl) return false;
+  var tp1 = toNum(r.tp1n || r.tp1);
+  if (!(entry1 > 0) || !(sl > 0) || !(tp1 > 0)) return false;
+  return true;
+}
+
 function candidatePassesRRGate(candidate) {
   return (toNum(candidate && candidate.risk_reward) || 0) >= getMinRRForCategory(candidate && candidate.category);
 }
@@ -4493,7 +4558,7 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   if (options.previous_close_snapshot) emptyLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
   emptyLines.push('', 'Belum ada kandidat yang lolos final quality gate hari ini.', 'Bukan rekomendasi beli/jual. DYOR.');
   var safePicks = (picks || []).filter(function(p) { return candidatePassesPublicTelegramSafetyGate(p, 'daily_top5_send') && candidatePassesMinUpside(p); });
-  var sendResult = safePicks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : await telegramNotifier.sendTelegramMessage(emptyLines.join('\n'));
+  var sendResult = safePicks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null };
   var detailSent = 0;
   var detailResults = [];
   for (var i = 0; i < safePicks.length; i++) {
@@ -4946,8 +5011,8 @@ var TOP5_INTERNAL_RESPONSE_FIELDS = [
   'admin_notes', 'admin_note', 'excluded_reason_admin', 'excluded_preview'
 ];
 var TOP5_ADMIN_PREVIEW_FIELDS = [
-  'admin_next_top5_preview', 'admin_next_top5_excluded_preview', 'admin_next_top5_preview_count',
-  'admin_next_top5_excluded_count', 'admin_next_top5_preview_note', 'admin_next_top5_preview_generated_at'
+  'admin_next_top5_preview', 'admin_next_top5_excluded_preview', 'admin_next_top5_potential_radar_preview', 'admin_next_top5_preview_count',
+  'admin_next_top5_excluded_count', 'admin_next_top5_potential_radar_count', 'admin_next_top5_preview_note', 'admin_next_top5_preview_generated_at'
 ];
 function isTop5PreviewOrProvisionalRow(row) {
   if (!row) return false;
@@ -4995,6 +5060,7 @@ function sanitizeTop5ResponseForAudience(payload, opts) {
   } else {
     if (Array.isArray(clean.admin_next_top5_preview)) clean.admin_next_top5_preview = sanitizeTop5RowsForAudience(clean.admin_next_top5_preview, { allowPreview: true });
     if (Array.isArray(clean.admin_next_top5_excluded_preview)) clean.admin_next_top5_excluded_preview = sanitizeTop5RowsForAudience(clean.admin_next_top5_excluded_preview, { allowPreview: true });
+    if (Array.isArray(clean.admin_next_top5_potential_radar_preview)) clean.admin_next_top5_potential_radar_preview = sanitizeTop5RowsForAudience(clean.admin_next_top5_potential_radar_preview, { allowPreview: true });
   }
   return clean;
 }
@@ -5112,6 +5178,12 @@ async function handleWebDailyPicks(req, res, supabase) {
       for (var k = 0; k < previewCandidates.length; k++) { var pr = buildFallbackDashboardPickRow(previewCandidates[k], k + 1); pr.is_preview = true; pr.is_provisional = true; pr.visibility = 'admin_preview'; pr.publication_status = 'provisional'; pr.preview_label = 'Preview'; pr.provisional_label = 'Provisional'; previewRows.push(pr); }
       var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
       var excludedRows = [];
+      var potentialRows = [];
+      for (var prx = 0; prx < allPreviewCandidates.length && potentialRows.length < 5; prx++) {
+        var pc = allPreviewCandidates[prx];
+        var pg = deriveFinalTopQualityGate(pc, 'admin_preview_potential');
+        if (!pg.pass && candidatePassesPotentialRadarGate(pc, 'admin_preview')) potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', radar_reason: getPotentialRadarReason(pc) });
+      }
       for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
         var eg = deriveFinalTopQualityGate(allPreviewCandidates[ex], 'admin_preview_excluded');
         if (!eg.pass) excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, excluded_reason: eg.excluded_reason });
@@ -5120,8 +5192,10 @@ async function handleWebDailyPicks(req, res, supabase) {
         admin_next_top5_preview: previewRows,
         admin_next_top5_preview_count: previewRows.length,
         admin_next_top5_excluded_preview: excludedRows,
+        admin_next_top5_potential_radar_preview: potentialRows,
         admin_next_top5_excluded_count: excludedRows.length,
-        admin_next_top5_preview_note: 'Preview calon Top 5 besok khusus admin; hanya kandidat lolos final quality gate. Excluded by Guard ditampilkan ringkas untuk audit admin.',
+        admin_next_top5_potential_radar_count: potentialRows.length,
+        admin_next_top5_preview_note: 'Preview calon Top 5 besok khusus admin; Final/Locked tetap wajib lolos final quality gate. Potential Radar/Watchlist menampung kandidat pantauan non-sinyal. Excluded by Guard ditampilkan ringkas untuk audit admin.',
         admin_next_top5_preview_generated_at: new Date().toISOString()
       };
     }
@@ -8043,8 +8117,8 @@ function getDayTradeRadarStatus(candidate) {
 
 function candidatePassesDayTradeRadarFallbackGate(candidate) {
   if (!candidate || !candidate.ticker) return false;
-  var status = getDayTradeRadarStatus(candidate);
-  if (!status) return false;
+  if (!candidatePassesPotentialRadarGate(candidate, 'daytrade')) return false;
+  var status = getDayTradeRadarStatus(candidate) || getPotentialRadarReason(candidate);
   var allText = joinTelegramTexts([
     candidate.status, candidate.final_status, candidate.action_label, candidate.signal_action_label, candidate.telegram_action_label,
     candidate.action, candidate.signal_action, candidate.telegram_verdict, candidate.signal_verdict, candidate.verdict, candidate.reason,
@@ -8052,7 +8126,7 @@ function candidatePassesDayTradeRadarFallbackGate(candidate) {
     candidate.final_gate_status, candidate.quality_gate_status, candidate.plan_quality_label, candidate.plan_quality_note,
     candidate.entry_quality_label, candidate.entry_status_label, candidate.entry_safety_note, candidate.stale_notes, candidate.liquidity_notes
   ]).toLowerCase();
-  if (includesAny(allText, ['hindari', 'avoid', 'very high risk', 'invalid plan', 'plan invalid', 'level belum rapi', 'stale', 'expired', 'needs revalidation', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'volume lemah', 'weak volume'])) return false;
+  if (includesAny(allText, ['hindari', 'avoid', 'very high risk', 'invalid plan', 'plan invalid', 'level belum rapi', 'stale', 'expired', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'volume lemah', 'weak volume'])) return false;
   if (candidate.trading_plan_valid === false) return false;
   var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || candidate.entry_quality_status || '', 80, '').toUpperCase();
   if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') return false;
@@ -8098,7 +8172,7 @@ function formatDayTradeRadarTelegramMessage(results) {
   var wib = new Date(wibMs);
   var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
-  var lines = ['🚀 Day Trade Radar', 'Update: ' + timeStr, '', 'Belum ada kandidat Entry valid yang lolos final safety gate.', 'Radar pantauan berikut belum menjadi sinyal entry.', ''];
+  var lines = ['[RADAR — BUKAN SINYAL ENTRY]', '🚀 Day Trade Radar', 'Update: ' + timeStr, '', 'Belum ada kandidat Entry valid yang lolos final safety gate.', 'Radar pantauan berikut belum menjadi sinyal entry.', ''];
   results.forEach(function(r, i) {
     var setup = getDayTradeRadarStatus(r) || 'WATCHLIST';
     var trigger = sanitizeDayTradeRadarText(r.breakout_confirmation_label || r.breakout_confirmation_note || r.entry_timing || r.telegram_verdict, 100, 'Tunggu close confirmation / volume tetap masuk');
@@ -8179,13 +8253,16 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       if (candidatePassesMinUpside(normalized)) minTp1Candidates.push(normalized);
       else stageByTicker[ticker] = { stage: 'min_tp1', candidate: normalized };
     });
-    var radarPool = minTp1Candidates.map(function(normalized) { return Object.assign({}, normalized); });
+    var radarPool = normalizedCandidates.map(function(normalized) { return Object.assign({}, normalized); });
     var radarRejected = [];
     var radarCandidates = radarPool.filter(function(r) {
       var pass = candidatePassesDayTradeRadarFallbackGate(r);
       if (!pass) radarRejected.push(r);
       return pass;
     }).sort(sortDayTradeRadarCandidates).slice(0, 3);
+    if (sendRadarFallback && radarCandidates.length === 0) {
+      radarCandidates = radarPool.filter(function(r) { return candidatePassesDayTradeRadarFallbackGate(r); }).sort(sortDayTradeRadarCandidates).slice(0, 3);
+    }
 
     var nonAvoid = [];
     minTp1Candidates.forEach(function(normalized) {
@@ -8282,12 +8359,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
         if (radarResult.sent) _dtTelegramLastRadarRunId = runId;
         return Object.assign(silentResult, radarResult, { skipped: !radarResult.sent, radar_sent: !!radarResult.sent, radar_count: radarCandidates.length, radar_candidates: radarCandidates.map(function(r) { return r.ticker; }) });
       }
-      if (!sendEmptyNotice) return silentResult;
-      var emptyMsg = formatDayTradeNoCandidateTelegramMessage();
-      var emptyResult = await telegramNotifier.sendTelegramMessage(emptyMsg);
-      emptyResult.reason = emptyResult.sent ? 'no_final_quality_gate_candidates' : (emptyResult.reason || 'telegram_send_failed');
-      emptyResult.message = emptyMsg;
-      return Object.assign(silentResult, emptyResult, { skipped: !emptyResult.sent, debug_empty_notice: true, radar_sent: false, radar_count: radarCandidates.length, radar_candidates: radarCandidates.map(function(r) { return r.ticker; }) });
+      return silentResult;
     }
 
     if (duplicateRunHit && forceRadarDebug) {
@@ -8752,16 +8824,8 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
     }
 
     var headerNote = '';
-    if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
-      finalList = nonAvoid.slice(0, 5);
-      headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
-    }
     if (finalList.length === 0) {
-      var emptyMsg = formatSwingNoCandidateTelegramMessage('📈 Swing Konglo Signal');
-      var emptyResult = await telegramNotifier.sendTelegramMessage(emptyMsg);
-      emptyResult.reason = emptyResult.sent ? 'no_final_quality_gate_candidates' : (emptyResult.reason || 'telegram_send_failed');
-      emptyResult.message = emptyMsg;
+      var emptyResult = { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null };
       emptyResult.verified_count = verifiedRows.length;
       emptyResult.high_conviction_count = highConvictionRows.length;
       emptyResult.selected_count = 0;
@@ -8823,16 +8887,8 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     }
 
     var headerNote = '';
-    if (finalList.length === 0 && nonAvoid.length > 0) {
-      nonAvoid.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
-      finalList = nonAvoid.slice(0, 5);
-      headerNote = 'Tidak ada kandidat ready bersih, menampilkan watchlist terbaik.';
-    }
     if (finalList.length === 0) {
-      var emptyMsg = formatSwingNoCandidateTelegramMessage('📈 Swing Non-Konglo Signal');
-      var emptyResult = await telegramNotifier.sendTelegramMessage(emptyMsg);
-      emptyResult.reason = emptyResult.sent ? 'no_final_quality_gate_candidates' : (emptyResult.reason || 'telegram_send_failed');
-      emptyResult.message = emptyMsg;
+      var emptyResult = { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null };
       emptyResult.verified_count = verifiedRows.length;
       emptyResult.high_conviction_count = highConvictionRows.length;
       emptyResult.selected_count = 0;
@@ -8869,6 +8925,13 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 
 module.exports.__test = {
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
+  candidatePassesPotentialRadarGate: candidatePassesPotentialRadarGate,
+  getPotentialRadarReason: getPotentialRadarReason,
+  candidatePassesDayTradeRadarFallbackGate: candidatePassesDayTradeRadarFallbackGate,
+  formatDayTradeRadarTelegramMessage: formatDayTradeRadarTelegramMessage,
+  sendSwingKongloTelegramNotification: sendSwingKongloTelegramNotification,
+  sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
+  sendDayTradeTelegramNotification: sendDayTradeTelegramNotification,
   candidateTelegramEligible: candidateTelegramEligible,
   formatCandidateBlock: formatCandidateBlock,
   sanitizeTop5ResponseForAudience: sanitizeTop5ResponseForAudience,
