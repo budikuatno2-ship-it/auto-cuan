@@ -5551,6 +5551,24 @@ function openScrDetail(r, type) {
     }
     // Setup meaning
     if (_setupMeaning) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:10px;padding:6px 10px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:8px"><span style="color:#818cf8;font-weight:500">Arti:</span> ' + escapeHtml(_setupMeaning) + '</div>';
+    // Fibonacci confluence section (Swing Konglo soft signal)
+    if ((type === 'konglo' || type === 'nonkonglo') && r.fib_confluence_label && r.fib_confluence_label !== 'Fib belum cukup data') {
+        var _fibDColor = r.fib_confluence_status === 'confluence_sehat' ? '#6ee7b7' : (r.fib_confluence_status === 'di_atas_fib' ? '#fbbf24' : '#fca5a5');
+        var _fibDBg = r.fib_confluence_status === 'confluence_sehat' ? 'rgba(16,185,129,0.04)' : (r.fib_confluence_status === 'di_atas_fib' ? 'rgba(245,158,11,0.04)' : 'rgba(239,68,68,0.04)');
+        var _fibDBorder = r.fib_confluence_status === 'confluence_sehat' ? 'rgba(16,185,129,0.15)' : (r.fib_confluence_status === 'di_atas_fib' ? 'rgba(245,158,11,0.16)' : 'rgba(239,68,68,0.16)');
+        html += '<div style="font-size:10px;color:#d1d5db;line-height:1.55;margin-bottom:10px;padding:7px 10px;background:' + _fibDBg + ';border:1px solid ' + _fibDBorder + ';border-radius:8px">';
+        html += '<span style="color:' + _fibDColor + ';font-weight:600">Fib Confluence:</span> ' + escapeHtml(r.fib_confluence_label) + '<br>';
+        if (r.fib_confluence_note) html += '<span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.fib_confluence_note) + '<br>';
+        if (r.fib_nearest_label && r.fib_nearest_level) html += '<span style="color:#94a3b8">Nearest Level:</span> ' + escapeHtml(r.fib_nearest_label) + ' @ ' + (r.fib_nearest_level ? r.fib_nearest_level.toLocaleString('id-ID') : '-') + '<br>';
+        if (r.fib_levels) {
+            var _flParts = [];
+            if (r.fib_levels.fib_382) _flParts.push('38.2%: ' + r.fib_levels.fib_382.toLocaleString('id-ID'));
+            if (r.fib_levels.fib_500) _flParts.push('50%: ' + r.fib_levels.fib_500.toLocaleString('id-ID'));
+            if (r.fib_levels.fib_618) _flParts.push('61.8%: ' + r.fib_levels.fib_618.toLocaleString('id-ID'));
+            if (_flParts.length) html += '<span style="color:#94a3b8">Levels:</span> ' + _flParts.join(' · ');
+        }
+        html += '</div>';
+    }
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">';
     html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 1</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e1 + '</div></div>';
     html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 2</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e2 + '</div></div>';
@@ -5701,6 +5719,13 @@ function renderKgCardGrid(results) {
         if (_kBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _kBadgeLine + '</div>';
         var _kRespectLine = buildRespectQualityLine(r);
         if (_kRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_kRespectLine) + '</div>';
+        // Fibonacci confluence badge (Swing Konglo soft signal)
+        if (r.fib_confluence_label && r.fib_confluence_label !== 'Fib belum cukup data') {
+            var _fibColor = r.fib_confluence_status === 'confluence_sehat' ? '#6ee7b7' : (r.fib_confluence_status === 'di_atas_fib' ? '#fbbf24' : '#fca5a5');
+            var _fibText = escapeHtml(r.fib_confluence_label);
+            if (r.fib_nearest_label && r.fib_nearest_level) _fibText += ' · nearest ' + escapeHtml(r.fib_nearest_label) + ' @ ' + (r.fib_nearest_level ? r.fib_nearest_level.toLocaleString('id-ID') : '-');
+            html += '<div style="font-size:10px;margin-bottom:8px;color:' + _fibColor + '"><span style="color:#94a3b8">Fib:</span> ' + _fibText + '</div>';
+        }
         html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
         html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
