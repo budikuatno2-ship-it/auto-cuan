@@ -611,7 +611,7 @@
                     </div>
                 </div>
                 <div id="dashboardTop5List" class="space-y-2">
-                    <div class="py-4 text-center text-xs text-gray-500">Memuat Top 5...</div>
+                    <div class="py-4 text-center text-xs text-amber-200/80">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</div>
                 </div>
             </section>
             <aside class="lg:col-span-2 bg-dark-700/45 border border-dark-600/30 rounded-2xl p-3">
@@ -623,7 +623,7 @@
                     <span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap">Terakhir update: — WIB</span>
                 </div>
                 <div id="dashboardMonitorList" class="space-y-2">
-                    <div class="py-3 text-center text-xs text-gray-500">Memuat monitor...</div>
+                    <div class="py-3 text-center text-xs text-gray-500">Monitor aktif setelah Top 5 dikunci.</div>
                 </div>
             </aside>
         </div>
@@ -7036,6 +7036,24 @@ var STRICT_EMPTY_TEXT = 'Belum ada kandidat yang lolos filter ketat saat ini. In
 var DAYTRADE_EMPTY_TEXT = 'Belum ada Radar Day Trade yang layak dipantau. Tunggu setup baru atau close confirmation.';
 var MONITOR_EMPTY_TEXT = 'Monitor aktif setelah Top 5 dikunci.';
 var DASHBOARD_ERROR_TEXT = 'Gagal memuat data. Coba refresh beberapa saat lagi.';
+
+// === GLOBAL DASHBOARD LOADING WATCHDOG ===
+// Runs independently of API fetch. Clears stuck loading placeholders after 8s.
+// Protects against: JS errors before fetch starts, isLoggedInUser() race, aborted fetch
+// without proper catch, or any other reason the normal flow didn't render.
+function clearStuckDashboardLoadingPlaceholders() {
+    var topEl = document.getElementById('dashboardTop5List');
+    var monEl = document.getElementById('dashboardMonitorList');
+    if (topEl && (topEl.textContent.indexOf('Memuat Top 5') >= 0 || topEl.textContent.indexOf('Memuat data') >= 0)) {
+        topEl.innerHTML = dashboardAwaitingLockedHtml('Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.');
+    }
+    if (monEl && (monEl.textContent.indexOf('Memuat monitor') >= 0 || monEl.textContent.indexOf('Memuat data') >= 0)) {
+        monEl.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
+    }
+}
+// Fire global watchdog 8s after script loads — catches ALL stuck-loading edge cases.
+setTimeout(clearStuckDashboardLoadingPlaceholders, 8000);
+
 function dashboardEmptyHtml(message, tone) {
     var cls = tone === 'error' ? 'border-red-500/20 bg-red-500/5 text-red-200' : (tone === 'amber' ? 'border-amber-500/20 bg-amber-500/5 text-amber-100' : 'border-dark-600/25 bg-dark-800/45 text-gray-400');
     return '<div class="rounded-xl border ' + cls + ' px-3 py-4 text-center text-xs">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</div>';
