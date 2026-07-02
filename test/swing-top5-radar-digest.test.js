@@ -90,7 +90,7 @@ test('Swing Non-Konglo only Hard Reject stays silent', async () => {
 
 test('Top 5 empty final candidates sends Top 5 Radar digest', async () => {
   await withSendSpy(async (calls) => {
-    const result = await sectorHot.__test.sendDailyTop5Telegram(makeSupabase({}), [row({ ticker: 'TOPR', category: 'Swing Konglo' })], '2026-07-02', {});
+    const result = await sectorHot.__test.sendDailyTop5Telegram(makeSupabase({}), [], '2026-07-02', { radar_candidates: [row({ ticker: 'TOPR', category: 'Swing Konglo' })] });
     assert.equal(result.header.sent, true);
     assert.equal(result.header.radar_sent, true);
     assert.equal(calls.length, 1);
@@ -99,9 +99,9 @@ test('Top 5 empty final candidates sends Top 5 Radar digest', async () => {
   });
 });
 
-test('Top 5 only Hard Reject stays silent', async () => {
+test('Top 5 radar_candidates with only Hard Reject stays silent', async () => {
   await withSendSpy(async (calls) => {
-    const result = await sectorHot.__test.sendDailyTop5Telegram(makeSupabase({}), [row({ ticker: 'TOPH', category: 'Swing Konglo', action_label: 'Hindari', risk_label: 'Very High Risk' })], '2026-07-02', {});
+    const result = await sectorHot.__test.sendDailyTop5Telegram(makeSupabase({}), [], '2026-07-02', { radar_candidates: [row({ ticker: 'TOPH', category: 'Swing Konglo', action_label: 'Hindari', risk_label: 'Very High Risk' })] });
     assert.equal(result.header.skipped, true);
     assert.equal(result.header.reason, 'no_final_quality_gate_candidates_silent');
     assert.equal(calls.length, 0);
@@ -111,7 +111,7 @@ test('Top 5 only Hard Reject stays silent', async () => {
 test('normal Top 5 Signal remains preferred over Radar', async () => {
   await withSendSpy(async (calls) => {
     const signal = row({ ticker: 'SIG', category: 'Swing Konglo', status: 'TRADE_CANDIDATE', final_status: 'TRADE_CANDIDATE', quality_grade: 'A', score: 90, final_quality_pass: true, final_quality_status: 'passed', telegram_verdict: 'Final quality gate passed.' });
-    const result = await sectorHot.__test.sendDailyTop5Telegram(makeSupabase({}), [signal, row({ ticker: 'RAD2', category: 'Swing Konglo' })], '2026-07-02', {});
+    const result = await sectorHot.__test.sendDailyTop5Telegram(makeSupabase({}), [signal], '2026-07-02', { radar_candidates: [row({ ticker: 'RAD2', category: 'Swing Konglo' })] });
     assert.equal(result.header.sent, true);
     assert.notEqual(result.header.radar_sent, true);
     assert.match(calls[0], /AUTO-CUAN SAHAM PILIHAN/);

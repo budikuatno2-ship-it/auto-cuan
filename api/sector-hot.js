@@ -4683,7 +4683,8 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   if (options.previous_close_snapshot) emptyLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
   emptyLines.push('', 'Belum ada kandidat yang lolos final quality gate hari ini.', 'Bukan rekomendasi beli/jual. DYOR.');
   var safePicks = (picks || []).filter(function(p) { return candidatePassesPublicTelegramSafetyGate(p, 'daily_top5_send') && candidatePassesMinUpside(p); });
-  var radarPicks = safePicks.length === 0 ? selectRadarDigestCandidates(picks, 'top5_radar_digest', 5) : [];
+  var radarSource = Array.isArray(options.radar_candidates) ? options.radar_candidates : (Array.isArray(options.all_candidates) ? options.all_candidates : picks);
+  var radarPicks = safePicks.length === 0 ? selectRadarDigestCandidates(radarSource, 'top5_radar_digest', 5) : [];
   var sendResult = safePicks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : (radarPicks.length > 0 ? await telegramNotifier.sendTelegramMessage(formatRadarDigestTelegramMessage(radarPicks, 'Top 5 Radar', 'swing')) : { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null });
   if (safePicks.length === 0 && radarPicks.length > 0) {
     sendResult.reason = sendResult.sent ? 'radar_digest_sent' : (sendResult.reason || 'telegram_send_failed');
@@ -4736,12 +4737,14 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     }
 
     var picks = [];
+    var top5RadarCandidates = [];
     var source = 'selected_candidates';
     var insertedCount = 0;
     if (existingRows.length > 0) {
       source = 'locked_rows';
       picks = existingRows.map(rowToDailyPickCandidate);
     } else {
+      top5RadarCandidates = await fetchCombinedScreenerCandidates(supabase, true);
       picks = await selectDailyTop5(supabase);
     }
 
@@ -4770,7 +4773,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'already_sent', source: source, readiness: readiness, sent_count: 0, picked_count: existingRows.length, candidate_count: existingRows.length, inserted_count: 0, existing_locked_count: existingRows.length, telegram: null }, diagnosticsBase));
     }
 
-    var notifier = await sendDailyTop5Telegram(supabase, picks, date, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' });
+    var notifier = await sendDailyTop5Telegram(supabase, picks, date, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot', radar_candidates: top5RadarCandidates });
     var telegramSent = notifier.sent_count > 0;
     var nowIso = new Date().toISOString();
     if (telegramSent) {
