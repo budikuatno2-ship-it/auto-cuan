@@ -89,11 +89,26 @@ test('Day Trade with radar ON and eligible Radar candidates sends Radar', async 
   });
 });
 
-test('Day Trade with radar ON but only Hard Reject skips explicitly', async () => {
+test('Day Trade with radar ON includes WAIT_PULLBACK Hindari Very High Risk as Radar caution', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'HARD', status: 'WAIT_PULLBACK', action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 'run-hard-only', '2026-07-02', 1, true, true, {});
+    assert.equal(result.sent, true);
+    assert.equal(result.reason, 'radar_fallback_sent');
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /Warnings: .*Very High Risk/);
+  });
+});
+
+test('Day Trade with radar ON but only fatal Hard Reject skips explicitly with diagnostics', async () => {
+  await withSendSpy(async (calls) => {
+    const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'FATL', status: 'RADAR', data_quality_status: 'INVALID_CANDLE' })] }), 'run-fatal-only', '2026-07-02', 1, true, true, {});
     assert.equal(result.skipped, true);
     assert.equal(result.reason, 'radar_candidates_all_hard_reject');
     assert.equal(calls.length, 0);
+    assert.equal(result.diagnostics.radar_candidate_count_visible_web, 1);
+    assert.equal(result.diagnostics.radar_candidate_count_telegram, 0);
+    assert.equal(result.diagnostics.radar_blocked_count, 1);
+    assert.ok(result.diagnostics.top_radar_block_reasons['invalid candle/OHLC data']);
+    assert.equal(result.diagnostics.sample_radar_blocked[0].ticker, 'FATL');
   });
 });

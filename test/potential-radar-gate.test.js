@@ -76,16 +76,17 @@ test('High Risk without Avoid/Hindari remains eligible for Potential Radar when 
   assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), true);
 });
 
-test('Very High Risk remains blocked from Potential Radar', () => {
+test('Very High Risk stays blocked from Signal-style Potential Radar gate but can enter Telegram Radar fallback as caution', () => {
   const c = base({ risk_label: 'Very High Risk', status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH' });
   assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), true);
 });
 
-test('Day Trade radar fallback gate cannot be bypassed by radar status when Potential Radar gate fails', () => {
+test('Day Trade Telegram radar fallback accepts Hindari only as non-actionable WAIT_PULLBACK caution', () => {
   const c = base({ status: 'WAIT_PULLBACK', action_label: 'Hindari', entry_status: 'WAIT_PULLBACK' });
   assert.equal(getPotentialRadarReason(c), 'WAIT_PULLBACK');
   assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), false);
-  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), true);
 });
 
 
@@ -93,17 +94,17 @@ test('Day Trade secondary radar fallback selection still uses the stricter fallb
   const lowUpside = base({ ticker: 'LOWU', status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK', tp1: 5010, tp1n: 5010, tp1_upside: 0.2 });
   const valid = base({ ticker: 'GOOD', status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH', breakout_confirmation_label: 'Breakout watch' });
   assert.equal(candidatePassesPotentialRadarGate(lowUpside, 'daytrade'), true);
-  assert.equal(candidatePassesDayTradeRadarFallbackGate(lowUpside), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(lowUpside), true);
   const selected = [lowUpside, valid].filter(function(r) { return candidatePassesDayTradeRadarFallbackGate(r); });
-  assert.deepEqual(selected.map(function(r) { return r.ticker; }), ['GOOD']);
+  assert.deepEqual(selected.map(function(r) { return r.ticker; }), ['LOWU', 'GOOD']);
 });
 
-test('low-upside or invalid TP1 candidates are not public Day Trade radar fallback candidates', () => {
+test('low-upside monitor may enter Telegram Radar fallback, but invalid TP1 is blocked', () => {
   const lowUpside = base({ status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK', tp1: 5010, tp1n: 5010, tp1_upside: 0.2 });
   const invalidTp = base({ status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH', tp1: 4990, tp1n: 4990, tp1_upside: -0.2 });
   assert.equal(candidatePassesPotentialRadarGate(lowUpside, 'daytrade'), true);
   assert.equal(candidatePassesPotentialRadarGate(invalidTp, 'daytrade'), true);
-  assert.equal(candidatePassesDayTradeRadarFallbackGate(lowUpside), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(lowUpside), true);
   assert.equal(candidatePassesDayTradeRadarFallbackGate(invalidTp), false);
 });
 
@@ -206,4 +207,24 @@ test('Signal valid keeps normal display score', () => {
   assert.equal(display.gate_bucket, 'SIGNAL');
   assert.equal(display.display_score, 91);
   assert.equal(display.score_capped_by_gate, false);
+});
+
+
+test('Telegram Radar fallback admits WAIT_PULLBACK Very High Risk, weak volume, and Hindari cautions but blocks fatal plans', () => {
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', risk_label: 'Very High Risk', entry_status: 'WAIT_PULLBACK' })), true);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', volume_confirmation_label: 'Weak Volume' })), true);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', action_label: 'Hindari', entry_status: 'WAIT_PULLBACK' })), true);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', sl: 5100, stop_loss: 5100 })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', last_price: 90 })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', data_quality_status: 'INVALID_CANDLE' })), false);
+});
+
+test('Telegram Radar fallback message exposes caution warnings', () => {
+  const msg = formatDayTradeRadarTelegramMessage([base({ status: 'RADAR', risk_label: 'Very High Risk', action_label: 'Hindari', volume_confirmation_label: 'Weak Volume', entry_timing: 'chase risk, wait pullback', plan_quality_note: 'SL rawan noise' })]);
+  assert.match(msg, /Pantauan risiko tinggi, bukan rekomendasi beli/);
+  assert.match(msg, /Warnings: .*Very High Risk/);
+  assert.match(msg, /Volume\/liquidity: weak/);
+  assert.match(msg, /Action: Hindari/);
+  assert.match(msg, /Entry: jangan chase/);
+  assert.match(msg, /Plan: SL rawan noise/);
 });
