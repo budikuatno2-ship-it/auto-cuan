@@ -8305,22 +8305,86 @@ function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
 
 
 function getDayTradeRadarStatus(candidate) {
-  var raw = safeTelegramText(candidate && (candidate.status || candidate.final_status || candidate.action || candidate.signal_action || candidate.telegram_action_label || candidate.action_label), 120, '').toUpperCase().replace(/[\s-]+/g, '_');
-  var allowed = { MOMENTUM_CONTINUATION: true, WAIT_PULLBACK: true, EARLY_RADAR: true, PRE_SPIKE_WATCH: true, RECLAIM_CANDIDATE: true, WATCHLIST: true };
-  if (allowed[raw]) return raw;
-  if (raw.indexOf('MOMENTUM') >= 0) return 'MOMENTUM_CONTINUATION';
-  if (raw.indexOf('WAIT_PULLBACK') >= 0 || raw.indexOf('PULLBACK') >= 0) return 'WAIT_PULLBACK';
-  if (raw.indexOf('EARLY_RADAR') >= 0) return 'EARLY_RADAR';
-  if (raw.indexOf('PRE_SPIKE') >= 0) return 'PRE_SPIKE_WATCH';
-  if (raw.indexOf('RECLAIM') >= 0) return 'RECLAIM_CANDIDATE';
-  if (raw.indexOf('WATCHLIST') >= 0 || raw.indexOf('PANTAU') >= 0) return 'WATCHLIST';
+  if (!candidate) return null;
+  var fields = [
+    candidate.status,
+    candidate.final_status,
+    candidate.breakout_confirmation_status,
+    candidate.entry_status,
+    candidate.entry_quality_status,
+    candidate.action,
+    candidate.signal_action,
+    candidate.telegram_action_label,
+    candidate.action_label,
+    candidate.telegram_verdict,
+    candidate.signal_verdict,
+    candidate.verdict,
+    candidate.status_reason,
+    candidate.action_reason,
+    candidate.signal_reason,
+    candidate.breakout_confirmation_label,
+    candidate.breakout_confirmation_note,
+    candidate.entry_status_label,
+    candidate.entry_status_note
+  ];
+  var found = {};
+  for (var i = 0; i < fields.length; i++) {
+    var raw = safeTelegramText(fields[i], 240, '').toUpperCase().trim().replace(/[\s-]+/g, '_');
+    if (!raw) continue;
+    if (raw.indexOf('RADAR') >= 0) found.RADAR = true;
+    if (raw.indexOf('WAIT_PULLBACK') >= 0 || raw.indexOf('TUNGGU_PULLBACK') >= 0 || raw.indexOf('PULLBACK') >= 0) found.WAIT_PULLBACK = true;
+    if (raw.indexOf('BREAKOUT_WATCH') >= 0) found.BREAKOUT_WATCH = true;
+    if (raw.indexOf('NEEDS_CLOSE_CONFIRMATION') >= 0 || raw.indexOf('CLOSE_CONFIRMATION') >= 0) found.NEEDS_CLOSE_CONFIRMATION = true;
+    if (raw.indexOf('PRE_SPIKE') >= 0) found.PRE_SPIKE_WATCH = true;
+    if (raw.indexOf('MOMENTUM') >= 0) found.MOMENTUM_CONTINUATION = true;
+    if (raw.indexOf('RECLAIM') >= 0) found.RECLAIM_CANDIDATE = true;
+    if (raw.indexOf('WATCHLIST') >= 0 || raw.indexOf('WATCH') >= 0 || raw.indexOf('PANTAU') >= 0) found.WATCHLIST = true;
+  }
+  var priority = ['RADAR', 'WAIT_PULLBACK', 'BREAKOUT_WATCH', 'NEEDS_CLOSE_CONFIRMATION', 'PRE_SPIKE_WATCH', 'MOMENTUM_CONTINUATION', 'RECLAIM_CANDIDATE', 'WATCHLIST'];
+  for (var j = 0; j < priority.length; j++) {
+    if (found[priority[j]]) return priority[j];
+  }
   return null;
+}
+
+function hasFatalDayTradeRadarBlock(candidate) {
+  if (!candidate) return true;
+  var r = candidate;
+  var statusText = joinTelegramTexts([
+    r.status, r.final_status, r.breakout_confirmation_status, r.entry_status, r.entry_quality_status,
+    r.data_quality_status, r.plan_quality_status, r.trading_plan_status, r.final_quality_status,
+    r.final_gate_status, r.quality_gate_status
+  ]).toUpperCase().replace(/[\s-]+/g, '_');
+  var allText = joinTelegramTexts([
+    r.status, r.final_status, r.verdict, r.signal_verdict, r.telegram_verdict, r.reason,
+    r.status_reason, r.action_reason, r.signal_reason, r.excluded_reason, r.action,
+    r.action_label, r.signal_action_label, r.telegram_action_label, r.signal_action,
+    r.plan_quality_label, r.plan_quality_note, r.data_quality_label, r.data_quality_note,
+    r.entry_status_label, r.entry_status_note, r.invalidation_note, r.execution_reality_note,
+    r.stale_notes, r.setup_expiry_note
+  ]).toLowerCase();
+  if (statusText.indexOf('INVALID') >= 0 || statusText.indexOf('BROKEN') >= 0 || statusText.indexOf('ERROR') >= 0) return true;
+  if (includesAny(allText, ['invalid candle', 'candle tidak valid', 'ohlc', 'data broken', 'data rusak', 'invalid trading plan', 'invalid plan', 'plan invalid', 'missing entry', 'missing sl', 'missing tp', 'invalid rr', 'risk reward invalid', 'below sl', 'price below sl', 'sl hit', 'sl kena', 'invalidation hit', 'impossible ara', 'impossible arb', 'stale fatal', 'expired fatal'])) return true;
+  if (r.trading_plan_valid === false) return true;
+  var planStatus = String(r.plan_quality_status || r.trading_plan_status || '').trim().toUpperCase();
+  if (planStatus === 'INVALID') return true;
+  var dataQualityStatus = String(r.data_quality_status || '').trim().toUpperCase();
+  if (dataQualityStatus === 'INVALID_CANDLE' || r.data_quality_valid === false) return true;
+  var entryStatus = String(r.entry_status || '').trim().toUpperCase();
+  var entryQuality = String(r.entry_quality_status || '').trim().toUpperCase();
+  if (entryStatus === 'INVALID_BELOW_SL' || entryQuality === 'INVALID_BELOW_SL') return true;
+  if (String(r.invalidation_distance_status || '').trim().toUpperCase() === 'INVALID_BELOW_SL') return true;
+  var entry1 = toNum(r.entry1) || getEntry1(r);
+  var sl = toNum(r.sl || r.stop_loss);
+  if (entry1 > 0 && sl > 0 && (toNum(r.last_price || r.lastn) || entry1) < sl) return true;
+  return false;
 }
 
 function candidatePassesDayTradeRadarFallbackGate(candidate) {
   if (!candidate || !candidate.ticker) return false;
-  if (!candidatePassesPotentialRadarGate(candidate, 'daytrade')) return false;
-  var status = getDayTradeRadarStatus(candidate) || getPotentialRadarReason(candidate);
+  if (hasFatalDayTradeRadarBlock(candidate)) return false;
+  var status = getDayTradeRadarStatus(candidate);
+  if (!status) return false;
   var allText = joinTelegramTexts([
     candidate.status, candidate.final_status, candidate.action_label, candidate.signal_action_label, candidate.telegram_action_label,
     candidate.action, candidate.signal_action, candidate.telegram_verdict, candidate.signal_verdict, candidate.verdict, candidate.reason,
@@ -8328,14 +8392,12 @@ function candidatePassesDayTradeRadarFallbackGate(candidate) {
     candidate.final_gate_status, candidate.quality_gate_status, candidate.plan_quality_label, candidate.plan_quality_note,
     candidate.entry_quality_label, candidate.entry_status_label, candidate.entry_safety_note, candidate.stale_notes, candidate.liquidity_notes
   ]).toLowerCase();
-  if (includesAny(allText, ['hindari', 'avoid', 'very high risk', 'invalid plan', 'plan invalid', 'level belum rapi', 'stale', 'expired', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'volume lemah', 'weak volume'])) return false;
+  if (includesAny(allText, ['invalid plan', 'plan invalid', 'level belum rapi'])) return false;
   if (candidate.trading_plan_valid === false) return false;
-  var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || candidate.entry_quality_status || '', 80, '').toUpperCase();
-  if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') return false;
-  if (candidate.is_stale === true || candidate.data_stale === true || candidate.freshness_is_stale === true || candidate.stale === true) return false;
-  if (deriveTelegramRiskLabel(candidate, 'daytrade').toUpperCase() === 'VERY HIGH RISK') return false;
+  var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || '', 80, '').toUpperCase();
+  if (freshnessStatus === 'EXPIRED') return false;
   var liq = deriveStaleLiquidityLabels(candidate);
-  if (liq.is_stale || liq.is_liquidity_risk) return false;
+  if (liq.is_stale) return false;
   var entry1 = toNum(candidate.entry1) || getEntry1(candidate);
   var entry2 = toNum(candidate.entry2) || getEntry2(candidate);
   var sl = toNum(candidate.sl || candidate.stop_loss);
@@ -8458,8 +8520,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     var radarPool = candidates.map(function(raw) { return attachFreshness(Object.assign({}, raw), daytradeMeta); });
     var radarRejected = [];
     var radarCandidates = radarPool.filter(function(r) {
-      var bucket = classifyCandidateGateBucket(r, 'daytrade_radar_fallback');
-      var pass = bucket.gate_bucket === 'RADAR' && candidatePassesDayTradeRadarFallbackGate(r);
+      var pass = candidatePassesDayTradeRadarFallbackGate(r);
       if (!pass) radarRejected.push(r);
       return pass;
     }).sort(sortDayTradeRadarCandidates).slice(0, 3);
@@ -9156,6 +9217,7 @@ module.exports.__test = {
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
   candidatePassesPotentialRadarGate: candidatePassesPotentialRadarGate,
   getPotentialRadarReason: getPotentialRadarReason,
+  getDayTradeRadarStatus: getDayTradeRadarStatus,
   candidatePassesDayTradeRadarFallbackGate: candidatePassesDayTradeRadarFallbackGate,
   classifyCandidateGateBucket: classifyCandidateGateBucket,
   buildGateCalibrationDiagnostics: buildGateCalibrationDiagnostics,
