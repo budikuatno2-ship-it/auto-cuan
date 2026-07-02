@@ -1981,7 +1981,7 @@ function showDashboard() {
     // Update dashboard greeting
     updateDashGreeting();
     loadDashboardTop5Monitor(true, { loadAdminPreview: false });
-    setTimeout(function() { loadTop5History(true); }, 700);
+    setTimeout(function() { loadTop5History(true); }, 2000);
     startDashboardMonitorAutoRefresh();
 }
 
@@ -2003,7 +2003,7 @@ function navigateTo(page) {
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
     // Sektor Hot login gate
-    if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: false }); setTimeout(function() { loadTop5History(true); }, 700); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
+    if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: false }); setTimeout(function() { loadTop5History(true); }, 2000); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
     else { stopDashboardMonitorAutoRefresh(); }
     if (page === 'sektor') {
         var isLoggedIn = isLoggedInUser();
@@ -7248,8 +7248,15 @@ function renderAdminNextTop5Preview(data) {
     if (!section || !list) return;
     // Guest/non-admin: hide entirely
     if (!isAdmin()) { section.classList.add('hidden'); list.innerHTML = ''; return; }
-    // Admin preview not yet generated: show button to trigger
+    // If data is null (initial render), check localStorage cache first
     if (!data || (data.admin_preview_not_generated === true)) {
+        var cached = _getAdminPreviewCache();
+        if (cached && cached.admin_next_top5_preview && cached.admin_next_top5_preview.length > 0) {
+            section.classList.remove('hidden');
+            if (updated) updated.textContent = 'Preview (cache): ' + dashWibTime(cached.generated_at) + ' WIB';
+            renderAdminNextTop5PreviewContent(cached, list);
+            return;
+        }
         section.classList.remove('hidden');
         if (updated) updated.textContent = '';
         list.innerHTML = '<div class="py-3 text-center"><p class="text-[11px] text-gray-400 mb-2">Preview admin belum dimuat.</p><button onclick="loadAdminNextTop5Preview()" class="px-3 py-1.5 rounded-lg text-[11px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition font-medium">Generate Admin Preview</button></div>';
@@ -7260,12 +7267,18 @@ function renderAdminNextTop5Preview(data) {
     var potentialRows = data && Array.isArray(data.admin_next_top5_potential_radar_preview) ? data.admin_next_top5_potential_radar_preview : [];
     if (!rows.length && !excludedRows.length && !potentialRows.length) {
         section.classList.remove('hidden');
-        if (updated) updated.textContent = 'Preview: ' + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
+        if (updated) updated.textContent = 'Preview generated: ' + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
         list.innerHTML = '<div class="py-3 text-center"><p class="text-[11px] text-gray-400 mb-2">Belum ada kandidat preview yang valid.</p><button onclick="loadAdminNextTop5Preview()" class="px-3 py-1.5 rounded-lg text-[11px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition font-medium">Refresh Preview</button></div>';
         return;
     }
     section.classList.remove('hidden');
     if (updated) updated.textContent = 'Preview generated: ' + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
+    renderAdminNextTop5PreviewContent(data, list);
+}
+function renderAdminNextTop5PreviewContent(data, list) {
+    var rows = Array.isArray(data.admin_next_top5_preview) ? data.admin_next_top5_preview : [];
+    var excludedRows = Array.isArray(data.admin_next_top5_excluded_preview) ? data.admin_next_top5_excluded_preview : [];
+    var potentialRows = Array.isArray(data.admin_next_top5_potential_radar_preview) ? data.admin_next_top5_potential_radar_preview : [];
     var html = '<div class="mb-2 text-right"><button onclick="loadAdminNextTop5Preview()" class="px-2.5 py-1 rounded-lg text-[10px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition">Refresh Preview</button></div>';
     var gate = data && data.admin_gate_calibration_summary;
     if (gate) {
@@ -7455,11 +7468,18 @@ async function loadDashboardTop5Monitor(silent, opts) {
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); renderAdminNextTop5Preview(null); return; }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
-    // Clear loading states immediately — mutually exclusive: loading replaces any stale content
+    // Always clear placeholders to prevent stuck static HTML state
     var _topEl = document.getElementById('dashboardTop5List');
     var _monEl = document.getElementById('dashboardMonitorList');
     if (_topEl && !silent) _topEl.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Memuat Top 5...</div>';
     if (_monEl && !silent) _monEl.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Memuat monitor...</div>';
+    // Fallback timeout: if still loading after 5s, show safe empty states (not scary error)
+    var _fallbackTimer = setTimeout(function() {
+        var topCheck = document.getElementById('dashboardTop5List');
+        var monCheck = document.getElementById('dashboardMonitorList');
+        if (topCheck && topCheck.innerHTML.indexOf('Memuat Top 5') >= 0) topCheck.innerHTML = dashboardAwaitingLockedHtml('Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.');
+        if (monCheck && monCheck.innerHTML.indexOf('Memuat monitor') >= 0) monCheck.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
+    }, 5000);
     _dashboardTop5InFlight = (async function() {
     try {
         var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
@@ -7486,7 +7506,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
         if (note) note.textContent = '';
         if (mon) mon.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
         renderAdminNextTop5Preview(null);
-    } finally { _dashboardTop5InFlight = null; }
+    } finally { clearTimeout(_fallbackTimer); _dashboardTop5InFlight = null; }
     })();
     return _dashboardTop5InFlight;
 }
@@ -7494,18 +7514,63 @@ async function loadDashboardTop5Monitor(silent, opts) {
 function renderDashboardTop5MonitorData(data) {
     var note = document.getElementById('dashboardTop5LockNote');
     if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
-    if (data.top5_source === 'awaiting_locked_rows') {
+    // Robust empty detection: treat as empty/awaiting if ANY of these are true
+    var top5Rows = data.top5 || data.picks || [];
+    var monitorRows = data.monitor || [];
+    var isAwaiting = data.top5_source === 'awaiting_locked_rows'
+        || (data.top5_locked === false && top5Rows.length === 0)
+        || (top5Rows.length === 0 && monitorRows.length === 0);
+    if (isAwaiting) {
         var topEl = document.getElementById('dashboardTop5List');
         if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data.update_note);
-        // Also clear monitor when no Top 5 locked
         var monEl = document.getElementById('dashboardMonitorList');
         if (monEl) monEl.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
         var upd = document.getElementById('dashboardMonitorUpdated');
         if (upd) upd.textContent = 'Terakhir update: \u2014 WIB';
     } else {
-        renderDashboardTop5(data.top5 || data.picks || []);
-        renderDashboardMonitor(data.monitor || [], data.monitor_last_updated_at || data.last_updated_at, data);
+        renderDashboardTop5(top5Rows);
+        renderDashboardMonitor(monitorRows, data.monitor_last_updated_at || data.last_updated_at, data);
     }
+}
+
+// === ADMIN PREVIEW CACHE (localStorage, day-scoped, admin-only) ===
+var _ADMIN_PREVIEW_CACHE_KEY = 'autocuan_admin_preview_cache';
+function _getAdminPreviewCache() {
+    try {
+        if (!isAdmin()) return null;
+        var raw = localStorage.getItem(_ADMIN_PREVIEW_CACHE_KEY);
+        if (!raw) return null;
+        var parsed = JSON.parse(raw);
+        // Day-scoped: only valid for today (WIB)
+        var today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        if (parsed.date !== today) { localStorage.removeItem(_ADMIN_PREVIEW_CACHE_KEY); return null; }
+        return parsed;
+    } catch (e) { return null; }
+}
+function _setAdminPreviewCache(data) {
+    try {
+        if (!isAdmin() || !data) return;
+        var today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        // Store safe fields only — no raw_payload/debug/sample_rejected/stageByTicker/internal
+        var safe = {
+            date: today,
+            generated_at: data.admin_next_top5_preview_generated_at || new Date().toISOString(),
+            admin_next_top5_preview: (data.admin_next_top5_preview || []).map(function(r) {
+                var c = Object.assign({}, r);
+                delete c.raw_payload; delete c.detail; delete c.sample_rejected; delete c.stageByTicker; delete c.debug_notes; delete c.internal_notes;
+                return c;
+            }),
+            admin_next_top5_preview_count: data.admin_next_top5_preview_count || 0,
+            admin_next_top5_excluded_preview: (data.admin_next_top5_excluded_preview || []).slice(0, 5),
+            admin_next_top5_potential_radar_preview: (data.admin_next_top5_potential_radar_preview || []).slice(0, 5),
+            admin_next_top5_excluded_count: data.admin_next_top5_excluded_count || 0,
+            admin_next_top5_potential_radar_count: data.admin_next_top5_potential_radar_count || 0,
+            admin_gate_calibration_summary: data.admin_gate_calibration_summary || null,
+            admin_next_top5_preview_note: data.admin_next_top5_preview_note || null,
+            admin_next_top5_preview_generated_at: data.admin_next_top5_preview_generated_at || null
+        };
+        localStorage.setItem(_ADMIN_PREVIEW_CACHE_KEY, JSON.stringify(safe));
+    } catch (e) { /* localStorage full or disabled — ignore */ }
 }
 
 async function loadAdminNextTop5Preview() {
@@ -7518,8 +7583,10 @@ async function loadAdminNextTop5Preview() {
     try {
         var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&admin_preview=1&generate_preview=1&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
         var data = fetched.data;
-        if (data && data.success) renderAdminNextTop5Preview(data);
-        else { if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-red-400">Preview gagal dimuat. Coba refresh.</div>'; }
+        if (data && data.success) {
+            _setAdminPreviewCache(data);
+            renderAdminNextTop5Preview(data);
+        } else { if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-red-400">Preview gagal dimuat. Coba refresh.</div>'; }
     } catch(e) {
         if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-red-400">Preview gagal dimuat. Coba refresh.</div>';
     }

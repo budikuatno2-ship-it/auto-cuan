@@ -5500,7 +5500,8 @@ async function handleWebDailyPicks(req, res, supabase) {
           admin_gate_calibration_summary: null,
           admin_next_top5_preview_note: 'Preview admin belum dimuat. Klik Generate Admin Preview untuk menghitung.',
           admin_next_top5_preview_generated_at: null,
-          admin_preview_not_generated: true
+          admin_preview_not_generated: true,
+          admin_preview_can_generate: true
         };
       }
     }
