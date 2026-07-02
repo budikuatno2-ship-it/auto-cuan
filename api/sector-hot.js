@@ -8401,10 +8401,10 @@ function candidatePassesDayTradeRadarFallbackGate(candidate) {
   if (freshnessStatus === 'EXPIRED') return false;
   var liq = deriveStaleLiquidityLabels(candidate);
   if (liq.is_stale) return false;
-  var entry1 = toNum(candidate.entry1) || getEntry1(candidate);
-  var entry2 = toNum(candidate.entry2) || getEntry2(candidate);
-  var sl = toNum(candidate.sl || candidate.stop_loss);
-  var tp1 = toNum(candidate.tp1n || candidate.tp1);
+  var entry1 = toNum(candidate.entry1) || toNum(candidate.entry_high) || toNum(candidate.entry_low);
+  var entry2 = toNum(candidate.entry2) || toNum(candidate.entry_low) || toNum(candidate.entry_high);
+  var sl = toNum(candidate.sl) || toNum(candidate.stop_loss);
+  var tp1 = toNum(candidate.tp1n) || toNum(candidate.tp1);
   if (!(entry1 > 0) || !(entry2 > 0) || !(sl > 0) || !(tp1 > 0)) return false;
   if (!((toNum(candidate.risk_reward) || 0) > 0)) return false;
   if (!candidatePassesMinUpside(candidate)) return false;
@@ -8433,26 +8433,60 @@ function sanitizeDayTradeRadarText(value, maxLen, fallback) {
     .replace(/valid\s+entry/ig, 'konfirmasi entry');
 }
 
+function formatDayTradeCandidateWarningList(r) {
+  var warnings = [];
+  function add(label) {
+    label = safeTelegramText(label, 90, '');
+    if (label && warnings.indexOf(label) < 0) warnings.push(label);
+  }
+  var allText = joinTelegramTexts([
+    r.risk_label, r.risk_label_v2, r.verified_risk_label, r.liquidity_label, r.liquidity_notes,
+    r.volume_confirmation_label, r.volume_confirmation_note, r.volume_notes, r.action, r.action_label,
+    r.signal_action, r.signal_action_label, r.telegram_action_label, r.entry_status, r.entry_timing,
+    r.entry_quality_label, r.entry_status_label, r.entry_safety_note, r.breakout_confirmation_status,
+    r.breakout_confirmation_label, r.breakout_confirmation_note, r.mtf_label, r.mtf_status, r.mtf_context,
+    r.plan_quality_note, r.invalidation_note, r.sl_note, r.stop_loss_note, r.telegram_verdict
+  ]).toLowerCase();
+  var risk = deriveTelegramRiskLabel(r, 'daytrade');
+  if (/very\s+high/i.test(risk) || allText.indexOf('very high risk') >= 0) add('Very High Risk');
+  else if (/high/i.test(risk) || allText.indexOf('high risk') >= 0) add('High Risk');
+  if (includesAny(allText, ['weak volume', 'volume lemah'])) add('Weak Volume');
+  if (includesAny(allText, ['weak liquidity', 'likuiditas lemah', 'illiquid'])) add('Weak Liquidity');
+  if (includesAny(allText, ['hindari', 'avoid'])) add('Hindari / caution only');
+  if (includesAny(allText, ['chase', 'entry not touched', 'belum tersentuh', 'wait pullback', 'tunggu pullback', 'pullback'])) add('Tunggu pullback / jangan chase');
+  if (includesAny(allText, ['mtf mixed', 'mixed timeframe', 'timeframe mixed'])) add('MTF mixed');
+  if (includesAny(allText, ['sl rawan noise', 'stop loss rawan noise', 'rawan noise'])) add('SL rawan noise');
+  if (includesAny(allText, ['needs close confirmation', 'close confirmation', 'tunggu close'])) add('Needs close confirmation');
+  return warnings;
+}
+
 function formatDayTradeRadarTelegramMessage(results) {
   var now = new Date();
   var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
   var wib = new Date(wibMs);
   var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
   var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
-  var lines = ['[RADAR — BUKAN SINYAL ENTRY]', '🚀 Day Trade Radar', 'Update: ' + timeStr, '', 'Belum ada kandidat Entry valid yang lolos final safety gate.', 'Radar pantauan berikut belum menjadi sinyal entry.', ''];
+  var lines = ['🚀 Day Trade Signal Candidate', 'Update: ' + timeStr, 'Kandidat berbasis screener deterministic.', 'Konfirmasi manual wajib.', 'Perhatikan warning entry/risk/volume sebelum transaksi.', ''];
   results.forEach(function(r, i) {
-    var setup = getDayTradeRadarStatus(r) || 'WATCHLIST';
-    var trigger = sanitizeDayTradeRadarText(r.breakout_confirmation_label || r.breakout_confirmation_note || r.entry_timing || r.telegram_verdict, 100, 'Tunggu close confirmation / volume tetap masuk');
-    var note = sanitizeDayTradeRadarText(r.entry_safety_note || r.plan_quality_note || 'Radar pantauan, bukan sinyal entry.', 110, 'Radar pantauan, bukan sinyal entry.');
-    lines.push((i + 1) + '. ' + r.ticker + ' — ' + setup.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); }));
-    lines.push('Harga: ' + fmtPrice(r.lastn || r.last_price) + ' | Entry: ' + fmtPrice(r.entry1) + ' / ' + fmtPrice(r.entry2) + ' | SL: ' + fmtPrice(r.sl) + ' | TP: ' + fmtPrice(r.tp1n) + ' / ' + fmtPrice(r.tp2n || r.tp2));
-    lines.push('EntryQ: ' + compactSafeText(r.entry_quality_label || r.entry_status_label, '-') + ' · PlanQ: ' + compactSafeText(r.plan_quality_label || r.plan_label, '-'));
-    lines.push('Trigger: ' + trigger);
-    lines.push('Note: ' + note);
+    var setup = getDayTradeRadarStatus(r) || r.status || 'WATCHLIST';
+    var entry1 = toNum(r.entry1) || toNum(r.entry_high) || toNum(r.entry_low);
+    var entry2 = toNum(r.entry2) || toNum(r.entry_low) || toNum(r.entry_high);
+    var sl = toNum(r.sl) || toNum(r.stop_loss);
+    var tp1 = toNum(r.tp1n) || toNum(r.tp1);
+    var tp2 = toNum(r.tp2n) || toNum(r.tp2);
+    var risk = deriveTelegramRiskLabel(r, 'daytrade');
+    var warnings = formatDayTradeCandidateWarningList(r);
+    var action = sanitizeDayTradeRadarText(r.action_label || r.telegram_action_label || r.signal_action_label || r.entry_timing || r.telegram_verdict, 100, 'Pantau / tunggu konfirmasi manual');
+    lines.push((i + 1) + '. ' + safeTelegramText(r.ticker, 16, '-') + ' — ' + setup.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function(c) { return c.toUpperCase(); }));
+    lines.push('Harga: ' + fmtPrice(r.lastn || r.last_price) + ' | Entry: ' + fmtPrice(entry1) + (entry2 > 0 && entry2 !== entry1 ? ' / ' + fmtPrice(entry2) : '') + ' | SL: ' + fmtPrice(sl));
+    lines.push('TP1/TP2: ' + fmtPrice(tp1) + (tp2 > 0 ? ' / ' + fmtPrice(tp2) : '') + ' | RR: ' + fmtRR(r.risk_reward));
+    lines.push('Status/Action: ' + action);
+    lines.push('Risk: ' + safeTelegramText(risk, 40, 'High Risk'));
+    lines.push('Warnings: ' + (warnings.length ? warnings.join('; ') : 'Konfirmasi manual tetap wajib'));
     lines.push('');
   });
   if (lines[lines.length - 1] === '') lines.pop();
-  lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
+  lines.push('Bukan rekomendasi beli otomatis. Konfirmasi manual wajib.');
   return lines.join('\n');
 }
 
@@ -8604,8 +8638,8 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
         force_radar_debug: forceRadarDebug,
         diagnostics: diagnostics,
         admin_radar_summary: [
-          'Belum ada kandidat Entry valid yang lolos final safety gate.',
-          'Radar pantauan tersedia di web screener, tetapi belum lolos public Telegram safety gate.'
+          'Kandidat Day Trade tersedia sebagai Signal Candidate jika lolos fallback plan gate.',
+          'Konfirmasi manual wajib; warning entry/risk/volume wajib diperhatikan.'
         ]
       };
       silentResult.signal_safe_count = 0;
@@ -8620,7 +8654,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       if (sendRadarFallback && radarCandidates.length > 0) {
         var radarMsg = formatDayTradeRadarTelegramMessage(radarCandidates);
         var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
-        radarResult.reason = radarResult.sent ? 'radar_fallback_sent' : 'telegram_send_failed';
+        radarResult.reason = radarResult.sent ? 'daytrade_signal_candidate_fallback_sent' : 'telegram_send_failed';
         radarResult.radar_skipped_reason = radarResult.sent ? null : 'telegram_send_failed';
         radarResult.message = radarMsg;
         if (radarResult.sent) _dtTelegramLastRadarRunId = runId;
