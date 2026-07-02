@@ -8110,10 +8110,20 @@ function dayTradeFlagEnabled(value) {
   return value === '1' || value === 1 || value === true || String(value || '').toLowerCase() === 'true';
 }
 
+function dayTradeFlagExplicitlyDisabled(value) {
+  if (value === 0 || value === false) return true;
+  var normalized = String(value == null ? '' : value).trim().toLowerCase();
+  return normalized === '0' || normalized === 'false' || normalized === 'off';
+}
+
 function getDayTradeRadarRequested(req) {
   var q = (req && req.query) || {};
   var b = (req && req.body && typeof req.body === 'object') ? req.body : {};
-  return dayTradeFlagEnabled(q.send_radar) || dayTradeFlagEnabled(q.radar_telegram) || dayTradeFlagEnabled(b.send_radar) || dayTradeFlagEnabled(b.radar_telegram);
+  var values = [q.send_radar, q.radar_telegram, b.send_radar, b.radar_telegram];
+  for (var i = 0; i < values.length; i++) {
+    if (dayTradeFlagExplicitlyDisabled(values[i])) return false;
+  }
+  return true;
 }
 
 function getDayTradeForceRadarDebugRequested(req) {
@@ -9157,6 +9167,7 @@ module.exports.__test = {
   sendSwingKongloTelegramNotification: sendSwingKongloTelegramNotification,
   sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
   sendDayTradeTelegramNotification: sendDayTradeTelegramNotification,
+  getDayTradeRadarRequested: getDayTradeRadarRequested,
   candidateTelegramEligible: candidateTelegramEligible,
   formatCandidateBlock: formatCandidateBlock,
   sanitizeTop5ResponseForAudience: sanitizeTop5ResponseForAudience,

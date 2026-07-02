@@ -56,6 +56,18 @@ test('public Telegram no-candidate message is not sent for Swing Non-Konglo', as
   });
 });
 
+
+test('Day Trade radar request defaults ON when send_radar is omitted', () => {
+  assert.equal(sectorHot.__test.getDayTradeRadarRequested({ query: {}, body: {} }), true);
+});
+
+test('Day Trade radar request only disables on explicit false values', () => {
+  for (const value of ['0', 0, 'false', false, 'off', 'OFF']) {
+    assert.equal(sectorHot.__test.getDayTradeRadarRequested({ query: { send_radar: value }, body: {} }), false);
+  }
+  assert.equal(sectorHot.__test.getDayTradeRadarRequested({ query: { send_radar: '' }, body: {} }), true);
+});
+
 test('public Telegram no-candidate message is not sent for Day Trade without radar fallback', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ status: 'WAIT_PULLBACK', entry_timing: 'needs close confirmation' })] }), 'run-silent', '2026-07-02', 1, true, false, {});
@@ -64,7 +76,6 @@ test('public Telegram no-candidate message is not sent for Day Trade without rad
     assert.equal(calls.length, 0);
   });
 });
-
 
 
 test('Day Trade with radar ON and eligible Radar candidates sends Radar', async () => {
