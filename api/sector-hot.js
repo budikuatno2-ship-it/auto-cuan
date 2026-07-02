@@ -4596,6 +4596,72 @@ function rowToDailyPickCandidate(row) {
   return raw;
 }
 
+
+function sortRadarDigestCandidates(a, b) {
+  var scoreA = normalizeCandidateScoreForGate(a, 'radar_digest') || toNum(a && (a.display_score || a.score || a.daily_score || a.daytrade_score)) || 0;
+  var scoreB = normalizeCandidateScoreForGate(b, 'radar_digest') || toNum(b && (b.display_score || b.score || b.daily_score || b.daytrade_score)) || 0;
+  if (scoreB !== scoreA) return scoreB - scoreA;
+  var rrA = toNum(a && a.risk_reward) || 0;
+  var rrB = toNum(b && b.risk_reward) || 0;
+  if (rrB !== rrA) return rrB - rrA;
+  var liqA = getTelegramValue(a) || 0;
+  var liqB = getTelegramValue(b) || 0;
+  if (liqB !== liqA) return liqB - liqA;
+  var riskRank = function(x) {
+    var r = deriveTelegramRiskLabel(x, 'swing').toUpperCase();
+    if (r.indexOf('LOW') >= 0) return 0;
+    if (r.indexOf('MEDIUM') >= 0) return 1;
+    if (r.indexOf('HIGH') >= 0) return 2;
+    return 3;
+  };
+  var ra = riskRank(a), rb = riskRank(b);
+  if (ra !== rb) return ra - rb;
+  return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || String(a && a.ticker || '').localeCompare(String(b && b.ticker || ''));
+}
+
+function selectRadarDigestCandidates(candidates, mode, limit) {
+  return (candidates || []).filter(function(candidate) {
+    var bucket = classifyCandidateGateBucket(candidate, mode || 'radar_digest');
+    return bucket.gate_bucket === 'RADAR' && candidatePassesPotentialRadarGate(candidate, mode || 'radar_digest');
+  }).sort(sortRadarDigestCandidates).slice(0, limit || 3);
+}
+
+function sanitizeRadarDigestText(value, maxLen, fallback) {
+  return safeTelegramText(value, maxLen, fallback)
+    .replace(/raw_payload/ig, 'payload')
+    .replace(/sample_rejected/ig, 'sample')
+    .replace(/stageByTicker/ig, 'stage')
+    .replace(/debug/ig, 'catatan')
+    .replace(/internal/ig, 'catatan')
+    .replace(/\[object Object\]/g, '');
+}
+
+function formatRadarDigestTelegramMessage(results, title, mode) {
+  var now = new Date();
+  var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
+  var wib = new Date(wibMs);
+  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+  var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
+  var lines = ['[RADAR — BUKAN SINYAL ENTRY]', sanitizeRadarDigestText(title, 80, 'Radar'), 'Update: ' + timeStr, '', 'Pantauan, bukan sinyal entry.', 'Konfirmasi manual wajib.', 'Jangan entry jika harga sudah chase / tidak masuk area.', ''];
+  (results || []).forEach(function(r, i) {
+    var source = sanitizeRadarDigestText(r.category || r.source || r.setup || r.status || r.final_status, 50, 'Watchlist');
+    var reason = sanitizeRadarDigestText(getPotentialRadarReason(r), 80, 'WATCHLIST_MONITOR');
+    var entry1 = toNum(r.entry1) || getEntry1(r);
+    var entry2 = toNum(r.entry2) || getEntry2(r);
+    var sl = toNum(r.sl || r.stop_loss);
+    var tp1 = toNum(r.tp1n || r.tp1);
+    var tp2 = toNum(r.tp2n || r.tp2);
+    lines.push((i + 1) + '. ' + sanitizeRadarDigestText(r.ticker, 16, '-') + ' — ' + source);
+    lines.push('Harga: ' + fmtPrice(r.lastn || r.last_price || r.current_price || r.close) + ' | Entry: ' + fmtPrice(entry1) + (entry2 > 0 ? '/' + fmtPrice(entry2) : '') + ' | SL: ' + fmtPrice(sl) + ' | TP: ' + fmtPrice(tp1) + (tp2 > 0 ? '/' + fmtPrice(tp2) : ''));
+    lines.push('RR: ' + fmtRR(r.risk_reward) + ' | Risk: ' + sanitizeRadarDigestText(deriveTelegramRiskLabel(r, mode || 'swing'), 40, '-'));
+    lines.push('Alasan Radar: ' + reason);
+    lines.push('');
+  });
+  if (lines[lines.length - 1] === '') lines.pop();
+  lines.push('Bukan rekomendasi beli. Pantauan, bukan sinyal entry.');
+  return lines.join('\n');
+}
+
 async function sendDailyTop5Telegram(supabase, picks, date, options) {
   options = options || {};
   var headerLines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date];
@@ -4606,7 +4672,14 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   if (options.previous_close_snapshot) emptyLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
   emptyLines.push('', 'Belum ada kandidat yang lolos final quality gate hari ini.', 'Bukan rekomendasi beli/jual. DYOR.');
   var safePicks = (picks || []).filter(function(p) { return candidatePassesPublicTelegramSafetyGate(p, 'daily_top5_send') && candidatePassesMinUpside(p); });
-  var sendResult = safePicks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null };
+  var radarPicks = safePicks.length === 0 ? selectRadarDigestCandidates(picks, 'top5_radar_digest', 5) : [];
+  var sendResult = safePicks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : (radarPicks.length > 0 ? await telegramNotifier.sendTelegramMessage(formatRadarDigestTelegramMessage(radarPicks, 'Top 5 Radar', 'swing')) : { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null });
+  if (safePicks.length === 0 && radarPicks.length > 0) {
+    sendResult.reason = sendResult.sent ? 'radar_digest_sent' : (sendResult.reason || 'telegram_send_failed');
+    sendResult.radar_sent = !!sendResult.sent;
+    sendResult.radar_count = radarPicks.length;
+    sendResult.radar_candidates = radarPicks.map(function(r) { return r.ticker; });
+  }
   var detailSent = 0;
   var detailResults = [];
   for (var i = 0; i < safePicks.length; i++) {
@@ -8931,6 +9004,19 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
 
     var headerNote = '';
     if (finalList.length === 0) {
+      var radarRows = selectRadarDigestCandidates(rows.map(function(r) { return attachFreshness(Object.assign({ category: 'Swing Konglo' }, r), swingMeta); }), 'swing_konglo_radar_digest', 5);
+      if (radarRows.length > 0) {
+        var radarMsg = formatRadarDigestTelegramMessage(radarRows, 'Swing Konglo Radar', 'swing');
+        var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
+        radarResult.reason = radarResult.sent ? 'radar_digest_sent' : (radarResult.reason || 'telegram_send_failed');
+        radarResult.radar_sent = !!radarResult.sent;
+        radarResult.radar_count = radarRows.length;
+        radarResult.radar_candidates = radarRows.map(function(r) { return r.ticker; });
+        radarResult.selected_count = 0;
+        radarResult.verified_count = verifiedRows.length;
+        radarResult.high_conviction_count = highConvictionRows.length;
+        return radarResult;
+      }
       var emptyResult = { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null };
       emptyResult.verified_count = verifiedRows.length;
       emptyResult.high_conviction_count = highConvictionRows.length;
@@ -8994,6 +9080,19 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
 
     var headerNote = '';
     if (finalList.length === 0) {
+      var radarRows = selectRadarDigestCandidates(rows.map(function(r) { return attachFreshness(Object.assign({ category: 'Swing Non-Konglo' }, r), swingMeta); }), 'swing_non_konglo_radar_digest', 5);
+      if (radarRows.length > 0) {
+        var radarMsg = formatRadarDigestTelegramMessage(radarRows, 'Swing Non-Konglo Radar', 'swing');
+        var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
+        radarResult.reason = radarResult.sent ? 'radar_digest_sent' : (radarResult.reason || 'telegram_send_failed');
+        radarResult.radar_sent = !!radarResult.sent;
+        radarResult.radar_count = radarRows.length;
+        radarResult.radar_candidates = radarRows.map(function(r) { return r.ticker; });
+        radarResult.selected_count = 0;
+        radarResult.verified_count = verifiedRows.length;
+        radarResult.high_conviction_count = highConvictionRows.length;
+        return radarResult;
+      }
       var emptyResult = { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null };
       emptyResult.verified_count = verifiedRows.length;
       emptyResult.high_conviction_count = highConvictionRows.length;
@@ -9037,6 +9136,9 @@ module.exports.__test = {
   classifyCandidateGateBucket: classifyCandidateGateBucket,
   buildGateCalibrationDiagnostics: buildGateCalibrationDiagnostics,
   formatDayTradeRadarTelegramMessage: formatDayTradeRadarTelegramMessage,
+  selectRadarDigestCandidates: selectRadarDigestCandidates,
+  formatRadarDigestTelegramMessage: formatRadarDigestTelegramMessage,
+  sendDailyTop5Telegram: sendDailyTop5Telegram,
   sendSwingKongloTelegramNotification: sendSwingKongloTelegramNotification,
   sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
   sendDayTradeTelegramNotification: sendDayTradeTelegramNotification,
