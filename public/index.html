@@ -7272,7 +7272,8 @@ function renderAdminNextTop5Preview(data) {
         return;
     }
     section.classList.remove('hidden');
-    if (updated) updated.textContent = 'Preview generated: ' + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
+    var sourceLabel = (data.admin_preview_source === 'cache') ? 'Preview (server cache): ' : 'Preview generated: ';
+    if (updated) updated.textContent = sourceLabel + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
     renderAdminNextTop5PreviewContent(data, list);
 }
 function renderAdminNextTop5PreviewContent(data, list) {
@@ -7466,7 +7467,7 @@ function openDashboardPickDetail(ticker) {
 async function loadDashboardTop5Monitor(silent, opts) {
     opts = opts || {};
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
-    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); renderAdminNextTop5Preview(null); return; }
+    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); renderAdminNextTop5Preview(_dashboardTop5Cache.data); return; }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
     // Always clear placeholders to prevent stuck static HTML state
     var _topEl = document.getElementById('dashboardTop5List');
@@ -7482,11 +7483,12 @@ async function loadDashboardTop5Monitor(silent, opts) {
     }, 5000);
     _dashboardTop5InFlight = (async function() {
     try {
-        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
+        var _dashFetchUrl = '/api/sector-hot?action=web-daily-picks' + (isAdmin() ? '&admin_preview=1' : '') + '&t=' + Date.now();
+        var fetched = await fetchDashboardJson(_dashFetchUrl, { headers: getDashboardAuthHeaders() }, 15000);
         var resp = fetched.resp;
         var data = fetched.data;
         if ((!data.success || data.auth_required || data.gated) && isLoggedInUser()) {
-            fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
+            fetched = await fetchDashboardJson(_dashFetchUrl, { headers: getDashboardAuthHeaders() }, 15000);
             resp = fetched.resp;
             data = fetched.data;
             if (data && (data.auth_required || data.gated)) throw new Error('Session perlu refresh/login ulang');
@@ -7496,7 +7498,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
         renderDashboardTop5MonitorData(data);
-        renderAdminNextTop5Preview(null);
+        renderAdminNextTop5Preview(data);
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');

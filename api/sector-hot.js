@@ -5457,10 +5457,12 @@ async function handleWebDailyPicks(req, res, supabase) {
     var staleNote = monitorStale ? 'Data monitor belum update terbaru.' : null;
     var adminPreviewExtra = {};
     if (req.query.admin_preview === '1' && await isDashboardAdminUser(req, supabase)) {
-      // Part A: Admin preview is lazy — only compute when generate_preview=1 is explicitly requested.
-      // Normal dashboard load with admin_preview=1 but WITHOUT generate_preview=1 returns a safe "not generated" state.
       var generatePreview = req.query.generate_preview === '1';
+      var _previewCacheKey = 'admin_top5_preview_cache';
+      var _todayWib = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
       if (generatePreview) {
+        // === GENERATE: heavy compute, then save to app_settings cache ===
         var _previewStartMs = Date.now();
         var _previewSelectMs = 0;
         var _previewCombinedMs = 0;
@@ -5472,7 +5474,7 @@ async function handleWebDailyPicks(req, res, supabase) {
           var previewRows = [];
           for (var k = 0; k < previewCandidates.length; k++) { var pr = buildFallbackDashboardPickRow(previewCandidates[k], k + 1); pr.is_preview = true; pr.is_provisional = true; pr.visibility = 'admin_preview'; pr.publication_status = 'provisional'; pr.preview_label = 'Preview'; pr.provisional_label = 'Provisional'; previewRows.push(pr); }
 
-          // Diagnostics are best-effort — if they fail or are slow, still return preview rows
+          // Diagnostics are best-effort
           var excludedRows = [];
           var potentialRows = [];
           var gateCalibration = null;
@@ -5497,6 +5499,7 @@ async function handleWebDailyPicks(req, res, supabase) {
             diagnosticsNote = 'Diagnostics belum tersedia: ' + (diagErr.message || 'timeout').substring(0, 60);
           }
 
+          var _generatedAt = new Date().toISOString();
           adminPreviewExtra = {
             admin_next_top5_preview: previewRows,
             admin_next_top5_preview_count: previewRows.length,
@@ -5505,15 +5508,42 @@ async function handleWebDailyPicks(req, res, supabase) {
             admin_next_top5_excluded_count: excludedRows.length,
             admin_next_top5_potential_radar_count: potentialRows.length,
             admin_gate_calibration_summary: gateCalibration,
-            admin_next_top5_preview_note: diagnosticsNote || 'Preview calon Top 5 besok khusus admin; Final/Locked tetap wajib lolos final quality gate.',
-            admin_next_top5_preview_generated_at: new Date().toISOString(),
+            admin_next_top5_preview_note: diagnosticsNote || 'Preview calon Top 5 besok khusus admin.',
+            admin_next_top5_preview_generated_at: _generatedAt,
+            admin_preview_source: 'generated',
+            admin_preview_generated: true,
+            admin_preview_cache_hit: false,
             admin_preview_select_top5_ms: _previewSelectMs,
             admin_preview_combined_candidates_ms: _previewCombinedMs,
             admin_preview_gate_calibration_ms: _previewGateMs,
             admin_preview_total_ms: Date.now() - _previewStartMs
           };
+
+          // Save to app_settings server-side cache (best-effort, don't block response)
+          try {
+            var _cachePayload = {
+              date: _todayWib,
+              generated_at: _generatedAt,
+              preview: previewRows.map(function(r) { var c = Object.assign({}, r); delete c.raw_payload; delete c.detail; return c; }),
+              preview_count: previewRows.length,
+              excluded: excludedRows,
+              excluded_count: excludedRows.length,
+              potential_radar: potentialRows,
+              potential_radar_count: potentialRows.length,
+              gate_calibration: gateCalibration,
+              note: diagnosticsNote || null,
+              select_top5_ms: _previewSelectMs,
+              total_ms: Date.now() - _previewStartMs
+            };
+            var _existingCache = await supabase.from('app_settings').select('key').eq('key', _previewCacheKey).maybeSingle();
+            if (_existingCache.data) {
+              await supabase.from('app_settings').update({ value: _cachePayload }).eq('key', _previewCacheKey);
+            } else {
+              await supabase.from('app_settings').insert({ key: _previewCacheKey, value: _cachePayload });
+            }
+          } catch (cacheWriteErr) { /* non-critical — frontend localStorage is fallback */ }
+
         } catch (previewErr) {
-          // selectDailyTop5 itself failed — return structured error
           adminPreviewExtra = {
             admin_next_top5_preview: [],
             admin_next_top5_preview_count: 0,
@@ -5528,25 +5558,67 @@ async function handleWebDailyPicks(req, res, supabase) {
             admin_preview_error_reason: (previewErr.message || 'preview_compute_failed').substring(0, 100),
             admin_preview_not_generated: true,
             admin_preview_can_generate: true,
+            admin_preview_source: 'error',
+            admin_preview_generated: false,
+            admin_preview_cache_hit: false,
             admin_preview_select_top5_ms: _previewSelectMs || 0,
             admin_preview_total_ms: Date.now() - _previewStartMs
           };
         }
       } else {
-        // Lazy state: admin preview not yet generated for this session
-        adminPreviewExtra = {
-          admin_next_top5_preview: [],
-          admin_next_top5_preview_count: 0,
-          admin_next_top5_excluded_preview: [],
-          admin_next_top5_potential_radar_preview: [],
-          admin_next_top5_excluded_count: 0,
-          admin_next_top5_potential_radar_count: 0,
-          admin_gate_calibration_summary: null,
-          admin_next_top5_preview_note: 'Preview admin belum dimuat. Klik Generate Admin Preview untuk menghitung.',
-          admin_next_top5_preview_generated_at: null,
-          admin_preview_not_generated: true,
-          admin_preview_can_generate: true
-        };
+        // === READ: try server-side cache from app_settings, return quickly ===
+        var _cacheReadStart = Date.now();
+        var _serverCache = null;
+        try {
+          var _cacheRes = await supabase.from('app_settings').select('value').eq('key', _previewCacheKey).maybeSingle();
+          if (_cacheRes.data && _cacheRes.data.value) {
+            var _cv = typeof _cacheRes.data.value === 'string' ? JSON.parse(_cacheRes.data.value) : _cacheRes.data.value;
+            if (_cv && _cv.date === _todayWib && _cv.preview && _cv.preview.length > 0) {
+              _serverCache = _cv;
+            }
+          }
+        } catch (cacheReadErr) { /* ignore — treat as no cache */ }
+        var _cacheReadMs = Date.now() - _cacheReadStart;
+
+        if (_serverCache) {
+          // Server cache hit — return cached preview quickly without heavy compute
+          adminPreviewExtra = {
+            admin_next_top5_preview: _serverCache.preview || [],
+            admin_next_top5_preview_count: _serverCache.preview_count || 0,
+            admin_next_top5_excluded_preview: _serverCache.excluded || [],
+            admin_next_top5_potential_radar_preview: _serverCache.potential_radar || [],
+            admin_next_top5_excluded_count: _serverCache.excluded_count || 0,
+            admin_next_top5_potential_radar_count: _serverCache.potential_radar_count || 0,
+            admin_gate_calibration_summary: _serverCache.gate_calibration || null,
+            admin_next_top5_preview_note: _serverCache.note || 'Preview dari cache server hari ini.',
+            admin_next_top5_preview_generated_at: _serverCache.generated_at || null,
+            admin_preview_source: 'cache',
+            admin_preview_generated: true,
+            admin_preview_cache_hit: true,
+            admin_preview_cache_read_ms: _cacheReadMs,
+            admin_preview_total_ms: _cacheReadMs
+          };
+        } else {
+          // No server cache for today — return not_generated state
+          adminPreviewExtra = {
+            admin_next_top5_preview: [],
+            admin_next_top5_preview_count: 0,
+            admin_next_top5_excluded_preview: [],
+            admin_next_top5_potential_radar_preview: [],
+            admin_next_top5_excluded_count: 0,
+            admin_next_top5_potential_radar_count: 0,
+            admin_gate_calibration_summary: null,
+            admin_next_top5_preview_note: 'Preview admin belum dimuat. Klik Generate Admin Preview untuk menghitung.',
+            admin_next_top5_preview_generated_at: null,
+            admin_preview_not_generated: true,
+            admin_preview_can_generate: true,
+            admin_preview_source: 'not_generated',
+            admin_preview_generated: false,
+            admin_preview_cache_hit: false,
+            admin_preview_cache_read_ms: _cacheReadMs,
+            admin_preview_total_ms: _cacheReadMs
+          };
+        }
       }
     }
     var responsePayload = Object.assign({
