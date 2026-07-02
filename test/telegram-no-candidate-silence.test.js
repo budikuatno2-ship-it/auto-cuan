@@ -40,7 +40,7 @@ async function withSendSpy(fn) {
 
 test('public Telegram no-candidate message is not sent for Swing Konglo', async () => {
   await withSendSpy(async (calls) => {
-    const result = await sectorHot.__test.sendSwingKongloTelegramNotification(makeSupabase({ swing_screener_latest: [row({ status: 'WATCHLIST', score: 65 })] }), 1);
+    const result = await sectorHot.__test.sendSwingKongloTelegramNotification(makeSupabase({ swing_screener_latest: [row({ status: 'WATCHLIST', score: 65, action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 1);
     assert.equal(result.skipped, true);
     assert.equal(result.reason, 'no_final_quality_gate_candidates_silent');
     assert.equal(calls.length, 0);
@@ -49,7 +49,7 @@ test('public Telegram no-candidate message is not sent for Swing Konglo', async 
 
 test('public Telegram no-candidate message is not sent for Swing Non-Konglo', async () => {
   await withSendSpy(async (calls) => {
-    const result = await sectorHot.__test.sendSwingNkTelegramNotification(makeSupabase({ swing_screener_non_konglo_latest: [row({ status: 'WATCHLIST', rank: 1 })] }), 1);
+    const result = await sectorHot.__test.sendSwingNkTelegramNotification(makeSupabase({ swing_screener_non_konglo_latest: [row({ status: 'WATCHLIST', rank: 1, action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 1);
     assert.equal(result.skipped, true);
     assert.equal(result.reason, 'no_final_quality_gate_candidates_silent');
     assert.equal(calls.length, 0);
