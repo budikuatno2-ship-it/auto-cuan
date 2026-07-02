@@ -60,3 +60,34 @@ test('admin preview cache stores only sanitized fields (no raw_payload/debug/int
   assert.ok(fnBody.indexOf('delete c.raw_payload') >= 0, 'strips raw_payload');
   assert.ok(fnBody.indexOf('delete c.detail') >= 0, 'strips detail');
 });
+
+test('global watchdog function clearStuckDashboardLoadingPlaceholders exists', () => {
+  assert.ok(html.indexOf('function clearStuckDashboardLoadingPlaceholders()') >= 0, 'watchdog function defined');
+  // Must check both Top 5 and Monitor textContent for loading text
+  const fnStart = html.indexOf('function clearStuckDashboardLoadingPlaceholders()');
+  const fnBody = html.slice(fnStart, fnStart + 800);
+  assert.ok(fnBody.indexOf('dashboardTop5List') >= 0, 'checks Top 5 element');
+  assert.ok(fnBody.indexOf('dashboardMonitorList') >= 0, 'checks Monitor element');
+  assert.ok(fnBody.indexOf("Memuat Top 5") >= 0, 'detects Top 5 loading text');
+  assert.ok(fnBody.indexOf("Memuat monitor") >= 0, 'detects Monitor loading text');
+  assert.ok(fnBody.indexOf('dashboardAwaitingLockedHtml') >= 0, 'replaces Top 5 with awaiting state');
+  assert.ok(fnBody.indexOf('dashboardEmptyHtml') >= 0, 'replaces Monitor with empty state');
+});
+
+test('global 8s watchdog setTimeout fires unconditionally (not inside loadDashboardTop5Monitor)', () => {
+  // The setTimeout(clearStuckDashboardLoadingPlaceholders, 8000) must exist at global scope
+  assert.ok(html.indexOf('setTimeout(clearStuckDashboardLoadingPlaceholders, 8000)') >= 0, 'global 8s timer exists');
+  // Must NOT be inside the loadDashboardTop5Monitor function
+  const loadFnStart = html.indexOf('async function loadDashboardTop5Monitor');
+  const loadFnEnd = html.indexOf('function renderDashboardTop5MonitorData');
+  const loadFnBody = html.slice(loadFnStart, loadFnEnd);
+  assert.ok(loadFnBody.indexOf('setTimeout(clearStuckDashboardLoadingPlaceholders') < 0, 'global timer must not be inside loadDashboardTop5Monitor');
+});
+
+test('static HTML does NOT show "Memuat Top 5..." or "Memuat monitor..." as default (safe fallback from page load)', () => {
+  // The static HTML within the dashboard section should use safe fallback, not loading text
+  const top5Static = html.slice(html.indexOf('id="dashboardTop5List"'), html.indexOf('id="dashboardTop5List"') + 200);
+  const monStatic = html.slice(html.indexOf('id="dashboardMonitorList"'), html.indexOf('id="dashboardMonitorList"') + 200);
+  assert.ok(top5Static.indexOf('Memuat Top 5') < 0, 'static Top 5 must not show loading text');
+  assert.ok(monStatic.indexOf('Memuat monitor') < 0, 'static Monitor must not show loading text');
+});
