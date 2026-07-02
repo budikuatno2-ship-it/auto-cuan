@@ -131,3 +131,19 @@ test('Avoid/Hindari/Very High Risk/weak liquidity/invalid plan/below SL/invalid 
   const selected = sectorHot.__test.selectRadarDigestCandidates(cases, 'swing_radar_digest', 5);
   assert.deepEqual(selected, []);
 });
+
+test('Radar digest selection sorts with numeric normalized scores and excludes high-score Hard Reject', () => {
+  const selected = sectorHot.__test.selectRadarDigestCandidates([
+    row({ ticker: 'LOWR', score: 80, display_score: 80 }),
+    row({ ticker: 'HARD100', score: 100, display_score: 100, action_label: 'Hindari', risk_label: 'Very High Risk' }),
+    row({ ticker: 'TOP100', score: 70, display_score: 100 }),
+    row({ ticker: 'MID90', score: 90, display_score: 90 })
+  ], 'swing_radar_digest', 5);
+  assert.deepEqual(selected.map((candidate) => candidate.ticker), ['TOP100', 'MID90', 'LOWR']);
+  assert.equal(selected.some((candidate) => candidate.ticker === 'HARD100'), false);
+  const scoreA = sectorHot.__test.getRadarDigestSortScore(selected[0]);
+  const scoreB = sectorHot.__test.getRadarDigestSortScore(selected[1]);
+  assert.equal(Number.isNaN(scoreA), false);
+  assert.equal(Number.isNaN(scoreB), false);
+  assert.equal(scoreA > scoreB, true);
+});

@@ -4597,9 +4597,20 @@ function rowToDailyPickCandidate(row) {
 }
 
 
+function getRadarDigestSortScore(candidate) {
+  var normalized = normalizeCandidateScoreForGate(candidate, 'radar_digest') || {};
+  var scores = [
+    toNum(normalized.display_score),
+    toNum(normalized.raw_score),
+    toNum(candidate && candidate.display_score),
+    toNum(candidate && (candidate.score || candidate.daily_score || candidate.daytrade_score))
+  ].filter(function(score) { return score != null && isFinite(score); });
+  return scores.length ? Math.max.apply(null, scores) : 0;
+}
+
 function sortRadarDigestCandidates(a, b) {
-  var scoreA = normalizeCandidateScoreForGate(a, 'radar_digest') || toNum(a && (a.display_score || a.score || a.daily_score || a.daytrade_score)) || 0;
-  var scoreB = normalizeCandidateScoreForGate(b, 'radar_digest') || toNum(b && (b.display_score || b.score || b.daily_score || b.daytrade_score)) || 0;
+  var scoreA = getRadarDigestSortScore(a);
+  var scoreB = getRadarDigestSortScore(b);
   if (scoreB !== scoreA) return scoreB - scoreA;
   var rrA = toNum(a && a.risk_reward) || 0;
   var rrB = toNum(b && b.risk_reward) || 0;
@@ -9136,6 +9147,7 @@ module.exports.__test = {
   classifyCandidateGateBucket: classifyCandidateGateBucket,
   buildGateCalibrationDiagnostics: buildGateCalibrationDiagnostics,
   formatDayTradeRadarTelegramMessage: formatDayTradeRadarTelegramMessage,
+  getRadarDigestSortScore: getRadarDigestSortScore,
   selectRadarDigestCandidates: selectRadarDigestCandidates,
   formatRadarDigestTelegramMessage: formatRadarDigestTelegramMessage,
   sendDailyTop5Telegram: sendDailyTop5Telegram,
