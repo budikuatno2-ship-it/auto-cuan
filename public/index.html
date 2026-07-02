@@ -7580,15 +7580,41 @@ async function loadAdminNextTop5Preview() {
     var list = document.getElementById('adminNextTop5PreviewList');
     if (section) section.classList.remove('hidden');
     if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Menghitung preview admin...</div>';
+    var cached = _getAdminPreviewCache();
     try {
-        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&admin_preview=1&generate_preview=1&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
+        // Admin preview uses longer timeout (45s) — heavy compute on backend
+        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&admin_preview=1&generate_preview=1&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 45000);
         var data = fetched.data;
-        if (data && data.success) {
+        if (data && data.success && !data.admin_preview_error) {
             _setAdminPreviewCache(data);
             renderAdminNextTop5Preview(data);
-        } else { if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-red-400">Preview gagal dimuat. Coba refresh.</div>'; }
+        } else {
+            // API returned but with error or admin_preview_error
+            var reason = (data && data.admin_preview_error_reason) || (data && data.error) || 'server_error';
+            _renderAdminPreviewFailure(reason, cached, list, section);
+        }
     } catch(e) {
-        if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-red-400">Preview gagal dimuat. Coba refresh.</div>';
+        // Network/timeout error
+        var reason = (e && e.name === 'AbortError') ? 'timeout' : ((e && e.message) || 'network_error');
+        _renderAdminPreviewFailure(reason, cached, list, section);
+    }
+}
+
+function _renderAdminPreviewFailure(reason, cached, list, section) {
+    var reasonShort = String(reason || 'unknown').substring(0, 60);
+    if (cached && cached.admin_next_top5_preview && cached.admin_next_top5_preview.length > 0) {
+        // Keep showing cached preview with warning
+        renderAdminNextTop5Preview(cached);
+        var updated = document.getElementById('adminNextTop5PreviewUpdated');
+        if (updated) updated.textContent = 'Refresh gagal, menampilkan cache terakhir. (' + dashWibTime(cached.generated_at) + ' WIB)';
+        // Prepend warning to list
+        if (list) {
+            var warnHtml = '<div class="mb-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">Refresh gagal: ' + escapeHtml(reasonShort) + '. Menampilkan cache terakhir. <button onclick="loadAdminNextTop5Preview()" class="ml-2 underline text-amber-300">Coba Lagi</button></div>';
+            list.innerHTML = warnHtml + list.innerHTML;
+        }
+    } else {
+        // No cache — show error with reason and retry button
+        if (list) list.innerHTML = '<div class="py-3 text-center"><p class="text-[11px] text-red-400 mb-2">Preview gagal dimuat: ' + escapeHtml(reasonShort) + '.</p><button onclick="loadAdminNextTop5Preview()" class="px-3 py-1.5 rounded-lg text-[11px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition font-medium">Coba Lagi</button></div>';
     }
 }
 

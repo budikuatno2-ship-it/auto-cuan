@@ -5461,33 +5461,77 @@ async function handleWebDailyPicks(req, res, supabase) {
       // Normal dashboard load with admin_preview=1 but WITHOUT generate_preview=1 returns a safe "not generated" state.
       var generatePreview = req.query.generate_preview === '1';
       if (generatePreview) {
-        var previewCandidates = await selectDailyTop5(supabase);
-        var previewRows = [];
-        for (var k = 0; k < previewCandidates.length; k++) { var pr = buildFallbackDashboardPickRow(previewCandidates[k], k + 1); pr.is_preview = true; pr.is_provisional = true; pr.visibility = 'admin_preview'; pr.publication_status = 'provisional'; pr.preview_label = 'Preview'; pr.provisional_label = 'Provisional'; previewRows.push(pr); }
-        var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
-        var excludedRows = [];
-        var potentialRows = [];
-        var gateCalibration = buildGateCalibrationDiagnostics(allPreviewCandidates, 'admin_preview');
-        for (var prx = 0; prx < allPreviewCandidates.length && potentialRows.length < 5; prx++) {
-          var pc = allPreviewCandidates[prx];
-          var pb = classifyCandidateGateBucket(pc, 'admin_preview_potential');
-          if (pb.gate_bucket === 'RADAR') potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', gate_bucket: pb.gate_bucket, gate_bucket_reason: pb.gate_bucket_reason, radar_reason: pb.gate_bucket_reason });
+        var _previewStartMs = Date.now();
+        var _previewSelectMs = 0;
+        var _previewCombinedMs = 0;
+        var _previewGateMs = 0;
+        try {
+          var _t0 = Date.now();
+          var previewCandidates = await selectDailyTop5(supabase);
+          _previewSelectMs = Date.now() - _t0;
+          var previewRows = [];
+          for (var k = 0; k < previewCandidates.length; k++) { var pr = buildFallbackDashboardPickRow(previewCandidates[k], k + 1); pr.is_preview = true; pr.is_provisional = true; pr.visibility = 'admin_preview'; pr.publication_status = 'provisional'; pr.preview_label = 'Preview'; pr.provisional_label = 'Provisional'; previewRows.push(pr); }
+
+          // Diagnostics are best-effort — if they fail or are slow, still return preview rows
+          var excludedRows = [];
+          var potentialRows = [];
+          var gateCalibration = null;
+          var diagnosticsNote = null;
+          try {
+            var _t1 = Date.now();
+            var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
+            _previewCombinedMs = Date.now() - _t1;
+            var _t2 = Date.now();
+            gateCalibration = buildGateCalibrationDiagnostics(allPreviewCandidates, 'admin_preview');
+            _previewGateMs = Date.now() - _t2;
+            for (var prx = 0; prx < allPreviewCandidates.length && potentialRows.length < 5; prx++) {
+              var pc = allPreviewCandidates[prx];
+              var pb = classifyCandidateGateBucket(pc, 'admin_preview_potential');
+              if (pb.gate_bucket === 'RADAR') potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', gate_bucket: pb.gate_bucket, gate_bucket_reason: pb.gate_bucket_reason, radar_reason: pb.gate_bucket_reason });
+            }
+            for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
+              var eb = classifyCandidateGateBucket(allPreviewCandidates[ex], 'admin_preview_excluded');
+              if (eb.gate_bucket === 'HARD_REJECT') excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, gate_bucket: eb.gate_bucket, excluded_reason: eb.gate_bucket_reason });
+            }
+          } catch (diagErr) {
+            diagnosticsNote = 'Diagnostics belum tersedia: ' + (diagErr.message || 'timeout').substring(0, 60);
+          }
+
+          adminPreviewExtra = {
+            admin_next_top5_preview: previewRows,
+            admin_next_top5_preview_count: previewRows.length,
+            admin_next_top5_excluded_preview: excludedRows,
+            admin_next_top5_potential_radar_preview: potentialRows,
+            admin_next_top5_excluded_count: excludedRows.length,
+            admin_next_top5_potential_radar_count: potentialRows.length,
+            admin_gate_calibration_summary: gateCalibration,
+            admin_next_top5_preview_note: diagnosticsNote || 'Preview calon Top 5 besok khusus admin; Final/Locked tetap wajib lolos final quality gate.',
+            admin_next_top5_preview_generated_at: new Date().toISOString(),
+            admin_preview_select_top5_ms: _previewSelectMs,
+            admin_preview_combined_candidates_ms: _previewCombinedMs,
+            admin_preview_gate_calibration_ms: _previewGateMs,
+            admin_preview_total_ms: Date.now() - _previewStartMs
+          };
+        } catch (previewErr) {
+          // selectDailyTop5 itself failed — return structured error
+          adminPreviewExtra = {
+            admin_next_top5_preview: [],
+            admin_next_top5_preview_count: 0,
+            admin_next_top5_excluded_preview: [],
+            admin_next_top5_potential_radar_preview: [],
+            admin_next_top5_excluded_count: 0,
+            admin_next_top5_potential_radar_count: 0,
+            admin_gate_calibration_summary: null,
+            admin_next_top5_preview_note: 'Preview compute gagal: ' + (previewErr.message || 'unknown').substring(0, 80),
+            admin_next_top5_preview_generated_at: null,
+            admin_preview_error: true,
+            admin_preview_error_reason: (previewErr.message || 'preview_compute_failed').substring(0, 100),
+            admin_preview_not_generated: true,
+            admin_preview_can_generate: true,
+            admin_preview_select_top5_ms: _previewSelectMs || 0,
+            admin_preview_total_ms: Date.now() - _previewStartMs
+          };
         }
-        for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
-          var eb = classifyCandidateGateBucket(allPreviewCandidates[ex], 'admin_preview_excluded');
-          if (eb.gate_bucket === 'HARD_REJECT') excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, gate_bucket: eb.gate_bucket, excluded_reason: eb.gate_bucket_reason });
-        }
-        adminPreviewExtra = {
-          admin_next_top5_preview: previewRows,
-          admin_next_top5_preview_count: previewRows.length,
-          admin_next_top5_excluded_preview: excludedRows,
-          admin_next_top5_potential_radar_preview: potentialRows,
-          admin_next_top5_excluded_count: excludedRows.length,
-          admin_next_top5_potential_radar_count: potentialRows.length,
-          admin_gate_calibration_summary: gateCalibration,
-          admin_next_top5_preview_note: 'Preview calon Top 5 besok khusus admin; Final/Locked tetap wajib lolos final quality gate. Potential Radar/Watchlist menampung kandidat pantauan non-sinyal. Excluded by Guard ditampilkan ringkas untuk audit admin.',
-          admin_next_top5_preview_generated_at: new Date().toISOString()
-        };
       } else {
         // Lazy state: admin preview not yet generated for this session
         adminPreviewExtra = {
