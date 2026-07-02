@@ -441,8 +441,10 @@ function Print-DayTradeTelegramDiagnostics($data) {
     elseif ($data.reason) { Write-Host "  Telegram reason: $($data.reason)" }
     if ($null -ne $data.radar_requested) { Write-Host "  Radar requested: $($data.radar_requested)" }
     elseif ($data.telegram -and $null -ne $data.telegram.radar_requested) { Write-Host "  Radar requested: $($data.telegram.radar_requested)" }
-    if ($null -ne $data.radar_count) { Write-Host "  Radar count: $($data.radar_count)" }
-    elseif ($data.telegram -and $null -ne $data.telegram.radar_count) { Write-Host "  Radar count: $($data.telegram.radar_count)" }
+    $diag = if ($data.diagnostics) { $data.diagnostics } elseif ($data.telegram) { $data.telegram.diagnostics } else { $null }
+    if ($diag -and $null -ne $diag.signal_count) { Write-Host "  Gate buckets: Signal $($diag.signal_count) | Radar $($diag.radar_count) | Hard Reject $($diag.hard_reject_count)" }
+    if ($null -ne $data.radar_count) { Write-Host "  Radar fallback count: $($data.radar_count)" }
+    elseif ($data.telegram -and $null -ne $data.telegram.radar_count) { Write-Host "  Radar fallback count: $($data.telegram.radar_count)" }
     if ($data.radar_candidates) { Write-Host "  Radar candidates: $($data.radar_candidates -join ', ')" }
     elseif ($data.telegram -and $data.telegram.radar_candidates) { Write-Host "  Radar candidates: $($data.telegram.radar_candidates -join ', ')" }
     if ($null -ne $data.radar_blocked_count) { Write-Host "  Radar blocked count: $($data.radar_blocked_count)" }
@@ -450,10 +452,12 @@ function Print-DayTradeTelegramDiagnostics($data) {
     $radarReasons = if ($data.radar_rejection_reasons) { $data.radar_rejection_reasons } elseif ($data.telegram) { $data.telegram.radar_rejection_reasons } else { $null }
     $radarReasonText = Format-TopReasons $radarReasons 5
     if ($radarReasonText) { Write-Host "  Top radar rejection reasons: $radarReasonText" }
-    $diag = if ($data.diagnostics) { $data.diagnostics } elseif ($data.telegram) { $data.telegram.diagnostics } else { $null }
+    if ($data.telegram -and $data.telegram.radar_skipped_reason) { Write-Host "  Radar skipped reason: $($data.telegram.radar_skipped_reason)" }
     if ($diag) {
         $topText = Format-TopReasons $diag.top_rejection_reasons 5
         if ($topText) { Write-Host "  Top rejection reasons: $topText" }
+        $hardText = Format-TopReasons $diag.top_hard_reject_reasons 5
+        if ($hardText) { Write-Host "  Top hard reject reasons: $hardText" }
         $sampleText = Format-RejectedSamples $diag.sample_rejected 5
         if ($sampleText) { Write-Host "  Sample rejected: $sampleText" }
         $sampleRadarText = Format-RejectedSamples $diag.sample_radar_rejected 5

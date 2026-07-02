@@ -185,3 +185,25 @@ test('gate calibration diagnostics classifies every candidate into one bucket', 
   assert.equal(d.excluded_by_guard, 1);
   assert.equal(d.top_radar_reasons.WATCH_BREAKOUT, 1);
 });
+
+test('Hard Reject with raw score 100 produces capped blocked display score', () => {
+  const display = sectorHot.__test.normalizeCandidateScoreForGate(base({ daytrade_score: 100, action_label: 'Hindari' }), 'daytrade');
+  assert.equal(display.gate_bucket, 'HARD_REJECT');
+  assert.equal(display.display_score, 60);
+  assert.equal(display.raw_score, 100);
+  assert.equal(display.score_capped_by_gate, true);
+});
+
+test('Radar with raw score 100 remains Radar display and not Signal', () => {
+  const display = sectorHot.__test.normalizeCandidateScoreForGate(base({ daytrade_score: 100, final_quality_pass: false, final_quality_status: 'needs close confirmation', status: 'WAIT_PULLBACK' }), 'daytrade');
+  assert.equal(display.gate_bucket, 'RADAR');
+  assert.equal(display.display_score, 100);
+  assert.equal(display.score_display_label, 'Radar / Watchlist, bukan Signal');
+});
+
+test('Signal valid keeps normal display score', () => {
+  const display = sectorHot.__test.normalizeCandidateScoreForGate(base({ daytrade_score: 91, telegram_verdict: 'Entry valid dengan risk terukur.', status: 'READY_BREAKOUT', breakout_confirmation_status: 'CONFIRMED' }), 'daytrade');
+  assert.equal(display.gate_bucket, 'SIGNAL');
+  assert.equal(display.display_score, 91);
+  assert.equal(display.score_capped_by_gate, false);
+});

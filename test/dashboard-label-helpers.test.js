@@ -62,3 +62,14 @@ test('dashboard execution reality wording dedupes repeated realistic price notes
   const line = helpers.dashExecutionRealityLine({ execution_reality_label: 'Butuh harga realistis', execution_reality_status: 'UNKNOWN_LIMITS' });
   assert.equal(line, 'Butuh harga realistis');
 });
+
+test('dashboard gate score helper renders hard reject score safely', () => {
+  const hard = helpers.normalizeGateScoreDisplay({ daytrade_score: 100, gate_bucket: 'HARD_REJECT', gate_bucket_reason: 'Hindari' });
+  assert.equal(hard.bucket, 'HARD_REJECT');
+  assert.equal(hard.score, 60);
+  assert.equal(hard.capped, true);
+  assert.equal(hard.colorClass.includes('red'), true);
+  const radar = helpers.normalizeGateScoreDisplay({ daytrade_score: 100, gate_bucket: 'RADAR', gate_bucket_reason: 'WAIT_PULLBACK' });
+  assert.equal(radar.bucket, 'RADAR');
+  assert.equal(radar.score, 100);
+});

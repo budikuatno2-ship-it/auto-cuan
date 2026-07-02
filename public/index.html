@@ -1791,9 +1791,10 @@ function renderShareDt(d) {
     sorted.forEach(function(r) {
         var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
         var stColor = r.status === 'A_PLUS_SETUP' ? 'bg-emerald-500/20 text-emerald-300' : (r.status === 'TRADE_CANDIDATE' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'READY_BREAKOUT' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'EARLY_RADAR' ? 'bg-violet-500/15 text-violet-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'bg-cyan-500/15 text-cyan-400' : (r.status === 'AVOID' ? 'bg-red-500/10 text-red-400' : (r.status === 'WAIT_PULLBACK' ? 'bg-orange-500/15 text-orange-400' : 'bg-gray-500/15 text-gray-400')))))));
-        var scoreColor = r.daytrade_score >= 88 ? 'text-emerald-300 font-bold' : (r.daytrade_score >= 82 ? 'text-emerald-400 font-bold' : (r.daytrade_score >= 70 ? 'text-blue-400' : (r.daytrade_score >= 50 ? 'text-amber-400' : 'text-red-400')));
+        var gateScore = normalizeGateScoreDisplay(r);
+        var scoreColor = gateScore.colorClass;
         var entryStr = (r.entry_low != null && r.entry_high != null) ? r.entry_low + '-' + r.entry_high : '—';
-        var statusLabel = (r.status || '—').replace(/_/g, ' ');
+        var statusLabel = gateScore.bucket === 'HARD_REJECT' ? 'Hard Reject / Hindari' : (gateScore.bucket === 'RADAR' ? 'Radar / Watchlist' : (r.status || '—').replace(/_/g, ' '));
         var confLabel = r.confidence || '-';
         var timingLabel = r.entry_timing || '-';
         var dirLabel = r.direction || '-';
@@ -1801,7 +1802,7 @@ function renderShareDt(d) {
         var dirColor = (dirLabel.indexOf('naik kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('naik moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('radar') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
         html += '<tr class="border-b border-dark-700/30 hover:bg-dark-700/20">';
         html += '<td class="px-2 py-1.5 font-medium text-white whitespace-nowrap">' + r.ticker + '</td>';
-        html += '<td class="px-2 py-1.5 text-center ' + scoreColor + '">' + (r.daytrade_score || '—') + '</td>';
+        html += '<td class="px-2 py-1.5 text-center ' + scoreColor + '" title="' + (gateScore.label + (gateScore.reason ? ' · ' + gateScore.reason : '')).replace(/"/g, '&quot;') + '">' + gateScore.score + (gateScore.capped ? ' (Blocked)' : '') + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + stColor + '">' + statusLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
@@ -5105,6 +5106,20 @@ function normalizeActionLabel(label) {
     if (compact === 'final' || compact === 'locked' || compact === 'final locked') return 'Final / Locked';
     if (compact === 'preview' || compact === 'provisional' || compact === 'preview provisional') return 'Preview / Provisional';
     return text.replace(/_/g, ' ');
+}
+
+function normalizeGateScoreDisplay(r) {
+    r = r || {};
+    var bucket = safeDisplayText(r.gate_bucket || r.gateBucket, '').toUpperCase();
+    var reason = safeDisplayText(r.gate_bucket_reason || r.gateBucketReason || r.radar_reason || r.status, '');
+    var raw = Number(r.display_score != null ? r.display_score : (r.daytrade_score != null ? r.daytrade_score : r.score));
+    if (!isFinite(raw)) raw = null;
+    var hardText = [bucket, reason, r.action_label, r.signal_action_label, r.action, r.direction, r.entry_timing, r.risk_label, r.risk].map(function(v) { return safeDisplayText(v, '').toLowerCase(); }).join(' ');
+    var isHardReject = bucket === 'HARD_REJECT' || hardText.indexOf('hindari') >= 0 || hardText.indexOf('avoid') >= 0 || hardText.indexOf('very high risk') >= 0 || hardText.indexOf('stale') >= 0;
+    var isRadar = !isHardReject && (bucket === 'RADAR' || hardText.indexOf('wait_pullback') >= 0 || hardText.indexOf('watch_breakout') >= 0 || hardText.indexOf('wait close') >= 0 || hardText.indexOf('radar') >= 0 || hardText.indexOf('watchlist') >= 0);
+    if (isHardReject) return { score: raw == null ? 'Blocked' : Math.min(raw, 60), label: 'Hard Reject / Hindari', reason: reason || 'Blocked by gate', colorClass: 'text-red-300 font-bold', bucket: 'HARD_REJECT', capped: raw != null && raw > 60 };
+    if (isRadar) return { score: raw == null ? '—' : raw, label: 'Radar / Watchlist, bukan Signal', reason: reason || 'Watchlist', colorClass: 'text-violet-300 font-bold', bucket: 'RADAR', capped: false };
+    return { score: raw == null ? '—' : raw, label: 'Signal', reason: reason || 'Signal', colorClass: raw >= 88 ? 'text-emerald-300 font-bold' : (raw >= 82 ? 'text-emerald-400 font-bold' : (raw >= 70 ? 'text-blue-400' : (raw >= 50 ? 'text-amber-400' : 'text-red-400'))), bucket: 'SIGNAL', capped: false };
 }
 
 function fmtForeignFlowVal(v) {
