@@ -7446,13 +7446,18 @@ async function loadDashboardTop5Monitor(silent, opts) {
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); if (opts.loadAdminPreview === true) loadAdminNextTop5Preview(); return; }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
+    // Clear loading states immediately — mutually exclusive: loading replaces any stale content
+    var _topEl = document.getElementById('dashboardTop5List');
+    var _monEl = document.getElementById('dashboardMonitorList');
+    if (_topEl && !silent) _topEl.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Memuat Top 5...</div>';
+    if (_monEl && !silent) _monEl.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Memuat monitor...</div>';
     _dashboardTop5InFlight = (async function() {
     try {
-        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 12000);
+        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
         var resp = fetched.resp;
         var data = fetched.data;
         if ((!data.success || data.auth_required || data.gated) && isLoggedInUser()) {
-            fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 12000);
+            fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
             resp = fetched.resp;
             data = fetched.data;
             if (data && (data.auth_required || data.gated)) throw new Error('Session perlu refresh/login ulang');
@@ -7466,9 +7471,10 @@ async function loadDashboardTop5Monitor(silent, opts) {
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
-        if (top) top.innerHTML = dashboardEmptyHtml(e && e.message === 'Session perlu refresh/login ulang' ? 'Session perlu refresh/login ulang' : DASHBOARD_ERROR_TEXT, e && e.message === 'Session perlu refresh/login ulang' ? 'amber' : 'error');
+        var isSessionErr = e && e.message === 'Session perlu refresh/login ulang';
+        if (top) top.innerHTML = dashboardEmptyHtml(isSessionErr ? 'Session perlu refresh/login ulang' : DASHBOARD_ERROR_TEXT, isSessionErr ? 'amber' : 'error');
         var note = document.getElementById('dashboardTop5LockNote');
-        if (note) note.textContent = 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.';
+        if (note) note.textContent = '';
         if (mon) mon.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
         renderAdminNextTop5Preview(null);
     } finally { _dashboardTop5InFlight = null; }
@@ -7482,10 +7488,15 @@ function renderDashboardTop5MonitorData(data) {
     if (data.top5_source === 'awaiting_locked_rows') {
         var topEl = document.getElementById('dashboardTop5List');
         if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data.update_note);
+        // Also clear monitor when no Top 5 locked
+        var monEl = document.getElementById('dashboardMonitorList');
+        if (monEl) monEl.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
+        var upd = document.getElementById('dashboardMonitorUpdated');
+        if (upd) upd.textContent = 'Terakhir update: \u2014 WIB';
     } else {
         renderDashboardTop5(data.top5 || data.picks || []);
+        renderDashboardMonitor(data.monitor || [], data.monitor_last_updated_at || data.last_updated_at, data);
     }
-    renderDashboardMonitor(data.monitor || [], data.monitor_last_updated_at || data.last_updated_at, data);
 }
 
 async function loadAdminNextTop5Preview() {
