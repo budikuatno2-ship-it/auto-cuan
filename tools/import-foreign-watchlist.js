@@ -107,7 +107,8 @@ function readRows(csvPath) {
 
 async function deleteOldRows(supabase, tickers) {
   let deleted = 0;
-  for (const ticker of tickers) {
+  const RETENTION_CHUNK = 8;
+  async function cleanupTicker(ticker) {
     const { data: dateRows, error: dateErr } = await supabase
       .from(TABLE)
       .select('trade_date')
@@ -117,7 +118,7 @@ async function deleteOldRows(supabase, tickers) {
 
     const uniqueDates = Array.from(new Set((dateRows || []).map((r) => r.trade_date))).filter(Boolean);
     const keepDates = uniqueDates.slice(0, 7);
-    if (uniqueDates.length <= 7) continue;
+    if (uniqueDates.length <= 7) return 0;
 
     const { data: oldRows, error: oldErr } = await supabase
       .from(TABLE)
@@ -126,13 +127,41 @@ async function deleteOldRows(supabase, tickers) {
       .not('trade_date', 'in', '(' + keepDates.join(',') + ')');
     if (oldErr) throw new Error('Retention lookup failed for ' + ticker + ': ' + oldErr.message);
     const oldIds = (oldRows || []).map((r) => r.id);
-    if (oldIds.length === 0) continue;
+    if (oldIds.length === 0) return 0;
 
     const { error: delErr } = await supabase.from(TABLE).delete().in('id', oldIds);
     if (delErr) throw new Error('Retention delete failed for ' + ticker + ': ' + delErr.message);
-    deleted += oldIds.length;
+    return oldIds.length;
+  }
+  // Parallelize retention in bounded chunks (was fully sequential — slow for many tickers).
+  for (let i = 0; i < tickers.length; i += RETENTION_CHUNK) {
+    const chunk = tickers.slice(i, i + RETENTION_CHUNK);
+    const results = await Promise.all(chunk.map(cleanupTicker));
+    results.forEach((n) => { deleted += n; });
   }
   return deleted;
+}
+
+function delay(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+async function upsertChunkWithRetry(supabase, chunk, chunkLabel, maxAttempts) {
+  maxAttempts = maxAttempts || 3;
+  let lastErr = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const { data, error } = await supabase.from(TABLE).upsert(chunk, { onConflict: 'trade_date,ticker' }).select('ticker,trade_date');
+      if (error) throw new Error(error.message);
+      return { data: data, attempts: attempt };
+    } catch (e) {
+      lastErr = e;
+      if (attempt < maxAttempts) {
+        const backoffMs = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+        console.log('[import-foreign-watchlist] ' + chunkLabel + ' attempt ' + attempt + ' failed: ' + (e.message || e) + ' — retrying in ' + backoffMs + 'ms');
+        await delay(backoffMs);
+      }
+    }
+  }
+  throw new Error(chunkLabel + ' failed after ' + maxAttempts + ' attempts: ' + (lastErr ? lastErr.message : 'unknown'));
 }
 
 async function main() {
@@ -150,8 +179,21 @@ async function main() {
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data, error } = await supabase.from(TABLE).upsert(rows, { onConflict: 'trade_date,ticker' }).select('ticker,trade_date');
-  if (error) throw new Error('Upsert failed: ' + error.message);
+
+  // Chunked upsert with retry — smaller chunks avoid timeouts; idempotent on (trade_date,ticker).
+  const UPSERT_CHUNK = 200;
+  let upsertReturned = 0;
+  let totalRetryAttempts = 0;
+  for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
+    const chunk = rows.slice(i, i + UPSERT_CHUNK);
+    const chunkNum = Math.floor(i / UPSERT_CHUNK) + 1;
+    const chunkTotal = Math.ceil(rows.length / UPSERT_CHUNK);
+    const label = 'Batch ' + chunkNum + '/' + chunkTotal + ' (' + chunk.length + ' rows)';
+    const result = await upsertChunkWithRetry(supabase, chunk, label, 3);
+    upsertReturned += (result.data && result.data.length) || chunk.length;
+    totalRetryAttempts += (result.attempts - 1);
+    console.log('[import-foreign-watchlist] ' + label + ' OK (attempt ' + result.attempts + ')');
+  }
 
   const tickers = Array.from(new Set(rows.map((r) => r.ticker))).sort();
   const deleted = await deleteOldRows(supabase, tickers);
@@ -159,8 +201,8 @@ async function main() {
 
   console.log('Foreign watchlist import summary');
   console.log('Imported rows: ' + rows.length);
-  console.log('Updated rows: n/a (Supabase upsert does not distinguish inserts vs updates here)');
-  console.log('Upsert returned rows: ' + ((data && data.length) || 0));
+  console.log('Upsert returned rows: ' + upsertReturned);
+  console.log('Retry attempts (extra): ' + totalRetryAttempts);
   console.log('Deleted old rows: ' + deleted);
   console.log('Ticker count: ' + tickers.length);
   console.log('Latest date: ' + latestDate);

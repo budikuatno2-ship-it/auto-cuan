@@ -2839,8 +2839,9 @@ function parseForeignImportCsv(csvText) {
 
 async function deleteOldForeignRows(supabase, tickers) {
   var deleted = 0;
-  for (var i = 0; i < tickers.length; i++) {
-    var ticker = tickers[i];
+  // Parallelize retention cleanup in bounded chunks (was fully sequential — caused batch timeouts).
+  var RETENTION_CHUNK = 8;
+  async function cleanupTicker(ticker) {
     var dateRes = await supabase
       .from('foreign_watchlist_daily')
       .select('trade_date')
@@ -2857,7 +2858,7 @@ async function deleteOldForeignRows(supabase, tickers) {
       }
     });
     var keepDates = uniqueDates.slice(0, 7);
-    if (uniqueDates.length <= 7) continue;
+    if (uniqueDates.length <= 7) return 0;
 
     var oldRes = await supabase
       .from('foreign_watchlist_daily')
@@ -2866,11 +2867,16 @@ async function deleteOldForeignRows(supabase, tickers) {
       .not('trade_date', 'in', '(' + keepDates.join(',') + ')');
     if (oldRes.error) throw new Error('Retention lookup failed for ' + ticker + ': ' + oldRes.error.message);
     var oldIds = (oldRes.data || []).map(function(r) { return r.id; });
-    if (oldIds.length === 0) continue;
+    if (oldIds.length === 0) return 0;
 
     var delRes = await supabase.from('foreign_watchlist_daily').delete().in('id', oldIds);
     if (delRes.error) throw new Error('Retention delete failed for ' + ticker + ': ' + delRes.error.message);
-    deleted += oldIds.length;
+    return oldIds.length;
+  }
+  for (var i = 0; i < tickers.length; i += RETENTION_CHUNK) {
+    var chunk = tickers.slice(i, i + RETENTION_CHUNK);
+    var results = await Promise.all(chunk.map(cleanupTicker));
+    results.forEach(function(n) { deleted += n; });
   }
   return deleted;
 }
@@ -2880,34 +2886,62 @@ async function handleForeignImportUpload(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, error: 'Unauthorized.' });
 
   var errors = [];
+  var _uploadStartMs = Date.now();
   try {
+    // Batch-friendly params (all optional, backward compatible):
+    //   skip_retention=1  -> skip the per-ticker retention delete (use on intermediate batches to avoid timeout)
+    //   batch_index / batch_total -> informational; retention auto-runs only on the final batch when provided
+    var skipRetentionParam = String(req.query.skip_retention || '') === '1';
+    var batchIndex = req.query.batch_index != null ? parseInt(req.query.batch_index, 10) : null;
+    var batchTotal = req.query.batch_total != null ? parseInt(req.query.batch_total, 10) : null;
+    var isFinalBatch = (batchIndex != null && batchTotal != null && isFinite(batchIndex) && isFinite(batchTotal)) ? (batchIndex >= batchTotal - 1) : true;
+    // Retention runs when NOT explicitly skipped AND (no batch info OR this is the final batch).
+    var runRetention = !skipRetentionParam && isFinalBatch;
+
     var csvText = await getRawRequestBody(req);
     var rows = parseForeignImportCsv(csvText);
     if (rows.length === 0) {
       return res.status(200).json({ success: false, imported_count: 0, upserted_count: 0, deleted_old_count: 0, errors: ['CSV kosong atau tidak berisi data.'] });
     }
 
-    var upsertRes = await supabase
-      .from('foreign_watchlist_daily')
-      .upsert(rows, { onConflict: 'trade_date,ticker' })
-      .select('ticker,trade_date');
-    if (upsertRes.error) throw new Error('Upsert failed: ' + upsertRes.error.message);
+    // Chunked upsert — idempotent on (trade_date,ticker), so retrying a batch never duplicates/corrupts.
+    var UPSERT_CHUNK = 200;
+    var upsertedCount = 0;
+    for (var ui = 0; ui < rows.length; ui += UPSERT_CHUNK) {
+      var upChunk = rows.slice(ui, ui + UPSERT_CHUNK);
+      var upsertRes = await supabase
+        .from('foreign_watchlist_daily')
+        .upsert(upChunk, { onConflict: 'trade_date,ticker' })
+        .select('ticker,trade_date');
+      if (upsertRes.error) throw new Error('Upsert failed: ' + upsertRes.error.message);
+      upsertedCount += (upsertRes.data && upsertRes.data.length) || upChunk.length;
+    }
 
-    var tickerMap = {};
-    rows.forEach(function(r) { tickerMap[r.ticker] = true; });
-    var tickers = Object.keys(tickerMap).sort();
-    var deleted = await deleteOldForeignRows(supabase, tickers);
+    var deleted = 0;
+    var retentionSkipped = !runRetention;
+    if (runRetention) {
+      var tickerMap = {};
+      rows.forEach(function(r) { tickerMap[r.ticker] = true; });
+      var tickers = Object.keys(tickerMap).sort();
+      deleted = await deleteOldForeignRows(supabase, tickers);
+    }
 
     return res.status(200).json({
       success: true,
       imported_count: rows.length,
-      upserted_count: (upsertRes.data && upsertRes.data.length) || rows.length,
+      upserted_count: upsertedCount,
       deleted_old_count: deleted,
+      retention_skipped: retentionSkipped,
+      batch_index: batchIndex,
+      batch_total: batchTotal,
+      is_final_batch: isFinalBatch,
+      foreign_upload_batch_rows: rows.length,
+      foreign_upload_batch_ms: Date.now() - _uploadStartMs,
       errors: errors
     });
   } catch (err) {
     errors.push(err.message || String(err));
-    return res.status(200).json({ success: false, imported_count: 0, upserted_count: 0, deleted_old_count: 0, errors: errors, error: errors[0] });
+    return res.status(200).json({ success: false, imported_count: 0, upserted_count: 0, deleted_old_count: 0, foreign_upload_batch_ms: Date.now() - _uploadStartMs, errors: errors, error: errors[0] });
   }
 }
 
@@ -5422,7 +5456,10 @@ async function handleWebDailyPicks(req, res, supabase) {
     if (q.error) throw new Error(q.error.message);
     var rows = q.data || [];
     var locked = rows.length > 0;
-    var allowProvisional = (req.query.admin_preview === '1' || req.query.provisional === '1') && await isDashboardAdminUser(req, supabase);
+    var _isAdminReq = (req.query.admin_preview === '1' || req.query.provisional === '1') ? await isDashboardAdminUser(req, supabase) : false;
+    // Provisional main Top 5 (heavy selectDailyTop5) must only run when admin explicitly asks with generate_preview=1.
+    // Normal admin dashboard load must NOT trigger heavy compute (regression fix after PR #138).
+    var allowProvisional = _isAdminReq && req.query.generate_preview === '1';
     var top5Source = locked ? 'locked_rows' : (allowProvisional ? 'provisional_candidates' : 'awaiting_locked_rows');
     var webProvisional = !locked && allowProvisional;
     var top5 = [];
@@ -5456,7 +5493,7 @@ async function handleWebDailyPicks(req, res, supabase) {
     var monitorStale = isMonitorTimestampStale(lastAt, monitorSourceLabel);
     var staleNote = monitorStale ? 'Data monitor belum update terbaru.' : null;
     var adminPreviewExtra = {};
-    if (req.query.admin_preview === '1' && await isDashboardAdminUser(req, supabase)) {
+    if (req.query.admin_preview === '1' && _isAdminReq) {
       var generatePreview = req.query.generate_preview === '1';
       var _previewCacheKey = 'admin_top5_preview_cache';
       var _todayWib = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -5679,18 +5716,29 @@ function classifyWebTop5History(normalized, px) {
   var high = px && px.high != null ? toNum(px.high) : current;
   var low = px && px.low != null ? toNum(px.low) : current;
   var status = String(normalized.status || '').toUpperCase();
-  // Part B fix: Also check hit_tp1_at / hit_tp2_at / hit_sl_at fields persisted by the monitor.
-  // These are set when the monitor detected the TP/SL hit, even if current price has since moved away.
+  // Persisted hit timestamps stamped by the monitor when TP/SL was actually reached.
   var hasPersistedTp1 = !!(normalized.hit_tp1_at);
   var hasPersistedTp2 = !!(normalized.hit_tp2_at);
   var hasPersistedSl = !!(normalized.hit_sl_at);
+
+  // Part C fix: A row that ever hit TP1/TP2 belongs in TP History permanently, even if price
+  // later fell below SL. Persisted TP timestamps (or explicit TP status) take PRECEDENCE over SL,
+  // so past TP winners never disappear from TP History due to a later pullback below SL.
+  if (hasPersistedTp2 || status === 'TP2_HIT') {
+    return { bucket: 'tp', status: 'TP2_HIT', status_label: 'TP2 tercapai', status_note: 'TP2 tercatat (persisted).', tp1_hit: true, tp2_hit: true, sl_hit: false };
+  }
+  if (hasPersistedTp1 || status === 'TP1_HIT') {
+    return { bucket: 'tp', status: 'TP1_HIT', status_label: 'TP1 tercapai', status_note: 'TP1 tercatat (persisted).', tp1_hit: true, tp2_hit: false, sl_hit: false };
+  }
+
+  // No persisted TP hit — fall back to persisted SL, then current-price based classification.
   var slHit = !!((normalized.sl != null && low != null && low <= normalized.sl) || status === 'SL_HIT' || hasPersistedSl);
-  var tp2Hit = !slHit && !!((normalized.tp2 != null && high != null && high >= normalized.tp2) || status === 'TP2_HIT' || hasPersistedTp2);
-  var tp1Hit = !slHit && !tp2Hit && !!((normalized.tp1 != null && high != null && high >= normalized.tp1) || status === 'TP1_HIT' || hasPersistedTp1);
+  var tp2Hit = !slHit && !!(normalized.tp2 != null && high != null && high >= normalized.tp2);
+  var tp1Hit = !slHit && !tp2Hit && !!(normalized.tp1 != null && high != null && high >= normalized.tp1);
   var hasPrice = !!(px && px.last != null);
-  if (slHit) return { bucket: 'failed', status: 'SL_HIT', status_label: 'SL kena', status_note: 'SL tersentuh', tp1_hit: false, tp2_hit: false, sl_hit: true };
   if (tp2Hit) return { bucket: 'tp', status: 'TP2_HIT', status_label: 'TP2 tercapai', status_note: 'TP2 tersentuh', tp1_hit: true, tp2_hit: true, sl_hit: false };
   if (tp1Hit) return { bucket: 'tp', status: 'TP1_HIT', status_label: 'TP1 tercapai', status_note: 'TP1 tersentuh', tp1_hit: true, tp2_hit: false, sl_hit: false };
+  if (slHit) return { bucket: 'failed', status: 'SL_HIT', status_label: 'SL kena', status_note: 'SL tersentuh', tp1_hit: false, tp2_hit: false, sl_hit: true };
   if (!hasPrice) return { bucket: 'active', status: 'PRICE_LIMITED', status_label: 'Data harga terbatas', status_note: 'Data harga terbaru belum tersedia', tp1_hit: false, tp2_hit: false, sl_hit: false };
   return { bucket: 'active', status: 'ACTIVE_TRACKING', status_label: 'Aktif dipantau', status_note: 'Belum TP/SL', tp1_hit: false, tp2_hit: false, sl_hit: false };
 }
@@ -5783,11 +5831,22 @@ async function handleWebTop5History(req, res, supabase) {
     var rows = (q.data || []).filter(function(r) { return showArchived || !((r.raw_payload || {}).history_archived_at); });
     var activeRows = [];
     var tpRows = [];
-    for (var i = 0; i < rows.length; i++) {
-      var px = await fetchLatestPriceForMonitor(supabase, rows[i].ticker);
-      var row = buildWebTop5HistoryRow(rows[i], 0, px, null);
-      if (row.history_bucket === 'tp') tpRows.push(row);
-      else if (row.history_bucket === 'active') activeRows.push(row);
+    // Parallelize price fetches in bounded chunks (was sequential — caused ~1min load for many rows)
+    var _historyStartMs = Date.now();
+    var CHUNK = 10;
+    var builtRows = [];
+    for (var ci = 0; ci < rows.length; ci += CHUNK) {
+      var chunk = rows.slice(ci, ci + CHUNK);
+      var chunkPrices = await Promise.allSettled(chunk.map(function(r) { return fetchLatestPriceForMonitor(supabase, r.ticker); }));
+      for (var cj = 0; cj < chunk.length; cj++) {
+        var cpx = chunkPrices[cj].status === 'fulfilled' ? chunkPrices[cj].value : { last: null, open: null, high: null, low: null, at: null, bestEffort: true };
+        builtRows.push(buildWebTop5HistoryRow(chunk[cj], 0, cpx, null));
+      }
+    }
+    for (var bi = 0; bi < builtRows.length; bi++) {
+      var brow = builtRows[bi];
+      if (brow.history_bucket === 'tp') tpRows.push(brow);
+      else if (brow.history_bucket === 'active') activeRows.push(brow);
     }
     var seenTickers = {};
     var activeHistory = [];
@@ -5819,6 +5878,7 @@ async function handleWebTop5History(req, res, supabase) {
         rows_with_hit_tp2_at_count: rowsWithHitTp2At,
         rows_with_hit_sl_at_count: rowsWithHitSlAt,
         sample_tp_tickers: sampleTpTickers,
+        history_ms: Date.now() - _historyStartMs,
         note: tpRows.length === 0 && rowsWithHitTp1At === 0 ? 'TP History kosong karena monitor belum pernah menyimpan hit_tp1_at/hit_tp2_at, ATAU harga belum pernah mencapai TP saat data terakhir dicek.' : null
       };
     }
@@ -9654,5 +9714,7 @@ module.exports.__test = {
   buildTelegramTopMessage: buildTelegramTopMessage,
   buildTelegramScreenerMessage: buildTelegramScreenerMessage,
   fmtTelegramSignalBlock: fmtTelegramSignalBlock,
-  formatSwingTelegramMessage: formatSwingTelegramMessage
+  formatSwingTelegramMessage: formatSwingTelegramMessage,
+  classifyWebTop5History: classifyWebTop5History,
+  buildWebTop5HistoryRow: buildWebTop5HistoryRow
 };
