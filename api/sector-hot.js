@@ -8352,19 +8352,22 @@ function hasFatalDayTradeRadarBlock(candidate) {
   var r = candidate;
   var statusText = joinTelegramTexts([
     r.status, r.final_status, r.breakout_confirmation_status, r.entry_status, r.entry_quality_status,
-    r.data_quality_status, r.plan_quality_status, r.trading_plan_status, r.final_quality_status,
-    r.final_gate_status, r.quality_gate_status
+    r.data_quality_status, r.plan_quality_status, r.trading_plan_status, r.execution_reality_status,
+    r.final_quality_status, r.final_gate_status, r.quality_gate_status
   ]).toUpperCase().replace(/[\s-]+/g, '_');
   var allText = joinTelegramTexts([
     r.status, r.final_status, r.verdict, r.signal_verdict, r.telegram_verdict, r.reason,
     r.status_reason, r.action_reason, r.signal_reason, r.excluded_reason, r.action,
     r.action_label, r.signal_action_label, r.telegram_action_label, r.signal_action,
     r.plan_quality_label, r.plan_quality_note, r.data_quality_label, r.data_quality_note,
-    r.entry_status_label, r.entry_status_note, r.invalidation_note, r.execution_reality_note,
-    r.stale_notes, r.setup_expiry_note
+    r.entry_status_label, r.entry_status_note, r.invalidation_note, r.execution_reality_label,
+    r.execution_reality_note, r.ara_arb_note, r.stale_notes, r.setup_expiry_note
   ]).toLowerCase();
   if (statusText.indexOf('INVALID') >= 0 || statusText.indexOf('BROKEN') >= 0 || statusText.indexOf('ERROR') >= 0) return true;
-  if (includesAny(allText, ['invalid candle', 'candle tidak valid', 'ohlc', 'data broken', 'data rusak', 'invalid trading plan', 'invalid plan', 'plan invalid', 'missing entry', 'missing sl', 'missing tp', 'invalid rr', 'risk reward invalid', 'below sl', 'price below sl', 'sl hit', 'sl kena', 'invalidation hit', 'impossible ara', 'impossible arb', 'stale fatal', 'expired fatal'])) return true;
+  if (includesAny(allText, ['invalid candle', 'candle tidak valid', 'ohlc', 'data broken', 'data rusak', 'invalid trading plan', 'invalid plan', 'plan invalid', 'missing entry', 'missing sl', 'missing tp', 'invalid rr', 'risk reward invalid', 'below sl', 'price below sl', 'sl hit', 'sl kena', 'invalidation hit', 'unknown limits', 'impossible execution', 'tidak realistis', 'butuh harga realistis', 'ara hit', 'arb hit', 'mentok ara', 'mentok arb', 'rawan ara', 'rawan arb', 'impossible ara', 'impossible arb', 'stale fatal', 'expired fatal'])) return true;
+  var executionStatus = String(r.execution_reality_status || '').trim().toUpperCase();
+  if (executionStatus === 'UNKNOWN_LIMITS' || executionStatus === 'ARA_HIT' || executionStatus === 'ARB_HIT') return true;
+  if (r.buy_execution_realistic === false || r.sell_risk_near_arb === true) return true;
   if (r.trading_plan_valid === false) return true;
   var planStatus = String(r.plan_quality_status || r.trading_plan_status || '').trim().toUpperCase();
   if (planStatus === 'INVALID') return true;
