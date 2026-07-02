@@ -34,6 +34,7 @@ const { createClient } = require('@supabase/supabase-js');
 const dtEngine = require('../lib/daytrade-screener-engine');
 const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
+const fibConfluence = require('../lib/fibonacci-confluence');
 const telegramNotifier = require('../lib/telegram-notifier');
 const crypto = require('crypto');
 
@@ -422,6 +423,46 @@ async function handleScreenerRead(req, res, supabase) {
     r.entry_timing = labels.entry_timing;
     r.tradeability = labels.tradeability;
     r.direction = labels.direction;
+    // Derive Fibonacci confluence from persisted support/resistance (lightweight, no candle re-fetch)
+    if (!r.fib_confluence_label && r.resistance > 0 && r.support > 0 && r.resistance > r.support) {
+      var _fibReadResult = fibConfluence.evaluateFibConfluence(null, null); // default insufficient
+      var _fibRange = r.resistance - r.support;
+      var _fibRangePct = r.support > 0 ? _fibRange / r.support : 0;
+      if (_fibRangePct >= 0.03) {
+        var _fibLevels = fibConfluence.calculateFibLevels(r.resistance, r.support);
+        if (_fibLevels && _fibLevels.levels) {
+          _fibReadResult = fibConfluence.evaluateFibConfluence(null, null); // reset
+          var _refPrice = r.last_price || 0;
+          var _entryMid = (toNum(r.entry_low) + toNum(r.entry_high)) / 2 || _refPrice;
+          var _nearHealthy = _entryMid <= _fibLevels.levels.fib_382 && _entryMid >= _fibLevels.levels.fib_618;
+          var _nearHealthyLoose = _entryMid >= _fibLevels.levels.fib_618 * 0.98 && _entryMid <= _fibLevels.levels.fib_382 * 1.02;
+          if (_nearHealthy || _nearHealthyLoose) {
+            r.fib_confluence_status = 'confluence_sehat';
+            r.fib_confluence_label = 'Fib confluence sehat';
+            r.fib_confluence_note = 'Entry/pullback dekat area Fib 38.2\u201361.8.';
+          } else if (_entryMid > _fibLevels.levels.fib_382) {
+            r.fib_confluence_status = 'di_atas_fib';
+            r.fib_confluence_label = 'Di atas area Fib';
+            r.fib_confluence_note = 'Harga sudah di atas area retracement ideal, tunggu pullback.';
+          } else {
+            r.fib_confluence_status = 'fib_structure_lemah';
+            r.fib_confluence_label = 'Fib structure lemah';
+            r.fib_confluence_note = 'Harga melemah di bawah area Fib sehat, perlu konfirmasi ulang.';
+          }
+          r.fib_nearest_label = null;
+          r.fib_nearest_level = null;
+          r.fib_levels = { fib_382: _fibLevels.levels.fib_382, fib_500: _fibLevels.levels.fib_500, fib_618: _fibLevels.levels.fib_618 };
+        }
+      }
+      if (!r.fib_confluence_label) {
+        r.fib_confluence_status = 'insufficient_data';
+        r.fib_confluence_label = 'Fib belum cukup data';
+        r.fib_confluence_note = 'Data candle belum cukup untuk membaca Fib confluence.';
+        r.fib_nearest_label = null;
+        r.fib_nearest_level = null;
+        r.fib_levels = null;
+      }
+    }
     return attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), meta);
   });
 
@@ -639,6 +680,14 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           liquidity_label: _avgTxValue7d >= 500000000 ? 'Liquid' : 'Likuiditas Tipis'
         }) || {};
 
+        // === FIBONACCI CONFLUENCE (soft signal, Swing Konglo only) ===
+        var _fibResult = fibConfluence.evaluateFibConfluence(candles, {
+          last_price: analysis.last_price,
+          entry_low: _finalEntry_low,
+          entry_high: _finalEntry_high,
+          support: _tickResult.tick_normalized ? _tickResult.support : analysis.support
+        });
+
         results.push({
           ticker: item.ticker,
           group_code: item.group_code,
@@ -703,7 +752,14 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           plan_quality_note: _planQuality.plan_quality_note,
           sl_quality_label: _planQuality.sl_quality_label,
           tp_quality_label: _planQuality.tp_quality_label,
-          rr_quality_label: _planQuality.rr_quality_label
+          rr_quality_label: _planQuality.rr_quality_label,
+          // Fibonacci confluence (soft signal only)
+          fib_confluence_status: _fibResult.fib_confluence_status || null,
+          fib_confluence_label: _fibResult.fib_confluence_label || null,
+          fib_confluence_note: _fibResult.fib_confluence_note || null,
+          fib_nearest_label: _fibResult.fib_nearest_label || null,
+          fib_nearest_level: _fibResult.fib_nearest_level || null,
+          fib_levels: _fibResult.fib_levels || null
         });
       } catch (e) {
         failedCount++;
@@ -1042,7 +1098,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_response_debug: aiResponseDebug || undefined,
       ai_parse_debug: aiParseDebug || undefined,
       save_error: saveError || null,
-      telegram: savedCount > 0 ? await sendSwingKongloTelegramNotification(supabase, savedCount) : { skipped: true, reason: 'no_saved_rows' }
+      telegram: savedCount > 0 ? await sendSwingKongloTelegramNotification(supabase, savedCount, results) : { skipped: true, reason: 'no_saved_rows' }
     });
 
   } catch (e) {
@@ -9127,6 +9183,13 @@ function formatRichTelegramCandidateBlock(r, idx, mode) {
   if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 50, ''));
   if (tfParts.length > 0) lines.push('TF: ' + tfParts.join(' \u00B7 '));
 
+  // Fibonacci confluence (Swing Konglo only, soft signal)
+  if (mode !== 'daytrade' && r.fib_confluence_label && r.fib_confluence_label !== 'Fib belum cukup data') {
+    var fibLine = 'Fib: ' + safeTelegramText(r.fib_confluence_label, 40, '');
+    if (r.fib_nearest_label && r.fib_nearest_level) fibLine += ' (nearest ' + r.fib_nearest_label + ' @ ' + fmtPrice(r.fib_nearest_level) + ')';
+    lines.push(fibLine);
+  }
+
   var verdict = safeTelegramText(r.telegram_verdict || r.signal_verdict || r.verdict || r.excluded_reason, 140, 'Pantau dulu. Tunggu konfirmasi.');
   lines.push('Verdict: ' + verdict);
   // Digest warnings
@@ -9184,6 +9247,12 @@ function fmtTelegramSignalBlock(r, idx, mode) {
   if (hasTelegramText(r.tf_5d_context)) tfParts.push('5D ' + safeTelegramText(r.tf_5d_context, 45, ''));
   if (hasTelegramText(r.tf_20d_context)) tfParts.push('20D ' + safeTelegramText(r.tf_20d_context, 45, ''));
   if (tfParts.length > 0) lines.push('TF: ' + tfParts.join(' · '));
+  // Fibonacci confluence (Swing Konglo only, soft signal)
+  if (mode !== 'daytrade' && r.fib_confluence_label && r.fib_confluence_label !== 'Fib belum cukup data') {
+    var fibLine2 = 'Fib: ' + safeTelegramText(r.fib_confluence_label, 40, '');
+    if (r.fib_nearest_label && r.fib_nearest_level) fibLine2 += ' (nearest ' + r.fib_nearest_label + ' @ ' + fmtPrice(r.fib_nearest_level) + ')';
+    lines.push(fibLine2);
+  }
   lines.push('Verdict: ' + safeTelegramText(r.telegram_verdict, 120, 'Pantau dulu. Tunggu konfirmasi.'));
   return lines.join('\n');
 }
@@ -9199,11 +9268,33 @@ function formatSwingNoCandidateTelegramMessage(title) {
 // ============================================================
 // SWING KONGLO TELEGRAM NOTIFICATION (after manual refresh publish)
 // ============================================================
-async function sendSwingKongloTelegramNotification(supabase, savedCount) {
+async function sendSwingKongloTelegramNotification(supabase, savedCount, precomputedResults) {
   if (savedCount === 0) return { skipped: true, reason: 'no_saved_rows' };
   try {
     var { data: rows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false }).limit(40);
     if (!rows || rows.length === 0) return { skipped: true, reason: 'no_data' };
+
+    // Merge fib fields from precomputedResults (not persisted in DB)
+    if (precomputedResults && Array.isArray(precomputedResults)) {
+      var fibMap = {};
+      precomputedResults.forEach(function(r) {
+        if (r && r.ticker && r.fib_confluence_label) {
+          fibMap[r.ticker] = {
+            fib_confluence_status: r.fib_confluence_status,
+            fib_confluence_label: r.fib_confluence_label,
+            fib_confluence_note: r.fib_confluence_note,
+            fib_nearest_label: r.fib_nearest_label,
+            fib_nearest_level: r.fib_nearest_level,
+            fib_levels: r.fib_levels
+          };
+        }
+      });
+      rows = rows.map(function(row) {
+        var fib = fibMap[row.ticker];
+        if (fib) return Object.assign({}, row, fib);
+        return row;
+      });
+    }
 
     var metaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,run_date,status').eq('id', 'latest').maybeSingle();
     var swingMeta = metaRes && metaRes.data ? metaRes.data : { calculated_at: null };
@@ -9393,5 +9484,7 @@ module.exports.__test = {
   buildDashboardPickRow: buildDashboardPickRow,
   selectDailyTop5: selectDailyTop5,
   buildTelegramTopMessage: buildTelegramTopMessage,
-  buildTelegramScreenerMessage: buildTelegramScreenerMessage
+  buildTelegramScreenerMessage: buildTelegramScreenerMessage,
+  fmtTelegramSignalBlock: fmtTelegramSignalBlock,
+  formatSwingTelegramMessage: formatSwingTelegramMessage
 };
