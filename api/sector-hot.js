@@ -9208,13 +9208,21 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
     var metaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,run_date,status').eq('id', 'latest').maybeSingle();
     var swingMeta = metaRes && metaRes.data ? metaRes.data : { calculated_at: null };
 
-    // Deterministic Telegram verification for Swing Konglo
+    // Primary path: strict verification for high-quality signals
     var verifiedRows = rows.map(function(r) { return verifyTelegramSignal(r, 'swing'); }).filter(Boolean);
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
-    var nonAvoid = highConvictionRows
+    var strictCandidates = highConvictionRows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta); })
       .filter(candidatePassesMinUpside)
       .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_konglo'); });
+
+    // Digest fallback path: use digest gate (allows warnings)
+    var digestCandidates = rows
+      .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta); })
+      .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_konglo_auto'); });
+
+    // Use strict candidates if available, otherwise use digest candidates
+    var nonAvoid = strictCandidates.length > 0 ? strictCandidates : digestCandidates;
 
     // Tier 1: Ready/Swing Ready with good RR and Grade A/B
     var tier1 = nonAvoid.filter(function(r) {
@@ -9232,7 +9240,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
       return notSpec && (toNum(r.score) || 0) >= 65 && (toNum(r.risk_reward) || 0) >= 1.3;
     });
 
-    // Build final: tier1 first, then tier2 to fill
+    // Build final: tier1 first, then tier2 to fill, then any digest candidate
     tier1.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     tier2.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = tier1.slice(0, 5);
@@ -9241,34 +9249,23 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount) {
       var fill = tier2.filter(function(r) { return !seen[r.ticker]; }).slice(0, 5 - finalList.length);
       finalList = finalList.concat(fill);
     }
-
-    var headerNote = '';
-    if (finalList.length === 0) {
-      var radarRows = selectRadarDigestCandidates(rows.map(function(r) { return attachFreshness(Object.assign({ category: 'Swing Konglo' }, r), swingMeta); }), 'swing_konglo_radar_digest', 5);
-      if (radarRows.length > 0) {
-        var radarMsg = formatRadarDigestTelegramMessage(radarRows, 'Swing Konglo Radar', 'swing');
-        var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
-        radarResult.reason = radarResult.sent ? 'radar_digest_sent' : (radarResult.reason || 'telegram_send_failed');
-        radarResult.radar_sent = !!radarResult.sent;
-        radarResult.radar_count = radarRows.length;
-        radarResult.radar_candidates = radarRows.map(function(r) { return r.ticker; });
-        radarResult.selected_count = 0;
-        radarResult.verified_count = verifiedRows.length;
-        radarResult.high_conviction_count = highConvictionRows.length;
-        return radarResult;
-      }
-      var emptyResult = { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null };
-      emptyResult.verified_count = verifiedRows.length;
-      emptyResult.high_conviction_count = highConvictionRows.length;
-      emptyResult.selected_count = 0;
-      return emptyResult;
+    // If tier1+tier2 empty, use top digest candidates sorted by RR
+    if (finalList.length === 0 && nonAvoid.length > 0) {
+      nonAvoid.sort(sortDayTradeRadarCandidates);
+      finalList = nonAvoid.slice(0, 5);
     }
 
-    var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', headerNote);
+    if (finalList.length === 0) {
+      return { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0 };
+    }
+
+    var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', '');
     var result = await telegramNotifier.sendTelegramMessage(msg);
     result.selected_count = finalList.length;
     result.verified_count = verifiedRows.length;
     result.high_conviction_count = highConvictionRows.length;
+    result.strict_selected_count = strictCandidates.length;
+    result.digest_candidate_count = digestCandidates.length;
     return result;
   } catch (e) { return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) }; }
 }
@@ -9285,13 +9282,21 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     var metaRes = await supabase.from('swing_screener_non_konglo_meta').select('calculated_at,updated_at,run_date,status').eq('id', 'latest').maybeSingle();
     var swingMeta = metaRes && metaRes.data ? metaRes.data : { calculated_at: null };
 
-    // Deterministic Telegram verification for Swing Non-Konglo
+    // Primary path: strict verification for high-quality signals
     var verifiedRows = rows.map(function(r) { return verifyTelegramSignal(r, 'swing'); }).filter(Boolean);
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
-    var nonAvoid = highConvictionRows
+    var strictCandidates = highConvictionRows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta); })
       .filter(candidatePassesMinUpside)
       .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_non_konglo'); });
+
+    // Digest fallback path: use digest gate (allows warnings)
+    var digestCandidates = rows
+      .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta); })
+      .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_non_konglo_auto'); });
+
+    // Use strict candidates if available, otherwise use digest candidates
+    var nonAvoid = strictCandidates.length > 0 ? strictCandidates : digestCandidates;
 
     // Tier 1: Ready with RR >= 1.5 and Grade A/B
     var tier1 = nonAvoid.filter(function(r) {
@@ -9317,34 +9322,23 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       var fill = tier2.filter(function(r) { return !seen[r.ticker]; }).slice(0, 5 - finalList.length);
       finalList = finalList.concat(fill);
     }
-
-    var headerNote = '';
-    if (finalList.length === 0) {
-      var radarRows = selectRadarDigestCandidates(rows.map(function(r) { return attachFreshness(Object.assign({ category: 'Swing Non-Konglo' }, r), swingMeta); }), 'swing_non_konglo_radar_digest', 5);
-      if (radarRows.length > 0) {
-        var radarMsg = formatRadarDigestTelegramMessage(radarRows, 'Swing Non-Konglo Radar', 'swing');
-        var radarResult = await telegramNotifier.sendTelegramMessage(radarMsg);
-        radarResult.reason = radarResult.sent ? 'radar_digest_sent' : (radarResult.reason || 'telegram_send_failed');
-        radarResult.radar_sent = !!radarResult.sent;
-        radarResult.radar_count = radarRows.length;
-        radarResult.radar_candidates = radarRows.map(function(r) { return r.ticker; });
-        radarResult.selected_count = 0;
-        radarResult.verified_count = verifiedRows.length;
-        radarResult.high_conviction_count = highConvictionRows.length;
-        return radarResult;
-      }
-      var emptyResult = { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null };
-      emptyResult.verified_count = verifiedRows.length;
-      emptyResult.high_conviction_count = highConvictionRows.length;
-      emptyResult.selected_count = 0;
-      return emptyResult;
+    // If tier1+tier2 empty, use top digest candidates sorted by RR
+    if (finalList.length === 0 && nonAvoid.length > 0) {
+      nonAvoid.sort(sortDayTradeRadarCandidates);
+      finalList = nonAvoid.slice(0, 5);
     }
 
-    var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCCA Swing Non-Konglo Signal', headerNote);
+    if (finalList.length === 0) {
+      return { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0 };
+    }
+
+    var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCCA Swing Non-Konglo Signal', '');
     var result = await telegramNotifier.sendTelegramMessage(msg);
     result.selected_count = finalList.length;
     result.verified_count = verifiedRows.length;
     result.high_conviction_count = highConvictionRows.length;
+    result.strict_selected_count = strictCandidates.length;
+    result.digest_candidate_count = digestCandidates.length;
     return result;
   } catch (e) { return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) }; }
 }
