@@ -78,24 +78,24 @@ test('public Telegram no-candidate message is not sent for Day Trade without rad
 });
 
 
-test('Day Trade with radar ON and eligible Radar candidates sends Radar', async () => {
+test('Day Trade with radar ON and eligible candidate sends Signal Candidate', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'RADR', status: 'WAIT_PULLBACK', breakout_confirmation_status: 'WAIT_PULLBACK', entry_timing: 'WAIT_PULLBACK', final_quality_pass: false, final_quality_status: 'needs close confirmation' })] }), 'run-radar-on', '2026-07-02', 1, true, true, {});
     assert.equal(result.sent, true);
     assert.equal(result.radar_sent, true);
-    assert.equal(result.reason, 'radar_fallback_sent');
+    assert.equal(result.reason, 'daytrade_signal_candidate_fallback_sent');
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /RADAR — BUKAN SINYAL ENTRY/);
+    assert.match(calls[0], /Day Trade Signal Candidate/);
   });
 });
 
-test('Day Trade with radar ON sends caution Radar for non-fatal Hindari / Very High Risk', async () => {
+test('Day Trade with radar ON sends caution Signal Candidate for non-fatal Hindari / Very High Risk', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'HARD', status: 'WAIT_PULLBACK', action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 'run-hard-only', '2026-07-02', 1, true, true, {});
     assert.equal(result.sent, true);
     assert.equal(result.radar_sent, true);
-    assert.equal(result.reason, 'radar_fallback_sent');
+    assert.equal(result.reason, 'daytrade_signal_candidate_fallback_sent');
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /RADAR — BUKAN SINYAL ENTRY/);
+    assert.match(calls[0], /Day Trade Signal Candidate/);
   });
 });

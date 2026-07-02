@@ -154,11 +154,35 @@ test('Day Trade radar fallback gate accepts valid borderline BREAKOUT_WATCH/WAIT
   assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK' })), true);
 });
 
-test('radar fallback message is clearly not a Signal and does not leak diagnostics', () => {
+test('Day Trade candidate formatter includes risk volume pullback and Hindari warnings', () => {
+  const msg = formatDayTradeRadarTelegramMessage([
+    base({ ticker: 'VHIG', status: 'WAIT_PULLBACK', risk_label: 'Very High Risk', entry_status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid' }),
+    base({ ticker: 'WEAK', status: 'RADAR', volume_confirmation_label: 'Weak Volume' }),
+    base({ ticker: 'HIND', status: 'WAIT_PULLBACK', action_label: 'Hindari - Tunggu pullback valid', entry_status: 'WAIT_PULLBACK', mtf_status: 'MTF mixed', plan_quality_note: 'SL rawan noise' })
+  ]);
+  assert.match(msg, /Day Trade Signal Candidate/);
+  assert.match(msg, /Very High Risk/);
+  assert.match(msg, /Weak Volume/);
+  assert.match(msg, /Hindari/);
+  assert.match(msg, /Tunggu pullback/);
+  assert.match(msg, /MTF mixed/);
+  assert.match(msg, /SL rawan noise/);
+});
+
+test('Day Trade fallback blocks missing SL, invalid plan, below SL, and impossible ARA/ARB', () => {
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'WAIT_PULLBACK', sl: null, stop_loss: null })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', trading_plan_valid: false })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', last_price: 4800, sl: 4900, stop_loss: 4900 })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', execution_reality_status: 'UNKNOWN_LIMITS' })), false);
+});
+
+test('Day Trade fallback message is Signal Candidate and does not leak diagnostics', () => {
   const msg = formatDayTradeRadarTelegramMessage([base({ breakout_confirmation_status: 'BREAKOUT_WATCH', sample_rejected: [{ ticker: 'BAD' }], stageByTicker: { BBRI: {} }, debug_notes: 'secret' })]);
-  assert.match(msg, /\[RADAR — BUKAN SINYAL ENTRY\]/);
-  assert.match(msg, /Bukan rekomendasi beli/);
-  for (const forbidden of ['sample_rejected', 'stageByTicker', 'debug_notes', 'secret', '[object Object]']) assert.equal(msg.includes(forbidden), false);
+  assert.match(msg, /Day Trade Signal Candidate/);
+  assert.doesNotMatch(msg, /RADAR — BUKAN SINYAL ENTRY/);
+  assert.doesNotMatch(msg, /Belum ada kandidat Entry valid yang lolos final safety gate/);
+  assert.match(msg, /Bukan rekomendasi beli otomatis\. Konfirmasi manual wajib\./);
+  for (const forbidden of ['sample_rejected', 'stageByTicker', 'debug_notes', 'secret', '[object Object]', 'SL: -', 'EntryQ: -', 'PlanQ: -', 'undefined', 'null']) assert.equal(msg.includes(forbidden), false);
 });
 
 test('public Top 5 sanitizer hides admin potential radar diagnostics from guest', () => {
