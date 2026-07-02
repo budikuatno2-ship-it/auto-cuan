@@ -60,8 +60,29 @@ test('public Telegram no-candidate message is not sent for Day Trade without rad
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ status: 'WAIT_PULLBACK', entry_timing: 'needs close confirmation' })] }), 'run-silent', '2026-07-02', 1, true, false, {});
     assert.equal(result.skipped, true);
-    assert.equal(result.reason, 'no_final_quality_gate_candidates');
+    assert.equal(result.reason, 'no_final_signal_but_radar_disabled');
     assert.equal(calls.length, 0);
   });
 });
 
+
+
+test('Day Trade with radar ON and eligible Radar candidates sends Radar', async () => {
+  await withSendSpy(async (calls) => {
+    const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'RADR', status: 'WAIT_PULLBACK', breakout_confirmation_status: 'WAIT_PULLBACK', entry_timing: 'WAIT_PULLBACK', final_quality_pass: false, final_quality_status: 'needs close confirmation' })] }), 'run-radar-on', '2026-07-02', 1, true, true, {});
+    assert.equal(result.sent, true);
+    assert.equal(result.radar_sent, true);
+    assert.equal(result.reason, 'radar_fallback_sent');
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /RADAR — BUKAN SINYAL ENTRY/);
+  });
+});
+
+test('Day Trade with radar ON but only Hard Reject skips explicitly', async () => {
+  await withSendSpy(async (calls) => {
+    const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'HARD', status: 'WAIT_PULLBACK', action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 'run-hard-only', '2026-07-02', 1, true, true, {});
+    assert.equal(result.skipped, true);
+    assert.equal(result.reason, 'radar_candidates_all_hard_reject');
+    assert.equal(calls.length, 0);
+  });
+});
