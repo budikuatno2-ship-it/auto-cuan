@@ -7,6 +7,7 @@ const sectorHot = require('../api/sector-hot');
 const {
   candidatePassesPublicTelegramSafetyGate,
   candidatePassesPotentialRadarGate,
+  candidatePassesDayTradeRadarFallbackGate,
   getPotentialRadarReason,
   formatDayTradeRadarTelegramMessage,
   sanitizeTop5ResponseForAudience
@@ -46,7 +47,11 @@ const hardRejects = [
   ['weak liquidity', { liquidity_notes: 'weak liquidity' }],
   ['weak volume', { volume_confirmation_label: 'weak volume' }],
   ['invalid plan', { trading_plan_valid: false }],
-  ['below SL', { entry_status: 'INVALID_BELOW_SL' }]
+  ['below SL', { entry_status: 'INVALID_BELOW_SL' }],
+  ['final quality gate Signal action AVOID', { action: 'AVOID', excluded_reason: 'Tidak lolos final quality gate: Signal action AVOID.' }],
+  ['signal_action AVOID with breakout watch', { signal_action: 'AVOID', breakout_confirmation_status: 'BREAKOUT_WATCH' }],
+  ['action_label Hindari with wait pullback', { action_label: 'Hindari', entry_status: 'WAIT_PULLBACK' }],
+  ['telegram_action_label Avoid with close confirmation', { telegram_action_label: 'Avoid', breakout_confirmation_status: 'NEEDS_CLOSE_CONFIRMATION' }]
 ];
 
 for (const [name, overrides] of hardRejects) {
@@ -56,6 +61,35 @@ for (const [name, overrides] of hardRejects) {
     assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), false);
   });
 }
+
+
+test('WAIT_PULLBACK without Avoid/Hindari remains eligible for Potential Radar', () => {
+  const c = base({ status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK' });
+  assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), true);
+  assert.equal(getPotentialRadarReason(c), 'WAIT_PULLBACK');
+});
+
+test('High Risk without Avoid/Hindari remains eligible for Potential Radar when plan and liquidity are valid', () => {
+  const c = base({ risk_label: 'High Risk', status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH' });
+  assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), true);
+});
+
+test('Very High Risk remains blocked from Potential Radar', () => {
+  const c = base({ risk_label: 'Very High Risk', status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH' });
+  assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), false);
+});
+
+test('Day Trade radar fallback gate cannot be bypassed by radar status when Potential Radar gate fails', () => {
+  const c = base({ status: 'WAIT_PULLBACK', action_label: 'Hindari', entry_status: 'WAIT_PULLBACK' });
+  assert.equal(getPotentialRadarReason(c), 'WAIT_PULLBACK');
+  assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), false);
+});
+
+test('Day Trade radar fallback gate accepts valid borderline BREAKOUT_WATCH/WAIT_PULLBACK candidates', () => {
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH', breakout_confirmation_label: 'Breakout watch' })), true);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK' })), true);
+});
 
 test('radar fallback message is clearly not a Signal and does not leak diagnostics', () => {
   const msg = formatDayTradeRadarTelegramMessage([base({ breakout_confirmation_status: 'BREAKOUT_WATCH', sample_rejected: [{ ticker: 'BAD' }], stageByTicker: { BBRI: {} }, debug_notes: 'secret' })]);

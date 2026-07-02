@@ -3611,11 +3611,15 @@ function candidatePassesPotentialRadarGate(candidate, mode) {
     r.plan_quality_label, r.plan_quality_note, r.data_quality_label, r.data_quality_note,
     r.entry_status_label, r.entry_status_note, r.invalidation_note
   ]).toLowerCase();
-  var finalOnlyReject = includesAny(allText, ['tidak lolos final quality gate']);
-  var radarStatusText = String(r.status || r.final_status || r.breakout_confirmation_status || r.entry_status || '').toUpperCase();
-  var generatedWatchlistAvoid = includesAny(radarStatusText, ['WAIT_PULLBACK', 'BREAKOUT_WATCH', 'NEEDS_CLOSE_CONFIRMATION', 'PRE_SPIKE_WATCH']);
-  if (!finalOnlyReject && !generatedWatchlistAvoid && (hasAvoidGrade(r) || hasHindariAction(r))) return false;
-  if ((!finalOnlyReject && !generatedWatchlistAvoid && includesAny(allText, ['hindari', 'avoid'])) || includesAny(allText, ['very high risk', 'extreme risk', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'weak volume', 'volume lemah', 'invalid plan', 'plan invalid', 'trading plan invalid', 'below sl', 'sl kena', 'invalidation hit', 'candle tidak valid', 'invalid candle', 'data rusak berat'])) return false;
+  var hardActionText = joinTelegramTexts([
+    r.action, r.action_label, r.signal_action, r.signal_action_label, r.telegram_action_label,
+    r.status, r.final_status, r.verdict, r.signal_verdict, r.telegram_verdict, r.reason,
+    r.status_reason, r.action_reason, r.signal_reason, r.excluded_reason
+  ]).toLowerCase();
+  if (hasAvoidGrade(r) || hasHindariAction(r)) return false;
+  if (String(r.signal_action || '').trim().toUpperCase() === 'AVOID') return false;
+  if (includesAny(hardActionText, ['hindari', 'avoid', 'signal action avoid', 'action avoid'])) return false;
+  if (includesAny(allText, ['very high risk', 'extreme risk', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'weak volume', 'volume lemah', 'invalid plan', 'plan invalid', 'trading plan invalid', 'below sl', 'sl kena', 'invalidation hit', 'candle tidak valid', 'invalid candle', 'data rusak berat'])) return false;
   if (r.trading_plan_valid === false) return false;
   var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.risk_label || r.verified_risk_label).toLowerCase();
   if (risk === 'very high risk') return false;
@@ -8122,14 +8126,12 @@ function candidatePassesDayTradeRadarFallbackGate(candidate) {
     candidate.final_gate_status, candidate.quality_gate_status, candidate.plan_quality_label, candidate.plan_quality_note,
     candidate.entry_quality_label, candidate.entry_status_label, candidate.entry_safety_note, candidate.stale_notes, candidate.liquidity_notes
   ]).toLowerCase();
-  var finalOnlyReject = includesAny(allText, ['tidak lolos final quality gate']);
-  var generatedWatchlistAvoid = includesAny(String(candidate.status || candidate.final_status || candidate.breakout_confirmation_status || candidate.entry_status || '').toUpperCase(), ['WAIT_PULLBACK', 'BREAKOUT_WATCH', 'NEEDS_CLOSE_CONFIRMATION', 'PRE_SPIKE_WATCH']);
-  if ((!finalOnlyReject && !generatedWatchlistAvoid && includesAny(allText, ['hindari', 'avoid'])) || includesAny(allText, ['very high risk', 'invalid plan', 'plan invalid', 'level belum rapi', 'stale', 'expired', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'volume lemah', 'weak volume'])) return false;
+  if (includesAny(allText, ['hindari', 'avoid', 'very high risk', 'invalid plan', 'plan invalid', 'level belum rapi', 'stale', 'expired', 'weak liquidity', 'likuiditas lemah', 'likuiditas tipis', 'volume lemah', 'weak volume'])) return false;
   if (candidate.trading_plan_valid === false) return false;
   var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || candidate.entry_quality_status || '', 80, '').toUpperCase();
   if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') return false;
   if (candidate.is_stale === true || candidate.data_stale === true || candidate.freshness_is_stale === true || candidate.stale === true) return false;
-  if (!finalOnlyReject && deriveTelegramRiskLabel(candidate, 'daytrade').toUpperCase() === 'VERY HIGH RISK') return false;
+  if (deriveTelegramRiskLabel(candidate, 'daytrade').toUpperCase() === 'VERY HIGH RISK') return false;
   var liq = deriveStaleLiquidityLabels(candidate);
   if (liq.is_stale || liq.is_liquidity_risk) return false;
   var entry1 = toNum(candidate.entry1) || getEntry1(candidate);
@@ -8259,7 +8261,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       return pass;
     }).sort(sortDayTradeRadarCandidates).slice(0, 3);
     if (sendRadarFallback && radarCandidates.length === 0) {
-      radarCandidates = radarPool.filter(function(r) { return candidatePassesPotentialRadarGate(r, 'daytrade') || !!getDayTradeRadarStatus(r); }).sort(sortDayTradeRadarCandidates).slice(0, 3);
+      radarCandidates = radarPool.filter(function(r) { return candidatePassesPotentialRadarGate(r, 'daytrade'); }).sort(sortDayTradeRadarCandidates).slice(0, 3);
     }
 
     var nonAvoid = [];
