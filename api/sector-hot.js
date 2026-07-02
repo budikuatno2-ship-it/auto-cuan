@@ -5433,9 +5433,12 @@ async function handleWebDailyPicks(req, res, supabase) {
     var latestMonitorRunAt = null;
     var dailyLockFallbackAt = null;
     if (locked) {
+      // Parallelize price fetches for all Top 5 rows (bounded to max 5)
+      var priceFetches = rows.map(function(p) { return fetchLatestPriceForMonitor(supabase, p.ticker); });
+      var priceResults = await Promise.allSettled(priceFetches);
       for (var i = 0; i < rows.length; i++) {
         var p = rows[i];
-        var px = await fetchLatestPriceForMonitor(supabase, p.ticker);
+        var px = priceResults[i].status === 'fulfilled' ? priceResults[i].value : { last: null, open: null, high: null, low: null, at: null, bestEffort: true };
         var ev = evaluateMonitorStatus(p, px);
         if (px && px.at && (!latestPriceAt || String(px.at) > String(latestPriceAt))) latestPriceAt = px.at;
         if (p.last_checked_at && (!latestMonitorRunAt || String(p.last_checked_at) > String(latestMonitorRunAt))) latestMonitorRunAt = p.last_checked_at;
