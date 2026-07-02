@@ -5457,33 +5457,52 @@ async function handleWebDailyPicks(req, res, supabase) {
     var staleNote = monitorStale ? 'Data monitor belum update terbaru.' : null;
     var adminPreviewExtra = {};
     if (req.query.admin_preview === '1' && await isDashboardAdminUser(req, supabase)) {
-      var previewCandidates = await selectDailyTop5(supabase);
-      var previewRows = [];
-      for (var k = 0; k < previewCandidates.length; k++) { var pr = buildFallbackDashboardPickRow(previewCandidates[k], k + 1); pr.is_preview = true; pr.is_provisional = true; pr.visibility = 'admin_preview'; pr.publication_status = 'provisional'; pr.preview_label = 'Preview'; pr.provisional_label = 'Provisional'; previewRows.push(pr); }
-      var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
-      var excludedRows = [];
-      var potentialRows = [];
-      var gateCalibration = buildGateCalibrationDiagnostics(allPreviewCandidates, 'admin_preview');
-      for (var prx = 0; prx < allPreviewCandidates.length && potentialRows.length < 5; prx++) {
-        var pc = allPreviewCandidates[prx];
-        var pb = classifyCandidateGateBucket(pc, 'admin_preview_potential');
-        if (pb.gate_bucket === 'RADAR') potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', gate_bucket: pb.gate_bucket, gate_bucket_reason: pb.gate_bucket_reason, radar_reason: pb.gate_bucket_reason });
+      // Part A: Admin preview is lazy — only compute when generate_preview=1 is explicitly requested.
+      // Normal dashboard load with admin_preview=1 but WITHOUT generate_preview=1 returns a safe "not generated" state.
+      var generatePreview = req.query.generate_preview === '1';
+      if (generatePreview) {
+        var previewCandidates = await selectDailyTop5(supabase);
+        var previewRows = [];
+        for (var k = 0; k < previewCandidates.length; k++) { var pr = buildFallbackDashboardPickRow(previewCandidates[k], k + 1); pr.is_preview = true; pr.is_provisional = true; pr.visibility = 'admin_preview'; pr.publication_status = 'provisional'; pr.preview_label = 'Preview'; pr.provisional_label = 'Provisional'; previewRows.push(pr); }
+        var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
+        var excludedRows = [];
+        var potentialRows = [];
+        var gateCalibration = buildGateCalibrationDiagnostics(allPreviewCandidates, 'admin_preview');
+        for (var prx = 0; prx < allPreviewCandidates.length && potentialRows.length < 5; prx++) {
+          var pc = allPreviewCandidates[prx];
+          var pb = classifyCandidateGateBucket(pc, 'admin_preview_potential');
+          if (pb.gate_bucket === 'RADAR') potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', gate_bucket: pb.gate_bucket, gate_bucket_reason: pb.gate_bucket_reason, radar_reason: pb.gate_bucket_reason });
+        }
+        for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
+          var eb = classifyCandidateGateBucket(allPreviewCandidates[ex], 'admin_preview_excluded');
+          if (eb.gate_bucket === 'HARD_REJECT') excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, gate_bucket: eb.gate_bucket, excluded_reason: eb.gate_bucket_reason });
+        }
+        adminPreviewExtra = {
+          admin_next_top5_preview: previewRows,
+          admin_next_top5_preview_count: previewRows.length,
+          admin_next_top5_excluded_preview: excludedRows,
+          admin_next_top5_potential_radar_preview: potentialRows,
+          admin_next_top5_excluded_count: excludedRows.length,
+          admin_next_top5_potential_radar_count: potentialRows.length,
+          admin_gate_calibration_summary: gateCalibration,
+          admin_next_top5_preview_note: 'Preview calon Top 5 besok khusus admin; Final/Locked tetap wajib lolos final quality gate. Potential Radar/Watchlist menampung kandidat pantauan non-sinyal. Excluded by Guard ditampilkan ringkas untuk audit admin.',
+          admin_next_top5_preview_generated_at: new Date().toISOString()
+        };
+      } else {
+        // Lazy state: admin preview not yet generated for this session
+        adminPreviewExtra = {
+          admin_next_top5_preview: [],
+          admin_next_top5_preview_count: 0,
+          admin_next_top5_excluded_preview: [],
+          admin_next_top5_potential_radar_preview: [],
+          admin_next_top5_excluded_count: 0,
+          admin_next_top5_potential_radar_count: 0,
+          admin_gate_calibration_summary: null,
+          admin_next_top5_preview_note: 'Preview admin belum dimuat. Klik Generate Admin Preview untuk menghitung.',
+          admin_next_top5_preview_generated_at: null,
+          admin_preview_not_generated: true
+        };
       }
-      for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
-        var eb = classifyCandidateGateBucket(allPreviewCandidates[ex], 'admin_preview_excluded');
-        if (eb.gate_bucket === 'HARD_REJECT') excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, gate_bucket: eb.gate_bucket, excluded_reason: eb.gate_bucket_reason });
-      }
-      adminPreviewExtra = {
-        admin_next_top5_preview: previewRows,
-        admin_next_top5_preview_count: previewRows.length,
-        admin_next_top5_excluded_preview: excludedRows,
-        admin_next_top5_potential_radar_preview: potentialRows,
-        admin_next_top5_excluded_count: excludedRows.length,
-        admin_next_top5_potential_radar_count: potentialRows.length,
-        admin_gate_calibration_summary: gateCalibration,
-        admin_next_top5_preview_note: 'Preview calon Top 5 besok khusus admin; Final/Locked tetap wajib lolos final quality gate. Potential Radar/Watchlist menampung kandidat pantauan non-sinyal. Excluded by Guard ditampilkan ringkas untuk audit admin.',
-        admin_next_top5_preview_generated_at: new Date().toISOString()
-      };
     }
     var responsePayload = Object.assign({
       success: true,
@@ -5543,9 +5562,14 @@ function classifyWebTop5History(normalized, px) {
   var high = px && px.high != null ? toNum(px.high) : current;
   var low = px && px.low != null ? toNum(px.low) : current;
   var status = String(normalized.status || '').toUpperCase();
-  var slHit = !!((normalized.sl != null && low != null && low <= normalized.sl) || status === 'SL_HIT');
-  var tp2Hit = !slHit && !!((normalized.tp2 != null && high != null && high >= normalized.tp2) || status === 'TP2_HIT');
-  var tp1Hit = !slHit && !tp2Hit && !!((normalized.tp1 != null && high != null && high >= normalized.tp1) || status === 'TP1_HIT');
+  // Part B fix: Also check hit_tp1_at / hit_tp2_at / hit_sl_at fields persisted by the monitor.
+  // These are set when the monitor detected the TP/SL hit, even if current price has since moved away.
+  var hasPersistedTp1 = !!(normalized.hit_tp1_at);
+  var hasPersistedTp2 = !!(normalized.hit_tp2_at);
+  var hasPersistedSl = !!(normalized.hit_sl_at);
+  var slHit = !!((normalized.sl != null && low != null && low <= normalized.sl) || status === 'SL_HIT' || hasPersistedSl);
+  var tp2Hit = !slHit && !!((normalized.tp2 != null && high != null && high >= normalized.tp2) || status === 'TP2_HIT' || hasPersistedTp2);
+  var tp1Hit = !slHit && !tp2Hit && !!((normalized.tp1 != null && high != null && high >= normalized.tp1) || status === 'TP1_HIT' || hasPersistedTp1);
   var hasPrice = !!(px && px.last != null);
   if (slHit) return { bucket: 'failed', status: 'SL_HIT', status_label: 'SL kena', status_note: 'SL tersentuh', tp1_hit: false, tp2_hit: false, sl_hit: true };
   if (tp2Hit) return { bucket: 'tp', status: 'TP2_HIT', status_label: 'TP2 tercapai', status_note: 'TP2 tersentuh', tp1_hit: true, tp2_hit: true, sl_hit: false };
@@ -5568,6 +5592,9 @@ function buildWebTop5HistoryRow(row, rank, px, ev) {
     tp1: toNum(row.tp1 != null ? row.tp1 : (raw.tp1 != null ? raw.tp1 : raw.tp1n)),
     tp2: toNum(row.tp2 != null ? row.tp2 : (raw.tp2 != null ? raw.tp2 : raw.tp2n)),
     status: row.status || 'WAITING',
+    hit_tp1_at: row.hit_tp1_at || null,
+    hit_tp2_at: row.hit_tp2_at || null,
+    hit_sl_at: row.hit_sl_at || null,
     first_sent_at: row.first_sent_at || null,
     last_checked_at: row.last_checked_at || null,
     raw_payload: raw
@@ -5657,7 +5684,28 @@ async function handleWebTop5History(req, res, supabase) {
       if (activeHistory.length >= limit) break;
     }
     tpRows = tpRows.slice(0, 10).map(function(r, idx) { r.rank = idx + 1; return r; });
-    return res.status(200).json(sanitizeTop5ResponseForAudience({ success: true, rows: activeHistory, history: activeHistory, active_history: activeHistory, tp_history: tpRows, count: activeHistory.length, tp_count: tpRows.length, limit: limit, show_archived: showArchived, dedupe: 'active_ticker_latest_date_id_after_status_filter', data_source: 'telegram_daily_picks.locked_rows' }, { allowAdminPreview: false }));
+    // Part B: Admin-only diagnostics for TP History (safe counts only, no raw payload/debug)
+    var adminHistoryDiagnostics = undefined;
+    if (await isDashboardAdminUser(req, supabase)) {
+      var allRowsCount = rows.length;
+      var rowsWithTpStatus = rows.filter(function(r) { return String(r.status || '').toUpperCase().indexOf('TP') >= 0; }).length;
+      var rowsWithHitTp1At = rows.filter(function(r) { return !!r.hit_tp1_at; }).length;
+      var rowsWithHitTp2At = rows.filter(function(r) { return !!r.hit_tp2_at; }).length;
+      var rowsWithHitSlAt = rows.filter(function(r) { return !!r.hit_sl_at; }).length;
+      var sampleTpTickers = tpRows.slice(0, 5).map(function(r) { return r.ticker; });
+      adminHistoryDiagnostics = {
+        total_history_rows: allRowsCount,
+        active_history_count: activeHistory.length,
+        tp_history_count: tpRows.length,
+        rows_with_tp_status_count: rowsWithTpStatus,
+        rows_with_hit_tp1_at_count: rowsWithHitTp1At,
+        rows_with_hit_tp2_at_count: rowsWithHitTp2At,
+        rows_with_hit_sl_at_count: rowsWithHitSlAt,
+        sample_tp_tickers: sampleTpTickers,
+        note: tpRows.length === 0 && rowsWithHitTp1At === 0 ? 'TP History kosong karena monitor belum pernah menyimpan hit_tp1_at/hit_tp2_at, ATAU harga belum pernah mencapai TP saat data terakhir dicek.' : null
+      };
+    }
+    return res.status(200).json(sanitizeTop5ResponseForAudience({ success: true, rows: activeHistory, history: activeHistory, active_history: activeHistory, tp_history: tpRows, count: activeHistory.length, tp_count: tpRows.length, limit: limit, show_archived: showArchived, dedupe: 'active_ticker_latest_date_id_after_status_filter', data_source: 'telegram_daily_picks.locked_rows', admin_history_diagnostics: adminHistoryDiagnostics }, { allowAdminPreview: false }));
   } catch (e) {
     return res.status(200).json({ success: false, rows: [], history: [], count: 0, error: e.message || String(e) });
   }
