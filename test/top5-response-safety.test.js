@@ -51,7 +51,8 @@ test('public Top 5 sanitizer removes preview and provisional rows plus admin pre
     admin_next_top5_preview: [{ ticker: 'NEXT', is_preview: true }],
     admin_next_top5_excluded_preview: [{ ticker: 'DROP', excluded_reason: 'guard' }],
     admin_next_top5_preview_count: 1,
-    admin_next_top5_preview_note: 'admin only'
+    admin_next_top5_preview_note: 'admin only',
+    admin_gate_calibration_summary: { signal_count: 1, radar_count: 2, hard_reject_count: 3 }
   }, { allowAdminPreview: false });
 
   assert.deepEqual(payload.top5.map((r) => r.ticker), ['LOCKED']);
@@ -60,6 +61,7 @@ test('public Top 5 sanitizer removes preview and provisional rows plus admin pre
   assert.equal(Object.hasOwn(payload, 'admin_next_top5_preview'), false);
   assert.equal(Object.hasOwn(payload, 'admin_next_top5_excluded_preview'), false);
   assert.equal(Object.hasOwn(payload, 'admin_next_top5_preview_note'), false);
+  assert.equal(Object.hasOwn(payload, 'admin_gate_calibration_summary'), false);
 });
 
 test('missing locked public Top 5 returns safe empty state, not provisional fallback', () => {
@@ -95,4 +97,17 @@ test('admin Top 5 sanitizer can keep backend-gated preview with clear labels', (
   assert.equal(payload.admin_next_top5_preview[0].provisional_label, 'Provisional');
   assert.equal(payload.admin_next_top5_preview[0].publication_status, 'provisional');
   assert.equal(Object.hasOwn(payload.admin_next_top5_preview[0], 'raw_payload'), false);
+});
+
+
+test('admin Top 5 sanitizer can keep safe calibration summary counts', () => {
+  const payload = sanitizeTop5ResponseForAudience({
+    success: true,
+    top5_locked: false,
+    admin_gate_calibration_summary: { signal_count: 1, radar_count: 2, hard_reject_count: 3, sample_rejected: [{ ticker: 'BAD' }] }
+  }, { allowAdminPreview: true });
+
+  assert.equal(payload.admin_gate_calibration_summary.signal_count, 1);
+  assert.equal(payload.admin_gate_calibration_summary.radar_count, 2);
+  assert.equal(payload.admin_gate_calibration_summary.hard_reject_count, 3);
 });

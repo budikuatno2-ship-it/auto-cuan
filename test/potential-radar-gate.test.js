@@ -10,7 +10,9 @@ const {
   candidatePassesDayTradeRadarFallbackGate,
   getPotentialRadarReason,
   formatDayTradeRadarTelegramMessage,
-  sanitizeTop5ResponseForAudience
+  sanitizeTop5ResponseForAudience,
+  classifyCandidateGateBucket,
+  buildGateCalibrationDiagnostics
 } = sectorHot.__test;
 
 function base(overrides) {
@@ -139,4 +141,47 @@ test('admin Top 5 sanitizer keeps Potential Radar / Watchlist bucket safely', ()
   assert.equal(payload.admin_next_top5_potential_radar_preview[0].ticker, 'POT');
   assert.equal(payload.admin_next_top5_potential_radar_preview[0].radar_reason, 'WATCH_BREAKOUT');
   assert.equal(Object.hasOwn(payload.admin_next_top5_potential_radar_preview[0], 'debug_notes'), false);
+});
+
+
+test('gate bucket classifier marks valid Signal as SIGNAL', () => {
+  const c = base({ telegram_verdict: 'Entry valid dengan risk terukur.', status: 'READY_BREAKOUT', breakout_confirmation_status: 'CONFIRMED' });
+  assert.equal(classifyCandidateGateBucket(c, 'daytrade').gate_bucket, 'SIGNAL');
+});
+
+test('gate bucket classifier keeps soft Signal failures in RADAR', () => {
+  const cases = [
+    base({ final_quality_pass: false, breakout_confirmation_status: 'BREAKOUT_WATCH', breakout_confirmation_label: 'Breakout watch' }),
+    base({ final_quality_pass: false, breakout_confirmation_status: 'NEEDS_CLOSE_CONFIRMATION', breakout_confirmation_label: 'Needs close confirmation' }),
+    base({ final_quality_pass: false, status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK' }),
+    base({ final_quality_pass: false, risk_label: 'High Risk', status: 'BREAKOUT_WATCH', breakout_confirmation_status: 'BREAKOUT_WATCH' })
+  ];
+  assert.deepEqual(cases.map((c) => classifyCandidateGateBucket(c, 'daytrade').gate_bucket), ['RADAR', 'RADAR', 'RADAR', 'RADAR']);
+});
+
+test('gate bucket classifier keeps unsafe candidates in HARD_REJECT', () => {
+  const cases = [
+    base({ action: 'Hindari' }),
+    base({ risk_label: 'Very High Risk' }),
+    base({ liquidity_notes: 'weak liquidity' }),
+    base({ trading_plan_valid: false }),
+    base({ entry_status: 'INVALID_BELOW_SL' }),
+    base({ data_quality_status: 'INVALID_CANDLE' })
+  ];
+  assert.deepEqual(cases.map((c) => classifyCandidateGateBucket(c, 'daytrade').gate_bucket), ['HARD_REJECT', 'HARD_REJECT', 'HARD_REJECT', 'HARD_REJECT', 'HARD_REJECT', 'HARD_REJECT']);
+});
+
+test('gate calibration diagnostics classifies every candidate into one bucket', () => {
+  const candidates = [
+    base({ ticker: 'SIG', telegram_verdict: 'Entry valid dengan risk terukur.', status: 'READY_BREAKOUT', breakout_confirmation_status: 'CONFIRMED' }),
+    base({ ticker: 'RAD', final_quality_pass: false, breakout_confirmation_status: 'BREAKOUT_WATCH', breakout_confirmation_label: 'Breakout watch' }),
+    base({ ticker: 'BAD', action: 'Hindari' })
+  ];
+  const d = buildGateCalibrationDiagnostics(candidates, 'daytrade');
+  assert.equal(d.signal_count + d.radar_count + d.hard_reject_count, candidates.length);
+  assert.equal(d.signal_candidates, 1);
+  assert.equal(d.radar_candidates, 1);
+  assert.equal(d.hard_reject_candidates, 1);
+  assert.equal(d.excluded_by_guard, 1);
+  assert.equal(d.top_radar_reasons.WATCH_BREAKOUT, 1);
 });
