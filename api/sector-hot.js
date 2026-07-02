@@ -3642,6 +3642,52 @@ function candidatePassesPotentialRadarGate(candidate, mode) {
   return true;
 }
 
+function classifyCandidateGateBucket(candidate, mode) {
+  var r = candidate || {};
+  var publicPass = candidatePassesPublicTelegramSafetyGate(r, mode || 'diagnostic');
+  var finalGate = r.final_top_quality_gate || r.final_quality_gate || r.top_quality_gate || null;
+  var finalPass = finalGate && finalGate.pass === true;
+  if (!finalGate && r.final_quality_pass !== false && r.final_gate_pass !== false && r.quality_gate_pass !== false) {
+    finalPass = deriveFinalTopQualityGate(r, mode || 'diagnostic').pass === true;
+  }
+  if (publicPass && finalPass) {
+    return { gate_bucket: 'SIGNAL', gate_bucket_reason: 'FINAL_QUALITY_AND_PUBLIC_SIGNAL_GATE_PASS', signal_eligible: true, radar_eligible: false, hard_reject: false };
+  }
+  if (candidatePassesPotentialRadarGate(r, mode || 'diagnostic')) {
+    return { gate_bucket: 'RADAR', gate_bucket_reason: getPotentialRadarReason(r), signal_eligible: false, radar_eligible: true, hard_reject: false };
+  }
+  var reason = (finalGate && (finalGate.excluded_reason || finalGate.reason)) || r.excluded_reason || getDayTradeTelegramRejectionReason(r, 'gate_bucket');
+  return { gate_bucket: 'HARD_REJECT', gate_bucket_reason: safeTelegramText(reason, 140, 'HARD_REJECT_GUARD'), signal_eligible: false, radar_eligible: false, hard_reject: true };
+}
+
+function buildGateCalibrationDiagnostics(candidates, mode) {
+  var out = {
+    signal_count: 0,
+    radar_count: 0,
+    hard_reject_count: 0,
+    excluded_count: 0,
+    signal_candidates: 0,
+    radar_candidates: 0,
+    hard_reject_candidates: 0,
+    excluded_by_guard: 0,
+    top_radar_reasons: {}
+  };
+  (candidates || []).forEach(function(candidate) {
+    var bucket = classifyCandidateGateBucket(candidate, mode || 'diagnostic');
+    if (bucket.gate_bucket === 'SIGNAL') { out.signal_count++; out.signal_candidates++; }
+    else if (bucket.gate_bucket === 'RADAR') {
+      out.radar_count++; out.radar_candidates++;
+      out.top_radar_reasons[bucket.gate_bucket_reason] = (out.top_radar_reasons[bucket.gate_bucket_reason] || 0) + 1;
+    } else {
+      out.hard_reject_count++; out.hard_reject_candidates++; out.excluded_count++; out.excluded_by_guard++;
+    }
+  });
+  ['WAIT_PULLBACK','WATCH_BREAKOUT','WAIT_CLOSE_CONFIRMATION','CHASE_RISK_MONITOR','ARA_ARB_MONITOR','DATA_NEEDS_REVALIDATION','VOLUME_CONFIRMATION_NEEDED','MTF_MIXED'].forEach(function(reason) {
+    if (!Object.hasOwn(out.top_radar_reasons, reason)) out.top_radar_reasons[reason] = 0;
+  });
+  return out;
+}
+
 function candidatePassesRRGate(candidate) {
   return (toNum(candidate && candidate.risk_reward) || 0) >= getMinRRForCategory(candidate && candidate.category);
 }
@@ -5008,11 +5054,12 @@ function isLegacyBudiReadAllowed(req) {
 var TOP5_INTERNAL_RESPONSE_FIELDS = [
   'raw_payload', 'detail', 'sample_rejected', 'top_rejection_reasons', 'stageByTicker',
   'debug_notes', 'internal_notes', 'internal_diagnostics', 'preview_diagnostics',
-  'admin_notes', 'admin_note', 'excluded_reason_admin', 'excluded_preview'
+  'admin_notes', 'admin_note', 'excluded_reason_admin', 'excluded_preview',
+  'gate_calibration_diagnostics', 'raw_gate_calibration_diagnostics', 'sample_gate_bucket_debug'
 ];
 var TOP5_ADMIN_PREVIEW_FIELDS = [
   'admin_next_top5_preview', 'admin_next_top5_excluded_preview', 'admin_next_top5_potential_radar_preview', 'admin_next_top5_preview_count',
-  'admin_next_top5_excluded_count', 'admin_next_top5_potential_radar_count', 'admin_next_top5_preview_note', 'admin_next_top5_preview_generated_at'
+  'admin_next_top5_excluded_count', 'admin_next_top5_potential_radar_count', 'admin_gate_calibration_summary', 'admin_next_top5_preview_note', 'admin_next_top5_preview_generated_at'
 ];
 function isTop5PreviewOrProvisionalRow(row) {
   if (!row) return false;
@@ -5044,6 +5091,22 @@ function sanitizeTop5RowsForAudience(rows, opts) {
   return rows.filter(function(row) { return allowPreview || !isTop5PreviewOrProvisionalRow(row); })
     .map(function(row) { return sanitizeTop5RowForPublic(row, { allowPreview: allowPreview }); });
 }
+
+function sanitizeGateCalibrationSummaryForAdmin(summary) {
+  if (!summary || typeof summary !== 'object') return summary;
+  return {
+    signal_count: Number(summary.signal_count || summary.signal_candidates || 0),
+    radar_count: Number(summary.radar_count || summary.radar_candidates || 0),
+    hard_reject_count: Number(summary.hard_reject_count || summary.hard_reject_candidates || 0),
+    excluded_count: Number(summary.excluded_count || summary.excluded_by_guard || 0),
+    signal_candidates: Number(summary.signal_candidates || summary.signal_count || 0),
+    radar_candidates: Number(summary.radar_candidates || summary.radar_count || 0),
+    hard_reject_candidates: Number(summary.hard_reject_candidates || summary.hard_reject_count || 0),
+    excluded_by_guard: Number(summary.excluded_by_guard || summary.excluded_count || 0),
+    top_radar_reasons: Object.assign({}, summary.top_radar_reasons || {})
+  };
+}
+
 function sanitizeTop5ResponseForAudience(payload, opts) {
   var allowAdminPreview = !!(opts && opts.allowAdminPreview);
   var clean = Object.assign({}, payload || {});
@@ -5061,6 +5124,7 @@ function sanitizeTop5ResponseForAudience(payload, opts) {
     if (Array.isArray(clean.admin_next_top5_preview)) clean.admin_next_top5_preview = sanitizeTop5RowsForAudience(clean.admin_next_top5_preview, { allowPreview: true });
     if (Array.isArray(clean.admin_next_top5_excluded_preview)) clean.admin_next_top5_excluded_preview = sanitizeTop5RowsForAudience(clean.admin_next_top5_excluded_preview, { allowPreview: true });
     if (Array.isArray(clean.admin_next_top5_potential_radar_preview)) clean.admin_next_top5_potential_radar_preview = sanitizeTop5RowsForAudience(clean.admin_next_top5_potential_radar_preview, { allowPreview: true });
+    if (clean.admin_gate_calibration_summary) clean.admin_gate_calibration_summary = sanitizeGateCalibrationSummaryForAdmin(clean.admin_gate_calibration_summary);
   }
   return clean;
 }
@@ -5179,14 +5243,15 @@ async function handleWebDailyPicks(req, res, supabase) {
       var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
       var excludedRows = [];
       var potentialRows = [];
+      var gateCalibration = buildGateCalibrationDiagnostics(allPreviewCandidates, 'admin_preview');
       for (var prx = 0; prx < allPreviewCandidates.length && potentialRows.length < 5; prx++) {
         var pc = allPreviewCandidates[prx];
-        var pg = deriveFinalTopQualityGate(pc, 'admin_preview_potential');
-        if (!pg.pass && candidatePassesPotentialRadarGate(pc, 'admin_preview')) potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', radar_reason: getPotentialRadarReason(pc) });
+        var pb = classifyCandidateGateBucket(pc, 'admin_preview_potential');
+        if (pb.gate_bucket === 'RADAR') potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', gate_bucket: pb.gate_bucket, gate_bucket_reason: pb.gate_bucket_reason, radar_reason: pb.gate_bucket_reason });
       }
       for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
-        var eg = deriveFinalTopQualityGate(allPreviewCandidates[ex], 'admin_preview_excluded');
-        if (!eg.pass) excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, excluded_reason: eg.excluded_reason });
+        var eb = classifyCandidateGateBucket(allPreviewCandidates[ex], 'admin_preview_excluded');
+        if (eb.gate_bucket === 'HARD_REJECT') excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, gate_bucket: eb.gate_bucket, excluded_reason: eb.gate_bucket_reason });
       }
       adminPreviewExtra = {
         admin_next_top5_preview: previewRows,
@@ -5195,6 +5260,7 @@ async function handleWebDailyPicks(req, res, supabase) {
         admin_next_top5_potential_radar_preview: potentialRows,
         admin_next_top5_excluded_count: excludedRows.length,
         admin_next_top5_potential_radar_count: potentialRows.length,
+        admin_gate_calibration_summary: gateCalibration,
         admin_next_top5_preview_note: 'Preview calon Top 5 besok khusus admin; Final/Locked tetap wajib lolos final quality gate. Potential Radar/Watchlist menampung kandidat pantauan non-sinyal. Excluded by Guard ditampilkan ringkas untuk audit admin.',
         admin_next_top5_preview_generated_at: new Date().toISOString()
       };
@@ -8088,9 +8154,14 @@ function buildDayTradeTelegramDiagnostics(candidates, stageByTicker, counts) {
     raw_candidates_count: candidates.length,
     min_tp1_pass_count: counts.min_tp1_pass_count || 0,
     public_safe_count: counts.public_safe_count || 0,
+    signal_count: buildGateCalibrationDiagnostics(candidates, 'daytrade_diagnostics').signal_count,
+    radar_count: buildGateCalibrationDiagnostics(candidates, 'daytrade_diagnostics').radar_count,
+    hard_reject_count: buildGateCalibrationDiagnostics(candidates, 'daytrade_diagnostics').hard_reject_count,
+    excluded_count: buildGateCalibrationDiagnostics(candidates, 'daytrade_diagnostics').excluded_count,
+    gate_calibration: buildGateCalibrationDiagnostics(candidates, 'daytrade_diagnostics'),
     filtered_count: Math.max(0, candidates.length - (counts.public_safe_count || 0)),
     radar_requested: !!counts.radar_requested,
-    radar_count: (counts.radar_candidates || []).length,
+    radar_fallback_count: (counts.radar_candidates || []).length,
     radar_candidates: (counts.radar_candidates || []).map(function(r) { return r.ticker; }),
     radar_blocked_count: radarRejected.length,
     radar_rejection_reasons: radarReasons,
@@ -8928,6 +8999,8 @@ module.exports.__test = {
   candidatePassesPotentialRadarGate: candidatePassesPotentialRadarGate,
   getPotentialRadarReason: getPotentialRadarReason,
   candidatePassesDayTradeRadarFallbackGate: candidatePassesDayTradeRadarFallbackGate,
+  classifyCandidateGateBucket: classifyCandidateGateBucket,
+  buildGateCalibrationDiagnostics: buildGateCalibrationDiagnostics,
   formatDayTradeRadarTelegramMessage: formatDayTradeRadarTelegramMessage,
   sendSwingKongloTelegramNotification: sendSwingKongloTelegramNotification,
   sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
