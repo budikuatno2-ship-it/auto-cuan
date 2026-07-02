@@ -439,20 +439,29 @@ function Format-RejectedSamples($value, $limit = 5) {
 function Print-DayTradeTelegramDiagnostics($data) {
     if ($data.telegram -and $data.telegram.reason) { Write-Host "  Telegram reason: $($data.telegram.reason)" }
     elseif ($data.reason) { Write-Host "  Telegram reason: $($data.reason)" }
-    if ($null -ne $data.radar_requested) { Write-Host "  Radar requested: $($data.radar_requested)" }
-    elseif ($data.telegram -and $null -ne $data.telegram.radar_requested) { Write-Host "  Radar requested: $($data.telegram.radar_requested)" }
+    $radarRequestedValue = $null
+    if ($null -ne $data.radar_requested) { $radarRequestedValue = $data.radar_requested }
+    elseif ($data.telegram -and $null -ne $data.telegram.radar_requested) { $radarRequestedValue = $data.telegram.radar_requested }
+    if ($null -ne $radarRequestedValue) { Write-Host "  Radar requested: $($radarRequestedValue.ToString().ToLowerInvariant())" }
     $diag = if ($data.diagnostics) { $data.diagnostics } elseif ($data.telegram) { $data.telegram.diagnostics } else { $null }
     if ($diag -and $null -ne $diag.signal_count) { Write-Host "  Gate buckets: Signal $($diag.signal_count) | Radar $($diag.radar_count) | Hard Reject $($diag.hard_reject_count)" }
-    if ($null -ne $data.radar_count) { Write-Host "  Radar fallback count: $($data.radar_count)" }
-    elseif ($data.telegram -and $null -ne $data.telegram.radar_count) { Write-Host "  Radar fallback count: $($data.telegram.radar_count)" }
-    if ($data.radar_candidates) { Write-Host "  Radar candidates: $($data.radar_candidates -join ', ')" }
-    elseif ($data.telegram -and $data.telegram.radar_candidates) { Write-Host "  Radar candidates: $($data.telegram.radar_candidates -join ', ')" }
+    $radarFallbackCount = $null
+    if ($null -ne $data.radar_count) { $radarFallbackCount = $data.radar_count }
+    elseif ($data.telegram -and $null -ne $data.telegram.radar_count) { $radarFallbackCount = $data.telegram.radar_count }
+    if ($null -ne $radarFallbackCount) { Write-Host "  Radar fallback count: $radarFallbackCount" }
+    $radarCandidateList = $null
+    if ($data.radar_candidates) { $radarCandidateList = $data.radar_candidates }
+    elseif ($data.telegram -and $data.telegram.radar_candidates) { $radarCandidateList = $data.telegram.radar_candidates }
+    if ($radarCandidateList) { Write-Host "  Radar candidates: $($radarCandidateList -join ', ')" }
+    elseif ($null -ne $radarFallbackCount) { Write-Host "  Radar candidates: -" }
     if ($null -ne $data.radar_blocked_count) { Write-Host "  Radar blocked count: $($data.radar_blocked_count)" }
     elseif ($data.telegram -and $null -ne $data.telegram.radar_blocked_count) { Write-Host "  Radar blocked count: $($data.telegram.radar_blocked_count)" }
     $radarReasons = if ($data.radar_rejection_reasons) { $data.radar_rejection_reasons } elseif ($data.telegram) { $data.telegram.radar_rejection_reasons } else { $null }
     $radarReasonText = Format-TopReasons $radarReasons 5
     if ($radarReasonText) { Write-Host "  Top radar rejection reasons: $radarReasonText" }
     if ($data.telegram -and $data.telegram.radar_skipped_reason) { Write-Host "  Radar skipped reason: $($data.telegram.radar_skipped_reason)" }
+    elseif ($data.radar_skipped_reason) { Write-Host "  Radar skipped reason: $($data.radar_skipped_reason)" }
+    else { Write-Host "  Radar skipped reason: -" }
     if ($diag) {
         $topText = Format-TopReasons $diag.top_rejection_reasons 5
         if ($topText) { Write-Host "  Top rejection reasons: $topText" }
@@ -478,7 +487,8 @@ function Run-DayTrade($cfg, $mode) {
         $sendRadar = $true
         $mode = $mode -replace "-radar$", ""
     }
-    if ($cfg.DAYTRADE_SEND_RADAR -eq "0" -or $env:DAYTRADE_SEND_RADAR -eq "0" -or $env:AUTO_CUAN_DAYTRADE_SEND_RADAR -eq "0") { $sendRadar = $false }
+    $disableRadarValues = @("0", "false", "off")
+    if ($disableRadarValues -contains "$($cfg.DAYTRADE_SEND_RADAR)".Trim().ToLowerInvariant() -or $disableRadarValues -contains "$($env:DAYTRADE_SEND_RADAR)".Trim().ToLowerInvariant() -or $disableRadarValues -contains "$($env:AUTO_CUAN_DAYTRADE_SEND_RADAR)".Trim().ToLowerInvariant()) { $sendRadar = $false }
     if ($cfg.DAYTRADE_SEND_RADAR -eq "1" -or $env:DAYTRADE_SEND_RADAR -eq "1" -or $env:AUTO_CUAN_DAYTRADE_SEND_RADAR -eq "1") { $sendRadar = $true }
     $isFast = $mode.EndsWith("-fast")
     $actualMode = $mode -replace "-fast$", ""
@@ -502,7 +512,7 @@ function Run-DayTrade($cfg, $mode) {
         $params = @{ force = "1"; batch = "$batch" }
         if ($actualMode -and $actualMode -ne "full") { $params["mode"] = $actualMode }
         if ($isFast) { $params["speed"] = "fast" }
-        if ($sendRadar) { $params["send_radar"] = "1" }
+        $params["send_radar"] = if ($sendRadar) { "1" } else { "0" }
 
         Write-Host "`r  [DT/$actualMode/$speedLabel] Batch $($batch + 1)..." -NoNewline
         $data = Call-Api $cfg "daytrade-screener-run" $params
