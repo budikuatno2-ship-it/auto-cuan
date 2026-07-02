@@ -1980,7 +1980,7 @@ function showDashboard() {
     setTimeout(function() { loadChatHistory(); }, 0);
     // Update dashboard greeting
     updateDashGreeting();
-    loadDashboardTop5Monitor(true, { loadAdminPreview: true });
+    loadDashboardTop5Monitor(true, { loadAdminPreview: false });
     setTimeout(function() { loadTop5History(true); }, 700);
     startDashboardMonitorAutoRefresh();
 }
@@ -2003,7 +2003,7 @@ function navigateTo(page) {
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
     // Sektor Hot login gate
-    if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: true }); setTimeout(function() { loadTop5History(true); }, 700); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
+    if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: false }); setTimeout(function() { loadTop5History(true); }, 700); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
     else { stopDashboardMonitorAutoRefresh(); }
     if (page === 'sektor') {
         var isLoggedIn = isLoggedInUser();
@@ -7246,18 +7246,27 @@ function renderAdminNextTop5Preview(data) {
     var list = document.getElementById('adminNextTop5PreviewList');
     var updated = document.getElementById('adminNextTop5PreviewUpdated');
     if (!section || !list) return;
+    // Guest/non-admin: hide entirely
+    if (!isAdmin()) { section.classList.add('hidden'); list.innerHTML = ''; return; }
+    // Admin preview not yet generated: show button to trigger
+    if (!data || (data.admin_preview_not_generated === true)) {
+        section.classList.remove('hidden');
+        if (updated) updated.textContent = '';
+        list.innerHTML = '<div class="py-3 text-center"><p class="text-[11px] text-gray-400 mb-2">Preview admin belum dimuat.</p><button onclick="loadAdminNextTop5Preview()" class="px-3 py-1.5 rounded-lg text-[11px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition font-medium">Generate Admin Preview</button></div>';
+        return;
+    }
     var rows = data && Array.isArray(data.admin_next_top5_preview) ? data.admin_next_top5_preview : [];
     var excludedRows = data && Array.isArray(data.admin_next_top5_excluded_preview) ? data.admin_next_top5_excluded_preview : [];
     var potentialRows = data && Array.isArray(data.admin_next_top5_potential_radar_preview) ? data.admin_next_top5_potential_radar_preview : [];
     if (!rows.length && !excludedRows.length && !potentialRows.length) {
-        section.classList.add('hidden');
-        list.innerHTML = '';
-        if (updated) updated.textContent = 'Preview: — WIB';
+        section.classList.remove('hidden');
+        if (updated) updated.textContent = 'Preview: ' + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
+        list.innerHTML = '<div class="py-3 text-center"><p class="text-[11px] text-gray-400 mb-2">Belum ada kandidat preview yang valid.</p><button onclick="loadAdminNextTop5Preview()" class="px-3 py-1.5 rounded-lg text-[11px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition font-medium">Refresh Preview</button></div>';
         return;
     }
     section.classList.remove('hidden');
-    if (updated) updated.textContent = 'Preview: ' + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
-    var html = '';
+    if (updated) updated.textContent = 'Preview generated: ' + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
+    var html = '<div class="mb-2 text-right"><button onclick="loadAdminNextTop5Preview()" class="px-2.5 py-1 rounded-lg text-[10px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition">Refresh Preview</button></div>';
     var gate = data && data.admin_gate_calibration_summary;
     if (gate) {
         html += '<div class="mb-2 rounded-xl border border-cyan-500/15 bg-cyan-500/5 px-3 py-2 text-[11px] text-cyan-100">Gate: ' + Number(gate.signal_count || 0) + ' Final · ' + Number(gate.radar_count || 0) + ' Radar · ' + Number(gate.hard_reject_count || 0) + ' Hard Reject</div>';
@@ -7444,7 +7453,7 @@ function openDashboardPickDetail(ticker) {
 async function loadDashboardTop5Monitor(silent, opts) {
     opts = opts || {};
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
-    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); if (opts.loadAdminPreview === true) loadAdminNextTop5Preview(); return; }
+    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); renderAdminNextTop5Preview(null); return; }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
     // Clear loading states immediately — mutually exclusive: loading replaces any stale content
     var _topEl = document.getElementById('dashboardTop5List');
@@ -7467,7 +7476,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
         renderDashboardTop5MonitorData(data);
-        if (opts.loadAdminPreview === true) loadAdminNextTop5Preview();
+        renderAdminNextTop5Preview(null);
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
@@ -7501,11 +7510,19 @@ function renderDashboardTop5MonitorData(data) {
 
 async function loadAdminNextTop5Preview() {
     if (!isAdmin()) { renderAdminNextTop5Preview(null); return; }
+    // Show loading state inside admin preview section only
+    var section = document.getElementById('adminNextTop5PreviewSection');
+    var list = document.getElementById('adminNextTop5PreviewList');
+    if (section) section.classList.remove('hidden');
+    if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Menghitung preview admin...</div>';
     try {
-        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&admin_preview=1&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
+        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&admin_preview=1&generate_preview=1&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 15000);
         var data = fetched.data;
         if (data && data.success) renderAdminNextTop5Preview(data);
-    } catch(e) {}
+        else { if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-red-400">Preview gagal dimuat. Coba refresh.</div>'; }
+    } catch(e) {
+        if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-red-400">Preview gagal dimuat. Coba refresh.</div>';
+    }
 }
 
 
