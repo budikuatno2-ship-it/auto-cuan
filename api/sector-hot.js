@@ -3883,6 +3883,84 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   return true;
 }
 
+function candidatePassesTelegramCandidateDigestGate(candidate, mode) {
+  if (!candidate || !candidate.ticker) return false;
+  var r = candidate;
+  // Fatal blocks — always reject
+  var ticker = safeTelegramText(r.ticker, 16, '');
+  if (!ticker) return false;
+  var entry1 = toNum(r.entry1) || getEntry1(r);
+  var sl = toNum(r.sl || r.stop_loss);
+  var tp1 = toNum(r.tp1n || r.tp1);
+  var rr = toNum(r.risk_reward) || 0;
+  // Missing plan fields = fatal
+  if (!(entry1 > 0) || !(sl > 0) || !(tp1 > 0)) return false;
+  if (rr <= 0) return false;
+  if (tp1 <= entry1) return false;
+  if (sl >= entry1) return false;
+  // trading_plan_valid explicitly false = fatal
+  if (r.trading_plan_valid === false) return false;
+  // plan_quality_status INVALID = fatal
+  var planStatus = String(r.plan_quality_status || r.trading_plan_status || '').trim().toUpperCase();
+  if (planStatus === 'INVALID') return false;
+  // Explicit INVALID / BROKEN / ERROR status
+  var statusText = String(r.status || r.final_status || '').trim().toUpperCase();
+  if (statusText === 'INVALID' || statusText === 'BROKEN' || statusText === 'ERROR') return false;
+  // Price below SL / SL hit / invalidation hit
+  var lastPrice = toNum(r.last_price || r.lastn || r.current_price);
+  if (lastPrice > 0 && sl > 0 && lastPrice < sl) return false;
+  var entryStatus = String(r.entry_status || '').trim().toUpperCase();
+  if (entryStatus === 'INVALID_BELOW_SL') return false;
+  var invalidationDistanceStatus = String(r.invalidation_distance_status || '').trim().toUpperCase();
+  if (invalidationDistanceStatus === 'INVALID_BELOW_SL') return false;
+  // Impossible ARA/ARB execution
+  var executionStatus = String(r.execution_reality_status || '').trim().toUpperCase();
+  if (executionStatus === 'UNKNOWN_LIMITS' || executionStatus === 'ARA_HIT' || executionStatus === 'ARB_HIT') return false;
+  if (r.buy_execution_realistic === false) return false;
+  if (r.sell_risk_near_arb === true) return false;
+  // Invalid candle / data rusak berat
+  var dataQualityStatus = String(r.data_quality_status || '').trim().toUpperCase();
+  if (dataQualityStatus === 'INVALID_CANDLE' || r.data_quality_valid === false) return false;
+  // Expired fatal setup
+  var freshnessStatus = String(r.setup_freshness_status || r.freshness_status || '').trim().toUpperCase();
+  if (freshnessStatus === 'EXPIRED') return false;
+  // All other conditions (Very High Risk, Weak Volume, Weak Liquidity, Hindari, Chase Risk, MTF mixed, etc.)
+  // are ALLOWED as warnings, not fatal blocks.
+  return true;
+}
+
+function formatCandidateDigestWarnings(candidate, mode) {
+  var warnings = [];
+  var r = candidate || {};
+  function add(label) { if (label && warnings.indexOf(label) < 0) warnings.push(label); }
+  var allText = joinTelegramTexts([
+    r.risk_label, r.risk_label_v2, r.verified_risk_label, r.liquidity_label, r.liquidity_notes,
+    r.volume_label, r.volume_confirmation_label, r.volume_notes, r.volume_confirmation_notes,
+    r.action, r.action_label, r.signal_action, r.signal_action_label, r.telegram_action_label,
+    r.entry_status, r.entry_timing, r.entry_quality_label, r.entry_status_label,
+    r.breakout_confirmation_status, r.breakout_confirmation_label,
+    r.plan_quality_note, r.invalidation_note, r.telegram_verdict, r.status_reason,
+    r.multi_timeframe_bias, r.multi_timeframe_notes
+  ]).toLowerCase();
+  var risk = normalizeTelegramRiskLabel(r.risk_label_v2 || r.risk_label || r.verified_risk_label).toLowerCase();
+  if (risk === 'very high risk') add('Very High Risk');
+  else if (risk === 'high risk') add('High Risk');
+  if (includesAny(allText, ['weak volume', 'volume lemah'])) add('Weak Volume');
+  if (includesAny(allText, ['weak liquidity', 'likuiditas lemah', 'likuiditas tipis'])) add('Weak Liquidity');
+  if (includesAny(allText, ['hindari'])) add('Hindari / caution only');
+  if (includesAny(allText, ['wait pullback', 'tunggu pullback', 'pullback'])) add('Tunggu pullback / jangan chase');
+  if (includesAny(allText, ['entry not touched', 'belum tersentuh', 'not entry'])) add('Entry not touched');
+  if (includesAny(allText, ['needs close confirmation', 'close confirmation', 'tunggu close'])) add('Needs close confirmation');
+  if (includesAny(allText, ['breakout watch', 'breakout_watch'])) add('Breakout watch');
+  if (includesAny(allText, ['mtf mixed', 'mixed timeframe'])) add('MTF mixed');
+  if (includesAny(allText, ['sl rawan noise', 'rawan noise'])) add('SL rawan noise');
+  if (includesAny(allText, ['stale', 'perlu revalidasi', 'needs revalidation']) && !includesAny(allText, ['expired fatal'])) add('Data perlu revalidasi');
+  if (includesAny(allText, ['chase', 'extended', 'telat', 'late'])) add('Chase risk');
+  var executionText = joinTelegramTexts([r.execution_reality_label, r.execution_reality_note, r.ara_arb_note]).toLowerCase();
+  if (includesAny(executionText, ['near ara', 'near arb', 'dekat ara', 'dekat arb']) && !includesAny(executionText, ['ara hit', 'arb hit', 'impossible', 'unknown'])) add('ARA/ARB caution');
+  return warnings;
+}
+
 function candidateTelegramEligible(candidate) {
   if (!candidate || !candidatePassesRRGate(candidate) || !candidatePassesMinUpside(candidate)) return false;
   var q = deriveStaleLiquidityLabels(candidate);
@@ -4023,16 +4101,33 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
     r.confidence_notes = confAfterForeign.confidence_notes;
     applyPlanQualityConfidenceGuard(r);
   }
-  var setup = compactSafeText(r.setup || r.setup_type || r.status || r.final_status, '-').replace(/_/g, ' ');
+  var setup = compactSafeText(r.setup || r.setup_type || r.status || r.final_status, 'Watchlist').replace(/_/g, ' ');
   var risk = deriveTelegramRiskLabel(r, r.category === 'Day Trade' ? 'daytrade' : 'swing').replace(' Risk','');
-  var grade = compactSafeText(r.confidence || r.quality_grade || r.grade || getTelegramGrade(r), '-');
+  var grade = compactSafeText(r.confidence || r.quality_grade || r.grade || getTelegramGrade(r), 'C');
   var score = fmtScore(r.combined_score || r.telegram_conviction_score || r.score || r.daytrade_score);
+  var entryQLabel = compactSafeText(r.entry_quality_label || r.entry_status_label, '');
+  var planQLabel = compactSafeText(r.plan_quality_label || r.plan_label, '');
   var lines = [];
   lines.push(idx + '. ' + r.ticker + ' — ' + r.category + ' | ' + setup);
-  lines.push('G:' + grade + ' · Risk:' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + compactSafeText(r.liquidity_label, '-'));
-  lines.push('EntryQ: ' + compactSafeText(r.entry_quality_label || r.entry_status_label, '-') + ' · PlanQ: ' + compactSafeText(r.plan_quality_label || r.plan_label, '-'));
-  lines.push('Plan: ' + compactSafeText(r.rr_quality_label, 'RR sehat') + ' · ' + compactSafeText(r.sl_quality_label, 'SL wajar') + ' · ' + compactSafeText(r.tp_quality_label, 'TP realistis'));
-  lines.push('Window: ' + compactSafeText(r.entry_window_label, '-'));
+  lines.push('G:' + grade + ' · Risk:' + risk + ' · RR:' + fmtRR(r.risk_reward) + ' · Liq:' + compactSafeText(r.liquidity_label, 'N/A'));
+  if ((entryQLabel && entryQLabel !== '-') || (planQLabel && planQLabel !== '-')) {
+    var eqParts = [];
+    if (entryQLabel && entryQLabel !== '-') eqParts.push('EntryQ: ' + entryQLabel);
+    if (planQLabel && planQLabel !== '-') eqParts.push('PlanQ: ' + planQLabel);
+    lines.push(eqParts.join(' · '));
+  }
+  var planParts = [];
+  var rrQual = compactSafeText(r.rr_quality_label, '');
+  var slQual = compactSafeText(r.sl_quality_label, '');
+  var tpQual = compactSafeText(r.tp_quality_label, '');
+  if ((rrQual && rrQual !== '-') || (slQual && slQual !== '-') || (tpQual && tpQual !== '-')) {
+    if (rrQual && rrQual !== '-') planParts.push(rrQual);
+    if (slQual && slQual !== '-') planParts.push(slQual);
+    if (tpQual && tpQual !== '-') planParts.push(tpQual);
+    lines.push('Plan: ' + planParts.join(' · '));
+  }
+  var windowLabel = compactSafeText(r.entry_window_label, '');
+  if (windowLabel && windowLabel !== '-') lines.push('Window: ' + windowLabel);
   lines.push('Harga ' + fmtPrice(r.lastn || r.last_price) + ' | Entry ' + fmtPrice(r.entry1) + '/' + fmtPrice(r.entry2) + ' | SL ' + fmtPrice(r.sl) + ' | TP ' + fmtPrice(r.tp1n) + '/' + fmtPrice(r.tp2n));
   lines.push('Vol ' + fmtRatio(getTelegramVolumeRatio(r)) + ' · Tx ' + fmtRpValue(getTelegramValue(r)) + ' · Trend ' + compactSafeText((r.trend_label || '').replace(' Trend',''), '-'));
   var confluence = [];
@@ -4069,8 +4164,11 @@ async function formatCandidateBlock(supabase, r, idx, compact) {
     if (r.category === 'Day Trade' && r.near_ara) lines.push('Note: Dekat ARA, jangan chase agresif.');
   }
   lines.push('Verdict: ' + compactSafeText(r.signal_action_label || 'Watchlist', 'Watchlist'));
+  var digestWarnings = formatCandidateDigestWarnings(r, r.category === 'Day Trade' ? 'daytrade' : 'swing');
+  if (digestWarnings.length > 0) lines.push('Warning: ' + digestWarnings.join('; '));
   if (!compact) lines.push('Chart: ' + chartLink(r.ticker));
-  return lines.map(function(line){ return compactSafeText(line, '-'); }).join('\n');
+  lines.push('Bukan rekomendasi beli otomatis. Konfirmasi manual wajib.');
+  return lines.map(function(line){ return compactSafeText(line, ''); }).filter(Boolean).join('\n');
 }
 
 
@@ -4236,10 +4334,10 @@ async function buildSignalMessage(supabase, ticker) {
 }
 
 async function buildTelegramTopMessage(supabase) {
-  // Public Top 10 uses the shared candidateTelegramEligible() path, which includes candidatePassesPublicTelegramSafetyGate().
-  var rows = (await fetchCombinedScreenerCandidates(supabase)).filter(candidateTelegramEligible).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
-  var lines = ['Top 10 Screener — ' + getWibDateString(), ''];
-  if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
+  // Top 10 uses candidatePassesTelegramCandidateDigestGate — more lenient than strict signal gate.
+  var rows = (await fetchCombinedScreenerCandidates(supabase, true)).filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'top10'); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
+  var lines = ['Top 10 Screener — ' + getWibDateString(), 'Kandidat berbasis screener deterministic.', 'Konfirmasi manual wajib.', 'Perhatikan warning entry/risk/volume.', ''];
+  if (rows.length === 0) lines.push('Belum ada kandidat dengan plan Entry/SL/TP valid hari ini.');
   for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, true)); lines.push(''); }
   lines.push('Bukan rekomendasi beli/jual. DYOR.');
   return lines.join('\n');
@@ -4254,9 +4352,9 @@ async function buildTelegramScreenerMessage(supabase, modeText) {
   else if (mode === 'swing non konglo' || mode === 'swing non-konglo') { category = 'Swing Non-Konglo'; table = 'swing_screener_non_konglo_latest'; orderCol = 'rank'; asc = true; }
   else return 'Format:\n/screener day trade\n/screener swing konglo\n/screener swing non konglo';
   var res = await supabase.from(table).select('*').order(orderCol, { ascending: asc }).limit(20);
-  var rows = (res.data || []).map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker && candidateTelegramEligible(r); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
-  var lines = ['Screener ' + category + ' — ' + getWibDateString(), ''];
-  if (rows.length === 0) lines.push('Belum ada kandidat yang lolos filter potensi TP minimal.');
+  var rows = (res.data || []).map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker && candidatePassesTelegramCandidateDigestGate(r, 'screener_' + mode.replace(/\s+/g, '_')); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
+  var lines = ['Screener ' + category + ' — ' + getWibDateString(), 'Kandidat berbasis screener deterministic.', 'Konfirmasi manual wajib.', 'Perhatikan warning entry/risk/volume.', ''];
+  if (rows.length === 0) lines.push('Belum ada kandidat dengan plan Entry/SL/TP valid hari ini.');
   for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, category === 'Day Trade')); lines.push(''); }
   lines.push('Bukan rekomendasi beli/jual. DYOR.');
   return lines.join('\n');
@@ -4538,7 +4636,7 @@ async function sendTop5ChartAttachments(req, picks) {
 }
 
 async function selectDailyTop5(supabase) {
-  var rows = await fetchCombinedScreenerCandidates(supabase);
+  var rows = await fetchCombinedScreenerCandidates(supabase, true);
   for (var i = 0; i < rows.length; i++) {
     var f = await fetchForeignSummary(supabase, rows[i].ticker);
     rows[i].daily_score = (rows[i].combined_score || 0) + (f.score || 0)
@@ -4549,7 +4647,7 @@ async function selectDailyTop5(supabase) {
     var gate = applyFinalTopQualityGate(rows[i], 'daily_top5');
     rows[i].daily_score += gate.quality_score_adjustment || 0;
   }
-  return rows.filter(candidateTelegramEligible).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
+  return rows.filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'daily_top5'); }).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
 }
 
 function getTelegramConfigStatus() {
@@ -4677,12 +4775,14 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   options = options || {};
   var headerLines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date];
   if (options.previous_close_snapshot) headerLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
-  headerLines.push('Bukan rekomendasi beli/jual. DYOR.');
+  headerLines.push('Kandidat berbasis screener deterministic.');
+  headerLines.push('Konfirmasi manual wajib.');
+  headerLines.push('Perhatikan warning entry/risk/volume.');
   var header = headerLines.join('\n');
   var emptyLines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date];
   if (options.previous_close_snapshot) emptyLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
-  emptyLines.push('', 'Belum ada kandidat yang lolos final quality gate hari ini.', 'Bukan rekomendasi beli/jual. DYOR.');
-  var safePicks = (picks || []).filter(function(p) { return candidatePassesPublicTelegramSafetyGate(p, 'daily_top5_send') && candidatePassesMinUpside(p); });
+  emptyLines.push('', 'Belum ada kandidat dengan plan Entry/SL/TP valid hari ini.', 'Bukan rekomendasi beli/jual. DYOR.');
+  var safePicks = (picks || []).filter(function(p) { return candidatePassesTelegramCandidateDigestGate(p, 'daily_top5_send'); });
   var radarSource = Array.isArray(options.radar_candidates) ? options.radar_candidates : (Array.isArray(options.all_candidates) ? options.all_candidates : picks);
   var radarPicks = safePicks.length === 0 ? selectRadarDigestCandidates(radarSource, 'top5_radar_digest', 5) : [];
   var sendResult = safePicks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : (radarPicks.length > 0 ? await telegramNotifier.sendTelegramMessage(formatRadarDigestTelegramMessage(radarPicks, 'Top 5 Radar', 'swing')) : { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null });
@@ -9253,6 +9353,8 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 module.exports.__test = {
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
   candidatePassesPotentialRadarGate: candidatePassesPotentialRadarGate,
+  candidatePassesTelegramCandidateDigestGate: candidatePassesTelegramCandidateDigestGate,
+  formatCandidateDigestWarnings: formatCandidateDigestWarnings,
   getPotentialRadarReason: getPotentialRadarReason,
   getDayTradeRadarStatus: getDayTradeRadarStatus,
   candidatePassesDayTradeRadarFallbackGate: candidatePassesDayTradeRadarFallbackGate,
@@ -9274,5 +9376,8 @@ module.exports.__test = {
   isTop5PreviewOrProvisionalRow: isTop5PreviewOrProvisionalRow,
   normalizeTelegramRiskLabel: normalizeTelegramRiskLabel,
   normalizeCandidateScoreForGate: normalizeCandidateScoreForGate,
-  buildDashboardPickRow: buildDashboardPickRow
+  buildDashboardPickRow: buildDashboardPickRow,
+  selectDailyTop5: selectDailyTop5,
+  buildTelegramTopMessage: buildTelegramTopMessage,
+  buildTelegramScreenerMessage: buildTelegramScreenerMessage
 };
