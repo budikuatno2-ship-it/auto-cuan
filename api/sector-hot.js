@@ -5499,7 +5499,8 @@ async function handleWebDailyPicks(req, res, supabase) {
       var _todayWib = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
       if (generatePreview) {
-        // === GENERATE: heavy compute, then save to app_settings cache ===
+        // === GENERATE: compute preview Top 5, skip heavy diagnostics unless include_diagnostics=1 ===
+        var _includeDiagnostics = req.query.include_diagnostics === '1';
         var _previewStartMs = Date.now();
         var _previewSelectMs = 0;
         var _previewCombinedMs = 0;
@@ -5511,29 +5512,31 @@ async function handleWebDailyPicks(req, res, supabase) {
           var previewRows = [];
           for (var k = 0; k < previewCandidates.length; k++) { var pr = buildFallbackDashboardPickRow(previewCandidates[k], k + 1); pr.is_preview = true; pr.is_provisional = true; pr.visibility = 'admin_preview'; pr.publication_status = 'provisional'; pr.preview_label = 'Preview'; pr.provisional_label = 'Provisional'; previewRows.push(pr); }
 
-          // Diagnostics are best-effort
+          // Diagnostics only when explicitly requested (heavy — adds 10-20s)
           var excludedRows = [];
           var potentialRows = [];
           var gateCalibration = null;
-          var diagnosticsNote = null;
-          try {
-            var _t1 = Date.now();
-            var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
-            _previewCombinedMs = Date.now() - _t1;
-            var _t2 = Date.now();
-            gateCalibration = buildGateCalibrationDiagnostics(allPreviewCandidates, 'admin_preview');
-            _previewGateMs = Date.now() - _t2;
-            for (var prx = 0; prx < allPreviewCandidates.length && potentialRows.length < 5; prx++) {
-              var pc = allPreviewCandidates[prx];
-              var pb = classifyCandidateGateBucket(pc, 'admin_preview_potential');
-              if (pb.gate_bucket === 'RADAR') potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', gate_bucket: pb.gate_bucket, gate_bucket_reason: pb.gate_bucket_reason, radar_reason: pb.gate_bucket_reason });
+          var diagnosticsNote = _includeDiagnostics ? null : 'Diagnostics belum dimuat. Preview Top 5 tetap tersedia.';
+          if (_includeDiagnostics) {
+            try {
+              var _t1 = Date.now();
+              var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
+              _previewCombinedMs = Date.now() - _t1;
+              var _t2 = Date.now();
+              gateCalibration = buildGateCalibrationDiagnostics(allPreviewCandidates, 'admin_preview');
+              _previewGateMs = Date.now() - _t2;
+              for (var prx = 0; prx < allPreviewCandidates.length && potentialRows.length < 5; prx++) {
+                var pc = allPreviewCandidates[prx];
+                var pb = classifyCandidateGateBucket(pc, 'admin_preview_potential');
+                if (pb.gate_bucket === 'RADAR') potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', gate_bucket: pb.gate_bucket, gate_bucket_reason: pb.gate_bucket_reason, radar_reason: pb.gate_bucket_reason });
+              }
+              for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
+                var eb = classifyCandidateGateBucket(allPreviewCandidates[ex], 'admin_preview_excluded');
+                if (eb.gate_bucket === 'HARD_REJECT') excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, gate_bucket: eb.gate_bucket, excluded_reason: eb.gate_bucket_reason });
+              }
+            } catch (diagErr) {
+              diagnosticsNote = 'Diagnostics belum tersedia: ' + (diagErr.message || 'timeout').substring(0, 60);
             }
-            for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
-              var eb = classifyCandidateGateBucket(allPreviewCandidates[ex], 'admin_preview_excluded');
-              if (eb.gate_bucket === 'HARD_REJECT') excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, gate_bucket: eb.gate_bucket, excluded_reason: eb.gate_bucket_reason });
-            }
-          } catch (diagErr) {
-            diagnosticsNote = 'Diagnostics belum tersedia: ' + (diagErr.message || 'timeout').substring(0, 60);
           }
 
           var _generatedAt = new Date().toISOString();
