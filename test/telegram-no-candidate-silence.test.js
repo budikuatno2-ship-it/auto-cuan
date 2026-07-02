@@ -89,11 +89,13 @@ test('Day Trade with radar ON and eligible Radar candidates sends Radar', async 
   });
 });
 
-test('Day Trade with radar ON but only Hard Reject skips explicitly', async () => {
+test('Day Trade with radar ON sends caution Radar for non-fatal Hindari / Very High Risk', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'HARD', status: 'WAIT_PULLBACK', action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 'run-hard-only', '2026-07-02', 1, true, true, {});
-    assert.equal(result.skipped, true);
-    assert.equal(result.reason, 'radar_candidates_all_hard_reject');
-    assert.equal(calls.length, 0);
+    assert.equal(result.sent, true);
+    assert.equal(result.radar_sent, true);
+    assert.equal(result.reason, 'radar_fallback_sent');
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /RADAR — BUKAN SINYAL ENTRY/);
   });
 });

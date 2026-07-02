@@ -9,6 +9,7 @@ const {
   candidatePassesPotentialRadarGate,
   candidatePassesDayTradeRadarFallbackGate,
   getPotentialRadarReason,
+  getDayTradeRadarStatus,
   formatDayTradeRadarTelegramMessage,
   sanitizeTop5ResponseForAudience,
   classifyCandidateGateBucket,
@@ -81,11 +82,52 @@ test('Very High Risk remains blocked from Potential Radar', () => {
   assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), false);
 });
 
-test('Day Trade radar fallback gate cannot be bypassed by radar status when Potential Radar gate fails', () => {
+
+test('Day Trade radar status scans later fields after non-radar status', () => {
+  const c = base({ status: 'Hindari', action_label: 'Tunggu pullback valid' });
+  assert.equal(getDayTradeRadarStatus(c), 'WAIT_PULLBACK');
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), true);
+});
+
+test('Day Trade radar status accepts Telegram Radar after AVOID status', () => {
+  const c = base({ status: 'AVOID', telegram_action_label: 'Radar' });
+  assert.equal(getDayTradeRadarStatus(c), 'RADAR');
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), true);
+});
+
+test('Day Trade radar status reads breakout confirmation status behind trade candidate status', () => {
+  const c = base({ status: 'TRADE_CANDIDATE', breakout_confirmation_status: 'BREAKOUT_WATCH' });
+  assert.equal(getDayTradeRadarStatus(c), 'BREAKOUT_WATCH');
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), true);
+});
+
+test('Day Trade radar fallback includes Very High Risk wait pullback as Radar caution, not Signal', () => {
+  const c = base({ status: 'Hindari', entry_status: 'WAIT_PULLBACK', risk_label: 'Very High Risk' });
+  assert.equal(candidatePassesPublicTelegramSafetyGate(Object.assign({}, c), 'daytrade'), false);
+  assert.equal(getDayTradeRadarStatus(c), 'WAIT_PULLBACK');
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), true);
+});
+
+test('Day Trade radar fallback still blocks fatal invalid candle, below SL, and invalid plan', () => {
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', data_quality_status: 'INVALID_CANDLE' })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', entry_status: 'INVALID_BELOW_SL' })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', trading_plan_valid: false })), false);
+});
+
+
+test('Day Trade radar fallback blocks fatal ARA/ARB execution reality', () => {
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', execution_reality_status: 'UNKNOWN_LIMITS' })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'WAIT_PULLBACK', buy_execution_realistic: false })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'BREAKOUT_WATCH', execution_reality_status: 'ARA_HIT' })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', sell_risk_near_arb: true })), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(base({ status: 'RADAR', execution_reality_note: 'impossible execution near ARA' })), false);
+});
+
+test('Day Trade radar fallback can include caution radar status when Potential Radar gate fails', () => {
   const c = base({ status: 'WAIT_PULLBACK', action_label: 'Hindari', entry_status: 'WAIT_PULLBACK' });
   assert.equal(getPotentialRadarReason(c), 'WAIT_PULLBACK');
   assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), false);
-  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), false);
+  assert.equal(candidatePassesDayTradeRadarFallbackGate(c), true);
 });
 
 
