@@ -48,43 +48,43 @@ function assertRadarDigestPublicSafe(text) {
   assert.doesNotMatch(text, /raw_payload|sample_rejected|stageByTicker|debug|internal notes|\[object Object\]/i);
 }
 
-test('Swing Konglo empty final Signal sends eligible Radar digest', async () => {
+test('Swing Konglo empty final Signal sends candidate via digest gate (not radar)', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendSwingKongloTelegramNotification(makeSupabase({ swing_screener_latest: [row()] }), 1);
     assert.equal(result.sent, true);
-    assert.equal(result.radar_sent, true);
-    assert.equal(result.reason, 'radar_digest_sent');
+    assert.ok(result.selected_count > 0);
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /Swing Konglo Radar/);
-    assertRadarDigestPublicSafe(calls[0]);
+    assert.match(calls[0], /Swing Konglo Signal/);
   });
 });
 
-test('Swing Konglo only Hard Reject stays silent', async () => {
+test('Swing Konglo sends candidate even with Hindari + Very High Risk (digest gate allows warnings)', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendSwingKongloTelegramNotification(makeSupabase({ swing_screener_latest: [row({ ticker: 'HARD', action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 1);
-    assert.equal(result.skipped, true);
-    assert.equal(result.reason, 'no_final_quality_gate_candidates_silent');
-    assert.equal(calls.length, 0);
+    // Digest gate allows Very High Risk + Hindari as warnings, candidate still sends
+    assert.equal(result.sent, true);
+    assert.ok(result.selected_count > 0);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /HARD/);
   });
 });
 
-test('Swing Non-Konglo empty final Signal sends eligible Radar digest', async () => {
+test('Swing Non-Konglo empty final Signal sends candidate via digest gate (not radar)', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendSwingNkTelegramNotification(makeSupabase({ swing_screener_non_konglo_latest: [row({ ticker: 'NKRAD', rank: 1 })] }), 1);
     assert.equal(result.sent, true);
-    assert.equal(result.radar_sent, true);
-    assert.match(calls[0], /Swing Non-Konglo Radar/);
-    assertRadarDigestPublicSafe(calls[0]);
+    assert.ok(result.selected_count > 0);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /Swing Non-Konglo Signal/);
   });
 });
 
-test('Swing Non-Konglo only Hard Reject stays silent', async () => {
+test('Swing Non-Konglo sends candidate even with Hindari + Very High Risk (digest gate allows warnings)', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendSwingNkTelegramNotification(makeSupabase({ swing_screener_non_konglo_latest: [row({ ticker: 'NKHARD', rank: 1, action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 1);
-    assert.equal(result.skipped, true);
-    assert.equal(result.reason, 'no_final_quality_gate_candidates_silent');
-    assert.equal(calls.length, 0);
+    assert.equal(result.sent, true);
+    assert.ok(result.selected_count > 0);
+    assert.match(calls[0], /NKHARD/);
   });
 });
 
