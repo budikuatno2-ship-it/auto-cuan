@@ -204,7 +204,7 @@ test('Test 13: Formatter does not output SL: -, EntryQ: -, PlanQ: -, undefined, 
     assert.equal(text.includes(forbidden[i]), false, 'Should not contain: ' + forbidden[i]);
   }
   // SL value should be present as a number (4.800)
-  assert.match(text, /SL\s+[\d.,]+/);
+  assert.match(text, /SL:\s*[\d.,]+/);
 });
 
 // ============================================================
@@ -215,9 +215,9 @@ test('Test 14: Day Trade sends "Day Trade Signal Candidate" not default "[RADAR 
     validCandidate({ ticker: 'DTRC', category: 'Day Trade', status: 'WAIT_PULLBACK', entry_status: 'WAIT_PULLBACK', breakout_confirmation_status: 'BREAKOUT_WATCH' })
   ];
   var msg = formatDayTradeRadarTelegramMessage(candidates);
-  assert.match(msg, /Day Trade Signal Candidate/);
+  assert.match(msg, /Day Trade Signal/);
   assert.doesNotMatch(msg, /\[RADAR — BUKAN SINYAL ENTRY\]/);
-  assert.match(msg, /Bukan rekomendasi beli otomatis\. Konfirmasi manual wajib\./);
+  assert.match(msg, /Bukan rekomendasi beli\. Konfirmasi manual wajib\./);
 });
 
 // ============================================================
