@@ -143,16 +143,17 @@ function Invoke-ForeignImport($cfg, $csvPath) {
     }
 
     $dataRows = @($lines | Select-Object -Skip 1)
-    $batchSize = 300
+    $batchSize = 120
     $totalBatches = [Math]::Ceiling($dataRows.Count / $batchSize)
     $totalImported = 0
     $totalUpserted = 0
     $totalDeleted = 0
+    $maxRetries = 3
 
     Write-Host ""
     Write-Host "  Uploading CSV ke Vercel API: $($cfg.API_BASE_URL)/api/sector-hot?action=foreign-import-upload"
     Write-Host "  Source: $csvPath"
-    Write-Host "  Rows  : $($dataRows.Count) data rows in $totalBatches batch(es)"
+    Write-Host "  Rows  : $($dataRows.Count) data rows in $totalBatches batch(es) (batch size $batchSize)"
     Write-Host "  $('-' * 50)"
 
     for ($i = 0; $i -lt $totalBatches; $i++) {
@@ -161,29 +162,60 @@ function Invoke-ForeignImport($cfg, $csvPath) {
         $batchRows = @($dataRows[$start..$end])
         $csvText = (@($header) + $batchRows) -join "`r`n"
         $batchNo = $i + 1
-        Write-Host "  Uploading batch $batchNo/$totalBatches ..."
+        $isFinalBatch = ($batchNo -eq $totalBatches)
 
-        try {
-            $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Post -Body $csvText -ContentType "text/csv; charset=utf-8" -TimeoutSec 300
-            if (-not $response.success) {
-                Write-Host "  Status: FAILED"
-                Write-Host "  Failed batch: $batchNo/$totalBatches"
-                if ($response.error) { Write-Host "  Error : $($response.error)" }
-                if ($response.errors) { Write-Host "  Errors: $($response.errors -join '; ')" }
-                Write-Host "  $('-' * 50)"
-                return $false
+        # Build URL with batch params + skip_retention for non-final batches
+        $batchUrl = $url + "&batch_index=$i&batch_total=$totalBatches"
+        if (-not $isFinalBatch) { $batchUrl += "&skip_retention=1" }
+
+        $success = $false
+        for ($attempt = 1; $attempt -le $maxRetries; $attempt++) {
+            $attemptLabel = if ($attempt -gt 1) { " (attempt $attempt/$maxRetries)" } else { "" }
+            Write-Host "  Uploading batch $batchNo/$totalBatches ($($batchRows.Count) rows)$attemptLabel ..."
+
+            try {
+                $response = Invoke-RestMethod -Uri $batchUrl -Headers $headers -Method Post -Body $csvText -ContentType "text/csv; charset=utf-8" -TimeoutSec 120
+                if (-not $response.success) {
+                    Write-Host "    API returned success=false: $($response.error)"
+                    if ($attempt -lt $maxRetries) {
+                        $backoff = [Math]::Pow(2, $attempt) * 1000
+                        Write-Host "    Retrying in $($backoff/1000)s..."
+                        Start-Sleep -Milliseconds $backoff
+                        continue
+                    }
+                    Write-Host "  Status: FAILED after $maxRetries attempts"
+                    Write-Host "  Failed batch: $batchNo/$totalBatches"
+                    if ($response.error) { Write-Host "  Error : $($response.error)" }
+                    if ($response.errors) { Write-Host "  Errors: $($response.errors -join '; ')" }
+                    Write-Host "  $('-' * 50)"
+                    return $false
+                }
+                if ($null -ne $response.imported_count) { $totalImported += [int]$response.imported_count }
+                if ($null -ne $response.upserted_count) { $totalUpserted += [int]$response.upserted_count }
+                if ($null -ne $response.deleted_old_count) { $totalDeleted += [int]$response.deleted_old_count }
+                $batchMs = if ($response.foreign_upload_batch_ms) { "$($response.foreign_upload_batch_ms)ms" } else { "-" }
+                $retSkip = if ($response.retention_skipped) { "skipped" } else { "ran" }
+                Write-Host "    OK - imported:$($response.imported_count) upserted:$($response.upserted_count) retention:$retSkip time:$batchMs"
+                $success = $true
+                break
+            } catch {
+                $statusCode = $null
+                if ($_.Exception.Response) { $statusCode = [int]$_.Exception.Response.StatusCode }
+                $errMsg = $_.Exception.Message
+                Write-Host "    Error: HTTP $statusCode - $errMsg"
+                if ($attempt -lt $maxRetries) {
+                    $backoff = [Math]::Pow(2, $attempt) * 1000
+                    Write-Host "    Retrying in $($backoff/1000)s..."
+                    Start-Sleep -Milliseconds $backoff
+                } else {
+                    Write-Host "  Status: FAILED after $maxRetries attempts"
+                    Write-Host "  Failed batch: $batchNo/$totalBatches"
+                    Write-Host "  Error : HTTP $statusCode - $errMsg"
+                    Write-Host "  Note  : Rerun is safe (upsert on trade_date,ticker is idempotent)"
+                    Write-Host "  $('-' * 50)"
+                    return $false
+                }
             }
-            if ($null -ne $response.imported_count) { $totalImported += [int]$response.imported_count }
-            if ($null -ne $response.upserted_count) { $totalUpserted += [int]$response.upserted_count }
-            if ($null -ne $response.deleted_old_count) { $totalDeleted += [int]$response.deleted_old_count }
-        } catch {
-            $statusCode = $null
-            if ($_.Exception.Response) { $statusCode = [int]$_.Exception.Response.StatusCode }
-            Write-Host "  Status: FAILED"
-            Write-Host "  Failed batch: $batchNo/$totalBatches"
-            Write-Host "  Error : HTTP $statusCode - $($_.Exception.Message)"
-            Write-Host "  $('-' * 50)"
-            return $false
         }
     }
 

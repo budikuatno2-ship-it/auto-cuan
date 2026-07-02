@@ -7436,16 +7436,21 @@ async function loadTop5History(silent) {
     if (_top5HistoryCache.data && Date.now() - _top5HistoryCache.at < 180000) { renderTop5History(_top5HistoryCache.data.active_history || _top5HistoryCache.data.rows || _top5HistoryCache.data.history || [], _top5HistoryCache.data.tp_history || []); return; }
     if (_top5HistoryInFlight) return _top5HistoryInFlight;
     if (el && !silent) el.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">' + DASHBOARD_LOADING_TEXT + '</div>';
+    // Fallback timeout: never leave History stuck on loading (independent of Top 5/Monitor).
+    var _histFallbackTimer = setTimeout(function() {
+        var histCheck = document.getElementById('top5HistoryList');
+        if (histCheck && histCheck.innerHTML.indexOf(DASHBOARD_LOADING_TEXT) >= 0) histCheck.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Sedang menyiapkan history... coba Refresh sebentar lagi.</div>';
+    }, 8000);
     _top5HistoryInFlight = (async function() {
         try {
-            var resp = await fetch('/api/sector-hot?action=web-top5-history&limit=100&t=' + Date.now(), { headers: getAuthHeaders() });
-            var data = await resp.json();
+            var fetched = await fetchDashboardJson('/api/sector-hot?action=web-top5-history&limit=100&t=' + Date.now(), { headers: getAuthHeaders() }, 30000);
+            var data = fetched.data;
             if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5 History.');
             _top5HistoryCache = { at: Date.now(), data: data };
             renderTop5History(data.active_history || data.rows || data.history || [], data.tp_history || []);
         } catch (e) {
-            if (el) el.innerHTML = '<div class="py-4 text-center text-xs text-red-400">Gagal memuat Top 5 History.</div>';
-        } finally { _top5HistoryInFlight = null; }
+            if (el) el.innerHTML = '<div class="py-4 text-center text-xs text-red-400">Gagal memuat Top 5 History. <button onclick="loadTop5History(false)" class="underline text-emerald-300 ml-1">Coba Lagi</button></div>';
+        } finally { clearTimeout(_histFallbackTimer); _top5HistoryInFlight = null; }
     })();
     return _top5HistoryInFlight;
 }
