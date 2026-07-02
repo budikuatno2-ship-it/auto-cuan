@@ -3130,7 +3130,7 @@ function buildReadinessItem(meta, latestRows, tradingDate, sourceFields) {
     }
     if (!latest) latest = meta.run_date || meta.calculated_at || meta.updated_at;
   }
-  if (!latest && latestRows[0]) latest = latestRows[0].calculated_at || latestRows[0].run_date || latestRows[0].trade_date || null;
+  if (!latest && latestRows[0]) latest = latestRows[0].calculated_at || latestRows[0].published_at || latestRows[0].run_date || latestRows[0].trade_date || null;
   var status = meta && meta.status ? String(meta.status).toLowerCase() : '';
   var badStatus = ['failed', 'scanning', 'running', 'idle', 'pending'].indexOf(status) >= 0;
   var latestDate = getJakartaDateFromTimestamp(latest);
@@ -3162,7 +3162,7 @@ async function getScreenerReadiness(supabase, options) {
   var kongloMetaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,status,scanned_count').eq('id', 'latest').maybeSingle();
   var kongloRowsRes = await supabase.from('swing_screener_latest').select('ticker,calculated_at').order('score', { ascending: false }).limit(1);
   var nkMetaRes = await supabase.from('swing_screener_non_konglo_meta').select('run_date,calculated_at,updated_at,status,published_count').eq('id', 'latest').maybeSingle();
-  var nkRowsRes = await supabase.from('swing_screener_non_konglo_latest').select('ticker,calculated_at').order('rank', { ascending: true }).limit(1);
+  var nkRowsRes = await supabase.from('swing_screener_non_konglo_latest').select('ticker,run_date,published_at').order('rank', { ascending: true }).limit(1);
 
   var readiness = {
     day_trade: buildReadinessItem(dayMetaRes.data, dayRowsRes.data || [], tradingDate, ['run_date', 'calculated_at']),
