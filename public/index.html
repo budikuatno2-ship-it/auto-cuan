@@ -7091,6 +7091,10 @@ function renderDashboardGuestGate() {
 function dashFmtPrice(v) { var n = Number(v); return isFinite(n) && n > 0 ? n.toLocaleString('id-ID') : '—'; }
 function dashShortText(v, max) { var t = safeDisplayText(v, ''); if (!t) return '—'; return t.length > max ? t.slice(0, max - 1) + '…' : t; }
 function dashJsString(v) { return String(v || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+function openDashboardPickDetail(ticker) {
+    var r = _dashboardPickData[ticker];
+    if (r) openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo');
+}
 function dashOpenKey(event, ticker) {
     if (!event || event.key === 'Enter' || event.key === ' ') {
         if (event) event.preventDefault();

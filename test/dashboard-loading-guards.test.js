@@ -51,6 +51,20 @@ test('normal dashboard fetch only requests locked web-daily-picks (no admin prev
   assert.ok(fnBody.indexOf('renderAdminNextTop5Preview') < 0, 'dashboard load must not render admin preview');
 });
 
+
+test('dashboard detail onclick handlers reference an existing openDashboardPickDetail function', () => {
+  assert.ok(html.indexOf('function openDashboardPickDetail(ticker)') >= 0, 'openDashboardPickDetail must exist');
+  assert.ok(html.indexOf("openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo')") >= 0,
+    'openDashboardPickDetail must route to screener detail with daytrade/konglo type');
+  const dashboardStart = html.indexOf('<!-- Compact Top 5 + Monitor -->');
+  const dashboardEnd = html.indexOf('<!-- Modal Detail Screener -->');
+  const dashboardHtml = html.slice(dashboardStart, dashboardEnd > dashboardStart ? dashboardEnd : undefined);
+  const detailRefs = dashboardHtml.match(/openDashboardPickDetail\(/g) || [];
+  assert.ok(detailRefs.length > 0, 'dashboard should have detail click handlers');
+  assert.ok(detailRefs.every(() => html.indexOf('function openDashboardPickDetail(ticker)') >= 0),
+    'dashboard detail handlers must not reference a missing function');
+});
+
 test('Preview Top 5 Besok panel and preview buttons are not rendered in dashboard HTML', () => {
   assert.equal(html.indexOf('Preview Top 5 Besok'), -1, 'preview panel title must stay removed');
   assert.equal(html.indexOf('Refresh Preview'), -1, 'refresh preview button must stay removed');
