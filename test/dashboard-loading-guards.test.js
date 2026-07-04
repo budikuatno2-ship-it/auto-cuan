@@ -47,18 +47,17 @@ test('normal dashboard fetch does NOT pass generate_preview (no heavy compute on
   assert.ok(fnBody.indexOf('generate_preview=1') < 0, 'normal dashboard load must not request generate_preview');
 });
 
-test('admin generate preview uses explicit generate_preview=1 and longer timeout', () => {
+test('admin generate preview removed — loadAdminNextTop5Preview is a no-op', () => {
   const fnStart = html.indexOf('async function loadAdminNextTop5Preview');
-  const fnBody = html.slice(fnStart, fnStart + 1400);
-  assert.ok(fnBody.indexOf('generate_preview=1') >= 0, 'generate uses explicit flag');
-  assert.ok(/,\s*45000\)/.test(fnBody) || /,\s*60000\)/.test(fnBody), 'admin preview uses longer (>=45s) timeout');
+  assert.ok(fnStart >= 0, 'function stub still exists');
+  const fnBody = html.slice(fnStart, fnStart + 200);
+  assert.ok(fnBody.indexOf('no-op') >= 0, 'function is a no-op');
+  assert.ok(fnBody.indexOf('generate_preview=1') < 0, 'no generate_preview call');
 });
 
-test('admin preview cache stores only sanitized fields (no raw_payload/debug/internal)', () => {
-  const fnStart = html.indexOf('function _setAdminPreviewCache');
-  const fnBody = html.slice(fnStart, fnStart + 1400);
-  assert.ok(fnBody.indexOf('delete c.raw_payload') >= 0, 'strips raw_payload');
-  assert.ok(fnBody.indexOf('delete c.detail') >= 0, 'strips detail');
+test('admin preview cache removed — _setAdminPreviewCache no longer exists', () => {
+  assert.ok(html.indexOf('function _setAdminPreviewCache') < 0, '_setAdminPreviewCache removed');
+  assert.ok(html.indexOf('_ADMIN_PREVIEW_CACHE_KEY') < 0, 'preview cache key removed');
 });
 
 test('global watchdog function clearStuckDashboardLoadingPlaceholders exists', () => {
