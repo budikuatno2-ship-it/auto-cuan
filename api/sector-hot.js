@@ -3177,9 +3177,32 @@ async function getScreenerReadiness(supabase, options) {
   readiness.same_day_ready = sameDayReady;
   readiness.previous_trading_date = previousTradingDate;
   readiness.allowed_previous_close_snapshot = !!(!sameDayReady && options.allow_previous_close_snapshot && previousCloseReady);
-  readiness.snapshot_mode = sameDayReady ? 'same_day' : (readiness.allowed_previous_close_snapshot ? 'previous_close_snapshot' : 'not_ready');
-  readiness.ready = sameDayReady || readiness.allowed_previous_close_snapshot;
+
+  // manual_latest_snapshot: accept latest rows regardless of date match
+  // Requires: all 3 screeners have rows AND status allows snapshot (not failed/scanning)
+  var manualLatestSnapshotReady = false;
+  if (options.manual_latest_snapshot) {
+    manualLatestSnapshotReady = !!(
+      readiness.day_trade.has_latest_rows && readiness.day_trade.status_allows_snapshot &&
+      readiness.swing_konglo.has_latest_rows && readiness.swing_konglo.status_allows_snapshot &&
+      readiness.swing_non_konglo.has_latest_rows && readiness.swing_non_konglo.status_allows_snapshot
+    );
+  }
+  readiness.manual_latest_snapshot_ready = manualLatestSnapshotReady;
+
+  readiness.snapshot_mode = sameDayReady ? 'same_day' : (readiness.allowed_previous_close_snapshot ? 'previous_close_snapshot' : (manualLatestSnapshotReady ? 'manual_latest_snapshot' : 'not_ready'));
+  readiness.ready = sameDayReady || readiness.allowed_previous_close_snapshot || manualLatestSnapshotReady;
   readiness.trading_date = tradingDate;
+
+  // Expose source_dates for diagnostics when manual_latest_snapshot is active
+  if (options.manual_latest_snapshot) {
+    readiness.source_dates = {
+      day_trade: readiness.day_trade.latest_date || null,
+      swing_konglo: readiness.swing_konglo.latest_date || null,
+      swing_non_konglo: readiness.swing_non_konglo.latest_date || null
+    };
+  }
+
   return readiness;
 }
 
@@ -4840,6 +4863,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     var dryRun = req.query && (req.query.dry_run === '1' || req.query.dryRun === '1');
     var force = req.query && req.query.force === '1';
     var manualPreviousTradingDay = req.query && req.query.manual_previous_trading_day === '1';
+    var manualLatestSnapshot = req.query && req.query.manual_latest_snapshot === '1';
     var date = getJakartaDateString();
     var jakartaWeekday = isJakartaWeekday();
     var weekendBypassed = false;
@@ -4849,7 +4873,12 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     // All safety gates remain active — only the target date changes.
     var targetDate = date;
     var manualPreviousTradingDayActive = false;
-    if (manualPreviousTradingDay) {
+    var manualLatestSnapshotActive = false;
+    if (manualLatestSnapshot) {
+      // manual_latest_snapshot takes precedence: use today as target but accept any latest rows
+      manualLatestSnapshotActive = true;
+      targetDate = date;
+    } else if (manualPreviousTradingDay) {
       var previousTd = getPreviousJakartaTradingDateString(date);
       if (previousTd) {
         targetDate = previousTd;
@@ -4862,6 +4891,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       date: date,
       target_date: targetDate,
       manual_previous_trading_day: manualPreviousTradingDayActive,
+      manual_latest_snapshot: manualLatestSnapshotActive,
       weekday: jakartaWeekday,
       weekend_guard: { allowed: jakartaWeekday, bypassed: false },
       forced: force,
@@ -4875,7 +4905,9 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     }
 
     var readinessOptions = { allow_previous_close_snapshot: true };
-    if (manualPreviousTradingDayActive) {
+    if (manualLatestSnapshotActive) {
+      readinessOptions.manual_latest_snapshot = true;
+    } else if (manualPreviousTradingDayActive) {
       readinessOptions.override_trading_date = targetDate;
     }
     var readiness = await getScreenerReadiness(supabase, readinessOptions);
@@ -4892,15 +4924,44 @@ async function handleTelegramDailyPicks(req, res, supabase) {
     var top5RadarCandidates = [];
     var source = 'selected_candidates';
     var insertedCount = 0;
+    var rawPoolCount = 0;
+    var afterReadinessCount = 0;
+    var rejectedByGate = [];
     if (existingRows.length > 0) {
       source = 'locked_rows';
       picks = existingRows.map(rowToDailyPickCandidate);
+      rawPoolCount = picks.length;
+      afterReadinessCount = picks.length;
     } else {
       top5RadarCandidates = await fetchCombinedScreenerCandidates(supabase, true);
+      rawPoolCount = top5RadarCandidates.length;
+      afterReadinessCount = top5RadarCandidates.length;
       picks = await selectDailyTop5(supabase);
     }
 
-    picks = (picks || []).filter(function(p) { return candidatePassesPublicTelegramSafetyGate(p, 'daily_top5') && candidatePassesMinUpside(p); });
+    var beforeGateCount = (picks || []).length;
+    picks = (picks || []).filter(function(p) {
+      var passGate = candidatePassesPublicTelegramSafetyGate(p, 'daily_top5') && candidatePassesMinUpside(p);
+      if (!passGate) {
+        rejectedByGate.push({ ticker: p.ticker || '-', reason: !candidatePassesPublicTelegramSafetyGate(p, 'daily_top5') ? 'public_safety_gate' : 'min_tp1_upside' });
+      }
+      return passGate;
+    });
+
+    // Build diagnostics for dry_run / manual modes (never exposed in public Telegram)
+    var manualDiagnostics = (dryRun || manualLatestSnapshotActive || manualPreviousTradingDayActive) ? {
+      raw_candidate_pool_count: rawPoolCount,
+      after_readiness_count: afterReadinessCount,
+      before_quality_gate_count: beforeGateCount,
+      after_quality_gate_count: picks.length,
+      rejected_by_gate_count: rejectedByGate.length,
+      top_rejection_reasons: (function() {
+        var reasons = {};
+        rejectedByGate.forEach(function(r) { reasons[r.reason] = (reasons[r.reason] || 0) + 1; });
+        return reasons;
+      })(),
+      sample_rejected: rejectedByGate.slice(0, 10)
+    } : undefined;
 
     if (dryRun) {
       return res.status(200).json(Object.assign({
@@ -4917,7 +4978,8 @@ async function handleTelegramDailyPicks(req, res, supabase) {
         candidates: picks.map(candidateDiagnostic),
         existing_locked_count: existingRows.length,
         already_sent: alreadySent,
-        telegram: null
+        telegram: null,
+        diagnostics: manualDiagnostics
       }, diagnosticsBase));
     }
 
@@ -4925,7 +4987,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'already_sent', source: source, readiness: readiness, sent_count: 0, picked_count: existingRows.length, candidate_count: existingRows.length, inserted_count: 0, existing_locked_count: existingRows.length, telegram: null }, diagnosticsBase));
     }
 
-    var notifier = await sendDailyTop5Telegram(supabase, picks, targetDate, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' || manualPreviousTradingDayActive, radar_candidates: top5RadarCandidates });
+    var notifier = await sendDailyTop5Telegram(supabase, picks, targetDate, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' || manualPreviousTradingDayActive || manualLatestSnapshotActive, radar_candidates: top5RadarCandidates });
     var telegramSent = notifier.sent_count > 0;
     var nowIso = new Date().toISOString();
     if (telegramSent) {
