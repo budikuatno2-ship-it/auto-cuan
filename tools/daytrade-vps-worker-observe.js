@@ -20,6 +20,7 @@ const DEFAULT_TIMEOUT_MS = Number(process.env.DAYTRADE_YAHOO_TIMEOUT_MS || 12000
 const CACHE_MAX_AGE_MS = Number(process.env.DAYTRADE_CACHE_MAX_AGE_MS || 12 * 60 * 60 * 1000);
 const CIRCUIT_THRESHOLD = Number(process.env.DAYTRADE_CIRCUIT_THRESHOLD || 5);
 const CIRCUIT_COOLDOWN_MS = Number(process.env.DAYTRADE_CIRCUIT_COOLDOWN_MS || 60 * 1000);
+const LOCK_TTL_MS = Number(process.env.DAYTRADE_LOCK_TTL_MS || 30 * 60 * 1000);
 
 function parseArgs(argv) {
   const args = { mode: 'observe', tickers: null, limit: null, compare: false };
@@ -138,16 +139,54 @@ async function mapLimit(items, limit, worker) {
   return out;
 }
 
-async function acquireLock(lockFile) {
-  await fsp.mkdir(path.dirname(lockFile), { recursive: true });
+function isPidRunning(pid) {
+  if (!pid || !Number.isFinite(Number(pid)) || Number(pid) <= 0) return false;
   try {
-    const fd = await fsp.open(lockFile, 'wx');
-    await fd.writeFile(JSON.stringify({ pid: process.pid, started_at: new Date().toISOString() }) + '\n');
-    return async function release() { await fd.close().catch(() => {}); await fsp.unlink(lockFile).catch(() => {}); };
+    process.kill(Number(pid), 0);
+    return true;
   } catch (e) {
-    if (e && e.code === 'EEXIST') return null;
-    throw e;
+    return e && e.code === 'EPERM';
   }
+}
+
+async function readLockState(lockFile) {
+  try {
+    const raw = await fsp.readFile(lockFile, 'utf8');
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function isLockStale(lockState, nowMs, ttlMs) {
+  if (!lockState) return true;
+  const startedAtMs = lockState.started_at ? Date.parse(lockState.started_at) : 0;
+  if (!isPidRunning(lockState.pid)) return true;
+  if (!startedAtMs || (nowMs - startedAtMs) > ttlMs) return true;
+  return false;
+}
+
+async function acquireLock(lockFile, opts) {
+  opts = opts || {};
+  const ttlMs = Number(opts.ttlMs || LOCK_TTL_MS);
+  await fsp.mkdir(path.dirname(lockFile), { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = await fsp.open(lockFile, 'wx');
+      await fd.writeFile(JSON.stringify({ pid: process.pid, started_at: new Date().toISOString() }) + '\n');
+      return async function release() { await fd.close().catch(() => {}); await fsp.unlink(lockFile).catch(() => {}); };
+    } catch (e) {
+      if (!e || e.code !== 'EEXIST') throw e;
+
+      const lockState = await readLockState(lockFile);
+      if (!isLockStale(lockState, Date.now(), ttlMs)) return null;
+
+      await fsp.unlink(lockFile).catch(function(unlinkErr) {
+        if (!unlinkErr || unlinkErr.code !== 'ENOENT') throw unlinkErr;
+      });
+    }
+  }
+  return null;
 }
 
 function summarizeRejected(failed) {
@@ -208,4 +247,4 @@ async function runWorker(cliArgs) {
 
 if (require.main === module) runWorker().catch((e) => { console.error(e.stack || e.message); process.exitCode = 1; });
 
-module.exports = { VERSION, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, normalizeCandles };
+module.exports = { VERSION, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, normalizeCandles, isLockStale, isPidRunning };

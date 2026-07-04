@@ -52,13 +52,29 @@ test('latest candle merge replaces same day and keeps full ordered array', () =>
   assert.equal(merged.candles[2].close, 110);
 });
 
-test('lock overlap returns null for second worker instance', async () => {
+test('active lock still blocks second worker instance', async () => {
   const dir = await tmpdir();
   const lock = path.join(dir, 'worker.lock');
   const release = await worker.acquireLock(lock);
   assert.equal(typeof release, 'function');
   const second = await worker.acquireLock(lock);
   assert.equal(second, null);
+  await release();
+});
+
+test('stale lock is cleaned and allows new acquire', async () => {
+  const dir = await tmpdir();
+  const lock = path.join(dir, 'worker.lock');
+  await fs.writeFile(lock, JSON.stringify({
+    pid: 99999999,
+    started_at: new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  }) + '\n');
+
+  const release = await worker.acquireLock(lock, { ttlMs: 30 * 60 * 1000 });
+  assert.equal(typeof release, 'function');
+  const raw = await fs.readFile(lock, 'utf8');
+  const state = JSON.parse(raw);
+  assert.equal(state.pid, process.pid);
   await release();
 });
 
