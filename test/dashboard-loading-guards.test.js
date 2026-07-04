@@ -9,12 +9,14 @@ const fs = require('node:fs');
 // and lazy-admin-preview logic is present.
 const html = fs.readFileSync('public/index.html', 'utf8');
 
-test('robust empty detection handles top5_locked=false + empty arrays (not only awaiting_locked_rows)', () => {
+test('dashboard renders only locked/final Top 5 sources and treats preview/provisional as awaiting', () => {
   const fnStart = html.indexOf('function renderDashboardTop5MonitorData');
   assert.ok(fnStart >= 0);
-  const fnBody = html.slice(fnStart, fnStart + 1200);
-  assert.ok(fnBody.indexOf("top5_source === 'awaiting_locked_rows'") >= 0, 'keeps awaiting_locked_rows check');
-  assert.ok(fnBody.indexOf('top5_locked === false') >= 0, 'adds top5_locked=false empty detection');
+  const fnBody = html.slice(fnStart, fnStart + 1400);
+  assert.ok(fnBody.indexOf("top5_source === 'locked_rows'") >= 0, 'allows same-day locked rows');
+  assert.ok(fnBody.indexOf("top5_source === 'locked_rows_fallback'") >= 0, 'allows previous locked fallback rows');
+  assert.ok(fnBody.indexOf('data.web_provisional === true') >= 0, 'blocks provisional dashboard rendering');
+  assert.ok(fnBody.indexOf('!isLockedFinalSource') >= 0, 'non-final sources must render as awaiting');
   assert.ok(/top5Rows\.length === 0 && monitorRows\.length === 0/.test(fnBody), 'treats both-empty arrays as awaiting');
 });
 
@@ -39,26 +41,36 @@ test('History load is deferred and independent, with its own fallback + in-fligh
   assert.ok(fnBody.indexOf('_top5HistoryInFlight = null') >= 0, 'history resets in-flight flag');
 });
 
-test('normal dashboard fetch does NOT pass generate_preview (no heavy compute on load)', () => {
+test('normal dashboard fetch only requests locked web-daily-picks (no admin preview or heavy compute)', () => {
   const fnStart = html.indexOf('async function loadDashboardTop5Monitor');
   const fnEnd = html.indexOf('function renderDashboardTop5MonitorData');
   const fnBody = html.slice(fnStart, fnEnd);
   assert.ok(fnBody.indexOf('action=web-daily-picks') >= 0);
-  assert.ok(fnBody.indexOf('generate_preview=1') < 0, 'normal dashboard load must not request generate_preview');
+  assert.ok(fnBody.indexOf('admin_preview=1') < 0, 'dashboard load must not call admin preview');
+  assert.ok(fnBody.indexOf('generate_preview=1') < 0, 'dashboard load must not request preview regeneration');
+  assert.ok(fnBody.indexOf('renderAdminNextTop5Preview') < 0, 'dashboard load must not render admin preview');
 });
 
-test('admin generate preview uses explicit generate_preview=1 and longer timeout', () => {
-  const fnStart = html.indexOf('async function loadAdminNextTop5Preview');
-  const fnBody = html.slice(fnStart, fnStart + 1400);
-  assert.ok(fnBody.indexOf('generate_preview=1') >= 0, 'generate uses explicit flag');
-  assert.ok(/,\s*45000\)/.test(fnBody) || /,\s*60000\)/.test(fnBody), 'admin preview uses longer (>=45s) timeout');
+
+test('dashboard detail onclick handlers reference an existing openDashboardPickDetail function', () => {
+  assert.ok(html.indexOf('function openDashboardPickDetail(ticker)') >= 0, 'openDashboardPickDetail must exist');
+  assert.ok(html.indexOf("openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo')") >= 0,
+    'openDashboardPickDetail must route to screener detail with daytrade/konglo type');
+  const dashboardStart = html.indexOf('<!-- Compact Top 5 + Monitor -->');
+  const dashboardEnd = html.indexOf('<!-- Modal Detail Screener -->');
+  const dashboardHtml = html.slice(dashboardStart, dashboardEnd > dashboardStart ? dashboardEnd : undefined);
+  const detailRefs = dashboardHtml.match(/openDashboardPickDetail\(/g) || [];
+  assert.ok(detailRefs.length > 0, 'dashboard should have detail click handlers');
+  assert.ok(detailRefs.every(() => html.indexOf('function openDashboardPickDetail(ticker)') >= 0),
+    'dashboard detail handlers must not reference a missing function');
 });
 
-test('admin preview cache stores only sanitized fields (no raw_payload/debug/internal)', () => {
-  const fnStart = html.indexOf('function _setAdminPreviewCache');
-  const fnBody = html.slice(fnStart, fnStart + 1400);
-  assert.ok(fnBody.indexOf('delete c.raw_payload') >= 0, 'strips raw_payload');
-  assert.ok(fnBody.indexOf('delete c.detail') >= 0, 'strips detail');
+test('Preview Top 5 Besok panel and preview buttons are not rendered in dashboard HTML', () => {
+  assert.equal(html.indexOf('Preview Top 5 Besok'), -1, 'preview panel title must stay removed');
+  assert.equal(html.indexOf('Refresh Preview'), -1, 'refresh preview button must stay removed');
+  assert.equal(html.indexOf('Generate Admin Preview'), -1, 'generate preview button must stay removed');
+  assert.equal(html.indexOf('adminNextTop5PreviewSection'), -1, 'preview section element must stay removed');
+  assert.equal(html.indexOf('loadAdminNextTop5Preview'), -1, 'preview loader must not be callable from dashboard');
 });
 
 test('global watchdog function clearStuckDashboardLoadingPlaceholders exists', () => {

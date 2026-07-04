@@ -8,7 +8,9 @@ const sectorHot = require('../api/sector-hot');
 
 const {
   sanitizeTop5ResponseForAudience,
-  buildDashboardPickRow
+  buildDashboardPickRow,
+  isSafeDashboardLockedTop5Row,
+  filterSafeDashboardLockedTop5Rows
 } = sectorHot.__test;
 
 // ============================================================
@@ -323,4 +325,75 @@ test('frontend contract: loadDashboardTop5Monitor has in-flight guard and finall
     'loadDashboardTop5Monitor must have finally block for cleanup');
   assert.ok(fnBody.indexOf('_dashboardTop5InFlight = null') >= 0,
     'loadDashboardTop5Monitor finally must clear _dashboardTop5InFlight');
+});
+
+// ============================================================
+// TEST 9: Dashboard source handling supports same-day locked and previous locked fallback
+// ============================================================
+test('web-daily-picks: same-day locked response remains locked/final and renderable', function() {
+  var response = sanitizeTop5ResponseForAudience({
+    success: true,
+    date: '2025-01-15',
+    requested_date: '2025-01-15',
+    top5: [{ ticker: 'BBRI', rank: 1 }],
+    monitor: [{ ticker: 'BBRI', rank: 1 }],
+    picks: [{ ticker: 'BBRI', rank: 1 }],
+    top5_source: 'locked_rows',
+    top5_locked: true,
+    web_provisional: false,
+    update_note: 'Top 5 Radar locked.'
+  }, { allowAdminPreview: false });
+
+  assert.equal(response.top5_locked, true);
+  assert.equal(response.top5_source, 'locked_rows');
+  assert.equal(response.web_provisional, false);
+  assert.equal(response.top5.length, 1);
+});
+
+test('web-daily-picks: previous locked final fallback remains locked/final and renderable', function() {
+  var response = sanitizeTop5ResponseForAudience({
+    success: true,
+    date: '2025-01-14',
+    requested_date: '2025-01-15',
+    top5: [{ ticker: 'TLKM', rank: 1 }],
+    monitor: [{ ticker: 'TLKM', rank: 1 }],
+    picks: [{ ticker: 'TLKM', rank: 1 }],
+    top5_source: 'locked_rows_fallback',
+    top5_locked: true,
+    web_provisional: false,
+    update_note: 'Top 5 Radar Final/Locked terbaru dari snapshot sebelumnya (2025-01-14).'
+  }, { allowAdminPreview: false });
+
+  assert.equal(response.top5_locked, true);
+  assert.equal(response.top5_source, 'locked_rows_fallback');
+  assert.equal(response.web_provisional, false);
+  assert.equal(response.date, '2025-01-14');
+  assert.equal(response.requested_date, '2025-01-15');
+  assert.equal(response.top5.length, 1);
+});
+
+test('handleWebDailyPicks: queries latest previous locked date when same-day rows are missing', function() {
+  var src = fs.readFileSync(path.resolve(__dirname, '..', 'api', 'sector-hot.js'), 'utf-8');
+  var start = src.indexOf('async function handleWebDailyPicks');
+  var end = src.indexOf('\n\nfunction getHistoryEntryUsage', start);
+  var handlerCode = src.substring(start, end);
+
+  assert.ok(handlerCode.indexOf(".lt('date', date)") >= 0, 'fallback must only look before requested trading day');
+  assert.ok(handlerCode.indexOf(".order('date', { ascending: false })") >= 0, 'fallback must choose latest previous date');
+  assert.ok(handlerCode.indexOf("'locked_rows_fallback'") >= 0, 'fallback source must stay locked/final, not preview');
+  assert.ok(handlerCode.indexOf('usedPreviousLockedFallback') >= 0, 'handler must track previous locked fallback status');
+});
+
+
+test('web-daily-picks: Dashboard locked row filter excludes preview/provisional Avoid/Hindari candidates', function() {
+  var safe = makeLockedRow('SAFE', { publication_status: 'locked', raw_payload: Object.assign({}, makeLockedRow('SAFE').raw_payload, { action_label: 'Masih dekat entry', grade: 'B' }) });
+  var preview = makeLockedRow('PREV', { publication_status: 'provisional', raw_payload: Object.assign({}, makeLockedRow('PREV').raw_payload, { publication_status: 'provisional' }) });
+  var avoid = makeLockedRow('AVOID', { raw_payload: Object.assign({}, makeLockedRow('AVOID').raw_payload, { grade: 'Avoid' }) });
+  var hindari = makeLockedRow('HIND', { raw_payload: Object.assign({}, makeLockedRow('HIND').raw_payload, { action_label: 'Hindari — setup tidak valid' }) });
+
+  assert.equal(isSafeDashboardLockedTop5Row(safe), true);
+  assert.equal(isSafeDashboardLockedTop5Row(preview), false);
+  assert.equal(isSafeDashboardLockedTop5Row(avoid), false);
+  assert.equal(isSafeDashboardLockedTop5Row(hindari), false);
+  assert.deepEqual(filterSafeDashboardLockedTop5Rows([preview, avoid, safe, hindari]).map(function(r) { return r.ticker; }), ['SAFE']);
 });
