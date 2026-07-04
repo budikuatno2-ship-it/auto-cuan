@@ -29,3 +29,7 @@ dist/
 data/daytrade-ohlcv-cache/
 logs/daytrade-vps-worker/
 tmp/daytrade-vps-worker-observe.lock
+
+# AI Research runner output
+data/ai-research/
+logs/ai-research/
