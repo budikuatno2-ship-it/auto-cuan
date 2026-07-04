@@ -5461,12 +5461,18 @@ async function handleTelegramDailyPicks(req, res, supabase) {
         for (var u = 0; u < existingRows.length; u++) {
           var rawPayload = markRawPayloadTelegramSent(existingRows[u].raw_payload, nowIso);
           if (!publicPickIds[existingRows[u].id]) rawPayload.public_filtered_from_send = true;
+          if (top5Mode === 'watchlist') rawPayload.watchlist_mode = true;
+          if (manualLatestSnapshotActive) rawPayload.manual_latest_snapshot = true;
+          if (manualPreviousTradingDayActive) rawPayload.manual_previous_trading_day = true;
           await supabase.from('telegram_daily_picks').update({ first_sent_at: existingRows[u].first_sent_at || nowIso, raw_payload: rawPayload }).eq('id', existingRows[u].id);
         }
       } else if (picks.length > 0) {
         var rows = picks.map(function(r) {
           var row = dailyPickInsertRowFromCandidate(r, targetDate, nowIso);
           row.raw_payload = markRawPayloadTelegramSent(row.raw_payload, nowIso);
+          if (top5Mode === 'watchlist') row.raw_payload.watchlist_mode = true;
+          if (manualLatestSnapshotActive) row.raw_payload.manual_latest_snapshot = true;
+          if (manualPreviousTradingDayActive) row.raw_payload.manual_previous_trading_day = true;
           return row;
         });
         var ins = await supabase.from('telegram_daily_picks').insert(rows);
@@ -5857,7 +5863,8 @@ var TOP5_INTERNAL_RESPONSE_FIELDS = [
 ];
 var TOP5_ADMIN_PREVIEW_FIELDS = [
   'admin_next_top5_preview', 'admin_next_top5_excluded_preview', 'admin_next_top5_potential_radar_preview', 'admin_next_top5_preview_count',
-  'admin_next_top5_excluded_count', 'admin_next_top5_potential_radar_count', 'admin_gate_calibration_summary', 'admin_next_top5_preview_note', 'admin_next_top5_preview_generated_at'
+  'admin_next_top5_excluded_count', 'admin_next_top5_potential_radar_count', 'admin_gate_calibration_summary', 'admin_next_top5_preview_note', 'admin_next_top5_preview_generated_at',
+  '_admin_fallback_diagnostics'
 ];
 function isTop5PreviewOrProvisionalRow(row) {
   if (!row) return false;
@@ -6002,12 +6009,45 @@ async function handleWebDailyPicks(req, res, supabase) {
     var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
     if (q.error) throw new Error(q.error.message);
     var rows = q.data || [];
+
+    // === FALLBACK: if no rows for today, fetch latest sent/locked rows from any recent date ===
+    var _fallbackDate = null;
+    var _fallbackIsWatchlist = false;
+    var _fallbackDiagnostics = null;
+    if (rows.length === 0) {
+      // Query the most recent date that has sent rows (first_sent_at IS NOT NULL), limit to last 7 days
+      var _fallbackQ = await supabase.from('telegram_daily_picks').select('*').not('first_sent_at', 'is', null).order('date', { ascending: false }).order('id', { ascending: true }).limit(5);
+      if (!_fallbackQ.error && _fallbackQ.data && _fallbackQ.data.length > 0) {
+        // All rows from the same date (the latest one)
+        var _latestDate = _fallbackQ.data[0].date;
+        var _fallbackRows = _fallbackQ.data.filter(function(r) { return r.date === _latestDate; });
+        // Verify these rows are actually sent (have telegram_daily_sent_at in raw_payload)
+        var _sentRows = _fallbackRows.filter(function(r) { return pickWasSentToTelegram(r); });
+        if (_sentRows.length > 0) {
+          rows = _sentRows.slice(0, 5);
+          _fallbackDate = _latestDate;
+          // Detect if this was a watchlist/manual_latest_snapshot send
+          var _sampleRaw = (rows[0] && rows[0].raw_payload) || {};
+          _fallbackIsWatchlist = !!(_sampleRaw.watchlist_mode || _sampleRaw.manual_latest_snapshot || _sampleRaw.is_watchlist || (_sampleRaw.telegram_header && String(_sampleRaw.telegram_header).indexOf('WATCHLIST') >= 0));
+        }
+      }
+      // Build diagnostics for admin (never exposed to public)
+      _fallbackDiagnostics = {
+        today_date: date,
+        today_locked_count: 0,
+        fallback_date: _fallbackDate,
+        fallback_sent_count: rows.length,
+        fallback_is_watchlist: _fallbackIsWatchlist,
+        reason_no_today: rows.length > 0 ? 'fallback_to_latest_sent' : 'no_sent_records_found'
+      };
+    }
+
     var locked = rows.length > 0;
     var _isAdminReq = (req.query.admin_preview === '1' || req.query.provisional === '1') ? await isDashboardAdminUser(req, supabase) : false;
     // Provisional main Top 5 (heavy selectDailyTop5) must only run when admin explicitly asks with generate_preview=1.
     // Normal admin dashboard load must NOT trigger heavy compute (regression fix after PR #138).
     var allowProvisional = _isAdminReq && req.query.generate_preview === '1';
-    var top5Source = locked ? 'locked_rows' : (allowProvisional ? 'provisional_candidates' : 'awaiting_locked_rows');
+    var top5Source = locked ? (_fallbackDate ? 'latest_sent_fallback' : 'locked_rows') : (allowProvisional ? 'provisional_candidates' : 'awaiting_locked_rows');
     var webProvisional = !locked && allowProvisional;
     var top5 = [];
     var monitor = [];
@@ -6208,17 +6248,36 @@ async function handleWebDailyPicks(req, res, supabase) {
         }
       }
     }
+    // Build update_note depending on source
+    var _updateNote;
+    if (locked && _fallbackDate) {
+      // Fallback to a previous date's sent records
+      if (_fallbackIsWatchlist) {
+        _updateNote = 'Top 5 Watchlist / Pantauan Besok (data ' + _fallbackDate + '). Manual latest snapshot. Bukan sinyal entry langsung.';
+      } else {
+        _updateNote = 'Top 5 Radar Final (data ' + _fallbackDate + '). Monitor update tiap 30 menit saat jam bursa.';
+      }
+    } else if (locked) {
+      _updateNote = 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.';
+    } else if (allowProvisional) {
+      _updateNote = 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.';
+    } else {
+      _updateNote = 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.';
+    }
+
     var responsePayload = Object.assign({
       success: true,
-      date: date,
+      date: _fallbackDate || date,
       top5: top5,
       monitor: monitor,
       top5_source: top5Source,
       top5_locked: locked,
+      top5_is_watchlist: _fallbackIsWatchlist,
+      top5_fallback_date: _fallbackDate || null,
       telegram_scheduled_only: true,
       telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.',
       web_provisional: webProvisional,
-      update_note: locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (allowProvisional ? 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.' : 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.'),
+      update_note: _updateNote,
       last_updated_at: lastAt,
       monitor_last_updated_at: lastAt,
       monitor_source_label: monitorSourceLabel,
@@ -6226,6 +6285,10 @@ async function handleWebDailyPicks(req, res, supabase) {
       monitor_stale_note: staleNote,
       picks: top5
     }, adminPreviewExtra);
+    // Admin-only diagnostics when fallback was used or no records found
+    if (_isAdminReq && _fallbackDiagnostics) {
+      responsePayload._admin_fallback_diagnostics = _fallbackDiagnostics;
+    }
     return res.status(200).json(sanitizeTop5ResponseForAudience(responsePayload, { allowAdminPreview: !!adminPreviewExtra.admin_next_top5_preview }));
   } catch (e) {
     return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
@@ -10268,5 +10331,6 @@ module.exports.__test = {
   fmtTelegramSignalBlock: fmtTelegramSignalBlock,
   formatSwingTelegramMessage: formatSwingTelegramMessage,
   classifyWebTop5History: classifyWebTop5History,
-  buildWebTop5HistoryRow: buildWebTop5HistoryRow
+  buildWebTop5HistoryRow: buildWebTop5HistoryRow,
+  pickWasSentToTelegram: pickWasSentToTelegram
 };

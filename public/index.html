@@ -7195,7 +7195,7 @@ function buildDashboardActionLine(r) {
     suffix = suffix.replace(/^entry\s+baru\s+/i, '').replace(/^trading\s+plan\s+/i, 'trading plan ');
     return 'Action: ' + actionLabel + (suffix ? ' — ' + suffix.charAt(0).toLowerCase() + suffix.slice(1) : '');
 }
-function renderDashboardTop5(picks) {
+function renderDashboardTop5(picks, data) {
     var el = document.getElementById('dashboardTop5List');
     if (!el) return;
     _dashboardPickData = {};
@@ -7204,6 +7204,16 @@ function renderDashboardTop5(picks) {
         return;
     }
     var html = '';
+    // Show watchlist banner if this is a manual_latest_snapshot/watchlist record
+    if (data && data.top5_is_watchlist) {
+        html += '<div class="mb-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200">';
+        html += '<b>Top 5 Watchlist / Pantauan Besok</b> · Manual latest snapshot · Bukan sinyal entry langsung';
+        html += '</div>';
+    } else if (data && data.top5_fallback_date) {
+        html += '<div class="mb-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-[11px] text-blue-200">';
+        html += 'Data dari <b>' + escapeHtml(data.top5_fallback_date) + '</b> (belum ada Top 5 baru hari ini)';
+        html += '</div>';
+    }
     picks.slice(0, 5).forEach(function(p, idx) {
         var r = normalizeDashboardPick(p);
         _dashboardPickData[r.ticker] = r;
@@ -7518,8 +7528,6 @@ async function loadDashboardTop5Monitor(silent, opts) {
         }
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
         _dashboardTop5Cache = { at: Date.now(), data: data };
-        var note = document.getElementById('dashboardTop5LockNote');
-        if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
         renderDashboardTop5MonitorData(data);
         renderAdminNextTop5Preview(data);
     } catch (e) {
@@ -7538,7 +7546,12 @@ async function loadDashboardTop5Monitor(silent, opts) {
 
 function renderDashboardTop5MonitorData(data) {
     var note = document.getElementById('dashboardTop5LockNote');
-    if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
+    var _n = data.top5_is_watchlist ? ('Top 5 Watchlist / Pantauan Besok' + (data.top5_fallback_date ? ' (data ' + data.top5_fallback_date + ')' : '') + '. Manual latest snapshot. Bukan sinyal entry langsung.')
+        : (data.top5_locked && data.top5_fallback_date) ? ('Top 5 Radar Final (data ' + data.top5_fallback_date + '). Monitor update tiap 30 menit saat jam bursa.')
+        : data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.'
+        : data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.'
+        : (data.update_note || 'Top 5 Radar tersedia.');
+    if (note) note.textContent = _n;
     // Robust empty detection: treat as empty/awaiting if ANY of these are true
     var top5Rows = data.top5 || data.picks || [];
     var monitorRows = data.monitor || [];
@@ -7553,7 +7566,7 @@ function renderDashboardTop5MonitorData(data) {
         var upd = document.getElementById('dashboardMonitorUpdated');
         if (upd) upd.textContent = 'Terakhir update: \u2014 WIB';
     } else {
-        renderDashboardTop5(top5Rows);
+        renderDashboardTop5(top5Rows, data);
         renderDashboardMonitor(monitorRows, data.monitor_last_updated_at || data.last_updated_at, data);
     }
 }
