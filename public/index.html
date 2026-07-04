@@ -7386,7 +7386,8 @@ async function archiveTop5History(id) {
 async function loadDashboardTop5Monitor(silent, opts) {
     opts = opts || {};
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
-    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
+    // Serve cache only if fresh AND contains locked data; stale awaiting_locked_rows must not block fresh fetch.
+    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000 && _dashboardTop5Cache.data.top5_source !== 'awaiting_locked_rows') { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
     // Always clear placeholders to prevent stuck static HTML state
     var _topEl = document.getElementById('dashboardTop5List');
@@ -7437,10 +7438,13 @@ function renderDashboardTop5MonitorData(data) {
     var top5Rows = data.top5 || data.picks || [];
     var monitorRows = data.monitor || [];
     var isLockedFinalSource = data.top5_locked === true && (data.top5_source === 'locked_rows' || data.top5_source === 'locked_rows_fallback');
+    // Render locked Top 5 cards if we have a valid locked source AND top5 rows exist.
+    // Do NOT require monitor rows — monitor may be empty for fallback snapshots.
+    var hasTop5Data = top5Rows.length > 0;
     var isAwaiting = !isLockedFinalSource
         || data.top5_source === 'awaiting_locked_rows'
         || data.web_provisional === true
-        || (top5Rows.length === 0 && monitorRows.length === 0);
+        || (!hasTop5Data && monitorRows.length === 0);
     if (isAwaiting) {
         var topEl = document.getElementById('dashboardTop5List');
         if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data.update_note);
