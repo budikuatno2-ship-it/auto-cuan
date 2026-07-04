@@ -388,12 +388,37 @@ test('handleWebDailyPicks: queries latest previous locked date when same-day row
 test('web-daily-picks: Dashboard locked row filter excludes preview/provisional Avoid/Hindari candidates', function() {
   var safe = makeLockedRow('SAFE', { publication_status: 'locked', raw_payload: Object.assign({}, makeLockedRow('SAFE').raw_payload, { action_label: 'Masih dekat entry', grade: 'B' }) });
   var preview = makeLockedRow('PREV', { publication_status: 'provisional', raw_payload: Object.assign({}, makeLockedRow('PREV').raw_payload, { publication_status: 'provisional' }) });
-  var avoid = makeLockedRow('AVOID', { raw_payload: Object.assign({}, makeLockedRow('AVOID').raw_payload, { grade: 'Avoid' }) });
-  var hindari = makeLockedRow('HIND', { raw_payload: Object.assign({}, makeLockedRow('HIND').raw_payload, { action_label: 'Hindari — setup tidak valid' }) });
+  var avoid = makeLockedRow('AVOID', { first_sent_at: null, raw_payload: Object.assign({}, makeLockedRow('AVOID').raw_payload, { grade: 'Avoid' }) });
+  var hindari = makeLockedRow('HIND', { first_sent_at: null, raw_payload: Object.assign({}, makeLockedRow('HIND').raw_payload, { action_label: 'Hindari — setup tidak valid' }) });
 
   assert.equal(isSafeDashboardLockedTop5Row(safe), true);
   assert.equal(isSafeDashboardLockedTop5Row(preview), false);
   assert.equal(isSafeDashboardLockedTop5Row(avoid), false);
   assert.equal(isSafeDashboardLockedTop5Row(hindari), false);
   assert.deepEqual(filterSafeDashboardLockedTop5Rows([preview, avoid, safe, hindari]).map(function(r) { return r.ticker; }), ['SAFE']);
+});
+
+test('web-daily-picks: Dashboard fallback keeps older persisted locked rows despite stale raw Avoid/Hindari/provisional fields', function() {
+  var lockedAvoid = makeLockedRow('LAVD', {
+    publication_status: 'locked',
+    raw_payload: Object.assign({}, makeLockedRow('LAVD').raw_payload, { grade: 'Avoid', action_label: 'Avoid Dulu', publication_status: 'provisional' })
+  });
+  var lockedHindari = makeLockedRow('LHIN', {
+    source: 'final',
+    raw_payload: Object.assign({}, makeLockedRow('LHIN').raw_payload, { signal_action: 'AVOID', action_label: 'Hindari — setup tidak valid', visibility: 'admin_preview' })
+  });
+
+  assert.equal(isSafeDashboardLockedTop5Row(lockedAvoid), true);
+  assert.equal(isSafeDashboardLockedTop5Row(lockedHindari), true);
+  assert.deepEqual(filterSafeDashboardLockedTop5Rows([lockedAvoid, lockedHindari]).map(function(r) { return r.ticker; }), ['LAVD', 'LHIN']);
+});
+
+test('web-daily-picks: Dashboard fallback still blocks explicitly preview/provisional persisted rows', function() {
+  var lockedButPreview = makeLockedRow('LPRE', { publication_status: 'locked', is_preview: true });
+  var lockedButProvisional = makeLockedRow('LPRO', { source: 'locked_rows', web_provisional: true });
+  var adminPreview = makeLockedRow('ADMN', { visibility: 'admin_preview', first_sent_at: null });
+
+  assert.equal(isSafeDashboardLockedTop5Row(lockedButPreview), false);
+  assert.equal(isSafeDashboardLockedTop5Row(lockedButProvisional), false);
+  assert.equal(isSafeDashboardLockedTop5Row(adminPreview), false);
 });

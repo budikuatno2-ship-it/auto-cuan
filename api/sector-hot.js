@@ -5894,7 +5894,34 @@ function getDashboardLockedRowPayload(row) {
   if (!row || typeof row !== 'object') return row;
   return Object.assign({}, row.raw_payload && typeof row.raw_payload === 'object' ? row.raw_payload : {}, row);
 }
+function dashboardLockedIndicatorText(row) {
+  if (!row || typeof row !== 'object') return '';
+  return String([row.top5_source, row.source_type, row.visibility, row.publication_status, row.status_label, row.source, row.lock_status, row.status].filter(Boolean).join(' ')).toLowerCase();
+}
+function isDashboardExplicitPreviewOrProvisionalRow(row) {
+  if (!row || typeof row !== 'object') return false;
+  return row.web_provisional === true || row.is_provisional === true || row.provisional === true ||
+    row.preview === true || row.is_preview === true || row.admin_only === true ||
+    dashboardLockedIndicatorText(row).indexOf('provisional') >= 0 ||
+    dashboardLockedIndicatorText(row).indexOf('preview') >= 0 ||
+    dashboardLockedIndicatorText(row).indexOf('admin') >= 0;
+}
+function hasDashboardLockedFinalIndicator(row) {
+  if (!row || typeof row !== 'object') return false;
+  var text = dashboardLockedIndicatorText(row);
+  return row.is_locked === true || row.locked === true || row.is_final === true || !!row.first_sent_at ||
+    text.indexOf('locked') >= 0 || text.indexOf('final') >= 0;
+}
 function isSafeDashboardLockedTop5Row(row) {
+  if (!row || typeof row !== 'object') return false;
+
+  // Persisted locked/final rows are the source of truth for Dashboard fallback.
+  // Older locked snapshots may carry stale raw_payload/action fields such as
+  // Hindari/Avoid/provisional from their candidate stage; once the persisted row
+  // itself is locked/final, keep it unless the persisted row is explicitly marked
+  // preview/provisional/admin-only.
+  if (hasDashboardLockedFinalIndicator(row)) return !isDashboardExplicitPreviewOrProvisionalRow(row);
+
   var payload = getDashboardLockedRowPayload(row);
   if (isTop5PreviewOrProvisionalRow(payload)) return false;
   if (hasAvoidGrade(payload) || hasHindariAction(payload)) return false;
@@ -6017,7 +6044,10 @@ async function handleWebDailyPicks(req, res, supabase) {
     var date = getJakartaDateString();
     var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
     if (q.error) throw new Error(q.error.message);
+    var fallbackDatesChecked = [];
+    var fallbackRowsBeforeFilter = Array.isArray(q.data) ? q.data.length : 0;
     var rows = filterSafeDashboardLockedTop5Rows(q.data || []).slice(0, 5);
+    var fallbackRowsAfterFilter = rows.length;
     var lockedDate = date;
     var usedPreviousLockedFallback = false;
     if (rows.length === 0) {
@@ -6034,9 +6064,12 @@ async function handleWebDailyPicks(req, res, supabase) {
         var latestLockedDate = latestDateRows[fd] && latestDateRows[fd].date;
         if (!latestLockedDate || seenLockedDates[latestLockedDate]) continue;
         seenLockedDates[latestLockedDate] = true;
+        fallbackDatesChecked.push(latestLockedDate);
         var fallbackQ = await supabase.from('telegram_daily_picks').select('*').eq('date', latestLockedDate).order('id', { ascending: true }).limit(5);
         if (fallbackQ.error) throw new Error(fallbackQ.error.message);
+        fallbackRowsBeforeFilter = Array.isArray(fallbackQ.data) ? fallbackQ.data.length : 0;
         rows = filterSafeDashboardLockedTop5Rows(fallbackQ.data || []).slice(0, 5);
+        fallbackRowsAfterFilter = rows.length;
         if (rows.length > 0) {
           lockedDate = latestLockedDate;
           usedPreviousLockedFallback = true;
@@ -6249,6 +6282,11 @@ async function handleWebDailyPicks(req, res, supabase) {
           };
         }
       }
+    }
+    if (_isAdminReq) {
+      adminPreviewExtra.fallback_dates_checked = fallbackDatesChecked;
+      adminPreviewExtra.fallback_rows_before_filter = fallbackRowsBeforeFilter;
+      adminPreviewExtra.fallback_rows_after_filter = fallbackRowsAfterFilter;
     }
     var responsePayload = Object.assign({
       success: true,
