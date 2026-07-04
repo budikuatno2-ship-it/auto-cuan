@@ -5138,6 +5138,9 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     headerLines.push('Entry hanya jika breakout/close confirmation dan volume valid.');
     headerLines.push('Konfirmasi manual wajib sebelum entry.');
     headerLines.push('Perhatikan warning entry/risk/volume.');
+    if (options.watchlist_safe_count != null && options.watchlist_safe_count < 5) {
+      headerLines.push('Kandidat aman tersedia ' + options.watchlist_safe_count + ' dari 5.');
+    }
   } else {
     headerLines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date];
     if (options.previous_close_snapshot) headerLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
@@ -5300,11 +5303,51 @@ async function handleTelegramDailyPicks(req, res, supabase) {
 
     // Determine final picks and mode
     var top5Mode = 'strict_signal'; // 'strict_signal' | 'watchlist' | 'empty'
+    var watchlistScannedCount = 0;
+    var watchlistBlockedCount = 0;
+    var watchlistBlockedFromPool = [];
     picks = strictSignalPicks;
-    if (strictSignalPicks.length === 0 && watchlistCandidates.length > 0) {
-      picks = watchlistCandidates.slice(0, 5);
-      top5Mode = 'watchlist';
-    } else if (strictSignalPicks.length === 0 && watchlistCandidates.length === 0) {
+    if (strictSignalPicks.length === 0 && isWatchlistContext) {
+      // === WATCHLIST FALLBACK: scan broader candidate pool to fill up to 5 safe candidates ===
+      // Instead of only using the top 5 from selectDailyTop5, iterate the full sorted pool
+      // (top5RadarCandidates) and apply candidatePassesTop5WatchlistGate to each candidate.
+      var watchlistSafeFromPool = [];
+      var seenTickers = {};
+      // First include already-identified watchlist candidates (from the initial top 5)
+      watchlistCandidates.forEach(function(wc) {
+        if (wc.ticker) seenTickers[wc.ticker] = true;
+        watchlistSafeFromPool.push(wc);
+      });
+      // Now scan broader pool to fill remaining slots
+      var broaderPool = top5RadarCandidates.length > 0 ? top5RadarCandidates : [];
+      for (var wp = 0; wp < broaderPool.length && watchlistSafeFromPool.length < 5; wp++) {
+        var poolCandidate = broaderPool[wp];
+        if (!poolCandidate || !poolCandidate.ticker) continue;
+        if (seenTickers[poolCandidate.ticker]) continue;
+        seenTickers[poolCandidate.ticker] = true;
+        watchlistScannedCount++;
+        if (candidatePassesTop5WatchlistGate(poolCandidate)) {
+          watchlistSafeFromPool.push(poolCandidate);
+        } else {
+          watchlistBlockedCount++;
+          var poolRejEntry = { ticker: poolCandidate.ticker };
+          var poolDiag = diagnosePublicSafetyGateRejection(poolCandidate, 'daily_top5');
+          poolRejEntry.reason = poolDiag.category || 'watchlist_gate_blocked';
+          poolRejEntry.detailed_reason = poolDiag.detailed_reason || 'Blocked by candidatePassesTop5WatchlistGate';
+          watchlistBlockedFromPool.push(poolRejEntry);
+          rejectedByGate.push(poolRejEntry);
+        }
+      }
+      watchlistCandidates = watchlistSafeFromPool;
+      if (watchlistSafeFromPool.length > 0) {
+        picks = watchlistSafeFromPool.slice(0, 5);
+        top5Mode = 'watchlist';
+      } else {
+        top5Mode = 'empty';
+      }
+    } else if (strictSignalPicks.length > 0) {
+      top5Mode = 'strict_signal';
+    } else {
       top5Mode = 'empty';
     }
 
@@ -5316,7 +5359,10 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       after_quality_gate_count: picks.length,
       strict_signal_count: strictSignalPicks.length,
       watchlist_candidate_count: watchlistCandidates.length,
+      watchlist_scanned_count: watchlistScannedCount,
+      blocked_count: watchlistBlockedCount + rejectedByGate.filter(function(r) { return !watchlistBlockedFromPool.some(function(b) { return b.ticker === r.ticker; }); }).length,
       rejected_by_gate_count: rejectedByGate.length,
+      selected_tickers: picks.map(function(p) { return p.ticker; }),
       top5_mode: top5Mode,
       top_rejection_reasons: (function() {
         var reasons = {};
@@ -5405,7 +5451,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'already_sent', source: source, readiness: readiness, sent_count: 0, picked_count: existingRows.length, candidate_count: existingRows.length, inserted_count: 0, existing_locked_count: existingRows.length, telegram: null }, diagnosticsBase));
     }
 
-    var notifier = await sendDailyTop5Telegram(supabase, picks, targetDate, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' || manualPreviousTradingDayActive || manualLatestSnapshotActive, radar_candidates: top5RadarCandidates, watchlist_mode: top5Mode === 'watchlist' });
+    var notifier = await sendDailyTop5Telegram(supabase, picks, targetDate, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' || manualPreviousTradingDayActive || manualLatestSnapshotActive, radar_candidates: top5RadarCandidates, watchlist_mode: top5Mode === 'watchlist', watchlist_safe_count: top5Mode === 'watchlist' ? picks.length : undefined });
     var telegramSent = notifier.sent_count > 0;
     var nowIso = new Date().toISOString();
     if (telegramSent) {
