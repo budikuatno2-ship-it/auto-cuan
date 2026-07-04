@@ -5908,6 +5908,11 @@ function isDashboardExplicitPreviewOrProvisionalRow(row) {
 }
 function hasDashboardLockedFinalIndicator(row) {
   if (!row || typeof row !== 'object') return false;
+  // Any row that exists in telegram_daily_picks (has id + date) is already a
+  // persisted locked/final selection — trust it regardless of whether explicit
+  // is_locked/first_sent_at markers were stamped.  This prevents false negatives
+  // for rows inserted by VPS workers or web-lock path that omit those markers.
+  if (row.id && row.date) return true;
   var text = dashboardLockedIndicatorText(row);
   return row.is_locked === true || row.locked === true || row.is_final === true || !!row.first_sent_at ||
     text.indexOf('locked') >= 0 || text.indexOf('final') >= 0;
@@ -6079,11 +6084,11 @@ async function handleWebDailyPicks(req, res, supabase) {
     }
     var locked = rows.length > 0;
     var _isAdminReq = (req.query.admin_preview === '1' || req.query.provisional === '1') ? await isDashboardAdminUser(req, supabase) : false;
-    // Provisional main Top 5 (heavy selectDailyTop5) must only run when admin explicitly asks with generate_preview=1.
-    // Normal admin dashboard load must NOT trigger heavy compute (regression fix after PR #138).
-    var allowProvisional = _isAdminReq && req.query.generate_preview === '1';
-    var top5Source = locked ? (usedPreviousLockedFallback ? 'locked_rows_fallback' : 'locked_rows') : (allowProvisional ? 'provisional_candidates' : 'awaiting_locked_rows');
-    var webProvisional = !locked && allowProvisional;
+    // Dashboard web-daily-picks must NEVER run heavy compute (selectDailyTop5, screener, preview generation).
+    // It is a lightweight DB-read-only path.  Even admin requests via Dashboard do not trigger provisional compute.
+    var allowProvisional = false;
+    var top5Source = locked ? (usedPreviousLockedFallback ? 'locked_rows_fallback' : 'locked_rows') : 'awaiting_locked_rows';
+    var webProvisional = false;
     var top5 = [];
     var monitor = [];
     var lastAt = null;
@@ -6106,8 +6111,8 @@ async function handleWebDailyPicks(req, res, supabase) {
         monitor.push(buildDashboardMonitorRow(p, i + 1, px, ev));
       }
     } else if (allowProvisional) {
-      var fallback = await selectDailyTop5(supabase);
-      for (var j = 0; j < fallback.length; j++) top5.push(buildFallbackDashboardPickRow(fallback[j], j + 1));
+      // DISABLED: Dashboard path must never call selectDailyTop5 or any heavy screener/preview computation.
+      // This block is dead code now that allowProvisional is always false.
     }
     if (latestPriceAt) { lastAt = latestPriceAt; monitorSourceLabel = 'latest price'; }
     else if (latestMonitorRunAt) { lastAt = latestMonitorRunAt; monitorSourceLabel = 'monitor run'; }
@@ -6115,174 +6120,9 @@ async function handleWebDailyPicks(req, res, supabase) {
     var monitorStale = isMonitorTimestampStale(lastAt, monitorSourceLabel);
     var staleNote = monitorStale ? 'Data monitor belum update terbaru.' : null;
     var adminPreviewExtra = {};
-    if (req.query.admin_preview === '1' && _isAdminReq) {
-      var generatePreview = req.query.generate_preview === '1';
-      var _previewCacheKey = 'admin_top5_preview_cache';
-      var _todayWib = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
-
-      if (generatePreview) {
-        // === GENERATE: compute preview Top 5, skip heavy diagnostics unless include_diagnostics=1 ===
-        var _includeDiagnostics = req.query.include_diagnostics === '1';
-        var _previewStartMs = Date.now();
-        var _previewSelectMs = 0;
-        var _previewCombinedMs = 0;
-        var _previewGateMs = 0;
-        try {
-          var _t0 = Date.now();
-          var previewCandidates = await selectDailyTop5(supabase);
-          _previewSelectMs = Date.now() - _t0;
-          var previewRows = [];
-          for (var k = 0; k < previewCandidates.length; k++) { var pr = buildFallbackDashboardPickRow(previewCandidates[k], k + 1); pr.is_preview = true; pr.is_provisional = true; pr.visibility = 'admin_preview'; pr.publication_status = 'provisional'; pr.preview_label = 'Preview'; pr.provisional_label = 'Provisional'; previewRows.push(pr); }
-
-          // Diagnostics only when explicitly requested (heavy — adds 10-20s)
-          var excludedRows = [];
-          var potentialRows = [];
-          var gateCalibration = null;
-          var diagnosticsNote = _includeDiagnostics ? null : 'Diagnostics belum dimuat. Preview Top 5 tetap tersedia.';
-          if (_includeDiagnostics) {
-            try {
-              var _t1 = Date.now();
-              var allPreviewCandidates = await fetchCombinedScreenerCandidates(supabase, true);
-              _previewCombinedMs = Date.now() - _t1;
-              var _t2 = Date.now();
-              gateCalibration = buildGateCalibrationDiagnostics(allPreviewCandidates, 'admin_preview');
-              _previewGateMs = Date.now() - _t2;
-              for (var prx = 0; prx < allPreviewCandidates.length && potentialRows.length < 5; prx++) {
-                var pc = allPreviewCandidates[prx];
-                var pb = classifyCandidateGateBucket(pc, 'admin_preview_potential');
-                if (pb.gate_bucket === 'RADAR') potentialRows.push({ ticker: pc.ticker, category: pc.category, grade: pc.confidence || pc.grade || pc.quality_grade || null, risk: pc.risk_label_v2 || pc.risk_label || pc.verified_risk_label || null, rr: pc.risk_reward || null, action: 'Potential Radar / Watchlist', gate_bucket: pb.gate_bucket, gate_bucket_reason: pb.gate_bucket_reason, radar_reason: pb.gate_bucket_reason });
-              }
-              for (var ex = 0; ex < allPreviewCandidates.length && excludedRows.length < 5; ex++) {
-                var eb = classifyCandidateGateBucket(allPreviewCandidates[ex], 'admin_preview_excluded');
-                if (eb.gate_bucket === 'HARD_REJECT') excludedRows.push({ ticker: allPreviewCandidates[ex].ticker, category: allPreviewCandidates[ex].category, grade: allPreviewCandidates[ex].confidence || allPreviewCandidates[ex].grade || allPreviewCandidates[ex].quality_grade || null, risk: allPreviewCandidates[ex].risk_label_v2 || allPreviewCandidates[ex].risk_label || allPreviewCandidates[ex].verified_risk_label || null, rr: allPreviewCandidates[ex].risk_reward || null, action: allPreviewCandidates[ex].action_label || allPreviewCandidates[ex].signal_action_label || allPreviewCandidates[ex].signal_action || null, gate_bucket: eb.gate_bucket, excluded_reason: eb.gate_bucket_reason });
-              }
-            } catch (diagErr) {
-              diagnosticsNote = 'Diagnostics belum tersedia: ' + (diagErr.message || 'timeout').substring(0, 60);
-            }
-          }
-
-          var _generatedAt = new Date().toISOString();
-          adminPreviewExtra = {
-            admin_next_top5_preview: previewRows,
-            admin_next_top5_preview_count: previewRows.length,
-            admin_next_top5_excluded_preview: excludedRows,
-            admin_next_top5_potential_radar_preview: potentialRows,
-            admin_next_top5_excluded_count: excludedRows.length,
-            admin_next_top5_potential_radar_count: potentialRows.length,
-            admin_gate_calibration_summary: gateCalibration,
-            admin_next_top5_preview_note: diagnosticsNote || 'Preview calon Top 5 besok khusus admin.',
-            admin_next_top5_preview_generated_at: _generatedAt,
-            admin_preview_source: 'generated',
-            admin_preview_generated: true,
-            admin_preview_cache_hit: false,
-            admin_preview_select_top5_ms: _previewSelectMs,
-            admin_preview_combined_candidates_ms: _previewCombinedMs,
-            admin_preview_gate_calibration_ms: _previewGateMs,
-            admin_preview_total_ms: Date.now() - _previewStartMs
-          };
-
-          // Save to app_settings server-side cache (best-effort, don't block response)
-          try {
-            var _cachePayload = {
-              date: _todayWib,
-              generated_at: _generatedAt,
-              preview: previewRows.map(function(r) { var c = Object.assign({}, r); delete c.raw_payload; delete c.detail; return c; }),
-              preview_count: previewRows.length,
-              excluded: excludedRows,
-              excluded_count: excludedRows.length,
-              potential_radar: potentialRows,
-              potential_radar_count: potentialRows.length,
-              gate_calibration: gateCalibration,
-              note: diagnosticsNote || null,
-              select_top5_ms: _previewSelectMs,
-              total_ms: Date.now() - _previewStartMs
-            };
-            var _existingCache = await supabase.from('app_settings').select('key').eq('key', _previewCacheKey).maybeSingle();
-            if (_existingCache.data) {
-              await supabase.from('app_settings').update({ value: _cachePayload }).eq('key', _previewCacheKey);
-            } else {
-              await supabase.from('app_settings').insert({ key: _previewCacheKey, value: _cachePayload });
-            }
-          } catch (cacheWriteErr) { /* non-critical — frontend localStorage is fallback */ }
-
-        } catch (previewErr) {
-          adminPreviewExtra = {
-            admin_next_top5_preview: [],
-            admin_next_top5_preview_count: 0,
-            admin_next_top5_excluded_preview: [],
-            admin_next_top5_potential_radar_preview: [],
-            admin_next_top5_excluded_count: 0,
-            admin_next_top5_potential_radar_count: 0,
-            admin_gate_calibration_summary: null,
-            admin_next_top5_preview_note: 'Preview compute gagal: ' + (previewErr.message || 'unknown').substring(0, 80),
-            admin_next_top5_preview_generated_at: null,
-            admin_preview_error: true,
-            admin_preview_error_reason: (previewErr.message || 'preview_compute_failed').substring(0, 100),
-            admin_preview_not_generated: true,
-            admin_preview_can_generate: true,
-            admin_preview_source: 'error',
-            admin_preview_generated: false,
-            admin_preview_cache_hit: false,
-            admin_preview_select_top5_ms: _previewSelectMs || 0,
-            admin_preview_total_ms: Date.now() - _previewStartMs
-          };
-        }
-      } else {
-        // === READ: try server-side cache from app_settings, return quickly ===
-        var _cacheReadStart = Date.now();
-        var _serverCache = null;
-        try {
-          var _cacheRes = await supabase.from('app_settings').select('value').eq('key', _previewCacheKey).maybeSingle();
-          if (_cacheRes.data && _cacheRes.data.value) {
-            var _cv = typeof _cacheRes.data.value === 'string' ? JSON.parse(_cacheRes.data.value) : _cacheRes.data.value;
-            if (_cv && _cv.date === _todayWib && _cv.preview && _cv.preview.length > 0) {
-              _serverCache = _cv;
-            }
-          }
-        } catch (cacheReadErr) { /* ignore — treat as no cache */ }
-        var _cacheReadMs = Date.now() - _cacheReadStart;
-
-        if (_serverCache) {
-          // Server cache hit — return cached preview quickly without heavy compute
-          adminPreviewExtra = {
-            admin_next_top5_preview: _serverCache.preview || [],
-            admin_next_top5_preview_count: _serverCache.preview_count || 0,
-            admin_next_top5_excluded_preview: _serverCache.excluded || [],
-            admin_next_top5_potential_radar_preview: _serverCache.potential_radar || [],
-            admin_next_top5_excluded_count: _serverCache.excluded_count || 0,
-            admin_next_top5_potential_radar_count: _serverCache.potential_radar_count || 0,
-            admin_gate_calibration_summary: _serverCache.gate_calibration || null,
-            admin_next_top5_preview_note: _serverCache.note || 'Preview dari cache server hari ini.',
-            admin_next_top5_preview_generated_at: _serverCache.generated_at || null,
-            admin_preview_source: 'cache',
-            admin_preview_generated: true,
-            admin_preview_cache_hit: true,
-            admin_preview_cache_read_ms: _cacheReadMs,
-            admin_preview_total_ms: _cacheReadMs
-          };
-        } else {
-          // No server cache for today — return not_generated state
-          adminPreviewExtra = {
-            admin_next_top5_preview: [],
-            admin_next_top5_preview_count: 0,
-            admin_next_top5_excluded_preview: [],
-            admin_next_top5_potential_radar_preview: [],
-            admin_next_top5_excluded_count: 0,
-            admin_next_top5_potential_radar_count: 0,
-            admin_gate_calibration_summary: null,
-            admin_next_top5_preview_note: 'Preview admin belum dimuat. Klik Generate Admin Preview untuk menghitung.',
-            admin_next_top5_preview_generated_at: null,
-            admin_preview_not_generated: true,
-            admin_preview_can_generate: true,
-            admin_preview_source: 'not_generated',
-            admin_preview_generated: false,
-            admin_preview_cache_hit: false,
-            admin_preview_cache_read_ms: _cacheReadMs,
-            admin_preview_total_ms: _cacheReadMs
-          };
-        }
-      }
-    }
+    // DISABLED: Admin preview compute is permanently disabled from Dashboard path.
+    // Dashboard web-daily-picks is a lightweight DB-read-only endpoint.
+    // No selectDailyTop5, no screener, no preview generation, no cache read.
     if (_isAdminReq) {
       adminPreviewExtra.fallback_dates_checked = fallbackDatesChecked;
       adminPreviewExtra.fallback_rows_before_filter = fallbackRowsBeforeFilter;
@@ -6299,7 +6139,7 @@ async function handleWebDailyPicks(req, res, supabase) {
       telegram_scheduled_only: true,
       telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.',
       web_provisional: webProvisional,
-      update_note: locked ? (usedPreviousLockedFallback ? 'Top 5 Radar Final/Locked terbaru dari snapshot sebelumnya (' + lockedDate + '). Monitor update tiap 30 menit saat jam bursa.' : 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.') : (allowProvisional ? 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.' : 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.'),
+      update_note: locked ? (usedPreviousLockedFallback ? 'Top 5 Radar Final/Locked terbaru dari snapshot sebelumnya (' + lockedDate + '). Monitor update tiap 30 menit saat jam bursa.' : 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.') : 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.',
       last_updated_at: lastAt,
       monitor_last_updated_at: lastAt,
       monitor_source_label: monitorSourceLabel,
@@ -6307,7 +6147,7 @@ async function handleWebDailyPicks(req, res, supabase) {
       monitor_stale_note: staleNote,
       picks: top5
     }, adminPreviewExtra);
-    return res.status(200).json(sanitizeTop5ResponseForAudience(responsePayload, { allowAdminPreview: !!adminPreviewExtra.admin_next_top5_preview }));
+    return res.status(200).json(sanitizeTop5ResponseForAudience(responsePayload, { allowAdminPreview: false }));
   } catch (e) {
     return res.status(200).json({ success: false, date: getJakartaDateString(), top5: [], monitor: [], top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.', last_updated_at: null, monitor_last_updated_at: null, monitor_source_label: null, monitor_is_stale: true, monitor_stale_note: 'Data monitor belum update terbaru.', picks: [], error: e.message || String(e) });
   }
@@ -10344,6 +10184,8 @@ module.exports.__test = {
   normalizeCandidateScoreForGate: normalizeCandidateScoreForGate,
   buildDashboardPickRow: buildDashboardPickRow,
   isSafeDashboardLockedTop5Row: isSafeDashboardLockedTop5Row,
+  hasDashboardLockedFinalIndicator: hasDashboardLockedFinalIndicator,
+  isDashboardExplicitPreviewOrProvisionalRow: isDashboardExplicitPreviewOrProvisionalRow,
   filterSafeDashboardLockedTop5Rows: filterSafeDashboardLockedTop5Rows,
   selectDailyTop5: selectDailyTop5,
   buildTelegramTopMessage: buildTelegramTopMessage,
