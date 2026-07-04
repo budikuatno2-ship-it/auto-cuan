@@ -24,3 +24,8 @@ desktop.ini
 # Vercel
 .vercel/
 dist/
+
+# Day Trade VPS observe worker local state
+data/daytrade-ohlcv-cache/
+logs/daytrade-vps-worker/
+tmp/daytrade-vps-worker-observe.lock
