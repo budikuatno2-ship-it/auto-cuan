@@ -5890,6 +5890,22 @@ function sanitizeTop5RowsForAudience(rows, opts) {
     .map(function(row) { return sanitizeTop5RowForPublic(row, { allowPreview: allowPreview }); });
 }
 
+function getDashboardLockedRowPayload(row) {
+  if (!row || typeof row !== 'object') return row;
+  return Object.assign({}, row.raw_payload && typeof row.raw_payload === 'object' ? row.raw_payload : {}, row);
+}
+function isSafeDashboardLockedTop5Row(row) {
+  var payload = getDashboardLockedRowPayload(row);
+  if (isTop5PreviewOrProvisionalRow(payload)) return false;
+  if (hasAvoidGrade(payload) || hasHindariAction(payload)) return false;
+  if (String(payload.signal_action || '').trim().toUpperCase() === 'AVOID') return false;
+  return true;
+}
+function filterSafeDashboardLockedTop5Rows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.filter(isSafeDashboardLockedTop5Row);
+}
+
 function sanitizeGateCalibrationSummaryForAdmin(summary) {
   if (!summary || typeof summary !== 'object') return summary;
   return {
@@ -6001,13 +6017,39 @@ async function handleWebDailyPicks(req, res, supabase) {
     var date = getJakartaDateString();
     var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
     if (q.error) throw new Error(q.error.message);
-    var rows = q.data || [];
+    var rows = filterSafeDashboardLockedTop5Rows(q.data || []).slice(0, 5);
+    var lockedDate = date;
+    var usedPreviousLockedFallback = false;
+    if (rows.length === 0) {
+      var latestDateQ = await supabase
+        .from('telegram_daily_picks')
+        .select('date')
+        .lt('date', date)
+        .order('date', { ascending: false })
+        .limit(20);
+      if (latestDateQ.error) throw new Error(latestDateQ.error.message);
+      var seenLockedDates = {};
+      var latestDateRows = latestDateQ.data || [];
+      for (var fd = 0; fd < latestDateRows.length; fd++) {
+        var latestLockedDate = latestDateRows[fd] && latestDateRows[fd].date;
+        if (!latestLockedDate || seenLockedDates[latestLockedDate]) continue;
+        seenLockedDates[latestLockedDate] = true;
+        var fallbackQ = await supabase.from('telegram_daily_picks').select('*').eq('date', latestLockedDate).order('id', { ascending: true }).limit(5);
+        if (fallbackQ.error) throw new Error(fallbackQ.error.message);
+        rows = filterSafeDashboardLockedTop5Rows(fallbackQ.data || []).slice(0, 5);
+        if (rows.length > 0) {
+          lockedDate = latestLockedDate;
+          usedPreviousLockedFallback = true;
+          break;
+        }
+      }
+    }
     var locked = rows.length > 0;
     var _isAdminReq = (req.query.admin_preview === '1' || req.query.provisional === '1') ? await isDashboardAdminUser(req, supabase) : false;
     // Provisional main Top 5 (heavy selectDailyTop5) must only run when admin explicitly asks with generate_preview=1.
     // Normal admin dashboard load must NOT trigger heavy compute (regression fix after PR #138).
     var allowProvisional = _isAdminReq && req.query.generate_preview === '1';
-    var top5Source = locked ? 'locked_rows' : (allowProvisional ? 'provisional_candidates' : 'awaiting_locked_rows');
+    var top5Source = locked ? (usedPreviousLockedFallback ? 'locked_rows_fallback' : 'locked_rows') : (allowProvisional ? 'provisional_candidates' : 'awaiting_locked_rows');
     var webProvisional = !locked && allowProvisional;
     var top5 = [];
     var monitor = [];
@@ -6210,7 +6252,8 @@ async function handleWebDailyPicks(req, res, supabase) {
     }
     var responsePayload = Object.assign({
       success: true,
-      date: date,
+      date: lockedDate,
+      requested_date: date,
       top5: top5,
       monitor: monitor,
       top5_source: top5Source,
@@ -6218,7 +6261,7 @@ async function handleWebDailyPicks(req, res, supabase) {
       telegram_scheduled_only: true,
       telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.',
       web_provisional: webProvisional,
-      update_note: locked ? 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.' : (allowProvisional ? 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.' : 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.'),
+      update_note: locked ? (usedPreviousLockedFallback ? 'Top 5 Radar Final/Locked terbaru dari snapshot sebelumnya (' + lockedDate + '). Monitor update tiap 30 menit saat jam bursa.' : 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.') : (allowProvisional ? 'Top 5 Radar web dapat muncul sebelum jadwal Telegram; data ini masih sementara sampai Telegram terjadwal mengunci pilihan.' : 'Top 5 belum locked. Telegram/preview admin yang akan mengunci pilihan resmi.'),
       last_updated_at: lastAt,
       monitor_last_updated_at: lastAt,
       monitor_source_label: monitorSourceLabel,
@@ -10262,6 +10305,8 @@ module.exports.__test = {
   normalizeTelegramRiskLabel: normalizeTelegramRiskLabel,
   normalizeCandidateScoreForGate: normalizeCandidateScoreForGate,
   buildDashboardPickRow: buildDashboardPickRow,
+  isSafeDashboardLockedTop5Row: isSafeDashboardLockedTop5Row,
+  filterSafeDashboardLockedTop5Rows: filterSafeDashboardLockedTop5Rows,
   selectDailyTop5: selectDailyTop5,
   buildTelegramTopMessage: buildTelegramTopMessage,
   buildTelegramScreenerMessage: buildTelegramScreenerMessage,

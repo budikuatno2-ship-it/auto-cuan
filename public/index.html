@@ -590,17 +590,6 @@
             </button>
         </div>
 
-        <section id="adminNextTop5PreviewSection" class="hidden bg-dark-700/45 border border-amber-500/20 rounded-2xl p-3">
-            <div class="flex items-center justify-between gap-2 mb-2">
-                <div>
-                    <h3 class="text-sm font-bold text-white">Preview Top 5 Besok</h3>
-                    <p class="text-[11px] text-amber-200/80">Khusus admin · belum resmi · tidak dikirim Telegram</p>
-                </div>
-                <span id="adminNextTop5PreviewUpdated" class="text-[10px] text-gray-500 whitespace-nowrap">Preview: — WIB</span>
-            </div>
-            <div id="adminNextTop5PreviewList" class="space-y-2"></div>
-        </section>
-
         <!-- Compact Top 5 + Monitor -->
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
             <section class="lg:col-span-3 bg-dark-700/45 border border-dark-600/30 rounded-2xl p-3">
@@ -7096,7 +7085,6 @@ function renderDashboardGuestGate() {
     if (top) top.innerHTML = getDashboardLoginCtaHtml();
     if (mon) mon.innerHTML = getDashboardLoginCtaHtml();
     if (hist) hist.innerHTML = getDashboardLoginCtaHtml();
-    renderAdminNextTop5Preview(null);
     _dashboardPickData = {};
 }
 
@@ -7259,101 +7247,6 @@ function dashTpRealismLine(r) {
     return line.replace(/^ARA\/ARB belum tersedia;\s*/i, '');
 }
 
-function renderAdminNextTop5Preview(data) {
-    var section = document.getElementById('adminNextTop5PreviewSection');
-    var list = document.getElementById('adminNextTop5PreviewList');
-    var updated = document.getElementById('adminNextTop5PreviewUpdated');
-    if (!section || !list) return;
-    // Guest/non-admin: hide entirely
-    if (!isAdmin()) { section.classList.add('hidden'); list.innerHTML = ''; return; }
-    // If data is null (initial render), check localStorage cache first
-    if (!data || (data.admin_preview_not_generated === true)) {
-        var cached = _getAdminPreviewCache();
-        if (cached && cached.admin_next_top5_preview && cached.admin_next_top5_preview.length > 0) {
-            section.classList.remove('hidden');
-            if (updated) updated.textContent = 'Preview (cache): ' + dashWibTime(cached.generated_at) + ' WIB';
-            renderAdminNextTop5PreviewContent(cached, list);
-            return;
-        }
-        section.classList.remove('hidden');
-        if (updated) updated.textContent = '';
-        list.innerHTML = '<div class="py-3 text-center"><p class="text-[11px] text-gray-400 mb-2">Preview admin belum dimuat.</p><button onclick="loadAdminNextTop5Preview()" class="px-3 py-1.5 rounded-lg text-[11px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition font-medium">Generate Admin Preview</button></div>';
-        return;
-    }
-    var rows = data && Array.isArray(data.admin_next_top5_preview) ? data.admin_next_top5_preview : [];
-    var excludedRows = data && Array.isArray(data.admin_next_top5_excluded_preview) ? data.admin_next_top5_excluded_preview : [];
-    var potentialRows = data && Array.isArray(data.admin_next_top5_potential_radar_preview) ? data.admin_next_top5_potential_radar_preview : [];
-    if (!rows.length && !excludedRows.length && !potentialRows.length) {
-        section.classList.remove('hidden');
-        if (updated) updated.textContent = 'Preview generated: ' + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
-        list.innerHTML = '<div class="py-3 text-center"><p class="text-[11px] text-gray-400 mb-2">Belum ada kandidat preview yang valid.</p><button onclick="loadAdminNextTop5Preview()" class="px-3 py-1.5 rounded-lg text-[11px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition font-medium">Refresh Preview</button></div>';
-        return;
-    }
-    section.classList.remove('hidden');
-    var sourceLabel = (data.admin_preview_source === 'cache') ? 'Preview (server cache): ' : 'Preview generated: ';
-    if (updated) updated.textContent = sourceLabel + dashWibTime(data && data.admin_next_top5_preview_generated_at) + ' WIB';
-    renderAdminNextTop5PreviewContent(data, list);
-}
-function renderAdminNextTop5PreviewContent(data, list) {
-    var rows = Array.isArray(data.admin_next_top5_preview) ? data.admin_next_top5_preview : [];
-    var excludedRows = Array.isArray(data.admin_next_top5_excluded_preview) ? data.admin_next_top5_excluded_preview : [];
-    var potentialRows = Array.isArray(data.admin_next_top5_potential_radar_preview) ? data.admin_next_top5_potential_radar_preview : [];
-    var html = '<div class="mb-2 text-right"><button onclick="loadAdminNextTop5Preview()" class="px-2.5 py-1 rounded-lg text-[10px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition">Refresh Preview</button></div>';
-    var gate = data && data.admin_gate_calibration_summary;
-    if (gate) {
-        html += '<div class="mb-2 rounded-xl border border-cyan-500/15 bg-cyan-500/5 px-3 py-2 text-[11px] text-cyan-100">Gate: ' + Number(gate.signal_count || 0) + ' Final · ' + Number(gate.radar_count || 0) + ' Radar · ' + Number(gate.hard_reject_count || 0) + ' Hard Reject</div>';
-    }
-    if (!rows.length && potentialRows.length) {
-        html += '<div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-3 text-[11px] text-emerald-100">Belum ada Final / Locked. Kandidat potensial tersedia di Radar/Watchlist.</div>';
-    } else if (!rows.length && excludedRows.length) {
-        html += '<div class="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-3 text-[11px] text-amber-100">Belum ada kandidat yang lolos final quality gate untuk preview Top 5. Lihat daftar Excluded by Guard di bawah.</div>';
-    }
-    rows.slice(0, 5).forEach(function(p, idx) {
-        var r = normalizeDashboardPick(p);
-        var sc = Number(r.combined_score || r.telegram_conviction_score || r.daytrade_score || r.score || 0);
-        var grade = getSignalQualityGrade(r) || '—';
-        var risk = getRiskLabel(r) || '—';
-        var rr = Number(r.risk_reward || r.rr);
-        var action = getActionLabel(r) || getStatusLabel(r, r.status || r.final_status || '') || '—';
-        var verdict = safeDisplayText(r.signal_verdict || r.verdict || '', '');
-        var reason = dashShortText(getSignalReason(r) || r.action_reason || r.status_reason || r.grade_reason || r.notes, 120);
-        html += '<article class="rounded-xl border border-amber-500/15 bg-amber-500/5 px-3 py-2">';
-        html += '<div class="flex items-start gap-2"><div class="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-bold flex items-center justify-center flex-shrink-0">' + (p.rank || idx + 1) + '</div>';
-        html += '<div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-xs text-gray-300">' + dashFmtPrice(r.last_price) + '</span><span class="text-[11px] text-gray-400">Score <b class="text-amber-300">' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
-        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span><span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span><span>RR <b class="text-purple-300">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '—') + '</b></span><span class="text-blue-300">' + escapeHtml(action) + '</span></div>';
-        html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
-        html += '<div class="mt-1 text-[11px] text-blue-200 truncate">Action/Verdict: ' + escapeHtml(action + (verdict ? ' — ' + verdict : '')) + '</div>';
-        if (reason) html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p>';
-        html += dashQualityChipsHtml(r.quality_chips);
-        html += '</div></div></article>';
-    });
-    if (potentialRows.length) {
-        html += '<div class="mt-3 rounded-xl border border-emerald-500/15 bg-emerald-500/5 px-3 py-2">';
-        html += '<div class="mb-2 text-[11px] font-semibold text-emerald-200">Potential Radar / Watchlist</div>';
-        potentialRows.slice(0, 5).forEach(function(ex) {
-            var rr = Number(ex.rr);
-            html += '<div class="border-t border-emerald-500/10 py-2 first:border-t-0">';
-            html += '<div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]"><span class="font-bold text-white">' + escapeHtml(ex.ticker || '-') + '</span><span class="text-gray-400">' + escapeHtml(ex.category || '-') + '</span><span class="text-gray-400">Grade <b class="text-emerald-200">' + escapeHtml(ex.grade || '-') + '</b></span><span class="text-gray-400">Risk <b class="text-emerald-200">' + escapeHtml(ex.risk || '-') + '</b></span><span class="text-gray-400">RR <b class="text-purple-200">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '-') + '</b></span></div>';
-            html += '<div class="mt-1 text-[10px] text-emerald-100/80">' + escapeHtml(ex.radar_reason || 'WATCHLIST_MONITOR') + ' · bukan sinyal entry</div>';
-            html += '</div>';
-        });
-        html += '</div>';
-    }
-    if (excludedRows.length) {
-        html += '<div class="mt-3 rounded-xl border border-red-500/15 bg-red-500/5 px-3 py-2">';
-        html += '<div class="mb-2 text-[11px] font-semibold text-red-200">Excluded by Guard</div>';
-        excludedRows.slice(0, 5).forEach(function(ex) {
-            var rr = Number(ex.rr);
-            html += '<div class="border-t border-red-500/10 py-2 first:border-t-0">';
-            html += '<div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]"><span class="font-bold text-white">' + escapeHtml(ex.ticker || '-') + '</span><span class="text-gray-400">' + escapeHtml(ex.category || '-') + '</span><span class="text-gray-400">Grade <b class="text-red-200">' + escapeHtml(ex.grade || '-') + '</b></span><span class="text-gray-400">Risk <b class="text-red-200">' + escapeHtml(ex.risk || '-') + '</b></span><span class="text-gray-400">RR <b class="text-purple-200">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '-') + '</b></span><span class="text-blue-200">' + escapeHtml(ex.action || '-') + '</span></div>';
-            html += '<div class="mt-1 text-[10px] text-red-100/80">' + escapeHtml(ex.excluded_reason || '-') + '</div>';
-            html += '</div>';
-        });
-        html += '</div>';
-    }
-    list.innerHTML = html;
-}
-
 function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
     var el = document.getElementById('dashboardMonitorList');
     var upd = document.getElementById('dashboardMonitorUpdated');
@@ -7448,6 +7341,7 @@ function renderTop5History(activeRows, tpRows) {
     });
     el.innerHTML = html;
 }
+
 async function loadTop5History(silent) {
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     var el = document.getElementById('top5HistoryList');
@@ -7472,6 +7366,7 @@ async function loadTop5History(silent) {
     })();
     return _top5HistoryInFlight;
 }
+
 async function archiveTop5History(id) {
     if (!isAdmin()) return;
     if (!confirm('Arsipkan row ini dari Top 5 History?')) return;
@@ -7483,14 +7378,11 @@ async function archiveTop5History(id) {
     loadTop5History(true);
 }
 
-function openDashboardPickDetail(ticker) {
-    var r = _dashboardPickData[ticker];
-    if (r) openScrDetail(r, /Day Trade/i.test(r.category || '') ? 'daytrade' : 'konglo');
-}
+
 async function loadDashboardTop5Monitor(silent, opts) {
     opts = opts || {};
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
-    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); renderAdminNextTop5Preview(_dashboardTop5Cache.data); return; }
+    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000) { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
     // Always clear placeholders to prevent stuck static HTML state
     var _topEl = document.getElementById('dashboardTop5List');
@@ -7506,7 +7398,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
     }, 5000);
     _dashboardTop5InFlight = (async function() {
     try {
-        var _dashFetchUrl = '/api/sector-hot?action=web-daily-picks' + (isAdmin() ? '&admin_preview=1' : '') + '&t=' + Date.now();
+        var _dashFetchUrl = '/api/sector-hot?action=web-daily-picks&t=' + Date.now();
         var fetched = await fetchDashboardJson(_dashFetchUrl, { headers: getDashboardAuthHeaders() }, 15000);
         var resp = fetched.resp;
         var data = fetched.data;
@@ -7521,7 +7413,6 @@ async function loadDashboardTop5Monitor(silent, opts) {
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
         renderDashboardTop5MonitorData(data);
-        renderAdminNextTop5Preview(data);
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
         var mon = document.getElementById('dashboardMonitorList');
@@ -7530,7 +7421,6 @@ async function loadDashboardTop5Monitor(silent, opts) {
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = '';
         if (mon) mon.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
-        renderAdminNextTop5Preview(null);
     } finally { clearTimeout(_fallbackTimer); _dashboardTop5InFlight = null; }
     })();
     return _dashboardTop5InFlight;
@@ -7542,8 +7432,10 @@ function renderDashboardTop5MonitorData(data) {
     // Robust empty detection: treat as empty/awaiting if ANY of these are true
     var top5Rows = data.top5 || data.picks || [];
     var monitorRows = data.monitor || [];
-    var isAwaiting = data.top5_source === 'awaiting_locked_rows'
-        || (data.top5_locked === false && top5Rows.length === 0)
+    var isLockedFinalSource = data.top5_locked === true && (data.top5_source === 'locked_rows' || data.top5_source === 'locked_rows_fallback');
+    var isAwaiting = !isLockedFinalSource
+        || data.top5_source === 'awaiting_locked_rows'
+        || data.web_provisional === true
         || (top5Rows.length === 0 && monitorRows.length === 0);
     if (isAwaiting) {
         var topEl = document.getElementById('dashboardTop5List');
@@ -7557,92 +7449,6 @@ function renderDashboardTop5MonitorData(data) {
         renderDashboardMonitor(monitorRows, data.monitor_last_updated_at || data.last_updated_at, data);
     }
 }
-
-// === ADMIN PREVIEW CACHE (localStorage, day-scoped, admin-only) ===
-var _ADMIN_PREVIEW_CACHE_KEY = 'autocuan_admin_preview_cache';
-function _getAdminPreviewCache() {
-    try {
-        if (!isAdmin()) return null;
-        var raw = localStorage.getItem(_ADMIN_PREVIEW_CACHE_KEY);
-        if (!raw) return null;
-        var parsed = JSON.parse(raw);
-        // Day-scoped: only valid for today (WIB)
-        var today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        if (parsed.date !== today) { localStorage.removeItem(_ADMIN_PREVIEW_CACHE_KEY); return null; }
-        return parsed;
-    } catch (e) { return null; }
-}
-function _setAdminPreviewCache(data) {
-    try {
-        if (!isAdmin() || !data) return;
-        var today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
-        // Store safe fields only — no raw_payload/debug/sample_rejected/stageByTicker/internal
-        var safe = {
-            date: today,
-            generated_at: data.admin_next_top5_preview_generated_at || new Date().toISOString(),
-            admin_next_top5_preview: (data.admin_next_top5_preview || []).map(function(r) {
-                var c = Object.assign({}, r);
-                delete c.raw_payload; delete c.detail; delete c.sample_rejected; delete c.stageByTicker; delete c.debug_notes; delete c.internal_notes;
-                return c;
-            }),
-            admin_next_top5_preview_count: data.admin_next_top5_preview_count || 0,
-            admin_next_top5_excluded_preview: (data.admin_next_top5_excluded_preview || []).slice(0, 5),
-            admin_next_top5_potential_radar_preview: (data.admin_next_top5_potential_radar_preview || []).slice(0, 5),
-            admin_next_top5_excluded_count: data.admin_next_top5_excluded_count || 0,
-            admin_next_top5_potential_radar_count: data.admin_next_top5_potential_radar_count || 0,
-            admin_gate_calibration_summary: data.admin_gate_calibration_summary || null,
-            admin_next_top5_preview_note: data.admin_next_top5_preview_note || null,
-            admin_next_top5_preview_generated_at: data.admin_next_top5_preview_generated_at || null
-        };
-        localStorage.setItem(_ADMIN_PREVIEW_CACHE_KEY, JSON.stringify(safe));
-    } catch (e) { /* localStorage full or disabled — ignore */ }
-}
-
-async function loadAdminNextTop5Preview() {
-    if (!isAdmin()) { renderAdminNextTop5Preview(null); return; }
-    // Show loading state inside admin preview section only
-    var section = document.getElementById('adminNextTop5PreviewSection');
-    var list = document.getElementById('adminNextTop5PreviewList');
-    if (section) section.classList.remove('hidden');
-    if (list) list.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Menghitung preview admin...</div>';
-    var cached = _getAdminPreviewCache();
-    try {
-        // Admin preview uses longer timeout (45s) — heavy compute on backend
-        var fetched = await fetchDashboardJson('/api/sector-hot?action=web-daily-picks&admin_preview=1&generate_preview=1&t=' + Date.now(), { headers: getDashboardAuthHeaders() }, 45000);
-        var data = fetched.data;
-        if (data && data.success && !data.admin_preview_error) {
-            _setAdminPreviewCache(data);
-            renderAdminNextTop5Preview(data);
-        } else {
-            // API returned but with error or admin_preview_error
-            var reason = (data && data.admin_preview_error_reason) || (data && data.error) || 'server_error';
-            _renderAdminPreviewFailure(reason, cached, list, section);
-        }
-    } catch(e) {
-        // Network/timeout error
-        var reason = (e && e.name === 'AbortError') ? 'timeout' : ((e && e.message) || 'network_error');
-        _renderAdminPreviewFailure(reason, cached, list, section);
-    }
-}
-
-function _renderAdminPreviewFailure(reason, cached, list, section) {
-    var reasonShort = String(reason || 'unknown').substring(0, 60);
-    if (cached && cached.admin_next_top5_preview && cached.admin_next_top5_preview.length > 0) {
-        // Keep showing cached preview with warning
-        renderAdminNextTop5Preview(cached);
-        var updated = document.getElementById('adminNextTop5PreviewUpdated');
-        if (updated) updated.textContent = 'Refresh gagal, menampilkan cache terakhir. (' + dashWibTime(cached.generated_at) + ' WIB)';
-        // Prepend warning to list
-        if (list) {
-            var warnHtml = '<div class="mb-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">Refresh gagal: ' + escapeHtml(reasonShort) + '. Menampilkan cache terakhir. <button onclick="loadAdminNextTop5Preview()" class="ml-2 underline text-amber-300">Coba Lagi</button></div>';
-            list.innerHTML = warnHtml + list.innerHTML;
-        }
-    } else {
-        // No cache — show error with reason and retry button
-        if (list) list.innerHTML = '<div class="py-3 text-center"><p class="text-[11px] text-red-400 mb-2">Preview gagal dimuat: ' + escapeHtml(reasonShort) + '.</p><button onclick="loadAdminNextTop5Preview()" class="px-3 py-1.5 rounded-lg text-[11px] text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition font-medium">Coba Lagi</button></div>';
-    }
-}
-
 
 function startDashboardMonitorAutoRefresh() {
     if (_dashboardMonitorRefreshTimer) clearInterval(_dashboardMonitorRefreshTimer);
