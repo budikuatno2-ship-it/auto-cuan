@@ -1512,7 +1512,7 @@ function stripBase64FromHtml(html) {
 function getUsername() { return (localStorage.getItem('autocuan_user') || 'guest').toLowerCase(); }
 function isLoggedInUser() { return getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true'; }
 function getAuthHeaders() { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; }
-function getDashboardAuthHeaders() { return { 'X-Username': localStorage.getItem('autocuan_user') || '', 'X-User-Id': localStorage.getItem('autocuan_user_id') || '' }; }
+function getDashboardAuthHeaders() { return getAuthHeaders(); }
 function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
@@ -7404,17 +7404,29 @@ async function loadDashboardTop5Monitor(silent, opts) {
     _dashboardTop5InFlight = (async function() {
     try {
         var _dashFetchUrl = '/api/sector-hot?action=web-daily-picks&t=' + Date.now();
-        var fetched = await fetchDashboardJson(_dashFetchUrl, { headers: getDashboardAuthHeaders() }, 15000);
+        var fetched = await fetchDashboardJson(_dashFetchUrl, { headers: getAuthHeaders() }, 15000);
         var resp = fetched.resp;
         var data = fetched.data;
         if ((!data.success || data.auth_required || data.gated) && isLoggedInUser()) {
-            fetched = await fetchDashboardJson(_dashFetchUrl, { headers: getDashboardAuthHeaders() }, 15000);
+            fetched = await fetchDashboardJson(_dashFetchUrl, { headers: getAuthHeaders() }, 15000);
             resp = fetched.resp;
             data = fetched.data;
             if (data && (data.auth_required || data.gated)) throw new Error('Session perlu refresh/login ulang');
         }
+        // If response is awaiting_locked_rows but user is logged in, retry once with explicit auth headers.
+        // This handles cases where the first request somehow lacked proper auth (race, stale localStorage read).
+        if (data.success && data.top5_source === 'awaiting_locked_rows' && isLoggedInUser()) {
+            var _retryHeaders = { 'X-Username': getUsername(), 'X-User-Id': localStorage.getItem('autocuan_user_id') || '' };
+            var retryFetched = await fetchDashboardJson(_dashFetchUrl, { headers: _retryHeaders }, 15000);
+            if (retryFetched.data && retryFetched.data.success && retryFetched.data.top5_source !== 'awaiting_locked_rows') {
+                data = retryFetched.data;
+            }
+        }
         if (!data.success) throw new Error(data.error || 'Gagal memuat Top 5.');
-        _dashboardTop5Cache = { at: Date.now(), data: data };
+        // Do not cache awaiting_locked_rows for logged-in users — always allow fresh fetch.
+        if (!(data.top5_source === 'awaiting_locked_rows' && isLoggedInUser())) {
+            _dashboardTop5Cache = { at: Date.now(), data: data };
+        }
         var note = document.getElementById('dashboardTop5LockNote');
         if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
         renderDashboardTop5MonitorData(data);

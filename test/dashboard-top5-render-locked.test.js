@@ -140,3 +140,62 @@ test('renderDashboardTop5MonitorData: top5Rows derived from data.top5 || data.pi
   assert.ok(fnBody.indexOf('var hasTop5Data = top5Rows.length > 0') >= 0,
     'hasTop5Data checks top5Rows has at least one element');
 });
+
+
+// ============================================================
+// TEST: Dashboard fetch uses getAuthHeaders() (not raw localStorage)
+// ============================================================
+test('loadDashboardTop5Monitor uses getAuthHeaders() for fetch headers', () => {
+  const fnBody = getLoadFnBody();
+  // Must use getAuthHeaders() which sends proper X-Username from getUsername()
+  assert.ok(fnBody.indexOf('headers: getAuthHeaders()') >= 0,
+    'fetch must use getAuthHeaders() for proper username/user-id headers');
+  // Must NOT use getDashboardAuthHeaders() directly for fetch (it should delegate)
+  const fetchLines = fnBody.split('\n').filter(line => line.indexOf('fetchDashboardJson') >= 0 && line.indexOf('headers:') >= 0);
+  assert.ok(fetchLines.length >= 1, 'at least one fetchDashboardJson call with headers');
+  assert.ok(fetchLines[0].indexOf('getAuthHeaders()') >= 0, 'first fetch uses getAuthHeaders()');
+});
+
+// ============================================================
+// TEST: getDashboardAuthHeaders delegates to getAuthHeaders
+// ============================================================
+test('getDashboardAuthHeaders delegates to getAuthHeaders', () => {
+  assert.ok(html.indexOf('function getDashboardAuthHeaders() { return getAuthHeaders(); }') >= 0,
+    'getDashboardAuthHeaders must delegate to getAuthHeaders');
+});
+
+// ============================================================
+// TEST: awaiting_locked_rows retry for logged-in users
+// ============================================================
+test('loadDashboardTop5Monitor retries with explicit headers when awaiting_locked_rows and logged in', () => {
+  const fnBody = getLoadFnBody();
+  // Must detect awaiting_locked_rows + isLoggedInUser() and retry
+  assert.ok(fnBody.indexOf("data.top5_source === 'awaiting_locked_rows' && isLoggedInUser()") >= 0,
+    'must check for awaiting_locked_rows + logged-in before retry');
+  // Retry must use explicit headers with getUsername()
+  assert.ok(fnBody.indexOf("'X-Username': getUsername()") >= 0,
+    'retry must send explicit X-Username from getUsername()');
+  assert.ok(fnBody.indexOf("'X-User-Id': localStorage.getItem('autocuan_user_id')") >= 0,
+    'retry must send explicit X-User-Id');
+  // Retry must only accept non-awaiting response
+  assert.ok(fnBody.indexOf("retryFetched.data.top5_source !== 'awaiting_locked_rows'") >= 0,
+    'retry must only use response if it is not awaiting_locked_rows');
+});
+
+// ============================================================
+// TEST: awaiting_locked_rows is not cached for logged-in users
+// ============================================================
+test('loadDashboardTop5Monitor does not cache awaiting_locked_rows for logged-in users', () => {
+  const fnBody = getLoadFnBody();
+  // Cache write must be conditional — skip awaiting_locked_rows when logged in
+  assert.ok(fnBody.indexOf("data.top5_source === 'awaiting_locked_rows' && isLoggedInUser()") >= 0,
+    'cache condition checks awaiting + logged-in');
+  // Must NOT unconditionally set _dashboardTop5Cache
+  const cacheWrites = fnBody.split('\n').filter(line => line.indexOf('_dashboardTop5Cache = {') >= 0);
+  assert.equal(cacheWrites.length, 1, 'only one cache write location');
+  // The cache write must be inside a conditional that excludes awaiting_locked_rows
+  const cacheWriteIdx = fnBody.indexOf('_dashboardTop5Cache = { at:');
+  const precedingCode = fnBody.slice(Math.max(0, cacheWriteIdx - 100), cacheWriteIdx);
+  assert.ok(precedingCode.indexOf("awaiting_locked_rows") >= 0,
+    'cache write must be guarded by awaiting_locked_rows check');
+});
