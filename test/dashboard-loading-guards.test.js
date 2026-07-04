@@ -17,7 +17,7 @@ test('dashboard renders only locked/final Top 5 sources and treats preview/provi
   assert.ok(fnBody.indexOf("top5_source === 'locked_rows_fallback'") >= 0, 'allows previous locked fallback rows');
   assert.ok(fnBody.indexOf('data.web_provisional === true') >= 0, 'blocks provisional dashboard rendering');
   assert.ok(fnBody.indexOf('!isLockedFinalSource') >= 0, 'non-final sources must render as awaiting');
-  assert.ok(/top5Rows\.length === 0 && monitorRows\.length === 0/.test(fnBody), 'treats both-empty arrays as awaiting');
+  assert.ok(fnBody.indexOf('!hasTop5Data && monitorRows.length === 0') >= 0, 'treats no-top5-data + empty-monitor as awaiting');
 });
 
 test('dashboard load has fallback timeout that clears both Top 5 and Monitor placeholders', () => {
