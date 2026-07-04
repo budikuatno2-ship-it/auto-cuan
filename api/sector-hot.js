@@ -4003,6 +4003,163 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   return true;
 }
 
+/**
+ * Diagnostic helper: explains WHY candidatePassesPublicTelegramSafetyGate returned false.
+ * Returns an object with detailed rejection info. Does NOT change gating behavior.
+ * Only used for dry_run/manual diagnostics — never exposed in public Telegram text.
+ */
+function diagnosePublicSafetyGateRejection(candidate, mode) {
+  if (!candidate) return { category: 'missing_candidate', detailed_reason: 'Candidate is null/undefined' };
+
+  var finalGate = candidate.final_top_quality_gate || candidate.final_quality_gate || candidate.top_quality_gate || null;
+  if (candidate.final_quality_pass === false ||
+      candidate.final_gate_pass === false ||
+      candidate.quality_gate_pass === false ||
+      (finalGate && finalGate.pass === false)) {
+    return { category: 'final_quality_gate', detailed_reason: 'Final quality gate failed: ' + safeTelegramText((finalGate && finalGate.reason) || candidate.excluded_reason || 'gate pass=false', 120, 'unknown') };
+  }
+
+  var statusVerdictText = joinTelegramTexts([
+    candidate.status, candidate.final_status, candidate.verdict, candidate.signal_verdict,
+    candidate.telegram_verdict, candidate.reason, candidate.status_reason, candidate.action_reason,
+    candidate.signal_reason, candidate.excluded_reason, candidate.final_quality_status,
+    candidate.final_gate_status, candidate.quality_gate_status, candidate.action
+  ]);
+  if (publicTelegramSafetyTextHasReject(statusVerdictText)) {
+    var matchedKeyword = ['hindari','avoid','rejected','reject','failed','fail','tidak lolos final quality gate','below sl','sl kena','invalidation hit','invalidation terlalu dekat','terlalu mepet','rawan noise','riwayat data pendek','reference price','data perdagangan tidak utuh','candle tidak valid','corporate action','perlu validasi ulang','data tidak valid'].find(function(kw) { return statusVerdictText.toLowerCase().indexOf(kw) >= 0; }) || 'reject_keyword';
+    return { category: 'status_verdict_reject', detailed_reason: 'Status/verdict text contains reject keyword: ' + matchedKeyword };
+  }
+
+  var actionText = joinTelegramTexts([
+    candidate.action_label, candidate.signal_action_label, candidate.telegram_action_label,
+    candidate.action, candidate.signal_action
+  ]);
+  if (includesAny(actionText.toLowerCase(), ['hindari', 'avoid'])) {
+    return { category: 'action_hindari_avoid', detailed_reason: 'Action text contains hindari/avoid: ' + safeTelegramText(actionText, 80, '') };
+  }
+
+  var executionStatus = String(candidate.execution_reality_status || '').trim().toUpperCase();
+  if ({ UNKNOWN_LIMITS: true, NEAR_ARA: true, ARA_HIT: true, NEAR_ARB: true, ARB_HIT: true }[executionStatus]) {
+    return { category: 'execution_reality', detailed_reason: 'Execution reality status: ' + executionStatus };
+  }
+  if (candidate.buy_execution_realistic === false || candidate.near_ara === true || candidate.ara_hit === true ||
+      candidate.entry_near_ara === true || candidate.trigger_near_ara === true || candidate.near_arb === true ||
+      candidate.arb_hit === true || candidate.sell_risk_near_arb === true) {
+    return { category: 'execution_reality', detailed_reason: 'Execution reality flag: buy_execution_realistic=false or ARA/ARB flag set' };
+  }
+  var executionText = joinTelegramTexts([
+    candidate.execution_reality_label, candidate.execution_reality_note, candidate.ara_arb_note, candidate.tp_realism_note
+  ]).toLowerCase();
+  if (includesAny(executionText, ['ara hit','near ara','arb hit','near arb','execution not realistic','tidak realistis dieksekusi','tidak realistis','rawan auto reject','mentok ara','mentok arb','dekat ara','dekat arb','rawan ara','rawan arb'])) {
+    return { category: 'execution_reality', detailed_reason: 'Execution text reject: ' + safeTelegramText(executionText, 80, '') };
+  }
+
+  var breakoutStatus = String(candidate.breakout_confirmation_status || '').trim().toUpperCase();
+  if ({ FALSE_BREAKOUT_RISK: true, NEEDS_CLOSE_CONFIRMATION: true, BREAKOUT_WATCH: true }[breakoutStatus]) {
+    return { category: 'breakout_confirmation', detailed_reason: 'Breakout confirmation status: ' + breakoutStatus };
+  }
+  if (candidate.false_breakout_risk === true) {
+    return { category: 'breakout_confirmation', detailed_reason: 'false_breakout_risk=true' };
+  }
+  var breakoutSafetyText = joinTelegramTexts([
+    candidate.breakout_confirmation_label, candidate.breakout_confirmation_note, candidate.notes,
+    candidate.status_reason, candidate.entry_timing, candidate.time_plan, candidate.telegram_verdict,
+    candidate.action_label, candidate.signal_action_label, candidate.telegram_action_label,
+    candidate.action, candidate.signal_action
+  ]).toLowerCase();
+  if (includesAny(breakoutSafetyText, ['false breakout','needs close confirmation','butuh close','close confirmation','close failed','failed close','close gagal','gagal close','gagal bertahan','wick pierced','pierce resistance'])) {
+    var bMatch = ['false breakout','needs close confirmation','butuh close','close confirmation','close failed','failed close','close gagal','gagal close','gagal bertahan','wick pierced','pierce resistance'].find(function(kw) { return breakoutSafetyText.indexOf(kw) >= 0; }) || 'breakout_keyword';
+    return { category: 'breakout_safety_text', detailed_reason: 'Breakout safety text contains: ' + bMatch };
+  }
+
+  var dataQualityStatus = String(candidate.data_quality_status || '').trim().toUpperCase();
+  if (candidate.data_quality_valid === false || candidate.data_quality_needs_revalidation === true) {
+    return { category: 'data_quality', detailed_reason: 'data_quality_valid=false or data_quality_needs_revalidation=true' };
+  }
+  if ({ SHORT_HISTORY: true, MISSING_REFERENCE: true, SPARSE_TRADING_DAYS: true, INVALID_CANDLE: true, CORPORATE_ACTION_RISK: true, NEEDS_REVALIDATION: true }[dataQualityStatus]) {
+    return { category: 'data_quality', detailed_reason: 'Data quality status: ' + dataQualityStatus };
+  }
+  var dataQualityText = joinTelegramTexts([candidate.data_quality_label, candidate.data_quality_note, candidate.data_quality_status]).toLowerCase();
+  if (includesAny(dataQualityText, ['riwayat data pendek','reference price','data perdagangan tidak utuh','candle tidak valid','corporate action','perlu validasi ulang','data tidak valid'])) {
+    return { category: 'data_quality', detailed_reason: 'Data quality text reject: ' + safeTelegramText(dataQualityText, 80, '') };
+  }
+
+  var risk = normalizeTelegramRiskLabel(candidate.risk_label_v2 || candidate.risk_label || candidate.verified_risk_label).toLowerCase();
+  if (risk === 'very high risk') {
+    return { category: 'very_high_risk', detailed_reason: 'Risk label: Very High Risk' };
+  }
+
+  var invalidationDistanceStatus = String(candidate.invalidation_distance_status || '').trim().toUpperCase();
+  if ({ INVALID_BELOW_SL: true, TOO_CLOSE_TO_SL: true }[invalidationDistanceStatus]) {
+    return { category: 'invalidation_distance', detailed_reason: 'Invalidation distance status: ' + invalidationDistanceStatus };
+  }
+
+  var entryStatus = String(candidate.entry_status || '').trim().toUpperCase();
+  var entryQuality = String(candidate.entry_quality_status || '').trim().toUpperCase();
+  if ({ CHASE_RISK: true, EXTENDED: true, TP1_NEAR: true, TP1_HIT: true, TP2_HIT: true, INVALID_BELOW_SL: true, NEEDS_REVALIDATION: true }[entryStatus]) {
+    return { category: 'entry_status', detailed_reason: 'Entry status: ' + entryStatus };
+  }
+  if ({ CHASE_RISK: true, EXTENDED: true, TP1_NEAR: true, TP1_HIT: true, TP2_HIT: true, INVALID_BELOW_SL: true, NEEDS_REVALIDATION: true }[entryQuality]) {
+    return { category: 'entry_quality', detailed_reason: 'Entry quality status: ' + entryQuality };
+  }
+
+  var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || '', 80, '').toUpperCase();
+  if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') {
+    return { category: 'freshness', detailed_reason: 'Setup freshness status: ' + freshnessStatus };
+  }
+  if (candidate.is_stale === true || candidate.data_stale === true || candidate.freshness_is_stale === true || candidate.stale === true) {
+    return { category: 'freshness', detailed_reason: 'Stale flag set (is_stale/data_stale/freshness_is_stale)' };
+  }
+  var freshnessText = joinTelegramTexts([
+    candidate.setup_freshness_label, candidate.freshness_label, candidate.setup_expiry_note,
+    candidate.stale_notes, candidate.freshness_note, candidate.freshness_status, candidate.setup_freshness_status
+  ]);
+  if (includesAny(freshnessText.toLowerCase(), ['stale','expired','needs revalidation','perlu validasi ulang','data basi','setup terlalu lama'])) {
+    var fMatch = ['stale','expired','needs revalidation','perlu validasi ulang','data basi','setup terlalu lama'].find(function(kw) { return freshnessText.toLowerCase().indexOf(kw) >= 0; }) || 'freshness_keyword';
+    return { category: 'freshness', detailed_reason: 'Freshness text contains: ' + fMatch };
+  }
+
+  var liquidityText = joinTelegramTexts([candidate.liquidity_label, candidate.liquidity_notes, candidate.liquidity_status]);
+  if (candidate.is_liquidity_risk === true || includesAny(liquidityText.toLowerCase(), ['weak liquidity','likuiditas lemah','likuiditas tipis'])) {
+    return { category: 'liquidity', detailed_reason: 'Liquidity risk: ' + safeTelegramText(liquidityText, 60, 'is_liquidity_risk=true') };
+  }
+
+  var volumeText = joinTelegramTexts([candidate.volume_label, candidate.volume_confirmation_label, candidate.volume_notes, candidate.volume_confirmation_notes]);
+  if (includesAny(volumeText.toLowerCase(), ['weak volume','volume lemah'])) {
+    return { category: 'weak_volume', detailed_reason: 'Volume text reject: ' + safeTelegramText(volumeText, 60, 'weak volume') };
+  }
+
+  if (candidate.trading_plan_valid === false) {
+    return { category: 'trading_plan_invalid', detailed_reason: 'trading_plan_valid=false' };
+  }
+  var planQualityStatus = String(candidate.plan_quality_status || candidate.trading_plan_status || '').trim().toUpperCase();
+  if ({ INVALID: true, POOR_RR: true }[planQualityStatus]) {
+    return { category: 'plan_quality', detailed_reason: 'Plan quality status: ' + planQualityStatus };
+  }
+  var guardText = joinTelegramTexts([
+    candidate.action_guard_label, candidate.action_guard_status, candidate.plan_quality_label,
+    candidate.plan_quality_note, candidate.entry_timing, candidate.time_plan, candidate.entry_status_label,
+    candidate.entry_status_note, candidate.invalidation_distance_label, candidate.invalidation_note
+  ]);
+  if (publicTelegramSafetyTextHasReject(guardText)) {
+    return { category: 'guard_text_reject', detailed_reason: 'Guard text reject: ' + safeTelegramText(guardText, 80, '') };
+  }
+  if (includesAny(guardText.toLowerCase(), ['level belum rapi','invalid plan','plan invalid','chase','extended','tp near','tp1 near'])) {
+    var gMatch = ['level belum rapi','invalid plan','plan invalid','chase','extended','tp near','tp1 near'].find(function(kw) { return guardText.toLowerCase().indexOf(kw) >= 0; }) || 'guard_keyword';
+    return { category: 'guard_text_reject', detailed_reason: 'Guard text contains: ' + gMatch };
+  }
+
+  // If mode !== 'daytrade', the final check is applyFinalTopQualityGate
+  if (mode !== 'daytrade') {
+    var fqGate = deriveFinalTopQualityGate(candidate, mode || 'public_telegram');
+    if (!fqGate.pass) {
+      return { category: 'final_top_quality_gate', detailed_reason: 'Final top quality gate: ' + safeTelegramText(fqGate.reason || fqGate.excluded_reason, 120, 'gate failed') };
+    }
+  }
+
+  return { category: 'unknown', detailed_reason: 'No specific rejection identified (possible logic mismatch)' };
+}
+
 function candidatePassesTelegramCandidateDigestGate(candidate, mode) {
   if (!candidate || !candidate.ticker) return false;
   var r = candidate;
@@ -4941,9 +5098,20 @@ async function handleTelegramDailyPicks(req, res, supabase) {
 
     var beforeGateCount = (picks || []).length;
     picks = (picks || []).filter(function(p) {
-      var passGate = candidatePassesPublicTelegramSafetyGate(p, 'daily_top5') && candidatePassesMinUpside(p);
+      var passesSafety = candidatePassesPublicTelegramSafetyGate(p, 'daily_top5');
+      var passesUpside = candidatePassesMinUpside(p);
+      var passGate = passesSafety && passesUpside;
       if (!passGate) {
-        rejectedByGate.push({ ticker: p.ticker || '-', reason: !candidatePassesPublicTelegramSafetyGate(p, 'daily_top5') ? 'public_safety_gate' : 'min_tp1_upside' });
+        var rejEntry = { ticker: p.ticker || '-' };
+        if (!passesSafety) {
+          var diag = diagnosePublicSafetyGateRejection(p, 'daily_top5');
+          rejEntry.reason = diag.category;
+          rejEntry.detailed_reason = diag.detailed_reason;
+        } else {
+          rejEntry.reason = 'min_tp1_upside';
+          rejEntry.detailed_reason = 'TP1 upside below minimum threshold';
+        }
+        rejectedByGate.push(rejEntry);
       }
       return passGate;
     });
@@ -4960,7 +5128,38 @@ async function handleTelegramDailyPicks(req, res, supabase) {
         rejectedByGate.forEach(function(r) { reasons[r.reason] = (reasons[r.reason] || 0) + 1; });
         return reasons;
       })(),
-      sample_rejected: rejectedByGate.slice(0, 10)
+      sample_rejected: rejectedByGate.slice(0, 10).map(function(r) {
+        // Find the candidate in the pool for enriched fields
+        var pool = top5RadarCandidates.length > 0 ? top5RadarCandidates : [];
+        var candidate = pool.find(function(c) { return c.ticker === r.ticker; });
+        var out = {
+          ticker: r.ticker,
+          reason: r.reason,
+          detailed_reason: r.detailed_reason || null
+        };
+        if (candidate) {
+          out.risk_label = normalizeTelegramRiskLabel(candidate.risk_label_v2 || candidate.risk_label || candidate.verified_risk_label) || null;
+          out.quality_grade = candidate.quality_grade || candidate.grade || null;
+          out.action = candidate.action || candidate.signal_action || candidate.telegram_action_label || candidate.action_label || null;
+          out.status = candidate.status || candidate.final_status || null;
+          out.entry_status = String(candidate.entry_status || '').trim() || null;
+          out.entry_quality_status = String(candidate.entry_quality_status || '').trim() || null;
+          out.plan_quality_status = String(candidate.plan_quality_status || candidate.trading_plan_status || '').trim() || null;
+          out.breakout_confirmation_status = String(candidate.breakout_confirmation_status || '').trim() || null;
+          out.setup_freshness_status = String(candidate.setup_freshness_status || candidate.freshness_status || '').trim() || null;
+          out.liquidity_label = candidate.liquidity_label || null;
+          out.volume_phase = candidate.volume_phase || null;
+          out.risk_reward = toNum(candidate.risk_reward) || null;
+          out.key_blocking_fields = {};
+          if (candidate.trading_plan_valid === false) out.key_blocking_fields.trading_plan_valid = false;
+          if (candidate.is_stale === true || candidate.data_stale === true || candidate.freshness_is_stale === true) out.key_blocking_fields.stale = true;
+          if (candidate.false_breakout_risk === true) out.key_blocking_fields.false_breakout_risk = true;
+          if (candidate.buy_execution_realistic === false) out.key_blocking_fields.buy_execution_realistic = false;
+          if (candidate.is_liquidity_risk === true) out.key_blocking_fields.is_liquidity_risk = true;
+          if (Object.keys(out.key_blocking_fields).length === 0) delete out.key_blocking_fields;
+        }
+        return out;
+      })
     } : undefined;
 
     if (dryRun) {
@@ -9769,6 +9968,7 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 
 module.exports.__test = {
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
+  diagnosePublicSafetyGateRejection: diagnosePublicSafetyGateRejection,
   candidatePassesPotentialRadarGate: candidatePassesPotentialRadarGate,
   candidatePassesTelegramCandidateDigestGate: candidatePassesTelegramCandidateDigestGate,
   formatCandidateDigestWarnings: formatCandidateDigestWarnings,
