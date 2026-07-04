@@ -3156,7 +3156,7 @@ function screenerAllowsPreviousCloseSnapshot(item, previousTradingDate) {
 
 async function getScreenerReadiness(supabase, options) {
   options = options || {};
-  var tradingDate = getJakartaDateString();
+  var tradingDate = options.override_trading_date || getJakartaDateString();
   var dayMetaRes = await supabase.from('daytrade_screener_meta').select('run_date,calculated_at,updated_at,status,published_count,top_count').eq('id', 'latest').maybeSingle();
   var dayRowsRes = await supabase.from('daytrade_screener_latest').select('ticker,calculated_at,run_id').order('daytrade_score', { ascending: false }).limit(1);
   var kongloMetaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,status,scanned_count').eq('id', 'latest').maybeSingle();
@@ -4839,12 +4839,29 @@ async function handleTelegramDailyPicks(req, res, supabase) {
   try {
     var dryRun = req.query && (req.query.dry_run === '1' || req.query.dryRun === '1');
     var force = req.query && req.query.force === '1';
+    var manualPreviousTradingDay = req.query && req.query.manual_previous_trading_day === '1';
     var date = getJakartaDateString();
     var jakartaWeekday = isJakartaWeekday();
     var weekendBypassed = false;
+
+    // manual_previous_trading_day: override target date to previous trading day
+    // This allows running Top 5 for Friday data when invoked on Saturday (after late upload).
+    // All safety gates remain active — only the target date changes.
+    var targetDate = date;
+    var manualPreviousTradingDayActive = false;
+    if (manualPreviousTradingDay) {
+      var previousTd = getPreviousJakartaTradingDateString(date);
+      if (previousTd) {
+        targetDate = previousTd;
+        manualPreviousTradingDayActive = true;
+      }
+    }
+
     var diagnosticsBase = {
       build_marker: 'top5-daily-diagnostics-v1',
       date: date,
+      target_date: targetDate,
+      manual_previous_trading_day: manualPreviousTradingDayActive,
       weekday: jakartaWeekday,
       weekend_guard: { allowed: jakartaWeekday, bypassed: false },
       forced: force,
@@ -4857,8 +4874,12 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       diagnosticsBase.weekend_guard.bypassed = true;
     }
 
-    var readiness = await getScreenerReadiness(supabase, { allow_previous_close_snapshot: true });
-    var existingRes = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
+    var readinessOptions = { allow_previous_close_snapshot: true };
+    if (manualPreviousTradingDayActive) {
+      readinessOptions.override_trading_date = targetDate;
+    }
+    var readiness = await getScreenerReadiness(supabase, readinessOptions);
+    var existingRes = await supabase.from('telegram_daily_picks').select('*').eq('date', targetDate).order('id', { ascending: true }).limit(5);
     if (existingRes.error) throw new Error(existingRes.error.message);
     var existingRows = existingRes.data || [];
     var alreadySent = existingRows.length > 0 && existingRows.every(pickWasSentToTelegram);
@@ -4904,7 +4925,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'already_sent', source: source, readiness: readiness, sent_count: 0, picked_count: existingRows.length, candidate_count: existingRows.length, inserted_count: 0, existing_locked_count: existingRows.length, telegram: null }, diagnosticsBase));
     }
 
-    var notifier = await sendDailyTop5Telegram(supabase, picks, date, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot', radar_candidates: top5RadarCandidates });
+    var notifier = await sendDailyTop5Telegram(supabase, picks, targetDate, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' || manualPreviousTradingDayActive, radar_candidates: top5RadarCandidates });
     var telegramSent = notifier.sent_count > 0;
     var nowIso = new Date().toISOString();
     if (telegramSent) {
@@ -4918,7 +4939,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
         }
       } else if (picks.length > 0) {
         var rows = picks.map(function(r) {
-          var row = dailyPickInsertRowFromCandidate(r, date, nowIso);
+          var row = dailyPickInsertRowFromCandidate(r, targetDate, nowIso);
           row.raw_payload = markRawPayloadTelegramSent(row.raw_payload, nowIso);
           return row;
         });
