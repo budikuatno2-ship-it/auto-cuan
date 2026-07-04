@@ -1523,7 +1523,7 @@ function stripBase64FromHtml(html) {
 function getUsername() { return (localStorage.getItem('autocuan_user') || 'guest').toLowerCase(); }
 function isLoggedInUser() { return getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true'; }
 function getAuthHeaders() { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; }
-function getDashboardAuthHeaders() { return { 'X-Username': localStorage.getItem('autocuan_user') || '', 'X-User-Id': localStorage.getItem('autocuan_user_id') || '' }; }
+function getDashboardAuthHeaders() { return isLoggedInUser() ? { 'X-Username': getUsername(), 'X-User-Id': localStorage.getItem('autocuan_user_id') || '' } : { 'X-Username': 'guest' }; }
 function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
@@ -7557,7 +7557,7 @@ function renderDashboardTop5MonitorData(data) {
     var monitorRows = data.monitor || [];
     var isAwaiting = data.top5_source === 'awaiting_locked_rows'
         || (data.top5_locked === false && top5Rows.length === 0)
-        || (top5Rows.length === 0 && monitorRows.length === 0);
+        || (!data.top5_locked && top5Rows.length === 0 && monitorRows.length === 0);
     if (isAwaiting) {
         var topEl = document.getElementById('dashboardTop5List');
         if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data.update_note);
