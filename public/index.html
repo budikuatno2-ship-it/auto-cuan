@@ -357,17 +357,15 @@
         .nav-btn.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
         .nav-btn.disabled { color: #4b5563; cursor: not-allowed; opacity: 0.6; }
         .nav-btn svg { flex-shrink: 0; }
-        .screener-tab { color: #6b7280; background: transparent; border: 1px solid transparent; cursor: pointer; }
-        .screener-tab:hover { color: #d1d5db; background: #151a23; }
-        .screener-tab.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
-        .nk-screener-tab { color: #6b7280; background: transparent; border: 1px solid transparent; cursor: pointer; }
-        .nk-screener-tab:hover { color: #d1d5db; background: #151a23; }
-        .nk-screener-tab.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
-        .dt-screener-tab { color: #6b7280; background: transparent; border: 1px solid transparent; cursor: pointer; }
-        .dt-screener-tab:hover { color: #d1d5db; background: #151a23; }
-        .dt-screener-tab.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
+        .screener-tab, .nk-screener-tab, .dt-screener-tab { color: #6b7280; background: transparent; border: 1px solid transparent; cursor: pointer; }
+        .screener-tab:hover, .nk-screener-tab:hover, .dt-screener-tab:hover { color: #d1d5db; background: #151a23; }
+        .screener-tab.active, .nk-screener-tab.active, .dt-screener-tab.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .nav-scroll-container { position: relative; }
+        .nav-scroll-container::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 24px; background: linear-gradient(to right, transparent, #0b0e14); pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+        .nav-scroll-container.has-overflow::after { opacity: 1; }
+        @media (min-width: 640px) { .nav-scroll-container::after { display: none; } }
         .page-content { animation: fadeIn 0.15s ease-out; }
 
         /* ===== SIDEBAR STYLES ===== */
@@ -491,7 +489,7 @@
     </div>
     <!-- NAVIGATION MENU -->
     <nav class="max-w-[1100px] w-full mx-auto px-3 sm:px-5">
-        <div class="flex items-center gap-1 overflow-x-auto pb-2 pt-1 scrollbar-hide" id="mainNav">
+        <div class="nav-scroll-container flex items-center gap-1 overflow-x-auto pb-2 pt-1 scrollbar-hide" id="mainNav">
             <button onclick="navigateTo('dashboard')" class="nav-btn active" data-page="dashboard">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                 <span>Dashboard</span>
@@ -552,7 +550,7 @@
         </div>
 
         <!-- Action Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <button onclick="navigateTo('analisis')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group">
                 <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-2 group-hover:bg-emerald-500/20 transition">
                     <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -1025,7 +1023,7 @@
     <div class="space-y-3">
         <div class="flex items-center gap-2">
             <input id="chartTickerInput" type="text" placeholder="Ketik ticker: BBCA, IHSG..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')loadChartPage()">
-            <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-purple-500 text-white font-semibold text-sm hover:bg-purple-400 transition-all">Lihat Chart</button>
+            <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Lihat Chart</button>
         </div>
         <div id="chartPageContainer" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
             <div class="flex items-center justify-center py-16 text-gray-500 text-sm">
@@ -1078,11 +1076,11 @@
                 </div>
                 <div>
                     <label class="block text-[11px] text-gray-500 mb-1">Lot</label>
-                    <input id="portLot" type="number" placeholder="100" min="1" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
+                    <input id="portLot" type="number" inputmode="numeric" placeholder="100" min="1" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
                 </div>
                 <div>
                     <label class="block text-[11px] text-gray-500 mb-1">Avg Buy (Rp)</label>
-                    <input id="portAvgBuy" type="number" placeholder="5000" min="1" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
+                    <input id="portAvgBuy" type="number" inputmode="decimal" placeholder="5000" min="1" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
                 </div>
             </div>
             <div id="portFormError" class="hidden text-xs text-red-400"></div>
@@ -1855,6 +1853,29 @@ function renderShareDt(d) {
 })();
 // Safety: remove loader if init takes too long (network timeout)
 setTimeout(function() { var il = document.getElementById('initialLoader'); if (il) il.remove(); }, 5000);
+
+// Nav scroll indicator: detect overflow and show gradient hint on mobile
+(function() {
+    var nav = document.getElementById('mainNav');
+    if (!nav) return;
+    function checkOverflow() {
+        if (nav.scrollWidth > nav.clientWidth + 4) {
+            nav.classList.add('has-overflow');
+        } else {
+            nav.classList.remove('has-overflow');
+        }
+    }
+    // Hide gradient once user scrolls to end
+    nav.addEventListener('scroll', function() {
+        if (nav.scrollLeft + nav.clientWidth >= nav.scrollWidth - 8) {
+            nav.classList.remove('has-overflow');
+        } else {
+            checkOverflow();
+        }
+    });
+    checkOverflow();
+    window.addEventListener('resize', checkOverflow);
+})();
 
 // ===== MODAL FUNCTIONS =====
 function openLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); }
@@ -4529,12 +4550,25 @@ function switchSession(sessionId) {
         // Restore messages
         if (session.messages && session.messages.length > 0) {
             session.messages.forEach(function(html) { container.insertAdjacentHTML('beforeend', html); });
-            // Post-restore: normalize any merged technical labels in restored AI content (batched via rAF)
+            // Post-restore: normalize any merged technical labels in restored AI content (batched via chunked rAF)
             var restoredAiContents = container.querySelectorAll('.ai-content');
             if (restoredAiContents.length > 0) {
-                requestAnimationFrame(function() {
-                    restoredAiContents.forEach(function(el) { forceNormalizeTechnicalDOM(el); normalizeRenderedTechnicalText(el); });
-                });
+                // Process in chunks of 5 to avoid frame drops on long histories
+                var _chunk = 0;
+                var _chunkSize = 5;
+                function processChunk() {
+                    var start = _chunk * _chunkSize;
+                    var end = Math.min(start + _chunkSize, restoredAiContents.length);
+                    for (var ci = start; ci < end; ci++) {
+                        forceNormalizeTechnicalDOM(restoredAiContents[ci]);
+                        normalizeRenderedTechnicalText(restoredAiContents[ci]);
+                    }
+                    _chunk++;
+                    if (end < restoredAiContents.length) {
+                        requestAnimationFrame(processChunk);
+                    }
+                }
+                requestAnimationFrame(processChunk);
             }
             // Show note if images were stripped
             var hasRemovedImages = session.messages.some(function(m) { return m.indexOf('data:removed') !== -1 || m.indexOf('gambar-dihapus') !== -1; });
@@ -6111,7 +6145,7 @@ function startScreenerPolling() {
         if (_currentScreenerType !== 'konglo') { stopScreenerPolling(); return; }
         // Lightweight check: re-fetch data and compare calculated_at
         loadSwingScreener(true); // silent mode
-    }, 8000);
+    }, 15000);
     // Visibility detection: refresh when page becomes visible and Konglo tab is active
     document.addEventListener('visibilitychange', _onScreenerVisibilityChange);
 }
@@ -6433,7 +6467,7 @@ function startNkPolling() {
     _nkPollInterval = setInterval(function() {
         if (_currentScreenerType !== 'nonkonglo') { stopNkPolling(); return; }
         loadNkScreenerResults();
-    }, 4000);
+    }, 10000);
 }
 
 function stopNkPolling() {
@@ -7045,11 +7079,13 @@ setTimeout(clearStuckDashboardLoadingPlaceholders, 8000);
 
 function dashboardEmptyHtml(message, tone) {
     var cls = tone === 'error' ? 'border-red-500/20 bg-red-500/5 text-red-200' : (tone === 'amber' ? 'border-amber-500/20 bg-amber-500/5 text-amber-100' : 'border-dark-600/25 bg-dark-800/45 text-gray-400');
-    return '<div class="rounded-xl border ' + cls + ' px-3 py-4 text-center text-xs">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</div>';
+    var retryBtn = tone === 'error' ? '<br><button onclick="loadDashboardTop5Monitor(false, {loadAdminPreview:false})" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button>' : '';
+    return '<div class="rounded-xl border ' + cls + ' px-3 py-4 text-center text-xs">' + escapeHtml(message || STRICT_EMPTY_TEXT) + retryBtn + '</div>';
 }
 function screenerEmptyRowHtml(colspan, message, tone) {
     var color = tone === 'error' ? 'text-red-400' : 'text-gray-500';
-    return '<tr><td colspan="' + Number(colspan || 1) + '" class="text-center py-8 ' + color + '">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</td></tr>';
+    var retryBtn = tone === 'error' ? '<br><button onclick="loadSwingScreener()" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button>' : '';
+    return '<tr><td colspan="' + Number(colspan || 1) + '" class="text-center py-8 ' + color + '">' + escapeHtml(message || STRICT_EMPTY_TEXT) + retryBtn + '</td></tr>';
 }
 function screenerEmptyCardHtml(message) {
     return '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p>';
@@ -7387,7 +7423,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
     opts = opts || {};
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     // Serve cache only if fresh AND contains locked data; stale awaiting_locked_rows must not block fresh fetch.
-    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000 && _dashboardTop5Cache.data.top5_source !== 'awaiting_locked_rows') { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
+    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 60000 && _dashboardTop5Cache.data.top5_source !== 'awaiting_locked_rows') { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
     // Always clear placeholders to prevent stuck static HTML state
     var _topEl = document.getElementById('dashboardTop5List');
@@ -8195,6 +8231,8 @@ function forceNormalizeTechnicalDOM(root) {
 
 // ===== SELF-TEST: Universal Spacing Fix (Latest + BUVA + IHSG + PTRO + DSSA samples) =====
 (function selfTestSpacing() {
+    // Only run self-tests in development/localhost — skip in production to avoid DOM overhead
+    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
     // Latest live failure sample (Phase 11Q regression)
     var latestInput = 'MA20: 316.30MA50: 313.40MA100: 356.01MA200: 298.52Posisi: di bawah semua MA\nRSI14: 32.09Volume: 0,55x avgLast: 260High: 298Low: 250\nR1: 288R2: 317\nS1: 240S2: 221\nTP1: 288TP2: 317';
     // BUVA sample (live failure case — this is what Phase 11O missed)
