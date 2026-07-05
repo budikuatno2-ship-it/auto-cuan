@@ -24,6 +24,8 @@ The script only imports the Day Trade screener engine and uses an in-memory cand
 | `DAYTRADE_WORKER_CONCURRENCY` | `4` | Yahoo fetch concurrency, capped at 5. |
 | `DAYTRADE_YAHOO_TIMEOUT_MS` | `12000` | Per-request timeout. |
 | `DAYTRADE_CACHE_MAX_AGE_MS` | `43200000` | Cache freshness window before full revalidation. |
+| `DAYTRADE_CACHE_TTL_MS` | `900000` | Short TTL during market hours (15 min). Cache module uses this for repeated scan freshness. |
+| `DAYTRADE_LOOP_INTERVAL_MS` | `900000` | VPS loop default interval (15 min). Env override supported. |
 
 Do not set `DAYTRADE_WORKER_ALLOW_MUTATION=true`; the worker rejects that setting.
 

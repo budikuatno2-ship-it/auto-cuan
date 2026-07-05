@@ -686,7 +686,7 @@ function Run-DayTradeAutoLoop($cfg, $loopMode) {
 
     $startText = if ($env:AUTO_RUN_START) { $env:AUTO_RUN_START } else { "09:10" }
     $endText = if ($env:AUTO_RUN_END) { $env:AUTO_RUN_END } else { "15:40" }
-    $intervalMin = if ($env:AUTO_RUN_INTERVAL_MINUTES) { [int]$env:AUTO_RUN_INTERVAL_MINUTES } else { 25 }
+    $intervalMin = if ($env:AUTO_RUN_INTERVAL_MINUTES) { [int]$env:AUTO_RUN_INTERVAL_MINUTES } else { 15 }
 
     $startMin = Parse-HhMmToMinutes $startText "09:10"
     $endMin = Parse-HhMmToMinutes $endText "15:40"
