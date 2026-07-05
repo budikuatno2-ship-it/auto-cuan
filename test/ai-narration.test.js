@@ -515,3 +515,226 @@ test('isNarrationEnabled returns true only for exact "true"', function() {
   assert.equal(aiNarration.isNarrationEnabled(), false);
   delete process.env.TELEGRAM_AI_NARRATION_ENABLED;
 });
+
+
+// === Test: Default model is gemini-3.5-flash ===
+test('default model is gemini-3.5-flash', function() {
+  delete process.env.GEMINI_MODEL;
+  assert.equal(aiNarration.getModel(), 'gemini-3.5-flash');
+});
+
+test('GEMINI_MODEL env override works', function() {
+  process.env.GEMINI_MODEL = 'gemini-2.0-flash';
+  assert.equal(aiNarration.getModel(), 'gemini-2.0-flash');
+  delete process.env.GEMINI_MODEL;
+});
+
+// === Test: Stale/expired data does not call Gemini ===
+test('stale monitor pick (evaluation EXPIRED) returns fallback without Gemini call', async function() {
+  const originalFetch = global.fetch;
+  process.env.TELEGRAM_AI_NARRATION_ENABLED = 'true';
+  process.env.GEMINI_API_KEY_PRIMARY = 'test-key';
+  narrationCache.clear();
+
+  let fetchCalled = false;
+  global.fetch = async function() { fetchCalled = true; throw new Error('should not be called'); };
+
+  const pick = { ticker: 'BBRI', entry1: 5000, entry2: 5050, sl: 4800, tp1: 5500, tp2: 5800, raw_payload: {} };
+  const evaluation = { status: 'EXPIRED', label: 'Expired', isFinal: false, note: 'Setup expired' };
+  const px = { last: 5100, high: 5100, low: 5000 };
+
+  const result = await aiNarration.narrateMonitorUpdate(pick, evaluation, px);
+
+  assert.equal(result.text, null);
+  assert.equal(result.source, 'fallback');
+  assert.equal(result.error, 'stale_or_expired');
+  assert.equal(fetchCalled, false, 'Gemini should not be called');
+
+  global.fetch = originalFetch;
+  delete process.env.TELEGRAM_AI_NARRATION_ENABLED;
+  delete process.env.GEMINI_API_KEY_PRIMARY;
+  narrationCache.clear();
+});
+
+test('stale monitor pick (evaluation NEEDS_REVALIDATION) returns fallback', async function() {
+  process.env.TELEGRAM_AI_NARRATION_ENABLED = 'true';
+  process.env.GEMINI_API_KEY_PRIMARY = 'test-key';
+  narrationCache.clear();
+
+  const pick = { ticker: 'EXCL', entry1: 2900, entry2: 2870, sl: 2750, tp1: 3010, tp2: 3150, raw_payload: {} };
+  const evaluation = { status: 'NEEDS_REVALIDATION', label: 'Needs Revalidation', isFinal: false, note: 'Data belum tersedia' };
+  const px = { last: null };
+
+  const result = await aiNarration.narrateMonitorUpdate(pick, evaluation, px);
+
+  assert.equal(result.text, null);
+  assert.equal(result.source, 'fallback');
+  assert.equal(result.error, 'stale_or_expired');
+
+  delete process.env.TELEGRAM_AI_NARRATION_ENABLED;
+  delete process.env.GEMINI_API_KEY_PRIMARY;
+  narrationCache.clear();
+});
+
+test('stale monitor pick (INVALID evaluation) returns fallback', async function() {
+  process.env.TELEGRAM_AI_NARRATION_ENABLED = 'true';
+  process.env.GEMINI_API_KEY_PRIMARY = 'test-key';
+
+  const pick = { ticker: 'BBCA', entry1: 9000, entry2: 8900, sl: 8500, tp1: 9500, tp2: 10000, raw_payload: {} };
+  const evaluation = { status: 'INVALID', label: 'Invalid', isFinal: true, note: 'Harga menyentuh invalidation sebelum entry' };
+
+  const result = await aiNarration.narrateMonitorUpdate(pick, evaluation, { last: 8400 });
+
+  assert.equal(result.source, 'fallback');
+  assert.equal(result.error, 'stale_or_expired');
+
+  delete process.env.TELEGRAM_AI_NARRATION_ENABLED;
+  delete process.env.GEMINI_API_KEY_PRIMARY;
+});
+
+test('stale candidate (is_stale flag) skips AI narration', async function() {
+  process.env.TELEGRAM_AI_NARRATION_ENABLED = 'true';
+  process.env.GEMINI_API_KEY_PRIMARY = 'test-key';
+
+  const candidate = {
+    ticker: 'BMRI', status: 'READY_BREAKOUT', is_stale: true,
+    entry1: 6000, entry2: 5900, sl: 5700, tp1: 6500, tp2: 6800,
+    lastn: 6050, risk_reward: 2.0
+  };
+
+  const result = await aiNarration.narrateNewSignal(candidate, 'swing');
+
+  assert.equal(result.text, null);
+  assert.equal(result.source, 'fallback');
+  assert.equal(result.error, 'stale_or_expired');
+
+  delete process.env.TELEGRAM_AI_NARRATION_ENABLED;
+  delete process.env.GEMINI_API_KEY_PRIMARY;
+});
+
+test('stale candidate (setup_freshness_status EXPIRED) skips AI narration', async function() {
+  process.env.TELEGRAM_AI_NARRATION_ENABLED = 'true';
+  process.env.GEMINI_API_KEY_PRIMARY = 'test-key';
+
+  const candidate = {
+    ticker: 'TLKM', status: 'READY_BREAKOUT',
+    setup_freshness_status: 'EXPIRED',
+    entry1: 3800, entry2: 3750, sl: 3600, tp1: 4100, tp2: 4300,
+    lastn: 3820, risk_reward: 1.8
+  };
+
+  const result = await aiNarration.narrateNewSignal(candidate, 'daytrade');
+
+  assert.equal(result.text, null);
+  assert.equal(result.source, 'fallback');
+  assert.equal(result.error, 'stale_or_expired');
+
+  delete process.env.TELEGRAM_AI_NARRATION_ENABLED;
+  delete process.env.GEMINI_API_KEY_PRIMARY;
+});
+
+test('candidate with status containing EXPIRED skips AI narration', async function() {
+  process.env.TELEGRAM_AI_NARRATION_ENABLED = 'true';
+  process.env.GEMINI_API_KEY_PRIMARY = 'test-key';
+
+  const candidate = {
+    ticker: 'ASII', status: 'SETUP_EXPIRED',
+    entry1: 5500, entry2: 5400, sl: 5200, tp1: 6000, tp2: 6300,
+    lastn: 5450, risk_reward: 2.0
+  };
+
+  const result = await aiNarration.narrateNewSignal(candidate, 'swing');
+
+  assert.equal(result.text, null);
+  assert.equal(result.source, 'fallback');
+  assert.equal(result.error, 'stale_or_expired');
+
+  delete process.env.TELEGRAM_AI_NARRATION_ENABLED;
+  delete process.env.GEMINI_API_KEY_PRIMARY;
+});
+
+test('fresh candidate (no stale flags) proceeds to AI narration', async function() {
+  const originalFetch = global.fetch;
+  process.env.TELEGRAM_AI_NARRATION_ENABLED = 'true';
+  process.env.GEMINI_API_KEY_PRIMARY = 'test-key';
+  narrationCache.clear();
+
+  const validOutput = [
+    '\uD83D\uDCCC DAY TRADE WATCHLIST',
+    '',
+    'Saham: BBRI',
+    'Status: READY BREAKOUT',
+    'Area Entry: Rp5.000 / Rp5.050',
+    'Target: Rp5.500 / Rp5.800',
+    'Stop Loss: Rp4.800',
+    'Harga sekarang: Rp5.025',
+    'RR: 2.5',
+    '',
+    'Catatan: Tunggu konfirmasi.'
+  ].join('\n');
+
+  let fetchCalled = false;
+  global.fetch = async function() {
+    fetchCalled = true;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: validOutput }] } }]
+      })
+    };
+  };
+
+  const candidate = {
+    ticker: 'BBRI', status: 'READY_BREAKOUT',
+    entry1: 5000, entry2: 5050, sl: 4800, stop_loss: 4800,
+    tp1: 5500, tp2: 5800, lastn: 5025, risk_reward: 2.5
+  };
+
+  const result = await aiNarration.narrateNewSignal(candidate, 'daytrade');
+
+  assert.equal(fetchCalled, true, 'Gemini should be called for fresh data');
+  assert.equal(result.source, 'ai');
+  assert.ok(result.text);
+
+  global.fetch = originalFetch;
+  delete process.env.TELEGRAM_AI_NARRATION_ENABLED;
+  delete process.env.GEMINI_API_KEY_PRIMARY;
+  narrationCache.clear();
+});
+
+// === isStaleOrExpired unit tests ===
+test('isStaleOrExpired returns true for expired evaluation', function() {
+  assert.equal(aiNarration.isStaleOrExpired({}, { status: 'EXPIRED' }), true);
+  assert.equal(aiNarration.isStaleOrExpired({}, { status: 'NEEDS_REVALIDATION' }), true);
+  assert.equal(aiNarration.isStaleOrExpired({}, { status: 'INVALID' }), true);
+});
+
+test('isStaleOrExpired returns true for stale flags', function() {
+  assert.equal(aiNarration.isStaleOrExpired({ is_stale: true }), true);
+  assert.equal(aiNarration.isStaleOrExpired({ data_stale: true }), true);
+  assert.equal(aiNarration.isStaleOrExpired({ freshness_is_stale: true }), true);
+});
+
+test('isStaleOrExpired returns true for expired status string', function() {
+  assert.equal(aiNarration.isStaleOrExpired({ status: 'EXPIRED' }), true);
+  assert.equal(aiNarration.isStaleOrExpired({ status: 'SETUP_EXPIRED' }), true);
+  assert.equal(aiNarration.isStaleOrExpired({ status: 'NEEDS_REVALIDATION' }), true);
+  assert.equal(aiNarration.isStaleOrExpired({ final_status: 'DATA_STALE' }), true);
+});
+
+test('isStaleOrExpired returns true for expired setup_freshness_status', function() {
+  assert.equal(aiNarration.isStaleOrExpired({ raw_payload: { setup_freshness_status: 'EXPIRED' } }), true);
+  assert.equal(aiNarration.isStaleOrExpired({ setup_freshness_status: 'NEEDS_REVALIDATION' }), true);
+});
+
+test('isStaleOrExpired returns false for fresh data', function() {
+  assert.equal(aiNarration.isStaleOrExpired({ status: 'RUNNING', is_stale: false }), false);
+  assert.equal(aiNarration.isStaleOrExpired({ status: 'TP1_HIT' }), false);
+  assert.equal(aiNarration.isStaleOrExpired({ status: 'READY_BREAKOUT', setup_freshness_status: 'FRESH' }), false);
+});
+
+test('isStaleOrExpired returns true for null/undefined input', function() {
+  assert.equal(aiNarration.isStaleOrExpired(null), true);
+  assert.equal(aiNarration.isStaleOrExpired(undefined), true);
+});
