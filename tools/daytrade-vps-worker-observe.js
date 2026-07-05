@@ -2,22 +2,25 @@
 'use strict';
 
 /**
- * Day Trade VPS Observe Worker v1.
+ * Day Trade VPS Observe Worker v1.1.
  * Observe-only: no Supabase writes, no Telegram sends, no API endpoints.
+ * v1.1: Uses reusable daytrade-ohlcv-cache module for candle caching.
  */
 
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const engine = require('../lib/daytrade-screener-engine');
+const ohlcvCache = require('../lib/daytrade-ohlcv-cache');
 
-const VERSION = 'daytrade-vps-observe-v1';
+const VERSION = 'daytrade-vps-observe-v1.1';
 const DEFAULT_CACHE_DIR = path.join(process.cwd(), 'data', 'daytrade-ohlcv-cache');
 const DEFAULT_LOG_DIR = path.join(process.cwd(), 'logs', 'daytrade-vps-worker');
 const DEFAULT_LOCK_FILE = path.join(process.cwd(), 'tmp', 'daytrade-vps-worker-observe.lock');
 const DEFAULT_CONCURRENCY = Number(process.env.DAYTRADE_WORKER_CONCURRENCY || 4);
 const DEFAULT_TIMEOUT_MS = Number(process.env.DAYTRADE_YAHOO_TIMEOUT_MS || 12000);
 const CACHE_MAX_AGE_MS = Number(process.env.DAYTRADE_CACHE_MAX_AGE_MS || 12 * 60 * 60 * 1000);
+const DEFAULT_LOOP_INTERVAL_MS = Number(process.env.DAYTRADE_LOOP_INTERVAL_MS || 15 * 60 * 1000);
 const CIRCUIT_THRESHOLD = Number(process.env.DAYTRADE_CIRCUIT_THRESHOLD || 5);
 const CIRCUIT_COOLDOWN_MS = Number(process.env.DAYTRADE_CIRCUIT_COOLDOWN_MS || 60 * 1000);
 const LOCK_TTL_MS = Number(process.env.DAYTRADE_LOCK_TTL_MS || 30 * 60 * 1000);
@@ -204,40 +207,69 @@ async function runWorker(cliArgs) {
   assertObserveOnly(args.mode);
   const cacheDir = process.env.DAYTRADE_CACHE_DIR || args.cacheDir || DEFAULT_CACHE_DIR;
   const logDir = process.env.DAYTRADE_LOG_DIR || args.logDir || DEFAULT_LOG_DIR;
+  const cacheTtlMs = Number(process.env.DAYTRADE_CACHE_TTL_MS || ohlcvCache.DEFAULT_TTL_MS);
   const release = await acquireLock(process.env.DAYTRADE_LOCK_FILE || args.lockFile || DEFAULT_LOCK_FILE);
   if (!release) { console.log('Day Trade observe worker already running; skip overlap.'); return { skipped: true }; }
-  const stats = { cacheHit: 0, cacheMiss: 0, fetchSuccess: 0, fetchFail: 0, stale: 0, timeout429: 0 };
+
+  // Create cache provider from reusable module (with circuit breaker wrapper)
   const breaker = { failures: 0, openedUntil: 0 };
+  const cacheProvider = ohlcvCache.createCacheProvider({
+    cacheDir: cacheDir,
+    ttlMs: cacheTtlMs,
+    timeoutMs: DEFAULT_TIMEOUT_MS,
+    fetchFn: async function(ticker, opts) {
+      if (Date.now() < breaker.openedUntil) throw new Error('circuit_open');
+      try {
+        const result = await withRetry(() => fetchCandlesYahoo(ticker, opts), { attempts: 3 });
+        breaker.failures = 0;
+        return result;
+      } catch (e) {
+        if (/abort|timeout|429/i.test(e.message || '') || e.status === 429) breaker.failures++;
+        if (breaker.failures >= CIRCUIT_THRESHOLD) breaker.openedUntil = Date.now() + CIRCUIT_COOLDOWN_MS;
+        throw e;
+      }
+    }
+  });
+
   try {
     let tickers = args.tickers ? args.tickers.map((ticker) => ({ ticker, board: 'UTAMA' })) : await getDefaultTickers(args.limit);
     if (args.limit) tickers = tickers.slice(0, args.limit);
     const candleByTicker = {};
     await mapLimit(tickers, Math.max(1, Math.min(Number(args.concurrency || DEFAULT_CONCURRENCY), 5)), async (item) => {
       const ticker = item.ticker;
-      const cache = await readCache(cacheDir, ticker, Date.now());
-      if (cache.hit) stats.cacheHit++; else stats.cacheMiss++;
-      const needFull = !cache.hit || cache.stale || cache.candles.length < 20;
       try {
-        if (Date.now() < breaker.openedUntil) throw new Error('circuit_open');
-        const fetched = await withRetry(() => fetchCandlesYahoo(ticker, { range: needFull ? '90d' : '5d' }), { attempts: 3 });
-        const merged = needFull ? normalizeCandles(fetched).slice(-90) : mergeLatestCandle(cache.candles, fetched).candles;
-        if (merged.length < 20) throw new Error('insufficient_candles_' + merged.length);
-        await writeCache(cacheDir, ticker, merged, 'yahoo');
-        candleByTicker[ticker] = merged;
-        stats.fetchSuccess++;
-        breaker.failures = 0;
+        const candles = await cacheProvider.fetchWithCache(ticker);
+        if (candles && candles.length >= 20) {
+          candleByTicker[ticker] = candles;
+        } else {
+          item._skipReason = 'insufficient_candles';
+        }
       } catch (e) {
-        stats.fetchFail++;
-        if (/abort|timeout|429|circuit/i.test(e.message || '') || e.status === 429) stats.timeout429++;
-        if (/abort|timeout|429/i.test(e.message || '') || e.status === 429) breaker.failures++;
-        if (breaker.failures >= CIRCUIT_THRESHOLD) breaker.openedUntil = Date.now() + CIRCUIT_COOLDOWN_MS;
-        if (cache.candles.length >= 20) { candleByTicker[ticker] = cache.candles; stats.stale++; } else { item._skipReason = e.message; }
+        item._skipReason = e.message || 'unknown';
       }
     });
     const scanTickers = tickers.filter((t) => candleByTicker[t.ticker]);
     const result = await engine.runDayTradeBatch(scanTickers, engine.getRunMode(), { fetchCandles: (ticker) => Promise.resolve(candleByTicker[ticker]), noDelay: true, observeOnly: true });
     const candidates = result.results.filter((r) => ['A_PLUS_SETUP','TRADE_CANDIDATE','READY_BREAKOUT','MOMENTUM_CONTINUATION','PRE_SPIKE_WATCH','EARLY_RADAR'].includes(r.status));
-    const log = { version: VERSION, mode: 'observe', started_at: new Date(started).toISOString(), ended_at: new Date().toISOString(), duration_ms: Date.now() - started, tickers_scanned: scanTickers.length, fetch_success_count: stats.fetchSuccess, fetch_fail_count: stats.fetchFail, cache_hit_count: stats.cacheHit, cache_miss_count: stats.cacheMiss, stale_needs_revalidation_count: stats.stale, timeout_429_count: stats.timeout429, candidate_count: candidates.length, top_candidates: result.results.slice(0, 10).map((r) => ({ ticker: r.ticker, status: r.status, score: r.daytrade_score, rr: r.risk_reward })), rejected_reasons_summary: summarizeRejected(result.failed.concat(tickers.filter((t) => t._skipReason).map((t) => ({ ticker: t.ticker, reason: t._skipReason })))) };
+    const providerStats = cacheProvider.getStats();
+    const log = {
+      version: VERSION,
+      mode: 'observe',
+      started_at: new Date(started).toISOString(),
+      ended_at: new Date().toISOString(),
+      duration_ms: Date.now() - started,
+      loop_interval_ms: DEFAULT_LOOP_INTERVAL_MS,
+      cache_ttl_ms: cacheTtlMs,
+      tickers_scanned: scanTickers.length,
+      fetch_success_count: providerStats.fetchSuccess,
+      fetch_fail_count: providerStats.fetchFail,
+      cache_hit_count: providerStats.cacheHit,
+      cache_miss_count: providerStats.cacheMiss,
+      stale_fallback_count: providerStats.staleFallback,
+      candidate_count: candidates.length,
+      top_candidates: result.results.slice(0, 10).map((r) => ({ ticker: r.ticker, status: r.status, score: r.daytrade_score, rr: r.risk_reward })),
+      rejected_reasons_summary: summarizeRejected(result.failed.concat(tickers.filter((t) => t._skipReason).map((t) => ({ ticker: t.ticker, reason: t._skipReason }))))
+    };
     await fsp.mkdir(logDir, { recursive: true });
     await fsp.appendFile(path.join(logDir, 'runs.jsonl'), JSON.stringify(log) + '\n');
     console.log(JSON.stringify(log, null, 2));
@@ -247,4 +279,4 @@ async function runWorker(cliArgs) {
 
 if (require.main === module) runWorker().catch((e) => { console.error(e.stack || e.message); process.exitCode = 1; });
 
-module.exports = { VERSION, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, normalizeCandles, isLockStale, isPidRunning };
+module.exports = { VERSION, DEFAULT_LOOP_INTERVAL_MS, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, normalizeCandles, isLockStale, isPidRunning, ohlcvCache };
