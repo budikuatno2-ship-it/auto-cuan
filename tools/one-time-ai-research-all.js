@@ -56,6 +56,7 @@ function parseArgs(argv) {
     force: false,
     dryRun: false,
     includeRawCandles: false,
+    streamAi: false,
     maxOutputTokens: null,
     temperature: null
   };
@@ -65,6 +66,7 @@ function parseArgs(argv) {
     if (a === '--force') { args.force = true; continue; }
     if (a === '--dry-run') { args.dryRun = true; continue; }
     if (a === '--include-raw-candles') { args.includeRawCandles = true; continue; }
+    if (a === '--stream-ai') { args.streamAi = true; continue; }
     if (a.startsWith('--') && i + 1 < argv.length) {
       const key = a.slice(2);
       const val = argv[++i];
@@ -685,7 +687,9 @@ async function callAI(modelName, payload, opts) {
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      throw new Error('AI API HTTP ' + res.status + ': ' + errText.slice(0, 200));
+      const err = new Error('AI API HTTP ' + res.status + ': ' + errText.slice(0, 200));
+      err.statusCode = res.status;
+      throw err;
     }
     const data = await res.json();
     const choice = data.choices && data.choices[0];
@@ -709,6 +713,135 @@ function parseAIResponse(content) {
   const end = content.lastIndexOf('}');
   if (start >= 0 && end > start) {
     try { return JSON.parse(content.slice(start, end + 1)); } catch (e) {} }
+  return null;
+}
+
+
+// ============================================================
+// STREAMING AI API ADAPTER (OpenAI-compatible SSE)
+// Sends stream:true and collects delta.content chunks until [DONE].
+// Compatible with NVIDIA endpoint (https://integrate.api.nvidia.com/v1)
+// and any OpenAI-compatible streaming API.
+// ============================================================
+
+async function callAIStream(modelName, payload, opts) {
+  const url = buildApiUrl(opts.baseUrl);
+  const body = {
+    model: modelName,
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: USER_PROMPT_TEMPLATE + JSON.stringify(payload, null, 2) }
+    ],
+    temperature: opts.temperature != null ? opts.temperature : 0.2,
+    max_tokens: opts.maxOutputTokens || 2200,
+    stream: true
+  };
+
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), opts.timeoutMs || 60000);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      signal: ac.signal,
+      headers: {
+        'Authorization': 'Bearer ' + opts.apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      const err = new Error('AI API HTTP ' + res.status + ': ' + errText.slice(0, 200));
+      err.statusCode = res.status;
+      throw err;
+    }
+    const text = await res.text();
+    return parseStreamChunks(text);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Parse SSE text from an OpenAI-compatible streaming response.
+ * Each line is "data: {...}" or "data: [DONE]".
+ * Returns { content, usage, raw }.
+ */
+function parseStreamChunks(sseText) {
+  if (!sseText) return { content: null, usage: null, raw: null };
+  const lines = sseText.split('\n');
+  let content = '';
+  let usage = null;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith('data:')) continue;
+    const dataStr = trimmed.slice(5).trim();
+    if (dataStr === '[DONE]') break;
+    try {
+      const chunk = JSON.parse(dataStr);
+      const delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+      if (delta && delta.content) {
+        content += delta.content;
+      }
+      if (chunk.usage) usage = chunk.usage;
+    } catch (e) {
+      // Skip unparseable lines
+    }
+  }
+  return {
+    content: content || null,
+    usage,
+    raw: content ? content.slice(0, 500) : null
+  };
+}
+
+
+// ============================================================
+// FAIL-FAST GUARD
+// Tracks consecutive HTTP 402/403/502/504 errors per model.
+// If a model hits FAIL_FAST_THRESHOLD consecutive fatal errors,
+// it is stopped for the remainder of the run.
+// ============================================================
+
+const FAIL_FAST_THRESHOLD = 5;
+const FAIL_FAST_CODES = new Set([402, 403, 502, 504]);
+
+function createFailFastTracker() {
+  const state = {};
+  return {
+    recordError(model, error) {
+      if (!state[model]) state[model] = { consecutive: 0, stopped: false, reason: null };
+      const statusCode = extractHttpStatus(error);
+      if (statusCode && FAIL_FAST_CODES.has(statusCode)) {
+        state[model].consecutive++;
+        if (state[model].consecutive >= FAIL_FAST_THRESHOLD) {
+          state[model].stopped = true;
+          state[model].reason = 'fail-fast: ' + state[model].consecutive + ' consecutive HTTP ' + statusCode + ' errors';
+          return true;
+        }
+      }
+      return false;
+    },
+    recordSuccess(model) {
+      if (!state[model]) state[model] = { consecutive: 0, stopped: false, reason: null };
+      state[model].consecutive = 0;
+    },
+    isStopped(model) {
+      return state[model] && state[model].stopped;
+    },
+    getStopReason(model) {
+      return state[model] && state[model].reason;
+    },
+    getState() { return state; }
+  };
+}
+
+function extractHttpStatus(error) {
+  if (!error) return null;
+  if (error.statusCode && typeof error.statusCode === 'number') return error.statusCode;
+  const msg = error.message || String(error);
+  const match = msg.match(/AI API HTTP (\d{3})/);
+  if (match) return Number(match[1]);
   return null;
 }
 
@@ -950,6 +1083,7 @@ async function run(cliArgs) {
   console.log('Dry run: ' + (args.dryRun ? 'YES' : 'no'));
   console.log('Force: ' + (args.force ? 'YES' : 'no'));
   console.log('Include raw candles: ' + (args.includeRawCandles ? 'YES' : 'no'));
+  console.log('Stream AI: ' + (args.streamAi ? 'YES' : 'no'));
   console.log('');
 
   const allResults = [];
@@ -959,6 +1093,7 @@ async function run(cliArgs) {
   const perModelStats = {};
   for (const m of models) perModelStats[m] = { success: 0, fail: 0 };
   let estimatedTokens = 0;
+  const failFast = createFailFastTracker();
 
 
   // Process tickers sequentially (concurrency controls per-ticker model parallelism)
@@ -987,6 +1122,13 @@ async function run(cliArgs) {
     for (const model of models) {
       const cpKey = checkpointKey(ticker, model);
 
+      // Fail-fast: skip model if stopped
+      if (failFast.isStopped(model)) {
+        console.log('  SKIP (fail-fast): ' + model + ' — ' + failFast.getStopReason(model));
+        skippedJobs++;
+        continue;
+      }
+
       // Skip if already completed (checkpoint)
       if (checkpoint.completed[cpKey] && !args.force) {
         console.log('  SKIP (checkpoint): ' + ticker + '/' + model);
@@ -1013,9 +1155,10 @@ async function run(cliArgs) {
       }
 
 
-      // Call AI with retry
+      // Call AI with retry (choose streaming or non-streaming)
+      const aiCallFn = args.streamAi ? callAIStream : callAI;
       try {
-        const response = await withRetry(() => callAI(model, payload, {
+        const response = await withRetry(() => aiCallFn(model, payload, {
           baseUrl: cfg.SHITERU_BASE_URL,
           apiKey: cfg.SHITERU_API_KEY,
           temperature: args.temperature,
@@ -1037,6 +1180,7 @@ async function run(cliArgs) {
         if (parsed) {
           completedJobs++;
           perModelStats[model].success++;
+          failFast.recordSuccess(model);
           checkpoint.completed[cpKey] = true;
           await saveCheckpoint(outputDir, checkpoint);
           console.log('  OK: ' + model + ' - score=' + (parsed.quality_score || '?') + ' bias=' + (parsed.bias || '?'));
@@ -1060,7 +1204,14 @@ async function run(cliArgs) {
         await appendJSONL(outputDir, row);
         failedJobs++;
         perModelStats[model].fail++;
-        console.log('  ERROR: ' + model + ' - ' + errMsg);
+
+        // Check fail-fast
+        const stopped = failFast.recordError(model, e);
+        if (stopped) {
+          console.log('  FAIL-FAST: ' + model + ' stopped — ' + failFast.getStopReason(model));
+        } else {
+          console.log('  ERROR: ' + model + ' - ' + errMsg);
+        }
       }
 
       // Delay between API calls
@@ -1086,6 +1237,7 @@ async function run(cliArgs) {
     models_used: models,
     estimated_token_usage: estimatedTokens || null,
     per_model_stats: perModelStats,
+    fail_fast_stopped: failFast.getState(),
     dry_run: args.dryRun || false
   };
 
@@ -1132,7 +1284,13 @@ module.exports = {
   extract90DNotableEvents,
   buildApiUrl,
   callAI,
+  callAIStream,
   parseAIResponse,
+  parseStreamChunks,
+  createFailFastTracker,
+  extractHttpStatus,
+  FAIL_FAST_THRESHOLD,
+  FAIL_FAST_CODES,
   getOutputDir,
   loadCheckpoint,
   saveCheckpoint,

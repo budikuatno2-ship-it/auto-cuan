@@ -648,3 +648,183 @@ test('extract90DNotableEvents event entries have correct shape', () => {
     assert.ok(typeof e.volume === 'number', 'event must have numeric volume');
   }
 });
+
+
+
+// ============================================================
+// STREAMING PARSER TESTS (parseStreamChunks)
+// ============================================================
+
+test('parseStreamChunks assembles content from SSE delta chunks', () => {
+  const chunk1 = JSON.stringify({ choices: [{ delta: { content: '{"ticker":' } }] });
+  const chunk2 = JSON.stringify({ choices: [{ delta: { content: '"BBCA"}' } }] });
+  const sse = 'data: ' + chunk1 + '\ndata: ' + chunk2 + '\ndata: [DONE]\n';
+  const result = runner.parseStreamChunks(sse);
+  assert.equal(result.content, '{"ticker":"BBCA"}');
+  assert.equal(result.raw, '{"ticker":"BBCA"}');
+});
+
+test('parseStreamChunks handles empty SSE text', () => {
+  const result = runner.parseStreamChunks('');
+  assert.equal(result.content, null);
+  assert.equal(result.usage, null);
+});
+
+test('parseStreamChunks handles null input', () => {
+  const result = runner.parseStreamChunks(null);
+  assert.equal(result.content, null);
+});
+
+test('parseStreamChunks skips non-data lines', () => {
+  const sse = [
+    ': comment line',
+    '',
+    'data: {"choices":[{"delta":{"content":"hello"}}]}',
+    'event: ping',
+    'data: {"choices":[{"delta":{"content":" world"}}]}',
+    'data: [DONE]'
+  ].join('\n');
+  const result = runner.parseStreamChunks(sse);
+  assert.equal(result.content, 'hello world');
+});
+
+test('parseStreamChunks extracts usage from final chunk', () => {
+  const sse = [
+    'data: {"choices":[{"delta":{"content":"ok"}}]}',
+    'data: {"choices":[{"delta":{}}],"usage":{"prompt_tokens":100,"completion_tokens":50,"total_tokens":150}}',
+    'data: [DONE]'
+  ].join('\n');
+  const result = runner.parseStreamChunks(sse);
+  assert.equal(result.content, 'ok');
+  assert.deepEqual(result.usage, { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 });
+});
+
+test('parseStreamChunks handles NVIDIA-style response with model field', () => {
+  const sse = [
+    'data: {"id":"chatcmpl-123","object":"chat.completion.chunk","model":"z-ai/glm-5.2","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}',
+    'data: {"id":"chatcmpl-123","object":"chat.completion.chunk","model":"z-ai/glm-5.2","choices":[{"index":0,"delta":{"content":"{\\"bias\\":\\"bullish\\"}"},"finish_reason":null}]}',
+    'data: {"id":"chatcmpl-123","object":"chat.completion.chunk","model":"z-ai/glm-5.2","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":200,"completion_tokens":80,"total_tokens":280}}',
+    'data: [DONE]'
+  ].join('\n');
+  const result = runner.parseStreamChunks(sse);
+  assert.equal(result.content, '{"bias":"bullish"}');
+  assert.equal(result.usage.total_tokens, 280);
+});
+
+test('parseStreamChunks ignores malformed JSON lines gracefully', () => {
+  const sse = [
+    'data: {"choices":[{"delta":{"content":"A"}}]}',
+    'data: {broken json here',
+    'data: {"choices":[{"delta":{"content":"B"}}]}',
+    'data: [DONE]'
+  ].join('\n');
+  const result = runner.parseStreamChunks(sse);
+  assert.equal(result.content, 'AB');
+});
+
+// ============================================================
+// FAIL-FAST GUARD TESTS
+// ============================================================
+
+test('createFailFastTracker stops model after 5 consecutive 402 errors', () => {
+  const tracker = runner.createFailFastTracker();
+  for (let i = 0; i < 4; i++) {
+    const stopped = tracker.recordError('bad-model', { message: 'AI API HTTP 402: payment required', statusCode: 402 });
+    assert.equal(stopped, false);
+    assert.equal(tracker.isStopped('bad-model'), false);
+  }
+  const stopped = tracker.recordError('bad-model', { message: 'AI API HTTP 402: payment required', statusCode: 402 });
+  assert.equal(stopped, true);
+  assert.equal(tracker.isStopped('bad-model'), true);
+  assert.ok(tracker.getStopReason('bad-model').includes('402'));
+  assert.ok(tracker.getStopReason('bad-model').includes('5'));
+});
+
+test('createFailFastTracker resets counter on success', () => {
+  const tracker = runner.createFailFastTracker();
+  tracker.recordError('model-x', { statusCode: 502 });
+  tracker.recordError('model-x', { statusCode: 502 });
+  tracker.recordError('model-x', { statusCode: 502 });
+  tracker.recordSuccess('model-x');
+  for (let i = 0; i < 4; i++) {
+    tracker.recordError('model-x', { statusCode: 502 });
+  }
+  assert.equal(tracker.isStopped('model-x'), false);
+  tracker.recordError('model-x', { statusCode: 502 });
+  assert.equal(tracker.isStopped('model-x'), true);
+});
+
+test('createFailFastTracker only triggers on 402/403/502/504', () => {
+  const tracker = runner.createFailFastTracker();
+  for (let i = 0; i < 10; i++) {
+    tracker.recordError('model-500', { statusCode: 500 });
+  }
+  assert.equal(tracker.isStopped('model-500'), false);
+  for (let i = 0; i < 10; i++) {
+    tracker.recordError('model-429', { statusCode: 429 });
+  }
+  assert.equal(tracker.isStopped('model-429'), false);
+});
+
+test('createFailFastTracker works with 403 and 504', () => {
+  const tracker = runner.createFailFastTracker();
+  for (let i = 0; i < 5; i++) {
+    tracker.recordError('model-403', { statusCode: 403 });
+  }
+  assert.equal(tracker.isStopped('model-403'), true);
+  for (let i = 0; i < 5; i++) {
+    tracker.recordError('model-504', { statusCode: 504 });
+  }
+  assert.equal(tracker.isStopped('model-504'), true);
+});
+
+test('createFailFastTracker tracks models independently', () => {
+  const tracker = runner.createFailFastTracker();
+  for (let i = 0; i < 5; i++) {
+    tracker.recordError('model-a', { statusCode: 402 });
+  }
+  assert.equal(tracker.isStopped('model-a'), true);
+  assert.ok(!tracker.isStopped('model-b'));
+});
+
+test('createFailFastTracker getState returns all model states', () => {
+  const tracker = runner.createFailFastTracker();
+  tracker.recordError('m1', { statusCode: 402 });
+  tracker.recordSuccess('m2');
+  const state = tracker.getState();
+  assert.ok(state.m1);
+  assert.equal(state.m1.consecutive, 1);
+  assert.ok(state.m2);
+  assert.equal(state.m2.consecutive, 0);
+});
+
+test('extractHttpStatus parses statusCode property', () => {
+  assert.equal(runner.extractHttpStatus({ statusCode: 402 }), 402);
+  assert.equal(runner.extractHttpStatus({ statusCode: 504 }), 504);
+});
+
+test('extractHttpStatus parses from error message string', () => {
+  assert.equal(runner.extractHttpStatus({ message: 'AI API HTTP 403: forbidden' }), 403);
+  assert.equal(runner.extractHttpStatus({ message: 'AI API HTTP 502: bad gateway' }), 502);
+});
+
+test('extractHttpStatus returns null for non-HTTP errors', () => {
+  assert.equal(runner.extractHttpStatus({ message: 'fetch failed' }), null);
+  assert.equal(runner.extractHttpStatus(null), null);
+  assert.equal(runner.extractHttpStatus({}), null);
+});
+
+// ============================================================
+// --stream-ai CLI FLAG TEST
+// ============================================================
+
+test('parseArgs recognizes --stream-ai flag', () => {
+  const args = runner.parseArgs(['node', 'script.js', '--stream-ai', '--mode', 'observe']);
+  assert.equal(args.streamAi, true);
+  assert.equal(args.mode, 'observe');
+});
+
+test('parseArgs defaults streamAi to false', () => {
+  const args = runner.parseArgs(['node', 'script.js']);
+  assert.equal(args.streamAi, false);
+});
