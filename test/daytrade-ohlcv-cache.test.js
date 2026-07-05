@@ -325,3 +325,100 @@ test('second fetch within TTL uses cache without calling Yahoo again', async () 
   assert.equal(stats.fetchSuccess, 1);
   assert.equal(stats.cacheHit, 1);
 });
+
+
+// ============================================================
+// TEST: --loop flag parsed correctly
+// ============================================================
+
+test('parseArgs recognizes --loop flag', () => {
+  const args = worker.parseArgs(['node', 'script', '--mode', 'observe', '--loop']);
+  assert.equal(args.loop, true, '--loop should be true');
+  assert.equal(args.mode, 'observe', 'mode should still be observe');
+});
+
+test('parseArgs defaults loop to false when --loop not given', () => {
+  const args = worker.parseArgs(['node', 'script', '--mode', 'observe']);
+  assert.equal(args.loop, false, 'loop should default to false');
+});
+
+test('parseArgs preserves other args alongside --loop', () => {
+  const args = worker.parseArgs(['node', 'script', '--mode', 'observe', '--loop', '--limit', '5', '--tickers', 'BBCA,BBRI']);
+  assert.equal(args.loop, true);
+  assert.equal(args.limit, 5);
+  assert.deepEqual(args.tickers, ['BBCA', 'BBRI']);
+});
+
+// ============================================================
+// TEST: runLoop uses DEFAULT_LOOP_INTERVAL_MS (15 min) and respects env override
+// ============================================================
+
+test('DEFAULT_LOOP_INTERVAL_MS is 15 minutes', () => {
+  assert.equal(worker.DEFAULT_LOOP_INTERVAL_MS, 15 * 60 * 1000,
+    'DEFAULT_LOOP_INTERVAL_MS should be 900000 (15 minutes)');
+});
+
+test('runLoop is exported and callable', () => {
+  assert.equal(typeof worker.runLoop, 'function', 'runLoop should be exported');
+});
+
+// ============================================================
+// TEST: runLoop executes iterations and can be stopped
+// ============================================================
+
+test('runLoop executes at least one iteration and stops on SIGINT', async () => {
+  // We test by providing a very short interval and sending SIGINT after 1st iteration
+  let iterationCount = 0;
+  const originalRunWorker = worker.runWorker;
+
+  // Monkey-patch runWorker for this test to avoid real execution
+  // We'll call runLoop with a custom cliArgs that triggers fast stop
+  // Instead, we test the function signature and early stop via short interval
+
+  // Use a direct approach: call runLoop with interval_ms=50, and stop after a brief time
+  const loopPromise = worker.runLoop({
+    mode: 'observe',
+    loop: true,
+    limit: 1,
+    tickers: ['BBCA'],
+    interval_ms: 50, // 50ms interval for fast test
+    // Override lock/cache dirs to temp
+    lockFile: path.join(os.tmpdir(), 'test-loop-lock-' + Date.now() + '.lock'),
+    cacheDir: await tmpdir(),
+    logDir: await tmpdir()
+  });
+
+  // Give it time for at least 1 iteration attempt then stop
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  process.emit('SIGINT');
+
+  const result = await loopPromise;
+  assert.equal(result.stopped, true, 'Loop should report stopped=true');
+  assert.ok(result.iterations >= 1, 'Loop should have run at least 1 iteration');
+});
+
+// ============================================================
+// TEST: Single-run mode (no --loop) does NOT loop
+// ============================================================
+
+test('runWorker without --loop returns single result (not a loop)', async () => {
+  const dir = await tmpdir();
+  const logDir = await tmpdir();
+  const lockFile = path.join(os.tmpdir(), 'test-single-run-' + Date.now() + '.lock');
+
+  const result = await worker.runWorker({
+    mode: 'observe',
+    tickers: ['BBCA'],
+    limit: 1,
+    lockFile: lockFile,
+    cacheDir: dir,
+    logDir: logDir
+  });
+
+  // Single run returns a log object (not { iterations, stopped })
+  assert.ok(result, 'Should return a result');
+  assert.equal(result.mode, 'observe', 'Should be observe mode');
+  assert.ok('duration_ms' in result, 'Should have duration_ms (single run log)');
+  assert.ok(!('iterations' in result), 'Should NOT have iterations key (not a loop)');
+  assert.ok(!('stopped' in result), 'Should NOT have stopped key (not a loop)');
+});

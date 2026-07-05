@@ -26,10 +26,11 @@ const CIRCUIT_COOLDOWN_MS = Number(process.env.DAYTRADE_CIRCUIT_COOLDOWN_MS || 6
 const LOCK_TTL_MS = Number(process.env.DAYTRADE_LOCK_TTL_MS || 30 * 60 * 1000);
 
 function parseArgs(argv) {
-  const args = { mode: 'observe', tickers: null, limit: null, compare: false };
+  const args = { mode: 'observe', tickers: null, limit: null, compare: false, loop: false };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--compare') args.compare = true;
+    else if (a === '--loop') args.loop = true;
     else if (a.indexOf('--') === 0) {
       const key = a.slice(2);
       const val = argv[i + 1] && argv[i + 1].indexOf('--') !== 0 ? argv[++i] : 'true';
@@ -277,6 +278,59 @@ async function runWorker(cliArgs) {
   } finally { await release(); }
 }
 
-if (require.main === module) runWorker().catch((e) => { console.error(e.stack || e.message); process.exitCode = 1; });
+if (require.main === module) {
+  const _mainArgs = parseArgs(process.argv);
+  if (_mainArgs.loop) {
+    runLoop(_mainArgs).catch((e) => { console.error(e.stack || e.message); process.exitCode = 1; });
+  } else {
+    runWorker().catch((e) => { console.error(e.stack || e.message); process.exitCode = 1; });
+  }
+}
 
-module.exports = { VERSION, DEFAULT_LOOP_INTERVAL_MS, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, normalizeCandles, isLockStale, isPidRunning, ohlcvCache };
+/**
+ * Loop mode: run observe worker repeatedly at DEFAULT_LOOP_INTERVAL_MS.
+ * Observe-only guarantee is enforced on every iteration.
+ * Stops on SIGINT/SIGTERM for graceful shutdown.
+ *
+ * Usage:
+ *   node tools/daytrade-vps-worker-observe.js --mode observe --loop
+ *   node tools/daytrade-vps-worker-observe.js --mode observe --loop --limit 20
+ */
+async function runLoop(cliArgs) {
+  cliArgs = cliArgs || {};
+  const intervalMs = Number(cliArgs.interval_ms || process.env.DAYTRADE_LOOP_INTERVAL_MS || DEFAULT_LOOP_INTERVAL_MS);
+  let running = true;
+  let iteration = 0;
+
+  function stop() { running = false; }
+  process.on('SIGINT', stop);
+  process.on('SIGTERM', stop);
+
+  console.log('[loop] Day Trade observe loop starting. Interval: ' + Math.round(intervalMs / 1000) + 's (' + Math.round(intervalMs / 60000) + ' min). Ctrl+C to stop.');
+
+  while (running) {
+    iteration++;
+    const iterStart = Date.now();
+    console.log('[loop] Iteration ' + iteration + ' starting at ' + new Date().toISOString());
+    try {
+      await runWorker(cliArgs);
+    } catch (e) {
+      console.error('[loop] Iteration ' + iteration + ' error: ' + (e.message || e));
+    }
+    const elapsed = Date.now() - iterStart;
+    const waitMs = Math.max(0, intervalMs - elapsed);
+
+    if (!running) break;
+    if (waitMs > 0) {
+      console.log('[loop] Iteration ' + iteration + ' done (' + Math.round(elapsed / 1000) + 's). Next in ' + Math.round(waitMs / 1000) + 's.');
+      await sleep(waitMs);
+    }
+  }
+
+  console.log('[loop] Loop stopped after ' + iteration + ' iteration(s).');
+  process.removeListener('SIGINT', stop);
+  process.removeListener('SIGTERM', stop);
+  return { iterations: iteration, stopped: true };
+}
+
+module.exports = { VERSION, DEFAULT_LOOP_INTERVAL_MS, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, runLoop, normalizeCandles, isLockStale, isPidRunning, ohlcvCache };
