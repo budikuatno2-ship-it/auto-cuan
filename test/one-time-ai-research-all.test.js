@@ -399,6 +399,84 @@ test('parseAIResponse returns null for garbage', () => {
   assert.equal(runner.parseAIResponse(null), null);
 });
 
+test('parseAIResponse handles valid JSON followed by extra prose', () => {
+  const input = '{"ticker":"BBCA","bias":"bullish","quality_score":75}\n\nThis analysis shows a bullish bias with strong volume confirmation. The ticker is approaching resistance.';
+  const result = runner.parseAIResponse(input);
+  assert.equal(result.ticker, 'BBCA');
+  assert.equal(result.bias, 'bullish');
+  assert.equal(result.quality_score, 75);
+});
+
+test('parseAIResponse handles JSON followed by prose with braces in prose', () => {
+  const input = '{"ticker":"GOTO","bias":"neutral"}\n\nNote: the setup {unclear} may need revalidation. Risk is {high} if volume drops.';
+  const result = runner.parseAIResponse(input);
+  assert.equal(result.ticker, 'GOTO');
+  assert.equal(result.bias, 'neutral');
+});
+
+test('parseAIResponse handles JSON followed by newlines and disclaimer', () => {
+  const input = '{"ticker":"TLKM","setup_type":"watchlist","not_financial_advice":true}\n\n---\nDisclaimer: This is not financial advice. Past performance does not guarantee future results.';
+  const result = runner.parseAIResponse(input);
+  assert.equal(result.ticker, 'TLKM');
+  assert.equal(result.not_financial_advice, true);
+});
+
+test('parseAIResponse handles nested JSON objects with trailing text', () => {
+  const input = '{"ticker":"ASII","technical_breakdown":{"trend_view":"uptrend","momentum_view":"strong"},"bias":"bullish"}\n\nAdditional context: the market is showing strength.';
+  const result = runner.parseAIResponse(input);
+  assert.equal(result.ticker, 'ASII');
+  assert.equal(result.technical_breakdown.trend_view, 'uptrend');
+});
+
+test('parseAIResponse handles JSON with escaped quotes followed by prose', () => {
+  const input = '{"ticker":"BBRI","final_verdict":"Wait for \\"breakout\\" confirmation"}\n\nThe above analysis is research only.';
+  const result = runner.parseAIResponse(input);
+  assert.equal(result.ticker, 'BBRI');
+  assert.ok(result.final_verdict.includes('breakout'));
+});
+
+test('parseAIResponse handles fenced json block with prose after fence', () => {
+  const input = '```json\n{"ticker":"ADRO","bias":"bearish"}\n```\n\nPlease note this is just research.';
+  const result = runner.parseAIResponse(input);
+  assert.equal(result.ticker, 'ADRO');
+  assert.equal(result.bias, 'bearish');
+});
+
+test('parseAIResponse rejects response with no JSON object', () => {
+  assert.equal(runner.parseAIResponse('The analysis could not be completed due to insufficient data.'), null);
+  assert.equal(runner.parseAIResponse('Error: model timeout'), null);
+  assert.equal(runner.parseAIResponse('[1, 2, 3]'), null); // array, not object
+});
+
+test('parseAIResponse rejects malformed JSON even with braces', () => {
+  assert.equal(runner.parseAIResponse('{ticker: BBCA, bias: bullish}'), null);
+  assert.equal(runner.parseAIResponse('{"ticker": "BBCA", "bias":}'), null);
+});
+
+test('extractFirstBalancedJSON extracts first object from mixed content', () => {
+  const input = 'prefix {"a":1,"b":{"c":2}} suffix {"d":3}';
+  const result = runner.extractFirstBalancedJSON(input);
+  assert.equal(result, '{"a":1,"b":{"c":2}}');
+});
+
+test('extractFirstBalancedJSON handles strings with braces inside', () => {
+  const input = '{"msg":"hello {world}","val":42} extra';
+  const result = runner.extractFirstBalancedJSON(input);
+  assert.equal(result, '{"msg":"hello {world}","val":42}');
+  assert.deepEqual(JSON.parse(result), { msg: 'hello {world}', val: 42 });
+});
+
+test('extractFirstBalancedJSON returns null for no braces', () => {
+  assert.equal(runner.extractFirstBalancedJSON('no json here'), null);
+  assert.equal(runner.extractFirstBalancedJSON(null), null);
+  assert.equal(runner.extractFirstBalancedJSON(''), null);
+});
+
+test('extractFirstBalancedJSON returns null for unbalanced braces', () => {
+  assert.equal(runner.extractFirstBalancedJSON('{"incomplete": true'), null);
+  assert.equal(runner.extractFirstBalancedJSON('{{{'), null);
+});
+
 
 // ============================================================
 // DETERMINISTIC PAYLOAD TESTS
