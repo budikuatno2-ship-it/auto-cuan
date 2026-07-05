@@ -429,6 +429,16 @@
         /* Screener info bar (compact disclaimer + legend) */
         .scr-info-bar { font-size: 11px; color: #6b7280; line-height: 1.5; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(28,35,51,0.3); background: rgba(15,19,25,0.35); }
         .scr-info-bar strong { color: #9ca3af; }
+        /* Phase 3: Detail Modal Responsive */
+        #scrDetailModal > div { scrollbar-width: thin; scrollbar-color: #242d3d #0f1319; }
+        @media (max-width: 640px) {
+            #scrDetailModal > div { max-height: 92vh; border-radius: 20px 20px 0 0; padding: 16px 14px 28px; max-width: 100%; }
+            .scr-detail-levels { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media (min-width: 641px) {
+            #scrDetailModal > div { border-radius: 16px; max-height: 85vh; }
+            #scrDetailModal > div > div:first-child { display: none; }
+        }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -1274,9 +1284,10 @@
 </footer>
 
 <!-- Day Trade Detail Modal -->
-<div id="scrDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="if(event.target===this)closeScrDetail()">
-<div style="background:#0f1319;border:1px solid #1c2333;border-radius:16px;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:22px;position:relative">
-<button onclick="closeScrDetail()" style="position:absolute;top:12px;right:12px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e2530;border:1px solid #2a3444;color:#9ca3af;font-size:16px;cursor:pointer">&times;</button>
+<div id="scrDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeScrDetail()">
+<div style="background:#0f1319;border:1px solid #1c2333;border-radius:20px 20px 0 0;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;padding:20px 18px 24px;position:relative;-webkit-overflow-scrolling:touch" class="sm:rounded-2xl sm:!rounded-b-2xl">
+<div style="width:36px;height:4px;background:#2a3444;border-radius:2px;margin:0 auto 12px;display:block" class="sm:hidden"></div>
+<button onclick="closeScrDetail()" style="position:absolute;top:14px;right:14px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e2530;border:1px solid #2a3444;color:#9ca3af;font-size:18px;cursor:pointer;z-index:2">&times;</button>
 <div id="scrDetailContent"></div>
 </div>
 </div>
@@ -5524,9 +5535,7 @@ function openScrDetail(r, type) {
     var _l = normalizeDisplayLevels(r);
     var e1 = fmtLvl(_l.e1); var e2 = fmtLvl(_l.e2); var slVal = fmtLvl(_l.sl); var t1 = fmtLvl(_l.t1); var t2 = fmtLvl(_l.t2); var rrVal = _l.rr != null ? _l.rr.toFixed(1) : '-';
     var _rlCol = '#9ca3af'; var _gCol = '#9ca3af';
-    // Show only quality grade already supplied by the API payload.
     var _grade = getSignalQualityGrade(r) || null;
-    // Derive risk from available fields (risk_label not persisted in DB)
     var _risk = getRiskLabel(r) || null;
     if (!_risk) {
       var _rr = r.risk_reward || 0;
@@ -5539,143 +5548,169 @@ function openScrDetail(r, type) {
     }
     if (_risk) { _risk = normalizeRiskLabel(_risk); _rlCol = getRiskColor(_risk); }
     if (_grade) { _gCol = getSignalQualityColor(_grade); }
-    // Setup meaning
     var _setupMeaning = getSetupMeaning(st, type);
+    var _catLabel = type === 'daytrade' ? 'Day Trade' : (type === 'konglo' ? 'Konglo Swing' : 'Non-Konglo Swing');
     var html = '';
-    // Header
-    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="font-size:20px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:10px;padding:3px 8px;border-radius:6px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(getStatusLabel(r, st)) + '</span></div>';
-    html += '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:8px;color:#9ca3af"><span>' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
-    if (freshnessText(r)) html += '<div style="font-size:10px;color:' + freshnessColor(r) + ';margin-bottom:10px">' + freshnessChipHtml(r) + '<div style="color:#9ca3af;margin-top:4px">' + escapeHtml(r.freshness_reason || '') + '</div></div>';
-    // Grade/Risk/RR summary bar
-    html += '<div style="display:flex;gap:10px;margin-bottom:12px;padding:8px 12px;background:rgba(30,35,50,0.6);border:1px solid #2a3444;border-radius:10px">';
-    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Grade</div><div style="font-size:16px;font-weight:800;color:' + _gCol + '">' + escapeHtml(_grade || '-') + '</div></div>';
-    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Risk v2</div><div style="font-size:11px;font-weight:600;color:' + _rlCol + '">' + escapeHtml(_risk || '-') + '</div></div>';
+    // --- HEADER: Ticker + Category + Status ---
+    html += '<div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #1c2333">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">';
+    html += '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px">' + escapeHtml(r.ticker) + '</span><span style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;background:' + stBg + ';color:' + stCol + ';white-space:nowrap">' + escapeHtml(getStatusLabel(r, st)) + '</span></div>';
+    html += '<span style="font-size:10px;color:#6b7280;background:#1a1f2b;padding:3px 8px;border-radius:6px;white-space:nowrap">' + _catLabel + '</span></div>';
+    html += '<div style="display:flex;align-items:center;gap:14px;font-size:13px;color:#9ca3af"><span style="font-weight:600;color:#e5e7eb">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + ';font-weight:500">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
+    if (freshnessText(r)) html += '<div style="font-size:10px;color:' + freshnessColor(r) + ';margin-top:8px">' + freshnessChipHtml(r) + (r.freshness_reason ? '<span style="color:#6b7280;margin-left:6px">' + escapeHtml(r.freshness_reason) + '</span>' : '') + '</div>';
+    html += '</div>';
+    // --- METRICS BAR: Grade / Risk / RR / Action ---
     var _actionLabel = getActionLabel(r);
-    html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">R/R</div><div style="font-size:14px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
-    if (_actionLabel) html += '<div style="flex:1;text-align:center"><div style="font-size:9px;color:#6b7280">Action</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + escapeHtml(_actionLabel) + '</div></div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(' + (_actionLabel ? '4' : '3') + ',1fr);gap:6px;margin-bottom:16px">';
+    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Grade</div><div style="font-size:18px;font-weight:800;color:' + _gCol + '">' + escapeHtml(_grade || '-') + '</div></div>';
+    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Risk</div><div style="font-size:12px;font-weight:700;color:' + _rlCol + '">' + escapeHtml(_risk || '-') + '</div></div>';
+    html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">R/R</div><div style="font-size:16px;font-weight:800;color:#c4b5fd">' + rrVal + '</div></div>';
+    if (_actionLabel) html += '<div style="text-align:center;padding:10px 6px;background:rgba(30,35,50,0.5);border:1px solid #222a3a;border-radius:10px"><div style="font-size:9px;color:#6b7280;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px">Action</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + escapeHtml(_actionLabel) + '</div></div>';
     html += '</div>';
     var _riskFactors = getRiskReasonFactors(r).slice(0, 4);
     if (_riskFactors.length) {
-      html += '<div style="font-size:10px;color:#d1d5db;line-height:1.5;margin-bottom:10px;padding:8px 10px;background:rgba(239,68,68,0.04);border:1px solid rgba(239,68,68,0.16);border-radius:8px"><span style="color:' + _rlCol + ';font-weight:700">' + escapeHtml(getRiskReasonLine(r)) + '</span>';
-      html += '<ul style="margin:6px 0 0 14px;padding:0;color:#9ca3af">' + _riskFactors.map(function(f){ return '<li>' + escapeHtml(f) + '</li>'; }).join('') + '</ul></div>';
+      html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:14px;padding:10px 12px;background:rgba(239,68,68,0.04);border:1px solid rgba(239,68,68,0.14);border-radius:10px"><div style="color:' + _rlCol + ';font-weight:700;margin-bottom:4px;font-size:11px">' + escapeHtml(getRiskReasonLine(r)) + '</div>';
+      html += '<ul style="margin:0 0 0 16px;padding:0;color:#9ca3af;font-size:10px">' + _riskFactors.map(function(f){ return '<li style="margin-bottom:2px">' + escapeHtml(f) + '</li>'; }).join('') + '</ul></div>';
     }
-    if (r.grade_reason) html += '<div style="font-size:9px;color:#6b7280;margin-bottom:10px">' + escapeHtml(r.grade_reason) + '</div>';
+    if (r.grade_reason) html += '<div style="font-size:10px;color:#6b7280;margin-bottom:12px;line-height:1.4">' + escapeHtml(r.grade_reason) + '</div>';
     var _signalReason = getSignalReason(r);
     if (r.action_label || r.signal_action_label || r.signal_verdict || r.action_reason || r.signal_reason) {
-      html += '<div style="font-size:10px;color:#d1d5db;line-height:1.55;margin-bottom:10px;padding:7px 10px;background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.18);border-radius:8px">';
-      html += '<span style="color:#93c5fd;font-weight:600">Action:</span> ' + escapeHtml(r.action_label || r.signal_action_label || '-') + '<br>';
-      html += '<span style="color:#94a3b8">Verdict:</span> ' + escapeHtml(r.signal_verdict || '-') + '<br>';
-      html += '<span style="color:#94a3b8">Reason:</span> ' + escapeHtml(r.action_reason || r.signal_reason || '-') + '<br>';
-      html += '<span style="color:#94a3b8">Badges:</span> ' + escapeHtml((r.signal_badges || []).join(' / ') || '-');
-      html += '</div>';
+      html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:14px;padding:10px 12px;background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.14);border-radius:10px">';
+      html += '<div style="color:#93c5fd;font-weight:700;margin-bottom:4px;font-size:11px">Signal & Action</div>';
+      html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:10px">';
+      html += '<span style="color:#6b7280">Action:</span><span>' + escapeHtml(r.action_label || r.signal_action_label || '-') + '</span>';
+      html += '<span style="color:#6b7280">Verdict:</span><span>' + escapeHtml(r.signal_verdict || '-') + '</span>';
+      html += '<span style="color:#6b7280">Reason:</span><span style="word-break:break-word">' + escapeHtml(r.action_reason || r.signal_reason || '-') + '</span>';
+      html += '<span style="color:#6b7280">Badges:</span><span>' + escapeHtml((r.signal_badges || []).join(' / ') || '-') + '</span>';
+      html += '</div></div>';
     }
-    if (_signalReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45;margin-bottom:10px;padding:7px 10px;background:rgba(15,23,42,0.35);border:1px solid rgba(148,163,184,0.16);border-radius:8px"><span style="color:#94a3b8;font-weight:600">Alasan risk/action:</span> ' + escapeHtml(_signalReason) + '</div>';
+    if (_signalReason) html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:14px;padding:10px 12px;background:rgba(15,23,42,0.35);border:1px solid rgba(148,163,184,0.12);border-radius:10px"><span style="color:#94a3b8;font-weight:600">Alasan risk/action:</span> <span style="word-break:break-word">' + escapeHtml(_signalReason) + '</span></div>';
     if (r.entry_status_label) {
       var _ed = r.entry_distance_pct != null ? (Number(r.entry_distance_pct).toFixed(2) + '%') : '-';
-      html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45;margin-bottom:10px;padding:7px 10px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.14);border-radius:8px"><span style="color:#6ee7b7;font-weight:600">Entry Status:</span> ' + escapeHtml(r.entry_status_label) + '<br><span style="color:#94a3b8">Entry distance %:</span> ' + escapeHtml(_ed) + '<br><span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.entry_status_note || '-') + '</div>';
+      html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:14px;padding:10px 12px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.12);border-radius:10px"><div style="color:#6ee7b7;font-weight:700;margin-bottom:4px;font-size:11px">Entry Status</div><div style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:10px"><span style="color:#6b7280">Status:</span><span>' + escapeHtml(r.entry_status_label) + '</span><span style="color:#6b7280">Distance:</span><span>' + escapeHtml(_ed) + '</span><span style="color:#6b7280">Note:</span><span style="word-break:break-word">' + escapeHtml(r.entry_status_note || '-') + '</span></div></div>';
     }
     if (r.plan_label || r.plan_quality_label || r.sl_quality_label || r.tp_quality_label || r.rr_quality_label) {
-      html += '<div style="font-size:10px;color:#d1d5db;line-height:1.55;margin-bottom:10px;padding:7px 10px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.16);border-radius:8px">';
-      html += '<span style="color:#fbbf24;font-weight:600">Plan:</span> ' + escapeHtml(r.plan_label || r.plan_quality_label || '-') + '<br>';
-      html += '<span style="color:#94a3b8">SL Quality:</span> ' + escapeHtml(r.sl_quality_label || '-') + '<br>';
-      html += '<span style="color:#94a3b8">TP Quality:</span> ' + escapeHtml(r.tp_quality_label || '-') + '<br>';
-      html += '<span style="color:#94a3b8">RR Quality:</span> ' + escapeHtml(r.rr_quality_label || '-') + '<br>';
-      html += '<span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.plan_reason || r.plan_quality_note || '-');
-      html += '</div>';
+      html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:14px;padding:10px 12px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.12);border-radius:10px">';
+      html += '<div style="color:#fbbf24;font-weight:700;margin-bottom:4px;font-size:11px">Plan Quality</div>';
+      html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:10px">';
+      html += '<span style="color:#6b7280">Plan:</span><span>' + escapeHtml(r.plan_label || r.plan_quality_label || '-') + '</span>';
+      html += '<span style="color:#6b7280">SL Quality:</span><span>' + escapeHtml(r.sl_quality_label || '-') + '</span>';
+      html += '<span style="color:#6b7280">TP Quality:</span><span>' + escapeHtml(r.tp_quality_label || '-') + '</span>';
+      html += '<span style="color:#6b7280">RR Quality:</span><span>' + escapeHtml(r.rr_quality_label || '-') + '</span>';
+      html += '<span style="color:#6b7280">Note:</span><span style="word-break:break-word">' + escapeHtml(r.plan_reason || r.plan_quality_note || '-') + '</span>';
+      html += '</div></div>';
     }
-    // Setup meaning
-    if (_setupMeaning) html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:10px;padding:6px 10px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.15);border-radius:8px"><span style="color:#818cf8;font-weight:500">Arti:</span> ' + escapeHtml(_setupMeaning) + '</div>';
+    if (_setupMeaning) html += '<div style="font-size:11px;color:#d1d5db;margin-bottom:14px;padding:10px 12px;background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.12);border-radius:10px"><span style="color:#818cf8;font-weight:600">Arti Setup:</span> <span style="word-break:break-word">' + escapeHtml(_setupMeaning) + '</span></div>';
     // Fibonacci confluence section (Swing Konglo soft signal)
     if ((type === 'konglo' || type === 'nonkonglo') && r.fib_confluence_label && r.fib_confluence_label !== 'Fib belum cukup data') {
         var _fibDColor = r.fib_confluence_status === 'confluence_sehat' ? '#6ee7b7' : (r.fib_confluence_status === 'di_atas_fib' ? '#fbbf24' : '#fca5a5');
         var _fibDBg = r.fib_confluence_status === 'confluence_sehat' ? 'rgba(16,185,129,0.04)' : (r.fib_confluence_status === 'di_atas_fib' ? 'rgba(245,158,11,0.04)' : 'rgba(239,68,68,0.04)');
-        var _fibDBorder = r.fib_confluence_status === 'confluence_sehat' ? 'rgba(16,185,129,0.15)' : (r.fib_confluence_status === 'di_atas_fib' ? 'rgba(245,158,11,0.16)' : 'rgba(239,68,68,0.16)');
-        html += '<div style="font-size:10px;color:#d1d5db;line-height:1.55;margin-bottom:10px;padding:7px 10px;background:' + _fibDBg + ';border:1px solid ' + _fibDBorder + ';border-radius:8px">';
-        html += '<span style="color:' + _fibDColor + ';font-weight:600">Fib Confluence:</span> ' + escapeHtml(r.fib_confluence_label) + '<br>';
-        if (r.fib_confluence_note) html += '<span style="color:#94a3b8">Note:</span> ' + escapeHtml(r.fib_confluence_note) + '<br>';
-        if (r.fib_nearest_label && r.fib_nearest_level) html += '<span style="color:#94a3b8">Nearest Level:</span> ' + escapeHtml(r.fib_nearest_label) + ' @ ' + (r.fib_nearest_level ? r.fib_nearest_level.toLocaleString('id-ID') : '-') + '<br>';
+        var _fibDBorder = r.fib_confluence_status === 'confluence_sehat' ? 'rgba(16,185,129,0.12)' : (r.fib_confluence_status === 'di_atas_fib' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)');
+        html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:14px;padding:10px 12px;background:' + _fibDBg + ';border:1px solid ' + _fibDBorder + ';border-radius:10px">';
+        html += '<div style="color:' + _fibDColor + ';font-weight:700;margin-bottom:4px;font-size:11px">Fib Confluence</div>';
+        html += '<div style="font-size:10px">' + escapeHtml(r.fib_confluence_label) + '</div>';
+        if (r.fib_confluence_note) html += '<div style="font-size:10px;color:#9ca3af;margin-top:2px">' + escapeHtml(r.fib_confluence_note) + '</div>';
+        if (r.fib_nearest_label && r.fib_nearest_level) html += '<div style="font-size:10px;color:#9ca3af;margin-top:2px">Nearest: ' + escapeHtml(r.fib_nearest_label) + ' @ ' + (r.fib_nearest_level ? r.fib_nearest_level.toLocaleString('id-ID') : '-') + '</div>';
         if (r.fib_levels) {
             var _flParts = [];
             if (r.fib_levels.fib_382) _flParts.push('38.2%: ' + r.fib_levels.fib_382.toLocaleString('id-ID'));
             if (r.fib_levels.fib_500) _flParts.push('50%: ' + r.fib_levels.fib_500.toLocaleString('id-ID'));
             if (r.fib_levels.fib_618) _flParts.push('61.8%: ' + r.fib_levels.fib_618.toLocaleString('id-ID'));
-            if (_flParts.length) html += '<span style="color:#94a3b8">Levels:</span> ' + _flParts.join(' · ');
+            if (_flParts.length) html += '<div style="font-size:10px;color:#9ca3af;margin-top:2px">Levels: ' + _flParts.join(' · ') + '</div>';
         }
         html += '</div>';
     }
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">';
-    html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 1</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e1 + '</div></div>';
-    html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#6b9fd8;margin-bottom:3px">Entry 2</div><div style="font-size:13px;font-weight:700;color:#93c5fd">' + e2 + '</div></div>';
-    html += '<div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#d87171;margin-bottom:3px">Stop Loss</div><div style="font-size:13px;font-weight:700;color:#fca5a5">' + slVal + '</div></div>';
-    html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#4ead8a;margin-bottom:3px">Target 1</div><div style="font-size:13px;font-weight:700;color:#6ee7b7">' + t1 + '</div></div>';
-    html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#4ead8a;margin-bottom:3px">Target 2</div><div style="font-size:13px;font-weight:700;color:#6ee7b7">' + t2 + '</div></div>';
-    html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#a78bfa;margin-bottom:3px">R/R</div><div style="font-size:13px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
-    html += '</div>';
+    // --- TRADING PLAN LEVELS (Premium grouped layout) ---
+    html += '<div style="margin-bottom:16px;padding:14px;background:rgba(15,23,42,0.4);border:1px solid #1c2333;border-radius:12px">';
+    html += '<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Trading Plan</div>';
+    html += '<div class="scr-detail-levels" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+    html += '<div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#6b9fd8;margin-bottom:4px;font-weight:500">Entry 1</div><div style="font-size:15px;font-weight:700;color:#93c5fd">' + e1 + '</div></div>';
+    html += '<div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#6b9fd8;margin-bottom:4px;font-weight:500">Entry 2</div><div style="font-size:15px;font-weight:700;color:#93c5fd">' + e2 + '</div></div>';
+    html += '<div style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#d87171;margin-bottom:4px;font-weight:500">Stop Loss</div><div style="font-size:15px;font-weight:700;color:#fca5a5">' + slVal + '</div></div>';
+    html += '<div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#4ead8a;margin-bottom:4px;font-weight:500">Target 1</div><div style="font-size:15px;font-weight:700;color:#6ee7b7">' + t1 + '</div></div>';
+    html += '<div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#4ead8a;margin-bottom:4px;font-weight:500">Target 2</div><div style="font-size:15px;font-weight:700;color:#6ee7b7">' + t2 + '</div></div>';
+    html += '<div style="background:rgba(139,92,246,0.05);border:1px solid rgba(139,92,246,0.18);border-radius:10px;padding:10px 12px"><div style="font-size:9px;color:#a78bfa;margin-bottom:4px;font-weight:500">Risk / Reward</div><div style="font-size:15px;font-weight:700;color:#c4b5fd">' + rrVal + '</div></div>';
+    html += '</div></div>';
     // Setup reasoning
-    html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:10px">' + escapeHtml(r.status_reason || r.notes || '-') + '</div>';
+    if (r.status_reason || r.notes) html += '<div style="font-size:11px;color:#d1d5db;line-height:1.55;margin-bottom:14px;word-break:break-word">' + escapeHtml(r.status_reason || r.notes || '-') + '</div>';
     var _top5Reason = r.top5_reason || r.telegram_pick_reason || r.pick_reason || r.reason || r.grade_reason || r.status_reason || r.notes;
-    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.15);border-radius:8px">';
-    html += '<div style="font-size:9px;font-weight:700;color:#6ee7b7;margin-bottom:4px">ALASAN MASUK TOP 5</div>';
-    html += '<div style="font-size:10px;color:#d1d5db;line-height:1.45">' + escapeHtml(_top5Reason || 'Skor, RR, likuiditas, dan level plan relatif lebih kuat dibanding kandidat lain hari ini.') + '</div></div>';
+    html += '<div style="margin-bottom:14px;padding:10px 12px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.12);border-radius:10px">';
+    html += '<div style="font-size:10px;font-weight:700;color:#6ee7b7;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px">Alasan Masuk Top 5</div>';
+    html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;word-break:break-word">' + escapeHtml(_top5Reason || 'Skor, RR, likuiditas, dan level plan relatif lebih kuat dibanding kandidat lain hari ini.') + '</div></div>';
     var execLineDetail = dashExecutionRealityLine(r);
     var realismLineDetail = dashTpRealismLine(r);
     if (execLineDetail || realismLineDetail || r.entry_basis_note || r.ara_price || r.arb_price) {
-      html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.15);border-radius:8px">';
-      html += '<div style="font-size:9px;font-weight:600;color:#6ee7b7;margin-bottom:4px">EXECUTION REALITY</div>';
-      if (r.entry_basis_note) html += '<div style="font-size:10px;color:#d1d5db">Entry Basis: ' + escapeHtml(r.entry_basis_note) + '</div>';
-      if (r.ara_price || r.arb_price) html += '<div style="font-size:10px;color:#d1d5db">ARA/ARB: ' + dashFmtPrice(r.ara_price) + ' / ' + dashFmtPrice(r.arb_price) + '</div>';
-      else if (r.ara_arb_source === 'missing_reference' || /belum tersedia/i.test(r.tp_realism_note || '')) html += '<div style="font-size:10px;color:#d1d5db">ARA/ARB: Belum tersedia</div>';
-      if (execLineDetail) html += '<div style="font-size:10px;color:#d1d5db">' + escapeHtml(execLineDetail) + '</div>';
-      if (realismLineDetail) html += '<div style="font-size:10px;color:#fbbf24">TP Realism: ' + escapeHtml(realismLineDetail) + '</div>';
-      html += '</div>';
+      html += '<div style="margin-bottom:14px;padding:10px 12px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.12);border-radius:10px">';
+      html += '<div style="font-size:10px;font-weight:700;color:#6ee7b7;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.5px">Execution Reality</div>';
+      html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6">';
+      if (r.entry_basis_note) html += '<div>Entry Basis: ' + escapeHtml(r.entry_basis_note) + '</div>';
+      if (r.ara_price || r.arb_price) html += '<div>ARA/ARB: ' + dashFmtPrice(r.ara_price) + ' / ' + dashFmtPrice(r.arb_price) + '</div>';
+      else if (r.ara_arb_source === 'missing_reference' || /belum tersedia/i.test(r.tp_realism_note || '')) html += '<div>ARA/ARB: Belum tersedia</div>';
+      if (execLineDetail) html += '<div>' + escapeHtml(execLineDetail) + '</div>';
+      if (realismLineDetail) html += '<div style="color:#fbbf24">TP Realism: ' + escapeHtml(realismLineDetail) + '</div>';
+      html += '</div></div>';
     }
     html += buildConfluenceHtml(r, type === 'konglo' || type === 'nonkonglo');
     // Timeframe context section
-    html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.12);border-radius:8px">';
-    html += '<div style="font-size:9px;font-weight:600;color:#60a5fa;margin-bottom:4px">TIMEFRAME</div>';
+    html += '<div style="margin-bottom:14px;padding:10px 12px;background:rgba(59,130,246,0.03);border:1px solid rgba(59,130,246,0.1);border-radius:10px">';
+    html += '<div style="font-size:10px;font-weight:700;color:#60a5fa;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Timeframe Context</div>';
     var _dailyCtx = r.tf_1d_context || r.daily_candle_context || r.candle_pattern || (r.candle_note ? r.candle_note.substring(0, 40) : null) || 'Belum cukup data';
     var _tf2d = r.tf_2d_context || 'Belum cukup data';
     var _tf3d = r.tf_3d_context || 'Belum cukup data';
     var _tf5d = r.tf_5d_context || r.weekly_candle_context || 'Belum cukup data';
     var _tf10d = r.tf_10d_context || 'Belum cukup data';
     var _tf20d = r.tf_20d_context || r.monthly_candle_context || 'Belum cukup data';
-    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">1D:</span> ' + escapeHtml(_dailyCtx) + '</div>';
-    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">2D:</span> ' + escapeHtml(_tf2d) + '</div>';
-    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">3D:</span> ' + escapeHtml(_tf3d) + '</div>';
-    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">5D Approx:</span> ' + escapeHtml(_tf5d) + '</div>';
-    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">10D:</span> ' + escapeHtml(_tf10d) + '</div>';
-    html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:2px"><span style="color:#6b7280">20D Approx:</span> ' + escapeHtml(_tf20d) + '</div>';
-    if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown') { var _mtbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); html += '<div style="font-size:10px;margin-top:3px"><span style="color:#6b7280">MTF:</span> <span style="color:' + _mtbC + ';font-weight:600">' + escapeHtml(r.multi_timeframe_bias) + '</span></div>'; }
-    if (r.multi_timeframe_notes) html += '<div style="font-size:9px;color:#6b7280;margin-top:2px">' + escapeHtml(r.multi_timeframe_notes) + '</div>';
+    html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:11px;color:#d1d5db">';
+    html += '<span style="color:#6b7280;font-weight:500">1D:</span><span style="word-break:break-word">' + escapeHtml(_dailyCtx) + '</span>';
+    html += '<span style="color:#6b7280;font-weight:500">2D:</span><span style="word-break:break-word">' + escapeHtml(_tf2d) + '</span>';
+    html += '<span style="color:#6b7280;font-weight:500">3D:</span><span style="word-break:break-word">' + escapeHtml(_tf3d) + '</span>';
+    html += '<span style="color:#6b7280;font-weight:500">5D:</span><span style="word-break:break-word">' + escapeHtml(_tf5d) + '</span>';
+    html += '<span style="color:#6b7280;font-weight:500">10D:</span><span style="word-break:break-word">' + escapeHtml(_tf10d) + '</span>';
+    html += '<span style="color:#6b7280;font-weight:500">20D:</span><span style="word-break:break-word">' + escapeHtml(_tf20d) + '</span>';
+    html += '</div>';
+    if (r.multi_timeframe_bias && r.multi_timeframe_bias !== 'unknown') { var _mtbC = r.multi_timeframe_bias === 'bullish' ? '#6ee7b7' : (r.multi_timeframe_bias === 'bearish' ? '#fca5a5' : '#fbbf24'); html += '<div style="font-size:11px;margin-top:6px"><span style="color:#6b7280">MTF Bias:</span> <span style="color:' + _mtbC + ';font-weight:600">' + escapeHtml(r.multi_timeframe_bias) + '</span></div>'; }
+    if (r.multi_timeframe_notes) html += '<div style="font-size:10px;color:#6b7280;margin-top:3px;word-break:break-word">' + escapeHtml(r.multi_timeframe_notes) + '</div>';
     html += '</div>';
     // Risk notes section
     if (r.risk_notes_v2 || r.risk_notes || getRiskLabel(r)) {
       var _rnRisk = getRiskLabel(r);
       var _rnBgC = _rnRisk === 'Low Risk' ? '16,185,129' : (_rnRisk === 'Medium Risk' ? '234,179,8' : '239,68,68');
-      html += '<div style="margin-bottom:10px;padding:8px 10px;background:rgba(' + _rnBgC + ',0.04);border:1px solid rgba(' + _rnBgC + ',0.15);border-radius:8px">';
-      html += '<div style="font-size:9px;font-weight:600;color:' + _rlCol + ';margin-bottom:3px">RISK v2: ' + escapeHtml(_rnRisk || '-') + '</div>';
+      html += '<div style="margin-bottom:14px;padding:10px 12px;background:rgba(' + _rnBgC + ',0.04);border:1px solid rgba(' + _rnBgC + ',0.12);border-radius:10px">';
+      html += '<div style="font-size:10px;font-weight:700;color:' + _rlCol + ';margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px">Risk: ' + escapeHtml(_rnRisk || '-') + '</div>';
       var _rn = r.risk_notes_v2 || (r.risk_factors_v2 && r.risk_factors_v2.join ? r.risk_factors_v2.join('; ') : '') || (r.risk_notes ? (typeof r.risk_notes === 'string' ? r.risk_notes : (r.risk_notes.join ? r.risk_notes.join('; ') : '')) : 'Tidak ada faktor risiko signifikan.');
-      html += '<div style="font-size:10px;color:#9ca3af">' + escapeHtml(_rn) + '</div>';
+      html += '<div style="font-size:11px;color:#9ca3af;line-height:1.5;word-break:break-word">' + escapeHtml(_rn) + '</div>';
       html += '</div>';
     }
     // Technical context (candle, gap, zone, refinement)
-    if (r.candle_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Candle:</span> ' + escapeHtml(r.candle_note) + '</div>';
-    if (r.gap_note) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Gap:</span> ' + escapeHtml(r.gap_note) + '</div>';
-    if (isLoggedInUser() && r.respect_zone_notes) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Zone:</span> ' + escapeHtml(r.respect_zone_notes) + '</div>';
-    if (isLoggedInUser() && r.half_candle_level) html += '<div style="font-size:10px;color:#fbbf24;margin-bottom:4px"><span style="color:#6b7280">1/2 Candle:</span> ' + escapeHtml((r.half_candle_label || 'Entry pullback 1/2 candle') + ' @ ' + r.half_candle_level) + '</div>';
+    var _hasTechCtx = r.candle_note || r.gap_note || (isLoggedInUser() && r.respect_zone_notes) || (isLoggedInUser() && r.half_candle_level) || (isLoggedInUser() && r.refinement_notes);
+    if (_hasTechCtx) {
+      html += '<div style="margin-bottom:14px;padding:10px 12px;background:rgba(30,35,50,0.3);border:1px solid #1c2333;border-radius:10px">';
+      html += '<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Technical Context</div>';
+      html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:11px;color:#d1d5db">';
+      if (r.candle_note) html += '<span style="color:#6b7280;font-weight:500">Candle:</span><span style="word-break:break-word">' + escapeHtml(r.candle_note) + '</span>';
+      if (r.gap_note) html += '<span style="color:#6b7280;font-weight:500">Gap:</span><span style="word-break:break-word">' + escapeHtml(r.gap_note) + '</span>';
+      if (isLoggedInUser() && r.respect_zone_notes) html += '<span style="color:#6b7280;font-weight:500">Zone:</span><span style="word-break:break-word">' + escapeHtml(r.respect_zone_notes) + '</span>';
+      if (isLoggedInUser() && r.half_candle_level) html += '<span style="color:#6b7280;font-weight:500">1/2 Candle:</span><span style="color:#fbbf24">' + escapeHtml((r.half_candle_label || 'Entry pullback 1/2 candle') + ' @ ' + r.half_candle_level) + '</span>';
+      if (isLoggedInUser() && r.refinement_notes) html += '<span style="color:#6b7280;font-weight:500">Level:</span><span style="color:#60a5fa;word-break:break-word">' + escapeHtml(r.refinement_notes) + '</span>';
+      html += '</div></div>';
+    }
     if (isLoggedInUser() && r.respect_quality_label) {
       var _rqFactors = (r.respect_quality_factors && r.respect_quality_factors.slice) ? r.respect_quality_factors.slice(0, 4) : [];
-      html += '<div style="font-size:10px;color:#d1d5db;margin-bottom:4px;padding:7px 10px;background:rgba(251,191,36,0.04);border:1px solid rgba(251,191,36,0.16);border-radius:8px"><span style="color:#fbbf24;font-weight:600">Respect v2:</span> ' + escapeHtml(r.respect_quality_label + (r.respect_quality_score != null ? ' (' + r.respect_quality_score + '/100)' : '')) + (_rqFactors.length ? '<br><span style="color:#94a3b8">Factors:</span> ' + escapeHtml(_rqFactors.join('; ')) : '') + (r.respect_invalid_reason ? '<br><span style="color:#fca5a5">Invalid:</span> ' + escapeHtml(r.respect_invalid_reason) : '') + (r.bearish_respect_warning ? '<br><span style="color:#fca5a5">IDX long-only:</span> ' + escapeHtml(r.bearish_respect_warning) : '') + '</div>';
+      html += '<div style="font-size:11px;color:#d1d5db;margin-bottom:14px;padding:10px 12px;background:rgba(251,191,36,0.03);border:1px solid rgba(251,191,36,0.12);border-radius:10px"><div style="color:#fbbf24;font-weight:700;margin-bottom:3px;font-size:10px">Respect v2</div>' + escapeHtml(r.respect_quality_label + (r.respect_quality_score != null ? ' (' + r.respect_quality_score + '/100)' : '')) + (_rqFactors.length ? '<div style="color:#94a3b8;margin-top:3px;font-size:10px">Factors: ' + escapeHtml(_rqFactors.join('; ')) + '</div>' : '') + (r.respect_invalid_reason ? '<div style="color:#fca5a5;margin-top:3px;font-size:10px">Invalid: ' + escapeHtml(r.respect_invalid_reason) + '</div>' : '') + (r.bearish_respect_warning ? '<div style="color:#fca5a5;margin-top:3px;font-size:10px">IDX long-only: ' + escapeHtml(r.bearish_respect_warning) + '</div>' : '') + '</div>';
     }
-    if (isLoggedInUser() && r.refinement_notes) html += '<div style="font-size:10px;color:#60a5fa;margin-bottom:4px"><span style="color:#6b7280">Level:</span> ' + escapeHtml(r.refinement_notes) + '</div>';
     // BSJP + Timing + Direction
-    if (r.bsjp_label) html += '<div style="font-size:11px;color:#fbbf24;margin-bottom:8px;padding:6px 10px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:8px;font-weight:500">' + escapeHtml(r.bsjp_label) + '</div>';
-    if (r.entry_timing || r.time_plan) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:4px"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.entry_timing || r.time_plan) + '</div>';
-    if (r.direction) html += '<div style="font-size:10px;color:#9ca3af;margin-bottom:6px"><span style="color:#6b7280">Arah:</span> ' + escapeHtml(r.direction) + '</div>';
+    if (r.bsjp_label) html += '<div style="font-size:11px;color:#fbbf24;margin-bottom:10px;padding:8px 12px;background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.15);border-radius:10px;font-weight:600">' + escapeHtml(r.bsjp_label) + '</div>';
+    if (r.entry_timing || r.time_plan || r.direction) {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;font-size:11px">';
+      if (r.entry_timing || r.time_plan) html += '<span style="color:#9ca3af;background:rgba(30,35,50,0.5);padding:4px 10px;border-radius:6px;border:1px solid #222a3a"><span style="color:#6b7280">Timing:</span> ' + escapeHtml(r.entry_timing || r.time_plan) + '</span>';
+      if (r.direction) html += '<span style="color:#9ca3af;background:rgba(30,35,50,0.5);padding:4px 10px;border-radius:6px;border:1px solid #222a3a"><span style="color:#6b7280">Arah:</span> ' + escapeHtml(r.direction) + '</span>';
+      html += '</div>';
+    }
     // Contextual warning by type
     var warningText = type === 'daytrade' ? 'Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.' : 'Swing screener berbasis analisis teknikal harian. Entry bertahap dan konfirmasi manual tetap wajib.';
-    html += '<div style="font-size:9px;color:#6b7280;margin-bottom:14px;padding:8px;background:rgba(234,179,8,0.05);border:1px solid rgba(234,179,8,0.15);border-radius:8px">' + warningText + '</div>';
-    html += '<div style="display:flex;gap:8px"><button onclick="closeScrDetail()" style="flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:500;color:#9ca3af;background:#1a1f2b;border:1px solid #2a3444;cursor:pointer">Tutup</button><button onclick="closeScrDetail();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" style="flex:1;padding:9px;border-radius:8px;font-size:12px;font-weight:600;color:#6ee7b7;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);cursor:pointer">Buka Chart</button></div>';
+    html += '<div style="font-size:10px;color:#6b7280;margin-bottom:16px;padding:10px 12px;background:rgba(234,179,8,0.04);border:1px solid rgba(234,179,8,0.1);border-radius:10px;line-height:1.4">' + warningText + '</div>';
+    // Buttons
+    html += '<div style="display:flex;gap:10px"><button onclick="closeScrDetail()" style="flex:1;padding:12px;border-radius:10px;font-size:13px;font-weight:500;color:#9ca3af;background:#1a1f2b;border:1px solid #2a3444;cursor:pointer;transition:background .2s">Tutup</button><button onclick="closeScrDetail();navigateTo(\'chart\');setTimeout(function(){var i=document.getElementById(\'chartTickerInput\');if(i){i.value=\'' + escapeHtml(r.ticker) + '\';loadChartPage();}},200)" style="flex:1;padding:12px;border-radius:10px;font-size:13px;font-weight:600;color:#6ee7b7;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);cursor:pointer;transition:background .2s">Buka Chart</button></div>';
     document.getElementById('scrDetailContent').innerHTML = html;
     modal.classList.remove('hidden');
 }
