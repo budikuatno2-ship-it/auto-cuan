@@ -585,43 +585,96 @@ function buildDeterministicPayload(ticker, candles, opts) {
 // AI SYSTEM AND USER PROMPTS
 // ============================================================
 
-const SYSTEM_PROMPT = `You are an IDX stock technical research analyst. Your job is to explain technical context from the provided deterministic data. You are not allowed to invent prices, indicators, or events. You are not allowed to override deterministic safety gates. You must not give aggressive buy calls. Treat this as research, not financial advice. If data is stale, incomplete, or conflicting, clearly mark needs_revalidation. Return strict valid JSON only. No markdown. No extra prose outside JSON.`;
+const SYSTEM_PROMPT = `Kamu adalah analis riset teknikal saham IDX yang mendalam. Tugasmu menjelaskan konteks teknikal secara detail dari data deterministik yang diberikan.
 
-const USER_PROMPT_TEMPLATE = `Analyze this IDX ticker using the structured technical data below.
+Aturan ketat:
+- TIDAK boleh mengarang harga, indikator, atau kejadian.
+- TIDAK boleh meng-override safety gate deterministik.
+- TIDAK boleh memberi rekomendasi beli agresif.
+- Perlakukan ini sebagai riset, bukan nasihat keuangan.
+- Jika data stale, tidak lengkap, atau kontradiktif, tandai needs_revalidation.
 
-Important rules:
-- Use only the provided data.
-- Explain in detail, but stay structured.
-- Separate deterministic facts from interpretation.
-- If entry is risky, say so clearly.
-- If setup is only watchlist, do not call it buy.
-- If candle or volume confirmation is weak, say it needs confirmation.
-- Mention demand/supply, trend, momentum, volume, candle behavior, invalidation, and watch conditions.
-- Return strict JSON only.
+Analisis wajib mencakup:
+- Pola candle / candlestick pattern (engulfing, hammer, doji, marubozu, dll)
+- Bentuk candle terakhir: body, upper wick, lower wick, arah candle (bullish/bearish/doji)
+- Urutan candle terakhir (recent candle sequence direction)
+- Respect candle: apakah zona di-respect melalui wick rejection/recovery ATAU body close. Zona bisa di-respect oleh wick rejection/recovery meskipun body tidak close tepat di level, selama bukti OHLCV deterministik mendukungnya. Jangan treat body-only close sebagai satu-satunya sinyal respect yang valid.
+- Rejection candle: upper shadow dominan, close di bawah zona supply
+- Recovery candle: lower wick panjang, close di atas zona demand
+- Demand/supply reaction: bagaimana harga bereaksi saat mendekati zona
+- Gap / half-candle debt jika ada: apakah ada gap yang belum tertutup atau area 1/2 candle yang belum dibayar
+- Volume behavior vs avg volume: apakah volume konfirmasi atau divergensi
+- Struktur harga 90D/60D/30D: posisi harga relatif terhadap range dan trend
+- Support/resistance dan PoC context: level kunci dan area konsentrasi volume
+- Potensi breakout/fakeout/retest: apakah setup mengarah ke breakout valid atau risiko fakeout
+- Fibonacci retracement/confluence: jika data Fib deterministik tersedia, gunakan sebagai konteks tambahan untuk area entry/pullback/retracement. Fibonacci adalah konteks pendukung, bukan faktor dominan.
+- Invalidation level dan watch conditions yang jelas
 
-Required JSON schema:
+Basis quality_score (0-100):
+quality_score WAJIB didasarkan HANYA pada bukti teknikal dari data deterministik:
+- Candlestick body, upper/lower wick, arah candle, urutan candle terakhir
+- Perilaku respect/rejection/recovery (termasuk wick-based respect)
+- Reaksi demand-supply
+- Gap atau half-candle debt
+- Konfirmasi volume
+- Trend dan momentum
+- Support-resistance, PoC/volume profile
+- Fibonacci retracement/confluence (konteks pendukung, tidak boleh mendominasi score)
+- Risk:Reward ratio
+- Risiko invalidation
+JANGAN score berdasarkan hype, opini, atau prediksi.
+
+Jawab dalam Bahasa Indonesia. Kembalikan strict valid JSON saja. Tanpa markdown. Tanpa teks tambahan di luar JSON.`;
+
+const USER_PROMPT_TEMPLATE = `Analisis ticker IDX ini menggunakan data teknikal terstruktur di bawah.
+
+Aturan penting:
+- Gunakan HANYA data yang disediakan.
+- Jelaskan secara detail dan mendalam, tetap terstruktur.
+- Pisahkan fakta deterministik dari interpretasi.
+- Jika entry berisiko, sampaikan dengan jelas.
+- Jika setup hanya watchlist, jangan sebut beli.
+- Jika konfirmasi candle atau volume lemah, katakan butuh konfirmasi.
+- Jawab dalam Bahasa Indonesia.
+- Kembalikan strict JSON saja.
+
+Analisis WAJIB mencakup dalam technical_breakdown:
+1. candle_structure_view: pola candle, bentuk candle terakhir (body/wick), arah, respect/rejection/recovery behavior. Respect candle harus mempertimbangkan body DAN wick behavior — zona bisa di-respect via wick rejection/recovery meskipun body tidak close tepat di level.
+2. demand_support_view: reaksi demand-supply, gap/half-candle debt jika ada
+3. supply_resistance_view: resistensi, PoC, potensi breakout/fakeout/retest
+4. volume_view: volume vs rata-rata, konfirmasi atau divergensi
+5. trend_view: struktur harga 90D/60D/30D, posisi relatif
+6. momentum_view: RSI, momentum candle sequence
+7. entry_view: area entry, konfirmasi yang dibutuhkan, Fibonacci retracement/confluence sebagai konteks pendukung jika data Fib tersedia
+8. risk_reward_view: RR, invalidation level, risiko
+
+quality_score (0-100) WAJIB berdasarkan HANYA bukti teknikal deterministik:
+candlestick body/wick/direction, respect/rejection/recovery (termasuk wick-based), demand-supply reaction, gap/half-candle debt, volume confirmation, trend, momentum, support-resistance, PoC, Fibonacci (konteks pendukung saja), RR, dan invalidation risk.
+JANGAN score berdasarkan hype, opini, atau prediksi.
+
+Skema JSON wajib:
 {
   "ticker": "string",
   "model": "string",
   "analysis_date": "YYYY-MM-DD",
   "data_quality": {
     "status": "fresh|stale|incomplete|unknown",
-    "notes": ["string"]
+    "notes": ["string (Bahasa Indonesia)"]
   },
   "bias": "bullish|neutral|bearish|mixed",
   "setup_type": "breakout|pullback|reversal|continuation|consolidation|avoid|watchlist|unknown",
   "quality_score": 0-100,
   "risk_level": "Low|Medium|High|Very High",
-  "executive_summary": "string",
+  "executive_summary": "string (Bahasa Indonesia)",
   "technical_breakdown": {
-    "trend_view": "string",
-    "momentum_view": "string",
-    "volume_view": "string",
-    "candle_structure_view": "string",
-    "demand_support_view": "string",
-    "supply_resistance_view": "string",
-    "entry_view": "string",
-    "risk_reward_view": "string"
+    "trend_view": "string (Bahasa Indonesia, detail struktur 90D/60D/30D)",
+    "momentum_view": "string (Bahasa Indonesia, RSI + candle sequence)",
+    "volume_view": "string (Bahasa Indonesia, volume vs avg + konfirmasi)",
+    "candle_structure_view": "string (Bahasa Indonesia, pola + bentuk + respect/rejection/recovery + wick behavior)",
+    "demand_support_view": "string (Bahasa Indonesia, reaksi demand + gap/half-candle debt)",
+    "supply_resistance_view": "string (Bahasa Indonesia, resistensi + PoC + breakout/fakeout)",
+    "entry_view": "string (Bahasa Indonesia, area entry + konfirmasi)",
+    "risk_reward_view": "string (Bahasa Indonesia, RR + invalidation)"
   },
   "key_levels": {
     "entry1": "number|null",
@@ -633,13 +686,13 @@ Required JSON schema:
     "major_supply": "number|null",
     "poc": "number|null"
   },
-  "bullish_arguments": ["string"],
-  "bearish_arguments": ["string"],
-  "invalidations": ["string"],
-  "watch_conditions": ["string"],
-  "notable_risks": ["string"],
-  "final_verdict": "string",
-  "short_telegram_style_summary": "string",
+  "bullish_arguments": ["string (Bahasa Indonesia)"],
+  "bearish_arguments": ["string (Bahasa Indonesia)"],
+  "invalidations": ["string (Bahasa Indonesia)"],
+  "watch_conditions": ["string (Bahasa Indonesia)"],
+  "notable_risks": ["string (Bahasa Indonesia)"],
+  "final_verdict": "string (Bahasa Indonesia)",
+  "short_telegram_style_summary": "string (Bahasa Indonesia)",
   "not_financial_advice": true
 }
 
@@ -966,59 +1019,113 @@ function csvEscape(str) {
 
 async function writeSummaryMD(outputDir, results, report) {
   const lines = [];
-  lines.push('# AI Research Summary - ' + getDateStr());
+  lines.push('# Ringkasan Riset AI - ' + getDateStr());
   lines.push('');
-  lines.push('## Run Report');
-  lines.push('- Total tickers: ' + report.total_tickers);
-  lines.push('- Total models: ' + report.total_models);
-  lines.push('- Total jobs: ' + report.total_jobs);
-  lines.push('- Completed: ' + report.completed_jobs);
-  lines.push('- Failed: ' + report.failed_jobs);
-  lines.push('- Skipped: ' + report.skipped_jobs);
+  lines.push('## Laporan Run');
+  lines.push('- Total ticker: ' + report.total_tickers);
+  lines.push('- Total model: ' + report.total_models);
+  lines.push('- Total job: ' + report.total_jobs);
+  lines.push('- Selesai: ' + report.completed_jobs);
+  lines.push('- Gagal: ' + report.failed_jobs);
+  lines.push('- Dilewati: ' + report.skipped_jobs);
   lines.push('');
 
-  // Best quality score
+  // --- Detailed per-ticker analysis ---
   const scored = results.filter(r => r.ai_result && r.ai_result.quality_score);
   scored.sort((a, b) => (b.ai_result.quality_score || 0) - (a.ai_result.quality_score || 0));
-  lines.push('## Top Quality Scores');
-  lines.push('');
-  lines.push('| Ticker | Model | Score | Bias | Setup | Verdict |');
-  lines.push('|--------|-------|-------|------|-------|---------|');
-  for (const r of scored.slice(0, 20)) {
-    const ai = r.ai_result;
-    lines.push('| ' + r.ticker + ' | ' + r.model + ' | ' + ai.quality_score +
-      ' | ' + ai.bias + ' | ' + ai.setup_type + ' | ' + (ai.final_verdict || '').slice(0, 60) + ' |');
-  }
+
+  lines.push('## Analisis Detail Per Ticker');
   lines.push('');
 
-  // Bullish/watchlist candidates
+  for (const r of scored) {
+    const ai = r.ai_result;
+    const tb = ai.technical_breakdown || {};
+    const kl = ai.key_levels || {};
+    lines.push('### ' + r.ticker + ' (' + r.model + ')');
+    lines.push('');
+    lines.push('| Field | Value |');
+    lines.push('|-------|-------|');
+    lines.push('| Score | ' + (ai.quality_score || '-') + ' |');
+    lines.push('| Bias | ' + (ai.bias || '-') + ' |');
+    lines.push('| Setup | ' + (ai.setup_type || '-') + ' |');
+    lines.push('| Risk Level | ' + (ai.risk_level || '-') + ' |');
+    lines.push('| Entry 1 | ' + (kl.entry1 || '-') + ' |');
+    lines.push('| Entry 2 | ' + (kl.entry2 || '-') + ' |');
+    lines.push('| Stop Loss | ' + (kl.stop_loss || '-') + ' |');
+    lines.push('| TP1 | ' + (kl.tp1 || '-') + ' |');
+    lines.push('| TP2 | ' + (kl.tp2 || '-') + ' |');
+    lines.push('| Demand | ' + (kl.major_demand || '-') + ' |');
+    lines.push('| Supply | ' + (kl.major_supply || '-') + ' |');
+    lines.push('| PoC | ' + (kl.poc || '-') + ' |');
+    lines.push('');
+    lines.push('**Ringkasan:** ' + (ai.executive_summary || '-'));
+    lines.push('');
+    if (tb.candle_structure_view) lines.push('**Candle & Pattern:** ' + tb.candle_structure_view);
+    lines.push('');
+    if (tb.demand_support_view) lines.push('**Demand & Supply:** ' + tb.demand_support_view);
+    if (tb.supply_resistance_view) lines.push('**Resistance & Breakout/Fakeout:** ' + tb.supply_resistance_view);
+    lines.push('');
+    if (tb.volume_view) lines.push('**Volume:** ' + tb.volume_view);
+    lines.push('');
+    if (tb.trend_view) lines.push('**Trend / Momentum:** ' + tb.trend_view);
+    if (tb.momentum_view) lines.push('**Momentum Detail:** ' + tb.momentum_view);
+    lines.push('');
+    if (tb.entry_view) lines.push('**Potensi Setup:** ' + tb.entry_view);
+    if (tb.risk_reward_view) lines.push('**Risk/Reward:** ' + tb.risk_reward_view);
+    // Fibonacci context from deterministic payload (if available)
+    const fibLabel = (r.deterministic_summary && r.deterministic_summary.fib_confluence) || (ai.technical_breakdown && ai.technical_breakdown.entry_view && ai.technical_breakdown.entry_view.toLowerCase().includes('fib'));
+    const fibLevels = r.deterministic_summary && r.deterministic_summary.fib_levels;
+    if (fibLabel || fibLevels) {
+      let fibLine = '';
+      if (typeof fibLabel === 'string') fibLine = fibLabel;
+      if (fibLevels) fibLine += (fibLine ? ' | ' : '') + 'Fib 38.2%=' + (fibLevels.fib_382 || '-') + ', 50%=' + (fibLevels.fib_500 || '-') + ', 61.8%=' + (fibLevels.fib_618 || '-');
+      lines.push('**Fibonacci / Retracement Context:** ' + (fibLine || 'Data Fib tersedia di payload'));
+    }
+    lines.push('');
+    if (ai.invalidations && ai.invalidations.length) {
+      lines.push('**Invalidation:** ' + ai.invalidations.join('; '));
+    }
+    if (ai.watch_conditions && ai.watch_conditions.length) {
+      lines.push('**Watch Conditions:** ' + ai.watch_conditions.join('; '));
+    }
+    if (ai.notable_risks && ai.notable_risks.length) {
+      lines.push('**Risiko:** ' + ai.notable_risks.join('; '));
+    }
+    lines.push('');
+    lines.push('**Final Verdict:** ' + (ai.final_verdict || '-'));
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+  }
+
+  // --- Bullish/watchlist candidates (brief list) ---
   const bullish = results.filter(r => r.ai_result && (r.ai_result.bias === 'bullish' || r.ai_result.setup_type === 'watchlist'));
-  lines.push('## Bullish / Watchlist Candidates (' + bullish.length + ')');
+  lines.push('## Kandidat Bullish / Watchlist (' + bullish.length + ')');
   lines.push('');
-  for (const r of bullish.slice(0, 30)) {
+  for (const r of bullish) {
     const ai = r.ai_result;
-    lines.push('- **' + r.ticker + '** (' + r.model + '): ' + (ai.executive_summary || '').slice(0, 100));
+    lines.push('- **' + r.ticker + '** (' + r.model + ') — Score: ' + (ai.quality_score || '?') + ', ' + (ai.bias || '') + ', ' + (ai.setup_type || ''));
   }
   lines.push('');
 
-  // High-risk avoid
+  // --- High-risk avoid ---
   const avoid = results.filter(r => r.ai_result && (r.ai_result.risk_level === 'Very High' || r.ai_result.setup_type === 'avoid'));
-  lines.push('## High-Risk / Avoid (' + avoid.length + ')');
+  lines.push('## Risiko Tinggi / Hindari (' + avoid.length + ')');
   lines.push('');
-  for (const r of avoid.slice(0, 20)) {
+  for (const r of avoid) {
     const ai = r.ai_result;
-    lines.push('- **' + r.ticker + '** (' + r.model + '): ' + (ai.final_verdict || '').slice(0, 100));
+    lines.push('- **' + r.ticker + '** (' + r.model + '): ' + (ai.final_verdict || '-'));
   }
   lines.push('');
 
-  // Per-model disagreement
+  // --- Per-model disagreement ---
   const byTicker = {};
   for (const r of results) {
     if (!r.ai_result || !r.ai_result.bias) continue;
     if (!byTicker[r.ticker]) byTicker[r.ticker] = {};
     byTicker[r.ticker][r.model] = r.ai_result.bias;
   }
-  lines.push('## Model Disagreements');
+  lines.push('## Perbedaan Antar Model');
   lines.push('');
   for (const [ticker, models] of Object.entries(byTicker)) {
     const biases = [...new Set(Object.values(models))];
@@ -1029,19 +1136,19 @@ async function writeSummaryMD(outputDir, results, report) {
   }
   lines.push('');
 
-  // Failed jobs
+  // --- Failed jobs ---
   const failed = results.filter(r => r.error);
   if (failed.length > 0) {
-    lines.push('## Failed Jobs (' + failed.length + ')');
+    lines.push('## Job Gagal (' + failed.length + ')');
     lines.push('');
-    for (const r of failed.slice(0, 30)) {
-      lines.push('- ' + r.ticker + ' / ' + r.model + ': ' + (r.error || '').slice(0, 100));
+    for (const r of failed.slice(0, 50)) {
+      lines.push('- ' + r.ticker + ' / ' + r.model + ': ' + (r.error || ''));
     }
   }
 
   lines.push('');
   lines.push('---');
-  lines.push('*This is research only, not financial advice. Not a Telegram signal.*');
+  lines.push('*Ini hanya riset, bukan nasihat keuangan. Bukan sinyal Telegram.*');
 
   await fsp.writeFile(path.join(outputDir, 'summary.md'), lines.join('\n') + '\n');
 }
