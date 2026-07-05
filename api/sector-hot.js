@@ -36,6 +36,7 @@ const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
 const fibConfluence = require('../lib/fibonacci-confluence');
 const telegramNotifier = require('../lib/telegram-notifier');
+const aiNarration = require('../lib/ai-narration');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -5178,8 +5179,19 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     if (isWatchlistMode) {
       detailText += '\nStatus: Pantauan — bukan sinyal entry langsung.';
     }
-    var detailResult = await telegramNotifier.sendTelegramMessage(detailText, { timeout_ms: 2500 });
-    detailResults.push({ ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null });
+    // Attempt AI narration for the candidate (new signal / watchlist)
+    var candidateNarrated = null;
+    try {
+      var narType = isWatchlistMode ? 'watchlist' : 'new_signal';
+      var narMode = /day/i.test(safePicks[i].category || '') ? 'daytrade' : (/non.?konglo/i.test(safePicks[i].category || '') ? 'swing_non_konglo' : 'swing');
+      var candidateNarrationResult = await aiNarration.narrateNewSignal(safePicks[i], narMode);
+      if (candidateNarrationResult.text) {
+        candidateNarrated = candidateNarrationResult.text;
+      }
+    } catch (narErr) { /* AI failure never blocks sending */ }
+    var finalDetailText = candidateNarrated || detailText;
+    var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500 });
+    detailResults.push({ ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_narrated: !!candidateNarrated });
     if (detailResult.sent) detailSent++;
   }
 
@@ -6406,6 +6418,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     if (rows.length === 0) return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'daily_picks_not_found', sent_count: 0, checked_count: 0, error: null });
     var lines = [(isFinal ? '🏁' : '⏱') + ' AUTO-CUAN MONITOR ' + hour, ''];
     var shown = 0;
+    var aiNarrationResults = [];
     for (var i = 0; i < rows.length; i++) {
       var pck = rows[i];
       if (!isFinal && pck.is_final) continue;
@@ -6417,18 +6430,40 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) update.hit_tp2_at = update.last_checked_at;
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) update.hit_sl_at = update.last_checked_at;
       await supabase.from('telegram_daily_picks').update(update).eq('id', pck.id);
-      lines.push(pck.ticker + ' — ' + ev.status.replace(/_/g, ' '));
-      lines.push(ev.note + (px.bestEffort ? ' (best effort)' : ''));
-      lines.push('Entry 1: ' + fmtPrice(pck.entry1) + ' · Last: ' + fmtPrice(px.last));
-      lines.push('TP1/TP2: ' + fmtPrice(pck.tp1) + ' / ' + fmtPrice(pck.tp2) + ' · SL: ' + fmtPrice(pck.sl));
-      if (ev.isFinal && !isFinal) lines.push('Status: selesai, tidak akan dimonitor di update berikutnya.');
+
+      // Attempt AI narration for significant status updates
+      var narrated = null;
+      var significantStatuses = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE', 'RUNNING'];
+      if (significantStatuses.indexOf(ev.status) >= 0) {
+        try {
+          var narrationResult = await aiNarration.narrateMonitorUpdate(pck, ev, px);
+          aiNarrationResults.push({ ticker: pck.ticker, status: ev.status, source: narrationResult.source, error: narrationResult.error || null });
+          if (narrationResult.text) {
+            narrated = narrationResult.text;
+          }
+        } catch (narrationErr) {
+          aiNarrationResults.push({ ticker: pck.ticker, status: ev.status, source: 'fallback', error: (narrationErr.message || 'exception').substring(0, 80) });
+        }
+      }
+
+      if (narrated) {
+        // Use AI narrated block (already validated to contain all required data)
+        lines.push(narrated);
+      } else {
+        // Original template (unchanged fallback)
+        lines.push(pck.ticker + ' — ' + ev.status.replace(/_/g, ' '));
+        lines.push(ev.note + (px.bestEffort ? ' (best effort)' : ''));
+        lines.push('Entry 1: ' + fmtPrice(pck.entry1) + ' · Last: ' + fmtPrice(px.last));
+        lines.push('TP1/TP2: ' + fmtPrice(pck.tp1) + ' / ' + fmtPrice(pck.tp2) + ' · SL: ' + fmtPrice(pck.sl));
+        if (ev.isFinal && !isFinal) lines.push('Status: selesai, tidak akan dimonitor di update berikutnya.');
+      }
       lines.push('');
       shown++;
     }
     if (shown === 0) lines.push('Tidak ada ticker aktif yang perlu dimonitor (sudah final).');
     lines.push('Bukan rekomendasi beli/jual. DYOR.');
     var sendResult = await telegramNotifier.sendTelegramMessage(lines.join('\n'));
-    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, sent_count: sendResult.sent ? 1 : 0, checked_count: rows.length, shown_count: shown, error: null, telegram: sendResult });
+    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, sent_count: sendResult.sent ? 1 : 0, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, error: null, telegram: sendResult });
   } catch (e) { return res.status(200).json({ success: false, sent_count: 0, checked_count: 0, error: e.message || String(e) }); }
 }
 
