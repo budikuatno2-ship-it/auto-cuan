@@ -6568,7 +6568,7 @@ async function loadNkScreenerResults() {
             progressEl.classList.add('hidden');
         }
     } catch (e) {
-        tbody.innerHTML = screenerEmptyRowHtml(18, DASHBOARD_ERROR_TEXT, 'error');
+        tbody.innerHTML = screenerEmptyRowHtml(18, DASHBOARD_ERROR_TEXT, 'error', 'loadNkScreenerResults()');
     } finally { _nkScreenerInFlight = null; }
     })();
     return _nkScreenerInFlight;
@@ -7082,9 +7082,10 @@ function dashboardEmptyHtml(message, tone) {
     var retryBtn = tone === 'error' ? '<br><button onclick="loadDashboardTop5Monitor(false, {loadAdminPreview:false})" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button>' : '';
     return '<div class="rounded-xl border ' + cls + ' px-3 py-4 text-center text-xs">' + escapeHtml(message || STRICT_EMPTY_TEXT) + retryBtn + '</div>';
 }
-function screenerEmptyRowHtml(colspan, message, tone) {
+function screenerEmptyRowHtml(colspan, message, tone, retryFn) {
     var color = tone === 'error' ? 'text-red-400' : 'text-gray-500';
-    var retryBtn = tone === 'error' ? '<br><button onclick="loadSwingScreener()" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button>' : '';
+    var retryAction = retryFn || 'loadSwingScreener()';
+    var retryBtn = tone === 'error' ? '<br><button onclick="' + retryAction + '" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button>' : '';
     return '<tr><td colspan="' + Number(colspan || 1) + '" class="text-center py-8 ' + color + '">' + escapeHtml(message || STRICT_EMPTY_TEXT) + retryBtn + '</td></tr>';
 }
 function screenerEmptyCardHtml(message) {
@@ -9166,7 +9167,7 @@ async function loadDayTradeScreener() {
         var data = await response.json();
 
         if (!data.success) {
-            tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error');
+            tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error', 'loadDayTradeScreener()');
             return;
         }
 
@@ -9213,7 +9214,7 @@ async function loadDayTradeScreener() {
         renderDtTable(data.results || []);
         renderDtCardGrid(data.results || []);
     } catch (e) {
-        tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error');
+        tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error', 'loadDayTradeScreener()');
     } finally { _dtScreenerInFlight = null; }
     })();
     return _dtScreenerInFlight;
