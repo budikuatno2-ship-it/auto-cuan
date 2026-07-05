@@ -1030,6 +1030,43 @@ function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 
 // ============================================================
+// CONCURRENT JOB QUEUE (mapLimit)
+// Runs up to `limit` async workers pulling from a shared queue.
+// ============================================================
+
+async function mapLimit(items, limit, worker) {
+  const results = new Array(items.length);
+  let nextIdx = 0;
+  async function runner() {
+    while (nextIdx < items.length) {
+      const idx = nextIdx++;
+      results[idx] = await worker(items[idx], idx);
+    }
+  }
+  const workers = [];
+  for (let i = 0; i < Math.min(limit, items.length); i++) {
+    workers.push(runner());
+  }
+  await Promise.all(workers);
+  return results;
+}
+
+
+// ============================================================
+// WRITE MUTEX — serializes appendJSONL and checkpoint writes
+// so concurrent jobs don't interleave file I/O.
+// ============================================================
+
+function createWriteMutex() {
+  let chain = Promise.resolve();
+  return function serialize(fn) {
+    chain = chain.then(fn, fn);
+    return chain;
+  };
+}
+
+
+// ============================================================
 // MAIN RUNNER
 // ============================================================
 
@@ -1094,130 +1131,135 @@ async function run(cliArgs) {
   for (const m of models) perModelStats[m] = { success: 0, fail: 0 };
   let estimatedTokens = 0;
   const failFast = createFailFastTracker();
+  const writeMutex = createWriteMutex();
 
+  // Cache candles per ticker to avoid refetching in concurrent jobs
+  const candleCache = new Map();
 
-  // Process tickers sequentially (concurrency controls per-ticker model parallelism)
-  for (let ti = 0; ti < tickers.length; ti++) {
-    const ticker = tickers[ti];
-    console.log('[' + (ti + 1) + '/' + tickers.length + '] ' + ticker + '...');
+  // --- Build flat job queue: all ticker × model combinations ---
+  const jobQueue = [];
+  for (const ticker of tickers) {
+    for (const model of models) {
+      jobQueue.push({ ticker, model });
+    }
+  }
+  const totalJobs = jobQueue.length;
 
-    // Fetch candles
-    const candles = await getCandles(ticker, path.resolve(cfg.DAYTRADE_CACHE_DIR));
+  // --- Process all jobs concurrently up to --concurrency ---
+  await mapLimit(jobQueue, concurrency, async (job, jobIdx) => {
+    const { ticker, model } = job;
+    const cpKey = checkpointKey(ticker, model);
+
+    // Fail-fast: skip model if stopped
+    if (failFast.isStopped(model)) {
+      skippedJobs++;
+      return;
+    }
+
+    // Skip if already completed (checkpoint)
+    if (checkpoint.completed[cpKey] && !args.force) {
+      console.log('[' + (jobIdx + 1) + '/' + totalJobs + '] SKIP (checkpoint): ' + ticker + '/' + model);
+      skippedJobs++;
+      return;
+    }
+
+    // Fetch/cache candles (serialized per ticker to avoid duplicate fetches)
+    if (!candleCache.has(ticker)) {
+      const candles = await getCandles(ticker, path.resolve(cfg.DAYTRADE_CACHE_DIR));
+      candleCache.set(ticker, candles);
+    }
+    const candles = candleCache.get(ticker);
+
     if (!candles || candles.length < 20) {
-      console.log('  SKIP: insufficient candle data for ' + ticker);
-      for (const model of models) {
-        const row = { ticker, model, deterministic_summary: null, ai_result: null, raw_response_preview: null, usage: null, error: 'insufficient_candle_data', started_at: new Date().toISOString(), ended_at: new Date().toISOString() };
-        allResults.push(row);
-        await appendJSONL(outputDir, row);
-        failedJobs++;
-        perModelStats[model].fail++;
-      }
-      continue;
+      const row = { ticker, model, deterministic_summary: null, ai_result: null, raw_response_preview: null, usage: null, error: 'insufficient_candle_data', started_at: new Date().toISOString(), ended_at: new Date().toISOString() };
+      await writeMutex(() => appendJSONL(outputDir, row));
+      allResults.push(row);
+      failedJobs++;
+      perModelStats[model].fail++;
+      return;
     }
 
     // Build deterministic payload
     const payload = buildDeterministicPayload(ticker, candles, { includeRawCandles: args.includeRawCandles });
+    const jobStarted = new Date().toISOString();
 
-    // Process each model for this ticker
-    for (const model of models) {
-      const cpKey = checkpointKey(ticker, model);
+    if (args.dryRun) {
+      const row = {
+        ticker, model, deterministic_summary: payload, ai_result: null,
+        raw_response_preview: '[DRY RUN - no API call]',
+        usage: null, error: null,
+        started_at: jobStarted, ended_at: new Date().toISOString()
+      };
+      await writeMutex(() => appendJSONL(outputDir, row));
+      allResults.push(row);
+      completedJobs++;
+      perModelStats[model].success++;
+      console.log('[' + (jobIdx + 1) + '/' + totalJobs + '] DRY RUN: ' + ticker + '/' + model);
+      return;
+    }
 
-      // Fail-fast: skip model if stopped
-      if (failFast.isStopped(model)) {
-        console.log('  SKIP (fail-fast): ' + model + ' — ' + failFast.getStopReason(model));
-        skippedJobs++;
-        continue;
-      }
+    // Call AI with retry (choose streaming or non-streaming)
+    const aiCallFn = args.streamAi ? callAIStream : callAI;
+    try {
+      const response = await withRetry(() => aiCallFn(model, payload, {
+        baseUrl: cfg.SHITERU_BASE_URL,
+        apiKey: cfg.SHITERU_API_KEY,
+        temperature: args.temperature,
+        maxOutputTokens: args.maxOutputTokens,
+        timeoutMs: cfg.AI_RESEARCH_TIMEOUT_MS
+      }), { attempts: 3 });
 
-      // Skip if already completed (checkpoint)
-      if (checkpoint.completed[cpKey] && !args.force) {
-        console.log('  SKIP (checkpoint): ' + ticker + '/' + model);
-        skippedJobs++;
-        continue;
-      }
-
-      const jobStarted = new Date().toISOString();
-
-      if (args.dryRun) {
-        // Dry run: build payload but don't call API
-        const row = {
-          ticker, model, deterministic_summary: payload, ai_result: null,
-          raw_response_preview: '[DRY RUN - no API call]',
-          usage: null, error: null,
-          started_at: jobStarted, ended_at: new Date().toISOString()
-        };
-        allResults.push(row);
+      const parsed = parseAIResponse(response.content);
+      const row = {
+        ticker, model, deterministic_summary: payload,
+        ai_result: parsed,
+        raw_response_preview: response.raw || (response.content || '').slice(0, 500),
+        usage: response.usage, error: parsed ? null : 'parse_failed',
+        started_at: jobStarted, ended_at: new Date().toISOString()
+      };
+      await writeMutex(async () => {
         await appendJSONL(outputDir, row);
-        completedJobs++;
-        perModelStats[model].success++;
-        console.log('  DRY RUN: ' + model + ' - payload built (' + JSON.stringify(payload).length + ' chars)');
-        continue;
-      }
-
-
-      // Call AI with retry (choose streaming or non-streaming)
-      const aiCallFn = args.streamAi ? callAIStream : callAI;
-      try {
-        const response = await withRetry(() => aiCallFn(model, payload, {
-          baseUrl: cfg.SHITERU_BASE_URL,
-          apiKey: cfg.SHITERU_API_KEY,
-          temperature: args.temperature,
-          maxOutputTokens: args.maxOutputTokens,
-          timeoutMs: cfg.AI_RESEARCH_TIMEOUT_MS
-        }), { attempts: 3 });
-
-        const parsed = parseAIResponse(response.content);
-        const row = {
-          ticker, model, deterministic_summary: payload,
-          ai_result: parsed,
-          raw_response_preview: response.raw || (response.content || '').slice(0, 500),
-          usage: response.usage, error: parsed ? null : 'parse_failed',
-          started_at: jobStarted, ended_at: new Date().toISOString()
-        };
-        allResults.push(row);
-        await appendJSONL(outputDir, row);
-
         if (parsed) {
-          completedJobs++;
-          perModelStats[model].success++;
-          failFast.recordSuccess(model);
           checkpoint.completed[cpKey] = true;
           await saveCheckpoint(outputDir, checkpoint);
-          console.log('  OK: ' + model + ' - score=' + (parsed.quality_score || '?') + ' bias=' + (parsed.bias || '?'));
-        } else {
-          failedJobs++;
-          perModelStats[model].fail++;
-          console.log('  WARN: ' + model + ' - response not parseable');
         }
+      });
+      allResults.push(row);
 
-        if (response.usage) {
-          estimatedTokens += (response.usage.total_tokens || response.usage.prompt_tokens || 0) + (response.usage.completion_tokens || 0);
-        }
-      } catch (e) {
-        const errMsg = (e.message || 'unknown').slice(0, 200);
-        const row = {
-          ticker, model, deterministic_summary: payload, ai_result: null,
-          raw_response_preview: null, usage: null, error: errMsg,
-          started_at: jobStarted, ended_at: new Date().toISOString()
-        };
-        allResults.push(row);
-        await appendJSONL(outputDir, row);
+      if (parsed) {
+        completedJobs++;
+        perModelStats[model].success++;
+        failFast.recordSuccess(model);
+        console.log('[' + (jobIdx + 1) + '/' + totalJobs + '] OK: ' + ticker + '/' + model + ' score=' + (parsed.quality_score || '?'));
+      } else {
         failedJobs++;
         perModelStats[model].fail++;
-
-        // Check fail-fast
-        const stopped = failFast.recordError(model, e);
-        if (stopped) {
-          console.log('  FAIL-FAST: ' + model + ' stopped — ' + failFast.getStopReason(model));
-        } else {
-          console.log('  ERROR: ' + model + ' - ' + errMsg);
-        }
+        console.log('[' + (jobIdx + 1) + '/' + totalJobs + '] WARN: ' + ticker + '/' + model + ' - not parseable');
       }
 
-      // Delay between API calls
-      if (concurrency <= 1) await sleep(500);
+      if (response.usage) {
+        estimatedTokens += (response.usage.total_tokens || response.usage.prompt_tokens || 0) + (response.usage.completion_tokens || 0);
+      }
+    } catch (e) {
+      const errMsg = (e.message || 'unknown').slice(0, 200);
+      const row = {
+        ticker, model, deterministic_summary: payload, ai_result: null,
+        raw_response_preview: null, usage: null, error: errMsg,
+        started_at: jobStarted, ended_at: new Date().toISOString()
+      };
+      await writeMutex(() => appendJSONL(outputDir, row));
+      allResults.push(row);
+      failedJobs++;
+      perModelStats[model].fail++;
+
+      const stopped = failFast.recordError(model, e);
+      if (stopped) {
+        console.log('[' + (jobIdx + 1) + '/' + totalJobs + '] FAIL-FAST: ' + model + ' stopped — ' + failFast.getStopReason(model));
+      } else {
+        console.log('[' + (jobIdx + 1) + '/' + totalJobs + '] ERROR: ' + ticker + '/' + model + ' - ' + errMsg);
+      }
     }
-  }
+  });
 
 
   // Build run report
@@ -1291,6 +1333,8 @@ module.exports = {
   extractHttpStatus,
   FAIL_FAST_THRESHOLD,
   FAIL_FAST_CODES,
+  mapLimit,
+  createWriteMutex,
   getOutputDir,
   loadCheckpoint,
   saveCheckpoint,

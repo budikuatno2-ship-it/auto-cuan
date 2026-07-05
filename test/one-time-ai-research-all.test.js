@@ -828,3 +828,203 @@ test('parseArgs defaults streamAi to false', () => {
   const args = runner.parseArgs(['node', 'script.js']);
   assert.equal(args.streamAi, false);
 });
+
+
+
+// ============================================================
+// GLOBAL CONCURRENCY TESTS
+// ============================================================
+
+test('concurrency > 1 runs multiple tickers in parallel for one model', async () => {
+  const dir = await tmpdir();
+  const origOutput = process.env.AI_RESEARCH_OUTPUT_DIR;
+  const origCache = process.env.DAYTRADE_CACHE_DIR;
+  const origUrl = process.env.SHITERU_BASE_URL;
+  const origKey = process.env.SHITERU_API_KEY;
+  process.env.AI_RESEARCH_OUTPUT_DIR = dir;
+  process.env.DAYTRADE_CACHE_DIR = dir + '/cache';
+  process.env.SHITERU_BASE_URL = 'http://127.0.0.1:1/v1';
+  process.env.SHITERU_API_KEY = 'sk_test';
+
+  const candles = makeCandles(60, 5000);
+  const tickers = ['AAA', 'BBB', 'CCC', 'DDD', 'EEE'];
+  for (const t of tickers) await runner.writeCacheFile(dir + '/cache', t, candles);
+
+  try {
+    const result = await runner.run({
+      mode: 'observe', tickers: tickers.join(','), models: 'test-model',
+      dryRun: true, all: false, limit: null, force: true,
+      tickersFile: null, concurrency: 5, includeRawCandles: false,
+      streamAi: false, maxOutputTokens: 100, temperature: 0.2
+    });
+    assert.equal(result.completed_jobs, 5);
+    assert.equal(result.total_jobs, 5);
+    const jsonlPath = path.join(dir, new Date().toISOString().slice(0, 10), 'results.jsonl');
+    const lines = (await fs.readFile(jsonlPath, 'utf8')).trim().split('\n');
+    assert.equal(lines.length, 5);
+    const processedTickers = lines.map(l => JSON.parse(l).ticker).sort();
+    assert.deepEqual(processedTickers, tickers.sort());
+  } finally {
+    process.env.AI_RESEARCH_OUTPUT_DIR = origOutput || '';
+    process.env.DAYTRADE_CACHE_DIR = origCache || '';
+    process.env.SHITERU_BASE_URL = origUrl || '';
+    process.env.SHITERU_API_KEY = origKey || '';
+  }
+});
+
+test('checkpoint skips still work with global concurrency', async () => {
+  const dir = await tmpdir();
+  const outputDir = path.join(dir, 'output', new Date().toISOString().slice(0, 10));
+  await fs.mkdir(outputDir, { recursive: true });
+
+  await runner.saveCheckpoint(outputDir, {
+    completed: { 'AAA::m1': true, 'BBB::m1': true }
+  });
+
+  const origOutput = process.env.AI_RESEARCH_OUTPUT_DIR;
+  const origCache = process.env.DAYTRADE_CACHE_DIR;
+  process.env.AI_RESEARCH_OUTPUT_DIR = path.join(dir, 'output');
+  process.env.DAYTRADE_CACHE_DIR = dir + '/cache';
+
+  const candles = makeCandles(60, 5000);
+  for (const t of ['AAA', 'BBB', 'CCC']) await runner.writeCacheFile(dir + '/cache', t, candles);
+
+  try {
+    const result = await runner.run({
+      mode: 'observe', tickers: 'AAA,BBB,CCC', models: 'm1',
+      dryRun: true, all: false, limit: null, force: false,
+      tickersFile: null, concurrency: 3, includeRawCandles: false,
+      streamAi: false, maxOutputTokens: 100, temperature: 0.2
+    });
+    assert.equal(result.skipped_jobs, 2);
+    assert.equal(result.completed_jobs, 1);
+  } finally {
+    process.env.AI_RESEARCH_OUTPUT_DIR = origOutput || '';
+    process.env.DAYTRADE_CACHE_DIR = origCache || '';
+  }
+});
+
+test('failed job does not stop queue with concurrency', async () => {
+  const dir = await tmpdir();
+  const origOutput = process.env.AI_RESEARCH_OUTPUT_DIR;
+  const origCache = process.env.DAYTRADE_CACHE_DIR;
+  const origUrl = process.env.SHITERU_BASE_URL;
+  const origKey = process.env.SHITERU_API_KEY;
+  process.env.AI_RESEARCH_OUTPUT_DIR = dir;
+  process.env.DAYTRADE_CACHE_DIR = dir + '/cache';
+  process.env.SHITERU_BASE_URL = 'http://127.0.0.1:1/v1';
+  process.env.SHITERU_API_KEY = 'sk_test';
+
+  const candles = makeCandles(60, 5000);
+  // AAA has no cache (will fail), BBB and CCC have cache
+  await runner.writeCacheFile(dir + '/cache', 'BBB', candles);
+  await runner.writeCacheFile(dir + '/cache', 'CCC', candles);
+
+  try {
+    const result = await runner.run({
+      mode: 'observe', tickers: 'AAA,BBB,CCC', models: 'test-model',
+      dryRun: true, all: false, limit: null, force: true,
+      tickersFile: null, concurrency: 3, includeRawCandles: false,
+      streamAi: false, maxOutputTokens: 100, temperature: 0.2
+    });
+    assert.equal(result.failed_jobs, 1);
+    assert.equal(result.completed_jobs, 2);
+    assert.equal(result.total_jobs, 3);
+  } finally {
+    process.env.AI_RESEARCH_OUTPUT_DIR = origOutput || '';
+    process.env.DAYTRADE_CACHE_DIR = origCache || '';
+    process.env.SHITERU_BASE_URL = origUrl || '';
+    process.env.SHITERU_API_KEY = origKey || '';
+  }
+});
+
+test('fail-fast skips remaining jobs for stopped model with concurrency', async () => {
+  const dir = await tmpdir();
+  const origOutput = process.env.AI_RESEARCH_OUTPUT_DIR;
+  const origCache = process.env.DAYTRADE_CACHE_DIR;
+  const origUrl = process.env.SHITERU_BASE_URL;
+  const origKey = process.env.SHITERU_API_KEY;
+  process.env.AI_RESEARCH_OUTPUT_DIR = dir;
+  process.env.DAYTRADE_CACHE_DIR = dir + '/cache';
+  process.env.SHITERU_BASE_URL = 'http://127.0.0.1:1/v1';
+  process.env.SHITERU_API_KEY = 'sk_test';
+
+  const candles = makeCandles(60, 5000);
+  const tickers = [];
+  for (let i = 0; i < 10; i++) {
+    const t = 'T' + String(i).padStart(2, '0');
+    tickers.push(t);
+    await runner.writeCacheFile(dir + '/cache', t, candles);
+  }
+
+  try {
+    const result = await runner.run({
+      mode: 'observe', tickers: tickers.join(','), models: 'fail-model',
+      dryRun: false, all: false, limit: null, force: true,
+      tickersFile: null, concurrency: 1, includeRawCandles: false,
+      streamAi: false, maxOutputTokens: 100, temperature: 0.2
+    });
+    assert.ok(result.failed_jobs >= 10, 'Expected all jobs to fail: ' + result.failed_jobs);
+    assert.equal(result.total_jobs, 10);
+  } finally {
+    process.env.AI_RESEARCH_OUTPUT_DIR = origOutput || '';
+    process.env.DAYTRADE_CACHE_DIR = origCache || '';
+    process.env.SHITERU_BASE_URL = origUrl || '';
+    process.env.SHITERU_API_KEY = origKey || '';
+  }
+});
+
+test('streaming mode still works through concurrent queue (dry-run)', async () => {
+  const dir = await tmpdir();
+  const origOutput = process.env.AI_RESEARCH_OUTPUT_DIR;
+  const origCache = process.env.DAYTRADE_CACHE_DIR;
+  process.env.AI_RESEARCH_OUTPUT_DIR = dir;
+  process.env.DAYTRADE_CACHE_DIR = dir + '/cache';
+
+  const candles = makeCandles(60, 5000);
+  for (const t of ['XX', 'YY', 'ZZ']) await runner.writeCacheFile(dir + '/cache', t, candles);
+
+  try {
+    const result = await runner.run({
+      mode: 'observe', tickers: 'XX,YY,ZZ', models: 'stream-model',
+      dryRun: true, all: false, limit: null, force: true,
+      tickersFile: null, concurrency: 3, includeRawCandles: false,
+      streamAi: true, maxOutputTokens: 100, temperature: 0.2
+    });
+    assert.equal(result.completed_jobs, 3);
+    assert.equal(result.total_jobs, 3);
+  } finally {
+    process.env.AI_RESEARCH_OUTPUT_DIR = origOutput || '';
+    process.env.DAYTRADE_CACHE_DIR = origCache || '';
+  }
+});
+
+test('mapLimit runs tasks concurrently up to limit', async () => {
+  let maxConcurrent = 0;
+  let current = 0;
+  const items = [1, 2, 3, 4, 5, 6, 7, 8];
+  await runner.mapLimit(items, 3, async (item) => {
+    current++;
+    if (current > maxConcurrent) maxConcurrent = current;
+    await new Promise(r => setTimeout(r, 10));
+    current--;
+    return item * 2;
+  });
+  assert.ok(maxConcurrent <= 3, 'maxConcurrent was ' + maxConcurrent);
+  assert.ok(maxConcurrent >= 2, 'should have had at least 2 concurrent, got ' + maxConcurrent);
+});
+
+test('mapLimit with limit=1 runs sequentially', async () => {
+  let maxConcurrent = 0;
+  let current = 0;
+  const items = [1, 2, 3, 4];
+  const results = await runner.mapLimit(items, 1, async (item) => {
+    current++;
+    if (current > maxConcurrent) maxConcurrent = current;
+    await new Promise(r => setTimeout(r, 5));
+    current--;
+    return item * 10;
+  });
+  assert.equal(maxConcurrent, 1);
+  assert.deepEqual(results, [10, 20, 30, 40]);
+});
