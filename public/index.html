@@ -6222,7 +6222,21 @@ async function loadSwingScreener(silent) {
     var scrUserId = localStorage.getItem('autocuan_user_id') || '';
     var scrUsername = getUsername();
 
-    // Only show spinner on initial load (not silent poll)
+    // Perceived-speed fix: the card grid (kgCardGrid) is the visible UI, not the table tbody.
+    // Render cached cards immediately (with a subtle refreshing banner) so the grid never
+    // looks blank/stuck. If no cache exists yet, show skeleton cards instead of nothing.
+    var kgCardEl = document.getElementById('kgCardGrid');
+    if (kgCardEl) {
+        if (_screenerCache && _screenerCache.results && _screenerCache.results.length) {
+            if (!silent) {
+                renderKgCardGrid(_screenerCache.results);
+                kgCardEl.insertAdjacentHTML('afterbegin', screenerRefreshingBannerHtml());
+            }
+        } else if (!silent) {
+            kgCardEl.innerHTML = screenerSkeletonCardHtml(4);
+        }
+    }
+    // Table tbody loading stays as secondary/fallback (table view is hidden by default).
     if (!silent) {
         tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
     }
@@ -6326,6 +6340,16 @@ async function loadSwingScreener(silent) {
         renderKgCardGrid(data.results);
     } catch (e) {
         tbody.innerHTML = screenerEmptyRowHtml(17, DASHBOARD_ERROR_TEXT, 'error');
+        // Card grid: keep showing cached cards on a failed background refresh (just drop the
+        // banner); only replace with an error state if there is no cache to fall back to.
+        var kgCardElErr = document.getElementById('kgCardGrid');
+        if (kgCardElErr) {
+            if (_screenerCache && _screenerCache.results && _screenerCache.results.length) {
+                renderKgCardGrid(_screenerCache.results);
+            } else {
+                kgCardElErr.innerHTML = screenerEmptyCardHtml(DASHBOARD_ERROR_TEXT);
+            }
+        }
     } finally { _screenerInFlight = null; }
     })();
     return _screenerInFlight;
@@ -6512,7 +6536,7 @@ function startNkPolling() {
     stopNkPolling();
     _nkPollInterval = setInterval(function() {
         if (_currentScreenerType !== 'nonkonglo') { stopNkPolling(); return; }
-        loadNkScreenerResults();
+        loadNkScreenerResults(true); // silent mode — avoid skeleton/spinner flicker on each poll
     }, 10000);
 }
 
@@ -6520,7 +6544,7 @@ function stopNkPolling() {
     if (_nkPollInterval) { clearInterval(_nkPollInterval); _nkPollInterval = null; }
 }
 
-async function loadNkScreenerResults() {
+async function loadNkScreenerResults(silent) {
     if (_nkScreenerInFlight) return _nkScreenerInFlight;
     var tbody = document.getElementById('nkScreenerTableBody');
     if (!tbody) return;
@@ -6534,7 +6558,25 @@ async function loadNkScreenerResults() {
     var userId = localStorage.getItem('autocuan_user_id') || '';
     var username = getUsername();
 
-    tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
+    // Perceived-speed fix: nkCardGrid is the visible UI, not the table tbody. Render cached
+    // cards immediately (with a subtle refreshing banner) so the grid never looks blank/stuck.
+    // If no cache exists yet, show skeleton cards instead of nothing — but only on a
+    // non-silent (initial/manual) load. Silent background polls only show the subtle banner
+    // when cache already exists, and do nothing extra otherwise, to avoid flicker.
+    var nkCardEl = document.getElementById('nkCardGrid');
+    var hasNkCache = !!(_nkScreenerCache && _nkScreenerCache.results && _nkScreenerCache.results.length);
+    if (nkCardEl) {
+        if (hasNkCache) {
+            if (!silent) { renderNkCardGrid(_nkScreenerCache.results); nkCardEl.insertAdjacentHTML('afterbegin', screenerRefreshingBannerHtml()); }
+            // else: silent poll with existing cache — leave current cards visible as-is, no redraw.
+        } else if (!silent) {
+            nkCardEl.innerHTML = screenerSkeletonCardHtml(4);
+        }
+    }
+    // Table tbody loading stays as secondary/fallback (table view is hidden by default).
+    if (!silent) {
+        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
+    }
 
     _nkScreenerInFlight = (async function() {
     try {
@@ -6615,6 +6657,16 @@ async function loadNkScreenerResults() {
         }
     } catch (e) {
         tbody.innerHTML = screenerEmptyRowHtml(18, DASHBOARD_ERROR_TEXT, 'error', 'loadNkScreenerResults()');
+        // Card grid: keep showing cached cards on a failed background refresh (just drop the
+        // banner); only replace with an error state if there is no cache to fall back to.
+        var nkCardElErr = document.getElementById('nkCardGrid');
+        if (nkCardElErr) {
+            if (_nkScreenerCache && _nkScreenerCache.results && _nkScreenerCache.results.length) {
+                renderNkCardGrid(_nkScreenerCache.results);
+            } else {
+                nkCardElErr.innerHTML = screenerEmptyCardHtml(DASHBOARD_ERROR_TEXT);
+            }
+        }
     } finally { _nkScreenerInFlight = null; }
     })();
     return _nkScreenerInFlight;
@@ -7138,6 +7190,22 @@ function screenerEmptyRowHtml(colspan, message, tone, retryFn) {
 function screenerEmptyCardHtml(message) {
     return '<div style="grid-column:1/-1" class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><p class="empty-state-text">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p></div>';
 }
+// Skeleton placeholder cards shown in a card-grid while fetching (no cache yet).
+function screenerSkeletonCardHtml(count) {
+    var n = count || 4;
+    var one = '<div style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px">' +
+        '<div class="skeleton" style="height:14px;width:40%;margin-bottom:10px"></div>' +
+        '<div class="skeleton" style="height:10px;width:70%;margin-bottom:8px"></div>' +
+        '<div class="skeleton" style="height:34px;width:100%"></div>' +
+        '</div>';
+    var html = '';
+    for (var i = 0; i < n; i++) html += one;
+    return html;
+}
+// Subtle "refreshing" banner shown above cached cards while a background refresh is in flight.
+function screenerRefreshingBannerHtml() {
+    return '<div style="grid-column:1/-1;display:flex;align-items:center;gap:6px;padding:4px 2px;margin-bottom:2px;font-size:10px;color:#6b7280"><span class="spinner-sm"></span>Memperbarui data...</div>';
+}
 
 function dashboardAwaitingLockedHtml(note) {
     return '<div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">' + escapeHtml(note || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.') + '</p></div>';
@@ -7383,6 +7451,10 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
 var _top5HistoryActiveRows = [];
 var _top5HistoryTpRows = [];
 var _top5HistoryTab = 'active';
+// Tracks whether the History API response has actually resolved at least once, so switching
+// tabs before the first fetch completes shows a loading message instead of a misleading
+// "empty" message (data simply hasn't arrived yet vs. genuinely no rows).
+var _top5HistoryLoaded = false;
 function top5HistoryPctLine(r) {
     var v = r.active_entry_price != null ? Number(r.return_from_entry_pct) : Number(r.distance_to_entry1_pct);
     var txt = dashSignedPct(v);
@@ -7398,14 +7470,20 @@ function setTop5HistoryTab(tab) {
     renderTop5History();
 }
 function renderTop5History(activeRows, tpRows) {
-    if (activeRows) _top5HistoryActiveRows = activeRows;
-    if (tpRows) _top5HistoryTpRows = tpRows;
+    if (activeRows) { _top5HistoryActiveRows = activeRows; _top5HistoryLoaded = true; }
+    if (tpRows) { _top5HistoryTpRows = tpRows; _top5HistoryLoaded = true; }
     var rows = _top5HistoryTab === 'tp' ? _top5HistoryTpRows : _top5HistoryActiveRows;
     var el = document.getElementById('top5HistoryList');
     if (!el) return;
     _dashboardPickData = _dashboardPickData || {};
     if (!rows || rows.length === 0) {
-        el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">' + (_top5HistoryTab === 'tp' ? 'Belum ada saham Top 5 yang kena TP.' : 'Belum ada history aktif.') + '</div>';
+        // Do not show a false "empty" message if we've never actually received data yet
+        // (e.g. user switched to TP History tab before the initial fetch resolved).
+        if (!_top5HistoryLoaded) {
+            el.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">' + DASHBOARD_LOADING_TEXT + '</div>';
+            return;
+        }
+        el.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">' + (_top5HistoryTab === 'tp' ? 'Belum ada saham Top 5 yang kena TP. TP History terisi otomatis setelah harga menyentuh TP1/TP2.' : 'Belum ada history aktif.') + '</div>';
         return;
     }
     var html = '';
@@ -9206,6 +9284,20 @@ async function loadDayTradeScreener() {
     var tbody = document.getElementById('dtScreenerTableBody');
     if (!tbody) return;
 
+    // Perceived-speed fix: dtCardGrid is the visible UI, not the table tbody. Render cached
+    // cards immediately (with a subtle refreshing banner) so the grid never looks blank/stuck.
+    // If no cache exists yet, show skeleton cards instead of nothing. Day Trade in particular
+    // was reported as feeling slow/blank because this scan can take longer than the other two.
+    var dtCardEl = document.getElementById('dtCardGrid');
+    if (dtCardEl) {
+        if (_dtScreenerCache && _dtScreenerCache.results && _dtScreenerCache.results.length) {
+            renderDtCardGrid(_dtScreenerCache.results);
+            dtCardEl.insertAdjacentHTML('afterbegin', screenerRefreshingBannerHtml());
+        } else {
+            dtCardEl.innerHTML = screenerSkeletonCardHtml(4);
+        }
+    }
+    // Table tbody loading stays as secondary/fallback (table view is hidden by default).
     tbody.innerHTML = '<tr><td colspan="22" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
 
     _dtScreenerInFlight = (async function() {
@@ -9215,6 +9307,14 @@ async function loadDayTradeScreener() {
 
         if (!data.success) {
             tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error', 'loadDayTradeScreener()');
+            var dtCardElEmptyErr = document.getElementById('dtCardGrid');
+            if (dtCardElEmptyErr) {
+                if (_dtScreenerCache && _dtScreenerCache.results && _dtScreenerCache.results.length) {
+                    renderDtCardGrid(_dtScreenerCache.results);
+                } else {
+                    dtCardElEmptyErr.innerHTML = screenerEmptyCardHtml(DASHBOARD_ERROR_TEXT);
+                }
+            }
             return;
         }
 
@@ -9262,6 +9362,16 @@ async function loadDayTradeScreener() {
         renderDtCardGrid(data.results || []);
     } catch (e) {
         tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error', 'loadDayTradeScreener()');
+        // Card grid: keep showing cached cards on a failed background refresh (just drop the
+        // banner); only replace with an error state if there is no cache to fall back to.
+        var dtCardElErr = document.getElementById('dtCardGrid');
+        if (dtCardElErr) {
+            if (_dtScreenerCache && _dtScreenerCache.results && _dtScreenerCache.results.length) {
+                renderDtCardGrid(_dtScreenerCache.results);
+            } else {
+                dtCardElErr.innerHTML = screenerEmptyCardHtml(DASHBOARD_ERROR_TEXT);
+            }
+        }
     } finally { _dtScreenerInFlight = null; }
     })();
     return _dtScreenerInFlight;
