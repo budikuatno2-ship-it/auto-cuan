@@ -38,12 +38,16 @@
         @keyframes slideInRight { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
         @keyframes slideOutRight { from { opacity:1; transform:translateX(0); } to { opacity:0; transform:translateX(20px); } }
         #toastContainer { position: fixed; top: 1rem; right: 1rem; z-index: 99999; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; max-width: 360px; }
-        @media (max-width: 640px) { #toastContainer { top: auto; bottom: 1rem; right: 0.5rem; left: 0.5rem; max-width: 100%; align-items: center; } }
-        .toast { pointer-events: auto; padding: 0.75rem 1rem; border-radius: 0.75rem; font-size: 0.8125rem; font-weight: 500; animation: slideInRight 0.3s ease-out forwards; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.05); }
+        @media (max-width: 640px) { #toastContainer { top: auto; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); right: 0.5rem; left: 0.5rem; max-width: 100%; align-items: stretch; } }
+        .toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.7rem 0.85rem; border-radius: 0.75rem; font-size: 0.8125rem; font-weight: 500; line-height: 1.4; animation: slideInRight 0.3s ease-out forwards; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+        @media (max-width: 640px) { .toast { animation: fadeInUp 0.25s ease-out forwards; } }
         .toast-exit { animation: slideOutRight 0.25s ease-in forwards; }
+        @media (max-width: 640px) { .toast-exit { animation: fadeIn 0.2s ease-in reverse forwards; } }
+        .toast-msg { flex: 1; min-width: 0; word-break: break-word; }
         .toast-success { background: rgba(16,185,129,0.15); color: #6ee7b7; border-color: rgba(16,185,129,0.3); }
         .toast-error { background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.3); }
         .toast-warning { background: rgba(245,158,11,0.15); color: #fcd34d; border-color: rgba(245,158,11,0.3); }
+        .toast-info { background: rgba(59,130,246,0.15); color: #93c5fd; border-color: rgba(59,130,246,0.3); }
         .skeleton { background: linear-gradient(90deg, #151a23 25%, #1c2333 50%, #151a23 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 0.5rem; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         button, [role="button"] { transition: all 0.15s ease-out; }
@@ -673,9 +677,9 @@
 <div id="page-analisis" class="page-content hidden flex-1 flex flex-col max-w-[1100px] w-full mx-auto px-3 sm:px-5" style="min-height:calc(100vh - 120px);">
     <!-- Analisis Input -->
     <div class="py-3 border-b border-dark-600/30 flex-shrink-0">
-        <div class="flex items-center gap-2">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, IHSG, TLKM..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')handleAnalisisSubmit()">
-            <button onclick="handleAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Analisis</button>
+            <button onclick="handleAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 active:scale-95 transition-all whitespace-nowrap">Analisis</button>
         </div>
         <div class="mt-2 flex flex-wrap gap-2">
             <button onclick="quickAnalisis('IHSG')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">IHSG</button>
@@ -685,21 +689,20 @@
         </div>
     </div>
     <!-- Analisis Result Area (replaces chat for analysis) -->
-    <div id="analisisResult" class="flex-1 py-4 overflow-y-auto">
-        <div class="text-center py-12 text-gray-500">
-            <svg class="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-            <p class="text-sm">Ketik ticker di atas untuk mulai analisis.</p>
-            <p class="text-xs text-gray-600 mt-1">Contoh: BBCA, IHSG, TLKM</p>
+    <div id="analisisResult" class="flex-1 py-4 overflow-y-auto overflow-x-hidden">
+        <div class="empty-state" style="border:none;background:transparent;padding:48px 16px;margin:0 auto;max-width:100%">
+            <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <p class="empty-state-text">Ketik ticker di atas untuk mulai analisis.<br>Contoh: BBCA, IHSG, TLKM</p>
         </div>
     </div>
     <!-- Chat input area (for follow-up questions) -->
     <div id="analisisFollowUp" class="hidden border-t border-dark-600/30 p-3 flex-shrink-0">
         <div class="flex items-end gap-2">
             <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
-            <button onclick="document.getElementById('fileInput').click()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file">
+            <button onclick="document.getElementById('fileInput').click()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 active:scale-95 transition" title="Upload gambar/file">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
             </button>
-            <div class="flex-1 relative">
+            <div class="flex-1 relative min-w-0">
                 <textarea id="chatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
             </div>
             <button id="sendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim">
@@ -1042,16 +1045,23 @@
 <!-- ===== PAGE: CHART ===== -->
 <div id="page-chart" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
     <div class="space-y-3">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-white">Chart</h2>
+        </div>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <input id="chartTickerInput" type="text" placeholder="Ketik ticker: BBCA, IHSG..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')loadChartPage()">
-            <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Lihat Chart</button>
+            <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 active:scale-95 transition-all whitespace-nowrap">Lihat Chart</button>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <button onclick="document.getElementById('chartTickerInput').value='IHSG';loadChartPage()" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">IHSG</button>
+            <button onclick="document.getElementById('chartTickerInput').value='BBCA';loadChartPage()" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">BBCA</button>
+            <button onclick="document.getElementById('chartTickerInput').value='BBRI';loadChartPage()" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">BBRI</button>
+            <button onclick="document.getElementById('chartTickerInput').value='TLKM';loadChartPage()" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">TLKM</button>
         </div>
         <div id="chartPageContainer" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
-            <div class="flex items-center justify-center py-16 text-gray-500 text-sm">
-                <div class="text-center">
-                    <svg class="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
-                    <p>Ketik ticker di atas untuk melihat chart.</p>
-                </div>
+            <div class="empty-state" style="border:none;background:transparent;padding:48px 16px">
+                <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                <p class="empty-state-text">Ketik ticker di atas untuk melihat chart.</p>
             </div>
         </div>
     </div>
@@ -1072,80 +1082,80 @@
         </div>
     </div>
     <!-- Portfolio content (shown if logged in) -->
-    <div id="portofolioContent" class="hidden space-y-4">
+    <div id="portofolioContent" class="hidden space-y-3">
         <!-- Header -->
         <div class="flex items-center justify-between flex-wrap gap-2">
             <h2 class="text-lg font-bold text-white">Portofolio</h2>
             <div class="flex items-center gap-2">
-                <button onclick="refreshPortfolioPrices()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition flex items-center gap-1" id="portRefreshBtn">
+                <button onclick="refreshPortfolioPrices()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 active:scale-95 transition flex items-center gap-1" id="portRefreshBtn">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    Refresh Harga
+                    <span class="hidden sm:inline">Refresh Harga</span>
                 </button>
-                <button onclick="openAddPositionForm()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition flex items-center gap-1">
+                <button onclick="openAddPositionForm()" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 active:scale-95 transition flex items-center gap-1">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Tambah Posisi
                 </button>
             </div>
         </div>
         <!-- Add position form (hidden by default) -->
-        <div id="addPositionForm" class="hidden bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 space-y-3">
-            <h3 class="text-sm font-semibold text-gray-300">Tambah Posisi Baru</h3>
+        <div id="addPositionForm" class="hidden panel space-y-3">
+            <h3 class="panel-title">Tambah Posisi Baru</h3>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <label class="block text-[11px] text-gray-500 mb-1">Ticker</label>
-                    <input id="portTicker" type="text" placeholder="BBCA" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50" maxlength="5">
+                    <input id="portTicker" type="text" placeholder="BBCA" class="w-full px-3 py-2.5 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50" maxlength="5">
                 </div>
                 <div>
                     <label class="block text-[11px] text-gray-500 mb-1">Lot</label>
-                    <input id="portLot" type="number" inputmode="numeric" placeholder="100" min="1" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
+                    <input id="portLot" type="number" inputmode="numeric" placeholder="100" min="1" class="w-full px-3 py-2.5 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
                 </div>
                 <div>
                     <label class="block text-[11px] text-gray-500 mb-1">Avg Buy (Rp)</label>
-                    <input id="portAvgBuy" type="number" inputmode="decimal" placeholder="5000" min="1" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
+                    <input id="portAvgBuy" type="number" inputmode="decimal" placeholder="5000" min="1" class="w-full px-3 py-2.5 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50">
                 </div>
             </div>
             <div id="portFormError" class="hidden text-xs text-red-400"></div>
             <div class="flex gap-2">
-                <button onclick="savePosition()" class="px-4 py-2 rounded-lg text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition">Simpan</button>
-                <button onclick="closeAddPositionForm()" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/50 hover:text-gray-200 transition">Batal</button>
+                <button onclick="savePosition()" class="px-4 py-2.5 rounded-lg text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition">Simpan</button>
+                <button onclick="closeAddPositionForm()" class="px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/50 hover:text-gray-200 active:scale-95 transition">Batal</button>
             </div>
         </div>
         <!-- Portfolio summary -->
-        <div id="portSummary" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
-                <p class="text-[10px] text-gray-500">Total Modal</p>
-                <p class="text-sm font-semibold text-gray-200" id="portTotalModal">—</p>
+        <div id="portSummary" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-3 py-2.5 text-center">
+                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Total Modal</p>
+                <p class="text-sm font-bold text-gray-200" id="portTotalModal">—</p>
             </div>
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
-                <p class="text-[10px] text-gray-500">Total Nilai</p>
-                <p class="text-sm font-semibold text-gray-200" id="portTotalValue">—</p>
+            <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-3 py-2.5 text-center">
+                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Total Nilai</p>
+                <p class="text-sm font-bold text-gray-200" id="portTotalValue">—</p>
             </div>
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
-                <p class="text-[10px] text-gray-500">Total P/L (Rp)</p>
-                <p class="text-sm font-semibold" id="portTotalPL">—</p>
+            <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-3 py-2.5 text-center">
+                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Total P/L (Rp)</p>
+                <p class="text-sm font-bold" id="portTotalPL">—</p>
             </div>
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
-                <p class="text-[10px] text-gray-500">Total P/L %</p>
-                <p class="text-sm font-semibold" id="portTotalPLPct">—</p>
+            <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-3 py-2.5 text-center">
+                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Total P/L %</p>
+                <p class="text-sm font-bold" id="portTotalPLPct">—</p>
             </div>
         </div>
         <!-- Portfolio table -->
         <div class="bg-dark-700/30 border border-dark-600/30 rounded-xl overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-xs sm:text-sm">
+                <table class="w-full text-xs sm:text-sm min-w-[560px]">
                     <thead>
                         <tr class="text-gray-500 border-b border-dark-600/40 text-left">
-                            <th class="px-3 py-2.5 font-medium">Ticker</th>
-                            <th class="px-3 py-2.5 font-medium">Lot</th>
-                            <th class="px-3 py-2.5 font-medium">Avg Buy</th>
-                            <th class="px-3 py-2.5 font-medium">Last Price</th>
-                            <th class="px-3 py-2.5 font-medium">P/L (Rp)</th>
-                            <th class="px-3 py-2.5 font-medium">P/L %</th>
+                            <th class="px-3 py-2.5 font-medium whitespace-nowrap">Ticker</th>
+                            <th class="px-3 py-2.5 font-medium whitespace-nowrap">Lot</th>
+                            <th class="px-3 py-2.5 font-medium whitespace-nowrap">Avg Buy</th>
+                            <th class="px-3 py-2.5 font-medium whitespace-nowrap">Last Price</th>
+                            <th class="px-3 py-2.5 font-medium whitespace-nowrap">P/L (Rp)</th>
+                            <th class="px-3 py-2.5 font-medium whitespace-nowrap">P/L %</th>
                             <th class="px-3 py-2.5 font-medium"></th>
                         </tr>
                     </thead>
                     <tbody id="portTableBody" class="text-gray-300">
-                        <tr id="portEmptyRow"><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>
+                        <tr id="portEmptyRow"><td colspan="7" class="px-3 py-10 text-center text-gray-500 text-sm">Belum ada posisi. Klik &ldquo;+ Tambah Posisi&rdquo; untuk mulai.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1187,11 +1197,11 @@
             <div class="flex items-end gap-2">
                 <!-- Upload button -->
                 <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
-                <button onclick="document.getElementById('fileInput').click()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file">
+                <button onclick="document.getElementById('fileInput').click()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 active:scale-95 transition" title="Upload gambar/file">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                 </button>
                 <!-- Text input -->
-                <div class="flex-1 relative">
+                <div class="flex-1 relative min-w-0">
                     <textarea id="chatInput" rows="1" placeholder="Ketik BBCA, IHSG, atau tanya lanjutan..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
                 </div>
                 <!-- Send button -->
@@ -1297,35 +1307,39 @@
 
 <!-- LOGIN MODAL -->
 <div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between">
             <h3 class="text-base font-bold text-white">Masuk</h3>
-            <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none">&times;</button>
+            <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800/60 transition">&times;</button>
         </div>
         <div class="space-y-3">
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"></div>
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="loginUsername" autocomplete="username" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="loginPassword" autocomplete="current-password" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"></div>
             <div id="loginError" class="hidden text-sm text-red-400 text-center py-1"></div>
-            <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
-            <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
+            <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.99] transition-all">Masuk</button>
+            <div class="flex items-center justify-between text-xs pt-1">
+                <button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-blue-400 hover:underline">Lupa Password?</button>
+                <button type="button" onclick="closeLoginModal();openRegisterModal()" class="text-gray-500 hover:text-emerald-400 transition">Belum punya akun? <span class="text-emerald-400">Daftar</span></button>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- REGISTER MODAL -->
 <div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between">
             <h3 class="text-base font-bold text-white">Daftar</h3>
-            <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none">&times;</button>
+            <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800/60 transition">&times;</button>
         </div>
         <div class="space-y-3">
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"></div>
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" autocomplete="username" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="regPassword" autocomplete="new-password" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><input type="password" id="regPasswordConfirm" autocomplete="new-password" placeholder="Ulangi password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"></div>
             <div id="registerError" class="hidden text-sm text-red-400 text-center py-1"></div>
             <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1"></div>
-            <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
+            <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] active:scale-[0.99] transition-all">Daftar</button>
+            <div class="text-center text-xs pt-1"><button type="button" onclick="closeRegisterModal();openLoginModal()" class="text-gray-500 hover:text-emerald-400 transition">Sudah punya akun? <span class="text-emerald-400">Masuk</span></button></div>
         </div>
     </div>
 </div>
@@ -2116,12 +2130,12 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
 
     // Check limits
     if (!canAnalyze()) {
-        resultArea.innerHTML = '<div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center"><p class="text-sm text-yellow-400">' + getAnalysisLimitMsg() + '</p></div>';
+        resultArea.innerHTML = '<div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">' + escapeHtml(getAnalysisLimitMsg()) + '</p></div>';
         return;
     }
 
     // Show loading
-    resultArea.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-sm text-gray-500 mt-4 loading-stage-text">Mengambil data teknikal...</p></div>';
+    resultArea.innerHTML = '<div class="flex flex-col items-center justify-center py-12 text-center"><div class="spinner"></div><p class="text-sm text-gray-500 mt-4 loading-stage-text">Mengambil data teknikal...</p></div>';
 
     var ticker = tickerOrQuery.replace(/[^A-Z0-9]/g, '');
     var isIndex = isIndexTicker(ticker);
@@ -2193,7 +2207,8 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
     } catch(e) {
         clearInterval(stageTimer);
         var errMsg = (typeof isNetworkError === 'function' && isNetworkError(e)) ? 'Koneksi ke server sedang bermasalah.' : 'Analisis belum berhasil. Coba lagi.';
-        resultArea.innerHTML = '<div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center"><p class="text-sm text-red-400">' + errMsg + '</p></div>';
+        var retryTicker = dashJsString(tickerOrQuery);
+        resultArea.innerHTML = '<div class="empty-state empty-state-error"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><p class="empty-state-text">' + escapeHtml(errMsg) + '</p><button onclick="runAnalisisFromDashboard(\'' + retryTicker + '\')" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button></div>';
     }
 }
 
@@ -2394,24 +2409,24 @@ async function loadChartPage() {
     if (!container) return;
 
     var chartId = 'pagechart_' + Date.now();
-    container.innerHTML = '<div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><h2 class="text-sm font-semibold text-gray-300">Chart ' + ticker + '</h2><span class="text-xs text-gray-500">Data Historis T-1</span></div></div>' +
-        '<div id="' + chartId + '_container" style="height:350px;width:100%"><div class="flex items-center justify-center h-full text-gray-600 text-xs"><span class="spinner-sm"></span> Memuat chart...</div></div>' +
-        '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%"></div>' +
-        '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
-        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
+    container.innerHTML = '<div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between gap-2"><div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span><h2 class="text-sm font-semibold text-gray-300 truncate">Chart ' + escapeHtml(ticker) + '</h2></div><span class="text-[10px] text-gray-500 whitespace-nowrap flex-shrink-0">T-1</span></div>' +
+        '<div id="' + chartId + '_container" style="height:300px;width:100%;max-width:100%;overflow:hidden"><div class="flex items-center justify-center h-full text-gray-600 text-xs"><span class="spinner-sm"></span> Memuat chart...</div></div>' +
+        '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%;max-width:100%;overflow:hidden"></div>' +
+        '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-3 sm:grid-cols-7 gap-1.5 text-[10px]"></div>' +
+        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-2 flex-wrap text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
 
     try {
         var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
         var data = await resp.json();
         if (!data.success || !data.candles || data.candles.length === 0) {
-            document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart belum berhasil dimuat untuk ' + ticker + '. Coba ticker lain.</div>';
+            document.getElementById(chartId + '_container').innerHTML = '<div class="empty-state empty-state-amber" style="border:none;background:transparent;height:100%;padding:24px 12px"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Chart belum berhasil dimuat untuk ' + escapeHtml(ticker) + '. Coba ticker lain.</p></div>';
             return;
         }
         if (typeof loadLightweightCharts === 'function') await loadLightweightCharts();
         if (typeof renderLightweightChart === 'function') await renderLightweightChart(chartId, data.candles, data.metrics || null, ticker);
     } catch(e) {
         var cont = document.getElementById(chartId + '_container');
-        if (cont) cont.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart gagal dimuat. Coba lagi nanti.</div>';
+        if (cont) cont.innerHTML = '<div class="empty-state empty-state-error" style="border:none;background:transparent;height:100%;padding:24px 12px"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg><p class="empty-state-text">Chart gagal dimuat. Coba lagi nanti.</p></div>';
     }
 }
 
@@ -5891,10 +5906,23 @@ document.addEventListener('click', function(e) {
 // ===== TOAST SYSTEM =====
 function showToast(message, type) {
     type = type || 'success';
+    if (type !== 'success' && type !== 'error' && type !== 'warning' && type !== 'info') type = 'info';
     var container = document.getElementById('toastContainer'); if (!container) return;
-    var toast = document.createElement('div'); toast.className = 'toast toast-' + type; toast.textContent = message;
+    var icons = {
+        success: '<svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>',
+        error: '<svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>',
+        warning: '<svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>',
+        info: '<svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+    };
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.innerHTML = icons[type] + '<span class="toast-msg"></span>';
+    toast.querySelector('.toast-msg').textContent = message;
     container.appendChild(toast);
-    setTimeout(function() { toast.classList.add('toast-exit'); setTimeout(function() { toast.remove(); }, 250); }, 3000);
+    var dismissMs = type === 'error' ? 4000 : 3000;
+    var dismissTimer = setTimeout(dismissToast, dismissMs);
+    function dismissToast() { clearTimeout(dismissTimer); toast.classList.add('toast-exit'); setTimeout(function() { toast.remove(); }, 250); }
+    toast.addEventListener('click', dismissToast);
 }
 
 // ===== MODAL UTILITIES =====
@@ -6866,7 +6894,7 @@ function renderPortfolio() {
     if (!tbody) return;
 
     if (positions.length === 0) {
-        tbody.innerHTML = '<tr id="portEmptyRow"><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>';
+        tbody.innerHTML = '<tr id="portEmptyRow"><td colspan="7" class="px-3 py-10 text-center text-gray-500 text-sm">Belum ada posisi. Klik &ldquo;+ Tambah Posisi&rdquo; untuk mulai.</td></tr>';
         if (summaryEl) summaryEl.classList.add('hidden');
         return;
     }
@@ -7003,7 +7031,7 @@ function renderPortfolioTable(positions, hasFailure) {
     if (!tbody) return;
 
     if (positions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-10 text-center text-gray-500 text-sm">Belum ada posisi. Klik &ldquo;+ Tambah Posisi&rdquo; untuk mulai.</td></tr>';
         if (summaryEl) summaryEl.classList.add('hidden');
         return;
     }
@@ -8437,11 +8465,11 @@ async function toggleYahooChart(ticker, chartId, btn) {
     var panel = document.createElement('div');
     panel.id = chartId;
     panel.className = 'mt-3 rounded-xl border border-dark-600/30 bg-dark-800/60 overflow-hidden fade-in-up';
-    panel.innerHTML = '<div class="px-3 py-2 border-b border-dark-600/20 flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-xs font-semibold text-gray-300">Chart ' + ticker + '</span><span class="text-[10px] text-gray-600">Data Historis T-1</span></div><div class="flex items-center gap-2"><button onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\')" class="text-[10px] text-blue-400 hover:text-blue-300 transition">Download PNG</button><button onclick="closeYahooChart(\'' + chartId + '\',this)" class="text-[10px] text-gray-500 hover:text-red-400 transition">Tutup</button></div></div>' +
-        '<div id="' + chartId + '_container" style="height:280px;width:100%"><div class="flex items-center justify-center h-full text-gray-600 text-xs">Memuat chart...</div></div>' +
-        '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%"></div>' +
-        '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
-        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
+    panel.innerHTML = '<div class="px-3 py-2 border-b border-dark-600/20 flex items-center justify-between gap-2"><div class="flex items-center gap-2 min-w-0"><span class="text-xs font-semibold text-gray-300 truncate">Chart ' + escapeHtml(ticker) + '</span><span class="text-[10px] text-gray-600 whitespace-nowrap hidden sm:inline">Data Historis T-1</span></div><div class="flex items-center gap-2 flex-shrink-0"><button onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\')" class="text-[10px] text-blue-400 hover:text-blue-300 transition">Download PNG</button><button onclick="closeYahooChart(\'' + chartId + '\',this)" class="text-[10px] text-gray-500 hover:text-red-400 transition">Tutup</button></div></div>' +
+        '<div id="' + chartId + '_container" style="height:260px;width:100%;max-width:100%;overflow:hidden"><div class="flex items-center justify-center h-full text-gray-600 text-xs">Memuat chart...</div></div>' +
+        '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%;max-width:100%;overflow:hidden"></div>' +
+        '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-3 sm:grid-cols-7 gap-1.5 text-[10px]"></div>' +
+        '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-2 flex-wrap text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
     bubble.after(panel);
     _activeChartPanel = panel;
 
