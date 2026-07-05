@@ -640,7 +640,7 @@
                 <div class="panel-header">
                     <div>
                         <h3 class="panel-title">Auto Monitor</h3>
-                        <p class="panel-subtitle">Update tiap 30 menit saat jam bursa</p>
+                        <p class="panel-subtitle">Monitor update berkala saat jam bursa</p>
                     </div>
                     <span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap">— WIB</span>
                 </div>
@@ -7590,7 +7590,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
             _dashboardTop5Cache = { at: Date.now(), data: data };
         }
         var note = document.getElementById('dashboardTop5LockNote');
-        if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
+        if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update berkala saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
         renderDashboardTop5MonitorData(data);
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
@@ -7607,7 +7607,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
 
 function renderDashboardTop5MonitorData(data) {
     var note = document.getElementById('dashboardTop5LockNote');
-    if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
+    if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update berkala saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
     // Robust empty detection: treat as empty/awaiting if ANY of these are true
     var top5Rows = data.top5 || data.picks || [];
     var monitorRows = data.monitor || [];
