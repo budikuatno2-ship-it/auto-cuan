@@ -1106,3 +1106,262 @@ test('mapLimit with limit=1 runs sequentially', async () => {
   assert.equal(maxConcurrent, 1);
   assert.deepEqual(results, [10, 20, 30, 40]);
 });
+
+
+
+// ============================================================
+// INDONESIAN LANGUAGE AND SUMMARY.MD TESTS
+// ============================================================
+
+test('SYSTEM_PROMPT contains Indonesian language instruction', () => {
+  assert.ok(runner.SYSTEM_PROMPT.includes('Bahasa Indonesia'), 'SYSTEM_PROMPT must instruct Indonesian');
+  assert.ok(runner.SYSTEM_PROMPT.includes('Kamu'), 'SYSTEM_PROMPT should be in Indonesian');
+  assert.ok(runner.SYSTEM_PROMPT.includes('strict valid JSON'), 'Must still require strict JSON');
+});
+
+test('SYSTEM_PROMPT contains deep-analysis requirements', () => {
+  assert.ok(runner.SYSTEM_PROMPT.toLowerCase().includes('pola candle'), 'Must require candlestick pattern analysis');
+  assert.ok(runner.SYSTEM_PROMPT.includes('respect candle') || runner.SYSTEM_PROMPT.includes('Respect candle'), 'Must require respect candle analysis');
+  assert.ok(runner.SYSTEM_PROMPT.includes('rejection candle') || runner.SYSTEM_PROMPT.includes('Rejection candle'), 'Must require rejection candle');
+  assert.ok(runner.SYSTEM_PROMPT.includes('recovery candle') || runner.SYSTEM_PROMPT.includes('Recovery candle'), 'Must require recovery candle');
+  assert.ok(runner.SYSTEM_PROMPT.includes('demand/supply') || runner.SYSTEM_PROMPT.includes('Demand/supply'), 'Must require demand/supply reaction');
+  assert.ok(runner.SYSTEM_PROMPT.includes('half-candle debt'), 'Must require half-candle debt analysis');
+  assert.ok(runner.SYSTEM_PROMPT.includes('volume behavior') || runner.SYSTEM_PROMPT.includes('Volume behavior') || runner.SYSTEM_PROMPT.includes('avg volume'), 'Must require volume vs avg');
+  assert.ok(runner.SYSTEM_PROMPT.includes('90D') && runner.SYSTEM_PROMPT.includes('60D'), 'Must require multi-timeframe structure');
+  assert.ok(runner.SYSTEM_PROMPT.includes('PoC'), 'Must require PoC context');
+  assert.ok(runner.SYSTEM_PROMPT.includes('breakout') && runner.SYSTEM_PROMPT.includes('fakeout'), 'Must require breakout/fakeout');
+  assert.ok(runner.SYSTEM_PROMPT.includes('invalidation') || runner.SYSTEM_PROMPT.includes('Invalidation'), 'Must require invalidation');
+});
+
+test('SYSTEM_PROMPT contains quality_score scoring basis from deterministic data only', () => {
+  assert.ok(runner.SYSTEM_PROMPT.includes('quality_score'), 'Must mention quality_score');
+  assert.ok(runner.SYSTEM_PROMPT.includes('bukti teknikal') || runner.SYSTEM_PROMPT.includes('data deterministik'), 'Must base on technical evidence');
+  assert.ok(runner.SYSTEM_PROMPT.includes('JANGAN score berdasarkan hype'), 'Must explicitly reject hype-based scoring');
+  assert.ok(runner.SYSTEM_PROMPT.includes('wick'), 'Must include wick in scoring basis');
+  assert.ok(runner.SYSTEM_PROMPT.includes('respect') && runner.SYSTEM_PROMPT.includes('rejection') && runner.SYSTEM_PROMPT.includes('recovery'), 'Must include respect/rejection/recovery');
+});
+
+test('SYSTEM_PROMPT instructs wick-based respect is valid (not body-only)', () => {
+  assert.ok(runner.SYSTEM_PROMPT.includes('wick rejection/recovery'), 'Must mention wick-based respect');
+  assert.ok(runner.SYSTEM_PROMPT.includes('body tidak close tepat') || runner.SYSTEM_PROMPT.includes('body-only'), 'Must say body-only is not the only signal');
+});
+
+test('USER_PROMPT_TEMPLATE contains Indonesian language instruction', () => {
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('Bahasa Indonesia'), 'USER_PROMPT must instruct Indonesian');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('strict JSON'), 'Must still require strict JSON');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('ticker'), 'Schema must still have ticker field');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('technical_breakdown'), 'Schema must still have technical_breakdown');
+});
+
+test('USER_PROMPT_TEMPLATE contains deep-analysis instructions', () => {
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('candle_structure_view'), 'Must have candle_structure_view field');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('respect') && runner.USER_PROMPT_TEMPLATE.includes('rejection') && runner.USER_PROMPT_TEMPLATE.includes('recovery'), 'Must instruct respect/rejection/recovery');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('half-candle debt') || runner.USER_PROMPT_TEMPLATE.includes('gap'), 'Must instruct gap/half-candle');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('breakout') && runner.USER_PROMPT_TEMPLATE.includes('fakeout'), 'Must instruct breakout/fakeout');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('PoC'), 'Must instruct PoC context');
+});
+
+test('USER_PROMPT_TEMPLATE contains quality_score deterministic-only basis', () => {
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('quality_score'), 'Must reference quality_score');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('bukti teknikal deterministik'), 'Must specify deterministic technical evidence');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('JANGAN score berdasarkan hype'), 'Must reject hype scoring');
+});
+
+test('USER_PROMPT_TEMPLATE schema fields are unchanged (same keys)', () => {
+  const required = [
+    'ticker', 'model', 'analysis_date', 'data_quality', 'bias', 'setup_type',
+    'quality_score', 'risk_level', 'executive_summary', 'technical_breakdown',
+    'key_levels', 'bullish_arguments', 'bearish_arguments', 'invalidations',
+    'watch_conditions', 'notable_risks', 'final_verdict', 'not_financial_advice'
+  ];
+  for (const key of required) {
+    assert.ok(runner.USER_PROMPT_TEMPLATE.includes('"' + key + '"'), 'Schema must include key: ' + key);
+  }
+});
+
+test('writeSummaryMD produces detailed per-ticker output (not truncated)', async () => {
+  const dir = await tmpdir();
+  const results = [
+    {
+      ticker: 'BBCA', model: 'test-model', error: null,
+      ai_result: {
+        ticker: 'BBCA', model: 'test-model', bias: 'bullish',
+        setup_type: 'breakout', quality_score: 85, risk_level: 'Medium',
+        executive_summary: 'Saham menunjukkan momentum bullish kuat dengan volume tinggi dan break resistance.',
+        technical_breakdown: {
+          trend_view: 'Uptrend kuat di atas MA20 dan MA50.',
+          momentum_view: 'RSI 62 menunjukkan momentum sehat tanpa overbought.',
+          volume_view: 'Volume 1.8x rata-rata 20 hari, konfirmasi akumulasi.',
+          candle_structure_view: 'Bullish engulfing dengan body kuat dan close near high.',
+          demand_support_view: 'Demand zone 9200-9300 sudah ditest 3x dan hold.',
+          supply_resistance_view: 'Supply di 9800 belum tertembus, target selanjutnya.',
+          entry_view: 'Entry ideal di pullback 9400-9500 dengan volume konfirmasi.',
+          risk_reward_view: 'RR 2.1:1 layak untuk day trade.'
+        },
+        key_levels: { entry1: 9400, entry2: 9500, stop_loss: 9200, tp1: 9800, tp2: 10000, major_demand: 9200, major_supply: 9800, poc: 9500 },
+        invalidations: ['Close di bawah 9200 membatalkan setup.', 'Volume turun 50% dari rata-rata.'],
+        watch_conditions: ['Tunggu volume > 1.5x saat breakout.', 'Monitor close harian di atas 9500.'],
+        notable_risks: ['Gap risk jika open jauh dari close sebelumnya.'],
+        final_verdict: 'Setup breakout layak dimonitor. Entry hanya jika pullback ke area demand dengan volume konfirmasi.',
+        not_financial_advice: true
+      }
+    }
+  ];
+  const report = { total_tickers: 1, total_models: 1, total_jobs: 1, completed_jobs: 1, failed_jobs: 0, skipped_jobs: 0 };
+  await runner.writeSummaryMD(dir, results, report);
+
+  const md = await fs.readFile(path.join(dir, 'summary.md'), 'utf8');
+
+  // Must be in Indonesian
+  assert.ok(md.includes('Ringkasan Riset AI'), 'Title must be Indonesian');
+  assert.ok(md.includes('Laporan Run'), 'Section headers must be Indonesian');
+
+  // Must include full ticker detail, not truncated
+  assert.ok(md.includes('### BBCA (test-model)'), 'Must have per-ticker heading');
+  assert.ok(md.includes('Score | 85'), 'Must include score');
+  assert.ok(md.includes('Bias | bullish'), 'Must include bias');
+  assert.ok(md.includes('Setup | breakout'), 'Must include setup_type');
+  assert.ok(md.includes('Risk Level | Medium'), 'Must include risk_level');
+
+  // Must include full technical breakdown views (not truncated)
+  assert.ok(md.includes('Entry ideal di pullback 9400-9500'), 'entry_view must not be truncated');
+  assert.ok(md.includes('Demand zone 9200-9300 sudah ditest 3x'), 'demand_support_view must not be truncated');
+  assert.ok(md.includes('Volume 1.8x rata-rata 20 hari'), 'volume_view must not be truncated');
+  assert.ok(md.includes('Bullish engulfing dengan body kuat'), 'candle_structure_view must not be truncated');
+
+  // Must include invalidations and watch conditions
+  assert.ok(md.includes('Close di bawah 9200 membatalkan setup'), 'invalidations must appear');
+  assert.ok(md.includes('Tunggu volume > 1.5x saat breakout'), 'watch_conditions must appear');
+  assert.ok(md.includes('Gap risk'), 'notable_risks must appear');
+
+  // Must include full verdict (not sliced)
+  assert.ok(md.includes('Setup breakout layak dimonitor. Entry hanya jika pullback ke area demand dengan volume konfirmasi.'), 'Verdict must not be truncated');
+
+  // Must have detailed section labels
+  assert.ok(md.includes('**Candle & Pattern:**'), 'Must have Candle & Pattern section');
+  assert.ok(md.includes('**Demand & Supply:**'), 'Must have Demand & Supply section');
+  assert.ok(md.includes('**Volume:**'), 'Must have Volume section');
+  assert.ok(md.includes('**Trend / Momentum:**'), 'Must have Trend / Momentum section');
+  assert.ok(md.includes('**Potensi Setup:**'), 'Must have Potensi Setup section');
+  assert.ok(md.includes('**Invalidation:**'), 'Must have Invalidation section');
+  assert.ok(md.includes('**Watch Conditions:**'), 'Must have Watch Conditions section');
+  assert.ok(md.includes('**Final Verdict:**'), 'Must have Final Verdict section');
+
+  // Must include key levels
+  assert.ok(md.includes('Entry 1 | 9400'), 'entry1 must appear');
+  assert.ok(md.includes('Stop Loss | 9200'), 'stop_loss must appear');
+  assert.ok(md.includes('TP1 | 9800'), 'tp1 must appear');
+
+  // Must have disclaimer in Indonesian
+  assert.ok(md.includes('bukan nasihat keuangan'), 'Disclaimer must be Indonesian');
+});
+
+test('writeSummaryMD does not truncate final_verdict or executive_summary', async () => {
+  const dir = await tmpdir();
+  const longVerdict = 'Ini adalah verdict yang sangat panjang untuk memastikan tidak ada pemotongan teks. ' +
+    'Setup ini memerlukan konfirmasi volume dan candle pattern yang kuat sebelum entry. ' +
+    'Jangan chase jika harga sudah naik lebih dari 5% dari area entry.';
+  const results = [{
+    ticker: 'GOTO', model: 'model-x', error: null,
+    ai_result: {
+      ticker: 'GOTO', model: 'model-x', bias: 'neutral', setup_type: 'watchlist',
+      quality_score: 55, risk_level: 'High',
+      executive_summary: longVerdict,
+      technical_breakdown: { trend_view: 'Sideways tanpa arah jelas.', entry_view: 'Belum ada area entry yang aman.' },
+      key_levels: {},
+      final_verdict: longVerdict,
+      not_financial_advice: true
+    }
+  }];
+  const report = { total_tickers: 1, total_models: 1, total_jobs: 1, completed_jobs: 1, failed_jobs: 0, skipped_jobs: 0 };
+  await runner.writeSummaryMD(dir, results, report);
+
+  const md = await fs.readFile(path.join(dir, 'summary.md'), 'utf8');
+  // Full verdict must appear without truncation
+  assert.ok(md.includes(longVerdict), 'Long verdict must not be truncated');
+  assert.ok(md.includes('Belum ada area entry yang aman'), 'entry_view must appear fully');
+});
+
+
+
+// ============================================================
+// FIBONACCI CONTEXT-ONLY TESTS
+// ============================================================
+
+test('SYSTEM_PROMPT mentions Fibonacci as context-only (not dominant)', () => {
+  assert.ok(runner.SYSTEM_PROMPT.includes('Fibonacci'), 'SYSTEM_PROMPT must mention Fibonacci');
+  assert.ok(runner.SYSTEM_PROMPT.includes('konteks'), 'Must describe Fibonacci as context');
+  assert.ok(
+    runner.SYSTEM_PROMPT.includes('tidak boleh mendominasi') || runner.SYSTEM_PROMPT.includes('konteks pendukung'),
+    'Must state Fibonacci should not dominate score'
+  );
+});
+
+test('USER_PROMPT_TEMPLATE mentions Fibonacci as supporting context', () => {
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('Fibonacci'), 'USER_PROMPT must mention Fibonacci');
+  assert.ok(runner.USER_PROMPT_TEMPLATE.includes('konteks pendukung'), 'Must describe as supporting context');
+});
+
+test('quality_score basis in prompt includes Fibonacci as supporting only', () => {
+  // In the quality_score section of USER_PROMPT
+  const qualitySection = runner.USER_PROMPT_TEMPLATE.slice(
+    runner.USER_PROMPT_TEMPLATE.indexOf('quality_score'),
+    runner.USER_PROMPT_TEMPLATE.indexOf('Skema JSON wajib')
+  );
+  assert.ok(qualitySection.includes('Fibonacci'), 'quality_score section must mention Fibonacci');
+  assert.ok(qualitySection.includes('konteks pendukung'), 'quality_score section must say Fibonacci is supporting only');
+});
+
+test('writeSummaryMD includes Fibonacci / Retracement Context label when fib data exists', async () => {
+  const dir = await tmpdir();
+  const results = [{
+    ticker: 'BBCA', model: 'test-model', error: null,
+    deterministic_summary: {
+      fib_confluence: 'Fib confluence sehat',
+      fib_levels: { fib_382: 9400, fib_500: 9250, fib_618: 9100 }
+    },
+    ai_result: {
+      ticker: 'BBCA', model: 'test-model', bias: 'bullish',
+      setup_type: 'pullback', quality_score: 78, risk_level: 'Medium',
+      executive_summary: 'Pullback ke area Fib sehat.',
+      technical_breakdown: {
+        trend_view: 'Uptrend.', momentum_view: 'RSI 55.', volume_view: 'Volume konfirmasi.',
+        candle_structure_view: 'Hammer di area demand.', demand_support_view: 'Demand hold.',
+        supply_resistance_view: 'Supply di 9800.', entry_view: 'Entry di area Fib 38.2-50%.',
+        risk_reward_view: 'RR 2:1.'
+      },
+      key_levels: { entry1: 9400, stop_loss: 9100, tp1: 9800 },
+      invalidations: ['Close < 9100.'], watch_conditions: ['Volume konfirmasi.'],
+      final_verdict: 'Pullback sehat, entry di area Fib.',
+      not_financial_advice: true
+    }
+  }];
+  const report = { total_tickers: 1, total_models: 1, total_jobs: 1, completed_jobs: 1, failed_jobs: 0, skipped_jobs: 0 };
+  await runner.writeSummaryMD(dir, results, report);
+
+  const md = await fs.readFile(path.join(dir, 'summary.md'), 'utf8');
+  assert.ok(md.includes('**Fibonacci / Retracement Context:**'), 'Must have Fibonacci section label');
+  assert.ok(md.includes('Fib confluence sehat'), 'Must show fib_confluence value');
+  assert.ok(md.includes('9400'), 'Must show fib_382 level');
+  assert.ok(md.includes('9250'), 'Must show fib_500 level');
+  assert.ok(md.includes('9100'), 'Must show fib_618 level');
+});
+
+test('writeSummaryMD omits Fibonacci label when no fib data in payload', async () => {
+  const dir = await tmpdir();
+  const results = [{
+    ticker: 'GOTO', model: 'test-model', error: null,
+    deterministic_summary: { fib_confluence: null, fib_levels: null },
+    ai_result: {
+      ticker: 'GOTO', model: 'test-model', bias: 'neutral',
+      setup_type: 'watchlist', quality_score: 45, risk_level: 'High',
+      executive_summary: 'Belum ada setup.', technical_breakdown: { entry_view: 'Tunggu.' },
+      key_levels: {}, final_verdict: 'Hindari.', not_financial_advice: true
+    }
+  }];
+  const report = { total_tickers: 1, total_models: 1, total_jobs: 1, completed_jobs: 1, failed_jobs: 0, skipped_jobs: 0 };
+  await runner.writeSummaryMD(dir, results, report);
+
+  const md = await fs.readFile(path.join(dir, 'summary.md'), 'utf8');
+  assert.ok(!md.includes('**Fibonacci / Retracement Context:**'), 'Must NOT show Fibonacci label when no fib data');
+});
