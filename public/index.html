@@ -402,6 +402,33 @@
         @keyframes scrFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
         .scr-pane-anim { animation: scrFadeIn 0.12s ease-out; }
         @media (prefers-reduced-motion: reduce) { .scr-pane-anim { animation: none; } }
+        /* ===== PHASE 2: CONSISTENT PANELS & EMPTY STATES ===== */
+        .panel { background: rgba(21,26,35,0.55); border: 1px solid rgba(28,35,51,0.4); border-radius: 16px; padding: 12px; }
+        .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+        .panel-title { font-size: 13px; font-weight: 700; color: #e5e7eb; }
+        .panel-subtitle { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; text-align: center; border-radius: 12px; border: 1px dashed rgba(28,35,51,0.6); background: rgba(15,19,25,0.3); }
+        .empty-state-icon { width: 32px; height: 32px; margin-bottom: 8px; color: #374151; }
+        .empty-state-text { font-size: 12px; color: #6b7280; line-height: 1.5; max-width: 280px; }
+        .empty-state-error { border-color: rgba(239,68,68,0.2); background: rgba(239,68,68,0.03); }
+        .empty-state-error .empty-state-text { color: #fca5a5; }
+        .empty-state-amber { border-color: rgba(245,158,11,0.2); background: rgba(245,158,11,0.03); }
+        .empty-state-amber .empty-state-text { color: #fcd34d; }
+        /* Screener filter area compact on mobile */
+        @media (max-width: 639px) {
+            .scr-filter-grid { grid-template-columns: 1fr 1fr !important; }
+            .scr-filter-grid > label { grid-column: span 2; }
+        }
+        /* Action card unified hover */
+        .action-card { background: rgba(21,26,35,0.55); border: 1px solid rgba(28,35,51,0.4); border-radius: 12px; padding: 16px; text-align: left; transition: all 0.15s ease-out; }
+        .action-card:hover { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.04); }
+        .action-card:active { transform: scale(0.97); }
+        .action-card .action-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(16,185,129,0.08); display: flex; align-items: center; justify-content: center; margin-bottom: 8px; transition: background 0.15s; }
+        .action-card:hover .action-icon { background: rgba(16,185,129,0.16); }
+        .action-card .action-icon svg { width: 16px; height: 16px; color: #34d399; }
+        /* Screener info bar (compact disclaimer + legend) */
+        .scr-info-bar { font-size: 11px; color: #6b7280; line-height: 1.5; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(28,35,51,0.3); background: rgba(15,19,25,0.35); }
+        .scr-info-bar strong { color: #9ca3af; }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -531,17 +558,15 @@
         </div>
 
         <!-- IHSG Live Market Indicator -->
-        <div id="ihsgSummaryCard" class="bg-dark-700/50 border border-dark-600/30 rounded-2xl p-4">
+        <div id="ihsgSummaryCard" class="panel">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <h3 class="text-xs font-semibold text-gray-400">IDX LIVE &middot; IHSG</h3>
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h3 class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">IDX &middot; IHSG</h3>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="text-[11px] text-emerald-400 hover:text-emerald-300 transition">Analisis IHSG &rarr;</button>
-                </div>
+                <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="text-[11px] text-emerald-400 hover:text-emerald-300 transition">Analisis &rarr;</button>
             </div>
-            <div id="ihsgSummaryContent" class="mt-2">
+            <div id="ihsgSummaryContent" class="mt-1.5">
                 <div class="flex items-baseline gap-3">
                     <span id="ihsgLast" class="text-lg font-bold text-white">—</span>
                     <span id="ihsgChange" class="text-xs font-medium text-gray-500">—</span>
@@ -550,85 +575,85 @@
         </div>
 
         <!-- Action Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <button onclick="navigateTo('analisis')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group">
-                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-2 group-hover:bg-emerald-500/20 transition">
-                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            <button onclick="navigateTo('analisis')" class="action-card group">
+                <div class="action-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 </div>
-                <p class="text-sm font-semibold text-gray-200">Analisis Saham</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">BBCA, IHSG, dll</p>
+                <p class="text-sm font-semibold text-gray-200">Analisis</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">BBCA, IHSG, dll</p>
             </button>
-            <button onclick="navigateTo('sektor')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group">
-                <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center mb-2 group-hover:bg-blue-500/20 transition">
-                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <button onclick="navigateTo('sektor')" class="action-card group">
+                <div class="action-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </div>
                 <p class="text-sm font-semibold text-gray-200">Sektor Hot</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">Grup konglomerat</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Grup konglomerat</p>
             </button>
-            <button onclick="navigateTo('screener')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all group">
-                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-2 group-hover:bg-cyan-500/20 transition">
-                    <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <button onclick="navigateTo('screener')" class="action-card group">
+                <div class="action-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
                 <p class="text-sm font-semibold text-gray-200">Screener</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">Swing Konglo 3–7D</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Swing 3–7D</p>
             </button>
-            <button onclick="navigateTo('chart')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group">
-                <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center mb-2 group-hover:bg-purple-500/20 transition">
-                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+            <button onclick="navigateTo('chart')" class="action-card group">
+                <div class="action-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
                 </div>
                 <p class="text-sm font-semibold text-gray-200">Chart</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">Lihat grafik saham</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Grafik saham</p>
             </button>
-            <button onclick="navigateTo('portofolio')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 text-left hover:border-yellow-500/30 hover:bg-yellow-500/5 transition-all group">
-                <div class="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center mb-2 group-hover:bg-yellow-500/20 transition">
-                    <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            <button onclick="navigateTo('portofolio')" class="action-card group">
+                <div class="action-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 </div>
                 <p class="text-sm font-semibold text-gray-200">Portofolio</p>
-                <p class="text-[11px] text-gray-500 mt-0.5">Pantau posisi saham manual</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">Posisi manual</p>
             </button>
         </div>
 
         <!-- Compact Top 5 + Monitor -->
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
-            <section class="lg:col-span-3 bg-dark-700/45 border border-dark-600/30 rounded-2xl p-3">
-                <div class="flex items-center justify-between gap-2 mb-2">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-2 items-start">
+            <section class="lg:col-span-3 panel">
+                <div class="panel-header">
                     <div>
-                        <h3 class="text-sm font-bold text-white">Top 5 Radar</h3>
-                        <p id="dashboardTop5LockNote" class="text-[11px] text-gray-500">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p>
+                        <h3 class="panel-title">Top 5 Radar</h3>
+                        <p id="dashboardTop5LockNote" class="panel-subtitle">Belum ada Top 5 final yang terkunci.</p>
                     </div>
                 </div>
                 <div id="dashboardTop5List" class="space-y-2">
-                    <div class="py-4 text-center text-xs text-amber-200/80">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</div>
+                    <div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p></div>
                 </div>
             </section>
-            <aside class="lg:col-span-2 bg-dark-700/45 border border-dark-600/30 rounded-2xl p-3">
-                <div class="flex items-start justify-between gap-2 mb-2">
+            <aside class="lg:col-span-2 panel">
+                <div class="panel-header">
                     <div>
-                        <h3 class="text-sm font-bold text-white">Auto Monitor</h3>
-                        <p class="text-[11px] text-gray-500">Update berkala tiap 30 menit saat jam bursa</p>
+                        <h3 class="panel-title">Auto Monitor</h3>
+                        <p class="panel-subtitle">Update tiap 30 menit saat jam bursa</p>
                     </div>
-                    <span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap">Terakhir update: — WIB</span>
+                    <span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap">— WIB</span>
                 </div>
                 <div id="dashboardMonitorList" class="space-y-2">
-                    <div class="py-3 text-center text-xs text-gray-500">Monitor aktif setelah Top 5 dikunci.</div>
+                    <div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Monitor aktif setelah Top 5 dikunci.</p></div>
                 </div>
             </aside>
         </div>
 
-        <section class="bg-dark-700/45 border border-dark-600/30 rounded-2xl p-3">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+        <section class="panel">
+            <div class="panel-header flex-col sm:flex-row sm:items-start">
                 <div>
-                    <h3 class="text-sm font-bold text-white">Top 5 History</h3>
-                    <p class="text-[11px] text-gray-500">Pantau saham yang pernah masuk Top 5. TP History mencatat yang sudah kena TP1/TP2.</p>
+                    <h3 class="panel-title">Top 5 History</h3>
+                    <p class="panel-subtitle">Pantau saham Top 5 aktif dan yang sudah kena TP.</p>
                 </div>
-                <button onclick="loadTop5History(true)" class="px-2.5 py-1.5 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Refresh</button>
+                <button onclick="loadTop5History(true)" class="px-2.5 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition mt-1 sm:mt-0">Refresh</button>
             </div>
             <div class="flex gap-1 mb-2">
                 <button id="top5HistoryTabActive" onclick="setTop5HistoryTab('active')" class="px-2.5 py-1 rounded-lg text-[11px] border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">Aktif Dipantau</button>
                 <button id="top5HistoryTabTp" onclick="setTop5HistoryTab('tp')" class="px-2.5 py-1 rounded-lg text-[11px] border border-dark-600/40 text-gray-400 hover:text-emerald-300">TP History</button>
             </div>
             <div id="top5HistoryList" class="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                <div class="py-3 text-center text-xs text-gray-500">Memuat Top 5 History...</div>
+                <div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Memuat Top 5 History...</p></div>
             </div>
         </section>
     </div>
@@ -730,55 +755,50 @@
     <!-- Content -->
     <div id="screenerContent" class="hidden space-y-4">
         <!-- Screener type tabs -->
-        <div class="flex items-center gap-2 mb-4">
+        <div class="flex items-center gap-1.5 mb-3">
             <button onclick="switchScreenerType('konglo')" id="scrTypeKonglo" class="px-4 py-2 rounded-lg text-sm font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 transition-all">Konglo</button>
             <button onclick="switchScreenerType('nonkonglo')" id="scrTypeNonKonglo" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all">Non-Konglo</button>
             <button onclick="switchScreenerType('daytrade')" id="scrTypeDayTrade" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 hover:border-gray-500/30 transition-all">Day Trade</button>
         </div>
         <!-- Konglo Pane -->
-        <div id="screenerKongloPane" class="space-y-4">
+        <div id="screenerKongloPane" class="space-y-3">
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
-                <h2 class="text-lg font-bold text-white">Screener Swing Konglo 3&ndash;7D</h2>
-                <p class="text-xs text-gray-500 mt-0.5" id="screenerSubtitle">Watchlist high-probability swing setup dari Grup Konglomerat Hot.</p>
+                <h2 class="text-base font-bold text-white">Screener Swing Konglo 3&ndash;7D</h2>
+                <p class="text-[11px] text-gray-500 mt-0.5" id="screenerSubtitle">Watchlist high-probability swing setup dari Grup Konglomerat Hot.</p>
             </div>
             <div class="flex items-center gap-2">
-                <span id="screenerMetaBadge" class="px-2 py-1 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
-                <button onclick="exportKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Download PDF</button>
+                <span id="screenerMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+                <button onclick="exportKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
             </div>
         </div>
         <p id="screenerFailedDiag" class="hidden text-[10px] text-red-400/70 mt-1"></p>
-        <!-- Disclaimer -->
-        <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
-            <p class="text-[11px] text-amber-400/80 leading-relaxed"><strong>Disclaimer:</strong> Ini bukan rekomendasi beli. Screener ini hanya watchlist setup high-probability untuk swing 3&ndash;7 hari. Selalu lakukan analisis sendiri dan kelola risiko. Invalid jika harga menembus level invalidasi.</p>
-        </div>
-        <!-- Setup Score legend -->
-        <div class="bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
-            <p class="text-[11px] text-gray-400 leading-relaxed"><strong class="text-gray-300">Setup Score (0&ndash;100)</strong> menilai kekuatan setup teknikal (trend, momentum, volume, RR). <strong class="text-gray-300">Exec (A+/A/B/C)</strong> menilai kelayakan eksekusi saat ini. Score tinggi tetapi Exec C berarti setup menarik, tetapi entry sudah telat/risiko chase tinggi. <strong>Bukan winrate</strong> atau jaminan profit.</p>
-        </div>
+        <!-- Compact info bars (disclaimer + legend merged) -->
+        <div class="scr-info-bar text-amber-400/70"><strong class="text-amber-400/90">Disclaimer:</strong> Bukan rekomendasi beli. Watchlist swing 3–7 hari. Kelola risiko sendiri. Invalid jika harga menembus level invalidasi.</div>
+        <div class="scr-info-bar"><strong>Score (0–100)</strong> = kekuatan setup. <strong>Exec (A+/A/B/C)</strong> = kelayakan entry. Score tinggi + Exec C = setup menarik tapi entry telat. <strong>Bukan winrate.</strong></div>
         <!-- Stats row -->
-        <div class="grid grid-cols-3 gap-2" id="screenerStats">
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
-                <p class="text-[10px] text-gray-500 uppercase">Universe</p>
-                <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatUniverse">—</p>
+        <div class="grid grid-cols-3 gap-1.5" id="screenerStats">
+            <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Universe</p>
+                <p class="text-sm font-bold text-gray-200" id="screenerStatUniverse">—</p>
             </div>
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
-                <p class="text-[10px] text-gray-500 uppercase">Scanned</p>
-                <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatScanned">—</p>
+            <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Scanned</p>
+                <p class="text-sm font-bold text-gray-200" id="screenerStatScanned">—</p>
             </div>
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
-                <p class="text-[10px] text-gray-500 uppercase">Failed</p>
-                <p class="text-sm font-bold text-gray-200 mt-0.5" id="screenerStatFailed">—</p>
+            <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                <p class="text-[9px] text-gray-500 uppercase tracking-wide">Failed</p>
+                <p class="text-sm font-bold text-gray-200" id="screenerStatFailed">—</p>
             </div>
         </div>
         <!-- Lightweight result filters -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
-            <select id="kgRiskFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
-            <select id="kgStatusFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="kgTypeFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
-            <label class="flex items-center gap-2 rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-300"><input id="kgHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('konglo')" class="accent-emerald-500"> Hide Very High Risk</label>
-            <input id="kgTickerSearch" oninput="applyScreenerUiFilters('konglo')" placeholder="Search ticker..." class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+        <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
+            <select id="kgRiskFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <select id="kgStatusFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+            <select id="kgTypeFilter" onchange="applyScreenerUiFilters('konglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
+            <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="kgHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('konglo')" class="accent-emerald-500"> Hide Very High</label>
+            <input id="kgTickerSearch" oninput="applyScreenerUiFilters('konglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
         </div>
         <!-- Filter tabs -->
         <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -822,16 +842,16 @@
         </div>
         </div><!-- /screenerKongloPane -->
         <!-- Non-Konglo Pane (hidden by default) -->
-        <div id="screenerNonKongloPane" class="hidden space-y-4">
+        <div id="screenerNonKongloPane" class="hidden space-y-3">
             <!-- Header -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                    <h2 class="text-lg font-bold text-white">Swing Screener Non-Konglo</h2>
-                    <p class="text-xs text-gray-500 mt-0.5" id="nkScreenerSubtitle">Watchlist swing setup dari saham non-konglomerat (papan Utama &amp; Pengembangan).</p>
+                    <h2 class="text-base font-bold text-white">Swing Screener Non-Konglo</h2>
+                    <p class="text-[11px] text-gray-500 mt-0.5" id="nkScreenerSubtitle">Watchlist swing setup dari saham non-konglomerat (papan Utama &amp; Pengembangan).</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span id="nkScreenerMetaBadge" class="px-2 py-1 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
-                    <button onclick="exportNonKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Download PDF</button>
+                    <span id="nkScreenerMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+                    <button onclick="exportNonKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
                 </div>
             </div>
             <!-- Progress bar (hidden when not scanning) -->
@@ -846,17 +866,15 @@
                     </div>
                 </div>
             </div>
-            <!-- Disclaimer -->
-            <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
-                <p class="text-[11px] text-amber-400/80 leading-relaxed"><strong>Disclaimer:</strong> Ini bukan rekomendasi beli. Screener ini hanya watchlist setup high-probability untuk swing trading. Selalu lakukan analisis sendiri dan kelola risiko.</p>
-            </div>
+            <!-- Compact disclaimer -->
+            <div class="scr-info-bar text-amber-400/70"><strong class="text-amber-400/90">Disclaimer:</strong> Bukan rekomendasi beli. Watchlist swing trading. Kelola risiko sendiri.</div>
             <!-- Lightweight result filters -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
-            <select id="nkRiskFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
-            <select id="nkStatusFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="nkTypeFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
-            <label class="flex items-center gap-2 rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-300"><input id="nkHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('nonkonglo')" class="accent-emerald-500"> Hide Very High Risk</label>
-            <input id="nkTickerSearch" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Search ticker..." class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
+            <select id="nkRiskFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <select id="nkStatusFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+            <select id="nkTypeFilter" onchange="applyScreenerUiFilters('nonkonglo')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
+            <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="nkHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('nonkonglo')" class="accent-emerald-500"> Hide Very High</label>
+            <input id="nkTickerSearch" oninput="applyScreenerUiFilters('nonkonglo')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
             </div>
             <!-- Status filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -900,43 +918,38 @@
             </div>
         </div><!-- /screenerNonKongloPane -->
         <!-- Day Trade Pane (hidden by default) -->
-        <div id="screenerDayTradePane" class="hidden space-y-4">
+        <div id="screenerDayTradePane" class="hidden space-y-3">
             <!-- Header -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                    <h2 class="text-lg font-bold text-white">Day Trade Screener</h2>
-                    <p class="text-xs text-gray-500 mt-0.5" id="dtScreenerSubtitle">Intraday momentum &amp; pre-spike radar. Deterministic, no AI.</p>
+                    <h2 class="text-base font-bold text-white">Day Trade Screener</h2>
+                    <p class="text-[11px] text-gray-500 mt-0.5" id="dtScreenerSubtitle">Intraday momentum &amp; pre-spike radar. Deterministic, no AI.</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span id="dtMetaBadge" class="px-2 py-1 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
-                    <button onclick="exportDayTradePDF()" class="px-3 py-1.5 rounded-lg text-xs text-rose-400 border border-rose-500/30 hover:bg-rose-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Download PDF</button>
+                    <span id="dtMetaBadge" class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-dark-600/50 text-gray-400 border border-dark-500/30"></span>
+                    <button onclick="exportDayTradePDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
                 </div>
             </div>
-            <!-- Disclaimer -->
-            <div class="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
-                <p class="text-[11px] text-amber-400/80 leading-relaxed"><strong>Disclaimer:</strong> Ini bukan rekomendasi beli/jual. Day Trade Screener adalah radar intraday untuk watchlist pre-spike dan momentum. Selalu lakukan analisis sendiri, kelola risiko, dan jangan chase. Entry hanya jika konfirmasi terpenuhi.</p>
-            </div>
-            <!-- Scoring info -->
-            <div class="bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
-                <p class="text-[11px] text-gray-400 leading-relaxed"><strong class="text-gray-300">Setup Score (0&ndash;100)</strong> = Liquidity + Pre-Spike + Momentum + RR + Trend &minus; Penalty. <strong class="text-gray-300">Exec (A+/A/B/C)</strong> = kelayakan eksekusi saat ini. TRADE = kandidat serius untuk dipantau. READY = lebih dekat ke trigger entry/breakout. Tetap cek Entry Area, Timing, Volume, RR, dan Catatan.</p>
-            </div>
+            <!-- Compact info bars -->
+            <div class="scr-info-bar text-amber-400/70"><strong class="text-amber-400/90">Disclaimer:</strong> Bukan rekomendasi beli/jual. Radar intraday pre-spike &amp; momentum. Jangan chase. Entry hanya jika konfirmasi terpenuhi.</div>
+            <div class="scr-info-bar"><strong>Score (0–100)</strong> = Liquidity + Pre-Spike + Momentum + RR + Trend − Penalty. <strong>Exec (A+/A/B/C)</strong> = kelayakan eksekusi. TRADE = serius dipantau. READY = dekat trigger.</div>
             <!-- Stats row -->
-            <div class="grid grid-cols-4 gap-2" id="dtScreenerStats">
-                <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
-                    <p class="text-[10px] text-gray-500 uppercase">Universe</p>
-                    <p class="text-sm font-bold text-gray-200 mt-0.5" id="dtStatUniverse">&mdash;</p>
+            <div class="grid grid-cols-4 gap-1.5" id="dtScreenerStats">
+                <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Universe</p>
+                    <p class="text-sm font-bold text-gray-200" id="dtStatUniverse">&mdash;</p>
                 </div>
-                <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
-                    <p class="text-[10px] text-gray-500 uppercase">Scanned</p>
-                    <p class="text-sm font-bold text-gray-200 mt-0.5" id="dtStatScanned">&mdash;</p>
+                <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Scanned</p>
+                    <p class="text-sm font-bold text-gray-200" id="dtStatScanned">&mdash;</p>
                 </div>
-                <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
-                    <p class="text-[10px] text-gray-500 uppercase">Published</p>
-                    <p class="text-sm font-bold text-gray-200 mt-0.5" id="dtStatPublished">&mdash;</p>
+                <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Published</p>
+                    <p class="text-sm font-bold text-gray-200" id="dtStatPublished">&mdash;</p>
                 </div>
-                <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3 text-center">
-                    <p class="text-[10px] text-gray-500 uppercase">Run Mode</p>
-                    <p class="text-sm font-bold text-gray-200 mt-0.5" id="dtStatRunMode">&mdash;</p>
+                <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Run Mode</p>
+                    <p class="text-sm font-bold text-gray-200" id="dtStatRunMode">&mdash;</p>
                 </div>
             </div>
             <!-- Progress bar (visible during scanning) -->
@@ -960,12 +973,12 @@
                 </div>
             </div>
             <!-- Lightweight result filters -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 bg-dark-700/30 border border-dark-600/20 rounded-xl p-3">
-            <select id="dtRiskFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
-            <select id="dtStatusFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
-            <select id="dtTypeFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
-            <label class="flex items-center gap-2 rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-300"><input id="dtHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('daytrade')" class="accent-emerald-500"> Hide Very High Risk</label>
-            <input id="dtTickerSearch" oninput="applyScreenerUiFilters('daytrade')" placeholder="Search ticker..." class="w-full rounded-lg border border-dark-600/40 bg-dark-800 px-3 py-2 text-xs text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            <div class="scr-filter-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-1.5 bg-dark-800/40 border border-dark-600/20 rounded-lg p-2">
+            <select id="dtRiskFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Risk: All</option><option value="Low Risk">Low</option><option value="Medium Risk">Medium</option><option value="High Risk">High</option><option value="Very High Risk">Very High</option></select>
+            <select id="dtStatusFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Status: All</option><option value="entry_touched">Entry tersentuh</option><option value="entry_area">Masuk area entry</option><option value="wait_pullback">Menunggu pullback</option><option value="avoid">Hindari</option></select>
+            <select id="dtTypeFilter" onchange="applyScreenerUiFilters('daytrade')" class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 outline-none focus:border-emerald-500/40"><option value="all">Type: All</option><option value="Swing Konglo">Swing Konglo</option><option value="Swing Non-Konglo">Swing Non-Konglo</option><option value="Day Trade">Day Trade</option></select>
+            <label class="flex items-center gap-2 rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-300"><input id="dtHideVeryHigh" type="checkbox" onchange="applyScreenerUiFilters('daytrade')" class="accent-emerald-500"> Hide Very High</label>
+            <input id="dtTickerSearch" oninput="applyScreenerUiFilters('daytrade')" placeholder="Search ticker..." class="w-full rounded-md border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-[11px] text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500/40">
             </div>
             <!-- Filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
@@ -975,8 +988,6 @@
                 <button onclick="filterDtScreener('WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="WATCH">Watch</button>
                 <button onclick="filterDtScreener('AVOID')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="AVOID">Avoid</button>
             </div>
-            <!-- Day Trade notice -->
-            <p class="text-[10px] text-amber-400/70 mb-3">Day Trade scan berbasis candle harian sebagai radar awal. Konfirmasi intraday tetap wajib.</p>
             <!-- Day Trade Card Grid -->
             <div id="dtCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
             <!-- Table (hidden by default, shown via toggle) -->
@@ -7078,9 +7089,10 @@ function clearStuckDashboardLoadingPlaceholders() {
 setTimeout(clearStuckDashboardLoadingPlaceholders, 8000);
 
 function dashboardEmptyHtml(message, tone) {
-    var cls = tone === 'error' ? 'border-red-500/20 bg-red-500/5 text-red-200' : (tone === 'amber' ? 'border-amber-500/20 bg-amber-500/5 text-amber-100' : 'border-dark-600/25 bg-dark-800/45 text-gray-400');
-    var retryBtn = tone === 'error' ? '<br><button onclick="loadDashboardTop5Monitor(false, {loadAdminPreview:false})" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button>' : '';
-    return '<div class="rounded-xl border ' + cls + ' px-3 py-4 text-center text-xs">' + escapeHtml(message || STRICT_EMPTY_TEXT) + retryBtn + '</div>';
+    var extraCls = tone === 'error' ? ' empty-state-error' : (tone === 'amber' ? ' empty-state-amber' : '');
+    var retryBtn = tone === 'error' ? '<button onclick="loadDashboardTop5Monitor(false, {loadAdminPreview:false})" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button>' : '';
+    var iconPath = tone === 'error' ? 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' : 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+    return '<div class="empty-state' + extraCls + '"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="' + iconPath + '"/></svg><p class="empty-state-text">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p>' + retryBtn + '</div>';
 }
 function screenerEmptyRowHtml(colspan, message, tone, retryFn) {
     var color = tone === 'error' ? 'text-red-400' : 'text-gray-500';
@@ -7089,11 +7101,11 @@ function screenerEmptyRowHtml(colspan, message, tone, retryFn) {
     return '<tr><td colspan="' + Number(colspan || 1) + '" class="text-center py-8 ' + color + '">' + escapeHtml(message || STRICT_EMPTY_TEXT) + retryBtn + '</td></tr>';
 }
 function screenerEmptyCardHtml(message) {
-    return '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p>';
+    return '<div style="grid-column:1/-1" class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><p class="empty-state-text">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p></div>';
 }
 
 function dashboardAwaitingLockedHtml(note) {
-    return dashboardEmptyHtml(note || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.', 'amber');
+    return '<div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">' + escapeHtml(note || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.') + '</p></div>';
 }
 async function fetchDashboardJson(url, options, timeoutMs) {
     var controller = new AbortController();
