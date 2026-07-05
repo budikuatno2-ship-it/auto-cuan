@@ -703,17 +703,57 @@ async function callAI(modelName, payload, opts) {
 
 function parseAIResponse(content) {
   if (!content) return null;
-  // Try direct JSON parse
-  try { return JSON.parse(content); } catch (e) {}
-  // Try extracting JSON from markdown code blocks
-  const match = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (match) { try { return JSON.parse(match[1]); } catch (e) {} }
-  // Try finding first { to last }
-  const start = content.indexOf('{');
-  const end = content.lastIndexOf('}');
-  if (start >= 0 && end > start) {
-    try { return JSON.parse(content.slice(start, end + 1)); } catch (e) {} }
+  // 1. Try direct JSON parse (pure JSON response) — must be an object
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+  } catch (e) {}
+  // 2. Try extracting JSON from markdown fenced code blocks
+  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) {
+    try {
+      const parsed = JSON.parse(fenced[1]);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+  }
+  // 3. Extract first balanced JSON object (handles JSON + trailing prose)
+  const extracted = extractFirstBalancedJSON(content);
+  if (extracted) {
+    try {
+      const parsed = JSON.parse(extracted);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+  }
   return null;
+}
+
+/**
+ * Extract the first balanced JSON object from a string.
+ * Walks from the first '{' counting brace depth, respecting strings.
+ * Handles: valid JSON followed by extra prose, leading text before JSON, etc.
+ */
+function extractFirstBalancedJSON(text) {
+  if (!text) return null;
+  const start = text.indexOf('{');
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null; // No balanced object found
 }
 
 
@@ -1328,6 +1368,7 @@ module.exports = {
   callAI,
   callAIStream,
   parseAIResponse,
+  extractFirstBalancedJSON,
   parseStreamChunks,
   createFailFastTracker,
   extractHttpStatus,
