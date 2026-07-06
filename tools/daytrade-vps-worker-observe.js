@@ -292,15 +292,66 @@ if (require.main === module) {
  * Observe-only guarantee is enforced on every iteration.
  * Stops on SIGINT/SIGTERM for graceful shutdown.
  *
+ * Break-time behavior (IDX market break):
+ *   Monday-Thursday: 12:00-13:00 WIB — only one lightweight heartbeat scan allowed
+ *   Friday:          11:30-14:00 WIB — only one lightweight heartbeat scan allowed
+ * During break, the loop will run a single iteration then sleep until break ends.
+ * This prevents repeated full scans during non-trading break windows.
+ *
  * Usage:
  *   node tools/daytrade-vps-worker-observe.js --mode observe --loop
  *   node tools/daytrade-vps-worker-observe.js --mode observe --loop --limit 20
  */
+
+/**
+ * Detect if current WIB time is within IDX market break.
+ * Returns { isBreak: boolean, breakEnd: Date|null, breakLabel: string|null }
+ */
+function detectMarketBreak() {
+  var now = new Date();
+  var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
+  var wib = new Date(wibMs);
+  var day = wib.getUTCDay(); // 0=Sun, 1=Mon, ...5=Fri
+  var h = wib.getUTCHours();
+  var m = wib.getUTCMinutes();
+  var totalMin = h * 60 + m;
+
+  // Outside trading days: no break concept
+  if (day < 1 || day > 5) return { isBreak: false, breakEnd: null, breakLabel: null };
+
+  // Friday: break is 11:30-14:00 WIB (690-840 minutes)
+  if (day === 5) {
+    if (totalMin >= 690 && totalMin < 840) {
+      // Break ends at 14:00 WIB
+      var endFri = new Date(wibMs);
+      endFri.setUTCHours(14, 0, 0, 0);
+      var endFriUtc = new Date(endFri.getTime() - 7 * 60 * 60 * 1000);
+      return { isBreak: true, breakEnd: endFriUtc, breakLabel: 'Friday break 11:30-14:00 WIB' };
+    }
+    return { isBreak: false, breakEnd: null, breakLabel: null };
+  }
+
+  // Monday-Thursday: break is 12:00-13:00 WIB (720-780 minutes)
+  if (day >= 1 && day <= 4) {
+    if (totalMin >= 720 && totalMin < 780) {
+      // Break ends at 13:00 WIB
+      var endMT = new Date(wibMs);
+      endMT.setUTCHours(13, 0, 0, 0);
+      var endMTUtc = new Date(endMT.getTime() - 7 * 60 * 60 * 1000);
+      return { isBreak: true, breakEnd: endMTUtc, breakLabel: 'Mon-Thu break 12:00-13:00 WIB' };
+    }
+    return { isBreak: false, breakEnd: null, breakLabel: null };
+  }
+
+  return { isBreak: false, breakEnd: null, breakLabel: null };
+}
+
 async function runLoop(cliArgs) {
   cliArgs = cliArgs || {};
   const intervalMs = Number(cliArgs.interval_ms || process.env.DAYTRADE_LOOP_INTERVAL_MS || DEFAULT_LOOP_INTERVAL_MS);
   let running = true;
   let iteration = 0;
+  let breakHeartbeatDone = false; // Track if we already did one heartbeat during current break
 
   function stop() { running = false; }
   process.on('SIGINT', stop);
@@ -311,6 +362,43 @@ async function runLoop(cliArgs) {
   while (running) {
     iteration++;
     const iterStart = Date.now();
+
+    // === BREAK-TIME CHECK ===
+    var breakInfo = detectMarketBreak();
+    if (breakInfo.isBreak) {
+      if (!breakHeartbeatDone) {
+        // Allow one lightweight heartbeat scan during break
+        console.log('[loop] ' + breakInfo.breakLabel + ' — running one heartbeat scan then sleeping until break ends.');
+        try {
+          await runWorker(Object.assign({}, cliArgs, { limit: cliArgs.limit ? Math.min(Number(cliArgs.limit), 5) : 5 }));
+        } catch (e) {
+          console.error('[loop] Heartbeat iteration error: ' + (e.message || e));
+        }
+        breakHeartbeatDone = true;
+      } else {
+        console.log('[loop] ' + breakInfo.breakLabel + ' — heartbeat already done, sleeping until break ends.');
+      }
+
+      // Sleep until break ends (or until stopped)
+      if (breakInfo.breakEnd && running) {
+        var sleepMs = Math.max(0, breakInfo.breakEnd.getTime() - Date.now());
+        if (sleepMs > 0) {
+          console.log('[loop] Sleeping ' + Math.round(sleepMs / 60000) + ' min until break ends at ' + breakInfo.breakEnd.toISOString());
+          // Sleep in chunks to allow graceful shutdown
+          var chunkMs = 30000; // 30s chunks
+          while (sleepMs > 0 && running) {
+            var waitChunk = Math.min(chunkMs, sleepMs);
+            await sleep(waitChunk);
+            sleepMs -= waitChunk;
+          }
+        }
+      }
+      continue;
+    }
+
+    // Not in break — reset heartbeat tracker
+    breakHeartbeatDone = false;
+
     console.log('[loop] Iteration ' + iteration + ' starting at ' + new Date().toISOString());
     try {
       await runWorker(cliArgs);
@@ -333,4 +421,4 @@ async function runLoop(cliArgs) {
   return { iterations: iteration, stopped: true };
 }
 
-module.exports = { VERSION, DEFAULT_LOOP_INTERVAL_MS, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, runLoop, normalizeCandles, isLockStale, isPidRunning, ohlcvCache };
+module.exports = { VERSION, DEFAULT_LOOP_INTERVAL_MS, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, runLoop, normalizeCandles, isLockStale, isPidRunning, ohlcvCache, detectMarketBreak };
