@@ -5009,7 +5009,8 @@ function getTelegramConfigStatus() {
   return {
     enabled: process.env.TELEGRAM_ENABLED === '1',
     has_bot_token: !!(process.env.TELEGRAM_BOT_TOKEN && String(process.env.TELEGRAM_BOT_TOKEN).trim()),
-    has_chat_id: !!(process.env.TELEGRAM_CHAT_ID && String(process.env.TELEGRAM_CHAT_ID).trim())
+    has_chat_id: !!(process.env.TELEGRAM_CHAT_ID && String(process.env.TELEGRAM_CHAT_ID).trim()),
+    ai_narration: aiNarration.getNarrationConfigStatus()
   };
 }
 
@@ -5181,17 +5182,26 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     }
     // Attempt AI narration for the candidate (new signal / watchlist)
     var candidateNarrated = null;
+    var candidateNarrationDiag = { source: 'fallback', error: 'not_attempted' };
     try {
       var narType = isWatchlistMode ? 'watchlist' : 'new_signal';
       var narMode = /day/i.test(safePicks[i].category || '') ? 'daytrade' : (/non.?konglo/i.test(safePicks[i].category || '') ? 'swing_non_konglo' : 'swing');
       var candidateNarrationResult = await aiNarration.narrateNewSignal(safePicks[i], narMode);
+      candidateNarrationDiag = { source: candidateNarrationResult.source, error: candidateNarrationResult.error || null };
+      if (candidateNarrationResult.validationDetails) {
+        candidateNarrationDiag.validation_reason = candidateNarrationResult.validationDetails.reason || null;
+        candidateNarrationDiag.missing_fields = candidateNarrationResult.validationDetails.missingFields || null;
+        candidateNarrationDiag.fabricated_numbers = candidateNarrationResult.validationDetails.fabricatedNumbers || null;
+      }
       if (candidateNarrationResult.text) {
         candidateNarrated = candidateNarrationResult.text;
       }
-    } catch (narErr) { /* AI failure never blocks sending */ }
+    } catch (narErr) {
+      candidateNarrationDiag = { source: 'fallback', error: 'exception:' + (narErr.message || String(narErr)).slice(0, 120) };
+    }
     var finalDetailText = candidateNarrated || detailText;
     var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500 });
-    detailResults.push({ ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_narrated: !!candidateNarrated });
+    detailResults.push({ ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_narrated: !!candidateNarrated, narration: candidateNarrationDiag });
     if (detailResult.sent) detailSent++;
   }
 
@@ -5208,8 +5218,55 @@ async function handleTelegramDailyPicks(req, res, supabase) {
   try {
     var dryRun = req.query && (req.query.dry_run === '1' || req.query.dryRun === '1');
     var force = req.query && req.query.force === '1';
+    var testNarration = req.query && req.query.test_narration === '1';
     var manualPreviousTradingDay = req.query && req.query.manual_previous_trading_day === '1';
     var manualLatestSnapshot = req.query && req.query.manual_latest_snapshot === '1';
+
+    // === DRY-RUN AI NARRATION TEST ===
+    // Tests Gemini API + validation with a sample candidate. Never sends to Telegram.
+    // Usage: ?action=telegram-daily-picks&test_narration=1 (requires CRON_SECRET auth)
+    if (testNarration) {
+      var sampleCandidate = {
+        ticker: req.query.ticker || 'BBCA',
+        status: 'Watchlist',
+        category: 'Swing',
+        entry1: 9200,
+        entry2: 9050,
+        sl: 8800,
+        stop_loss: 8800,
+        tp1: 9800,
+        tp2: 10200,
+        last_price: 9100,
+        current_price: 9100,
+        risk_reward: '1.5',
+        score: 82,
+        grade: 'A',
+        quality_grade: 'A'
+      };
+      var narConfig = aiNarration.getNarrationConfigStatus();
+      var narResult;
+      try {
+        narResult = await aiNarration.narrateNewSignal(sampleCandidate, 'swing');
+      } catch (testErr) {
+        narResult = { text: null, source: 'fallback', error: 'exception:' + (testErr.message || String(testErr)).slice(0, 200) };
+      }
+      return res.status(200).json({
+        success: true,
+        test_narration: true,
+        sent: false,
+        reason: 'test_narration_only',
+        config: narConfig,
+        sample_candidate: sampleCandidate,
+        narration_result: {
+          source: narResult.source,
+          error: narResult.error || null,
+          text_preview: narResult.text ? narResult.text.slice(0, 500) : null,
+          text_length: narResult.text ? narResult.text.length : 0,
+          validation_details: narResult.validationDetails || null
+        }
+      });
+    }
+
     var date = getJakartaDateString();
     var jakartaWeekday = isJakartaWeekday();
     var weekendBypassed = false;
