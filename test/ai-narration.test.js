@@ -517,15 +517,15 @@ test('isNarrationEnabled returns true only for exact "true"', function() {
 });
 
 
-// === Test: Default model is gemini-2.5-flash ===
-test('default model is gemini-2.5-flash', function() {
+// === Test: Default model is gemini-2.0-flash ===
+test('default model is gemini-2.0-flash', function() {
   delete process.env.GEMINI_MODEL;
-  assert.equal(aiNarration.getModel(), 'gemini-2.5-flash');
+  assert.equal(aiNarration.getModel(), 'gemini-2.0-flash');
 });
 
 test('GEMINI_MODEL env override works', function() {
-  process.env.GEMINI_MODEL = 'gemini-2.0-flash';
-  assert.equal(aiNarration.getModel(), 'gemini-2.0-flash');
+  process.env.GEMINI_MODEL = 'gemini-2.5-flash';
+  assert.equal(aiNarration.getModel(), 'gemini-2.5-flash');
   delete process.env.GEMINI_MODEL;
 });
 

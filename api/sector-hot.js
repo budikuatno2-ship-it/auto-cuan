@@ -9636,12 +9636,37 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       };
     }
 
-    // Format message
+    // Format message (old deterministic template — remains fallback)
     var dtRunMode = (finalList[0] && finalList[0].run_mode) ? finalList[0].run_mode.toUpperCase() : null;
     var msg = formatDayTradeTelegramMessage(finalList, runDate, headerNote, { run_mode: dtRunMode, published_count: publishedCount });
 
+    // === AI NARRATION: narrate each Day Trade candidate individually ===
+    var dtNarrationResults = [];
+    var dtNarratedBlocks = [];
+    for (var ni = 0; ni < finalList.length; ni++) {
+      try {
+        var dtNarResult = await aiNarration.narrateNewSignal(finalList[ni], 'daytrade');
+        dtNarrationResults.push({ ticker: finalList[ni].ticker, source: dtNarResult.source, error: dtNarResult.error || null });
+        if (dtNarResult.text) {
+          dtNarratedBlocks.push(dtNarResult.text);
+        }
+      } catch (dtNarErr) {
+        dtNarrationResults.push({ ticker: finalList[ni].ticker, source: 'fallback', error: (dtNarErr.message || 'exception').substring(0, 80) });
+      }
+    }
+    // If ALL candidates got AI narration, use narrated message; otherwise fallback to old template
+    var finalMsg = msg; // old template fallback
+    if (dtNarratedBlocks.length === finalList.length && dtNarratedBlocks.length > 0) {
+      var now = new Date(); var wibMs = now.getTime() + (7 * 60 * 60 * 1000); var wib = new Date(wibMs);
+      var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+      var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
+      finalMsg = '\uD83D\uDE80 Day Trade Signal\nUpdate: ' + timeStr + (headerNote ? '\n' + headerNote : '') + '\n\n' + dtNarratedBlocks.join('\n\n') + '\n\nBukan rekomendasi beli. Konfirmasi manual wajib.';
+    }
+
     // Send
-    var result = await telegramNotifier.sendTelegramMessage(msg);
+    var result = await telegramNotifier.sendTelegramMessage(finalMsg);
+    result.ai_narration = dtNarrationResults.length > 0 ? dtNarrationResults : undefined;
+    result.ai_narrated_count = dtNarratedBlocks.length;
     _dtTelegramLastRunId = runId;
     _dtTelegramLastRunReason = result.sent ? 'sent_signal' : (result.reason || 'telegram_send_failed');
     result.published_count = publishedCount;
@@ -10221,7 +10246,33 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', '');
-    var result = await telegramNotifier.sendTelegramMessage(msg);
+
+    // === AI NARRATION: narrate each Swing Konglo candidate ===
+    var skNarrationResults = [];
+    var skNarratedBlocks = [];
+    for (var ski = 0; ski < finalList.length; ski++) {
+      try {
+        var skNarResult = await aiNarration.narrateNewSignal(finalList[ski], 'swing');
+        skNarrationResults.push({ ticker: finalList[ski].ticker, source: skNarResult.source, error: skNarResult.error || null });
+        if (skNarResult.text) {
+          skNarratedBlocks.push(skNarResult.text);
+        }
+      } catch (skNarErr) {
+        skNarrationResults.push({ ticker: finalList[ski].ticker, source: 'fallback', error: (skNarErr.message || 'exception').substring(0, 80) });
+      }
+    }
+    // If ALL candidates got AI narration, use narrated message; otherwise fallback to old template
+    var skFinalMsg = msg;
+    if (skNarratedBlocks.length === finalList.length && skNarratedBlocks.length > 0) {
+      var skNow = new Date(); var skWibMs = skNow.getTime() + 7*60*60*1000; var skWib = new Date(skWibMs);
+      var skMonths = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+      var skTimeStr = skWib.getUTCDate() + ' ' + skMonths[skWib.getUTCMonth()] + ' ' + skWib.getUTCFullYear() + ', ' + skWib.toISOString().slice(11,16) + ' WIB';
+      skFinalMsg = '\uD83D\uDCC8 Swing Konglo Signal\nUpdate: ' + skTimeStr + '\n\n' + skNarratedBlocks.join('\n\n') + '\n\nBukan rekomendasi beli. Konfirmasi manual wajib.';
+    }
+
+    var result = await telegramNotifier.sendTelegramMessage(skFinalMsg);
+    result.ai_narration = skNarrationResults.length > 0 ? skNarrationResults : undefined;
+    result.ai_narrated_count = skNarratedBlocks.length;
     result.selected_count = finalList.length;
     result.verified_count = verifiedRows.length;
     result.high_conviction_count = highConvictionRows.length;
@@ -10303,7 +10354,33 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCCA Swing Non-Konglo Signal', '');
-    var result = await telegramNotifier.sendTelegramMessage(msg);
+
+    // === AI NARRATION: narrate each Swing Non-Konglo candidate ===
+    var nkNarrationResults = [];
+    var nkNarratedBlocks = [];
+    for (var nki = 0; nki < finalList.length; nki++) {
+      try {
+        var nkNarResult = await aiNarration.narrateNewSignal(finalList[nki], 'swing_non_konglo');
+        nkNarrationResults.push({ ticker: finalList[nki].ticker, source: nkNarResult.source, error: nkNarResult.error || null });
+        if (nkNarResult.text) {
+          nkNarratedBlocks.push(nkNarResult.text);
+        }
+      } catch (nkNarErr) {
+        nkNarrationResults.push({ ticker: finalList[nki].ticker, source: 'fallback', error: (nkNarErr.message || 'exception').substring(0, 80) });
+      }
+    }
+    // If ALL candidates got AI narration, use narrated message; otherwise fallback to old template
+    var nkFinalMsg = msg;
+    if (nkNarratedBlocks.length === finalList.length && nkNarratedBlocks.length > 0) {
+      var nkNow = new Date(); var nkWibMs = nkNow.getTime() + 7*60*60*1000; var nkWib = new Date(nkWibMs);
+      var nkMonths = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+      var nkTimeStr = nkWib.getUTCDate() + ' ' + nkMonths[nkWib.getUTCMonth()] + ' ' + nkWib.getUTCFullYear() + ', ' + nkWib.toISOString().slice(11,16) + ' WIB';
+      nkFinalMsg = '\uD83D\uDCCA Swing Non-Konglo Signal\nUpdate: ' + nkTimeStr + '\n\n' + nkNarratedBlocks.join('\n\n') + '\n\nBukan rekomendasi beli. Konfirmasi manual wajib.';
+    }
+
+    var result = await telegramNotifier.sendTelegramMessage(nkFinalMsg);
+    result.ai_narration = nkNarrationResults.length > 0 ? nkNarrationResults : undefined;
+    result.ai_narrated_count = nkNarratedBlocks.length;
     result.selected_count = finalList.length;
     result.verified_count = verifiedRows.length;
     result.high_conviction_count = highConvictionRows.length;
