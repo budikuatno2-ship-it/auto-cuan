@@ -5180,16 +5180,15 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     if (isWatchlistMode) {
       detailText += '\nStatus: Pantauan — bukan sinyal entry langsung.';
     }
-    // Attempt AI narration for the candidate (new signal / watchlist)
-    var candidateNarrated = null;
+    // Attempt AI note for the candidate (note-only: appended to deterministic template)
+    var candidateAiNote = null;
     var candidateNarrationDiag = null;
     try {
-      var narType = isWatchlistMode ? 'watchlist' : 'new_signal';
       var narMode = /day/i.test(safePicks[i].category || '') ? 'daytrade' : (/non.?konglo/i.test(safePicks[i].category || '') ? 'swing_non_konglo' : 'swing');
       var staleBlocked = aiNarration.isStaleOrExpired(safePicks[i]);
       var candidateNarrationResult = await aiNarration.narrateNewSignal(safePicks[i], narMode);
-      if (candidateNarrationResult.text) {
-        candidateNarrated = candidateNarrationResult.text;
+      if (candidateNarrationResult.note) {
+        candidateAiNote = candidateNarrationResult.note;
       }
       if (options.debug_ai) {
         candidateNarrationDiag = {
@@ -5199,7 +5198,6 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
           stale_or_expired: staleBlocked,
           model: aiNarration.getModel(),
           validation_reason: (candidateNarrationResult.validationDetails && candidateNarrationResult.validationDetails.reason) || null,
-          missing_fields: (candidateNarrationResult.validationDetails && candidateNarrationResult.validationDetails.missingFields) || null,
           fabricated_numbers: (candidateNarrationResult.validationDetails && candidateNarrationResult.validationDetails.fabricatedNumbers) || null
         };
       }
@@ -5212,14 +5210,14 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
           stale_or_expired: false,
           model: aiNarration.getModel(),
           validation_reason: null,
-          missing_fields: null,
           fabricated_numbers: null
         };
       }
     }
-    var finalDetailText = candidateNarrated || detailText;
+    // Always use deterministic template; append AI note if available
+    var finalDetailText = detailText + (candidateAiNote ? '\n\nCatatan AI:\n' + candidateAiNote : '');
     var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500 });
-    var detailEntry = { ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_narrated: !!candidateNarrated };
+    var detailEntry = { ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_note_appended: !!candidateAiNote };
     if (candidateNarrationDiag) detailEntry.ai_narration = candidateNarrationDiag;
     detailResults.push(detailEntry);
     if (detailResult.sent) detailSent++;
@@ -6558,32 +6556,28 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) update.hit_sl_at = update.last_checked_at;
       await supabase.from('telegram_daily_picks').update(update).eq('id', pck.id);
 
-      // Attempt AI narration for significant status updates
-      var narrated = null;
+      // Attempt AI note for significant status updates (note-only: appended to template)
+      var monitorAiNote = null;
       var significantStatuses = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE', 'RUNNING'];
       if (significantStatuses.indexOf(ev.status) >= 0) {
         try {
           var narrationResult = await aiNarration.narrateMonitorUpdate(pck, ev, px);
           aiNarrationResults.push({ ticker: pck.ticker, status: ev.status, source: narrationResult.source, error: narrationResult.error || null });
-          if (narrationResult.text) {
-            narrated = narrationResult.text;
+          if (narrationResult.note) {
+            monitorAiNote = narrationResult.note;
           }
         } catch (narrationErr) {
           aiNarrationResults.push({ ticker: pck.ticker, status: ev.status, source: 'fallback', error: (narrationErr.message || 'exception').substring(0, 80) });
         }
       }
 
-      if (narrated) {
-        // Use AI narrated block (already validated to contain all required data)
-        lines.push(narrated);
-      } else {
-        // Original template (unchanged fallback)
-        lines.push(pck.ticker + ' — ' + ev.status.replace(/_/g, ' '));
-        lines.push(ev.note + (px.bestEffort ? ' (best effort)' : ''));
-        lines.push('Entry 1: ' + fmtPrice(pck.entry1) + ' · Last: ' + fmtPrice(px.last));
-        lines.push('TP1/TP2: ' + fmtPrice(pck.tp1) + ' / ' + fmtPrice(pck.tp2) + ' · SL: ' + fmtPrice(pck.sl));
-        if (ev.isFinal && !isFinal) lines.push('Status: selesai, tidak akan dimonitor di update berikutnya.');
-      }
+      // Always use deterministic template; append AI note if available
+      lines.push(pck.ticker + ' — ' + ev.status.replace(/_/g, ' '));
+      lines.push(ev.note + (px.bestEffort ? ' (best effort)' : ''));
+      lines.push('Entry 1: ' + fmtPrice(pck.entry1) + ' · Last: ' + fmtPrice(px.last));
+      lines.push('TP1/TP2: ' + fmtPrice(pck.tp1) + ' / ' + fmtPrice(pck.tp2) + ' · SL: ' + fmtPrice(pck.sl));
+      if (ev.isFinal && !isFinal) lines.push('Status: selesai, tidak akan dimonitor di update berikutnya.');
+      if (monitorAiNote) lines.push('Catatan AI: ' + monitorAiNote);
       lines.push('');
       shown++;
     }
