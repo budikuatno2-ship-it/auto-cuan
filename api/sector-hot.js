@@ -5801,6 +5801,48 @@ function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
   return { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: firstSentAt || null, raw_payload: candidate };
 }
 
+/**
+ * Register sent Telegram signal candidates for monitoring.
+ * Inserts into telegram_daily_picks only if the ticker is not already tracked for today.
+ * This enables the monitor to send TP/SL/entry hit updates with AI narration.
+ *
+ * @param {object} supabase
+ * @param {object[]} candidates - Normalized candidates (must have ticker, category, entry1, entry2, tp1n, tp2n, sl)
+ * @param {string} date - YYYY-MM-DD date string
+ * @param {string} source - Source identifier for diagnostics (e.g., 'daytrade_signal', 'swing_konglo', 'swing_nk')
+ * @returns {Promise<{ inserted_count: number, skipped_duplicate_count: number, error?: string }>}
+ */
+async function registerCandidatesForMonitoring(supabase, candidates, date, source) {
+  if (!candidates || candidates.length === 0) return { inserted_count: 0, skipped_duplicate_count: 0 };
+  try {
+    // Check existing tickers for today to prevent duplicates
+    var existingRes = await supabase.from('telegram_daily_picks').select('ticker').eq('date', date);
+    var existingTickers = {};
+    (existingRes.data || []).forEach(function(r) { if (r.ticker) existingTickers[r.ticker] = true; });
+
+    var nowIso = new Date().toISOString();
+    var newRows = [];
+    var skipped = 0;
+    for (var i = 0; i < candidates.length; i++) {
+      var c = candidates[i];
+      if (!c || !c.ticker || !c.entry1 || !c.sl) continue;
+      if (existingTickers[c.ticker]) { skipped++; continue; }
+      existingTickers[c.ticker] = true; // prevent dups within same batch
+      var row = dailyPickInsertRowFromCandidate(c, date, nowIso);
+      row.raw_payload = Object.assign({}, row.raw_payload || {}, { monitor_source: source, registered_at: nowIso });
+      newRows.push(row);
+    }
+
+    if (newRows.length === 0) return { inserted_count: 0, skipped_duplicate_count: skipped };
+
+    var ins = await supabase.from('telegram_daily_picks').insert(newRows);
+    if (ins.error) return { inserted_count: 0, skipped_duplicate_count: skipped, error: ins.error.message };
+    return { inserted_count: newRows.length, skipped_duplicate_count: skipped };
+  } catch (e) {
+    return { inserted_count: 0, skipped_duplicate_count: 0, error: (e.message || '').substring(0, 80) };
+  }
+}
+
 async function lockWebDailyPicksIfDue(supabase, date) {
   if (!isJakartaAtOrAfter(8, 0)) return [];
   var picks = await selectDailyTop5(supabase);
@@ -9525,6 +9567,15 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     result.high_conviction_count = highConvictionCandidates.length;
     result.min_tp1_pass_count = minTp1Candidates.length;
     result.public_safe_count = nonAvoid.length;
+
+    // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
+    if (result.sent && finalList.length > 0) {
+      var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, runDate || getJakartaDateString(), 'daytrade_signal');
+      result.monitor_registered = monitorReg.inserted_count;
+      result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
+      if (monitorReg.error) result.monitor_error = monitorReg.error;
+    }
+
     return result;
   } catch (e) {
     return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80), published_count: publishedCount };
@@ -10091,6 +10142,15 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     result.high_conviction_count = highConvictionRows.length;
     result.strict_selected_count = strictCandidates.length;
     result.digest_candidate_count = digestCandidates.length;
+
+    // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
+    if (result.sent && finalList.length > 0) {
+      var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, getJakartaDateString(), 'swing_konglo');
+      result.monitor_registered = monitorReg.inserted_count;
+      result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
+      if (monitorReg.error) result.monitor_error = monitorReg.error;
+    }
+
     return result;
   } catch (e) { return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) }; }
 }
@@ -10164,6 +10224,15 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     result.high_conviction_count = highConvictionRows.length;
     result.strict_selected_count = strictCandidates.length;
     result.digest_candidate_count = digestCandidates.length;
+
+    // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
+    if (result.sent && finalList.length > 0) {
+      var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, getJakartaDateString(), 'swing_nk');
+      result.monitor_registered = monitorReg.inserted_count;
+      result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
+      if (monitorReg.error) result.monitor_error = monitorReg.error;
+    }
+
     return result;
   } catch (e) { return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) }; }
 }
@@ -10209,6 +10278,7 @@ module.exports.__test = {
   sendSwingKongloTelegramNotification: sendSwingKongloTelegramNotification,
   sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
   sendDayTradeTelegramNotification: sendDayTradeTelegramNotification,
+  registerCandidatesForMonitoring: registerCandidatesForMonitoring,
   getDayTradeRadarRequested: getDayTradeRadarRequested,
   candidateTelegramEligible: candidateTelegramEligible,
   formatCandidateBlock: formatCandidateBlock,
