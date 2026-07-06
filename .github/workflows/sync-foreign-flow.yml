@@ -1,0 +1,196 @@
+name: Sync Foreign Flow to Supabase
+
+# NOTE: Scheduled trigger is DISABLED.
+# IDX.co.id blocks GitHub Actions IPs via Cloudflare WAF (403 + captcha page).
+# Direct IDX fetch from GitHub Actions does not work.
+# Foreign flow sync will be handled by Oracle Cloud VPS instead.
+# Keeping workflow_dispatch for manual debugging only.
+
+on:
+  # schedule:
+  #   # Weekdays at 10:30 UTC = 17:30 WIB (after BEI market close + data release)
+  #   - cron: '30 10 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: 'Comma-separated tickers (empty = all stocks)'
+        required: false
+        default: ''
+        type: string
+      dry_run:
+        description: 'Dry-run mode (preview only, no Supabase writes)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  sync-foreign-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout auto-cuan repo
+        uses: actions/checkout@v4
+
+      - name: Clone IDX-API
+        run: |
+          git clone --depth 1 https://github.com/NeaByteLab/IDX-API.git idx-api
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Initialize IDX-API database schema
+        working-directory: idx-api
+        run: |
+          mkdir -p data
+          deno run -A npm:drizzle-kit push --config drizzle.config.json
+
+      - name: Copy sync scripts into IDX-API
+        run: |
+          cp scripts/idx-sync/sync_stock_summary_dates.ts idx-api/sync_stock_summary_dates.ts
+          cp scripts/idx-sync/sync_foreign_flow.py idx-api/sync_foreign_flow.py
+
+      - name: Fetch stock summary from IDX (with date fallback)
+        working-directory: idx-api
+        run: |
+          deno run -A sync_stock_summary_dates.ts
+
+      - name: Debug - Find SQLite files
+        if: always()
+        working-directory: idx-api
+        run: |
+          echo "=== SQLite files found ==="
+          find . -maxdepth 5 -type f \( -name "*.db" -o -name "*.sqlite" -o -name "*.sqlite3" \) -print -exec ls -lh {} \;
+          echo ""
+          echo "=== data/ directory contents ==="
+          ls -la data/ 2>/dev/null || echo "data/ directory not found"
+
+      - name: Debug - SQLite table inspection
+        if: always()
+        working-directory: idx-api
+        run: |
+          python3 << 'PYEOF'
+          import sqlite3, os, glob
+
+          # Find all sqlite files
+          sqlite_files = glob.glob('**/*.sqlite', recursive=True) + glob.glob('**/*.db', recursive=True)
+          print(f"SQLite files found: {sqlite_files}")
+
+          db_path = 'data/database.sqlite'
+          if not os.path.exists(db_path):
+              print(f"ERROR: {db_path} not found")
+              for f in sqlite_files:
+                  print(f"  Found alternative: {f}")
+                  db_path = f
+                  break
+              else:
+                  print("  No SQLite files found anywhere.")
+                  exit(0)
+
+          file_size = os.path.getsize(db_path)
+          print(f"\nInspecting: {db_path} ({file_size:,} bytes)")
+          conn = sqlite3.connect(db_path)
+
+          # List all tables
+          tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+          print(f"\nTables ({len(tables)}):")
+          for t in tables:
+              count = conn.execute(f"SELECT COUNT(*) FROM [{t[0]}]").fetchone()[0]
+              print(f"  {t[0]}: {count} rows")
+
+          # stock_summary details
+          print("\n--- stock_summary details ---")
+          try:
+              cursor = conn.execute('SELECT COUNT(*), MIN(date), MAX(date) FROM stock_summary')
+              row = cursor.fetchone()
+              count, min_date, max_date = row
+              print(f"  Total rows: {count}")
+              if count > 0 and max_date:
+                  from datetime import datetime, timezone, timedelta
+                  wib = timezone(timedelta(hours=7))
+                  dt_max = datetime.fromtimestamp(max_date / 1000, tz=wib)
+                  dt_min = datetime.fromtimestamp(min_date / 1000, tz=wib)
+                  print(f"  Latest date: {dt_max.strftime('%Y-%m-%d')} (unix_ms: {max_date})")
+                  print(f"  Oldest date: {dt_min.strftime('%Y-%m-%d')} (unix_ms: {min_date})")
+
+                  # Distinct dates
+                  dates = conn.execute('SELECT DISTINCT date FROM stock_summary ORDER BY date DESC LIMIT 10').fetchall()
+                  print(f"  Distinct dates (up to 10):")
+                  for d in dates:
+                      dt = datetime.fromtimestamp(d[0] / 1000, tz=wib)
+                      row_count = conn.execute('SELECT COUNT(*) FROM stock_summary WHERE date = ?', (d[0],)).fetchone()[0]
+                      print(f"    {dt.strftime('%Y-%m-%d')}: {row_count} rows")
+
+                  # Check specific tickers
+                  print(f"\n  Checking BBCA, NAYZ, WMUU for latest date ({dt_max.strftime('%Y-%m-%d')}):")
+                  for ticker in ['BBCA', 'NAYZ', 'WMUU']:
+                      r = conn.execute('SELECT code, close, foreign_buy, foreign_sell, foreign_net FROM stock_summary WHERE date = ? AND code = ?', (max_date, ticker)).fetchone()
+                      if r:
+                          print(f"    {r[0]}: close={r[1]}, fBuy={r[2]}, fSell={r[3]}, fNet={r[4]}")
+                      else:
+                          print(f"    {ticker}: NOT FOUND for this date")
+              else:
+                  print("  Table is EMPTY.")
+                  print("  Possible reasons:")
+                  print("  - IDX.co.id returned empty data for all attempted dates")
+                  print("  - IDX.co.id blocked the request (403/rate limit)")
+                  print("  - Network issue from GitHub Actions runner")
+          except Exception as e:
+              print(f"  Error querying stock_summary: {e}")
+
+          conn.close()
+          PYEOF
+
+      - name: Validate stock_summary has data
+        working-directory: idx-api
+        run: |
+          python3 -c "
+          import sqlite3, os, sys
+          db_path = 'data/database.sqlite'
+          if not os.path.exists(db_path):
+            print('ERROR: database.sqlite not found')
+            sys.exit(1)
+          conn = sqlite3.connect(db_path)
+          cursor = conn.execute('SELECT COUNT(*), MAX(date) FROM stock_summary')
+          row = cursor.fetchone()
+          count, max_date = row
+          if count == 0:
+            print('ERROR: stock_summary table is empty after sync attempt.')
+            print('No IDX stock_summary rows found for fallback dates. Supabase unchanged.')
+            sys.exit(1)
+          from datetime import datetime, timezone, timedelta
+          dt = datetime.fromtimestamp(max_date / 1000, tz=timezone(timedelta(hours=7)))
+          print(f'stock_summary rows: {count}')
+          print(f'Latest trade date: {dt.strftime(\"%Y-%m-%d\")} (unix_ms: {max_date})')
+          conn.close()
+          "
+
+      - name: Run Foreign Flow sync to Supabase
+        working-directory: idx-api
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ARGS=""
+
+          # Add tickers if provided
+          TICKERS="${{ github.event.inputs.tickers }}"
+          if [ -n "$TICKERS" ]; then
+            ARGS="$ARGS --tickers $TICKERS"
+          fi
+
+          # Add dry-run if requested
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+
+          echo "Running: python3 sync_foreign_flow.py $ARGS"
+          python3 sync_foreign_flow.py $ARGS

@@ -1,0 +1,7 @@
+{
+  "task_id": "task-broker-summary-reader",
+  "task_description": "Add Broker Summary Reader feature to Auto-Cuan. The AI must be able to analyze broker summary data (screenshots, tables, net buy/sell data) and integrate it with chart analysis, news/catalyst, corporate action, orderbook, and follow-up chat context. Broker summary is secondary evidence that can improve or weaken stock analysis but must never claim certainty about bandar identity.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

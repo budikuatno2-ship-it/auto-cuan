@@ -1,0 +1,22 @@
+{
+  "project_type": "Single-page HTML app with inline JavaScript, deployed on Vercel with serverless API functions",
+  "language": "JavaScript (vanilla, no framework), HTML, CSS (Tailwind CDN)",
+  "build_system": "No build step. vercel.json echoes done for buildCommand. Direct HTML serving.",
+  "test_framework": "None - no test framework present. Validation is done by checking the app loads correctly and syntax is valid.",
+  "build_command": "echo 'No build step needed'",
+  "test_command": "node -c index.html 2>/dev/null || true; for f in api/*.js; do node -c \"$f\"; done; for f in assets/*.js; do node -c \"$f\"; done",
+  "verification_instructions": "1. Run node -c on all .js files to verify no syntax errors. 2. Verify index.html is valid HTML by checking it opens/closes tags properly. 3. Check that api/ directory has 12 or fewer .js files.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "cd /projects/sandbox/auto-cuan && npm install",
+  "environment_constraints": "COMMON_DEPENDENCIES network mode. Can install npm packages. No Docker daemon available. No test framework. Single HTML file app - all frontend code is inline in index.html.",
+  "contribution_requirements": "Keep api/*.js count at 12 or fewer (currently 10). Do not store base64 images in localStorage. Keep UI premium but lightweight. Output language Indonesian. TradingView is visual only. Keep the mode dropdown. Evidence Lock must stay active. Guest limit: 2 analyses/day, 5 chats/day. Logged-in: 10/20. Admin budi: unlimited. Homepage enters chat directly as Guest.",
+  "key_patterns": "Frontend: All JS inline in index.html at bottom in <script> tags. Uses window globals. DOM manipulation with getElementById. No modules/imports on frontend. API: CommonJS modules in api/ folder, each exports a handler function. Uses fetch() to call Gemini API. Dark theme with bg-[#0b0e14], text-emerald-400, etc. Toast system for notifications. Sessions stored in localStorage as JSON.",
+  "relevant_files": [
+    "index.html",
+    "api/analyze.js",
+    "assets/idx-tickers.js",
+    "package.json",
+    "vercel.json"
+  ],
+  "directory_structure": "/ - root: index.html (entire frontend), package.json, vercel.json. /api/ - 10 serverless functions. /assets/ - IDX ticker data (csv + js). /.agents/tasks/ - task state."
+}

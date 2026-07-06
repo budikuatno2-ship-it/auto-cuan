@@ -1,0 +1,37 @@
+{
+  "id": "FEAT-001",
+  "type": "refactor",
+  "description": "Rewrite CHART_SYSTEM_PROMPT and buildPrompt() in api/analyze.js to produce compact 7-section output (instead of 15 sections). Add news/catalyst/corporate action as optional evidence section. Add broker summary score adjustment rules. Add follow-up context support. Reinforce FCA anti-hallucination rules. Optimize token usage.",
+  "status": "completed",
+  "steps": [
+    "1. In api/analyze.js, rewrite the CHART_SYSTEM_PROMPT constant (starts around line 572) to instruct the AI to produce a compact 7-section format: (1) Kesimpulan Cepat [decision label, score, one-line reason, risk level], (2) Data yang Terbaca [ticker, price, timeframes, evidence available/missing], (3) Bias 1W/1D/4H [1-2 sentences each], (4) Level Penting [support, resistance, invalidation, entry, TP, SL], (5) Entry/SL/TP [setup valid/weak, plan, R:R, confirmation needed], (6) Risiko Utama [only most relevant risks], (7) Action Plan [decision + ask for missing evidence only if not provided]. Optional sections only if data exists: FCA Check, Broker Summary Check, News/Catalyst/Corporate Action Check, Orderbook/MM Code Check. Target 700-1200 words for full analysis. Use strict decision labels only: AVOID, WAIT, WATCHLIST, NEED CHART CONFIRMATION, SPECULATIVE BUY, BUY ON CONFIRMATION, BUY ON PULLBACK, SCALP ONLY, SWING VALID, HOLD, TAKE PROFIT PARTIAL, CUT LOSS/EXIT. Keep Evidence Lock, chart validation rules, multi-timeframe detection, and FCA anti-hallucination rules. Remove the mandatory '15 BAGIAN WAJIB' structure. Keep output as HTML with Tailwind dark theme classes but much more compact. Add News/Catalyst/Corporate Action section instructions. Add score adjustment rules for news (+5 to +15 for strong bullish, -10 to -25 for strong bearish) and broker summary (+5 to +10 for strong accumulation with chart support, -5 to -15 for strong distribution with chart bearish). Include input quality levels (1-6) with score caps. Keep market maker section and broker summary section builders as-is (they are helper functions appended conditionally).",
+    "2. In api/analyze.js, rewrite the buildPrompt() function (ticker-only mode, starts around line 596) to produce compact 7-section output instead of 15 sections. For Level 1 (ticker + price only), keep max score at 55 but use the new compact format. Remove the huge 15-section HTML template from buildPrompt. Instead instruct the AI to output compact analysis following the same 7-section structure. Include follow-up context instructions: if latestAnalysisContext is provided in the request, instruct AI to use it directly without re-asking for data.",
+    "3. In api/analyze.js, rewrite the generateFallback() function to produce compact output matching the new 7-section format instead of 15 verbose sections. Keep it concise: Kesimpulan Cepat, Data yang Terbaca, key levels (estimated), action plan. Total should be much shorter than current ~150 lines of HTML.",
+    "4. In api/analyze.js, update the isCompleteAnalysis() function to validate against the new compact format. Replace the old requiredKeywords (Data Quality, Confidence, Invalidation, Final Decision, Risk Reward, Action Plan) with new keywords from the compact format (Kesimpulan, Level Penting, Entry, Risiko, Action Plan, Bias). Keep it permissive enough that both structured and conversational responses pass.",
+    "5. In api/analyze.js, update the handleChatMode() function to include latestAnalysisContext in the system prompt when available. The request body should accept a 'context' field. The chatSystemPrompt should include instructions for follow-up behavior: if context has ticker/chart/news/broker summary data, use it directly, do not re-ask. Follow-up answers should be 150-400 words max. Include the strict decision labels list. Include FCA anti-hallucination rules.",
+    "6. In api/analyze.js, add support for receiving latestAnalysisContext in the request body for all three modes. When context is present, append it to the prompt as structured context the AI can reference. Format: '=== KONTEKS SESI SEBELUMNYA ===' with key fields (ticker, price, decision, score, entry, SL, TP, chartSummary, newsProvided, brokerSummaryBias, etc.).",
+    "7. In api/analyze.js, add the news/catalyst/corporate action classification instructions to the CHART_SYSTEM_PROMPT and buildPrompt. These should instruct the AI to output the optional 'News/Catalyst/Corporate Action Check' section when evidence is provided, with fields: Type, Source, Status, Bias impact, Impact strength, Time sensitivity, Effect on technical setup. Include corporate action recognition list (positive vs bearish vs mixed). Include score adjustment rules.",
+    "8. Reinforce FCA rules: In CHART_SYSTEM_PROMPT and buildPrompt, add explicit instruction: 'JIKA STATUS FCA ADALAH not_detected: DILARANG menampilkan section FCA Check. DILARANG menyebut kata FCA atau Full Call Auction di manapun dalam output. DILARANG menyebut risiko FCA. Ini berlaku meskipun chart terlihat illiquid, volatile, atau penny stock.' Also add: 'Jika user bertanya hypothetical (kalau FCA gimana?) dan status FCA tetap not_detected, jelaskan secara hypothetical tanpa mengkonfirmasi FCA.'",
+    "9. Add token optimization instructions to both prompts: 'ATURAN TOKEN SAVING: Jangan ulangi warning yang sama lebih dari sekali. Jangan tampilkan section kosong. Jangan ulangi disclaimer panjang di setiap jawaban. Cukup satu kalimat disclaimer di akhir. Untuk follow-up: jawab langsung 150-400 kata tanpa mengulang seluruh analisis.'"
+  ],
+  "acceptance_criteria": [
+    "api/analyze.js passes syntax check (node -c api/analyze.js)",
+    "CHART_SYSTEM_PROMPT no longer contains '15 BAGIAN WAJIB' or references to 15 mandatory sections",
+    "buildPrompt() function no longer outputs 15-section HTML template in the fallback/instruction",
+    "generateFallback() produces compact HTML output (fewer than 80 lines of HTML content)",
+    "isCompleteAnalysis() validates against new compact format keywords",
+    "handleChatMode() includes follow-up context instructions and accepts latestAnalysisContext",
+    "FCA anti-hallucination rules are explicit about not_detected status",
+    "News/catalyst/corporate action section instructions are present in prompts",
+    "Token saving rules are included"
+  ],
+  "verification": [
+    "Run: node -c /projects/sandbox/auto-cuan/api/analyze.js",
+    "Run: grep -c '15 BAGIAN WAJIB' /projects/sandbox/auto-cuan/api/analyze.js (should be 0)",
+    "Run: grep -c 'Kesimpulan Cepat' /projects/sandbox/auto-cuan/api/analyze.js (should be > 0)",
+    "Run: grep -c 'News.*Catalyst.*Corporate' /projects/sandbox/auto-cuan/api/analyze.js (should be > 0)",
+    "Run: grep -c 'DILARANG menyebut kata FCA' /projects/sandbox/auto-cuan/api/analyze.js (should be > 0)"
+  ],
+  "blocked_reason": null,
+  "findings": "All 9 steps implemented successfully. CHART_SYSTEM_PROMPT reduced from ~200 lines to ~175 lines of compact 7-section instructions. buildPrompt reduced from ~120 lines of 15-section to ~100 lines of compact 7-section. generateFallback reduced from ~150 lines to ~60 lines. isCompleteAnalysis updated with new keywords. handleChatMode now accepts context parameter with full session fields. Handler passes context to all three modes. FCA reinforcement added to both CHART_SYSTEM_PROMPT and buildPrompt. News/catalyst section instructions and score adjustment rules added. Token saving rules added. All syntax checks pass. No test framework exists - verification is syntax-only."
+}

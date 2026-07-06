@@ -1,3 +1,6 @@
+# Dependencies
+node_modules/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -35,6 +38,18 @@ desktop.ini
 # Logs
 *.log
 logs/
+
+# Vercel
+.vercel/
+
+# Day Trade VPS observe worker local state
+data/daytrade-ohlcv-cache/
+logs/daytrade-vps-worker/
+tmp/daytrade-vps-worker-observe.lock
+
+# AI Research runner output
+data/ai-research/
+logs/ai-research/
 
 # Uploads (if any temp files)
 uploads/

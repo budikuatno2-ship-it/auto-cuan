@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-004",
+  "type": "feat",
+  "description": "Frontend integration for evidence-based analysis: update the chart upload flow to support multi-timeframe uploads, add timeframe label detection, improve the user prompting for complete data, and ensure chart images are temporary only (never stored in localStorage). Add news/catalyst input support in chat.",
+  "status": "completed",
+  "steps": [
+    "In index.html, update the handleChartUpload function to detect timeframe from filename or let user specify. Add a small dropdown or auto-detect from filename patterns like '1W', '1D', '4H', 'weekly', 'daily', '4hour' in the filename. Store detected timeframe as metadata sent to the API.",
+    "Update the api/analyze.js chart upload handler to accept an optional 'timeframe' and 'ticker' and 'currentPrice' field in the request body for chart_upload mode. If ticker and price are provided along with chart, use them in the analysis prompt for more context. Modify the CHART_SYSTEM_PROMPT to use these if available.",
+    "In the frontend addUserBubble for chart uploads, instead of showing '[Chart: filename]', show a more informative label like '[Chart 1D: filename]' if timeframe is detected, or '[Chart: filename]' if not.",
+    "After chart analysis completes, add a follow-up suggestion in the AI response: a small note saying 'Untuk analisis lebih presisi, upload juga chart 1W dan 4H.' (only if single chart was uploaded).",
+    "Ensure the base64 image data is NEVER stored in the chat history. The handleChartUpload function already uses removeAttachment() after getting base64, but verify that the base64Data variable is not captured in any closure that persists. The image should only exist in memory during the API call.",
+    "Update the frontend to support news/catalyst input: in chat mode, if user sends a link or mentions 'news', 'berita', 'katalis', the system should note this in the context sent to the API. No special UI needed - just ensure the chat mode prompt handles news context properly.",
+    "Add the multi-data request prompt in the chat handler: when user asks for 'analisis lengkap' or 'analisis presisi' or 'analisis terbaik', the AI should respond with the Indonesian template asking for complete data (price, 1W chart, 1D chart, 4H chart, news, position context).",
+    "In the welcome message in chatMessages, update the examples to reflect the new precision system: mention that uploading multiple timeframe charts gives better analysis."
+  ],
+  "acceptance_criteria": [
+    "Chart upload sends optional timeframe, ticker, and currentPrice to API",
+    "api/analyze.js chart handler accepts and uses these additional fields in the prompt",
+    "No base64 image data persists in memory after API call completes or in localStorage",
+    "Welcome message mentions multi-timeframe chart upload for better precision",
+    "After single chart analysis, a follow-up suggestion appears about uploading additional timeframes",
+    "Both api/analyze.js passes node --check validation"
+  ],
+  "verification": [
+    "Run: node --check /projects/sandbox/auto-cuan/api/analyze.js - should exit 0",
+    "Run: grep -n 'timeframe' /projects/sandbox/auto-cuan/index.html - should find timeframe detection logic",
+    "Run: grep -n 'base64Data' /projects/sandbox/auto-cuan/index.html - verify it is only used inside the fetch call, not stored",
+    "Run: grep -n '1W.*1D.*4H\\|chart 1W' /projects/sandbox/auto-cuan/index.html - should find multi-timeframe references"
+  ],
+  "blocked_reason": null,
+  "findings": "All changes implemented and verified. node --check passes for api/analyze.js. Timeframe detection supports 1W, 1D, 4H, 1H, 15M patterns. base64Data is explicitly nulled in both success and error paths. The chartPrompt enhancement appends user context (ticker, price, timeframe) when available."
+}

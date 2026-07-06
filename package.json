@@ -1,15 +1,17 @@
 {
   "name": "auto-cuan",
   "version": "1.0.0",
-  "description": "AI Chart Reader - Smart Money Concepts & LuxAlgo Technical Analysis",
+  "description": "Auto-Cuan IDX Screener & Signal System",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "vercel build",
-    "deploy": "vercel --prod"
+    "build": "echo 'No build step needed'",
+    "start": "vercel dev"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "22.x"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1"
   }
 }

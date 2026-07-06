@@ -1,0 +1,7 @@
+{
+  "task_id": "task-auto-cuan-improvements",
+  "task_description": "Improve Auto-Cuan chat composer with paste support, multi-file upload, document handling, FCA stock detection, better AI analysis quality, copy buttons, and history improvements to make the app feel closer to ChatGPT while maintaining strict evidence-based analysis.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004", "FEAT-005"],
+  "blocked_reason": null
+}

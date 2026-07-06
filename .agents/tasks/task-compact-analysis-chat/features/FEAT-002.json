@@ -1,0 +1,38 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Upgrade frontend (index.html) with: enhanced latestAnalysisContext (full fields), follow-up context passing to API, Regenerate button, remove Ctrl+V paste text clutter, fix empty section rendering, improved session context. This makes the chat contextual and fixes UI bugs.",
+  "status": "completed",
+  "steps": [
+    "1. In index.html, expand the latestAnalysisContext object (around line 919) to include all fields from the spec: ticker, companyName, currentPrice, detectedTimeframes, uploadedEvidenceSummary, chartSummary, keyLevels, finalDecision, score, entryArea, stopLoss, takeProfits, riskReward, fcaStatus, newsProvided, newsSummary, corporateActionSummary, orderbookProvided, orderbookSummary, marketMakerCodeSummary, brokerSummaryProvided, brokerSummaryPeriods, brokerSummaryBias, brokerSummaryStrength, dominantNetBuyers, dominantNetSellers, brokerSummaryNotes, lastUserQuestion, lastAssistantAnswer, lastUpdated. Update resetBrokerSummaryContext() to reset all fields.",
+    "2. In index.html, after receiving AI response in handleAnalysis(), handleChartUpload(), and handleChat(), parse the response HTML to extract key context and update latestAnalysisContext. Extract: ticker (from activeTicker), price (from detection), decision label (search for AVOID|WAIT|WATCHLIST|BUY|HOLD|etc in response), score (search for pattern like number/100 or number/55), entry/SL/TP levels if mentioned. Store lastUserQuestion = msg, lastAssistantAnswer = short summary (first 200 chars of text content), lastUpdated = ISO timestamp.",
+    "3. In index.html, modify handleChat() to pass latestAnalysisContext to the API in the request body. Add a 'context' field to the JSON body sent to /api/analyze for chat_mode requests. Only include non-null/non-empty fields to save payload size. This enables the AI to answer follow-ups contextually.",
+    "4. In index.html, modify handleAnalysis() and handleChartUpload() to also pass latestAnalysisContext as 'context' in the request body so the AI knows what has been discussed before.",
+    "5. In index.html, add a Regenerate button to AI message bubbles. In the addAIBubble() function, add a 'Regenerate' button next to the existing copy button. The regenerate button should: (a) find the last user message text, (b) call handleSend-equivalent logic with same message and context, (c) replace the current AI bubble with new response. Store a reference to the last user message in a variable (lastSentMessage, lastSentFiles info).",
+    "6. In index.html, remove the 'Ctrl+V paste' visible text span (line 235: <span class='hidden sm:inline text-[10px] text-gray-600 self-center'>Ctrl+V paste</span>). Instead, add a title attribute to the upload button: title='Upload File (maks 8) - Ctrl+V untuk paste gambar'. This removes the ugly visible text while keeping the hint accessible.",
+    "7. In index.html, remove the file count badge element (the green badge that shows number on the upload button, line 233: <span id='fileCountBadge'...>). Instead, show file count only in the attachment preview area which is already visible when files are attached. The fileCountBadge element is confusing users. Remove the badge span and the updateFileCountBadge() function calls, or hide it permanently.",
+    "8. In index.html, add empty section handling in addAIBubble(). After inserting the HTML, scan for empty sections and hide them. Add a post-processing step: find all div elements inside .ai-content that have no meaningful text content (only whitespace or empty) and set display:none on them. Specifically target: sections with 'Final Note' heading that have no paragraph content, sections with red/warning borders that have no text, any card with a heading but empty body.",
+    "9. In index.html, update the saveChatHistory() function to also persist latestAnalysisContext in the session. It already saves session.latestAnalysisContext but only for broker summary. Now save the full expanded context. Also update switchSession() to restore the full context when switching sessions.",
+    "10. In index.html, update the session title generation. If a ticker is detected, use format like 'WMUU Analysis' or 'NAYZ Chart Review'. If chart upload, include ticker and 'Chart'. Improve generateSessionTitle() to be smarter about ticker badges."
+  ],
+  "acceptance_criteria": [
+    "index.html is valid HTML (no syntax errors in script block)",
+    "latestAnalysisContext contains all specified fields",
+    "handleChat sends context to API",
+    "Regenerate button appears on AI messages",
+    "No visible 'Ctrl+V paste' text in the composer area",
+    "File count badge is removed or hidden",
+    "Empty sections in AI responses are hidden after rendering",
+    "Session context includes full latestAnalysisContext",
+    "Session titles reflect ticker when detected"
+  ],
+  "verification": [
+    "Run: grep -c 'Ctrl+V paste' /projects/sandbox/auto-cuan/index.html (should be 0 for visible text, may still exist in title attribute)",
+    "Run: grep -c 'Regenerate\\|regenerate' /projects/sandbox/auto-cuan/index.html (should be > 0)",
+    "Run: grep -c 'lastAssistantAnswer\\|lastUserQuestion' /projects/sandbox/auto-cuan/index.html (should be > 0)",
+    "Run: grep -c 'fileCountBadge' /projects/sandbox/auto-cuan/index.html (should be 0 or minimal)",
+    "Run: node -c /projects/sandbox/auto-cuan/api/analyze.js (still passes after context changes)"
+  ],
+  "blocked_reason": null,
+  "findings": "All 10 steps implemented successfully. latestAnalysisContext expanded from 8 fields to 30 fields. updateAnalysisContext() extracts decision labels, scores, broker summary data, and news detection from AI responses. buildContextForApi() passes lightweight context to all 4 API handlers (handleAnalysis, handleTickerQuestion, handleChat, handleChartUpload). Regenerate button added to AI bubbles. Ctrl+V paste span removed (hint moved to upload button title attribute). fileCountBadge removed entirely (updateFileCountBadge is now a no-op). hideEmptySections() hides Final Note/warning sections with no content. switchSession() defaults updated to full context structure. generateSessionTitle() now produces ticker-aware titles like 'BBCA Analysis' or 'NAYZ Chart Review'. HTML tags balanced (128 divs, 29 spans, 45 buttons). Script syntax validated successfully."
+}

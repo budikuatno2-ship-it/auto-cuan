@@ -1,0 +1,87 @@
+name: Non-Konglo Swing Screener
+
+# NOTE: Automatic schedule DISABLED (manual-first policy).
+# Screeners are now manual-only. Trigger via workflow_dispatch or the
+# /api/sector-hot?action=nk-screener-run endpoint directly.
+# To re-enable automatic runs, uncomment the schedule block below.
+
+on:
+  # schedule:
+  #   # Every 5 minutes, Mon-Fri 12:00-14:59 UTC (19:00-21:59 WIB)
+  #   - cron: '*/5 12-14 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      force_mode:
+        description: 'Bypass time-window check'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  run-screener:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.AUTOCUAN_SCREENER_URL }}" ]; then
+            echo "::error::AUTOCUAN_SCREENER_URL secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "::error::CRON_SECRET secret is not set"
+            exit 1
+          fi
+          echo "Secrets validated successfully."
+
+      - name: Call Non-Konglo Screener endpoint
+        env:
+          SCREENER_URL: ${{ secrets.AUTOCUAN_SCREENER_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          FORCE_PARAM=""
+          if [ "${{ github.event.inputs.force_mode }}" = "true" ]; then
+            FORCE_PARAM="&force=1"
+          fi
+
+          ENDPOINT="${SCREENER_URL}?action=nk-screener-run${FORCE_PARAM}"
+
+          echo "Calling endpoint (URL redacted for security)..."
+          echo "Force mode: ${{ github.event.inputs.force_mode || 'false' }}"
+
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            --max-time 150 \
+            "${ENDPOINT}")
+
+          HTTP_CODE=$(echo "$HTTP_RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$HTTP_RESPONSE" | sed '$d')
+
+          echo "HTTP Status: ${HTTP_CODE}"
+
+          # Show safe response summary (no secrets)
+          echo "$RESPONSE_BODY" | python3 -c "
+          import sys, json
+          try:
+              data = json.load(sys.stdin)
+              print('Success:', data.get('success', 'N/A'))
+              print('Step:', data.get('step', 'N/A'))
+              print('Message:', data.get('message', data.get('error', 'N/A')))
+              if 'universe_count' in data: print('Universe:', data['universe_count'])
+              if 'batch_count' in data: print('Batches:', data['batch_count'])
+              if 'processed' in data: print('Processed:', data['processed'])
+              if 'passed' in data: print('Passed:', data['passed'])
+              if 'published' in data: print('Published:', data['published'])
+              if data.get('skipped'): print('Skipped: outside run window')
+          except:
+              print('Response (raw):', sys.stdin.read()[:200] if False else 'parse error')
+          " || echo "Response: ${RESPONSE_BODY:0:200}"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Endpoint returned HTTP ${HTTP_CODE}"
+            exit 1
+          fi

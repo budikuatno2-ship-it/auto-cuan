@@ -1,0 +1,21 @@
+{
+  "project_type": "Single-page HTML app with Vercel serverless API functions",
+  "language": "JavaScript (vanilla frontend, Node.js API)",
+  "build_system": "Vercel (no build step, echo done). Uses CDN Tailwind CSS.",
+  "test_framework": "None - no test files exist. Validation is manual/visual.",
+  "build_command": "echo done",
+  "test_command": "node -c index.html is not applicable. Use: node --check api/analyze.js to validate JS syntax.",
+  "verification_instructions": "1. Run node --check on all api/*.js files to verify syntax. 2. Open index.html in browser to verify UI changes. 3. Validate HTML is well-formed.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "cd /projects/sandbox/auto-cuan && npm install",
+  "environment_constraints": "COMMON_DEPENDENCIES network mode - can install npm packages. No Docker daemon available. Vercel CLI not available for local dev server. Validation is syntax-based.",
+  "contribution_requirements": "Keep api/*.js file count at 12 or fewer (currently 10). Work on feat/ai-chart-reader-app branch only. Do not push broken code. Keep app smooth and anti-lag.",
+  "key_patterns": "Single index.html contains all HTML + CSS + JS. API endpoints in api/*.js as CommonJS modules. Tailwind CSS via CDN with dark theme (bg-[#0b0e14], bg-[#151a23], emerald accents). Session-based chat history in localStorage under key autocuan_chat_sessions. Uses Gemini 2.5 Flash for AI. Three analysis modes: ticker (ticker+price), chart_upload (image), chat_mode (conversation).",
+  "relevant_files": [
+    "index.html",
+    "api/analyze.js",
+    "package.json",
+    "vercel.json"
+  ],
+  "directory_structure": "/ - root with index.html (1631 lines, single-page app), /api - 10 serverless functions, /assets - IDX ticker data"
+}

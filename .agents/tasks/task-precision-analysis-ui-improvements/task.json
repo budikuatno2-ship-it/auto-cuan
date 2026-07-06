@@ -1,0 +1,7 @@
+{
+  "task_id": "task-precision-analysis-ui-improvements",
+  "task_description": "Comprehensive improvements to Auto-Cuan: (1) Wider layout with premium UI, (2) ChatGPT-like history sidebar with delete options, (3) Copy buttons, (4) No base64 in localStorage, (5) High-precision evidence-based analysis with Evidence Lock, strict scoring, anti-hallucination, and chart-upload as primary method, (6) Smooth performance throughout.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002", "FEAT-003", "FEAT-004"],
+  "blocked_reason": null
+}

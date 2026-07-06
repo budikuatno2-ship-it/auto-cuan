@@ -1,0 +1,21 @@
+{
+  "id": "FEAT-005",
+  "type": "fix",
+  "description": "Address code review findings: fix dead variables and hardcoded sub-scores in generateFallback(), and add input sanitization for chart upload API fields to prevent prompt injection.",
+  "status": "completed",
+  "steps": [
+    "In api/analyze.js generateFallback(), the variables invLevel, bestCase, worstCase are computed but the sub-scores in the Confidence Breakdown section are hardcoded (5/25, 5/25, 12/25, 0/25) and do not sum to the displayed overall score. Fix by computing sub-scores that sum to the overall score and interpolating invLevel, bestCase, worstCase into the Scenario-Based Output section.",
+    "In api/analyze.js handleChartUpload(), add input sanitization for timeframe, ticker, and currentPrice fields from req.body. Strip newlines, limit length, and validate format before concatenating into the prompt string."
+  ],
+  "acceptance_criteria": [
+    "generateFallback sub-scores (Technical + Entry Precision + Risk Management + News) sum to the overall score",
+    "invLevel, bestCase, worstCase variables are used in the template HTML (no dead code)",
+    "timeframe, ticker, and currentPrice are sanitized before prompt concatenation",
+    "api/analyze.js passes node --check validation"
+  ],
+  "verification": [
+    "Run: NODE_OPTIONS='' node --check /projects/sandbox/auto-cuan/api/analyze.js - should exit 0"
+  ],
+  "blocked_reason": null,
+  "findings": "Fixed both issues. Sub-scores now dynamically computed: techScore absorbs remainder (14-17), entryScore ~18% (7-9), riskScore ~45% (17-22), newsScore always 0. All sum exactly to the overall score. The review's Issue 4 was partially incorrect - invLevel, bestCase, worstCase were already interpolated in sections 7 and 12, but the sub-scores in section 3 were indeed inconsistent (summed to 22 vs displayed 38-48). Input sanitization uses allowlist regex patterns to strip dangerous characters and cap lengths."
+}
