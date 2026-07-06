@@ -12,6 +12,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const engine = require('../lib/daytrade-screener-engine');
 const ohlcvCache = require('../lib/daytrade-ohlcv-cache');
+const scanComparison = require('../lib/daytrade-scan-comparison');
 
 const VERSION = 'daytrade-vps-observe-v1.1';
 const DEFAULT_CACHE_DIR = path.join(process.cwd(), 'data', 'daytrade-ohlcv-cache');
@@ -20,7 +21,7 @@ const DEFAULT_LOCK_FILE = path.join(process.cwd(), 'tmp', 'daytrade-vps-worker-o
 const DEFAULT_CONCURRENCY = Number(process.env.DAYTRADE_WORKER_CONCURRENCY || 4);
 const DEFAULT_TIMEOUT_MS = Number(process.env.DAYTRADE_YAHOO_TIMEOUT_MS || 12000);
 const CACHE_MAX_AGE_MS = Number(process.env.DAYTRADE_CACHE_MAX_AGE_MS || 12 * 60 * 60 * 1000);
-const DEFAULT_LOOP_INTERVAL_MS = Number(process.env.DAYTRADE_LOOP_INTERVAL_MS || 15 * 60 * 1000);
+const DEFAULT_LOOP_INTERVAL_MS = Number(process.env.DAYTRADE_LOOP_INTERVAL_MS || 12 * 60 * 1000);
 const CIRCUIT_THRESHOLD = Number(process.env.DAYTRADE_CIRCUIT_THRESHOLD || 5);
 const CIRCUIT_COOLDOWN_MS = Number(process.env.DAYTRADE_CIRCUIT_COOLDOWN_MS || 60 * 1000);
 const LOCK_TTL_MS = Number(process.env.DAYTRADE_LOCK_TTL_MS || 30 * 60 * 1000);
@@ -252,6 +253,19 @@ async function runWorker(cliArgs) {
     const scanTickers = tickers.filter((t) => candleByTicker[t.ticker]);
     const result = await engine.runDayTradeBatch(scanTickers, engine.getRunMode(), { fetchCandles: (ticker) => Promise.resolve(candleByTicker[ticker]), noDelay: true, observeOnly: true });
     const candidates = result.results.filter((r) => ['A_PLUS_SETUP','TRADE_CANDIDATE','READY_BREAKOUT','MOMENTUM_CONTINUATION','PRE_SPIKE_WATCH','EARLY_RADAR'].includes(r.status));
+
+    // Scan-to-scan comparison: compare each result vs previous baseline
+    var accelerationSummary = [];
+    for (var sci = 0; sci < result.results.length; sci++) {
+      var scResult = scanComparison.compareAndStore(result.results[sci]);
+      if (scResult.acceleration_score >= 4) {
+        accelerationSummary.push({ ticker: result.results[sci].ticker, score: scResult.acceleration_score, label: scResult.acceleration_label });
+      }
+      // Attach acceleration to candidate for logging
+      result.results[sci].acceleration_score = scResult.acceleration_score;
+      result.results[sci].acceleration_label = scResult.acceleration_label;
+    }
+
     const providerStats = cacheProvider.getStats();
     const log = {
       version: VERSION,
@@ -269,7 +283,10 @@ async function runWorker(cliArgs) {
       stale_fallback_count: providerStats.staleFallback,
       candidate_count: candidates.length,
       top_candidates: result.results.slice(0, 10).map((r) => ({ ticker: r.ticker, status: r.status, score: r.daytrade_score, rr: r.risk_reward })),
-      rejected_reasons_summary: summarizeRejected(result.failed.concat(tickers.filter((t) => t._skipReason).map((t) => ({ ticker: t.ticker, reason: t._skipReason }))))
+      rejected_reasons_summary: summarizeRejected(result.failed.concat(tickers.filter((t) => t._skipReason).map((t) => ({ ticker: t.ticker, reason: t._skipReason })))),
+      acceleration_count: accelerationSummary.length,
+      acceleration_top: accelerationSummary.slice(0, 5),
+      baseline_count: scanComparison.getBaselineCount()
     };
     await fsp.mkdir(logDir, { recursive: true });
     await fsp.appendFile(path.join(logDir, 'runs.jsonl'), JSON.stringify(log) + '\n');

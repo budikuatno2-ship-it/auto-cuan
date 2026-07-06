@@ -25,7 +25,7 @@ The script only imports the Day Trade screener engine and uses an in-memory cand
 | `DAYTRADE_YAHOO_TIMEOUT_MS` | `12000` | Per-request timeout. |
 | `DAYTRADE_CACHE_MAX_AGE_MS` | `43200000` | Cache freshness window before full revalidation. |
 | `DAYTRADE_CACHE_TTL_MS` | `900000` | Short TTL during market hours (15 min). Cache module uses this for repeated scan freshness. |
-| `DAYTRADE_LOOP_INTERVAL_MS` | `900000` | VPS loop default interval (15 min). Env override supported. |
+| `DAYTRADE_LOOP_INTERVAL_MS` | `720000` | VPS loop default interval (12 min). Env override supported. |
 
 Do not set `DAYTRADE_WORKER_ALLOW_MUTATION=true`; the worker rejects that setting.
 
@@ -39,10 +39,10 @@ node tools/daytrade-vps-worker-observe.js --mode observe --limit 20
 
 ## Suggested observe-only cron
 
-Example 15-minute observe run:
+Example 12-minute observe run:
 
 ```cron
-*/15 * * * * cd /path/to/auto-cuan && /usr/bin/node tools/daytrade-vps-worker-observe.js --mode observe --limit 20 >> logs/daytrade-vps-worker/cron.log 2>&1
+*/12 * * * * cd /path/to/auto-cuan && /usr/bin/node tools/daytrade-vps-worker-observe.js --mode observe --limit 20 >> logs/daytrade-vps-worker/cron.log 2>&1
 ```
 
 This cron is for comparison/observation only and does not replace Vercel yet.
