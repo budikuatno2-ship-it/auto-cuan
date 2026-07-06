@@ -517,16 +517,46 @@ test('isNarrationEnabled returns true only for exact "true"', function() {
 });
 
 
-// === Test: Default model is gemini-3.5-flash ===
-test('default model is gemini-3.5-flash', function() {
+// === Test: Default model is gemini-2.5-flash ===
+test('default model is gemini-2.5-flash', function() {
   delete process.env.GEMINI_MODEL;
-  assert.equal(aiNarration.getModel(), 'gemini-3.5-flash');
+  assert.equal(aiNarration.getModel(), 'gemini-2.5-flash');
 });
 
 test('GEMINI_MODEL env override works', function() {
   process.env.GEMINI_MODEL = 'gemini-2.0-flash';
   assert.equal(aiNarration.getModel(), 'gemini-2.0-flash');
   delete process.env.GEMINI_MODEL;
+});
+
+// === Test: Validator accepts status synonyms (Indonesian translations) ===
+test('validator accepts Watchlist synonym Pantauan', function() {
+  const output = 'BBRI\nStatus: Pantauan\nEntry: Rp5.000\nSL: Rp4.800\nTP: Rp5.500 / Rp5.800\nHarga: Rp5.100\nRR: 2,19';
+  const data = { ticker: 'BBRI', status: 'Watchlist', entry1: 5000, sl: 4800, stop_loss: 4800, tp1: 5500, tp2: 5800, last_price: 5100, current_price: 5100, risk_reward: 2.19 };
+  const result = narrationValidator.validate(output, data);
+  assert.equal(result.valid, true, 'Pantauan should be accepted as Watchlist synonym');
+});
+
+test('validator accepts Swing Ready synonym Watchlist from AI', function() {
+  const output = 'BBRI\nStatus: Watchlist\nEntry: Rp5.000\nSL: Rp4.800\nTP: Rp5.500 / Rp5.800\nHarga: Rp5.100\nRR: 2,19';
+  const data = { ticker: 'BBRI', status: 'Swing Ready', entry1: 5000, sl: 4800, stop_loss: 4800, tp1: 5500, tp2: 5800, last_price: 5100, current_price: 5100, risk_reward: 2.19 };
+  const result = narrationValidator.validate(output, data);
+  assert.equal(result.valid, true, 'Watchlist should be accepted as Swing Ready synonym');
+});
+
+test('validator accepts TP1_HIT synonym Target 1 Tercapai', function() {
+  const output = 'BBRI\nTarget 1 Tercapai\nEntry: Rp5.000\nSL: Rp4.800\nTP: Rp5.500 / Rp5.800\nHarga: Rp5.100\nRR: 2,19';
+  const data = { ticker: 'BBRI', status: 'TP1_HIT', entry1: 5000, sl: 4800, stop_loss: 4800, tp1: 5500, tp2: 5800, last_price: 5100, current_price: 5100, risk_reward: 2.19 };
+  const result = narrationValidator.validate(output, data);
+  assert.equal(result.valid, true, 'Target 1 Tercapai should be accepted as TP1_HIT synonym');
+});
+
+test('validator still rejects when no status synonym present at all', function() {
+  const output = 'BBRI\nHarga bagus\nEntry: Rp5.000\nSL: Rp4.800\nTP: Rp5.500 / Rp5.800\nHarga: Rp5.100\nRR: 2,19';
+  const data = { ticker: 'BBRI', status: 'Swing Ready', entry1: 5000, sl: 4800, stop_loss: 4800, tp1: 5500, tp2: 5800, last_price: 5100, current_price: 5100, risk_reward: 2.19 };
+  const result = narrationValidator.validate(output, data);
+  assert.equal(result.valid, false, 'Should reject when no status synonym is found');
+  assert.ok(result.missingFields.indexOf('status') >= 0, 'Missing field should include status');
 });
 
 // === Test: Stale/expired data does not call Gemini ===
