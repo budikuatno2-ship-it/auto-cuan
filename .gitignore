@@ -1,6 +1,23 @@
 # Dependencies
 node_modules/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
 # Environment variables
 .env
 .env.*
@@ -20,10 +37,10 @@ desktop.ini
 
 # Logs
 *.log
+logs/
 
 # Vercel
 .vercel/
-dist/
 
 # Day Trade VPS observe worker local state
 data/daytrade-ohlcv-cache/
@@ -33,3 +50,7 @@ tmp/daytrade-vps-worker-observe.lock
 # AI Research runner output
 data/ai-research/
 logs/ai-research/
+
+# Uploads (if any temp files)
+uploads/
+tmp/

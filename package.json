@@ -1,6 +1,7 @@
 {
   "name": "auto-cuan",
   "version": "1.0.0",
+  "description": "Auto-Cuan IDX Screener & Signal System",
   "private": true,
   "type": "commonjs",
   "scripts": {
