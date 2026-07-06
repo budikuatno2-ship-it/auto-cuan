@@ -5009,7 +5009,8 @@ function getTelegramConfigStatus() {
   return {
     enabled: process.env.TELEGRAM_ENABLED === '1',
     has_bot_token: !!(process.env.TELEGRAM_BOT_TOKEN && String(process.env.TELEGRAM_BOT_TOKEN).trim()),
-    has_chat_id: !!(process.env.TELEGRAM_CHAT_ID && String(process.env.TELEGRAM_CHAT_ID).trim())
+    has_chat_id: !!(process.env.TELEGRAM_CHAT_ID && String(process.env.TELEGRAM_CHAT_ID).trim()),
+    ai_narration: aiNarration.getNarrationConfigStatus()
   };
 }
 
@@ -5181,17 +5182,46 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     }
     // Attempt AI narration for the candidate (new signal / watchlist)
     var candidateNarrated = null;
+    var candidateNarrationDiag = null;
     try {
       var narType = isWatchlistMode ? 'watchlist' : 'new_signal';
       var narMode = /day/i.test(safePicks[i].category || '') ? 'daytrade' : (/non.?konglo/i.test(safePicks[i].category || '') ? 'swing_non_konglo' : 'swing');
+      var staleBlocked = aiNarration.isStaleOrExpired(safePicks[i]);
       var candidateNarrationResult = await aiNarration.narrateNewSignal(safePicks[i], narMode);
       if (candidateNarrationResult.text) {
         candidateNarrated = candidateNarrationResult.text;
       }
-    } catch (narErr) { /* AI failure never blocks sending */ }
+      if (options.debug_ai) {
+        candidateNarrationDiag = {
+          source: candidateNarrationResult.source,
+          error: candidateNarrationResult.error || null,
+          gemini_called: candidateNarrationResult.source === 'ai' || (candidateNarrationResult.source === 'fallback' && candidateNarrationResult.error && candidateNarrationResult.error !== 'disabled' && candidateNarrationResult.error !== 'missing_primary_key' && candidateNarrationResult.error !== 'stale_or_expired'),
+          stale_or_expired: staleBlocked,
+          model: aiNarration.getModel(),
+          validation_reason: (candidateNarrationResult.validationDetails && candidateNarrationResult.validationDetails.reason) || null,
+          missing_fields: (candidateNarrationResult.validationDetails && candidateNarrationResult.validationDetails.missingFields) || null,
+          fabricated_numbers: (candidateNarrationResult.validationDetails && candidateNarrationResult.validationDetails.fabricatedNumbers) || null
+        };
+      }
+    } catch (narErr) {
+      if (options.debug_ai) {
+        candidateNarrationDiag = {
+          source: 'fallback',
+          error: 'exception:' + (narErr.message || String(narErr)).slice(0, 120),
+          gemini_called: false,
+          stale_or_expired: false,
+          model: aiNarration.getModel(),
+          validation_reason: null,
+          missing_fields: null,
+          fabricated_numbers: null
+        };
+      }
+    }
     var finalDetailText = candidateNarrated || detailText;
     var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500 });
-    detailResults.push({ ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_narrated: !!candidateNarrated });
+    var detailEntry = { ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_narrated: !!candidateNarrated };
+    if (candidateNarrationDiag) detailEntry.ai_narration = candidateNarrationDiag;
+    detailResults.push(detailEntry);
     if (detailResult.sent) detailSent++;
   }
 
@@ -5208,8 +5238,63 @@ async function handleTelegramDailyPicks(req, res, supabase) {
   try {
     var dryRun = req.query && (req.query.dry_run === '1' || req.query.dryRun === '1');
     var force = req.query && req.query.force === '1';
+    var debugAi = req.query && (req.query.debug_ai === '1' || req.query.debugAi === '1');
+    var testNarration = req.query && req.query.test_narration === '1';
     var manualPreviousTradingDay = req.query && req.query.manual_previous_trading_day === '1';
     var manualLatestSnapshot = req.query && req.query.manual_latest_snapshot === '1';
+
+    // === DRY-RUN AI NARRATION TEST ===
+    // Tests Gemini API + validation with a sample candidate. Never sends to Telegram.
+    // Usage: ?action=telegram-daily-picks&test_narration=1 (requires CRON_SECRET auth)
+    // Optional: &ticker=BBCA to customize sample ticker
+    if (testNarration) {
+      var sampleTicker = (req.query.ticker || 'BBCA').toUpperCase();
+      var sampleCandidate = {
+        ticker: sampleTicker,
+        status: req.query.sample_status || 'Watchlist',
+        category: 'Swing',
+        entry1: 9200,
+        entry2: 9050,
+        sl: 8800,
+        stop_loss: 8800,
+        tp1: 9800,
+        tp2: 10200,
+        last_price: 9100,
+        current_price: 9100,
+        risk_reward: '1.5',
+        score: 82,
+        grade: 'A',
+        quality_grade: 'A'
+      };
+      var narConfig = aiNarration.getNarrationConfigStatus();
+      var staleCheck = aiNarration.isStaleOrExpired(sampleCandidate);
+      var narResult;
+      try {
+        narResult = await aiNarration.narrateNewSignal(sampleCandidate, 'swing');
+      } catch (testErr) {
+        narResult = { text: null, source: 'fallback', error: 'exception:' + (testErr.message || String(testErr)).slice(0, 200) };
+      }
+      return res.status(200).json({
+        success: true,
+        test_narration: true,
+        sent: false,
+        reason: 'test_narration_only',
+        config: narConfig,
+        sample_candidate: sampleCandidate,
+        stale_or_expired: staleCheck,
+        narration_result: {
+          source: narResult.source,
+          error: narResult.error || null,
+          gemini_called: narResult.source === 'ai' || (narResult.source === 'fallback' && narResult.error && narResult.error !== 'disabled' && narResult.error !== 'missing_primary_key' && narResult.error !== 'stale_or_expired'),
+          model: aiNarration.getModel(),
+          text_preview: narResult.text ? narResult.text.slice(0, 500) : null,
+          text_length: narResult.text ? narResult.text.length : 0,
+          validation_reason: (narResult.validationDetails && narResult.validationDetails.reason) || null,
+          missing_fields: (narResult.validationDetails && narResult.validationDetails.missingFields) || null,
+          fabricated_numbers: (narResult.validationDetails && narResult.validationDetails.fabricatedNumbers) || null
+        }
+      });
+    }
     var date = getJakartaDateString();
     var jakartaWeekday = isJakartaWeekday();
     var weekendBypassed = false;
@@ -5463,7 +5548,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'already_sent', source: source, readiness: readiness, sent_count: 0, picked_count: existingRows.length, candidate_count: existingRows.length, inserted_count: 0, existing_locked_count: existingRows.length, telegram: null }, diagnosticsBase));
     }
 
-    var notifier = await sendDailyTop5Telegram(supabase, picks, targetDate, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' || manualPreviousTradingDayActive || manualLatestSnapshotActive, radar_candidates: top5RadarCandidates, watchlist_mode: top5Mode === 'watchlist', watchlist_safe_count: top5Mode === 'watchlist' ? picks.length : undefined });
+    var notifier = await sendDailyTop5Telegram(supabase, picks, targetDate, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' || manualPreviousTradingDayActive || manualLatestSnapshotActive, radar_candidates: top5RadarCandidates, watchlist_mode: top5Mode === 'watchlist', watchlist_safe_count: top5Mode === 'watchlist' ? picks.length : undefined, debug_ai: debugAi });
     var telegramSent = notifier.sent_count > 0;
     var nowIso = new Date().toISOString();
     if (telegramSent) {
