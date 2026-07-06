@@ -37,6 +37,7 @@ const idxTick = require('../lib/idx-tick-normalization');
 const fibConfluence = require('../lib/fibonacci-confluence');
 const telegramNotifier = require('../lib/telegram-notifier');
 const aiNarration = require('../lib/ai-narration');
+const telegramTemplates = require('../lib/telegram-templates');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -5134,21 +5135,19 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   // Watchlist mode: different header wording — NOT an entry signal
   var headerLines;
   if (isWatchlistMode) {
-    headerLines = ['📋 TOP 5 WATCHLIST / PANTAUAN BESOK', 'Tanggal: ' + date];
+    headerLines = ['\uD83C\uDDEE\uD83C\uDDE9 AUTO-CUAN SAHAM PILIHAN', 'Mode: WATCHLIST / Pantauan', 'Tanggal: ' + date];
     if (options.previous_close_snapshot) headerLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
     headerLines.push('Bukan sinyal entry langsung.');
     headerLines.push('Entry hanya jika breakout/close confirmation dan volume valid.');
     headerLines.push('Konfirmasi manual wajib sebelum entry.');
-    headerLines.push('Perhatikan warning entry/risk/volume.');
     if (options.watchlist_safe_count != null && options.watchlist_safe_count < 5) {
       headerLines.push('Kandidat aman tersedia ' + options.watchlist_safe_count + ' dari 5.');
     }
   } else {
-    headerLines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date];
+    headerLines = ['\uD83C\uDDEE\uD83C\uDDE9 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date];
     if (options.previous_close_snapshot) headerLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
     headerLines.push('Kandidat berbasis screener deterministic.');
     headerLines.push('Konfirmasi manual wajib.');
-    headerLines.push('Perhatikan warning entry/risk/volume.');
   }
   var header = headerLines.join('\n');
   var emptyLines = ['🚀 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date];
@@ -5175,7 +5174,8 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   var detailSent = 0;
   var detailResults = [];
   for (var i = 0; i < safePicks.length; i++) {
-    var detailText = await formatCandidateBlock(supabase, safePicks[i], i + 1, false);
+    // Use new premium signal card for detail messages
+    var detailText = telegramTemplates.formatSignalCard(safePicks[i], i + 1, /day/i.test(safePicks[i].category || '') ? 'daytrade' : 'swing');
     // In watchlist mode, append per-candidate watchlist disclaimer
     if (isWatchlistMode) {
       detailText += '\nStatus: Pantauan — bukan sinyal entry langsung.';
@@ -6572,14 +6572,24 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       }
 
       // Always use deterministic template; append AI note if available
-      lines.push(pck.ticker + ' — ' + ev.status.replace(/_/g, ' '));
-      lines.push(ev.note + (px.bestEffort ? ' (best effort)' : ''));
-      lines.push('Entry 1: ' + fmtPrice(pck.entry1) + ' · Last: ' + fmtPrice(px.last));
-      lines.push('TP1/TP2: ' + fmtPrice(pck.tp1) + ' / ' + fmtPrice(pck.tp2) + ' · SL: ' + fmtPrice(pck.sl));
-      if (ev.isFinal && !isFinal) lines.push('Status: selesai, tidak akan dimonitor di update berikutnya.');
-      if (monitorAiNote) lines.push('Catatan AI: ' + monitorAiNote);
-      lines.push('');
-      shown++;
+      var significantHit = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
+      if (significantHit) {
+        // Use premium short monitor hit format for significant events
+        var hitMsg = telegramTemplates.formatMonitorHitMessage(pck, ev, px);
+        if (monitorAiNote) hitMsg += '\nCatatan AI: ' + monitorAiNote;
+        var hitResult = await telegramNotifier.sendTelegramMessage(hitMsg, { timeout_ms: 3000 });
+        if (hitResult.sent) shown++;
+      } else {
+        // Non-significant updates go into the batch message
+        lines.push(pck.ticker + ' — ' + ev.status.replace(/_/g, ' '));
+        lines.push(ev.note + (px.bestEffort ? ' (best effort)' : ''));
+        lines.push('Entry 1: ' + fmtPrice(pck.entry1) + ' · Last: ' + fmtPrice(px.last));
+        lines.push('TP1/TP2: ' + fmtPrice(pck.tp1) + ' / ' + fmtPrice(pck.tp2) + ' · SL: ' + fmtPrice(pck.sl));
+        if (ev.isFinal && !isFinal) lines.push('Status: selesai, tidak akan dimonitor di update berikutnya.');
+        if (monitorAiNote) lines.push('Catatan AI: ' + monitorAiNote);
+        lines.push('');
+        shown++;
+      }
     }
     if (shown === 0) lines.push('Tidak ada ticker aktif yang perlu dimonitor (sudah final).');
     lines.push('Bukan rekomendasi beli/jual. DYOR.');
@@ -9422,19 +9432,7 @@ function formatDayTradeCandidateWarningList(r) {
 }
 
 function formatDayTradeRadarTelegramMessage(results) {
-  var now = new Date();
-  var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
-  var wib = new Date(wibMs);
-  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-  var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
-  var lines = ['\uD83D\uDE80 Day Trade Signal', 'Update: ' + timeStr, ''];
-  results.forEach(function(r, i) {
-    lines.push(formatRichTelegramCandidateBlock(r, i + 1, 'daytrade'));
-    lines.push('');
-  });
-  if (lines[lines.length - 1] === '') lines.pop();
-  lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
-  return lines.join('\n');
+  return telegramTemplates.formatDayTradeSignalMessage(results);
 }
 
 async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount, sendEmptyNotice, sendRadarFallback, options) {
@@ -9684,27 +9682,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 }
 
 function formatDayTradeTelegramMessage(results, runDate, headerNote, meta) {
-  var now = new Date();
-  var wibMs = now.getTime() + (7 * 60 * 60 * 1000);
-  var wib = new Date(wibMs);
-  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-  var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11, 16) + ' WIB';
-
-  meta = meta || {};
-  var lines = [];
-  lines.push('\uD83D\uDE80 Day Trade Signal');
-  lines.push('Update: ' + timeStr);
-  if (headerNote) lines.push(headerNote);
-  lines.push('');
-
-  for (var i = 0; i < results.length; i++) {
-    lines.push(fmtTelegramSignalBlock(results[i], i + 1, 'daytrade'));
-    lines.push('');
-  }
-
-  if (lines[lines.length - 1] === '') lines.pop();
-  lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
-  return lines.join('\n');
+  return telegramTemplates.formatDayTradeSignalMessage(results, { headerNote: headerNote });
 }
 
 function formatDayTradeNoCandidateTelegramMessage() {
@@ -10380,21 +10358,11 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
 
 // Shared swing Telegram formatter (Konglo + Non-Konglo)
 function formatSwingTelegramMessage(results, title, headerNote) {
-  var now = new Date(); var wibMs = now.getTime() + 7*60*60*1000; var wib = new Date(wibMs);
-  var months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
-  var timeStr = wib.getUTCDate() + ' ' + months[wib.getUTCMonth()] + ' ' + wib.getUTCFullYear() + ', ' + wib.toISOString().slice(11,16) + ' WIB';
-  var lines = [];
-  lines.push(title);
-  lines.push('Update: ' + timeStr);
-  if (headerNote) lines.push(headerNote);
-  lines.push('');
-  for (var i = 0; i < results.length; i++) {
-    lines.push(fmtTelegramSignalBlock(results[i], i + 1, 'swing'));
-    lines.push('');
+  var isNonKonglo = (title || '').indexOf('Non-Konglo') >= 0;
+  if (isNonKonglo) {
+    return telegramTemplates.formatSwingNonKongloSignalMessage(results, { headerNote: headerNote });
   }
-  if (lines[lines.length - 1] === '') lines.pop();
-  lines.push('Bukan rekomendasi beli. Konfirmasi manual wajib.');
-  return lines.join('\n');
+  return telegramTemplates.formatSwingKongloSignalMessage(results, { headerNote: headerNote });
 }
 
 module.exports.__test = {

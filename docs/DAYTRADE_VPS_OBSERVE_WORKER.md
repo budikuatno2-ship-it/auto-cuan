@@ -25,7 +25,7 @@ The script only imports the Day Trade screener engine and uses an in-memory cand
 | `DAYTRADE_YAHOO_TIMEOUT_MS` | `12000` | Per-request timeout. |
 | `DAYTRADE_CACHE_MAX_AGE_MS` | `43200000` | Cache freshness window before full revalidation. |
 | `DAYTRADE_CACHE_TTL_MS` | `900000` | Short TTL during market hours (15 min). Cache module uses this for repeated scan freshness. |
-| `DAYTRADE_LOOP_INTERVAL_MS` | `720000` | VPS loop default interval (12 min). Env override supported. |
+| `DAYTRADE_LOOP_INTERVAL_MS` | `900000` | VPS loop default interval (15 min). Override to `720000` for 12-min live schedule. |
 
 Do not set `DAYTRADE_WORKER_ALLOW_MUTATION=true`; the worker rejects that setting.
 
@@ -39,13 +39,44 @@ node tools/daytrade-vps-worker-observe.js --mode observe --limit 20
 
 ## Suggested observe-only cron
 
-Example 12-minute observe run:
+Default code interval is 15 minutes. To run at 12-minute intervals (recommended for Day Trade), override via environment or cron:
+
+### 12-minute cron (recommended for live Day Trade):
 
 ```cron
-*/12 * * * * cd /path/to/auto-cuan && /usr/bin/node tools/daytrade-vps-worker-observe.js --mode observe --limit 20 >> logs/daytrade-vps-worker/cron.log 2>&1
+*/12 * * * * cd /home/ubuntu/auto-cuan-runner && DAYTRADE_LOOP_INTERVAL_MS=720000 /usr/bin/node tools/daytrade-vps-worker-observe.js --mode observe --limit 20 >> logs/daytrade-vps-worker/cron.log 2>&1
+```
+
+### 15-minute cron (default/fallback):
+
+```cron
+*/15 * * * * cd /path/to/auto-cuan && /usr/bin/node tools/daytrade-vps-worker-observe.js --mode observe --limit 20 >> logs/daytrade-vps-worker/cron.log 2>&1
+```
+
+### Loop mode with 12-minute interval (alternative to cron):
+
+```bash
+DAYTRADE_LOOP_INTERVAL_MS=720000 node tools/daytrade-vps-worker-observe.js --mode observe --loop --limit 20
 ```
 
 This cron is for comparison/observation only and does not replace Vercel yet.
+
+### Exact VPS crontab change for 12-minute live schedule:
+
+Replace the existing 15-minute cron line:
+```
+# OLD (15-min):
+*/15 9-15 * * 1-5 cd /home/ubuntu/auto-cuan-runner && /usr/bin/node tools/daytrade-vps-worker-observe.js --mode observe --limit 20 >> logs/daytrade-vps-worker/cron.log 2>&1
+
+# NEW (12-min):
+*/12 9-15 * * 1-5 cd /home/ubuntu/auto-cuan-runner && DAYTRADE_LOOP_INTERVAL_MS=720000 /usr/bin/node tools/daytrade-vps-worker-observe.js --mode observe --limit 20 >> logs/daytrade-vps-worker/cron.log 2>&1
+```
+
+**Important:** Only change Day Trade cron to 12 minutes. Do NOT change Swing Konglo or Swing Non-Konglo schedules (they stay at 2-3x/day).
+
+Break guards are built-in to the worker code (detectMarketBreak):
+- Mon-Thu 12:00-13:00 WIB: only one heartbeat scan, then sleep
+- Friday 11:30-14:00 WIB: only one heartbeat scan, then sleep
 
 ## Cache format and location
 
