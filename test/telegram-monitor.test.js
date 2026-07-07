@@ -337,3 +337,23 @@ test('deriveSetupFreshness still invalidates swing on SL and after swing window'
   assert.equal(old.setup_freshness_status, 'EXPIRED');
   assert.match(old.setup_expiry_note, /hari bursa masa pantau swing/);
 });
+
+test('deriveSetupFreshness treats swing category-only rows as swing monitors', function() {
+  const idxTick = require('../lib/idx-tick-normalization');
+  const result = idxTick.deriveSetupFreshness({
+    first_sent_at: '2026-07-07T00:00:00Z', category: 'Swing Non-Konglo', entry1: 100, entry2: 98, sl: 95, current_price: 99
+  }, { now: '2026-07-07T05:00:00Z' });
+
+  assert.equal(result.setup_freshness_source_type, 'swing');
+  assert.notEqual(result.setup_freshness_status, 'EXPIRED');
+});
+
+test('deriveSetupFreshness expires swing when price is overextended above entryHigh', function() {
+  const idxTick = require('../lib/idx-tick-normalization');
+  const result = idxTick.deriveSetupFreshness({
+    first_sent_at: '2026-07-07T00:00:00Z', monitor_source: 'swing_konglo', entry1: 100, entry2: 98, sl: 95, current_price: 106
+  }, { now: '2026-07-07T01:00:00Z' });
+
+  assert.equal(result.setup_freshness_status, 'EXPIRED');
+  assert.match(result.setup_expiry_note, /terlalu jauh dari entry/);
+});
