@@ -111,11 +111,31 @@ test('T-TPL-07: formatDailyTop5Message works in normal and watchlist mode', func
   var msg = templates.formatDailyTop5Message([baseSwing()], '2026-07-06');
   assert.match(msg, /AUTO-CUAN SAHAM PILIHAN/);
   assert.match(msg, /2026-07-06/);
+  assert.match(msg, /lolos gate: 1\/5/);
   assert.doesNotMatch(msg, /WATCHLIST/);
 
   var watchMsg = templates.formatDailyTop5Message([baseSwing()], '2026-07-06', { watchlistMode: true });
-  assert.match(watchMsg, /WATCHLIST/);
+  assert.match(watchMsg, /Top 5 Watchlist/);
+  assert.match(watchMsg, /lolos gate: 1\/5/);
   assert.match(watchMsg, /Bukan sinyal entry langsung/);
+});
+
+test('T-TPL-07b: formatDailyTop5Message shows correct lolos gate count', function() {
+  // Test with 3 picks
+  var msg3 = templates.formatDailyTop5Message([baseSwing(), baseSwing(), baseSwing()], '2026-07-06', { pickedCount: 3 });
+  assert.match(msg3, /lolos gate: 3\/5/);
+
+  // Test with 5 picks
+  var msg5 = templates.formatDailyTop5Message([baseSwing(), baseSwing(), baseSwing(), baseSwing(), baseSwing()], '2026-07-06', { pickedCount: 5 });
+  assert.match(msg5, /lolos gate: 5\/5/);
+
+  // Test with 1 pick (the edge case from the requirement)
+  var msg1 = templates.formatDailyTop5Message([baseSwing()], '2026-07-06', { pickedCount: 1 });
+  assert.match(msg1, /lolos gate: 1\/5/);
+
+  // Watchlist mode with explicit pickedCount
+  var watchMsg3 = templates.formatDailyTop5Message([baseSwing()], '2026-07-06', { watchlistMode: true, pickedCount: 3 });
+  assert.match(watchMsg3, /Top 5 Watchlist — lolos gate: 3\/5/);
 });
 
 // ============================================================
