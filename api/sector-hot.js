@@ -5131,20 +5131,25 @@ function formatRadarDigestTelegramMessage(results, title, mode) {
 async function sendDailyTop5Telegram(supabase, picks, date, options) {
   options = options || {};
   var isWatchlistMode = !!options.watchlist_mode;
+  var pickedCount = options.picked_count != null
+    ? options.picked_count
+    : (options.watchlist_safe_count != null ? options.watchlist_safe_count : (picks || []).length);
+  // Cap display between 0 and 5 for the "X/5" format
+  pickedCount = Math.max(0, Math.min(5, Number(pickedCount) || 0));
 
   // Watchlist mode: different header wording — NOT an entry signal
+  // Always show "lolos gate: X/5" to clarify why count may be < 5
   var headerLines;
   if (isWatchlistMode) {
-    headerLines = ['\uD83C\uDDEE\uD83C\uDDE9 AUTO-CUAN SAHAM PILIHAN', 'Mode: WATCHLIST / Pantauan', 'Tanggal: ' + date];
+    var titleLine = '\uD83C\uDDEE\uD83C\uDDE9 Top 5 Watchlist — lolos gate: ' + pickedCount + '/5';
+    headerLines = [titleLine, 'Tanggal: ' + date];
     if (options.previous_close_snapshot) headerLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
     headerLines.push('Bukan sinyal entry langsung.');
     headerLines.push('Entry hanya jika breakout/close confirmation dan volume valid.');
     headerLines.push('Konfirmasi manual wajib sebelum entry.');
-    if (options.watchlist_safe_count != null && options.watchlist_safe_count < 5) {
-      headerLines.push('Kandidat aman tersedia ' + options.watchlist_safe_count + ' dari 5.');
-    }
   } else {
-    headerLines = ['\uD83C\uDDEE\uD83C\uDDE9 AUTO-CUAN SAHAM PILIHAN — TOP 5', 'Tanggal: ' + date];
+    var normalTitleLine = '\uD83C\uDDEE\uD83C\uDDE9 AUTO-CUAN SAHAM PILIHAN — TOP 5 — lolos gate: ' + pickedCount + '/5';
+    headerLines = [normalTitleLine, 'Tanggal: ' + date];
     if (options.previous_close_snapshot) headerLines.push('Snapshot: Market close H-1, revalidasi harga saat market buka.');
     headerLines.push('Kandidat berbasis screener deterministic.');
     headerLines.push('Konfirmasi manual wajib.');

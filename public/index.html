@@ -7627,9 +7627,14 @@ async function loadDashboardTop5Monitor(silent, opts) {
 
 function renderDashboardTop5MonitorData(data) {
     var note = document.getElementById('dashboardTop5LockNote');
-    if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
-    // Robust empty detection: treat as empty/awaiting if ANY of these are true
+    // Derive picked count from top5 rows for "lolos gate: X/5" label
     var top5Rows = data.top5 || data.picks || [];
+    var pickedCount = data.picked_count != null ? data.picked_count : top5Rows.length;
+    // Cap display between 0 and 5 for the "X/5" format
+    pickedCount = Math.max(0, Math.min(5, Number(pickedCount) || 0));
+    var gateLabel = 'lolos gate: ' + pickedCount + '/5';
+    if (note) note.textContent = data.top5_locked ? ('Top 5 Radar Final/Locked — ' + gateLabel + '. Monitor update tiap 30 menit saat jam bursa.') : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
+    // Robust empty detection: treat as empty/awaiting if ANY of these are true
     var monitorRows = data.monitor || [];
     var isLockedFinalSource = data.top5_locked === true && (data.top5_source === 'locked_rows' || data.top5_source === 'locked_rows_fallback');
     // Render locked Top 5 cards if we have a valid locked source AND top5 rows exist.
