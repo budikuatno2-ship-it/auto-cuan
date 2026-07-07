@@ -6530,6 +6530,35 @@ function buildMonitorProgressLabel(pick, px) {
   return 'Menunggu entry';
 }
 
+function getMonitorDateRange() {
+  var now = getJakartaNow();
+  var dates = [];
+  // Go back up to 10 days to catch swing picks that may take days to hit
+  for (var i = 0; i < 10; i++) {
+    var d = new Date(now);
+    d.setDate(d.getDate() - i);
+    var day = d.getUTCDay();
+    if (day >= 1 && day <= 5) { // Only weekdays
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    if (dates.length >= 7) break; // Max 7 trading days
+  }
+  return dates;
+}
+
+function isTerminalPick(pick) {
+  if (!pick) return true;
+  var status = String(pick.status || '').toUpperCase();
+  // Terminal statuses that should no longer be monitored
+  var terminalStatuses = ['TP2_HIT', 'SL_HIT', 'EXPIRED', 'INVALID'];
+  if (terminalStatuses.indexOf(status) >= 0) return true;
+  // Also consider rows with both TP1 and TP2 hit as terminal (full profit taken)
+  if (pick.hit_tp2_at) return true;
+  // Row with SL hit is terminal
+  if (pick.hit_sl_at) return true;
+  return false;
+}
+
 async function handleTelegramMonitorPicks(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, checked_count: 0, error: 'Unauthorized.' });
   try {
@@ -6539,13 +6568,23 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       if (!force) return res.status(200).json({ success: true, skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, checked_count: 0 });
       weekendBypassed = true;
     }
-    var date = getJakartaDateString();
     var hour = getWibHourString();
     var isFinal = hour.indexOf('15:') === 0 || req.query.final === '1';
-    var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true });
+
+    // Query recent days to catch swing picks that may take days to hit entry/TP/SL
+    var dateRange = getMonitorDateRange();
+    var q = await supabase.from('telegram_daily_picks')
+      .select('*')
+      .in('date', dateRange)
+      .order('date', { ascending: false })
+      .order('id', { ascending: true });
     if (q.error) throw new Error(q.error.message);
-    var rows = q.data || [];
-    if (rows.length === 0) return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'daily_picks_not_found', sent_count: 0, checked_count: 0, error: null });
+
+    // Filter to only active rows (not terminal)
+    var allRows = q.data || [];
+    var rows = allRows.filter(function(r) { return !isTerminalPick(r); });
+
+    if (rows.length === 0) return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, sent_count: 0, checked_count: 0, error: null });
     var lines = [(isFinal ? '🏁' : '⏱') + ' AUTO-CUAN MONITOR ' + hour, ''];
     var shown = 0;
     var aiNarrationResults = [];
@@ -6577,7 +6616,13 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       }
 
       // Always use deterministic template; append AI note if available
-      var significantHit = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
+      // Only send notification if this is a NEW hit (not previously recorded)
+      var isNewHit = false;
+      if ((ev.status === 'RUNNING' || ev.status === 'IN_ENTRY_ZONE') && !pck.hit_entry_at) isNewHit = true;
+      if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) isNewHit = true;
+      if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) isNewHit = true;
+      if (ev.status === 'SL_HIT' && !pck.hit_sl_at) isNewHit = true;
+      var significantHit = isNewHit && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
       if (significantHit) {
         // Use premium short monitor hit format for significant events
         var hitMsg = telegramTemplates.formatMonitorHitMessage(pck, ev, px);
