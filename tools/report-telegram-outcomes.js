@@ -77,9 +77,31 @@ async function fetchDailyPicks() {
   }
 }
 
+
+function calculatePickAgeDays(pick, now) {
+  if (!pick) return null;
+  const start = pick.first_sent_at || pick.created_at || pick.date || (pick.raw_payload && (pick.raw_payload.first_sent_at || pick.raw_payload.created_at || pick.raw_payload.date));
+  if (!start) return null;
+  const from = new Date(String(start).length === 10 ? String(start) + 'T00:00:00Z' : start);
+  const to = now ? new Date(now) : new Date();
+  if (isNaN(from.getTime()) || isNaN(to.getTime())) return null;
+  const diff = Math.max(0, to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24);
+  return Math.round(diff * 10) / 10;
+}
+
+function getAgeBucket(ageDays) {
+  if (ageDays == null || isNaN(ageDays)) return 'unknown';
+  if (ageDays <= 1) return '0-1d';
+  if (ageDays <= 3) return '2-3d';
+  if (ageDays <= 5) return '4-5d';
+  return '6+d';
+}
+
 // === Generate Report ===
-function generateReport(picks) {
+function generateReport(picks, opts) {
   console.log('=== Generating Report ===\n');
+  opts = opts || {};
+  const reportNow = opts.now || null;
 
   const total = picks.length;
   const stats = {
@@ -102,7 +124,9 @@ function generateReport(picks) {
     // NEW: Structured outcome by source
     outcomeBySource: {},
     // NEW: Structured status by source
-    statusBySource: {}
+    statusBySource: {},
+    ageBySource: {},
+    expiredAgeBucketsBySource: {}
   };
 
   // Process each pick
@@ -111,6 +135,14 @@ function generateReport(picks) {
     const source = helpers.getMonitorSource(pick) || 'unknown';
     if (!stats.bySource[source]) stats.bySource[source] = 0;
     stats.bySource[source]++;
+
+    if (!stats.ageBySource[source]) stats.ageBySource[source] = { totalAgeDays: 0, count: 0, averageAgeDays: null };
+    if (!stats.expiredAgeBucketsBySource[source]) stats.expiredAgeBucketsBySource[source] = { '0-1d': 0, '2-3d': 0, '4-5d': 0, '6+d': 0, unknown: 0 };
+    const ageDays = calculatePickAgeDays(pick, reportNow);
+    if (ageDays !== null) {
+      stats.ageBySource[source].totalAgeDays += ageDays;
+      stats.ageBySource[source].count++;
+    }
 
     // Initialize outcomeBySource structure for this source
     if (!stats.outcomeBySource[source]) {
@@ -131,7 +163,11 @@ function generateReport(picks) {
     if (outcome === 'SL_HIT') { stats.slCount++; stats.outcomeBySource[source].sl++; }
     if (outcome === 'WAITING') { stats.waitingCount++; stats.outcomeBySource[source].waiting++; }
     if (outcome === 'RUNNING') { stats.runningCount++; stats.outcomeBySource[source].running++; }
-    if (outcome === 'EXPIRED') { stats.expiredCount++; stats.outcomeBySource[source].expired++; }
+    if (outcome === 'EXPIRED') {
+      stats.expiredCount++;
+      stats.outcomeBySource[source].expired++;
+      stats.expiredAgeBucketsBySource[source][getAgeBucket(ageDays)]++;
+    }
     if (outcome === 'UNKNOWN') { stats.outcomeBySource[source].invalid++; }
 
     // Group by score bucket
@@ -168,6 +204,10 @@ function generateReport(picks) {
       if (timeToTp2 !== null) stats.avgTimeToTp2.push(timeToTp2);
       if (timeToSl !== null) stats.avgTimeToSl.push(timeToSl);
     }
+  }
+
+  for (const ageStats of Object.values(stats.ageBySource)) {
+    ageStats.averageAgeDays = ageStats.count > 0 ? Math.round((ageStats.totalAgeDays / ageStats.count) * 10) / 10 : null;
   }
 
   // Calculate rates
@@ -310,6 +350,32 @@ function formatConsoleReport(stats) {
   if (!hasOutcomeBySource) {
     lines.push('  (data tidak tersedia)');
   }
+  lines.push('');
+
+  // Age visibility
+  lines.push('## AGE BY SOURCE');
+  lines.push(sub);
+  lines.push('  Source          | Avg Age (days) | Expired 0-1d | 2-3d | 4-5d | 6+d');
+  lines.push('  ----------------|----------------|--------------|------|------|----');
+  const ageBySource = stats.ageBySource || {};
+  const expiredAgeBucketsBySource = stats.expiredAgeBucketsBySource || {};
+  let hasAgeBySource = false;
+  for (const src of sourceOrder) {
+    if (ageBySource[src]) {
+      const a = ageBySource[src];
+      const b = expiredAgeBucketsBySource[src] || {};
+      lines.push('  ' + String(src).padEnd(15) + ' | ' + String(a.averageAgeDays != null ? a.averageAgeDays : 'N/A').padStart(14) + ' | ' + String(b['0-1d'] || 0).padStart(12) + ' | ' + String(b['2-3d'] || 0).padStart(4) + ' | ' + String(b['4-5d'] || 0).padStart(4) + ' | ' + String(b['6+d'] || 0).padStart(3));
+      hasAgeBySource = true;
+    }
+  }
+  for (const [src, a] of Object.entries(ageBySource)) {
+    if (!sourceOrder.includes(src)) {
+      const b = expiredAgeBucketsBySource[src] || {};
+      lines.push('  ' + String(src).padEnd(15) + ' | ' + String(a.averageAgeDays != null ? a.averageAgeDays : 'N/A').padStart(14) + ' | ' + String(b['0-1d'] || 0).padStart(12) + ' | ' + String(b['2-3d'] || 0).padStart(4) + ' | ' + String(b['4-5d'] || 0).padStart(4) + ' | ' + String(b['6+d'] || 0).padStart(3));
+      hasAgeBySource = true;
+    }
+  }
+  if (!hasAgeBySource) lines.push('  (data tidak tersedia)');
   lines.push('');
 
   // Score buckets
@@ -458,6 +524,32 @@ function formatMarkdownReport(stats) {
   }
   lines.push('');
 
+  // Age visibility
+  lines.push('## Age by Source');
+  lines.push('');
+  lines.push('| Source | Avg Age (days) | Expired 0-1d | Expired 2-3d | Expired 4-5d | Expired 6+d |');
+  lines.push('|--------|----------------|--------------|--------------|--------------|-------------|');
+  const mdAgeBySource = stats.ageBySource || {};
+  const mdExpiredAgeBuckets = stats.expiredAgeBucketsBySource || {};
+  let hasMdAgeBySource = false;
+  for (const src of mdSourceOrder) {
+    if (mdAgeBySource[src]) {
+      const a = mdAgeBySource[src];
+      const b = mdExpiredAgeBuckets[src] || {};
+      lines.push('| ' + src + ' | ' + (a.averageAgeDays != null ? a.averageAgeDays : 'N/A') + ' | ' + (b['0-1d'] || 0) + ' | ' + (b['2-3d'] || 0) + ' | ' + (b['4-5d'] || 0) + ' | ' + (b['6+d'] || 0) + ' |');
+      hasMdAgeBySource = true;
+    }
+  }
+  for (const [src, a] of Object.entries(mdAgeBySource)) {
+    if (!mdSourceOrder.includes(src)) {
+      const b = mdExpiredAgeBuckets[src] || {};
+      lines.push('| ' + src + ' | ' + (a.averageAgeDays != null ? a.averageAgeDays : 'N/A') + ' | ' + (b['0-1d'] || 0) + ' | ' + (b['2-3d'] || 0) + ' | ' + (b['4-5d'] || 0) + ' | ' + (b['6+d'] || 0) + ' |');
+      hasMdAgeBySource = true;
+    }
+  }
+  if (!hasMdAgeBySource) lines.push('| (data tidak tersedia) | N/A | 0 | 0 | 0 | 0 |');
+  lines.push('');
+
   // Score buckets
   lines.push('## Outcome by Score Bucket');
   lines.push('');
@@ -556,4 +648,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { fetchDailyPicks, generateReport, formatConsoleReport, formatMarkdownReport };
+module.exports = { fetchDailyPicks, generateReport, formatConsoleReport, formatMarkdownReport, calculatePickAgeDays, getAgeBucket };
