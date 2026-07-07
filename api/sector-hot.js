@@ -40,6 +40,7 @@ const aiNarration = require('../lib/ai-narration');
 const telegramTemplates = require('../lib/telegram-templates');
 const atrHelpers = require('../lib/atr-report-helpers');
 const weeklyTimeframe = require('../lib/weekly-timeframe');
+const marketRegime = require('../lib/market-regime');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -540,6 +541,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     var failedCount = 0;
     var screenerFailedTickers = [];
     var results = [];
+    var screenerMarketRegime = await marketRegime.getMarketRegime();
 
     for (var i = 0; i < universe.length; i++) {
       var item = universe[i];
@@ -699,6 +701,10 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         var _weeklyTf = weeklyTimeframe.evaluateWeeklyTimeframe(candles);
         var _scoreBeforeWeeklyTf = _scoreAfterAtrPenalty;
         var _scoreAfterWeeklyTf = weeklyTimeframe.applyWeeklyTimeframeScore(_scoreAfterAtrPenalty, _weeklyTf);
+        // Final score order: base score -> ATR penalty -> weekly adjustment -> market regime adjustment.
+        var _marketRegime = screenerMarketRegime;
+        var _scoreBeforeMarketRegime = _scoreAfterWeeklyTf;
+        var _scoreAfterMarketRegime = marketRegime.applyMarketRegimeScore(_scoreBeforeMarketRegime, _marketRegime);
 
         // === FIBONACCI CONFLUENCE (soft signal, Swing Konglo only) ===
         var _fibResult = fibConfluence.evaluateFibConfluence(candles, {
@@ -727,7 +733,11 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           tp2: _finalTp2,
           risk_reward: _finalRR,
           invalidation: analysis.invalidation,
-          score: _scoreAfterWeeklyTf,
+          score: _scoreAfterMarketRegime,
+          score_before_market_regime: _scoreBeforeMarketRegime,
+          market_regime_label: _marketRegime.market_regime_label,
+          market_regime_score_adjustment: _marketRegime.market_regime_score_adjustment,
+          market_regime_notes: _marketRegime.market_regime_notes,
           score_before_weekly_tf: _scoreBeforeWeeklyTf,
           weekly_tf_label: _weeklyTf.weekly_tf_label,
           weekly_tf_score_adjustment: _weeklyTf.weekly_tf_score_adjustment,
@@ -7095,6 +7105,7 @@ async function handleNkScreenerBatch(req, res, supabase) {
 
   const results = [];
   let failedCount = 0;
+  const nkMarketRegime = await marketRegime.getMarketRegime();
 
   for (const ticker of tickers) {
     try {
@@ -7109,6 +7120,7 @@ async function handleNkScreenerBatch(req, res, supabase) {
       if (!passesFilter) continue;
 
       // Calculate score
+      quoteData.marketRegime = nkMarketRegime;
       const scored = calculateNkSetupScore(quoteData);
       scored.ticker = ticker;
       scored.board = boards[ticker] || 'UNKNOWN';
@@ -7192,13 +7204,17 @@ async function handleNkScreenerBatch(req, res, supabase) {
       delete scored.tp1_atr_class;
       delete scored.tp2_atr_class;
       delete scored.atr_warning_notes;
-      // Staging/latest schemas are fixed; weekly context is reflected in score only for NK.
+      // Staging/latest schemas are fixed; weekly and market context are reflected in score only for NK.
       delete scored.score_before_weekly_tf;
       delete scored.weekly_tf_label;
       delete scored.weekly_tf_score_adjustment;
       delete scored.weekly_tf_notes;
       delete scored.weekly_close;
       delete scored.weekly_ma10;
+      delete scored.score_before_market_regime;
+      delete scored.market_regime_label;
+      delete scored.market_regime_score_adjustment;
+      delete scored.market_regime_notes;
 
       results.push(scored);
     } catch (e) {
@@ -8209,6 +8225,14 @@ function calculateNkSetupScore(q) {
   }
   score = weeklyTimeframe.applyWeeklyTimeframeScore(scoreBeforeWeeklyTf, weeklyTf);
 
+  // Final score order: base score -> ATR penalty -> weekly adjustment -> market regime adjustment.
+  var regime = q.marketRegime || { market_regime_label: 'MARKET_UNKNOWN', market_regime_score_adjustment: 0, market_regime_notes: 'Data IHSG tidak tersedia; market regime diabaikan.' };
+  var scoreBeforeMarketRegime = score;
+  if (regime.market_regime_score_adjustment) {
+    components.push('Market regime ' + regime.market_regime_score_adjustment + ' (' + regime.market_regime_label + ')');
+  }
+  score = marketRegime.applyMarketRegimeScore(scoreBeforeMarketRegime, regime);
+
   // GRADE (same thresholds)
   var grade = 'D';
   if (score >= 80) grade = 'A';
@@ -8374,6 +8398,10 @@ function calculateNkSetupScore(q) {
     weekly_tf_notes: weeklyTf.weekly_tf_notes,
     weekly_close: weeklyTf.weekly_close,
     weekly_ma10: weeklyTf.weekly_ma10,
+    score_before_market_regime: scoreBeforeMarketRegime,
+    market_regime_label: regime.market_regime_label,
+    market_regime_score_adjustment: regime.market_regime_score_adjustment,
+    market_regime_notes: regime.market_regime_notes,
     atr_score_penalty: atrPenalty.atr_score_penalty,
     atr_penalty_reasons: atrPenalty.atr_penalty_reasons,
     atr_risk_adjustment: atrPenalty.atr_risk_adjustment,

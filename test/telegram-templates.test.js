@@ -344,3 +344,13 @@ test('T-TPL-WEEKLY-02: day trade Telegram ignores weekly context fields', functi
   var msg = templates.formatDayTradeSignalMessage([baseDayTrade({ weekly_tf_label: 'WEEKLY_WEAK' })]);
   assert.doesNotMatch(msg, /Weekly:/);
 });
+
+test('T-TPL-MARKET-01: swing Telegram includes market regime line', function() {
+  var msg = templates.formatSwingKongloSignalMessage([baseSwing({ market_regime_label: 'RISK_OFF' })]);
+  assert.match(msg, /Market: risk-off; sizing dan validasi perlu lebih ketat\./);
+});
+
+test('T-TPL-MARKET-02: day trade Telegram ignores market regime scoring fields', function() {
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({ market_regime_label: 'RISK_ON', market_regime_score_adjustment: 2 })]);
+  assert.doesNotMatch(msg, /Market:/);
+});
