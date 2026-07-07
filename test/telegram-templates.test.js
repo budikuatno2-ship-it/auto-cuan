@@ -334,3 +334,13 @@ test('T-TPL-16: Template does not depend on AI — no AI-related text in output'
   assert.doesNotMatch(msg, /Gemini/i);
   assert.doesNotMatch(msg, /narration/i);
 });
+
+test('T-TPL-WEEKLY-01: swing Telegram includes weekly context line when label exists', function() {
+  var msg = templates.formatSwingKongloSignalMessage([baseSwing({ weekly_tf_label: 'WEEKLY_SUPPORT' })]);
+  assert.match(msg, /Weekly: trend mendukung swing\./);
+});
+
+test('T-TPL-WEEKLY-02: day trade Telegram ignores weekly context fields', function() {
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({ weekly_tf_label: 'WEEKLY_WEAK' })]);
+  assert.doesNotMatch(msg, /Weekly:/);
+});
