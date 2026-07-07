@@ -294,3 +294,46 @@ test('evaluateMonitorStatus checks sl for SL hit', function() {
   assert.ok(fnBody.indexOf('sl') >= 0,
     'evaluateMonitorStatus must check sl');
 });
+test('evaluateMonitorStatus passes monitor source into deriveSetupFreshness for source-aware expiry', function() {
+  var start = sectorHotSrc.indexOf('function evaluateMonitorStatus');
+  var end = sectorHotSrc.indexOf('\n\nfunction webPickScore', start);
+  var fnBody = sectorHotSrc.substring(start, end);
+
+  assert.ok(fnBody.indexOf('monitor_source') >= 0,
+    'evaluateMonitorStatus must pass monitor_source/category into deriveSetupFreshness');
+});
+
+test('deriveSetupFreshness keeps swing monitor alive inside 5 trading days but expires daytrade intraday', function() {
+  const idxTick = require('../lib/idx-tick-normalization');
+  const now = '2026-07-07T05:00:00Z';
+  const base = { entry1: 100, entry2: 98, sl: 95, current_price: 99 };
+
+  const daytrade = idxTick.deriveSetupFreshness(Object.assign({}, base, {
+    first_sent_at: '2026-07-07T00:00:00Z',
+    monitor_source: 'daytrade'
+  }), { now });
+  assert.equal(daytrade.setup_freshness_status, 'EXPIRED');
+
+  const swing = idxTick.deriveSetupFreshness(Object.assign({}, base, {
+    first_sent_at: '2026-07-02T00:00:00Z',
+    monitor_source: 'swing_konglo'
+  }), { now });
+  assert.notEqual(swing.setup_freshness_status, 'EXPIRED');
+  assert.equal(swing.setup_freshness_source_type, 'swing');
+  assert.ok(swing.setup_age_trading_days <= 5);
+});
+
+test('deriveSetupFreshness still invalidates swing on SL and after swing window', function() {
+  const idxTick = require('../lib/idx-tick-normalization');
+  const sl = idxTick.deriveSetupFreshness({
+    first_sent_at: '2026-07-07T00:00:00Z', monitor_source: 'swing_nk', entry1: 100, entry2: 98, sl: 95, current_price: 95
+  }, { now: '2026-07-07T01:00:00Z' });
+  assert.equal(sl.setup_freshness_status, 'EXPIRED');
+  assert.match(sl.setup_expiry_note, /SL/);
+
+  const old = idxTick.deriveSetupFreshness({
+    first_sent_at: '2026-06-29T00:00:00Z', monitor_source: 'swing_nk', entry1: 100, entry2: 98, sl: 95, current_price: 99
+  }, { now: '2026-07-07T00:00:00Z' });
+  assert.equal(old.setup_freshness_status, 'EXPIRED');
+  assert.match(old.setup_expiry_note, /hari bursa masa pantau swing/);
+});

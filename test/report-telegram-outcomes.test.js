@@ -103,3 +103,27 @@ test('fetchDailyPicks is exported as function', () => {
   assert.equal(typeof exports.generateReport, 'function', 'generateReport should be a function');
   assert.equal(typeof exports.formatConsoleReport, 'function', 'formatConsoleReport should be a function');
 });
+test('generateReport includes age averages and expired age buckets by source', () => {
+  const { generateReport, formatConsoleReport, formatMarkdownReport } = require('../tools/report-telegram-outcomes.js');
+  const now = '2026-07-07T00:00:00Z';
+  const daysAgo = (days) => new Date(new Date(now).getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+  const picks = [
+      { id: 1, date: daysAgo(0).slice(0, 10), first_sent_at: daysAgo(0), raw_payload: { monitor_source: 'daytrade' }, status: 'EXPIRED' },
+      { id: 2, date: daysAgo(2).slice(0, 10), first_sent_at: daysAgo(2), raw_payload: { monitor_source: 'swing_konglo' }, status: 'EXPIRED' },
+      { id: 3, date: daysAgo(6).slice(0, 10), first_sent_at: daysAgo(6), raw_payload: { monitor_source: 'swing_nk' }, status: 'EXPIRED' },
+      { id: 4, date: daysAgo(1).slice(0, 10), first_sent_at: daysAgo(1), raw_payload: { monitor_source: 'swing_nk' }, status: 'WAITING' }
+    ];
+
+  const stats = generateReport(picks, { now });
+  assert.equal(stats.ageBySource.daytrade.count, 1);
+  assert.equal(stats.expiredAgeBucketsBySource.daytrade['0-1d'], 1);
+  assert.equal(stats.expiredAgeBucketsBySource.swing_konglo['2-3d'], 1);
+  assert.equal(stats.expiredAgeBucketsBySource.swing_nk['6+d'], 1);
+
+  const consoleOutput = formatConsoleReport(stats);
+  const markdownOutput = formatMarkdownReport(stats);
+  assert.match(consoleOutput, /AGE BY SOURCE/);
+  assert.match(consoleOutput, /Expired 0-1d/);
+  assert.match(markdownOutput, /## Age by Source/);
+  assert.match(markdownOutput, /Expired 6\+d/);
+});

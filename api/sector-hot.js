@@ -5624,7 +5624,8 @@ function evaluateMonitorStatus(pick, px) {
     entry1: pick.entry1,
     entry2: pick.entry2,
     sl: pick.sl,
-    current_price: px && px.last
+    current_price: px && px.last,
+    monitor_source: (raw && raw.monitor_source) || pick.monitor_source || pick.category || raw.category
   }));
   if (!px || px.last == null) return { status: 'NEEDS_REVALIDATION', label: 'Needs Revalidation', isFinal: finalBefore, note: 'Data harga terbaru belum tersedia' };
 
