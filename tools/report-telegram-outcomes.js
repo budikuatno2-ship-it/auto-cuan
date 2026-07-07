@@ -1,15 +1,15 @@
 /**
  * Telegram Daily Picks Outcome/Win-Rate Report Generator
- * 
+ *
  * Read-only script to analyze telegram_daily_picks from Supabase.
  * Generates weekly outcome report for analysis purposes.
- * 
+ *
  * Usage: node tools/report-telegram-outcomes.js
- * 
+ *
  * Environment variables required:
  *   SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
- * 
+ *
  * Optional:
  *   DAYS_BACK - number of days to look back (default: 30)
  *   OUTPUT_DIR - directory for markdown output (default: data/reports)
@@ -42,9 +42,9 @@ async function fetchDailyPicks() {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - DAYS_BACK);
   const cutoffStr = cutoffDate.toISOString().split('T')[0];
-  
+
   console.log('Fetching telegram_daily_picks from last ' + DAYS_BACK + ' days (since ' + cutoffStr + ')...');
-  
+
   // Normalize SUPABASE_URL to avoid duplicate /rest/v1/
   let baseUrl = SUPABASE_URL.replace(/\/rest\/v1\/?$/, '');
   // Build REST API URL with filters
@@ -52,7 +52,7 @@ async function fetchDailyPicks() {
   url.searchParams.set('select', '*');
   url.searchParams.set('date', `gte.${cutoffStr}`);
   url.searchParams.set('order', 'date.desc');
-  
+
   try {
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -80,7 +80,7 @@ async function fetchDailyPicks() {
 // === Generate Report ===
 function generateReport(picks) {
   console.log('=== Generating Report ===\n');
-  
+
   const total = picks.length;
   const stats = {
     total: total,
@@ -98,43 +98,63 @@ function generateReport(picks) {
     avgTimeToTp2: [],
     avgTimeToSl: [],
     outcomesByStatus: {},
-    outcomesBySource: {}
+    outcomesBySource: {},
+    // NEW: Structured outcome by source
+    outcomeBySource: {},
+    // NEW: Structured status by source
+    statusBySource: {}
   };
-  
+
   // Process each pick
   for (const pick of picks) {
     // Count by source
     const source = helpers.getMonitorSource(pick) || 'unknown';
     if (!stats.bySource[source]) stats.bySource[source] = 0;
     stats.bySource[source]++;
-    
+
+    // Initialize outcomeBySource structure for this source
+    if (!stats.outcomeBySource[source]) {
+      stats.outcomeBySource[source] = { total: 0, entry: 0, tp1: 0, tp2: 0, sl: 0, expired: 0, waiting: 0, running: 0, invalid: 0 };
+    }
+    stats.outcomeBySource[source].total++;
+
+    // Initialize statusBySource structure for this source
+    if (!stats.statusBySource[source]) {
+      stats.statusBySource[source] = {};
+    }
+
     // Count outcomes
     const outcome = helpers.classifyOutcome(pick);
-    if (outcome === 'ENTRY_HIT') stats.entryCount++;
-    if (outcome === 'TP1_HIT') stats.tp1Count++;
-    if (outcome === 'TP2_HIT') stats.tp2Count++;
-    if (outcome === 'SL_HIT') stats.slCount++;
-    if (outcome === 'WAITING') stats.waitingCount++;
-    if (outcome === 'RUNNING') stats.runningCount++;
-    if (outcome === 'EXPIRED') stats.expiredCount++;
-    
+    if (outcome === 'ENTRY_HIT') { stats.entryCount++; stats.outcomeBySource[source].entry++; }
+    if (outcome === 'TP1_HIT') { stats.tp1Count++; stats.outcomeBySource[source].tp1++; }
+    if (outcome === 'TP2_HIT') { stats.tp2Count++; stats.outcomeBySource[source].tp2++; }
+    if (outcome === 'SL_HIT') { stats.slCount++; stats.outcomeBySource[source].sl++; }
+    if (outcome === 'WAITING') { stats.waitingCount++; stats.outcomeBySource[source].waiting++; }
+    if (outcome === 'RUNNING') { stats.runningCount++; stats.outcomeBySource[source].running++; }
+    if (outcome === 'EXPIRED') { stats.expiredCount++; stats.outcomeBySource[source].expired++; }
+    if (outcome === 'UNKNOWN') { stats.outcomeBySource[source].invalid++; }
+
     // Group by score bucket
     const scoreBucket = helpers.getScoreBucket(pick);
     if (scoreBucket) {
       if (!stats.scoreBuckets[scoreBucket]) stats.scoreBuckets[scoreBucket] = [];
       stats.scoreBuckets[scoreBucket].push(pick);
     }
-    
+
     // Group by status
     const status = pick.status || 'UNKNOWN';
     if (!stats.outcomesByStatus[status]) stats.outcomesByStatus[status] = 0;
     stats.outcomesByStatus[status]++;
-    
-    // Group outcome by source
+
+    // Group status by source
+    if (!stats.statusBySource[source][status]) stats.statusBySource[source][status] = 0;
+    stats.statusBySource[source][status]++;
+
+    // Group outcome by source (legacy key-value)
     const outcomeKey = source + ':' + outcome;
     if (!stats.outcomesBySource[outcomeKey]) stats.outcomesBySource[outcomeKey] = 0;
     stats.outcomesBySource[outcomeKey]++;
-    
+
     // Calculate time to outcomes (if timestamps exist)
     const firstSent = pick.first_sent_at;
     if (firstSent) {
@@ -142,29 +162,37 @@ function generateReport(picks) {
       const timeToTp1 = helpers.calculateTimeDiffHours(firstSent, pick.hit_tp1_at);
       const timeToTp2 = helpers.calculateTimeDiffHours(firstSent, pick.hit_tp2_at);
       const timeToSl = helpers.calculateTimeDiffHours(firstSent, pick.hit_sl_at);
-      
+
       if (timeToEntry !== null) stats.avgTimeToEntry.push(timeToEntry);
       if (timeToTp1 !== null) stats.avgTimeToTp1.push(timeToTp1);
       if (timeToTp2 !== null) stats.avgTimeToTp2.push(timeToTp2);
       if (timeToSl !== null) stats.avgTimeToSl.push(timeToSl);
     }
   }
-  
+
   // Calculate rates
   stats.entryRate = helpers.calculateRate(stats.entryCount, total);
   stats.tp1Rate = helpers.calculateRate(stats.tp1Count, total);
   stats.tp2Rate = helpers.calculateRate(stats.tp2Count, total);
   stats.slRate = helpers.calculateRate(stats.slCount, total);
-  
+
   // Calculate averages
   stats.avgTimeToEntry = helpers.calculateAverage(stats.avgTimeToEntry);
   stats.avgTimeToTp1 = helpers.calculateAverage(stats.avgTimeToTp1);
   stats.avgTimeToTp2 = helpers.calculateAverage(stats.avgTimeToTp2);
   stats.avgTimeToSl = helpers.calculateAverage(stats.avgTimeToSl);
-  
+
   // Generate observations
   stats.observations = helpers.generateObservations(stats);
-  
+
+  // Add expired rate observation if > 50%
+  if (total > 0 && stats.expiredCount > 0) {
+    const expiredRate = (stats.expiredCount / total) * 100;
+    if (expiredRate > 50) {
+      stats.observations.push('Expired tinggi (' + expiredRate.toFixed(1) + '%); cek expiry window/jenis sinyal per source.');
+    }
+  }
+
   return stats;
 }
 
@@ -173,20 +201,20 @@ function formatConsoleReport(stats) {
   const lines = [];
   const sep = '='.repeat(60);
   const sub = '-'.repeat(40);
-  
+
   lines.push(sep);
   lines.push('TELEGRAM DAILY PICKS - OUTCOME REPORT');
   lines.push('Generated: ' + new Date().toISOString());
   lines.push('Period: Last ' + DAYS_BACK + ' days');
   lines.push(sep);
   lines.push('');
-  
+
   // Summary
   lines.push('## SUMMARY');
   lines.push(sub);
   lines.push('Total monitored picks: ' + stats.total);
   lines.push('');
-  
+
   // By Source
   lines.push('## COUNTS BY SOURCE');
   lines.push(sub);
@@ -198,7 +226,7 @@ function formatConsoleReport(stats) {
     lines.push('  (data tidak tersedia)');
   }
   lines.push('');
-  
+
   // Outcome counts and rates
   lines.push('## OUTCOME COUNTS & RATES');
   lines.push(sub);
@@ -210,7 +238,7 @@ function formatConsoleReport(stats) {
   lines.push('  Running:       ' + stats.runningCount);
   lines.push('  Expired:       ' + stats.expiredCount);
   lines.push('');
-  
+
   // Outcome by status
   lines.push('## OUTCOME BY STATUS');
   lines.push(sub);
@@ -222,7 +250,68 @@ function formatConsoleReport(stats) {
     lines.push('  (data tidak tersedia)');
   }
   lines.push('');
-  
+
+  // Outcome by source (NEW)
+  lines.push('## OUTCOME BY SOURCE');
+  lines.push(sub);
+  lines.push('  Source          | Total | Entry | TP1  | TP2  | SL   | Expired | Wait | Run  | Invalid');
+  lines.push('  ----------------|-------|-------|------|------|------|----------|------|------|--------');
+  const sourceOrder = ['daytrade', 'swing_konglo', 'swing_nk', 'top5', 'watchlist', 'unknown'];
+  let hasOutcomeBySource = false;
+  const outcomeBySource = stats.outcomeBySource || {};
+  for (const src of sourceOrder) {
+    if (outcomeBySource[src]) {
+      const o = stats.outcomeBySource[src];
+      lines.push('  ' + String(src).padEnd(15) + ' | ' + String(o.total).padStart(5) + ' | ' +
+        String(o.entry).padStart(5) + ' | ' + String(o.tp1).padStart(4) + ' | ' +
+        String(o.tp2).padStart(4) + ' | ' + String(o.sl).padStart(4) + ' | ' +
+        String(o.expired).padStart(7) + ' | ' + String(o.waiting).padStart(4) + ' | ' +
+        String(o.running).padStart(4) + ' | ' + String(o.invalid).padStart(7));
+      hasOutcomeBySource = true;
+    }
+  }
+  // Add any sources not in predefined order
+  for (const [src, o] of Object.entries(outcomeBySource)) {
+    if (!sourceOrder.includes(src)) {
+      lines.push('  ' + String(src).padEnd(15) + ' | ' + String(o.total).padStart(5) + ' | ' +
+        String(o.entry).padStart(5) + ' | ' + String(o.tp1).padStart(4) + ' | ' +
+        String(o.tp2).padStart(4) + ' | ' + String(o.sl).padStart(4) + ' | ' +
+        String(o.expired).padStart(7) + ' | ' + String(o.waiting).padStart(4) + ' | ' +
+        String(o.running).padStart(4) + ' | ' + String(o.invalid).padStart(7));
+      hasOutcomeBySource = true;
+    }
+  }
+  if (!hasOutcomeBySource) {
+    lines.push('  (data tidak tersedia)');
+  }
+  lines.push('');
+
+  // Status by source (NEW)
+  lines.push('## STATUS BY SOURCE');
+  lines.push(sub);
+  hasOutcomeBySource = false;
+  const statusBySource = stats.statusBySource || {};
+  for (const src of sourceOrder) {
+    if (statusBySource[src] && Object.keys(statusBySource[src]).length > 0) {
+      for (const [status, count] of Object.entries(statusBySource[src])) {
+        lines.push('  ' + String(src).padEnd(15) + ' | ' + String(status).padEnd(20) + ' | ' + count);
+        hasOutcomeBySource = true;
+      }
+    }
+  }
+  for (const [src, statusMap] of Object.entries(statusBySource)) {
+    if (!sourceOrder.includes(src) && statusMap && Object.keys(statusMap).length > 0) {
+      for (const [status, count] of Object.entries(statusMap)) {
+        lines.push('  ' + String(src).padEnd(15) + ' | ' + String(status).padEnd(20) + ' | ' + count);
+        hasOutcomeBySource = true;
+      }
+    }
+  }
+  if (!hasOutcomeBySource) {
+    lines.push('  (data tidak tersedia)');
+  }
+  lines.push('');
+
   // Score buckets
   lines.push('## OUTCOME BY SCORE BUCKET');
   lines.push(sub);
@@ -236,7 +325,7 @@ function formatConsoleReport(stats) {
       const slHits = bucketItems.filter(i => helpers.classifyOutcome(i) === 'SL_HIT').length;
       const waiting = bucketItems.filter(i => helpers.classifyOutcome(i) === 'WAITING').length;
       const running = bucketItems.filter(i => helpers.classifyOutcome(i) === 'RUNNING').length;
-      
+
       lines.push('  Score ' + bucket + ': ' + bucketItems.length + ' picks');
       lines.push('    TP2: ' + tp2Hits + ', TP1: ' + tp1Hits + ', SL: ' + slHits + ', Waiting: ' + waiting + ', Running: ' + running);
       hasBuckets = true;
@@ -246,7 +335,7 @@ function formatConsoleReport(stats) {
     lines.push('  (data tidak tersedia)');
   }
   lines.push('');
-  
+
   // Time averages
   lines.push('## AVERAGE TIME TO OUTCOME (hours)');
   lines.push(sub);
@@ -255,7 +344,7 @@ function formatConsoleReport(stats) {
   lines.push('  TP2:     ' + (stats.avgTimeToTp2 !== null ? stats.avgTimeToTp2 + ' jam' : 'data tidak tersedia'));
   lines.push('  SL:      ' + (stats.avgTimeToSl !== null ? stats.avgTimeToSl + ' jam' : 'data tidak tersedia'));
   lines.push('');
-  
+
   // Observations
   lines.push('## OBSERVATIONS');
   lines.push(sub);
@@ -263,9 +352,9 @@ function formatConsoleReport(stats) {
     lines.push('  - ' + obs);
   }
   lines.push('');
-  
+
   lines.push(sep);
-  
+
   return lines.join('\n');
 }
 
@@ -273,20 +362,20 @@ function formatConsoleReport(stats) {
 function formatMarkdownReport(stats) {
   const date = new Date().toISOString().split('T')[0];
   const lines = [];
-  
+
   lines.push('# Telegram Daily Picks - Outcome Report');
   lines.push('');
   lines.push('**Generated:** ' + new Date().toISOString());
   lines.push('**Period:** Last ' + DAYS_BACK + ' days');
   lines.push('');
-  
+
   lines.push('## Summary');
   lines.push('');
   lines.push('| Metric | Value |');
   lines.push('|--------|-------|');
   lines.push('| Total Picks | ' + stats.total + ' |');
   lines.push('');
-  
+
   // By Source
   lines.push('## Counts by Source');
   lines.push('');
@@ -300,7 +389,7 @@ function formatMarkdownReport(stats) {
     lines.push('| (data tidak tersedia) | 0 |');
   }
   lines.push('');
-  
+
   // Outcomes
   lines.push('## Outcome Counts & Rates');
   lines.push('');
@@ -314,7 +403,61 @@ function formatMarkdownReport(stats) {
   lines.push('| Running | ' + stats.runningCount + ' | - |');
   lines.push('| Expired | ' + stats.expiredCount + ' | - |');
   lines.push('');
-  
+
+  // Outcome by source (NEW)
+  lines.push('## Outcome by Source');
+  lines.push('');
+  lines.push('| Source | Total | Entry | TP1 | TP2 | SL | Expired | Waiting | Running | Invalid |');
+  lines.push('|--------|-------|-------|-----|-----|----|---------|---------|---------|---------|');
+  const mdSourceOrder = ['daytrade', 'swing_konglo', 'swing_nk', 'top5', 'watchlist', 'unknown'];
+  let hasMdOutcomeBySource = false;
+  const mdOutcomeBySource = stats.outcomeBySource || {};
+  for (const src of mdSourceOrder) {
+    if (mdOutcomeBySource[src]) {
+      const o = mdOutcomeBySource[src];
+      lines.push('| ' + src + ' | ' + o.total + ' | ' + o.entry + ' | ' + o.tp1 + ' | ' + o.tp2 + ' | ' + o.sl + ' | ' + o.expired + ' | ' + o.waiting + ' | ' + o.running + ' | ' + o.invalid + ' |');
+      hasMdOutcomeBySource = true;
+    }
+  }
+  for (const [src, o] of Object.entries(mdOutcomeBySource)) {
+    if (!mdSourceOrder.includes(src)) {
+      lines.push('| ' + src + ' | ' + o.total + ' | ' + o.entry + ' | ' + o.tp1 + ' | ' + o.tp2 + ' | ' + o.sl + ' | ' + o.expired + ' | ' + o.waiting + ' | ' + o.running + ' | ' + o.invalid + ' |');
+      hasMdOutcomeBySource = true;
+    }
+  }
+  if (!hasMdOutcomeBySource) {
+    lines.push('| (data tidak tersedia) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |');
+  }
+  lines.push('');
+
+  // Status by source (NEW)
+  lines.push('## Status by Source');
+  lines.push('');
+  lines.push('| Source | Status | Count |');
+  lines.push('|--------|--------|-------|');
+  hasMdOutcomeBySource = false;
+  const mdStatusBySource = stats.statusBySource || {};
+  for (const src of mdSourceOrder) {
+    if (mdStatusBySource[src] && Object.keys(mdStatusBySource[src]).length > 0) {
+      for (const [status, count] of Object.entries(mdStatusBySource[src])) {
+        lines.push('| ' + src + ' | ' + status + ' | ' + count + ' |');
+        hasMdOutcomeBySource = true;
+      }
+    }
+  }
+  for (const [src, statusMap] of Object.entries(mdStatusBySource)) {
+    if (!mdSourceOrder.includes(src) && statusMap && Object.keys(statusMap).length > 0) {
+      for (const [status, count] of Object.entries(statusMap)) {
+        lines.push('| ' + src + ' | ' + status + ' | ' + count + ' |');
+        hasMdOutcomeBySource = true;
+      }
+    }
+  }
+  if (!hasMdOutcomeBySource) {
+    lines.push('| (data tidak tersedia) | - | 0 |');
+  }
+  lines.push('');
+
   // Score buckets
   lines.push('## Outcome by Score Bucket');
   lines.push('');
@@ -336,7 +479,7 @@ function formatMarkdownReport(stats) {
     lines.push('| (data tidak tersedia) | 0 | 0 | 0 | 0 | 0 | 0 |');
   }
   lines.push('');
-  
+
   // Time averages
   lines.push('## Average Time to Outcome');
   lines.push('');
@@ -347,7 +490,7 @@ function formatMarkdownReport(stats) {
   lines.push('| TP2 | ' + (stats.avgTimeToTp2 !== null ? stats.avgTimeToTp2 : 'N/A') + ' |');
   lines.push('| SL | ' + (stats.avgTimeToSl !== null ? stats.avgTimeToSl : 'N/A') + ' |');
   lines.push('');
-  
+
   // Observations
   lines.push('## Observations');
   lines.push('');
@@ -355,10 +498,10 @@ function formatMarkdownReport(stats) {
     lines.push('- ' + obs);
   }
   lines.push('');
-  
+
   lines.push('---');
   lines.push('*This report is generated for analysis purposes only. No production data is modified.*');
-  
+
   return lines.join('\n');
 }
 
@@ -368,11 +511,11 @@ function writeMarkdownReport(stats) {
     if (!fs.existsSync(OUTPUT_DIR)) {
       fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     }
-    
+
     const date = new Date().toISOString().split('T')[0];
     const filename = path.join(OUTPUT_DIR, 'outcome-report-' + date + '.md');
     const content = formatMarkdownReport(stats);
-    
+
     fs.writeFileSync(filename, content, 'utf8');
     console.log('Markdown report saved to: ' + filename);
     return filename;
@@ -386,22 +529,22 @@ function writeMarkdownReport(stats) {
 async function main() {
   try {
     const picks = await fetchDailyPicks();
-    
+
     if (picks.length === 0) {
       console.log('No data found for the specified period.');
       return;
     }
-    
+
     const stats = generateReport(picks);
     const consoleOutput = formatConsoleReport(stats);
-    
+
     console.log(consoleOutput);
-    
+
     // Write markdown file
     writeMarkdownReport(stats);
-    
+
     console.log('\nReport generation complete.');
-    
+
   } catch (e) {
     console.error('Error generating report:', e.message);
     process.exit(1);

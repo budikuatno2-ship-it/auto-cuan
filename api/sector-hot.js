@@ -6593,6 +6593,26 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       if (!isFinal && pck.is_final) continue;
       var px = await fetchLatestPriceForMonitor(supabase, pck.ticker);
       var ev = evaluateMonitorStatus(pck, px);
+
+      // Override EXPIRED/NEEDS_REVALIDATION note based on source (for batch/digest message)
+      if (ev.status === 'EXPIRED' || ev.status === 'NEEDS_REVALIDATION') {
+        var raw = pck.raw_payload || {};
+        var src = raw.monitor_source || pck.category || raw.category || '';
+        var srcL = String(src).toLowerCase();
+        var isSwing = srcL.indexOf('swing') >= 0 || srcL === 'top5';
+        var isDaytrade = srcL.indexOf('daytrade') >= 0;
+        if (isSwing) {
+          // Swing Konglo / Swing NK / Top5 -> swing wording
+          ev.note = 'Setup melewati masa pantau swing; perlu revalidasi.';
+        } else if (isDaytrade) {
+          // Daytrade -> keep default intraday note
+          // ev.note remains: "Setup terlalu lama untuk konteks intraday; perlu scan baru."
+        } else {
+          // Unknown source (empty or other) -> neutral wording
+          ev.note = 'Setup melewati masa pantau; perlu revalidasi.';
+        }
+      }
+
       var update = { status: ev.status, is_final: ev.isFinal || isFinal, last_checked_at: new Date().toISOString() };
       if ((ev.status === 'RUNNING' || ev.status === 'IN_ENTRY_ZONE') && !pck.hit_entry_at) update.hit_entry_at = update.last_checked_at;
       if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) update.hit_tp1_at = update.last_checked_at;
