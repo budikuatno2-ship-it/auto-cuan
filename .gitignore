@@ -54,3 +54,7 @@ logs/ai-research/
 # Uploads (if any temp files)
 uploads/
 tmp/
+
+# Generated Day Trade cache audit reports
+data/reports/daytrade-cache-audit-*.md
+data/reports/daytrade-cache-audit-*.json
