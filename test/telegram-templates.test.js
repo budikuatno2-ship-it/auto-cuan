@@ -174,6 +174,37 @@ test('T-TPL-20: ATR warnings do not change entry TP SL values', function() {
 });
 
 // ============================================================
+// TEST: ATR warning labels
+// ============================================================
+
+
+test('T-TPL-21: ATR warning string with semicolon is preserved as one full line', function() {
+  var warning = 'Risk: SL ketat vs volatilitas harian; rawan noise.';
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({ atr_warning_notes: warning })]);
+  assert.equal(msg.includes(warning), true);
+  assert.doesNotMatch(msg, /Risk: SL ketat vs volatilitas harian\n/);
+});
+
+test('T-TPL-22: ATR warning JSON array string is parsed into warning lines', function() {
+  var notes = [
+    'Risk: SL ketat vs volatilitas harian; rawan noise.',
+    'Target: TP1 cukup jauh vs ATR; butuh momentum kuat.'
+  ];
+  var msg = templates.formatSwingKongloSignalMessage([baseSwing({ atr_warning_notes: JSON.stringify(notes) })]);
+  assert.match(msg, /Risk: SL ketat vs volatilitas harian; rawan noise\./);
+  assert.match(msg, /Target: TP1 cukup jauh vs ATR; butuh momentum kuat\./);
+});
+
+test('T-TPL-23: ATR warnings are not duplicated when notes and class fields overlap', function() {
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({
+    atr_warning_notes: 'Risk: SL ketat vs volatilitas harian; rawan noise.',
+    sl_atr_class: 'SL_TOO_TIGHT'
+  })]);
+  var matches = msg.match(/Risk: SL ketat vs volatilitas harian; rawan noise\./g) || [];
+  assert.equal(matches.length, 1);
+});
+
+// ============================================================
 // TEST: Monitor Hit message
 // ============================================================
 
