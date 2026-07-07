@@ -58,3 +58,7 @@ tmp/
 # Generated Day Trade cache audit reports
 data/reports/daytrade-cache-audit-*.md
 data/reports/daytrade-cache-audit-*.json
+
+# Generated Day Trade local-vs-Vercel comparison reports
+data/reports/daytrade-local-vs-vercel-*.md
+data/reports/daytrade-local-vs-vercel-*.json
