@@ -1,0 +1,50 @@
+{
+  "date": "2026-07-07",
+  "generated_at": "2026-07-07T19:39:45.713Z",
+  "ttl_minutes": 15,
+  "cache": {
+    "cache_dir": "/workspace/auto-cuan/data/daytrade-ohlcv-cache",
+    "total_cache_files": 0,
+    "valid_cache_files": 0,
+    "invalid_corrupt_cache_files": 0,
+    "tickers_with_gte_20_candles": 0,
+    "tickers_with_lt_20_candles": 0,
+    "interval_range_mismatch": 0,
+    "average_candle_count": 0,
+    "min_updated_at": null,
+    "max_updated_at": null,
+    "fresh_count": 0,
+    "stale_count": 0,
+    "stale_fallback_indications": 0,
+    "cache_age_buckets": {
+      "<15m": 0,
+      "15m-1h": 0,
+      "1h-12h": 0,
+      ">12h": 0,
+      "unknown": 0
+    },
+    "samples": {
+      "invalid": [],
+      "lt_20_candles": [],
+      "interval_range_mismatch": [],
+      "stale": []
+    },
+    "cache_dir_found": false
+  },
+  "logs": {
+    "logs_file": "/workspace/auto-cuan/logs/daytrade-vps-worker/runs.jsonl",
+    "logs_found": false,
+    "total_runs": 0,
+    "latest_run_timestamp": null,
+    "latest": {},
+    "totals": {
+      "ticker_count": 0,
+      "processed_count": 0,
+      "cache_hit": 0,
+      "cache_miss": 0,
+      "fetch_fail": 0,
+      "stale_fallback": 0
+    },
+    "top_errors": []
+  }
+}
