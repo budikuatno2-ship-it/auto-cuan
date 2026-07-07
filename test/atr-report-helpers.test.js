@@ -58,3 +58,23 @@ test('validatePicks performs read-only validation through injected provider with
   assert.equal(result.rows[0].slClass, 'SL_TOO_TIGHT');
   assert.equal(typeof provider.writeCache, 'undefined');
 });
+
+test('buildAtrWarningMetadata maps validation output to signal warning fields', () => {
+  const row = { ticker: 'BBCA', entry_low: 100, entry_high: 100, stop_loss: 96, tp1: 120, tp2: 130 };
+  const meta = atr.buildAtrWarningMetadata(row, candles(15));
+  assert.equal(meta.atr14, 10);
+  assert.equal(meta.sl_atr_multiple, 0.4);
+  assert.equal(meta.tp1_atr_multiple, 2);
+  assert.equal(meta.tp2_atr_multiple, 3);
+  assert.equal(meta.sl_atr_class, 'SL_TOO_TIGHT');
+  assert.equal(meta.tp1_atr_class, 'TP1_REALISTIC');
+  assert.equal(meta.tp2_atr_class, 'TP2_NOT_STRETCHED');
+  assert.deepEqual(meta.atr_warning_notes, ['Risk: SL ketat vs volatilitas harian; rawan noise.']);
+});
+
+test('attachAtrWarningMetadata leaves signal unchanged when ATR unavailable', () => {
+  const signal = { ticker: 'BBCA', entry1: 100, sl: 95, tp1: 110, tp2: 125 };
+  const result = atr.attachAtrWarningMetadata(signal, null);
+  assert.equal(result, signal);
+  assert.equal(result.atr14, undefined);
+});
