@@ -6592,16 +6592,56 @@ async function loadNkScreenerResults(silent) {
 
         _nkScreenerCache = data;
 
+        // CRITICAL: Start/stop polling BEFORE any early returns
+        // This ensures polling continues even when results are empty (scanning state)
+        if (data.meta && (data.meta.status === 'scanning' || data.meta.status === 'finalizing')) {
+            startNkPolling();
+        } else {
+            stopNkPolling();
+        }
+
+        // Show progress bar if scanning
+        var progressEl = document.getElementById('nkScreenerProgress');
+        if (data.meta && data.meta.status === 'scanning' && progressEl) {
+            progressEl.classList.remove('hidden');
+            var pctDone = data.meta.universe_count > 0 ? Math.round((data.meta.scanned_count / data.meta.universe_count) * 100) : 0;
+            var bar = document.getElementById('nkProgressBar');
+            var txt = document.getElementById('nkProgressText');
+            if (bar) bar.style.width = pctDone + '%';
+            if (txt) txt.textContent = 'Scanning: ' + data.meta.scanned_count + '/' + data.meta.universe_count + ' tickers...';
+        } else if (progressEl) {
+            progressEl.classList.add('hidden');
+        }
+
         if (!data.results || data.results.length === 0) {
             var emptyMsg = STRICT_EMPTY_TEXT;
             if (data.meta && data.meta.status === 'scanning') {
                 emptyMsg = DASHBOARD_LOADING_TEXT;
+                // Keep stale old cards visible while scanning - don't clear card grid
+                // The progress bar shows scan status, old cards remain with STALE SCAN badge
+                tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">' + escapeHtml(emptyMsg) + '</td></tr>';
+                // Check if there's already rendered content in the card grid
+                var nkCardContainer = document.getElementById('nkCardGrid');
+                var hasVisibleCards = nkCardContainer && nkCardContainer.children.length > 0;
+                if (nkCardContainer && !hasVisibleCards) {
+                    nkCardContainer.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">' + escapeHtml(emptyMsg) + '</p>';
+                }
+                // If cards already visible, keep them (stale cards with STALE SCAN badge)
             } else if (data.meta && data.meta.status === 'failed') {
                 emptyMsg = DASHBOARD_ERROR_TEXT;
+                tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">' + escapeHtml(emptyMsg) + '</td></tr>';
+                var nkCardContainer = document.getElementById('nkCardGrid');
+                if (nkCardContainer) nkCardContainer.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">' + escapeHtml(emptyMsg) + '</p>';
+            } else if (data.meta && data.meta.status === 'completed_no_candidates') {
+                emptyMsg = 'Scan selesai. Tidak ada kandidat yang lolos filter hari ini.';
+                tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">' + escapeHtml(emptyMsg) + '</td></tr>';
+                var nkCardContainer = document.getElementById('nkCardGrid');
+                if (nkCardContainer) nkCardContainer.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">' + escapeHtml(emptyMsg) + '</p>';
+            } else {
+                tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">' + escapeHtml(emptyMsg) + '</td></tr>';
+                var nkCardContainer = document.getElementById('nkCardGrid');
+                if (nkCardContainer) nkCardContainer.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">' + escapeHtml(emptyMsg) + '</p>';
             }
-            tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500">' + escapeHtml(emptyMsg) + '</td></tr>';
-            var nkCardContainer = document.getElementById('nkCardGrid');
-            if (nkCardContainer) nkCardContainer.innerHTML = '<p style="grid-column:1/-1;text-align:center;padding:24px 0;color:#6b7280;font-size:12px">' + escapeHtml(emptyMsg) + '</p>';
             updateNkScreenerMeta(data.meta);
             var nkTitle2 = document.querySelector('#screenerNonKongloPane h2');
             if (nkTitle2) nkTitle2.textContent = 'Swing Screener Non-Konglo \u2014 0 kandidat';
@@ -6634,26 +6674,6 @@ async function loadNkScreenerResults(silent) {
             }
         } else {
             if (nkInfoNote) nkInfoNote.remove();
-        }
-
-        // Auto-poll while scanning
-        if (data.meta && (data.meta.status === 'scanning' || data.meta.status === 'finalizing')) {
-            startNkPolling();
-        } else {
-            stopNkPolling();
-        }
-
-        // Show progress if scanning
-        var progressEl = document.getElementById('nkScreenerProgress');
-        if (data.meta && data.meta.status === 'scanning' && progressEl) {
-            progressEl.classList.remove('hidden');
-            var pctDone = data.meta.universe_count > 0 ? Math.round((data.meta.scanned_count / data.meta.universe_count) * 100) : 0;
-            var bar = document.getElementById('nkProgressBar');
-            var txt = document.getElementById('nkProgressText');
-            if (bar) bar.style.width = pctDone + '%';
-            if (txt) txt.textContent = 'Scanning: ' + data.meta.scanned_count + '/' + data.meta.universe_count + ' tickers...';
-        } else if (progressEl) {
-            progressEl.classList.add('hidden');
         }
     } catch (e) {
         tbody.innerHTML = screenerEmptyRowHtml(18, DASHBOARD_ERROR_TEXT, 'error', 'loadNkScreenerResults()');
