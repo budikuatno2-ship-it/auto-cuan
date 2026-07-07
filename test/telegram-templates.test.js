@@ -139,6 +139,72 @@ test('T-TPL-07b: formatDailyTop5Message shows correct lolos gate count', functio
 });
 
 // ============================================================
+// TEST: ATR warning labels
+// ============================================================
+
+test('T-TPL-17: ATR SL_TOO_TIGHT warning renders without changing status label', function() {
+  var signal = baseDayTrade({ sl_atr_class: 'SL_TOO_TIGHT' });
+  var msg = templates.formatDayTradeSignalMessage([signal]);
+  assert.match(msg, /Signal: READY/);
+  assert.match(msg, /Risk: SL ketat vs volatilitas harian; rawan noise\./);
+});
+
+test('T-TPL-18: ATR TP1 and TP2 stretched warnings render in swing templates', function() {
+  var signal = baseSwing({ tp1_atr_class: 'TP1_STRETCHED', tp2_atr_class: 'TP2_STRETCHED' });
+  var msg = templates.formatSwingKongloSignalMessage([signal]);
+  assert.match(msg, /Target: TP1 cukup jauh vs ATR; butuh momentum kuat\./);
+  assert.match(msg, /Target: TP2 agresif; anggap target lanjutan\./);
+});
+
+test('T-TPL-19: Telegram signal renders normally without ATR fields', function() {
+  var msg = templates.formatSwingNonKongloSignalMessage([baseSwing({ ticker: 'ACES' })]);
+  assert.match(msg, /ACES/);
+  assert.match(msg, /Entry: Rp5\.050 \/ Rp5\.000/);
+  assert.doesNotMatch(msg, /volatilitas harian|cukup jauh vs ATR|TP2 agresif/);
+});
+
+test('T-TPL-20: ATR warnings do not change entry TP SL values', function() {
+  var noAtr = templates.formatSignalCard(baseDayTrade(), 1, 'daytrade');
+  var withAtr = templates.formatSignalCard(baseDayTrade({ sl_atr_class: 'SL_TOO_TIGHT', tp1_atr_class: 'TP1_STRETCHED', tp2_atr_class: 'TP2_STRETCHED' }), 1, 'daytrade');
+  assert.match(withAtr, /Entry: Rp2\.900 \/ Rp2\.870/);
+  assert.match(withAtr, /Take Profit: Rp3\.010 \/ Rp3\.150/);
+  assert.match(withAtr, /Stop Loss: Rp2\.750/);
+  assert.equal(noAtr.includes('Entry: Rp2.900 / Rp2.870'), true);
+  assert.equal(withAtr.includes('Entry: Rp2.900 / Rp2.870'), true);
+});
+
+// ============================================================
+// TEST: ATR warning labels
+// ============================================================
+
+
+test('T-TPL-21: ATR warning string with semicolon is preserved as one full line', function() {
+  var warning = 'Risk: SL ketat vs volatilitas harian; rawan noise.';
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({ atr_warning_notes: warning })]);
+  assert.equal(msg.includes(warning), true);
+  assert.doesNotMatch(msg, /Risk: SL ketat vs volatilitas harian\n/);
+});
+
+test('T-TPL-22: ATR warning JSON array string is parsed into warning lines', function() {
+  var notes = [
+    'Risk: SL ketat vs volatilitas harian; rawan noise.',
+    'Target: TP1 cukup jauh vs ATR; butuh momentum kuat.'
+  ];
+  var msg = templates.formatSwingKongloSignalMessage([baseSwing({ atr_warning_notes: JSON.stringify(notes) })]);
+  assert.match(msg, /Risk: SL ketat vs volatilitas harian; rawan noise\./);
+  assert.match(msg, /Target: TP1 cukup jauh vs ATR; butuh momentum kuat\./);
+});
+
+test('T-TPL-23: ATR warnings are not duplicated when notes and class fields overlap', function() {
+  var msg = templates.formatDayTradeSignalMessage([baseDayTrade({
+    atr_warning_notes: 'Risk: SL ketat vs volatilitas harian; rawan noise.',
+    sl_atr_class: 'SL_TOO_TIGHT'
+  })]);
+  var matches = msg.match(/Risk: SL ketat vs volatilitas harian; rawan noise\./g) || [];
+  assert.equal(matches.length, 1);
+});
+
+// ============================================================
 // TEST: Monitor Hit message
 // ============================================================
 
