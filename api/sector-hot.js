@@ -38,6 +38,7 @@ const fibConfluence = require('../lib/fibonacci-confluence');
 const telegramNotifier = require('../lib/telegram-notifier');
 const aiNarration = require('../lib/ai-narration');
 const telegramTemplates = require('../lib/telegram-templates');
+const atrHelpers = require('../lib/atr-report-helpers');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -682,6 +683,19 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           liquidity_label: _avgTxValue7d >= 500000000 ? 'Liquid' : 'Likuiditas Tipis'
         }) || {};
 
+        var _atrCandidate = atrHelpers.attachAtrWarningMetadata({
+          ticker: item.ticker,
+          entry_low: _finalEntry_low,
+          entry_high: _finalEntry_high,
+          stop_loss: _finalStop_loss,
+          tp1: _finalTp1,
+          tp2: _finalTp2,
+          score: scoring.score
+        }, candles);
+        var _atrPenalty = atrHelpers.deriveAtrScorePenalty(_atrCandidate);
+        var _scoreBeforeAtrPenalty = scoring.score;
+        var _scoreAfterAtrPenalty = Math.max(0, Math.min(100, scoring.score + _atrPenalty.atr_score_penalty));
+
         // === FIBONACCI CONFLUENCE (soft signal, Swing Konglo only) ===
         var _fibResult = fibConfluence.evaluateFibConfluence(candles, {
           last_price: analysis.last_price,
@@ -709,7 +723,19 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           tp2: _finalTp2,
           risk_reward: _finalRR,
           invalidation: analysis.invalidation,
-          score: scoring.score,
+          score: _scoreAfterAtrPenalty,
+          score_before_atr_penalty: _scoreBeforeAtrPenalty,
+          atr_score_penalty: _atrPenalty.atr_score_penalty,
+          atr_penalty_reasons: _atrPenalty.atr_penalty_reasons,
+          atr_risk_adjustment: _atrPenalty.atr_risk_adjustment,
+          atr14: _atrCandidate.atr14,
+          sl_atr_multiple: _atrCandidate.sl_atr_multiple,
+          tp1_atr_multiple: _atrCandidate.tp1_atr_multiple,
+          tp2_atr_multiple: _atrCandidate.tp2_atr_multiple,
+          sl_atr_class: _atrCandidate.sl_atr_class,
+          tp1_atr_class: _atrCandidate.tp1_atr_class,
+          tp2_atr_class: _atrCandidate.tp2_atr_class,
+          atr_warning_notes: _atrCandidate.atr_warning_notes,
           status: scoring.status,
           status_reason: scoring.status_reason,
           respect_zone_notes: _rzNotes,
@@ -7143,6 +7169,20 @@ async function handleNkScreenerBatch(req, res, supabase) {
         scored.quality_grade = _nkGrade.grade;
       }
 
+      // Keep ATR soft penalty in persisted score; do not add runtime-only ATR fields to fixed staging schema.
+      delete scored.score_before_atr_penalty;
+      delete scored.atr_score_penalty;
+      delete scored.atr_penalty_reasons;
+      delete scored.atr_risk_adjustment;
+      delete scored.atr14;
+      delete scored.sl_atr_multiple;
+      delete scored.tp1_atr_multiple;
+      delete scored.tp2_atr_multiple;
+      delete scored.sl_atr_class;
+      delete scored.tp1_atr_class;
+      delete scored.tp2_atr_class;
+      delete scored.atr_warning_notes;
+
       results.push(scored);
     } catch (e) {
       failedCount++;
@@ -8130,6 +8170,21 @@ function calculateNkSetupScore(q) {
   if (nkEntryDist <= 2 && q.setupType !== 'breakout') { score += 3; components.push('entry dekat'); }
   else if (nkEntryDist <= 4 && q.setupType !== 'breakout') { score += 1; }
 
+  var atrMeta = atrHelpers.buildAtrWarningMetadata({
+    entry_low: q.entryLow,
+    entry_high: q.entryHigh,
+    stop_loss: q.stopLoss,
+    tp1: q.tp1,
+    tp2: q.tp2,
+    score: score
+  }, q.candles);
+  var atrPenalty = atrHelpers.deriveAtrScorePenalty(atrMeta || {});
+  var scoreBeforeAtrPenalty = score;
+  if (atrPenalty.atr_score_penalty) {
+    score += atrPenalty.atr_score_penalty;
+    components.push('ATR penalty ' + atrPenalty.atr_score_penalty + ' (' + atrPenalty.atr_penalty_reasons.join(', ') + ')');
+  }
+
   score = Math.max(0, Math.min(100, score));
 
   // GRADE (same thresholds)
@@ -8290,6 +8345,18 @@ function calculateNkSetupScore(q) {
 
   return {
     score: score,
+    score_before_atr_penalty: scoreBeforeAtrPenalty,
+    atr_score_penalty: atrPenalty.atr_score_penalty,
+    atr_penalty_reasons: atrPenalty.atr_penalty_reasons,
+    atr_risk_adjustment: atrPenalty.atr_risk_adjustment,
+    atr14: atrMeta ? atrMeta.atr14 : null,
+    sl_atr_multiple: atrMeta ? atrMeta.sl_atr_multiple : null,
+    tp1_atr_multiple: atrMeta ? atrMeta.tp1_atr_multiple : null,
+    tp2_atr_multiple: atrMeta ? atrMeta.tp2_atr_multiple : null,
+    sl_atr_class: atrMeta ? atrMeta.sl_atr_class : null,
+    tp1_atr_class: atrMeta ? atrMeta.tp1_atr_class : null,
+    tp2_atr_class: atrMeta ? atrMeta.tp2_atr_class : null,
+    atr_warning_notes: atrMeta ? atrMeta.atr_warning_notes : [],
     grade: grade,
     status: status,
     status_reason: statusReason,

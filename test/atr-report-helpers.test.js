@@ -78,3 +78,47 @@ test('attachAtrWarningMetadata leaves signal unchanged when ATR unavailable', ()
   assert.equal(result, signal);
   assert.equal(result.atr14, undefined);
 });
+
+test('deriveAtrScorePenalty applies SL_TOO_TIGHT -4', () => {
+  assert.deepEqual(atr.deriveAtrScorePenalty({ atr14: 10, sl_atr_class: 'SL_TOO_TIGHT' }), {
+    atr_score_penalty: -4,
+    atr_penalty_reasons: ['SL_TOO_TIGHT:-4'],
+    atr_risk_adjustment: 1
+  });
+});
+
+test('deriveAtrScorePenalty applies TP1_STRETCHED -3', () => {
+  const result = atr.deriveAtrScorePenalty({ atr14: 10, tp1_atr_class: 'TP1_STRETCHED' });
+  assert.equal(result.atr_score_penalty, -3);
+  assert.deepEqual(result.atr_penalty_reasons, ['TP1_STRETCHED:-3']);
+});
+
+test('deriveAtrScorePenalty applies TP2_STRETCHED -1', () => {
+  const result = atr.deriveAtrScorePenalty({ atr14: 10, tp2_atr_class: 'TP2_STRETCHED' });
+  assert.equal(result.atr_score_penalty, -1);
+  assert.deepEqual(result.atr_penalty_reasons, ['TP2_STRETCHED:-1']);
+});
+
+test('deriveAtrScorePenalty caps combined ATR penalty at -7', () => {
+  const result = atr.deriveAtrScorePenalty({
+    atr14: 10,
+    sl_atr_class: 'SL_TOO_TIGHT',
+    tp1_atr_class: 'TP1_STRETCHED',
+    tp2_atr_class: 'TP2_STRETCHED'
+  });
+  assert.equal(result.atr_score_penalty, -7);
+  assert.ok(result.atr_penalty_reasons.includes('ATR_PENALTY_CAP:-7'));
+});
+
+test('deriveAtrScorePenalty returns no penalty when ATR unavailable', () => {
+  const result = atr.deriveAtrScorePenalty({ sl_atr_class: 'SL_TOO_TIGHT', tp1_atr_class: 'TP1_STRETCHED' });
+  assert.deepEqual(result, { atr_score_penalty: 0, atr_penalty_reasons: [], atr_risk_adjustment: 0 });
+});
+
+test('ATR penalty clamp keeps score from going below zero without blocking candidate', () => {
+  const candidate = { atr14: 10, sl_atr_class: 'SL_TOO_TIGHT', tp1_atr_class: 'TP1_STRETCHED', tp2_atr_class: 'TP2_STRETCHED', status: 'Watchlist' };
+  const penalty = atr.deriveAtrScorePenalty(candidate);
+  const adjustedScore = Math.max(0, Math.min(100, 3 + penalty.atr_score_penalty));
+  assert.equal(adjustedScore, 0);
+  assert.equal(candidate.status, 'Watchlist');
+});
