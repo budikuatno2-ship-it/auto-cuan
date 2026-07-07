@@ -17,7 +17,6 @@
 
 'use strict';
 
-const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
 const helpers = require('../lib/report-helpers');
@@ -38,12 +37,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   process.exit(1);
 }
 
-// === Initialize Supabase Client ===
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
-
-// === Fetch Data from Supabase ===
+// === Fetch Data from Supabase via REST API ===
 async function fetchDailyPicks() {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - DAYS_BACK);
@@ -51,19 +45,36 @@ async function fetchDailyPicks() {
   
   console.log('Fetching telegram_daily_picks from last ' + DAYS_BACK + ' days (since ' + cutoffStr + ')...');
   
-  const { data, error } = await supabase
-    .from('telegram_daily_picks')
-    .select('*')
-    .gte('date', cutoffStr)
-    .order('date', { ascending: false });
+  // Normalize SUPABASE_URL to avoid duplicate /rest/v1/
+  let baseUrl = SUPABASE_URL.replace(/\/rest\/v1\/?$/, '');
+  // Build REST API URL with filters
+  const url = new URL(`${baseUrl}/rest/v1/telegram_daily_picks`);
+  url.searchParams.set('select', '*');
+  url.searchParams.set('date', `gte.${cutoffStr}`);
+  url.searchParams.set('order', 'date.desc');
   
-  if (error) {
+  try {
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('ERROR fetching data:', response.status, errorText);
+      process.exit(1);
+    }
+
+    const data = await response.json();
+    console.log('Fetched ' + (data?.length || 0) + ' records\n');
+    return data || [];
+  } catch (error) {
     console.error('ERROR fetching data:', error.message);
     process.exit(1);
   }
-  
-  console.log('Fetched ' + (data?.length || 0) + ' records\n');
-  return data || [];
 }
 
 // === Generate Report ===
