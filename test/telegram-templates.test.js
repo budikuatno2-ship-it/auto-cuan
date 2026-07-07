@@ -142,39 +142,83 @@ test('T-TPL-07b: formatDailyTop5Message shows correct lolos gate count', functio
 // TEST: Monitor Hit message
 // ============================================================
 
-test('T-TPL-08: formatMonitorHitMessage TP1 HIT produces short premium format', function() {
+test('T-TPL-08: formatMonitorHitMessage TP1 HIT shows trigger basis', function() {
   var pick = { ticker: 'KOBX', entry1: 176, tp1: 192, tp2: 210, sl: 160 };
   var ev = { status: 'TP1_HIT', label: 'TP1 Hit', note: 'TP1 tersentuh' };
-  var px = { last: 198 };
+  var px = { last: 198, high: 195, low: 190 };
   var msg = templates.formatMonitorHitMessage(pick, ev, px);
-  assert.match(msg, /TARGET HIT/);
-  assert.match(msg, /KOBX/);
   assert.match(msg, /TP1 HIT/);
-  assert.match(msg, /Entry:/);
-  assert.match(msg, /Harga sekarang:/);
+  assert.match(msg, /KOBX/);
+  assert.match(msg, /Trigger: high menyentuh TP1/);
+  assert.match(msg, /Last:/);
   assert.match(msg, /Profit:/);
   assert.match(msg, /Catatan:/);
   // Short format — should be under 500 chars
   assert.ok(msg.length < 500, 'Monitor hit should be short, got ' + msg.length + ' chars');
 });
 
-test('T-TPL-09: formatMonitorHitMessage SL HIT shows loss', function() {
+test('T-TPL-09: formatMonitorHitMessage SL HIT shows trigger and last price separately', function() {
   var pick = { ticker: 'EXCL', entry1: 2900, tp1: 3010, tp2: 3150, sl: 2750 };
   var ev = { status: 'SL_HIT', label: 'SL kena', note: 'SL tersentuh' };
-  var px = { last: 2740 };
+  // Last is ABOVE SL (rebound scenario) - this is the key clarity fix
+  var px = { last: 2800, high: 2810, low: 2740 };
   var msg = templates.formatMonitorHitMessage(pick, ev, px);
   assert.match(msg, /SL HIT/);
+  assert.match(msg, /Trigger: low menyentuh SL/);
+  assert.match(msg, /Last:/);
   assert.match(msg, /Loss:/);
-  assert.match(msg, /Stop loss tersentuh/);
+  assert.match(msg, /rebound/i);
 });
 
-test('T-TPL-10: formatMonitorHitMessage ENTRY ZONE', function() {
-  var pick = { ticker: 'BBRI', entry1: 5000, tp1: 5500, tp2: 5800, sl: 4800 };
+test('T-TPL-10: formatMonitorHitMessage ENTRY ZONE shows trigger basis', function() {
+  var pick = { ticker: 'BBRI', entry1: 5000, entry2: 4900, tp1: 5500, tp2: 5800, sl: 4800 };
   var ev = { status: 'IN_ENTRY_ZONE', label: 'In Entry Zone', note: 'Harga memasuki area entry' };
-  var px = { last: 5010 };
+  var px = { last: 5010, high: 5020, low: 4950 };
   var msg = templates.formatMonitorHitMessage(pick, ev, px);
   assert.match(msg, /ENTRY ZONE/);
-  assert.match(msg, /area entry/);
+  assert.match(msg, /Trigger: harga masuk area entry/);
+  assert.match(msg, /Last:/);
+});
+
+test('T-TPL-11: formatMonitorHitMessage TP2 HIT shows trigger basis', function() {
+  var pick = { ticker: 'ANTM', entry1: 1800, tp1: 1900, tp2: 2050, sl: 1700 };
+  var ev = { status: 'TP2_HIT', label: 'TP2 Hit', note: 'TP2 tersentuh' };
+  var px = { last: 2080, high: 2060, low: 1950 };
+  var msg = templates.formatMonitorHitMessage(pick, ev, px);
+  assert.match(msg, /TP2 HIT/);
+  assert.match(msg, /Trigger: high menyentuh TP2/);
+  assert.match(msg, /Last:/);
+  assert.match(msg, /Profit:/);
+});
+
+test('T-TPL-12: formatMonitorHitMessage EXPIRED uses daytrade wording', function() {
+  var pick = { ticker: 'GGRM', entry1: 32000, tp1: 34000, tp2: 36000, sl: 30000, category: 'Day Trade' };
+  var ev = { status: 'EXPIRED', label: 'Expired', note: 'Setup terlalu lama' };
+  var px = { last: 31000, high: 31500, low: 30500 };
+  var msg = templates.formatMonitorHitMessage(pick, ev, px);
+  assert.match(msg, /EXPIRED/);
+  assert.match(msg, /terlalu lama untuk konteks intraday/);
+});
+
+test('T-TPL-13: formatMonitorHitMessage EXPIRED uses swing wording', function() {
+  var pick = { ticker: 'BBCA', entry1: 8000, tp1: 8800, tp2: 9500, sl: 7500, category: 'Swing Konglo' };
+  // Provide a custom note that doesn't contain "terlalu lama" - it should still be overridden
+  var ev = { status: 'EXPIRED', label: 'Expired', note: 'Harga sudah terlalu jauh dari entry; tunggu pullback.' };
+  var px = { last: 8200, high: 8300, low: 8100 };
+  var msg = templates.formatMonitorHitMessage(pick, ev, px);
+  assert.match(msg, /EXPIRED/);
+  assert.match(msg, /melewati masa pantau/);
+  assert.match(msg, /revalidasi/);
+});
+
+test('T-TPL-14: formatMonitorHitMessage does not use AI narration', function() {
+  var pick = { ticker: 'TLKM', entry1: 3000, tp1: 3200, tp2: 3400, sl: 2800 };
+  var ev = { status: 'TP1_HIT', label: 'TP1 Hit', note: 'TP1 tersentuh' };
+  var px = { last: 3250, high: 3260, low: 3100 };
+  var msg = templates.formatMonitorHitMessage(pick, ev, px);
+  // Template itself should not contain AI-specific notes (AI note is appended by caller)
+  assert.doesNotMatch(msg, /Catatan AI/);
+  assert.doesNotMatch(msg, /narration/i);
 });
 
 // ============================================================
