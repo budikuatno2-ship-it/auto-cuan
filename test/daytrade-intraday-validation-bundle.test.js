@@ -49,6 +49,25 @@ test('no Supabase writes/API/SQL/UI/cron changes are introduced by the bundle to
   assert.doesNotMatch(executableSource, /api\/|migrations|CREATE\s+TABLE|ALTER\s+TABLE|dashboard|cron/i);
 });
 
+
+test('bundle score delta summary uses all comparison rows, not truncated top movers', () => {
+  const compareReport = compare('2026-07-08');
+  compareReport.comparison.rows = Array.from({ length: 12 }, (_, i) => ({
+    ticker: `T${String(i).padStart(2, '0')}`,
+    score_delta: i < 10 ? 10 : 0
+  }));
+  const report = bundle.buildBundleReport({
+    intraday: intraday('2026-07-08', [{ ticker: 'AAA', data_quality: 'OK' }]),
+    compare: compareReport,
+    readiness: readiness('2026-07-08', 'PASS'),
+    paths: {}
+  });
+  assert.equal(report.top_score_movers.length, 10);
+  assert.equal(report.score_delta_count, 12);
+  assert.equal(report.avg_absolute_score_delta, 8.33);
+  assert.equal(report.max_absolute_score_delta, 10);
+});
+
 test('bundle report includes readiness BLOCK/PASS status', () => {
   for (const status of ['BLOCK', 'PASS']) {
     const report = bundle.buildBundleReport({ intraday: intraday('2026-07-08', [{ ticker: 'AAA', data_quality: 'OK' }]), compare: compare('2026-07-08'), readiness: readiness('2026-07-08', status), paths: {} });

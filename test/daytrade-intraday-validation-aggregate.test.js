@@ -99,6 +99,19 @@ test('PASS when 3 clean PASS samples exist', () => {
   assert.deepEqual(report.warn_reasons, []);
 });
 
+
+test('aggregate avg_absolute_score_delta uses untruncated bundle metric, not top_score_movers', () => {
+  const report = aggregate([
+    sample('2026-07-06', { avg_absolute_score_delta: 4, top_score_movers: ['AAA (+10)', 'BBB (-10)'] }),
+    sample('2026-07-07', { avg_absolute_score_delta: 5, top_score_movers: ['CCC (+9)'] }),
+    sample('2026-07-08', { avg_absolute_score_delta: 5, top_score_movers: ['DDD (-8)'] })
+  ]);
+  assert.equal(report.metrics.avg_absolute_score_delta, 4.67);
+  assert.equal(report.aggregate_status, 'PASS');
+  assert.equal(report.warn_reasons.includes('avg absolute score delta > 5'), false);
+  assert.deepEqual(report.top_recurring_score_movers.map((r) => r.ticker).sort(), ['AAA', 'BBB', 'CCC', 'DDD']);
+});
+
 test('markdown contains recommendation and read-only confirmation', () => {
   const md = lib.markdownReport(aggregate([sample('2026-07-06'), sample('2026-07-07'), sample('2026-07-08')]));
   assert.match(md, /recommendation:/);
