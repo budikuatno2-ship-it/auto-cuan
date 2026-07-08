@@ -67,3 +67,7 @@ data/reports/daytrade-local-vs-vercel-*.json
 data/daytrade-intraday-cache/
 data/reports/daytrade-intraday-observe-*.md
 data/reports/daytrade-intraday-observe-*.json
+
+# Generated Day Trade intraday score impact simulation reports
+data/reports/daytrade-intraday-score-impact-*.md
+data/reports/daytrade-intraday-score-impact-*.json
