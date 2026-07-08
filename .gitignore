@@ -62,3 +62,8 @@ data/reports/daytrade-cache-audit-*.json
 # Generated Day Trade local-vs-Vercel comparison reports
 data/reports/daytrade-local-vs-vercel-*.md
 data/reports/daytrade-local-vs-vercel-*.json
+
+# Generated Day Trade intraday observe cache/reports
+data/daytrade-intraday-cache/
+data/reports/daytrade-intraday-observe-*.md
+data/reports/daytrade-intraday-observe-*.json
