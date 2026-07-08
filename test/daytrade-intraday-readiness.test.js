@@ -63,6 +63,19 @@ test('BLOCK for NO_INTRADAY_DATA and INTRADAY_UNKNOWN', () => {
   assert.match(out.block_reasons.join('\n'), /INTRADAY_UNKNOWN/);
 });
 
+
+test('BLOCK for STALE_CACHE data quality count', () => {
+  const out = report({ intraday: intraday({ summary: { candidates: 20, data_quality: { OK: 19, STALE_CACHE: 1 }, intraday_priority_label: { INTRADAY_OK: 20 }, intraday_confirmation_label: { INTRADAY_CONFIRM: 20 } } }) });
+  assert.equal(out.readiness_status, 'BLOCK');
+  assert.match(out.block_reasons.join('\n'), /STALE_CACHE count is non-zero: 1/);
+});
+
+test('BLOCK for INCOMPLETE_INTRADAY data quality count', () => {
+  const out = report({ intraday: intraday({ summary: { candidates: 20, data_quality: { OK: 19, INCOMPLETE_INTRADAY: 1 }, intraday_priority_label: { INTRADAY_OK: 20 }, intraday_confirmation_label: { INTRADAY_CONFIRM: 20 } } }) });
+  assert.equal(out.readiness_status, 'BLOCK');
+  assert.match(out.block_reasons.join('\n'), /INCOMPLETE_INTRADAY count is non-zero: 1/);
+});
+
 test('BLOCK for stale/incomplete caution', () => {
   const out = report({ compare: compare({ comparison: { metrics: { provider_matched_count: 20, provider_missing_count: 0, cautions: ['STALE_OR_INCOMPLETE_INTRADAY_DATA'] } } }) });
   assert.equal(out.readiness_status, 'BLOCK');
@@ -131,6 +144,27 @@ test('latest file discovery picks newest report by date', async () => {
   const inputs = await lib.loadInputs({ latest: true, reportsDir: dir });
   assert.equal(inputs.intraday.date, '2026-07-08');
   assert.match(inputs.sources.intraday, /2026-07-08/);
+});
+
+
+test('latest file discovery throws when selected report dates mismatch', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'readiness-mismatch-'));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-observe-2026-07-09.json'), JSON.stringify(intraday({ date: '2026-07-09' })));
+  await fs.writeFile(path.join(dir, 'daytrade-adjusted-vs-normal-2026-07-08.json'), JSON.stringify(compare({ date: '2026-07-08' })));
+  await assert.rejects(() => lib.loadInputs({ latest: true, reportsDir: dir }), /Latest report date mismatch: intraday=2026-07-09 compare=2026-07-08/);
+});
+
+test('latest file discovery infers matching dates from filenames when report.date is absent', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'readiness-filename-date-'));
+  const intradayReport = intraday();
+  const compareReport = compare();
+  delete intradayReport.date;
+  delete compareReport.date;
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-observe-2026-07-08.json'), JSON.stringify(intradayReport));
+  await fs.writeFile(path.join(dir, 'daytrade-adjusted-vs-normal-2026-07-08.json'), JSON.stringify(compareReport));
+  const inputs = await lib.loadInputs({ latest: true, reportsDir: dir });
+  assert.equal(inputs.sources.intraday.endsWith('daytrade-intraday-observe-2026-07-08.json'), true);
+  assert.equal(inputs.sources.compare.endsWith('daytrade-adjusted-vs-normal-2026-07-08.json'), true);
 });
 
 test('missing report graceful error', async () => {
