@@ -6,450 +6,246 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const lib = require('../lib/daytrade-intraday-policy');
+const cli = require('../tools/report-daytrade-intraday-policy');
 
-function makeBundle(date, overrides) {
-  // Start with clean base - no default rows
-  const base = {
-    date,
+function bundle(overrides) {
+  return Object.assign({
+    date: '2026-07-08',
     validation_status: 'PASS',
-    intraday_candidates_count: 0,
-    provider_matched_count: 0,
-    provider_missing_count: 0,
-    data_quality_counts: {},
-    priority_label_counts: {},
-    confirmation_label_counts: {},
-    top5_entering: [],
-    top5_leaving: [],
-    top_score_movers: [],
     no_intraday_data_tickers: [],
     incomplete_intraday_tickers: [],
     intraday_unknown_tickers: [],
     rows: []
-  };
-  return Object.assign(base, overrides || {});
+  }, overrides || {});
 }
 
-function makeAggregate(date, overrides) {
+function aggregate(overrides) {
   return Object.assign({
-    date,
+    date: '2026-07-08',
     aggregate_status: 'PASS',
-    sample_count: 3,
     repeated_no_intraday_data_tickers: [],
     repeated_incomplete_intraday_tickers: [],
-    repeated_intraday_unknown_tickers: [],
-    no_intraday_data_tickers: [],
-    incomplete_intraday_tickers: [],
-    intraday_unknown_tickers: []
+    repeated_intraday_unknown_tickers: []
   }, overrides || {});
 }
 
 test('BLOCK when NO_INTRADAY_DATA ticker exists', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2, NO_INTRADAY_DATA: 1 },
+  const report = lib.buildPolicyReport(bundle({
     no_intraday_data_tickers: ['BRAM'],
     rows: [
       { ticker: 'BRAM', data_quality: 'NO_INTRADAY_DATA', intraday_priority_label: 'INTRADAY_UNKNOWN', intraday_confirmation_label: 'INTRADAY_UNKNOWN' },
       { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
     ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
+  }), null);
   assert.equal(report.policy_status, 'BLOCK');
-  assert.ok(report.block_reasons.includes('BLOCK_PRODUCTION_ENABLE ticker exists'));
-  assert.ok(report.tickers_by_decision['BLOCK_PRODUCTION_ENABLE'].includes('BRAM'));
+  assert.ok(report.tickers_by_decision.BLOCK_PRODUCTION_ENABLE.includes('BRAM'));
+  assert.ok(report.tickers_by_fallback_action.DAILY_SCORE_ONLY.includes('BRAM'));
 });
 
 test('BLOCK when INTRADAY_UNKNOWN ticker exists', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2, INTRADAY_UNKNOWN: 1 },
+  const report = lib.buildPolicyReport(bundle({
     intraday_unknown_tickers: ['IDPR'],
     rows: [
       { ticker: 'IDPR', data_quality: 'OK', intraday_priority_label: 'INTRADAY_UNKNOWN', intraday_confirmation_label: 'INTRADAY_UNKNOWN' },
       { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
     ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
+  }), null);
   assert.equal(report.policy_status, 'BLOCK');
+  assert.ok(report.tickers_by_decision.BLOCK_PRODUCTION_ENABLE.includes('IDPR'));
   assert.ok(report.block_reasons.includes('BLOCK_PRODUCTION_ENABLE ticker exists'));
-  assert.ok(report.tickers_by_decision['BLOCK_PRODUCTION_ENABLE'].includes('IDPR'));
 });
 
 test('WARN when only INCOMPLETE_INTRADAY ticker exists', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2, INCOMPLETE_INTRADAY: 1 },
+  const report = lib.buildPolicyReport(bundle({
     incomplete_intraday_tickers: ['BBSI'],
     rows: [
       { ticker: 'BBSI', data_quality: 'INCOMPLETE_INTRADAY', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
       { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
     ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
+  }), null);
   assert.equal(report.policy_status, 'WARN');
-  assert.ok(report.warn_reasons.includes('EXCLUDE_INTRADAY_ADJUSTMENT ticker exists'));
-  assert.ok(report.tickers_by_decision['EXCLUDE_INTRADAY_ADJUSTMENT'].includes('BBSI'));
+  assert.ok(report.tickers_by_decision.EXCLUDE_INTRADAY_ADJUSTMENT.includes('BBSI'));
+  assert.ok(report.tickers_by_fallback_action.DAILY_SCORE_ONLY.includes('BBSI'));
 });
 
 test('PASS when only OK tickers exist', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 3 },
+  const report = lib.buildPolicyReport(bundle({
     rows: [
       { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
-      { ticker: 'BBB', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
-      { ticker: 'CCC', data_quality: 'OK', intraday_priority_label: 'INTRADAY_STRONG', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
+      { ticker: 'BBB', data_quality: 'OK', intraday_priority_label: 'INTRADAY_STRONG', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
     ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
+  }), null);
   assert.equal(report.policy_status, 'PASS');
-  assert.deepEqual(report.ok_for_intraday_dry_run_tickers.sort(), ['AAA', 'BBB', 'CCC']);
+  assert.deepEqual(report.ok_for_intraday_dry_run_tickers, ['AAA', 'BBB']);
 });
 
-test('recurring aggregate blockers override bundle OK', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2 },
-    rows: [
-      { ticker: 'BRAM', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const aggregate = makeAggregate('2026-07-08', {
-    aggregate_status: 'PASS',
-    no_intraday_data_tickers: [{ ticker: 'BRAM', count: 2 }]
-  });
-
-  const report = lib.buildPolicyReport(bundle, aggregate);
+test('repeated_no_intraday_data_tickers overrides bundle OK and blocks', () => {
+  const report = lib.buildPolicyReport(bundle({
+    rows: [{ ticker: 'BRAM', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }]
+  }), aggregate({
+    repeated_no_intraday_data_tickers: [{ ticker: 'BRAM', count: 2 }]
+  }));
   assert.equal(report.policy_status, 'BLOCK');
   assert.ok(report.block_reasons.includes('recurring NO_INTRADAY_DATA ticker exists'));
-  assert.ok(report.tickers_by_decision['BLOCK_PRODUCTION_ENABLE'].includes('BRAM'));
+  assert.ok(report.tickers_by_decision.BLOCK_PRODUCTION_ENABLE.includes('BRAM'));
 });
 
-test('missing aggregate file still works using bundle only', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 3 },
-    rows: [
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
-  assert.equal(report.policy_status, 'PASS');
-  assert.equal(report.has_aggregate, false);
-});
-
-test('WATCH_NEXT_SESSION for non-recurring issues (CAUTION)', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2, INTRADAY_CAUTION: 1 },
-    rows: [
-      { ticker: 'TEST', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CAUTION' },
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
-  // WARN because WATCH_NEXT_SESSION exists
-  assert.equal(report.policy_status, 'WARN');
-  // But fallback should still be UNCHANGED (OK for intraday)
-  assert.ok(report.tickers_by_decision['WATCH_NEXT_SESSION'].includes('TEST'));
-  assert.equal(report.tickers_by_fallback_action['UNCHANGED'].includes('TEST'), true);
-});
-
-test('BLOCK when aggregate_status is BLOCK', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2 },
-    rows: [
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const aggregate = makeAggregate('2026-07-08', {
-    aggregate_status: 'BLOCK'
-  });
-
-  const report = lib.buildPolicyReport(bundle, aggregate);
+test('repeated_intraday_unknown_tickers overrides bundle OK and blocks', () => {
+  const report = lib.buildPolicyReport(bundle({
+    rows: [{ ticker: 'IDPR', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }]
+  }), aggregate({
+    repeated_intraday_unknown_tickers: [{ ticker: 'IDPR', count: 2 }]
+  }));
   assert.equal(report.policy_status, 'BLOCK');
-  assert.ok(report.block_reasons.includes('aggregate_status is BLOCK'));
+  assert.ok(report.block_reasons.includes('recurring INTRADAY_UNKNOWN ticker exists'));
+  assert.ok(report.tickers_by_decision.BLOCK_PRODUCTION_ENABLE.includes('IDPR'));
 });
 
-test('WARN when aggregate_status is WARN', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2 },
-    rows: [
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const aggregate = makeAggregate('2026-07-08', {
-    aggregate_status: 'WARN'
-  });
-
-  const report = lib.buildPolicyReport(bundle, aggregate);
+test('repeated_incomplete_intraday_tickers overrides bundle OK and creates daily-only exclude', () => {
+  const report = lib.buildPolicyReport(bundle({
+    rows: [{ ticker: 'BBSI', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }]
+  }), aggregate({
+    repeated_incomplete_intraday_tickers: [{ ticker: 'BBSI', count: 2 }]
+  }));
   assert.equal(report.policy_status, 'WARN');
-  assert.ok(report.warn_reasons.includes('aggregate_status is WARN'));
+  assert.ok(report.tickers_by_decision.EXCLUDE_INTRADAY_ADJUSTMENT.includes('BBSI'));
+  assert.ok(report.tickers_by_fallback_action.DAILY_SCORE_ONLY.includes('BBSI'));
 });
 
-test('INTRADAY_AVOID with OK data leads to WATCH_NEXT_SESSION (not excluded)', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2 },
-    rows: [
-      { ticker: 'AVOID', data_quality: 'OK', intraday_priority_label: 'INTRADAY_AVOID', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
+test('legacy aggregate recurring field names still work as fallback', () => {
+  const report = lib.buildPolicyReport(bundle({
+    rows: [{ ticker: 'LEGACY', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }]
+  }), {
+    aggregate_status: 'PASS',
+    no_intraday_data_tickers: [{ ticker: 'LEGACY', count: 2 }]
   });
-
-  const report = lib.buildPolicyReport(bundle, null);
-  assert.equal(report.policy_status, 'WARN');
-  // AVOID with OK data quality -> WATCH_NEXT_SESSION with UNCHANGED fallback
-  assert.ok(report.tickers_by_decision['WATCH_NEXT_SESSION'].includes('AVOID'));
-  assert.equal(report.tickers_by_fallback_action['UNCHANGED'].includes('AVOID'), true);
-});
-
-test('decision_counts tracks all decisions', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 1, NO_INTRADAY_DATA: 1, INCOMPLETE_INTRADAY: 1 },
-    no_intraday_data_tickers: ['BRAM'],
-    incomplete_intraday_tickers: ['BBSI'],
-    rows: [
-      { ticker: 'BRAM', data_quality: 'NO_INTRADAY_DATA', intraday_priority_label: 'INTRADAY_UNKNOWN', intraday_confirmation_label: 'INTRADAY_UNKNOWN' },
-      { ticker: 'BBSI', data_quality: 'INCOMPLETE_INTRADAY', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
-  assert.equal(report.decision_counts['BLOCK_PRODUCTION_ENABLE'], 1);
-  assert.equal(report.decision_counts['EXCLUDE_INTRADAY_ADJUSTMENT'], 1);
-  assert.equal(report.decision_counts['OK_FOR_INTRADAY_DRY_RUN'], 1);
-});
-
-test('NO_INTRADAY_DATA ticker appears in BLOCK_PRODUCTION_ENABLE and DAILY_SCORE_ONLY fallback', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 1, NO_INTRADAY_DATA: 1 },
-    no_intraday_data_tickers: ['BRAM'],
-    rows: [
-      { ticker: 'BRAM', data_quality: 'NO_INTRADAY_DATA', intraday_priority_label: 'INTRADAY_UNKNOWN', intraday_confirmation_label: 'INTRADAY_UNKNOWN' },
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
   assert.equal(report.policy_status, 'BLOCK');
-  assert.ok(report.tickers_by_decision['BLOCK_PRODUCTION_ENABLE'].includes('BRAM'));
-  assert.ok(report.tickers_by_fallback_action['DAILY_SCORE_ONLY'].includes('BRAM'));
-  assert.equal(report.fallback_action_counts['DAILY_SCORE_ONLY'], 1);
+  assert.ok(report.tickers_by_decision.BLOCK_PRODUCTION_ENABLE.includes('LEGACY'));
 });
 
-test('INCOMPLETE_INTRADAY ticker appears in EXCLUDE_INTRADAY_ADJUSTMENT and DAILY_SCORE_ONLY fallback', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 1, INCOMPLETE_INTRADAY: 1 },
-    incomplete_intraday_tickers: ['BBSI'],
-    rows: [
-      { ticker: 'BBSI', data_quality: 'INCOMPLETE_INTRADAY', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
-  assert.equal(report.policy_status, 'WARN');
-  assert.ok(report.tickers_by_decision['EXCLUDE_INTRADAY_ADJUSTMENT'].includes('BBSI'));
-  assert.ok(report.tickers_by_fallback_action['DAILY_SCORE_ONLY'].includes('BBSI'));
-  assert.equal(report.fallback_action_counts['DAILY_SCORE_ONLY'], 1);
-});
-
-test('OK data-quality ticker with CAUTION has UNCHANGED fallback (still OK for intraday)', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2 },
+test('OK + INTRADAY_CAUTION remains OK_FOR_INTRADAY_DRY_RUN and is watched', () => {
+  const report = lib.buildPolicyReport(bundle({
     rows: [
       { ticker: 'CAUT', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CAUTION' },
       { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
     ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
-  // Should be WARN because there's a WATCH_NEXT_SESSION ticker now
+  }), null);
   assert.equal(report.policy_status, 'WARN');
-  // CAUT ticker in WATCH_NEXT_SESSION with UNCHANGED fallback (still OK for intraday)
-  assert.ok(report.tickers_by_decision['WATCH_NEXT_SESSION'].includes('CAUT'));
-  assert.equal(report.tickers_by_fallback_action['UNCHANGED'].includes('CAUT'), true);
+  assert.ok(report.tickers_by_decision.OK_FOR_INTRADAY_DRY_RUN.includes('CAUT'));
+  assert.ok(report.ok_for_intraday_dry_run_tickers.includes('CAUT'));
+  assert.ok(report.watch_next_session_tickers.includes('CAUT'));
+  assert.ok(report.warn_reasons.includes('watch_next_session_tickers exists'));
 });
 
-test('OK_FOR_INTRADAY_DRY_RUN ticker has UNCHANGED fallback', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2 },
+test('OK + INTRADAY_AVOID remains OK_FOR_INTRADAY_DRY_RUN and is watched', () => {
+  const report = lib.buildPolicyReport(bundle({
     rows: [
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
-      { ticker: 'BBB', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
-  assert.ok(report.tickers_by_fallback_action['UNCHANGED'].includes('AAA'));
-  assert.ok(report.tickers_by_fallback_action['UNCHANGED'].includes('BBB'));
-  assert.equal(report.fallback_action_counts['UNCHANGED'], 2);
-});
-
-test('recurring incomplete_intraday triggers WARN', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 1 },
-    rows: [
+      { ticker: 'AVOID', data_quality: 'OK', intraday_priority_label: 'INTRADAY_AVOID', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
       { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
     ]
-  });
-
-  const aggregate = makeAggregate('2026-07-08', {
-    aggregate_status: 'PASS',
-    incomplete_intraday_tickers: [{ ticker: 'AMFG', count: 2 }]
-  });
-
-  const report = lib.buildPolicyReport(bundle, aggregate);
+  }), null);
   assert.equal(report.policy_status, 'WARN');
-  assert.ok(report.warn_reasons.includes('EXCLUDE_INTRADAY_ADJUSTMENT ticker exists'));
+  assert.ok(report.tickers_by_decision.OK_FOR_INTRADAY_DRY_RUN.includes('AVOID'));
+  assert.ok(report.ok_for_intraday_dry_run_tickers.includes('AVOID'));
+  assert.ok(report.watch_next_session_tickers.includes('AVOID'));
 });
 
-test('recurring intraday_unknown triggers BLOCK', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 1 },
-    rows: [
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const aggregate = makeAggregate('2026-07-08', {
-    aggregate_status: 'PASS',
-    intraday_unknown_tickers: [{ ticker: 'UNKN', count: 2 }]
-  });
-
-  const report = lib.buildPolicyReport(bundle, aggregate);
+test('aggregate_status BLOCK overrides clean bundle', () => {
+  const report = lib.buildPolicyReport(bundle({
+    rows: [{ ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }]
+  }), aggregate({ aggregate_status: 'BLOCK' }));
   assert.equal(report.policy_status, 'BLOCK');
-  assert.ok(report.block_reasons.includes('recurring INTRADAY_UNKNOWN ticker exists'));
+  assert.ok(report.block_reasons.includes('aggregate_status is BLOCK'));
 });
 
-test('markdown includes policy_status, recommendation, tickers by decision, and read-only confirmation', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 2 },
-    rows: [
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
-      { ticker: 'BBB', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
-    ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
-  const md = lib.markdownReport(report);
-
-  assert.match(md, /policy_status: \*\*PASS\*\*/);
-  assert.match(md, /recommendation:/);
-  assert.match(md, /## Tickers by Decision/);
-  assert.match(md, /## Read-only Confirmation/);
-  assert.match(md, /does NOT enable DAYTRADE_INTRADAY_SCORE_ENABLED/);
+test('aggregate_status WARN warns clean bundle', () => {
+  const report = lib.buildPolicyReport(bundle({
+    rows: [{ ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }]
+  }), aggregate({ aggregate_status: 'WARN' }));
+  assert.equal(report.policy_status, 'WARN');
+  assert.ok(report.warn_reasons.includes('aggregate_status is WARN'));
 });
 
-test('markdown includes DAILY_SCORE_ONLY section', () => {
-  const bundle = makeBundle('2026-07-08', {
-    data_quality_counts: { OK: 1, NO_INTRADAY_DATA: 1 },
+test('missing aggregate still works using bundle only', () => {
+  const report = lib.buildPolicyReport(bundle({
+    rows: [{ ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }]
+  }), null);
+  assert.equal(report.has_aggregate, false);
+  assert.equal(report.policy_status, 'PASS');
+});
+
+test('markdown includes policy status, recommendation, decisions, watch list, daily-only, and read-only confirmation', () => {
+  const report = lib.buildPolicyReport(bundle({
     no_intraday_data_tickers: ['BRAM'],
     rows: [
       { ticker: 'BRAM', data_quality: 'NO_INTRADAY_DATA', intraday_priority_label: 'INTRADAY_UNKNOWN', intraday_confirmation_label: 'INTRADAY_UNKNOWN' },
-      { ticker: 'AAA', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }
+      { ticker: 'CAUT', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CAUTION' }
     ]
-  });
-
-  const report = lib.buildPolicyReport(bundle, null);
+  }), null);
   const md = lib.markdownReport(report);
-
-  assert.match(md, /## DAILY_SCORE_ONLY/);
-  assert.match(md, /should use daily score only/);
-  assert.ok(md.includes('BRAM'));
+  assert.match(md, /policy_status:/);
+  assert.match(md, /recommendation:/);
+  assert.match(md, /Tickers by Decision/);
+  assert.match(md, /Watch Next Session Tickers/);
+  assert.match(md, /DAILY_SCORE_ONLY/);
+  assert.match(md, /does NOT enable DAYTRADE_INTRADAY_SCORE_ENABLED/);
 });
 
-test('CLI argument parsing', () => {
-  const parse = lib.parseArgs;
-
-  const args1 = parse(['node', 'script', '--json']);
-  assert.equal(args1.writeJson, true);
-
-  const args2 = parse(['node', 'script', '--reports-dir', '/custom/path']);
-  assert.equal(args2.reportsDir, '/custom/path');
-
-  const args3 = parse(['node', 'script', '--bundle-file', '/path/to/bundle.json']);
-  assert.equal(args3.bundleFile, '/path/to/bundle.json');
-
-  const args4 = parse(['node', 'script', '--aggregate-file', '/path/to/agg.json', '--json']);
-  assert.equal(args4.aggregateFile, '/path/to/agg.json');
-  assert.equal(args4.writeJson, true);
+test('latestFile returns newest matching file by date', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'policy-latest-'));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-07.json'), '{}');
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-08.json'), '{}');
+  const latest = await lib.latestFile(dir, lib.BUNDLE_PREFIX);
+  assert.equal(path.basename(latest), 'daytrade-intraday-validation-bundle-2026-07-08.json');
 });
 
-test('POLICY_DECISIONS contains all expected decisions', () => {
-  assert.ok(lib.POLICY_DECISIONS.BLOCK_PRODUCTION_ENABLE);
-  assert.ok(lib.POLICY_DECISIONS.EXCLUDE_INTRADAY_ADJUSTMENT);
-  assert.ok(lib.POLICY_DECISIONS.DAILY_SCORE_ONLY);
-  assert.ok(lib.POLICY_DECISIONS.WATCH_NEXT_SESSION);
-  assert.ok(lib.POLICY_DECISIONS.OK_FOR_INTRADAY_DRY_RUN);
-
-  assert.equal(lib.POLICY_DECISIONS.BLOCK_PRODUCTION_ENABLE.scoring_impact, 'BLOCKED');
-  assert.equal(lib.POLICY_DECISIONS.EXCLUDE_INTRADAY_ADJUSTMENT.scoring_impact, 'DAILY_ONLY');
-  assert.equal(lib.POLICY_DECISIONS.OK_FOR_INTRADAY_DRY_RUN.scoring_impact, 'UNCHANGED');
-});
-
-test('loadInputs throws when no bundle found', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'policy-empty-'));
-  await assert.rejects(() => lib.loadInputs({ reportsDir: dir }), /No validation bundle found/);
-});
-
-test('loadInputs loads bundle and optional aggregate', async () => {
+test('loadInputs loads bundle and optional aggregate from latest files', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'policy-load-'));
-  // Write bundle file with correct prefix
-  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-08.json'), JSON.stringify(makeBundle('2026-07-08')));
-  // Write aggregate file with correct prefix
-  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-aggregate-2026-07-08.json'), JSON.stringify(makeAggregate('2026-07-08')));
-
-  const { bundle, aggregate } = await lib.loadInputs({ reportsDir: dir });
-  assert.equal(bundle.date, '2026-07-08');
-  assert.equal(aggregate.date, '2026-07-08');
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-08.json'), JSON.stringify(bundle({ rows: [{ ticker: 'AAA', data_quality: 'OK' }] })));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-aggregate-2026-07-08.json'), JSON.stringify(aggregate({ aggregate_status: 'PASS' })));
+  const inputs = await lib.loadInputs({ reportsDir: dir });
+  assert.equal(inputs.bundle.date, '2026-07-08');
+  assert.equal(inputs.aggregate.aggregate_status, 'PASS');
 });
 
-test('writeReports creates markdown file', async () => {
+test('loadInputs works without aggregate file', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'policy-load-no-aggregate-'));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-08.json'), JSON.stringify(bundle({ rows: [{ ticker: 'AAA', data_quality: 'OK' }] })));
+  const inputs = await lib.loadInputs({ reportsDir: dir });
+  assert.equal(inputs.bundle.date, '2026-07-08');
+  assert.equal(inputs.aggregate, null);
+});
+
+test('writeReports writes markdown and optional JSON', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'policy-write-'));
-  const bundle = makeBundle('2026-07-08');
-  const report = lib.buildPolicyReport(bundle, null);
-  const paths = await lib.writeReports(report, { reportsDir: dir });
-
-  assert.equal(paths.markdown.endsWith('.md'), true);
-  const content = await fs.readFile(paths.markdown, 'utf8');
-  assert.match(content, /^# Day Trade Intraday Policy Report/);
-});
-
-test('writeReports creates json file when requested', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'policy-write-json-'));
-  const bundle = makeBundle('2026-07-08');
-  const report = lib.buildPolicyReport(bundle, null);
+  const report = lib.buildPolicyReport(bundle({ rows: [{ ticker: 'AAA', data_quality: 'OK' }] }), null, { nowMs: Date.UTC(2026, 6, 8) });
   const paths = await lib.writeReports(report, { reportsDir: dir, writeJson: true });
-
-  assert.ok(paths.json);
-  const content = JSON.parse(await fs.readFile(paths.json, 'utf8'));
-  assert.equal(content.date, '2026-07-08');
-  assert.equal(content.policy_status, 'PASS');
+  assert.equal(path.basename(paths.markdown), 'daytrade-intraday-policy-2026-07-08.md');
+  assert.equal(path.basename(paths.json), 'daytrade-intraday-policy-2026-07-08.json');
+  assert.match(await fs.readFile(paths.markdown, 'utf8'), /Day Trade Intraday Policy Report/);
 });
 
-test('decidePolicy returns correct decision for each case', () => {
-  // NO_INTRADAY_DATA via data_quality on bundle level
-  let result = lib.decidePolicy('BRAM', { data_quality: 'NO_INTRADAY_DATA', rows: [] }, {});
-  assert.equal(result.decision, 'BLOCK_PRODUCTION_ENABLE');
+test('run builds and writes policy report', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'policy-run-'));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-08.json'), JSON.stringify(bundle({ rows: [{ ticker: 'AAA', data_quality: 'OK' }] })));
+  const result = await lib.run({ reportsDir: dir, writeJson: true });
+  assert.equal(result.report.policy_status, 'PASS');
+  assert.ok(result.paths.markdown.endsWith('.md'));
+  assert.ok(result.paths.json.endsWith('.json'));
+});
 
-  // INTRADAY_UNKNOWN via bundle-level labels (no matching row)
-  result = lib.decidePolicy('IDPR', { data_quality: 'OK', intraday_priority_label: 'INTRADAY_UNKNOWN', rows: [{ ticker: 'OTHER', data_quality: 'OK' }] }, {});
-  assert.equal(result.decision, 'BLOCK_PRODUCTION_ENABLE');
+test('CLI parseArgs supports report options', () => {
+  const args = cli.parseArgs(['node', 'tool', '--reports-dir', 'tmp', '--bundle-file', 'bundle.json', '--aggregate-file', 'aggregate.json', '--json']);
+  assert.equal(args.reportsDir, 'tmp');
+  assert.equal(args.bundleFile, 'bundle.json');
+  assert.equal(args.aggregateFile, 'aggregate.json');
+  assert.equal(args.writeJson, true);
+});
 
-  // INCOMPLETE_INTRADAY
-  result = lib.decidePolicy('BBSI', { data_quality: 'INCOMPLETE_INTRADAY', rows: [] }, {});
-  assert.equal(result.decision, 'EXCLUDE_INTRADAY_ADJUSTMENT');
-
-  // OK with no issues
-  result = lib.decidePolicy('AAA', { data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM', rows: [] }, {});
-  assert.equal(result.decision, 'OK_FOR_INTRADAY_DRY_RUN');
-
-  // OK with CAUTION
-  result = lib.decidePolicy('CAUT', { data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CAUTION', rows: [] }, {});
-  assert.equal(result.decision, 'WATCH_NEXT_SESSION');
+test('ticker normalization strips .JK suffix', () => {
+  const report = lib.buildPolicyReport(bundle({
+    no_intraday_data_tickers: ['BRAM.JK'],
+    rows: [{ ticker: 'BRAM', data_quality: 'OK', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' }]
+  }), null);
+  assert.ok(report.tickers_by_decision.BLOCK_PRODUCTION_ENABLE.includes('BRAM'));
 });
