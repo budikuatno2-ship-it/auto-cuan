@@ -82,12 +82,29 @@ function uniqueTickers(rows) { return Array.from(new Set(asArray(rows).map((r) =
 function tickersBy(rows, pred) { return uniqueTickers(asArray(rows).filter(pred)); }
 function fmtList(arr) { return arr && arr.length ? arr.join(', ') : 'none'; }
 function fmtObj(obj) { return '`' + JSON.stringify(obj || {}) + '`'; }
-function topScoreMovers(compare, n) {
+function finiteScoreDeltaRows(compare) {
   return asArray(compare && compare.comparison && compare.comparison.rows)
-    .filter((r) => r.score_delta !== null && r.score_delta !== undefined)
-    .sort((a, b) => Math.abs(Number(b.score_delta)) - Math.abs(Number(a.score_delta)))
+    .map((r) => ({ ticker: r && r.ticker, score_delta: Number(r && r.score_delta) }))
+    .filter((r) => Number.isFinite(r.score_delta));
+}
+
+function topScoreMovers(compare, n) {
+  return finiteScoreDeltaRows(compare)
+    .sort((a, b) => Math.abs(b.score_delta) - Math.abs(a.score_delta))
     .slice(0, n || 10)
     .map((r) => `${r.ticker} (${r.score_delta >= 0 ? '+' : ''}${r.score_delta})`);
+}
+
+function scoreDeltaSummary(compare) {
+  const rows = finiteScoreDeltaRows(compare);
+  const deltas = rows.map((r) => Math.abs(r.score_delta));
+  const count = deltas.length;
+  const total = deltas.reduce((sum, v) => sum + v, 0);
+  return {
+    score_delta_count: count,
+    avg_absolute_score_delta: count ? Math.round((total / count) * 100) / 100 : 0,
+    max_absolute_score_delta: count ? Math.max(...deltas) : 0
+  };
 }
 
 async function readJson(file) { return JSON.parse(await fs.readFile(file, 'utf8')); }
@@ -104,6 +121,7 @@ function buildBundleReport(input) {
   const noData = tickersBy(rows, (r) => r && r.data_quality === 'NO_INTRADAY_DATA');
   const incomplete = tickersBy(rows, (r) => r && r.data_quality === 'INCOMPLETE_INTRADAY');
   const unknown = tickersBy(rows, (r) => r && (r.intraday_priority_label === 'INTRADAY_UNKNOWN' || r.intraday_confirmation_label === 'INTRADAY_UNKNOWN'));
+  const scoreDeltas = scoreDeltaSummary(compare);
   return {
     date: readiness.date || intraday.date || compare.date,
     generated_at: new Date().toISOString(),
@@ -118,6 +136,9 @@ function buildBundleReport(input) {
     cautions: m.cautions || [],
     top5_entering: cm.top5_entering || [],
     top5_leaving: cm.top5_leaving || [],
+    score_delta_count: scoreDeltas.score_delta_count,
+    avg_absolute_score_delta: scoreDeltas.avg_absolute_score_delta,
+    max_absolute_score_delta: scoreDeltas.max_absolute_score_delta,
     top_score_movers: topScoreMovers(compare, 10),
     no_intraday_data_tickers: noData,
     incomplete_intraday_tickers: incomplete,
@@ -174,4 +195,4 @@ async function main() {
 
 if (require.main === module) main().catch((e) => { console.error(e.message || e); process.exitCode = 1; });
 
-module.exports = { parseArgs, childEnv, normalObserveEnv, adjustedObserveEnv, commandPlan, envForStep, uniqueTickers, buildBundleReport, markdownReport, prepare, writeBundle, BUNDLE_PREFIX };
+module.exports = { parseArgs, childEnv, normalObserveEnv, adjustedObserveEnv, commandPlan, envForStep, uniqueTickers, buildBundleReport, markdownReport, prepare, writeBundle, finiteScoreDeltaRows, scoreDeltaSummary, BUNDLE_PREFIX };
