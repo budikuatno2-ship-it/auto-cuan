@@ -55,6 +55,27 @@ test('compares score/rank deltas and summary counts', () => {
   assert.deepEqual(out.metrics.adjusted_only, ['GGG']);
 });
 
+test('computes ranks by score descending instead of source array order', () => {
+  const normal = run({ results: [
+    { ticker: 'LOW', daytrade_score: 10 },
+    { ticker: 'HIGH', daytrade_score: 90 },
+    { ticker: 'MID', daytrade_score: 50 }
+  ] });
+  const adjusted = run({ results: [
+    { ticker: 'MID', daytrade_score: 50 },
+    { ticker: 'LOW', daytrade_score: 10 },
+    { ticker: 'HIGH', daytrade_score: 90 }
+  ] });
+  const out = lib.compareRuns(normal, adjusted);
+  const high = out.rows.find((r) => r.ticker === 'HIGH');
+  const low = out.rows.find((r) => r.ticker === 'LOW');
+  assert.equal(high.normal_rank, 1);
+  assert.equal(high.adjusted_rank, 1);
+  assert.equal(low.normal_rank, 3);
+  assert.equal(low.adjusted_rank, 3);
+  assert.deepEqual(out.rows.map((r) => r.ticker), ['HIGH', 'MID', 'LOW']);
+});
+
 test('detects Top 5 and Top 20 entering/leaving', () => {
   const normalResults = Array.from({ length: 21 }, (_, i) => ({ ticker: 'T' + String(i + 1).padStart(2, '0'), daytrade_score: 100 - i }));
   const adjustedResults = [{ ticker: 'NEW', daytrade_score: 999 }].concat(normalResults.slice(0, 19));
