@@ -116,3 +116,27 @@ test('bundle JSON rows include full candidate coverage including OK and blockers
   assert.ok(report.rows.some((row) => row.data_quality === 'NO_INTRADAY_DATA'));
   assert.ok(report.rows.some((row) => row.data_quality === 'INCOMPLETE_INTRADAY'));
 });
+
+test('writeBundle --archive-session writes timestamped archive JSON and markdown with full rows and session_id', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'bundle-archive-'));
+  const rows = [{ ticker: 'AAA', data_quality: 'OK' }, { ticker: 'BBB', data_quality: 'INCOMPLETE_INTRADAY' }];
+  const report = bundle.buildBundleReport({
+    intraday: intraday('2026-07-08', rows),
+    compare: compare('2026-07-08'),
+    readiness: readiness('2026-07-08', 'BLOCK'),
+    paths: { intraday: 'i', compare: 'c', readiness: 'r' }
+  });
+  report.generated_at = '2026-07-08T10:11:12.000Z';
+  const paths = await bundle.writeBundle(report, { reportsDir: dir, writeJson: true, archiveSession: true });
+  assert.equal(path.basename(paths.session_archive_json), 'daytrade-intraday-validation-bundle-session-2026-07-08T10-11-12Z.json');
+  assert.equal(path.basename(paths.session_archive_markdown), 'daytrade-intraday-validation-bundle-session-2026-07-08T10-11-12Z.md');
+  const archive = JSON.parse(await fs.readFile(paths.session_archive_json, 'utf8'));
+  assert.equal(archive.session_id, 'daytrade-intraday-validation-bundle-session-2026-07-08T10-11-12Z');
+  assert.equal(archive.session_started_at, '2026-07-08T10:11:12.000Z');
+  assert.equal(archive.report_date, '2026-07-08');
+  assert.equal(archive.source_daily_bundle_path, paths.json);
+  assert.equal(archive.rows.length, 2);
+  assert.match(archive.read_only_confirmation, /observe-only/);
+  const md = await fs.readFile(paths.session_archive_markdown, 'utf8');
+  assert.match(md, /Session Archive/);
+});

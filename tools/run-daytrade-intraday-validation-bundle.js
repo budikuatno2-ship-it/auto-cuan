@@ -7,6 +7,7 @@ const { spawnSync } = require('node:child_process');
 
 const readinessLib = require('../lib/daytrade-intraday-readiness');
 const BUNDLE_PREFIX = 'daytrade-intraday-validation-bundle-';
+const BUNDLE_SESSION_PREFIX = 'daytrade-intraday-validation-bundle-session-';
 const INTRADAY_PREFIX = 'daytrade-intraday-observe-';
 const COMPARE_PREFIX = 'daytrade-adjusted-vs-normal-';
 const READINESS_PREFIX = 'daytrade-intraday-readiness-';
@@ -17,12 +18,14 @@ function parseArgs(argv) {
     reportsDir: path.resolve(process.cwd(), 'data', 'reports'),
     logsFile: path.resolve(process.cwd(), 'logs', 'daytrade-vps-worker', 'runs.jsonl'),
     writeJson: false,
+    archiveSession: false,
     skipIntradayObserve: false,
     tickers: ''
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--json') args.writeJson = true;
+    else if (a === '--archive-session') args.archiveSession = true;
     else if (a === '--skip-intraday-observe') args.skipIntradayObserve = true;
     else if (a.startsWith('--')) {
       const key = a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -31,6 +34,14 @@ function parseArgs(argv) {
     }
   }
   return args;
+}
+
+function timestampForFile(iso) {
+  return String(iso || new Date().toISOString()).replace(/\.\d{3}Z$/, 'Z').replace(/:/g, '-');
+}
+
+function sessionIdFromGeneratedAt(generatedAt) {
+  return `daytrade-intraday-validation-bundle-session-${timestampForFile(generatedAt)}`;
 }
 
 function childEnv(baseEnv, overrides) {
@@ -177,6 +188,24 @@ function markdownReport(report) {
   return `# Day Trade Intraday Validation Bundle — ${report.date}\n\nGenerated at: ${report.generated_at}\n\n## Validation\n\n- validation_status: ${report.validation_status}\n- recommendation: ${report.recommendation}\n- intraday candidates count: ${report.intraday_candidates_count}\n- provider_matched_count: ${report.provider_matched_count ?? 'n/a'}\n- provider_missing_count: ${report.provider_missing_count ?? 'n/a'}\n- data_quality counts: ${fmtObj(report.data_quality_counts)}\n- priority_label_counts: ${fmtObj(report.priority_label_counts)}\n- confirmation_label_counts: ${fmtObj(report.confirmation_label_counts)}\n- cautions: ${fmtList(report.cautions)}\n\n## Movement\n\n- top5_entering: ${fmtList(report.top5_entering)}\n- top5_leaving: ${fmtList(report.top5_leaving)}\n- top score movers: ${fmtList(report.top_score_movers)}\n\n## Data Quality Tickers\n\n- no_intraday_data tickers: ${fmtList(report.no_intraday_data_tickers)}\n- incomplete_intraday tickers: ${fmtList(report.incomplete_intraday_tickers)}\n- intraday_unknown tickers: ${fmtList(report.intraday_unknown_tickers)}\n\n## Generated Reports\n\n- intraday observe: ${report.paths.intraday}\n- adjusted-vs-normal: ${report.paths.compare}\n- readiness: ${report.paths.readiness}\n- bundle markdown: ${report.paths.markdown}\n${report.paths.json ? `- bundle json: ${report.paths.json}\n` : ''}\n## Read-only Confirmation\n\n${report.read_only_confirmation}\n`;
 }
 
+function sessionArchiveReport(report, sourceDailyBundlePath) {
+  const sessionId = report.session_id || sessionIdFromGeneratedAt(report.generated_at);
+  return Object.assign({}, report, {
+    session_id: sessionId,
+    session_started_at: report.generated_at,
+    report_date: report.date,
+    source_daily_bundle_path: sourceDailyBundlePath,
+    read_only_confirmation: report.read_only_confirmation
+  });
+}
+
+function sessionMarkdownReport(report) {
+  return markdownReport(report).replace(
+    /^# Day Trade Intraday Validation Bundle/,
+    '# Day Trade Intraday Validation Bundle Session Archive'
+  ) + `\n## Session Archive\n\n- session_id: ${report.session_id}\n- report_date: ${report.report_date}\n- source_daily_bundle_path: ${report.source_daily_bundle_path}\n`;
+}
+
 async function writeBundle(report, opts) {
   await fs.mkdir(opts.reportsDir, { recursive: true });
   const base = path.join(opts.reportsDir, BUNDLE_PREFIX + report.date);
@@ -184,6 +213,18 @@ async function writeBundle(report, opts) {
   if (opts.writeJson) report.paths.json = base + '.json';
   await fs.writeFile(report.paths.markdown, markdownReport(report));
   if (report.paths.json) await fs.writeFile(report.paths.json, JSON.stringify(report, null, 2) + '\n');
+  if (opts.archiveSession) {
+    const archive = sessionArchiveReport(report, report.paths.json || report.paths.markdown);
+    const archiveBase = path.join(opts.reportsDir, BUNDLE_SESSION_PREFIX + timestampForFile(report.generated_at));
+    report.paths.session_archive_markdown = archiveBase + '.md';
+    report.paths.session_archive_json = archiveBase + '.json';
+    archive.paths = Object.assign({}, archive.paths || report.paths, {
+      session_archive_markdown: report.paths.session_archive_markdown,
+      session_archive_json: report.paths.session_archive_json
+    });
+    await fs.writeFile(report.paths.session_archive_markdown, sessionMarkdownReport(archive));
+    await fs.writeFile(report.paths.session_archive_json, JSON.stringify(archive, null, 2) + '\n');
+  }
   return report.paths;
 }
 
@@ -216,8 +257,10 @@ async function main() {
   console.log('Bundle written:');
   console.log('- markdown: ' + paths.markdown);
   if (paths.json) console.log('- json: ' + paths.json);
+  if (paths.session_archive_markdown) console.log('- session archive markdown: ' + paths.session_archive_markdown);
+  if (paths.session_archive_json) console.log('- session archive json: ' + paths.session_archive_json);
 }
 
 if (require.main === module) main().catch((e) => { console.error(e.message || e); process.exitCode = 1; });
 
-module.exports = { parseArgs, childEnv, normalObserveEnv, adjustedObserveEnv, commandPlan, envForStep, uniqueTickers, buildBundleReport, markdownReport, prepare, writeBundle, finiteScoreDeltaRows, scoreDeltaSummary, bundleRows, BUNDLE_PREFIX };
+module.exports = { parseArgs, childEnv, normalObserveEnv, adjustedObserveEnv, commandPlan, envForStep, uniqueTickers, buildBundleReport, markdownReport, sessionArchiveReport, sessionMarkdownReport, prepare, writeBundle, finiteScoreDeltaRows, scoreDeltaSummary, bundleRows, BUNDLE_PREFIX, BUNDLE_SESSION_PREFIX };
