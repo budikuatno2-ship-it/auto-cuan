@@ -5286,6 +5286,8 @@ async function handleTelegramDailyPicks(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent: false, skipped: false, reason: 'unauthorized', sent_count: 0, picked_count: 0, candidate_count: 0, inserted_count: 0, error: 'Unauthorized.' });
   try {
     var dryRun = req.query && (req.query.dry_run === '1' || req.query.dryRun === '1');
+    var lockOnly = req.query && req.query.lock_only === '1';
+    var forceLock = req.query && req.query.force_lock === '1';
     var force = req.query && req.query.force === '1';
     var debugAi = req.query && (req.query.debug_ai === '1' || req.query.debugAi === '1');
     var testNarration = req.query && req.query.test_narration === '1';
@@ -5375,6 +5377,8 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       weekday: jakartaWeekday,
       weekend_guard: { allowed: jakartaWeekday, bypassed: false },
       forced: force,
+      lock_only: lockOnly,
+      force_lock: forceLock,
       dry_run: dryRun,
       telegram_config: getTelegramConfigStatus()
     };
@@ -5571,6 +5575,97 @@ async function handleTelegramDailyPicks(req, res, supabase) {
         };
       })
     } : undefined;
+
+    if (lockOnly) {
+      var lockOnlyBase = {
+        mode: 'lock_only',
+        date: targetDate,
+        locked: false,
+        already_locked: false,
+        lock_count: 0,
+        top5_source: source,
+        selected_count: picks.length,
+        candidate_count: rawPoolCount,
+        skipped_send: true,
+        telegram_sent: false,
+        sent: false,
+        sent_count: 0,
+        picked_count: picks.length,
+        inserted_count: 0,
+        existing_locked_count: existingRows.length,
+        selected_tickers: picks.map(function(p) { return p.ticker; }),
+        top5_mode: top5Mode,
+        safety_gate_summary: manualDiagnostics ? {
+          strict_signal_count: manualDiagnostics.strict_signal_count,
+          watchlist_candidate_count: manualDiagnostics.watchlist_candidate_count,
+          rejected_by_gate_count: manualDiagnostics.rejected_by_gate_count,
+          top_rejection_reasons: manualDiagnostics.top_rejection_reasons
+        } : {
+          strict_signal_count: strictSignalPicks.length,
+          watchlist_candidate_count: watchlistCandidates.length,
+          rejected_by_gate_count: rejectedByGate.length
+        },
+        readiness: readiness,
+        dry_run: dryRun,
+        diagnostics: manualDiagnostics
+      };
+      if (forceLock) {
+        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, {
+          success: false,
+          skipped: true,
+          reason: 'force_lock_unsupported',
+          update_note: 'force_lock=1 is intentionally not implemented in this phase to avoid deleting/replacing locked monitor rows without a dedicated schema-level upsert key.'
+        }));
+      }
+      if (existingRows.length > 0) {
+        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, {
+          success: true,
+          skipped: true,
+          reason: 'already_locked',
+          already_locked: true,
+          lock_count: existingRows.length,
+          selected_count: existingRows.length,
+          candidate_count: existingRows.length,
+          picked_count: existingRows.length,
+          selected_tickers: existingRows.map(function(r) { return r.ticker; }),
+          update_note: 'Locked rows already exist for this Jakarta date; lock_only=1 is idempotent and did not insert duplicates.'
+        }));
+      }
+      if (!readiness.ready) {
+        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, { success: true, skipped: true, reason: 'screeners_not_ready', update_note: 'Screener readiness gate blocked Top 5 lock.' }));
+      }
+      if (!picks.length) {
+        var emptyReason = rawPoolCount > 0 || rejectedByGate.length > 0 ? 'top5_gate_blocked' : 'no_candidates';
+        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, { success: true, skipped: true, reason: emptyReason, update_note: emptyReason === 'top5_gate_blocked' ? 'Candidates existed but none passed the Top 5 safety gates.' : 'No candidates available to lock.' }));
+      }
+      var lockNowIso = new Date().toISOString();
+      var lockRows = picks.slice(0, 5).map(function(r) {
+        var row = dailyPickInsertRowFromCandidate(r, targetDate, null);
+        row.raw_payload = Object.assign({}, row.raw_payload || {}, {
+          web_daily_locked_at: lockNowIso,
+          lock_source: 'telegram-daily-picks.lock_only',
+          telegram_daily_sent_at: null,
+          telegram_sent_at: null,
+          sent_to_telegram_at: null
+        });
+        return row;
+      });
+      var lockIns = await supabase.from('telegram_daily_picks').insert(lockRows).select('*');
+      if (lockIns.error) {
+        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, { success: false, skipped: true, reason: 'supabase_error', update_note: 'Failed to insert locked Top 5 rows.', error: lockIns.error.message }));
+      }
+      var lockedRows = (lockIns.data || lockRows).slice(0, 5);
+      return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, {
+        success: true,
+        skipped: false,
+        reason: null,
+        locked: true,
+        lock_count: lockedRows.length,
+        inserted_count: lockedRows.length,
+        selected_tickers: lockedRows.map(function(r) { return r.ticker; }),
+        update_note: 'Locked Top 5 rows without sending Telegram or marking them as sent.'
+      }));
+    }
 
     if (dryRun) {
       return res.status(200).json(Object.assign({
