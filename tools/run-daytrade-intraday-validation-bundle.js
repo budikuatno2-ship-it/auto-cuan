@@ -82,9 +82,33 @@ function uniqueTickers(rows) { return Array.from(new Set(asArray(rows).map((r) =
 function tickersBy(rows, pred) { return uniqueTickers(asArray(rows).filter(pred)); }
 function fmtList(arr) { return arr && arr.length ? arr.join(', ') : 'none'; }
 function fmtObj(obj) { return '`' + JSON.stringify(obj || {}) + '`'; }
+function bundleRows(intraday, compare) {
+  const compareByTicker = new Map(finiteScoreDeltaRows(compare).map((r) => [String(r.ticker || '').trim().toUpperCase(), r]));
+  const seen = new Set();
+  const out = [];
+  for (const row of asArray(intraday && intraday.rows)) {
+    const ticker = String(row && row.ticker || '').trim().toUpperCase();
+    if (!ticker || seen.has(ticker)) continue;
+    seen.add(ticker);
+    const cmp = compareByTicker.get(ticker) || {};
+    out.push({
+      ticker,
+      data_quality: row.data_quality || null,
+      intraday_priority_label: row.intraday_priority_label || null,
+      intraday_confirmation_label: row.intraday_confirmation_label || null,
+      intraday_score_adjustment_preview: row.intraday_score_adjustment_preview ?? null,
+      intraday_labels: row.intraday_labels || [],
+      ...(Number.isFinite(Number(cmp.score_delta)) ? { score_delta: Number(cmp.score_delta) } : {}),
+      ...((row.normal_rank ?? cmp.normal_rank) != null ? { normal_rank: row.normal_rank ?? cmp.normal_rank } : {}),
+      ...((row.adjusted_rank ?? cmp.adjusted_rank) != null ? { adjusted_rank: row.adjusted_rank ?? cmp.adjusted_rank } : {})
+    });
+  }
+  return out;
+}
+
 function finiteScoreDeltaRows(compare) {
   return asArray(compare && compare.comparison && compare.comparison.rows)
-    .map((r) => ({ ticker: r && r.ticker, score_delta: Number(r && r.score_delta) }))
+    .map((r) => ({ ticker: r && r.ticker, score_delta: Number(r && r.score_delta), normal_rank: r && r.normal_rank, adjusted_rank: r && r.adjusted_rank }))
     .filter((r) => Number.isFinite(r.score_delta));
 }
 
@@ -115,7 +139,7 @@ function buildBundleReport(input) {
   const intraday = input.intraday;
   const compare = input.compare;
   const readiness = input.readiness;
-  const rows = asArray(intraday.rows);
+  const rows = bundleRows(intraday, compare);
   const m = readiness.metrics || {};
   const cm = compare.comparison && compare.comparison.metrics || {};
   const noData = tickersBy(rows, (r) => r && r.data_quality === 'NO_INTRADAY_DATA');
@@ -140,6 +164,7 @@ function buildBundleReport(input) {
     avg_absolute_score_delta: scoreDeltas.avg_absolute_score_delta,
     max_absolute_score_delta: scoreDeltas.max_absolute_score_delta,
     top_score_movers: topScoreMovers(compare, 10),
+    rows,
     no_intraday_data_tickers: noData,
     incomplete_intraday_tickers: incomplete,
     intraday_unknown_tickers: unknown,
@@ -195,4 +220,4 @@ async function main() {
 
 if (require.main === module) main().catch((e) => { console.error(e.message || e); process.exitCode = 1; });
 
-module.exports = { parseArgs, childEnv, normalObserveEnv, adjustedObserveEnv, commandPlan, envForStep, uniqueTickers, buildBundleReport, markdownReport, prepare, writeBundle, finiteScoreDeltaRows, scoreDeltaSummary, BUNDLE_PREFIX };
+module.exports = { parseArgs, childEnv, normalObserveEnv, adjustedObserveEnv, commandPlan, envForStep, uniqueTickers, buildBundleReport, markdownReport, prepare, writeBundle, finiteScoreDeltaRows, scoreDeltaSummary, bundleRows, BUNDLE_PREFIX };

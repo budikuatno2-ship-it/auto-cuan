@@ -477,3 +477,23 @@ test('PASS when all dates aligned and clean', () => {
   
   assert.equal(result.gateStatus, 'PASS');
 });
+test('BLOCK when policy coverage is INCOMPLETE and markdown includes policy coverage summary', () => {
+  const bundle = mockBundle('2026-07-08', { rows: Array.from({ length: 16 }, (_, i) => ({ ticker: `T${i}` })) });
+  const aggregate = mockAggregate('2026-07-08');
+  const policy = mockPolicy('2026-07-08', { coverage_status: 'INCOMPLETE', policy_evaluated_count: 4, bundle_candidate_count: 16, total_tickers_evaluated: 4 });
+  const report = gate.buildGateReport(bundle, aggregate, policy, { nowMs: Date.UTC(2026, 6, 8) });
+  assert.equal(report.gate_status, 'BLOCK');
+  assert.ok(report.block_reasons.includes('policy coverage incomplete: evaluated 4/16 candidates'));
+  const md = gate.markdownReport(report);
+  assert.match(md, /evaluated_count: 4/);
+  assert.match(md, /bundle_candidate_count: 16/);
+  assert.match(md, /coverage_status: INCOMPLETE/);
+});
+
+test('PASS scenario requires coverage_status OK', () => {
+  const bundle = mockBundle('2026-07-08', { rows: Array.from({ length: 3 }, (_, i) => ({ ticker: `T${i}` })) });
+  const aggregate = mockAggregate('2026-07-08');
+  const policy = mockPolicy('2026-07-08', { coverage_status: 'OK', policy_evaluated_count: 3, bundle_candidate_count: 3, total_tickers_evaluated: 3 });
+  const result = gate.evaluateGate(bundle, aggregate, policy, { aligned: true, date: '2026-07-08', dates: [] });
+  assert.equal(result.gateStatus, 'PASS');
+});

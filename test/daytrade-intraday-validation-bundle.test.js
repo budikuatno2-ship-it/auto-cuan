@@ -98,3 +98,21 @@ test('graceful error when generated report dates mismatch', async () => {
   await fs.writeFile(path.join(dir, 'daytrade-intraday-readiness-2026-07-08.json'), JSON.stringify(readiness('2026-07-08', 'BLOCK')));
   await assert.rejects(() => bundle.prepare({ reportsDir: dir, logsFile: 'x', skipIntradayObserve: true, tickers: '' }, () => {}), /dates mismatch/);
 });
+
+test('bundle JSON rows include full candidate coverage including OK and blockers without truncation', () => {
+  const rows = Array.from({ length: 16 }, (_, i) => ({
+    ticker: `T${String(i).padStart(2, '0')}`,
+    data_quality: i < 12 ? 'OK' : i < 14 ? 'INCOMPLETE_INTRADAY' : 'NO_INTRADAY_DATA',
+    intraday_priority_label: i >= 14 ? 'INTRADAY_UNKNOWN' : 'INTRADAY_OK',
+    intraday_confirmation_label: i >= 14 ? 'INTRADAY_UNKNOWN' : 'INTRADAY_CONFIRM',
+    intraday_score_adjustment_preview: 0,
+    intraday_labels: ['x']
+  }));
+  const r = readiness('2026-07-08', 'BLOCK');
+  r.metrics.candidates = 16;
+  const report = bundle.buildBundleReport({ intraday: intraday('2026-07-08', rows), compare: compare('2026-07-08'), readiness: r, paths: {} });
+  assert.equal(report.rows.length, 16);
+  assert.equal(report.rows.filter((row) => row.data_quality === 'OK').length, 12);
+  assert.ok(report.rows.some((row) => row.data_quality === 'NO_INTRADAY_DATA'));
+  assert.ok(report.rows.some((row) => row.data_quality === 'INCOMPLETE_INTRADAY'));
+});
