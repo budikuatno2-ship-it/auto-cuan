@@ -64,6 +64,34 @@ test('repeated ticker aggregation', () => {
   assert.deepEqual(report.top5_entering_frequency[0], { ticker: 'AAA', count: 2 });
 });
 
+
+test('INTRADAY_UNKNOWN metrics sum priority and confirmation unknown counts', () => {
+  const report = aggregate([
+    sample('2026-07-06'),
+    sample('2026-07-07', {
+      priority_label_counts: { INTRADAY_UNKNOWN: 2 },
+      confirmation_label_counts: { INTRADAY_UNKNOWN: 2 }
+    }),
+    sample('2026-07-08')
+  ]);
+  assert.equal(report.metrics.intraday_unknown.max, 4);
+  assert.ok(report.block_reasons.includes('INTRADAY_UNKNOWN count > 0 in at least one sample'));
+});
+
+test('INTRADAY_UNKNOWN metrics fall back to unknown ticker count when label counts are zero', () => {
+  const report = aggregate([
+    sample('2026-07-06'),
+    sample('2026-07-07', {
+      priority_label_counts: {},
+      confirmation_label_counts: {},
+      intraday_unknown_tickers: ['BRAM', 'IDPR']
+    }),
+    sample('2026-07-08')
+  ]);
+  assert.equal(report.metrics.intraday_unknown.max, 2);
+  assert.ok(report.block_reasons.includes('INTRADAY_UNKNOWN count > 0 in at least one sample'));
+});
+
 test('PASS when 3 clean PASS samples exist', () => {
   const report = aggregate([sample('2026-07-06'), sample('2026-07-07'), sample('2026-07-08')]);
   assert.equal(report.aggregate_status, 'PASS');
