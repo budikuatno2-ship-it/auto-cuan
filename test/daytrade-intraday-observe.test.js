@@ -145,3 +145,64 @@ test('report summary includes label and confirmation counts in JSON and markdown
   assert.match(md, /Intraday Labels/);
   assert.match(md, /INTRADAY_CONFIRM/);
 });
+
+test('soft-score preview adds positive labels and caps at +10 deterministically', () => {
+  const row = lib.calculateIntradayScorePreview({
+    data_quality: 'OK',
+    intraday_labels: ['VWAP_SUPPORT', 'OR_BREAKOUT', 'VOLUME_ACCELERATING'],
+    intraday_confirmation_label: 'INTRADAY_CONFIRM'
+  });
+  assert.equal(row.intraday_score_adjustment_preview, 10);
+  assert.deepEqual(row.intraday_score_adjustment_reasons, ['VWAP_SUPPORT +3', 'OR_BREAKOUT +4', 'VOLUME_ACCELERATING +3', 'INTRADAY_CONFIRM +4', 'CAP 10']);
+  assert.equal(row.intraday_priority_label, 'INTRADAY_STRONG');
+});
+
+test('soft-score preview subtracts negative labels and caps at -10 deterministically', () => {
+  const row = lib.calculateIntradayScorePreview({
+    data_quality: 'OK',
+    intraday_labels: ['BELOW_VWAP_RISK', 'VOLUME_WEAK', 'CHASE_RISK'],
+    intraday_confirmation_label: 'INTRADAY_CAUTION'
+  });
+  assert.equal(row.intraday_score_adjustment_preview, -10);
+  assert.deepEqual(row.intraday_score_adjustment_reasons, ['BELOW_VWAP_RISK -4', 'VOLUME_WEAK -3', 'CHASE_RISK -5', 'CAP -10']);
+  assert.equal(row.intraday_priority_label, 'INTRADAY_AVOID');
+});
+
+test('soft-score preview priority labels include OK, WAIT, AVOID, and UNKNOWN', () => {
+  assert.equal(lib.calculateIntradayScorePreview({ data_quality: 'OK', intraday_labels: ['VWAP_SUPPORT'] }).intraday_priority_label, 'INTRADAY_OK');
+  assert.equal(lib.calculateIntradayScorePreview({ data_quality: 'OK', intraday_labels: [] }).intraday_priority_label, 'INTRADAY_WAIT');
+  assert.equal(lib.calculateIntradayScorePreview({ data_quality: 'OK', intraday_labels: ['VOLUME_WEAK'] }).intraday_priority_label, 'INTRADAY_AVOID');
+  assert.equal(lib.calculateIntradayScorePreview({ data_quality: 'NO_INTRADAY_DATA', intraday_labels: [] }).intraday_priority_label, 'INTRADAY_UNKNOWN');
+});
+
+test('observe rows include soft-score preview without mutating production score', () => {
+  const row = lib.observeCandidate(
+    { ticker: 'CONF', score: 88, entry: 103, avg_daily_volume: 1000 },
+    [
+      candle(0, { high: 101, low: 99, close: 100, volume: 400 }),
+      candle(1, { high: 102, low: 100, close: 101, volume: 400 }),
+      candle(2, { high: 106, low: 103, close: 105, volume: 500 })
+    ],
+    { hit: false, stale: false }
+  );
+  assert.equal(row.score, 88);
+  assert.equal(row.intraday_score_adjustment_preview, 10);
+  assert.equal(row.intraday_priority_label, 'INTRADAY_STRONG');
+});
+
+test('report summary includes adjustment buckets and priority label counts in JSON and markdown', () => {
+  const rows = [
+    Object.assign({ ticker: 'A', data_quality: 'OK', intraday_labels: [], intraday_score_adjustment_preview: 3, intraday_priority_label: 'INTRADAY_OK' }),
+    Object.assign({ ticker: 'B', data_quality: 'OK', intraday_labels: [], intraday_score_adjustment_preview: 0, intraday_priority_label: 'INTRADAY_WAIT' }),
+    Object.assign({ ticker: 'C', data_quality: 'OK', intraday_labels: [], intraday_score_adjustment_preview: -3, intraday_priority_label: 'INTRADAY_AVOID' })
+  ];
+  const report = lib.buildReport(rows, { cache_hit: 0, cache_miss: 0, stale_fallback: 0, fetch_success: 0, fetch_fail: 0 }, { nowMs: Date.UTC(2026, 6, 8), cacheDir: 'cache' });
+  assert.deepEqual(report.summary.intraday_score_adjustment_preview, { avg: 0, positive: 1, neutral: 1, negative: 1 });
+  assert.equal(report.summary.intraday_priority_label.INTRADAY_OK, 1);
+  assert.equal(report.summary.intraday_priority_label.INTRADAY_WAIT, 1);
+  assert.equal(report.summary.intraday_priority_label.INTRADAY_AVOID, 1);
+  const md = lib.markdownReport(report);
+  assert.match(md, /intraday_score_adjustment_preview/);
+  assert.match(md, /intraday_priority_label/);
+  assert.match(md, /\| Ticker \| Last \| VWAP \| Intraday Labels \| Confirmation \| Adj \| Priority \| Reasons \|/);
+});
