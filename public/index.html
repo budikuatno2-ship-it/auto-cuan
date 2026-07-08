@@ -5455,16 +5455,16 @@ function freshnessChipHtml(r) {
     return '<span title="' + escapeHtml(r.freshness_reason || txt) + '" style="font-size:9px;padding:2px 6px;border-radius:999px;border:1px solid ' + c + '55;color:' + c + ';background:' + c + '14;white-space:nowrap">' + escapeHtml(txt) + '</span>';
 }
 
-function renderDtCardGrid(results) {
+function renderDtCardGrid(results, data) {
     var container = document.getElementById('dtCardGrid');
     if (!container) return;
     _dtCardData = {};
     var filtered = applyScreenerUiFilters('daytrade', results || []);
     if (_dtScreenerFilter && _dtScreenerFilter !== 'all') {
-        if (_dtScreenerFilter === 'WATCH') { filtered = filtered.filter(function(r) { return r.status === 'WATCH_PULLBACK' || r.status === 'WAIT_PULLBACK'; }); }
+        if (_dtScreenerFilter === 'WATCH') { filtered = filtered.filter(function(r) { return isDayTradeWatchStatus(r.status); }); }
         else { filtered = filtered.filter(function(r) { return r.status === _dtScreenerFilter; }); }
     }
-    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(DAYTRADE_EMPTY_TEXT); return; }
+    if (!filtered || filtered.length === 0) { container.innerHTML = screenerEmptyCardHtml(getDayTradeEmptyMessage(data)); return; }
     var html = '';
     for (var i = 0; i < filtered.length; i++) {
         var r = filtered[i];
@@ -7264,8 +7264,19 @@ function screenerRefreshingBannerHtml() {
     return '<div style="grid-column:1/-1;display:flex;align-items:center;gap:6px;padding:4px 2px;margin-bottom:2px;font-size:10px;color:#6b7280"><span class="spinner-sm"></span>Memperbarui data...</div>';
 }
 
+function dashboardAwaitingLockedMessage(dataOrNote) {
+    if (dataOrNote && typeof dataOrNote === 'object') {
+        if (dataOrNote.awaiting_reason === 'auth_session_required') return 'Session perlu refresh/login ulang untuk membaca Top 5 locked.';
+        if (dataOrNote.awaiting_reason === 'locked_rows_filtered_unsafe') return 'Top 5 locked hari ini ada, tetapi tidak lolos filter keamanan publik.';
+        if (dataOrNote.awaiting_reason === 'fallback_rows_filtered_unsafe') return 'Snapshot Top 5 sebelumnya ada, tetapi tidak lolos filter keamanan publik.';
+        if (dataOrNote.awaiting_reason === 'no_locked_rows_found') return 'Belum ada Top 5 final yang terkunci. Fallback tanggal sebelumnya juga belum menemukan rows aman.';
+        return dataOrNote.update_note || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.';
+    }
+    return dataOrNote || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.';
+}
 function dashboardAwaitingLockedHtml(note) {
-    return '<div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">' + escapeHtml(note || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.') + '</p></div>';
+    var msg = dashboardAwaitingLockedMessage(note);
+    return '<div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">' + escapeHtml(msg) + '</p></div>';
 }
 async function fetchDashboardJson(url, options, timeoutMs) {
     var controller = new AbortController();
@@ -7683,7 +7694,7 @@ function renderDashboardTop5MonitorData(data) {
         || (!hasTop5Data && monitorRows.length === 0);
     if (isAwaiting) {
         var topEl = document.getElementById('dashboardTop5List');
-        if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data.update_note);
+        if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data);
         var monEl = document.getElementById('dashboardMonitorList');
         if (monEl) monEl.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
         var upd = document.getElementById('dashboardMonitorUpdated');
@@ -9340,6 +9351,10 @@ function exportNonKongloScreenerPDF() {
 var _dtScreenerCache = null;
 var _dtScreenerFilter = 'all';
 var _dtPollInterval = null;
+var DAYTRADE_LATEST_EMPTY_TEXT = 'Snapshot Day Trade belum tersedia / latest table kosong. Coba refresh saat scan selesai.';
+var DAYTRADE_WATCH_STATUSES = ['WATCH_PULLBACK', 'WAIT_PULLBACK', 'RECLAIM_CANDIDATE', 'MOMENTUM_CONTINUATION', 'SPECULATIVE'];
+function isDayTradeWatchStatus(status) { return DAYTRADE_WATCH_STATUSES.indexOf(status) >= 0; }
+function getDayTradeEmptyMessage(data) { return data && data.latest_rows_empty ? DAYTRADE_LATEST_EMPTY_TEXT : DAYTRADE_EMPTY_TEXT; }
 
 async function loadDayTradeScreener() {
     if (_dtScreenerInFlight) return _dtScreenerInFlight;
@@ -9353,7 +9368,7 @@ async function loadDayTradeScreener() {
     var dtCardEl = document.getElementById('dtCardGrid');
     if (dtCardEl) {
         if (_dtScreenerCache && _dtScreenerCache.results && _dtScreenerCache.results.length) {
-            renderDtCardGrid(_dtScreenerCache.results);
+            renderDtCardGrid(_dtScreenerCache.results, _dtScreenerCache);
             dtCardEl.insertAdjacentHTML('afterbegin', screenerRefreshingBannerHtml());
         } else {
             dtCardEl.innerHTML = screenerSkeletonCardHtml(4);
@@ -9372,7 +9387,7 @@ async function loadDayTradeScreener() {
             var dtCardElEmptyErr = document.getElementById('dtCardGrid');
             if (dtCardElEmptyErr) {
                 if (_dtScreenerCache && _dtScreenerCache.results && _dtScreenerCache.results.length) {
-                    renderDtCardGrid(_dtScreenerCache.results);
+                    renderDtCardGrid(_dtScreenerCache.results, _dtScreenerCache);
                 } else {
                     dtCardElEmptyErr.innerHTML = screenerEmptyCardHtml(DASHBOARD_ERROR_TEXT);
                 }
@@ -9387,7 +9402,7 @@ async function loadDayTradeScreener() {
         var badge = document.getElementById('dtMetaBadge');
         if (badge) {
             var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—';
-            badge.textContent = (meta.status || 'pending') + ' · ' + ts;
+            badge.textContent = ((meta.source === 'latest_completed_snapshot' || meta.status === 'latest_completed_snapshot') ? 'Latest Completed Snapshot' : (meta.freshness_label || meta.snapshot_label || meta.status || 'pending')) + ' · ' + ts;
             // V2 Freshness label: warn if Day Trade data is not from today
             if (meta.calculated_at && meta.status !== 'scanning') {
                 var dtCalcDate = new Date(meta.calculated_at);
@@ -9420,8 +9435,8 @@ async function loadDayTradeScreener() {
             stopDtPolling();
         }
 
-        renderDtTable(data.results || []);
-        renderDtCardGrid(data.results || []);
+        renderDtTable(data.results || [], data);
+        renderDtCardGrid(data.results || [], data);
     } catch (e) {
         tbody.innerHTML = screenerEmptyRowHtml(22, DASHBOARD_ERROR_TEXT, 'error', 'loadDayTradeScreener()');
         // Card grid: keep showing cached cards on a failed background refresh (just drop the
@@ -9490,8 +9505,8 @@ function startDtPolling() {
                 stopDtPolling();
                 _dtScreenerCache = data;
                 updateDtMetaUI(meta);
-                renderDtTable(data.results || []);
-                renderDtCardGrid(data.results || []);
+                renderDtTable(data.results || [], data);
+                renderDtCardGrid(data.results || [], data);
             }
         } catch (e) { /* silent retry next interval */ }
     }, 3000);
@@ -9505,7 +9520,7 @@ function updateDtMetaUI(meta) {
     var badge = document.getElementById('dtMetaBadge');
     if (badge) {
         var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—';
-        badge.textContent = (meta.status || 'pending') + ' · ' + ts;
+        badge.textContent = ((meta.source === 'latest_completed_snapshot' || meta.status === 'latest_completed_snapshot') ? 'Latest Completed Snapshot' : (meta.freshness_label || meta.snapshot_label || meta.status || 'pending')) + ' · ' + ts;
     }
     var statU = document.getElementById('dtStatUniverse');
     var statS = document.getElementById('dtStatScanned');
@@ -9517,7 +9532,7 @@ function updateDtMetaUI(meta) {
     if (statM) statM.textContent = meta.run_mode || '—';
 }
 
-function renderDtTable(results) {
+function renderDtTable(results, data) {
     var tbody = document.getElementById('dtScreenerTableBody');
     if (!tbody) return;
 
@@ -9526,7 +9541,7 @@ function renderDtTable(results) {
     if (_dtScreenerFilter && _dtScreenerFilter !== 'all') {
         if (_dtScreenerFilter === 'WATCH') {
             filtered = filtered.filter(function(r) {
-                return r.status === 'WAIT_PULLBACK' || r.status === 'RECLAIM_CANDIDATE' || r.status === 'MOMENTUM_CONTINUATION' || r.status === 'SPECULATIVE';
+                return isDayTradeWatchStatus(r.status);
             });
         } else {
             filtered = filtered.filter(function(r) { return r.status === _dtScreenerFilter; });
@@ -9534,7 +9549,7 @@ function renderDtTable(results) {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = screenerEmptyRowHtml(22, DAYTRADE_EMPTY_TEXT);
+        tbody.innerHTML = screenerEmptyRowHtml(22, getDayTradeEmptyMessage(data));
         return;
     }
 
@@ -9593,8 +9608,8 @@ function filterDtScreener(filter) {
         }
     });
     if (_dtScreenerCache && _dtScreenerCache.results) {
-        renderDtTable(_dtScreenerCache.results);
-        renderDtCardGrid(_dtScreenerCache.results);
+        renderDtTable(_dtScreenerCache.results, _dtScreenerCache);
+        renderDtCardGrid(_dtScreenerCache.results, _dtScreenerCache);
     }
 }
 
