@@ -206,3 +206,109 @@ test('report summary includes adjustment buckets and priority label counts in JS
   assert.match(md, /intraday_priority_label/);
   assert.match(md, /\| Ticker \| Last \| VWAP \| Intraday Labels \| Confirmation \| Adj \| Priority \| Reasons \|/);
 });
+
+test('Supabase candidate REST URL is built with select order and limit', () => {
+  const oldUrl = process.env.SUPABASE_URL;
+  process.env.SUPABASE_URL = 'https://example.supabase.co/';
+  try {
+    const url = new URL(lib.buildSupabaseCandidatesRestUrl(17));
+    assert.equal(url.origin + url.pathname, 'https://example.supabase.co/rest/v1/daytrade_screener_latest');
+    assert.equal(url.searchParams.get('select'), '*');
+    assert.equal(url.searchParams.get('order'), 'daytrade_score.desc');
+    assert.equal(url.searchParams.get('limit'), '17');
+  } finally {
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = oldUrl;
+  }
+});
+
+test('Supabase candidate loading uses read-only GET auth headers and normalizes rows', async () => {
+  const oldUrl = process.env.SUPABASE_URL;
+  const oldKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const oldFetch = global.fetch;
+  const calls = [];
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'secret-service-role-token';
+  global.fetch = async (url, opts) => {
+    calls.push({ url, opts });
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return [
+          { ticker: 'bbb.jk', daytrade_score: 71, last_price: '101', entry: '99' },
+          { ticker: 'AAA', daytrade_score: 88, close: 10, entry2: 9 }
+        ];
+      }
+    };
+  };
+  try {
+    const rows = await lib.loadCandidatesFromSupabase(2);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].opts.method, 'GET');
+    assert.equal(calls[0].opts.headers.apikey, 'secret-service-role-token');
+    assert.equal(calls[0].opts.headers.Authorization, 'Bearer secret-service-role-token');
+    assert.equal(calls[0].opts.headers.Accept, 'application/json');
+    assert.deepEqual(rows.map((r) => r.ticker), ['AAA', 'BBB']);
+    assert.equal(rows[0].score, 88);
+    assert.equal(rows[1].last_price, 101);
+  } finally {
+    global.fetch = oldFetch;
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = oldUrl;
+    if (oldKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = oldKey;
+  }
+});
+
+test('non-OK Supabase candidate REST response throws a redacted safe error', async () => {
+  const oldUrl = process.env.SUPABASE_URL;
+  const oldKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const oldFetch = global.fetch;
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'secret-service-role-token';
+  global.fetch = async () => ({
+    ok: false,
+    status: 401,
+    async text() { return 'bad Authorization: Bearer secret-service-role-token apikey=secret-service-role-token'; }
+  });
+  try {
+    await assert.rejects(
+      () => lib.loadCandidatesFromSupabase(1),
+      (err) => {
+        assert.match(err.message, /Supabase REST fetch failed with HTTP 401/);
+        assert.doesNotMatch(err.message, /secret-service-role-token/);
+        assert.match(err.message, /\[REDACTED/);
+        return true;
+      }
+    );
+  } finally {
+    global.fetch = oldFetch;
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = oldUrl;
+    if (oldKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = oldKey;
+  }
+});
+
+test('--candidates-file path bypasses Supabase candidate fetch', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'intraday-candidates-'));
+  const candidatesFile = path.join(dir, 'candidates.json');
+  await fs.writeFile(candidatesFile, JSON.stringify([{ ticker: 'FILE', daytrade_score: 99 }]));
+  const oldFetch = global.fetch;
+  global.fetch = async () => { throw new Error('Supabase fetch should not be called'); };
+  try {
+    const report = await lib.runObserve({
+      candidatesFile,
+      limit: 1,
+      cacheDir: dir,
+      noFetch: true,
+      nowMs: Date.UTC(2026, 6, 8)
+    });
+    assert.equal(report.source.candidates, 'file:' + candidatesFile);
+    assert.equal(report.rows.length, 1);
+    assert.equal(report.rows[0].ticker, 'FILE');
+  } finally {
+    global.fetch = oldFetch;
+  }
+});
