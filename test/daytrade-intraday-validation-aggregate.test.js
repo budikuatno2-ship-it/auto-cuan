@@ -6,10 +6,12 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const lib = require('../lib/daytrade-intraday-validation-aggregate');
+const cli = require('../tools/report-daytrade-intraday-validation-aggregate');
 
 function sample(date, overrides) {
   return Object.assign({
     date,
+    generated_at: `${date}T00:00:00.000Z`,
     validation_status: 'PASS',
     intraday_candidates_count: 4,
     provider_matched_count: 4,
@@ -237,4 +239,53 @@ test('aggregate with included session archive remains BLOCK when any sample has 
   ]);
   assert.equal(report.aggregate_status, 'BLOCK');
   assert.ok(report.block_reasons.includes('INCOMPLETE_INTRADAY count > 0 in at least one sample'));
+});
+
+
+test('aggregate blocks when 3 session archives are less than 15 minutes apart', () => {
+  const report = aggregate([
+    Object.assign(sample('2026-07-08', { generated_at: '2026-07-08T07:42:54.000Z' }), { _source_type: 'session_archive', session_id: 's1' }),
+    Object.assign(sample('2026-07-08', { generated_at: '2026-07-08T07:44:59.000Z' }), { _source_type: 'session_archive', session_id: 's2' }),
+    Object.assign(sample('2026-07-08', { generated_at: '2026-07-08T07:47:08.000Z' }), { _source_type: 'session_archive', session_id: 's3' })
+  ]);
+  assert.equal(report.aggregate_status, 'BLOCK');
+  assert.equal(report.session_spacing_status, 'BLOCK');
+  assert.equal(report.close_session_pair_count, 2);
+  assert.ok(report.min_session_gap_minutes < 15);
+  assert.ok(report.block_reasons.some((r) => r.includes('session samples too close')));
+});
+
+test('aggregate blocks when 3 session archives span less than 30 minutes', () => {
+  const report = aggregate([
+    Object.assign(sample('2026-07-08', { generated_at: '2026-07-08T07:00:00.000Z' }), { _source_type: 'session_archive', session_id: 's1' }),
+    Object.assign(sample('2026-07-08', { generated_at: '2026-07-08T07:15:00.000Z' }), { _source_type: 'session_archive', session_id: 's2' }),
+    Object.assign(sample('2026-07-08', { generated_at: '2026-07-08T07:29:00.000Z' }), { _source_type: 'session_archive', session_id: 's3' })
+  ]);
+  assert.equal(report.aggregate_status, 'BLOCK');
+  assert.equal(report.session_span_minutes, 29);
+  assert.ok(report.block_reasons.some((r) => r.includes('session span too short')));
+});
+
+test('aggregate passes spacing guard only when gaps/span satisfy thresholds', () => {
+  const report = aggregate([
+    Object.assign(sample('2026-07-08', { generated_at: '2026-07-08T07:00:00.000Z' }), { _source_type: 'session_archive', session_id: 's1' }),
+    Object.assign(sample('2026-07-08', { generated_at: '2026-07-08T07:16:00.000Z' }), { _source_type: 'session_archive', session_id: 's2' }),
+    Object.assign(sample('2026-07-08', { generated_at: '2026-07-08T07:31:00.000Z' }), { _source_type: 'session_archive', session_id: 's3' })
+  ]);
+  assert.equal(report.aggregate_status, 'PASS');
+  assert.equal(report.session_spacing_status, 'OK');
+  assert.equal(report.min_session_gap_minutes, 15);
+  assert.equal(report.session_span_minutes, 31);
+});
+
+test('aggregate spacing warns but does not crash when generated_at is missing', () => {
+  const report = aggregate([sample('2026-07-06'), sample('2026-07-07', { generated_at: '' }), sample('2026-07-08')]);
+  assert.equal(report.session_spacing_status, 'WARN');
+  assert.ok(report.warn_reasons.some((r) => r.includes('missing generated_at/session_started_at')));
+});
+
+test('aggregate CLI parses --min-session-gap-minutes and --min-session-span-minutes', () => {
+  const args = cli.parseArgs(['node', 'script', '--min-session-gap-minutes', '20', '--min-session-span-minutes', '45']);
+  assert.equal(args.minSessionGapMinutes, 20);
+  assert.equal(args.minSessionSpanMinutes, 45);
 });
