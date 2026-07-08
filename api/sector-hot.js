@@ -6232,16 +6232,18 @@ function sendDashboardScreenerGate(res, extra) {
 
 async function handleWebDailyPicks(req, res, supabase) {
   if (!isDashboardScreenerLoggedIn(req)) {
-    return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.', last_updated_at: null, monitor_last_updated_at: null });
+    return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Session perlu refresh/login ulang untuk membaca Top 5 locked.', last_updated_at: null, monitor_last_updated_at: null, awaiting_reason: 'auth_session_required', locked_rows_today_before_filter: null, locked_rows_today_after_filter: null, latest_locked_fallback_checked_count: 0, latest_locked_fallback_date: null, latest_locked_fallback_rows_before_filter: null, latest_locked_fallback_rows_after_filter: null });
   }
   try {
     var date = getJakartaDateString();
     var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
     if (q.error) throw new Error(q.error.message);
     var fallbackDatesChecked = [];
-    var fallbackRowsBeforeFilter = Array.isArray(q.data) ? q.data.length : 0;
+    var lockedRowsTodayBeforeFilter = Array.isArray(q.data) ? q.data.length : 0;
     var rows = filterSafeDashboardLockedTop5Rows(q.data || []).slice(0, 5);
-    var fallbackRowsAfterFilter = rows.length;
+    var lockedRowsTodayAfterFilter = rows.length;
+    var fallbackRowsBeforeFilter = null;
+    var fallbackRowsAfterFilter = null;
     var lockedDate = date;
     var usedPreviousLockedFallback = false;
     if (rows.length === 0) {
@@ -6250,7 +6252,7 @@ async function handleWebDailyPicks(req, res, supabase) {
         .select('date')
         .lt('date', date)
         .order('date', { ascending: false })
-        .limit(20);
+        .limit(200);
       if (latestDateQ.error) throw new Error(latestDateQ.error.message);
       var seenLockedDates = {};
       var latestDateRows = latestDateQ.data || [];
@@ -6258,6 +6260,7 @@ async function handleWebDailyPicks(req, res, supabase) {
         var latestLockedDate = latestDateRows[fd] && latestDateRows[fd].date;
         if (!latestLockedDate || seenLockedDates[latestLockedDate]) continue;
         seenLockedDates[latestLockedDate] = true;
+        if (fallbackDatesChecked.length >= 20) break;
         fallbackDatesChecked.push(latestLockedDate);
         var fallbackQ = await supabase.from('telegram_daily_picks').select('*').eq('date', latestLockedDate).order('id', { ascending: true }).limit(5);
         if (fallbackQ.error) throw new Error(fallbackQ.error.message);
@@ -6317,6 +6320,12 @@ async function handleWebDailyPicks(req, res, supabase) {
       adminPreviewExtra.fallback_rows_before_filter = fallbackRowsBeforeFilter;
       adminPreviewExtra.fallback_rows_after_filter = fallbackRowsAfterFilter;
     }
+    var awaitingReason = null;
+    if (!locked) {
+      if (lockedRowsTodayBeforeFilter > 0 && lockedRowsTodayAfterFilter === 0) awaitingReason = 'locked_rows_filtered_unsafe';
+      else if (fallbackRowsBeforeFilter > 0 && fallbackRowsAfterFilter === 0) awaitingReason = 'fallback_rows_filtered_unsafe';
+      else awaitingReason = 'no_locked_rows_found';
+    }
     var responsePayload = Object.assign({
       success: true,
       date: lockedDate,
@@ -6328,6 +6337,13 @@ async function handleWebDailyPicks(req, res, supabase) {
       telegram_scheduled_only: true,
       telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.',
       web_provisional: webProvisional,
+      awaiting_reason: awaitingReason,
+      locked_rows_today_before_filter: lockedRowsTodayBeforeFilter,
+      locked_rows_today_after_filter: lockedRowsTodayAfterFilter,
+      latest_locked_fallback_checked_count: fallbackDatesChecked.length,
+      latest_locked_fallback_date: usedPreviousLockedFallback ? lockedDate : (fallbackDatesChecked.length ? fallbackDatesChecked[0] : null),
+      latest_locked_fallback_rows_before_filter: fallbackRowsBeforeFilter,
+      latest_locked_fallback_rows_after_filter: fallbackRowsAfterFilter,
       update_note: locked ? (usedPreviousLockedFallback ? 'Top 5 Radar Final/Locked terbaru dari snapshot sebelumnya (' + lockedDate + '). Monitor update tiap 30 menit saat jam bursa.' : 'Top 5 Radar locked. Monitor update tiap 30 menit saat jam bursa.') : 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.',
       last_updated_at: lastAt,
       monitor_last_updated_at: lastAt,
@@ -8740,8 +8756,22 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       return res.status(200).json({
         success: true,
         meta: meta || { calculated_at: null, status: 'not_configured', message: 'Tabel daytrade_screener_latest belum ada.' },
-        results: []
+        results: [],
+        latest_rows_empty: true,
+        latest_rows_empty_reason: 'latest_table_read_error',
+        latest_meta_status: meta ? meta.status : null,
+        latest_meta_calculated_at: meta ? meta.calculated_at : null,
+        latest_meta_published_count: meta ? meta.published_count : null,
+        latest_meta_scanned_count: meta ? meta.scanned_count : null
       });
+    }
+
+    var latestRowsEmpty = !rows || rows.length === 0;
+    var latestRowsEmptyReason = null;
+    if (latestRowsEmpty) {
+      if (meta && meta.status === 'scanning') latestRowsEmptyReason = 'latest_table_empty_while_scan_running';
+      else if (meta && meta.status) latestRowsEmptyReason = 'latest_table_empty_meta_status_' + String(meta.status);
+      else latestRowsEmptyReason = 'latest_table_empty_no_meta';
     }
 
     // Sort by status priority (actionable first), then score desc
@@ -8775,7 +8805,13 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       results: sortedRows,
       updated_at: meta ? meta.calculated_at : null,
       calculated_at: meta ? meta.calculated_at : null,
-      status: meta ? meta.status : 'pending'
+      status: meta ? meta.status : 'pending',
+      latest_rows_empty: latestRowsEmpty,
+      latest_rows_empty_reason: latestRowsEmptyReason,
+      latest_meta_status: meta ? meta.status : null,
+      latest_meta_calculated_at: meta ? meta.calculated_at : null,
+      latest_meta_published_count: meta ? meta.published_count : null,
+      latest_meta_scanned_count: meta ? meta.scanned_count : null
     });
   } catch (e) {
     return res.status(200).json({ success: false, error: 'Gagal memuat Day Trade Screener: ' + e.message, results: [] });
