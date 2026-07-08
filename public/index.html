@@ -695,14 +695,14 @@
     <!-- Chat input area (for follow-up questions) -->
     <div id="analisisFollowUp" class="hidden border-t border-dark-600/30 p-3 flex-shrink-0">
         <div class="flex items-end gap-2">
-            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
-            <button onclick="document.getElementById('fileInput').click()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file">
+            <input id="analysisFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
+            <button onclick="openActiveFileInput()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file" aria-label="Upload gambar/file">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
             </button>
             <div class="flex-1 relative">
-                <textarea id="chatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+                <textarea id="analysisChatInput" rows="1" placeholder="Tanya lanjutan: entry di mana? hold atau cut?" class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
             </div>
-            <button id="sendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim">
+            <button id="analysisSendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
             </button>
         </div>
@@ -1186,16 +1186,16 @@
             <div id="limitWarning" class="hidden text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 mb-2 text-center"></div>
             <div class="flex items-end gap-2">
                 <!-- Upload button -->
-                <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
-                <button onclick="document.getElementById('fileInput').click()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file">
+                <input id="generalFileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.doc,.docx,.txt,.csv,.xls,.xlsx" multiple class="hidden" onchange="handleFileSelect(event)">
+                <button onclick="openActiveFileInput()" class="flex-shrink-0 p-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition" title="Upload gambar/file" aria-label="Upload gambar/file">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                 </button>
                 <!-- Text input -->
                 <div class="flex-1 relative">
-                    <textarea id="chatInput" rows="1" placeholder="Ketik BBCA, IHSG, atau tanya lanjutan..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
+                    <textarea id="generalChatInput" rows="1" placeholder="Ketik BBCA, IHSG, atau tanya lanjutan..." class="w-full px-4 py-2.5 rounded-2xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 focus:bg-dark-700 text-sm resize-none overflow-hidden transition-colors" style="max-height:120px" onkeydown="handleInputKeydown(event)" oninput="autoResizeInput()"></textarea>
                 </div>
                 <!-- Send button -->
-                <button id="sendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim">
+                <button id="generalSendBtn" onclick="handleSend()" class="flex-shrink-0 p-2.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 active:scale-95 transition-all" title="Kirim" aria-label="Kirim pesan">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>
             </div>
@@ -1284,10 +1284,11 @@
 </footer>
 
 <!-- Day Trade Detail Modal -->
-<div id="scrDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" onclick="if(event.target===this)closeScrDetail()">
+<div id="scrDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="scrDetailTitle" onclick="if(event.target===this)closeScrDetail()">
 <div style="background:#0f1319;border:1px solid #1c2333;border-radius:20px 20px 0 0;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;padding:20px 18px 24px;position:relative;-webkit-overflow-scrolling:touch" class="sm:rounded-2xl sm:!rounded-b-2xl">
 <div style="width:36px;height:4px;background:#2a3444;border-radius:2px;margin:0 auto 12px;display:block" class="sm:hidden"></div>
-<button onclick="closeScrDetail()" style="position:absolute;top:14px;right:14px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e2530;border:1px solid #2a3444;color:#9ca3af;font-size:18px;cursor:pointer;z-index:2">&times;</button>
+<button onclick="closeScrDetail()" aria-label="Tutup detail day trade" style="position:absolute;top:14px;right:14px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#1e2530;border:1px solid #2a3444;color:#9ca3af;font-size:18px;cursor:pointer;z-index:2">&times;</button>
+<h3 id="scrDetailTitle" class="sr-only">Detail Day Trade</h3>
 <div id="scrDetailContent"></div>
 </div>
 </div>
@@ -1296,15 +1297,15 @@
 
 
 <!-- LOGIN MODAL -->
-<div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="loginModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
         <div class="flex items-center justify-between">
-            <h3 class="text-base font-bold text-white">Masuk</h3>
-            <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none">&times;</button>
+            <h3 id="loginModalTitle" class="text-base font-bold text-white">Masuk</h3>
+            <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal masuk">&times;</button>
         </div>
         <div class="space-y-3">
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"></div>
+            <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"></div>
             <div id="loginError" class="hidden text-sm text-red-400 text-center py-1"></div>
             <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
             <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
@@ -1313,16 +1314,16 @@
 </div>
 
 <!-- REGISTER MODAL -->
-<div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="registerModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle">
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
         <div class="flex items-center justify-between">
-            <h3 class="text-base font-bold text-white">Daftar</h3>
-            <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none">&times;</button>
+            <h3 id="registerModalTitle" class="text-base font-bold text-white">Daftar</h3>
+            <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal daftar">&times;</button>
         </div>
         <div class="space-y-3">
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"></div>
+            <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
+            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"></div>
             <div id="registerError" class="hidden text-sm text-red-400 text-center py-1"></div>
             <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1"></div>
             <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
@@ -1333,12 +1334,12 @@
 <!-- ADMIN AI DETAIL MODAL removed: metadata-only mode, no full result display -->
 
 <!-- RESET PASSWORD MODAL -->
-<div id="resetPasswordModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="resetPasswordModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="resetPasswordModalTitle">
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <h3 class="text-base font-bold text-white text-center">Reset Password User</h3>
+        <h3 id="resetPasswordModalTitle" class="text-base font-bold text-white text-center">Reset Password User</h3>
         <p id="resetPasswordTarget" class="text-sm text-gray-400 text-center"></p>
-        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="resetPwInput" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="resetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
+        <div><label for="resetPwInput" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="resetPwInput" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="resetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="resetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
         <div id="resetPwError" class="hidden text-sm text-red-400 text-center"></div>
         <button onclick="doResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
         <button onclick="closeResetPasswordModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
@@ -1346,13 +1347,13 @@
 </div>
 
 <!-- SELF-SERVICE RESET PASSWORD MODAL -->
-<div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
-        <h3 class="text-base font-bold text-white text-center">Reset Password</h3>
+        <h3 id="selfResetModalTitle" class="text-base font-bold text-white text-center">Reset Password</h3>
         <p class="text-xs text-gray-500 text-center">Masukkan username dan password baru. Reset hanya bisa dilakukan dari perangkat yang terdaftar.</p>
-        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
-        <div><label class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()"></div>
+        <div><label for="selfResetUsername" class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="selfResetPw" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
+        <div><label for="selfResetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()"></div>
         <div id="selfResetError" class="hidden text-sm text-red-400 text-center"></div>
         <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center"></div>
         <button onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
@@ -2013,12 +2014,23 @@ function showDashboard() {
     // Update dashboard greeting
     updateDashGreeting();
     loadDashboardTop5Monitor(true, { loadAdminPreview: false });
-    setTimeout(function() { loadTop5History(true); }, 2000);
+    scheduleTop5HistoryLoad();
     startDashboardMonitorAutoRefresh();
 }
 
 // ===== PAGE NAVIGATION =====
 var currentPage = 'dashboard';
+var _dashboardHistoryDelayTimer = null;
+function scheduleTop5HistoryLoad() {
+    if (_dashboardHistoryDelayTimer) clearTimeout(_dashboardHistoryDelayTimer);
+    _dashboardHistoryDelayTimer = setTimeout(function() {
+        _dashboardHistoryDelayTimer = null;
+        if (currentPage === 'dashboard') loadTop5History(true);
+    }, 2000);
+}
+function clearTop5HistoryLoadTimer() {
+    if (_dashboardHistoryDelayTimer) { clearTimeout(_dashboardHistoryDelayTimer); _dashboardHistoryDelayTimer = null; }
+}
 function navigateTo(page) {
     currentPage = page;
     // Hide all pages
@@ -2035,8 +2047,8 @@ function navigateTo(page) {
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
     // Sektor Hot login gate
-    if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: false }); setTimeout(function() { loadTop5History(true); }, 2000); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
-    else { stopDashboardMonitorAutoRefresh(); }
+    if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: false }); scheduleTop5HistoryLoad(); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
+    else { clearTop5HistoryLoadTimer(); stopDashboardMonitorAutoRefresh(); }
     if (page === 'sektor') {
         var isLoggedIn = isLoggedInUser();
         var loginGate = document.getElementById('sektorLoginGate');
@@ -2304,7 +2316,7 @@ async function openNewsFromAnalisis(ticker) {
 // ===== ANALISIS FOLLOW-UP (on analisis page) =====
 async function handleAnalisisFollowUp(msg) {
     var resultArea = document.getElementById('analisisResult');
-    var input = document.getElementById('chatInput');
+    var input = getActiveChatInput();
     if (!resultArea || !input) return;
 
     if (!canChat()) {
@@ -2425,8 +2437,29 @@ function toggleModeMenu() { /* removed - no dropdown */ }
 function selectMode(mode) { currentMode = 'chat'; }
 
 // ===== INPUT HANDLING =====
-function autoResizeInput() {
-    var el = document.getElementById('chatInput');
+function getComposerElements(preferred) {
+    var composers = [
+        { name: 'analysis', wrapper: document.getElementById('analisisFollowUp'), input: document.getElementById('analysisChatInput'), file: document.getElementById('analysisFileInput'), send: document.getElementById('analysisSendBtn') },
+        { name: 'general', wrapper: document.getElementById('page-chat'), input: document.getElementById('generalChatInput'), file: document.getElementById('generalFileInput'), send: document.getElementById('generalSendBtn') }
+    ];
+    if (preferred) {
+        for (var i = 0; i < composers.length; i++) if (composers[i].name === preferred) return composers[i];
+    }
+    var active = document.activeElement;
+    for (var j = 0; j < composers.length; j++) {
+        if (composers[j].input && active === composers[j].input) return composers[j];
+    }
+    for (var k = 0; k < composers.length; k++) {
+        var c = composers[k];
+        if (c.wrapper && !c.wrapper.classList.contains('hidden') && c.input && c.input.offsetParent !== null) return c;
+    }
+    return composers[1].input ? composers[1] : composers[0];
+}
+function getActiveChatInput(preferred) { var c = getComposerElements(preferred); return c && c.input; }
+function openActiveFileInput() { var c = getComposerElements(currentPage === 'analisis' ? 'analysis' : 'general'); if (c && c.file) c.file.click(); }
+function autoResizeInput(inputEl) {
+    var el = inputEl || getActiveChatInput();
+    if (!el) return;
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
@@ -2507,7 +2540,7 @@ function renderOnboardingStep() {
     footerEl.innerHTML = footerHtml;
 }
 function fillGuideExample(text) {
-    var input = document.getElementById('chatInput');
+    var input = getActiveChatInput();
     if (input) {
         input.value = text;
         autoResizeInput();
@@ -2577,7 +2610,8 @@ function addFilesToSelection(files, source) {
     }
     renderFilePreview();
     if (selectedFiles.length > 0 && (currentMode === 'chat' || currentMode === 'analisis_maksimal' || currentMode === 'analisis_lengkap')) {
-        document.getElementById('chatInput').placeholder = 'Tulis keterangan (opsional)...';
+        var activeInput = getActiveChatInput();
+        if (activeInput) activeInput.placeholder = 'Tulis keterangan (opsional)...';
     }
 }
 
@@ -2627,7 +2661,8 @@ function removeFile(fileId) {
     }
     renderFilePreview();
     if (selectedFiles.length === 0) {
-        document.getElementById('chatInput').placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan...';
+        var activeInput = getActiveChatInput();
+        if (activeInput) activeInput.placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan...';
     }
 }
 
@@ -2636,9 +2671,10 @@ function clearAllFiles() {
         if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
     });
     selectedFiles = [];
-    document.getElementById('fileInput').value = '';
+    ['analysisFileInput', 'generalFileInput'].forEach(function(id) { var fileEl = document.getElementById(id); if (fileEl) fileEl.value = ''; });
     renderFilePreview();
-    document.getElementById('chatInput').placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan...';
+    var activeInput = getActiveChatInput();
+    if (activeInput) activeInput.placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan...';
 }
 
 function removeAttachment() {
@@ -2647,8 +2683,8 @@ function removeAttachment() {
 
 // Paste handler for images/files
 document.addEventListener('paste', function(e) {
-    var chatInput = document.getElementById('chatInput');
-    var isComposerActive = document.activeElement === chatInput || document.activeElement.closest('.chat-container');
+    var chatInput = getActiveChatInput();
+    var isComposerActive = !!chatInput && (document.activeElement === chatInput || (document.activeElement.closest && document.activeElement.closest('.chat-container')));
     if (!isComposerActive) return;
     var clipboardFiles = [];
     if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
@@ -3815,7 +3851,8 @@ function detectIntent(message) {
 var isSending = false;
 async function handleSend() {
     if (isSending) return;
-    var input = document.getElementById('chatInput');
+    var input = getActiveChatInput();
+    if (!input) return;
     var msg = input.value.trim();
     var hasFile = selectedFiles.length > 0;
     var limitWarning = document.getElementById('limitWarning');
@@ -4228,7 +4265,7 @@ function buildSuggestionChips() {
 }
 
 function handleSuggestionChip(msg) {
-    var input = document.getElementById('chatInput');
+    var input = getActiveChatInput();
     input.value = msg;
     handleSend();
 }
@@ -4262,9 +4299,9 @@ function buildEvidenceBadges() {
 }
 
 function escapeHtml(text) { var div = document.createElement('div'); div.appendChild(document.createTextNode(text)); return div.innerHTML; }
-function clearInput() { var el = document.getElementById('chatInput'); el.value = ''; el.style.height = 'auto'; }
-function disableSend() { isSending = true; var btn = document.getElementById('sendBtn'); btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); }
-function enableSend() { isSending = false; var btn = document.getElementById('sendBtn'); btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+function clearInput() { var el = getActiveChatInput(); if (!el) return; el.value = ''; el.style.height = 'auto'; }
+function disableSend() { isSending = true; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); } }); }
+function enableSend() { isSending = false; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); } }); }
 
 function addUserBubble(text) {
     var container = document.getElementById('chatMessages');
@@ -4448,7 +4485,7 @@ async function regenerateLastAnswer(btn) {
     var aiBubble = btn.closest('.flex.gap-3');
     if (aiBubble) aiBubble.remove();
     if (lastSentMessage) {
-        var input = document.getElementById('chatInput');
+        var input = getActiveChatInput();
         input.value = lastSentMessage;
         await handleSend();
     }
@@ -7576,12 +7613,12 @@ async function loadDashboardTop5Monitor(silent, opts) {
     var _monEl = document.getElementById('dashboardMonitorList');
     if (_topEl && !silent) _topEl.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Memuat Top 5...</div>';
     if (_monEl && !silent) _monEl.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Memuat monitor...</div>';
-    // Fallback timeout: if still loading after 5s, show safe empty states (not scary error)
+    // Neutral fallback before the 15s fetch timeout: keep loading state instead of showing empty results early.
     var _fallbackTimer = setTimeout(function() {
         var topCheck = document.getElementById('dashboardTop5List');
         var monCheck = document.getElementById('dashboardMonitorList');
-        if (topCheck && topCheck.innerHTML.indexOf('Memuat Top 5') >= 0) topCheck.innerHTML = dashboardAwaitingLockedHtml('Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.');
-        if (monCheck && monCheck.innerHTML.indexOf('Memuat monitor') >= 0) monCheck.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
+        if (topCheck && topCheck.innerHTML.indexOf('Memuat Top 5') >= 0) topCheck.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Masih memuat data Top 5...</div>';
+        if (monCheck && monCheck.innerHTML.indexOf('Memuat monitor') >= 0) monCheck.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Masih memuat data monitor...</div>';
     }, 5000);
     _dashboardTop5InFlight = (async function() {
     try {
