@@ -295,3 +295,16 @@ test('no Supabase writes/API/SQL/UI/cron/AI changes', async () => {
   assert.doesNotMatch(source, /supabase\.from\([^)]*\)\.insert|\.upsert\(|\.update\(/i);
   assert.doesNotMatch(toolSource, /supabase\.from\([^)]*\)\.insert|\.upsert\(|\.update\(/i);
 });
+test('markdown includes policy coverage summary and remains NOT_READY when gate blocks for incomplete coverage', () => {
+  const gate = mockGate('2026-07-08', {
+    gate_status: 'BLOCK',
+    block_reasons: ['policy coverage incomplete: evaluated 4/16 candidates'],
+    policy_summary: { ok_for_intraday_dry_run_count: 0, watch_next_session_count: 0, policy_evaluated_count: 4, bundle_candidate_count: 16, coverage_status: 'INCOMPLETE' }
+  });
+  const report = runbook.buildRunbookReport(gate, null, null, null, { nowMs: Date.UTC(2026, 6, 8) });
+  assert.equal(report.runbook_status, 'NOT_READY');
+  const md = runbook.markdownReport(report);
+  assert.match(md, /policy_evaluated_count: 4/);
+  assert.match(md, /bundle_candidate_count: 16/);
+  assert.match(md, /policy coverage_status: INCOMPLETE/);
+});

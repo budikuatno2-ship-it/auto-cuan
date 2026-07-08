@@ -249,3 +249,40 @@ test('ticker normalization strips .JK suffix', () => {
   }), null);
   assert.ok(report.tickers_by_decision.BLOCK_PRODUCTION_ENABLE.includes('BRAM'));
 });
+
+test('bundle rows coverage evaluates all 16 candidates and keeps OK caution eligible with watch metadata', () => {
+  const ok = Array.from({ length: 12 }, (_, i) => ({
+    ticker: `OK${String(i).padStart(2, '0')}`,
+    data_quality: 'OK',
+    intraday_priority_label: i === 0 ? 'INTRADAY_AVOID' : 'INTRADAY_OK',
+    intraday_confirmation_label: i === 1 ? 'INTRADAY_CAUTION' : 'INTRADAY_CONFIRM'
+  }));
+  const report = lib.buildPolicyReport(bundle({
+    intraday_candidates_count: 16,
+    rows: ok.concat([
+      { ticker: 'AMFG', data_quality: 'INCOMPLETE_INTRADAY', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
+      { ticker: 'BBSI', data_quality: 'INCOMPLETE_INTRADAY', intraday_priority_label: 'INTRADAY_OK', intraday_confirmation_label: 'INTRADAY_CONFIRM' },
+      { ticker: 'BRAM', data_quality: 'NO_INTRADAY_DATA', intraday_priority_label: 'INTRADAY_UNKNOWN', intraday_confirmation_label: 'INTRADAY_UNKNOWN' },
+      { ticker: 'IDPR', data_quality: 'NO_INTRADAY_DATA', intraday_priority_label: 'INTRADAY_UNKNOWN', intraday_confirmation_label: 'INTRADAY_UNKNOWN' }
+    ])
+  }), null);
+  assert.equal(report.total_tickers_evaluated, 16);
+  assert.equal(report.bundle_candidate_count, 16);
+  assert.equal(report.policy_evaluated_count, 16);
+  assert.equal(report.coverage_status, 'OK');
+  assert.equal(report.ok_for_intraday_dry_run_tickers.length, 12);
+  assert.deepEqual(report.tickers_by_decision.EXCLUDE_INTRADAY_ADJUSTMENT.sort(), ['AMFG', 'BBSI']);
+  assert.deepEqual(report.tickers_by_decision.BLOCK_PRODUCTION_ENABLE.sort(), ['BRAM', 'IDPR']);
+  assert.ok(report.tickers_by_fallback_action.DAILY_SCORE_ONLY.includes('AMFG'));
+  assert.ok(report.tickers_by_fallback_action.DAILY_SCORE_ONLY.includes('BRAM'));
+  assert.ok(report.ok_for_intraday_dry_run_tickers.includes('OK00'));
+  assert.ok(report.watch_next_session_tickers.includes('OK00'));
+  assert.ok(report.watch_next_session_tickers.includes('OK01'));
+});
+
+test('coverage is incomplete when candidate count exceeds evaluated rows', () => {
+  const report = lib.buildPolicyReport(bundle({ intraday_candidates_count: 16, rows: [{ ticker: 'AAA', data_quality: 'OK' }] }), null);
+  assert.equal(report.coverage_status, 'INCOMPLETE');
+  assert.equal(report.policy_status, 'BLOCK');
+  assert.match(lib.markdownReport(report), /coverage_status: INCOMPLETE/);
+});
