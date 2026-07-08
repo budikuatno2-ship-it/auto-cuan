@@ -71,3 +71,6 @@ data/reports/daytrade-intraday-observe-*.json
 # Generated Day Trade intraday score impact simulation reports
 data/reports/daytrade-intraday-score-impact-*.md
 data/reports/daytrade-intraday-score-impact-*.json
+# Generated Day Trade adjusted vs normal observe reports
+data/reports/daytrade-adjusted-vs-normal-*.md
+data/reports/daytrade-adjusted-vs-normal-*.json

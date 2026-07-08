@@ -115,3 +115,51 @@ For local/VPS observe testing only, you can attach the latest precomputed intrad
 ```bash
 DAYTRADE_INTRADAY_SCORE_ENABLED=1 node tools/daytrade-vps-worker-observe.js --mode observe --limit 30 --latest-intraday-adjustments
 ```
+
+### Manual adjusted-vs-normal observe comparison runbook
+
+This workflow is read-only and is intended for local/VPS observation only. It does not change cron, production scoring defaults, Supabase rows, Telegram delivery, API endpoints, SQL, or Dashboard/UI behavior.
+
+1. Pull the latest branch on the VPS runner:
+
+   ```bash
+   cd /home/ubuntu/auto-cuan-runner
+   git fetch origin
+   git checkout feat/daytrade-screener-v1
+   git pull --ff-only origin feat/daytrade-screener-v1
+   ```
+
+2. Generate the latest intraday observe adjustment report:
+
+   ```bash
+   node tools/report-daytrade-intraday-observe.js --limit 30 --json
+   ```
+
+3. Run a normal observe worker pass without intraday score adjustment:
+
+   ```bash
+   env -u DAYTRADE_INTRADAY_SCORE_ENABLED node tools/daytrade-vps-worker-observe.js --mode observe --limit 30
+   ```
+
+4. Run an adjusted observe worker pass with the default-off hook explicitly enabled and latest precomputed intraday adjustments attached:
+
+   ```bash
+   DAYTRADE_INTRADAY_SCORE_ENABLED=1 node tools/daytrade-vps-worker-observe.js --mode observe --limit 30 --latest-intraday-adjustments
+   ```
+
+5. Build the adjusted-vs-normal comparison report from the latest matching JSONL entries:
+
+   ```bash
+   node tools/report-daytrade-adjusted-vs-normal.js --logs-file logs/daytrade-vps-worker/runs.jsonl --latest-normal --latest-adjusted --json
+   ```
+
+   The report writes local generated artifacts named like:
+
+   - `data/reports/daytrade-adjusted-vs-normal-YYYY-MM-DD.md`
+   - `data/reports/daytrade-adjusted-vs-normal-YYYY-MM-DD.json` when `--json` is used
+
+   You can also compare explicit saved JSON files:
+
+   ```bash
+   node tools/report-daytrade-adjusted-vs-normal.js --normal-file /path/to/normal.json --adjusted-file /path/to/adjusted.json --json
+   ```
