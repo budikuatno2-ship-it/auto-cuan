@@ -75,3 +75,73 @@ test('report tooling remains observe-only with no production write behavior', as
   assert.equal(/\.delete\s*\(/.test(source), false);
   assert.equal(/sendTelegram|telegram/i.test(source), false);
 });
+
+test('deterministic labels include VWAP_SUPPORT, OR_BREAKOUT, VOLUME_ACCELERATING, and INTRADAY_CONFIRM', () => {
+  const row = lib.observeCandidate(
+    { ticker: 'CONF', entry: 103, avg_daily_volume: 1000 },
+    [
+      candle(0, { high: 101, low: 99, close: 100, volume: 400 }),
+      candle(1, { high: 102, low: 100, close: 101, volume: 400 }),
+      candle(2, { high: 106, low: 103, close: 105, volume: 500 })
+    ],
+    { hit: false, stale: false }
+  );
+  assert.equal(row.data_quality, 'OK');
+  assert.ok(row.intraday_labels.includes('VWAP_SUPPORT'));
+  assert.ok(row.intraday_labels.includes('OR_BREAKOUT'));
+  assert.ok(row.intraday_labels.includes('VOLUME_ACCELERATING'));
+  assert.equal(row.intraday_labels.includes('CHASE_RISK'), false);
+  assert.equal(row.intraday_confirmation_label, 'INTRADAY_CONFIRM');
+});
+
+test('deterministic labels include BELOW_VWAP_RISK, VOLUME_WEAK, CHASE_RISK, and INTRADAY_CAUTION', () => {
+  const row = lib.observeCandidate(
+    { ticker: 'CAUT', entry: 90, avg_daily_volume: 10000 },
+    [
+      candle(0, { high: 120, low: 118, close: 119, volume: 1000 }),
+      candle(1, { high: 121, low: 118, close: 120, volume: 1000 }),
+      candle(2, { high: 105, low: 100, close: 100, volume: 1000 })
+    ],
+    { hit: false, stale: false }
+  );
+  assert.ok(row.intraday_labels.includes('BELOW_VWAP_RISK'));
+  assert.ok(row.intraday_labels.includes('VOLUME_WEAK'));
+  assert.ok(row.intraday_labels.includes('CHASE_RISK'));
+  assert.equal(row.intraday_confirmation_label, 'INTRADAY_CAUTION');
+});
+
+test('deterministic labels mark OR_REJECTED after opening range high test closes below high', () => {
+  const row = lib.observeCandidate(
+    { ticker: 'REJ', entry: 100 },
+    [
+      candle(0, { high: 105, low: 99, close: 101 }),
+      candle(1, { high: 104, low: 100, close: 102 }),
+      candle(2, { high: 105, low: 100, close: 103 })
+    ],
+    { hit: false, stale: false }
+  );
+  assert.ok(row.intraday_labels.includes('OR_REJECTED'));
+});
+
+test('deterministic labels return INTRADAY_UNKNOWN when no data exists', () => {
+  const row = lib.observeCandidate({ ticker: 'NODATA' }, [], { hit: false, stale: false });
+  assert.deepEqual(row.intraday_labels, []);
+  assert.equal(row.intraday_confirmation_label, 'INTRADAY_UNKNOWN');
+  assert.ok(row.intraday_notes.some((note) => note.includes('No intraday candles')));
+});
+
+test('report summary includes label and confirmation counts in JSON and markdown', () => {
+  const rows = [
+    Object.assign(lib.observeCandidate({ ticker: 'A', entry: 103, avg_daily_volume: 1000 }, [candle(0, { high: 101, low: 99, close: 100, volume: 400 }), candle(1, { high: 102, low: 100, close: 101, volume: 400 }), candle(2, { high: 106, low: 103, close: 105, volume: 500 })], {})),
+    Object.assign(lib.observeCandidate({ ticker: 'B', entry: 90, avg_daily_volume: 10000 }, [candle(0, { high: 120, low: 118, close: 119, volume: 1000 }), candle(1, { high: 121, low: 118, close: 120, volume: 1000 }), candle(2, { high: 105, low: 100, close: 100, volume: 1000 })], {}))
+  ];
+  const report = lib.buildReport(rows, { cache_hit: 0, cache_miss: 0, stale_fallback: 0, fetch_success: 0, fetch_fail: 0 }, { nowMs: Date.UTC(2026, 6, 8), cacheDir: 'cache' });
+  assert.equal(report.summary.intraday_labels.VWAP_SUPPORT, 1);
+  assert.equal(report.summary.intraday_labels.BELOW_VWAP_RISK, 1);
+  assert.equal(report.summary.intraday_confirmation_label.INTRADAY_CONFIRM, 1);
+  assert.equal(report.summary.intraday_confirmation_label.INTRADAY_CAUTION, 1);
+  const md = lib.markdownReport(report);
+  assert.match(md, /intraday_labels/);
+  assert.match(md, /Intraday Labels/);
+  assert.match(md, /INTRADAY_CONFIRM/);
+});
