@@ -9116,11 +9116,22 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
 // ============================================================
 // DAY TRADE SCREENER — FINALIZE (trim to top 50, update status)
 // ============================================================
+
+function buildDtValueDistribution(rows, fieldName) {
+  var dist = {};
+  if (!rows || !rows.length) return dist;
+  rows.forEach(function(r) {
+    var key = r && r[fieldName] != null && r[fieldName] !== '' ? String(r[fieldName]) : 'UNKNOWN';
+    dist[key] = (dist[key] || 0) + 1;
+  });
+  return dist;
+}
+
 async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, counters) {
   // Read all rows currently in daytrade_screener_latest, keep only top 50 by score
   var { data: allRows, error: readErr } = await supabase
     .from('daytrade_screener_latest')
-    .select('ticker, daytrade_score, status')
+    .select('ticker, daytrade_score, status, action_label')
     .order('daytrade_score', { ascending: false });
 
   var totalPassed = allRows ? allRows.length : 0;
@@ -9135,10 +9146,19 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     savedCount = 50;
   }
 
+  var publishedRows = allRows ? allRows.slice(0, 50) : [];
+
   // Top count: READY + PRE_SPIKE
-  var topCount = allRows ? allRows.slice(0, 50).filter(function(r) {
+  var topCount = publishedRows.filter(function(r) {
     return r.status === 'READY_BREAKOUT' || r.status === 'PRE_SPIKE_WATCH';
-  }).length : 0;
+  }).length;
+
+  var statusDistribution = buildDtValueDistribution(publishedRows, 'status');
+  var actionLabelDistribution = buildDtValueDistribution(publishedRows, 'action_label');
+  var actionableDefinition = 'READY_BREAKOUT + PRE_SPIKE_WATCH';
+  var topZeroReason = topCount === 0
+    ? 'No READY_BREAKOUT or PRE_SPIKE_WATCH candidates. Most candidates are WAIT_PULLBACK / EARLY_RADAR / AVOID, so they are radar/watchlist only.'
+    : null;
 
   var totalScanned = counters ? (counters.scanned_count || universeCount) : universeCount;
   var totalFailed = counters ? (counters.failed_count || 0) : 0;
@@ -9194,6 +9214,18 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     saved_count: savedCount,
     published_count: savedCount,
     top_count: topCount,
+    actionable_count: topCount,
+    actionable_definition: actionableDefinition,
+    status_distribution: statusDistribution,
+    action_label_distribution: actionLabelDistribution,
+    top_zero_reason: topZeroReason,
+    diagnostics: {
+      actionable_count: topCount,
+      actionable_definition: actionableDefinition,
+      status_distribution: statusDistribution,
+      action_label_distribution: actionLabelDistribution,
+      top_zero_reason: topZeroReason
+    },
     message: 'Day Trade Screener run complete. Top ' + savedCount + ' published.',
     radar_requested: radarRequested,
     send_empty_notice_requested: sendEmptyNoticeRequested,
@@ -9201,7 +9233,7 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     telegram: telegramResult
   };
   if (telegramResult) {
-    if (telegramResult.diagnostics) responsePayload.diagnostics = telegramResult.diagnostics;
+    if (telegramResult.diagnostics) responsePayload.diagnostics = Object.assign({}, responsePayload.diagnostics, telegramResult.diagnostics);
     if (telegramResult.radar_count !== undefined) responsePayload.radar_count = telegramResult.radar_count;
     if (telegramResult.radar_candidates) responsePayload.radar_candidates = telegramResult.radar_candidates;
     if (telegramResult.radar_blocked_count !== undefined) responsePayload.radar_blocked_count = telegramResult.radar_blocked_count;
@@ -9211,7 +9243,7 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   if (telegramResult && ['no_signal_no_radar_candidates','no_final_signal_but_radar_disabled','radar_candidates_all_hard_reject','duplicate_radar_guard','telegram_send_failed'].indexOf(telegramResult.reason) >= 0) {
     responsePayload.skipped = true;
     responsePayload.reason = telegramResult.reason;
-    if (telegramResult.diagnostics) responsePayload.diagnostics = telegramResult.diagnostics;
+    if (telegramResult.diagnostics) responsePayload.diagnostics = Object.assign({}, responsePayload.diagnostics, telegramResult.diagnostics);
     if (telegramResult.admin_radar_summary) responsePayload.admin_radar_summary = telegramResult.admin_radar_summary;
     if (telegramResult.signal_safe_count !== undefined) responsePayload.signal_safe_count = telegramResult.signal_safe_count;
     if (telegramResult.radar_sent !== undefined) responsePayload.radar_sent = telegramResult.radar_sent;
