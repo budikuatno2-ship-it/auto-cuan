@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "build": "echo 'No build step needed'",
-    "start": "vercel dev"
+    "start": "vercel dev",
+    "aftermarket:top5-lock": "node tools/run-after-market-top5-lock.js"
   },
   "engines": {
     "node": "22.x"
