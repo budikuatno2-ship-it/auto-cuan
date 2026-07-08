@@ -81,6 +81,48 @@ test('WARN for high avg score delta', () => {
   assert.match(out.warn_reasons.join('\n'), /avg_score_delta/);
 });
 
+
+test('BLOCK when blocking cautions are stored at comparison.cautions', () => {
+  const out = report({
+    compare: compare({
+      comparison: {
+        metrics: {
+          provider_matched_count: 20,
+          provider_missing_count: 0,
+          avg_score_delta: 0,
+          max_score_delta: 0,
+          priority_label_counts: {},
+          confirmation_label_counts: {}
+        },
+        cautions: ['STALE_OR_INCOMPLETE_INTRADAY_DATA', 'MANY_BELOW_VWAP_RISK']
+      }
+    })
+  });
+  assert.equal(out.readiness_status, 'BLOCK');
+  assert.match(out.block_reasons.join('\n'), /STALE_OR_INCOMPLETE_INTRADAY_DATA/);
+  assert.match(out.block_reasons.join('\n'), /MANY_BELOW_VWAP_RISK/);
+});
+
+test('WARN when MANY_CHASE_RISK is stored at comparison.cautions without block reasons', () => {
+  const out = report({
+    compare: compare({
+      comparison: {
+        metrics: {
+          provider_matched_count: 20,
+          provider_missing_count: 0,
+          avg_score_delta: 0,
+          max_score_delta: 0,
+          priority_label_counts: {},
+          confirmation_label_counts: {}
+        },
+        cautions: ['MANY_CHASE_RISK']
+      }
+    })
+  });
+  assert.equal(out.readiness_status, 'WARN');
+  assert.match(out.warn_reasons.join('\n'), /MANY_CHASE_RISK/);
+});
+
 test('latest file discovery picks newest report by date', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'readiness-latest-'));
   await fs.writeFile(path.join(dir, 'daytrade-intraday-observe-2026-07-07.json'), JSON.stringify(intraday({ date: '2026-07-07' })));
