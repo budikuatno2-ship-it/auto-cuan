@@ -107,3 +107,11 @@ Remove the VPS cron entry or disable the process supervisor entry. Existing Verc
 ## Disk usage estimate
 
 A 90D daily OHLCV JSON cache file is usually a few KB per ticker. A 200 ticker cache should be roughly under 2 MB, plus JSONL logs depending on retention.
+
+### Optional precomputed intraday adjustment preview
+
+For local/VPS observe testing only, you can attach the latest precomputed intraday observe report before the default-off score hook runs:
+
+```bash
+DAYTRADE_INTRADAY_SCORE_ENABLED=1 node tools/daytrade-vps-worker-observe.js --mode observe --limit 30 --latest-intraday-adjustments
+```

@@ -13,11 +13,13 @@ const path = require('node:path');
 const engine = require('../lib/daytrade-screener-engine');
 const ohlcvCache = require('../lib/daytrade-ohlcv-cache');
 const scanComparison = require('../lib/daytrade-scan-comparison');
+const intradayAdjustmentProvider = require('../lib/daytrade-intraday-adjustment-provider');
 
 const VERSION = 'daytrade-vps-observe-v1.1';
 const DEFAULT_CACHE_DIR = path.join(process.cwd(), 'data', 'daytrade-ohlcv-cache');
 const DEFAULT_LOG_DIR = path.join(process.cwd(), 'logs', 'daytrade-vps-worker');
 const DEFAULT_LOCK_FILE = path.join(process.cwd(), 'tmp', 'daytrade-vps-worker-observe.lock');
+const DEFAULT_INTRADAY_REPORTS_DIR = path.join(process.cwd(), 'data', 'reports');
 const DEFAULT_CONCURRENCY = Number(process.env.DAYTRADE_WORKER_CONCURRENCY || 4);
 const DEFAULT_TIMEOUT_MS = Number(process.env.DAYTRADE_YAHOO_TIMEOUT_MS || 12000);
 const CACHE_MAX_AGE_MS = Number(process.env.DAYTRADE_CACHE_MAX_AGE_MS || 12 * 60 * 60 * 1000);
@@ -40,6 +42,9 @@ function parseArgs(argv) {
   }
   if (args.tickers) args.tickers = String(args.tickers).split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
   if (args.limit) args.limit = Number(args.limit);
+  if (args['intraday-adjustments-file'] && !args.intradayAdjustmentsFile) args.intradayAdjustmentsFile = args['intraday-adjustments-file'];
+  if (args['latest-intraday-adjustments'] !== undefined && !args.latestIntradayAdjustments) args.latestIntradayAdjustments = args['latest-intraday-adjustments'];
+  if (args['intraday-reports-dir'] && !args.intradayReportsDir) args.intradayReportsDir = args['intraday-reports-dir'];
   return args;
 }
 
@@ -203,6 +208,20 @@ async function getDefaultTickers(limit) {
   return list.slice(0, limit || list.length).map((ticker) => ({ ticker, board: 'UTAMA' }));
 }
 
+
+async function loadIntradayAdjustmentOptions(args) {
+  const fileArg = args.intradayAdjustmentsFile || args['intraday-adjustments-file'];
+  const latestArg = args.latestIntradayAdjustments || args['latest-intraday-adjustments'];
+  const reportsDir = args.intradayReportsDir || args['intraday-reports-dir'] || DEFAULT_INTRADAY_REPORTS_DIR;
+  let filePath = fileArg || null;
+  if (!filePath && String(latestArg || '').trim() === 'true') {
+    filePath = await intradayAdjustmentProvider.findLatestIntradayObserveReport(reportsDir);
+  }
+  if (!filePath) return null;
+  const map = intradayAdjustmentProvider.loadIntradayAdjustmentFile(filePath);
+  return { file: filePath, map: map, rows: map.size };
+}
+
 async function runWorker(cliArgs) {
   const started = Date.now();
   const args = Object.assign(parseArgs(process.argv), cliArgs || {});
@@ -234,6 +253,7 @@ async function runWorker(cliArgs) {
   });
 
   try {
+    const intradayAdjustmentOptions = await loadIntradayAdjustmentOptions(args);
     let tickers = args.tickers ? args.tickers.map((ticker) => ({ ticker, board: 'UTAMA' })) : await getDefaultTickers(args.limit);
     if (args.limit) tickers = tickers.slice(0, args.limit);
     const candleByTicker = {};
@@ -251,7 +271,9 @@ async function runWorker(cliArgs) {
       }
     });
     const scanTickers = tickers.filter((t) => candleByTicker[t.ticker]);
-    const result = await engine.runDayTradeBatch(scanTickers, engine.getRunMode(), { fetchCandles: (ticker) => Promise.resolve(candleByTicker[ticker]), noDelay: true, observeOnly: true });
+    const engineOptions = { fetchCandles: (ticker) => Promise.resolve(candleByTicker[ticker]), noDelay: true, observeOnly: true };
+    if (intradayAdjustmentOptions) engineOptions.intradayAdjustmentByTicker = intradayAdjustmentOptions.map;
+    const result = await engine.runDayTradeBatch(scanTickers, engine.getRunMode(), engineOptions);
     const candidates = result.results.filter((r) => ['A_PLUS_SETUP','TRADE_CANDIDATE','READY_BREAKOUT','MOMENTUM_CONTINUATION','PRE_SPIKE_WATCH','EARLY_RADAR'].includes(r.status));
 
     // Scan-to-scan comparison: compare each result vs previous baseline
@@ -267,6 +289,7 @@ async function runWorker(cliArgs) {
     }
 
     const providerStats = cacheProvider.getStats();
+    const intradayAdjustmentMatched = intradayAdjustmentOptions ? result.results.filter((r) => intradayAdjustmentOptions.map.has(String(r.ticker || '').toUpperCase())).length : 0;
     const log = {
       version: VERSION,
       mode: 'observe',
@@ -288,6 +311,13 @@ async function runWorker(cliArgs) {
       acceleration_top: accelerationSummary.slice(0, 5),
       baseline_count: scanComparison.getBaselineCount()
     };
+    if (intradayAdjustmentOptions) {
+      log.intraday_adjustment_provider_used = true;
+      log.intraday_adjustment_rows = intradayAdjustmentOptions.rows;
+      log.intraday_adjustment_matched = intradayAdjustmentMatched;
+      log.intraday_adjustment_missing = Math.max(0, scanTickers.length - intradayAdjustmentMatched);
+      log.intraday_score_enabled = String(process.env.DAYTRADE_INTRADAY_SCORE_ENABLED || '').trim() === '1';
+    }
     await fsp.mkdir(logDir, { recursive: true });
     await fsp.appendFile(path.join(logDir, 'runs.jsonl'), JSON.stringify(log) + '\n');
     console.log(JSON.stringify(log, null, 2));
@@ -438,4 +468,4 @@ async function runLoop(cliArgs) {
   return { iterations: iteration, stopped: true };
 }
 
-module.exports = { VERSION, DEFAULT_LOOP_INTERVAL_MS, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, runLoop, normalizeCandles, isLockStale, isPidRunning, ohlcvCache, detectMarketBreak };
+module.exports = { VERSION, DEFAULT_LOOP_INTERVAL_MS, DEFAULT_INTRADAY_REPORTS_DIR, parseArgs, assertObserveOnly, readCache, writeCache, mergeLatestCandle, acquireLock, withRetry, runWorker, runLoop, normalizeCandles, isLockStale, isPidRunning, ohlcvCache, detectMarketBreak, loadIntradayAdjustmentOptions };
