@@ -53,6 +53,28 @@ test('spacing-only blocker before market close => NEED_MORE_SPACED_SAMPLES', () 
   assert.deepEqual(report.non_spacing_blockers, []);
 });
 
+
+test('realistic spacing-only aggregate BLOCK with policy BLOCK still needs more spaced samples before close', () => {
+  const report = lib.buildCloseoutReport(inputs({
+    bundle: { validation_status: 'PASS', provider_missing_count: 0, data_quality_counts: { OK: 20 }, priority_label_counts: {}, confirmation_label_counts: {} },
+    aggregate: {
+      aggregate_status: 'BLOCK',
+      session_spacing_status: 'BLOCK',
+      block_reasons: ['session samples too close: 10 minutes', 'session span too short: 20 minutes'],
+      repeated_no_intraday_data_tickers: [],
+      repeated_incomplete_intraday_tickers: [],
+      repeated_intraday_unknown_tickers: []
+    },
+    policy: { policy_status: 'BLOCK', fallback_action_counts: {}, coverage_status: 'OK' },
+    gate: { gate_status: 'BLOCK', block_reasons: ['session_spacing_status BLOCK'] },
+    runbook: { status: 'NOT_READY' }
+  }), { timezone: 'Asia/Jakarta', marketCloseLocal: '16:00', nowMs: Date.parse('2026-07-08T07:00:00Z') });
+  assert.equal(report.closeout_status, 'NEED_MORE_SPACED_SAMPLES');
+  assert.equal(report.should_collect_more_archives_today, true);
+  assert.ok(report.spacing_blockers.length > 0);
+  assert.deepEqual(report.non_spacing_blockers, []);
+});
+
 test('non-spacing blocker before market close => NOT_READY_NON_SPACING_BLOCKERS and no more archives', () => {
   const report = lib.buildCloseoutReport(inputs({
     gate: { gate_status: 'BLOCK' }, runbook: { status: 'NOT_READY' },
