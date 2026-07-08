@@ -66,6 +66,23 @@ test('no data quality classification handles empty candles', () => {
   assert.equal(lib.observeCandidate({ ticker: 'BBCA' }, [], {}).data_quality, 'NO_INTRADAY_DATA');
 });
 
+
+test('zero intraday volume with candles is INCOMPLETE_INTRADAY with score reason', () => {
+  const row = lib.observeCandidate({ ticker: 'ZEROVOL', entry: 100 }, [candle(0, { volume: 0 }), candle(1, { volume: 0 })], { hit: false, stale: false });
+  assert.equal(row.data_quality, 'INCOMPLETE_INTRADAY');
+  assert.ok(row.intraday_score_adjustment_reasons.includes('INCOMPLETE_INTRADAY -2'));
+});
+
+test('missing VWAP with otherwise present candles is INCOMPLETE_INTRADAY', () => {
+  assert.equal(lib.classifyDataQuality([candle(0), candle(1)], {}, { intraday_vwap: null, intraday_volume_sum: 2000, opening_range: { high: 103, low: 99, candle_count: 2 }, last_price: 101 }), 'INCOMPLETE_INTRADAY');
+});
+
+test('OR low 0 or non-finite is INCOMPLETE_INTRADAY', () => {
+  const zeroLow = lib.observeCandidate({ ticker: 'ZEROLOW', entry: 100 }, [candle(0, { low: 0 }), candle(1, { low: 100 })], { hit: false, stale: false });
+  assert.equal(zeroLow.data_quality, 'INCOMPLETE_INTRADAY');
+  assert.equal(lib.classifyDataQuality([candle(0), candle(1)], {}, { intraday_vwap: 101, intraday_volume_sum: 2000, opening_range: { high: 103, low: Infinity, candle_count: 2 }, last_price: 101 }), 'INCOMPLETE_INTRADAY');
+});
+
 test('report tooling remains observe-only with no production write behavior', async () => {
   const libSource = await fs.readFile(path.join(process.cwd(), 'lib', 'daytrade-intraday-observe.js'), 'utf8');
   const toolSource = await fs.readFile(path.join(process.cwd(), 'tools', 'report-daytrade-intraday-observe.js'), 'utf8');

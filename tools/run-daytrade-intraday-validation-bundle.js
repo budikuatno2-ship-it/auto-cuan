@@ -102,6 +102,7 @@ function buildBundleReport(input) {
   const m = readiness.metrics || {};
   const cm = compare.comparison && compare.comparison.metrics || {};
   const noData = tickersBy(rows, (r) => r && r.data_quality === 'NO_INTRADAY_DATA');
+  const incomplete = tickersBy(rows, (r) => r && r.data_quality === 'INCOMPLETE_INTRADAY');
   const unknown = tickersBy(rows, (r) => r && (r.intraday_priority_label === 'INTRADAY_UNKNOWN' || r.intraday_confirmation_label === 'INTRADAY_UNKNOWN'));
   return {
     date: readiness.date || intraday.date || compare.date,
@@ -119,6 +120,7 @@ function buildBundleReport(input) {
     top5_leaving: cm.top5_leaving || [],
     top_score_movers: topScoreMovers(compare, 10),
     no_intraday_data_tickers: noData,
+    incomplete_intraday_tickers: incomplete,
     intraday_unknown_tickers: unknown,
     paths: input.paths,
     read_only_confirmation: 'Local/VPS observe-only bundle. Does not enable production scoring, set Vercel env, send Telegram, write Supabase, add API endpoints, add SQL/migrations, change Dashboard/UI, change cron, or use AI.'
@@ -126,7 +128,7 @@ function buildBundleReport(input) {
 }
 
 function markdownReport(report) {
-  return `# Day Trade Intraday Validation Bundle — ${report.date}\n\nGenerated at: ${report.generated_at}\n\n## Validation\n\n- validation_status: ${report.validation_status}\n- recommendation: ${report.recommendation}\n- intraday candidates count: ${report.intraday_candidates_count}\n- provider_matched_count: ${report.provider_matched_count ?? 'n/a'}\n- provider_missing_count: ${report.provider_missing_count ?? 'n/a'}\n- data_quality counts: ${fmtObj(report.data_quality_counts)}\n- priority_label_counts: ${fmtObj(report.priority_label_counts)}\n- confirmation_label_counts: ${fmtObj(report.confirmation_label_counts)}\n- cautions: ${fmtList(report.cautions)}\n\n## Movement\n\n- top5_entering: ${fmtList(report.top5_entering)}\n- top5_leaving: ${fmtList(report.top5_leaving)}\n- top score movers: ${fmtList(report.top_score_movers)}\n\n## Data Quality Tickers\n\n- no_intraday_data tickers: ${fmtList(report.no_intraday_data_tickers)}\n- intraday_unknown tickers: ${fmtList(report.intraday_unknown_tickers)}\n\n## Generated Reports\n\n- intraday observe: ${report.paths.intraday}\n- adjusted-vs-normal: ${report.paths.compare}\n- readiness: ${report.paths.readiness}\n- bundle markdown: ${report.paths.markdown}\n${report.paths.json ? `- bundle json: ${report.paths.json}\n` : ''}\n## Read-only Confirmation\n\n${report.read_only_confirmation}\n`;
+  return `# Day Trade Intraday Validation Bundle — ${report.date}\n\nGenerated at: ${report.generated_at}\n\n## Validation\n\n- validation_status: ${report.validation_status}\n- recommendation: ${report.recommendation}\n- intraday candidates count: ${report.intraday_candidates_count}\n- provider_matched_count: ${report.provider_matched_count ?? 'n/a'}\n- provider_missing_count: ${report.provider_missing_count ?? 'n/a'}\n- data_quality counts: ${fmtObj(report.data_quality_counts)}\n- priority_label_counts: ${fmtObj(report.priority_label_counts)}\n- confirmation_label_counts: ${fmtObj(report.confirmation_label_counts)}\n- cautions: ${fmtList(report.cautions)}\n\n## Movement\n\n- top5_entering: ${fmtList(report.top5_entering)}\n- top5_leaving: ${fmtList(report.top5_leaving)}\n- top score movers: ${fmtList(report.top_score_movers)}\n\n## Data Quality Tickers\n\n- no_intraday_data tickers: ${fmtList(report.no_intraday_data_tickers)}\n- incomplete_intraday tickers: ${fmtList(report.incomplete_intraday_tickers)}\n- intraday_unknown tickers: ${fmtList(report.intraday_unknown_tickers)}\n\n## Generated Reports\n\n- intraday observe: ${report.paths.intraday}\n- adjusted-vs-normal: ${report.paths.compare}\n- readiness: ${report.paths.readiness}\n- bundle markdown: ${report.paths.markdown}\n${report.paths.json ? `- bundle json: ${report.paths.json}\n` : ''}\n## Read-only Confirmation\n\n${report.read_only_confirmation}\n`;
 }
 
 async function writeBundle(report, opts) {

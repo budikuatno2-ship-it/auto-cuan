@@ -57,10 +57,13 @@ test('bundle report includes readiness BLOCK/PASS status', () => {
   }
 });
 
-test('no_intraday_data tickers extracted from intraday rows', () => {
-  const report = bundle.buildBundleReport({ intraday: intraday('2026-07-08', [{ ticker: 'AAA', data_quality: 'NO_INTRADAY_DATA' }, { ticker: 'BBB', intraday_priority_label: 'INTRADAY_UNKNOWN' }]), compare: compare('2026-07-08'), readiness: readiness('2026-07-08', 'BLOCK'), paths: {} });
+test('data quality tickers extracted from intraday rows', () => {
+  const report = bundle.buildBundleReport({ intraday: intraday('2026-07-08', [{ ticker: 'AAA', data_quality: 'NO_INTRADAY_DATA' }, { ticker: 'BBB', intraday_priority_label: 'INTRADAY_UNKNOWN' }, { ticker: 'CCC', data_quality: 'INCOMPLETE_INTRADAY' }]), compare: compare('2026-07-08'), readiness: readiness('2026-07-08', 'BLOCK'), paths: {} });
   assert.deepEqual(report.no_intraday_data_tickers, ['AAA']);
+  assert.deepEqual(report.incomplete_intraday_tickers, ['CCC']);
   assert.deepEqual(report.intraday_unknown_tickers, ['BBB']);
+  const md = bundle.markdownReport(Object.assign(report, { paths: { intraday: 'i', compare: 'c', readiness: 'r', markdown: 'm' } }));
+  assert.match(md, /incomplete_intraday tickers: CCC/);
 });
 
 test('graceful error when latest intraday report has zero candidates', async () => {
