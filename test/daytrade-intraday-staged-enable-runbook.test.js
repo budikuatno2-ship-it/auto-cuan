@@ -308,3 +308,22 @@ test('markdown includes policy coverage summary and remains NOT_READY when gate 
   assert.match(md, /bundle_candidate_count: 16/);
   assert.match(md, /policy coverage_status: INCOMPLETE/);
 });
+
+test('runbook includes session spacing summary when aggregate provides it', () => {
+  const gate = mockGate('2026-07-08', { gate_status: 'BLOCK' });
+  const aggregate = {
+    date: '2026-07-08',
+    session_spacing_status: 'BLOCK',
+    min_session_gap_minutes: 2.08,
+    session_span_minutes: 4.23,
+    close_session_pair_count: 2
+  };
+  const report = runbook.buildRunbookReport(gate, null, aggregate, null, { nowMs: Date.UTC(2026, 6, 8) });
+  assert.equal(report.runbook_status, 'NOT_READY');
+  assert.equal(report.gate_summary.session_spacing_status, 'BLOCK');
+  const md = runbook.markdownReport(report);
+  assert.ok(md.includes('- session_spacing_status: BLOCK'));
+  assert.ok(md.includes('- min_session_gap_minutes: 2.08'));
+  assert.ok(md.includes('- session_span_minutes: 4.23'));
+  assert.ok(md.includes('- close_session_pair_count: 2'));
+});

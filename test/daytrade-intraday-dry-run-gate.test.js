@@ -497,3 +497,24 @@ test('PASS scenario requires coverage_status OK', () => {
   const result = gate.evaluateGate(bundle, aggregate, policy, { aligned: true, date: '2026-07-08', dates: [] });
   assert.equal(result.gateStatus, 'PASS');
 });
+
+test('markdown renders recurring incomplete_intraday object as ticker count text', () => {
+  const report = gate.buildGateReport(
+    mockBundle('2026-07-08'),
+    mockAggregate('2026-07-08', { repeated_incomplete_intraday_tickers: [{ ticker: 'BBSI', count: 3 }] }),
+    mockPolicy('2026-07-08'),
+    { nowMs: Date.UTC(2026, 6, 8) }
+  );
+  const md = gate.markdownReport(report);
+  assert.ok(md.includes('- no_intraday_data: none'));
+  assert.ok(md.includes('- incomplete_intraday: BBSI (3)'));
+  assert.ok(md.includes('- intraday_unknown: none'));
+  assert.ok(!md.includes('[object Object]'));
+});
+
+test('formatSummaryItem supports string, ticker/key/value count objects', () => {
+  assert.equal(gate.formatSummaryItem('BBSI'), 'BBSI');
+  assert.equal(gate.formatSummaryItem({ ticker: 'BBSI', count: 3 }), 'BBSI (3)');
+  assert.equal(gate.formatSummaryItem({ key: 'BRAM', count: 2 }), 'BRAM (2)');
+  assert.equal(gate.formatSummaryItem({ value: 'IDPR', count: 4 }), 'IDPR (4)');
+});

@@ -4,7 +4,7 @@
 const lib = require('../lib/daytrade-intraday-validation-aggregate');
 
 function parseArgs(argv) {
-  const args = { reportsDir: lib.DEFAULT_REPORTS_DIR, days: 5, writeJson: false, includeSessionArchives: false };
+  const args = { reportsDir: lib.DEFAULT_REPORTS_DIR, days: 5, writeJson: false, includeSessionArchives: false, minSessionGapMinutes: 15, minSessionSpanMinutes: 30 };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--json') args.writeJson = true;
@@ -12,7 +12,7 @@ function parseArgs(argv) {
     else if (a.startsWith('--')) {
       const key = a.slice(2).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
       const val = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : 'true';
-      args[key] = key === 'days' || key === 'samples' ? Number(val) : val;
+      args[key] = key === 'days' || key === 'samples' || key === 'minSessionGapMinutes' || key === 'minSessionSpanMinutes' ? Number(val) : val;
     }
   }
   return args;
@@ -21,7 +21,7 @@ function parseArgs(argv) {
 async function main() {
   const args = parseArgs(process.argv);
   const samples = await lib.loadBundles(args);
-  const report = lib.buildAggregateReport(samples);
+  const report = lib.buildAggregateReport(samples, args);
   const paths = await lib.writeReports(report, args);
   console.log(lib.markdownReport(report));
   console.log('Aggregate report written:');
