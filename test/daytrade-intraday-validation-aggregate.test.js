@@ -168,12 +168,17 @@ test('loadBundles deduplicates a daily bundle and matching session archive by ge
   const base = sample('2026-07-08', { generated_at: '2026-07-08T08:00:00.000Z' });
   await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-08.json'), JSON.stringify(base));
   await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-session-2026-07-08T08-00-00Z.json'), JSON.stringify(Object.assign({}, base, {
+    session_id: 'session-0800',
     report_date: '2026-07-08',
     source_daily_bundle_path: path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-08.json')
   })));
   const samples = await lib.loadBundles({ reportsDir: dir, includeSessionArchives: true });
   assert.equal(samples.length, 1);
   assert.equal(samples[0]._source_type, 'session_archive');
+  assert.equal(samples[0]._sample_id, 'session-0800');
+  const report = aggregate(samples);
+  assert.equal(report.sample_count, 1);
+  assert.deepEqual(report.sample_ids, ['session-0800']);
 });
 
 test('loadBundles --samples keeps most recent samples after filtering', async () => {
@@ -188,6 +193,40 @@ test('loadBundles --samples keeps most recent samples after filtering', async ()
   const samples = await lib.loadBundles({ reportsDir: dir, includeSessionArchives: true, samples: 2 });
   assert.deepEqual(samples.map((s) => s.session_id), ['s-10', 's-09']);
   assert.equal(aggregate(samples).aggregate_status, 'BLOCK');
+});
+
+test('matching daily copy does not inflate sample_count across multiple archived sessions', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aggregate-count-'));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-08.json'), JSON.stringify(sample('2026-07-08', {
+    generated_at: '2026-07-08T09:00:00.000Z'
+  })));
+  for (const hour of ['09', '10']) {
+    await fs.writeFile(path.join(dir, `daytrade-intraday-validation-bundle-session-2026-07-08T${hour}-00-00Z.json`), JSON.stringify(sample('2026-07-08', {
+      session_id: `session-${hour}`,
+      generated_at: `2026-07-08T${hour}:00:00.000Z`,
+      report_date: '2026-07-08'
+    })));
+  }
+  const samples = await lib.loadBundles({ reportsDir: dir, includeSessionArchives: true });
+  assert.equal(samples.length, 2);
+  assert.deepEqual(samples.map((s) => s._sample_id), ['session-10', 'session-09']);
+  const report = aggregate(samples);
+  assert.equal(report.sample_count, 2);
+  assert.deepEqual(report.sample_source_counts, { daily: 0, session_archive: 2 });
+});
+
+test('different generated_at session archives remain separate even if session_id matches', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aggregate-different-generated-'));
+  for (const hour of ['09', '10']) {
+    await fs.writeFile(path.join(dir, `daytrade-intraday-validation-bundle-session-2026-07-08T${hour}-00-00Z.json`), JSON.stringify(sample('2026-07-08', {
+      session_id: 'same-display-id',
+      generated_at: `2026-07-08T${hour}:00:00.000Z`,
+      report_date: '2026-07-08'
+    })));
+  }
+  const samples = await lib.loadBundles({ reportsDir: dir, includeSessionArchives: true });
+  assert.equal(samples.length, 2);
+  assert.deepEqual(samples.map((s) => s.generated_at), ['2026-07-08T10:00:00.000Z', '2026-07-08T09:00:00.000Z']);
 });
 
 test('aggregate with included session archive remains BLOCK when any sample has incomplete intraday', () => {
