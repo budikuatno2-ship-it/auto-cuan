@@ -5607,8 +5607,13 @@ async function handleTelegramDailyPicks(req, res, supabase) {
         },
         readiness: readiness,
         dry_run: dryRun,
-        diagnostics: manualDiagnostics
+        diagnostics: manualDiagnostics,
+        write_suppressed_by_dry_run: false,
+        would_lock: false,
+        would_insert_count: 0,
+        would_lock_tickers: []
       };
+      var lockOnlyDryRunUpdateNote = 'Dry run only: no Supabase insert/update, Telegram send, sent markers, or locked rows were created.';
       if (forceLock) {
         return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, {
           success: false,
@@ -5618,25 +5623,55 @@ async function handleTelegramDailyPicks(req, res, supabase) {
         }));
       }
       if (existingRows.length > 0) {
+        var existingLockedTickers = existingRows.map(function(r) { return r.ticker; });
         return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, {
           success: true,
           skipped: true,
-          reason: 'already_locked',
+          reason: dryRun ? 'already_locked_dry_run' : 'already_locked',
           already_locked: true,
           lock_count: existingRows.length,
           selected_count: existingRows.length,
           candidate_count: existingRows.length,
           picked_count: existingRows.length,
-          selected_tickers: existingRows.map(function(r) { return r.ticker; }),
-          update_note: 'Locked rows already exist for this Jakarta date; lock_only=1 is idempotent and did not insert duplicates.'
+          selected_tickers: existingLockedTickers,
+          existing_locked_tickers: existingLockedTickers,
+          existing_locked_count: existingRows.length,
+          would_lock: false,
+          would_insert_count: 0,
+          would_lock_tickers: [],
+          write_suppressed_by_dry_run: dryRun,
+          update_note: dryRun ? lockOnlyDryRunUpdateNote : 'Locked rows already exist for this Jakarta date; lock_only=1 is idempotent and did not insert duplicates.'
         }));
       }
       if (!readiness.ready) {
-        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, { success: true, skipped: true, reason: 'screeners_not_ready', update_note: 'Screener readiness gate blocked Top 5 lock.' }));
+        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, { success: true, skipped: true, reason: 'screeners_not_ready', would_lock: false, would_insert_count: 0, would_lock_tickers: [], write_suppressed_by_dry_run: dryRun, update_note: dryRun ? lockOnlyDryRunUpdateNote : 'Screener readiness gate blocked Top 5 lock.' }));
       }
       if (!picks.length) {
         var emptyReason = rawPoolCount > 0 || rejectedByGate.length > 0 ? 'top5_gate_blocked' : 'no_candidates';
-        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, { success: true, skipped: true, reason: emptyReason, update_note: emptyReason === 'top5_gate_blocked' ? 'Candidates existed but none passed the Top 5 safety gates.' : 'No candidates available to lock.' }));
+        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, { success: true, skipped: true, reason: emptyReason, would_lock: false, would_insert_count: 0, would_lock_tickers: [], write_suppressed_by_dry_run: dryRun, update_note: dryRun ? lockOnlyDryRunUpdateNote : (emptyReason === 'top5_gate_blocked' ? 'Candidates existed but none passed the Top 5 safety gates.' : 'No candidates available to lock.') }));
+      }
+      var wouldLockTickers = picks.slice(0, 5).map(function(p) { return p.ticker; });
+      if (dryRun) {
+        return res.status(200).json(Object.assign({}, diagnosticsBase, lockOnlyBase, {
+          success: true,
+          skipped: true,
+          reason: 'lock_only_dry_run',
+          locked: false,
+          already_locked: false,
+          inserted_count: 0,
+          lock_count: 0,
+          skipped_send: true,
+          telegram_sent: false,
+          sent: false,
+          would_lock: true,
+          would_insert_count: wouldLockTickers.length,
+          would_lock_tickers: wouldLockTickers,
+          selected_count: picks.length,
+          candidate_count: rawPoolCount,
+          existing_locked_count: 0,
+          write_suppressed_by_dry_run: true,
+          update_note: lockOnlyDryRunUpdateNote
+        }));
       }
       var lockNowIso = new Date().toISOString();
       var lockRows = picks.slice(0, 5).map(function(r) {
