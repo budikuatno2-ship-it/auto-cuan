@@ -1119,6 +1119,15 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       message: metaMsg
     });
 
+    var swingKongloEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(results || []);
+    var swingKongloMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(results || [], 'Swing Konglo');
+    var swingKongloTelegram = savedCount > 0 ? await sendSwingKongloTelegramNotification(supabase, savedCount, results) : { skipped: true, reason: 'no_saved_rows' };
+    if (swingKongloTelegram && typeof swingKongloTelegram === 'object') {
+      swingKongloTelegram.entry_range_normalization = swingKongloEntryRangeDiagnostics;
+      swingKongloTelegram.entry_range_normalization_diagnostics = swingKongloEntryRangeDiagnostics;
+      swingKongloTelegram.min_tp1_upside_diagnostics = swingKongloMinTp1Diagnostics;
+    }
+
     return res.status(200).json({
       success: savedCount > 0,
       message: savedCount > 0 ? 'Screener refresh completed.' : 'Refresh failed to save rows.',
@@ -1156,7 +1165,11 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       ai_response_debug: aiResponseDebug || undefined,
       ai_parse_debug: aiParseDebug || undefined,
       save_error: saveError || null,
-      telegram: savedCount > 0 ? await sendSwingKongloTelegramNotification(supabase, savedCount, results) : { skipped: true, reason: 'no_saved_rows' }
+      entry_range_normalization: swingKongloEntryRangeDiagnostics,
+      entry_range_normalization_diagnostics: swingKongloEntryRangeDiagnostics,
+      min_tp1_upside_diagnostics: swingKongloMinTp1Diagnostics,
+      top_rejection_reasons: swingKongloTelegram && swingKongloTelegram.top_rejection_reasons ? swingKongloTelegram.top_rejection_reasons : undefined,
+      telegram: swingKongloTelegram
     });
 
   } catch (e) {
@@ -7781,6 +7794,34 @@ function buildMinTp1UpsideDiagnostics(rows, category) {
   return out;
 }
 
+
+function formatSwingNkNoMinTpHeartbeatMessage(diagnostics) {
+  diagnostics = diagnostics || {};
+  var below = diagnostics.sample_below_min_tp1 || [];
+  var missing = diagnostics.sample_missing_tp1_or_entry || [];
+  var sampleTickers = below.concat(missing).map(function(x) { return x && x.ticker ? x.ticker : '-'; }).filter(Boolean).slice(0, 8);
+  return '📭 Swing Non-Konglo empty TP heartbeat\n' +
+    'Belum ada kandidat yang lolos filter potensi TP minimal.\n' +
+    'Threshold: ' + (diagnostics.min_tp1_upside_threshold != null ? diagnostics.min_tp1_upside_threshold : '-') + '%\n' +
+    'Total pre-TP candidates: ' + (diagnostics.total_pre_tp_candidates || 0) + '\n' +
+    'Valid TP1 upside: ' + (diagnostics.valid_tp1_upside_count || 0) + '\n' +
+    'Below min TP1 upside: ' + (diagnostics.below_min_tp1_upside_count || 0) + '\n' +
+    'Missing entry: ' + (diagnostics.missing_entry_count || 0) + '\n' +
+    'Missing TP1: ' + (diagnostics.missing_tp1_count || 0) + '\n' +
+    'Sample tickers: ' + (sampleTickers.length > 0 ? sampleTickers.join(', ') : '-');
+}
+
+async function sendSwingNkNoMinTpHeartbeat(diagnostics) {
+  var message = formatSwingNkNoMinTpHeartbeatMessage(diagnostics);
+  var sendRes = await telegramNotifier.sendTelegramMessage(message);
+  return {
+    sent: !!(sendRes && sendRes.sent),
+    skipped: !(sendRes && sendRes.sent),
+    reason: (sendRes && sendRes.sent) ? 'swing_nonkonglo_empty_tp_heartbeat_sent' : 'swing_nonkonglo_empty_tp_heartbeat_failed',
+    message: message
+  };
+}
+
 // --- FINALIZE: publish Top 30 ---
 async function handleNkScreenerFinalize(req, res, supabase) {
   const runDate = getWibDateString();
@@ -7837,6 +7878,11 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       return res.status(200).json({ success: false, error: 'Failed to read staging diagnostics.', staging_error: diagErr.message });
     }
     var emptyDiagnostics = buildNkNoCandidateDiagnostics(diagnosticRows || [], nkTotalScanned);
+    var emptyEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(diagnosticRows || []);
+    var emptyMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(diagnosticRows || [], 'Swing Non-Konglo');
+    var emptyTelegram = await sendSwingNkNoMinTpHeartbeat(emptyMinTp1Diagnostics);
+    emptyTelegram.entry_range_normalization_diagnostics = emptyEntryRangeDiagnostics;
+    emptyTelegram.min_tp1_upside_diagnostics = emptyMinTp1Diagnostics;
     await updateNkMeta(supabase, {
       status: 'completed_no_candidates',
       published_count: 0,
@@ -7852,7 +7898,11 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       staging_count: totalStagingCount || 0,
       run_date: runDate,
       diagnostics: emptyDiagnostics,
-      telegram: { sent: false, skipped: true, reason: 'no_min_tp1_upside_candidates', message: 'Belum ada kandidat yang lolos filter potensi TP minimal.' }
+      entry_range_normalization: emptyEntryRangeDiagnostics,
+      entry_range_normalization_diagnostics: emptyEntryRangeDiagnostics,
+      min_tp1_upside_diagnostics: emptyMinTp1Diagnostics,
+      top_rejection_reasons: emptyDiagnostics.top_rejection_reasons,
+      telegram: emptyTelegram
     });
   }
 
@@ -7941,8 +7991,14 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     calculated_at: new Date().toISOString()
   });
 
-  var nkTelegram = publishedCount > 0 ? await sendSwingNkTelegramNotification(supabase, publishedCount) : { skipped: true, reason: 'no_published_rows' };
   var nkDiagnostics = buildNkNoCandidateDiagnostics(topCandidates || [], nkTotalScanned);
+  var nkEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(topCandidates || []);
+  var nkMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(topCandidates || [], 'Swing Non-Konglo');
+  var nkTelegram = publishedCount > 0 ? await sendSwingNkTelegramNotification(supabase, publishedCount) : await sendSwingNkNoMinTpHeartbeat(nkMinTp1Diagnostics);
+  if (nkTelegram && typeof nkTelegram === 'object') {
+    nkTelegram.entry_range_normalization_diagnostics = nkEntryRangeDiagnostics;
+    nkTelegram.min_tp1_upside_diagnostics = nkMinTp1Diagnostics;
+  }
   return res.status(200).json({
     success: true,
     step: 'finalize',
@@ -7954,6 +8010,10 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     top_ticker: publishedCount > 0 ? topCandidates[0].ticker : null,
     top_score: publishedCount > 0 ? topCandidates[0].score : null,
     diagnostics: nkDiagnostics,
+    entry_range_normalization: nkEntryRangeDiagnostics,
+    entry_range_normalization_diagnostics: nkEntryRangeDiagnostics,
+    min_tp1_upside_diagnostics: nkMinTp1Diagnostics,
+    top_rejection_reasons: nkDiagnostics.top_rejection_reasons,
     telegram: nkTelegram
   });
 }
@@ -11005,7 +11065,9 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     if (finalList.length === 0) {
       var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Konglo', { scanned_count: rows.length, generated_count: rows.length, verified_count: verifiedRows.length, passed_count: strictCandidates.length || digestCandidates.length, reason: 'selected_count_zero_after_final_gate' });
       var hbRes = await telegramNotifier.sendTelegramMessage(hb);
-      return { sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0 };
+      var hbEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(rows);
+      var hbMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(rows, 'Swing Konglo');
+      return { sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics };
     }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', '');
@@ -11197,6 +11259,10 @@ module.exports.__test = {
   normalizeCandidateUpside: normalizeCandidateUpside,
   normalizeCombinedCandidate: normalizeCombinedCandidate,
   buildMinTp1UpsideDiagnostics: buildMinTp1UpsideDiagnostics,
+  buildNkNoCandidateDiagnostics: buildNkNoCandidateDiagnostics,
+  formatSwingNkNoMinTpHeartbeatMessage: formatSwingNkNoMinTpHeartbeatMessage,
+  sendSwingNkNoMinTpHeartbeat: sendSwingNkNoMinTpHeartbeat,
+  handleNkScreenerFinalize: handleNkScreenerFinalize,
   candidatePassesMinUpside: candidatePassesMinUpside,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
