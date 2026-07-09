@@ -380,3 +380,54 @@ test('entry range normalization preserves valid tp1_upside_pct and mirrors tp1_u
   sectorHot.__test.normalizeEntryRangeAliases(mirrored);
   assert.equal(mirrored.tp1_upside_pct, 6.06);
 });
+
+test('Day Trade public read normalization computes tp1_upside_pct before response', async () => {
+  const rows = [
+    {
+      ticker: 'LEAD', status: 'EARLY_RADAR', daytrade_score: 70,
+      entry_low: 97, entry_high: 99, entry1: null, entry2: null, entry_mid: null,
+      tp1: 105, tp1n: null, tp1_upside: null, tp1_upside_pct: null,
+      stop_loss: 95, last_price: 98, risk_reward: 2
+    },
+    {
+      ticker: 'BBRM', status: 'WAIT_PULLBACK', daytrade_score: 69,
+      entry_low: 113, entry_high: 116, entry1: null, entry2: null, entry_mid: null,
+      tp1: 142, tp1n: null, tp1_upside: null, tp1_upside_pct: null,
+      stop_loss: 110, last_price: 115, risk_reward: 2
+    }
+  ];
+  const meta = { calculated_at: '2026-07-09T00:00:00Z', status: 'completed', published_count: 2, scanned_count: 2 };
+  const supabase = {
+    from(table) {
+      if (table === 'daytrade_screener_meta') {
+        return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: meta, error: null }; } };
+      }
+      if (table === 'daytrade_screener_latest') {
+        return { select() { return this; }, order() { return this; }, async limit() { return { data: rows, error: null }; } };
+      }
+      throw new Error('unexpected table ' + table);
+    }
+  };
+  let statusCode = null;
+  let body = null;
+  const res = {
+    status(code) { statusCode = code; return this; },
+    json(payload) { body = payload; return payload; }
+  };
+
+  await sectorHot.__test.handleDayTradeScreenerRead({ query: { action: 'daytrade-screener' } }, res, supabase);
+
+  assert.equal(statusCode, 200);
+  assert.equal(body.success, true);
+  assert.equal(body.computed_tp1_upside_pct_count, 2);
+  assert.equal(body.tp1_upside_pct_null_after_normalization_count, 0);
+  assert.equal(body.results[0].entry_low, 97);
+  assert.equal(body.results[0].entry_high, 99);
+  assert.equal(body.results[0].entry1, 99);
+  assert.equal(body.results[0].entry_mid, 98);
+  assert.equal(body.results[0].tp1, 105);
+  assert.equal(body.results[0].tp1_upside_pct, 6.1);
+  assert.equal(body.results[1].entry_high, 116);
+  assert.equal(body.results[1].tp1_upside_pct, 22.4);
+  assert.equal(body.results[1].status, 'WAIT_PULLBACK');
+});

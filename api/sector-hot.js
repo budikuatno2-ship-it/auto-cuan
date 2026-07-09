@@ -3440,6 +3440,27 @@ function normalizeEntryRangeAliases(candidate) {
   return r;
 }
 
+function normalizeDayTradePublicReadRow(row) {
+  var r = Object.assign({}, row || {});
+  r.category = r.category || 'Day Trade';
+  r.ticker = normalizeForeignTicker(r.ticker || '');
+  normalizeEntryRangeAliases(r);
+
+  var entryRef = getEntry1(r);
+  if (entryRef != null && entryRef > 0) r.entry1 = entryRef;
+  var entry2 = getEntry2(r);
+  if (entry2 != null && entry2 > 0) r.entry2 = entry2;
+
+  var tp1 = toNum(r.tp1n || r.tp1);
+  if (tp1 != null && tp1 > 0) {
+    if (r.tp1 == null) r.tp1 = tp1;
+    if (r.tp1n == null) r.tp1n = tp1;
+    normalizeTp1UpsidePct(r, entryRef, tp1);
+  }
+
+  return r;
+}
+
 function buildEntryRangeNormalizationDiagnostics(candidates) {
   var out = {
     entry_range_present_count: 0,
@@ -9143,9 +9164,11 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       else latestRowsEmptyReason = 'latest_table_empty_no_meta';
     }
 
+    var entryRangeNormalizationDiagnostics = buildEntryRangeNormalizationDiagnostics(rows || []);
+
     // Sort by status priority (actionable first), then score desc
     var statusPriority = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8, 'AVOID': 9 };
-    var sortedRows = (rows || []).sort(function(a, b) {
+    var sortedRows = (rows || []).map(normalizeDayTradePublicReadRow).sort(function(a, b) {
       var pa = statusPriority[a.status] || 9;
       var pb = statusPriority[b.status] || 9;
       if (pa !== pb) return pa - pb;
@@ -9181,7 +9204,11 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       latest_meta_status: meta ? meta.status : null,
       latest_meta_calculated_at: meta ? meta.calculated_at : null,
       latest_meta_published_count: meta ? meta.published_count : null,
-      latest_meta_scanned_count: meta ? meta.scanned_count : null
+      latest_meta_scanned_count: meta ? meta.scanned_count : null,
+      entry_range_normalization_diagnostics: entryRangeNormalizationDiagnostics,
+      computed_tp1_upside_pct_count: entryRangeNormalizationDiagnostics.computed_tp1_upside_pct_count,
+      tp1_upside_pct_null_after_normalization_count: entryRangeNormalizationDiagnostics.tp1_upside_pct_null_after_normalization_count,
+      sample_computed_tp1_upside_pct: entryRangeNormalizationDiagnostics.sample_computed_tp1_upside_pct
     });
   } catch (e) {
     return res.status(200).json({ success: false, error: 'Gagal memuat Day Trade Screener: ' + e.message, results: [] });
@@ -11074,7 +11101,9 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 module.exports.__test = {
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
   normalizeEntryRangeAliases: normalizeEntryRangeAliases,
+  normalizeDayTradePublicReadRow: normalizeDayTradePublicReadRow,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
+  handleDayTradeScreenerRead: handleDayTradeScreenerRead,
   diagnosePublicSafetyGateRejection: diagnosePublicSafetyGateRejection,
   candidatePassesTop5WatchlistGate: candidatePassesTop5WatchlistGate,
   candidatePassesPotentialRadarGate: candidatePassesPotentialRadarGate,
