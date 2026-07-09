@@ -68,6 +68,33 @@ test('WARN when only INCOMPLETE_INTRADAY ticker exists', () => {
   assert.ok(report.tickers_by_fallback_action.DAILY_SCORE_ONLY.includes('BBSI'));
 });
 
+
+test('STALE_CACHE row is DAILY_SCORE_ONLY and policy carries intraday diagnostics', () => {
+  const report = lib.buildPolicyReport(bundle({
+    rows: [{
+      ticker: 'BBSI',
+      data_quality: 'STALE_CACHE',
+      intraday_priority_label: 'INTRADAY_UNKNOWN',
+      intraday_confirmation_label: 'INTRADAY_CAUTION',
+      intraday_data_diagnostics: {
+        session_date: '2026-07-08',
+        updated_at: '2026-07-08T09:00:00.000Z',
+        candle_count: 4,
+        valid_ohlc_candles: 4,
+        zero_ohlc_candles: 0,
+        positive_volume_candles: 4,
+        total_volume: 12345,
+        source: 'yahoo',
+        interval: '15m'
+      }
+    }]
+  }), null);
+  assert.ok(report.tickers_by_fallback_action.DAILY_SCORE_ONLY.includes('BBSI'));
+  assert.equal(report.policies[0].intraday_data_diagnostics.session_date, '2026-07-08');
+  assert.equal(report.incomplete_intraday_diagnostics[0].total_volume, 12345);
+  assert.match(lib.markdownReport(report), /Incomplete Intraday Diagnostics/);
+});
+
 test('PASS when only OK tickers exist', () => {
   const report = lib.buildPolicyReport(bundle({
     rows: [
