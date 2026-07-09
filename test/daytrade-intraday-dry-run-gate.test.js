@@ -699,3 +699,64 @@ test('run loads latest provider/cache quality JSON from reports directory', asyn
   assert.ok(report.files_used.provider_cache_quality.file.endsWith('daytrade-intraday-provider-cache-quality-2026-07-09.json'));
   assert.ok(paths.json.endsWith('daytrade-intraday-dry-run-gate-2026-07-09.json'));
 });
+
+test('PASS_WITH_QUARANTINE moves legacy BLOCK statuses to legacy warnings when provider/cache quarantine is clean', () => {
+  const bundle = mockBundle('2026-07-09', {
+    validation_status: 'BLOCK',
+    provider_missing_count: 3,
+    data_quality_counts: { NO_INTRADAY_DATA: 3, INCOMPLETE_INTRADAY: 3, OK: 10 },
+    priority_label_counts: { INTRADAY_UNKNOWN: 3, INTRADAY_OK: 10 },
+    confirmation_label_counts: { INTRADAY_UNKNOWN: 3, INTRADAY_CONFIRM: 10 }
+  });
+  const aggregate = mockAggregate('2026-07-09', {
+    aggregate_status: 'BLOCK',
+    repeated_no_intraday_data_tickers: ['BBSI', 'SDPC', 'TCID'],
+    repeated_incomplete_intraday_tickers: ['BBSI', 'SDPC', 'TCID'],
+    repeated_intraday_unknown_tickers: ['BBSI', 'SDPC', 'TCID']
+  });
+  const policy = mockPolicy('2026-07-09', {
+    policy_status: 'BLOCK',
+    fallback_action_counts: { DAILY_SCORE_ONLY: 3, UNCHANGED: 10 }
+  });
+  const providerCacheQuality = mockProviderCacheQuality('2026-07-09');
+  const dateAlignment = gate.checkDateAlignment(bundle, aggregate, policy, providerCacheQuality);
+
+  const result = gate.evaluateGate(bundle, aggregate, policy, dateAlignment, providerCacheQuality);
+  assert.equal(result.gateStatus, 'PASS_WITH_QUARANTINE');
+  assert.equal(result.blockReasons.length, 0);
+  assert.deepEqual(result.legacyStatusReasons, [
+    'validation bundle validation_status is BLOCK',
+    'aggregate aggregate_status is BLOCK',
+    'policy policy_status is BLOCK'
+  ]);
+  assert.ok(result.warnReasons.some((r) => r.includes('legacy status retained for visibility')));
+
+  const report = gate.buildGateReport(bundle, aggregate, policy, { providerCacheQuality, nowMs: Date.UTC(2026, 6, 9) });
+  assert.equal(report.gate_status, 'PASS_WITH_QUARANTINE');
+  assert.deepEqual(report.block_reasons, []);
+  assert.deepEqual(report.legacy_status_reasons, result.legacyStatusReasons);
+  assert.equal(report.provider_metrics.provider_missing_count, 3);
+  assert.equal(report.provider_metrics.non_quarantined_provider_missing_count, 0);
+  assert.match(report.recommendation, /Keep DAYTRADE_INTRADAY_SCORE_ENABLED off/);
+  assert.match(report.recommendation, /DAILY_SCORE_ONLY/);
+
+  const md = gate.markdownReport(report);
+  assert.match(md, /Legacy Status Reasons/);
+  assert.match(md, /validation bundle validation_status is BLOCK/);
+  assert.match(md, /provider_missing_count: 3/);
+  assert.match(md, /non_quarantined_provider_missing_count: 0/);
+});
+
+test('unrelated BLOCK reason still blocks even when provider/cache quarantine is clean', () => {
+  const bundle = mockBundle('2026-07-09', { validation_status: 'BLOCK', provider_matched_count: 5, provider_missing_count: 3 });
+  const aggregate = mockAggregate('2026-07-09', { aggregate_status: 'BLOCK' });
+  const policy = mockPolicy('2026-07-09', { policy_status: 'BLOCK' });
+  const providerCacheQuality = mockProviderCacheQuality('2026-07-09');
+  const dateAlignment = gate.checkDateAlignment(bundle, aggregate, policy, providerCacheQuality);
+
+  const result = gate.evaluateGate(bundle, aggregate, policy, dateAlignment, providerCacheQuality);
+  assert.equal(result.gateStatus, 'BLOCK');
+  assert.ok(result.blockReasons.some((r) => r.includes('provider_matched_count')));
+  assert.ok(!result.blockReasons.includes('validation bundle validation_status is BLOCK'));
+  assert.ok(result.legacyStatusReasons.includes('validation bundle validation_status is BLOCK'));
+});
