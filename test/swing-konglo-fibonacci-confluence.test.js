@@ -149,10 +149,14 @@ test('Di atas area Fib: candidate above ideal Fib area still appears with warnin
   assert.equal(result.fib_confluence_label, 'Di atas area Fib');
   assert.ok(result.fib_confluence_note.indexOf('tunggu pullback') >= 0 || result.fib_confluence_note.indexOf('di atas') >= 0);
 
-  // Candidate must still pass digest gate — fib is NOT a hard gate
+  // Candidate must still pass digest gate — fib is NOT a hard gate.
+  // TP1/TP2 raised above the entry range so the candidate keeps a valid positive
+  // upside (conservative entry = entry_high = 5100); otherwise the min-upside gate
+  // correctly rejects a 0%-upside plan and this would not exercise the fib path.
   var fullCandidate = validSwingCandidate({
     last_price: 5050,
     entry_low: 5000, entry_high: 5100,
+    tp1: 5600, tp1n: 5600, tp2: 5900, tp2n: 5900,
     fib_confluence_status: result.fib_confluence_status,
     fib_confluence_label: result.fib_confluence_label
   });

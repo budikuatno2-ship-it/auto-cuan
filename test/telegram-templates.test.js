@@ -46,7 +46,7 @@ function baseSwing(overrides) {
 test('T-TPL-01: formatSignalCard produces structured premium card', function() {
   var card = templates.formatSignalCard(baseDayTrade(), 1, 'daytrade');
   assert.match(card, /EXCL/);
-  assert.match(card, /Signal: READY/);
+  assert.match(card, /Signal: Ready Breakout/);
   assert.match(card, /Trading Plan/);
   assert.match(card, /Entry:/);
   assert.match(card, /Take Profit:/);
@@ -145,7 +145,7 @@ test('T-TPL-07b: formatDailyTop5Message shows correct lolos gate count', functio
 test('T-TPL-17: ATR SL_TOO_TIGHT warning renders without changing status label', function() {
   var signal = baseDayTrade({ sl_atr_class: 'SL_TOO_TIGHT' });
   var msg = templates.formatDayTradeSignalMessage([signal]);
-  assert.match(msg, /Signal: READY/);
+  assert.match(msg, /Signal: Ready Breakout/);
   assert.match(msg, /Risk: SL ketat vs volatilitas harian; rawan noise\./);
 });
 
@@ -315,10 +315,10 @@ test('T-TPL-13: fmtValue formats large values', function() {
 });
 
 test('T-TPL-14: classifySignalLabel returns correct labels', function() {
-  assert.equal(templates.classifySignalLabel({ status: 'READY_BREAKOUT' }), 'READY');
-  assert.equal(templates.classifySignalLabel({ status: 'A_PLUS_SETUP' }), 'READY');
-  assert.equal(templates.classifySignalLabel({ status: 'EARLY_RADAR' }), 'EARLY RADAR');
-  assert.equal(templates.classifySignalLabel({ status: 'WAIT_PULLBACK' }), 'WATCHLIST');
+  assert.equal(templates.classifySignalLabel({ status: 'READY_BREAKOUT' }), 'Ready Breakout');
+  assert.equal(templates.classifySignalLabel({ status: 'A_PLUS_SETUP' }), 'A+ Setup');
+  assert.equal(templates.classifySignalLabel({ status: 'EARLY_RADAR' }), 'Early Radar');
+  assert.equal(templates.classifySignalLabel({ status: 'WAIT_PULLBACK' }), 'Tunggu Pullback');
 });
 
 test('T-TPL-15: getRiskShort normalizes risk labels', function() {

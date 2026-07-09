@@ -21,9 +21,13 @@ function makeSupabase(tableRows) {
   };
 }
 
+// Jakarta is a fixed UTC+7 offset (no DST). Candidates need a fresh price_date to
+// pass candidatePassesPriceFreshness before reaching the digest/send path.
+const JAKARTA_TODAY = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+
 function row(overrides) {
   return Object.assign({
-    ticker: 'RADR', status: 'WAIT_PULLBACK', final_status: 'WAIT_PULLBACK', score: 82, daily_score: 82, daytrade_score: 82, risk_reward: 1.6,
+    ticker: 'RADR', price_date: JAKARTA_TODAY, status: 'WAIT_PULLBACK', final_status: 'WAIT_PULLBACK', score: 82, daily_score: 82, daytrade_score: 82, risk_reward: 1.6,
     entry1: 100, entry_low: 100, entry2: 101, entry_high: 101, stop_loss: 95, sl: 95,
     tp1: 115, tp1n: 115, tp2: 125, tp2n: 125, last_price: 100, volume_ratio_20d: 1.2,
     value_today: 5000000000, traded_value: 5000000000, risk_label: 'Medium Risk', plan_quality_status: 'VALID', trading_plan_valid: true,
@@ -54,7 +58,7 @@ test('Swing Konglo empty final Signal sends candidate via digest gate (not radar
     assert.equal(result.sent, true);
     assert.ok(result.selected_count > 0);
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /Swing Konglo Signal/);
+    assert.match(calls[0], /Swing Konglo Signal/i);
   });
 });
 
@@ -75,7 +79,7 @@ test('Swing Non-Konglo empty final Signal sends candidate via digest gate (not r
     assert.equal(result.sent, true);
     assert.ok(result.selected_count > 0);
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /Swing Non-Konglo Signal/);
+    assert.match(calls[0], /Swing Non-Konglo Signal/i);
   });
 });
 
