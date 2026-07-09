@@ -70,7 +70,29 @@ test('no data quality classification handles empty candles', () => {
 test('zero intraday volume with candles is INCOMPLETE_INTRADAY with score reason', () => {
   const row = lib.observeCandidate({ ticker: 'ZEROVOL', entry: 100 }, [candle(0, { volume: 0 }), candle(1, { volume: 0 })], { hit: false, stale: false });
   assert.equal(row.data_quality, 'INCOMPLETE_INTRADAY');
-  assert.ok(row.intraday_score_adjustment_reasons.includes('INCOMPLETE_INTRADAY -2'));
+  assert.equal(row.intraday_score_adjustment_preview, 0);
+  assert.equal(row.intraday_priority_label, 'INTRADAY_UNKNOWN');
+  assert.ok(row.intraday_score_adjustment_reasons.includes('INCOMPLETE_INTRADAY DAILY_SCORE_ONLY 0'));
+  assert.equal(row.intraday_fallback_action, 'DAILY_SCORE_ONLY');
+  assert.equal(row.intraday_data_diagnostics.candle_count, 2);
+  assert.equal(row.intraday_data_diagnostics.positive_volume_candles, 0);
+});
+
+
+test('stale cached candles are incomplete daily-score-only with cache diagnostics', () => {
+  const row = lib.observeCandidate(
+    { ticker: 'BBSI', entry: 100 },
+    [candle(0, { volume: 100 }), candle(1, { volume: 100 })],
+    { hit: true, stale: true, payload: { session_date: '2026-07-08', updated_at: '2026-07-08T09:00:00.000Z', source: 'yahoo', interval: '15m' } }
+  );
+  assert.equal(row.data_quality, 'INCOMPLETE_INTRADAY');
+  assert.equal(row.intraday_fallback_action, 'DAILY_SCORE_ONLY');
+  assert.equal(row.intraday_score_adjustment_preview, 0);
+  assert.equal(row.intraday_priority_label, 'INTRADAY_UNKNOWN');
+  assert.equal(row.intraday_data_diagnostics.session_date, '2026-07-08');
+  assert.equal(row.intraday_data_diagnostics.updated_at, '2026-07-08T09:00:00.000Z');
+  assert.equal(row.intraday_data_diagnostics.source, 'yahoo');
+  assert.equal(row.intraday_data_diagnostics.interval, '15m');
 });
 
 test('missing VWAP with otherwise present candles is INCOMPLETE_INTRADAY', () => {
