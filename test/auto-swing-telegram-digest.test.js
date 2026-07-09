@@ -181,3 +181,90 @@ test('Swing Konglo selected_count=0 heartbeat includes normalization diagnostics
     assert.equal(result.min_tp1_upside_diagnostics.total_pre_tp_candidates, 1);
   });
 });
+
+test('Swing Non-Konglo finalize uses persisted meta run_date and exposes staging diagnostics', async function() {
+  await withSendSpy(async function() {
+    const runDate = '2026-07-08';
+    const stagingRows = [validRow({ ticker: 'PASS1', run_date: runDate, entry_low: 100, entry_high: 100, tp1: 115, score: 88, risk_label: 'Medium Risk' })];
+    const inserted = [];
+    const jobs = [{ id: 'batch-7', batch_index: 7, status: 'done', result_count: 1, run_date: runDate }];
+    const supabase = {
+      from: function(table) {
+        const chain = {
+          _table: table,
+          _count: false,
+          select: function(_cols, opts) { if (opts && opts.count === 'exact') this._count = true; return this; },
+          eq: function(_col, value) {
+            if (this._count && table === 'swing_screener_non_konglo_staging') return Promise.resolve({ count: stagingRows.filter(r => r.run_date === value).length, error: null });
+            return this;
+          },
+          in: function() { return Promise.resolve({ data: [], error: null }); },
+          order: function() { return this; },
+          limit: function() {
+            if (table === 'swing_screener_non_konglo_staging') return Promise.resolve({ data: stagingRows, error: null });
+            if (table === 'swing_screener_non_konglo_jobs') return Promise.resolve({ data: jobs, error: null });
+            if (table === 'swing_screener_non_konglo_latest') return Promise.resolve({ data: inserted, error: null });
+            return Promise.resolve({ data: [], error: null });
+          },
+          maybeSingle: function() {
+            return Promise.resolve({ data: { run_date: runDate, status: 'scanning', scanned_count: 8 }, error: null });
+          },
+          upsert: function() { return Promise.resolve({ data: [], error: null }); },
+          update: function() { return { eq: function() { return Promise.resolve({ data: [], error: null }); } }; },
+          delete: function() { return { neq: function() { return Promise.resolve({ data: [], error: null }); } }; },
+          insert: function(rows) { inserted.push.apply(inserted, rows); return Promise.resolve({ data: rows, error: null }); }
+        };
+        return chain;
+      }
+    };
+    let body;
+    const res = { status: function() { return { json: function(payload) { body = payload; return payload; } }; } };
+    await sectorHot.__test.handleNkScreenerFinalize({ headers: {}, query: {} }, res, supabase);
+    assert.equal(body.status, 'PUBLISHED');
+    assert.equal(body.run_date, runDate);
+    assert.equal(body.staging_table, 'swing_screener_non_konglo_staging');
+    assert.deepEqual(body.staging_query_keys.run_date, runDate);
+    assert.equal(body.staging_rows_found, 1);
+    assert.equal(body.batch_passed_seen_count, 1);
+    assert.equal(body.last_batch_id_seen, 'batch-7');
+    assert.equal(inserted.length, 1);
+  });
+});
+
+test('Swing Non-Konglo finalize mismatch diagnostics report exact empty query keys and no_staging_rows', async function() {
+  await withSendSpy(async function() {
+    const runDate = '2026-07-08';
+    const jobs = [{ id: 'batch-2', batch_index: 2, status: 'done', result_count: 2, run_date: runDate }];
+    const supabase = {
+      from: function(table) {
+        const chain = {
+          _count: false,
+          select: function(_cols, opts) { if (opts && opts.count === 'exact') this._count = true; return this; },
+          eq: function(_col, _value) {
+            if (this._count && table === 'swing_screener_non_konglo_staging') return Promise.resolve({ count: 0, error: null });
+            return this;
+          },
+          in: function() { return Promise.resolve({ data: [], error: null }); },
+          order: function() { return this; },
+          limit: function() {
+            if (table === 'swing_screener_non_konglo_jobs') return Promise.resolve({ data: jobs, error: null });
+            return Promise.resolve({ data: [], error: null });
+          },
+          maybeSingle: function() { return Promise.resolve({ data: { run_date: runDate, status: 'scanning', scanned_count: 8 }, error: null }); },
+          upsert: function() { return Promise.resolve({ data: [], error: null }); },
+          update: function() { return { eq: function() { return Promise.resolve({ data: [], error: null }); } }; }
+        };
+        return chain;
+      }
+    };
+    let body;
+    const res = { status: function() { return { json: function(payload) { body = payload; return payload; } }; } };
+    await sectorHot.__test.handleNkScreenerFinalize({ headers: {}, query: {} }, res, supabase);
+    assert.equal(body.status, 'COMPLETED_NO_CANDIDATES');
+    assert.equal(body.staging_query_keys.run_date, runDate);
+    assert.equal(body.staging_rows_found, 0);
+    assert.equal(body.batch_passed_seen_count, 2);
+    assert.deepEqual(body.top_rejection_reasons, [{ reason: 'no_staging_rows', count: 1 }]);
+    assert.match(body.message, /Staging query keys/);
+  });
+});

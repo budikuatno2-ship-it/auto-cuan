@@ -7444,6 +7444,76 @@ async function handleNkScreenerRun(req, res, supabase) {
   return res.status(200).json({ success: true, message: 'No action needed.', meta });
 }
 
+
+async function getNkActiveRunDate(supabase) {
+  var today = getWibDateString();
+  try {
+    var { data: meta } = await supabase
+      .from('swing_screener_non_konglo_meta')
+      .select('run_date,status')
+      .eq('id', 'latest')
+      .maybeSingle();
+    if (meta && meta.run_date && ['scanning', 'finalizing', 'failed'].indexOf(meta.status) >= 0) return meta.run_date;
+    if (meta && meta.run_date && meta.status === 'completed_no_candidates') return meta.run_date;
+  } catch (e) {}
+  return today;
+}
+
+function summarizeNkStagingRows(rows) {
+  rows = Array.isArray(rows) ? rows : [];
+  var byStatus = {};
+  rows.forEach(function(r) {
+    var status = String(r.status || r.final_status || r.swing_tier || 'unknown').trim() || 'unknown';
+    byStatus[status] = (byStatus[status] || 0) + 1;
+  });
+  return byStatus;
+}
+
+function sampleNkStagingRows(rows) {
+  rows = Array.isArray(rows) ? rows : [];
+  return rows.slice(0, 5).map(function(r) {
+    return {
+      ticker: r.ticker || null,
+      status: r.status || r.final_status || r.swing_tier || null,
+      score: r.score != null ? r.score : null,
+      entry_low: r.entry_low != null ? r.entry_low : null,
+      entry_high: r.entry_high != null ? r.entry_high : null,
+      tp1: r.tp1 != null ? r.tp1 : null,
+      run_date: r.run_date || null
+    };
+  });
+}
+
+async function buildNkFinalizeStagingDiagnostics(supabase, runDate, rows, totalStagingCount) {
+  var diagnostics = {
+    staging_table: 'swing_screener_non_konglo_staging',
+    staging_query_keys: { run_date: runDate, order: 'score.desc', limit: 30 },
+    staging_rows_found: totalStagingCount || 0,
+    staging_rows_by_status: summarizeNkStagingRows(rows || []),
+    staging_rows_sample: sampleNkStagingRows(rows || []),
+    batch_passed_seen_count: null,
+    finalize_run_id: runDate,
+    finalize_trading_date: runDate,
+    last_batch_id_seen: null
+  };
+  try {
+    var { data: jobs } = await supabase
+      .from('swing_screener_non_konglo_jobs')
+      .select('id,batch_index,status,result_count,run_date')
+      .eq('run_date', runDate)
+      .order('batch_index', { ascending: false })
+      .limit(200);
+    if (Array.isArray(jobs)) {
+      diagnostics.batch_passed_seen_count = jobs.reduce(function(sum, j) { return sum + (Number(j.result_count) || 0); }, 0);
+      if (jobs.length > 0) diagnostics.last_batch_id_seen = jobs[0].id != null ? jobs[0].id : jobs[0].batch_index;
+    }
+  } catch (e) {
+    diagnostics.batch_passed_seen_count = null;
+    diagnostics.batch_diagnostics_error = e && e.message ? e.message : String(e);
+  }
+  return diagnostics;
+}
+
 // --- START: build universe, create batches ---
 async function handleNkScreenerStart(req, res, supabase) {
   const runDate = getWibDateString();
@@ -7520,7 +7590,7 @@ async function handleNkScreenerStart(req, res, supabase) {
 
 // --- BATCH: process next pending batch ---
 async function handleNkScreenerBatch(req, res, supabase) {
-  const runDate = getWibDateString();
+  const runDate = await getNkActiveRunDate(supabase);
 
   // Get next pending batch
   const { data: jobs } = await supabase
@@ -7824,7 +7894,7 @@ async function sendSwingNkNoMinTpHeartbeat(diagnostics) {
 
 // --- FINALIZE: publish Top 30 ---
 async function handleNkScreenerFinalize(req, res, supabase) {
-  const runDate = getWibDateString();
+  const runDate = await getNkActiveRunDate(supabase);
 
   // Check for pending/failed batches — do NOT finalize if unresolved
   const { data: pendingJobs } = await supabase
@@ -7847,7 +7917,7 @@ async function handleNkScreenerFinalize(req, res, supabase) {
   await updateNkMeta(supabase, { status: 'finalizing', message: 'Publishing top 30...' });
 
   // Get top 30 from staging by score desc
-  const { data: topCandidates, error: stagErr } = await supabase
+  let { data: topCandidates, error: stagErr } = await supabase
     .from('swing_screener_non_konglo_staging')
     .select('*')
     .eq('run_date', runDate)
@@ -7865,19 +7935,24 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     .select('*', { count: 'exact', head: true })
     .eq('run_date', runDate);
 
+  var { data: diagnosticRows, error: diagErr } = await supabase
+    .from('swing_screener_non_konglo_staging')
+    .select('*')
+    .eq('run_date', runDate)
+    .order('score', { ascending: false })
+    .limit(200);
+  if (diagErr) {
+    await updateNkMeta(supabase, { status: 'failed', message: 'Gagal membaca staging diagnostics: ' + diagErr.message });
+    return res.status(200).json({ success: false, error: 'Failed to read staging diagnostics.', staging_error: diagErr.message });
+  }
+  var stagingDiagnostics = await buildNkFinalizeStagingDiagnostics(supabase, runDate, diagnosticRows || topCandidates || [], totalStagingCount || ((diagnosticRows || []).length));
+  topCandidates = (diagnosticRows || topCandidates || []).filter(function(row) {
+    return candidatePassesMinUpside(normalizeCombinedCandidate(row, 'Swing Non-Konglo'));
+  }).sort(function(a, b) { return (Number(b.score) || 0) - (Number(a.score) || 0); }).slice(0, 30);
+
   // If no candidates passed filters, classify as a successful no-candidate run, not a system error.
   if (!topCandidates || topCandidates.length === 0) {
-    var { data: diagnosticRows, error: diagErr } = await supabase
-      .from('swing_screener_non_konglo_staging')
-      .select('*')
-      .eq('run_date', runDate)
-      .order('score', { ascending: false })
-      .limit(200);
-    if (diagErr) {
-      await updateNkMeta(supabase, { status: 'failed', message: 'Gagal membaca staging diagnostics: ' + diagErr.message });
-      return res.status(200).json({ success: false, error: 'Failed to read staging diagnostics.', staging_error: diagErr.message });
-    }
-    var emptyDiagnostics = buildNkNoCandidateDiagnostics(diagnosticRows || [], nkTotalScanned);
+    var emptyDiagnostics = Object.assign(buildNkNoCandidateDiagnostics(diagnosticRows || [], nkTotalScanned), stagingDiagnostics);
     var emptyEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(diagnosticRows || []);
     var emptyMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(diagnosticRows || [], 'Swing Non-Konglo');
     var emptyTelegram = await sendSwingNkNoMinTpHeartbeat(emptyMinTp1Diagnostics);
@@ -7893,7 +7968,7 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       success: true,
       step: 'finalize',
       status: 'COMPLETED_NO_CANDIDATES',
-      message: 'Belum ada kandidat yang lolos filter potensi TP minimal.',
+      message: 'Belum ada kandidat yang lolos filter potensi TP minimal. Staging query keys: ' + JSON.stringify(stagingDiagnostics.staging_query_keys),
       published: 0,
       staging_count: totalStagingCount || 0,
       run_date: runDate,
@@ -7902,6 +7977,16 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       entry_range_normalization_diagnostics: emptyEntryRangeDiagnostics,
       min_tp1_upside_diagnostics: emptyMinTp1Diagnostics,
       top_rejection_reasons: emptyDiagnostics.top_rejection_reasons,
+      staging_diagnostics: stagingDiagnostics,
+      staging_table: stagingDiagnostics.staging_table,
+      staging_query_keys: stagingDiagnostics.staging_query_keys,
+      staging_rows_found: stagingDiagnostics.staging_rows_found,
+      staging_rows_by_status: stagingDiagnostics.staging_rows_by_status,
+      staging_rows_sample: stagingDiagnostics.staging_rows_sample,
+      batch_passed_seen_count: stagingDiagnostics.batch_passed_seen_count,
+      finalize_run_id: stagingDiagnostics.finalize_run_id,
+      finalize_trading_date: stagingDiagnostics.finalize_trading_date,
+      last_batch_id_seen: stagingDiagnostics.last_batch_id_seen,
       telegram: emptyTelegram
     });
   }
@@ -7991,7 +8076,7 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     calculated_at: new Date().toISOString()
   });
 
-  var nkDiagnostics = buildNkNoCandidateDiagnostics(topCandidates || [], nkTotalScanned);
+  var nkDiagnostics = Object.assign(buildNkNoCandidateDiagnostics(topCandidates || [], nkTotalScanned), stagingDiagnostics);
   var nkEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(topCandidates || []);
   var nkMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(topCandidates || [], 'Swing Non-Konglo');
   var nkTelegram = publishedCount > 0 ? await sendSwingNkTelegramNotification(supabase, publishedCount) : await sendSwingNkNoMinTpHeartbeat(nkMinTp1Diagnostics);
@@ -8014,6 +8099,16 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     entry_range_normalization_diagnostics: nkEntryRangeDiagnostics,
     min_tp1_upside_diagnostics: nkMinTp1Diagnostics,
     top_rejection_reasons: nkDiagnostics.top_rejection_reasons,
+    staging_diagnostics: stagingDiagnostics,
+    staging_table: stagingDiagnostics.staging_table,
+    staging_query_keys: stagingDiagnostics.staging_query_keys,
+    staging_rows_found: stagingDiagnostics.staging_rows_found,
+    staging_rows_by_status: stagingDiagnostics.staging_rows_by_status,
+    staging_rows_sample: stagingDiagnostics.staging_rows_sample,
+    batch_passed_seen_count: stagingDiagnostics.batch_passed_seen_count,
+    finalize_run_id: stagingDiagnostics.finalize_run_id,
+    finalize_trading_date: stagingDiagnostics.finalize_trading_date,
+    last_batch_id_seen: stagingDiagnostics.last_batch_id_seen,
     telegram: nkTelegram
   });
 }
