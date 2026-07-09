@@ -197,6 +197,19 @@ test('BLOCK when recurring intraday_unknown exists', () => {
   assert.ok(result.blockReasons.includes('recurring intraday_unknown exists in aggregate'));
 });
 
+
+test('BLOCK when recurring incomplete_intraday exists', () => {
+  const bundle = mockBundle('2026-07-08');
+  const aggregate = mockAggregate('2026-07-08', { repeated_incomplete_intraday_tickers: ['BBSI'] });
+  const policy = mockPolicy('2026-07-08');
+  const dateAlignment = { aligned: true, date: '2026-07-08', dates: [] };
+
+  const result = gate.evaluateGate(bundle, aggregate, policy, dateAlignment);
+
+  assert.equal(result.gateStatus, 'BLOCK');
+  assert.ok(result.blockReasons.includes('recurring incomplete_intraday exists in aggregate'));
+});
+
 test('WARN when aggregate missing but bundle/policy clean', () => {
   const bundle = mockBundle('2026-07-08');
   const policy = mockPolicy('2026-07-08');
