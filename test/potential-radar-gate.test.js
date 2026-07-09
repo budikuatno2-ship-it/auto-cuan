@@ -275,11 +275,12 @@ test('WAIT_PULLBACK with entry_low/entry_high only remains Potential Radar and i
     entry1: null, entry2: null, entry_low: 5000, entry_high: 5050,
     status: 'WAIT_PULLBACK', action_label: 'Tunggu pullback valid', entry_status: 'WAIT_PULLBACK',
     breakout_confirmation_status: 'NEEDS_CLOSE_CONFIRMATION', breakout_confirmation_label: 'Needs close confirmation',
-    tp1: 5250, tp1n: 5250, tp1_upside: null
+    tp1: 5250, tp1n: 5250, tp1_upside: null, tp1_upside_pct: null
   });
   assert.equal(candidatePassesPublicTelegramSafetyGate(Object.assign({}, c), 'daytrade'), false);
   assert.equal(candidatePassesPotentialRadarGate(c, 'daytrade'), true);
   assert.equal(c.entry1, 5050);
   assert.equal(c.tp1_upside, 4);
+  assert.equal(c.tp1_upside_pct, 4);
   assert.equal(getPotentialRadarReason(c), 'WAIT_CLOSE_CONFIRMATION');
 });

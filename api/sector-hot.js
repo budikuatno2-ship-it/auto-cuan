@@ -3380,6 +3380,27 @@ function getEntry2(row) {
   return toNum(row.entry2) || toNum(row.entry) || toNum(row.entry_price) || toNum(row.buy_price) || toNum(row.last_price);
 }
 
+function normalizeTp1UpsidePct(row, entryRef, tp1) {
+  var r = row || {};
+  var existingPct = toNum(r.tp1_upside_pct);
+  if (existingPct != null && isFinite(existingPct)) {
+    r.tp1_upside_pct = existingPct;
+    if (r.tp1_upside == null || !isFinite(toNum(r.tp1_upside))) r.tp1_upside = existingPct;
+    return existingPct;
+  }
+  var existingUpside = toNum(r.tp1_upside);
+  if (existingUpside != null && isFinite(existingUpside)) {
+    r.tp1_upside_pct = existingUpside;
+    return existingUpside;
+  }
+  var computed = pctFrom(entryRef, tp1);
+  if (computed != null && isFinite(computed)) {
+    r.tp1_upside_pct = computed;
+    r.tp1_upside = computed;
+  }
+  return computed;
+}
+
 function normalizeEntryRangeAliases(candidate) {
   var r = candidate || {};
   var low = toNum(r.entry_low);
@@ -3412,7 +3433,7 @@ function normalizeEntryRangeAliases(candidate) {
   var entryRef = rangePresent ? high : toNum(r.entry1);
   var tp1 = toNum(r.tp1n || r.tp1);
   if (tp1 != null && tp1 > 0 && entryRef != null && entryRef > 0) {
-    r.tp1_upside = pctFrom(entryRef, tp1);
+    normalizeTp1UpsidePct(r, entryRef, tp1);
   }
   if (aliasUsed) r.entry_alias_used = aliasUsed;
   r.entry_range_present = !!rangePresent;
@@ -3424,18 +3445,27 @@ function buildEntryRangeNormalizationDiagnostics(candidates) {
     entry_range_present_count: 0,
     entry_alias_used_counts: {},
     computed_tp1_upside_count: 0,
+    computed_tp1_upside_pct_count: 0,
     tp1_upside_null_after_normalization_count: 0,
+    tp1_upside_pct_null_after_normalization_count: 0,
+    sample_computed_tp1_upside_pct: [],
     sample_entry_range_normalized: []
   };
   (candidates || []).forEach(function(candidate) {
     var beforeUpside = candidate && candidate.tp1_upside;
+    var beforeUpsidePct = candidate && candidate.tp1_upside_pct;
     var c = normalizeEntryRangeAliases(Object.assign({}, candidate || {}));
     if (c.entry_range_present) out.entry_range_present_count++;
     if (c.entry_alias_used) out.entry_alias_used_counts[c.entry_alias_used] = (out.entry_alias_used_counts[c.entry_alias_used] || 0) + 1;
     if ((beforeUpside == null || !isFinite(toNum(beforeUpside))) && c.tp1_upside != null && isFinite(c.tp1_upside)) out.computed_tp1_upside_count++;
+    if ((beforeUpsidePct == null || !isFinite(toNum(beforeUpsidePct))) && c.tp1_upside_pct != null && isFinite(c.tp1_upside_pct)) {
+      out.computed_tp1_upside_pct_count++;
+      if (out.sample_computed_tp1_upside_pct.length < 5) out.sample_computed_tp1_upside_pct.push({ ticker: c.ticker || '-', entry_high: c.entry_high, tp1: toNum(c.tp1n || c.tp1), tp1_upside_pct: c.tp1_upside_pct });
+    }
     if (toNum(c.tp1n || c.tp1) > 0 && (toNum(c.entry_low) > 0 || toNum(c.entry_high) > 0) && c.tp1_upside == null) out.tp1_upside_null_after_normalization_count++;
+    if (toNum(c.tp1n || c.tp1) > 0 && (toNum(c.entry_low) > 0 || toNum(c.entry_high) > 0) && c.tp1_upside_pct == null) out.tp1_upside_pct_null_after_normalization_count++;
     if (c.entry_range_present && out.sample_entry_range_normalized.length < 5) {
-      out.sample_entry_range_normalized.push({ ticker: c.ticker || '-', entry_low: c.entry_low, entry_high: c.entry_high, entry_mid: c.entry_mid, entry1: c.entry1, tp1: toNum(c.tp1n || c.tp1), tp1_upside: c.tp1_upside });
+      out.sample_entry_range_normalized.push({ ticker: c.ticker || '-', entry_low: c.entry_low, entry_high: c.entry_high, entry_mid: c.entry_mid, entry1: c.entry1, tp1: toNum(c.tp1n || c.tp1), tp1_upside: c.tp1_upside, tp1_upside_pct: c.tp1_upside_pct });
     }
   });
   return out;
@@ -4609,11 +4639,13 @@ function candidatePassesMinUpside(candidate) {
   var entry = toNum(candidate.entry1) || getEntry1(candidate);
   var tp1 = toNum(candidate.tp1n || candidate.tp1);
   if (!(entry > 0) || !(tp1 > 0) || tp1 <= entry) return false;
-  var upside = candidate.tp1_upside != null ? toNum(candidate.tp1_upside) : pctFrom(entry, tp1);
+  normalizeTp1UpsidePct(candidate, entry, tp1);
+  var upside = candidate.tp1_upside_pct != null ? toNum(candidate.tp1_upside_pct) : (candidate.tp1_upside != null ? toNum(candidate.tp1_upside) : pctFrom(entry, tp1));
   if (upside == null || !isFinite(upside)) return false;
   if (!candidate.entry1) candidate.entry1 = entry;
   if (!candidate.tp1n) candidate.tp1n = tp1;
   candidate.tp1_upside = upside;
+  candidate.tp1_upside_pct = upside;
   return upside >= getMinTp1UpsideForCategory(candidate.category);
 }
 
@@ -4662,7 +4694,8 @@ function normalizeCombinedCandidate(row, category) {
   if (verified) r = Object.assign(r, verified);
   var high = verified ? verifyHighConvictionTelegramSignal(r, category === 'Day Trade' ? 'daytrade' : 'swing') : null;
   if (high) r = Object.assign(r, high);
-  r.tp1_upside = pctFrom(r.entry1, r.tp1n);
+  normalizeTp1UpsidePct(r, r.entry1, r.tp1n);
+  r.tp1_upside = r.tp1_upside_pct != null ? r.tp1_upside_pct : pctFrom(r.entry1, r.tp1n);
   r.tp2_upside = pctFrom(r.entry1, r.tp2n);
   r.sl_risk = pctFrom(r.entry1, r.sl);
   r.combined_score = (toNum(r.telegram_conviction_score) || r.score_norm || 0)
