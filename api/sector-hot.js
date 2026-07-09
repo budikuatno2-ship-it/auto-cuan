@@ -3366,18 +3366,84 @@ function formatPct(v) { return v == null || !isFinite(v) ? '-' : (v > 0 ? '+' : 
 
 function chartLink(ticker) { return 'https://www.tradingview.com/chart/?symbol=IDX:' + encodeURIComponent(String(ticker || '').toUpperCase()); }
 
+function readNested(row, path) {
+  var cur = row || {};
+  var parts = String(path || '').split('.');
+  for (var i = 0; i < parts.length; i++) {
+    if (cur == null) return null;
+    cur = cur[parts[i]];
+  }
+  return cur;
+}
+
+function firstPositiveAlias(row, aliases) {
+  for (var i = 0; i < aliases.length; i++) {
+    var alias = aliases[i];
+    var value = alias === 'targets[0]' ? (row && Array.isArray(row.targets) ? row.targets[0] : null) : (alias.indexOf('.') >= 0 ? readNested(row, alias) : row && row[alias]);
+    var n = toNum(value);
+    if (n != null && n > 0) return { alias: alias, value: n };
+  }
+  return null;
+}
+
+function normalizeCandidateEntryAliases(row, category) {
+  var r = row || {};
+  if (category && !r.category) r.category = category;
+  var lowPick = firstPositiveAlias(r, ['entry_low', 'buy_area_low', 'entry_zone_low', 'trading_plan.entry_low']);
+  var highPick = firstPositiveAlias(r, ['entry_high', 'buy_area_high', 'entry_zone_high', 'trading_plan.entry_high']);
+  var low = lowPick && lowPick.value;
+  var high = highPick && highPick.value;
+  var rangePresent = (low != null && low > 0) || (high != null && high > 0);
+  var aliasUsed = null;
+  if (rangePresent) {
+    if (!(low > 0)) low = high;
+    if (!(high > 0)) high = low;
+    if (low > high) { var tmp = low; low = high; high = tmp; }
+    r.entry_low = low;
+    r.entry_high = high;
+    r.entry_mid = Math.round(((low + high) / 2) * 100) / 100;
+    r.entry1 = high; // conservative representative for upside calculation
+    r.entry2 = low;
+    aliasUsed = (lowPick ? lowPick.alias : 'missing_low') + '_' + (highPick ? highPick.alias : 'missing_high');
+  } else {
+    var direct = firstPositiveAlias(r, ['entry', 'entry_price', 'entry1', 'entry_1', 'entry_1_price', 'buy_price', 'trading_plan.entry', 'trading_plan.entry1', 'trading_plan.entry_1']);
+    if (direct) {
+      r.entry1 = direct.value;
+      if (!(toNum(r.entry2) > 0)) r.entry2 = direct.value;
+      aliasUsed = direct.alias;
+    }
+  }
+  if (aliasUsed) r.entry_alias_used = aliasUsed;
+  r.entry_range_present = !!rangePresent;
+  return r;
+}
+
+function normalizeCandidateTpAliases(row, category) {
+  var r = row || {};
+  if (category && !r.category) r.category = category;
+  var tp = firstPositiveAlias(r, ['tp1', 'tp1n', 'target_1', 'target1', 'target_1_price', 'target_price_1', 'trading_plan.tp1', 'trading_plan.target_1', 'targets[0]']);
+  if (tp) {
+    r.tp1 = tp.value;
+    r.tp1n = tp.value;
+    r.tp1_alias_used = tp.alias;
+  }
+  return r;
+}
+
 function getEntry1(row) {
+  normalizeCandidateEntryAliases(row);
   var low = toNum(row.entry_low), high = toNum(row.entry_high);
   if (high != null && high > 0) return high; // conservative entry reference for TP1 upside
   if (low != null && low > 0) return low;
-  return toNum(row.entry) || toNum(row.entry_price) || toNum(row.buy_price) || toNum(row.last_price);
+  return toNum(row.entry1) || toNum(row.entry) || toNum(row.entry_price) || toNum(row.buy_price) || toNum(row.last_price);
 }
 
 function getEntry2(row) {
+  normalizeCandidateEntryAliases(row);
   var low = toNum(row.entry_low), high = toNum(row.entry_high);
   if (low != null && low > 0) return low;
   if (high != null && high > 0) return high;
-  return toNum(row.entry2) || toNum(row.entry) || toNum(row.entry_price) || toNum(row.buy_price) || toNum(row.last_price);
+  return toNum(row.entry2) || toNum(row.entry1) || toNum(row.entry) || toNum(row.entry_price) || toNum(row.buy_price) || toNum(row.last_price);
 }
 
 function normalizeTp1UpsidePct(row, entryRef, tp1) {
@@ -3401,43 +3467,18 @@ function normalizeTp1UpsidePct(row, entryRef, tp1) {
   return computed;
 }
 
-function normalizeEntryRangeAliases(candidate) {
-  var r = candidate || {};
-  var low = toNum(r.entry_low);
-  var high = toNum(r.entry_high);
-  var rangePresent = (low != null && low > 0) || (high != null && high > 0);
-  var aliasUsed = null;
-  if (rangePresent) {
-    if (!(low > 0)) low = high;
-    if (!(high > 0)) high = low;
-    if (low > high) { var tmp = low; low = high; high = tmp; }
-    r.entry_low = low;
-    r.entry_high = high;
-    r.entry_mid = Math.round(((low + high) / 2) * 100) / 100;
-    r.entry1 = high;
-    r.entry2 = low;
-    aliasUsed = 'entry_low_entry_high';
-  } else {
-    var directAlias = null;
-    var direct = toNum(r.entry1);
-    if (direct != null && direct > 0) directAlias = 'entry1';
-    else { direct = toNum(r.entry); if (direct != null && direct > 0) directAlias = 'entry'; }
-    if (!directAlias) { direct = toNum(r.entry_price); if (direct != null && direct > 0) directAlias = 'entry_price'; }
-    if (!directAlias) { direct = toNum(r.buy_price); if (direct != null && direct > 0) directAlias = 'buy_price'; }
-    if (directAlias) {
-      r.entry1 = direct;
-      if (!(toNum(r.entry2) > 0)) r.entry2 = direct;
-      aliasUsed = directAlias;
-    }
-  }
-  var entryRef = rangePresent ? high : toNum(r.entry1);
+function normalizeCandidateUpside(row, category) {
+  var r = row || {};
+  normalizeCandidateEntryAliases(r, category);
+  normalizeCandidateTpAliases(r, category);
+  var entryRef = toNum(r.entry1);
   var tp1 = toNum(r.tp1n || r.tp1);
-  if (tp1 != null && tp1 > 0 && entryRef != null && entryRef > 0) {
-    normalizeTp1UpsidePct(r, entryRef, tp1);
-  }
-  if (aliasUsed) r.entry_alias_used = aliasUsed;
-  r.entry_range_present = !!rangePresent;
+  if (tp1 != null && tp1 > 0 && entryRef != null && entryRef > 0) normalizeTp1UpsidePct(r, entryRef, tp1);
   return r;
+}
+
+function normalizeEntryRangeAliases(candidate) {
+  return normalizeCandidateUpside(candidate);
 }
 
 function normalizeDayTradePublicReadRow(row) {
@@ -3469,13 +3510,23 @@ function buildEntryRangeNormalizationDiagnostics(candidates) {
     computed_tp1_upside_pct_count: 0,
     tp1_upside_null_after_normalization_count: 0,
     tp1_upside_pct_null_after_normalization_count: 0,
+    tp1_present_count: 0,
+    tp1_upside_pct_present_count: 0,
     sample_computed_tp1_upside_pct: [],
+    sample_missing_entry: [],
+    sample_missing_tp1: [],
     sample_entry_range_normalized: []
   };
   (candidates || []).forEach(function(candidate) {
     var beforeUpside = candidate && candidate.tp1_upside;
     var beforeUpsidePct = candidate && candidate.tp1_upside_pct;
     var c = normalizeEntryRangeAliases(Object.assign({}, candidate || {}));
+    var cEntry = toNum(c.entry1);
+    var cTp1 = toNum(c.tp1n || c.tp1);
+    if (cTp1 != null && cTp1 > 0) out.tp1_present_count++;
+    if (c.tp1_upside_pct != null && isFinite(toNum(c.tp1_upside_pct))) out.tp1_upside_pct_present_count++;
+    if (!(cEntry > 0) && out.sample_missing_entry.length < 5) out.sample_missing_entry.push({ ticker: c.ticker || '-', entry_alias_used: c.entry_alias_used || null });
+    if (!(cTp1 > 0) && out.sample_missing_tp1.length < 5) out.sample_missing_tp1.push({ ticker: c.ticker || '-', tp1_alias_used: c.tp1_alias_used || null });
     if (c.entry_range_present) out.entry_range_present_count++;
     if (c.entry_alias_used) out.entry_alias_used_counts[c.entry_alias_used] = (out.entry_alias_used_counts[c.entry_alias_used] || 0) + 1;
     if ((beforeUpside == null || !isFinite(toNum(beforeUpside))) && c.tp1_upside != null && isFinite(c.tp1_upside)) out.computed_tp1_upside_count++;
@@ -7679,7 +7730,8 @@ function buildNkNoCandidateDiagnostics(rows, totalScanned) {
     afterFinal.push(row);
   });
   var topReasons = Object.keys(reasons).map(function(k) { return { reason: k, count: reasons[k] }; }).sort(function(a, b) { return b.count - a.count || a.reason.localeCompare(b.reason); });
-  return {
+  var minTpDiagnostics = buildMinTp1UpsideDiagnostics(rows, 'Swing Non-Konglo');
+  return Object.assign({
     total_scanned: totalScanned || 0,
     raw_candidates_count: rows.length,
     after_min_tp1_upside_count: afterMin.length,
@@ -7688,7 +7740,45 @@ function buildNkNoCandidateDiagnostics(rows, totalScanned) {
     after_final_quality_gate_count: afterFinal.length,
     top_rejection_reasons: topReasons,
     sample_rejected: samples
+  }, minTpDiagnostics);
+}
+
+function buildMinTp1UpsideDiagnostics(rows, category) {
+  rows = Array.isArray(rows) ? rows : [];
+  var threshold = getMinTp1UpsideForCategory(category);
+  var out = {
+    min_tp1_upside_threshold: threshold,
+    total_pre_tp_candidates: rows.length,
+    valid_tp1_upside_count: 0,
+    missing_entry_count: 0,
+    missing_tp1_count: 0,
+    invalid_tp1_upside_count: 0,
+    below_min_tp1_upside_count: 0,
+    passed_min_tp1_upside_count: 0,
+    sample_below_min_tp1: [],
+    sample_missing_tp1_or_entry: []
   };
+  rows.forEach(function(row) {
+    var c = normalizeCombinedCandidate(row, category);
+    var entry = getEntry1(c);
+    var tp1 = toNum(c.tp1n || c.tp1);
+    var upside = toNum(c.tp1_upside_pct != null ? c.tp1_upside_pct : c.tp1_upside);
+    var missing = false;
+    if (!(entry > 0)) { out.missing_entry_count++; missing = true; }
+    if (!(tp1 > 0)) { out.missing_tp1_count++; missing = true; }
+    if (missing) {
+      if (out.sample_missing_tp1_or_entry.length < 5) out.sample_missing_tp1_or_entry.push({ ticker: c.ticker || '-', entry: entry || null, tp1: tp1 || null, entry_alias_used: c.entry_alias_used || null, tp1_alias_used: c.tp1_alias_used || null });
+      return;
+    }
+    if (upside == null || !isFinite(upside)) { out.invalid_tp1_upside_count++; return; }
+    out.valid_tp1_upside_count++;
+    if (upside >= threshold) out.passed_min_tp1_upside_count++;
+    else {
+      out.below_min_tp1_upside_count++;
+      if (out.sample_below_min_tp1.length < 5) out.sample_below_min_tp1.push({ ticker: c.ticker || '-', entry: entry, tp1: tp1, tp1_upside_pct: upside });
+    }
+  });
+  return out;
 }
 
 // --- FINALIZE: publish Top 30 ---
@@ -11102,6 +11192,12 @@ module.exports.__test = {
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
   normalizeEntryRangeAliases: normalizeEntryRangeAliases,
   normalizeDayTradePublicReadRow: normalizeDayTradePublicReadRow,
+  normalizeCandidateEntryAliases: normalizeCandidateEntryAliases,
+  normalizeCandidateTpAliases: normalizeCandidateTpAliases,
+  normalizeCandidateUpside: normalizeCandidateUpside,
+  normalizeCombinedCandidate: normalizeCombinedCandidate,
+  buildMinTp1UpsideDiagnostics: buildMinTp1UpsideDiagnostics,
+  candidatePassesMinUpside: candidatePassesMinUpside,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
   diagnosePublicSafetyGateRejection: diagnosePublicSafetyGateRejection,
