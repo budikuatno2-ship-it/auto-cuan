@@ -1121,7 +1121,9 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
 
     var swingKongloEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(results || []);
     var swingKongloMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(results || [], 'Swing Konglo');
-    var swingKongloTelegram = savedCount > 0 ? await sendSwingKongloTelegramNotification(supabase, savedCount, results) : { skipped: true, reason: 'no_saved_rows' };
+    var swingKongloTelegram = savedCount > 0
+      ? await sendSwingKongloTelegramNotification(supabase, savedCount, results)
+      : await sendSwingKongloNoSavedRowsHeartbeat({ scanned_count: scannedCount, generated_count: results.length, saved_count: savedCount, failed_count: failedCount });
     if (swingKongloTelegram && typeof swingKongloTelegram === 'object') {
       swingKongloTelegram.entry_range_normalization = swingKongloEntryRangeDiagnostics;
       swingKongloTelegram.entry_range_normalization_diagnostics = swingKongloEntryRangeDiagnostics;
@@ -11134,6 +11136,40 @@ function formatSwingNoCandidateTelegramMessage(title) {
 // ============================================================
 // SWING KONGLO TELEGRAM NOTIFICATION (after manual refresh publish)
 // ============================================================
+function formatSwingKongloNoSavedRowsHeartbeatMessage(counts) {
+  counts = counts || {};
+  return '📭 Swing Konglo heartbeat\n' +
+    'Swing Konglo refresh completed but no rows were saved.\n' +
+    'Scanned: ' + (counts.scanned_count || 0) + '\n' +
+    'Generated: ' + (counts.generated_count || 0) + '\n' +
+    'Saved: ' + (counts.saved_count || 0) + '\n' +
+    'Failed: ' + (counts.failed_count || 0);
+}
+
+// Sends a safe empty heartbeat when a Swing Konglo refresh completes successfully
+// but persists zero rows (savedCount === 0). This avoids the previous silent skip,
+// where an empty-but-successful run looked like a Telegram failure. It never
+// publishes candidates and does not touch the screener filters/gates.
+async function sendSwingKongloNoSavedRowsHeartbeat(counts) {
+  try {
+    var msg = formatSwingKongloNoSavedRowsHeartbeatMessage(counts);
+    var hbRes = await telegramNotifier.sendTelegramMessage(msg);
+    return {
+      sent: !!hbRes.sent,
+      skipped: !hbRes.sent,
+      reason: hbRes.sent ? 'swing_konglo_no_saved_rows_heartbeat_sent' : 'swing_konglo_no_saved_rows_silent',
+      message: msg,
+      selected_count: 0,
+      scanned_count: (counts && counts.scanned_count) || 0,
+      generated_count: (counts && counts.generated_count) || 0,
+      saved_count: (counts && counts.saved_count) || 0,
+      failed_count: (counts && counts.failed_count) || 0
+    };
+  } catch (e) {
+    return { sent: false, skipped: false, reason: 'exception', error_message: (e.message || '').substring(0, 80) };
+  }
+}
+
 async function sendSwingKongloTelegramNotification(supabase, savedCount, precomputedResults) {
   if (savedCount === 0) return { skipped: true, reason: 'no_saved_rows' };
   try {
@@ -11438,6 +11474,8 @@ module.exports.__test = {
   formatRadarDigestTelegramMessage: formatRadarDigestTelegramMessage,
   sendDailyTop5Telegram: sendDailyTop5Telegram,
   sendSwingKongloTelegramNotification: sendSwingKongloTelegramNotification,
+  formatSwingKongloNoSavedRowsHeartbeatMessage: formatSwingKongloNoSavedRowsHeartbeatMessage,
+  sendSwingKongloNoSavedRowsHeartbeat: sendSwingKongloNoSavedRowsHeartbeat,
   sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
   sendDayTradeTelegramNotification: sendDayTradeTelegramNotification,
   registerCandidatesForMonitoring: registerCandidatesForMonitoring,
