@@ -268,3 +268,30 @@ test('Swing Non-Konglo finalize mismatch diagnostics report exact empty query ke
     assert.match(body.message, /Staging query keys/);
   });
 });
+
+test('Swing Non-Konglo staging sanitizer drops latest-only timeframe fields before durable upsert', function() {
+  const row = {
+    ticker: 'NKTF',
+    run_date: '2026-07-09',
+    tf_1d_context: 'bullish',
+    tf_2d_context: 'latest-only',
+    tf_3d_context: 'latest-only',
+    tf_5d_context: 'neutral',
+    tf_10d_context: 'latest-only',
+    tf_20d_context: 'bullish',
+    multi_timeframe_bias: 'bullish',
+    multi_timeframe_notes: 'latest-only notes',
+    score: 88
+  };
+  const sanitized = sectorHot.__test.sanitizeNkStagingRow(row);
+  assert.equal(sanitized.ticker, 'NKTF');
+  assert.equal(sanitized.run_date, '2026-07-09');
+  assert.equal(sanitized.tf_1d_context, 'bullish');
+  assert.equal(sanitized.tf_5d_context, 'neutral');
+  assert.equal(sanitized.tf_20d_context, 'bullish');
+  assert.equal(sanitized.multi_timeframe_bias, 'bullish');
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'tf_2d_context'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'tf_3d_context'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'tf_10d_context'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'multi_timeframe_notes'), false);
+});

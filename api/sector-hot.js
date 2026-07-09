@@ -7494,7 +7494,8 @@ async function buildNkFinalizeStagingDiagnostics(supabase, runDate, rows, totalS
     batch_passed_seen_count: null,
     finalize_run_id: runDate,
     finalize_trading_date: runDate,
-    last_batch_id_seen: null
+    last_batch_id_seen: null,
+    last_staging_write_count: null
   };
   try {
     var { data: jobs } = await supabase
@@ -7510,6 +7511,16 @@ async function buildNkFinalizeStagingDiagnostics(supabase, runDate, rows, totalS
   } catch (e) {
     diagnostics.batch_passed_seen_count = null;
     diagnostics.batch_diagnostics_error = e && e.message ? e.message : String(e);
+  }
+  try {
+    var { data: meta } = await supabase
+      .from('swing_screener_non_konglo_meta')
+      .select('last_staging_write_count')
+      .eq('id', 'latest')
+      .maybeSingle();
+    if (meta && meta.last_staging_write_count != null) diagnostics.last_staging_write_count = meta.last_staging_write_count;
+  } catch (e2) {
+    diagnostics.last_staging_write_count = null;
   }
   return diagnostics;
 }
@@ -7586,6 +7597,30 @@ async function handleNkScreenerStart(req, res, supabase) {
     batch_count: batches.length,
     batch_size: BATCH_SIZE
   });
+}
+
+
+function sanitizeNkStagingRow(row) {
+  var out = Object.assign({}, row || {});
+  // swing_screener_non_konglo_staging is intentionally narrower than latest.
+  // Drop runtime/latest-only fields so one unsupported column cannot make the entire batch upsert fail.
+  delete out.tf_2d_context;
+  delete out.tf_3d_context;
+  delete out.tf_10d_context;
+  delete out.multi_timeframe_notes;
+  return out;
+}
+
+async function countNkPersistedStagingRows(supabase, runDate, tickers) {
+  tickers = (Array.isArray(tickers) ? tickers : []).filter(Boolean);
+  if (!runDate || tickers.length === 0) return 0;
+  var q = supabase
+    .from('swing_screener_non_konglo_staging')
+    .select('*', { count: 'exact', head: true })
+    .eq('run_date', runDate);
+  if (typeof q.in === 'function') q = q.in('ticker', tickers);
+  var r = await q;
+  return Number(r && r.count) || 0;
 }
 
 // --- BATCH: process next pending batch ---
@@ -7734,16 +7769,29 @@ async function handleNkScreenerBatch(req, res, supabase) {
     }
   }
 
-  // Upsert scored candidates into staging (idempotent on run_date + ticker)
-  var stagingError = null;
-  if (results.length > 0) {
+  // Upsert scored candidates into durable staging (idempotent on run_date + ticker).
+  // In production, `passed` means candidates that passed hard filters and were selected for staging.
+  // It must not imply persistence unless the durable write/count below succeeds.
+  var passedCountBeforeStaging = results.length;
+  var stagingRows = results.map(sanitizeNkStagingRow);
+  var stagingWriteAttempted = stagingRows.length > 0;
+  var stagingWriteError = null;
+  var stagingWriteCount = 0;
+  if (stagingWriteAttempted) {
     var { error: upsErr } = await supabase
       .from('swing_screener_non_konglo_staging')
-      .upsert(results, { onConflict: 'run_date,ticker' });
+      .upsert(stagingRows, { onConflict: 'run_date,ticker' });
     if (upsErr) {
-      stagingError = upsErr.message + (upsErr.details ? ' | ' + upsErr.details : '');
+      stagingWriteError = upsErr.message + (upsErr.details ? ' | ' + upsErr.details : '');
+    } else {
+      try {
+        stagingWriteCount = await countNkPersistedStagingRows(supabase, runDate, stagingRows.map(function(r) { return r.ticker; }));
+      } catch (countErr) {
+        stagingWriteError = 'staging write verification failed: ' + (countErr && countErr.message ? countErr.message : String(countErr));
+      }
     }
   }
+  var passedCountAfterStaging = stagingWriteCount;
 
   // Mark job complete
   await supabase
@@ -7766,7 +7814,7 @@ async function handleNkScreenerBatch(req, res, supabase) {
   await updateNkMeta(supabase, {
     scanned_count: (meta ? meta.scanned_count : 0) + tickers.length,
     failed_count: (meta ? meta.failed_count : 0) + failedCount,
-    message: `Batch ${job.batch_index} done: ${results.length} passed, ${failedCount} failed.`
+    message: `Batch ${job.batch_index} done: ${results.length} passed before staging, ${stagingWriteCount} persisted, ${failedCount} failed.`
   });
 
   return res.status(200).json({
@@ -7776,7 +7824,16 @@ async function handleNkScreenerBatch(req, res, supabase) {
     processed: tickers.length,
     passed: results.length,
     failed: failedCount,
-    staging_error: stagingError || null
+    staging_table: 'swing_screener_non_konglo_staging',
+    staging_write_attempted: stagingWriteAttempted,
+    staging_write_count: stagingWriteCount,
+    staging_write_error: stagingWriteError || null,
+    staging_run_date: runDate,
+    staging_sample_tickers: stagingRows.slice(0, 5).map(function(r) { return r.ticker; }),
+    passed_count_before_staging: passedCountBeforeStaging,
+    passed_count_after_staging: passedCountAfterStaging,
+    staging_write_mismatch: passedCountBeforeStaging > 0 && stagingWriteCount === 0,
+    staging_error: stagingWriteError || null
   });
 }
 
@@ -7987,6 +8044,7 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       finalize_run_id: stagingDiagnostics.finalize_run_id,
       finalize_trading_date: stagingDiagnostics.finalize_trading_date,
       last_batch_id_seen: stagingDiagnostics.last_batch_id_seen,
+      last_staging_write_count: stagingDiagnostics.last_staging_write_count,
       telegram: emptyTelegram
     });
   }
@@ -8109,6 +8167,7 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     finalize_run_id: stagingDiagnostics.finalize_run_id,
     finalize_trading_date: stagingDiagnostics.finalize_trading_date,
     last_batch_id_seen: stagingDiagnostics.last_batch_id_seen,
+    last_staging_write_count: stagingDiagnostics.last_staging_write_count,
     telegram: nkTelegram
   });
 }
@@ -11358,6 +11417,8 @@ module.exports.__test = {
   formatSwingNkNoMinTpHeartbeatMessage: formatSwingNkNoMinTpHeartbeatMessage,
   sendSwingNkNoMinTpHeartbeat: sendSwingNkNoMinTpHeartbeat,
   handleNkScreenerFinalize: handleNkScreenerFinalize,
+  handleNkScreenerBatch: handleNkScreenerBatch,
+  sanitizeNkStagingRow: sanitizeNkStagingRow,
   candidatePassesMinUpside: candidatePassesMinUpside,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
