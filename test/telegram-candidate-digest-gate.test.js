@@ -221,9 +221,9 @@ test('Test 14: Day Trade sends "Day Trade Signal Candidate" not default "[RADAR 
     validCandidate({ ticker: 'DTRC', category: 'Day Trade', status: 'WAIT_PULLBACK', entry_status: 'WAIT_PULLBACK', breakout_confirmation_status: 'BREAKOUT_WATCH' })
   ];
   var msg = formatDayTradeRadarTelegramMessage(candidates);
-  assert.match(msg, /Day Trade Signal/);
+  assert.match(msg, /DAY TRADE SIGNAL/i);
   assert.doesNotMatch(msg, /\[RADAR — BUKAN SINYAL ENTRY\]/);
-  assert.match(msg, /Bukan rekomendasi beli\. Konfirmasi manual wajib\./);
+  assert.match(msg, /Bukan rekomendasi beli\/jual\. Konfirmasi manual wajib\./);
 });
 
 // ============================================================

@@ -72,23 +72,23 @@ function withSendSpy(fn) {
 // ============================================================
 // TEST 1: Day Trade formatter uses old rich format with all fields
 // ============================================================
-test('T1: Day Trade formatter uses rich format with Status, G, Risk, RR, Liq, EntryQ, PlanQ, Breakout, Setup Age, Window, Entry Safety, Value, Vol, TF, Verdict', function() {
+test('T1: Day Trade formatter uses premium card format with Signal, Trading Plan, Entry, Take Profit, Stop Loss, Risk/Reward, Technical Context, Price, Volume, Value, Trend, Breakout, Liquidity, Risk', function() {
   var msg = formatDayTradeRadarTelegramMessage([base()]);
-  assert.match(msg, /Day Trade Signal/);
-  assert.match(msg, /Status:/);
-  assert.match(msg, /G:/);
-  assert.match(msg, /RR:/);
-  assert.match(msg, /Liq:/);
-  assert.match(msg, /EntryQ:/);
-  assert.match(msg, /PlanQ:/);
-  assert.match(msg, /Breakout:/);
-  assert.match(msg, /Setup Age:/);
-  assert.match(msg, /Window:/);
-  assert.match(msg, /Entry Safety:/);
+  assert.match(msg, /DAY TRADE SIGNAL/i);
+  assert.match(msg, /Signal:/);
+  assert.match(msg, /Trading Plan/);
+  assert.match(msg, /Entry:/);
+  assert.match(msg, /Take Profit:/);
+  assert.match(msg, /Stop Loss:/);
+  assert.match(msg, /Risk\/Reward:/);
+  assert.match(msg, /Technical Context/);
+  assert.match(msg, /Price:/);
+  assert.match(msg, /Volume:/);
   assert.match(msg, /Value:/);
-  assert.match(msg, /Vol:/);
-  assert.match(msg, /TF:/);
-  assert.match(msg, /Verdict:/);
+  assert.match(msg, /Trend:/);
+  assert.match(msg, /Breakout:/);
+  assert.match(msg, /Liquidity:/);
+  assert.match(msg, /Risk:/);
 });
 
 // ============================================================
@@ -97,7 +97,7 @@ test('T1: Day Trade formatter uses rich format with Status, G, Risk, RR, Liq, En
 test('T2: Day Trade does not output [RADAR — BUKAN SINYAL ENTRY] as default main output', function() {
   var msg = formatDayTradeRadarTelegramMessage([base()]);
   assert.doesNotMatch(msg, /\[RADAR.*BUKAN SINYAL ENTRY\]/);
-  assert.match(msg, /Day Trade Signal/);
+  assert.match(msg, /DAY TRADE SIGNAL/i);
 });
 
 // ============================================================

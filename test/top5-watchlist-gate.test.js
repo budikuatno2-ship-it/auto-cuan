@@ -372,8 +372,7 @@ test('sendDailyTop5Telegram watchlist_mode header includes pantauan wording', as
 
     // Header message should contain watchlist wording
     var headerMsg = sentMessages[0];
-    assert.ok(headerMsg.indexOf('TOP 5 WATCHLIST') >= 0, 'header should contain TOP 5 WATCHLIST');
-    assert.ok(headerMsg.indexOf('PANTAUAN BESOK') >= 0, 'header should contain PANTAUAN BESOK');
+    assert.ok(headerMsg.indexOf('Top 5 Watchlist') >= 0, 'header should contain Top 5 Watchlist');
     assert.ok(headerMsg.indexOf('Bukan sinyal entry langsung') >= 0, 'header should contain disclaimer');
     assert.ok(headerMsg.indexOf('breakout/close confirmation') >= 0, 'header should contain breakout condition');
 
