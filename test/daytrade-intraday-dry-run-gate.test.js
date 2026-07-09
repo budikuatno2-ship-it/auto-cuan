@@ -581,3 +581,121 @@ test('non-quarantined blockers still BLOCK dry-run gate', () => {
   assert.equal(result.gateStatus, 'BLOCK');
   assert.ok(result.blockReasons.some((r) => r.includes('non_quarantined_provider_missing_count')));
 });
+
+function mockProviderCacheQuality(date, overrides = {}) {
+  return {
+    date,
+    quality_status: overrides.quality_status || 'PASS_WITH_QUARANTINE',
+    provider_missing_count: overrides.provider_missing_count ?? 3,
+    total_provider_missing_count: overrides.total_provider_missing_count ?? 3,
+    visible_provider_missing_count: overrides.visible_provider_missing_count ?? 3,
+    quarantined_provider_missing_count: overrides.quarantined_provider_missing_count ?? 3,
+    non_quarantined_provider_missing_count: overrides.non_quarantined_provider_missing_count ?? 0,
+    non_quarantined_incomplete_intraday_count: overrides.non_quarantined_incomplete_intraday_count ?? 0,
+    non_quarantined_intraday_unknown_count: overrides.non_quarantined_intraday_unknown_count ?? 0,
+    intraday_quarantine_count: overrides.intraday_quarantine_count ?? 3,
+    intraday_quarantine_tickers: overrides.intraday_quarantine_tickers || [
+      { ticker: 'BBSI', quarantine_action: 'DAILY_SCORE_ONLY' },
+      { ticker: 'SDPC', quarantine_action: 'DAILY_SCORE_ONLY' },
+      { ticker: 'TCID', quarantine_action: 'DAILY_SCORE_ONLY' }
+    ],
+    ...overrides
+  };
+}
+
+test('PASS_WITH_QUARANTINE uses local provider/cache quality report as supplemental quarantine context', () => {
+  const bundle = mockBundle('2026-07-09', {
+    provider_missing_count: 3,
+    data_quality_counts: { NO_INTRADAY_DATA: 3, INCOMPLETE_INTRADAY: 3, OK: 10 },
+    priority_label_counts: { INTRADAY_UNKNOWN: 3, INTRADAY_OK: 10 },
+    confirmation_label_counts: { INTRADAY_UNKNOWN: 3, INTRADAY_CONFIRM: 10 }
+  });
+  const aggregate = mockAggregate('2026-07-09', {
+    repeated_no_intraday_data_tickers: ['BBSI', 'SDPC', 'TCID'],
+    repeated_incomplete_intraday_tickers: ['BBSI', 'SDPC', 'TCID'],
+    repeated_intraday_unknown_tickers: ['BBSI', 'SDPC', 'TCID']
+  });
+  const policy = mockPolicy('2026-07-09', { fallback_action_counts: { DAILY_SCORE_ONLY: 3, UNCHANGED: 10 } });
+  const providerCacheQuality = mockProviderCacheQuality('2026-07-09');
+  const dateAlignment = gate.checkDateAlignment(bundle, aggregate, policy, providerCacheQuality);
+
+  const result = gate.evaluateGate(bundle, aggregate, policy, dateAlignment, providerCacheQuality);
+  assert.equal(result.gateStatus, 'PASS_WITH_QUARANTINE');
+  assert.equal(result.blockReasons.length, 0);
+
+  const report = gate.buildGateReport(bundle, aggregate, policy, { providerCacheQuality, nowMs: Date.UTC(2026, 6, 9) });
+  assert.equal(report.gate_status, 'PASS_WITH_QUARANTINE');
+  assert.deepEqual(report.quarantine_summary, {
+    provider_cache_quality_status: 'PASS_WITH_QUARANTINE',
+    intraday_quarantine_count: 3,
+    intraday_quarantine_tickers: providerCacheQuality.intraday_quarantine_tickers,
+    total_provider_missing_count: 3,
+    visible_provider_missing_count: 3,
+    quarantined_provider_missing_count: 3,
+    non_quarantined_provider_missing_count: 0,
+    non_quarantined_incomplete_intraday_count: 0,
+    non_quarantined_intraday_unknown_count: 0
+  });
+  assert.equal(report.provider_metrics.provider_missing_count, 3);
+  assert.equal(report.provider_metrics.non_quarantined_provider_missing_count, 0);
+  assert.equal(report.data_quality_summary.non_quarantined_incomplete_intraday_count, 0);
+  assert.equal(report.data_quality_summary.non_quarantined_intraday_unknown_count, 0);
+  assert.match(report.recommendation, /Keep DAYTRADE_INTRADAY_SCORE_ENABLED off/);
+
+  const md = gate.markdownReport(report);
+  assert.match(md, /Quarantine Summary/);
+  assert.match(md, /provider_cache_quality_status: PASS_WITH_QUARANTINE/);
+  assert.match(md, /total_provider_missing_count: 3/);
+  assert.match(md, /non_quarantined_provider_missing_count: 0/);
+});
+
+test('provider/cache quality missing keeps conservative BLOCK for bundle provider/cache blockers', () => {
+  const bundle = mockBundle('2026-07-09', {
+    provider_missing_count: 3,
+    data_quality_counts: { NO_INTRADAY_DATA: 3, INCOMPLETE_INTRADAY: 3, OK: 10 },
+    priority_label_counts: { INTRADAY_UNKNOWN: 3, INTRADAY_OK: 10 },
+    confirmation_label_counts: { INTRADAY_UNKNOWN: 3, INTRADAY_CONFIRM: 10 }
+  });
+  const aggregate = mockAggregate('2026-07-09');
+  const policy = mockPolicy('2026-07-09');
+  const report = gate.buildGateReport(bundle, aggregate, policy, { nowMs: Date.UTC(2026, 6, 9) });
+
+  assert.equal(report.gate_status, 'BLOCK');
+  assert.equal(report.quarantine_summary, null);
+  assert.ok(report.block_reasons.some((r) => r.includes('non_quarantined_provider_missing_count')));
+});
+
+test('non-quarantined provider/cache quality blocker keeps BLOCK', () => {
+  const bundle = mockBundle('2026-07-09', { provider_missing_count: 3 });
+  const aggregate = mockAggregate('2026-07-09');
+  const policy = mockPolicy('2026-07-09');
+  const providerCacheQuality = mockProviderCacheQuality('2026-07-09', { non_quarantined_provider_missing_count: 1 });
+  const dateAlignment = gate.checkDateAlignment(bundle, aggregate, policy, providerCacheQuality);
+
+  const result = gate.evaluateGate(bundle, aggregate, policy, dateAlignment, providerCacheQuality);
+  assert.equal(result.gateStatus, 'BLOCK');
+  assert.ok(result.blockReasons.some((r) => r.includes('non_quarantined_provider_missing_count')));
+});
+
+test('run loads latest provider/cache quality JSON from reports directory', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dry-run-gate-quality-'));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-bundle-2026-07-09.json'), JSON.stringify(mockBundle('2026-07-09', {
+    provider_missing_count: 3,
+    data_quality_counts: { NO_INTRADAY_DATA: 3, INCOMPLETE_INTRADAY: 3, OK: 10 },
+    priority_label_counts: { INTRADAY_UNKNOWN: 3, INTRADAY_OK: 10 },
+    confirmation_label_counts: { INTRADAY_UNKNOWN: 3, INTRADAY_CONFIRM: 10 }
+  })));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-validation-aggregate-2026-07-09.json'), JSON.stringify(mockAggregate('2026-07-09', {
+    repeated_no_intraday_data_tickers: ['BBSI', 'SDPC', 'TCID'],
+    repeated_incomplete_intraday_tickers: ['BBSI', 'SDPC', 'TCID'],
+    repeated_intraday_unknown_tickers: ['BBSI', 'SDPC', 'TCID']
+  })));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-policy-2026-07-09.json'), JSON.stringify(mockPolicy('2026-07-09', { fallback_action_counts: { DAILY_SCORE_ONLY: 3, UNCHANGED: 10 } })));
+  await fs.writeFile(path.join(dir, 'daytrade-intraday-provider-cache-quality-2026-07-09.json'), JSON.stringify(mockProviderCacheQuality('2026-07-09')));
+
+  const { report, paths } = await gate.run({ reportsDir: dir, writeJson: true, nowMs: Date.UTC(2026, 6, 9) });
+  assert.equal(report.gate_status, 'PASS_WITH_QUARANTINE');
+  assert.equal(report.quarantine_summary.provider_cache_quality_status, 'PASS_WITH_QUARANTINE');
+  assert.ok(report.files_used.provider_cache_quality.file.endsWith('daytrade-intraday-provider-cache-quality-2026-07-09.json'));
+  assert.ok(paths.json.endsWith('daytrade-intraday-dry-run-gate-2026-07-09.json'));
+});
