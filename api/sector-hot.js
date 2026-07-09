@@ -6525,11 +6525,11 @@ function isDashboardExplicitPreviewOrProvisionalRow(row) {
 }
 function hasDashboardLockedFinalIndicator(row) {
   if (!row || typeof row !== 'object') return false;
-  // Any row that exists in telegram_daily_picks (has id + date) is already a
-  // persisted locked/final selection — trust it regardless of whether explicit
-  // is_locked/first_sent_at markers were stamped.  This prevents false negatives
-  // for rows inserted by VPS workers or web-lock path that omit those markers.
-  if (row.id && row.date) return true;
+  // A row is considered locked/final only when a genuine lock/send indicator is
+  // present on the persisted row itself.  Presence of id+date alone is NOT
+  // sufficient — that merely means the row was persisted, not that it passed the
+  // final lock/send gate.  Non-locked provisional or Avoid/Hindari rows that
+  // happen to have id+date must still be caught by the payload-level filter below.
   var text = dashboardLockedIndicatorText(row);
   return row.is_locked === true || row.locked === true || row.is_final === true || !!row.first_sent_at ||
     text.indexOf('locked') >= 0 || text.indexOf('final') >= 0;

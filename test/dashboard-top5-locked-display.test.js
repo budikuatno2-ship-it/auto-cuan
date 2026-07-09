@@ -74,26 +74,46 @@ test('web-daily-picks falls back to previous dates if current date has no rows',
 
 // ============================================================
 // TEST: Persisted locked rows with stale raw_payload Avoid/Hindari still render
+// (behavioral assertions via source text — no module import needed)
 // ============================================================
-test('isSafeDashboardLockedTop5Row trusts rows with id+date (no raw_payload filtering)', () => {
+test('isSafeDashboardLockedTop5Row: genuine locked indicators allow stale Avoid/Hindari payload', () => {
+  // hasDashboardLockedFinalIndicator must exist
   const fnStart = sectorHotSrc.indexOf('function hasDashboardLockedFinalIndicator(row)');
-  assert.ok(fnStart >= 0, 'hasDashboardLockedFinalIndicator must exist');
-  const fnBody = sectorHotSrc.slice(fnStart, fnStart + 600);
-  // Must check id + date as the first condition (trust path for all persisted rows)
-  assert.ok(fnBody.indexOf('if (row.id && row.date) return true;') >= 0, 'must trust rows with id+date');
-  assert.ok(fnBody.indexOf('telegram_daily_picks') >= 0, 'must reference telegram_daily_picks in comment');
+  assert.ok(fnStart >= 0, 'hasDashboardLockedFinalIndicator must exist in source');
 
-  // Verify isSafeDashboardLockedTop5Row takes trust path for locked indicator
+  // Broad id+date shortcut must NOT be present — it disabled the Avoid/Hindari defense filter
+  const fnBody = sectorHotSrc.slice(fnStart, fnStart + 800);
+  assert.ok(fnBody.indexOf('if (row.id && row.date) return true;') < 0,
+    'broad id+date shortcut must be removed — it disabled Avoid/Hindari defense filter');
+
+  // Genuine locked indicators must still be present
+  assert.ok(fnBody.indexOf('!!row.first_sent_at') >= 0, 'first_sent_at is a genuine locked indicator');
+  assert.ok(fnBody.indexOf('row.is_locked === true') >= 0, 'is_locked is a genuine locked indicator');
+  assert.ok(fnBody.indexOf('row.is_final === true') >= 0, 'is_final is a genuine locked indicator');
+  assert.ok(fnBody.indexOf("text.indexOf('locked') >= 0") >= 0, 'locked in text is a genuine indicator');
+  assert.ok(fnBody.indexOf("text.indexOf('final') >= 0") >= 0, 'final in text is a genuine indicator');
+
+  // Regression guard: lock-only row with first_sent_at=null and no Avoid/Hindari
+  // is handled by is_locked/locked/is_final flags — must be present
+  assert.ok(fnBody.indexOf('row.locked === true') >= 0, 'locked boolean field is a genuine indicator');
+
+  // isSafeDashboardLockedTop5Row must exist and retain its structure
   const safeStart = sectorHotSrc.indexOf('function isSafeDashboardLockedTop5Row(row)');
   assert.ok(safeStart >= 0, 'isSafeDashboardLockedTop5Row must exist');
   const safeBody = sectorHotSrc.slice(safeStart, safeStart + 800);
-  // Trust path: hasDashboardLockedFinalIndicator → only block explicit preview/provisional
+
+  // Trust path: genuine locked row → only block explicit preview/provisional
   assert.ok(safeBody.indexOf('if (hasDashboardLockedFinalIndicator(row)) return !isDashboardExplicitPreviewOrProvisionalRow(row);') >= 0,
     'trust path must only block explicit preview/provisional rows');
-  // hasAvoidGrade/hasHindariAction is only in the fallback path (below the trust path)
+
+  // Avoid/Hindari checks must be in the fallback path (after the trust path)
   const trustPathEnd = safeBody.indexOf('hasDashboardLockedFinalIndicator(row))');
   const avoidCheckPos = safeBody.indexOf('hasAvoidGrade(payload)');
   assert.ok(avoidCheckPos > trustPathEnd, 'Avoid/Hindari checks must be AFTER the trust path (fallback only)');
+
+  // Policy: non-locked Avoid/Hindari rows fall to payload filter
+  assert.ok(safeBody.indexOf('hasAvoidGrade(payload) || hasHindariAction(payload)') >= 0,
+    'payload filter must check both Avoid and Hindari');
 });
 
 // ============================================================
