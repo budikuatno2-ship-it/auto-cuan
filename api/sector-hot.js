@@ -11375,8 +11375,6 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     result.ai_note_appended = !!nkAiNote;
     result.selected_count = finalList.length;
     result.strict_signal_count = finalList.length;
-    result.radar_monitor_count = radarCandidates.length;
-    result.hard_reject_count = diagnostics.hard_reject_count || 0;
     result.verified_count = verifiedRows.length;
     result.high_conviction_count = highConvictionRows.length;
     result.strict_selected_count = strictCandidates.length;
