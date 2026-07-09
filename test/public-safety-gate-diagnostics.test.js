@@ -431,3 +431,36 @@ test('Day Trade public read normalization computes tp1_upside_pct before respons
   assert.equal(body.results[1].tp1_upside_pct, 22.4);
   assert.equal(body.results[1].status, 'WAIT_PULLBACK');
 });
+
+test('shared normalization computes Swing Konglo buy area target_1 upside', () => {
+  const c = sectorHot.__test.normalizeCombinedCandidate({ ticker: 'KONG', buy_area_low: 100, buy_area_high: 110, target_1: 121, stop_loss: 95, last_price: 108, status: 'WATCH_ONLY' }, 'Swing Konglo');
+  assert.equal(c.entry1, 110);
+  assert.equal(c.entry_mid, 105);
+  assert.equal(c.tp1n, 121);
+  assert.equal(c.tp1_upside_pct, 10);
+});
+
+test('shared normalization computes Swing Non-Konglo min TP1 diagnostics from aliases', () => {
+  const rows = [
+    { ticker: 'PASS', entry_1_price: 100, target_price_1: 108, stop_loss: 95, last_price: 101, status: 'WATCH_ONLY' },
+    { ticker: 'LOWT', trading_plan: { entry_high: 100, entry_low: 98, target_1: 103 }, stop_loss: 95, last_price: 99, status: 'WATCH_ONLY' },
+    { ticker: 'MISS', entry_price: 100, stop_loss: 95, last_price: 99, status: 'WATCH_ONLY' }
+  ];
+  const d = sectorHot.__test.buildMinTp1UpsideDiagnostics(rows, 'Swing Non-Konglo');
+  assert.equal(d.total_pre_tp_candidates, 3);
+  assert.equal(d.valid_tp1_upside_count, 2);
+  assert.equal(d.passed_min_tp1_upside_count, 1);
+  assert.equal(d.below_min_tp1_upside_count, 1);
+  assert.equal(d.missing_tp1_count, 1);
+  assert.equal(d.sample_below_min_tp1[0].ticker, 'LOWT');
+  assert.equal(d.sample_missing_tp1_or_entry[0].ticker, 'MISS');
+});
+
+test('shared normalization keeps AVOID and low TP candidates non-buy', () => {
+  const avoid = sectorHot.__test.normalizeCombinedCandidate({ ticker: 'AVOD', entry: 100, target1: 120, stop_loss: 95, last_price: 101, status: 'AVOID', action_label: 'Hindari' }, 'Swing Non-Konglo');
+  assert.match(String(avoid.status || avoid.action_label || ''), /AVOID|Hindari/i);
+  assert.notEqual(String(avoid.action || avoid.recommendation || avoid.signal || '').toUpperCase(), 'BUY');
+  const low = sectorHot.__test.normalizeCombinedCandidate({ ticker: 'LOWP', entry: 100, target1: 101, stop_loss: 95, last_price: 100, status: 'WATCH_ONLY' }, 'Swing Non-Konglo');
+  assert.equal(sectorHot.__test.candidatePassesMinUpside(low), false);
+  assert.notEqual(String(low.action || low.recommendation || low.signal || '').toUpperCase(), 'BUY');
+});
