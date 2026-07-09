@@ -531,3 +531,53 @@ test('formatSummaryItem supports string, ticker/key/value count objects', () => 
   assert.equal(gate.formatSummaryItem({ key: 'BRAM', count: 2 }), 'BRAM (2)');
   assert.equal(gate.formatSummaryItem({ value: 'IDPR', count: 4 }), 'IDPR (4)');
 });
+
+test('PASS_WITH_QUARANTINE when only explicit quarantine blockers remain', () => {
+  const bundle = mockBundle('2026-07-08', {
+    validation_status: 'PASS',
+    provider_missing_count: 2,
+    data_quality_counts: { NO_INTRADAY_DATA: 2, INCOMPLETE_INTRADAY: 0, OK: 10 },
+    priority_label_counts: { INTRADAY_UNKNOWN: 2, INTRADAY_OK: 10 },
+    confirmation_label_counts: { INTRADAY_UNKNOWN: 2, INTRADAY_CONFIRM: 10 },
+    non_quarantined_provider_missing_count: 0,
+    non_quarantined_incomplete_intraday_count: 0,
+    non_quarantined_intraday_unknown_count: 0,
+    intraday_quarantine_count: 2,
+    intraday_quarantine_tickers: [
+      { ticker: 'BBSI', quarantine_reason: 'REPEATED_INTRADAY_BLOCKER count=3 threshold=2', quarantine_action: 'DAILY_SCORE_ONLY' },
+      { ticker: 'SDPC', quarantine_reason: 'REPEATED_INTRADAY_BLOCKER count=2 threshold=2', quarantine_action: 'DAILY_SCORE_ONLY' }
+    ]
+  });
+  const aggregate = mockAggregate('2026-07-08');
+  const policy = mockPolicy('2026-07-08', { fallback_action_counts: { DAILY_SCORE_ONLY: 2, UNCHANGED: 10 } });
+  const dateAlignment = { aligned: true, date: '2026-07-08', dates: [] };
+
+  const result = gate.evaluateGate(bundle, aggregate, policy, dateAlignment);
+  assert.equal(result.gateStatus, 'PASS_WITH_QUARANTINE');
+  assert.ok(result.warnReasons.some((r) => r.includes('PASS_WITH_QUARANTINE')));
+  assert.equal(result.blockReasons.length, 0);
+
+  const report = gate.buildGateReport(bundle, aggregate, policy, { nowMs: Date.UTC(2026, 6, 9) });
+  assert.equal(report.gate_status, 'PASS_WITH_QUARANTINE');
+  assert.equal(report.provider_metrics.non_quarantined_provider_missing_count, 0);
+  assert.equal(report.data_quality_summary.intraday_quarantine_count, 2);
+  assert.match(report.recommendation, /Keep DAYTRADE_INTRADAY_SCORE_ENABLED off/);
+  assert.match(gate.markdownReport(report), /intraday_quarantine_tickers/);
+});
+
+test('non-quarantined blockers still BLOCK dry-run gate', () => {
+  const bundle = mockBundle('2026-07-08', {
+    provider_missing_count: 2,
+    data_quality_counts: { NO_INTRADAY_DATA: 2, OK: 10 },
+    non_quarantined_provider_missing_count: 1,
+    intraday_quarantine_count: 1,
+    intraday_quarantine_tickers: [{ ticker: 'BBSI', quarantine_action: 'DAILY_SCORE_ONLY' }]
+  });
+  const aggregate = mockAggregate('2026-07-08');
+  const policy = mockPolicy('2026-07-08');
+  const dateAlignment = { aligned: true, date: '2026-07-08', dates: [] };
+
+  const result = gate.evaluateGate(bundle, aggregate, policy, dateAlignment);
+  assert.equal(result.gateStatus, 'BLOCK');
+  assert.ok(result.blockReasons.some((r) => r.includes('non_quarantined_provider_missing_count')));
+});
