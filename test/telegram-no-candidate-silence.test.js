@@ -67,34 +67,38 @@ test('Day Trade radar request only disables on explicit false values', () => {
   assert.equal(sectorHot.__test.getDayTradeRadarRequested({ query: { send_radar: '' }, body: {} }), true);
 });
 
-test('public Telegram no-candidate message is not sent for Day Trade without radar fallback', async () => {
+test('Day Trade no candidates at all sends empty heartbeat', async () => {
   await withSendSpy(async (calls) => {
-    const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ status: 'WAIT_PULLBACK', entry_timing: 'needs close confirmation' })] }), 'run-silent', '2026-07-02', 1, true, false, {});
-    assert.equal(result.skipped, true);
-    assert.equal(result.reason, 'no_final_signal_but_radar_disabled');
-    assert.equal(calls.length, 0);
+    const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [] }), 'run-empty-heartbeat', '2026-07-02', 0, true, true, { scanned_count: 760, raw_batch_passed_count: 0 });
+    assert.equal(result.sent, true);
+    assert.equal(result.reason, 'daytrade_empty_heartbeat_sent');
+    assert.equal(calls.length, 1);
+    assert.match(calls[0], /empty heartbeat/);
+    assert.match(calls[0], /Scanned: 760/);
   });
 });
 
 
-test('Day Trade with radar ON and eligible candidate sends Signal Candidate', async () => {
+test('Day Trade batch candidates exist but strict signals 0 sends radar monitor fallback', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'RADR', status: 'WAIT_PULLBACK', breakout_confirmation_status: 'WAIT_PULLBACK', entry_timing: 'WAIT_PULLBACK', final_quality_pass: false, final_quality_status: 'needs close confirmation' })] }), 'run-radar-on', '2026-07-02', 1, true, true, {});
     assert.equal(result.sent, true);
     assert.equal(result.radar_sent, true);
-    assert.equal(result.reason, 'daytrade_signal_candidate_fallback_sent');
+    assert.equal(result.reason, 'daytrade_radar_monitor_fallback_sent');
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /Day Trade Signal/);
+    assert.match(calls[0], /RADAR\/MONITOR/);
+    assert.match(calls[0], /BUKAN REKOMENDASI BELI/);
   });
 });
 
-test('Day Trade with radar ON sends caution Signal Candidate for non-fatal Hindari / Very High Risk', async () => {
+test('Day Trade ARA/chase-risk ticker is retained as monitor, not dropped', async () => {
   await withSendSpy(async (calls) => {
-    const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'HARD', status: 'WAIT_PULLBACK', action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 'run-hard-only', '2026-07-02', 1, true, true, {});
+    const result = await sectorHot.__test.sendDayTradeTelegramNotification(makeSupabase({ daytrade_screener_latest: [row({ ticker: 'COCO', status: 'CHASE_RISK_MONITOR', action_label: 'WAIT_PULLBACK', risk_label: 'High Risk', telegram_verdict: 'ARA pump chase risk — tunggu pullback', final_quality_pass: false, final_quality_status: 'chase warning' })] }), 'run-hard-only', '2026-07-02', 1, true, true, {});
     assert.equal(result.sent, true);
     assert.equal(result.radar_sent, true);
-    assert.equal(result.reason, 'daytrade_signal_candidate_fallback_sent');
+    assert.equal(result.reason, 'daytrade_radar_monitor_fallback_sent');
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /Day Trade Signal/);
+    assert.match(calls[0], /COCO/);
+    assert.match(calls[0], /RADAR\/MONITOR/);
   });
 });
