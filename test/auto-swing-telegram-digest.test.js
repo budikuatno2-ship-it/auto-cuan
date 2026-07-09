@@ -118,3 +118,66 @@ test('Endpoint count remains 12', function() {
   var files = fs.readdirSync(apiDir).filter(function(f) { return f.endsWith('.js'); });
   assert.equal(files.length, 12);
 });
+
+test('Swing Non-Konglo finalize no-min-TP branch sends TP heartbeat with diagnostics', async function() {
+  await withSendSpy(async function(calls) {
+    const stagingRows = [
+      validRow({ ticker: 'LOW1', entry_low: 100, entry_high: 100, tp1: 103, status: 'Watchlist' }),
+      validRow({ ticker: 'MISS', entry_low: 100, entry_high: 100, tp1: null, status: 'Watchlist' })
+    ];
+    let stagingLimitCalls = 0;
+    const supabase = {
+      from: function(table) {
+        const chain = {
+          select: function(_cols, opts) {
+            if (opts && opts.count === 'exact') this._count = true;
+            return this;
+          },
+          eq: function() {
+            if (this._count) return Promise.resolve({ count: stagingRows.length, error: null });
+            return this;
+          },
+          in: function() { return Promise.resolve({ data: [], error: null }); },
+          order: function() { return this; },
+          limit: function() {
+            if (table === 'swing_screener_non_konglo_staging') {
+              stagingLimitCalls += 1;
+              return Promise.resolve({ data: stagingLimitCalls === 1 ? [] : stagingRows, error: null });
+            }
+            return Promise.resolve({ data: [], error: null });
+          },
+          maybeSingle: function() { return Promise.resolve({ data: { scanned_count: 2 }, error: null }); },
+          upsert: function() { return Promise.resolve({ data: [], error: null }); }
+        };
+        return chain;
+      }
+    };
+    let body;
+    const res = { status: function() { return { json: function(payload) { body = payload; return payload; } }; } };
+    await sectorHot.__test.handleNkScreenerFinalize({ headers: {}, query: {} }, res, supabase);
+    assert.equal(body.step, 'finalize');
+    assert.equal(body.status, 'COMPLETED_NO_CANDIDATES');
+    assert.equal(body.telegram.sent, true);
+    assert.equal(body.telegram.skipped, false);
+    assert.equal(body.telegram.reason, 'swing_nonkonglo_empty_tp_heartbeat_sent');
+    assert.ok(body.min_tp1_upside_diagnostics);
+    assert.ok(body.entry_range_normalization_diagnostics);
+    assert.equal(body.min_tp1_upside_diagnostics.total_pre_tp_candidates, 2);
+    assert.match(body.telegram.message, /Threshold:/);
+    assert.match(body.telegram.message, /Total pre-TP candidates: 2/);
+    assert.match(body.telegram.message, /LOW1|MISS/);
+    assert.equal(calls.length, 1);
+  });
+});
+
+test('Swing Konglo selected_count=0 heartbeat includes normalization diagnostics when source candidates exist', async function() {
+  await withSendSpy(async function() {
+    var supabase = makeSupabase([validRow({ ticker: 'LOWK', entry_low: 100, entry_high: 100, tp1: 102, stop_loss: null })]);
+    var result = await sendSwingKongloTelegramNotification(supabase, 1);
+    assert.equal(result.sent, true);
+    assert.equal(result.reason, 'swing_empty_heartbeat_sent');
+    assert.ok(result.entry_range_normalization_diagnostics);
+    assert.ok(result.min_tp1_upside_diagnostics);
+    assert.equal(result.min_tp1_upside_diagnostics.total_pre_tp_candidates, 1);
+  });
+});
