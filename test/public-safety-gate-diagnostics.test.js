@@ -337,6 +337,7 @@ test('entry_low/entry_high only are normalized as valid entry aliases with conse
   assert.equal(c.entry_mid, 1025);
   assert.equal(c.entry_alias_used, 'entry_low_entry_high');
   assert.equal(c.tp1_upside, 14.3);
+  assert.equal(c.tp1_upside_pct, 14.3);
   assert.equal(candidatePassesPublicTelegramSafetyGate(c, 'daily_top5'), true);
 });
 
@@ -348,7 +349,34 @@ test('entry range diagnostics count aliases and computed TP1 upside', () => {
   assert.equal(diagnostics.entry_range_present_count, 1);
   assert.equal(diagnostics.entry_alias_used_counts.entry_low_entry_high, 1);
   assert.equal(diagnostics.computed_tp1_upside_count, 1);
+  assert.equal(diagnostics.computed_tp1_upside_pct_count, 1);
   assert.equal(diagnostics.tp1_upside_null_after_normalization_count, 0);
+  assert.equal(diagnostics.tp1_upside_pct_null_after_normalization_count, 0);
+  assert.equal(diagnostics.sample_computed_tp1_upside_pct[0].ticker, 'RANG');
   assert.equal(diagnostics.sample_entry_range_normalized[0].ticker, 'RANG');
   assert.equal(diagnostics.sample_entry_range_normalized[0].entry1, 1050);
+  assert.equal(diagnostics.sample_entry_range_normalized[0].tp1_upside_pct, 14.3);
+});
+
+test('entry range normalization computes tp1_upside_pct from conservative entry_high examples', () => {
+  const lead = base({ ticker: 'LEAD', entry1: null, entry2: null, entry_low: 97, entry_high: 99, tp1: 105, tp1n: 105, tp1_upside: null, tp1_upside_pct: null });
+  sectorHot.__test.normalizeEntryRangeAliases(lead);
+  assert.equal(lead.entry1, 99);
+  assert.equal(lead.tp1_upside_pct, 6.1);
+
+  const bbrm = base({ ticker: 'BBRM', entry1: null, entry2: null, entry_low: 113, entry_high: 116, tp1: 142, tp1n: 142, tp1_upside: null, tp1_upside_pct: null });
+  sectorHot.__test.normalizeEntryRangeAliases(bbrm);
+  assert.equal(bbrm.entry1, 116);
+  assert.equal(bbrm.tp1_upside_pct, 22.4);
+});
+
+test('entry range normalization preserves valid tp1_upside_pct and mirrors tp1_upside safely', () => {
+  const preserved = base({ entry1: null, entry2: null, entry_low: 97, entry_high: 99, tp1: 105, tp1n: 105, tp1_upside: 5.5, tp1_upside_pct: 5.75 });
+  sectorHot.__test.normalizeEntryRangeAliases(preserved);
+  assert.equal(preserved.tp1_upside_pct, 5.75);
+  assert.equal(preserved.tp1_upside, 5.5);
+
+  const mirrored = base({ entry1: null, entry2: null, entry_low: 97, entry_high: 99, tp1: 105, tp1n: 105, tp1_upside: 6.06, tp1_upside_pct: null });
+  sectorHot.__test.normalizeEntryRangeAliases(mirrored);
+  assert.equal(mirrored.tp1_upside_pct, 6.06);
 });
