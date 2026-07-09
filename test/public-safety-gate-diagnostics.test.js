@@ -328,3 +328,27 @@ test('diagnosePublicSafetyGateRejection produces non-empty category for every kn
     assert.notEqual(diag.category, 'unknown', 'scenario ' + i + ' should not be unknown: ' + JSON.stringify(scenarios[i]));
   }
 });
+
+test('entry_low/entry_high only are normalized as valid entry aliases with conservative TP1 upside', () => {
+  const c = base({ entry1: null, entry2: null, entry_low: 1000, entry_high: 1050, tp1: 1200, tp1n: 1200, tp1_upside: null });
+  sectorHot.__test.normalizeEntryRangeAliases(c);
+  assert.equal(c.entry1, 1050);
+  assert.equal(c.entry2, 1000);
+  assert.equal(c.entry_mid, 1025);
+  assert.equal(c.entry_alias_used, 'entry_low_entry_high');
+  assert.equal(c.tp1_upside, 14.3);
+  assert.equal(candidatePassesPublicTelegramSafetyGate(c, 'daily_top5'), true);
+});
+
+test('entry range diagnostics count aliases and computed TP1 upside', () => {
+  const diagnostics = sectorHot.__test.buildEntryRangeNormalizationDiagnostics([
+    base({ ticker: 'RANG', entry1: null, entry2: null, entry_low: 1000, entry_high: 1050, tp1: 1200, tp1n: 1200, tp1_upside: null }),
+    base({ ticker: 'MISS', entry1: null, entry2: null, entry_low: null, entry_high: null, tp1: 1200, tp1n: 1200, tp1_upside: null })
+  ]);
+  assert.equal(diagnostics.entry_range_present_count, 1);
+  assert.equal(diagnostics.entry_alias_used_counts.entry_low_entry_high, 1);
+  assert.equal(diagnostics.computed_tp1_upside_count, 1);
+  assert.equal(diagnostics.tp1_upside_null_after_normalization_count, 0);
+  assert.equal(diagnostics.sample_entry_range_normalized[0].ticker, 'RANG');
+  assert.equal(diagnostics.sample_entry_range_normalized[0].entry1, 1050);
+});
