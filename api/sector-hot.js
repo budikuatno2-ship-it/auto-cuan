@@ -3368,16 +3368,77 @@ function chartLink(ticker) { return 'https://www.tradingview.com/chart/?symbol=I
 
 function getEntry1(row) {
   var low = toNum(row.entry_low), high = toNum(row.entry_high);
-  if (high != null && high > 0) return high;
+  if (high != null && high > 0) return high; // conservative entry reference for TP1 upside
   if (low != null && low > 0) return low;
-  return toNum(row.last_price);
+  return toNum(row.entry) || toNum(row.entry_price) || toNum(row.buy_price) || toNum(row.last_price);
 }
 
 function getEntry2(row) {
   var low = toNum(row.entry_low), high = toNum(row.entry_high);
   if (low != null && low > 0) return low;
   if (high != null && high > 0) return high;
-  return toNum(row.last_price);
+  return toNum(row.entry2) || toNum(row.entry) || toNum(row.entry_price) || toNum(row.buy_price) || toNum(row.last_price);
+}
+
+function normalizeEntryRangeAliases(candidate) {
+  var r = candidate || {};
+  var low = toNum(r.entry_low);
+  var high = toNum(r.entry_high);
+  var rangePresent = (low != null && low > 0) || (high != null && high > 0);
+  var aliasUsed = null;
+  if (rangePresent) {
+    if (!(low > 0)) low = high;
+    if (!(high > 0)) high = low;
+    if (low > high) { var tmp = low; low = high; high = tmp; }
+    r.entry_low = low;
+    r.entry_high = high;
+    r.entry_mid = Math.round(((low + high) / 2) * 100) / 100;
+    r.entry1 = high;
+    r.entry2 = low;
+    aliasUsed = 'entry_low_entry_high';
+  } else {
+    var directAlias = null;
+    var direct = toNum(r.entry1);
+    if (direct != null && direct > 0) directAlias = 'entry1';
+    else { direct = toNum(r.entry); if (direct != null && direct > 0) directAlias = 'entry'; }
+    if (!directAlias) { direct = toNum(r.entry_price); if (direct != null && direct > 0) directAlias = 'entry_price'; }
+    if (!directAlias) { direct = toNum(r.buy_price); if (direct != null && direct > 0) directAlias = 'buy_price'; }
+    if (directAlias) {
+      r.entry1 = direct;
+      if (!(toNum(r.entry2) > 0)) r.entry2 = direct;
+      aliasUsed = directAlias;
+    }
+  }
+  var entryRef = rangePresent ? high : toNum(r.entry1);
+  var tp1 = toNum(r.tp1n || r.tp1);
+  if (tp1 != null && tp1 > 0 && entryRef != null && entryRef > 0) {
+    r.tp1_upside = pctFrom(entryRef, tp1);
+  }
+  if (aliasUsed) r.entry_alias_used = aliasUsed;
+  r.entry_range_present = !!rangePresent;
+  return r;
+}
+
+function buildEntryRangeNormalizationDiagnostics(candidates) {
+  var out = {
+    entry_range_present_count: 0,
+    entry_alias_used_counts: {},
+    computed_tp1_upside_count: 0,
+    tp1_upside_null_after_normalization_count: 0,
+    sample_entry_range_normalized: []
+  };
+  (candidates || []).forEach(function(candidate) {
+    var beforeUpside = candidate && candidate.tp1_upside;
+    var c = normalizeEntryRangeAliases(Object.assign({}, candidate || {}));
+    if (c.entry_range_present) out.entry_range_present_count++;
+    if (c.entry_alias_used) out.entry_alias_used_counts[c.entry_alias_used] = (out.entry_alias_used_counts[c.entry_alias_used] || 0) + 1;
+    if ((beforeUpside == null || !isFinite(toNum(beforeUpside))) && c.tp1_upside != null && isFinite(c.tp1_upside)) out.computed_tp1_upside_count++;
+    if (toNum(c.tp1n || c.tp1) > 0 && (toNum(c.entry_low) > 0 || toNum(c.entry_high) > 0) && c.tp1_upside == null) out.tp1_upside_null_after_normalization_count++;
+    if (c.entry_range_present && out.sample_entry_range_normalized.length < 5) {
+      out.sample_entry_range_normalized.push({ ticker: c.ticker || '-', entry_low: c.entry_low, entry_high: c.entry_high, entry_mid: c.entry_mid, entry1: c.entry1, tp1: toNum(c.tp1n || c.tp1), tp1_upside: c.tp1_upside });
+    }
+  });
+  return out;
 }
 
 
@@ -3871,7 +3932,7 @@ function getPotentialRadarReason(candidate) {
 
 function candidatePassesPotentialRadarGate(candidate, mode) {
   if (!candidate || !candidate.ticker) return false;
-  var r = candidate;
+  var r = normalizeEntryRangeAliases(candidate);
   var allText = joinTelegramTexts([
     r.status, r.final_status, r.verdict, r.signal_verdict, r.telegram_verdict, r.reason,
     r.status_reason, r.action_reason, r.signal_reason, r.excluded_reason, r.action,
@@ -3992,6 +4053,7 @@ function publicTelegramSafetyTextHasReject(text) {
 
 function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   if (!candidate) return false;
+  normalizeEntryRangeAliases(candidate);
   var finalGate = candidate.final_top_quality_gate || candidate.final_quality_gate || candidate.top_quality_gate || null;
   if (candidate.final_quality_pass === false ||
       candidate.final_gate_pass === false ||
@@ -4323,6 +4385,7 @@ function diagnosePublicSafetyGateRejection(candidate, mode) {
  */
 function candidatePassesTop5WatchlistGate(candidate) {
   if (!candidate || !candidate.ticker) return false;
+  normalizeEntryRangeAliases(candidate);
 
   // === HARD BLOCKS (same as Entry Signal — never relaxed) ===
 
@@ -4456,7 +4519,7 @@ function candidatePassesTop5WatchlistGate(candidate) {
 
 function candidatePassesTelegramCandidateDigestGate(candidate, mode) {
   if (!candidate || !candidate.ticker) return false;
-  var r = candidate;
+  var r = normalizeEntryRangeAliases(candidate);
   // Fatal blocks — always reject
   var ticker = safeTelegramText(r.ticker, 16, '');
   if (!ticker) return false;
@@ -4542,6 +4605,7 @@ function candidateTelegramEligible(candidate) {
 
 function candidatePassesMinUpside(candidate) {
   if (!candidate || !candidate.ticker) return false;
+  normalizeEntryRangeAliases(candidate);
   var entry = toNum(candidate.entry1) || getEntry1(candidate);
   var tp1 = toNum(candidate.tp1n || candidate.tp1);
   if (!(entry > 0) || !(tp1 > 0) || tp1 <= entry) return false;
@@ -4582,6 +4646,7 @@ function normalizeCombinedCandidate(row, category) {
   var r = Object.assign({}, row || {});
   r.category = category;
   r.ticker = normalizeForeignTicker(r.ticker || '');
+  normalizeEntryRangeAliases(r);
   r.entry1 = getEntry1(r);
   r.entry2 = getEntry2(r);
   r.sl = toNum(r.stop_loss);
@@ -5682,6 +5747,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
           risk_reward: toNum(s.risk_reward) || null
         };
       }),
+      entry_range_normalization: buildEntryRangeNormalizationDiagnostics(top5RadarCandidates.length > 0 ? top5RadarCandidates : picks),
       price_freshness: top5PriceFreshnessDiagnostics
     } : undefined;
 
@@ -10974,6 +11040,8 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 
 module.exports.__test = {
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
+  normalizeEntryRangeAliases: normalizeEntryRangeAliases,
+  buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
   diagnosePublicSafetyGateRejection: diagnosePublicSafetyGateRejection,
   candidatePassesTop5WatchlistGate: candidatePassesTop5WatchlistGate,
   candidatePassesPotentialRadarGate: candidatePassesPotentialRadarGate,
@@ -10997,6 +11065,7 @@ module.exports.__test = {
   registerCandidatesForMonitoring: registerCandidatesForMonitoring,
   getDayTradeRadarRequested: getDayTradeRadarRequested,
   candidateTelegramEligible: candidateTelegramEligible,
+  candidatePassesMinUpside: candidatePassesMinUpside,
   formatCandidateBlock: formatCandidateBlock,
   sanitizeTop5ResponseForAudience: sanitizeTop5ResponseForAudience,
   sanitizeTop5RowForPublic: sanitizeTop5RowForPublic,
