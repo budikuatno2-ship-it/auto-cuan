@@ -6525,11 +6525,6 @@ function isDashboardExplicitPreviewOrProvisionalRow(row) {
 }
 function hasDashboardLockedFinalIndicator(row) {
   if (!row || typeof row !== 'object') return false;
-  // Any row that exists in telegram_daily_picks (has id + date) is already a
-  // persisted locked/final selection — trust it regardless of whether explicit
-  // is_locked/first_sent_at markers were stamped.  This prevents false negatives
-  // for rows inserted by VPS workers or web-lock path that omit those markers.
-  if (row.id && row.date) return true;
   var text = dashboardLockedIndicatorText(row);
   return row.is_locked === true || row.locked === true || row.is_final === true || !!row.first_sent_at ||
     text.indexOf('locked') >= 0 || text.indexOf('final') >= 0;
