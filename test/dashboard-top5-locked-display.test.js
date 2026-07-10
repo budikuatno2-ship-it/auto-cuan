@@ -11,6 +11,11 @@ const path = require('node:path');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 const sectorHotSrc = fs.readFileSync(path.join(__dirname, '..', 'api', 'sector-hot.js'), 'utf8');
+const sectorHot = require('../api/sector-hot');
+const {
+  hasDashboardLockedFinalIndicator,
+  isSafeDashboardLockedTop5Row
+} = sectorHot.__test;
 
 // ============================================================
 // TEST: Dashboard HTML has no Preview Top 5 Besok
@@ -73,27 +78,67 @@ test('web-daily-picks falls back to previous dates if current date has no rows',
 });
 
 // ============================================================
-// TEST: Persisted locked rows with stale raw_payload Avoid/Hindari still render
+// TEST: Dashboard locked/final indicator behavior
 // ============================================================
-test('isSafeDashboardLockedTop5Row trusts rows with id+date (no raw_payload filtering)', () => {
-  const fnStart = sectorHotSrc.indexOf('function hasDashboardLockedFinalIndicator(row)');
-  assert.ok(fnStart >= 0, 'hasDashboardLockedFinalIndicator must exist');
-  const fnBody = sectorHotSrc.slice(fnStart, fnStart + 600);
-  // Must check id + date as the first condition (trust path for all persisted rows)
-  assert.ok(fnBody.indexOf('if (row.id && row.date) return true;') >= 0, 'must trust rows with id+date');
-  assert.ok(fnBody.indexOf('telegram_daily_picks') >= 0, 'must reference telegram_daily_picks in comment');
+test('hasDashboardLockedFinalIndicator does not treat id+date alone as locked/final', () => {
+  assert.equal(hasDashboardLockedFinalIndicator({ id: 123, date: '2025-01-15' }), false);
+  assert.equal(hasDashboardLockedFinalIndicator({ id: 123, date: '2025-01-15', first_sent_at: '2025-01-15T09:00:00Z' }), true);
+  assert.equal(hasDashboardLockedFinalIndicator({ id: 123, date: '2025-01-15', is_locked: true }), true);
+  assert.equal(hasDashboardLockedFinalIndicator({ id: 123, date: '2025-01-15', locked: true }), true);
+  assert.equal(hasDashboardLockedFinalIndicator({ id: 123, date: '2025-01-15', is_final: true }), true);
+  assert.equal(hasDashboardLockedFinalIndicator({ id: 123, date: '2025-01-15', publication_status: 'final' }), true);
+  assert.equal(hasDashboardLockedFinalIndicator({ id: 123, date: '2025-01-15', lock_status: 'locked' }), true);
+});
 
-  // Verify isSafeDashboardLockedTop5Row takes trust path for locked indicator
-  const safeStart = sectorHotSrc.indexOf('function isSafeDashboardLockedTop5Row(row)');
-  assert.ok(safeStart >= 0, 'isSafeDashboardLockedTop5Row must exist');
-  const safeBody = sectorHotSrc.slice(safeStart, safeStart + 800);
-  // Trust path: hasDashboardLockedFinalIndicator → only block explicit preview/provisional
-  assert.ok(safeBody.indexOf('if (hasDashboardLockedFinalIndicator(row)) return !isDashboardExplicitPreviewOrProvisionalRow(row);') >= 0,
-    'trust path must only block explicit preview/provisional rows');
-  // hasAvoidGrade/hasHindariAction is only in the fallback path (below the trust path)
-  const trustPathEnd = safeBody.indexOf('hasDashboardLockedFinalIndicator(row))');
-  const avoidCheckPos = safeBody.indexOf('hasAvoidGrade(payload)');
-  assert.ok(avoidCheckPos > trustPathEnd, 'Avoid/Hindari checks must be AFTER the trust path (fallback only)');
+// ============================================================
+// TEST: Dashboard Top 5 Avoid/Hindari locked-row policy matrix
+// ============================================================
+test('isSafeDashboardLockedTop5Row enforces Avoid/Hindari policy without id+date shortcut', () => {
+  assert.equal(isSafeDashboardLockedTop5Row({
+    id: 1,
+    date: '2025-01-15',
+    ticker: 'AVOID',
+    raw_payload: { grade: 'AVOID' }
+  }), false, 'non-locked Avoid row must be excluded even with id+date');
+
+  assert.equal(isSafeDashboardLockedTop5Row({
+    id: 2,
+    date: '2025-01-15',
+    ticker: 'HINDARI',
+    raw_payload: { action_label: 'Hindari dulu' }
+  }), false, 'non-locked Hindari row must be excluded even with id+date');
+
+  assert.equal(isSafeDashboardLockedTop5Row({
+    id: 3,
+    date: '2025-01-15',
+    ticker: 'SAFE',
+    raw_payload: { confidence: 'B', action_label: 'Masih dekat entry' }
+  }), true, 'safe id+date row without Avoid/Hindari should pass payload path');
+
+  assert.equal(isSafeDashboardLockedTop5Row({
+    id: 4,
+    date: '2025-01-15',
+    ticker: 'LOCKED_STALE',
+    is_locked: true,
+    raw_payload: { grade: 'AVOID', action_label: 'Hindari dulu' }
+  }), true, 'genuinely locked row may render despite stale raw_payload Avoid/Hindari');
+
+  assert.equal(isSafeDashboardLockedTop5Row({
+    id: 5,
+    date: '2025-01-15',
+    ticker: 'FINAL_STALE',
+    publication_status: 'final',
+    raw_payload: { signal_action: 'AVOID' }
+  }), true, 'genuinely final row may render despite stale raw_payload Avoid');
+
+  assert.equal(isSafeDashboardLockedTop5Row({
+    id: 6,
+    date: '2025-01-15',
+    ticker: 'PREVIEW_LOCKED',
+    is_locked: true,
+    preview: true,
+    raw_payload: { confidence: 'B' }
+  }), false, 'preview/provisional/admin-preview row must stay excluded');
 });
 
 // ============================================================
