@@ -11,6 +11,7 @@ LOG_DIR="${LOG_DIR:-logs/daytrade-full-universe-intraday-validation}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
 LOG_FILE="${LOG_FILE:-$LOG_DIR/$RUN_ID.log}"
 PID_FILE="${PID_FILE:-$LOG_DIR/latest.pid}"
+LOG_PATH_FILE="${LOG_PATH_FILE:-$LOG_DIR/latest.logpath}"
 SUMMARY_JSON="$REPORTS_DIR/daytrade-full-universe-intraday-validation-$RUN_ID.json"
 SUMMARY_MD="$REPORTS_DIR/daytrade-full-universe-intraday-validation-$RUN_ID.md"
 
@@ -24,7 +25,7 @@ Usage:
   $0 --run              Run validation in the current shell (used by --start-once).
   $0 --status           Show latest background process and log tail.
   $0 --summary          Print latest final JSON summary with jq.
-  $0 --confirm-guard    Confirm DAYTRADE_INTRADAY_SCORE_ENABLED is false in shell/.env (if present).
+  $0 --confirm-guard    Confirm DAYTRADE_INTRADAY_SCORE_ENABLED is false in shell/.env/.env.local (if present).
 USAGE
 }
 
@@ -34,10 +35,13 @@ confirm_guard() {
     echo "DAYTRADE_INTRADAY_SCORE_ENABLED must remain false/0, got: $env_value" >&2
     return 1
   fi
-  if [[ -f .env ]] && grep -Eq '^DAYTRADE_INTRADAY_SCORE_ENABLED=(true|1)' .env; then
-    echo ".env enables DAYTRADE_INTRADAY_SCORE_ENABLED; refusing to run." >&2
-    return 1
-  fi
+  local env_file
+  for env_file in .env .env.local; do
+    if [[ -f "$env_file" ]] && grep -Eq '^DAYTRADE_INTRADAY_SCORE_ENABLED=(true|1)' "$env_file"; then
+      echo "$env_file enables DAYTRADE_INTRADAY_SCORE_ENABLED; refusing to run." >&2
+      return 1
+    fi
+  done
   echo "DAYTRADE_INTRADAY_SCORE_ENABLED remains false (process=${env_value})."
 }
 
@@ -147,13 +151,14 @@ case "${1:-}" in
   --start-once)
     cd "$APP_DIR"
     mkdir -p "$LOG_DIR"
+    echo "$LOG_FILE" > "$LOG_PATH_FILE"
     nohup "$0" --run > "$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"
     echo "Started PID $(cat "$PID_FILE"). Log: $LOG_FILE"
     ;;
   --run) run_all ;;
   --status)
-    cd "$APP_DIR"; [[ -f "$PID_FILE" ]] && ps -fp "$(cat "$PID_FILE")" || true; tail -n 80 "$LOG_FILE" 2>/dev/null || true ;;
+    cd "$APP_DIR"; log_path="$(cat "$LOG_PATH_FILE" 2>/dev/null || true)"; [[ -f "$PID_FILE" ]] && ps -fp "$(cat "$PID_FILE")" || true; [[ -n "$log_path" ]] && tail -n 80 "$log_path" 2>/dev/null || true ;;
   --summary)
     cd "$APP_DIR"; latest="$(latest_json daytrade-full-universe-intraday-validation-)"; [[ -n "$latest" ]] && jq . "$latest" || { echo "No final summary JSON found." >&2; exit 1; } ;;
   --confirm-guard) cd "$APP_DIR"; confirm_guard ;;
