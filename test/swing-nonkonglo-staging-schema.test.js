@@ -102,3 +102,95 @@ test('sanitizeNkStagingRow is idempotent', function() {
   const twice = sectorHot.__test.sanitizeNkStagingRow(once);
   assert.deepEqual(twice, once);
 });
+
+const REQUIRED_LATEST_FIELDS = [
+  'rank',
+  'ticker',
+  'board',
+  'last_price',
+  'score',
+  'grade',
+  'risk_reward',
+  'status',
+  'status_reason',
+  'setup_type',
+  'entry_low',
+  'entry_high',
+  'stop_loss',
+  'tp1',
+  'tp2',
+  'support',
+  'resistance',
+  'published_at',
+  'run_date',
+  'risk_label',
+  'quality_grade'
+];
+
+function buildLatestRow() {
+  return Object.assign(buildRow(), {
+    rank: 1,
+    published_at: '2026-07-10T10:00:00.000Z',
+    price_source: 'runtime_only',
+    price_asof: '2026-07-10T09:59:00.000Z',
+    price_date: '2026-07-10',
+    open_price: 980,
+    high_price: 1020,
+    low_price: 970,
+    previous_close: 990,
+    prev_close: 990
+  });
+}
+
+test('sanitizeNkLatestPublishRow uses a latest publish column allowlist', function() {
+  const row = buildLatestRow();
+  const sanitized = sectorHot.__test.sanitizeNkLatestPublishRow(row);
+
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'close_price'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'price_source'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'price_asof'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'price_date'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'open_price'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'high_price'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'low_price'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'previous_close'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'prev_close'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'tf_2d_context'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'tf_3d_context'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'tf_10d_context'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'multi_timeframe_notes'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'future_runtime_field'), false);
+
+  for (const field of REQUIRED_LATEST_FIELDS) {
+    assert.equal(sanitized[field], row[field], `${field} should be preserved`);
+  }
+
+  const allowed = new Set(sectorHot.__test.nkLatestColumns);
+  for (const key of Object.keys(sanitized)) {
+    assert.equal(allowed.has(key), true, `${key} must be in the latest allowlist`);
+  }
+});
+
+test('buildNkPublishFailureResponse exposes safe publish diagnostics', function() {
+  const response = sectorHot.__test.buildNkPublishFailureResponse(
+    { message: "Could not find the 'close_price' column of 'swing_screener_non_konglo_latest'" },
+    [{ ticker: 'SAFE' }, { ticker: 'GOOD' }],
+    {
+      staging_table: 'swing_screener_non_konglo_staging',
+      staging_rows_found: 12,
+      staging_query_keys: { run_date: '2026-07-10' },
+      finalize_run_id: '2026-07-10',
+      finalize_trading_date: '2026-07-10'
+    },
+    12
+  );
+
+  assert.equal(response.success, false);
+  assert.equal(response.publish_table, 'swing_screener_non_konglo_latest');
+  assert.equal(response.publish_attempted_count, 2);
+  assert.match(response.publish_error, /close_price/);
+  assert.deepEqual(response.publish_sample_tickers, ['SAFE', 'GOOD']);
+  assert.equal(response.staging_rows_found, 12);
+  assert.equal(response.staging_count, 12);
+  assert.equal(Object.prototype.hasOwnProperty.call(response, 'secret'), false);
+});

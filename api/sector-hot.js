@@ -7653,6 +7653,82 @@ function sanitizeNkStagingRow(row) {
   return out;
 }
 
+
+var NK_LATEST_COLUMNS = Object.freeze([
+  'rank',
+  'ticker',
+  'board',
+  'last_price',
+  'change_pct',
+  'avg_volume_20d',
+  'avg_transaction_value_20d',
+  'tx_value_1d',
+  'avg_tx_value_3d',
+  'avg_tx_value_7d',
+  'traded_days_20d',
+  'score',
+  'grade',
+  'risk_reward',
+  'volume_ratio_avg20',
+  'status',
+  'status_reason',
+  'setup_type',
+  'ma20',
+  'ma50',
+  'rsi14',
+  'entry_low',
+  'entry_high',
+  'stop_loss',
+  'tp1',
+  'tp2',
+  'support',
+  'resistance',
+  'published_at',
+  'run_date',
+  'tf_1d_context',
+  'tf_5d_context',
+  'tf_20d_context',
+  'multi_timeframe_bias',
+  'volume_phase',
+  'risk_label',
+  'quality_grade'
+]);
+var NK_LATEST_COLUMN_SET = NK_LATEST_COLUMNS.reduce(function(acc, col) {
+  acc[col] = true;
+  return acc;
+}, Object.create(null));
+
+function sanitizeNkLatestPublishRow(row) {
+  var out = {};
+  row = row || {};
+  // swing_screener_non_konglo_latest is also schema-fixed. Keep only
+  // confirmed latest columns so runtime/source-only fields from staging reads
+  // cannot break publish with PostgREST "column not found" errors.
+  Object.keys(row).forEach(function(key) {
+    if (NK_LATEST_COLUMN_SET[key]) out[key] = row[key];
+  });
+  return out;
+}
+
+function buildNkPublishFailureResponse(insErr, publishRows, stagingDiagnostics, totalStagingCount) {
+  publishRows = Array.isArray(publishRows) ? publishRows : [];
+  stagingDiagnostics = stagingDiagnostics || {};
+  return {
+    success: false,
+    error: 'Failed to publish. Retry will re-attempt from staging.',
+    publish_table: 'swing_screener_non_konglo_latest',
+    publish_attempted_count: publishRows.length,
+    publish_error: insErr && insErr.message ? insErr.message : String(insErr || 'Unknown publish error'),
+    publish_sample_tickers: publishRows.slice(0, 5).map(function(r) { return r && r.ticker ? r.ticker : null; }).filter(Boolean),
+    staging_rows_found: stagingDiagnostics.staging_rows_found != null ? stagingDiagnostics.staging_rows_found : (totalStagingCount || 0),
+    staging_count: totalStagingCount || stagingDiagnostics.staging_rows_found || 0,
+    staging_table: stagingDiagnostics.staging_table || 'swing_screener_non_konglo_staging',
+    staging_query_keys: stagingDiagnostics.staging_query_keys || null,
+    finalize_run_id: stagingDiagnostics.finalize_run_id || null,
+    finalize_trading_date: stagingDiagnostics.finalize_trading_date || null
+  };
+}
+
 async function countNkPersistedStagingRows(supabase, runDate, tickers) {
   tickers = (Array.isArray(tickers) ? tickers : []).filter(Boolean);
   if (!runDate || tickers.length === 0) return 0;
@@ -8156,14 +8232,14 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       volume_phase: c.volume_phase || null,
       risk_label: c.risk_label || null,
       quality_grade: c.quality_grade || null
-    }));
+    })).map(sanitizeNkLatestPublishRow);
 
     var { error: insErr } = await supabase.from('swing_screener_non_konglo_latest').insert(publishRows);
     if (insErr) {
       // Insert failed — meta stays as "finalizing", NOT "published"
       // User can retry and finalize will re-attempt from staging
       await updateNkMeta(supabase, { status: 'failed', message: 'Gagal publish Top 30: ' + insErr.message });
-      return res.status(200).json({ success: false, error: 'Failed to publish. Retry will re-attempt from staging.' });
+      return res.status(200).json(buildNkPublishFailureResponse(insErr, publishRows, stagingDiagnostics, totalStagingCount));
     }
     publishedCount = publishRows.length;
   }
@@ -11494,6 +11570,9 @@ module.exports.__test = {
   handleNkScreenerBatch: handleNkScreenerBatch,
   nkStagingColumns: NK_STAGING_COLUMNS,
   sanitizeNkStagingRow: sanitizeNkStagingRow,
+  nkLatestColumns: NK_LATEST_COLUMNS,
+  sanitizeNkLatestPublishRow: sanitizeNkLatestPublishRow,
+  buildNkPublishFailureResponse: buildNkPublishFailureResponse,
   candidatePassesMinUpside: candidatePassesMinUpside,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
