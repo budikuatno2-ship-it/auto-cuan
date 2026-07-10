@@ -7602,14 +7602,31 @@ async function handleNkScreenerStart(req, res, supabase) {
 }
 
 
+// Explicit allowlist of columns in swing_screener_non_konglo_staging.
+// Using an allowlist (instead of a blocklist) ensures any new field added to
+// calculateNkSetupScore or batch enrichment is automatically excluded,
+// preventing silent upsert failures like the close_price schema mismatch.
+var NK_STAGING_ALLOWED_COLUMNS = [
+  'ticker', 'board', 'last_price', 'price_source', 'price_asof', 'price_date',
+  'open_price', 'high_price', 'low_price', 'previous_close', 'prev_close',
+  'change_pct', 'avg_volume_20d', 'avg_transaction_value_20d',
+  'tx_value_1d', 'avg_tx_value_3d', 'avg_tx_value_7d', 'traded_days_20d',
+  'score', 'grade', 'risk_reward', 'volume_ratio_avg20',
+  'status', 'status_reason', 'setup_type',
+  'ma20', 'ma50', 'rsi14',
+  'entry_low', 'entry_high', 'stop_loss', 'tp1', 'tp2', 'support', 'resistance',
+  'run_date', 'calculated_at',
+  'tf_1d_context', 'tf_5d_context', 'tf_20d_context',
+  'multi_timeframe_bias', 'volume_phase', 'risk_label', 'quality_grade'
+];
+
 function sanitizeNkStagingRow(row) {
-  var out = Object.assign({}, row || {});
-  // swing_screener_non_konglo_staging is intentionally narrower than latest.
-  // Drop runtime/latest-only fields so one unsupported column cannot make the entire batch upsert fail.
-  delete out.tf_2d_context;
-  delete out.tf_3d_context;
-  delete out.tf_10d_context;
-  delete out.multi_timeframe_notes;
+  var src = row || {};
+  var out = {};
+  for (var i = 0; i < NK_STAGING_ALLOWED_COLUMNS.length; i++) {
+    var col = NK_STAGING_ALLOWED_COLUMNS[i];
+    if (src[col] !== undefined) out[col] = src[col];
+  }
   return out;
 }
 
@@ -11453,6 +11470,8 @@ module.exports.__test = {
   handleNkScreenerFinalize: handleNkScreenerFinalize,
   handleNkScreenerBatch: handleNkScreenerBatch,
   sanitizeNkStagingRow: sanitizeNkStagingRow,
+  NK_STAGING_ALLOWED_COLUMNS: NK_STAGING_ALLOWED_COLUMNS,
+  buildNkFinalizeStagingDiagnostics: buildNkFinalizeStagingDiagnostics,
   candidatePassesMinUpside: candidatePassesMinUpside,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
