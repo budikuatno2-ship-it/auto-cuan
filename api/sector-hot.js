@@ -7597,14 +7597,59 @@ async function handleNkScreenerStart(req, res, supabase) {
 }
 
 
+var NK_STAGING_COLUMNS = Object.freeze([
+  'ticker',
+  'board',
+  'run_date',
+  'last_price',
+  'change_pct',
+  'avg_volume_20d',
+  'avg_transaction_value_20d',
+  'traded_days_20d',
+  'ma20',
+  'ma50',
+  'rsi14',
+  'volume_ratio_avg20',
+  'support',
+  'resistance',
+  'entry_low',
+  'entry_high',
+  'stop_loss',
+  'tp1',
+  'tp2',
+  'risk_reward',
+  'score',
+  'grade',
+  'status',
+  'status_reason',
+  'calculated_at',
+  'tf_1d_context',
+  'tf_5d_context',
+  'tf_20d_context',
+  'multi_timeframe_bias',
+  'volume_phase',
+  'risk_label',
+  'quality_grade',
+  'tx_value_1d',
+  'avg_tx_value_3d',
+  'avg_tx_value_7d',
+  'setup_type'
+]);
+var NK_STAGING_COLUMN_SET = NK_STAGING_COLUMNS.reduce(function(acc, col) {
+  acc[col] = true;
+  return acc;
+}, Object.create(null));
+
 function sanitizeNkStagingRow(row) {
-  var out = Object.assign({}, row || {});
+  var out = {};
+  row = row || {};
   // swing_screener_non_konglo_staging is intentionally narrower than latest.
-  // Drop runtime/latest-only fields so one unsupported column cannot make the entire batch upsert fail.
-  delete out.tf_2d_context;
-  delete out.tf_3d_context;
-  delete out.tf_10d_context;
-  delete out.multi_timeframe_notes;
+  // Keep only confirmed staging columns so latest/runtime-only fields (for example
+  // close_price, tf_2d_context, tf_3d_context, tf_10d_context, and
+  // multi_timeframe_notes) cannot make the entire batch upsert fail.
+  Object.keys(row).forEach(function(key) {
+    if (NK_STAGING_COLUMN_SET[key]) out[key] = row[key];
+  });
   return out;
 }
 
@@ -11447,6 +11492,7 @@ module.exports.__test = {
   sendSwingNkNoMinTpHeartbeat: sendSwingNkNoMinTpHeartbeat,
   handleNkScreenerFinalize: handleNkScreenerFinalize,
   handleNkScreenerBatch: handleNkScreenerBatch,
+  nkStagingColumns: NK_STAGING_COLUMNS,
   sanitizeNkStagingRow: sanitizeNkStagingRow,
   candidatePassesMinUpside: candidatePassesMinUpside,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
