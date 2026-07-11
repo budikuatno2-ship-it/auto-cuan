@@ -8131,6 +8131,19 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     var emptyEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(diagnosticRows || []);
     var emptyMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(diagnosticRows || [], 'Swing Non-Konglo');
     var emptyTelegram = await sendSwingNkNoMinTpHeartbeat(emptyMinTp1Diagnostics);
+    emptyTelegram.latest_published_count = 0;
+    emptyTelegram.published_count = 0;
+    emptyTelegram.generated_count = 0;
+    emptyTelegram.saved_count = 0;
+    emptyTelegram.verified_count = 0;
+    emptyTelegram.high_conviction_count = 0;
+    emptyTelegram.strict_selected_count = 0;
+    emptyTelegram.digest_candidate_count = 0;
+    emptyTelegram.selected_count = 0;
+    emptyTelegram.staging_rows_found = stagingDiagnostics.staging_rows_found;
+    emptyTelegram.after_min_tp1_upside_count = 0;
+    emptyTelegram.after_final_quality_gate_count = 0;
+    emptyTelegram.top_rejection_reasons = emptyDiagnostics.top_rejection_reasons;
     emptyTelegram.entry_range_normalization_diagnostics = emptyEntryRangeDiagnostics;
     emptyTelegram.min_tp1_upside_diagnostics = emptyMinTp1Diagnostics;
     await updateNkMeta(supabase, {
@@ -8257,6 +8270,14 @@ async function handleNkScreenerFinalize(req, res, supabase) {
   var nkMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(topCandidates || [], 'Swing Non-Konglo');
   var nkTelegram = publishedCount > 0 ? await sendSwingNkTelegramNotification(supabase, publishedCount) : await sendSwingNkNoMinTpHeartbeat(nkMinTp1Diagnostics);
   if (nkTelegram && typeof nkTelegram === 'object') {
+    nkTelegram.latest_published_count = publishedCount;
+    nkTelegram.published_count = publishedCount;
+    if (nkTelegram.generated_count == null) nkTelegram.generated_count = topCandidates ? topCandidates.length : 0;
+    if (nkTelegram.saved_count == null) nkTelegram.saved_count = publishedCount;
+    nkTelegram.staging_rows_found = stagingDiagnostics.staging_rows_found;
+    nkTelegram.after_min_tp1_upside_count = topCandidates ? topCandidates.length : 0;
+    nkTelegram.after_final_quality_gate_count = nkTelegram.high_conviction_count != null ? nkTelegram.high_conviction_count : null;
+    nkTelegram.top_rejection_reasons = nkDiagnostics.top_rejection_reasons;
     nkTelegram.entry_range_normalization_diagnostics = nkEntryRangeDiagnostics;
     nkTelegram.min_tp1_upside_diagnostics = nkMinTp1Diagnostics;
   }
@@ -11369,11 +11390,11 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     }
 
     if (finalList.length === 0) {
-      var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Konglo', { scanned_count: rows.length, generated_count: rows.length, verified_count: verifiedRows.length, passed_count: strictCandidates.length || digestCandidates.length, reason: 'selected_count_zero_after_final_gate' });
+      var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Konglo', { scanned_count: rows.length, generated_count: rows.length, latest_published_count: savedCount, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0, passed_count: strictCandidates.length || digestCandidates.length, reason: 'selected_count_zero_after_final_gate' });
       var hbRes = await telegramNotifier.sendTelegramMessage(hb);
       var hbEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(rows);
       var hbMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(rows, 'Swing Konglo');
-      return { sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics };
+      return { sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics };
     }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', '');
@@ -11424,21 +11445,32 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
 
 function formatSwingEmptyHeartbeatTelegramMessage(label, counts) {
   counts = counts || {};
-  return '📭 ' + label + ' empty heartbeat\n' +
-    'Screener selesai sukses, tetapi selected/published = 0.\n' +
-    'Scanned: ' + (counts.scanned_count || counts.scanned || 0) + '\n' +
-    'Generated: ' + (counts.generated_count || counts.generated || 0) + '\n' +
-    'Failed: ' + (counts.failed_count || counts.failed || 0) + '\n' +
-    'Verified: ' + (counts.verified_count || 0) + '\n' +
-    'Passed: ' + (counts.passed_count || counts.passed || 0) + '\n' +
-    'Reason: ' + safeTelegramText(counts.reason || 'selected_count_zero', 120, 'selected_count_zero');
+  var lines = [
+    '📭 ' + label + ' empty heartbeat',
+    'Screener selesai sukses, tetapi Telegram selected = ' + (counts.selected_count || 0) + '.',
+    'Scanned: ' + (counts.scanned_count || counts.scanned || 0),
+    'Generated: ' + (counts.generated_count || counts.generated || 0)
+  ];
+  if (counts.latest_published_count != null || counts.published_count != null || counts.published != null) {
+    lines.push('Latest published rows: ' + (counts.latest_published_count != null ? counts.latest_published_count : (counts.published_count != null ? counts.published_count : counts.published)));
+  }
+  if (counts.saved_count != null || counts.saved != null) lines.push('Saved: ' + (counts.saved_count != null ? counts.saved_count : counts.saved));
+  lines.push('Failed: ' + (counts.failed_count || counts.failed || 0));
+  lines.push('Verified: ' + (counts.verified_count || 0));
+  lines.push('High conviction: ' + (counts.high_conviction_count || 0));
+  lines.push('Strict selected: ' + (counts.strict_selected_count || 0));
+  lines.push('Digest candidates: ' + (counts.digest_candidate_count || 0));
+  if (counts.monitor_candidate_count != null) lines.push('Monitor candidates: ' + counts.monitor_candidate_count);
+  lines.push('Passed: ' + (counts.passed_count || counts.passed || 0));
+  lines.push('Reason: ' + safeTelegramText(counts.reason || 'selected_count_zero', 120, 'selected_count_zero'));
+  return lines.join('\n');
 }
 
 async function sendSwingNkTelegramNotification(supabase, publishedCount) {
   if (publishedCount === 0) {
-    var hb0 = formatSwingEmptyHeartbeatTelegramMessage('Swing Non-Konglo', { reason: 'published_count_zero' });
+    var hb0 = formatSwingEmptyHeartbeatTelegramMessage('Swing Non-Konglo', { latest_published_count: publishedCount, published_count: publishedCount, selected_count: 0, reason: 'published_count_zero' });
     var hb0Res = await telegramNotifier.sendTelegramMessage(hb0);
-    return { sent: !!hb0Res.sent, skipped: !hb0Res.sent, reason: hb0Res.sent ? 'swing_empty_heartbeat_sent' : 'no_published_rows', message: hb0 };
+    return { sent: !!hb0Res.sent, skipped: !hb0Res.sent, reason: hb0Res.sent ? 'swing_empty_heartbeat_sent' : 'no_published_rows', message: hb0, latest_published_count: publishedCount, published_count: publishedCount, selected_count: 0 };
   }
   try {
     var { data: rows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
@@ -11498,9 +11530,9 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     }
 
     if (finalList.length === 0) {
-      var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Non-Konglo', { scanned_count: rows.length, generated_count: rows.length, verified_count: verifiedRows.length, passed_count: strictCandidates.length || digestCandidates.length, reason: 'selected_count_zero_after_final_gate' });
+      var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Non-Konglo', { scanned_count: rows.length, generated_count: rows.length, latest_published_count: publishedCount, published_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0, passed_count: strictCandidates.length || digestCandidates.length, reason: 'selected_count_zero_after_final_gate' });
       var hbRes = await telegramNotifier.sendTelegramMessage(hb);
-      return { sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0 };
+      return { sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, selected_count: 0 };
     }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCCA Swing Non-Konglo Signal', '');
