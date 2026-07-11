@@ -295,3 +295,37 @@ test('Swing Non-Konglo staging sanitizer drops latest-only timeframe fields befo
   assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'tf_10d_context'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'multi_timeframe_notes'), false);
 });
+
+test('Swing Non-Konglo heartbeat separates latest published rows from Telegram selected count', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [validRow({ ticker: 'PUB1', rank: 1, stop_loss: null })]);
+    var result = await sendSwingNkTelegramNotification(supabase, 19);
+    assert.equal(result.sent, true);
+    assert.equal(result.reason, 'swing_empty_heartbeat_sent');
+    assert.equal(result.latest_published_count, 19);
+    assert.equal(result.published_count, 19);
+    assert.equal(result.selected_count, 0);
+    assert.doesNotMatch(calls[0], /selected\/published\s*=\s*0/i);
+    assert.doesNotMatch(calls[0], /published\s*=\s*0/i);
+    assert.match(calls[0], /Telegram selected = 0/);
+    assert.match(calls[0], /Latest published rows: 19/);
+    assert.doesNotMatch(calls[0], /AVOID|Hindari|SELL|LOW_TP|Very High Risk/i);
+  });
+});
+
+test('Swing Konglo heartbeat separates saved generated rows from Telegram selected count', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase([validRow({ ticker: 'KONG', stop_loss: null })]);
+    var result = await sendSwingKongloTelegramNotification(supabase, 7);
+    assert.equal(result.sent, true);
+    assert.equal(result.reason, 'swing_empty_heartbeat_sent');
+    assert.equal(result.latest_published_count, 7);
+    assert.equal(result.saved_count, 7);
+    assert.equal(result.strict_selected_count, 0);
+    assert.equal(result.selected_count, 0);
+    assert.doesNotMatch(calls[0], /selected\/published\s*=\s*0/i);
+    assert.match(calls[0], /Telegram selected = 0/);
+    assert.match(calls[0], /Latest published rows: 7/);
+    assert.match(calls[0], /Saved: 7/);
+  });
+});
