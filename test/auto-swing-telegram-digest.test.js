@@ -12,6 +12,9 @@ const {
   sendSwingNkTelegramNotification
 } = sectorHot.__test;
 
+const JAKARTA_TODAY = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+const JAKARTA_TOMORROW = new Date(Date.now() + 31 * 3600 * 1000).toISOString().slice(0, 10);
+
 function makeSupabase(kongloRows, nkRows) {
   return {
     from: function(table) {
@@ -26,7 +29,7 @@ function makeSupabase(kongloRows, nkRows) {
         eq: function() { return this; },
         neq: function() { return this; },
         in: function() { return this; },
-        maybeSingle: function() { return Promise.resolve({ data: { calculated_at: new Date().toISOString(), status: 'published', run_date: '2026-07-09' }, error: null }); }
+        maybeSingle: function() { return Promise.resolve({ data: { calculated_at: new Date().toISOString(), status: 'published', run_date: JAKARTA_TODAY }, error: null }); }
       };
     }
   };
@@ -40,7 +43,7 @@ function validRow(overrides) {
     volume_ratio_avg20: 1.1, tx_value_1d: 5000000000, avg_tx_value_7d: 5000000000,
     trading_plan_valid: true, plan_quality_status: 'OK',
     risk_label: 'Very High Risk', risk_label_v2: 'Very High Risk',
-    tf_1d_context: 'Green candle', tf_5d_context: 'Bullish', price_date: '2026-07-09', calculated_at: new Date().toISOString(), setup_freshness_status: 'FRESH'
+    tf_1d_context: 'Green candle', tf_5d_context: 'Bullish', price_date: JAKARTA_TODAY, calculated_at: new Date().toISOString(), setup_freshness_status: 'FRESH'
   }, overrides || {});
 }
 
@@ -272,7 +275,7 @@ test('Swing Non-Konglo finalize mismatch diagnostics report exact empty query ke
 test('Swing Non-Konglo staging sanitizer drops latest-only timeframe fields before durable upsert', function() {
   const row = {
     ticker: 'NKTF',
-    run_date: '2026-07-09',
+    run_date: JAKARTA_TODAY,
     tf_1d_context: 'bullish',
     tf_2d_context: 'latest-only',
     tf_3d_context: 'latest-only',
@@ -285,7 +288,7 @@ test('Swing Non-Konglo staging sanitizer drops latest-only timeframe fields befo
   };
   const sanitized = sectorHot.__test.sanitizeNkStagingRow(row);
   assert.equal(sanitized.ticker, 'NKTF');
-  assert.equal(sanitized.run_date, '2026-07-09');
+  assert.equal(sanitized.run_date, JAKARTA_TODAY);
   assert.equal(sanitized.tf_1d_context, 'bullish');
   assert.equal(sanitized.tf_5d_context, 'neutral');
   assert.equal(sanitized.tf_20d_context, 'bullish');
@@ -332,7 +335,7 @@ test('Swing Konglo heartbeat separates saved generated rows from Telegram select
 
 function monitorRow(overrides) {
   return Object.assign(validRow({
-    ticker: 'MONI', status: 'MONITOR', final_status: 'MONITOR', score: 45, rank: 1, price_date: '2026-07-09', last_price: 100,
+    ticker: 'MONI', status: 'MONITOR', final_status: 'MONITOR', score: 45, rank: 1, price_date: JAKARTA_TODAY, last_price: 100,
     risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk', quality_grade: 'C', grade: 'C',
     entry_low: 100, entry_high: 102, entry1: 100, entry2: 102,
     stop_loss: 94, sl: 94, tp1: 110, target1: 110, risk_reward: 0,
@@ -405,7 +408,7 @@ test('Swing Non-Konglo monitor fallback message says bukan BUY and tunggu trigge
   test('Swing Non-Konglo monitor fallback safety: ' + item[0], async function() {
     var candidates = sectorHot.__test.selectSafeSwingMonitorCandidates(
       [monitorRow(item[1])],
-      { calculated_at: new Date().toISOString(), status: 'published', run_date: '2026-07-09' },
+      { calculated_at: new Date().toISOString(), status: 'published', run_date: JAKARTA_TODAY },
       'Swing Non-Konglo',
       5
     );
@@ -451,7 +454,7 @@ test('Swing monitor diagnostics reports rejection reasons', function() {
 test('Swing monitor diagnostics reports price freshness rejection before safe helper', function() {
   var diagnostics = sectorHot.__test.buildSwingMonitorFallbackDiagnostics(
     [monitorRow({ ticker: 'OLDP', price_date: '2026-07-08' })],
-    { calculated_at: new Date().toISOString(), status: 'published', run_date: '2026-07-09' },
+    { calculated_at: new Date().toISOString(), status: 'published', run_date: JAKARTA_TODAY },
     'Swing Non-Konglo'
   );
   assert.equal(diagnostics.monitor_candidate_count, 0);
@@ -459,6 +462,79 @@ test('Swing monitor diagnostics reports price freshness rejection before safe he
   assert.equal(diagnostics.top_rejection_reasons[0].reason, 'price_freshness_rejected');
   assert.equal(diagnostics.sample_rejections[0].ticker, 'OLDP');
   assert.equal(diagnostics.sample_rejections[0].price_date, '2026-07-08');
+});
+
+test('Swing monitor fallback uses trusted current meta run_date when price date is missing', function() {
+  var diagnostics = sectorHot.__test.buildSwingMonitorFallbackDiagnostics(
+    [monitorRow({ ticker: 'META', price_date: null, price_asof: null })],
+    { calculated_at: new Date().toISOString(), status: 'published', run_date: JAKARTA_TODAY },
+    'Swing Non-Konglo'
+  );
+  assert.equal(diagnostics.monitor_candidate_count, 1);
+  assert.equal(diagnostics.price_date_fallback_count, 1);
+  assert.equal(diagnostics.safe_monitor_sample[0].price_date, JAKARTA_TODAY);
+  assert.equal(diagnostics.safe_monitor_sample[0].price_freshness_source, 'swing_meta_run_date_fallback');
+  assert.equal(diagnostics.safe_monitor_sample[0].price_date_fallback_used, true);
+});
+
+test('Swing monitor fallback does not bypass freshness without meta run_date', function() {
+  var candidates = sectorHot.__test.selectSafeSwingMonitorCandidates(
+    [monitorRow({ ticker: 'MISSRUN', price_date: null, price_asof: null })],
+    { calculated_at: new Date().toISOString(), status: 'published' },
+    'Swing Non-Konglo',
+    5
+  );
+  assert.equal(candidates.length, 0);
+});
+
+test('Swing monitor fallback does not allow stale meta run_date', function() {
+  var candidates = sectorHot.__test.selectSafeSwingMonitorCandidates(
+    [monitorRow({ ticker: 'OLDRUN', price_date: null, price_asof: null })],
+    { calculated_at: new Date().toISOString(), status: 'published', run_date: '2026-07-08' },
+    'Swing Non-Konglo',
+    5
+  );
+  assert.equal(candidates.length, 0);
+});
+
+test('Swing monitor fallback does not allow future meta run_date', function() {
+  var candidates = sectorHot.__test.selectSafeSwingMonitorCandidates(
+    [monitorRow({ ticker: 'FUTRUN', price_date: null, price_asof: null })],
+    { calculated_at: new Date().toISOString(), status: 'published', run_date: JAKARTA_TOMORROW },
+    'Swing Non-Konglo',
+    5
+  );
+  assert.equal(candidates.length, 0);
+});
+
+test('Swing monitor fallback preserves explicit price_date', function() {
+  var candidate = sectorHot.__test.applyTrustedSwingLatestPriceDateFallback(
+    monitorRow({ ticker: 'EXPL', price_date: JAKARTA_TODAY }),
+    { calculated_at: new Date().toISOString(), status: 'published', run_date: '2099-01-01' },
+    'Swing Non-Konglo'
+  );
+  assert.equal(candidate.price_date, JAKARTA_TODAY);
+  assert.equal(candidate.price_date_fallback_used, undefined);
+});
+
+test('Swing latest price date fallback applies to Non-Konglo and Konglo monitor selection only through Swing helpers', function() {
+  var meta = { calculated_at: new Date().toISOString(), status: 'published', run_date: JAKARTA_TODAY };
+  var nkCandidates = sectorHot.__test.selectSafeSwingMonitorCandidates(
+    [monitorRow({ ticker: 'NKMETA', price_date: null, price_asof: null })],
+    meta,
+    'Swing Non-Konglo',
+    5
+  );
+  var kongloCandidates = sectorHot.__test.selectSafeSwingMonitorCandidates(
+    [monitorRow({ ticker: 'KMETA', price_date: null, price_asof: null })],
+    meta,
+    'Swing Konglo',
+    5
+  );
+  assert.equal(nkCandidates.length, 1);
+  assert.equal(kongloCandidates.length, 1);
+  assert.equal(nkCandidates[0].price_date_fallback_used, true);
+  assert.equal(kongloCandidates[0].price_date_fallback_used, true);
 });
 
 test('Swing Non-Konglo empty heartbeat includes monitor fallback diagnostics', async function() {

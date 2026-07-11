@@ -3235,6 +3235,26 @@ function attachPriceFreshness(candidate, context) {
   return candidate;
 }
 
+function isTrustedSwingLatestMetaStatus(status) {
+  var s = String(status || '').trim().toLowerCase();
+  return ['published', 'completed', 'complete', 'latest', 'success', 'succeeded', 'ok', 'ready'].indexOf(s) >= 0;
+}
+
+function applyTrustedSwingLatestPriceDateFallback(candidate, swingMeta, sourceLabel) {
+  candidate = candidate || {};
+  swingMeta = swingMeta || {};
+  if (candidate.price_date || candidate.price_asof) return candidate;
+  var runDate = dateOnlyFromAny(swingMeta.run_date);
+  if (!runDate) return candidate;
+  if (!isTrustedSwingLatestMetaStatus(swingMeta.status)) return candidate;
+  if (runDate !== getJakartaDateString()) return candidate;
+  candidate.price_date = runDate;
+  candidate.price_freshness_source = 'swing_meta_run_date_fallback';
+  candidate.price_date_fallback_used = true;
+  candidate.price_date_fallback_source_label = sourceLabel || null;
+  return candidate;
+}
+
 function candidatePassesPriceFreshness(candidate) {
   return !(candidate && (candidate.is_price_stale === true || String(candidate.price_freshness_status || '').toUpperCase() === 'STALE' || String(candidate.price_freshness_status || '').toUpperCase() === 'UNKNOWN'));
 }
@@ -11360,6 +11380,8 @@ function diagnoseSwingMonitorCandidate(candidate) {
     risk_label: candidate && (candidate.risk_label || candidate.risk_label_v2 || candidate.risk_level || null),
     freshness_status: candidate && (candidate.setup_freshness_status || candidate.freshness_status || candidate.price_freshness_status || null),
     price_date: candidate && (candidate.price_date || null),
+    price_freshness_source: candidate && (candidate.price_freshness_source || null),
+    price_date_fallback_used: !!(candidate && candidate.price_date_fallback_used),
     trading_plan_valid: candidate && candidate.trading_plan_valid
   };
 }
@@ -11383,6 +11405,7 @@ function buildSwingMonitorFallbackDiagnostics(rows, swingMeta, category) {
     below_min_tp1_upside_count: 0,
     stale_count: 0,
     price_freshness_rejected_count: 0,
+    price_date_fallback_count: 0,
     blocked_text_count: 0,
     very_high_risk_count: 0,
     invalid_plan_count: 0
@@ -11394,7 +11417,8 @@ function buildSwingMonitorFallbackDiagnostics(rows, swingMeta, category) {
     normalizeCandidateTpAliases(c, category);
     normalizeCandidateUpside(c, category);
     c = attachFreshness(c, swingMeta || {});
-    c = attachPriceFreshness(c, { meta: swingMeta || {}, run_date: swingMeta && swingMeta.run_date });
+    c = attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(c, swingMeta || {}, category), { meta: swingMeta || {}, run_date: swingMeta && swingMeta.run_date });
+    if (c.price_date_fallback_used) diagnostics.price_date_fallback_count++;
     var diag;
     if (!candidatePassesPriceFreshness(c)) {
       diag = diagnoseSwingMonitorCandidate(c);
@@ -11435,7 +11459,7 @@ function selectSafeSwingMonitorCandidates(rows, swingMeta, category, maxCount) {
       normalizeCandidateUpside(c, category);
       return attachFreshness(c, swingMeta || {});
     })
-    .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta || {}, run_date: swingMeta && swingMeta.run_date }); })
+    .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta || {}, category), { meta: swingMeta || {}, run_date: swingMeta && swingMeta.run_date }); })
     .filter(candidatePassesPriceFreshness)
     .filter(isSafeSwingMonitorCandidate)
     .sort(function(a, b) { return (toNum(b.score || b.combined_score) || 0) - (toNum(a.score || a.combined_score) || 0) || String(a.ticker).localeCompare(String(b.ticker)); })
@@ -11499,7 +11523,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
     var strictCandidates = highConvictionRows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta); })
-      .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
+      .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta, 'Swing Telegram'), { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
       .filter(candidatePassesMinUpside)
       .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_konglo'); });
@@ -11507,7 +11531,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     // Digest fallback path: use digest gate (allows warnings)
     var digestCandidates = rows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta); })
-      .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
+      .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta, 'Swing Telegram'), { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
       .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_konglo_auto'); });
 
@@ -11590,7 +11614,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     result.high_conviction_count = highConvictionRows.length;
     result.strict_selected_count = strictCandidates.length;
     result.digest_candidate_count = digestCandidates.length;
-    result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
+    result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta, 'Swing Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (result.sent && finalList.length > 0) {
@@ -11650,7 +11674,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
     var strictCandidates = highConvictionRows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta); })
-      .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
+      .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta, 'Swing Telegram'), { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
       .filter(candidatePassesMinUpside)
       .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_non_konglo'); });
@@ -11658,7 +11682,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     // Digest fallback path: use digest gate (allows warnings)
     var digestCandidates = rows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta); })
-      .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
+      .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta, 'Swing Telegram'), { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
       .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_non_konglo_auto'); });
 
@@ -11738,7 +11762,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     result.high_conviction_count = highConvictionRows.length;
     result.strict_selected_count = strictCandidates.length;
     result.digest_candidate_count = digestCandidates.length;
-    result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
+    result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta, 'Swing Non-Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (result.sent && finalList.length > 0) {
@@ -11828,6 +11852,7 @@ module.exports.__test = {
   selectDailyTop5: selectDailyTop5,
   validateScreenerPriceFreshness: validateScreenerPriceFreshness,
   attachPriceFreshness: attachPriceFreshness,
+  applyTrustedSwingLatestPriceDateFallback: applyTrustedSwingLatestPriceDateFallback,
   buildPriceFreshnessDiagnostics: buildPriceFreshnessDiagnostics,
   buildTelegramTopMessage: buildTelegramTopMessage,
   buildTelegramScreenerMessage: buildTelegramScreenerMessage,
