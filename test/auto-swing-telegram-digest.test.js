@@ -374,6 +374,22 @@ test('Swing Non-Konglo public safety filter excludes Hindari/Very High row from 
   });
 });
 
+test('Swing Non-Konglo public safety filter excludes blocked status display fields from signal', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [
+      digestMonitorRow({ ticker: 'NSTH', rank: 1, score: 80, status: 'Hindari', final_status: 'MONITOR', risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk' }),
+      digestMonitorRow({ ticker: 'NFAV', rank: 2, score: 79, status: 'MONITOR', final_status: 'AVOID', risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk' })
+    ]);
+    var result = await sendSwingNkTelegramNotification(supabase, 2);
+    assert.equal(result.sent, true);
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 2);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.doesNotMatch(calls[0], /SWING NON-KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /NSTH|NFAV|Hindari|AVOID/i);
+  });
+});
+
 test('Swing Non-Konglo all-public-unsafe finalList sends monitor fallback when safe monitor exists', async function() {
   await withSendSpy(async function(calls) {
     var supabase = makeSupabase(null, [
@@ -433,6 +449,22 @@ test('Swing Konglo public safety filter excludes Hindari/Very High row from norm
     assert.equal(result.final_selected_after_public_safety_count, 0);
     assert.doesNotMatch(calls[0], /SWING KONGLO SIGNAL/i);
     assert.doesNotMatch(calls[0], /KRAJ|Hindari|Very High Risk/i);
+  });
+});
+
+test('Swing Konglo public safety filter excludes SELL and LOW_TP status display fields from signal', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase([
+      digestMonitorRow({ ticker: 'KSEL', score: 80, status: 'SELL', final_status: 'MONITOR', risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk' }),
+      digestMonitorRow({ ticker: 'KLTP', score: 79, status: 'MONITOR', final_status: 'LOW_TP', risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk' })
+    ], null);
+    var result = await sendSwingKongloTelegramNotification(supabase, 2);
+    assert.equal(result.sent, true);
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 2);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.doesNotMatch(calls[0], /SWING KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /KSEL|KLTP|SELL|LOW_TP/i);
   });
 });
 

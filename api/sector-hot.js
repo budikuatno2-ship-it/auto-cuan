@@ -4356,6 +4356,11 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
 function getSwingPublicSignalSafetyRejectionReason(candidate) {
   if (!candidate) return 'missing_candidate';
   var publicText = joinTelegramTexts([
+    candidate.status,
+    candidate.final_status,
+    candidate.display_status,
+    candidate.public_status,
+    candidate.signal_status,
     candidate.action,
     candidate.action_label,
     candidate.signal_action,
