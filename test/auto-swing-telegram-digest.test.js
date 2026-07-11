@@ -329,3 +329,109 @@ test('Swing Konglo heartbeat separates saved generated rows from Telegram select
     assert.match(calls[0], /Saved: 7/);
   });
 });
+
+function monitorRow(overrides) {
+  return Object.assign(validRow({
+    ticker: 'MONI', status: 'MONITOR', final_status: 'MONITOR', score: 45, rank: 1, price_date: '2026-07-09', last_price: 100,
+    risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk', quality_grade: 'C', grade: 'C',
+    entry_low: 100, entry_high: 102, entry1: 100, entry2: 102,
+    stop_loss: 94, sl: 94, tp1: 110, target1: 110, risk_reward: 0,
+    setup_freshness_status: 'FRESH', execution_reality_status: 'ARA_HIT', telegram_verdict: 'Tunggu breakout valid.',
+    trading_plan_valid: true, plan_quality_status: 'VALID'
+  }), overrides || {});
+}
+
+
+function digestMonitorRow(overrides) {
+  return monitorRow(Object.assign({ risk_reward: 1.0, execution_reality_status: null }, overrides || {}));
+}
+
+test('Swing Non-Konglo preserves digest signal path when strict selected 0 but finalList has candidates', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [digestMonitorRow({ ticker: 'NDIG' })]);
+    var result = await sendSwingNkTelegramNotification(supabase, 1);
+    assert.equal(result.sent, true);
+    assert.notEqual(result.reason, 'swing_monitor_fallback_sent');
+    assert.ok(result.selected_count > 0);
+    assert.equal(result.strict_selected_count, 0);
+    assert.match(calls[0], /SWING NON-KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /RADAR\/MONITOR — bukan BUY, tunggu trigger\./);
+  });
+});
+
+test('Swing Konglo preserves digest signal path when strict selected 0 but finalList has candidates', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase([digestMonitorRow({ ticker: 'KDIG' })], null);
+    var result = await sendSwingKongloTelegramNotification(supabase, 1);
+    assert.equal(result.sent, true);
+    assert.notEqual(result.reason, 'swing_monitor_fallback_sent');
+    assert.ok(result.selected_count > 0);
+    assert.equal(result.strict_selected_count, 0);
+    assert.match(calls[0], /SWING KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /RADAR\/MONITOR — bukan BUY, tunggu trigger\./);
+  });
+});
+
+test('Swing Non-Konglo strict selected 0 plus safe monitor candidates sends monitor fallback', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [monitorRow({ ticker: 'NMON' })]);
+    var result = await sendSwingNkTelegramNotification(supabase, 1);
+    assert.equal(result.sent, true);
+    assert.equal(result.reason, 'swing_monitor_fallback_sent');
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.strict_selected_count, 0);
+    assert.equal(result.monitor_fallback_sent, true);
+    assert.equal(result.monitor_candidate_count, 1);
+    assert.match(calls[0], /NMON/);
+  });
+});
+
+test('Swing Non-Konglo monitor fallback message says bukan BUY and tunggu trigger', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [monitorRow({ ticker: 'TRIG' })]);
+    var result = await sendSwingNkTelegramNotification(supabase, 1);
+    assert.equal(result.reason, 'swing_monitor_fallback_sent');
+    assert.match(calls[0], /RADAR\/MONITOR — bukan BUY, tunggu trigger\./);
+  });
+});
+
+[
+  ['AVOID/Hindari candidate excluded', { ticker: 'AVOD', status: 'MONITOR', action_label: 'Hindari', notes: 'avoid dulu' }],
+  ['Very High Risk excluded', { ticker: 'VHR', risk_label: 'Very High Risk', risk_label_v2: 'Very High Risk' }],
+  ['LOW_TP excluded', { ticker: 'LOWT', reason: 'LOW_TP' }],
+  ['missing SL excluded', { ticker: 'MSL', stop_loss: null, sl: null }],
+  ['TP1 upside below 5 excluded', { ticker: 'LOWU', entry_low: 100, entry_high: 100, entry1: 100, entry2: 100, tp1: 104, target1: 104 }]
+].forEach(function(item) {
+  test('Swing Non-Konglo monitor fallback safety: ' + item[0], async function() {
+    var candidates = sectorHot.__test.selectSafeSwingMonitorCandidates(
+      [monitorRow(item[1])],
+      { calculated_at: new Date().toISOString(), status: 'published', run_date: '2026-07-09' },
+      'Swing Non-Konglo',
+      5
+    );
+    assert.equal(candidates.length, 0);
+  });
+});
+
+test('Swing Non-Konglo empty heartbeat still sent if no safe monitor candidates exist', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [monitorRow({ ticker: 'NONE', status: 'TRADE_CANDIDATE', stop_loss: null, sl: null })]);
+    var result = await sendSwingNkTelegramNotification(supabase, 1);
+    assert.equal(result.reason, 'swing_empty_heartbeat_sent');
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.monitor_fallback_sent, false);
+    assert.match(calls[0], /empty heartbeat/);
+  });
+});
+
+test('Swing Konglo strict selected 0 plus safe monitor candidates sends same monitor fallback', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase([monitorRow({ ticker: 'KMON' })], null);
+    var result = await sendSwingKongloTelegramNotification(supabase, 1);
+    assert.equal(result.reason, 'swing_monitor_fallback_sent');
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.monitor_fallback_sent, true);
+    assert.match(calls[0], /RADAR\/MONITOR — bukan BUY, tunggu trigger\./);
+    assert.match(calls[0], /KMON/);
+  });
+});
