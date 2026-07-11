@@ -661,3 +661,71 @@ test('Swing Konglo strict selected 0 plus safe monitor candidates sends same mon
     assert.match(calls[0], /KMON/);
   });
 });
+
+function makeKongloSupabaseWithMeta(kongloRows, metaData, inserts) {
+  return {
+    from: function(table) {
+      var data = table === 'swing_screener_latest' ? (kongloRows || []) : [];
+      return {
+        select: function() { return this; },
+        order: function() { return this; },
+        limit: function() { return Promise.resolve({ data: data, error: null }); },
+        eq: function() { return this; },
+        maybeSingle: function() { return Promise.resolve({ data: metaData, error: null }); },
+        insert: function(payload) { if (inserts) inserts.push({ table: table, payload: payload }); return Promise.resolve({ data: payload, error: null }); },
+        then: function(resolve) { return resolve({ data: [], error: null }); }
+      };
+    }
+  };
+}
+
+function safeKongloRow(overrides) {
+  return validRow(Object.assign({
+    ticker: 'SAFEK', status: 'TRADE_CANDIDATE', final_status: 'TRADE_CANDIDATE',
+    quality_grade: 'A', grade: 'A', score: 90, daily_score: 90,
+    risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk',
+    entry1: 100, entry_low: 100, entry2: 101, entry_high: 101,
+    stop_loss: 95, sl: 95, tp1: 115, tp1n: 115,
+    last_price: 100, price_date: null, price_asof: null
+  }, overrides || {}));
+}
+
+test('Swing Konglo current refresh context fills missing meta and passes missing price_date freshness', async function() {
+  await withSendSpy(async function() {
+    var row = safeKongloRow();
+    var supabase = makeKongloSupabaseWithMeta([row], { calculated_at: new Date().toISOString(), run_date: null, status: null });
+    var result = await sendSwingKongloTelegramNotification(supabase, 1, [row]);
+    assert.notEqual(result.reason, 'exception');
+    assert.equal(result.sent, true);
+    assert.equal(result.swing_meta_fallback_source, 'swing_konglo_current_refresh_context');
+    assert.equal(result.swing_meta_run_date_used, JAKARTA_TODAY);
+    assert.ok(result.digest_candidate_count > 0 || result.strict_selected_count > 0);
+    assert.ok(result.price_freshness_diagnostics.price_date_fallback_count > 0);
+  });
+});
+
+test('Swing Konglo meta fallback requires saved rows and current refresh rows', function() {
+  var row = safeKongloRow();
+  var missing = { calculated_at: new Date().toISOString(), run_date: null, status: null };
+  assert.equal(sectorHot.__test.buildTrustedSwingKongloTelegramMeta(missing, [row], 0, [row]).run_date, null);
+  assert.equal(sectorHot.__test.buildTrustedSwingKongloTelegramMeta(missing, [], 1, []).run_date, null);
+  var filled = sectorHot.__test.buildTrustedSwingKongloTelegramMeta(missing, [row], 1, []);
+  assert.equal(filled.run_date, JAKARTA_TODAY);
+  assert.equal(filled.status, 'published');
+  assert.equal(filled.swing_meta_fallback_source, 'swing_konglo_current_refresh_context');
+});
+
+test('Swing Konglo price-date fallback preserves explicit dates and rejects stale explicit dates', function() {
+  var meta = sectorHot.__test.buildTrustedSwingKongloTelegramMeta({ run_date: null, status: null }, [safeKongloRow()], 1, []);
+  var explicitToday = sectorHot.__test.applyTrustedSwingLatestPriceDateFallback(safeKongloRow({ price_date: JAKARTA_TODAY }), meta, 'Swing Konglo');
+  assert.equal(explicitToday.price_date, JAKARTA_TODAY);
+  assert.notEqual(explicitToday.price_date_fallback_used, true);
+
+  var staleDate = '2020-01-01';
+  var stale = sectorHot.__test.attachPriceFreshness(
+    sectorHot.__test.applyTrustedSwingLatestPriceDateFallback(safeKongloRow({ price_date: staleDate }), meta, 'Swing Konglo'),
+    { meta: meta, run_date: meta.run_date }
+  );
+  assert.equal(stale.price_date, staleDate);
+  assert.equal(sectorHot.__test.candidatePassesPriceFreshness(stale), false);
+});
