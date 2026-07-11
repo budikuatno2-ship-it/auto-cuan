@@ -13,6 +13,7 @@ const {
 } = sectorHot.__test;
 
 const JAKARTA_TODAY = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+const JAKARTA_TOMORROW = new Date(Date.now() + 31 * 3600 * 1000).toISOString().slice(0, 10);
 
 function makeSupabase(kongloRows, nkRows) {
   return {
@@ -490,6 +491,16 @@ test('Swing monitor fallback does not allow stale meta run_date', function() {
   var candidates = sectorHot.__test.selectSafeSwingMonitorCandidates(
     [monitorRow({ ticker: 'OLDRUN', price_date: null, price_asof: null })],
     { calculated_at: new Date().toISOString(), status: 'published', run_date: '2026-07-08' },
+    'Swing Non-Konglo',
+    5
+  );
+  assert.equal(candidates.length, 0);
+});
+
+test('Swing monitor fallback does not allow future meta run_date', function() {
+  var candidates = sectorHot.__test.selectSafeSwingMonitorCandidates(
+    [monitorRow({ ticker: 'FUTRUN', price_date: null, price_asof: null })],
+    { calculated_at: new Date().toISOString(), status: 'published', run_date: JAKARTA_TOMORROW },
     'Swing Non-Konglo',
     5
   );

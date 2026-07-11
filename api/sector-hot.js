@@ -3247,7 +3247,7 @@ function applyTrustedSwingLatestPriceDateFallback(candidate, swingMeta, sourceLa
   var runDate = dateOnlyFromAny(swingMeta.run_date);
   if (!runDate) return candidate;
   if (!isTrustedSwingLatestMetaStatus(swingMeta.status)) return candidate;
-  if (runDate < getJakartaDateString()) return candidate;
+  if (runDate !== getJakartaDateString()) return candidate;
   candidate.price_date = runDate;
   candidate.price_freshness_source = 'swing_meta_run_date_fallback';
   candidate.price_date_fallback_used = true;
