@@ -66,7 +66,7 @@ async function withSendSpy(fn) {
   try { return await fn(calls); } finally { notifier.sendTelegramMessage = original; }
 }
 
-test('Swing Non-Konglo notifier sends signal without ReferenceError and reaches monitoring path', async () => {
+test('Swing Non-Konglo notifier handles public-safety-filtered candidate without ReferenceError', async () => {
   await withSendSpy(async (calls) => {
     const inserts = [];
     const supabase = makeSupabase({ swing_screener_non_konglo_latest: [strongNkRow()] }, inserts);
@@ -77,18 +77,19 @@ test('Swing Non-Konglo notifier sends signal without ReferenceError and reaches 
     assert.notEqual(result.reason, 'exception');
     assert.equal(result.error_message, undefined);
 
-    // Message was sent successfully (success path does not set skipped).
+    // Message was sent successfully as a safe heartbeat after the public safety filter.
     assert.equal(result.sent, true);
     assert.notEqual(result.skipped, true);
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /swing non-konglo signal/i);
+    assert.match(calls[0], /empty heartbeat/i);
+    assert.doesNotMatch(calls[0], /Hindari|AVOID|SELL|LOW_TP|Very High Risk/i);
 
-    // A candidate actually made it through the gates.
-    assert.ok(result.selected_count > 0, 'expected selected_count > 0');
+    // A candidate was filtered before the public signal was built.
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 1);
 
-    // Monitoring-registration path was reached (previously unreachable due to the throw).
-    assert.equal(typeof result.monitor_registered, 'number');
+    // No signal candidates are registered when selected_count is zero.
     const monitorInsert = inserts.find((i) => i.table === 'telegram_daily_picks');
-    assert.ok(monitorInsert, 'expected candidates to be registered for monitoring');
+    assert.equal(monitorInsert, undefined);
   });
 });
