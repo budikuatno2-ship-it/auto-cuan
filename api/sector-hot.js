@@ -11473,17 +11473,9 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
       finalList = nonAvoid.slice(0, 5);
     }
 
-    var strictZeroMonitorCandidates = strictCandidates.length === 0 ? selectSafeSwingMonitorCandidates(rows, swingMeta, 'Swing Konglo', 5) : [];
-    if (strictCandidates.length === 0 && strictZeroMonitorCandidates.length > 0) {
-      var strictZeroMonitorMsg = formatSwingMonitorFallbackTelegramMessage(strictZeroMonitorCandidates, 'Swing Konglo');
-      var strictZeroMonitorRes = await telegramNotifier.sendTelegramMessage(strictZeroMonitorMsg);
-      var strictZeroEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(rows);
-      var strictZeroMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(rows, 'Swing Konglo');
-      return { sent: !!strictZeroMonitorRes.sent, skipped: !strictZeroMonitorRes.sent, reason: strictZeroMonitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: strictZeroMonitorMsg, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: strictZeroMonitorCandidates.length, monitor_fallback_sent: !!strictZeroMonitorRes.sent, selected_count: 0, entry_range_normalization: strictZeroEntryRangeDiagnostics, entry_range_normalization_diagnostics: strictZeroEntryRangeDiagnostics, min_tp1_upside_diagnostics: strictZeroMinTp1Diagnostics };
-    }
 
     if (finalList.length === 0) {
-      var monitorCandidates = strictZeroMonitorCandidates;
+      var monitorCandidates = selectSafeSwingMonitorCandidates(rows, swingMeta, 'Swing Konglo', 5);
       var hbEntryRangeDiagnostics = buildEntryRangeNormalizationDiagnostics(rows);
       var hbMinTp1Diagnostics = buildMinTp1UpsideDiagnostics(rows, 'Swing Konglo');
       if (monitorCandidates.length > 0) {
@@ -11628,15 +11620,9 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       finalList = nonAvoid.slice(0, 5);
     }
 
-    var strictZeroMonitorCandidates = strictCandidates.length === 0 ? selectSafeSwingMonitorCandidates(rows, swingMeta, 'Swing Non-Konglo', 5) : [];
-    if (strictCandidates.length === 0 && strictZeroMonitorCandidates.length > 0) {
-      var strictZeroMonitorMsg = formatSwingMonitorFallbackTelegramMessage(strictZeroMonitorCandidates, 'Swing Non-Konglo');
-      var strictZeroMonitorRes = await telegramNotifier.sendTelegramMessage(strictZeroMonitorMsg);
-      return { sent: !!strictZeroMonitorRes.sent, skipped: !strictZeroMonitorRes.sent, reason: strictZeroMonitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: strictZeroMonitorMsg, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: strictZeroMonitorCandidates.length, monitor_fallback_sent: !!strictZeroMonitorRes.sent, selected_count: 0 };
-    }
 
     if (finalList.length === 0) {
-      var monitorCandidates = strictZeroMonitorCandidates;
+      var monitorCandidates = selectSafeSwingMonitorCandidates(rows, swingMeta, 'Swing Non-Konglo', 5);
       if (monitorCandidates.length > 0) {
         var monitorMsg = formatSwingMonitorFallbackTelegramMessage(monitorCandidates, 'Swing Non-Konglo');
         var monitorRes = await telegramNotifier.sendTelegramMessage(monitorMsg);
