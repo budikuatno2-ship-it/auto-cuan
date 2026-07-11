@@ -54,36 +54,32 @@ function withSendSpy(fn) {
   return fn(calls).finally(function() { notifier.sendTelegramMessage = original; });
 }
 
-test('Swing Konglo auto sends rich candidate when strict gate fails but digest gate passes', async function() {
+test('Swing Konglo public safety filter blocks Very High Risk digest candidate', async function() {
   await withSendSpy(async function(calls) {
-    // Very High Risk candidate fails strict gate but passes digest gate
     var supabase = makeSupabase([validRow({ ticker: 'VHRC', risk_label: 'Very High Risk' })]);
     var result = await sendSwingKongloTelegramNotification(supabase, 1);
     assert.equal(result.sent, true, 'Should send Telegram message');
-    assert.ok(result.selected_count > 0, 'Should have selected candidates');
-    assert.ok(calls.length >= 1, 'Should have sent at least 1 message');
-    assert.match(calls[0], /SWING KONGLO SIGNAL/i);
-    assert.match(calls[0], /VHRC/);
-    // Rich format fields
-    assert.match(calls[0], /Status:|Signal:/);
-    assert.match(calls[0], /RR:|Risk\/Reward:/);
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 1);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.doesNotMatch(calls[0], /SWING KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /VHRC/);
+    assert.doesNotMatch(calls[0], /Very High Risk/i);
   });
 });
 
-test('Swing Non-Konglo auto sends rich candidate when strict gate fails but digest gate passes', async function() {
+test('Swing Non-Konglo public safety filter blocks Very High Risk digest candidate', async function() {
   await withSendSpy(async function(calls) {
     var supabase = makeSupabase(null, [validRow({ ticker: 'NKVH', rank: 1, risk_label: 'Very High Risk' })]);
     var result = await sendSwingNkTelegramNotification(supabase, 1);
     assert.ok(result && typeof result === 'object', 'Should return handled result');
-    if (!result.sent) return;
-    if (result.selected_count > 0) {
-      assert.match(calls[0], /SWING NON-KONGLO SIGNAL/i);
-      assert.match(calls[0], /NKVH/);
-      assert.match(calls[0], /Status:|Signal:/);
-    } else {
-      assert.equal(result.reason, 'swing_empty_heartbeat_sent');
-      assert.match(calls[0], /empty heartbeat/);
-    }
+    assert.equal(result.sent, true);
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 1);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.doesNotMatch(calls[0], /SWING NON-KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /NKVH/);
+    assert.doesNotMatch(calls[0], /Very High Risk/i);
   });
 });
 
@@ -346,32 +342,129 @@ function monitorRow(overrides) {
 
 
 function digestMonitorRow(overrides) {
-  return monitorRow(Object.assign({ risk_reward: 1.0, execution_reality_status: null }, overrides || {}));
+  return monitorRow(Object.assign({ risk_reward: 1.4, execution_reality_status: null }, overrides || {}));
 }
 
-test('Swing Non-Konglo preserves digest signal path when strict selected 0 but finalList has candidates', async function() {
+test('Swing Non-Konglo digest path does not bypass generated Hindari action safety', async function() {
   await withSendSpy(async function(calls) {
     var supabase = makeSupabase(null, [digestMonitorRow({ ticker: 'NDIG' })]);
     var result = await sendSwingNkTelegramNotification(supabase, 1);
     assert.equal(result.sent, true);
-    assert.notEqual(result.reason, 'swing_monitor_fallback_sent');
-    assert.ok(result.selected_count > 0);
+    assert.equal(result.reason, 'swing_monitor_fallback_sent');
+    assert.equal(result.selected_count, 0);
     assert.equal(result.strict_selected_count, 0);
-    assert.match(calls[0], /SWING NON-KONGLO SIGNAL/i);
-    assert.doesNotMatch(calls[0], /RADAR\/MONITOR — bukan BUY, tunggu trigger\./);
+    assert.equal(result.public_safety_filtered_count, 1);
+    assert.doesNotMatch(calls[0], /SWING NON-KONGLO SIGNAL/i);
   });
 });
 
-test('Swing Konglo preserves digest signal path when strict selected 0 but finalList has candidates', async function() {
+test('Swing Non-Konglo public safety filter excludes Hindari/Very High row from normal signal', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [
+      digestMonitorRow({ ticker: 'RAJA', rank: 1, score: 80, action_label: 'Hindari / Tunggu konfirmasi', risk_label: 'Very High Risk', risk_label_v2: 'Very High Risk' })
+    ]);
+    var result = await sendSwingNkTelegramNotification(supabase, 1);
+    assert.equal(result.sent, true);
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 1);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.doesNotMatch(calls[0], /SWING NON-KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /RAJA/);
+    assert.doesNotMatch(calls[0], /Hindari|Very High Risk/i);
+  });
+});
+
+test('Swing Non-Konglo public safety filter excludes blocked status display fields from signal', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [
+      digestMonitorRow({ ticker: 'NSTH', rank: 1, score: 80, status: 'Hindari', final_status: 'MONITOR', risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk' }),
+      digestMonitorRow({ ticker: 'NFAV', rank: 2, score: 79, status: 'MONITOR', final_status: 'AVOID', risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk' })
+    ]);
+    var result = await sendSwingNkTelegramNotification(supabase, 2);
+    assert.equal(result.sent, true);
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 2);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.doesNotMatch(calls[0], /SWING NON-KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /NSTH|NFAV|Hindari|AVOID/i);
+  });
+});
+
+test('Swing Non-Konglo all-public-unsafe finalList sends monitor fallback when safe monitor exists', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [
+      digestMonitorRow({ ticker: 'RAJA', rank: 1, score: 80, action_label: 'Hindari / Tunggu konfirmasi', risk_label: 'Very High Risk', risk_label_v2: 'Very High Risk' }),
+      monitorRow({ ticker: 'NMON', rank: 2 })
+    ]);
+    var result = await sendSwingNkTelegramNotification(supabase, 2);
+    assert.equal(result.sent, true);
+    assert.equal(result.reason, 'swing_monitor_fallback_sent');
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 1);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.match(calls[0], /RADAR\/MONITOR/);
+    assert.match(calls[0], /NMON/);
+    assert.doesNotMatch(calls[0], /RAJA|Hindari|Very High Risk/i);
+  });
+});
+
+test('Swing Non-Konglo all-public-unsafe finalList sends empty heartbeat when no safe monitor exists', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [
+      digestMonitorRow({ ticker: 'RAJA', rank: 1, score: 80, action_label: 'Hindari / Tunggu konfirmasi', risk_label: 'Very High Risk', risk_label_v2: 'Very High Risk' })
+    ]);
+    var result = await sendSwingNkTelegramNotification(supabase, 1);
+    assert.equal(result.sent, true);
+    assert.equal(result.reason, 'swing_empty_heartbeat_sent');
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 1);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.doesNotMatch(calls[0], /SWING NON-KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /RAJA|Hindari|Very High Risk/i);
+  });
+});
+
+test('Swing Konglo digest path does not bypass generated Hindari action safety', async function() {
   await withSendSpy(async function(calls) {
     var supabase = makeSupabase([digestMonitorRow({ ticker: 'KDIG' })], null);
     var result = await sendSwingKongloTelegramNotification(supabase, 1);
     assert.equal(result.sent, true);
-    assert.notEqual(result.reason, 'swing_monitor_fallback_sent');
-    assert.ok(result.selected_count > 0);
+    assert.equal(result.reason, 'swing_monitor_fallback_sent');
+    assert.equal(result.selected_count, 0);
     assert.equal(result.strict_selected_count, 0);
-    assert.match(calls[0], /SWING KONGLO SIGNAL/i);
-    assert.doesNotMatch(calls[0], /RADAR\/MONITOR — bukan BUY, tunggu trigger\./);
+    assert.equal(result.public_safety_filtered_count, 1);
+    assert.doesNotMatch(calls[0], /SWING KONGLO SIGNAL/i);
+  });
+});
+
+test('Swing Konglo public safety filter excludes Hindari/Very High row from normal signal', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase([
+      digestMonitorRow({ ticker: 'KRAJ', score: 80, action_label: 'Hindari / Tunggu konfirmasi', risk_label: 'Very High Risk', risk_label_v2: 'Very High Risk' })
+    ], null);
+    var result = await sendSwingKongloTelegramNotification(supabase, 1);
+    assert.equal(result.sent, true);
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 1);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.doesNotMatch(calls[0], /SWING KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /KRAJ|Hindari|Very High Risk/i);
+  });
+});
+
+test('Swing Konglo public safety filter excludes SELL and LOW_TP status display fields from signal', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase([
+      digestMonitorRow({ ticker: 'KSEL', score: 80, status: 'SELL', final_status: 'MONITOR', risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk' }),
+      digestMonitorRow({ ticker: 'KLTP', score: 79, status: 'MONITOR', final_status: 'LOW_TP', risk_label: 'Medium Risk', risk_label_v2: 'Medium Risk' })
+    ], null);
+    var result = await sendSwingKongloTelegramNotification(supabase, 2);
+    assert.equal(result.sent, true);
+    assert.equal(result.selected_count, 0);
+    assert.equal(result.public_safety_filtered_count, 2);
+    assert.equal(result.final_selected_after_public_safety_count, 0);
+    assert.doesNotMatch(calls[0], /SWING KONGLO SIGNAL/i);
+    assert.doesNotMatch(calls[0], /KSEL|KLTP|SELL|LOW_TP/i);
   });
 });
 

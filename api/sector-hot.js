@@ -4353,6 +4353,87 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   return true;
 }
 
+function getSwingPublicSignalSafetyRejectionReason(candidate) {
+  if (!candidate) return 'missing_candidate';
+  var publicText = joinTelegramTexts([
+    candidate.status,
+    candidate.final_status,
+    candidate.display_status,
+    candidate.public_status,
+    candidate.signal_status,
+    candidate.action,
+    candidate.action_label,
+    candidate.signal_action,
+    candidate.signal_action_label,
+    candidate.telegram_action_label,
+    candidate.verdict,
+    candidate.signal_verdict,
+    candidate.telegram_verdict,
+    candidate.reason,
+    candidate.status_reason,
+    candidate.action_reason,
+    candidate.signal_reason,
+    candidate.excluded_reason,
+    candidate.notes,
+    candidate.setup_type,
+    candidate.entry_timing,
+    candidate.time_plan,
+    candidate.trigger_note,
+    candidate.entry_trigger_note,
+    candidate.breakout_note,
+    candidate.action_guard_label,
+    candidate.action_guard_status,
+    candidate.plan_quality_label,
+    candidate.plan_quality_note,
+    candidate.entry_status_label,
+    candidate.entry_status_note,
+    candidate.invalidation_distance_label,
+    candidate.invalidation_note,
+    candidate.risk_label,
+    candidate.risk_label_v2,
+    candidate.risk_level,
+    candidate.verified_risk_label,
+    candidate.telegram_risk_label,
+    candidate.public_risk_label,
+    candidate.display_risk_label
+  ]).toLowerCase();
+  if (/very\s+high\s+risk/.test(publicText)) return 'very_high_risk';
+  if (/\blow[_\s-]?tp\b/.test(publicText)) return 'low_tp';
+  if (/\bsell\b/.test(publicText)) return 'sell';
+  if (/\bavoid\b/.test(publicText)) return 'avoid';
+  if (/hindari/.test(publicText)) return 'hindari';
+  return null;
+}
+
+function candidatePassesSwingPublicSignalSafetyFilter(candidate) {
+  return !getSwingPublicSignalSafetyRejectionReason(candidate);
+}
+
+function filterSwingPublicSignalSafetyList(finalList) {
+  var diagnostics = {
+    public_safety_filtered_count: 0,
+    public_safety_filtered_sample: [],
+    final_selected_after_public_safety_count: 0
+  };
+  var safeList = [];
+  (finalList || []).forEach(function(candidate) {
+    var reason = getSwingPublicSignalSafetyRejectionReason(candidate);
+    if (reason) {
+      diagnostics.public_safety_filtered_count++;
+      if (diagnostics.public_safety_filtered_sample.length < 5) {
+        diagnostics.public_safety_filtered_sample.push({
+          ticker: candidate && candidate.ticker,
+          reason: reason
+        });
+      }
+      return;
+    }
+    safeList.push(candidate);
+  });
+  diagnostics.final_selected_after_public_safety_count = safeList.length;
+  return { list: safeList, diagnostics: diagnostics };
+}
+
 /**
  * Diagnostic helper: explains WHY candidatePassesPublicTelegramSafetyGate returned false.
  * Returns an object with detailed rejection info. Does NOT change gating behavior.
@@ -11462,6 +11543,7 @@ function selectSafeSwingMonitorCandidates(rows, swingMeta, category, maxCount) {
     .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta || {}, category), { meta: swingMeta || {}, run_date: swingMeta && swingMeta.run_date }); })
     .filter(candidatePassesPriceFreshness)
     .filter(isSafeSwingMonitorCandidate)
+    .filter(candidatePassesSwingPublicSignalSafetyFilter)
     .sort(function(a, b) { return (toNum(b.score || b.combined_score) || 0) - (toNum(a.score || a.combined_score) || 0) || String(a.ticker).localeCompare(String(b.ticker)); })
     .slice(0, maxCount || 5);
 }
@@ -11569,6 +11651,9 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
       finalList = nonAvoid.slice(0, 5);
     }
 
+    var publicSafety = filterSwingPublicSignalSafetyList(finalList);
+    var publicSafetyDiagnostics = publicSafety.diagnostics;
+    finalList = publicSafety.list;
 
     if (finalList.length === 0) {
       var monitorCandidates = selectSafeSwingMonitorCandidates(rows, swingMeta, 'Swing Konglo', 5);
@@ -11579,11 +11664,11 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
       if (monitorCandidates.length > 0) {
         var monitorMsg = formatSwingMonitorFallbackTelegramMessage(monitorCandidates, 'Swing Konglo');
         var monitorRes = await telegramNotifier.sendTelegramMessage(monitorMsg);
-        return { sent: !!monitorRes.sent, skipped: !monitorRes.sent, reason: monitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: monitorMsg, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: monitorCandidates.length, monitor_fallback_sent: !!monitorRes.sent, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count };
+        return Object.assign({ sent: !!monitorRes.sent, skipped: !monitorRes.sent, reason: monitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: monitorMsg, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: monitorCandidates.length, monitor_fallback_sent: !!monitorRes.sent, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
       }
-      var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Konglo', { scanned_count: rows.length, generated_count: rows.length, latest_published_count: savedCount, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, selected_count: 0, passed_count: strictCandidates.length || digestCandidates.length, reason: 'selected_count_zero_after_final_gate', monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count });
+      var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Konglo', { scanned_count: rows.length, generated_count: rows.length, latest_published_count: savedCount, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, selected_count: 0, passed_count: strictCandidates.length || digestCandidates.length, reason: publicSafetyDiagnostics.public_safety_filtered_count > 0 ? 'selected_count_zero_after_public_safety_filter' : 'selected_count_zero_after_final_gate', monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count });
       var hbRes = await telegramNotifier.sendTelegramMessage(hb);
-      return { sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count };
+      return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
     }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', '');
@@ -11614,6 +11699,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     result.high_conviction_count = highConvictionRows.length;
     result.strict_selected_count = strictCandidates.length;
     result.digest_candidate_count = digestCandidates.length;
+    Object.assign(result, publicSafetyDiagnostics);
     result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta, 'Swing Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
@@ -11719,6 +11805,9 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       finalList = nonAvoid.slice(0, 5);
     }
 
+    var publicSafety = filterSwingPublicSignalSafetyList(finalList);
+    var publicSafetyDiagnostics = publicSafety.diagnostics;
+    finalList = publicSafety.list;
 
     if (finalList.length === 0) {
       var monitorCandidates = selectSafeSwingMonitorCandidates(rows, swingMeta, 'Swing Non-Konglo', 5);
@@ -11727,11 +11816,11 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       if (monitorCandidates.length > 0) {
         var monitorMsg = formatSwingMonitorFallbackTelegramMessage(monitorCandidates, 'Swing Non-Konglo');
         var monitorRes = await telegramNotifier.sendTelegramMessage(monitorMsg);
-        return { sent: !!monitorRes.sent, skipped: !monitorRes.sent, reason: monitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: monitorMsg, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: monitorCandidates.length, monitor_fallback_sent: !!monitorRes.sent, selected_count: 0, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count };
+        return Object.assign({ sent: !!monitorRes.sent, skipped: !monitorRes.sent, reason: monitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: monitorMsg, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: monitorCandidates.length, monitor_fallback_sent: !!monitorRes.sent, selected_count: 0, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
       }
-      var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Non-Konglo', { scanned_count: rows.length, generated_count: rows.length, latest_published_count: publishedCount, published_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, selected_count: 0, passed_count: strictCandidates.length || digestCandidates.length, reason: 'selected_count_zero_after_final_gate', monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count });
+      var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Non-Konglo', { scanned_count: rows.length, generated_count: rows.length, latest_published_count: publishedCount, published_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, selected_count: 0, passed_count: strictCandidates.length || digestCandidates.length, reason: publicSafetyDiagnostics.public_safety_filtered_count > 0 ? 'selected_count_zero_after_public_safety_filter' : 'selected_count_zero_after_final_gate', monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count });
       var hbRes = await telegramNotifier.sendTelegramMessage(hb);
-      return { sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count };
+      return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
     }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCCA Swing Non-Konglo Signal', '');
@@ -11762,6 +11851,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     result.high_conviction_count = highConvictionRows.length;
     result.strict_selected_count = strictCandidates.length;
     result.digest_candidate_count = digestCandidates.length;
+    Object.assign(result, publicSafetyDiagnostics);
     result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta, 'Swing Non-Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
@@ -11787,6 +11877,9 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 
 module.exports.__test = {
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
+  getSwingPublicSignalSafetyRejectionReason: getSwingPublicSignalSafetyRejectionReason,
+  candidatePassesSwingPublicSignalSafetyFilter: candidatePassesSwingPublicSignalSafetyFilter,
+  filterSwingPublicSignalSafetyList: filterSwingPublicSignalSafetyList,
   normalizeEntryRangeAliases: normalizeEntryRangeAliases,
   normalizeDayTradePublicReadRow: normalizeDayTradePublicReadRow,
   normalizeCandidateEntryAliases: normalizeCandidateEntryAliases,
