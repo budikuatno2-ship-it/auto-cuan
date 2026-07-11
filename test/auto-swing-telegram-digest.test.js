@@ -424,6 +424,63 @@ test('Swing Non-Konglo empty heartbeat still sent if no safe monitor candidates 
   });
 });
 
+
+test('Swing monitor diagnostics: safe candidate passes diagnostics', function() {
+  var diag = sectorHot.__test.diagnoseSwingMonitorCandidate(monitorRow({ ticker: 'SAFE' }));
+  assert.equal(diag.passed, true);
+  assert.equal(diag.reason, 'passed');
+});
+
+test('Swing monitor diagnostics reports rejection reasons', function() {
+  var cases = [
+    [{ status: 'TRADE_CANDIDATE' }, 'unsupported_status'],
+    [{ stop_loss: null, sl: null }, 'missing_stop_loss'],
+    [{ entry_high: 100, entry2: 100, tp1: 104, target1: 104 }, 'below_min_tp1_upside'],
+    [{ setup_freshness_status: 'EXPIRED' }, 'stale_or_expired'],
+    [{ action_label: 'Hindari', notes: 'AVOID dulu' }, 'blocked_text'],
+    [{ risk_label: 'Very High Risk', risk_label_v2: 'Very High Risk' }, 'very_high_risk'],
+    [{ trading_plan_valid: false, plan_quality_status: 'INVALID' }, 'invalid_plan']
+  ];
+  cases.forEach(function(item) {
+    var diag = sectorHot.__test.diagnoseSwingMonitorCandidate(monitorRow(item[0]));
+    assert.equal(diag.passed, false);
+    assert.equal(diag.reason, item[1]);
+  });
+});
+
+test('Swing monitor diagnostics reports price freshness rejection before safe helper', function() {
+  var diagnostics = sectorHot.__test.buildSwingMonitorFallbackDiagnostics(
+    [monitorRow({ ticker: 'OLDP', price_date: '2026-07-08' })],
+    { calculated_at: new Date().toISOString(), status: 'published', run_date: '2026-07-09' },
+    'Swing Non-Konglo'
+  );
+  assert.equal(diagnostics.monitor_candidate_count, 0);
+  assert.equal(diagnostics.price_freshness_rejected_count, 1);
+  assert.equal(diagnostics.top_rejection_reasons[0].reason, 'price_freshness_rejected');
+  assert.equal(diagnostics.sample_rejections[0].ticker, 'OLDP');
+  assert.equal(diagnostics.sample_rejections[0].price_date, '2026-07-08');
+});
+
+test('Swing Non-Konglo empty heartbeat includes monitor fallback diagnostics', async function() {
+  await withSendSpy(async function(calls) {
+    var supabase = makeSupabase(null, [monitorRow({ ticker: 'NOSL', stop_loss: null, sl: null })]);
+    var result = await sendSwingNkTelegramNotification(supabase, 1);
+    assert.equal(result.reason, 'swing_empty_heartbeat_sent');
+    assert.equal(result.monitor_fallback_diagnostics.missing_stop_loss_count, 1);
+    assert.equal(result.monitor_rejection_top_reason, 'missing_stop_loss');
+    assert.match(calls[0], /Top monitor reject: missing_stop_loss \(1\)/);
+  });
+});
+
+test('Swing monitor fallback sent response includes monitor fallback diagnostics', async function() {
+  await withSendSpy(async function() {
+    var supabase = makeSupabase(null, [monitorRow({ ticker: 'GOOD' })]);
+    var result = await sendSwingNkTelegramNotification(supabase, 1);
+    assert.equal(result.reason, 'swing_monitor_fallback_sent');
+    assert.equal(result.monitor_fallback_diagnostics.monitor_candidate_count, 1);
+    assert.equal(result.monitor_fallback_diagnostics.safe_monitor_sample[0].ticker, 'GOOD');
+  });
+});
 test('Swing Konglo strict selected 0 plus safe monitor candidates sends same monitor fallback', async function() {
   await withSendSpy(async function(calls) {
     var supabase = makeSupabase([monitorRow({ ticker: 'KMON' })], null);
