@@ -3255,6 +3255,22 @@ function applyTrustedSwingLatestPriceDateFallback(candidate, swingMeta, sourceLa
   return candidate;
 }
 
+function buildTrustedSwingKongloTelegramMeta(swingMeta, rows, savedCount, precomputedResults) {
+  var meta = Object.assign({}, swingMeta || {});
+  var hasRunDate = !!dateOnlyFromAny(meta.run_date);
+  var hasStatus = !!String(meta.status || '').trim();
+  if (hasRunDate && hasStatus) return meta;
+  if (!(toNum(savedCount) > 0)) return meta;
+  var hasRows = Array.isArray(rows) && rows.length > 0;
+  var hasPrecomputedResults = Array.isArray(precomputedResults) && precomputedResults.length > 0;
+  if (!hasRows && !hasPrecomputedResults) return meta;
+  if (!hasRunDate) meta.run_date = getJakartaDateString();
+  if (!hasStatus) meta.status = 'published';
+  meta.swing_meta_fallback_source = 'swing_konglo_current_refresh_context';
+  meta.swing_meta_run_date_used = dateOnlyFromAny(meta.run_date) || null;
+  return meta;
+}
+
 function candidatePassesPriceFreshness(candidate) {
   return !(candidate && (candidate.is_price_stale === true || String(candidate.price_freshness_status || '').toUpperCase() === 'STALE' || String(candidate.price_freshness_status || '').toUpperCase() === 'UNKNOWN'));
 }
@@ -3269,7 +3285,7 @@ function buildPriceFreshnessDiagnostics(rows) {
       if (samples.length < 10) samples.push({ ticker: r.ticker, last_price: r.last_price || r.current_price || r.lastn, open_price: r.open_price || r.open || null, close_price: r.close_price || r.close || null, price_date: r.price_date || null, price_source: r.price_source || null, stale_price_reason: reason });
     }
   });
-  return { stale_price_count: samples.length ? (rows || []).filter(function(r) { return r.is_price_stale; }).length : 0, stale_price_reasons: reasons, sample_stale_price_rejected: samples, price_source_distribution: sources, price_date_distribution: dates, cache_hit_count: 0, cache_stale_count: 0 };
+  return { stale_price_count: samples.length ? (rows || []).filter(function(r) { return r.is_price_stale; }).length : 0, stale_price_reasons: reasons, sample_stale_price_rejected: samples, price_source_distribution: sources, price_date_distribution: dates, price_date_fallback_count: (rows || []).filter(function(r) { return r && r.price_date_fallback_used; }).length, cache_hit_count: 0, cache_stale_count: 0 };
 }
 
 function getJakartaNow() {
@@ -11599,6 +11615,11 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
 
     var metaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,run_date,status').eq('id', 'latest').maybeSingle();
     var swingMeta = metaRes && metaRes.data ? metaRes.data : { calculated_at: null };
+    swingMeta = buildTrustedSwingKongloTelegramMeta(swingMeta, rows, savedCount, precomputedResults);
+    var swingMetaFallbackDiagnostics = {
+      swing_meta_fallback_source: swingMeta.swing_meta_fallback_source || null,
+      swing_meta_run_date_used: dateOnlyFromAny(swingMeta.run_date) || null
+    };
 
     // Primary path: strict verification for high-quality signals
     var verifiedRows = rows.map(function(r) { return verifyTelegramSignal(r, 'swing'); }).filter(Boolean);
@@ -11664,11 +11685,11 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
       if (monitorCandidates.length > 0) {
         var monitorMsg = formatSwingMonitorFallbackTelegramMessage(monitorCandidates, 'Swing Konglo');
         var monitorRes = await telegramNotifier.sendTelegramMessage(monitorMsg);
-        return Object.assign({ sent: !!monitorRes.sent, skipped: !monitorRes.sent, reason: monitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: monitorMsg, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: monitorCandidates.length, monitor_fallback_sent: !!monitorRes.sent, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
+        return Object.assign({ sent: !!monitorRes.sent, skipped: !monitorRes.sent, reason: monitorRes.sent ? 'swing_monitor_fallback_sent' : 'swing_monitor_fallback_failed', message: monitorMsg, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: monitorCandidates.length, monitor_fallback_sent: !!monitorRes.sent, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics, swingMetaFallbackDiagnostics);
       }
       var hb = formatSwingEmptyHeartbeatTelegramMessage('Swing Konglo', { scanned_count: rows.length, generated_count: rows.length, latest_published_count: savedCount, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, selected_count: 0, passed_count: strictCandidates.length || digestCandidates.length, reason: publicSafetyDiagnostics.public_safety_filtered_count > 0 ? 'selected_count_zero_after_public_safety_filter' : 'selected_count_zero_after_final_gate', monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count });
       var hbRes = await telegramNotifier.sendTelegramMessage(hb);
-      return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
+      return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics, swingMetaFallbackDiagnostics);
     }
 
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', '');
@@ -11699,7 +11720,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     result.high_conviction_count = highConvictionRows.length;
     result.strict_selected_count = strictCandidates.length;
     result.digest_candidate_count = digestCandidates.length;
-    Object.assign(result, publicSafetyDiagnostics);
+    Object.assign(result, publicSafetyDiagnostics, swingMetaFallbackDiagnostics);
     result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta, 'Swing Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
@@ -11945,7 +11966,9 @@ module.exports.__test = {
   selectDailyTop5: selectDailyTop5,
   validateScreenerPriceFreshness: validateScreenerPriceFreshness,
   attachPriceFreshness: attachPriceFreshness,
+  candidatePassesPriceFreshness: candidatePassesPriceFreshness,
   applyTrustedSwingLatestPriceDateFallback: applyTrustedSwingLatestPriceDateFallback,
+  buildTrustedSwingKongloTelegramMeta: buildTrustedSwingKongloTelegramMeta,
   buildPriceFreshnessDiagnostics: buildPriceFreshnessDiagnostics,
   buildTelegramTopMessage: buildTelegramTopMessage,
   buildTelegramScreenerMessage: buildTelegramScreenerMessage,
