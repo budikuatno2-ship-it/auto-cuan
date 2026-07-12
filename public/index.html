@@ -403,10 +403,27 @@
         .scr-pane-anim { animation: scrFadeIn 0.12s ease-out; }
         @media (prefers-reduced-motion: reduce) { .scr-pane-anim { animation: none; } }
         /* ===== PHASE 2: CONSISTENT PANELS & EMPTY STATES ===== */
-        .panel { background: rgba(21,26,35,0.55); border: 1px solid rgba(28,35,51,0.4); border-radius: 16px; padding: 12px; }
-        .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-        .panel-title { font-size: 13px; font-weight: 700; color: #e5e7eb; }
-        .panel-subtitle { font-size: 11px; color: #6b7280; margin-top: 2px; }
+        .panel { background: linear-gradient(145deg, rgba(21,26,35,0.72), rgba(11,14,20,0.58)); border: 1px solid rgba(148,163,184,0.10); border-radius: 18px; padding: 14px; box-shadow: 0 18px 45px rgba(0,0,0,0.22); }
+        .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+        .panel-title { font-size: 13px; font-weight: 800; color: #f8fafc; letter-spacing: 0.01em; }
+        .panel-subtitle { font-size: 11px; color: #94a3b8; margin-top: 2px; line-height: 1.45; }
+        .dashboard-hero { position: relative; overflow: hidden; border-radius: 24px; border: 1px solid rgba(16,185,129,0.18); background: radial-gradient(circle at 18% 0%, rgba(16,185,129,0.16), transparent 32%), linear-gradient(135deg, rgba(15,23,42,0.98), rgba(11,14,20,0.82)); box-shadow: 0 24px 60px rgba(0,0,0,0.28); }
+        .dashboard-hero::after { content: ''; position: absolute; inset: auto -18% -42% 30%; height: 160px; background: radial-gradient(circle, rgba(59,130,246,0.12), transparent 62%); pointer-events: none; }
+        .dashboard-card { border: 1px solid rgba(148,163,184,0.12); background: rgba(15,23,42,0.52); border-radius: 16px; box-shadow: 0 10px 28px rgba(0,0,0,0.18); }
+        .dashboard-pick-card { border: 1px solid rgba(148,163,184,0.12); background: linear-gradient(145deg, rgba(15,23,42,0.78), rgba(21,26,35,0.58)); border-radius: 16px; box-shadow: 0 12px 30px rgba(0,0,0,0.18); }
+        .dashboard-pick-card:hover { border-color: rgba(16,185,129,0.36); background: linear-gradient(145deg, rgba(16,185,129,0.08), rgba(15,23,42,0.72)); }
+        .dash-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1.2; border: 1px solid rgba(148,163,184,0.14); background: rgba(15,23,42,0.62); color: #cbd5e1; }
+        .dash-level-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+        .dash-level { min-width: 0; border: 1px solid rgba(148,163,184,0.10); border-radius: 10px; padding: 7px 8px; background: rgba(2,6,23,0.25); }
+        .dash-level span { display: block; font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
+        .dash-level b { display: block; margin-top: 2px; font-size: 11px; color: #e5e7eb; overflow-wrap: anywhere; }
+        .dash-section-note { border: 1px solid rgba(245,158,11,0.14); background: rgba(245,158,11,0.05); color: #fcd34d; border-radius: 14px; padding: 10px 12px; font-size: 11px; line-height: 1.55; }
+        @media (max-width: 640px) {
+            .panel { border-radius: 16px; padding: 12px; }
+            .dashboard-hero { border-radius: 20px; }
+            .dash-level-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .dash-level:last-child:nth-child(odd) { grid-column: span 2; }
+        }
         .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; text-align: center; border-radius: 12px; border: 1px dashed rgba(28,35,51,0.6); background: rgba(15,19,25,0.3); }
         .empty-state-icon { width: 32px; height: 32px; margin-bottom: 8px; color: #374151; }
         .empty-state-text { font-size: 12px; color: #6b7280; line-height: 1.5; max-width: 280px; }
@@ -559,12 +576,18 @@
 <div id="page-dashboard" class="page-content flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
     <div class="space-y-4">
         <!-- Greeting -->
-        <div class="flex items-center justify-between">
-            <div>
-                <h2 class="text-xl font-bold text-white" id="dashGreeting">Halo, Trader</h2>
-                <p class="text-xs text-gray-500 mt-0.5">Semoga sehat dan cuan selalu.</p>
+        <div class="dashboard-hero p-4 sm:p-5">
+            <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-2"><span class="dash-badge">Live Radar</span><span class="dash-badge text-amber-200 border-amber-500/20 bg-amber-500/10">Konfirmasi manual wajib</span></div>
+                    <h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight" id="dashGreeting">Halo, Trader</h2>
+                    <p class="text-sm text-gray-400 mt-1 max-w-2xl">Dashboard ringkas untuk Day Trade, Swing Konglo, dan Swing Non-Konglo. Watchlist/pantau tidak sama dengan BUY agresif.</p>
+                </div>
+                <div class="flex flex-col sm:items-end gap-2">
+                    <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Approved</span>
+                    <div class="text-[11px] text-gray-500">Bukan rekomendasi beli/jual.</div>
+                </div>
             </div>
-            <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">Approved</span>
         </div>
 
         <!-- IHSG Live Market Indicator -->
@@ -622,6 +645,8 @@
                 <p class="text-[10px] text-gray-500 mt-0.5">Posisi manual</p>
             </button>
         </div>
+
+        <div class="dash-section-note">Safety display: Hindari / AVOID / SELL / LOW_TP / Very High Risk dipisahkan dari daftar utama dan tidak ditampilkan sebagai kandidat actionable.</div>
 
         <!-- Compact Top 5 + Monitor -->
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-2 items-start">
@@ -7376,6 +7401,35 @@ function normalizeDashboardPick(p) {
     r.quality_chips = Array.isArray(p.quality_chips) ? p.quality_chips : (Array.isArray(raw.quality_chips) ? raw.quality_chips : []);
     return r;
 }
+
+function isDashboardUnsafeActionable(r) {
+    if (!r) return false;
+    var risk = safeDisplayText(getRiskLabel(r) || r.risk_label_v2 || r.risk_label || '', '').toLowerCase();
+    var action = safeDisplayText(r.action_label || r.signal_action_label || r.signal_action || getActionLabel(r) || '', '').toLowerCase();
+    var status = safeDisplayText(r.status || r.final_status || r.swing_tier || r.entry_quality_status || r.plan_quality_status || '', '').toLowerCase();
+    var verdict = safeDisplayText(r.signal_verdict || r.plan_label || r.plan_reason || r.action_reason || r.status_reason || '', '').toLowerCase();
+    var combined = [risk, action, status, verdict].join(' ');
+    return risk === 'very high risk' || /\b(hindari|avoid|sell|low_tp|low tp|very high risk)\b/.test(combined);
+}
+function splitDashboardSafeRows(rows) {
+    var safe = [];
+    var excluded = [];
+    (rows || []).forEach(function(p) {
+        var r = normalizeDashboardPick(p);
+        if (isDashboardUnsafeActionable(r)) excluded.push({ pick: p, row: r });
+        else safe.push(p);
+    });
+    return { safe: safe, excluded: excluded };
+}
+function dashboardExcludedHtml(excluded) {
+    if (!excluded || excluded.length === 0) return '';
+    return '<details class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-100"><summary class="cursor-pointer font-semibold">Excluded / Avoid / High Risk (' + excluded.length + ')</summary><div class="mt-2 space-y-1 text-amber-200/80">' + excluded.slice(0, 8).map(function(item) { var r = item.row || {}; return '<div class="flex flex-wrap gap-2"><b>' + escapeHtml(r.ticker || '-') + '</b><span>' + escapeHtml(getActionLabel(r) || r.action_label || r.status || 'Filtered by safety rules') + '</span><span>Risk: ' + escapeHtml(getRiskLabel(r) || '—') + '</span></div>'; }).join('') + '</div></details>';
+}
+function dashLevelHtml(label, value, tone) {
+    var cls = tone === 'danger' ? 'text-red-300' : (tone === 'target' ? 'text-emerald-300' : 'text-blue-300');
+    return '<div class="dash-level"><span>' + escapeHtml(label) + '</span><b class="' + cls + '">' + dashFmtPrice(value) + '</b></div>';
+}
+
 function dashQualityChipsHtml(chips) {
     if (!Array.isArray(chips) || chips.length === 0) return '';
     return '<div class="mt-1 flex flex-wrap gap-1">' + chips.slice(0, 6).map(function(c) {
@@ -7415,8 +7469,13 @@ function renderDashboardTop5(picks) {
         el.innerHTML = dashboardEmptyHtml('Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.', 'amber');
         return;
     }
+    var split = splitDashboardSafeRows(picks);
+    if (split.safe.length === 0) {
+        el.innerHTML = dashboardEmptyHtml('No safe candidates right now. Candidates were filtered by safety rules.', 'amber') + dashboardExcludedHtml(split.excluded);
+        return;
+    }
     var html = '';
-    picks.slice(0, 5).forEach(function(p, idx) {
+    split.safe.slice(0, 5).forEach(function(p, idx) {
         var r = normalizeDashboardPick(p);
         _dashboardPickData[r.ticker] = r;
         var sc = Number(r.combined_score || r.telegram_conviction_score || r.daytrade_score || r.score || 0);
@@ -7428,7 +7487,7 @@ function renderDashboardTop5(picks) {
         var reason = dashShortText(getSignalReason(r) || r.status_reason || r.grade_reason || r.notes, 96);
         var rank = p.rank || (idx + 1);
         var tickerJs = dashJsString(r.ticker);
-        html += '<article role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')" class="cursor-pointer rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 hover:border-emerald-500/30 hover:bg-emerald-500/5 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition">';
+        html += '<article role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')" class="dashboard-pick-card cursor-pointer px-3 py-3 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition">';
         html += '<div class="flex items-start gap-2"><div class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-bold flex items-center justify-center flex-shrink-0">' + rank + '</div>';
         html += '<div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-xs text-gray-300">' + dashFmtPrice(r.last_price) + '</span><span class="text-[11px] text-gray-400">Score <b class="text-emerald-400">' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
         html += '<div class="mt-1">' + freshnessChipHtml(r) + '</div>';
@@ -7436,7 +7495,7 @@ function renderDashboardTop5(picks) {
         html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>EntryQ <b class="text-blue-300">' + escapeHtml(r.entry_quality_label || r.entry_status_label || '—') + '</b></span><span>PlanQ <b class="text-purple-300">' + escapeHtml(r.plan_quality_label || '—') + '</b></span><span>Invalidation <b class="text-amber-300">' + escapeHtml(r.invalidation_distance_label || '—') + '</b></span></div>';
         html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Breakout <b class="text-cyan-300">' + escapeHtml(r.breakout_confirmation_label || 'Watch') + '</b></span><span>Setup Age <b class="text-amber-300">' + escapeHtml(r.setup_freshness_label || 'Needs Revalidation') + '</b></span></div>';
         if (r.entry_safety_note || r.invalidation_note || r.trading_plan_note) html += '<div class="mt-1 text-[10px] text-gray-500 truncate">' + escapeHtml(r.entry_safety_note || r.invalidation_note || r.trading_plan_note || '') + '</div>';
-        html += '<div class="mt-1 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px]"><span class="text-blue-300">E1 ' + dashFmtPrice(r.entry1) + '</span><span class="text-blue-300">E2 ' + dashFmtPrice(r.entry2) + '</span><span class="text-red-300">SL ' + dashFmtPrice(r.stop_loss) + '</span><span class="text-emerald-300">TP1 ' + dashFmtPrice(r.tp1) + '</span><span class="text-emerald-300">TP2 ' + dashFmtPrice(r.tp2) + '</span></div>';
+        html += '<div class="mt-2 dash-level-grid">' + dashLevelHtml('Entry 1', r.entry1) + dashLevelHtml('Entry 2', r.entry2) + dashLevelHtml('Stop Loss', r.stop_loss, 'danger') + dashLevelHtml('TP1', r.tp1, 'target') + dashLevelHtml('TP2', r.tp2, 'target') + '</div>';
         var planWarn = getPlanWarningLine(r);
         var execLine = dashExecutionRealityLine(r);
         var realismLine = dashTpRealismLine(r);
@@ -7448,7 +7507,7 @@ function renderDashboardTop5(picks) {
         html += dashQualityChipsHtml(r.quality_chips);
         html += '</div></div></article>';
     });
-    el.innerHTML = html;
+    el.innerHTML = html + dashboardExcludedHtml(split.excluded);
 }
 function dashSignedPct(v) { var n = Number(v); return isFinite(n) ? ((n >= 0 ? '+' : '') + n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%') : ''; }
 function dashExecutionRealityLine(r) {
@@ -7478,9 +7537,10 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
     var onlyDailyLockFallback = meta.monitor_source_label === 'daily lock fallback';
     if (upd) upd.textContent = onlyDailyLockFallback ? 'Terakhir update: belum ada update monitor terbaru' : 'Terakhir update: ' + dashWibTime(lastUpdatedAt) + ' WIB';
     if (!el) return;
-    var rows = picks || [];
+    var split = splitDashboardSafeRows(picks || []);
+    var rows = split.safe;
     if (rows.length === 0) {
-        el.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT);
+        el.innerHTML = dashboardEmptyHtml(MONITOR_EMPTY_TEXT) + dashboardExcludedHtml(split.excluded);
         return;
     }
     var html = meta.monitor_is_stale ? '<div class="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">' + escapeHtml(meta.monitor_stale_note || 'Data monitor belum update terbaru.') + '</div>' : '';
@@ -7490,7 +7550,7 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
         var hasDetailPayload = !!(p.raw_payload && Object.keys(p.raw_payload).length);
         var tickerJs = dashJsString(r.ticker);
         var cardAttrs = hasDetailPayload ? ' role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')"' : '';
-        var cardClass = 'rounded-xl border border-dark-600/30 bg-dark-800/55 px-3 py-2 transition';
+        var cardClass = 'dashboard-pick-card px-3 py-3 transition';
         if (hasDetailPayload) cardClass += ' cursor-pointer hover:border-emerald-500/30 hover:bg-emerald-500/5 focus:outline-none focus:ring-1 focus:ring-emerald-500/40';
         var statusText = p.status_label || (p.status || 'WAITING').replace(/_/g, ' ');
         var basisPct = p.active_entry_price != null ? Number(p.return_from_entry_pct) : Number(p.distance_to_entry1_pct);
@@ -7513,7 +7573,7 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
         html += '<div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-gray-400"><span>Entry <b class="text-blue-300">' + dashFmtPrice(p.entry1) + '</b></span><span>E2 <b class="text-blue-300">' + dashFmtPrice(p.entry2) + '</b></span><span>SL <b class="text-red-300">' + dashFmtPrice(p.sl) + '</b></span><span>TP1/TP2 <b class="text-emerald-300">' + dashFmtPrice(p.tp1) + '/' + dashFmtPrice(p.tp2) + '</b></span></div>';
         html += '<div class="mt-1 text-[10px] text-gray-500">' + escapeHtml(p.status_note || p.progress || '-') + ' · ' + escapeHtml(p.progress || '-') + ' · ' + dashWibTime(p.last_updated_at) + ' WIB</div></div></div></article>';
     });
-    el.innerHTML = html;
+    el.innerHTML = html + dashboardExcludedHtml(split.excluded);
 }
 
 var _top5HistoryActiveRows = [];
