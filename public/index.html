@@ -368,6 +368,39 @@
         @media (min-width: 640px) { .nav-scroll-container::after { display: none; } }
         .page-content { animation: fadeIn 0.15s ease-out; }
 
+
+        /* ===== DESKTOP HEADER BALANCE + SITE-WIDE POLISH ===== */
+        .app-header { background: rgba(11,14,20,0.86); border-bottom: 1px solid rgba(148,163,184,0.10); box-shadow: 0 12px 36px rgba(0,0,0,0.24); }
+        .header-shell { max-width: 1440px; }
+        .brand-mark { box-shadow: 0 12px 28px rgba(16,185,129,0.22), inset 0 1px 0 rgba(255,255,255,0.25); }
+        .header-status-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .01em; color: #cbd5e1; border: 1px solid rgba(148,163,184,0.14); background: rgba(15,23,42,0.56); white-space: nowrap; }
+        .header-status-chip.safe { color: #86efac; border-color: rgba(34,197,94,0.20); background: rgba(34,197,94,0.08); }
+        .header-status-chip.warn { color: #fcd34d; border-color: rgba(245,158,11,0.20); background: rgba(245,158,11,0.08); }
+        .header-status-dot { width: 6px; height: 6px; border-radius: 999px; background: #34d399; box-shadow: 0 0 12px rgba(52,211,153,0.55); }
+        .header-account { border: 1px solid rgba(148,163,184,0.10); background: rgba(15,23,42,0.34); border-radius: 999px; padding: 4px 5px 4px 10px; }
+        .nav-btn { min-height: 34px; }
+        @media (min-width: 1024px) {
+            .desktop-nav { display: flex; }
+            .mobile-nav-row { display: none; }
+            .nav-btn { padding: 7px 10px; }
+        }
+        @media (min-width: 1280px) {
+            .nav-btn { padding: 7px 12px; }
+            .desktop-nav { gap: 3px; }
+        }
+        @media (max-width: 1023px) {
+            .desktop-nav, .desktop-header-chips { display: none !important; }
+            .mobile-nav-row { display: block; }
+        }
+        input, select, textarea { transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+        input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(16,185,129,0.10); }
+        .page-content { max-width: 1180px; }
+        table { border-collapse: separate; border-spacing: 0; }
+        th { color: #cbd5e1; font-weight: 700; }
+        td { border-color: rgba(148,163,184,0.08) !important; }
+        .action-card, .dt-card-item, .kg-card-item, .nk-card-item { box-shadow: 0 12px 26px rgba(0,0,0,0.14); }
+        .action-card:focus-visible, .nav-btn:focus-visible, button:focus-visible { outline: 2px solid rgba(52,211,153,0.55); outline-offset: 2px; }
+
         /* ===== SIDEBAR STYLES ===== */
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 200; transition: opacity 0.2s ease; }
         .sidebar-overlay.active { display: block; }
@@ -515,14 +548,14 @@
 </aside>
 
 <!-- HEADER -->
-<header class="sticky top-0 z-50 backdrop-blur-xl bg-dark-900/90 border-b border-dark-600/30 flex-shrink-0">
-    <div class="max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-2.5">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
+<header class="app-header sticky top-0 z-50 backdrop-blur-xl flex-shrink-0">
+    <div class="header-shell w-full mx-auto px-3 sm:px-5 py-2.5">
+        <div class="flex items-center gap-3 lg:gap-4">
+            <div class="flex items-center gap-3 min-w-0 flex-shrink-0">
                 <button onclick="toggleSidebar()" class="sidebar-toggle-btn hidden" title="Riwayat Chat">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
+                <div class="brand-mark w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0">
                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
                 </div>
                 <div class="min-w-0">
@@ -530,7 +563,21 @@
                     <p class="text-xs text-gray-500 hidden sm:block">Stock Analysis Dashboard</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <nav class="desktop-nav hidden flex-1 items-center justify-center min-w-0" aria-label="Navigasi utama desktop">
+                <button onclick="navigateTo('dashboard')" class="nav-btn active" data-page="dashboard"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg><span>Dashboard</span></button>
+                <button onclick="navigateTo('analisis')" class="nav-btn" data-page="analisis"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span>Analisis</span></button>
+                <button onclick="navigateTo('sektor')" class="nav-btn" data-page="sektor"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Sektor</span></button>
+                <button onclick="navigateTo('screener')" class="nav-btn" data-page="screener"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span>Screener</span></button>
+                <button onclick="navigateTo('chart')" class="nav-btn" data-page="chart"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg><span>Chart</span></button>
+                <button onclick="navigateTo('portofolio')" class="nav-btn" data-page="portofolio"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg><span>Portofolio</span></button>
+            </nav>
+            <div class="desktop-header-chips hidden xl:flex items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
+                <span class="header-status-chip"><span class="header-status-dot"></span>Live Radar</span>
+                <span class="header-status-chip safe">Safety ON</span>
+                <span class="header-status-chip warn">Manual Confirm</span>
+                <span class="header-status-chip">Watchlist ≠ BUY</span>
+            </div>
+            <div class="header-account ml-auto flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 <span id="wibClock" class="text-[11px] text-gray-500 font-mono tabular-nums hidden sm:inline"></span>
                 <span id="reviewBadge" class="hidden px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">Review</span>
                 <span id="guestBadge" class="hidden"></span>
@@ -542,7 +589,7 @@
         </div>
     </div>
     <!-- NAVIGATION MENU -->
-    <nav class="max-w-[1100px] w-full mx-auto px-3 sm:px-5">
+    <nav class="mobile-nav-row header-shell w-full mx-auto px-3 sm:px-5">
         <div class="nav-scroll-container flex items-center gap-1 overflow-x-auto pb-2 pt-1 scrollbar-hide" id="mainNav">
             <button onclick="navigateTo('dashboard')" class="nav-btn active" data-page="dashboard">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
