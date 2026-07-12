@@ -7404,19 +7404,28 @@ function normalizeDashboardPick(p) {
 
 function isDashboardUnsafeActionable(r) {
     if (!r) return false;
-    var risk = safeDisplayText(getRiskLabel(r) || r.risk_label_v2 || r.risk_label || '', '').toLowerCase();
-    var action = safeDisplayText(r.action_label || r.signal_action_label || r.signal_action || getActionLabel(r) || '', '').toLowerCase();
-    var status = safeDisplayText(r.status || r.final_status || r.swing_tier || r.entry_quality_status || r.plan_quality_status || '', '').toLowerCase();
-    var verdict = safeDisplayText(r.signal_verdict || r.plan_label || r.plan_reason || r.action_reason || r.status_reason || '', '').toLowerCase();
-    var combined = [risk, action, status, verdict].join(' ');
-    return risk === 'very high risk' || /\b(hindari|avoid|sell|low_tp|low tp|very high risk)\b/.test(combined);
+    var keys = [
+        'status', 'final_status', 'display_status', 'public_status', 'signal_status',
+        'swing_tier', 'entry_quality_status', 'plan_quality_status',
+        'action', 'action_label', 'display_action', 'public_action', 'signal_action', 'signal_action_label',
+        'risk_label', 'risk_label_v2', 'risk_level', 'display_risk_label', 'public_risk_label', 'telegram_risk_label',
+        'signal_verdict', 'plan_label', 'plan_reason', 'action_reason', 'status_reason', 'reason', 'notes',
+        'trading_plan_note', 'entry_safety_note', 'invalidation_note'
+    ];
+    var values = [getRiskLabel(r), getActionLabel(r)];
+    keys.forEach(function(key) { values.push(r[key]); });
+    var text = values.map(function(value) { return safeDisplayText(value, ''); }).filter(Boolean).join(' ').toLowerCase();
+    return /(^|[^a-z0-9])(hindari|avoid|sell)([^a-z0-9]|$)/.test(text)
+        || /(^|[^a-z0-9])low[_\s-]?tp([^a-z0-9]|$)/.test(text)
+        || /(^|[^a-z0-9])very[_\s-]?high([_\s-]?risk)?([^a-z0-9]|$)/.test(text);
 }
 function splitDashboardSafeRows(rows) {
     var safe = [];
     var excluded = [];
     (rows || []).forEach(function(p) {
         var r = normalizeDashboardPick(p);
-        if (isDashboardUnsafeActionable(r)) excluded.push({ pick: p, row: r });
+        var safetyRow = Object.assign({}, p && p.raw_payload || {}, p || {}, r);
+        if (isDashboardUnsafeActionable(safetyRow)) excluded.push({ pick: p, row: r });
         else safe.push(p);
     });
     return { safe: safe, excluded: excluded };
