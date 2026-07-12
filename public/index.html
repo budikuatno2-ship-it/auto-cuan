@@ -522,6 +522,35 @@
             #scrDetailModal > div { border-radius: 16px; max-height: 85vh; }
             #scrDetailModal > div > div:first-child { display: none; }
         }
+
+        /* ===== PUBLIC LANDING PAGE ===== */
+        .landing-shell { min-height: 100vh; background: radial-gradient(circle at 20% 0%, rgba(16,185,129,.16), transparent 32%), radial-gradient(circle at 84% 14%, rgba(59,130,246,.13), transparent 30%), #0b0e14; color: #e5e7eb; }
+        .landing-container { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+        .landing-promo { border-bottom: 1px solid rgba(148,163,184,.12); background: rgba(11,14,20,.76); backdrop-filter: blur(16px); }
+        .landing-chip { display: inline-flex; align-items: center; gap: 7px; border: 1px solid rgba(148,163,184,.15); background: rgba(15,23,42,.55); color: #cbd5e1; border-radius: 999px; padding: 6px 10px; font-size: 11px; white-space: nowrap; }
+        .landing-dot { width: 7px; height: 7px; border-radius: 999px; background: #34d399; box-shadow: 0 0 16px rgba(52,211,153,.75); }
+        .landing-nav { position: sticky; top: 0; z-index: 45; border-bottom: 1px solid rgba(148,163,184,.1); background: rgba(11,14,20,.74); backdrop-filter: blur(18px); }
+        .landing-brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+        .landing-logo { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(135deg, #34d399, #059669); box-shadow: 0 18px 42px rgba(16,185,129,.2); }
+        .landing-menu a, .landing-link { color: #94a3b8; font-size: 13px; font-weight: 700; transition: color .15s ease; }
+        .landing-menu a:hover, .landing-link:hover { color: #6ee7b7; }
+        .landing-btn { display:inline-flex; align-items:center; justify-content:center; min-height: 44px; padding: 11px 16px; border-radius: 14px; font-size: 13px; font-weight: 900; border: 1px solid rgba(148,163,184,.16); color: #d1d5db; background: rgba(15,23,42,.62); }
+        .landing-btn-primary { color: #04130d; border-color: rgba(52,211,153,.28); background: linear-gradient(135deg, #6ee7b7, #10b981); box-shadow: 0 18px 44px rgba(16,185,129,.18); }
+        .landing-section { padding: 72px 0; }
+        .landing-hero { padding: 70px 0 56px; }
+        .landing-gradient-text { background: linear-gradient(135deg, #fff, #a7f3d0 58%, #93c5fd); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .landing-card { border: 1px solid rgba(148,163,184,.14); background: linear-gradient(180deg, rgba(15,23,42,.74), rgba(15,23,42,.46)); border-radius: 24px; box-shadow: 0 24px 70px rgba(0,0,0,.28); }
+        .mock-grid { display:grid; grid-template-columns: 1.15fr .85fr; gap: 12px; }
+        .mock-card { border: 1px solid rgba(148,163,184,.12); background: rgba(2,6,23,.52); border-radius: 18px; padding: 14px; min-width:0; }
+        .mock-bar { height: 8px; border-radius: 999px; background: linear-gradient(90deg, rgba(16,185,129,.9), rgba(59,130,246,.65)); }
+        .heat-cell { border-radius: 12px; padding: 10px; background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.14); }
+        .feature-card { border: 1px solid rgba(148,163,184,.13); background: rgba(15,23,42,.48); border-radius: 22px; padding: 20px; }
+        .feature-icon { width: 38px; height: 38px; border-radius: 14px; display:grid; place-items:center; background: rgba(16,185,129,.13); color:#6ee7b7; border:1px solid rgba(16,185,129,.18); }
+        .step-num { width: 32px; height: 32px; border-radius: 12px; display:grid; place-items:center; background:#10b981; color:#03120c; font-weight:900; }
+        .faq-item { border: 1px solid rgba(148,163,184,.12); background: rgba(15,23,42,.38); border-radius: 18px; padding: 18px; }
+        .landing-auth-card { border: 1px solid rgba(148,163,184,.14); background: rgba(15,23,42,.58); border-radius: 18px; padding: 16px; }
+        @media (max-width: 900px) { .landing-hero-grid { grid-template-columns: 1fr !important; } .landing-menu { display:none !important; } }
+        @media (max-width: 640px) { .landing-container { width: min(100% - 24px, 1180px); } .landing-section { padding: 48px 0; } .landing-hero { padding: 42px 0 36px; } .mock-grid { grid-template-columns: 1fr; } .landing-btn { width: 100%; } .landing-mobile-wrap { flex-wrap: wrap; } }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -552,6 +581,96 @@
         <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
         <p id="maintenanceMessage" class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses sementara.</p>
         <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
+    </div>
+</div>
+
+
+<!-- ===== PUBLIC LANDING PAGE ===== -->
+<section id="landingPage" class="landing-shell hidden">
+    <div class="landing-promo">
+        <div class="landing-container py-2.5 flex items-center gap-2 overflow-x-auto">
+            <span class="landing-chip font-black text-emerald-300"><span class="landing-dot"></span>Auto-Cuan IDX Radar</span>
+            <span class="landing-chip">Sistem aktif</span>
+            <span class="landing-chip">Dashboard watchlist, radar, chart, dan trading plan</span>
+            <span class="landing-chip text-amber-200 border-amber-500/20 bg-amber-500/10">Bukan rekomendasi beli/jual</span>
+        </div>
+    </div>
+    <nav class="landing-nav">
+        <div class="landing-container py-3 flex items-center justify-between gap-4">
+            <button type="button" onclick="showLandingPage()" class="landing-brand text-left" aria-label="Auto-Cuan landing page">
+                <span class="landing-logo"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></span>
+                <span class="min-w-0"><span class="block text-white font-black leading-tight">Auto-Cuan</span><span class="block text-xs text-gray-500 truncate">IDX Stock Radar</span></span>
+            </button>
+            <div class="landing-menu hidden md:flex items-center gap-6">
+                <a href="#landingFeatures">Fitur</a><a href="#landingHow">Cara Kerja</a><a href="#landingSafety">Safety</a><a href="#landingPreview">Preview</a><button type="button" onclick="openLoginModal()" class="landing-link">Login</button>
+            </div>
+            <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary shrink-0"><span class="landing-cta-label">Mulai Sekarang</span></button>
+        </div>
+    </nav>
+    <main>
+        <section class="landing-hero">
+            <div class="landing-container landing-hero-grid grid grid-cols-2 gap-8 items-center">
+                <div>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 mb-5">Preview UI · data contoh statis</div>
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.02] tracking-tight landing-gradient-text">Pantau saham IDX dengan radar yang lebih rapi.</h1>
+                    <p class="mt-5 text-base sm:text-lg text-gray-400 max-w-2xl leading-relaxed">Auto-Cuan membantu merapikan proses analisis saham: Day Trade Radar, Swing Konglo, Swing Non-Konglo, Sector Hot, Chart, dan Portofolio Manual — tetap dengan konfirmasi manual.</p>
+                    <p class="mt-4 text-sm text-amber-200/90 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3">Bukan rekomendasi beli/jual. Data bisa terlambat. Konfirmasi manual wajib.</p>
+                    <div class="mt-7 flex landing-mobile-wrap gap-3"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span></button><a href="#landingPreview" class="landing-btn">Lihat Preview</a><button type="button" onclick="openLoginModal()" class="landing-btn">Login</button></div>
+                </div>
+                <div class="landing-card p-4 sm:p-5" aria-label="Preview UI statis Auto-Cuan">
+                    <div class="flex items-center justify-between mb-4"><div><p class="text-xs text-emerald-300 font-black uppercase tracking-wide">Preview UI</p><h2 class="text-lg font-black text-white">Auto-Cuan Radar</h2></div><span class="landing-chip">Data contoh</span></div>
+                    <div class="mock-grid">
+                        <div class="mock-card"><div class="flex justify-between text-xs text-gray-500"><span>IDX/IHSG</span><span class="text-emerald-300">+0.42%</span></div><div class="mt-2 text-2xl font-black text-white">7,325</div><svg viewBox="0 0 240 82" class="w-full mt-3"><path d="M5 63 C35 45, 47 55, 72 34 S112 19, 135 31 S174 67, 205 25 S226 24, 236 14" fill="none" stroke="#34d399" stroke-width="4"/><path d="M5 63 C35 45, 47 55, 72 34 S112 19, 135 31 S174 67, 205 25 S226 24, 236 14 L236 82 L5 82 Z" fill="rgba(16,185,129,.12)"/></svg></div>
+                        <div class="mock-card"><p class="text-xs text-gray-500">Risk Label</p><div class="mt-3 inline-flex rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-1 text-xs font-bold text-amber-200">Medium Risk</div><div class="mt-4 space-y-2"><div class="mock-bar w-5/6"></div><div class="mock-bar w-2/3 opacity-60"></div></div></div>
+                        <div class="mock-card"><p class="text-xs text-gray-500 mb-3">Top Radar</p><div class="space-y-2 text-xs"><div class="flex justify-between"><b class="text-white">BBCA</b><span class="text-emerald-300">RR 2.1</span></div><div class="flex justify-between"><b class="text-white">ANTM</b><span class="text-blue-300">Watch</span></div><div class="flex justify-between"><b class="text-white">TLKM</b><span class="text-amber-200">Manual</span></div></div></div>
+                        <div class="mock-card"><p class="text-xs text-gray-500 mb-2">Entry / TP / SL</p><div class="grid grid-cols-3 gap-2 text-center text-[11px]"><div class="rounded-xl bg-slate-800/70 p-2"><span class="text-gray-500">Entry</span><b class="block text-white">5,100</b></div><div class="rounded-xl bg-emerald-500/10 p-2"><span class="text-gray-500">TP</span><b class="block text-emerald-300">5,450</b></div><div class="rounded-xl bg-red-500/10 p-2"><span class="text-gray-500">SL</span><b class="block text-red-300">4,950</b></div></div></div>
+                    </div>
+                    <div class="mt-3 grid grid-cols-4 gap-2 text-[11px]"><div class="heat-cell">Energy</div><div class="heat-cell bg-blue-500/10 border-blue-500/20">Finance</div><div class="heat-cell bg-amber-500/10 border-amber-500/20">Consumer</div><div class="heat-cell bg-purple-500/10 border-purple-500/20">Tech</div></div>
+                </div>
+            </div>
+        </section>
+        <section id="landingFeatures" class="landing-section"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Fitur</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Satu tempat untuk radar, chart, dan catatan posisi.</h2></div><div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="feature-card"><div class="feature-icon">DT</div><h3 class="mt-4 text-white font-black">Day Trade Radar</h3><p class="mt-2 text-sm text-gray-400">Pantau peluang jangka pendek dengan entry, target, stop loss, dan risk/reward yang lebih jelas.</p></div>
+            <div class="feature-card"><div class="feature-icon">SK</div><h3 class="mt-4 text-white font-black">Swing Konglo</h3><p class="mt-2 text-sm text-gray-400">Pantau saham grup konglomerasi dengan konteks trend, volume, dan risk label.</p></div>
+            <div class="feature-card"><div class="feature-icon">SN</div><h3 class="mt-4 text-white font-black">Swing Non-Konglo</h3><p class="mt-2 text-sm text-gray-400">Cari watchlist swing di luar grup besar dengan filter kualitas dan keamanan publik.</p></div>
+            <div class="feature-card"><div class="feature-icon">SH</div><h3 class="mt-4 text-white font-black">Sector Hot</h3><p class="mt-2 text-sm text-gray-400">Lihat sektor/grup yang sedang aktif, lengkap dengan peringatan freshness bila data lama.</p></div>
+            <div class="feature-card"><div class="feature-icon">CH</div><h3 class="mt-4 text-white font-black">Chart</h3><p class="mt-2 text-sm text-gray-400">Buka chart saham, candle, MA, RSI, volume, dan konteks teknikal dalam satu halaman.</p></div>
+            <div class="feature-card"><div class="feature-icon">PF</div><h3 class="mt-4 text-white font-black">Portofolio Manual</h3><p class="mt-2 text-sm text-gray-400">Catat posisi manual dan pantau P/L tanpa menghubungkan akun sekuritas.</p></div>
+        </div></div></section>
+        <section id="landingSafety" class="landing-section bg-slate-950/25"><div class="landing-container grid lg:grid-cols-2 gap-5 items-start"><div><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Safety</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Auto-Cuan dibuat untuk membantu membaca data, bukan menggantikan keputusan Anda.</h2></div><div class="landing-card p-5 sm:p-6 space-y-3 text-sm text-gray-300"><p>Watchlist/Pantau bukan BUY agresif.</p><p>Hindari / AVOID / SELL / LOW_TP / Very High Risk dipisahkan dari daftar aksi utama.</p><p>Pengguna wajib validasi manual, membaca freshness, dan mempertimbangkan risiko sendiri.</p><p>Auto-Cuan tidak mengeksekusi transaksi dan tidak menyimpan dana pengguna.</p></div></div></section>
+        <section class="landing-section"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Update Schedule</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Jadwal data yang transparan dan tetap fleksibel.</h2><p class="mt-3 text-sm text-gray-400">Jadwal dapat bergeser mengikuti ketersediaan data, kondisi market, dan proses sistem.</p></div><div class="grid md:grid-cols-3 gap-4"><div class="feature-card"><h3 class="font-black text-white">Day Trade Screener</h3><p class="mt-2 text-sm text-gray-400">Refresh setiap 15 menit saat jam bursa.</p></div><div class="feature-card"><h3 class="font-black text-white">Swing Konglo</h3><p class="mt-2 text-sm text-gray-400">Biasanya tersedia malam hari setelah market close, sekitar 19:10 WIB.</p></div><div class="feature-card"><h3 class="font-black text-white">Swing Non-Konglo</h3><p class="mt-2 text-sm text-gray-400">Biasanya tersedia malam hari setelah market close, sekitar 19:30 WIB.</p></div></div></div></section>
+        <section class="landing-section bg-slate-950/25"><div class="landing-container grid lg:grid-cols-2 gap-5 items-start"><div><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Aturan Pakai / Risk Notice</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Gunakan sebagai alat bantu analisis, bukan autopilot keputusan.</h2></div><div class="landing-card p-5 sm:p-6 space-y-3 text-sm text-gray-300"><p>Hasil screener bukan rekomendasi beli/jual otomatis.</p><p>Watchlist / Radar / Pantau bukan aggressive BUY.</p><p>Semua kandidat wajib konfirmasi manual.</p><p>Risiko market, false breakout, slippage, dan likuiditas tetap ada.</p><p>Keputusan akhir ada di tangan pengguna.</p></div></div></section>
+        <section class="landing-section"><div class="landing-container"><div class="max-w-3xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Cara Konfirmasi Manual</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Checklist sebelum mengambil keputusan di sekuritas pilihan Anda.</h2><p class="mt-3 text-sm text-gray-400">Bot membantu menyaring kandidat, tetapi keputusan entry tetap ada di tangan masing-masing trader/investor.</p></div><div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"><div class="feature-card"><div class="step-num">1</div><p class="mt-4 text-sm text-gray-300">Buka broker/charting platform seperti Stockbit, Ajaib, KB Valbury, Semesta Indovest, atau platform lain.</p></div><div class="feature-card"><div class="step-num">2</div><p class="mt-4 text-sm text-gray-300">Cari ticker yang muncul di Auto-Cuan, buka chart, dan cek area harga.</p></div><div class="feature-card"><div class="step-num">3</div><p class="mt-4 text-sm text-gray-300">Bandingkan dengan entry, stop loss, target, orderbook / bid-offer, dan running trade.</p></div><div class="feature-card"><div class="step-num">4</div><p class="mt-4 text-sm text-gray-300">Perhatikan volume, momentum, likuiditas, lalu ambil keputusan manual sesuai profil risiko.</p></div></div></div></section>
+        <section id="landingHow" class="landing-section"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Cara Kerja</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Alur sederhana sebelum mengambil keputusan manual.</h2></div><div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"><div class="feature-card"><div class="step-num">1</div><h3 class="mt-4 font-black text-white">Pilih mode analisis</h3></div><div class="feature-card"><div class="step-num">2</div><h3 class="mt-4 font-black text-white">Cek entry, TP, SL, RR, risk label</h3></div><div class="feature-card"><div class="step-num">3</div><h3 class="mt-4 font-black text-white">Periksa freshness dan catatan risiko</h3></div><div class="feature-card"><div class="step-num">4</div><h3 class="mt-4 font-black text-white">Ambil keputusan manual di sekuritas pilihan Anda</h3></div></div></div></section>
+        <section id="landingPreview" class="landing-section bg-slate-950/25"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Preview</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Visual statis, bukan klaim hasil trading.</h2></div><div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4"><div class="feature-card"><h3 class="font-black text-white">Dashboard Preview</h3><p class="mt-2 text-sm text-gray-400">Ringkasan radar dan watchlist.</p></div><div class="feature-card"><h3 class="font-black text-white">Telegram Signal Preview</h3><p class="mt-2 text-sm text-gray-400">AUTO-CUAN WATCHLIST, Entry, TP, SL, RR, dan disclaimer.</p></div><div class="feature-card"><h3 class="font-black text-white">Chart Preview</h3><p class="mt-2 text-sm text-gray-400">Candle, MA, RSI, volume.</p></div><div class="feature-card"><h3 class="font-black text-white">Portfolio Preview</h3><p class="mt-2 text-sm text-gray-400">P/L manual tanpa koneksi sekuritas.</p></div></div></div></section>
+        <section class="landing-section"><div class="landing-container"><div class="max-w-2xl mb-8"><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">FAQ</p><h2 class="text-3xl sm:text-4xl font-black text-white mt-2">Pertanyaan umum.</h2></div><div class="grid md:grid-cols-2 gap-4"><div class="faq-item"><h3 class="font-black text-white">Apakah ini rekomendasi beli/jual?</h3><p class="mt-2 text-sm text-gray-400">Tidak. Ini alat bantu analisis.</p></div><div class="faq-item"><h3 class="font-black text-white">Apakah Auto-Cuan menjamin profit?</h3><p class="mt-2 text-sm text-gray-400">Tidak. Pasar saham berisiko.</p></div><div class="faq-item"><h3 class="font-black text-white">Apakah Auto-Cuan pegang dana?</h3><p class="mt-2 text-sm text-gray-400">Tidak. Transaksi tetap di sekuritas masing-masing.</p></div><div class="faq-item"><h3 class="font-black text-white">Apakah data bisa terlambat?</h3><p class="mt-2 text-sm text-gray-400">Ya, sistem menampilkan freshness/stale warning bila terdeteksi.</p></div><div class="faq-item"><h3 class="font-black text-white">Apakah bisa dipakai di HP?</h3><p class="mt-2 text-sm text-gray-400">Ya, dashboard dibuat mobile responsive.</p></div></div></div></section>
+    </main>
+    <footer class="border-t border-slate-800/80"><div class="landing-container py-8 flex flex-col md:flex-row gap-4 md:items-center md:justify-between"><div><h2 class="font-black text-white">Auto-Cuan</h2><p class="text-sm text-gray-500">IDX Stock Radar</p></div><div class="flex flex-wrap gap-2 text-xs text-gray-500"><span>Bukan penasihat keuangan</span><span>•</span><span>Bukan rekomendasi beli/jual</span><span>•</span><span>Data bisa terlambat</span><span>•</span><span>Gunakan sebagai alat bantu analisis</span></div><button type="button" onclick="landingPrimaryAction()" class="landing-link text-left"><span class="landing-cta-label">Masuk Dashboard</span> →</button></div></footer>
+</section>
+
+
+<!-- AUTH CHOICE MODAL -->
+<div id="authChoiceModal" class="hidden fixed inset-0 z-[9998] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="authChoiceTitle">
+    <div class="w-full max-w-md rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-5">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <p class="text-xs font-black uppercase tracking-wide text-emerald-300">Masuk ke Auto-Cuan</p>
+                <h3 id="authChoiceTitle" class="mt-1 text-xl font-black text-white">Login atau daftar dulu</h3>
+                <p id="authChoiceMessage" class="mt-2 text-sm text-gray-400">Dashboard berisi watchlist, chart, screener, dan portofolio manual. Silakan masuk atau buat akun untuk melanjutkan.</p>
+            </div>
+            <button onclick="closeAuthChoiceModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup pilihan login atau daftar">&times;</button>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+            <button type="button" onclick="closeAuthChoiceModal();openLoginModal()" class="landing-auth-card text-left hover:border-emerald-500/35 transition">
+                <span class="block text-white font-black">Login</span>
+                <span class="mt-1 block text-xs text-gray-400">Masuk dengan akun yang sudah disetujui.</span>
+            </button>
+            <button type="button" onclick="closeAuthChoiceModal();openRegisterModal()" class="landing-auth-card text-left hover:border-blue-500/35 transition">
+                <span class="block text-white font-black">Daftar</span>
+                <span class="mt-1 block text-xs text-gray-400">Buat akun baru untuk diajukan ke admin.</span>
+            </button>
+        </div>
+        <p class="text-xs text-amber-200/90 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3">Bukan rekomendasi beli/jual. Data bisa terlambat. Konfirmasi manual wajib.</p>
     </div>
 </div>
 
@@ -1670,6 +1789,73 @@ function updateUsageCounter() {
 }
 
 
+
+// ===== LANDING PAGE / APP ROUTING =====
+function isAutocuanLoggedIn() {
+    return localStorage.getItem('autocuan_logged_in') === 'true' && (localStorage.getItem('autocuan_user') || 'guest') !== 'guest';
+}
+function updateLandingCtas() {
+    var isLoggedIn = isAutocuanLoggedIn();
+    document.querySelectorAll('.landing-cta-label').forEach(function(el) { el.textContent = isLoggedIn ? 'Masuk Dashboard' : 'Mulai Sekarang'; });
+}
+function setRoute(path, replace) {
+    if (!window.history || window.location.pathname === path) return;
+    if (replace) window.history.replaceState({}, '', path);
+    else window.history.pushState({}, '', path);
+}
+function openAuthChoiceModal(message) {
+    var modal = document.getElementById('authChoiceModal');
+    var msg = document.getElementById('authChoiceMessage');
+    if (msg && message) msg.textContent = message;
+    if (modal) modal.classList.remove('hidden');
+}
+function closeAuthChoiceModal() {
+    var modal = document.getElementById('authChoiceModal');
+    if (modal) modal.classList.add('hidden');
+}
+function showLandingPage(opts) {
+    opts = opts || {};
+    document.getElementById('blockedScreen').classList.add('hidden');
+    document.getElementById('maintenanceScreen').classList.add('hidden');
+    document.getElementById('dashboardScreen').classList.add('hidden');
+    var landing = document.getElementById('landingPage');
+    if (landing) landing.classList.remove('hidden');
+    var il = document.getElementById('initialLoader'); if (il) il.remove();
+    localStorage.removeItem('autocuan_entered_app');
+    updateLandingCtas();
+    if (!opts.skipHistory && !(opts.duringInit && window.location.pathname === '/')) setRoute('/', !!opts.replaceHistory);
+    if (!opts.keepScroll) window.scrollTo({ top: 0, behavior: opts.duringInit ? 'auto' : 'smooth' });
+    if (opts.promptAuth) openAuthChoiceModal(opts.promptMessage || 'Silakan login atau daftar untuk membuka dashboard Auto-Cuan.');
+}
+function enterApp(opts) {
+    opts = opts || {};
+    if (!isAutocuanLoggedIn() && !opts.allowGuest) {
+        showLandingPage({ skipHistory: true, keepScroll: true });
+        openAuthChoiceModal('Silakan login atau daftar terlebih dahulu untuk masuk ke dashboard Auto-Cuan.');
+        return;
+    }
+    localStorage.setItem('autocuan_entered_app', 'true');
+    setRoute('/dashboard', !!opts.replaceHistory);
+    var landing = document.getElementById('landingPage');
+    if (landing) landing.classList.add('hidden');
+    showDashboard();
+}
+function landingPrimaryAction() {
+    if (isAutocuanLoggedIn()) enterApp();
+    else openAuthChoiceModal('Pilih Login bila sudah punya akun, atau Daftar untuk membuat akun baru.');
+}
+function handleAppRoute(opts) {
+    opts = opts || {};
+    var path = window.location.pathname || '/';
+    if (path === '/dashboard' || path === '/dashboard/') {
+        if (isAutocuanLoggedIn()) enterApp({ replaceHistory: opts.duringInit });
+        else showLandingPage({ skipHistory: true, duringInit: opts.duringInit, promptAuth: true, promptMessage: 'Login atau daftar diperlukan untuk membuka /dashboard.' });
+        return;
+    }
+    showLandingPage({ duringInit: opts.duringInit, replaceHistory: opts.replaceHistory });
+}
+window.addEventListener('popstate', function() { handleAppRoute({ fromPopstate: true }); });
+
 // ===== MAINTENANCE CHECK =====
 var maintenanceConfig = { maintenanceMode: false, message: '' };
 async function checkMaintenanceStatus() {
@@ -1966,7 +2152,7 @@ function renderShareDt(d) {
         localStorage.setItem('autocuan_is_admin', 'false');
         localStorage.removeItem('autocuan_is_review');
     }
-    showDashboard();
+    handleAppRoute({ duringInit: true });
     // Non-blocking maintenance check — apply after shell is visible
     checkMaintenanceStatus().then(function() {
         if (maintenanceConfig.maintenanceMode && !isAdmin()) {
@@ -1974,10 +2160,11 @@ function renderShareDt(d) {
             if (msgEl && maintenanceConfig.message) msgEl.textContent = maintenanceConfig.message;
             document.getElementById('maintenanceScreen').classList.remove('hidden');
             document.getElementById('dashboardScreen').classList.add('hidden');
+            var landing = document.getElementById('landingPage'); if (landing) landing.classList.add('hidden');
         }
     });
     // Auto-show onboarding on first visit
-    if (localStorage.getItem('auto_cuan_onboarding_seen') !== 'true') {
+    if (localStorage.getItem('autocuan_entered_app') === 'true' && localStorage.getItem('auto_cuan_onboarding_seen') !== 'true') {
         setTimeout(function() { showOnboardingGuide(); }, 600);
     }
 })();
@@ -2008,7 +2195,7 @@ setTimeout(function() { var il = document.getElementById('initialLoader'); if (i
 })();
 
 // ===== MODAL FUNCTIONS =====
-function openLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); }
+function openLoginModal() { updateLandingCtas(); document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); }
 function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
 function openRegisterModal() { document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
 function closeRegisterModal() { document.getElementById('registerModal').classList.add('hidden'); }
@@ -2029,7 +2216,7 @@ async function doLogin() {
         if (password === '.') {
             localStorage.setItem('autocuan_user', 'budi'); localStorage.setItem('autocuan_is_admin', 'true');
             localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString()); localStorage.removeItem('autocuan_is_review');
-            logLogin('budi', false, true); closeLoginModal(); showDashboard();
+            logLogin('budi', false, true); closeLoginModal(); closeAuthChoiceModal(); enterApp({ replaceHistory: true });
         } else { errorEl.textContent = 'Password salah.'; errorEl.classList.remove('hidden'); }
         return;
     }
@@ -2046,7 +2233,7 @@ async function doLogin() {
             localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString());
             if (data.userId) { localStorage.setItem('autocuan_user_id', data.userId); }
             if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
-            logLogin(data.username, false, false); closeLoginModal(); showDashboard();
+            logLogin(data.username, false, false); closeLoginModal(); closeAuthChoiceModal(); enterApp({ replaceHistory: true });
         } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { loginBtn.disabled = false; loginBtn.innerHTML = 'Masuk'; }
@@ -2073,7 +2260,7 @@ async function doRegister() {
         var response = await fetch('/api/register-user', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent }) });
         var data = await response.json();
-        if (data.success) { successEl.textContent = 'Akun berhasil dibuat! Menunggu persetujuan admin sebelum bisa login.'; successEl.classList.remove('hidden'); setTimeout(function() { closeRegisterModal(); }, 2500); }
+        if (data.success) { successEl.textContent = 'Akun berhasil dibuat! Menunggu persetujuan admin sebelum bisa login.'; successEl.classList.remove('hidden'); setTimeout(function() { closeRegisterModal(); openAuthChoiceModal('Akun berhasil dibuat dan menunggu persetujuan admin. Jika sudah disetujui, silakan login untuk masuk ke dashboard.'); }, 1800); }
         else { errorEl.textContent = data.error || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { registerBtn.disabled = false; registerBtn.innerHTML = 'Daftar'; }
@@ -2083,7 +2270,7 @@ async function doRegister() {
 function logout() {
     localStorage.setItem('autocuan_user', 'guest'); localStorage.setItem('autocuan_is_admin', 'false');
     localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_is_review'); localStorage.removeItem('autocuan_user_id');
-    showDashboard();
+    showLandingPage({ replaceHistory: true });
 }
 
 
@@ -2095,12 +2282,14 @@ async function logUsage(ticker, usageAction) { try { var username = localStorage
 
 // ===== DASHBOARD =====
 function showDashboard() {
+    localStorage.setItem('autocuan_entered_app', 'true');
     // Only flush pending save if there's actually a pending timer (avoids overwriting on initial load)
     if (_saveChatTimer) saveChatHistoryImmediate();
     var username = getUsername(); var isReview = localStorage.getItem('autocuan_is_review') === 'true';
     if (!isReview && isDeviceBlocked()) { showBlockedScreen(); return; }
     document.getElementById('blockedScreen').classList.add('hidden');
     document.getElementById('maintenanceScreen').classList.add('hidden');
+    var landing = document.getElementById('landingPage'); if (landing) landing.classList.add('hidden');
     document.getElementById('dashboardScreen').classList.remove('hidden');
     var il = document.getElementById('initialLoader'); if (il) il.remove();
     var isGuest = (username === 'guest'); var isAdm = isAdmin();

@@ -3,6 +3,10 @@
     {
       "source": "/review",
       "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/index.html"
     }
   ],
   "crons": [
