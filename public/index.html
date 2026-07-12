@@ -362,10 +362,14 @@
         .screener-tab.active, .nk-screener-tab.active, .dt-screener-tab.active { color: #6ee7b7; background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .nav-scroll-container { position: relative; }
-        .nav-scroll-container::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 24px; background: linear-gradient(to right, transparent, #0b0e14); pointer-events: none; opacity: 0; transition: opacity 0.2s; }
-        .nav-scroll-container.has-overflow::after { opacity: 1; }
-        @media (min-width: 640px) { .nav-scroll-container::after { display: none; } }
+        .nav-scroll-container { position: relative; scroll-snap-type: x proximity; scroll-padding-inline: 14px; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+        .nav-scroll-container .nav-btn { scroll-snap-align: start; flex: 0 0 auto; }
+        .mobile-nav-row { position: relative; padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right)); }
+        .mobile-nav-row::before, .mobile-nav-row::after { content: ''; position: absolute; top: 0; bottom: 6px; width: 22px; pointer-events: none; z-index: 1; }
+        .mobile-nav-row::before { left: 0; background: linear-gradient(to right, #0b0e14, transparent); opacity: .55; }
+        .mobile-nav-row::after { right: 0; background: linear-gradient(to left, #0b0e14, transparent); opacity: .85; }
+        .nav-scroll-container::after { content: 'Geser'; position: sticky; right: 4px; margin-left: -32px; align-self: center; padding: 2px 6px; border-radius: 999px; background: rgba(15,23,42,.88); border: 1px solid rgba(148,163,184,.16); color: #64748b; font-size: 9px; font-weight: 700; pointer-events: none; opacity: .9; }
+        @media (min-width: 640px) { .nav-scroll-container::after, .mobile-nav-row::before, .mobile-nav-row::after { display: none; } }
         .page-content { animation: fadeIn 0.15s ease-out; }
 
 
@@ -395,6 +399,14 @@
         @media (max-width: 1023px) {
             .desktop-nav, .desktop-header-chips { display: none !important; }
             .mobile-nav-row { display: block; }
+        }
+        @media (max-width: 430px) {
+            .header-shell { padding-left: 12px; padding-right: 12px; }
+            .mobile-nav-row { padding-left: 14px; padding-right: 14px; }
+            .nav-scroll-container { gap: 6px; padding-left: 2px; padding-right: 34px; }
+            .mobile-nav-row .nav-btn { min-height: 40px; padding: 8px 10px; border-radius: 12px; font-size: 11px; background: rgba(15,23,42,0.34); border-color: rgba(148,163,184,0.10); }
+            .mobile-nav-row .nav-btn.active { background: rgba(16,185,129,0.14); border-color: rgba(16,185,129,0.38); box-shadow: inset 0 0 0 1px rgba(16,185,129,0.08); }
+            .mobile-nav-row .nav-btn svg { width: 15px; height: 15px; }
         }
         input, select, textarea { transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
         input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(16,185,129,0.10); }
@@ -483,6 +495,24 @@
         /* Screener info bar (compact disclaimer + legend) */
         .scr-info-bar { font-size: 11px; color: #6b7280; line-height: 1.5; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(28,35,51,0.3); background: rgba(15,19,25,0.35); }
         .scr-info-bar strong { color: #9ca3af; }
+
+        /* ===== MOBILE UX POLISH: skeletons, empty states, modal, chart, portfolio ===== */
+        @media (prefers-reduced-motion: reduce) { .skeleton, .spinner, .spinner-sm, .animate-pulse-glow, .fade-in, .fade-in-up { animation: none !important; } }
+        .skeleton-card { border: 1px solid rgba(148,163,184,.10); border-radius: 16px; padding: 14px; background: rgba(15,23,42,.42); }
+        .skeleton-line { height: 10px; border-radius: 999px; background: linear-gradient(90deg, #151a23 25%, #1c2333 50%, #151a23 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        .empty-state { border-radius: 16px; border-color: rgba(148,163,184,.16); background: radial-gradient(circle at 50% 0%, rgba(16,185,129,.06), transparent 55%), rgba(15,23,42,.38); padding: 28px 18px; }
+        .empty-state-icon { color: #64748b; width: 38px; height: 38px; }
+        .empty-state-text { color: #94a3b8; max-width: 340px; }
+        .chart-shell, .portfolio-shell { background: linear-gradient(145deg, rgba(21,26,35,.70), rgba(11,14,20,.58)); border: 1px solid rgba(148,163,184,.12); border-radius: 22px; box-shadow: 0 18px 45px rgba(0,0,0,.22); }
+        .portfolio-card { background: rgba(15,23,42,.48); border: 1px solid rgba(148,163,184,.12); border-radius: 16px; box-shadow: 0 10px 26px rgba(0,0,0,.16); }
+        .portfolio-row-card { display: grid; gap: 10px; padding: 14px; border: 1px solid rgba(148,163,184,.12); border-radius: 16px; background: rgba(15,23,42,.46); margin-bottom: 10px; }
+        .portfolio-row-card .portfolio-symbol { font-size: 18px; font-weight: 900; color: #f8fafc; letter-spacing: -.02em; }
+        .portfolio-row-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+        .portfolio-row-grid span { display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.04em; }
+        .portfolio-row-grid b { display:block; font-size:12px; color:#e5e7eb; margin-top:2px; }
+        #scrDetailModal > div { background: radial-gradient(circle at 18% 0%, rgba(16,185,129,.10), transparent 28%), #0f1319 !important; border-color: rgba(148,163,184,.16) !important; box-shadow: 0 28px 80px rgba(0,0,0,.42); }
+        #scrDetailContent * { max-width: 100%; }
+        @media (max-width: 640px) { .chart-search-row, .portfolio-head-row { flex-direction: column; align-items: stretch; } .chart-search-row button, .portfolio-head-row button { min-height: 44px; justify-content: center; } .scr-filter-grid input, .scr-filter-grid select, .scr-filter-grid label { min-height: 40px; font-size: 12px; } .screener-tab, .nk-screener-tab, .dt-screener-tab { min-height: 36px; padding-inline: 12px; } }
         /* Phase 3: Detail Modal Responsive */
         #scrDetailModal > div { scrollbar-width: thin; scrollbar-color: #242d3d #0f1319; }
         @media (max-width: 640px) {
@@ -942,7 +972,7 @@
             </div>
             <!-- Progress bar (hidden when not scanning) -->
             <div id="nkScreenerProgress" class="hidden">
-                <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+                <div class="portfolio-card p-3">
                     <div class="flex items-center gap-2 mb-2">
                         <div class="spinner-sm"></div>
                         <span class="text-xs text-gray-400" id="nkProgressText">Scanning...</span>
@@ -1117,12 +1147,13 @@
 
 <!-- ===== PAGE: CHART ===== -->
 <div id="page-chart" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
-    <div class="space-y-3">
-        <div class="flex items-center gap-2">
+    <div class="chart-shell p-3 sm:p-5 space-y-4">
+        <div><h2 class="text-xl font-extrabold text-white">Chart</h2><p class="text-sm text-gray-400 mt-1">Lihat candlestick, MA, RSI, volume, dan Fibonacci tanpa mengubah sumber data.</p></div>
+        <div class="chart-search-row flex items-center gap-2">
             <input id="chartTickerInput" type="text" placeholder="Ketik ticker: BBCA, IHSG..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')loadChartPage()">
             <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Lihat Chart</button>
         </div>
-        <div id="chartPageContainer" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden">
+        <div id="chartPageContainer" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden min-w-0">
             <div class="flex items-center justify-center py-16 text-gray-500 text-sm">
                 <div class="text-center">
                     <svg class="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
@@ -1148,10 +1179,10 @@
         </div>
     </div>
     <!-- Portfolio content (shown if logged in) -->
-    <div id="portofolioContent" class="hidden space-y-4">
+    <div id="portofolioContent" class="hidden portfolio-shell p-3 sm:p-5 space-y-4">
         <!-- Header -->
-        <div class="flex items-center justify-between flex-wrap gap-2">
-            <h2 class="text-lg font-bold text-white">Portofolio</h2>
+        <div class="portfolio-head-row flex items-center justify-between flex-wrap gap-3">
+            <div><h2 class="text-xl font-extrabold text-white">Portofolio</h2><p class="text-sm text-gray-400 mt-1">Pantau posisi manual, nilai berjalan, dan P/L dengan tampilan mobile yang rapi.</p></div>
             <div class="flex items-center gap-2">
                 <button onclick="refreshPortfolioPrices()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition flex items-center gap-1" id="portRefreshBtn">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -1188,25 +1219,25 @@
         </div>
         <!-- Portfolio summary -->
         <div id="portSummary" class="hidden grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+            <div class="portfolio-card p-3">
                 <p class="text-[10px] text-gray-500">Total Modal</p>
                 <p class="text-sm font-semibold text-gray-200" id="portTotalModal">—</p>
             </div>
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+            <div class="portfolio-card p-3">
                 <p class="text-[10px] text-gray-500">Total Nilai</p>
                 <p class="text-sm font-semibold text-gray-200" id="portTotalValue">—</p>
             </div>
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+            <div class="portfolio-card p-3">
                 <p class="text-[10px] text-gray-500">Total P/L (Rp)</p>
                 <p class="text-sm font-semibold" id="portTotalPL">—</p>
             </div>
-            <div class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-3">
+            <div class="portfolio-card p-3">
                 <p class="text-[10px] text-gray-500">Total P/L %</p>
                 <p class="text-sm font-semibold" id="portTotalPLPct">—</p>
             </div>
         </div>
         <!-- Portfolio table -->
-        <div class="bg-dark-700/30 border border-dark-600/30 rounded-xl overflow-hidden">
+        <div class="bg-dark-700/30 border border-dark-600/30 rounded-xl overflow-hidden hidden sm:block">
             <div class="overflow-x-auto">
                 <table class="w-full text-xs sm:text-sm">
                     <thead>
@@ -1226,6 +1257,7 @@
                 </table>
             </div>
         </div>
+        <div id="portMobileCards" class="sm:hidden"></div>
         <!-- Price note -->
         <p class="text-[10px] text-gray-600 text-center">Harga diperbarui dari data terakhir yang tersedia.</p>
         <!-- Price warning -->
@@ -2119,6 +2151,10 @@ function navigateTo(page) {
         btn.classList.remove('active');
         if (btn.getAttribute('data-page') === page) btn.classList.add('active');
     });
+    var activeMobileNav = document.querySelector('.mobile-nav-row .nav-btn[data-page="' + page + '"]');
+    if (activeMobileNav && activeMobileNav.scrollIntoView) {
+        try { activeMobileNav.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch(e) { activeMobileNav.scrollIntoView(); }
+    }
     // Show admin panel only on dashboard
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
@@ -2482,8 +2518,8 @@ async function loadChartPage() {
     if (!container) return;
 
     var chartId = 'pagechart_' + Date.now();
-    container.innerHTML = '<div class="px-4 py-2.5 border-b border-dark-600/30 flex items-center justify-between"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><h2 class="text-sm font-semibold text-gray-300">Chart ' + ticker + '</h2><span class="text-xs text-gray-500">Data Historis T-1</span></div></div>' +
-        '<div id="' + chartId + '_container" style="height:350px;width:100%"><div class="flex items-center justify-center h-full text-gray-600 text-xs"><span class="spinner-sm"></span> Memuat chart...</div></div>' +
+    container.innerHTML = '<div class="px-4 py-3 border-b border-dark-600/30 flex flex-wrap items-center justify-between gap-2"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><h2 class="text-sm font-semibold text-gray-200">Chart ' + ticker + '</h2><span class="text-xs text-gray-500">Data Historis T-1</span></div></div>' +
+        '<div id="' + chartId + '_container" style="height:350px;width:100%"><div class="h-full p-4 space-y-3"><div class="skeleton-card h-full flex flex-col justify-end gap-3"><div class="skeleton-line w-2/3"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-5/6"></div><p class="text-xs text-gray-500 pt-2"><span class="spinner-sm"></span>Memuat chart...</p></div></div></div>' +
         '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%"></div>' +
         '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
         '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
@@ -2492,7 +2528,7 @@ async function loadChartPage() {
         var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
         var data = await resp.json();
         if (!data.success || !data.candles || data.candles.length === 0) {
-            document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart belum berhasil dimuat untuk ' + ticker + '. Coba ticker lain.</div>';
+            document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Data chart untuk ' + ticker + ' belum tersedia. Coba ticker lain atau ulangi beberapa saat lagi.</div>';
             return;
         }
         if (typeof loadLightweightCharts === 'function') await loadLightweightCharts();
@@ -7048,10 +7084,12 @@ function renderPortfolio() {
     var tbody = document.getElementById('portTableBody');
     var emptyRow = document.getElementById('portEmptyRow');
     var summaryEl = document.getElementById('portSummary');
+    var mobileEl = document.getElementById('portMobileCards');
     if (!tbody) return;
 
     if (positions.length === 0) {
-        tbody.innerHTML = '<tr id="portEmptyRow"><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>';
+        tbody.innerHTML = '<tr id="portEmptyRow"><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm"><div class="empty-state"><p class="empty-state-text">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai mencatat portofolio manual.</p></div></td></tr>';
+        if (mobileEl) mobileEl.innerHTML = '<div class="empty-state"><p class="empty-state-text">Belum ada posisi. Tambahkan ticker, lot, dan avg buy untuk mulai memantau P/L.</p></div>';
         if (summaryEl) summaryEl.classList.add('hidden');
         return;
     }
@@ -7101,6 +7139,17 @@ function renderPortfolio() {
             '</tr>';
     }
     tbody.innerHTML = html;
+    if (mobileEl) mobileEl.innerHTML = positions.map(function(pos, idx) {
+        var totalShares = pos.lot * 100;
+        var lastPrice = pos._lastPrice || null;
+        var plText = '—', plPctText = '—', plClass = 'text-gray-500';
+        if (lastPrice !== null && lastPrice > 0) {
+            var pl = (lastPrice * totalShares) - (pos.avgBuy * totalShares);
+            var pct = ((lastPrice - pos.avgBuy) / pos.avgBuy) * 100;
+            plText = formatRupiah(pl); plPctText = pct.toFixed(2) + '%'; plClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
+        }
+        return '<div class="portfolio-row-card"><div class="flex items-center justify-between gap-3"><span class="portfolio-symbol">' + escapeHtml(pos.ticker) + '</span><button onclick="deletePosition(' + idx + ')" class="min-w-10 min-h-10 rounded-xl text-red-300 bg-red-500/10 border border-red-500/20">&times;</button></div><div class="portfolio-row-grid"><div><span>Lot</span><b>' + pos.lot + '</b></div><div><span>Avg Buy</span><b>Rp ' + formatNumber(pos.avgBuy) + '</b></div><div><span>Last Price</span><b>' + (lastPrice ? formatRupiah(lastPrice) : '—') + '</b></div><div><span>P/L</span><b class="' + plClass + '">' + plText + ' · ' + plPctText + '</b></div></div></div>';
+    }).join('');
 
     // Update summary
     document.getElementById('portTotalModal').textContent = formatRupiah(totalModal);
@@ -7185,10 +7234,12 @@ function clearPortfolioTimer() {
 function renderPortfolioTable(positions, hasFailure) {
     var tbody = document.getElementById('portTableBody');
     var summaryEl = document.getElementById('portSummary');
+    var mobileEl = document.getElementById('portMobileCards');
     if (!tbody) return;
 
     if (positions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm"><div class="empty-state"><p class="empty-state-text">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai mencatat portofolio manual.</p></div></td></tr>';
+        if (mobileEl) mobileEl.innerHTML = '<div class="empty-state"><p class="empty-state-text">Belum ada posisi. Tambahkan ticker, lot, dan avg buy untuk mulai memantau P/L.</p></div>';
         if (summaryEl) summaryEl.classList.add('hidden');
         return;
     }
@@ -7238,6 +7289,17 @@ function renderPortfolioTable(positions, hasFailure) {
             '</tr>';
     }
     tbody.innerHTML = html;
+    if (mobileEl) mobileEl.innerHTML = positions.map(function(pos, idx) {
+        var totalShares = pos.lot * 100;
+        var lastPrice = pos._lastPrice || null;
+        var plText = '—', plPctText = '—', plClass = 'text-gray-500';
+        if (lastPrice !== null && lastPrice > 0) {
+            var pl = (lastPrice * totalShares) - (pos.avgBuy * totalShares);
+            var pct = ((lastPrice - pos.avgBuy) / pos.avgBuy) * 100;
+            plText = formatRupiah(pl); plPctText = pct.toFixed(2) + '%'; plClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
+        }
+        return '<div class="portfolio-row-card"><div class="flex items-center justify-between gap-3"><span class="portfolio-symbol">' + escapeHtml(pos.ticker) + '</span><button onclick="deletePosition(' + idx + ')" class="min-w-10 min-h-10 rounded-xl text-red-300 bg-red-500/10 border border-red-500/20">&times;</button></div><div class="portfolio-row-grid"><div><span>Lot</span><b>' + pos.lot + '</b></div><div><span>Avg Buy</span><b>Rp ' + formatNumber(pos.avgBuy) + '</b></div><div><span>Last Price</span><b>' + (lastPrice ? formatRupiah(lastPrice) : '—') + '</b></div><div><span>P/L</span><b class="' + plClass + '">' + plText + ' · ' + plPctText + '</b></div></div></div>';
+    }).join('');
 
     // Update summary
     document.getElementById('portTotalModal').textContent = formatRupiah(totalModal);
