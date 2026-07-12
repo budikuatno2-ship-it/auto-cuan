@@ -550,7 +550,7 @@
         .faq-item { border: 1px solid rgba(148,163,184,.12); background: rgba(15,23,42,.38); border-radius: 18px; padding: 18px; }
         .landing-auth-card { border: 1px solid rgba(148,163,184,.14); background: rgba(15,23,42,.58); border-radius: 18px; padding: 16px; }
         @media (max-width: 900px) { .landing-hero-grid { grid-template-columns: 1fr !important; } .landing-menu { display:none !important; } }
-        @media (max-width: 640px) { .landing-container { width: min(100% - 24px, 1180px); } .landing-section { padding: 48px 0; } .landing-hero { padding: 42px 0 36px; } .mock-grid { grid-template-columns: 1fr; } .landing-btn { width: 100%; } .landing-mobile-wrap { flex-wrap: wrap; } }
+        @media (max-width: 640px) { .landing-container { width: min(100% - 24px, 1180px); } .landing-section { padding: 48px 0; } .landing-hero { padding: 42px 0 36px; } .mock-grid { grid-template-columns: 1fr; } .landing-mobile-wrap { flex-wrap: wrap; } .landing-mobile-wrap .landing-btn { width: 100%; } .landing-nav .landing-btn { width: auto; min-height: 38px; padding: 9px 12px; font-size: 12px; border-radius: 12px; } .landing-nav .landing-container { gap: 10px; } .landing-brand { flex: 1 1 auto; min-width: 0; } .landing-logo { width: 36px; height: 36px; border-radius: 12px; flex: 0 0 auto; } }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
@@ -1850,6 +1850,10 @@ function handleAppRoute(opts) {
     if (path === '/dashboard' || path === '/dashboard/') {
         if (isAutocuanLoggedIn()) enterApp({ replaceHistory: opts.duringInit });
         else showLandingPage({ skipHistory: true, duringInit: opts.duringInit, promptAuth: true, promptMessage: 'Login atau daftar diperlukan untuk membuka /dashboard.' });
+        return;
+    }
+    if ((path === '/' || path === '') && isAutocuanLoggedIn()) {
+        enterApp({ replaceHistory: true });
         return;
     }
     showLandingPage({ duringInit: opts.duringInit, replaceHistory: opts.replaceHistory });
