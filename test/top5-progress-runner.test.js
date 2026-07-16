@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { parseArgs, readState, writeState, shouldSendEvent } = require('../tools/run-top5-progress-monitor');
+const { parseArgs, readState, writeState, shouldSendEvent, isAfterJakartaMarketClose } = require('../tools/run-top5-progress-monitor');
 test('runner defaults to dry-run and only enables send explicitly', () => {
   assert.equal(parseArgs(['node', 'runner']).dryRun, true);
   assert.equal(parseArgs(['node', 'runner', '--send']).send, true);
@@ -24,4 +24,8 @@ test('duplicate, stale, and dry-run events cannot send', () => {
   assert.equal(shouldSendEvent({ send: false }, event, { events: {} }, { stale: false }), false);
   assert.equal(shouldSendEvent({ send: true }, event, { events: { [event.event_key]: {} } }, { stale: false }), false);
   assert.equal(shouldSendEvent({ send: true }, event, { events: {} }, { stale: true }), false);
+});
+test('hourly runner only considers routine Swing reporting after Jakarta market close', () => {
+  assert.equal(isAfterJakartaMarketClose(new Date('2026-07-16T08:00:00Z')), false);
+  assert.equal(isAfterJakartaMarketClose(new Date('2026-07-16T09:15:00Z')), true);
 });

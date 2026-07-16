@@ -52,9 +52,17 @@ test('TP1 continues tracking while TP2 completes and SL stops tracking', () => {
   assert.equal(deriveTrackingStatus(plan(), detectTop5ProgressEvents(plan(), 111, fresh), {}, fresh).status, 'COMPLETE');
   assert.equal(deriveTrackingStatus(plan(), detectTop5ProgressEvents(plan(), 94, fresh), {}, fresh).status, 'STOP_TRACKING');
 });
-test('tracking expires after seven days and swing routine updates wait three days', () => {
+test('tracking expires after seven days and Swing routine is daily after close', () => {
   const old = plan({ locked_date: '2026-07-01', category: 'Swing Konglo' });
   assert.equal(deriveTrackingStatus(old, detectTop5ProgressEvents(old, 103, fresh), {}, fresh).status, 'MAX_AGE_EXPIRED');
   const swing = plan({ category: 'Swing Konglo' });
-  assert.equal(deriveTrackingStatus(swing, detectTop5ProgressEvents(swing, 103, fresh), { last_routine_update_at: '2026-07-15T10:00:00Z' }, fresh).routine_update_due, false);
+  assert.equal(deriveTrackingStatus(swing, detectTop5ProgressEvents(swing, 103, fresh), { last_routine_update_at: '2026-07-16T01:00:00Z' }, Object.assign({}, fresh, { afterMarketClose: true })).routine_update_due, false);
+  assert.equal(deriveTrackingStatus(swing, detectTop5ProgressEvents(swing, 103, fresh), { last_routine_update_at: '2026-07-15T10:00:00Z' }, Object.assign({}, fresh, { afterMarketClose: true })).routine_update_due, true);
+});
+test('TP1 notified state prevents repeated TP1/routine notifications while tracking TP2 or SL', () => {
+  const tracked = deriveTrackingStatus(plan(), detectTop5ProgressEvents(plan(), 106, fresh), { tp1_notified: true }, fresh);
+  assert.equal(tracked.status, 'TRACKING_AFTER_TP1');
+  assert.equal(tracked.routine_update_due, false);
+  assert.equal(deriveTrackingStatus(plan(), detectTop5ProgressEvents(plan(), 111, fresh), { tp1_notified: true }, fresh).status, 'COMPLETE');
+  assert.equal(deriveTrackingStatus(plan(), detectTop5ProgressEvents(plan(), 94, fresh), { tp1_notified: true }, fresh).status, 'STOP_TRACKING');
 });

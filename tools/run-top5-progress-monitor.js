@@ -24,6 +24,7 @@ function progressMessage(row, progress, event, source) {
 function shouldSendEvent(options, event, state, source) {
   return !!(options && options.send && event && event.actionable && !(state && state.events && state.events[event.event_key]) && !(source && source.stale) && telegram.isTelegramEnabled());
 }
+function isAfterJakartaMarketClose(now) { const d = now || new Date(); return d.getUTCHours() > 9 || (d.getUTCHours() === 9 && d.getUTCMinutes() >= 15); }
 async function run(options, deps) {
   options = options || parseArgs(process.argv); deps = deps || {};
   const supabase = deps.supabase || createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '', { auth: { persistSession: false, autoRefreshToken: false } });
@@ -39,15 +40,17 @@ async function run(options, deps) {
     const source = prices.resolveLatestPrice(sourceRows, { now: new Date().toISOString() });
     const detected = monitor.detectTop5ProgressEvents(row, source.price, { now: new Date().toISOString(), priceTimestamp: source.price_date });
     const trackingKey = ticker + ':' + (row.locked_date || row.date || row.trade_date || 'unknown-date');
-    const tracking = monitor.deriveTrackingStatus(row, detected, state.tracking[trackingKey], { now: new Date().toISOString() });
+    const tracking = monitor.deriveTrackingStatus(row, detected, state.tracking[trackingKey], { now: new Date().toISOString(), afterMarketClose: isAfterJakartaMarketClose() });
     state.tracking[trackingKey] = Object.assign({}, state.tracking[trackingKey], { status: tracking.status, updated_at: new Date().toISOString() });
     let events = detected.events.slice();
+    if (state.tracking[trackingKey].tp1_notified) events = events.filter((event) => event.type !== 'TP1_HIT');
+    if (!tracking.should_track && tracking.reason === 'terminal_state') events = [];
     if (tracking.reason === 'SL_HIT') events = [{ type: 'SL_HIT', event_key: monitor.eventKey(row, 'SL_HIT'), actionable: true, notification_enabled: options.send }];
     if (tracking.reason === 'TP2_HIT') events = events.filter((event) => event.type === 'TP2_HIT');
     for (const event of events) {
       const duplicate = !!state.events[event.event_key];
       const canSend = shouldSendEvent(options, event, state, source);
-      if (canSend) { const sent = await telegram.sendTelegramMessage(progressMessage(row, detected.progress, event, source)); if (sent && sent.sent) state.events[event.event_key] = { sent_at: new Date().toISOString(), ticker, type: event.type }; }
+      if (canSend) { const sent = await telegram.sendTelegramMessage(progressMessage(row, detected.progress, event, source)); if (sent && sent.sent) { state.events[event.event_key] = { sent_at: new Date().toISOString(), ticker, type: event.type }; if (event.type === 'TP1_HIT') state.tracking[trackingKey].tp1_notified = true; } }
       report.push({ ticker, event: event.type, event_key: event.event_key, source: source.price_source, price_date: source.price_date, sent: canSend, duplicate, tracking: tracking.status, dry_run: !options.send });
     }
   }
@@ -55,4 +58,4 @@ async function run(options, deps) {
   return { dry_run: !options.send, state_file: file, checked: rows.length, events: report };
 }
 if (require.main === module) { const options = parseArgs(process.argv); run(options).then((result) => { if (options.json) console.log(JSON.stringify(result, null, 2)); else console.log('top5 progress: checked=' + result.checked + ' events=' + result.events.length + ' dry_run=' + result.dry_run + ' state=' + result.state_file); }).catch((error) => { console.error(error.message || error); process.exitCode = 1; }); }
-module.exports = { parseArgs, readState, writeState, shouldSendEvent, run, statePath };
+module.exports = { parseArgs, readState, writeState, shouldSendEvent, isAfterJakartaMarketClose, run, statePath };
