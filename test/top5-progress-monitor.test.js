@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { computeTop5Progress, detectTop5ProgressEvents, buildTop5ProgressDiagnostics, deriveTrackingStatus, eventKey } = require('../lib/top5-progress-monitor');
+const { computeTop5Progress, detectTop5ProgressEvents, buildTop5ProgressDiagnostics, deriveTrackingStatus, eventKey, isTelegramSendableEvent } = require('../lib/top5-progress-monitor');
 
 function plan(overrides) { return Object.assign({ ticker: 'ABCD', locked_date: '2026-07-15', entry_price: 100, entry_high: 102, tp1: 105, tp2: 110, sl: 95, latest_price_at: '2026-07-16T08:00:00Z' }, overrides); }
 function types(result) { return result.events.map((event) => event.type); }
@@ -47,6 +47,11 @@ test('reports below-entry and near/below SL progress diagnostics', () => {
   const result = detectTop5ProgressEvents(plan(), 94, fresh);
   assert.ok(types(result).includes('BELOW_ENTRY'));
   assert.ok(types(result).includes('SL_NEAR'));
+  result.events.filter((event) => ['BELOW_ENTRY', 'SL_NEAR'].includes(event.type)).forEach((event) => {
+    assert.equal(event.actionable, false);
+    assert.equal(event.notification_enabled, false);
+    assert.equal(isTelegramSendableEvent(event), false);
+  });
 });
 test('defaults to dry-run diagnostics without durable idempotency', () => {
   const report = buildTop5ProgressDiagnostics([plan()], fresh);
