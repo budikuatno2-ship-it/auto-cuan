@@ -62,6 +62,22 @@ test('setup bonus cannot bypass safety gates', function() {
   });
 });
 
+test('foreign net sell commentary remains analytical context, while structured SELL is fatal', function() {
+  var valid = smart.applySmartSetupLabels({
+    last_price: 100, ma20: 100, ma50: 95, risk_reward: 2, rsi14: 50,
+    foreign_notes: 'foreign net sell remains a contextual flow observation'
+  });
+  var sellAction = smart.applySmartSetupLabels({
+    last_price: 100, ma20: 100, ma50: 95, risk_reward: 2, rsi14: 50,
+    foreign_notes: 'foreign net sell', action_label: 'SELL'
+  });
+  var sellStatus = smart.applySmartSetupLabels({ last_price: 100, ma20: 100, ma50: 95, risk_reward: 2, rsi14: 50, status: 'SELL' });
+  assert.equal(valid.setup_type, 'UPTREND_PULLBACK');
+  assert.equal(valid.smart_setup_score_bonus > 0, true);
+  assert.equal(sellAction.smart_setup_score_bonus, 0);
+  assert.equal(sellStatus.smart_setup_score_bonus, 0);
+});
+
 test('missing candle and indicator fields do not crash', function() {
   assert.doesNotThrow(function() { smart.applySmartSetupLabels({ ticker: 'SAFE' }); });
   assert.equal(smart.MAX_SETUP_SCORE_BONUS, 3);
