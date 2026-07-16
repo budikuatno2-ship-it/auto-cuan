@@ -9,6 +9,7 @@
 
 var dtEngine = require('../lib/daytrade-screener-engine');
 var idxTick = require('../lib/idx-tick-normalization');
+var latestPriceResolver = require('../lib/latest-price-resolver');
 
 var quoteCache = {};
 var QUOTE_CACHE_TTL = 5 * 60 * 1000;
@@ -44,6 +45,23 @@ function redactAdvancedQuoteFields(result) {
   return result;
 }
 
+async function fetchFreshScreenerLatestPrice(ticker) {
+  var base = String(process.env.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '');
+  var key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!base || !key) return { price: null, stale: true, diagnostic: 'supabase_not_configured' };
+  var rows = {};
+  await Promise.all(latestPriceResolver.SOURCES.map(async function(source) {
+    try {
+      var url = base + '/rest/v1/' + source.table + '?ticker=eq.' + encodeURIComponent(ticker) + '&limit=1';
+      var response = await fetch(url, { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+      if (!response.ok) return;
+      var data = await response.json();
+      rows[source.table] = data && data[0] || null;
+    } catch (_) { /* a missing fallback table must not break quotes */ }
+  }));
+  return latestPriceResolver.resolveLatestPrice(rows, { now: new Date().toISOString() });
+}
+
 module.exports = async function handler(req, res) {
   var ticker = null;
   try {
@@ -74,6 +92,7 @@ module.exports = async function handler(req, res) {
 
     // IHSG/Index: skip board data, use ^JKSE for Yahoo
     var isIndex = (ticker === 'IHSG');
+    var portfolioPriceOnly = req.query && req.query.portfolio === '1';
 
     // Run Yahoo quote and Supabase board in parallel first
     var baseResults = await Promise.all([
@@ -83,6 +102,22 @@ module.exports = async function handler(req, res) {
 
     var quoteResult = baseResults[0] ? JSON.parse(JSON.stringify(baseResults[0])) : baseResults[0];
     var boardResult = baseResults[1];
+
+    // A manual Portfolio refresh must not reuse the Yahoo in-memory quote cache.
+    // Prefer the same fresh screener latest rows used by Day Trade/Swing displays.
+    if (portfolioPriceOnly && !isIndex) {
+      var latest = await fetchFreshScreenerLatestPrice(ticker);
+      if (latest.price) {
+        quoteResult.last = latest.price;
+        quoteResult.price_source = latest.price_source;
+        quoteResult.price_date = latest.price_date;
+        quoteResult.price_age_hours = latest.price_age_hours;
+        quoteResult.price_stale = false;
+      } else {
+        quoteResult.price_stale = true;
+        quoteResult.price_diagnostic = latest.diagnostic;
+      }
+    }
 
     // Attach board to quote result
     quoteResult.board = boardResult;

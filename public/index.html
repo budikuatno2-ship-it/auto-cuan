@@ -7312,7 +7312,7 @@ function renderPortfolio() {
             plPct = pct.toFixed(2) + '%';
             plRpClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
             plPctClass = pct >= 0 ? 'text-emerald-400' : 'text-red-400';
-            lastPriceDisplay = formatRupiah(lastPrice);
+            lastPriceDisplay = formatRupiah(lastPrice) + (pos._priceSource ? '<div class="text-[10px] text-gray-500 mt-1">' + escapeHtml(pos._priceSource) + ' · ' + escapeHtml(pos._priceDate || '-') + '</div>' : '');
         } else {
             allPriced = false;
         }
@@ -7383,11 +7383,11 @@ async function refreshPortfolioPrices() {
 
     // Fetch prices in parallel (max 10 concurrent)
     var fetches = uniqueTickers.map(function(ticker) {
-        return fetch('/api/quote?ticker=' + encodeURIComponent(ticker), { headers: getAuthHeaders() })
+        return fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&portfolio=1', { headers: getAuthHeaders() })
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (data && data.success && data.last) {
-                    priceMap[ticker] = data.last;
+                if (data && data.success && data.last && !data.price_stale) {
+                    priceMap[ticker] = { price: data.last, source: data.price_source || 'quote', date: data.price_date || null };
                 } else {
                     hasFailure = true;
                 }
@@ -7400,7 +7400,11 @@ async function refreshPortfolioPrices() {
     // Update positions with fetched prices
     for (var j = 0; j < positions.length; j++) {
         var price = priceMap[positions[j].ticker];
-        positions[j]._lastPrice = price || null;
+        if (price && price.price) {
+            positions[j]._lastPrice = price.price;
+            positions[j]._priceSource = price.source;
+            positions[j]._priceDate = price.date;
+        }
     }
     savePortfolio(positions);
 
