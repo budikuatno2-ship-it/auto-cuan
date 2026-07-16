@@ -41,6 +41,7 @@ const telegramTemplates = require('../lib/telegram-templates');
 const atrHelpers = require('../lib/atr-report-helpers');
 const weeklyTimeframe = require('../lib/weekly-timeframe');
 const marketRegime = require('../lib/market-regime');
+const corporateActionGuard = require('../lib/corporate-action-price-scale-guard');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -423,6 +424,7 @@ async function handleScreenerRead(req, res, supabase) {
 
   // Derive swing labels and sort by tier priority
   var sortedRows = (rows || []).map(function(r) {
+    corporateActionGuard.applyCorporateActionPriceScaleGuard(r);
     var labels = deriveSwingLabels(r, 'konglo');
     attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_latest' });
     r.swing_tier = labels.swing_tier;
@@ -2503,7 +2505,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: kongloMeta } = await supabase.from('swing_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: kongloRows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false });
   // Derive swing labels for public share (Konglo)
-  var kongloWithLabels = (kongloRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_latest' }); return attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), kongloMeta); });
+  var kongloWithLabels = (kongloRows || []).map(function(r) { corporateActionGuard.applyCorporateActionPriceScaleGuard(r); var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_latest' }); return attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), kongloMeta); });
   var _swingPri = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
   kongloWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
   result.konglo = { meta: kongloMeta || null, results: redactAdvancedScreenerRows(kongloWithLabels) };
@@ -2512,7 +2514,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: nkMeta } = await supabase.from('swing_screener_non_konglo_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: nkRows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true });
   // Derive swing labels for public share (Non-Konglo)
-  var nkWithLabels = (nkRows || []).map(function(r) { var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_non_konglo_latest' }); return attachFreshness(enrichSignalQuality(r, 'Swing Non-Konglo'), nkMeta); });
+  var nkWithLabels = (nkRows || []).map(function(r) { corporateActionGuard.applyCorporateActionPriceScaleGuard(r); var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_non_konglo_latest' }); return attachFreshness(enrichSignalQuality(r, 'Swing Non-Konglo'), nkMeta); });
   nkWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
   nkWithLabels.forEach(function(r, idx) { r.rank = idx + 1; });
   nkWithLabels = await enrichNonKongloHalfCandleDebt(nkWithLabels);
@@ -4206,6 +4208,8 @@ function publicTelegramSafetyTextHasReject(text) {
 
 function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   if (!candidate) return false;
+  corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
+  if (candidate.corporate_action_guard === 'BLOCKED') return false;
   normalizeEntryRangeAliases(candidate);
   var finalGate = candidate.final_top_quality_gate || candidate.final_quality_gate || candidate.top_quality_gate || null;
   if (candidate.final_quality_pass === false ||
@@ -4371,6 +4375,8 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
 
 function getSwingPublicSignalSafetyRejectionReason(candidate) {
   if (!candidate) return 'missing_candidate';
+  corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
+  if (candidate.corporate_action_guard === 'BLOCKED') return 'price_scale_mismatch';
   var publicText = joinTelegramTexts([
     candidate.status,
     candidate.final_status,
@@ -4753,6 +4759,8 @@ function candidatePassesTop5WatchlistGate(candidate) {
 
 function candidatePassesTelegramCandidateDigestGate(candidate, mode) {
   if (!candidate || !candidate.ticker) return false;
+  corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
+  if (candidate.corporate_action_guard === 'BLOCKED') return false;
   var r = normalizeEntryRangeAliases(candidate);
   // Fatal blocks — always reject
   var ticker = safeTelegramText(r.ticker, 16, '');
@@ -4892,6 +4900,7 @@ function normalizeCombinedCandidate(row, category) {
   if (!r.price_source) r.price_source = 'screener_latest.' + String(category || '').toLowerCase().replace(/\s+/g, '_');
   if (!r.price_date) r.price_date = dateOnlyFromAny(r.price_asof || r.last_price_asof || r.quote_date || r.trade_date || (r.raw_payload && (r.raw_payload.price_date || r.raw_payload.price_asof || r.raw_payload.quote_date || r.raw_payload.trade_date)));
   r = idxTick.normalizeTradingPlanLevels(r);
+  corporateActionGuard.applyCorporateActionPriceScaleGuard(r, { latestPrice: r.last_price || r.latest_price || r.current_price || r.price || r.close_price || r.close });
   attachEntryStatus(r);
   r.score_norm = getTelegramScore(r, category === 'Day Trade' ? 'daytrade' : 'swing');
   var verified = verifyTelegramSignal(r, category === 'Day Trade' ? 'daytrade' : 'swing');
@@ -8506,6 +8515,7 @@ async function handleNkScreenerResults(req, res, supabase) {
 
   // Derive swing labels and re-sort by tier priority
   var nkSorted = (rows || []).map(function(r) {
+    corporateActionGuard.applyCorporateActionPriceScaleGuard(r);
     var labels = deriveSwingLabels(r, 'nonkonglo');
     attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_non_konglo_latest' });
     r.swing_tier = labels.swing_tier;
@@ -9737,6 +9747,7 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
 
     // Derive computed labels (confidence, entry_timing, direction, timeframe) from stored fields
     sortedRows = sortedRows.map(function(r) {
+      corporateActionGuard.applyCorporateActionPriceScaleGuard(r);
       var labels = deriveDayTradeLabels(r);
       attachPriceFreshness(r, { price_source: r.price_source || 'daytrade_screener_latest' });
       r.entry_timing = labels.entry_timing;
@@ -10329,6 +10340,8 @@ function getDayTradeForceRadarDebugRequested(req) {
 
 function candidatePassesDayTradeTelegramFinalGate(candidate) {
   if (!candidate) return false;
+  corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
+  if (candidate.corporate_action_guard === 'BLOCKED') return false;
 
   if (isDayTradeTelegramFinalGateRejected(candidate)) return false;
   if (candidate.trading_plan_valid === false) return false;
@@ -10547,6 +10560,8 @@ function getDayTradeRadarStatus(candidate) {
 
 function hasFatalDayTradeRadarBlock(candidate) {
   if (!candidate) return true;
+  corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
+  if (candidate.corporate_action_guard === 'BLOCKED') return true;
   var r = candidate;
   var statusText = joinTelegramTexts([
     r.status, r.final_status, r.breakout_confirmation_status, r.entry_status, r.entry_quality_status,
@@ -11435,6 +11450,8 @@ function getSwingMonitorTp1UpsidePct(candidate) {
 }
 
 function diagnoseSwingMonitorCandidate(candidate) {
+  corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
+  if (candidate && candidate.corporate_action_guard === 'BLOCKED') return { passed: false, reason: 'price_scale_mismatch', ticker: candidate.ticker, status: candidate.status, latest_price_used: candidate.latest_price_used };
   var status = String((candidate && (candidate.status || candidate.final_status || candidate.swing_tier)) || '').trim();
   var normalizedStatus = status.toUpperCase().replace(/[\s-]+/g, '_');
   var entryLow = toNum(candidate && (candidate.entry_low || candidate.entry1 || candidate.entry));
