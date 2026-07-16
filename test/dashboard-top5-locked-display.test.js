@@ -141,6 +141,15 @@ test('isSafeDashboardLockedTop5Row enforces Avoid/Hindari policy without id+date
   }), false, 'preview/provisional/admin-preview row must stay excluded');
 });
 
+test('locked dashboard rows distinguish foreign net sell notes from structured SELL', () => {
+  var foreignNetSell = { id: 7, date: '2025-01-15', ticker: 'SAFESELL', is_locked: true,
+    raw_payload: { action: 'WATCH', status: 'READY', foreign_notes: 'foreign net sell', notes: 'foreign net sell is analytical context' } };
+  var structuredSell = { id: 8, date: '2025-01-15', ticker: 'SELL', is_locked: true,
+    raw_payload: { action_label: 'SELL', status: 'READY', foreign_notes: 'foreign net buy' } };
+  assert.equal(isSafeDashboardLockedTop5Row(foreignNetSell), true);
+  assert.equal(isSafeDashboardLockedTop5Row(structuredSell), false);
+});
+
 // ============================================================
 // TEST: Explicit preview/provisional/admin-only rows still blocked
 // ============================================================

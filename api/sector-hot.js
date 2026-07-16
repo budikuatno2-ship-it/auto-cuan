@@ -4182,11 +4182,18 @@ function candidatePassesRRGate(candidate) {
   return (toNum(candidate && candidate.risk_reward) || 0) >= getMinRRForCategory(candidate && candidate.category);
 }
 
+function candidateHasStructuredSell(candidate) {
+  if (!candidate || typeof candidate !== 'object') return false;
+  return [candidate.action, candidate.action_label, candidate.signal_action, candidate.signal_action_label,
+    candidate.telegram_action_label, candidate.status, candidate.final_status, candidate.display_status,
+    candidate.public_status, candidate.signal_status]
+    .some(function(value) { return /\bSELL\b/i.test(String(value || '')); });
+}
+
 function publicTelegramSafetyTextHasReject(text) {
   return includesAny(String(text || '').toLowerCase(), [
     'hindari',
     'avoid',
-    'sell',
     'low_tp',
     'stale_level',
     'history_insufficient',
@@ -4217,6 +4224,9 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return false;
   normalizeEntryRangeAliases(candidate);
+  // Foreign-flow commentary such as "foreign net sell" is analytical context,
+  // not an instruction. SELL is fatal only in explicit action/status fields.
+  if (candidateHasStructuredSell(candidate)) return false;
   var finalGate = candidate.final_top_quality_gate || candidate.final_quality_gate || candidate.top_quality_gate || null;
   if (candidate.final_quality_pass === false ||
       candidate.final_gate_pass === false ||
@@ -4427,7 +4437,7 @@ function getSwingPublicSignalSafetyRejectionReason(candidate) {
   ]).toLowerCase();
   if (/very\s+high\s+risk/.test(publicText)) return 'very_high_risk';
   if (/\blow[_\s-]?tp\b/.test(publicText)) return 'low_tp';
-  if (/\bsell\b/.test(publicText)) return 'sell';
+  if (candidateHasStructuredSell(candidate)) return 'sell';
   if (/\bavoid\b/.test(publicText)) return 'avoid';
   if (/hindari/.test(publicText)) return 'hindari';
   return null;
@@ -4469,6 +4479,10 @@ function filterSwingPublicSignalSafetyList(finalList) {
  */
 function diagnosePublicSafetyGateRejection(candidate, mode) {
   if (!candidate) return { category: 'missing_candidate', detailed_reason: 'Candidate is null/undefined' };
+
+  if (candidateHasStructuredSell(candidate)) {
+    return { category: 'structured_sell', detailed_reason: 'Structured action/status field is SELL.' };
+  }
 
   var finalGate = candidate.final_top_quality_gate || candidate.final_quality_gate || candidate.top_quality_gate || null;
   if (candidate.final_quality_pass === false ||
@@ -4634,6 +4648,7 @@ function candidatePassesTop5WatchlistGate(candidate) {
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return false;
   normalizeEntryRangeAliases(candidate);
+  if (candidateHasStructuredSell(candidate)) return false;
 
   // === HARD BLOCKS (same as Entry Signal — never relaxed) ===
 
@@ -6677,7 +6692,8 @@ function isSafeDashboardLockedTop5Row(row) {
     payload.status_reason, payload.excluded_reason, payload.setup_freshness_status,
     payload.data_quality_status, payload.notes
   ]).toUpperCase();
-  if (includesAny(safetyText.toLowerCase(), ['sell', 'low_tp', 'very high risk', 'stale_level', 'needs_revalidation', 'history_insufficient', 'new_listing'])) return false;
+  if (candidateHasStructuredSell(payload)) return false;
+  if (includesAny(safetyText.toLowerCase(), ['low_tp', 'very high risk', 'stale_level', 'needs_revalidation', 'history_insufficient', 'new_listing'])) return false;
   if (payload.corporate_action_guard === 'BLOCKED' || payload.data_quality_valid === false ||
       payload.is_stale === true || payload.freshness_is_stale === true) return false;
   return true;
@@ -11510,7 +11526,7 @@ function diagnoseSwingMonitorCandidate(candidate) {
   else if (/very\s+high\s+risk/i.test(riskText)) reason = 'very_high_risk';
   else if (/invalid|tidak\s+valid|setup\s+invalid/i.test(planText) || candidate.trading_plan_valid === false) reason = 'invalid_plan';
   else if (/stale|expired|needs\s+revalidation|revalidasi/i.test(staleText)) reason = 'stale_or_expired';
-  else if (/\b(avoid|sell|low_tp)\b|hindari/i.test(blockedText)) reason = 'blocked_text';
+  else if (candidateHasStructuredSell(candidate) || /\b(avoid|low_tp)\b|hindari/i.test(blockedText)) reason = 'blocked_text';
   if (candidate && reason === 'passed') candidate.tp1_upside_pct = upside;
   return {
     passed: reason === 'passed',
