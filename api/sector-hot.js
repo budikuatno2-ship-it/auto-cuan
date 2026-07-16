@@ -532,6 +532,17 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       return res.status(200).json({ success: false, error: 'No active members.' });
     }
 
+    // The Konglo universe is still affiliation-driven.  A board-validated IPO
+    // is included here only when an existing active affiliation mapping exists.
+    // Missing affiliation is diagnostic-only and is never guessed into Konglo.
+    var kongloIpoSources = await Promise.all([
+      supabase.from('stock_boards').select('ticker,board').in('board', ['UTAMA', 'PENGEMBANGAN']),
+      supabase.from('foreign_watchlist_daily').select('ticker').order('trade_date', { ascending: false }).order('uploaded_at', { ascending: false }).limit(5000)
+    ]);
+    var kongloIpoDiagnostics = buildBoardValidatedIpoDiagnostics(
+      kongloIpoSources[0].data || [], kongloIpoSources[1].data || [], members, members
+    );
+
     // Deduplicate tickers (a ticker can belong to multiple groups, pick first group)
     const tickerMap = {};
     members.forEach(function(m) {
@@ -556,7 +567,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         var candles = await fetchScreenerCandles(item.ticker);
         if (!candles || !Array.isArray(candles) || candles.length < 55) {
           failedCount++;
-          screenerFailedTickers.push({ ticker: item.ticker, reason: !candles ? 'no_data' : 'insufficient_candles_' + (candles ? candles.length : 0) });
+          screenerFailedTickers.push({ ticker: item.ticker, reason: !candles ? 'no_data' : 'HISTORY_INSUFFICIENT' });
           continue;
         }
         var analysis = calculateIndicators(candles);
@@ -1176,6 +1187,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       entry_range_normalization_diagnostics: swingKongloEntryRangeDiagnostics,
       min_tp1_upside_diagnostics: swingKongloMinTp1Diagnostics,
       top_rejection_reasons: swingKongloTelegram && swingKongloTelegram.top_rejection_reasons ? swingKongloTelegram.top_rejection_reasons : undefined,
+      universe_diagnostics: kongloIpoDiagnostics,
       telegram: swingKongloTelegram
     });
 
@@ -1233,6 +1245,17 @@ async function handleRefresh(req, res, supabase) {
       await updateMeta(supabase, 0, 0, 'failed', 'No active members found.');
       return res.status(200).json({ success: false, error: 'No active members.' });
     }
+
+    // Sector Hot remains mapping-driven: a board-valid IPO enters only through
+    // an existing active sector/industry (group member) mapping.  Affiliation
+    // absence is surfaced below and has no score or BUY implication.
+    var sectorIpoSources = await Promise.all([
+      supabase.from('stock_boards').select('ticker,board').in('board', ['UTAMA', 'PENGEMBANGAN']),
+      supabase.from('foreign_watchlist_daily').select('ticker').order('trade_date', { ascending: false }).order('uploaded_at', { ascending: false }).limit(5000)
+    ]);
+    var sectorIpoDiagnostics = buildBoardValidatedIpoDiagnostics(
+      sectorIpoSources[0].data || [], sectorIpoSources[1].data || [], members, members
+    );
 
     const uniqueTickers = [];
     const tickerSet = {};
@@ -1373,6 +1396,7 @@ async function handleRefresh(req, res, supabase) {
       memberRowsInserted: memberRowsInserted,
       zeroActiveGroupsCleaned: zeroActiveGroupsCleaned,
       sample_member: sampleMemberRow || undefined,
+      universe_diagnostics: sectorIpoDiagnostics,
       groupsProcessed: groupsProcessed
     });
 
@@ -7471,6 +7495,41 @@ async function updateScreenerMeta(supabase, fields) {
   }], { onConflict: 'id' });
 }
 
+// Shared, read-only board/affiliation diagnostics.  stock_boards remains the
+// authoritative board source after the manual BEI XLSX sync; foreign uploads
+// only identify which tickers are recent listings and never invent a board or
+// affiliation.
+function buildBoardValidatedIpoDiagnostics(boardStocks, foreignRows, kongloMembers, sectorMembers) {
+  var allowed = { UTAMA: true, PENGEMBANGAN: true };
+  var boards = {};
+  (boardStocks || []).forEach(function(row) {
+    var ticker = normalizeForeignTicker(row && row.ticker);
+    if (ticker && allowed[String(row.board || '').trim().toUpperCase()]) boards[ticker] = String(row.board).trim().toUpperCase();
+  });
+  var foreign = {};
+  (foreignRows || []).forEach(function(row) { var ticker = normalizeForeignTicker(row && row.ticker); if (ticker) foreign[ticker] = true; });
+  var konglo = {};
+  (kongloMembers || []).forEach(function(row) { var ticker = normalizeForeignTicker(row && row.ticker); if (ticker) konglo[ticker] = true; });
+  var sector = {};
+  (sectorMembers || []).forEach(function(row) { var ticker = normalizeForeignTicker(row && row.ticker); if (ticker) sector[ticker] = true; });
+  var validated = Object.keys(foreign).filter(function(ticker) { return !!boards[ticker]; });
+  var kongloIncluded = validated.filter(function(ticker) { return !!konglo[ticker]; });
+  var nonKongloIncluded = validated.filter(function(ticker) { return !konglo[ticker]; });
+  var sectorIncluded = validated.filter(function(ticker) { return !!sector[ticker]; });
+  var affiliationMissing = validated.filter(function(ticker) { return !sector[ticker]; });
+  var sample = function(tickers) { return tickers.slice(0, 20).map(function(ticker) { return { ticker: ticker, board: boards[ticker] }; }); };
+  return {
+    swing_konglo_board_validated_new_listing_count: kongloIncluded.length,
+    swing_non_konglo_board_validated_new_listing_count: nonKongloIncluded.length,
+    swing_unknown_classification_count: nonKongloIncluded.length,
+    sector_hot_board_validated_new_listing_count: sectorIncluded.length,
+    sector_hot_affiliation_missing_count: affiliationMissing.length,
+    sample_new_listing_swing_included: sample(kongloIncluded.concat(nonKongloIncluded)),
+    sample_new_listing_sector_included: sample(sectorIncluded),
+    sample_affiliation_missing: sample(affiliationMissing)
+  };
+}
+
 
 // ============================================================
 // NON-KONGLO SWING SCREENER v1 — Functions
@@ -7718,9 +7777,11 @@ async function handleNkScreenerStart(req, res, supabase) {
   const universe = boardStocks.filter(s => !excludedTickers.has(s.ticker));
   const knownTickers = new Set(boardStocks.map(s => String(s.ticker || '').toUpperCase()));
   let foreignUniverseDiagnostics = { foreign_universe_discovered_count: 0, missing_konglo_classification_count: 0 };
+  let foreignRowsForBoardDiagnostics = [];
   try {
     const foreignRes = await supabase.from('foreign_watchlist_daily').select('ticker,trade_date,uploaded_at').order('trade_date', { ascending: false }).order('uploaded_at', { ascending: false }).limit(5000);
     if (!foreignRes.error) {
+      foreignRowsForBoardDiagnostics = foreignRes.data || [];
       const foreignSeen = new Set();
       (foreignRes.data || []).forEach(function(row) {
         const ticker = normalizeForeignTicker(row && row.ticker);
@@ -7735,6 +7796,9 @@ async function handleNkScreenerStart(req, res, supabase) {
   } catch (foreignErr) {
     foreignUniverseDiagnostics.foreign_universe_error = foreignErr.message || String(foreignErr);
   }
+  Object.assign(foreignUniverseDiagnostics, buildBoardValidatedIpoDiagnostics(
+    boardStocks, foreignRowsForBoardDiagnostics, kongloMembers || [], kongloMembers || []
+  ));
 
   if (universe.length === 0) {
     await updateNkMeta(supabase, { status: 'failed', message: 'Universe kosong setelah filter.' });
@@ -12010,6 +12074,7 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 }
 
 module.exports.__test = {
+  buildBoardValidatedIpoDiagnostics: buildBoardValidatedIpoDiagnostics,
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
   getSwingPublicSignalSafetyRejectionReason: getSwingPublicSignalSafetyRejectionReason,
   candidatePassesSwingPublicSignalSafetyFilter: candidatePassesSwingPublicSignalSafetyFilter,
