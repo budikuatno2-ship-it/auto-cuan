@@ -107,6 +107,17 @@ test('signal_action AVOID blocked by watchlist gate', () => {
   assert.equal(candidatePassesTop5WatchlistGate(c), false);
 });
 
+test('foreign net sell commentary is not an actionable SELL instruction', () => {
+  var c = strictSignalBase({ foreign_notes: 'Foreign net sell masih terdeteksi; tunggu konfirmasi.', notes: 'Foreign net sell is an analytical factor.' });
+  assert.equal(candidatePassesTop5WatchlistGate(c), true);
+  assert.equal(candidatePassesPublicTelegramSafetyGate(c, 'daytrade'), true);
+});
+
+test('structured SELL action or status remains fatal', () => {
+  assert.equal(candidatePassesTop5WatchlistGate(watchlistBase({ action: 'SELL' })), false);
+  assert.equal(candidatePassesPublicTelegramSafetyGate(strictSignalBase({ display_status: 'SELL' }), 'daytrade'), false);
+});
+
 // ============================================================
 // TEST: DISTRIBUTION_RISK still blocked
 // ============================================================

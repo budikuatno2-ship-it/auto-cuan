@@ -113,7 +113,7 @@ test('isSafeDashboardLockedTop5Row enforces Avoid/Hindari policy without id+date
     date: '2025-01-15',
     ticker: 'SAFE',
     raw_payload: { confidence: 'B', action_label: 'Masih dekat entry' }
-  }), true, 'safe id+date row without Avoid/Hindari should pass payload path');
+  }), false, 'unlocked rows must never render as final even when otherwise safe');
 
   assert.equal(isSafeDashboardLockedTop5Row({
     id: 4,
@@ -121,7 +121,7 @@ test('isSafeDashboardLockedTop5Row enforces Avoid/Hindari policy without id+date
     ticker: 'LOCKED_STALE',
     is_locked: true,
     raw_payload: { grade: 'AVOID', action_label: 'Hindari dulu' }
-  }), true, 'genuinely locked row may render despite stale raw_payload Avoid/Hindari');
+  }), false, 'locked rows with stale raw_payload Avoid/Hindari must be excluded from actionable Top 5');
 
   assert.equal(isSafeDashboardLockedTop5Row({
     id: 5,
@@ -129,7 +129,7 @@ test('isSafeDashboardLockedTop5Row enforces Avoid/Hindari policy without id+date
     ticker: 'FINAL_STALE',
     publication_status: 'final',
     raw_payload: { signal_action: 'AVOID' }
-  }), true, 'genuinely final row may render despite stale raw_payload Avoid');
+  }), false, 'final rows with stale raw_payload Avoid must be excluded from actionable Top 5');
 
   assert.equal(isSafeDashboardLockedTop5Row({
     id: 6,
@@ -139,6 +139,15 @@ test('isSafeDashboardLockedTop5Row enforces Avoid/Hindari policy without id+date
     preview: true,
     raw_payload: { confidence: 'B' }
   }), false, 'preview/provisional/admin-preview row must stay excluded');
+});
+
+test('locked dashboard rows distinguish foreign net sell notes from structured SELL', () => {
+  var foreignNetSell = { id: 7, date: '2025-01-15', ticker: 'SAFESELL', is_locked: true,
+    raw_payload: { action: 'WATCH', status: 'READY', foreign_notes: 'foreign net sell', notes: 'foreign net sell is analytical context' } };
+  var structuredSell = { id: 8, date: '2025-01-15', ticker: 'SELL', is_locked: true,
+    raw_payload: { action_label: 'SELL', status: 'READY', foreign_notes: 'foreign net buy' } };
+  assert.equal(isSafeDashboardLockedTop5Row(foreignNetSell), true);
+  assert.equal(isSafeDashboardLockedTop5Row(structuredSell), false);
 });
 
 // ============================================================
