@@ -42,6 +42,7 @@ const atrHelpers = require('../lib/atr-report-helpers');
 const weeklyTimeframe = require('../lib/weekly-timeframe');
 const marketRegime = require('../lib/market-regime');
 const corporateActionGuard = require('../lib/corporate-action-price-scale-guard');
+const smartSetupLabels = require('../lib/smart-setup-labels');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -471,7 +472,9 @@ async function handleScreenerRead(req, res, supabase) {
         r.fib_levels = null;
       }
     }
-    return attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), meta);
+    var kongloReadRow = attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), meta);
+    smartSetupLabels.applySmartSetupLabels(kongloReadRow);
+    return kongloReadRow;
   });
 
   // Sort by swing_tier priority, then composite quality
@@ -2505,7 +2508,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: kongloMeta } = await supabase.from('swing_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: kongloRows } = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false });
   // Derive swing labels for public share (Konglo)
-  var kongloWithLabels = (kongloRows || []).map(function(r) { corporateActionGuard.applyCorporateActionPriceScaleGuard(r); var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_latest' }); return attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), kongloMeta); });
+  var kongloWithLabels = (kongloRows || []).map(function(r) { corporateActionGuard.applyCorporateActionPriceScaleGuard(r); var lbl = deriveSwingLabels(r, 'konglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_latest' }); var output = attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), kongloMeta); smartSetupLabels.applySmartSetupLabels(output); return output; });
   var _swingPri = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
   kongloWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
   result.konglo = { meta: kongloMeta || null, results: redactAdvancedScreenerRows(kongloWithLabels) };
@@ -2514,7 +2517,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: nkMeta } = await supabase.from('swing_screener_non_konglo_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: nkRows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true });
   // Derive swing labels for public share (Non-Konglo)
-  var nkWithLabels = (nkRows || []).map(function(r) { corporateActionGuard.applyCorporateActionPriceScaleGuard(r); var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_non_konglo_latest' }); return attachFreshness(enrichSignalQuality(r, 'Swing Non-Konglo'), nkMeta); });
+  var nkWithLabels = (nkRows || []).map(function(r) { corporateActionGuard.applyCorporateActionPriceScaleGuard(r); var lbl = deriveSwingLabels(r, 'nonkonglo'); r.swing_tier = lbl.swing_tier; r.entry_timing = lbl.entry_timing; r.tradeability = lbl.tradeability; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'swing_screener_non_konglo_latest' }); var output = attachFreshness(enrichSignalQuality(r, 'Swing Non-Konglo'), nkMeta); smartSetupLabels.applySmartSetupLabels(output); return output; });
   nkWithLabels.sort(function(a, b) { var pa = _swingPri[a.swing_tier] != null ? _swingPri[a.swing_tier] : 9; var pb = _swingPri[b.swing_tier] != null ? _swingPri[b.swing_tier] : 9; if (pa !== pb) return pa - pb; var ta = a.tradeability === 'High' ? 0 : (a.tradeability === 'Medium' ? 1 : 2); var tb = b.tradeability === 'High' ? 0 : (b.tradeability === 'Medium' ? 1 : 2); if (ta !== tb) return ta - tb; if ((b.score || 0) !== (a.score || 0)) return (b.score || 0) - (a.score || 0); if ((b.risk_reward || 0) !== (a.risk_reward || 0)) return (b.risk_reward || 0) - (a.risk_reward || 0); var aE = a.entry_high > 0 && a.last_price > 0 ? ((a.last_price - a.entry_high) / a.entry_high) * 100 : 99; var bE = b.entry_high > 0 && b.last_price > 0 ? ((b.last_price - b.entry_high) / b.entry_high) * 100 : 99; return aE - bE; });
   nkWithLabels.forEach(function(r, idx) { r.rank = idx + 1; });
   nkWithLabels = await enrichNonKongloHalfCandleDebt(nkWithLabels);
@@ -2524,7 +2527,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
   var { data: dtMeta } = await supabase.from('daytrade_screener_meta').select('*').eq('id', 'latest').maybeSingle();
   var { data: dtRows } = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(50);
   // Derive labels for public share results
-  var dtWithLabels = (dtRows || []).map(function(r) { var lbl = deriveDayTradeLabels(r); r.entry_timing = lbl.entry_timing; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'daytrade_screener_latest' }); return attachFreshness(enrichSignalQuality(r, 'Day Trade'), dtMeta); });
+  var dtWithLabels = (dtRows || []).map(function(r) { var lbl = deriveDayTradeLabels(r); r.entry_timing = lbl.entry_timing; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'daytrade_screener_latest' }); var output = attachFreshness(enrichSignalQuality(r, 'Day Trade'), dtMeta); smartSetupLabels.applySmartSetupLabels(output); return output; });
   result.daytrade = { meta: dtMeta || null, results: redactAdvancedScreenerRows(dtWithLabels) };
 
   return res.status(200).json(result);
@@ -8570,7 +8573,9 @@ async function handleNkScreenerResults(req, res, supabase) {
     r.entry_timing = labels.entry_timing;
     r.tradeability = labels.tradeability;
     r.direction = labels.direction;
-    return attachFreshness(enrichSignalQuality(r, 'Swing Non-Konglo'), meta);
+    var nkReadRow = attachFreshness(enrichSignalQuality(r, 'Swing Non-Konglo'), meta);
+    smartSetupLabels.applySmartSetupLabels(nkReadRow);
+    return nkReadRow;
   });
 
   var swingTierPriority = { 'A_PLUS_SWING': 0, 'TRADE_CANDIDATE': 1, 'SWING_READY': 2, 'WATCHLIST': 3, 'REBOUND_CANDIDATE': 3, 'WAIT_PULLBACK': 5, 'SPECULATIVE': 6, 'INVALID': 7, 'AVOID': 8 };
@@ -9806,7 +9811,9 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       r.tf_1d_context = tfCtx.tf_1d;
       r.tf_summary = tfCtx.summary;
       r.derived_risk = tfCtx.derived_risk;
-      return attachFreshness(enrichSignalQuality(r, 'Day Trade'), meta);
+      var daytradeReadRow = attachFreshness(enrichSignalQuality(r, 'Day Trade'), meta);
+      smartSetupLabels.applySmartSetupLabels(daytradeReadRow);
+      return daytradeReadRow;
     });
 
     sortedRows = await enrichConfluenceRows(supabase, sortedRows, false);
