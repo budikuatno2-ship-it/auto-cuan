@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { computeTop5Progress, detectTop5ProgressEvents, buildTop5ProgressDiagnostics, eventKey } = require('../lib/top5-progress-monitor');
+const { computeTop5Progress, detectTop5ProgressEvents, buildTop5ProgressDiagnostics, deriveTrackingStatus, eventKey } = require('../lib/top5-progress-monitor');
 
 function plan(overrides) { return Object.assign({ ticker: 'ABCD', locked_date: '2026-07-15', entry_price: 100, entry_high: 102, tp1: 105, tp2: 110, sl: 95, latest_price_at: '2026-07-16T08:00:00Z' }, overrides); }
 function types(result) { return result.events.map((event) => event.type); }
@@ -46,4 +46,15 @@ test('defaults to dry-run diagnostics without durable idempotency', () => {
   assert.equal(report.notification_mode, 'dry_run_only');
   assert.match(report.notification_reason, /real Telegram disabled/i);
   assert.equal(report.results[0].events.every((event) => !event.notification_enabled), true);
+});
+test('TP1 continues tracking while TP2 completes and SL stops tracking', () => {
+  assert.equal(deriveTrackingStatus(plan(), detectTop5ProgressEvents(plan(), 106, fresh), {}, fresh).status, 'TRACKING_TP1');
+  assert.equal(deriveTrackingStatus(plan(), detectTop5ProgressEvents(plan(), 111, fresh), {}, fresh).status, 'COMPLETE');
+  assert.equal(deriveTrackingStatus(plan(), detectTop5ProgressEvents(plan(), 94, fresh), {}, fresh).status, 'STOP_TRACKING');
+});
+test('tracking expires after seven days and swing routine updates wait three days', () => {
+  const old = plan({ locked_date: '2026-07-01', category: 'Swing Konglo' });
+  assert.equal(deriveTrackingStatus(old, detectTop5ProgressEvents(old, 103, fresh), {}, fresh).status, 'MAX_AGE_EXPIRED');
+  const swing = plan({ category: 'Swing Konglo' });
+  assert.equal(deriveTrackingStatus(swing, detectTop5ProgressEvents(swing, 103, fresh), { last_routine_update_at: '2026-07-15T10:00:00Z' }, fresh).routine_update_due, false);
 });
