@@ -3377,6 +3377,16 @@ async function getScreenerReadiness(supabase, options) {
     swing_konglo: buildReadinessItem(kongloMetaRes.data, kongloRowsRes.data || [], tradingDate, ['calculated_at']),
     swing_non_konglo: buildReadinessItem(nkMetaRes.data, nkRowsRes.data || [], tradingDate, ['run_date', 'calculated_at'])
   };
+  // A stale Day Trade lock must not make Top 5 appear to wait forever.
+  var dayTradeLock = getDayTradeRunningLockDiagnostics(dayMetaRes.data);
+  if (dayTradeLock.running_lock_status === 'stalled') {
+    readiness.day_trade.status = 'stalled';
+    readiness.day_trade.status_allows_snapshot = false;
+    readiness.day_trade.ready = false;
+    readiness.day_trade.not_ready_reason = dayTradeLock.stale_running_lock_reason;
+    readiness.day_trade.running_lock_status = dayTradeLock.running_lock_status;
+    readiness.day_trade.running_lock_age_minutes = dayTradeLock.running_lock_age_minutes;
+  }
   var sameDayReady = readiness.day_trade.ready && readiness.swing_konglo.ready && readiness.swing_non_konglo.ready;
   var previousTradingDate = getPreviousJakartaTradingDateString(tradingDate);
   var previousCloseReady = screenerAllowsPreviousCloseSnapshot(readiness.day_trade, previousTradingDate)
@@ -9737,6 +9747,13 @@ function deriveDayTradeTimeframeContext(r) {
   return { tf_1d: tf1d, summary: summary, derived_risk: derivedRisk };
 }
 
+function getDayTradeRunningLockDiagnostics(meta, nowMs) {
+  var startedAt = getDtRunningStartedAt(meta); var startedMs = startedAt ? new Date(startedAt).getTime() : NaN;
+  var ageMs = Number.isFinite(startedMs) ? Math.max(0, (nowMs || Date.now()) - startedMs) : null;
+  var stale = !!(meta && meta.status === 'scanning' && (ageMs == null || ageMs >= DAYTRADE_FULL_SCAN_STALE_LOCK_MS));
+  return { running_lock_status: meta && meta.status === 'scanning' ? (stale ? 'stalled' : 'running') : 'not_running', running_lock_age_minutes: ageMs == null ? null : Math.round(ageMs / 60000), running_lock_recovered: false, stale_running_lock_reason: stale ? (ageMs == null ? 'running_timestamp_missing' : 'running_lock_timeout') : null };
+}
+
 // ============================================================
 // DAY TRADE SCREENER v1 — READ (public, returns latest results)
 // ============================================================
@@ -9779,6 +9796,12 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       });
     }
 
+    var runningLockDiagnostics = getDayTradeRunningLockDiagnostics(meta);
+    var displayMeta = meta ? Object.assign({}, meta) : null;
+    if (displayMeta && runningLockDiagnostics.running_lock_status === 'stalled') {
+      displayMeta.status = 'stalled';
+      displayMeta.message = 'Day Trade scan appears stalled; a protected run will resume it safely.';
+    }
     var latestRowsEmpty = !rows || rows.length === 0;
     var latestRowsEmptyReason = null;
     if (latestRowsEmpty) {
@@ -9820,11 +9843,15 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
 
     return res.status(200).json({
       success: true,
-      meta: meta || { calculated_at: null, status: 'pending', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 },
+      meta: displayMeta || { calculated_at: null, status: 'pending', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 },
       results: sortedRows,
       updated_at: meta ? meta.calculated_at : null,
       calculated_at: meta ? meta.calculated_at : null,
-      status: meta ? meta.status : 'pending',
+      status: displayMeta ? displayMeta.status : 'pending',
+      running_lock_status: runningLockDiagnostics.running_lock_status,
+      running_lock_age_minutes: runningLockDiagnostics.running_lock_age_minutes,
+      running_lock_recovered: false,
+      stale_running_lock_reason: runningLockDiagnostics.stale_running_lock_reason,
       latest_rows_empty: latestRowsEmpty,
       latest_rows_empty_reason: latestRowsEmptyReason,
       latest_meta_status: meta ? meta.status : null,
@@ -9878,7 +9905,15 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     .eq('id', 'latest')
     .maybeSingle();
 
-  // 4. If batch > 0 and meta is scanning, continue existing run
+  // 4. Recover a stale batch lock by continuing at durable scanned_count.
+  var runningLockDiagnostics = getDayTradeRunningLockDiagnostics(meta);
+  if (batchIndex === 0 && runningLockDiagnostics.running_lock_status === 'stalled' && meta && Number(meta.scanned_count || 0) > 0) {
+    batchIndex = Math.floor(Number(meta.scanned_count || 0) / BATCH_SIZE);
+    runId = meta.run_id || ('dt-' + runDate + '-' + Date.now().toString(36));
+    runningLockDiagnostics.running_lock_recovered = true;
+    await updateDtMeta(supabase, { status: 'scanning', run_id: runId, message: 'Recovering stale Day Trade scan from ' + Number(meta.scanned_count || 0) + ' scanned tickers.' });
+  }
+  // If batch > 0 and meta is scanning, continue existing run.
   if (batchIndex > 0 && meta && meta.status === 'scanning') {
     runId = meta.run_id || ('dt-' + runDate + '-' + Date.now().toString(36));
   } else if (batchIndex === 0) {
@@ -9966,6 +10001,7 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
   }
 
   var universe = universeResult.tickers;
+  var universeDiagnostics = universeResult.diagnostics || {};
   var universeCount = universe.length;
   var batchCount = Math.ceil(universeCount / BATCH_SIZE);
   var startIdx = batchIndex * BATCH_SIZE;
@@ -10113,6 +10149,11 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     failed_count: totalFailed,
     passed_count: totalPassed,
     message: 'Batch ' + (batchIndex + 1) + '/' + batchCount + ' done. Scanned ' + totalScanned + '/' + universeCount + '.',
+    universe_diagnostics: universeDiagnostics,
+    running_lock_status: runningLockDiagnostics.running_lock_status,
+    running_lock_age_minutes: runningLockDiagnostics.running_lock_age_minutes,
+    running_lock_recovered: runningLockDiagnostics.running_lock_recovered,
+    stale_running_lock_reason: runningLockDiagnostics.stale_running_lock_reason,
     next_batch: batchIndex + 1,
     batch_save_error: batchSaveError || null,
     failed_tickers: failedTickers.length > 0 ? failedTickers.slice(0, 10) : undefined
@@ -11993,6 +12034,7 @@ module.exports.__test = {
   candidatePassesMinUpside: candidatePassesMinUpside,
   buildEntryRangeNormalizationDiagnostics: buildEntryRangeNormalizationDiagnostics,
   handleDayTradeScreenerRead: handleDayTradeScreenerRead,
+  getDayTradeRunningLockDiagnostics: getDayTradeRunningLockDiagnostics,
   diagnosePublicSafetyGateRejection: diagnosePublicSafetyGateRejection,
   candidatePassesTop5WatchlistGate: candidatePassesTop5WatchlistGate,
   candidatePassesPotentialRadarGate: candidatePassesPotentialRadarGate,
