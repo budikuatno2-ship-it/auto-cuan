@@ -54,7 +54,7 @@ function progressMessage(row, progress, event, source) {
   return ['📊 ' + (row.ticker || '-') + ' — ' + event.type, 'Harga: ' + progress.latest_price + ' | Entry: ' + progress.entry_used, 'TP1/TP2/SL: ' + (progress.tp1 || '-') + '/' + (progress.tp2 || '-') + '/' + (progress.sl || '-'), 'Gain: ' + (progress.gain_pct == null ? '-' : progress.gain_pct + '%') + ' | Sumber: ' + (source.price_date || '-'), 'Pantauan, bukan rekomendasi beli/jual.'].join('\n');
 }
 function shouldSendEvent(options, event, state, source) {
-  return !!(options && options.send && event && event.actionable && !(state && state.events && state.events[event.event_key]) && !(source && source.stale) && telegram.isTelegramEnabled());
+  return !!(options && options.send && monitor.isTelegramSendableEvent(event) && !(state && state.events && state.events[event.event_key]) && !(source && source.stale) && telegram.isTelegramEnabled());
 }
 function isAfterJakartaMarketClose(now) { const d = now || new Date(); return d.getUTCHours() > 9 || (d.getUTCHours() === 9 && d.getUTCMinutes() >= 15); }
 function isActiveProgressRow(row) {
@@ -86,14 +86,19 @@ async function run(options, deps) {
     state.tracking[trackingKey] = Object.assign({}, state.tracking[trackingKey], { status: tracking.status, updated_at: new Date().toISOString() });
     let events = detected.events.slice();
     if (state.tracking[trackingKey].tp1_notified) events = events.filter((event) => event.type !== 'TP1_HIT');
-    if (!tracking.should_track && tracking.reason === 'terminal_state') events = [];
-    if (tracking.reason === 'SL_HIT') events = [{ type: 'SL_HIT', event_key: monitor.eventKey(row, 'SL_HIT'), actionable: true, notification_enabled: options.send }];
-    if (tracking.reason === 'TP2_HIT') events = events.filter((event) => event.type === 'TP2_HIT');
+    // A prior terminal state and max-age expiry are state/log-only.  TP2 and
+    // SL are the one-time terminal transitions that may still notify.
+    if (!tracking.should_track) {
+      if (tracking.reason === 'SL_HIT') events = [{ type: 'SL_HIT', event_key: monitor.eventKey(row, 'SL_HIT'), actionable: true, notification_enabled: options.send }];
+      else if (tracking.reason === 'TP2_HIT') events = events.filter((event) => event.type === 'TP2_HIT');
+      else events = [];
+    }
     for (const event of events) {
       const duplicate = !!state.events[event.event_key];
       const canSend = shouldSendEvent(options, event, state, source);
-      if (canSend) { const sent = await telegram.sendTelegramMessage(progressMessage(row, detected.progress, event, source)); if (sent && sent.sent) { state.events[event.event_key] = { sent_at: new Date().toISOString(), ticker, type: event.type }; if (event.type === 'TP1_HIT') state.tracking[trackingKey].tp1_notified = true; } }
-      report.push({ ticker, event: event.type, event_key: event.event_key, source: source.price_source, price_date: source.price_date, sent: canSend, duplicate, tracking: tracking.status, dry_run: !options.send });
+      let sent = false;
+      if (canSend) { const result = await telegram.sendTelegramMessage(progressMessage(row, detected.progress, event, source)); if (result && result.sent) { sent = true; state.events[event.event_key] = { sent_at: new Date().toISOString(), ticker, type: event.type }; if (event.type === 'TP1_HIT') state.tracking[trackingKey].tp1_notified = true; } }
+      report.push({ ticker, event: event.type, event_key: event.event_key, source: source.price_source, price_date: source.price_date, sendable: monitor.isTelegramSendableEvent(event), sent, duplicate, tracking: tracking.status, dry_run: !options.send });
     }
   }
   await writeState(file, state);

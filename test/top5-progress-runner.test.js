@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { loadEnvFiles, parseArgs, readState, writeState, readLatestRows, fetchSupabaseRows, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow } = require('../tools/run-top5-progress-monitor');
+const { loadEnvFiles, parseArgs, readState, writeState, readLatestRows, fetchSupabaseRows, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run } = require('../tools/run-top5-progress-monitor');
 test('runner defaults to dry-run and only enables send explicitly', () => {
   assert.equal(parseArgs(['node', 'runner']).dryRun, true);
   assert.equal(parseArgs(['node', 'runner', '--send']).send, true);
@@ -24,6 +24,48 @@ test('duplicate, stale, and dry-run events cannot send', () => {
   assert.equal(shouldSendEvent({ send: false }, event, { events: {} }, { stale: false }), false);
   assert.equal(shouldSendEvent({ send: true }, event, { events: { [event.event_key]: {} } }, { stale: false }), false);
   assert.equal(shouldSendEvent({ send: true }, event, { events: {} }, { stale: true }), false);
+});
+test('only allowlisted active events can send when --send and Telegram are enabled', () => {
+  const previous = process.env.TELEGRAM_ENABLED;
+  process.env.TELEGRAM_ENABLED = '1';
+  try {
+    const state = { events: {} };
+    ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'GAIN_3_PCT', 'GAIN_5_PCT', 'GAIN_10_PCT'].forEach((type) => {
+      const event = { type, event_key: type, actionable: true };
+      assert.equal(shouldSendEvent({ send: true }, event, state, { stale: false }), true);
+    });
+    ['BELOW_ENTRY', 'SL_NEAR', 'INVALID_PLAN', 'STALE_PRICE', 'MAX_AGE_EXPIRED'].forEach((type) => {
+      assert.equal(shouldSendEvent({ send: true }, { type, event_key: type, actionable: true }, state, { stale: false }), false);
+    });
+  } finally {
+    if (previous === undefined) delete process.env.TELEGRAM_ENABLED;
+    else process.env.TELEGRAM_ENABLED = previous;
+  }
+});
+test('SL_HIT is sendable once, then its idempotency key blocks repeats', () => {
+  const previous = process.env.TELEGRAM_ENABLED;
+  process.env.TELEGRAM_ENABLED = '1';
+  try {
+    const event = { type: 'SL_HIT', event_key: 'top5_progress:ABCD:2026-07-15:SL_HIT:sl', actionable: true };
+    assert.equal(shouldSendEvent({ send: true }, event, { events: {} }, { stale: false }), true);
+    assert.equal(shouldSendEvent({ send: true }, event, { events: { [event.event_key]: { sent_at: '2026-07-16T10:00:00Z' } } }, { stale: false }), false);
+  } finally {
+    if (previous === undefined) delete process.env.TELEGRAM_ENABLED;
+    else process.env.TELEGRAM_ENABLED = previous;
+  }
+});
+test('expired and already-terminal tracking rows suppress all runner events', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'top5-progress-terminal-'));
+  const file = path.join(dir, 'state.json');
+  const row = { ticker: 'ABCD', locked_date: '2026-07-01', entry_high: 100, tp1: 105, tp2: 110, sl: 95 };
+  const fetchMock = async (url) => ({ ok: true, json: async () => new URL(url).pathname.endsWith('/telegram_daily_picks') ? [row] : [{ ticker: 'ABCD', latest_price: 111, price_date: '2026-07-16T10:00:00Z' }] });
+  const expired = await run({ send: false, limit: 1 }, { env: { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'key' }, fetch: fetchMock, stateFile: file });
+  assert.equal(expired.events.length, 0);
+  assert.equal((await readState(file)).tracking['ABCD:2026-07-01'].status, 'MAX_AGE_EXPIRED');
+  await writeState(file, { events: {}, tracking: { 'ABCD:2026-07-01': { status: 'STOP_TRACKING' } } });
+  const terminal = await run({ send: false, limit: 1 }, { env: { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'key' }, fetch: fetchMock, stateFile: file });
+  assert.equal(terminal.events.length, 0);
+  await fs.rm(dir, { recursive: true, force: true });
 });
 test('hourly runner only considers routine Swing reporting after Jakarta market close', () => {
   assert.equal(isAfterJakartaMarketClose(new Date('2026-07-16T08:00:00Z')), false);
