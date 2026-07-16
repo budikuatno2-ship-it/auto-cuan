@@ -38,6 +38,27 @@ test('Day Trade permits board-validated IPOs but excludes unknown-board new list
   assert.deepEqual(result.diagnostics.sample_included_new_listings.map((row) => row.ticker), ['JECX', 'WBSA']);
 });
 
+test('board-validated IPO diagnostics keep Konglo affiliation-driven and route missing affiliation safely', () => {
+  const diagnostics = sectorHot.buildBoardValidatedIpoDiagnostics(
+    [
+      { ticker: 'JECX', board: 'UTAMA' },
+      { ticker: 'WBSA', board: 'PENGEMBANGAN' },
+      { ticker: 'BUKA', board: 'EKONOMI BARU' }
+    ],
+    [{ ticker: 'JECX' }, { ticker: 'WBSA' }, { ticker: 'BUKA' }, { ticker: 'FOREIGN' }],
+    [{ ticker: 'JECX', group_code: 'AFFILIATED' }],
+    [{ ticker: 'JECX', group_code: 'AFFILIATED' }]
+  );
+  assert.equal(diagnostics.swing_konglo_board_validated_new_listing_count, 1);
+  assert.equal(diagnostics.swing_non_konglo_board_validated_new_listing_count, 1);
+  assert.equal(diagnostics.swing_unknown_classification_count, 1);
+  assert.equal(diagnostics.sector_hot_board_validated_new_listing_count, 1);
+  assert.equal(diagnostics.sector_hot_affiliation_missing_count, 1);
+  assert.deepEqual(diagnostics.sample_new_listing_swing_included.map((row) => row.ticker), ['JECX', 'WBSA']);
+  assert.deepEqual(diagnostics.sample_new_listing_sector_included.map((row) => row.ticker), ['JECX']);
+  assert.deepEqual(diagnostics.sample_affiliation_missing.map((row) => row.ticker), ['WBSA']);
+});
+
 test('price 50 requires board and liquidity safety, while 49 is always excluded', () => {
   assert.equal(engine.dayTradeEligibilityReason({ board: 'UTAMA', last_price: 50, valuasi: 1, freq: 1 }, { requirePrice: true, requireLiquidity: true }), null);
   assert.equal(engine.dayTradeEligibilityReason({ board: 'UTAMA', last_price: 50 }, { requirePrice: true, requireLiquidity: true }), 'liquidity_unverified');
