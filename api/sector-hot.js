@@ -2614,7 +2614,7 @@ async function fetchForeignConfluenceMap(supabase, tickers) {
   try {
     for (var i = 0; i < uniq.length; i += 50) {
       var chunk = uniq.slice(i, i + 50);
-      var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,close,nbsa').in('ticker', chunk).order('trade_date', { ascending: false });
+      var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,close,nbsa').in('ticker', chunk).order('trade_date', { ascending: false }).order('uploaded_at', { ascending: false });
       if (res.error) continue;
       var grouped = {};
       (res.data || []).forEach(function(r) {
@@ -2651,7 +2651,7 @@ async function fetchForeignConfluence(supabase, ticker, lastPrice) {
   try {
     var safe = normalizeForeignTicker(ticker);
     if (!safe) return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
-    var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,close,nbsa').eq('ticker', safe).order('trade_date', { ascending: false }).limit(7);
+    var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,close,nbsa').eq('ticker', safe).order('trade_date', { ascending: false }).order('uploaded_at', { ascending: false }).limit(7);
     var rows = res.data || [];
     if (res.error || rows.length === 0) return { foreign_1d: null, foreign_3d: null, foreign_7d: null, foreign_label: 'Foreign Data Unavailable', foreign_notes: 'Data foreign belum tersedia.' };
     var n1 = cleanFiniteNumber(rows[0].foreign_net) || 0;
@@ -3077,6 +3077,7 @@ async function buildForeignLookupMessage(supabase, ticker) {
     .select('trade_date,ticker,foreign_buy,foreign_sell,foreign_net,close,volume,freq,valuasi,nbsa')
     .eq('ticker', safeTicker)
     .order('trade_date', { ascending: false })
+    .order('uploaded_at', { ascending: false })
     .limit(7);
 
   if (error) return 'Gagal ambil data foreign untuk ' + safeTicker + '.';
@@ -4185,6 +4186,11 @@ function publicTelegramSafetyTextHasReject(text) {
   return includesAny(String(text || '').toLowerCase(), [
     'hindari',
     'avoid',
+    'sell',
+    'low_tp',
+    'stale_level',
+    'history_insufficient',
+    'new_listing',
     'rejected',
     'reject',
     'failed',
@@ -4625,6 +4631,8 @@ function diagnosePublicSafetyGateRejection(candidate, mode) {
  */
 function candidatePassesTop5WatchlistGate(candidate) {
   if (!candidate || !candidate.ticker) return false;
+  corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
+  if (candidate.corporate_action_guard === 'BLOCKED') return false;
   normalizeEntryRangeAliases(candidate);
 
   // === HARD BLOCKS (same as Entry Signal — never relaxed) ===
@@ -4670,7 +4678,7 @@ function candidatePassesTop5WatchlistGate(candidate) {
 
   // Stale / Needs Revalidation
   var freshnessStatus = safeTelegramText(candidate.setup_freshness_status || candidate.freshness_status || '', 80, '').toUpperCase();
-  if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION') return false;
+  if (freshnessStatus === 'EXPIRED' || freshnessStatus === 'NEEDS_REVALIDATION' || freshnessStatus === 'STALE_LEVEL' || freshnessStatus === 'HISTORY_INSUFFICIENT' || freshnessStatus === 'NEW_LISTING') return false;
   if (candidate.is_stale === true || candidate.data_stale === true || candidate.freshness_is_stale === true || candidate.stale === true) return false;
 
   // Below SL / Invalidation hit
@@ -4941,7 +4949,7 @@ async function fetchCombinedScreenerCandidates(supabase, includeExcluded) {
 
 async function fetchForeignSummary(supabase, ticker) {
   try {
-    var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,nbsa').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(7);
+    var res = await supabase.from('foreign_watchlist_daily').select('trade_date,ticker,foreign_net,nbsa').eq('ticker', ticker).order('trade_date', { ascending: false }).order('uploaded_at', { ascending: false }).limit(7);
     var rows = res.data || [];
     if (res.error || rows.length === 0) return { text: 'Foreign: belum ada data', score: 0 };
     var latest = rows[0];
@@ -6657,18 +6665,21 @@ function hasDashboardLockedFinalIndicator(row) {
 }
 function isSafeDashboardLockedTop5Row(row) {
   if (!row || typeof row !== 'object') return false;
-
-  // Persisted locked/final rows are the source of truth for Dashboard fallback.
-  // Older locked snapshots may carry stale raw_payload/action fields such as
-  // Hindari/Avoid/provisional from their candidate stage; once the persisted row
-  // itself is locked/final, keep it unless the persisted row is explicitly marked
-  // preview/provisional/admin-only.
-  if (hasDashboardLockedFinalIndicator(row)) return !isDashboardExplicitPreviewOrProvisionalRow(row);
-
   var payload = getDashboardLockedRowPayload(row);
-  if (isTop5PreviewOrProvisionalRow(payload)) return false;
+  if (!hasDashboardLockedFinalIndicator(row) || isDashboardExplicitPreviewOrProvisionalRow(row) || isTop5PreviewOrProvisionalRow(payload)) return false;
+  // A lock is a publication-state marker, not a waiver for safety.  In
+  // particular, never resurrect an unsafe historical payload as actionable.
   if (hasAvoidGrade(payload) || hasHindariAction(payload)) return false;
   if (String(payload.signal_action || '').trim().toUpperCase() === 'AVOID') return false;
+  var safetyText = joinTelegramTexts([
+    payload.status, payload.final_status, payload.grade, payload.quality_grade,
+    payload.action, payload.action_label, payload.signal_action, payload.signal_verdict,
+    payload.status_reason, payload.excluded_reason, payload.setup_freshness_status,
+    payload.data_quality_status, payload.notes
+  ]).toUpperCase();
+  if (includesAny(safetyText.toLowerCase(), ['sell', 'low_tp', 'very high risk', 'stale_level', 'needs_revalidation', 'history_insufficient', 'new_listing'])) return false;
+  if (payload.corporate_action_guard === 'BLOCKED' || payload.data_quality_valid === false ||
+      payload.is_stale === true || payload.freshness_is_stale === true) return false;
   return true;
 }
 function filterSafeDashboardLockedTop5Rows(rows) {
@@ -7673,8 +7684,28 @@ async function handleNkScreenerStart(req, res, supabase) {
     return res.status(200).json({ success: false, error: 'Failed to load stock_boards.' });
   }
 
-  // Filter out Konglo tickers
+  // Filter out verified Konglo tickers.  Foreign-only names are deliberately
+  // treated as Non-Konglo/unverified rather than guessed into a konglo group.
   const universe = boardStocks.filter(s => !excludedTickers.has(s.ticker));
+  const knownTickers = new Set(boardStocks.map(s => String(s.ticker || '').toUpperCase()));
+  let foreignUniverseDiagnostics = { foreign_universe_discovered_count: 0, missing_konglo_classification_count: 0 };
+  try {
+    const foreignRes = await supabase.from('foreign_watchlist_daily').select('ticker,trade_date,uploaded_at').order('trade_date', { ascending: false }).order('uploaded_at', { ascending: false }).limit(5000);
+    if (!foreignRes.error) {
+      const foreignSeen = new Set();
+      (foreignRes.data || []).forEach(function(row) {
+        const ticker = normalizeForeignTicker(row && row.ticker);
+        if (!ticker || knownTickers.has(ticker) || excludedTickers.has(ticker) || foreignSeen.has(ticker)) return;
+        foreignSeen.add(ticker);
+        universe.push({ ticker: ticker, board: null, universe_source: 'foreign_latest', listing_status: 'NEW_LISTING', konglo_classification: 'UNVERIFIED_NON_KONGLO', konglo_classification_diagnostic: 'missing_konglo_classification' });
+      });
+      foreignUniverseDiagnostics = { foreign_universe_discovered_count: foreignSeen.size, missing_konglo_classification_count: foreignSeen.size };
+    } else {
+      foreignUniverseDiagnostics.foreign_universe_error = foreignRes.error.message;
+    }
+  } catch (foreignErr) {
+    foreignUniverseDiagnostics.foreign_universe_error = foreignErr.message || String(foreignErr);
+  }
 
   if (universe.length === 0) {
     await updateNkMeta(supabase, { status: 'failed', message: 'Universe kosong setelah filter.' });
@@ -7718,6 +7749,7 @@ async function handleNkScreenerStart(req, res, supabase) {
     step: 'start',
     universe_count: universe.length,
     batch_count: batches.length,
+    foreign_universe_diagnostics: foreignUniverseDiagnostics,
     batch_size: BATCH_SIZE
   });
 }

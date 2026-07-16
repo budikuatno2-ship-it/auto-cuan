@@ -113,7 +113,7 @@ test('isSafeDashboardLockedTop5Row enforces Avoid/Hindari policy without id+date
     date: '2025-01-15',
     ticker: 'SAFE',
     raw_payload: { confidence: 'B', action_label: 'Masih dekat entry' }
-  }), true, 'safe id+date row without Avoid/Hindari should pass payload path');
+  }), false, 'unlocked rows must never render as final even when otherwise safe');
 
   assert.equal(isSafeDashboardLockedTop5Row({
     id: 4,
@@ -121,7 +121,7 @@ test('isSafeDashboardLockedTop5Row enforces Avoid/Hindari policy without id+date
     ticker: 'LOCKED_STALE',
     is_locked: true,
     raw_payload: { grade: 'AVOID', action_label: 'Hindari dulu' }
-  }), true, 'genuinely locked row may render despite stale raw_payload Avoid/Hindari');
+  }), false, 'locked rows with stale raw_payload Avoid/Hindari must be excluded from actionable Top 5');
 
   assert.equal(isSafeDashboardLockedTop5Row({
     id: 5,
@@ -129,7 +129,7 @@ test('isSafeDashboardLockedTop5Row enforces Avoid/Hindari policy without id+date
     ticker: 'FINAL_STALE',
     publication_status: 'final',
     raw_payload: { signal_action: 'AVOID' }
-  }), true, 'genuinely final row may render despite stale raw_payload Avoid');
+  }), false, 'final rows with stale raw_payload Avoid must be excluded from actionable Top 5');
 
   assert.equal(isSafeDashboardLockedTop5Row({
     id: 6,

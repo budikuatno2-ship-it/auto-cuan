@@ -2323,10 +2323,7 @@ var currentPage = 'dashboard';
 var _dashboardHistoryDelayTimer = null;
 function scheduleTop5HistoryLoad() {
     if (_dashboardHistoryDelayTimer) clearTimeout(_dashboardHistoryDelayTimer);
-    _dashboardHistoryDelayTimer = setTimeout(function() {
-        _dashboardHistoryDelayTimer = null;
-        if (currentPage === 'dashboard') loadTop5History(true);
-    }, 2000);
+    _dashboardHistoryDelayTimer = setTimeout(function() { _dashboardHistoryDelayTimer = null; if (currentPage === 'dashboard') loadTop5History(true); }, 2000);
 }
 function clearTop5HistoryLoadTimer() {
     if (_dashboardHistoryDelayTimer) { clearTimeout(_dashboardHistoryDelayTimer); _dashboardHistoryDelayTimer = null; }
@@ -7991,7 +7988,7 @@ async function loadDashboardTop5Monitor(silent, opts) {
     opts = opts || {};
     if (!isLoggedInUser()) { renderDashboardGuestGate(); return; }
     // Serve cache only if fresh AND contains locked data; stale awaiting_locked_rows must not block fresh fetch.
-    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 60000 && _dashboardTop5Cache.data.top5_source !== 'awaiting_locked_rows') { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
+    if (_dashboardTop5Cache.data && Date.now() - _dashboardTop5Cache.at < 45000 && _dashboardTop5Cache.data.top5_source !== 'awaiting_locked_rows') { renderDashboardTop5MonitorData(_dashboardTop5Cache.data); return; }
     if (_dashboardTop5InFlight) return _dashboardTop5InFlight;
     // Always clear placeholders to prevent stuck static HTML state
     var _topEl = document.getElementById('dashboardTop5List');
@@ -8059,8 +8056,6 @@ function renderDashboardTop5MonitorData(data) {
     // Robust empty detection: treat as empty/awaiting if ANY of these are true
     var monitorRows = data.monitor || [];
     var isLockedFinalSource = data.top5_locked === true && (data.top5_source === 'locked_rows' || data.top5_source === 'locked_rows_fallback');
-    // Render locked Top 5 cards if we have a valid locked source AND top5 rows exist.
-    // Do NOT require monitor rows — monitor may be empty for fallback snapshots.
     var hasTop5Data = top5Rows.length > 0;
     var isAwaiting = !isLockedFinalSource
         || data.top5_source === 'awaiting_locked_rows'
