@@ -3,20 +3,52 @@
 
 // VPS-only runner: it is not imported by any Vercel endpoint and defaults to dry run.
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs');
 const path = require('node:path');
-const { createClient } = require('@supabase/supabase-js');
 const monitor = require('../lib/top5-progress-monitor');
 const prices = require('../lib/latest-price-resolver');
 const telegram = require('../lib/telegram-notifier');
+
+const ENV_FILES = ['.env.local', '.env.intraday-runtime', '.env'];
+
+// Keep this intentionally small: the runner needs cron-friendly env loading, not dotenv.
+function loadEnvFiles(options) {
+  const cwd = (options && options.cwd) || process.cwd();
+  const env = (options && options.env) || process.env;
+  for (const name of ENV_FILES) {
+    let content;
+    try { content = fsSync.readFileSync(path.join(cwd, name), 'utf8'); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    for (const line of content.split(/\r?\n/)) {
+      const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!match || Object.prototype.hasOwnProperty.call(env, match[1])) continue;
+      let value = match[2];
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+      else value = value.replace(/\s+#.*$/, '');
+      env[match[1]] = value;
+    }
+  }
+}
+
+loadEnvFiles();
 
 function parseArgs(argv) { const o = { dryRun: true, send: false, json: false, limit: 50 }; for (let i = 2; i < argv.length; i++) { const a = argv[i]; if (a === '--send') { o.send = true; o.dryRun = false; } else if (a === '--dry-run') { o.dryRun = true; o.send = false; } else if (a === '--json') o.json = true; else if (a === '--limit') o.limit = Math.max(1, Number(argv[++i]) || 50); } return o; }
 function statePath() { return process.env.TOP5_PROGRESS_STATE_FILE || '/home/ubuntu/auto-cuan-runner/state/top5-progress-events.json'; }
 async function readState(file) { try { return JSON.parse(await fs.readFile(file, 'utf8')); } catch (e) { if (e.code === 'ENOENT') return { events: {}, tracking: {} }; throw e; } }
 async function writeState(file, state) { await fs.mkdir(path.dirname(file), { recursive: true }); await fs.writeFile(file, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 }); }
 function rowsByTicker(rows) { const out = {}; (rows || []).forEach((r) => { if (r && r.ticker) out[String(r.ticker).toUpperCase()] = r; }); return out; }
-async function readLatestRows(supabase, tickers) {
-  const results = await Promise.all(prices.SOURCES.map((source) => supabase.from(source.table).select('*').in('ticker', tickers)));
-  const output = {}; results.forEach((result, index) => { output[prices.SOURCES[index].table] = rowsByTicker(result.data); }); return output;
+function supabaseRestUrl(url, table, params) { const base = String(url || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, ''); const target = new URL(base + '/rest/v1/' + table); Object.entries(params || {}).forEach(([key, value]) => target.searchParams.set(key, value)); return target.toString(); }
+async function fetchSupabaseRows(fetchImpl, supabaseUrl, key, table, params) {
+  const response = await fetchImpl(supabaseRestUrl(supabaseUrl, table, params), { method: 'GET', headers: { apikey: key, Authorization: 'Bearer ' + key } });
+  if (!response.ok) throw new Error('Supabase read failed for ' + table + ': HTTP ' + response.status + ' ' + await response.text());
+  return response.json();
+}
+async function readLatestRows(fetchImpl, supabaseUrl, key, tickers) {
+  const uniqueTickers = [...new Set((tickers || []).filter(Boolean).map((ticker) => String(ticker).toUpperCase()))];
+  const output = {}; prices.SOURCES.forEach((source) => { output[source.table] = {}; });
+  if (!uniqueTickers.length) return output;
+  const tickerFilter = 'in.(' + uniqueTickers.join(',') + ')';
+  const results = await Promise.all(prices.SOURCES.map((source) => fetchSupabaseRows(fetchImpl, supabaseUrl, key, source.table, { select: '*', ticker: tickerFilter })));
+  results.forEach((rows, index) => { output[prices.SOURCES[index].table] = rowsByTicker(rows); }); return output;
 }
 function progressMessage(row, progress, event, source) {
   return ['📊 ' + (row.ticker || '-') + ' — ' + event.type, 'Harga: ' + progress.latest_price + ' | Entry: ' + progress.entry_used, 'TP1/TP2/SL: ' + (progress.tp1 || '-') + '/' + (progress.tp2 || '-') + '/' + (progress.sl || '-'), 'Gain: ' + (progress.gain_pct == null ? '-' : progress.gain_pct + '%') + ' | Sumber: ' + (source.price_date || '-'), 'Pantauan, bukan rekomendasi beli/jual.'].join('\n');
@@ -34,15 +66,16 @@ function isActiveProgressRow(row) {
 }
 async function run(options, deps) {
   options = options || parseArgs(process.argv); deps = deps || {};
-  const supabase = deps.supabase || createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '', { auth: { persistSession: false, autoRefreshToken: false } });
-  if (!deps.supabase && (!process.env.SUPABASE_URL || !(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY))) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY are required.');
+  const env = deps.env || process.env, fetchImpl = deps.fetch || global.fetch;
+  const supabaseUrl = env.SUPABASE_URL, key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY are required.');
+  if (typeof fetchImpl !== 'function') throw new Error('Native fetch is required (Node.js 20 or newer).');
   const file = deps.stateFile || statePath(), state = await readState(file);
-  const query = await supabase.from('telegram_daily_picks').select('*').order('date', { ascending: false }).limit(options.limit);
-  if (query.error) throw new Error(query.error.message);
+  const query = await fetchSupabaseRows(fetchImpl, supabaseUrl, key, 'telegram_daily_picks', { select: '*', order: 'date.desc', limit: String(options.limit) });
   // `is_final` marks locked/final publication in telegram_daily_picks; it is
   // not a terminal monitor state and must remain eligible for progress checks.
-  const rows = (query.data || []).filter(isActiveProgressRow);
-  const latest = await readLatestRows(supabase, rows.map((row) => row.ticker));
+  const rows = (query || []).filter(isActiveProgressRow);
+  const latest = await readLatestRows(fetchImpl, supabaseUrl, key, rows.map((row) => row.ticker));
   const report = [];
   for (const row of rows) {
     const ticker = String(row.ticker).toUpperCase(), sourceRows = {}; prices.SOURCES.forEach((s) => { sourceRows[s.table] = latest[s.table][ticker]; });
@@ -67,4 +100,4 @@ async function run(options, deps) {
   return { dry_run: !options.send, state_file: file, checked: rows.length, events: report };
 }
 if (require.main === module) { const options = parseArgs(process.argv); run(options).then((result) => { if (options.json) console.log(JSON.stringify(result, null, 2)); else console.log('top5 progress: checked=' + result.checked + ' events=' + result.events.length + ' dry_run=' + result.dry_run + ' state=' + result.state_file); }).catch((error) => { console.error(error.message || error); process.exitCode = 1; }); }
-module.exports = { parseArgs, readState, writeState, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };
+module.exports = { ENV_FILES, loadEnvFiles, parseArgs, readState, writeState, supabaseRestUrl, fetchSupabaseRows, readLatestRows, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };
