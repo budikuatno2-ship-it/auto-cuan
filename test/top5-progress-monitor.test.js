@@ -32,6 +32,13 @@ test('blocks avoid, hindari, sell, very high risk, and corporate action rows', (
   ['AVOID', 'Hindari', 'SELL', 'Very High Risk'].forEach((status) => assert.equal(computeTop5Progress(plan({ status }), 106, fresh).actionable, false));
   assert.equal(computeTop5Progress(plan({ corporate_action_guard: 'BLOCKED' }), 106, fresh).actionable, false);
 });
+test('foreign net sell commentary is analytical context and does not block TP progress', () => {
+  const result = detectTop5ProgressEvents(plan({ foreign_notes: 'foreign net sell', foreign_label: 'Net Sell' }), 111, fresh);
+  assert.equal(result.progress.actionable, true);
+  assert.ok(types(result).includes('TP1_HIT'));
+  assert.ok(types(result).includes('TP2_HIT'));
+  assert.equal(computeTop5Progress(plan({ action_label: 'SELL', foreign_notes: 'net buy' }), 111, fresh).actionable, false);
+});
 test('reports missing latest price and missing entry as invalid plans', () => {
   assert.equal(computeTop5Progress(plan(), null, fresh).block_reason, 'latest_price_missing');
   assert.equal(computeTop5Progress(plan({ entry_price: null, entry_high: null }), 106, fresh).block_reason, 'entry_missing');

@@ -25,6 +25,13 @@ function shouldSendEvent(options, event, state, source) {
   return !!(options && options.send && event && event.actionable && !(state && state.events && state.events[event.event_key]) && !(source && source.stale) && telegram.isTelegramEnabled());
 }
 function isAfterJakartaMarketClose(now) { const d = now || new Date(); return d.getUTCHours() > 9 || (d.getUTCHours() === 9 && d.getUTCMinutes() >= 15); }
+function isActiveProgressRow(row) {
+  if (!row || !row.ticker) return false;
+  const raw = row.raw_payload || {};
+  if (raw.history_archived_at || row.history_archived_at || row.archived_at) return false;
+  const status = String(row.status || row.final_status || '').toUpperCase();
+  return ['TP2_HIT', 'SL_HIT', 'COMPLETE', 'COMPLETED', 'EXPIRED', 'MAX_AGE_EXPIRED', 'STOP_TRACKING'].indexOf(status) < 0;
+}
 async function run(options, deps) {
   options = options || parseArgs(process.argv); deps = deps || {};
   const supabase = deps.supabase || createClient(process.env.SUPABASE_URL || '', process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '', { auth: { persistSession: false, autoRefreshToken: false } });
@@ -32,7 +39,9 @@ async function run(options, deps) {
   const file = deps.stateFile || statePath(), state = await readState(file);
   const query = await supabase.from('telegram_daily_picks').select('*').order('date', { ascending: false }).limit(options.limit);
   if (query.error) throw new Error(query.error.message);
-  const rows = (query.data || []).filter((row) => row && row.ticker && !row.is_final);
+  // `is_final` marks locked/final publication in telegram_daily_picks; it is
+  // not a terminal monitor state and must remain eligible for progress checks.
+  const rows = (query.data || []).filter(isActiveProgressRow);
   const latest = await readLatestRows(supabase, rows.map((row) => row.ticker));
   const report = [];
   for (const row of rows) {
@@ -58,4 +67,4 @@ async function run(options, deps) {
   return { dry_run: !options.send, state_file: file, checked: rows.length, events: report };
 }
 if (require.main === module) { const options = parseArgs(process.argv); run(options).then((result) => { if (options.json) console.log(JSON.stringify(result, null, 2)); else console.log('top5 progress: checked=' + result.checked + ' events=' + result.events.length + ' dry_run=' + result.dry_run + ' state=' + result.state_file); }).catch((error) => { console.error(error.message || error); process.exitCode = 1; }); }
-module.exports = { parseArgs, readState, writeState, shouldSendEvent, isAfterJakartaMarketClose, run, statePath };
+module.exports = { parseArgs, readState, writeState, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };

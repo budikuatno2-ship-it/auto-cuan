@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { parseArgs, readState, writeState, shouldSendEvent, isAfterJakartaMarketClose } = require('../tools/run-top5-progress-monitor');
+const { parseArgs, readState, writeState, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow } = require('../tools/run-top5-progress-monitor');
 test('runner defaults to dry-run and only enables send explicitly', () => {
   assert.equal(parseArgs(['node', 'runner']).dryRun, true);
   assert.equal(parseArgs(['node', 'runner', '--send']).send, true);
@@ -28,4 +28,10 @@ test('duplicate, stale, and dry-run events cannot send', () => {
 test('hourly runner only considers routine Swing reporting after Jakarta market close', () => {
   assert.equal(isAfterJakartaMarketClose(new Date('2026-07-16T08:00:00Z')), false);
   assert.equal(isAfterJakartaMarketClose(new Date('2026-07-16T09:15:00Z')), true);
+});
+test('active locked/final picks are scanned while archived and terminal picks are excluded', () => {
+  assert.equal(isActiveProgressRow({ ticker: 'LOCK', is_final: true, status: 'WAITING' }), true);
+  assert.equal(isActiveProgressRow({ ticker: 'ARCH', raw_payload: { history_archived_at: '2026-07-16T10:00:00Z' } }), false);
+  assert.equal(isActiveProgressRow({ ticker: 'DONE', status: 'COMPLETE' }), false);
+  assert.equal(isActiveProgressRow({ ticker: 'SL', status: 'SL_HIT' }), false);
 });
