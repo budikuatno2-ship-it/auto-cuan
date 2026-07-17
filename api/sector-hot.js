@@ -7795,7 +7795,9 @@ async function handleNkScreenerStart(req, res, supabase) {
         const ticker = normalizeForeignTicker(row && row.ticker);
         if (!ticker || knownTickers.has(ticker) || excludedTickers.has(ticker) || foreignSeen.has(ticker)) return;
         foreignSeen.add(ticker);
-        universe.push({ ticker: ticker, board: null, universe_source: 'foreign_latest', listing_status: 'NEW_LISTING', konglo_classification: 'UNVERIFIED_NON_KONGLO', konglo_classification_diagnostic: 'missing_konglo_classification' });
+        // Foreign-only unknown-board tickers remain diagnostics only: strict screeners
+        // must use the official UTAMA/PENGEMBANGAN board universe.
+        return;
       });
       foreignUniverseDiagnostics = { foreign_universe_discovered_count: foreignSeen.size, missing_konglo_classification_count: foreignSeen.size };
     } else {
@@ -7819,8 +7821,9 @@ async function handleNkScreenerStart(req, res, supabase) {
   await supabase.from('swing_screener_non_konglo_jobs').delete().eq('run_date', runDate);
   await supabase.from('swing_screener_non_konglo_staging').delete().eq('run_date', runDate);
 
-  // Create batches of 8 (smaller to avoid Vercel timeout)
-  const BATCH_SIZE = 8;
+  // Default remains conservative; authenticated VPS operators may opt into safe larger batches.
+  const requestedBatchSize = Number(req.query.batch_size || 8);
+  const BATCH_SIZE = [8, 25, 50].indexOf(requestedBatchSize) >= 0 ? requestedBatchSize : 8;
   const batches = [];
   for (let i = 0; i < universe.length; i += BATCH_SIZE) {
     const batch = universe.slice(i, i + BATCH_SIZE);
@@ -8194,6 +8197,11 @@ async function handleNkScreenerBatch(req, res, supabase) {
     message: `Batch ${job.batch_index} done: ${results.length} passed before staging, ${stagingWriteCount} persisted, ${failedCount} failed.`
   });
 
+  var { count: nkBatchCount } = await supabase
+    .from('swing_screener_non_konglo_jobs')
+    .select('*', { count: 'exact', head: true })
+    .eq('run_date', runDate);
+
   return res.status(200).json({
     success: true,
     step: 'batch',
@@ -8210,7 +8218,13 @@ async function handleNkScreenerBatch(req, res, supabase) {
     passed_count_before_staging: passedCountBeforeStaging,
     passed_count_after_staging: passedCountAfterStaging,
     staging_write_mismatch: passedCountBeforeStaging > 0 && stagingWriteCount === 0,
-    staging_error: stagingWriteError || null
+    staging_error: stagingWriteError || null,
+    batch_count: Number(nkBatchCount) || 0,
+    scanned_count: (meta ? meta.scanned_count : 0) + tickers.length,
+    universe_count: meta && meta.universe_count != null ? meta.universe_count : null,
+    failed_count: (meta ? meta.failed_count : 0) + failedCount,
+    staging_count: stagingWriteCount,
+    status: 'SCANNING'
   });
 }
 

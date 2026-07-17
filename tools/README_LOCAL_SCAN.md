@@ -125,3 +125,38 @@ Day Trade auto loop tidak akan memulai scan baru pada jam istirahat:
 - Jumat: 11:30-14:00 WIB
 
 Kalau jadwal next run jatuh di jam istirahat, runner otomatis menunggu sampai jam istirahat selesai, lalu lanjut lagi.
+
+## Safe VPS manual runner (09:15 WIB preparation)
+
+The VPS orchestrator is read-only unless `--execute` is explicit.  It always keeps
+`DAYTRADE_INTRADAY_SCORE_ENABLED=false`; Phase 7 is observation-only and never
+changes environment flags, cron, webhook, or production intraday scoring.
+
+```bash
+# Plan/status only: no mutating endpoints and no Telegram sends.
+node tools/run-all-screeners-vps.js --dry-run
+
+# Run screeners and generate Top 5 dry-run output (no Telegram send).
+node tools/run-all-screeners-vps.js --execute
+
+# Run screeners and permit Telegram only after readiness passes.
+node tools/run-all-screeners-vps.js --execute --send
+
+# Later 09:15 preflight plus intraday observation only (not production scoring).
+node tools/run-all-screeners-vps.js --dry-run --include-intraday-dry-run
+```
+
+The sequence is Phase 0 preflight/status, Phase 1 board-sync check, Swing Konglo,
+Swing Non-Konglo, Day Trade, Top 5, Top 5 Progress, then optional intraday
+observation. A stale Non-Konglo scan requires `--resume-stale` or `--force`.
+
+## Exact official board scope
+
+```bash
+# Report official totals and stale UTAMA/PENGEMBANGAN rows; no writes.
+python3 tools/sync-stock-boards-from-bei-xlsx.py --utama /data/Utama.xlsx --pengembangan /data/Pengembangan.xlsx --replace-official-board-scope
+
+# Explicitly upsert official rows and deactivate stale scope rows (or delete only
+# when the table lacks is_active, with a warning).
+python3 tools/sync-stock-boards-from-bei-xlsx.py --utama /data/Utama.xlsx --pengembangan /data/Pengembangan.xlsx --replace-official-board-scope --apply
+```

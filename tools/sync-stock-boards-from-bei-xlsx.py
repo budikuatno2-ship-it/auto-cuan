@@ -5,7 +5,7 @@ Dry-run is the default.  This tool never runs in production automatically.
 
 Examples:
   python3 tools/sync-stock-boards-from-bei-xlsx.py --utama /data/Utama.xlsx --pengembangan /data/Pengembangan.xlsx
-  python3 tools/sync-stock-boards-from-bei-xlsx.py --utama /data/Utama.xlsx --pengembangan /data/Pengembangan.xlsx --apply
+  python3 tools/sync-stock-boards-from-bei-xlsx.py --utama /data/Utama.xlsx --pengembangan /data/Pengembangan.xlsx --replace-official-board-scope --apply
 """
 import argparse
 import json
@@ -101,13 +101,16 @@ def main():
     for flag, _ in BOARD_ARGS:
         parser.add_argument("--" + flag, metavar="XLSX")
     parser.add_argument("--apply", action="store_true", help="perform Supabase upserts (default is dry-run)")
-    parser.add_argument("--delete-missing", action="store_true", help="reserved explicit opt-in; deletion is not implemented by this safe tool")
+    parser.add_argument("--replace-official-board-scope", action="store_true", help="with --apply, deactivate/delete stale UTAMA/PENGEMBANGAN rows only")
+    parser.add_argument("--delete-missing", action="store_true", help="deprecated; use --replace-official-board-scope --apply")
     args = parser.parse_args()
     sources = [(getattr(args, flag.replace("-", "_")), board) for flag, board in BOARD_ARGS if getattr(args, flag.replace("-", "_"))]
     if not sources:
         parser.error("provide at least one board file, for example --utama FILE.xlsx")
     if args.delete_missing:
-        parser.error("--delete-missing is intentionally unsupported; this tool never deletes stock_boards rows")
+        parser.error("use --replace-official-board-scope --apply; deletion is otherwise intentionally unsupported")
+    if args.replace_official_board_scope and not (getattr(args, "utama") and getattr(args, "pengembangan")):
+        parser.error("--replace-official-board-scope requires both --utama and --pengembangan official files")
     for filename in (".env.local", ".env.intraday-runtime", ".env"):
         load_env_file(filename)
     rows, counts = [], {}
@@ -121,18 +124,48 @@ def main():
     print("counts_by_board=" + json.dumps(counts, sort_keys=True))
     print("total_rows=" + str(len(rows)))
     print("samples=" + json.dumps(rows[:10]))
-    if not args.apply:
-        print("Dry-run only. Add --apply to upsert ticker + board into stock_boards.")
-        return
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    # Scope replacement needs a read even in dry-run, but is never destructive without --apply.
+    stale = []
+    has_active = False
+    root_url = url.rstrip("/").replace("/rest/v1", "") if url else ""
+    if args.replace_official_board_scope and url and key:
+        try:
+            raw = request(root_url + "/rest/v1/stock_boards?select=ticker,board,is_active&board=in.(UTAMA,PENGEMBANGAN)", "GET", key)
+            existing = json.loads(raw.decode("utf-8"))
+            has_active = any("is_active" in row for row in existing)
+        except urllib.error.HTTPError:
+            raw = request(root_url + "/rest/v1/stock_boards?select=ticker,board&board=in.(UTAMA,PENGEMBANGAN)", "GET", key)
+            existing = json.loads(raw.decode("utf-8"))
+        official = set(row["ticker"] for row in rows)
+        stale = [row for row in existing if str(row.get("ticker", "")).upper() not in official]
+        print("official_scope_before=" + str(len(existing)))
+        print("official_scope_after=" + str(len(rows)))
+        print("stale_rows=" + str(len(stale)))
+        print("stale_samples=" + json.dumps(stale[:10]))
+    elif args.replace_official_board_scope:
+        print("stale_rows=unknown (set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to inspect existing rows)")
+    if not args.apply:
+        print("Dry-run only. Add --replace-official-board-scope --apply to align official UTAMA+PENGEMBANGAN rows.")
+        return
     if not url or not key:
         raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required only with --apply")
-    endpoint = url.rstrip("/").replace("/rest/v1", "") + "/rest/v1/stock_boards?on_conflict=ticker"
+    endpoint = root_url + "/rest/v1/stock_boards?on_conflict=ticker"
     for start in range(0, len(rows), 250):
         batch = rows[start:start + 250]
         request(endpoint, "POST", key, json.dumps(batch).encode("utf-8"))
         print("upserted=" + str(start + 1) + "-" + str(start + len(batch)))
-    print("Applied " + str(len(rows)) + " stock_boards upserts; no rows deleted.")
+    if args.replace_official_board_scope and stale:
+        tickers = ",".join(str(row["ticker"]) for row in stale)
+        scope = root_url + "/rest/v1/stock_boards?ticker=in.(" + urllib.parse.quote(tickers, safe=",") + ")&board=in.(UTAMA,PENGEMBANGAN)"
+        if has_active:
+            request(scope, "PATCH", key, json.dumps({"is_active": False}).encode("utf-8"))
+            print("deactivated_stale=" + str(len(stale)))
+        else:
+            print("WARNING: stock_boards has no is_active column; deleting stale rows due to explicit --replace-official-board-scope --apply")
+            request(scope, "DELETE", key)
+            print("deleted_stale=" + str(len(stale)))
+    print("Applied " + str(len(rows)) + " stock_boards upserts.")
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ test('Non-Konglo runner skips published status without calling run endpoint', as
 test('Non-Konglo runner stops immediately after finalized response', async () => {
   const calls = [];
   const client = { call: async (q) => { calls.push(q.action); if (q.action === 'nk-screener-results') return { meta: { status: 'scanning', run_date: runner.wibDate() } }; return { step: 'finalize', status: 'PUBLISHED', message: 'Published 22 top candidates.' }; } };
-  const result = await runner.runNk(client, { force: false, maxAttempts: 3, sleepMs: 1 }, () => {});
+  const result = await runner.runNk(client, { execute: true, force: false, maxAttempts: 3, sleepMs: 1, nkBatchSize: 8 }, () => {});
   assert.equal(result.finalized, true);
   assert.deepEqual(calls, ['nk-screener-results', 'nk-screener-run']);
 });
@@ -48,14 +48,18 @@ async function runTop5(options) {
   return calls.filter((query) => query.action === 'telegram-daily-picks');
 }
 
-test('Top 5 readiness uses lock_only while dry-run generation does not', async () => {
+test('dry-run only calls Top 5 readiness, never generation', async () => {
   const calls = await runTop5(runner.parseArgs(['node', 'runner', '--dry-run', '--skip-progress']));
-  assert.deepEqual(calls[0], { action: 'telegram-daily-picks', lock_only: 1, dry_run: 1 });
-  assert.deepEqual(calls[1], { action: 'telegram-daily-picks', dry_run: 1 });
+  assert.deepEqual(calls, [{ action: 'telegram-daily-picks', lock_only: 1, dry_run: 1 }]);
 });
 
-test('--send calls actual Top 5 generation only after readiness passes', async () => {
+test('--send without --execute only checks readiness', async () => {
   const calls = await runTop5(runner.parseArgs(['node', 'runner', '--send', '--skip-progress']));
+  assert.deepEqual(calls, [{ action: 'telegram-daily-picks', lock_only: 1, dry_run: 1 }]);
+});
+
+test('--execute --send calls actual Top 5 generation only after readiness passes', async () => {
+  const calls = await runTop5(runner.parseArgs(['node', 'runner', '--execute', '--send', '--skip-progress']));
   assert.deepEqual(calls[0], { action: 'telegram-daily-picks', lock_only: 1, dry_run: 1 });
   assert.deepEqual(calls[1], { action: 'telegram-daily-picks' });
 });
@@ -70,4 +74,11 @@ test('Top 5 generation is not called when readiness is not ready', async () => {
   } };
   await runner.main(runner.parseArgs(['node', 'runner', '--skip-progress']), { env: { CRON_SECRET: 'test' }, client, log: () => {} });
   assert.deepEqual(calls.filter((query) => query.action === 'telegram-daily-picks'), [{ action: 'telegram-daily-picks', lock_only: 1, dry_run: 1 }]);
+});
+
+
+test('--dry-run never calls mutating screener endpoints', async () => {
+  const calls=[]; const client={call: async q => { calls.push(q); if(['screener','daytrade-screener','nk-screener-results'].includes(q.action)) return {meta:{}}; if(q.action==='telegram-daily-picks') return {ready:false}; throw new Error('mutating '+q.action); }};
+  await runner.main(runner.parseArgs(['node','runner','--dry-run','--skip-progress']), {env:{CRON_SECRET:'test'},client,log:()=>{}});
+  assert.equal(calls.some(q => ['refresh-screener','nk-screener-run','daytrade-screener-run'].includes(q.action)), false);
 });
