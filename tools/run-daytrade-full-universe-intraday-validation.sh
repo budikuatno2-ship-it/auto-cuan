@@ -102,7 +102,6 @@ const q=read(newest('daytrade-intraday-provider-cache-quality-'))||{}, agg=read(
 const quarantineTickers=arr(q.intraday_quarantine_tickers).map(r=>String(r.ticker||r).toUpperCase()).sort();
 const dailyOnlyTickers=arr(q.daily_score_only_tickers).map(String).map(t=>t.toUpperCase()).sort();
 const coverage=coverageLib.coverageFromObserve(latestBundle, requestedLimit);
-coverage.requested_limit=requestedLimit || coverage.requested_limit;
 const evidenceScope=coverageLib.evidenceScope(coverage);
 const finalGate=coverageLib.finalGate({ evidence_scope:evidenceScope, gate_status:gate.gate_status||gate.dry_run_gate_status||'BLOCK', gate_block_reasons:gate.block_reasons, coverage, quarantine_tickers:quarantineTickers, daily_score_only_tickers:dailyOnlyTickers });
 const byHint=h=>tickers(q.ticker_records,r=>arr(r.remediation_hints).includes(h));

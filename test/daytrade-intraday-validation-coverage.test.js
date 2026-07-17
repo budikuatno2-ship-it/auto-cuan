@@ -14,6 +14,43 @@ test('candidate-only evidence remains BLOCK', () => {
   assert.equal(coverage.finalGate({ evidence_scope: 'candidate_level', coverage: c }).dry_run_gate, 'BLOCK');
 });
 
+test('session bundle top-level coverage propagates without using the old requested limit', () => {
+  const c = coverage.coverageFromObserve({
+    requested_limit: 772,
+    universe_source: 'full_daytrade_eligible_universe',
+    universe_count: 772,
+    evaluated_universe_count: 772,
+    provider_checked_count: 772,
+    provider_matched_count: 771,
+    provider_missing_count: 1,
+    candidate_count: 18,
+    rows: [{ ticker: 'AAA' }]
+  }, 957);
+  assert.equal(c.requested_limit, 772);
+  assert.equal(c.universe_source, 'full_daytrade_eligible_universe');
+  assert.equal(c.universe_count, 772);
+  assert.equal(c.candidate_count, 18);
+  assert.equal(coverage.evidenceScope(c), 'full_universe');
+  const result = coverage.finalGate({ evidence_scope: coverage.evidenceScope(c), gate_status: 'BLOCK', gate_block_reasons: ['provider/data quality failed'], coverage: c });
+  assert.equal(result.dry_run_gate, 'BLOCK');
+  assert.match(result.block_reasons.join('; '), /provider\/data quality failed/);
+});
+
+test('nested coverage takes precedence over flattened session bundle fields', () => {
+  const c = coverage.coverageFromObserve({
+    requested_limit: 957,
+    universe_source: 'unknown',
+    universe_count: 0,
+    evaluated_universe_count: 0,
+    provider_checked_count: 0,
+    coverage: full({ requested_limit: 772, universe_source: 'full_daytrade_eligible_universe', candidate_count: 18 })
+  }, 957);
+  assert.equal(c.requested_limit, 772);
+  assert.equal(c.universe_source, 'full_daytrade_eligible_universe');
+  assert.equal(c.universe_count, 12);
+  assert.equal(c.candidate_count, 18);
+});
+
 test('partial universe evidence remains BLOCK', () => {
   const c = full({ universe_count: 7, evaluated_universe_count: 7, provider_checked_count: 7, provider_matched_count: 7, full_universe_loaded: false });
   assert.equal(coverage.evidenceScope(c), 'partial_universe');
