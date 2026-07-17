@@ -6,6 +6,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const readinessLib = require('../lib/daytrade-intraday-readiness');
+const coverageLib = require('../lib/daytrade-intraday-validation-coverage');
 const BUNDLE_PREFIX = 'daytrade-intraday-validation-bundle-';
 const BUNDLE_SESSION_PREFIX = 'daytrade-intraday-validation-bundle-session-';
 const INTRADAY_PREFIX = 'daytrade-intraday-observe-';
@@ -157,14 +158,23 @@ function buildBundleReport(input) {
   const incomplete = tickersBy(rows, (r) => r && r.data_quality === 'INCOMPLETE_INTRADAY');
   const unknown = tickersBy(rows, (r) => r && (r.intraday_priority_label === 'INTRADAY_UNKNOWN' || r.intraday_confirmation_label === 'INTRADAY_UNKNOWN'));
   const scoreDeltas = scoreDeltaSummary(compare);
+  const coverage = coverageLib.coverageFromObserve(intraday, input.requestedLimit);
   return {
     date: readiness.date || intraday.date || compare.date,
     generated_at: new Date().toISOString(),
     validation_status: readiness.readiness_status,
     recommendation: readiness.recommendation,
-    intraday_candidates_count: m.candidates,
-    provider_matched_count: m.provider_matched_count,
-    provider_missing_count: m.provider_missing_count,
+    intraday_candidates_count: coverage.candidate_count,
+    requested_limit: coverage.requested_limit,
+    universe_source: coverage.universe_source,
+    universe_count: coverage.universe_count,
+    evaluated_universe_count: coverage.evaluated_universe_count,
+    provider_checked_count: coverage.provider_checked_count,
+    provider_matched_count: coverage.provider_matched_count,
+    provider_missing_count: coverage.provider_missing_count,
+    sampled_evidence_tickers: coverage.sampled_evidence_tickers,
+    excluded_count: coverage.excluded_count,
+    quarantined_count: coverage.quarantined_count,
     data_quality_counts: m.data_quality || {},
     priority_label_counts: m.priority_label_counts || {},
     confirmation_label_counts: m.confirmation_label_counts || {},
@@ -185,7 +195,7 @@ function buildBundleReport(input) {
 }
 
 function markdownReport(report) {
-  return `# Day Trade Intraday Validation Bundle — ${report.date}\n\nGenerated at: ${report.generated_at}\n\n## Validation\n\n- validation_status: ${report.validation_status}\n- recommendation: ${report.recommendation}\n- intraday candidates count: ${report.intraday_candidates_count}\n- provider_matched_count: ${report.provider_matched_count ?? 'n/a'}\n- provider_missing_count: ${report.provider_missing_count ?? 'n/a'}\n- data_quality counts: ${fmtObj(report.data_quality_counts)}\n- priority_label_counts: ${fmtObj(report.priority_label_counts)}\n- confirmation_label_counts: ${fmtObj(report.confirmation_label_counts)}\n- cautions: ${fmtList(report.cautions)}\n\n## Movement\n\n- top5_entering: ${fmtList(report.top5_entering)}\n- top5_leaving: ${fmtList(report.top5_leaving)}\n- top score movers: ${fmtList(report.top_score_movers)}\n\n## Data Quality Tickers\n\n- no_intraday_data tickers: ${fmtList(report.no_intraday_data_tickers)}\n- incomplete_intraday tickers: ${fmtList(report.incomplete_intraday_tickers)}\n- intraday_unknown tickers: ${fmtList(report.intraday_unknown_tickers)}\n\n## Generated Reports\n\n- intraday observe: ${report.paths.intraday}\n- adjusted-vs-normal: ${report.paths.compare}\n- readiness: ${report.paths.readiness}\n- bundle markdown: ${report.paths.markdown}\n${report.paths.json ? `- bundle json: ${report.paths.json}\n` : ''}\n## Read-only Confirmation\n\n${report.read_only_confirmation}\n`;
+  return `# Day Trade Intraday Validation Bundle — ${report.date}\n\nGenerated at: ${report.generated_at}\n\n## Validation\n\n- validation_status: ${report.validation_status}\n- recommendation: ${report.recommendation}\n- requested_limit: ${report.requested_limit}\n- universe_source: ${report.universe_source}\n- universe_count: ${report.universe_count}\n- evaluated_universe_count: ${report.evaluated_universe_count}\n- provider_checked_count: ${report.provider_checked_count}\n- intraday candidates count: ${report.intraday_candidates_count}\n- provider_matched_count: ${report.provider_matched_count ?? 'n/a'}\n- provider_missing_count: ${report.provider_missing_count ?? 'n/a'}\n- sampled_evidence_tickers: ${fmtList(report.sampled_evidence_tickers)}\n- excluded_count: ${report.excluded_count}\n- quarantined_count: ${report.quarantined_count}\n- data_quality counts: ${fmtObj(report.data_quality_counts)}\n- priority_label_counts: ${fmtObj(report.priority_label_counts)}\n- confirmation_label_counts: ${fmtObj(report.confirmation_label_counts)}\n- cautions: ${fmtList(report.cautions)}\n\n## Movement\n\n- top5_entering: ${fmtList(report.top5_entering)}\n- top5_leaving: ${fmtList(report.top5_leaving)}\n- top score movers: ${fmtList(report.top_score_movers)}\n\n## Data Quality Tickers\n\n- no_intraday_data tickers: ${fmtList(report.no_intraday_data_tickers)}\n- incomplete_intraday tickers: ${fmtList(report.incomplete_intraday_tickers)}\n- intraday_unknown tickers: ${fmtList(report.intraday_unknown_tickers)}\n\n## Generated Reports\n\n- intraday observe: ${report.paths.intraday}\n- adjusted-vs-normal: ${report.paths.compare}\n- readiness: ${report.paths.readiness}\n- bundle markdown: ${report.paths.markdown}\n${report.paths.json ? `- bundle json: ${report.paths.json}\n` : ''}\n## Read-only Confirmation\n\n${report.read_only_confirmation}\n`;
 }
 
 function sessionArchiveReport(report, sourceDailyBundlePath) {
@@ -245,7 +255,7 @@ async function prepare(args, runner) {
   const compareDate = dateFromReport(compare, compareFile, COMPARE_PREFIX);
   const readinessDate = dateFromReport(readiness, readinessFile, READINESS_PREFIX);
   if (intradayDate !== compareDate || intradayDate !== readinessDate) throw new Error(`Generated report dates mismatch: intraday=${intradayDate} compare=${compareDate} readiness=${readinessDate}`);
-  return { intraday, compare, readiness, paths: { intraday: intradayFile, compare: compareFile, readiness: readinessFile } };
+  return { intraday, compare, readiness, requestedLimit: args.limit, paths: { intraday: intradayFile, compare: compareFile, readiness: readinessFile } };
 }
 
 async function main() {

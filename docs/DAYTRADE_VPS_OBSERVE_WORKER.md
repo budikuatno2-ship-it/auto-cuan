@@ -163,3 +163,9 @@ This workflow is read-only and is intended for local/VPS observation only. It do
    ```bash
    node tools/report-daytrade-adjusted-vs-normal.js --normal-file /path/to/normal.json --adjusted-file /path/to/adjusted.json --json
    ```
+
+### Full-universe intraday validation evidence
+
+`tools/run-daytrade-full-universe-intraday-validation.sh` is a manual, one-shot validation wrapper. Its final report records requested/universe/evaluated/provider coverage separately from intraday candidate rows. `full_universe` evidence requires the requested universe to be loaded, evaluated, and provider-checked; lower coverage is reported as `partial_universe`, while legacy candidate-only artifacts are `candidate_level`.
+
+A `PASS` or `PASS_WITH_QUARANTINE` result is **validation-only**. It never enables production intraday scoring: `DAYTRADE_INTRADAY_SCORE_ENABLED` remains false, Telegram remains disabled, and quarantined tickers must remain explicitly `DAILY_SCORE_ONLY`.
