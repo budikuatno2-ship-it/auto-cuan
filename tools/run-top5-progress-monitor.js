@@ -53,8 +53,28 @@ async function readLatestRows(fetchImpl, supabaseUrl, key, tickers) {
 function progressMessage(row, progress, event, source) {
   return ['📊 ' + (row.ticker || '-') + ' — ' + event.type, 'Harga: ' + progress.latest_price + ' | Entry: ' + progress.entry_used, 'TP1/TP2/SL: ' + (progress.tp1 || '-') + '/' + (progress.tp2 || '-') + '/' + (progress.sl || '-'), 'Gain: ' + (progress.gain_pct == null ? '-' : progress.gain_pct + '%') + ' | Sumber: ' + (source.price_date || '-'), 'Pantauan, bukan rekomendasi beli/jual.'].join('\n');
 }
-function shouldSendEvent(options, event, state, source) {
-  return !!(options && options.send && monitor.isTelegramSendableEvent(event) && !(state && state.events && state.events[event.event_key]) && !(source && source.stale) && telegram.isTelegramEnabled());
+function jakartaDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type).value;
+  return part('year') + '-' + part('month') + '-' + part('day');
+}
+function dateOnlyInJakarta(value) {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return jakartaDate(value);
+}
+function pickDate(row) { return dateOnlyInJakarta(row && (row.locked_date || row.date || row.trade_date)); }
+function sendGuard(row, source, currentWibDate) {
+  const rowPickDate = pickDate(row);
+  const rowDates = ['locked_date', 'date', 'trade_date'].map((field) => dateOnlyInJakarta(row && row[field])).filter(Boolean);
+  if (!rowDates.length || rowDates.some((date) => date !== currentWibDate)) return { reason: 'STALE_PICK_DATE', pick_date: rowPickDate };
+  const priceDate = dateOnlyInJakarta(source && source.price_date);
+  if (priceDate !== currentWibDate) return { reason: 'PRICE_DATE_NOT_TODAY', pick_date: rowPickDate };
+  return { reason: null, pick_date: rowPickDate };
+}
+function shouldSendEvent(options, event, state, source, guard) {
+  return !!(options && options.send && monitor.isTelegramSendableEvent(event) && !(state && state.events && state.events[event.event_key]) && !(source && source.stale) && !(guard && guard.reason) && telegram.isTelegramEnabled());
 }
 function isAfterJakartaMarketClose(now) { const d = now || new Date(); return d.getUTCHours() > 9 || (d.getUTCHours() === 9 && d.getUTCMinutes() >= 15); }
 function isActiveProgressRow(row) {
@@ -70,7 +90,8 @@ async function run(options, deps) {
   const supabaseUrl = env.SUPABASE_URL, key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
   if (!supabaseUrl || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY are required.');
   if (typeof fetchImpl !== 'function') throw new Error('Native fetch is required (Node.js 20 or newer).');
-  const file = deps.stateFile || statePath(), state = await readState(file);
+  const file = deps.stateFile || statePath(), state = await readState(file), now = deps.now ? new Date(deps.now) : new Date();
+  const currentWibDate = jakartaDate(now);
   const query = await fetchSupabaseRows(fetchImpl, supabaseUrl, key, 'telegram_daily_picks', { select: '*', order: 'date.desc', limit: String(options.limit) });
   // `is_final` marks locked/final publication in telegram_daily_picks; it is
   // not a terminal monitor state and must remain eligible for progress checks.
@@ -79,11 +100,11 @@ async function run(options, deps) {
   const report = [];
   for (const row of rows) {
     const ticker = String(row.ticker).toUpperCase(), sourceRows = {}; prices.SOURCES.forEach((s) => { sourceRows[s.table] = latest[s.table][ticker]; });
-    const source = prices.resolveLatestPrice(sourceRows, { now: new Date().toISOString() });
-    const detected = monitor.detectTop5ProgressEvents(row, source.price, { now: new Date().toISOString(), priceTimestamp: source.price_date });
+    const source = prices.resolveLatestPrice(sourceRows, { now: now.toISOString() });
+    const detected = monitor.detectTop5ProgressEvents(row, source.price, { now: now.toISOString(), priceTimestamp: source.price_date });
     const trackingKey = ticker + ':' + (row.locked_date || row.date || row.trade_date || 'unknown-date');
-    const tracking = monitor.deriveTrackingStatus(row, detected, state.tracking[trackingKey], { now: new Date().toISOString(), afterMarketClose: isAfterJakartaMarketClose() });
-    state.tracking[trackingKey] = Object.assign({}, state.tracking[trackingKey], { status: tracking.status, updated_at: new Date().toISOString() });
+    const tracking = monitor.deriveTrackingStatus(row, detected, state.tracking[trackingKey], { now: now.toISOString(), afterMarketClose: isAfterJakartaMarketClose(now) });
+    state.tracking[trackingKey] = Object.assign({}, state.tracking[trackingKey], { status: tracking.status, updated_at: now.toISOString() });
     let events = detected.events.slice();
     if (state.tracking[trackingKey].tp1_notified) events = events.filter((event) => event.type !== 'TP1_HIT');
     // A prior terminal state and max-age expiry are state/log-only.  TP2 and
@@ -95,14 +116,16 @@ async function run(options, deps) {
     }
     for (const event of events) {
       const duplicate = !!state.events[event.event_key];
-      const canSend = shouldSendEvent(options, event, state, source);
+      const guard = sendGuard(row, source, currentWibDate);
+      const sendable = monitor.isTelegramSendableEvent(event) && !duplicate && !source.stale && !guard.reason;
+      const canSend = shouldSendEvent(options, event, state, source, guard);
       let sent = false;
-      if (canSend) { const result = await telegram.sendTelegramMessage(progressMessage(row, detected.progress, event, source)); if (result && result.sent) { sent = true; state.events[event.event_key] = { sent_at: new Date().toISOString(), ticker, type: event.type }; if (event.type === 'TP1_HIT') state.tracking[trackingKey].tp1_notified = true; } }
-      report.push({ ticker, event: event.type, event_key: event.event_key, source: source.price_source, price_date: source.price_date, sendable: monitor.isTelegramSendableEvent(event), sent, duplicate, tracking: tracking.status, dry_run: !options.send });
+      if (canSend) { const result = await telegram.sendTelegramMessage(progressMessage(row, detected.progress, event, source)); if (result && result.sent) { sent = true; state.events[event.event_key] = { sent_at: now.toISOString(), ticker, type: event.type }; if (event.type === 'TP1_HIT') state.tracking[trackingKey].tp1_notified = true; } }
+      report.push({ ticker, event: event.type, event_key: event.event_key, pick_date: guard.pick_date, source: source.price_source, price_date: source.price_date, sendable, send_block_reason: guard.reason || (duplicate ? 'DUPLICATE' : (source.stale ? 'STALE_PRICE' : null)), sent, duplicate, tracking: tracking.status, dry_run: !options.send });
     }
   }
   await writeState(file, state);
-  return { dry_run: !options.send, state_file: file, checked: rows.length, events: report };
+  return { dry_run: !options.send, state_file: file, checked: rows.length, total_events: report.length, sendable_count: report.filter((event) => event.sendable).length, blocked_old_pick_count: report.filter((event) => event.send_block_reason === 'STALE_PICK_DATE').length, blocked_price_date_count: report.filter((event) => event.send_block_reason === 'PRICE_DATE_NOT_TODAY').length, sent_count: report.filter((event) => event.sent).length, duplicate_count: report.filter((event) => event.duplicate).length, events: report };
 }
 if (require.main === module) { const options = parseArgs(process.argv); run(options).then((result) => { if (options.json) console.log(JSON.stringify(result, null, 2)); else console.log('top5 progress: checked=' + result.checked + ' events=' + result.events.length + ' dry_run=' + result.dry_run + ' state=' + result.state_file); }).catch((error) => { console.error(error.message || error); process.exitCode = 1; }); }
-module.exports = { ENV_FILES, loadEnvFiles, parseArgs, readState, writeState, supabaseRestUrl, fetchSupabaseRows, readLatestRows, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };
+module.exports = { ENV_FILES, loadEnvFiles, parseArgs, readState, writeState, supabaseRestUrl, fetchSupabaseRows, readLatestRows, jakartaDate, dateOnlyInJakarta, pickDate, sendGuard, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };
