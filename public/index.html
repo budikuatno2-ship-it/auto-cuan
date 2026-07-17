@@ -1088,12 +1088,29 @@
                     <button onclick="exportNonKongloScreenerPDF()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 border border-dark-600/40 hover:text-emerald-400 hover:border-emerald-500/30 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>PDF</button>
                 </div>
             </div>
-            <!-- Stable Non-Konglo run summary -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                <div class="portfolio-card p-2.5"><div class="text-[10px] text-gray-500">UNIVERSE</div><div id="nkUniverseCount" class="text-lg font-bold text-white">-</div></div><div class="col-span-2 lg:col-span-4 text-[10px] text-gray-500">Papan Utama &amp; Pengembangan official sync</div>
-                <div class="portfolio-card p-2.5"><div class="text-[10px] text-gray-500">SCANNED</div><div id="nkScannedCount" class="text-lg font-bold text-white">-</div></div>
-                <div class="portfolio-card p-2.5"><div class="text-[10px] text-gray-500">PUBLISHED / RESULTS</div><div id="nkPublishedCount" class="text-lg font-bold text-emerald-400">-</div></div>
-                <div class="portfolio-card p-2.5"><div class="text-[10px] text-gray-500">FAILED</div><div id="nkFailedCount" class="text-lg font-bold text-amber-400">-</div><div id="nkStagingCount" class="text-[10px] text-gray-500">Staging: -</div></div>
+            <!-- Non-Konglo run summary -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-1.5" id="nkScreenerStats">
+                <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Universe</p>
+                    <p id="nkUniverseCount" class="text-sm font-bold text-gray-200">-</p>
+                </div>
+                <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Scanned</p>
+                    <p id="nkScannedCount" class="text-sm font-bold text-gray-200">-</p>
+                </div>
+                <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Published / Results</p>
+                    <p id="nkPublishedCount" class="text-sm font-bold text-emerald-400">-</p>
+                </div>
+                <div class="bg-dark-800/60 border border-dark-600/25 rounded-lg px-2 py-2 text-center">
+                    <p class="text-[9px] text-gray-500 uppercase tracking-wide">Failed</p>
+                    <p id="nkFailedCount" class="text-sm font-bold text-amber-400">-</p>
+                    <p id="nkStagingCount" class="text-[10px] text-gray-500">Staging: -</p>
+                </div>
+            </div>
+            <div class="text-[10px] text-gray-500 space-y-0.5">
+                <p>Non-Konglo excludes verified Konglo from official Utama &amp; Pengembangan universe.</p>
+                <p>Official universe = Non-Konglo + official-board Konglo.</p>
             </div>
             <!-- Progress bar (hidden when not scanning) -->
             <div id="nkScreenerProgress" class="hidden">
