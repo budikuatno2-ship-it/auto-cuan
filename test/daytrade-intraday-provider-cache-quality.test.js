@@ -18,7 +18,7 @@ function sample(id, rows, overrides) {
   return Object.assign({ date: '2026-07-08', generated_at: `2026-07-08T0${id}:00:00.000Z`, session_id: `s${id}`, _source_type: 'session_archive', validation_status: 'BLOCK', provider_missing_count: 0, data_quality_counts: { OK: rows.length }, priority_label_counts: {}, confirmation_label_counts: {}, rows }, overrides || {});
 }
 
-test('provider/cache quality report blocks and emits remediation hints', () => {
+test('provider/cache quality report quarantines every provider-bad row and emits remediation hints', () => {
   const report = lib.buildProviderCacheQualityReport([
     sample(8, [
       row('TCID', { data_quality: 'NO_INTRADAY_DATA', intraday_priority_label: 'INTRADAY_UNKNOWN', intraday_confirmation_label: 'INTRADAY_UNKNOWN', intraday_fallback_action: 'DAILY_SCORE_ONLY', intraday_data_diagnostics: diag({ candle_count: 0, valid_ohlc_candles: 0, positive_volume_candles: 0, total_volume: 0 }) }),
@@ -27,24 +27,31 @@ test('provider/cache quality report blocks and emits remediation hints', () => {
     sample(9, [row('BBSI', { data_quality: 'INCOMPLETE_INTRADAY', intraday_fallback_action: 'DAILY_SCORE_ONLY', intraday_data_diagnostics: diag({ candle_count: 1, positive_volume_candles: 0, total_volume: 0 }) })], { data_quality_counts: { INCOMPLETE_INTRADAY: 1 } })
   ], { nowMs: Date.UTC(2026, 6, 9) });
 
-  assert.equal(report.quality_status, 'BLOCK');
+  assert.equal(report.quality_status, 'PASS_WITH_QUARANTINE');
   assert.equal(report.provider_missing_count, 1);
   assert.equal(report.incomplete_intraday_count, 2);
   assert.equal(report.intraday_unknown_count, 1);
   assert.deepEqual(report.daily_score_only_tickers, ['BBSI', 'TCID']);
   assert.deepEqual(report.repeated_blocker_tickers, [{ ticker: 'BBSI', count: 2 }]);
-  assert.ok(report.block_reasons.includes('provider_missing_count > 0'));
+  assert.equal(report.quarantined_provider_missing_count, 1);
+  assert.equal(report.non_quarantined_provider_missing_count, 0);
   assert.equal(report.total_provider_missing_count, 1);
   assert.equal(report.visible_provider_missing_count, 1);
-  assert.equal(report.quarantined_provider_missing_count, 0);
-  assert.ok(report.block_reasons.includes('INTRADAY_UNKNOWN > 0'));
-  assert.ok(report.block_reasons.includes('DAILY_SCORE_ONLY fallback exists'));
+  assert.equal(report.non_quarantined_incomplete_intraday_count, 0);
+  assert.equal(report.non_quarantined_intraday_unknown_count, 0);
   const bbsi = report.ticker_records.find((r) => r.ticker === 'BBSI');
   assert.ok(bbsi.remediation_hints.includes('stale cache'));
   assert.ok(bbsi.remediation_hints.includes('sparse candles'));
   assert.ok(bbsi.remediation_hints.includes('zero OHLC'));
   assert.ok(bbsi.remediation_hints.includes('zero volume'));
   assert.ok(bbsi.remediation_hints.includes('incomplete intraday cache'));
+  for (const rec of report.ticker_records) {
+    assert.equal(rec.quarantine_action, 'DAILY_SCORE_ONLY');
+    assert.equal(rec.intraday_score_adjustment, 0);
+    assert.equal(rec.intraday_score_adjustment_preview, 0);
+    assert.equal(rec.intraday_priority_label, 'INTRADAY_UNKNOWN');
+    assert.equal(rec.intraday_confirmation_label, 'INTRADAY_UNKNOWN');
+  }
 });
 
 
@@ -105,7 +112,7 @@ test('repeated intraday blockers are quarantined as daily-only with zero adjustm
 
   assert.deepEqual(report.repeated_blocker_tickers, [{ ticker: 'BBSI', count: 2 }]);
   assert.equal(report.intraday_quarantine_count, 1);
-  assert.deepEqual(report.intraday_quarantine_tickers, [{ ticker: 'BBSI', count: 2, quarantine_reason: 'REPEATED_INTRADAY_BLOCKER count=2 threshold=2', quarantine_action: 'DAILY_SCORE_ONLY' }]);
+  assert.deepEqual(report.intraday_quarantine_tickers, [{ ticker: 'BBSI', count: 2, quarantine_reason: 'PROVIDER_DATA_QUALITY_INCOMPLETE_INTRADAY DAILY_SCORE_ONLY', quarantine_action: 'DAILY_SCORE_ONLY' }]);
   assert.equal(report.non_quarantined_incomplete_intraday_count, 0);
   const quarantined = report.ticker_records.filter((r) => r.ticker === 'BBSI');
   assert.equal(quarantined.length, 2);
@@ -114,20 +121,30 @@ test('repeated intraday blockers are quarantined as daily-only with zero adjustm
     assert.equal(rec.quarantine_action, 'DAILY_SCORE_ONLY');
     assert.equal(rec.intraday_score_adjustment_preview, 0);
     assert.equal(rec.intraday_score_adjustment, 0);
-    assert.ok(rec.intraday_score_adjustment_reasons.includes('REPEATED_INTRADAY_BLOCKER DAILY_SCORE_ONLY 0'));
+    assert.ok(rec.intraday_score_adjustment_reasons.includes('PROVIDER_DATA_QUALITY_INCOMPLETE_INTRADAY DAILY_SCORE_ONLY 0'));
   }
   assert.match(lib.markdownReport(report), /quarantined tickers: BBSI \(2\)/);
 });
 
-test('non-quarantined blockers still block provider/cache quality gate', () => {
+test('a provider-bad row is quarantined even when it appears only once', () => {
   const report = lib.buildProviderCacheQualityReport([
     sample(8, [row('BBSI', { data_quality: 'INCOMPLETE_INTRADAY', intraday_fallback_action: 'DAILY_SCORE_ONLY' }), row('TCID', { data_quality: 'NO_INTRADAY_DATA', intraday_priority_label: 'INTRADAY_UNKNOWN', intraday_confirmation_label: 'INTRADAY_UNKNOWN', intraday_fallback_action: 'DAILY_SCORE_ONLY' })], { provider_missing_count: 1, data_quality_counts: { INCOMPLETE_INTRADAY: 1, NO_INTRADAY_DATA: 1 }, priority_label_counts: { INTRADAY_UNKNOWN: 1 } }),
     sample(9, [row('BBSI', { data_quality: 'INCOMPLETE_INTRADAY', intraday_fallback_action: 'DAILY_SCORE_ONLY' })], { data_quality_counts: { INCOMPLETE_INTRADAY: 1 } })
   ], { nowMs: Date.UTC(2026, 6, 9) });
 
-  assert.equal(report.intraday_quarantine_count, 1);
-  assert.equal(report.non_quarantined_provider_missing_count, 1);
-  assert.equal(report.non_quarantined_intraday_unknown_count, 1);
-  assert.ok(report.block_reasons.includes('non_quarantined_provider_missing_count > 0'));
-  assert.ok(report.block_reasons.includes('non_quarantined_INTRADAY_UNKNOWN > 0'));
+  assert.equal(report.intraday_quarantine_count, 2);
+  assert.equal(report.non_quarantined_provider_missing_count, 0);
+  assert.equal(report.non_quarantined_intraday_unknown_count, 0);
+  assert.equal(report.quality_status, 'PASS_WITH_QUARANTINE');
+});
+
+test('provider-bad INTRADAY_UNKNOWN cannot remain a public intraday confirmed pick', () => {
+  const report = lib.buildProviderCacheQualityReport([
+    sample(8, [row('BAD', { data_quality: 'INCOMPLETE_INTRADAY', intraday_priority_label: 'INTRADAY_STRONG', intraday_confirmation_label: 'INTRADAY_CONFIRM', intraday_score_adjustment_preview: 9 })], { data_quality_counts: { INCOMPLETE_INTRADAY: 1 } })
+  ]);
+  const bad = report.ticker_records[0];
+  assert.equal(bad.quarantine_action, 'DAILY_SCORE_ONLY');
+  assert.equal(bad.intraday_score_adjustment_preview, 0);
+  assert.equal(bad.intraday_priority_label, 'INTRADAY_UNKNOWN');
+  assert.equal(bad.intraday_confirmation_label, 'INTRADAY_UNKNOWN');
 });
