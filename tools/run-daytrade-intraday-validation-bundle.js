@@ -165,6 +165,7 @@ function buildBundleReport(input) {
     validation_status: readiness.readiness_status,
     recommendation: readiness.recommendation,
     intraday_candidates_count: coverage.candidate_count,
+    candidate_count: coverage.candidate_count,
     requested_limit: coverage.requested_limit,
     universe_source: coverage.universe_source,
     universe_count: coverage.universe_count,
@@ -174,6 +175,7 @@ function buildBundleReport(input) {
     provider_missing_count: coverage.provider_missing_count,
     sampled_evidence_tickers: coverage.sampled_evidence_tickers,
     excluded_count: coverage.excluded_count,
+    exclusion_reason_counts: coverage.exclusion_reason_counts || {},
     quarantined_count: coverage.quarantined_count,
     data_quality_counts: m.data_quality || {},
     priority_label_counts: m.priority_label_counts || {},
@@ -195,7 +197,7 @@ function buildBundleReport(input) {
 }
 
 function markdownReport(report) {
-  return `# Day Trade Intraday Validation Bundle — ${report.date}\n\nGenerated at: ${report.generated_at}\n\n## Validation\n\n- validation_status: ${report.validation_status}\n- recommendation: ${report.recommendation}\n- requested_limit: ${report.requested_limit}\n- universe_source: ${report.universe_source}\n- universe_count: ${report.universe_count}\n- evaluated_universe_count: ${report.evaluated_universe_count}\n- provider_checked_count: ${report.provider_checked_count}\n- intraday candidates count: ${report.intraday_candidates_count}\n- provider_matched_count: ${report.provider_matched_count ?? 'n/a'}\n- provider_missing_count: ${report.provider_missing_count ?? 'n/a'}\n- sampled_evidence_tickers: ${fmtList(report.sampled_evidence_tickers)}\n- excluded_count: ${report.excluded_count}\n- quarantined_count: ${report.quarantined_count}\n- data_quality counts: ${fmtObj(report.data_quality_counts)}\n- priority_label_counts: ${fmtObj(report.priority_label_counts)}\n- confirmation_label_counts: ${fmtObj(report.confirmation_label_counts)}\n- cautions: ${fmtList(report.cautions)}\n\n## Movement\n\n- top5_entering: ${fmtList(report.top5_entering)}\n- top5_leaving: ${fmtList(report.top5_leaving)}\n- top score movers: ${fmtList(report.top_score_movers)}\n\n## Data Quality Tickers\n\n- no_intraday_data tickers: ${fmtList(report.no_intraday_data_tickers)}\n- incomplete_intraday tickers: ${fmtList(report.incomplete_intraday_tickers)}\n- intraday_unknown tickers: ${fmtList(report.intraday_unknown_tickers)}\n\n## Generated Reports\n\n- intraday observe: ${report.paths.intraday}\n- adjusted-vs-normal: ${report.paths.compare}\n- readiness: ${report.paths.readiness}\n- bundle markdown: ${report.paths.markdown}\n${report.paths.json ? `- bundle json: ${report.paths.json}\n` : ''}\n## Read-only Confirmation\n\n${report.read_only_confirmation}\n`;
+  return `# Day Trade Intraday Validation Bundle — ${report.date}\n\nGenerated at: ${report.generated_at}\n\n## Validation\n\n- validation_status: ${report.validation_status}\n- recommendation: ${report.recommendation}\n- requested_limit: ${report.requested_limit}\n- universe_source: ${report.universe_source}\n- universe_count: ${report.universe_count}\n- evaluated_universe_count: ${report.evaluated_universe_count}\n- provider_checked_count: ${report.provider_checked_count}\n- candidate_count: ${report.candidate_count}\n- provider_matched_count: ${report.provider_matched_count ?? 'n/a'}\n- provider_missing_count: ${report.provider_missing_count ?? 'n/a'}\n- sampled_evidence_tickers: ${fmtList(report.sampled_evidence_tickers)}\n- excluded_count: ${report.excluded_count}\n- exclusion_reason_counts: ${fmtObj(report.exclusion_reason_counts)}\n- quarantined_count: ${report.quarantined_count}\n- data_quality counts: ${fmtObj(report.data_quality_counts)}\n- priority_label_counts: ${fmtObj(report.priority_label_counts)}\n- confirmation_label_counts: ${fmtObj(report.confirmation_label_counts)}\n- cautions: ${fmtList(report.cautions)}\n\n## Movement\n\n- top5_entering: ${fmtList(report.top5_entering)}\n- top5_leaving: ${fmtList(report.top5_leaving)}\n- top score movers: ${fmtList(report.top_score_movers)}\n\n## Data Quality Tickers\n\n- no_intraday_data tickers: ${fmtList(report.no_intraday_data_tickers)}\n- incomplete_intraday tickers: ${fmtList(report.incomplete_intraday_tickers)}\n- intraday_unknown tickers: ${fmtList(report.intraday_unknown_tickers)}\n\n## Generated Reports\n\n- intraday observe: ${report.paths.intraday}\n- adjusted-vs-normal: ${report.paths.compare}\n- readiness: ${report.paths.readiness}\n- bundle markdown: ${report.paths.markdown}\n${report.paths.json ? `- bundle json: ${report.paths.json}\n` : ''}\n## Read-only Confirmation\n\n${report.read_only_confirmation}\n`;
 }
 
 function sessionArchiveReport(report, sourceDailyBundlePath) {
