@@ -353,14 +353,17 @@ async function handleScreenerRead(req, res, supabase) {
   var rawUserId = (req.headers['x-user-id'] || '').trim();
   var rawUsername = (req.headers['x-username'] || '').trim().toLowerCase();
 
-  if (!rawUserId && !rawUsername) {
+  // A CRON_SECRET bearer may read status for the VPS-only manual runner.
+  // Browser reads remain login-gated; no new endpoint is introduced.
+  var cronStatusReadAllowed = verifyCronSecret(req);
+  if (!cronStatusReadAllowed && !rawUserId && !rawUsername) {
     return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
   }
-  if (rawUsername === 'guest') {
+  if (!cronStatusReadAllowed && rawUsername === 'guest') {
     return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
   }
 
-  var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req);
+  var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req) || cronStatusReadAllowed;
   var userData = null;
 
   if (!legacyBudiReadAllowed) {
@@ -7603,9 +7606,14 @@ async function handleNkScreenerRun(req, res, supabase) {
   const runDate = getWibDateString();
   const forceRun = req.query.force === '1';
 
-  // If no meta or different date or status is idle/published → start fresh.
-  // completed_no_candidates is also terminal, but same-day rerun should be explicit via force=1.
-  if (!meta || meta.run_date !== runDate || meta.status === 'published' || meta.status === 'idle' || (meta.status === 'completed_no_candidates' && forceRun)) {
+  // A same-day terminal run is immutable unless the operator explicitly forces it.
+  // This is essential for safe VPS loops: a later auto call must never turn a
+  // published Non-Konglo board back into SCANNING.
+  var nkTerminal = ['published', 'completed_no_candidates', 'completed', 'daily'].indexOf(String(meta && meta.status || '').toLowerCase()) >= 0;
+  if (meta && meta.run_date === runDate && nkTerminal && !forceRun) {
+    return res.status(200).json({ success: true, step: 'finalize', status: String(meta.status || 'published').toUpperCase(), already_done: true, message: 'Non-Konglo sudah selesai hari ini. Gunakan force=1 untuk mulai ulang.', meta: meta });
+  }
+  if (!meta || meta.run_date !== runDate || meta.status === 'idle' || (nkTerminal && forceRun)) {
     return await handleNkScreenerStart(req, res, supabase);
   }
 
@@ -8568,14 +8576,17 @@ async function handleNkScreenerResults(req, res, supabase) {
   var rawUserId = (req.headers['x-user-id'] || '').trim();
   var rawUsername = (req.headers['x-username'] || '').trim().toLowerCase();
 
-  if (!rawUserId && !rawUsername) {
+  // A CRON_SECRET bearer may read status for the VPS-only manual runner.
+  // Browser reads remain login-gated; no new endpoint is introduced.
+  var cronStatusReadAllowed = verifyCronSecret(req);
+  if (!cronStatusReadAllowed && !rawUserId && !rawUsername) {
     return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
   }
-  if (rawUsername === 'guest') {
+  if (!cronStatusReadAllowed && rawUsername === 'guest') {
     return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
   }
 
-  var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req);
+  var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req) || cronStatusReadAllowed;
   var userData = null;
 
   if (!legacyBudiReadAllowed) {
@@ -8675,11 +8686,26 @@ async function handleNkScreenerResults(req, res, supabase) {
   nkSorted = await enrichNonKongloHalfCandleDebt(nkSorted);
   nkSorted = await enrichConfluenceRows(supabase, nkSorted, true);
 
-  return res.status(200).json({
-    success: true,
-    meta: meta || { calculated_at: null, status: 'idle', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 },
-    results: nkSorted
-  });
+  var activeRunDate = meta && meta.run_date ? meta.run_date : getWibDateString();
+  var stagingCount = 0;
+  var nkBatchIndex = null;
+  var nkBatchCount = null;
+  try {
+    var stagingRead = await supabase.from('swing_screener_non_konglo_staging').select('*', { count: 'exact', head: true }).eq('run_date', activeRunDate);
+    stagingCount = Number(stagingRead.count) || 0;
+    var jobsRead = await supabase.from('swing_screener_non_konglo_jobs').select('batch_index,status').eq('run_date', activeRunDate).order('batch_index', { ascending: true });
+    var nkJobs = jobsRead.data || [];
+    nkBatchCount = nkJobs.length;
+    var activeJob = nkJobs.find(function(job) { return job.status === 'processing'; }) || nkJobs.find(function(job) { return job.status === 'pending'; });
+    nkBatchIndex = activeJob && activeJob.batch_index != null ? activeJob.batch_index : (nkBatchCount ? nkBatchCount - 1 : null);
+  } catch (e) {}
+  var nkMeta = Object.assign({ calculated_at: null, updated_at: null, status: 'idle', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 }, meta || {});
+  nkMeta.result_count = nkMeta.published_count != null ? nkMeta.published_count : nkSorted.length;
+  nkMeta.staging_count = stagingCount;
+  nkMeta.batch_index = nkBatchIndex;
+  nkMeta.batch_count = nkBatchCount;
+  nkMeta.status_label = nkMeta.status === 'scanning' || nkMeta.status === 'finalizing' ? 'SCANNING' : (['published', 'daily', 'completed', 'completed_no_candidates'].indexOf(String(nkMeta.status).toLowerCase()) >= 0 ? 'DAILY/PUBLISHED' : 'STALE SCAN');
+  return res.status(200).json({ success: true, meta: nkMeta, universe_count: nkMeta.universe_count, scanned_count: nkMeta.scanned_count, failed_count: nkMeta.failed_count, published_count: nkMeta.published_count, result_count: nkMeta.result_count, staging_count: stagingCount, batch_index: nkBatchIndex, batch_count: nkBatchCount, results: nkSorted });
 }
 
 // --- META helper ---
