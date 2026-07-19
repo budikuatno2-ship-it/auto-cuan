@@ -7300,13 +7300,33 @@ function isTerminalPick(pick) {
   return false;
 }
 
+// Detects the non-mutating dry-run flag for the Telegram follow-up monitor.
+// Accepts both ?dry_run=1 and ?dryRun=1 (also tolerant of "true"/"yes").
+function isMonitorDryRunRequest(req) {
+  if (!req || !req.query) return false;
+  var raw = req.query.dry_run != null ? req.query.dry_run : req.query.dryRun;
+  if (raw == null) return false;
+  var v = String(raw).trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
+// Resolves the human-readable monitor source for a pick row.
+// Same precedence used elsewhere: raw.monitor_source -> category -> raw.category.
+function resolveMonitorSource(pick) {
+  var raw = (pick && pick.raw_payload) || {};
+  return raw.monitor_source || (pick && pick.category) || raw.category || null;
+}
+
 async function handleTelegramMonitorPicks(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, checked_count: 0, error: 'Unauthorized.' });
   try {
     var force = req.query && req.query.force === '1';
+    // Non-mutating preview mode: read + calculate identically, but suppress every
+    // Supabase write, Telegram send, and AI narration call. Never alters state.
+    var dryRun = isMonitorDryRunRequest(req);
     var weekendBypassed = false;
     if (!isJakartaWeekday()) {
-      if (!force) return res.status(200).json({ success: true, skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, checked_count: 0 });
+      if (!force) return res.status(200).json({ success: true, skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, checked_count: 0, dry_run: dryRun ? true : undefined });
       weekendBypassed = true;
     }
     var hour = getWibHourString();
@@ -7325,10 +7345,15 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     var allRows = q.data || [];
     var rows = allRows.filter(function(r) { return !isTerminalPick(r); });
 
-    if (rows.length === 0) return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, sent_count: 0, checked_count: 0, error: null });
+    if (rows.length === 0) {
+      if (dryRun) return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, checked_count: 0, events: [], individual_message_previews: [], batch_message_preview: null, error: null });
+      return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, sent_count: 0, checked_count: 0, error: null });
+    }
     var lines = [(isFinal ? '🏁' : '⏱') + ' AUTO-CUAN MONITOR ' + hour, ''];
     var shown = 0;
     var aiNarrationResults = [];
+    var dryRunEvents = [];
+    var individualMessagePreviews = [];
     for (var i = 0; i < rows.length; i++) {
       var pck = rows[i];
       if (!isFinal && pck.is_final) continue;
@@ -7359,12 +7384,14 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) update.hit_tp1_at = update.last_checked_at;
       if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) update.hit_tp2_at = update.last_checked_at;
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) update.hit_sl_at = update.last_checked_at;
-      await supabase.from('telegram_daily_picks').update(update).eq('id', pck.id);
+      // WRITE SUPPRESSION: dry-run never touches telegram_daily_picks (status, hit_* timestamps, last_checked_at).
+      if (!dryRun) await supabase.from('telegram_daily_picks').update(update).eq('id', pck.id);
 
       // Attempt AI note for significant status updates (note-only: appended to template)
       var monitorAiNote = null;
       var significantStatuses = ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE', 'RUNNING'];
-      if (significantStatuses.indexOf(ev.status) >= 0) {
+      // AI SUPPRESSION: dry-run never calls AI narration services.
+      if (!dryRun && significantStatuses.indexOf(ev.status) >= 0) {
         try {
           var narrationResult = await aiNarration.narrateMonitorUpdate(pck, ev, px);
           aiNarrationResults.push({ ticker: pck.ticker, status: ev.status, source: narrationResult.source, error: narrationResult.error || null });
@@ -7388,8 +7415,14 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         // Use premium short monitor hit format for significant events
         var hitMsg = telegramTemplates.formatMonitorHitMessage(pck, ev, px);
         if (monitorAiNote) hitMsg += '\nCatatan AI: ' + monitorAiNote;
-        var hitResult = await telegramNotifier.sendTelegramMessage(hitMsg, { timeout_ms: 3000 });
-        if (hitResult.sent) shown++;
+        // TELEGRAM SUPPRESSION: dry-run records the message it WOULD send instead of sending.
+        if (dryRun) {
+          individualMessagePreviews.push({ ticker: pck.ticker, source: resolveMonitorSource(pck), status: ev.status, message: hitMsg });
+          shown++;
+        } else {
+          var hitResult = await telegramNotifier.sendTelegramMessage(hitMsg, { timeout_ms: 3000 });
+          if (hitResult.sent) shown++;
+        }
       } else {
         // Non-significant updates go into the batch message
         lines.push(pck.ticker + ' — ' + ev.status.replace(/_/g, ' '));
@@ -7401,9 +7434,45 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         lines.push('');
         shown++;
       }
+
+      // Diagnostic-only preview data (dry-run). Percentage change is reported for
+      // observability only; it never triggers a Telegram notification in this patch.
+      if (dryRun) {
+        var refPrice = toNum(pck.entry1);
+        if (refPrice == null) refPrice = toNum(pck.entry2);
+        var lastPx = px && px.last != null ? toNum(px.last) : null;
+        var pctChange = (refPrice != null && refPrice > 0 && lastPx != null) ? Math.round(((lastPx - refPrice) / refPrice) * 10000) / 100 : null;
+        var sendReason;
+        if (significantHit) sendReason = 'New significant hit (' + ev.status + '): would send an individual Telegram message.';
+        else if (isNewHit) sendReason = 'New hit (' + ev.status + ') but not in the individual-send set; would appear in the batch summary only.';
+        else if (['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0) sendReason = 'Status ' + ev.status + ' already recorded previously (not a new hit); no individual message.';
+        else sendReason = 'Non-significant status (' + ev.status + '); would appear in the batch summary only.';
+        dryRunEvents.push({
+          ticker: pck.ticker,
+          source: resolveMonitorSource(pck),
+          previous_status: pck.status != null ? pck.status : null,
+          simulated_status: ev.status,
+          current_price: lastPx,
+          best_effort: !!(px && px.bestEffort),
+          entry_range: { entry1: toNum(pck.entry1), entry2: toNum(pck.entry2) },
+          tp1: toNum(pck.tp1),
+          tp2: toNum(pck.tp2),
+          sl: toNum(pck.sl),
+          reference_price: refPrice,
+          pct_change: pctChange,
+          would_be_new_significant_hit: significantHit,
+          is_new_hit: isNewHit,
+          sendable: significantHit,
+          send_reason: sendReason,
+          note: ev.note
+        });
+      }
     }
     if (shown === 0) lines.push('Tidak ada ticker aktif yang perlu dimonitor (sudah final).');
     lines.push('Bukan rekomendasi beli/jual. DYOR.');
+    if (dryRun) {
+      return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, is_final: isFinal, dates_queried: dateRange, checked_count: rows.length, events: dryRunEvents, individual_message_previews: individualMessagePreviews, batch_message_preview: lines.join('\n'), error: null });
+    }
     var sendResult = await telegramNotifier.sendTelegramMessage(lines.join('\n'));
     return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, sent_count: sendResult.sent ? 1 : 0, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, error: null, telegram: sendResult });
   } catch (e) { return res.status(200).json({ success: false, sent_count: 0, checked_count: 0, error: e.message || String(e) }); }
@@ -12176,6 +12245,13 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 }
 
 module.exports.__test = {
+  handleTelegramMonitorPicks: handleTelegramMonitorPicks,
+  isMonitorDryRunRequest: isMonitorDryRunRequest,
+  resolveMonitorSource: resolveMonitorSource,
+  evaluateMonitorStatus: evaluateMonitorStatus,
+  fetchLatestPriceForMonitor: fetchLatestPriceForMonitor,
+  getMonitorDateRange: getMonitorDateRange,
+  isTerminalPick: isTerminalPick,
   buildBoardValidatedIpoDiagnostics: buildBoardValidatedIpoDiagnostics,
   candidatePassesPublicTelegramSafetyGate: candidatePassesPublicTelegramSafetyGate,
   getSwingPublicSignalSafetyRejectionReason: getSwingPublicSignalSafetyRejectionReason,
