@@ -58,6 +58,12 @@ aiNarration.narrateMonitorUpdate = async function () {
   return { note: null, source: 'test-ai' };
 };
 
+// Pin the monitor clock to a top-of-hour minute so these pre-existing tests remain
+// deterministic after the hourly-batch cadence gate was added: at the top of the
+// hour the routine batch summary is due and is sent alongside individual events,
+// which is exactly the "individual + batch" behavior these tests assert.
+sectorHot.__test.monitorClock.getJakartaMinute = function () { return 0; };
+
 // ------------------------------------------------------------------
 // Mock Supabase client covering exactly the access patterns used by
 // handleTelegramMonitorPicks() and fetchLatestPriceForMonitor().

@@ -60,6 +60,12 @@ aiNarration.narrateMonitorUpdate = async function () {
   return { note: null, source: 'test-ai' };
 };
 
+// Pin the monitor clock to a top-of-hour minute so these pre-existing dedup tests
+// remain deterministic after the hourly-batch cadence gate was added. At the top of
+// the hour the routine batch summary is due, preserving the "one update/notification
+// per group + batch send" expectations these tests assert.
+sectorHot.__test.monitorClock.getJakartaMinute = function () { return 0; };
+
 // ------------------------------------------------------------------
 // Mock Supabase client. Price lookups are keyed by ticker so multiple rows
 // for the same ticker all resolve to the same current price (as in production).

@@ -7378,6 +7378,110 @@ function dedupeActiveMonitorRows(rows) {
   return { kept: kept, ignored: ignored, duplicateGroups: duplicateGroups };
 }
 
+// Injectable clock indirection for the monitor's hourly-batch cadence. Production
+// reads the real Jakarta minute; tests override monitorClock.getJakartaMinute to
+// exercise the top-of-hour vs half-hour branches deterministically. getJakartaNow()
+// returns a Date already shifted to WIB, so getUTCMinutes() is the Jakarta minute.
+var monitorClock = {
+  getJakartaMinute: function () { return getJakartaNow().getUTCMinutes(); }
+};
+
+// The routine batch summary is a once-per-hour digest. The monitor cron fires near
+// the top of the hour (:00) and near the half hour (:30); the batch is due only on
+// the top-of-hour run. Scheduled runs can be delivered a few minutes late, so we
+// bucket by half-hour (minute 0-29 = top-of-hour = due; 30-59 = half-hour =
+// suppressed) rather than requiring an exact :00 match. This changes no cron entry.
+function isHourlyBatchDue(minute) {
+  var m = Number(minute);
+  if (!isFinite(m)) return false;
+  return m >= 0 && m < 30;
+}
+
+// Dry-run-only override flag. When combined with dry_run=1 it lets the caller
+// generate the hourly batch preview regardless of the current minute. It never
+// enables a real send and is ignored entirely outside dry-run mode.
+function isPreviewHourlyBatchRequest(req) {
+  if (!req || !req.query) return false;
+  var raw = req.query.preview_hourly_batch != null ? req.query.preview_hourly_batch : req.query.previewHourlyBatch;
+  if (raw == null) return false;
+  var v = String(raw).trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
+// Maps an internal monitor source token to a human-readable label for the digest.
+// Order matters: "non"/"nk" is checked before "konglo" so Swing Non-Konglo is not
+// misclassified as Swing Konglo.
+function formatMonitorSourceLabel(source) {
+  var s = String(source == null ? '' : source).toLowerCase();
+  if (!s) return 'Lainnya';
+  if (s.indexOf('daytrade') >= 0 || s.indexOf('day trade') >= 0 || s.indexOf('day_trade') >= 0) return 'Day Trade';
+  if (s.indexOf('non') >= 0 || s.indexOf('nk') >= 0) return 'Swing Non-Konglo';
+  if (s.indexOf('konglo') >= 0) return 'Swing Konglo';
+  if (s.indexOf('top5') >= 0 || s.indexOf('top 5') >= 0) return 'Top 5';
+  return String(source);
+}
+
+// Builds one compact batch-digest block for a single deduplicated active
+// recommendation. Pure/deterministic (no I/O, no mutation). Percentage wording is
+// context-aware: before entry activation it is labelled as distance from entry
+// (not P/L); after activation it is labelled as P/L versus the reference entry.
+// For SL_HIT the intraday low and SL level are shown explicitly so a recovered last
+// price does not make the alert look contradictory.
+function formatMonitorBatchRow(pick, ev, px) {
+  pick = pick || {};
+  ev = ev || {};
+  px = px || {};
+  var ticker = String(pick.ticker != null ? pick.ticker : '-').toUpperCase();
+  var sourceLabel = formatMonitorSourceLabel(resolveMonitorSource(pick));
+  var status = String(ev.status || 'UNKNOWN');
+  var last = px.last != null ? toNum(px.last) : null;
+  var low = px.low != null ? toNum(px.low) : last;
+  var entry1 = toNum(pick.entry1);
+  var entry2 = toNum(pick.entry2);
+  var tp1 = toNum(pick.tp1);
+  var tp2 = toNum(pick.tp2);
+  var sl = toNum(pick.sl);
+  var refPrice = entry1 != null ? entry1 : entry2;
+
+  var lines = [];
+  // Header: ticker · source — status
+  lines.push(ticker + ' \u00B7 ' + sourceLabel + ' \u2014 ' + status.replace(/_/g, ' '));
+
+  // Latest price + entry range
+  var entryRangeStr;
+  if (entry1 != null && entry2 != null) {
+    entryRangeStr = fmtPrice(Math.min(entry1, entry2)) + '\u2013' + fmtPrice(Math.max(entry1, entry2));
+  } else {
+    entryRangeStr = fmtPrice(entry1 != null ? entry1 : entry2);
+  }
+  lines.push('Last: ' + fmtPrice(last) + ' \u00B7 Entry: ' + entryRangeStr + (px.bestEffort ? ' (best effort)' : ''));
+
+  // Percentage movement vs the canonical monitor reference price (entry).
+  // Activation = the position is considered entered (hit_entry_at recorded, or the
+  // status has moved to RUNNING/TP/SL). Before that, price movement is only a
+  // DISTANCE from entry, not a realised/unrealised P/L.
+  var activated = pick.hit_entry_at != null || ['RUNNING', 'TP1_HIT', 'TP2_HIT', 'SL_HIT'].indexOf(status) >= 0;
+  if (refPrice != null && refPrice > 0 && last != null) {
+    var pct = ((last - refPrice) / refPrice) * 100;
+    var pctStr = (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
+    if (activated) {
+      lines.push('P/L vs entry ' + fmtPrice(refPrice) + ': ' + pctStr);
+    } else {
+      lines.push('Jarak dari entry ' + fmtPrice(refPrice) + ': ' + pctStr + ' (belum entry)');
+    }
+  }
+
+  // TP/SL levels
+  lines.push('TP1/TP2: ' + fmtPrice(tp1) + ' / ' + fmtPrice(tp2) + ' \u00B7 SL: ' + fmtPrice(sl));
+
+  // SL_HIT clarity: show intraday low AND SL so a rebounded last price does not
+  // look contradictory next to an SL alert.
+  if (status === 'SL_HIT') {
+    lines.push('Low intraday: ' + fmtPrice(low) + ' \u00B7 SL: ' + fmtPrice(sl));
+  }
+  return lines.join('\n');
+}
+
 async function handleTelegramMonitorPicks(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, checked_count: 0, error: 'Unauthorized.' });
   try {
@@ -7385,6 +7489,11 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     // Non-mutating preview mode: read + calculate identically, but suppress every
     // Supabase write, Telegram send, and AI narration call. Never alters state.
     var dryRun = isMonitorDryRunRequest(req);
+    // Hourly-batch cadence, computed once per invocation. previewHourlyBatch is a
+    // dry-run-only override; it has no effect in normal mode (it is ANDed with dryRun).
+    var jakartaMinute = monitorClock.getJakartaMinute();
+    var hourlyBatchDue = isHourlyBatchDue(jakartaMinute);
+    var previewHourlyBatch = dryRun && isPreviewHourlyBatchRequest(req);
     var weekendBypassed = false;
     if (!isJakartaWeekday()) {
       if (!force) return res.status(200).json({ success: true, skipped: true, forced: false, weekend_bypassed: false, reason: 'weekend', sent_count: 0, checked_count: 0, dry_run: dryRun ? true : undefined });
@@ -7407,7 +7516,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     var activeRows = allRows.filter(function(r) { return !isTerminalPick(r); });
 
     if (activeRows.length === 0) {
-      if (dryRun) return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, checked_count: 0, raw_row_count: 0, deduped_row_count: 0, duplicate_groups: [], ignored_duplicate_rows: [], events: [], individual_message_previews: [], batch_message_preview: null, error: null });
+      if (dryRun) return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, checked_count: 0, raw_row_count: 0, deduped_row_count: 0, duplicate_groups: [], ignored_duplicate_rows: [], events: [], individual_message_previews: [], jakarta_minute: jakartaMinute, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, preview_hourly_batch: previewHourlyBatch, batch_send_reason: (hourlyBatchDue ? ('Top-of-hour run (Jakarta minute ' + jakartaMinute + '): batch would be sent, but there are no active picks.') : ('Half-hour run (Jakarta minute ' + jakartaMinute + '): batch suppressed by cadence.')), individual_sendable_count: 0, batch_message_preview: null, error: null });
       return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, sent_count: 0, checked_count: 0, error: null });
     }
 
@@ -7425,6 +7534,8 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     var aiNarrationResults = [];
     var dryRunEvents = [];
     var individualMessagePreviews = [];
+    var individualSendableCount = 0;
+    var individualSentCount = 0;
     for (var i = 0; i < rows.length; i++) {
       var pck = rows[i];
       if (!isFinal && pck.is_final) continue;
@@ -7474,37 +7585,43 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         }
       }
 
-      // Always use deterministic template; append AI note if available
-      // Only send notification if this is a NEW hit (not previously recorded)
+      // Only notify if this is a NEW hit (idempotent per recommendation via the
+      // hit_entry_at / hit_tp1_at / hit_tp2_at / hit_sl_at markers).
       var isNewHit = false;
       if ((ev.status === 'RUNNING' || ev.status === 'IN_ENTRY_ZONE') && !pck.hit_entry_at) isNewHit = true;
       if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) isNewHit = true;
       if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) isNewHit = true;
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) isNewHit = true;
       var significantHit = isNewHit && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
+
+      // IMMEDIATE INDIVIDUAL NOTIFICATION — fires on EVERY monitor invocation
+      // (both the top-of-hour and the half-hour run), independent of the hourly
+      // batch cadence. Idempotent: sent at most once per recommendation because it
+      // is gated on the "new hit" check above. This must never be delayed to the
+      // hourly batch.
       if (significantHit) {
+        individualSendableCount++;
         // Use premium short monitor hit format for significant events
         var hitMsg = telegramTemplates.formatMonitorHitMessage(pck, ev, px);
         if (monitorAiNote) hitMsg += '\nCatatan AI: ' + monitorAiNote;
         // TELEGRAM SUPPRESSION: dry-run records the message it WOULD send instead of sending.
         if (dryRun) {
           individualMessagePreviews.push({ ticker: pck.ticker, source: resolveMonitorSource(pck), status: ev.status, message: hitMsg });
-          shown++;
         } else {
           var hitResult = await telegramNotifier.sendTelegramMessage(hitMsg, { timeout_ms: 3000 });
-          if (hitResult.sent) shown++;
+          if (hitResult.sent) individualSentCount++;
         }
-      } else {
-        // Non-significant updates go into the batch message
-        lines.push(pck.ticker + ' — ' + ev.status.replace(/_/g, ' '));
-        lines.push(ev.note + (px.bestEffort ? ' (best effort)' : ''));
-        lines.push('Entry 1: ' + fmtPrice(pck.entry1) + ' · Last: ' + fmtPrice(px.last));
-        lines.push('TP1/TP2: ' + fmtPrice(pck.tp1) + ' / ' + fmtPrice(pck.tp2) + ' · SL: ' + fmtPrice(pck.sl));
-        if (ev.isFinal && !isFinal) lines.push('Status: selesai, tidak akan dimonitor di update berikutnya.');
-        if (monitorAiNote) lines.push('Catatan AI: ' + monitorAiNote);
-        lines.push('');
-        shown++;
       }
+
+      // HOURLY BATCH DIGEST ROW — a compact status block for EVERY deduplicated
+      // active recommendation. Assembled on every run (pure string building), but
+      // only actually sent once per hour via the cadence gate after the loop.
+      var batchBlock = formatMonitorBatchRow(pck, ev, px);
+      if (ev.isFinal && !isFinal) batchBlock += '\nStatus: selesai, tidak akan dimonitor di update berikutnya.';
+      if (monitorAiNote) batchBlock += '\nCatatan AI: ' + monitorAiNote;
+      lines.push(batchBlock);
+      lines.push('');
+      shown++;
 
       // Diagnostic-only preview data (dry-run). Percentage change is reported for
       // observability only; it never triggers a Telegram notification in this patch.
@@ -7552,11 +7669,33 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     }
     if (shown === 0) lines.push('Tidak ada ticker aktif yang perlu dimonitor (sudah final).');
     lines.push('Bukan rekomendasi beli/jual. DYOR.');
+
+    // HOURLY BATCH CADENCE GATE. The routine batch summary is a once-per-hour
+    // digest: sent only on the top-of-hour run (Jakarta minute 0-29) and
+    // suppressed on the half-hour run (minute 30-59). The immediate individual
+    // event notifications above are NOT affected by this gate — they already fired
+    // in the loop on this run. No cron entry is changed by this logic.
+    var batchText = lines.join('\n');
+    var batchSendReason;
+    if (hourlyBatchDue) batchSendReason = 'Top-of-hour run (Jakarta minute ' + jakartaMinute + '): routine batch summary is sent once this hour.';
+    else if (previewHourlyBatch) batchSendReason = 'Half-hour run (Jakarta minute ' + jakartaMinute + '): a real run would suppress the batch; preview generated via preview_hourly_batch (dry-run only).';
+    else batchSendReason = 'Half-hour run (Jakarta minute ' + jakartaMinute + '): routine batch summary suppressed; only immediate individual events send.';
+
     if (dryRun) {
-      return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, is_final: isFinal, dates_queried: dateRange, checked_count: rows.length, raw_row_count: rawActiveCount, deduped_row_count: rows.length, duplicate_groups: duplicateGroups, ignored_duplicate_rows: ignoredDuplicateRows, events: dryRunEvents, individual_message_previews: individualMessagePreviews, batch_message_preview: lines.join('\n'), error: null });
+      // preview_hourly_batch=1 (dry-run only) forces the batch preview regardless
+      // of the current minute. Without it, the preview is produced only when the
+      // real cadence would send. Nothing here mutates state, sends, or narrates.
+      var batchPreview = (hourlyBatchDue || previewHourlyBatch) ? batchText : null;
+      return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, is_final: isFinal, dates_queried: dateRange, checked_count: rows.length, raw_row_count: rawActiveCount, deduped_row_count: rows.length, duplicate_groups: duplicateGroups, ignored_duplicate_rows: ignoredDuplicateRows, events: dryRunEvents, individual_message_previews: individualMessagePreviews, jakarta_minute: jakartaMinute, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, preview_hourly_batch: previewHourlyBatch, batch_send_reason: batchSendReason, individual_sendable_count: individualSendableCount, batch_message_preview: batchPreview, error: null });
     }
-    var sendResult = await telegramNotifier.sendTelegramMessage(lines.join('\n'));
-    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, sent_count: sendResult.sent ? 1 : 0, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, error: null, telegram: sendResult });
+
+    // NORMAL MODE: individual messages already sent in-loop. Only the routine batch
+    // summary is cadence-gated here — sent at the top of the hour, suppressed at :30.
+    var sendResult = { sent: false, skipped: true, reason: 'batch_suppressed_by_cadence' };
+    if (hourlyBatchDue) {
+      sendResult = await telegramNotifier.sendTelegramMessage(batchText);
+    }
+    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, batch_send_reason: batchSendReason, sent_count: (hourlyBatchDue && sendResult.sent) ? 1 : 0, individual_sent_count: individualSentCount, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, error: null, telegram: sendResult });
   } catch (e) { return res.status(200).json({ success: false, sent_count: 0, checked_count: 0, error: e.message || String(e) }); }
 }
 
@@ -12329,6 +12468,11 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 module.exports.__test = {
   handleTelegramMonitorPicks: handleTelegramMonitorPicks,
   isMonitorDryRunRequest: isMonitorDryRunRequest,
+  isPreviewHourlyBatchRequest: isPreviewHourlyBatchRequest,
+  isHourlyBatchDue: isHourlyBatchDue,
+  monitorClock: monitorClock,
+  formatMonitorSourceLabel: formatMonitorSourceLabel,
+  formatMonitorBatchRow: formatMonitorBatchRow,
   resolveMonitorSource: resolveMonitorSource,
   dedupeActiveMonitorRows: dedupeActiveMonitorRows,
   compareMonitorRowRecency: compareMonitorRowRecency,
