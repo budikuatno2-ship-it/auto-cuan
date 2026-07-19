@@ -4,7 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
-const { loadEnvFiles, parseArgs, readState, writeState, readLatestRows, fetchSupabaseRows, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run } = require('../tools/run-top5-progress-monitor');
+const { loadEnvFiles, validateAsOfDatetime, validateHistoricalOptions, parseArgs, readState, writeState, readLatestRows, fetchSupabaseRows, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run } = require('../tools/run-top5-progress-monitor');
+const telegram = require('../lib/telegram-notifier');
 
 function runnerFetch(row, priceDate, calls) {
   return async (url) => {
@@ -16,6 +17,42 @@ function runnerFetch(row, priceDate, calls) {
 test('runner defaults to dry-run and only enables send explicitly', () => {
   assert.equal(parseArgs(['node', 'runner']).dryRun, true);
   assert.equal(parseArgs(['node', 'runner', '--send']).send, true);
+});
+test('historical CLI requires explicit dry-run and a timezone-aware datetime', () => {
+  const parsed = parseArgs(['node', 'runner', '--dry-run', '--as-of-datetime', '2026-07-17T14:00:00+07:00', '--json']);
+  assert.equal(parsed.dryRun, true);
+  assert.equal(parsed.dryRunExplicit, true);
+  assert.equal(parsed.send, false);
+  assert.equal(parsed.sendRequested, false);
+  assert.equal(parsed.asOfDatetime, '2026-07-17T14:00:00+07:00');
+  assert.throws(() => parseArgs(['node', 'runner', '--as-of-datetime', '2026-07-17T14:00:00+07:00']), /explicitly supplied --dry-run/);
+  assert.throws(() => parseArgs(['node', 'runner', '--dry-run', '--as-of-datetime']), /requires a value/);
+});
+test('historical CLI rejects every occurrence of --send regardless of argument order', () => {
+  const datetime = '2026-07-17T14:00:00+07:00';
+  assert.throws(() => parseArgs(['node', 'runner', '--send', '--dry-run', '--as-of-datetime', datetime]), /cannot be combined with --send/);
+  assert.throws(() => parseArgs(['node', 'runner', '--dry-run', '--as-of-datetime', datetime, '--send']), /cannot be combined with --send/);
+  assert.throws(() => parseArgs(['node', 'runner', '--dry-run', '--send', '--dry-run', '--as-of-datetime', datetime]), /cannot be combined with --send/);
+});
+test('historical datetime validation rejects date-only, offset-free, Z, impossible, invalid-offset, and future values', () => {
+  const currentTime = new Date('2026-07-19T00:00:00Z');
+  [
+    '2026-07-17',
+    '2026-07-17T14:00:00',
+    '2026-07-17T07:00:00Z',
+    '2026-02-30T14:00:00+07:00',
+    '2026-07-17T25:00:00+07:00',
+    '2026-07-17T14:00:00+14:01'
+  ].forEach((value) => assert.throws(() => validateAsOfDatetime(value, currentTime), /--as-of-datetime/));
+  assert.throws(() => validateAsOfDatetime('2026-07-20T14:00:00+07:00', currentTime), /must not be in the future/);
+  assert.equal(validateAsOfDatetime('2026-07-17T14:00:00+07:00', currentTime).toISOString(), '2026-07-17T07:00:00.000Z');
+});
+test('programmatic historical options repeat send and explicit dry-run safety validation', () => {
+  const currentTime = new Date('2026-07-19T00:00:00Z');
+  const base = { asOfDatetime: '2026-07-17T14:00:00+07:00', dryRun: true, dryRunExplicit: true, send: false };
+  assert.throws(() => validateHistoricalOptions({ ...base, send: true }, currentTime), /cannot be combined with --send/);
+  assert.throws(() => validateHistoricalOptions({ ...base, sendRequested: true }, currentTime), /cannot be combined with --send/);
+  assert.throws(() => validateHistoricalOptions({ ...base, dryRunExplicit: false }, currentTime), /explicitly supplied --dry-run/);
 });
 test('VPS state file persists idempotency event keys without duplicate records', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'top5-progress-'));
@@ -58,6 +95,80 @@ test('today pick and today price date remain sendable, while an old price date i
   const stalePrice = await run({ send: true, limit: 1 }, deps('2026-07-16', path.join(dir, 'stale.json')));
   assert.ok(stalePrice.events.some((event) => event.event === 'GAIN_3_PCT' && event.sendable === false && event.send_block_reason === 'PRICE_DATE_NOT_TODAY'));
   assert.equal(stalePrice.sent_count, 0);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+test('historical dry-run uses Friday time and price with isolated non-persisted state and no Telegram call', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'top5-progress-historical-'));
+  const sentinelFile = path.join(dir, 'production-state.json');
+  const absentFile = path.join(dir, 'must-not-be-created.json');
+  const sentinel = 'production-state-must-remain-untouched';
+  await fs.writeFile(sentinelFile, sentinel);
+  const row = { ticker: 'ABCD', locked_date: '2026-07-17', entry_high: 100, tp1: 110, tp2: 120, sl: 95 };
+  const calls = [];
+  const options = { send: false, sendRequested: false, dryRun: true, dryRunExplicit: true, asOfDatetime: '2026-07-17T14:00:00+07:00', limit: 1 };
+  const deps = { env: { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'key' }, fetch: runnerFetch(row, '2026-07-17', calls), stateFile: sentinelFile };
+  const originalSend = telegram.sendTelegramMessage;
+  let telegramCalls = 0;
+  telegram.sendTelegramMessage = async () => { telegramCalls++; return { sent: true }; };
+  try {
+    const result = await run(options, deps);
+    const eligible = result.events.find((event) => event.event === 'GAIN_3_PCT');
+    assert.ok(eligible);
+    assert.equal(eligible.sendable, true);
+    assert.equal(eligible.send_attempted, false);
+    assert.equal(eligible.send_skip_reason, 'HISTORICAL_DRY_RUN');
+    assert.equal(eligible.sent, false);
+    assert.equal(eligible.pick_date, '2026-07-17');
+    assert.equal(eligible.price_date, '2026-07-17');
+    assert.equal(result.attempted_count, 0);
+    assert.equal(result.failed_count, 0);
+    assert.equal(result.sent_count, 0);
+    assert.equal(result.historical_dry_run, true);
+    assert.equal(result.simulation, true);
+    assert.equal(result.evaluation_datetime, '2026-07-17T14:00:00+07:00');
+    assert.equal(result.evaluation_date_wib, '2026-07-17');
+    assert.equal(result.state_mode, 'ISOLATED_IN_MEMORY');
+    assert.equal(result.state_persisted, false);
+    assert.equal(result.state_file, null);
+    assert.match(result.simulation_notice, /not an exact replay/);
+    assert.equal(telegramCalls, 0);
+    assert.equal(await fs.readFile(sentinelFile, 'utf8'), sentinel);
+    assert.equal(isAfterJakartaMarketClose(new Date(options.asOfDatetime)), false);
+
+    await run(options, { ...deps, stateFile: absentFile });
+    await assert.rejects(fs.access(absentFile), /ENOENT/);
+    assert.equal(telegramCalls, 0);
+  } finally {
+    telegram.sendTelegramMessage = originalSend;
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+test('historical dry-run rejects programmatic send before database or state access', async () => {
+  let fetchCalled = false;
+  await assert.rejects(
+    run({ send: true, sendRequested: true, dryRun: true, dryRunExplicit: true, asOfDatetime: '2026-07-17T14:00:00+07:00', limit: 1 }, {
+      env: {},
+      fetch: async () => { fetchCalled = true; throw new Error('must not fetch'); },
+      stateFile: '/must/not/be/read.json'
+    }),
+    /cannot be combined with --send/
+  );
+  assert.equal(fetchCalled, false);
+});
+test('historical dry-run does not substitute a newer price row and still enforces pick date', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'top5-progress-historical-guards-'));
+  const options = { send: false, sendRequested: false, dryRun: true, dryRunExplicit: true, asOfDatetime: '2026-07-17T14:00:00+07:00', limit: 1 };
+  const env = { SUPABASE_URL: 'https://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'key' };
+  const fridayRow = { ticker: 'ABCD', locked_date: '2026-07-17', entry_high: 100, tp1: 110, tp2: 120, sl: 95 };
+  const newerPrice = await run(options, { env, fetch: runnerFetch(fridayRow, '2026-07-19', []), stateFile: path.join(dir, 'newer.json') });
+  assert.equal(newerPrice.sendable_count, 0);
+  assert.ok(newerPrice.events.every((event) => event.price_date == null));
+  assert.ok(newerPrice.events.some((event) => event.send_block_reason === 'PRICE_DATE_NOT_TODAY'));
+
+  const thursdayRow = { ...fridayRow, locked_date: '2026-07-16' };
+  const oldPick = await run(options, { env, fetch: runnerFetch(thursdayRow, '2026-07-17', []), stateFile: path.join(dir, 'old-pick.json') });
+  assert.equal(oldPick.sendable_count, 0);
+  assert.ok(oldPick.events.some((event) => event.send_block_reason === 'STALE_PICK_DATE'));
   await fs.rm(dir, { recursive: true, force: true });
 });
 test('only allowlisted active events can send when --send and Telegram are enabled', () => {

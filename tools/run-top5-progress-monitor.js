@@ -31,7 +31,51 @@ function loadEnvFiles(options) {
 
 loadEnvFiles();
 
-function parseArgs(argv) { const o = { dryRun: true, send: false, json: false, limit: 50 }; for (let i = 2; i < argv.length; i++) { const a = argv[i]; if (a === '--send') { o.send = true; o.dryRun = false; } else if (a === '--dry-run') { o.dryRun = true; o.send = false; } else if (a === '--json') o.json = true; else if (a === '--limit') o.limit = Math.max(1, Number(argv[++i]) || 50); } return o; }
+const AS_OF_DATETIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,3})?([+-])(\d{2}):(\d{2})$/;
+
+function validateAsOfDatetime(value, currentTime) {
+  const input = String(value || '');
+  const match = input.match(AS_OF_DATETIME_PATTERN);
+  if (!match) throw new Error('--as-of-datetime must be a full ISO-8601 datetime with an explicit numeric timezone offset (for example, 2026-07-17T14:00:00+07:00).');
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const hour = Number(match[4]), minute = Number(match[5]), second = Number(match[6]);
+  const offsetHour = Number(match[9]), offsetMinute = Number(match[10]);
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > daysInMonth[month - 1] || hour > 23 || minute > 59 || second > 59 || offsetHour > 14 || offsetMinute > 59 || (offsetHour === 14 && offsetMinute !== 0)) {
+    throw new Error('--as-of-datetime is not a valid ISO-8601 calendar datetime.');
+  }
+  const evaluationTime = new Date(input);
+  if (Number.isNaN(evaluationTime.getTime())) throw new Error('--as-of-datetime is not a valid ISO-8601 calendar datetime.');
+  const actualNow = currentTime instanceof Date ? currentTime : new Date(currentTime || Date.now());
+  if (evaluationTime.getTime() > actualNow.getTime()) throw new Error('--as-of-datetime must not be in the future.');
+  return evaluationTime;
+}
+
+function validateHistoricalOptions(options, currentTime) {
+  if (!options || !options.asOfDatetime) return null;
+  if (options.send || options.sendRequested) throw new Error('--as-of-datetime cannot be combined with --send.');
+  if (!options.dryRun || options.dryRunExplicit !== true) throw new Error('--as-of-datetime requires an explicitly supplied --dry-run.');
+  return validateAsOfDatetime(options.asOfDatetime, currentTime);
+}
+
+function parseArgs(argv) {
+  const o = { dryRun: true, dryRunExplicit: false, send: false, sendRequested: false, asOfDatetime: null, json: false, limit: 50 };
+  for (let i = 2; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--send') { o.send = true; o.sendRequested = true; o.dryRun = false; }
+    else if (a === '--dry-run') { o.dryRun = true; o.dryRunExplicit = true; o.send = false; }
+    else if (a === '--as-of-datetime') {
+      if (o.asOfDatetime != null) throw new Error('--as-of-datetime may only be supplied once.');
+      const value = argv[++i];
+      if (!value || String(value).startsWith('--')) throw new Error('--as-of-datetime requires a value.');
+      o.asOfDatetime = value;
+    } else if (a === '--json') o.json = true;
+    else if (a === '--limit') o.limit = Math.max(1, Number(argv[++i]) || 50);
+  }
+  validateHistoricalOptions(o);
+  return o;
+}
 function statePath() { return process.env.TOP5_PROGRESS_STATE_FILE || '/home/ubuntu/auto-cuan-runner/state/top5-progress-events.json'; }
 async function readState(file) { try { return JSON.parse(await fs.readFile(file, 'utf8')); } catch (e) { if (e.code === 'ENOENT') return { events: {}, tracking: {} }; throw e; } }
 async function writeState(file, state) { await fs.mkdir(path.dirname(file), { recursive: true }); await fs.writeFile(file, JSON.stringify(state, null, 2) + '\n', { mode: 0o600 }); }
@@ -42,13 +86,20 @@ async function fetchSupabaseRows(fetchImpl, supabaseUrl, key, table, params) {
   if (!response.ok) throw new Error('Supabase read failed for ' + table + ': HTTP ' + response.status + ' ' + await response.text());
   return response.json();
 }
-async function readLatestRows(fetchImpl, supabaseUrl, key, tickers) {
+async function readLatestRows(fetchImpl, supabaseUrl, key, tickers, options) {
   const uniqueTickers = [...new Set((tickers || []).filter(Boolean).map((ticker) => String(ticker).toUpperCase()))];
   const output = {}; prices.SOURCES.forEach((source) => { output[source.table] = {}; });
   if (!uniqueTickers.length) return output;
   const tickerFilter = 'in.(' + uniqueTickers.join(',') + ')';
   const results = await Promise.all(prices.SOURCES.map((source) => fetchSupabaseRows(fetchImpl, supabaseUrl, key, source.table, { select: '*', ticker: tickerFilter })));
-  results.forEach((rows, index) => { output[prices.SOURCES[index].table] = rowsByTicker(rows); }); return output;
+  const requiredPriceDate = options && options.requiredPriceDate;
+  results.forEach((rows, index) => {
+    const eligibleRows = requiredPriceDate
+      ? (rows || []).filter((row) => dateOnlyInJakarta(prices.rowDate(row)) === requiredPriceDate)
+      : rows;
+    output[prices.SOURCES[index].table] = rowsByTicker(eligibleRows);
+  });
+  return output;
 }
 function progressMessage(row, progress, event, source) {
   return ['📊 ' + (row.ticker || '-') + ' — ' + event.type, 'Harga: ' + progress.latest_price + ' | Entry: ' + progress.entry_used, 'TP1/TP2/SL: ' + (progress.tp1 || '-') + '/' + (progress.tp2 || '-') + '/' + (progress.sl || '-'), 'Gain: ' + (progress.gain_pct == null ? '-' : progress.gain_pct + '%') + ' | Sumber: ' + (source.price_date || '-'), 'Pantauan, bukan rekomendasi beli/jual.'].join('\n');
@@ -86,17 +137,21 @@ function isActiveProgressRow(row) {
 }
 async function run(options, deps) {
   options = options || parseArgs(process.argv); deps = deps || {};
+  const historicalEvaluationTime = validateHistoricalOptions(options);
+  const historicalDryRun = !!historicalEvaluationTime;
   const env = deps.env || process.env, fetchImpl = deps.fetch || global.fetch;
   const supabaseUrl = env.SUPABASE_URL, key = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY;
   if (!supabaseUrl || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY are required.');
   if (typeof fetchImpl !== 'function') throw new Error('Native fetch is required (Node.js 20 or newer).');
-  const file = deps.stateFile || statePath(), state = await readState(file), now = deps.now ? new Date(deps.now) : new Date();
+  const file = historicalDryRun ? null : (deps.stateFile || statePath());
+  const state = historicalDryRun ? { events: {}, tracking: {} } : await readState(file);
+  const now = historicalDryRun ? historicalEvaluationTime : (deps.now ? new Date(deps.now) : new Date());
   const currentWibDate = jakartaDate(now);
   const query = await fetchSupabaseRows(fetchImpl, supabaseUrl, key, 'telegram_daily_picks', { select: '*', order: 'date.desc', limit: String(options.limit) });
   // `is_final` marks locked/final publication in telegram_daily_picks; it is
   // not a terminal monitor state and must remain eligible for progress checks.
   const rows = (query || []).filter(isActiveProgressRow);
-  const latest = await readLatestRows(fetchImpl, supabaseUrl, key, rows.map((row) => row.ticker));
+  const latest = await readLatestRows(fetchImpl, supabaseUrl, key, rows.map((row) => row.ticker), historicalDryRun ? { requiredPriceDate: currentWibDate } : null);
   const report = [];
   for (const row of rows) {
     const ticker = String(row.ticker).toUpperCase(), sourceRows = {}; prices.SOURCES.forEach((s) => { sourceRows[s.table] = latest[s.table][ticker]; });
@@ -118,7 +173,7 @@ async function run(options, deps) {
       const duplicate = !!state.events[event.event_key];
       const guard = sendGuard(row, source, currentWibDate);
       const sendable = monitor.isTelegramSendableEvent(event) && !duplicate && !source.stale && !guard.reason;
-      const canSend = shouldSendEvent(options, event, state, source, guard);
+      const canSend = historicalDryRun ? false : shouldSendEvent(options, event, state, source, guard);
       let sent = false;
       let sendResult = null;
       if (canSend) {
@@ -131,18 +186,32 @@ async function run(options, deps) {
       }
       const sendSkipReason = !sendable
         ? null
-        : !options.send
-          ? 'DRY_RUN'
-          : !telegram.isTelegramEnabled()
-            ? 'TELEGRAM_DISABLED'
-            : sendResult && !sendResult.sent
-              ? (sendResult.reason || 'TELEGRAM_SEND_FAILED')
-              : null;
+        : historicalDryRun
+          ? 'HISTORICAL_DRY_RUN'
+          : !options.send
+            ? 'DRY_RUN'
+            : !telegram.isTelegramEnabled()
+              ? 'TELEGRAM_DISABLED'
+              : sendResult && !sendResult.sent
+                ? (sendResult.reason || 'TELEGRAM_SEND_FAILED')
+                : null;
       report.push({ ticker, event: event.type, event_key: event.event_key, pick_date: guard.pick_date, source: source.price_source, price_date: source.price_date, sendable, send_block_reason: guard.reason || (duplicate ? 'DUPLICATE' : (source.stale ? 'STALE_PRICE' : null)), send_attempted: canSend, send_skip_reason: sendSkipReason, sent, duplicate, tracking: tracking.status, dry_run: !options.send });
     }
   }
-  await writeState(file, state);
-  return { dry_run: !options.send, state_file: file, checked: rows.length, total_events: report.length, sendable_count: report.filter((event) => event.sendable).length, blocked_old_pick_count: report.filter((event) => event.send_block_reason === 'STALE_PICK_DATE').length, blocked_price_date_count: report.filter((event) => event.send_block_reason === 'PRICE_DATE_NOT_TODAY').length, attempted_count: report.filter((event) => event.send_attempted).length, failed_count: report.filter((event) => event.send_attempted && !event.sent).length, sent_count: report.filter((event) => event.sent).length, duplicate_count: report.filter((event) => event.duplicate).length, events: report };
+  if (!historicalDryRun) await writeState(file, state);
+  const result = { dry_run: !options.send, state_file: file, checked: rows.length, total_events: report.length, sendable_count: report.filter((event) => event.sendable).length, blocked_old_pick_count: report.filter((event) => event.send_block_reason === 'STALE_PICK_DATE').length, blocked_price_date_count: report.filter((event) => event.send_block_reason === 'PRICE_DATE_NOT_TODAY').length, attempted_count: report.filter((event) => event.send_attempted).length, failed_count: report.filter((event) => event.send_attempted && !event.sent).length, sent_count: report.filter((event) => event.sent).length, duplicate_count: report.filter((event) => event.duplicate).length, events: report };
+  if (historicalDryRun) {
+    Object.assign(result, {
+      historical_dry_run: true,
+      simulation: true,
+      evaluation_datetime: options.asOfDatetime,
+      evaluation_date_wib: currentWibDate,
+      state_mode: 'ISOLATED_IN_MEMORY',
+      state_persisted: false,
+      simulation_notice: 'Historical dry-run simulation using current database snapshots and isolated empty idempotency/tracking state; this is not an exact replay of the original production idempotency and tracking state.'
+    });
+  }
+  return result;
 }
 if (require.main === module) { const options = parseArgs(process.argv); run(options).then((result) => { if (options.json) console.log(JSON.stringify(result, null, 2)); else console.log('top5 progress: checked=' + result.checked + ' events=' + result.events.length + ' dry_run=' + result.dry_run + ' state=' + result.state_file); }).catch((error) => { console.error(error.message || error); process.exitCode = 1; }); }
-module.exports = { ENV_FILES, loadEnvFiles, parseArgs, readState, writeState, supabaseRestUrl, fetchSupabaseRows, readLatestRows, jakartaDate, dateOnlyInJakarta, pickDate, sendGuard, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };
+module.exports = { ENV_FILES, loadEnvFiles, validateAsOfDatetime, validateHistoricalOptions, parseArgs, readState, writeState, supabaseRestUrl, fetchSupabaseRows, readLatestRows, jakartaDate, dateOnlyInJakarta, pickDate, sendGuard, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };
