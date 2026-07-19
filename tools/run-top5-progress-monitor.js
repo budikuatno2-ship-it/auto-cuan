@@ -120,12 +120,29 @@ async function run(options, deps) {
       const sendable = monitor.isTelegramSendableEvent(event) && !duplicate && !source.stale && !guard.reason;
       const canSend = shouldSendEvent(options, event, state, source, guard);
       let sent = false;
-      if (canSend) { const result = await telegram.sendTelegramMessage(progressMessage(row, detected.progress, event, source)); if (result && result.sent) { sent = true; state.events[event.event_key] = { sent_at: now.toISOString(), ticker, type: event.type }; if (event.type === 'TP1_HIT') state.tracking[trackingKey].tp1_notified = true; } }
-      report.push({ ticker, event: event.type, event_key: event.event_key, pick_date: guard.pick_date, source: source.price_source, price_date: source.price_date, sendable, send_block_reason: guard.reason || (duplicate ? 'DUPLICATE' : (source.stale ? 'STALE_PRICE' : null)), sent, duplicate, tracking: tracking.status, dry_run: !options.send });
+      let sendResult = null;
+      if (canSend) {
+        sendResult = await telegram.sendTelegramMessage(progressMessage(row, detected.progress, event, source));
+        if (sendResult && sendResult.sent) {
+          sent = true;
+          state.events[event.event_key] = { sent_at: now.toISOString(), ticker, type: event.type };
+          if (event.type === 'TP1_HIT') state.tracking[trackingKey].tp1_notified = true;
+        }
+      }
+      const sendSkipReason = !sendable
+        ? null
+        : !options.send
+          ? 'DRY_RUN'
+          : !telegram.isTelegramEnabled()
+            ? 'TELEGRAM_DISABLED'
+            : sendResult && !sendResult.sent
+              ? (sendResult.reason || 'TELEGRAM_SEND_FAILED')
+              : null;
+      report.push({ ticker, event: event.type, event_key: event.event_key, pick_date: guard.pick_date, source: source.price_source, price_date: source.price_date, sendable, send_block_reason: guard.reason || (duplicate ? 'DUPLICATE' : (source.stale ? 'STALE_PRICE' : null)), send_attempted: canSend, send_skip_reason: sendSkipReason, sent, duplicate, tracking: tracking.status, dry_run: !options.send });
     }
   }
   await writeState(file, state);
-  return { dry_run: !options.send, state_file: file, checked: rows.length, total_events: report.length, sendable_count: report.filter((event) => event.sendable).length, blocked_old_pick_count: report.filter((event) => event.send_block_reason === 'STALE_PICK_DATE').length, blocked_price_date_count: report.filter((event) => event.send_block_reason === 'PRICE_DATE_NOT_TODAY').length, sent_count: report.filter((event) => event.sent).length, duplicate_count: report.filter((event) => event.duplicate).length, events: report };
+  return { dry_run: !options.send, state_file: file, checked: rows.length, total_events: report.length, sendable_count: report.filter((event) => event.sendable).length, blocked_old_pick_count: report.filter((event) => event.send_block_reason === 'STALE_PICK_DATE').length, blocked_price_date_count: report.filter((event) => event.send_block_reason === 'PRICE_DATE_NOT_TODAY').length, attempted_count: report.filter((event) => event.send_attempted).length, failed_count: report.filter((event) => event.send_attempted && !event.sent).length, sent_count: report.filter((event) => event.sent).length, duplicate_count: report.filter((event) => event.duplicate).length, events: report };
 }
 if (require.main === module) { const options = parseArgs(process.argv); run(options).then((result) => { if (options.json) console.log(JSON.stringify(result, null, 2)); else console.log('top5 progress: checked=' + result.checked + ' events=' + result.events.length + ' dry_run=' + result.dry_run + ' state=' + result.state_file); }).catch((error) => { console.error(error.message || error); process.exitCode = 1; }); }
 module.exports = { ENV_FILES, loadEnvFiles, parseArgs, readState, writeState, supabaseRestUrl, fetchSupabaseRows, readLatestRows, jakartaDate, dateOnlyInJakarta, pickDate, sendGuard, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };
