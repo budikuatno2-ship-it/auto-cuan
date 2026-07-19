@@ -1,6 +1,25 @@
 const { createClient } = require('@supabase/supabase-js');
+const { createSessionToken, buildSessionCookie, buildClearCookie } = require('../lib/admin-session');
 
 const MAX_DEVICES = 3;
+
+// Generic credential error to prevent username enumeration (invalid username and
+// invalid password produce the identical public response).
+const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah.';
+
+// Issue the signed session cookie on a successful, DB-authenticated login.
+// Admin is derived SERVER-SIDE only (never from client input). Fail-closed: if no
+// SESSION_SECRET is configured, no cookie is set and admin endpoints stay locked.
+function issueSessionCookie(res, user, usernameLower, deviceId) {
+  const isAdmin = usernameLower === 'budi';
+  try {
+    const token = createSessionToken({ userId: user.id, username: usernameLower, isAdmin: isAdmin, deviceId: deviceId });
+    if (token) res.setHeader('Set-Cookie', buildSessionCookie(token));
+  } catch (e) {
+    // Never log token/secret/device. Fail-closed: proceed without a session cookie.
+  }
+  return isAdmin;
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,7 +27,13 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { username, passwordHash, deviceId, userAgent } = req.body || {};
+    const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
+
+    // === LOGOUT === (explicit; does not require a valid token or DB access)
+    if (action === 'logout') {
+      res.setHeader('Set-Cookie', buildClearCookie());
+      return res.status(200).json({ success: true });
+    }
 
     // Validate inputs
     if (!username || !passwordHash || !deviceId) {
@@ -45,18 +70,25 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Gagal memeriksa akun.' });
     }
 
+    // Verify credentials FIRST with a single generic message so an attacker cannot
+    // distinguish "unknown username" from "wrong password" (anti-enumeration).
+    // Account-state messages (blocked / not approved) are only revealed AFTER the
+    // correct password is provided.
     if (!user) {
-      return res.status(400).json({ success: false, error: 'Username tidak ditemukan.' });
+      console.error('login-user: authentication failed (unknown account)');
+      return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
+
+    if (user.password_hash !== passwordHash) {
+      console.error('login-user: authentication failed (bad password)');
+      return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
+    }
+
+    // Credentials are valid from here on.
 
     // Check if blocked
     if (user.is_blocked) {
       return res.status(403).json({ success: false, error: 'Akun sedang diblokir.' });
-    }
-
-    // Check password
-    if (user.password_hash !== passwordHash) {
-      return res.status(400).json({ success: false, error: 'Password salah.' });
     }
 
     // Check approval status (skip for review user — review bypasses approval)
@@ -75,6 +107,7 @@ module.exports = async function handler(req, res) {
         console.error('login-user review update error:', updateError);
       }
 
+      issueSessionCookie(res, user, usernameLower, deviceId);
       return res.status(200).json({
         success: true,
         username: 'review',
@@ -102,11 +135,12 @@ module.exports = async function handler(req, res) {
         console.error('login-user update error:', updateError);
       }
 
+      const knownDeviceIsAdmin = issueSessionCookie(res, user, usernameLower, deviceId);
       return res.status(200).json({
         success: true,
         username: usernameLower,
         userId: user.id,
-        isAdmin: false
+        isAdmin: knownDeviceIsAdmin
       });
     }
 
@@ -135,11 +169,12 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Gagal memperbarui perangkat.' });
     }
 
+    const newDeviceIsAdmin = issueSessionCookie(res, user, usernameLower, deviceId);
     return res.status(200).json({
       success: true,
       username: usernameLower,
       userId: user.id,
-      isAdmin: false
+      isAdmin: newDeviceIsAdmin
     });
   } catch (e) {
     console.error('login-user exception:', e);

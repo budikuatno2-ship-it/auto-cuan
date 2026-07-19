@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,7 +7,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { adminName, action, config } = req.body || {};
+    const { action, config } = req.body || {};
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -56,11 +57,14 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, config: configValue });
     }
 
-    // === SAVE ===
+    // === SAVE === (write op: server-signed admin session required; adminName ignored)
     if (action === 'save') {
-      // Only budi can save
-      if (!adminName || String(adminName).trim().toLowerCase() !== 'budi') {
-        return res.status(403).json({ success: false, error: 'Unauthorized. Admin only.' });
+      if (!isSameOrigin(req)) {
+        return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+      }
+      const auth = requireAdminSession(req);
+      if (!auth.ok) {
+        return res.status(auth.status).json({ success: false, error: auth.error });
       }
 
       if (!config || typeof config !== 'object') {
@@ -70,7 +74,7 @@ module.exports = async function handler(req, res) {
       const configToSave = {
         maintenanceMode: Boolean(config.maintenanceMode),
         message: String(config.message || 'Auto-Cuan sedang tidak dapat diakses sementara.').slice(0, 500),
-        updatedBy: 'budi',
+        updatedBy: auth.session.un || 'admin',
         updatedAt: new Date().toISOString()
       };
 

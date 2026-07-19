@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,10 +7,14 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { adminName } = req.body || {};
-
-    if (!adminName || adminName.trim().toLowerCase() !== 'budi') {
-      return res.status(403).json({ success: false, error: 'Unauthorized. Admin only.' });
+    // Authorization is derived from the server-signed session ONLY. Any `adminName`
+    // supplied in the request body is intentionally ignored.
+    if (!isSameOrigin(req)) {
+      return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    }
+    const auth = requireAdminSession(req);
+    if (!auth.ok) {
+      return res.status(auth.status).json({ success: false, error: auth.error });
     }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;

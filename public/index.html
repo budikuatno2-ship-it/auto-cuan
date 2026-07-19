@@ -2261,28 +2261,29 @@ async function doLogin() {
     errorEl.classList.add('hidden');
     if (!usernameInput) { errorEl.textContent = 'Username tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
     var usernameLower = usernameInput.toLowerCase();
-    if (usernameLower === 'budi') {
-        if (password === '.') {
-            localStorage.setItem('autocuan_user', 'budi'); localStorage.setItem('autocuan_is_admin', 'true');
-            localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString()); localStorage.removeItem('autocuan_is_review');
-            logLogin('budi', false, true); closeLoginModal(); closeAuthChoiceModal(); enterApp({ replaceHistory: true });
-        } else { errorEl.textContent = 'Password salah.'; errorEl.classList.remove('hidden'); }
-        return;
-    }
-    if (usernameLower !== 'review' && isBadUsername(usernameInput)) { closeLoginModal(); blockDeviceForBadName(); return; }
+    // budi now authenticates through the REAL server login (/api/login-user), exactly
+    // like every other account. There is no local-only admin shortcut: admin status is
+    // derived solely from the authenticated server response (never from localStorage or
+    // a client-supplied flag). budi is exempt from the bad-username block just as it was
+    // before (it was previously intercepted above this check).
+    if (usernameLower !== 'review' && usernameLower !== 'budi' && isBadUsername(usernameInput)) { closeLoginModal(); blockDeviceForBadName(); return; }
     if (!password) { errorEl.textContent = 'Password tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
     loginBtn.disabled = true; loginBtn.innerHTML = '<span class="spinner-sm"></span>Masuk...';
     try {
         var passwordHash = await hashPassword(password); var deviceId = getOrCreateDeviceId();
-        var response = await fetch('/api/login-user', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        var response = await fetch('/api/login-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
             body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent }) });
         var data = await response.json();
         if (data.success) {
-            localStorage.setItem('autocuan_user', data.username); localStorage.setItem('autocuan_is_admin', 'false');
+            // Admin status comes ONLY from the authenticated server result, and is
+            // additionally gated on the server-identified username being budi. A forged
+            // or client-supplied admin flag can never unlock admin here.
+            var isAdminUser = (data.isAdmin === true && String(data.username || '').toLowerCase() === 'budi');
+            localStorage.setItem('autocuan_user', data.username); localStorage.setItem('autocuan_is_admin', isAdminUser ? 'true' : 'false');
             localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString());
             if (data.userId) { localStorage.setItem('autocuan_user_id', data.userId); }
             if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
-            logLogin(data.username, false, false); closeLoginModal(); closeAuthChoiceModal(); enterApp({ replaceHistory: true });
+            logLogin(data.username, false, isAdminUser); closeLoginModal(); closeAuthChoiceModal(); enterApp({ replaceHistory: true });
         } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { loginBtn.disabled = false; loginBtn.innerHTML = 'Masuk'; }
@@ -2338,7 +2339,12 @@ async function doRegister() {
 }
 
 // ===== LOGOUT =====
-function logout() {
+async function logout() {
+    // Ask the server to clear the signed HttpOnly session cookie first. A network
+    // failure must still clear local UI state; never surface sensitive details.
+    try {
+        await fetch('/api/login-user', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'logout' }) });
+    } catch (e) { /* ignore — proceed to clear local state regardless */ }
     localStorage.setItem('autocuan_user', 'guest'); localStorage.setItem('autocuan_is_admin', 'false');
     localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_is_review'); localStorage.removeItem('autocuan_user_id');
     showLandingPage({ replaceHistory: true });
@@ -2774,9 +2780,12 @@ async function loadChartPage() {
     if (!container) return;
 
     var chartId = 'pagechart_' + Date.now();
-    container.innerHTML = '<div class="px-4 py-3 border-b border-dark-600/30 flex flex-wrap items-center justify-between gap-2"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-emerald-500"></span><h2 class="text-sm font-semibold text-gray-200">Chart ' + ticker + '</h2><span class="text-xs text-gray-500">Data Historis T-1</span></div></div>' +
-        '<div id="' + chartId + '_container" style="height:350px;width:100%"><div class="h-full p-4 space-y-3"><div class="skeleton-card h-full flex flex-col justify-end gap-3"><div class="skeleton-line w-2/3"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-5/6"></div><p class="text-xs text-gray-500 pt-2"><span class="spinner-sm"></span>Memuat chart...</p></div></div></div>' +
-        '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%"></div>' +
+    var _pd = (typeof chartDims === 'function') ? chartDims('page') : { main: 350, rsi: 60 };
+    var _dlIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>';
+    container.innerHTML = '<div class="px-4 py-3 border-b border-dark-600/30 flex flex-wrap items-center justify-between gap-2"><div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span><h2 class="text-sm font-semibold text-gray-200 truncate">Chart ' + ticker + '</h2><span class="text-xs text-gray-500 shrink-0">Data Historis T-1</span></div>' +
+        '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button></div>' +
+        '<div id="' + chartId + '_container" style="height:' + _pd.main + 'px;width:100%"><div class="h-full p-4 space-y-3"><div class="skeleton-card h-full flex flex-col justify-end gap-3"><div class="skeleton-line w-2/3"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-5/6"></div><p class="text-xs text-gray-500 pt-2"><span class="spinner-sm"></span>Memuat chart...</p></div></div></div>' +
+        '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:' + _pd.rsi + 'px;width:100%"></div>' +
         '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
         '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
 
@@ -2788,7 +2797,7 @@ async function loadChartPage() {
             return;
         }
         if (typeof loadLightweightCharts === 'function') await loadLightweightCharts();
-        if (typeof renderLightweightChart === 'function') await renderLightweightChart(chartId, data.candles, data.metrics || null, ticker);
+        if (typeof renderLightweightChart === 'function') await renderLightweightChart(chartId, data.candles, data.metrics || null, ticker, { variant: 'page' });
     } catch(e) {
         var cont = document.getElementById(chartId + '_container');
         if (cont) cont.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart gagal dimuat. Coba lagi nanti.</div>';
@@ -7304,23 +7313,100 @@ function closeAddPositionForm() {
     if (err) err.classList.add('hidden');
 }
 
+// ===== PORTFOLIO CALC + PRICE HELPERS (presentation-only, pure & testable) =====
+// Normalize an IDX ticker for the Portfolio (uppercase, strip .JK, validate 3-5 letters).
+function normalizePortfolioTicker(raw) {
+    var t = String(raw == null ? '' : raw).trim().toUpperCase().replace(/\.JK$/i, '');
+    return /^[A-Z]{3,5}$/.test(t) ? t : null;
+}
+
+// Decide the usable price from a /api/quote response WITHOUT fabricating data.
+// The canonical quote path always returns `last` (a real T-1 close from Yahoo) even
+// when the fresh screener price is unavailable (price_stale=true, e.g. market closed
+// or ticker not in screener tables). We use that valid previous close and mark it
+// stale rather than discarding it. Returns null only when there is genuinely no price.
+function acceptQuotePrice(data) {
+    if (!data || data.success !== true) return null;
+    var price = Number(data.last);
+    if (!isFinite(price) || price <= 0) return null;
+    var stale = !!data.price_stale;
+    return {
+        price: price,
+        stale: stale,
+        source: data.price_source || (stale ? 'Close T-1' : 'Quote'),
+        date: data.price_date || data.latestBarDate || null
+    };
+}
+
+// Safe per-position P/L. IDX: shares = lot × 100. Null/invalid inputs never throw.
+//   cost = lot × 100 × avgBuy ; marketValue = lot × 100 × lastPrice
+//   plRp = marketValue - cost ; plPct = (plRp / cost) × 100
+function computePositionPL(lot, avgBuy, lastPrice) {
+    var lotN = Number(lot), avgN = Number(avgBuy);
+    var validInputs = isFinite(lotN) && lotN > 0 && isFinite(avgN) && avgN > 0;
+    var shares = validInputs ? lotN * 100 : 0;
+    var cost = validInputs ? shares * avgN : 0;
+    var priceN = Number(lastPrice);
+    var priced = validInputs && isFinite(priceN) && priceN > 0;
+    var marketValue = priced ? shares * priceN : null;
+    var plRp = priced ? (marketValue - cost) : null;
+    var plPct = (priced && cost > 0) ? (plRp / cost) * 100 : null;
+    return { valid: validInputs, priced: priced, shares: shares, cost: cost, marketValue: marketValue, plRp: plRp, plPct: plPct };
+}
+
+// Aggregate totals. Priced positions contribute to Total Nilai + P/L even when other
+// positions cannot be priced (per-ticker isolation). P/L is measured against the modal
+// of priced positions only, so a partial value is never compared to the full modal.
+function computePortfolioTotals(positions) {
+    var totalModal = 0, totalModalPriced = 0, totalValue = 0, priced = 0, unpriced = 0, total = 0;
+    var list = Array.isArray(positions) ? positions : [];
+    for (var i = 0; i < list.length; i++) {
+        var p = list[i] || {};
+        var m = computePositionPL(p.lot, p.avgBuy, p._lastPrice);
+        if (!m.valid) continue;
+        total++;
+        totalModal += m.cost;
+        if (m.priced) { priced++; totalModalPriced += m.cost; totalValue += m.marketValue; }
+        else { unpriced++; }
+    }
+    var plRp = priced > 0 ? (totalValue - totalModalPriced) : null;
+    var plPct = (priced > 0 && totalModalPriced > 0) ? (plRp / totalModalPriced) * 100 : null;
+    return {
+        total: total, priced: priced, unpriced: unpriced,
+        totalModal: totalModal, totalModalPriced: totalModalPriced,
+        totalValue: (priced > 0 ? totalValue : null), plRp: plRp, plPct: plPct
+    };
+}
+
+// Validate + sanitize an add-position form submission. Rejects NaN/Infinity/negative/
+// zero and oversized values, and non-integer lots.
+function sanitizePositionInput(tickerRaw, lotRaw, avgRaw) {
+    if (!String(tickerRaw == null ? '' : tickerRaw).trim()) return { ok: false, error: 'Ticker wajib diisi.' };
+    var ticker = normalizePortfolioTicker(tickerRaw);
+    if (!ticker) return { ok: false, error: 'Ticker harus 3-5 huruf kapital.' };
+    var lot = Number(lotRaw);
+    if (!isFinite(lot) || lot <= 0 || Math.floor(lot) !== lot) return { ok: false, error: 'Lot harus bilangan bulat positif.' };
+    if (lot > 100000000) return { ok: false, error: 'Lot terlalu besar.' };
+    var avgBuy = Number(avgRaw);
+    if (!isFinite(avgBuy) || avgBuy <= 0) return { ok: false, error: 'Avg Buy harus angka positif.' };
+    if (avgBuy > 1000000000) return { ok: false, error: 'Avg Buy terlalu besar.' };
+    return { ok: true, ticker: ticker, lot: lot, avgBuy: avgBuy };
+}
+
 function savePosition() {
     var tickerEl = document.getElementById('portTicker');
     var lotEl = document.getElementById('portLot');
     var avgEl = document.getElementById('portAvgBuy');
-    var errEl = document.getElementById('portFormError');
 
-    var ticker = (tickerEl.value || '').trim().toUpperCase();
-    var lot = parseInt(lotEl.value, 10);
-    var avgBuy = parseFloat(avgEl.value);
-
-    if (!ticker) { showPortFormError('Ticker wajib diisi.'); return; }
-    if (!/^[A-Z]{3,5}$/.test(ticker)) { showPortFormError('Ticker harus 3-5 huruf kapital.'); return; }
-    if (!lot || lot <= 0 || isNaN(lot)) { showPortFormError('Lot harus angka positif.'); return; }
-    if (!avgBuy || avgBuy <= 0 || isNaN(avgBuy)) { showPortFormError('Avg Buy harus angka positif.'); return; }
+    var check = sanitizePositionInput(
+        tickerEl ? tickerEl.value : '',
+        lotEl ? lotEl.value : '',
+        avgEl ? avgEl.value : ''
+    );
+    if (!check.ok) { showPortFormError(check.error); return; }
 
     var positions = loadPortfolio();
-    positions.push({ ticker: ticker, lot: lot, avgBuy: avgBuy, addedAt: Date.now() });
+    positions.push({ ticker: check.ticker, lot: check.lot, avgBuy: check.avgBuy, addedAt: Date.now() });
     savePortfolio(positions);
     closeAddPositionForm();
     renderPortfolio();
@@ -7338,253 +7424,170 @@ function deletePosition(index) {
     renderPortfolio();
 }
 
-function renderPortfolio() {
-    var positions = loadPortfolio();
+// Last Price cell HTML for a single position (escapes all provider-supplied text).
+function portfolioPriceCellHtml(pos, metrics) {
+    if (!metrics.priced) return '<span class="text-gray-500">—</span>';
+    var out = formatRupiah(Number(pos._lastPrice));
+    var meta = [];
+    if (pos._priceStale) meta.push('<span class="text-amber-400/80">prev close</span>');
+    if (pos._priceSource) meta.push(escapeHtml(String(pos._priceSource)));
+    if (pos._priceDate) meta.push(escapeHtml(String(pos._priceDate)));
+    if (meta.length) out += '<div class="text-[10px] text-gray-500 mt-1">' + meta.join(' · ') + '</div>';
+    return out;
+}
+
+// Single source of truth for rendering the Portfolio (desktop table + mobile cards +
+// summary + warning). Used by both initial render and post-refresh render.
+// Per-ticker isolation: priced positions still contribute to totals; the warning
+// reports how many positions could not be priced.
+function renderPortfolioView(positions) {
     var tbody = document.getElementById('portTableBody');
-    var emptyRow = document.getElementById('portEmptyRow');
     var summaryEl = document.getElementById('portSummary');
     var mobileEl = document.getElementById('portMobileCards');
+    var warningEl = document.getElementById('portPriceWarning');
     if (!tbody) return;
 
-    if (positions.length === 0) {
+    if (!positions || positions.length === 0) {
         tbody.innerHTML = '<tr id="portEmptyRow"><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm"><div class="empty-state"><p class="empty-state-text">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai mencatat portofolio manual.</p></div></td></tr>';
         if (mobileEl) mobileEl.innerHTML = '<div class="empty-state"><p class="empty-state-text">Belum ada posisi. Tambahkan ticker, lot, dan avg buy untuk mulai memantau P/L.</p></div>';
         if (summaryEl) summaryEl.classList.add('hidden');
+        if (warningEl) warningEl.classList.add('hidden');
         return;
     }
 
     if (summaryEl) summaryEl.classList.remove('hidden');
 
-    var html = '';
-    var totalModal = 0;
-    var totalValue = 0;
-    var allPriced = true;
-
+    var rows = '';
+    var cards = '';
     for (var i = 0; i < positions.length; i++) {
         var pos = positions[i];
-        var totalShares = pos.lot * 100;
-        var modalValue = pos.avgBuy * totalShares;
-        totalModal += modalValue;
+        var m = computePositionPL(pos.lot, pos.avgBuy, pos._lastPrice);
+        var tickerSafe = escapeHtml(String(pos.ticker));
+        var lotSafe = escapeHtml(String(pos.lot));
+        var plRpText = m.priced ? formatRupiah(m.plRp) : '—';
+        var plPctText = m.priced ? m.plPct.toFixed(2) + '%' : '—';
+        var plRpClass = m.priced ? (m.plRp >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-500';
+        var plPctClass = m.priced ? (m.plPct >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-500';
 
-        var lastPrice = pos._lastPrice || null;
-        var plRp = '—';
-        var plPct = '—';
-        var plRpClass = 'text-gray-500';
-        var plPctClass = 'text-gray-500';
-        var lastPriceDisplay = '—';
-
-        if (lastPrice !== null && lastPrice > 0) {
-            var marketValue = lastPrice * totalShares;
-            totalValue += marketValue;
-            var pl = marketValue - modalValue;
-            var pct = ((lastPrice - pos.avgBuy) / pos.avgBuy) * 100;
-            plRp = formatRupiah(pl);
-            plPct = pct.toFixed(2) + '%';
-            plRpClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
-            plPctClass = pct >= 0 ? 'text-emerald-400' : 'text-red-400';
-            lastPriceDisplay = formatRupiah(lastPrice) + (pos._priceSource ? '<div class="text-[10px] text-gray-500 mt-1">' + escapeHtml(pos._priceSource) + ' · ' + escapeHtml(pos._priceDate || '-') + '</div>' : '');
-        } else {
-            allPriced = false;
-        }
-
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-600/10">' +
-            '<td class="px-3 py-2.5 font-semibold text-gray-100">' + pos.ticker + '</td>' +
-            '<td class="px-3 py-2.5">' + pos.lot + '</td>' +
+        rows += '<tr class="border-b border-dark-600/20 hover:bg-dark-600/10">' +
+            '<td class="px-3 py-2.5 font-semibold text-gray-100">' + tickerSafe + '</td>' +
+            '<td class="px-3 py-2.5">' + lotSafe + '</td>' +
             '<td class="px-3 py-2.5">Rp ' + formatNumber(pos.avgBuy) + '</td>' +
-            '<td class="px-3 py-2.5">' + lastPriceDisplay + '</td>' +
-            '<td class="px-3 py-2.5 ' + plRpClass + '">' + plRp + '</td>' +
-            '<td class="px-3 py-2.5 ' + plPctClass + '">' + plPct + '</td>' +
+            '<td class="px-3 py-2.5">' + portfolioPriceCellHtml(pos, m) + '</td>' +
+            '<td class="px-3 py-2.5 ' + plRpClass + '">' + plRpText + '</td>' +
+            '<td class="px-3 py-2.5 ' + plPctClass + '">' + plPctText + '</td>' +
             '<td class="px-3 py-2.5"><button onclick="deletePosition(' + i + ')" class="text-red-400/60 hover:text-red-400 transition text-sm" title="Hapus">&times;</button></td>' +
             '</tr>';
-    }
-    tbody.innerHTML = html;
-    if (mobileEl) mobileEl.innerHTML = positions.map(function(pos, idx) {
-        var totalShares = pos.lot * 100;
-        var lastPrice = pos._lastPrice || null;
-        var plText = '—', plPctText = '—', plClass = 'text-gray-500';
-        if (lastPrice !== null && lastPrice > 0) {
-            var pl = (lastPrice * totalShares) - (pos.avgBuy * totalShares);
-            var pct = ((lastPrice - pos.avgBuy) / pos.avgBuy) * 100;
-            plText = formatRupiah(pl); plPctText = pct.toFixed(2) + '%'; plClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
-        }
-        return '<div class="portfolio-row-card"><div class="flex items-center justify-between gap-3"><span class="portfolio-symbol">' + escapeHtml(pos.ticker) + '</span><button onclick="deletePosition(' + idx + ')" class="min-w-10 min-h-10 rounded-xl text-red-300 bg-red-500/10 border border-red-500/20">&times;</button></div><div class="portfolio-row-grid"><div><span>Lot</span><b>' + pos.lot + '</b></div><div><span>Avg Buy</span><b>Rp ' + formatNumber(pos.avgBuy) + '</b></div><div><span>Last Price</span><b>' + (lastPrice ? formatRupiah(lastPrice) : '—') + '</b></div><div><span>P/L</span><b class="' + plClass + '">' + plText + ' · ' + plPctText + '</b></div></div></div>';
-    }).join('');
 
-    // Update summary
-    document.getElementById('portTotalModal').textContent = formatRupiah(totalModal);
-    if (allPriced && positions.length > 0) {
-        var totalPL = totalValue - totalModal;
-        var totalPLPct = totalModal > 0 ? ((totalValue - totalModal) / totalModal) * 100 : 0;
-        document.getElementById('portTotalValue').textContent = formatRupiah(totalValue);
-        document.getElementById('portTotalPL').textContent = formatRupiah(totalPL);
-        document.getElementById('portTotalPL').className = 'text-sm font-semibold ' + (totalPL >= 0 ? 'text-emerald-400' : 'text-red-400');
-        document.getElementById('portTotalPLPct').textContent = totalPLPct.toFixed(2) + '%';
-        document.getElementById('portTotalPLPct').className = 'text-sm font-semibold ' + (totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400');
+        var mLastText = m.priced ? formatRupiah(Number(pos._lastPrice)) : '—';
+        var mPlText = m.priced ? formatRupiah(m.plRp) : '—';
+        var mPlPctText = m.priced ? m.plPct.toFixed(2) + '%' : '—';
+        var mPlClass = m.priced ? (m.plRp >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-500';
+        cards += '<div class="portfolio-row-card"><div class="flex items-center justify-between gap-3"><span class="portfolio-symbol">' + tickerSafe + '</span><button onclick="deletePosition(' + i + ')" class="min-w-10 min-h-10 rounded-xl text-red-300 bg-red-500/10 border border-red-500/20">&times;</button></div><div class="portfolio-row-grid"><div><span>Lot</span><b>' + lotSafe + '</b></div><div><span>Avg Buy</span><b>Rp ' + formatNumber(pos.avgBuy) + '</b></div><div><span>Last Price</span><b>' + mLastText + '</b></div><div><span>P/L</span><b class="' + mPlClass + '">' + mPlText + ' · ' + mPlPctText + '</b></div></div></div>';
+    }
+    tbody.innerHTML = rows;
+    if (mobileEl) mobileEl.innerHTML = cards;
+
+    var totals = computePortfolioTotals(positions);
+    var modalEl = document.getElementById('portTotalModal');
+    var valEl = document.getElementById('portTotalValue');
+    var plEl = document.getElementById('portTotalPL');
+    var plPctEl = document.getElementById('portTotalPLPct');
+    if (modalEl) modalEl.textContent = formatRupiah(totals.totalModal);
+    if (totals.priced > 0) {
+        if (valEl) valEl.textContent = formatRupiah(totals.totalValue);
+        if (plEl) { plEl.textContent = formatRupiah(totals.plRp); plEl.className = 'text-sm font-semibold ' + (totals.plRp >= 0 ? 'text-emerald-400' : 'text-red-400'); }
+        if (plPctEl) { plPctEl.textContent = totals.plPct.toFixed(2) + '%'; plPctEl.className = 'text-sm font-semibold ' + (totals.plPct >= 0 ? 'text-emerald-400' : 'text-red-400'); }
     } else {
-        document.getElementById('portTotalValue').textContent = '—';
-        document.getElementById('portTotalPL').textContent = '—';
-        document.getElementById('portTotalPL').className = 'text-sm font-semibold text-gray-500';
-        document.getElementById('portTotalPLPct').textContent = '—';
-        document.getElementById('portTotalPLPct').className = 'text-sm font-semibold text-gray-500';
+        if (valEl) valEl.textContent = '—';
+        if (plEl) { plEl.textContent = '—'; plEl.className = 'text-sm font-semibold text-gray-500'; }
+        if (plPctEl) { plPctEl.textContent = '—'; plPctEl.className = 'text-sm font-semibold text-gray-500'; }
     }
 
-    // Show/hide price warning
-    var warningEl = document.getElementById('portPriceWarning');
-    if (warningEl) { if (!allPriced && positions.length > 0) warningEl.classList.remove('hidden'); else warningEl.classList.add('hidden'); }
-
-    // Auto-refresh prices on first render
-    refreshPortfolioPrices();
+    if (warningEl) {
+        if (totals.unpriced > 0) {
+            warningEl.textContent = totals.unpriced + ' dari ' + totals.total + ' posisi belum bisa dihargai. Total di atas hanya mencakup posisi yang berhasil dihargai; posisi lain ditampilkan "—".';
+            warningEl.classList.remove('hidden');
+        } else {
+            warningEl.classList.add('hidden');
+        }
+    }
 }
 
+function renderPortfolio() {
+    var positions = loadPortfolio();
+    renderPortfolioView(positions);
+    // Auto-refresh prices on first render (guarded against duplicate concurrent runs).
+    if (positions.length > 0) refreshPortfolioPrices();
+}
+
+// Backwards-compatible alias — any legacy caller renders through the unified view.
+function renderPortfolioTable(positions) {
+    renderPortfolioView(positions);
+}
+
+var _portRefreshInFlight = false;
 async function refreshPortfolioPrices() {
     var positions = loadPortfolio();
     if (positions.length === 0) return;
+    // Duplicate-click / concurrent guard: ignore while a refresh is already running.
+    if (_portRefreshInFlight) return;
+    _portRefreshInFlight = true;
 
     var btn = document.getElementById('portRefreshBtn');
-    if (btn) btn.disabled = true;
+    var btnHtml = btn ? btn.innerHTML : null;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-sm"></span>Memuat...'; }
 
     var uniqueTickers = [];
     for (var i = 0; i < positions.length; i++) {
-        if (uniqueTickers.indexOf(positions[i].ticker) === -1) uniqueTickers.push(positions[i].ticker);
+        var t = positions[i].ticker;
+        if (t && uniqueTickers.indexOf(t) === -1) uniqueTickers.push(t);
     }
 
     var priceMap = {};
-    var hasFailure = false;
+    var failed = [];
 
-    // Fetch prices in parallel (max 10 concurrent)
-    var fetches = uniqueTickers.map(function(ticker) {
-        return fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&portfolio=1', { headers: getAuthHeaders() })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data && data.success && data.last && !data.price_stale) {
-                    priceMap[ticker] = { price: data.last, source: data.price_source || 'quote', date: data.price_date || null };
-                } else {
-                    hasFailure = true;
-                }
-            })
-            .catch(function() { hasFailure = true; });
-    });
+    try {
+        // Fetch each ticker independently — one failure never blocks the others.
+        await Promise.all(uniqueTickers.map(function(ticker) {
+            return fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&portfolio=1', { headers: getAuthHeaders() })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var accepted = acceptQuotePrice(data);
+                    if (accepted) priceMap[ticker] = accepted;
+                    else failed.push(ticker);
+                })
+                .catch(function() { failed.push(ticker); });
+        }));
 
-    await Promise.all(fetches);
-
-    // Update positions with fetched prices
-    for (var j = 0; j < positions.length; j++) {
-        var price = priceMap[positions[j].ticker];
-        if (price && price.price) {
-            positions[j]._lastPrice = price.price;
-            positions[j]._priceSource = price.source;
-            positions[j]._priceDate = price.date;
+        // Update only priced positions; saved lot/avgBuy are never touched.
+        for (var j = 0; j < positions.length; j++) {
+            var pm = priceMap[positions[j].ticker];
+            if (pm) {
+                positions[j]._lastPrice = pm.price;
+                positions[j]._priceSource = pm.source;
+                positions[j]._priceDate = pm.date;
+                positions[j]._priceStale = pm.stale;
+            }
         }
+        savePortfolio(positions);
+        renderPortfolioView(positions);
+    } catch (e) {
+        // Temporary failure — keep existing saved data and let the user retry.
+        renderPortfolioView(positions);
+    } finally {
+        if (btn) { btn.disabled = false; if (btnHtml != null) btn.innerHTML = btnHtml; }
+        _portRefreshInFlight = false;
+        // Setup auto-refresh (every 10 minutes while on portfolio page)
+        clearPortfolioTimer();
+        _portRefreshTimer = setTimeout(function() {
+            if (currentPage === 'portofolio') refreshPortfolioPrices();
+        }, 10 * 60 * 1000);
     }
-    savePortfolio(positions);
-
-    // Re-render table without triggering another refresh
-    renderPortfolioTable(positions, hasFailure);
-
-    if (btn) btn.disabled = false;
-
-    // Setup auto-refresh (every 10 minutes while on portfolio page)
-    clearPortfolioTimer();
-    _portRefreshTimer = setTimeout(function() {
-        if (currentPage === 'portofolio') refreshPortfolioPrices();
-    }, 10 * 60 * 1000);
 }
 
 function clearPortfolioTimer() {
     if (_portRefreshTimer) { clearTimeout(_portRefreshTimer); _portRefreshTimer = null; }
-}
-
-function renderPortfolioTable(positions, hasFailure) {
-    var tbody = document.getElementById('portTableBody');
-    var summaryEl = document.getElementById('portSummary');
-    var mobileEl = document.getElementById('portMobileCards');
-    if (!tbody) return;
-
-    if (positions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm"><div class="empty-state"><p class="empty-state-text">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai mencatat portofolio manual.</p></div></td></tr>';
-        if (mobileEl) mobileEl.innerHTML = '<div class="empty-state"><p class="empty-state-text">Belum ada posisi. Tambahkan ticker, lot, dan avg buy untuk mulai memantau P/L.</p></div>';
-        if (summaryEl) summaryEl.classList.add('hidden');
-        return;
-    }
-
-    if (summaryEl) summaryEl.classList.remove('hidden');
-
-    var html = '';
-    var totalModal = 0;
-    var totalValue = 0;
-    var allPriced = true;
-
-    for (var i = 0; i < positions.length; i++) {
-        var pos = positions[i];
-        var totalShares = pos.lot * 100;
-        var modalValue = pos.avgBuy * totalShares;
-        totalModal += modalValue;
-
-        var lastPrice = pos._lastPrice || null;
-        var plRp = '—';
-        var plPct = '—';
-        var plRpClass = 'text-gray-500';
-        var plPctClass = 'text-gray-500';
-        var lastPriceDisplay = '—';
-
-        if (lastPrice !== null && lastPrice > 0) {
-            var marketValue = lastPrice * totalShares;
-            totalValue += marketValue;
-            var pl = marketValue - modalValue;
-            var pct = ((lastPrice - pos.avgBuy) / pos.avgBuy) * 100;
-            plRp = formatRupiah(pl);
-            plPct = pct.toFixed(2) + '%';
-            plRpClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
-            plPctClass = pct >= 0 ? 'text-emerald-400' : 'text-red-400';
-            lastPriceDisplay = formatRupiah(lastPrice);
-        } else {
-            allPriced = false;
-        }
-
-        html += '<tr class="border-b border-dark-600/20 hover:bg-dark-600/10">' +
-            '<td class="px-3 py-2.5 font-semibold text-gray-100">' + pos.ticker + '</td>' +
-            '<td class="px-3 py-2.5">' + pos.lot + '</td>' +
-            '<td class="px-3 py-2.5">Rp ' + formatNumber(pos.avgBuy) + '</td>' +
-            '<td class="px-3 py-2.5">' + lastPriceDisplay + '</td>' +
-            '<td class="px-3 py-2.5 ' + plRpClass + '">' + plRp + '</td>' +
-            '<td class="px-3 py-2.5 ' + plPctClass + '">' + plPct + '</td>' +
-            '<td class="px-3 py-2.5"><button onclick="deletePosition(' + i + ')" class="text-red-400/60 hover:text-red-400 transition text-sm" title="Hapus">&times;</button></td>' +
-            '</tr>';
-    }
-    tbody.innerHTML = html;
-    if (mobileEl) mobileEl.innerHTML = positions.map(function(pos, idx) {
-        var totalShares = pos.lot * 100;
-        var lastPrice = pos._lastPrice || null;
-        var plText = '—', plPctText = '—', plClass = 'text-gray-500';
-        if (lastPrice !== null && lastPrice > 0) {
-            var pl = (lastPrice * totalShares) - (pos.avgBuy * totalShares);
-            var pct = ((lastPrice - pos.avgBuy) / pos.avgBuy) * 100;
-            plText = formatRupiah(pl); plPctText = pct.toFixed(2) + '%'; plClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
-        }
-        return '<div class="portfolio-row-card"><div class="flex items-center justify-between gap-3"><span class="portfolio-symbol">' + escapeHtml(pos.ticker) + '</span><button onclick="deletePosition(' + idx + ')" class="min-w-10 min-h-10 rounded-xl text-red-300 bg-red-500/10 border border-red-500/20">&times;</button></div><div class="portfolio-row-grid"><div><span>Lot</span><b>' + pos.lot + '</b></div><div><span>Avg Buy</span><b>Rp ' + formatNumber(pos.avgBuy) + '</b></div><div><span>Last Price</span><b>' + (lastPrice ? formatRupiah(lastPrice) : '—') + '</b></div><div><span>P/L</span><b class="' + plClass + '">' + plText + ' · ' + plPctText + '</b></div></div></div>';
-    }).join('');
-
-    // Update summary
-    document.getElementById('portTotalModal').textContent = formatRupiah(totalModal);
-    if (allPriced && positions.length > 0) {
-        var totalPL = totalValue - totalModal;
-        var totalPLPct = totalModal > 0 ? ((totalValue - totalModal) / totalModal) * 100 : 0;
-        document.getElementById('portTotalValue').textContent = formatRupiah(totalValue);
-        document.getElementById('portTotalPL').textContent = formatRupiah(totalPL);
-        document.getElementById('portTotalPL').className = 'text-sm font-semibold ' + (totalPL >= 0 ? 'text-emerald-400' : 'text-red-400');
-        document.getElementById('portTotalPLPct').textContent = totalPLPct.toFixed(2) + '%';
-        document.getElementById('portTotalPLPct').className = 'text-sm font-semibold ' + (totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400');
-    } else {
-        document.getElementById('portTotalValue').textContent = '—';
-        document.getElementById('portTotalPL').textContent = '—';
-        document.getElementById('portTotalPL').className = 'text-sm font-semibold text-gray-500';
-        document.getElementById('portTotalPLPct').textContent = '—';
-        document.getElementById('portTotalPLPct').className = 'text-sm font-semibold text-gray-500';
-    }
-
-    // Show/hide price warning
-    var warningEl = document.getElementById('portPriceWarning');
-    if (warningEl) { if (hasFailure || !allPriced) warningEl.classList.remove('hidden'); else warningEl.classList.add('hidden'); }
 }
 
 function formatRupiah(num) {
@@ -9026,12 +9029,14 @@ async function toggleYahooChart(ticker, chartId, btn) {
     try {
     var existing = document.getElementById(chartId);
     if (existing) {
+        if (typeof disposeChart === 'function') disposeChart(chartId);
         existing.remove();
         _activeChartPanel = null;
         btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Lihat Chart ' + ticker;
         return;
     }
     if (_activeChartPanel) { _activeChartPanel.remove(); _activeChartPanel = null; }
+    var _id = (typeof chartDims === 'function') ? chartDims('inline') : { main: 280, rsi: 60 };
 
     // Loading state
     btn.innerHTML = '<span class="spinner-sm"></span>Memuat Chart...';
@@ -9040,9 +9045,9 @@ async function toggleYahooChart(ticker, chartId, btn) {
     var panel = document.createElement('div');
     panel.id = chartId;
     panel.className = 'mt-3 rounded-xl border border-dark-600/30 bg-dark-800/60 overflow-hidden fade-in-up';
-    panel.innerHTML = '<div class="px-3 py-2 border-b border-dark-600/20 flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-xs font-semibold text-gray-300">Chart ' + ticker + '</span><span class="text-[10px] text-gray-600">Data Historis T-1</span></div><div class="flex items-center gap-2"><button onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\')" class="text-[10px] text-blue-400 hover:text-blue-300 transition">Download PNG</button><button onclick="closeYahooChart(\'' + chartId + '\',this)" class="text-[10px] text-gray-500 hover:text-red-400 transition">Tutup</button></div></div>' +
-        '<div id="' + chartId + '_container" style="height:280px;width:100%"><div class="flex items-center justify-center h-full text-gray-600 text-xs">Memuat chart...</div></div>' +
-        '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:60px;width:100%"></div>' +
+    panel.innerHTML = '<div class="px-3 py-2 border-b border-dark-600/20 flex flex-wrap items-center justify-between gap-2"><div class="flex items-center gap-2 min-w-0"><span class="text-xs font-semibold text-gray-300 truncate">Chart ' + ticker + '</span><span class="text-[10px] text-gray-600 shrink-0">Data Historis T-1</span></div><div class="flex items-center gap-2 shrink-0"><button onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="text-[10px] text-blue-400 hover:text-blue-300 transition">Download PNG</button><button onclick="closeYahooChart(\'' + chartId + '\',this)" class="text-[10px] text-gray-500 hover:text-red-400 transition">Tutup</button></div></div>' +
+        '<div id="' + chartId + '_container" style="height:' + _id.main + 'px;width:100%"><div class="flex items-center justify-center h-full text-gray-600 text-xs">Memuat chart...</div></div>' +
+        '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:' + _id.rsi + 'px;width:100%"></div>' +
         '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
         '<div class="px-3 py-1.5 border-t border-dark-600/20 flex items-center gap-3 text-[10px]"><span class="text-emerald-400">MA20</span><span class="text-yellow-400">MA50</span><span class="text-blue-400">MA100</span><span class="text-purple-400">MA200</span><span class="text-orange-400">RSI14</span><span class="text-amber-400/80">Fib</span></div>';
     bubble.after(panel);
@@ -9066,7 +9071,7 @@ async function toggleYahooChart(ticker, chartId, btn) {
             return;
         }
         await loadLightweightCharts();
-        await renderLightweightChart(chartId, data.candles, data.metrics || null, ticker);
+        await renderLightweightChart(chartId, data.candles, data.metrics || null, ticker, { variant: 'inline' });
         btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Tutup Chart';
     } catch (e) {
         document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart belum berhasil dimuat. Coba lagi nanti atau buka TradingView.</div>';
@@ -9078,11 +9083,90 @@ async function toggleYahooChart(ticker, chartId, btn) {
 }
 
 function closeYahooChart(chartId) {
+    if (typeof disposeChart === 'function') disposeChart(chartId);
     var el = document.getElementById(chartId);
     if (el) { el.remove(); _activeChartPanel = null; }
 }
 
-async function renderLightweightChart(chartId, candles, metrics, ticker) {
+// ===== CHART REGISTRY + EXPORT HELPERS (presentation-only) =====
+// Scoped registry keyed by chartId. Avoids global loose vars and stale/duplicate
+// chart instances or ResizeObservers when a chart is re-rendered.
+var _chartRegistry = (typeof window !== 'undefined' && window.__chartRegistry) ? window.__chartRegistry : {};
+if (typeof window !== 'undefined') window.__chartRegistry = _chartRegistry;
+
+// Single source of truth for chart heights (CSS px). Responsive by viewport width.
+function chartDims(variant, viewportWidth) {
+    var w = (typeof viewportWidth === 'number' && viewportWidth > 0) ? viewportWidth
+          : (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1024;
+    var mobile = w < 640;
+    if (variant === 'inline') return { main: mobile ? 240 : 280, rsi: 60 };
+    // Chart page (default): taller on desktop, compact on mobile portrait.
+    return { main: mobile ? 270 : 350, rsi: mobile ? 56 : 60 };
+}
+
+// Dispose a chart + its observers and drop it from the registry.
+function disposeChart(chartId) {
+    var e = _chartRegistry[chartId];
+    if (!e) return;
+    try { if (e.observers) e.observers.forEach(function(o) { if (o && o.disconnect) o.disconnect(); }); } catch (x) {}
+    try { if (e.mainChart && e.mainChart.remove) e.mainChart.remove(); } catch (x) {}
+    try { if (e.rsiChart && e.rsiChart.remove) e.rsiChart.remove(); } catch (x) {}
+    delete _chartRegistry[chartId];
+}
+
+// Dispose registry entries whose DOM container has been removed (orphans from re-render).
+function disposeStaleCharts() {
+    Object.keys(_chartRegistry).forEach(function(id) {
+        var el = (typeof document !== 'undefined') ? document.getElementById(id + '_container') : null;
+        if (!el || (document.body && !document.body.contains(el))) disposeChart(id);
+    });
+}
+
+// rAF-batched ResizeObserver that only fires the callback when width actually changes
+// (prevents resize loops when we also adjust height inside the callback).
+function observeChartResize(el, cb) {
+    if (typeof ResizeObserver === 'undefined' || !el) return null;
+    var raf = 0, lastW = el.clientWidth || 0;
+    var schedule = (typeof requestAnimationFrame !== 'undefined') ? requestAnimationFrame : function(f) { return setTimeout(f, 16); };
+    var ro = new ResizeObserver(function() {
+        if (raf) return;
+        raf = schedule(function() {
+            raf = 0;
+            var w = el.clientWidth;
+            if (w && w !== lastW) { lastW = w; try { cb(w); } catch (x) {} }
+        });
+    });
+    ro.observe(el);
+    return ro;
+}
+
+// WIB (UTC+7) display stamp: "YYYY-MM-DD HH:MM WIB". Deterministic regardless of runner TZ.
+function formatWibStamp(d) {
+    d = d || new Date();
+    var utcMs = d.getTime() + (d.getTimezoneOffset() * 60000);
+    var wib = new Date(utcMs + 7 * 3600000);
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return wib.getFullYear() + '-' + p(wib.getMonth() + 1) + '-' + p(wib.getDate()) + ' ' + p(wib.getHours()) + ':' + p(wib.getMinutes()) + ' WIB';
+}
+
+// Deterministic, filesystem-safe export filename in WIB: auto-cuan-TICKER-chart-YYYY-MM-DD-HHMM-WIB.png
+function buildChartExportFilename(ticker, d) {
+    d = d || new Date();
+    var t = String(ticker || 'CHART').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'CHART';
+    var utcMs = d.getTime() + (d.getTimezoneOffset() * 60000);
+    var wib = new Date(utcMs + 7 * 3600000);
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    var stamp = wib.getFullYear() + '-' + p(wib.getMonth() + 1) + '-' + p(wib.getDate()) + '-' + p(wib.getHours()) + p(wib.getMinutes());
+    return 'auto-cuan-' + t + '-chart-' + stamp + '-WIB.png';
+}
+
+// Pure: compute backing bitmap size from CSS size and device pixel ratio.
+function computeExportBitmapSize(cssWidth, cssHeight, dpr) {
+    var r = (typeof dpr === 'number' && dpr > 0) ? dpr : 1;
+    return { width: Math.max(1, Math.round(cssWidth * r)), height: Math.max(1, Math.round(cssHeight * r)) };
+}
+
+async function renderLightweightChart(chartId, candles, metrics, ticker, options) {
     var containerId = chartId + '_container';
     var container = document.getElementById(containerId);
     if (!container || !window.LightweightCharts) {
@@ -9090,16 +9174,28 @@ async function renderLightweightChart(chartId, candles, metrics, ticker) {
         return;
     }
     try {
+    var variant = (options && options.variant) || 'inline';
+    var dims = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0));
+    var _observers = [];
+    // Clean up any prior chart bound to this id + orphaned charts (prevents duplicate
+    // observers, stale references, and exporting an older hidden chart).
+    disposeChart(chartId);
+    disposeStaleCharts();
     container.innerHTML = '';
+    container.style.height = dims.main + 'px';
 
     // Main chart: candlestick + MA
     var chart = LightweightCharts.createChart(container, {
-        width: container.clientWidth, height: 280,
+        width: container.clientWidth, height: dims.main,
         layout: { background: { color: '#0f1319' }, textColor: '#9ca3af' },
         grid: { vertLines: { color: '#1c233320' }, horzLines: { color: '#1c233320' } },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
         rightPriceScale: { borderColor: '#1c2333' },
-        timeScale: { borderColor: '#1c2333', timeVisible: false }
+        timeScale: { borderColor: '#1c2333', timeVisible: false },
+        // Touch behavior: horizontal drag pans the chart, vertical finger movement is
+        // left to the page so mobile page scrolling is never trapped. Pinch zoom kept.
+        handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+        handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true }
     });
 
     var candleSeries = chart.addCandlestickSeries({
@@ -9178,22 +9274,29 @@ async function renderLightweightChart(chartId, candles, metrics, ticker) {
     } catch (fibErr) { /* Fibonacci overlay is optional — fail silently */ }
 
     chart.timeScale().fitContent();
-    if (typeof ResizeObserver !== 'undefined') {
-        new ResizeObserver(function() { chart.applyOptions({ width: container.clientWidth }); }).observe(container);
-    }
+    var _mainRO = observeChartResize(container, function(w) {
+        var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0));
+        container.style.height = d.main + 'px';
+        chart.applyOptions({ width: w, height: d.main });
+    });
+    if (_mainRO) _observers.push(_mainRO);
     container._chart = chart;
 
     // RSI panel
     var rsiContainer = document.getElementById(chartId + '_rsi');
     if (rsiContainer && candles.length > 15) {
         rsiContainer.innerHTML = '';
+        rsiContainer.style.height = dims.rsi + 'px';
         var rsiChart = LightweightCharts.createChart(rsiContainer, {
-            width: rsiContainer.clientWidth, height: 60,
+            width: rsiContainer.clientWidth, height: dims.rsi,
             layout: { background: { color: '#0b0e14' }, textColor: '#6b7280' },
             grid: { vertLines: { color: '#1c233315' }, horzLines: { color: '#1c233320' } },
             rightPriceScale: { borderColor: '#1c2333', scaleMargins: { top: 0.1, bottom: 0.1 } },
             timeScale: { visible: false },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+            // RSI is a read-only strip: don't let it capture touch/scroll gestures.
+            handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+            handleScale: { axisPressedMouseMove: false, mouseWheel: false, pinch: false }
         });
 
         // RSI data
@@ -9221,9 +9324,12 @@ async function renderLightweightChart(chartId, candles, metrics, ticker) {
         guideSeries30.setData(guideData30);
 
         rsiChart.timeScale().fitContent();
-        if (typeof ResizeObserver !== 'undefined') {
-            new ResizeObserver(function() { rsiChart.applyOptions({ width: rsiContainer.clientWidth }); }).observe(rsiContainer);
-        }
+        var _rsiRO = observeChartResize(rsiContainer, function(w) {
+            var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0));
+            rsiContainer.style.height = d.rsi + 'px';
+            rsiChart.applyOptions({ width: w, height: d.rsi });
+        });
+        if (_rsiRO) _observers.push(_rsiRO);
     }
 
     // Metrics panel
@@ -9267,6 +9373,22 @@ async function renderLightweightChart(chartId, candles, metrics, ticker) {
             fibStripEl.innerHTML = fHtml;
         }
     }
+
+    // Register instances + metadata for the exporter (scoped, no global loose vars).
+    var _latest = (candles && candles.length) ? candles[candles.length - 1] : null;
+    _chartRegistry[chartId] = {
+        chartId: chartId,
+        variant: variant,
+        mainChart: chart,
+        rsiChart: (typeof rsiChart !== 'undefined' ? rsiChart : null) || null,
+        ticker: ticker || '',
+        metrics: metrics || null,
+        lastClose: _latest ? _latest.close : null,
+        lastVolume: _latest ? _latest.volume : null,
+        fibQuote: fibQuote,
+        dims: dims,
+        observers: _observers
+    };
 
     } catch (renderErr) {
         container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart gagal dirender. Coba buka TradingView.</div>';
@@ -9320,55 +9442,163 @@ function humanizeFibTrend(trend) {
     return map[trend] || trend || 'Tidak tersedia';
 }
 
-function downloadChartPng(chartId, ticker) {
-    var container = document.getElementById(chartId + '_container');
-    if (!container) return;
-    // Try to compose summary + chart into one canvas
+// Full-composite chart exporter. Captures the COMPLETE composed chart:
+//   - main chart via Lightweight Charts takeScreenshot() (candles, volume, MA lines,
+//     grid, right price scale, Fibonacci price lines + axis labels, bottom time scale);
+//   - RSI sub-chart via its own takeScreenshot() (RSI line, guides, scale);
+//   - canvas-rendered metadata (ticker + WIB timestamp, MA legend, full metrics —
+//     Last/Vol/AvgVol20/Vol/Avg/RSI14/MA20/MA50/MA200 — Fibonacci summary, disclaimer).
+// High-DPI correct: all layout is in CSS pixels, the context is scaled once by DPR,
+// and screenshots are drawn into CSS-pixel rectangles so nothing is stretched/blurred.
+async function exportChartPng(chartId, ticker, btn) {
+    var entry = _chartRegistry[chartId];
+    var origBtnHtml = btn ? btn.innerHTML : null;
+    function restoreBtn() { if (btn && origBtnHtml != null) { btn.disabled = false; btn.innerHTML = origBtnHtml; } }
+    function fail(msg) {
+        restoreBtn();
+        if (typeof showToast === 'function') showToast(msg || 'Download chart belum tersedia. Coba lagi.', 'warning');
+    }
+    // Guard: require a ready main chart instance before doing anything (no blank files).
+    if (!entry || !entry.mainChart || typeof entry.mainChart.takeScreenshot !== 'function') {
+        return fail('Chart belum siap untuk di-download. Tunggu chart selesai dimuat lalu coba lagi.');
+    }
+    if (btn) { btn.disabled = true; btn.innerHTML = 'Menyiapkan...'; }
     try {
-        var chartCanvas = container.querySelector('canvas');
-        if (!chartCanvas) throw new Error('no canvas');
+        // Let any pending resize/render work settle before screenshotting (two frames).
+        await new Promise(function(res) {
+            var raf = (typeof requestAnimationFrame !== 'undefined') ? requestAnimationFrame : function(f) { return setTimeout(f, 16); };
+            raf(function() { raf(function() { res(); }); });
+        });
 
-        var metricsEl = document.getElementById(chartId + '_metrics');
-        var metricsText = metricsEl ? metricsEl.innerText : '';
+        var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? window.devicePixelRatio : 1;
+        var mainShot = entry.mainChart.takeScreenshot();
+        var rsiShot = (entry.rsiChart && typeof entry.rsiChart.takeScreenshot === 'function') ? entry.rsiChart.takeScreenshot() : null;
+        if (!mainShot || !mainShot.width) throw new Error('empty main screenshot');
 
-        // Create composite canvas
-        var headerH = 40;
-        var footerH = metricsText ? 50 : 0;
-        var w = chartCanvas.width;
-        var h = chartCanvas.height + headerH + footerH;
-        var compositeCanvas = document.createElement('canvas');
-        compositeCanvas.width = w;
-        compositeCanvas.height = h;
-        var ctx = compositeCanvas.getContext('2d');
+        // Intrinsic CSS sizes from the screenshots (device px / dpr) — preserves aspect ratio.
+        var mainCssW = mainShot.width / dpr;
+        var mainCssH = mainShot.height / dpr;
+        var rsiCssH = rsiShot ? (rsiShot.height / dpr) : 0;
+        var cssW = mainCssW;
+        var pad = 12;
 
-        // Background
+        // Metrics items (full — never truncated).
+        var m = entry.metrics || {};
+        var items = [];
+        if (entry.lastClose != null) items.push({ k: 'Last', v: String(entry.lastClose) });
+        if (entry.lastVolume != null) items.push({ k: 'Vol', v: formatVol(entry.lastVolume) });
+        if (m.volumeAvg20 != null) items.push({ k: 'AvgVol20', v: formatVol(m.volumeAvg20) });
+        if (m.volumeVsAvg20 != null) items.push({ k: 'Vol/Avg', v: m.volumeVsAvg20 + 'x' });
+        if (m.rsi14 != null) items.push({ k: 'RSI14', v: String(m.rsi14) });
+        if (m.ma20 != null) items.push({ k: 'MA20', v: String(m.ma20) });
+        if (m.ma50 != null) items.push({ k: 'MA50', v: String(m.ma50) });
+        if (m.ma200 != null) items.push({ k: 'MA200', v: String(m.ma200) });
+        var colW = 96;
+        var perRow = Math.max(1, Math.floor((cssW - pad * 2) / colW));
+        var metricRows = items.length ? Math.ceil(items.length / perRow) : 0;
+        var metricsH = items.length ? (metricRows * 30 + 10) : 0;
+
+        // Fibonacci summary line.
+        var fib = entry.fibQuote;
+        var fibLine = '';
+        if (fib && fib.levels) {
+            var parts = [];
+            if (fib.levels.fib382 != null) parts.push('38.2 ' + fib.levels.fib382);
+            if (fib.levels.fib500 != null) parts.push('50 ' + fib.levels.fib500);
+            if (fib.levels.fib618 != null) parts.push('61.8 ' + fib.levels.fib618);
+            if (fib.levels.fib786 != null) parts.push('78.6 ' + fib.levels.fib786);
+            if (parts.length) fibLine = 'Fib: ' + parts.join('  |  ') + (fib.nearestLabel ? '   (Nearest: ' + fib.nearestLabel + ')' : '');
+        }
+        var headerH = 40, legendH = 22, fibH = fibLine ? 20 : 0, disclaimerH = 26;
+        var totalCssH = headerH + mainCssH + rsiCssH + legendH + metricsH + fibH + disclaimerH;
+
+        // Backing bitmap = CSS size × DPR; scale context once so we draw in CSS coords.
+        var bmp = computeExportBitmapSize(cssW, totalCssH, dpr);
+        var canvas = document.createElement('canvas');
+        canvas.width = bmp.width;
+        canvas.height = bmp.height;
+        var ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+
+        // Dark, readable background (explicitly opaque — never transparent).
         ctx.fillStyle = '#0f1319';
-        ctx.fillRect(0, 0, w, h);
+        ctx.fillRect(0, 0, cssW, totalCssH);
 
-        // Header
+        // Header: title (left) + WIB timestamp (right).
+        ctx.textBaseline = 'alphabetic';
+        ctx.textAlign = 'left';
         ctx.fillStyle = '#e5e7eb';
-        ctx.font = 'bold 14px Inter, sans-serif';
-        ctx.fillText('Chart ' + ticker + '  |  Data Historis T-1', 12, 26);
+        ctx.font = '600 15px Inter, system-ui, sans-serif';
+        ctx.fillText('Chart ' + (entry.ticker || ticker || '') + '  \u00b7  Data Historis T-1', pad, 26);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '11px Inter, system-ui, sans-serif';
+        ctx.fillText(formatWibStamp(), cssW - pad, 26);
+        ctx.textAlign = 'left';
 
-        // Chart image
-        ctx.drawImage(chartCanvas, 0, headerH);
+        var y = headerH;
+        // Main chart screenshot (full width, intrinsic CSS height).
+        ctx.drawImage(mainShot, 0, y, mainCssW, mainCssH);
+        y += mainCssH;
+        // RSI screenshot.
+        if (rsiShot) { ctx.drawImage(rsiShot, 0, y, rsiShot.width / dpr, rsiCssH); y += rsiCssH; }
 
-        // Footer with metrics
-        if (metricsText) {
-            ctx.fillStyle = '#9ca3af';
-            ctx.font = '10px Inter, sans-serif';
-            var lines = metricsText.replace(/\n/g, '  |  ').slice(0, 200);
-            ctx.fillText(lines, 12, chartCanvas.height + headerH + 20);
-            ctx.fillText('Auto-Cuan | ' + new Date().toISOString().slice(0, 10), 12, chartCanvas.height + headerH + 38);
+        // MA / RSI / Fib legend row.
+        var legend = [
+            { t: 'MA20', c: '#10b981' }, { t: 'MA50', c: '#eab308' }, { t: 'MA100', c: '#3b82f6' },
+            { t: 'MA200', c: '#a855f7' }, { t: 'RSI14', c: '#f97316' }, { t: 'Fib', c: '#f59e0b' }
+        ];
+        var lx = pad, ly = y + 15;
+        ctx.font = '11px Inter, system-ui, sans-serif';
+        for (var li = 0; li < legend.length; li++) {
+            ctx.fillStyle = legend[li].c;
+            ctx.fillRect(lx, ly - 8, 9, 9);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText(legend[li].t, lx + 13, ly);
+            lx += 13 + ctx.measureText(legend[li].t).width + 16;
+        }
+        y += legendH;
+
+        // Metrics grid.
+        if (items.length) {
+            ctx.font = '11px Inter, system-ui, sans-serif';
+            for (var ii = 0; ii < items.length; ii++) {
+                var col = ii % perRow, row = Math.floor(ii / perRow);
+                var mx = pad + col * colW, my = y + row * 30;
+                ctx.fillStyle = '#6b7280';
+                ctx.fillText(items[ii].k, mx, my + 12);
+                ctx.fillStyle = '#e5e7eb';
+                ctx.fillText(items[ii].v, mx, my + 26);
+            }
+            y += metricsH;
         }
 
+        // Fibonacci summary.
+        if (fibLine) {
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = '11px Inter, system-ui, sans-serif';
+            ctx.fillText(fibLine, pad, y + 13);
+            y += fibH;
+        }
+
+        // Disclaimer.
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '10px Inter, system-ui, sans-serif';
+        ctx.fillText('Bukan rekomendasi beli/jual \u00b7 Data historis T-1 \u00b7 Auto-Cuan', pad, y + 15);
+
         var link = document.createElement('a');
-        link.download = 'chart-' + ticker + '-' + new Date().toISOString().slice(0, 10) + '.png';
-        link.href = compositeCanvas.toDataURL('image/png');
+        link.download = buildChartExportFilename(ticker);
+        link.href = canvas.toDataURL('image/png');
         link.click();
+        restoreBtn();
     } catch (e) {
-        showToast('Download chart belum tersedia di browser ini. Gunakan screenshot atau buka TradingView.', 'warning');
+        fail('Gagal membuat gambar chart. Coba lagi sebentar.');
     }
+}
+
+// Backwards-compatible alias — inline chat chart and Chart page use the SAME exporter.
+function downloadChartPng(chartId, ticker, btn) {
+    return exportChartPng(chartId, ticker, btn);
 }
 
 // ===== PDF DOWNLOAD FUNCTIONS (jsPDF + autoTable — programmatic, no screenshot) =====
