@@ -1572,8 +1572,8 @@
         </div>
         <div class="space-y-3">
             <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
-            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"></div>
+            <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
             <div id="registerError" class="hidden text-sm text-red-400 text-center py-1"></div>
             <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1"></div>
             <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
@@ -1664,9 +1664,30 @@
 </script>
 <script>
 // ===== DEVICE ID =====
+function generateDeviceUuid() {
+    try {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+        if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+            var buf = new Uint8Array(16);
+            crypto.getRandomValues(buf);
+            buf[6] = (buf[6] & 0x0f) | 0x40; // version 4
+            buf[8] = (buf[8] & 0x3f) | 0x80; // variant
+            var hex = [];
+            for (var i = 0; i < 16; i++) { hex.push((buf[i] + 0x100).toString(16).slice(1)); }
+            return hex[0]+hex[1]+hex[2]+hex[3]+'-'+hex[4]+hex[5]+'-'+hex[6]+hex[7]+'-'+hex[8]+hex[9]+'-'+hex[10]+hex[11]+hex[12]+hex[13]+hex[14]+hex[15];
+        }
+    } catch (e) {}
+    // Last-resort fallback for very old browsers without Web Crypto.
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = (Math.random() * 16) | 0, v = c === 'x' ? r : ((r & 0x3) | 0x8);
+        return v.toString(16);
+    }) + '-' + Date.now().toString(16);
+}
 function getOrCreateDeviceId() {
     var id = localStorage.getItem('autocuan_device_id');
-    if (!id) { id = 'dev_' + crypto.randomUUID(); localStorage.setItem('autocuan_device_id', id); }
+    if (!id) { id = 'dev_' + generateDeviceUuid(); localStorage.setItem('autocuan_device_id', id); }
     return id;
 }
 
@@ -2265,6 +2286,28 @@ async function doLogin() {
         } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { loginBtn.disabled = false; loginBtn.innerHTML = 'Masuk'; }
+}
+
+// ===== PASSWORD VISIBILITY TOGGLE =====
+function togglePasswordVisibility(inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    var reveal = input.type === 'password';
+    // Preserve the caret/selection across the type switch where supported.
+    var start = null, end = null;
+    try { start = input.selectionStart; end = input.selectionEnd; } catch (e) {}
+    input.type = reveal ? 'text' : 'password';
+    if (btn) {
+        btn.setAttribute('aria-pressed', reveal ? 'true' : 'false');
+        btn.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+        btn.innerHTML = reveal ? '\uD83D\uDE48' : '\uD83D\uDC41';
+    }
+    try {
+        input.focus();
+        if (start !== null && end !== null && typeof input.setSelectionRange === 'function') {
+            input.setSelectionRange(start, end);
+        }
+    } catch (e) {}
 }
 
 // ===== REGISTER =====
@@ -7758,14 +7801,23 @@ function splitDashboardSafeRows(rows) {
     (rows || []).forEach(function(p) {
         var r = normalizeDashboardPick(p);
         var safetyRow = Object.assign({}, p && p.raw_payload || {}, p || {}, r);
-        if (isDashboardUnsafeActionable(safetyRow)) excluded.push({ pick: p, row: r });
+        // Preserve the fullest merged row for excluded items so exclusion reason
+        // and risk data survive to the rendering layer (avoids "Risk: —").
+        if (isDashboardUnsafeActionable(safetyRow)) excluded.push({ pick: p, row: safetyRow });
         else safe.push(p);
     });
     return { safe: safe, excluded: excluded };
 }
 function dashboardExcludedHtml(excluded) {
     if (!excluded || excluded.length === 0) return '';
-    return '<details class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-100"><summary class="cursor-pointer font-semibold">Excluded / Avoid / High Risk (' + excluded.length + ')</summary><div class="mt-2 space-y-1 text-amber-200/80">' + excluded.slice(0, 8).map(function(item) { var r = item.row || {}; return '<div class="flex flex-wrap gap-2"><b>' + escapeHtml(r.ticker || '-') + '</b><span>' + escapeHtml(getActionLabel(r) || r.action_label || r.status || 'Filtered by safety rules') + '</span><span>Risk: ' + escapeHtml(getRiskLabel(r) || '—') + '</span></div>'; }).join('') + '</div></details>';
+    return '<details class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-100"><summary class="cursor-pointer font-semibold">Excluded / Avoid / High Risk (' + excluded.length + ')</summary><div class="mt-2 space-y-1 text-amber-200/80">' + excluded.slice(0, 8).map(function(item) {
+        var r = item.row || {};
+        var action = getActionLabel(r) || r.action_label || r.status || 'Filtered by safety rules';
+        var risk = getRiskLabel(r) || '—';
+        var reason = getSignalReason(r);
+        var reasonHtml = reason ? '<span class="w-full text-amber-200/60">' + escapeHtml(reason) + '</span>' : '';
+        return '<div class="flex flex-wrap gap-2"><b>' + escapeHtml(r.ticker || '-') + '</b><span>' + escapeHtml(action) + '</span><span>Risk: ' + escapeHtml(risk) + '</span>' + reasonHtml + '</div>';
+    }).join('') + '</div></details>';
 }
 function dashLevelHtml(label, value, tone) {
     var cls = tone === 'danger' ? 'text-red-300' : (tone === 'target' ? 'text-emerald-300' : 'text-blue-300');
@@ -8077,9 +8129,9 @@ async function loadDashboardTop5Monitor(silent, opts) {
 
 function renderDashboardTop5MonitorData(data) {
     var note = document.getElementById('dashboardTop5LockNote');
-    // Derive picked count from top5 rows for "lolos gate: X/5" label
     var top5Rows = data.top5 || data.picks || [];
-    var pickedCount = data.picked_count != null ? data.picked_count : top5Rows.length;
+    // "lolos gate: X/5" reflects FINAL actionable (safe) candidates, not the pre-safety pool.
+    var pickedCount = splitDashboardSafeRows(top5Rows).safe.length;
     // Cap display between 0 and 5 for the "X/5" format
     pickedCount = Math.max(0, Math.min(5, Number(pickedCount) || 0));
     var gateLabel = 'lolos gate: ' + pickedCount + '/5';

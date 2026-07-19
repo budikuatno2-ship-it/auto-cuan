@@ -5517,7 +5517,11 @@ async function sendTop5ChartAttachments(req, picks) {
   return { sent_count: sent, detail_sent_count: detailSent, skipped_count: skipped, errors: errors, method: sent > 0 ? 'sendPhoto chart-url per ticker' : 'text fallback no-chart due timeout guard' };
 }
 
-async function selectDailyTop5(supabase) {
+// Build the full eligible ranked candidate pool (digest-gated + price-fresh),
+// sorted by daily score. `limit` caps how many ranked candidates are returned;
+// pass a larger value to enable backfill from lower-ranked safe candidates.
+async function selectDailyTop5Pool(supabase, limit) {
+  var poolLimit = (limit != null && limit > 0) ? limit : 5;
   var rows = await fetchCombinedScreenerCandidates(supabase, true);
   for (var i = 0; i < rows.length; i++) {
     var f = await fetchForeignSummary(supabase, rows[i].ticker);
@@ -5529,8 +5533,37 @@ async function selectDailyTop5(supabase) {
     var gate = applyFinalTopQualityGate(rows[i], 'daily_top5');
     rows[i].daily_score += gate.quality_score_adjustment || 0;
   }
-  var selected = rows.filter(function(r) { return candidatePassesPriceFreshness(r) && candidatePassesTelegramCandidateDigestGate(r, 'daily_top5'); }).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 5);
-  return selected;
+  return rows.filter(function(r) { return candidatePassesPriceFreshness(r) && candidatePassesTelegramCandidateDigestGate(r, 'daily_top5'); }).sort(function(a, b) { return (b.daily_score || 0) - (a.daily_score || 0) || rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, poolLimit);
+}
+
+async function selectDailyTop5(supabase) {
+  return selectDailyTop5Pool(supabase, 5);
+}
+
+// Pure selection helper: given a ranked candidate pool and a hard-safety
+// predicate, choose up to `limit` safe candidates in rank order, backfilling
+// from lower-ranked candidates when higher-ranked ones are excluded. Returns
+// the selected (actionable) candidates plus the excluded ones for diagnostics.
+// This never promotes a candidate that fails `isSafeFn` (AVOID / SELL /
+// LOW_TP / Very High Risk) into the actionable list.
+function selectSafeTop5WithBackfill(rankedPool, isSafeFn, limit) {
+  var cap = (limit != null && limit > 0) ? limit : 5;
+  var selected = [];
+  var excluded = [];
+  var seen = {};
+  var pool = Array.isArray(rankedPool) ? rankedPool : [];
+  for (var i = 0; i < pool.length; i++) {
+    var cand = pool[i];
+    if (!cand || !cand.ticker || seen[cand.ticker]) continue;
+    seen[cand.ticker] = true;
+    var safe = typeof isSafeFn === 'function' ? isSafeFn(cand) : true;
+    if (safe && selected.length < cap) {
+      selected.push(cand);
+    } else if (!safe) {
+      excluded.push(cand);
+    }
+  }
+  return { selected: selected, excluded: excluded };
 }
 
 function getTelegramConfigStatus() {
@@ -5887,6 +5920,7 @@ async function handleTelegramDailyPicks(req, res, supabase) {
 
     var picks = [];
     var top5RadarCandidates = [];
+    var rankedTop5Pool = [];
     var source = 'selected_candidates';
     var insertedCount = 0;
     var rawPoolCount = 0;
@@ -5901,7 +5935,11 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       top5RadarCandidates = await fetchCombinedScreenerCandidates(supabase, true);
       rawPoolCount = top5RadarCandidates.length;
       afterReadinessCount = top5RadarCandidates.length;
-      picks = await selectDailyTop5(supabase);
+      // Build the full eligible ranked pool (not just the top 5) so strict-signal
+      // selection can backfill from lower-ranked safe candidates. The initial
+      // `picks` remains the top 5 for radar/diagnostic continuity.
+      rankedTop5Pool = await selectDailyTop5Pool(supabase, 100);
+      picks = rankedTop5Pool.slice(0, 5);
     }
     var top5PriceFreshnessDiagnostics = buildPriceFreshnessDiagnostics(existingRows.length > 0 ? picks : top5RadarCandidates);
 
@@ -5932,6 +5970,30 @@ async function handleTelegramDailyPicks(req, res, supabase) {
         rejectedByGate.push(rejEntry);
       }
     });
+
+    // === STRICT-SIGNAL BACKFILL ===
+    // The pool was effectively limited to the top 5 digest-gated candidates before
+    // the strict safety gate ran, so safe lower-ranked candidates could never
+    // backfill excluded (AVOID / SELL / LOW_TP / Very High Risk) ones. Re-select
+    // up to 5 safe candidates from the full ranked pool, backfilling as needed.
+    // This never promotes a candidate that fails the strict safety/upside gate.
+    if (!isWatchlistContext && strictSignalPicks.length < 5 && rankedTop5Pool.length > 0) {
+      var strictBackfill = selectSafeTop5WithBackfill(rankedTop5Pool, function(c) {
+        return candidatePassesPublicTelegramSafetyGate(c, 'daily_top5') && candidatePassesMinUpside(c);
+      }, 5);
+      strictBackfill.excluded.forEach(function(c) {
+        if (!c || !c.ticker) return;
+        if (rejectedByGate.some(function(r) { return r.ticker === c.ticker; })) return;
+        var passesSafety = candidatePassesPublicTelegramSafetyGate(c, 'daily_top5');
+        if (!passesSafety) {
+          var diag = diagnosePublicSafetyGateRejection(c, 'daily_top5');
+          rejectedByGate.push({ ticker: c.ticker, reason: diag.category, detailed_reason: diag.detailed_reason });
+        } else {
+          rejectedByGate.push({ ticker: c.ticker, reason: 'min_tp1_upside', detailed_reason: 'TP1 upside below minimum threshold' });
+        }
+      });
+      strictSignalPicks = strictBackfill.selected;
+    }
 
     // Determine final picks and mode
     var top5Mode = 'strict_signal'; // 'strict_signal' | 'watchlist' | 'empty'
@@ -12183,6 +12245,8 @@ module.exports.__test = {
   isDashboardExplicitPreviewOrProvisionalRow: isDashboardExplicitPreviewOrProvisionalRow,
   filterSafeDashboardLockedTop5Rows: filterSafeDashboardLockedTop5Rows,
   selectDailyTop5: selectDailyTop5,
+  selectDailyTop5Pool: selectDailyTop5Pool,
+  selectSafeTop5WithBackfill: selectSafeTop5WithBackfill,
   validateScreenerPriceFreshness: validateScreenerPriceFreshness,
   attachPriceFreshness: attachPriceFreshness,
   candidatePassesPriceFreshness: candidatePassesPriceFreshness,

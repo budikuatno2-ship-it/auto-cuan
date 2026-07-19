@@ -1,4 +1,18 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
+
+// Normalize a client-provided device ID and generate a secure server-side
+// fallback when an older client omits it. Keeps the NOT NULL `device_id`
+// column satisfied without exposing device ID as a required user input.
+function normalizeDeviceId(rawDeviceId) {
+  var id = typeof rawDeviceId === 'string' ? rawDeviceId.trim() : '';
+  // Strip control characters and cap length so the value is storage-safe.
+  id = id.replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 128);
+  if (!id) {
+    id = 'srv_' + crypto.randomUUID();
+  }
+  return id;
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,10 +22,14 @@ module.exports = async function handler(req, res) {
   try {
     const { username, passwordHash, deviceId, userAgent } = req.body || {};
 
-    // Validate inputs
-    if (!username || !passwordHash || !deviceId) {
+    // Validate required inputs. Device ID is auto-managed by the client and
+    // backfilled server-side, so it is NOT a required user input.
+    if (!username || !passwordHash) {
       return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
     }
+
+    // Ensure we always have a non-null device ID for the NOT NULL column.
+    const normalizedDeviceId = normalizeDeviceId(deviceId);
 
     const usernameLower = String(username).trim().toLowerCase();
 
@@ -62,7 +80,8 @@ module.exports = async function handler(req, res) {
       .insert({
         username: usernameLower,
         password_hash: passwordHash,
-        devices: [deviceId],
+        device_id: normalizedDeviceId,
+        devices: [normalizedDeviceId],
         user_agent: userAgent || '',
         is_blocked: false,
         is_approved: false
@@ -75,7 +94,8 @@ module.exports = async function handler(req, res) {
       if (insertError.code === '23505') {
         return res.status(400).json({ success: false, error: 'Username sudah digunakan.' });
       }
-      return res.status(500).json({ success: false, error: 'Gagal membuat akun: ' + insertError.message });
+      // Never surface raw database constraint text to the user.
+      return res.status(500).json({ success: false, error: 'Gagal membuat akun. Silakan coba lagi beberapa saat lagi.' });
     }
 
     return res.status(200).json({ success: true, pending: true });
@@ -84,3 +104,6 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
   }
 };
+
+// Exposed for focused unit tests only.
+module.exports.__test = { normalizeDeviceId: normalizeDeviceId };
