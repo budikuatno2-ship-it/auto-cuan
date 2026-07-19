@@ -7317,6 +7317,67 @@ function resolveMonitorSource(pick) {
   return raw.monitor_source || (pick && pick.category) || raw.category || null;
 }
 
+// Deterministic recency comparator for monitor rows within a dedup group.
+// Sorts so the WINNER is at index 0: latest recommendation date first (desc),
+// then highest row ID first (desc) as the tie-breaker. Dates are 'YYYY-MM-DD'
+// strings, so lexical comparison matches chronological order.
+function compareMonitorRowRecency(a, b) {
+  var da = a && a.date != null ? String(a.date) : '';
+  var db = b && b.date != null ? String(b.date) : '';
+  if (da !== db) return da < db ? 1 : -1;
+  var ia = a && a.id != null ? Number(a.id) : -Infinity;
+  var ib = b && b.id != null ? Number(b.id) : -Infinity;
+  if (ia === ib) return 0;
+  return ia < ib ? 1 : -1;
+}
+
+// Collapses multiple active rows for the same monitor_source + ticker down to a
+// single "latest" recommendation. Duplicates arise because registration dedup is
+// scoped to a single date, so re-recommending a ticker on a later date inserts a
+// fresh row while older rows stay non-terminal. Returns the kept winners plus
+// diagnostics about which rows were ignored. Rows from DIFFERENT monitor sources
+// are kept separate. This is a pure, in-memory operation — no row is mutated.
+function dedupeActiveMonitorRows(rows) {
+  var groups = {};
+  var order = [];
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var source = resolveMonitorSource(r);
+    var key = String(source == null ? '' : source) + '|' + String(r && r.ticker != null ? r.ticker : '');
+    if (!groups[key]) { groups[key] = { source: source, ticker: r ? r.ticker : null, members: [] }; order.push(key); }
+    groups[key].members.push(r);
+  }
+  var kept = [];
+  var ignored = [];
+  var duplicateGroups = [];
+  for (var g = 0; g < order.length; g++) {
+    var grp = groups[order[g]];
+    var members = grp.members.slice().sort(compareMonitorRowRecency);
+    var winner = members[0];
+    kept.push(winner);
+    if (members.length > 1) {
+      var losers = members.slice(1);
+      for (var l = 0; l < losers.length; l++) {
+        ignored.push({
+          ticker: losers[l] && losers[l].ticker != null ? losers[l].ticker : null,
+          source: grp.source,
+          recommendation_date: losers[l] && losers[l].date != null ? losers[l].date : null,
+          row_id: losers[l] && losers[l].id != null ? losers[l].id : null,
+          previous_status: losers[l] && losers[l].status != null ? losers[l].status : null,
+          reason: 'superseded_by_latest_recommendation'
+        });
+      }
+      duplicateGroups.push({
+        source: grp.source,
+        ticker: grp.ticker,
+        kept: { recommendation_date: winner && winner.date != null ? winner.date : null, row_id: winner && winner.id != null ? winner.id : null },
+        ignored: losers.map(function (x) { return { recommendation_date: x && x.date != null ? x.date : null, row_id: x && x.id != null ? x.id : null, previous_status: x && x.status != null ? x.status : null }; })
+      });
+    }
+  }
+  return { kept: kept, ignored: ignored, duplicateGroups: duplicateGroups };
+}
+
 async function handleTelegramMonitorPicks(req, res, supabase) {
   if (!verifyCronSecret(req)) return res.status(401).json({ success: false, sent_count: 0, checked_count: 0, error: 'Unauthorized.' });
   try {
@@ -7343,12 +7404,22 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
 
     // Filter to only active rows (not terminal)
     var allRows = q.data || [];
-    var rows = allRows.filter(function(r) { return !isTerminalPick(r); });
+    var activeRows = allRows.filter(function(r) { return !isTerminalPick(r); });
 
-    if (rows.length === 0) {
-      if (dryRun) return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, checked_count: 0, events: [], individual_message_previews: [], batch_message_preview: null, error: null });
+    if (activeRows.length === 0) {
+      if (dryRun) return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, checked_count: 0, raw_row_count: 0, deduped_row_count: 0, duplicate_groups: [], ignored_duplicate_rows: [], events: [], individual_message_previews: [], batch_message_preview: null, error: null });
       return res.status(200).json({ success: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, sent_count: 0, checked_count: 0, error: null });
     }
+
+    // DEDUPLICATION: collapse duplicate active rows to the latest recommendation
+    // per monitor_source + ticker (date desc, then id desc). Older duplicates are
+    // ignored in memory only and are never updated, notified, or marked terminal.
+    // A ticker under different monitor sources stays separate.
+    var rawActiveCount = activeRows.length;
+    var deduped = dedupeActiveMonitorRows(activeRows);
+    var rows = deduped.kept;
+    var ignoredDuplicateRows = deduped.ignored;
+    var duplicateGroups = deduped.duplicateGroups;
     var lines = [(isFinal ? '🏁' : '⏱') + ' AUTO-CUAN MONITOR ' + hour, ''];
     var shown = 0;
     var aiNarrationResults = [];
@@ -7441,6 +7512,13 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         var refPrice = toNum(pck.entry1);
         if (refPrice == null) refPrice = toNum(pck.entry2);
         var lastPx = px && px.last != null ? toNum(px.last) : null;
+        // Effective low/high exactly as evaluateMonitorStatus() uses them for SL/TP
+        // detection (fall back to last when intraday low/high are unavailable).
+        // SL_HIT keys off price_low vs sl; pct_change keys off current_price vs
+        // reference_price (entry) — which is why an intraday wick through SL can
+        // coexist with a positive pct_change after a recovery.
+        var priceLow = px && px.low != null ? toNum(px.low) : lastPx;
+        var priceHigh = px && px.high != null ? toNum(px.high) : lastPx;
         var pctChange = (refPrice != null && refPrice > 0 && lastPx != null) ? Math.round(((lastPx - refPrice) / refPrice) * 10000) / 100 : null;
         var sendReason;
         if (significantHit) sendReason = 'New significant hit (' + ev.status + '): would send an individual Telegram message.';
@@ -7450,9 +7528,13 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         dryRunEvents.push({
           ticker: pck.ticker,
           source: resolveMonitorSource(pck),
+          recommendation_date: pck.date != null ? pck.date : null,
+          row_id: pck.id != null ? pck.id : null,
           previous_status: pck.status != null ? pck.status : null,
           simulated_status: ev.status,
           current_price: lastPx,
+          price_low: priceLow,
+          price_high: priceHigh,
           best_effort: !!(px && px.bestEffort),
           entry_range: { entry1: toNum(pck.entry1), entry2: toNum(pck.entry2) },
           tp1: toNum(pck.tp1),
@@ -7471,7 +7553,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     if (shown === 0) lines.push('Tidak ada ticker aktif yang perlu dimonitor (sudah final).');
     lines.push('Bukan rekomendasi beli/jual. DYOR.');
     if (dryRun) {
-      return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, is_final: isFinal, dates_queried: dateRange, checked_count: rows.length, events: dryRunEvents, individual_message_previews: individualMessagePreviews, batch_message_preview: lines.join('\n'), error: null });
+      return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, is_final: isFinal, dates_queried: dateRange, checked_count: rows.length, raw_row_count: rawActiveCount, deduped_row_count: rows.length, duplicate_groups: duplicateGroups, ignored_duplicate_rows: ignoredDuplicateRows, events: dryRunEvents, individual_message_previews: individualMessagePreviews, batch_message_preview: lines.join('\n'), error: null });
     }
     var sendResult = await telegramNotifier.sendTelegramMessage(lines.join('\n'));
     return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, sent_count: sendResult.sent ? 1 : 0, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, error: null, telegram: sendResult });
@@ -12248,6 +12330,8 @@ module.exports.__test = {
   handleTelegramMonitorPicks: handleTelegramMonitorPicks,
   isMonitorDryRunRequest: isMonitorDryRunRequest,
   resolveMonitorSource: resolveMonitorSource,
+  dedupeActiveMonitorRows: dedupeActiveMonitorRows,
+  compareMonitorRowRecency: compareMonitorRowRecency,
   evaluateMonitorStatus: evaluateMonitorStatus,
   fetchLatestPriceForMonitor: fetchLatestPriceForMonitor,
   getMonitorDateRange: getMonitorDateRange,
