@@ -1,7 +1,25 @@
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const { createSessionToken, buildSessionCookie, buildClearCookie } = require('../lib/admin-session');
+const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret } = require('../lib/admin-session');
 
 const MAX_DEVICES = 3;
+const LEGACY_BUDI_PASSWORD_HASH = crypto
+  .createHash('sha256')
+  .update('._autocuan_salt_2024', 'utf8')
+  .digest('hex');
+
+function matchesLegacyBudiPassword(passwordHash) {
+  if (typeof passwordHash !== 'string') return false;
+  const supplied = Buffer.from(passwordHash, 'utf8');
+  const expected = Buffer.from(LEGACY_BUDI_PASSWORD_HASH, 'utf8');
+  return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+}
+
+function isRegisteredDevice(user, deviceId) {
+  if (typeof deviceId !== 'string' || !deviceId) return false;
+  const currentDevices = Array.isArray(user.devices) ? user.devices : [];
+  return user.device_id === deviceId || currentDevices.includes(deviceId);
+}
 
 // Generic credential error to prevent username enumeration (invalid username and
 // invalid password produce the identical public response).
@@ -11,14 +29,17 @@ const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah.';
 // Admin is derived SERVER-SIDE only (never from client input). Fail-closed: if no
 // SESSION_SECRET is configured, no cookie is set and admin endpoints stay locked.
 function issueSessionCookie(res, user, usernameLower, deviceId) {
-  const isAdmin = usernameLower === 'budi';
+  const result = { isAdmin: usernameLower === 'budi', issued: false };
   try {
-    const token = createSessionToken({ userId: user.id, username: usernameLower, isAdmin: isAdmin, deviceId: deviceId });
-    if (token) res.setHeader('Set-Cookie', buildSessionCookie(token));
+    const token = createSessionToken({ userId: user.id, username: usernameLower, isAdmin: result.isAdmin, deviceId: deviceId });
+    if (token) {
+      res.setHeader('Set-Cookie', buildSessionCookie(token));
+      result.issued = true;
+    }
   } catch (e) {
-    // Never log token/secret/device. Fail-closed: proceed without a session cookie.
+    // Never log token/secret/device. Fail-closed: no session is considered issued.
   }
-  return isAdmin;
+  return result;
 }
 
 module.exports = async function handler(req, res) {
@@ -35,12 +56,20 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
-    // Validate inputs
-    if (!username || !passwordHash || !deviceId) {
+    // Validate inputs. A legacy-shaped budi request with no device must fail with
+    // the same generic credential response as every other compatibility failure.
+    if (!username || !passwordHash) {
       return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
     }
 
     const usernameLower = String(username).trim().toLowerCase();
+
+    if (!deviceId) {
+      if (usernameLower === 'budi' && matchesLegacyBudiPassword(passwordHash)) {
+        return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
+      }
+      return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
+    }
 
     if (!usernameLower || usernameLower.length < 2) {
       return res.status(400).json({ success: false, error: 'Username tidak valid.' });
@@ -61,7 +90,7 @@ module.exports = async function handler(req, res) {
     // Find user by username
     const { data: user, error: findError } = await supabase
       .from('app_users')
-      .select('id, username, password_hash, devices, is_blocked, is_approved')
+      .select('id, username, password_hash, device_id, devices, is_blocked, is_approved')
       .eq('username', usernameLower)
       .maybeSingle();
 
@@ -79,12 +108,40 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
 
-    if (user.password_hash !== passwordHash) {
-      console.error('login-user: authentication failed (bad password)');
-      return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
+    const databasePasswordMatches = user.password_hash === passwordHash;
+
+    if (!databasePasswordMatches) {
+      // Narrow compatibility for the historical budi + "." login. The browser
+      // still hashes the entered password through the shared client algorithm;
+      // the legacy hash alone is insufficient and never bypasses device binding.
+      const legacyBudiPasswordMatches = usernameLower === 'budi' && matchesLegacyBudiPassword(passwordHash);
+      const legacyBudiMayLogin = legacyBudiPasswordMatches &&
+        Boolean(getSessionSecret()) &&
+        user.is_blocked === false &&
+        user.is_approved === true &&
+        isRegisteredDevice(user, deviceId);
+
+      if (!legacyBudiMayLogin) {
+        console.error('login-user: authentication failed (bad password)');
+        return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
+      }
+
+      // Compatibility success is deliberately read-only: do not update login
+      // metadata and never append/trust a device. Admin is derived server-side.
+      const legacySession = issueSessionCookie(res, user, usernameLower, deviceId);
+      if (!legacySession.issued) {
+        return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
+      }
+      return res.status(200).json({
+        success: true,
+        username: usernameLower,
+        userId: user.id,
+        isAdmin: legacySession.isAdmin
+      });
     }
 
-    // Credentials are valid from here on.
+    // Database credentials are valid from here on; preserve the existing normal
+    // login, account-state, and device-registration behavior unchanged.
 
     // Check if blocked
     if (user.is_blocked) {
@@ -135,12 +192,12 @@ module.exports = async function handler(req, res) {
         console.error('login-user update error:', updateError);
       }
 
-      const knownDeviceIsAdmin = issueSessionCookie(res, user, usernameLower, deviceId);
+      const knownDeviceSession = issueSessionCookie(res, user, usernameLower, deviceId);
       return res.status(200).json({
         success: true,
         username: usernameLower,
         userId: user.id,
-        isAdmin: knownDeviceIsAdmin
+        isAdmin: knownDeviceSession.isAdmin
       });
     }
 
@@ -169,12 +226,12 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Gagal memperbarui perangkat.' });
     }
 
-    const newDeviceIsAdmin = issueSessionCookie(res, user, usernameLower, deviceId);
+    const newDeviceSession = issueSessionCookie(res, user, usernameLower, deviceId);
     return res.status(200).json({
       success: true,
       username: usernameLower,
       userId: user.id,
-      isAdmin: newDeviceIsAdmin
+      isAdmin: newDeviceSession.isAdmin
     });
   } catch (e) {
     console.error('login-user exception:', e);

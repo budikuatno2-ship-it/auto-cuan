@@ -13,19 +13,45 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
+const vm = require('node:vm');
 const Module = require('module');
 
 const ROOT = path.resolve(__dirname, '..');
 const SECRET = 'unit-test-session-secret-value';
+const LEGACY_DOT_HASH = crypto.createHash('sha256').update('._autocuan_salt_2024', 'utf8').digest('hex');
+
+function loadFrontendHashPassword() {
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const start = html.indexOf('async function hashPassword(password)');
+  assert.ok(start >= 0, 'frontend hashPassword function must exist');
+  const braceStart = html.indexOf('{', start);
+  let depth = 0;
+  for (let i = braceStart; i < html.length; i++) {
+    if (html[i] === '{') depth++;
+    if (html[i] === '}') depth--;
+    if (depth === 0) {
+      const source = html.slice(start, i + 1);
+      return vm.runInNewContext('(' + source + ')', {
+        TextEncoder: TextEncoder,
+        crypto: crypto.webcrypto,
+        Uint8Array: Uint8Array
+      });
+    }
+  }
+  throw new Error('frontend hashPassword function has unbalanced braces');
+}
 
 // Inert placeholder budi record (NOT real data).
 const BUDI_HASH = 'PLACEHOLDER_BUDI_HASH';
 function freshBudi(devices) {
+  const registeredDevices = devices || ['budi_dev_1', 'budi_dev_2'];
   return {
     id: 'budi-immutable-id',
     username: 'budi',
     password_hash: BUDI_HASH,
-    devices: devices || ['budi_dev_1', 'budi_dev_2'],
+    device_id: registeredDevices[0] || 'budi_primary_device',
+    devices: registeredDevices,
     is_blocked: false,
     is_approved: true
   };
@@ -125,6 +151,173 @@ async function loginBudi(devices, deviceId) {
   await handler({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_HASH, deviceId: deviceId || 'budi_dev_1', userAgent: 'ua' } }, res);
   return { res, sink };
 }
+
+async function loginLegacyBudi(options) {
+  const opts = options || {};
+  const sink = [];
+  const user = Object.prototype.hasOwnProperty.call(opts, 'user') ? opts.user : freshBudi();
+  const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: user }, sink));
+  const res = makeRes();
+  const body = Object.assign({
+    username: 'budi',
+    passwordHash: LEGACY_DOT_HASH,
+    deviceId: 'budi_dev_1',
+    userAgent: 'legacy-test-ua'
+  }, opts.body || {});
+  await handler({ method: 'POST', headers: sameOrigin(), body: body }, res);
+  return { res, sink, user };
+}
+
+function assertGenericRejection(result) {
+  assert.equal(result.res.statusCode, 400);
+  assert.deepEqual(result.res.body, { success: false, error: 'Username atau password salah.' });
+  assert.equal(setCookie(result.res), '', 'failed compatibility login must issue no cookie');
+  assert.equal(result.sink.length, 0, 'failed compatibility login must not mutate the database');
+}
+
+// ============================================================
+
+// Focused legacy compatibility matrix required by the production regression.
+test('legacy budi + dot hash succeeds only on an already-registered devices[] entry', async () => {
+  await withEnv({}, async () => {
+    const result = await loginLegacyBudi({
+      user: Object.assign(freshBudi(['primary-device', 'array-device']), { device_id: 'primary-device' }),
+      body: { deviceId: 'array-device' }
+    });
+    assert.equal(result.res.statusCode, 200);
+    assert.deepEqual(result.res.body, {
+      success: true,
+      username: 'budi',
+      userId: 'budi-immutable-id',
+      isAdmin: true
+    });
+    assert.equal(result.sink.length, 0, 'compatibility success must perform no database write');
+  });
+});
+
+test('legacy hash contract executes the production frontend algorithm and normalizes budi username', async () => {
+  await withEnv({}, async () => {
+    const frontendHashPassword = loadFrontendHashPassword();
+    const frontendDotHash = await frontendHashPassword('.');
+    assert.equal(frontendDotHash, LEGACY_DOT_HASH, 'server compatibility hash must match the production client algorithm');
+    const result = await loginLegacyBudi({ body: { username: '  BuDi  ', passwordHash: frontendDotHash } });
+    assert.equal(result.res.statusCode, 200);
+    assert.equal(result.res.body.username, 'budi');
+    assert.equal(result.sink.length, 0);
+  });
+});
+
+test('database-password match takes precedence even when the stored hash equals the legacy dot hash', async () => {
+  await withEnv({}, async () => {
+    const sink = [];
+    const user = Object.assign(freshBudi(['registered-device']), { password_hash: LEGACY_DOT_HASH });
+    const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: user }, sink));
+    const res = makeRes();
+    await handler({ method: 'POST', headers: sameOrigin(), body: {
+      username: 'budi', passwordHash: LEGACY_DOT_HASH, deviceId: 'normal-path-new-device', userAgent: 'ua'
+    } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(sink.length, 1, 'normal login path must retain its existing device update behavior');
+    assert.deepEqual(sink[0].payload.devices, ['registered-device', 'normal-path-new-device']);
+  });
+});
+
+test('legacy compatibility fails generically when a signed cookie cannot be attached', async () => {
+  await withEnv({}, async () => {
+    const sink = [];
+    const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: freshBudi() }, sink));
+    const res = makeRes();
+    res.setHeader = function () { throw new Error('simulated cookie header failure'); };
+    await handler({ method: 'POST', headers: sameOrigin(), body: {
+      username: 'budi', passwordHash: LEGACY_DOT_HASH, deviceId: 'budi_dev_1'
+    } }, res);
+    assert.equal(res.statusCode, 400);
+    assert.deepEqual(res.body, { success: false, error: 'Username atau password salah.' });
+    assert.deepEqual(res.headers, {});
+    assert.equal(sink.length, 0);
+  });
+});
+
+test('legacy budi compatibility accepts the existing primary device_id without appending it', async () => {
+  await withEnv({}, async () => {
+    const result = await loginLegacyBudi({
+      user: Object.assign(freshBudi([]), { device_id: 'primary-only', devices: [] }),
+      body: { deviceId: 'primary-only' }
+    });
+    assert.equal(result.res.body.success, true);
+    assert.equal(result.sink.length, 0, 'primary device compatibility must remain read-only');
+  });
+});
+
+test('legacy compatibility sets the signed HttpOnly admin cookie with adm=true', async () => {
+  await withEnv({}, async () => {
+    const result = await loginLegacyBudi();
+    const cookie = setCookie(result.res);
+    assert.match(cookie, /^ac_sess=/);
+    assert.match(cookie, /HttpOnly/);
+    assert.match(cookie, /SameSite=Strict/);
+    const token = /^ac_sess=([^;]+)/.exec(cookie)[1];
+    const verified = S.verifySessionToken(token);
+    assert.equal(verified.valid, true);
+    assert.equal(verified.payload.adm, true);
+    assert.equal(verified.payload.un, 'budi');
+    assert.equal(verified.payload.uid, 'budi-immutable-id');
+    assert.equal(token.includes(LEGACY_DOT_HASH), false, 'legacy hash must not enter the token');
+    assert.equal(token.includes('budi_dev_1'), false, 'raw device id must not enter the token');
+  });
+});
+
+test('legacy compatibility never updates a budi field or inserts/appends a device', async () => {
+  await withEnv({}, async () => {
+    const user = freshBudi();
+    const before = JSON.stringify(user);
+    const result = await loginLegacyBudi({ user: user });
+    assert.equal(result.res.body.success, true);
+    assert.equal(result.sink.length, 0, 'no update or insert of any kind is allowed');
+    assert.equal(JSON.stringify(user), before, 'mocked budi row must remain byte-for-byte unchanged');
+  });
+});
+
+test('legacy budi rejects unknown and missing devices generically without mutation', async () => {
+  await withEnv({}, async () => {
+    assertGenericRejection(await loginLegacyBudi({ body: { deviceId: 'never-registered' } }));
+    assertGenericRejection(await loginLegacyBudi({ body: { deviceId: '' } }));
+  });
+});
+
+test('legacy budi fails closed without SESSION_SECRET', async () => {
+  await withEnv({ SESSION_SECRET: undefined }, async () => {
+    assertGenericRejection(await loginLegacyBudi());
+  });
+});
+
+test('legacy budi requires an existing approved and unblocked database account', async () => {
+  await withEnv({}, async () => {
+    assertGenericRejection(await loginLegacyBudi({ user: null }));
+    assertGenericRejection(await loginLegacyBudi({ user: Object.assign(freshBudi(), { is_blocked: true }) }));
+    assertGenericRejection(await loginLegacyBudi({ user: Object.assign(freshBudi(), { is_approved: false }) }));
+  });
+});
+
+test('wrong budi password, normal-user dot hash, and client admin flags cannot enter compatibility', async () => {
+  await withEnv({}, async () => {
+    assertGenericRejection(await loginLegacyBudi({ body: { passwordHash: 'not-the-legacy-hash' } }));
+
+    const alice = {
+      id: 'alice-id', username: 'alice', password_hash: 'alice-db-hash',
+      device_id: 'alice-device', devices: ['alice-device'], is_blocked: false, is_approved: true
+    };
+    assertGenericRejection(await loginLegacyBudi({
+      user: alice,
+      body: { username: 'alice', deviceId: 'alice-device', is_admin: true, isAdmin: true, adminName: 'budi' }
+    }));
+
+    assertGenericRejection(await loginLegacyBudi({
+      body: { deviceId: 'never-registered', is_admin: true, isAdmin: true, adminName: 'budi' }
+    }));
+  });
+});
 
 // ============================================================
 
