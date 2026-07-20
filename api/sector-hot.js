@@ -41,6 +41,7 @@ const telegramTemplates = require('../lib/telegram-templates');
 const atrHelpers = require('../lib/atr-report-helpers');
 const weeklyTimeframe = require('../lib/weekly-timeframe');
 const marketRegime = require('../lib/market-regime');
+const productionEligibility = require('../lib/intraday-production-eligibility');
 const corporateActionGuard = require('../lib/corporate-action-price-scale-guard');
 const smartSetupLabels = require('../lib/smart-setup-labels');
 const crypto = require('crypto');
@@ -4348,9 +4349,13 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
     'pierce resistance'
   ])) return false;
 
-  var dataQualityStatus = String(candidate.data_quality_status || '').trim().toUpperCase();
-  if (candidate.data_quality_valid === false || candidate.data_quality_needs_revalidation === true) return false;
-  if ({ SHORT_HISTORY: true, MISSING_REFERENCE: true, SPARSE_TRADING_DAYS: true, INVALID_CANDLE: true, CORPORATE_ACTION_RISK: true, NEEDS_REVALIDATION: true }[dataQualityStatus]) return false;
+  // Data-quality eligibility is sourced from the single shared pure policy
+  // (lib/intraday-production-eligibility). This is behavior-identical to the
+  // prior inline gate: it excludes data_quality_valid === false,
+  // data_quality_needs_revalidation === true, and the risk-status set
+  // { SHORT_HISTORY, MISSING_REFERENCE, SPARSE_TRADING_DAYS, INVALID_CANDLE,
+  //   CORPORATE_ACTION_RISK, NEEDS_REVALIDATION }.
+  if (!productionEligibility.classifyProductionEligibility(candidate).eligible) return false;
   var dataQualityText = joinTelegramTexts([
     candidate.data_quality_label,
     candidate.data_quality_note,
@@ -4589,7 +4594,9 @@ function diagnosePublicSafetyGateRejection(candidate, mode) {
   if (candidate.data_quality_valid === false || candidate.data_quality_needs_revalidation === true) {
     return { category: 'data_quality', detailed_reason: 'data_quality_valid=false or data_quality_needs_revalidation=true' };
   }
-  if ({ SHORT_HISTORY: true, MISSING_REFERENCE: true, SPARSE_TRADING_DAYS: true, INVALID_CANDLE: true, CORPORATE_ACTION_RISK: true, NEEDS_REVALIDATION: true }[dataQualityStatus]) {
+  // Risk-status set sourced from the shared pure policy to avoid drift; the
+  // returned diagnostic string is intentionally unchanged.
+  if (productionEligibility.isDataQualityRiskStatus(dataQualityStatus)) {
     return { category: 'data_quality', detailed_reason: 'Data quality status: ' + dataQualityStatus };
   }
   var dataQualityText = joinTelegramTexts([candidate.data_quality_label, candidate.data_quality_note, candidate.data_quality_status]).toLowerCase();
