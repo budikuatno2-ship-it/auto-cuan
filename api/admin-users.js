@@ -1,5 +1,54 @@
 const { createClient } = require('@supabase/supabase-js');
 const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
+const telegramNotifier = require('../lib/telegram-notifier');
+const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
+
+const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
+
+function buildApprovalNotificationMessage(user) {
+  return [
+    '✅ AKUN DISETUJUI',
+    '',
+    'Username: ' + maskUsername(user && user.username),
+    'Kode: ' + generateApprovalCode(user),
+    'Status: Aktif',
+    '',
+    'Silakan login:',
+    CANONICAL_LOGIN_URL
+  ].join('\n');
+}
+
+async function sendApprovalNotification(user) {
+  if (process.env.TELEGRAM_APPROVAL_NOTIFICATIONS_ENABLED !== '1') {
+    return { status: 'skipped', reason: 'approval_notifications_disabled' };
+  }
+
+  // Approval announcements MUST target a dedicated approval chat and must never
+  // fall back to the operational recommendation/monitor chat (TELEGRAM_CHAT_ID).
+  // If the dedicated chat is not configured, skip WITHOUT calling the notifier so
+  // the notifier's own TELEGRAM_CHAT_ID fallback can never be reached.
+  var approvalChatId = process.env.TELEGRAM_APPROVAL_CHAT_ID;
+  if (!approvalChatId || String(approvalChatId).trim() === '') {
+    return { status: 'skipped', reason: 'missing_approval_chat_id' };
+  }
+
+  try {
+    var result = await telegramNotifier.sendTelegramMessage(
+      buildApprovalNotificationMessage(user),
+      { chat_id: String(approvalChatId).trim() }
+    );
+    if (result && result.sent === true) {
+      return { status: 'sent' };
+    }
+    if (result && result.skipped === true) {
+      return { status: 'skipped', reason: 'telegram_disabled_or_misconfigured' };
+    }
+    return { status: 'failed' };
+  } catch (e) {
+    console.error('admin-users approval notification failed');
+    return { status: 'failed' };
+  }
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -177,17 +226,38 @@ module.exports = async function handler(req, res) {
 
       const targetUser = String(username).trim().toLowerCase();
 
-      const { error } = await supabase
+      // The status predicate makes the update itself the idempotency gate. Only
+      // the request that actually changes false -> true receives a row back and
+      // is allowed to notify Telegram.
+      const { data: transitionedUser, error } = await supabase
         .from('app_users')
         .update({ is_approved: true })
-        .eq('username', targetUser);
+        .eq('username', targetUser)
+        .eq('is_approved', false)
+        .select('id, username, created_at')
+        .maybeSingle();
 
       if (error) {
         console.error('admin-users approve error:', error);
         return res.status(500).json({ success: false, error: 'Gagal approve user: ' + error.message });
       }
 
-      return res.status(200).json({ success: true, message: 'User ' + targetUser + ' berhasil di-approve.' });
+      if (!transitionedUser) {
+        return res.status(200).json({
+          success: true,
+          approval_transitioned: false,
+          message: 'Tidak ada perubahan status approval.',
+          approval_notification: { status: 'skipped', reason: 'no_approval_transition' }
+        });
+      }
+
+      const approvalNotification = await sendApprovalNotification(transitionedUser);
+      return res.status(200).json({
+        success: true,
+        approval_transitioned: true,
+        message: 'User ' + targetUser + ' berhasil di-approve.',
+        approval_notification: approvalNotification
+      });
     }
 
     // === REJECT USER (set is_approved to false) ===

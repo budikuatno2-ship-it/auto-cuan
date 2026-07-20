@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret } = require('../lib/admin-session');
+const { generateApprovalCode, normalizeTelegramChannelUrl } = require('../lib/free-user-approval');
 
 const MAX_DEVICES = 3;
 const LEGACY_BUDI_PASSWORD_HASH = crypto
@@ -148,9 +149,19 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ success: false, error: 'Akun sedang diblokir.' });
     }
 
-    // Check approval status (skip for review user — review bypasses approval)
+    // Check approval status (skip for review user — review bypasses approval).
+    // Reaching here guarantees the submitted password already matched, so it is
+    // safe to reveal pending-approval details. Users who registered before this
+    // feature never received their recognition code; surface it now WITHOUT
+    // issuing a session or logging them in. The AC-XXXXXX value is a public
+    // recognition code, not an authentication credential.
     if (usernameLower !== 'review' && user.is_approved === false) {
-      return res.status(403).json({ success: false, error: 'Akun belum di-approve oleh admin. Silakan tunggu persetujuan.' });
+      return res.status(403).json({
+        success: false,
+        approval_status: 'pending',
+        approval_code: generateApprovalCode({ id: user.id, username: user.username, created_at: user.created_at }),
+        telegram_channel_url: normalizeTelegramChannelUrl(process.env.TELEGRAM_FREE_CHANNEL_URL)
+      });
     }
 
     // === REVIEW USER: bypass device binding ===

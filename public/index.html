@@ -1587,13 +1587,23 @@
             <h3 id="registerModalTitle" class="text-base font-bold text-white">Daftar</h3>
             <button onclick="closeRegisterModal()" class="text-gray-500 hover:text-gray-300 text-xl leading-none" aria-label="Tutup modal daftar">&times;</button>
         </div>
-        <div class="space-y-3">
+        <div id="registerFormFields" class="space-y-3">
             <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
             <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
             <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
             <div id="registerError" class="hidden text-sm text-red-400 text-center py-1"></div>
             <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1"></div>
             <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
+        </div>
+        <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
+            <h4 class="text-lg font-bold text-emerald-300">Pendaftaran berhasil</h4>
+            <p class="text-sm text-gray-300">Akun Anda sedang menunggu persetujuan admin.</p>
+            <p class="text-sm text-gray-300">Kode approval: <strong id="registerApprovalCode" class="font-mono tracking-wider text-white"></strong></p>
+            <p class="text-xs leading-relaxed text-gray-400">Simpan kode ini dan pantau pengumuman di channel Telegram.</p>
+            <div class="space-y-2">
+                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode</button>
+                <a id="joinFreeTelegramChannel" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Gabung Channel Telegram</a>
+            </div>
         </div>
     </div>
 </div>
@@ -2263,7 +2273,15 @@ setTimeout(function() { var il = document.getElementById('initialLoader'); if (i
 // ===== MODAL FUNCTIONS =====
 function openLoginModal() { updateLandingCtas(); document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); }
 function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
-function openRegisterModal() { document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
+function resetRegisterApprovalView() {
+    document.getElementById('registerFormFields').classList.remove('hidden');
+    document.getElementById('registerApprovalPanel').classList.add('hidden');
+    document.getElementById('registerApprovalCode').textContent = '';
+    var joinLink = document.getElementById('joinFreeTelegramChannel');
+    joinLink.classList.add('hidden'); joinLink.removeAttribute('href');
+    document.getElementById('copyApprovalCodeBtn').textContent = 'Salin Kode';
+}
+function openRegisterModal() { resetRegisterApprovalView(); document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
 function closeRegisterModal() { document.getElementById('registerModal').classList.add('hidden'); }
 function openSelfResetModal() { document.getElementById('selfResetModal').classList.remove('hidden'); document.getElementById('selfResetError').classList.add('hidden'); document.getElementById('selfResetSuccess').classList.add('hidden'); }
 function closeSelfResetModal() { document.getElementById('selfResetModal').classList.add('hidden'); }
@@ -2301,6 +2319,10 @@ async function doLogin() {
             if (data.userId) { localStorage.setItem('autocuan_user_id', data.userId); }
             if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
             logLogin(data.username, false, isAdminUser); closeLoginModal(); closeAuthChoiceModal(); enterApp({ replaceHistory: true });
+        } else if (data.approval_status === 'pending' && /^AC-[A-F0-9]{6}$/.test(String(data.approval_code || ''))) {
+            // Correct password, but the account is still awaiting admin approval.
+            // No session was issued; show the recognition code and channel link.
+            showPendingLoginApproval(data);
         } else { errorEl.textContent = data.error || 'Login gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { loginBtn.disabled = false; loginBtn.innerHTML = 'Masuk'; }
@@ -2329,6 +2351,70 @@ function togglePasswordVisibility(inputId, btn) {
 }
 
 // ===== REGISTER =====
+function validFreeTelegramChannelUrl(value) {
+    if (typeof value !== 'string' || !value.trim()) return null;
+    try {
+        var parsed = new URL(value.trim());
+        var host = parsed.hostname.toLowerCase();
+        if (parsed.protocol !== 'https:' || (host !== 't.me' && host !== 'telegram.me' && host !== 'www.telegram.me') || !parsed.pathname || parsed.pathname === '/') return null;
+        return parsed.toString();
+    } catch (e) { return null; }
+}
+
+// Render the shared approval panel (used after registration AND after a valid
+// pending login). Only shows the join button for a validated Telegram URL.
+function displayApprovalPanel(data) {
+    var code = String(data && data.approval_code || '');
+    document.getElementById('registerApprovalCode').textContent = code;
+    document.getElementById('registerFormFields').classList.add('hidden');
+    document.getElementById('registerApprovalPanel').classList.remove('hidden');
+
+    var joinLink = document.getElementById('joinFreeTelegramChannel');
+    var channelUrl = validFreeTelegramChannelUrl(data && data.telegram_channel_url);
+    if (channelUrl) {
+        joinLink.href = channelUrl;
+        joinLink.classList.remove('hidden');
+    } else {
+        joinLink.classList.add('hidden');
+        joinLink.removeAttribute('href');
+    }
+}
+
+function showRegistrationApproval(data) {
+    document.getElementById('regPassword').value = '';
+    document.getElementById('regPasswordConfirm').value = '';
+    displayApprovalPanel(data);
+}
+
+// A pre-feature pending user who logs in with a correct password sees the same
+// approval panel. No session is issued server-side; this is display only.
+function showPendingLoginApproval(data) {
+    document.getElementById('loginPassword').value = '';
+    closeLoginModal();
+    document.getElementById('registerModal').classList.remove('hidden');
+    document.getElementById('registerError').classList.add('hidden');
+    document.getElementById('registerSuccess').classList.add('hidden');
+    displayApprovalPanel(data);
+}
+
+async function copyRegistrationApprovalCode() {
+    var code = document.getElementById('registerApprovalCode').textContent;
+    if (!code) return;
+    var button = document.getElementById('copyApprovalCodeBtn');
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(code);
+        } else {
+            var temp = document.createElement('textarea');
+            temp.value = code; temp.setAttribute('readonly', ''); temp.style.position = 'fixed'; temp.style.opacity = '0';
+            document.body.appendChild(temp); temp.select(); document.execCommand('copy'); document.body.removeChild(temp);
+        }
+        button.textContent = 'Kode Tersalin';
+    } catch (e) {
+        button.textContent = 'Salin Gagal';
+    }
+}
+
 async function doRegister() {
     if (isDeviceBlocked()) { showBlockedScreen(); return; }
     var usernameInput = document.getElementById('regUsername').value.trim();
@@ -2349,7 +2435,9 @@ async function doRegister() {
         var response = await fetch('/api/register-user', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent }) });
         var data = await response.json();
-        if (data.success) { successEl.textContent = 'Akun berhasil dibuat! Menunggu persetujuan admin sebelum bisa login.'; successEl.classList.remove('hidden'); setTimeout(function() { closeRegisterModal(); openAuthChoiceModal('Akun berhasil dibuat dan menunggu persetujuan admin. Jika sudah disetujui, silakan login untuk masuk ke dashboard.'); }, 1800); }
+        if (data.success) { document.getElementById('regPassword').value = ''; document.getElementById('regPasswordConfirm').value = ''; }
+        if (data.success && data.approval_status === 'pending' && /^AC-[A-F0-9]{6}$/.test(String(data.approval_code || ''))) { showRegistrationApproval(data); }
+        else if (data.success) { errorEl.textContent = 'Registrasi berhasil, tetapi kode approval belum tersedia. Hubungi admin.'; errorEl.classList.remove('hidden'); }
         else { errorEl.textContent = data.error || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
     finally { registerBtn.disabled = false; registerBtn.innerHTML = 'Daftar'; }

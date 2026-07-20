@@ -1,5 +1,9 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+const {
+  generateApprovalCode,
+  normalizeTelegramChannelUrl
+} = require('../lib/free-user-approval');
 
 // Normalize a client-provided device ID and generate a secure server-side
 // fallback when an older client omits it. Keeps the NOT NULL `device_id`
@@ -98,7 +102,22 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Gagal membuat akun. Silakan coba lagi beberapa saat lagi.' });
     }
 
-    return res.status(200).json({ success: true, pending: true });
+    const insertedUser = Array.isArray(data) ? data[0] : data;
+    if (!insertedUser) {
+      console.error('register-user insert returned no public approval source');
+      return res.status(500).json({ success: false, error: 'Akun dibuat, tetapi kode approval belum tersedia. Hubungi admin.' });
+    }
+
+    const approvalCode = generateApprovalCode(insertedUser);
+    const telegramChannelUrl = normalizeTelegramChannelUrl(process.env.TELEGRAM_FREE_CHANNEL_URL);
+
+    return res.status(200).json({
+      success: true,
+      pending: true,
+      approval_status: 'pending',
+      approval_code: approvalCode,
+      telegram_channel_url: telegramChannelUrl
+    });
   } catch (e) {
     console.error('register-user exception:', e);
     return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
