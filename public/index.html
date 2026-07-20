@@ -4,6 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auto-Cuan | SMC Analysis Platform</title>
+    <script>
+        // ===== CANONICAL PRODUCTION DOMAIN REDIRECT =====
+        // Browser-page-only redirect: runs before any auth/app-init code below.
+        // Sends visitors on the raw Vercel host to the canonical custom domain.
+        // Deliberately scoped to this exact hostname string only — it must never
+        // affect autocuan.web.id itself, localhost, 127.0.0.1, Vercel Preview
+        // deployment hosts, or any other hostname. This is pure client-side
+        // navigation (location.replace); it has no effect on /api/* requests,
+        // VPS scripts, GitHub Actions crons, or CRON_SECRET Authorization headers,
+        // all of which call the API directly and never load this HTML page.
+        (function () {
+            if (window.location.hostname === 'auto-cuan.vercel.app') {
+                var target = 'https://autocuan.web.id' + window.location.pathname + window.location.search + window.location.hash;
+                window.location.replace(target);
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
