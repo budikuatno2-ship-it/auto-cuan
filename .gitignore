@@ -74,3 +74,8 @@ data/reports/daytrade-intraday-score-impact-*.json
 # Generated Day Trade adjusted vs normal observe reports
 data/reports/daytrade-adjusted-vs-normal-*.md
 data/reports/daytrade-adjusted-vs-normal-*.json
+
+# Intraday sample collector research data (temporary, one-day only)
+data/intraday-samples/
+logs/intraday-samples/
+tmp/intraday-sample-collector.lock
