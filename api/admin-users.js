@@ -1,9 +1,13 @@
 const { createClient } = require('@supabase/supabase-js');
 const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
 const telegramNotifier = require('../lib/telegram-notifier');
+const telegramVerification = require('../lib/telegram-verification');
+const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 
 const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
+
+const RESERVED_USERNAMES = { budi: true, review: true };
 
 function buildApprovalNotificationMessage(user) {
   return [
@@ -92,7 +96,40 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ success: false, error: 'Gagal memuat daftar user: ' + error.message });
       }
 
-      return res.status(200).json({ success: true, users: data || [] });
+      const users = data || [];
+
+      // Merge Telegram verification status (best-effort). We read the whole
+      // verification set and join in memory (no `.in()` needed) so this degrades
+      // gracefully when the table is empty or unavailable.
+      let verifications = [];
+      try {
+        const vres = await supabase
+          .from('app_user_telegram_verifications')
+          .select('user_id, telegram_user_id, telegram_verified_at, telegram_private_chat_id, channel_joined_at')
+          .limit(1000);
+        if (vres && !vres.error && Array.isArray(vres.data)) verifications = vres.data;
+      } catch (e) { /* verification status is optional for the list */ }
+
+      const byUserId = {};
+      verifications.forEach(function (v) { if (v && v.user_id != null) byUserId[String(v.user_id)] = v; });
+
+      const enriched = users.map(function (u) {
+        const v = byUserId[String(u.id)] || null;
+        const verified = !!(v && v.telegram_verified_at);
+        const joined = !!(v && v.channel_joined_at);
+        let telegramStatus = 'unverified';
+        if (joined) telegramStatus = 'joined';
+        else if (verified) telegramStatus = 'verified';
+        return Object.assign({}, u, {
+          telegram_verified_at: v ? v.telegram_verified_at : null,
+          telegram_user_id: v ? v.telegram_user_id : null,
+          telegram_private_chat_id: v ? v.telegram_private_chat_id : null,
+          channel_joined_at: v ? v.channel_joined_at : null,
+          telegram_status: telegramStatus
+        });
+      });
+
+      return res.status(200).json({ success: true, users: enriched });
     }
 
     // === BLOCK USER ===
@@ -218,7 +255,13 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'Perangkat user ' + targetUser + ' berhasil di-reset. User dapat login dari perangkat baru.' });
     }
 
-    // === APPROVE USER ===
+    // === APPROVE USER (approval-gated) ===
+    // A pending account may be approved ONLY when its Telegram identity is bound
+    // and verified, a private chat is known, it is not blocked, and it is not a
+    // reserved account. Existing already-approved accounts (including budi) are
+    // left untouched. On a genuine false->true transition we create + deliver a
+    // dynamic single-use channel invite; a delivery failure NEVER rolls back the
+    // approval (it is persisted as retryable and surfaced as a warning).
     if (action === 'approve') {
       if (!username) {
         return res.status(400).json({ success: false, error: 'Username diperlukan.' });
@@ -226,9 +269,63 @@ module.exports = async function handler(req, res) {
 
       const targetUser = String(username).trim().toLowerCase();
 
+      // Load the account and its verification snapshot to gate the approval.
+      const { data: acct, error: acctErr } = await supabase
+        .from('app_users')
+        .select('id, username, is_blocked, is_approved')
+        .eq('username', targetUser)
+        .maybeSingle();
+
+      if (acctErr) {
+        console.error('admin-users approve lookup error:', acctErr);
+        return res.status(500).json({ success: false, error: 'Gagal approve user.' });
+      }
+      if (!acct) {
+        return res.status(400).json({ success: false, error: 'Username tidak ditemukan.' });
+      }
+
+      // Already approved -> idempotent no-op. Existing approved accounts (including
+      // budi/review) are left completely untouched: no transition, no notification.
+      if (acct.is_approved !== false) {
+        return res.status(200).json({
+          success: true,
+          approval_transitioned: false,
+          message: 'Tidak ada perubahan status approval.',
+          approval_notification: { status: 'skipped', reason: 'no_approval_transition' }
+        });
+      }
+      // A still-pending reserved account never enters the approval gate.
+      if (RESERVED_USERNAMES[targetUser]) {
+        return res.status(400).json({ success: false, error: 'Akun ini tidak melewati alur approval.' });
+      }
+      if (acct.is_blocked === true) {
+        return res.status(400).json({ success: false, error: 'Akun sedang diblokir dan tidak bisa di-approve.' });
+      }
+
+      let verification = null;
+      try {
+        const vres = await supabase
+          .from('app_user_telegram_verifications')
+          .select('user_id, telegram_user_id, telegram_verified_at, telegram_private_chat_id')
+          .eq('user_id', acct.id)
+          .maybeSingle();
+        if (vres && !vres.error) verification = vres.data;
+      } catch (e) { verification = null; }
+
+      const isVerified = !!(verification && verification.telegram_verified_at &&
+        verification.telegram_user_id != null && verification.telegram_private_chat_id != null);
+      if (!isVerified) {
+        return res.status(400).json({
+          success: false,
+          approval_transitioned: false,
+          eligibility: 'not_verified',
+          error: 'User belum memverifikasi Telegram. Approve hanya untuk akun yang sudah Terverifikasi.'
+        });
+      }
+
       // The status predicate makes the update itself the idempotency gate. Only
       // the request that actually changes false -> true receives a row back and
-      // is allowed to notify Telegram.
+      // is allowed to notify / deliver the invite.
       const { data: transitionedUser, error } = await supabase
         .from('app_users')
         .update({ is_approved: true })
@@ -251,12 +348,78 @@ module.exports = async function handler(req, res) {
         });
       }
 
+      // Legacy approval announcement (dedicated approval chat; unchanged).
       const approvalNotification = await sendApprovalNotification(transitionedUser);
-      return res.status(200).json({
+
+      // Stage 3: create + deliver the dynamic single-use channel invite. Fully
+      // guarded — the account stays approved even if delivery fails.
+      let inviteDelivery = { status: 'skipped' };
+      try {
+        inviteDelivery = await telegramVerification.deliverApprovalInvite(
+          { supabase: supabase, bot: createVerifyBot() },
+          transitionedUser.id
+        );
+      } catch (e) {
+        inviteDelivery = { status: 'error', warning: 'invite_delivery_exception' };
+      }
+
+      const inviteOk = inviteDelivery && inviteDelivery.status === 'sent';
+      const response = {
         success: true,
         approval_transitioned: true,
         message: 'User ' + targetUser + ' berhasil di-approve.',
-        approval_notification: approvalNotification
+        approval_notification: approvalNotification,
+        invite_delivery: { status: inviteDelivery ? inviteDelivery.status : 'unknown' }
+      };
+      if (!inviteOk) {
+        response.warning = 'Akun sudah di-approve, tetapi pengiriman link channel belum berhasil. Gunakan "Kirim Ulang Invite" untuk mencoba lagi.';
+        response.invite_delivery.retryable = true;
+      }
+      return res.status(200).json(response);
+    }
+
+    // === RETRY INVITE DELIVERY ===
+    // Safe retry for an approved+verified account whose invite delivery failed.
+    if (action === 'retry_invite') {
+      if (!username) {
+        return res.status(400).json({ success: false, error: 'Username diperlukan.' });
+      }
+      const targetUser = String(username).trim().toLowerCase();
+      if (RESERVED_USERNAMES[targetUser]) {
+        return res.status(400).json({ success: false, error: 'Akun ini tidak memiliki alur invite.' });
+      }
+
+      const { data: acct, error: acctErr } = await supabase
+        .from('app_users')
+        .select('id, username, is_approved, is_blocked')
+        .eq('username', targetUser)
+        .maybeSingle();
+      if (acctErr) {
+        console.error('admin-users retry_invite lookup error:', acctErr);
+        return res.status(500).json({ success: false, error: 'Gagal mengirim ulang invite.' });
+      }
+      if (!acct) {
+        return res.status(400).json({ success: false, error: 'Username tidak ditemukan.' });
+      }
+      if (acct.is_approved !== true || acct.is_blocked === true) {
+        return res.status(400).json({ success: false, error: 'Invite hanya bisa dikirim untuk akun yang sudah disetujui dan tidak diblokir.' });
+      }
+
+      let inviteDelivery = { status: 'skipped' };
+      try {
+        inviteDelivery = await telegramVerification.deliverApprovalInvite(
+          { supabase: supabase, bot: createVerifyBot() },
+          acct.id
+        );
+      } catch (e) {
+        inviteDelivery = { status: 'error', warning: 'invite_delivery_exception' };
+      }
+
+      const inviteOk = inviteDelivery && inviteDelivery.status === 'sent';
+      return res.status(200).json({
+        success: true,
+        invite_delivery: { status: inviteDelivery ? inviteDelivery.status : 'unknown', retryable: !inviteOk },
+        message: inviteOk ? 'Link channel berhasil dikirim ulang.' : 'Pengiriman link channel belum berhasil. Coba lagi nanti.'
       });
     }
 

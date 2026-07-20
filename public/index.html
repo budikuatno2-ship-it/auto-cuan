@@ -5481,6 +5481,31 @@ async function loadAdminLogs(type) {
 
 // ===== ADMIN USER MANAGEMENT =====
 var cachedUsers = [];
+// Default User Approval view shows only accounts that are READY to approve:
+// pending (is_approved=false), not blocked, and Telegram-verified.
+var adminUserFilter = 'ready';
+var ADMIN_USER_FILTERS = [
+    { key: 'ready', label: 'Siap Di-approve' },
+    { key: 'unverified', label: 'Belum Verifikasi' },
+    { key: 'pending', label: 'Semua Pending' },
+    { key: 'blocked', label: 'Blocked' }
+];
+function userIsPending(u) { return u.is_approved === false && !u.is_blocked; }
+function userIsVerified(u) { return !!u.telegram_verified_at; }
+function adminUserMatchesFilter(u, filter) {
+    if (filter === 'blocked') return !!u.is_blocked;
+    if (filter === 'unverified') return userIsPending(u) && !userIsVerified(u);
+    if (filter === 'pending') return userIsPending(u);
+    // 'ready' (default): pending + not blocked + Telegram-verified.
+    return userIsPending(u) && userIsVerified(u);
+}
+function telegramStatusLabel(u) {
+    if (u.channel_joined_at) return '<span class="px-2 py-0.5 rounded text-xs bg-sky-500/20 text-sky-300">Sudah Join Channel</span>';
+    if (userIsVerified(u)) return '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-300">Terverifikasi</span>';
+    return '<span class="px-2 py-0.5 rounded text-xs bg-gray-500/20 text-gray-400">Belum Verifikasi</span>';
+}
+function setAdminUserFilter(key) { adminUserFilter = key; renderAdminUsers(); }
+
 async function loadAdminUsers() {
     var container = document.getElementById('adminLogsContainer');
     container.innerHTML = '<div class="space-y-2">' + skeletonRows(4) + '</div>';
@@ -5490,44 +5515,78 @@ async function loadAdminUsers() {
         var data = await response.json();
         if (!data.success) { container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Gagal memuat users.') + '</p>'; return; }
         cachedUsers = data.users || [];
-        if (cachedUsers.length === 0) { container.innerHTML = '<p class="text-sm text-gray-500">Belum ada user terdaftar.</p>'; return; }
-        var html = '<div class="mb-3 flex flex-wrap gap-2"><button onclick="loadAdminUsers()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">&#x1F504; Refresh Users</button></div>';
-        html += '<div class="text-xs text-gray-500 mb-2">Total: ' + cachedUsers.length + ' user terdaftar</div>';
-        html += '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
-        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Username</th>';
-        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Devices</th>';
-        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Created</th>';
-        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Last Login</th>';
-        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Status</th>';
-        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Actions</th>';
-        html += '</tr></thead><tbody>';
-        cachedUsers.forEach(function(user) {
-            var deviceCount = Array.isArray(user.devices) ? user.devices.length : 0;
-            var deviceLabel = deviceCount + '/3';
-            var created = user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : '-';
-            var lastLogin = user.last_login_at ? new Date(user.last_login_at).toLocaleString('id-ID') : '-';
-            var statusBadge;
-            if (user.is_blocked) { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">Blocked</span>'; }
-            else if (user.is_approved === false) { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-yellow-500/20 text-yellow-400">Pending</span>'; }
-            else { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Approved</span>'; }
-            html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
-            html += '<td class="px-3 py-2 text-white font-medium">' + user.username + '</td>';
-            html += '<td class="px-3 py-2 text-gray-400 text-xs font-mono">' + deviceLabel + '</td>';
-            html += '<td class="px-3 py-2 text-gray-400">' + created + '</td>';
-            html += '<td class="px-3 py-2 text-gray-400">' + lastLogin + '</td>';
-            html += '<td class="px-3 py-2">' + statusBadge + '</td>';
-            html += '<td class="px-3 py-2">';
-            if (user.is_approved === false && !user.is_blocked) { html += '<button onclick="adminUserAction(\'approve\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Approve</button>'; }
-            if (user.is_approved !== false && !user.is_blocked) { html += '<button onclick="adminUserAction(\'reject\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reject</button>'; }
-            if (user.is_blocked) { html += '<button onclick="adminUserAction(\'unblock\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>'; }
-            else { html += '<button onclick="adminUserAction(\'block\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>'; }
-            html += '<button onclick="adminUserAction(\'reset_devices\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 mr-1">Reset Devices</button>';
-            html += '<button onclick="openResetPasswordModal(\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10">Reset PW</button>';
-            html += '</td></tr>';
-        });
-        html += '</tbody></table></div>';
-        container.innerHTML = html;
+        renderAdminUsers();
     } catch(e) { container.innerHTML = '<p class="text-sm text-yellow-400">Gagal memuat user management.</p>'; }
+}
+function renderAdminUsers() {
+    var container = document.getElementById('adminLogsContainer');
+    if (!Array.isArray(cachedUsers)) cachedUsers = [];
+
+    var html = '<div class="mb-3 flex flex-wrap gap-2 items-center">';
+    html += '<button onclick="loadAdminUsers()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">&#x1F504; Refresh</button>';
+    ADMIN_USER_FILTERS.forEach(function(f) {
+        var count = cachedUsers.filter(function(u) { return adminUserMatchesFilter(u, f.key); }).length;
+        var active = adminUserFilter === f.key;
+        var cls = active
+            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+            : 'text-gray-400 border-dark-600/50 hover:bg-dark-700/40';
+        html += '<button onclick="setAdminUserFilter(\'' + f.key + '\')" class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ' + cls + '">' + f.label + ' (' + count + ')</button>';
+    });
+    html += '</div>';
+
+    var filtered = cachedUsers.filter(function(u) { return adminUserMatchesFilter(u, adminUserFilter); });
+    var activeLabel = (ADMIN_USER_FILTERS.filter(function(f) { return f.key === adminUserFilter; })[0] || {}).label || '';
+    html += '<div class="text-xs text-gray-500 mb-2">' + activeLabel + ': ' + filtered.length + ' user (total terdaftar: ' + cachedUsers.length + ')</div>';
+
+    if (filtered.length === 0) {
+        html += '<p class="text-sm text-gray-500">Tidak ada user pada filter ini.</p>';
+        container.innerHTML = html;
+        return;
+    }
+
+    html += '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
+    html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Username</th>';
+    html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Devices</th>';
+    html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Telegram</th>';
+    html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Created</th>';
+    html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Status</th>';
+    html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">Actions</th>';
+    html += '</tr></thead><tbody>';
+    filtered.forEach(function(user) {
+        var deviceCount = Array.isArray(user.devices) ? user.devices.length : 0;
+        var deviceLabel = deviceCount + '/3';
+        var created = user.created_at ? new Date(user.created_at).toLocaleDateString('id-ID') : '-';
+        var statusBadge;
+        if (user.is_blocked) { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">Blocked</span>'; }
+        else if (user.is_approved === false) { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-yellow-500/20 text-yellow-400">Pending</span>'; }
+        else { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Approved</span>'; }
+        html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
+        html += '<td class="px-3 py-2 text-white font-medium">' + user.username + '</td>';
+        html += '<td class="px-3 py-2 text-gray-400 text-xs font-mono">' + deviceLabel + '</td>';
+        html += '<td class="px-3 py-2">' + telegramStatusLabel(user) + '</td>';
+        html += '<td class="px-3 py-2 text-gray-400">' + created + '</td>';
+        html += '<td class="px-3 py-2">' + statusBadge + '</td>';
+        html += '<td class="px-3 py-2">';
+        if (user.is_approved === false && !user.is_blocked) {
+            if (userIsVerified(user)) {
+                html += '<button onclick="adminUserAction(\'approve\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Approve</button>';
+            } else {
+                // Approve is rejected for an unverified pending account.
+                html += '<button disabled title="User belum verifikasi Telegram" class="px-2 py-1 rounded text-xs text-gray-600 border border-dark-600/50 mr-1 cursor-not-allowed">Approve</button>';
+            }
+        }
+        if (user.is_approved !== false && !user.is_blocked) {
+            html += '<button onclick="adminUserAction(\'reject\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reject</button>';
+            html += '<button onclick="adminUserAction(\'retry_invite\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-sky-400 border border-sky-500/30 hover:bg-sky-500/10 mr-1">Kirim Ulang Invite</button>';
+        }
+        if (user.is_blocked) { html += '<button onclick="adminUserAction(\'unblock\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>'; }
+        else { html += '<button onclick="adminUserAction(\'block\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>'; }
+        html += '<button onclick="adminUserAction(\'reset_devices\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 mr-1">Reset Devices</button>';
+        html += '<button onclick="openResetPasswordModal(\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reset PW</button>';
+        html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
 }
 async function adminUserAction(action, username) {
     if (!confirm('Konfirmasi: ' + action + ' untuk user "' + username + '"?')) return;
@@ -5535,11 +5594,14 @@ async function adminUserAction(action, username) {
         var adminName = localStorage.getItem('autocuan_user') || '';
         var response = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName, action: action, username: username }) });
         var data = await response.json();
-        if (data.success) { showToast(data.message || 'Berhasil.', 'success'); loadAdminUsers(); }
+        if (data.success) {
+            showToast(data.message || 'Berhasil.', 'success');
+            if (data.warning) { showToast(data.warning, 'error'); }
+            loadAdminUsers();
+        }
         else { showToast('Gagal: ' + (data.error || 'Unknown error'), 'error'); }
     } catch(e) { showToast('Koneksi gagal.', 'error'); }
 }
-
 // ===== RESET PASSWORD (Admin) =====
 var resetPasswordUsername = '';
 function openResetPasswordModal(username) {

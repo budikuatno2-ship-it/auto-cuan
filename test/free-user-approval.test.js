@@ -305,9 +305,13 @@ test('password confirmation remains required before password hashing and registr
 
 function createApprovalDatabase(row) {
   const state = {
+    // v2 approval gate: an approvable account is Telegram-verified with a bound
+    // identity and a known private chat. These fields let the eligibility check
+    // pass so the existing conditional-transition + notification assertions hold.
     row: Object.assign({
       id: 'approval-user-id', username: 'maxphillips',
-      created_at: '2026-07-20T00:00:00Z', is_approved: false, is_blocked: false
+      created_at: '2026-07-20T00:00:00Z', is_approved: false, is_blocked: false,
+      telegram_verified_at: '2026-07-20T00:00:00Z', telegram_user_id: 4242, telegram_private_chat_id: 5252
     }, row || {}),
     updates: [],
     approvalFilters: []

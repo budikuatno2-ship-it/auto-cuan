@@ -216,8 +216,11 @@ BEGIN
   END IF;
 
   -- One Telegram identity cannot claim a DIFFERENT web account.
-  IF EXISTS (SELECT 1 FROM public.app_user_telegram_verifications
-              WHERE telegram_user_id = p_telegram_user_id AND user_id <> v_ch.user_id) THEN
+  -- NOTE: columns are aliased/qualified (av.*) so they are never ambiguous with
+  -- this function's OUT parameters (result_code, user_id, username). An earlier
+  -- build raised "column reference \"user_id\" is ambiguous" here; the alias fixes it.
+  IF EXISTS (SELECT 1 FROM public.app_user_telegram_verifications av
+              WHERE av.telegram_user_id = p_telegram_user_id AND av.user_id <> v_ch.user_id) THEN
     UPDATE public.app_user_telegram_challenges
        SET failed_attempts = failed_attempts + 1,
            locked_until = CASE WHEN failed_attempts + 1 >= 5 THEN now() + interval '15 minutes' ELSE locked_until END,
