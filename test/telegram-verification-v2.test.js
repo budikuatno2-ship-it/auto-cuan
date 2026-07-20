@@ -305,7 +305,7 @@ function makeModelDb() {
 // ---------------------------------------------------------------------------
 function makeFakeBot(opts) {
   opts = opts || {};
-  const calls = { sendMessage: [], editMessageText: [], answerCallbackQuery: [], getChatMember: [], createChatInviteLink: [], revokeChatInviteLink: [] };
+  const calls = { sendMessage: [], editMessageText: [], answerCallbackQuery: [], getChatMember: [], createChatInviteLink: [], revokeChatInviteLink: [], approveChatJoinRequest: [], declineChatJoinRequest: [] };
   let msgId = 100;
   return {
     calls: calls,
@@ -314,7 +314,9 @@ function makeFakeBot(opts) {
     answerCallbackQuery: async function (id, options) { calls.answerCallbackQuery.push({ id, options }); return {}; },
     getChatMember: async function (chatId, userId) { calls.getChatMember.push({ chatId, userId }); if (opts.memberThrows) throw new Error('api'); return opts.member || { status: 'member' }; },
     createChatInviteLink: async function (chatId, options) { calls.createChatInviteLink.push({ chatId, options }); if (opts.inviteThrows) throw new Error('api'); return opts.inviteLink || 'https://t.me/+dynamicPerUser'; },
-    revokeChatInviteLink: async function (chatId, link) { calls.revokeChatInviteLink.push({ chatId, link }); return {}; }
+    revokeChatInviteLink: async function (chatId, link) { calls.revokeChatInviteLink.push({ chatId, link }); return {}; },
+    approveChatJoinRequest: async function (chatId, userId) { calls.approveChatJoinRequest.push({ chatId, userId }); if (opts.approveThrows) throw new Error('api'); return true; },
+    declineChatJoinRequest: async function (chatId, userId) { calls.declineChatJoinRequest.push({ chatId, userId }); if (opts.declineThrows) throw new Error('api'); return true; }
   };
 }
 
@@ -675,72 +677,65 @@ test('webhook message: internal failure after loading edits into the safe-failur
 });
 
 // ===========================================================================
-// 10. processWebhookUpdate — Stage 4 callback flow (approval-gated)
+// 10. processWebhookUpdate — LEGACY verify_channel_join callback compatibility.
+//     New approval messages never emit this button; the compat handler answers
+//     promptly and REPLACES the message with a fresh join-request link (approved)
+//     or the right pending/error state. It never performs the old direct join.
 // ===========================================================================
 function joinCallback(updateId, tgId) {
   return { update_id: updateId, callback_query: { id: 'cb' + updateId, from: { id: tgId, username: 'tguser' }, message: { message_id: 900, chat: { id: tgId, type: 'private' } }, data: 'verify_channel_join' } };
 }
 
-test('callback: BEFORE approval returns the waiting-admin message and checks no membership', async function () {
+test('legacy callback: pending account is answered and shown the waiting-admin message (no join)', async function () {
   const db = makeModelDb();
   const bot = makeFakeBot({ member: { status: 'member' } });
   const user = db.seedUser({ username: 'pending1', is_approved: false });
   db.seedVerification({ user_id: user.id, telegram_user_id: 500, telegram_verified_at: now() });
   const res = await tv.processWebhookUpdate(joinCallback(70, 500), { supabase: db, bot: bot });
-  assert.equal(res.outcome, 'pending_approval');
+  assert.equal(res.outcome, 'legacy_pending');
   assert.equal(bot.calls.answerCallbackQuery.length, 1, 'callback answered promptly');
   const lastEdit = bot.calls.editMessageText[bot.calls.editMessageText.length - 1];
   assert.equal(lastEdit.text, 'Akun kamu masih menunggu persetujuan admin.');
-  assert.equal(bot.calls.getChatMember.length, 0, 'no membership check before approval');
+  assert.equal(bot.calls.getChatMember.length, 0, 'no membership check for pending');
   assert.ok(!db.verifications[user.id].channel_joined_at);
 });
 
-test('callback: AFTER approval checks membership, confirms join, revokes invite, notifies admin once', async function () {
+test('legacy callback: approved & not-joined is REPLACED with a fresh join-request link (no direct join)', async function () {
   const db = makeModelDb();
-  const bot = makeFakeBot({ member: { status: 'member' } });
+  const bot = makeFakeBot({ inviteLink: 'https://t.me/+legacyRefresh' });
   const user = db.seedUser({ username: 'kate', is_approved: true });
+  // Stale stored link (no expiry recorded) -> refreshed.
   db.seedVerification({ user_id: user.id, telegram_user_id: 111, telegram_verified_at: now(), dynamic_invite_link: 'https://t.me/+perUser' });
 
   const res = await tv.processWebhookUpdate(joinCallback(7, 111), { supabase: db, bot: bot });
-  assert.equal(res.outcome, 'joined');
+  assert.equal(res.outcome, 'legacy_invite');
   assert.equal(bot.calls.answerCallbackQuery.length, 1);
-  assert.equal(bot.calls.getChatMember[0].userId, 111, 'membership checked with from.id');
-  assert.ok(db.verifications[user.id].channel_joined_at);
-  assert.equal(db.verifications[user.id].admin_notification_status, 'sent');
-  const adminMsg = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === '900900900'; });
-  assert.ok(adminMsg, 'joined admin notification sent');
-  assert.ok(adminMsg.text.indexOf('VF-' + user.id) !== -1, 'includes joined event ref');
-  assert.equal(bot.calls.revokeChatInviteLink.length, 1);
-  assert.equal(db.verifications[user.id].dynamic_invite_link, null);
+  // A new join-request invite was minted and the message replaced with a URL button.
+  assert.equal(bot.calls.createChatInviteLink.length, 1);
+  const lastEdit = bot.calls.editMessageText[bot.calls.editMessageText.length - 1];
+  assert.ok(lastEdit.text.indexOf('telah disetujui') !== -1);
+  const flat = lastEdit.options.reply_markup.inline_keyboard.flat();
+  assert.equal(flat.length, 1, 'single request-link button');
+  assert.equal(flat[0].url, 'https://t.me/+legacyRefresh');
+  assert.ok(!flat[0].callback_data, 'no callback identity on the request button');
+  // The legacy handler NEVER completes a direct join / notifies the admin.
+  assert.ok(!db.verifications[user.id].channel_joined_at, 'no direct join performed');
+  assert.equal(bot.calls.getChatMember.length, 0, 'no membership-based direct join');
 });
 
-test('callback: repeated after success does not re-set join time or resend admin note', async function () {
+test('legacy callback: already-joined account is told access is complete', async function () {
   const db = makeModelDb();
-  const bot = makeFakeBot({ member: { status: 'member' } });
+  const bot = makeFakeBot();
   const user = db.seedUser({ username: 'leo', is_approved: true });
-  db.seedVerification({ user_id: user.id, telegram_user_id: 222, telegram_verified_at: now() });
-  await tv.processWebhookUpdate(joinCallback(8, 222), { supabase: db, bot: bot });
-  const firstJoin = db.verifications[user.id].channel_joined_at;
-  const adminCount1 = bot.calls.sendMessage.filter(function (m) { return String(m.chatId) === '900900900'; }).length;
-
-  const res2 = await tv.processWebhookUpdate(joinCallback(9, 222), { supabase: db, bot: bot });
-  assert.equal(res2.outcome, 'already_joined');
-  assert.equal(db.verifications[user.id].channel_joined_at, firstJoin, 'join timestamp unchanged');
-  const adminCount2 = bot.calls.sendMessage.filter(function (m) { return String(m.chatId) === '900900900'; }).length;
-  assert.equal(adminCount2, adminCount1, 'no second admin notification');
+  db.seedVerification({ user_id: user.id, telegram_user_id: 222, telegram_verified_at: now(), channel_joined_at: now() });
+  const res = await tv.processWebhookUpdate(joinCallback(9, 222), { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'legacy_joined');
+  const lastEdit = bot.calls.editMessageText[bot.calls.editMessageText.length - 1];
+  assert.equal(lastEdit.text, tv.MSG.alreadyJoined);
+  assert.equal(bot.calls.createChatInviteLink.length, 0);
 });
 
-test('callback: approved but not-joined membership -> not_joined, no admin note', async function () {
-  const db = makeModelDb();
-  const bot = makeFakeBot({ member: { status: 'left' } });
-  const user = db.seedUser({ username: 'mia', is_approved: true });
-  db.seedVerification({ user_id: user.id, telegram_user_id: 333, telegram_verified_at: now() });
-  const res = await tv.processWebhookUpdate(joinCallback(10, 333), { supabase: db, bot: bot });
-  assert.equal(res.outcome, 'not_joined');
-  assert.ok(!db.verifications[user.id].channel_joined_at);
-});
-
-test('callback: unrelated callback data is answered and ignored', async function () {
+test('legacy callback: unrelated callback data is answered and ignored', async function () {
   const db = makeModelDb();
   const bot = makeFakeBot();
   const res = await tv.processWebhookUpdate({ update_id: 11, callback_query: { id: 'x', from: { id: 1 }, message: { chat: { id: 1, type: 'private' } }, data: 'something_else' } }, { supabase: db, bot: bot });
@@ -749,18 +744,16 @@ test('callback: unrelated callback data is answered and ignored', async function
   assert.equal(bot.calls.getChatMember.length, 0);
 });
 
-test('callback: internal failure after interim message edits into safe failure (answered first)', async function () {
+test('legacy callback: invite refresh failure edits into safe failure and leaves no stuck message', async function () {
   const db = makeModelDb();
-  const bot = makeFakeBot({ member: { status: 'member' } });
+  const bot = makeFakeBot({ inviteThrows: true });
   const user = db.seedUser({ username: 'cbfail', is_approved: true });
   db.seedVerification({ user_id: user.id, telegram_user_id: 444, telegram_verified_at: now() });
-  const origRpc = db.rpc;
-  db.rpc = function (name, args) { if (name === 'confirm_channel_join') throw new Error('db down'); return origRpc(name, args); };
   const res = await tv.processWebhookUpdate(joinCallback(12, 444), { supabase: db, bot: bot });
-  assert.equal(res.outcome, 'error');
+  assert.equal(res.outcome, 'legacy_invite_failed');
   assert.equal(bot.calls.answerCallbackQuery.length, 1, 'callback still answered promptly');
   const lastEdit = bot.calls.editMessageText[bot.calls.editMessageText.length - 1];
-  assert.equal(lastEdit.text, tv.MSG.safeFailure);
+  assert.equal(lastEdit.text, tv.MSG.safeFailure, 'no stuck loading/interim message');
 });
 
 test('webhook: duplicate processed update is not reprocessed', async function () {
@@ -796,17 +789,19 @@ test('deliver invite: creates a single-use invite and DMs the join buttons', asy
   db.seedVerification({ user_id: user.id, telegram_user_id: 777, telegram_private_chat_id: 7000, telegram_verified_at: now() });
   const result = await tv.deliverApprovalInvite({ supabase: db, bot: bot }, user.id);
   assert.equal(result.status, 'sent');
-  // One dynamic invite with member_limit=1.
+  // One dynamic JOIN-REQUEST invite; member_limit is NEVER sent.
   assert.equal(bot.calls.createChatInviteLink.length, 1);
-  assert.equal(bot.calls.createChatInviteLink[0].options.memberLimit, 1);
-  // DM to the bound private chat with join buttons carrying the fixed callback.
+  assert.ok(!('memberLimit' in bot.calls.createChatInviteLink[0].options), 'no member_limit passed');
+  assert.ok(bot.calls.createChatInviteLink[0].options.name, 'a safe invite name is passed');
+  // DM to the bound private chat with a SINGLE request-link URL button.
   const dm = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === '7000'; });
   assert.ok(dm, 'invite DM sent to the bound private chat');
-  assert.ok(dm.text.indexOf('sudah disetujui') !== -1);
+  assert.ok(dm.text.indexOf('telah disetujui') !== -1);
+  assert.ok(dm.text.indexOf('mengajukan permintaan bergabung') !== -1, 'request-join wording');
   const flat = dm.options.reply_markup.inline_keyboard.flat();
-  assert.ok(flat.some(function (b) { return b.url === 'https://t.me/+approvedInvite'; }), 'Gabung Channel url button');
-  const joinBtn = flat.find(function (b) { return b.callback_data; });
-  assert.equal(joinBtn.callback_data, 'verify_channel_join');
+  assert.equal(flat.length, 1, 'exactly one button (the request link)');
+  assert.equal(flat[0].url, 'https://t.me/+approvedInvite', 'request-link button URL is the join-request invite');
+  assert.ok(!flat.some(function (b) { return b.callback_data; }), 'NO callback button (no verify_channel_join, no Saya Sudah Bergabung)');
   assert.equal(db.verifications[user.id].dynamic_invite_link, 'https://t.me/+approvedInvite');
   assert.equal(db.verifications[user.id].invite_delivery_status, 'sent');
 });
@@ -1023,4 +1018,43 @@ test('isolation: TELEGRAM_BOT_TOKEN is never USED (env-accessed) by the verifica
 test('api count: exactly 12 API JavaScript files', function () {
   const files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
   assert.equal(files.length, 12, 'API JS file count must remain 12; got ' + files.length);
+});
+
+test('hygiene: active verification flow never references TELEGRAM_VERIFY_CHANNEL_INVITE_URL (static fallback removed)', function () {
+  ['lib/telegram-verification.js', 'lib/telegram-verify-bot.js', 'api/admin-users.js', 'api/login-user.js'].forEach(function (rel) {
+    const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    assert.equal(src.indexOf('TELEGRAM_VERIFY_CHANNEL_INVITE_URL') !== -1, false, rel + ' must not reference the static channel invite URL');
+  });
+});
+
+test('hygiene: new approval message + request button carry NO verify_channel_join callback', function () {
+  const src = fs.readFileSync(path.join(ROOT, 'lib', 'telegram-verification.js'), 'utf8');
+  // The request-link builder must be url-only (no callback_data).
+  const btn = tv.requestJoinButton('https://t.me/+sample');
+  const flat = btn.inline_keyboard.flat();
+  assert.equal(flat.length, 1);
+  assert.ok(flat[0].url, 'request button is a URL button');
+  assert.ok(!flat[0].callback_data, 'request button has no callback identity');
+  // The approval message text is the new request-join wording.
+  const msg = tv.buildApprovalInviteMessage();
+  assert.ok(msg.indexOf('telah disetujui') !== -1);
+  assert.ok(msg.indexOf('Saya Sudah Bergabung') === -1, 'no legacy button label in the message');
+  // verify_channel_join literal only appears in the legacy CALLBACK_JOIN constant
+  // and its compat handler — never assembled into a new outbound keyboard.
+  assert.ok(src.indexOf("text: '\\u2705 Saya Sudah Bergabung'") === -1, 'no join-callback keyboard is constructed');
+});
+
+test('hygiene: member_limit is never sent when creating an invite link', function () {
+  const src = fs.readFileSync(path.join(ROOT, 'lib', 'telegram-verify-bot.js'), 'utf8');
+  // No member_limit key is ever placed on the createChatInviteLink payload.
+  assert.equal(/member_limit\s*:/.test(src), false, 'member_limit must not be added to the invite payload');
+  assert.ok(/creates_join_request\s*:\s*true/.test(src), 'creates_join_request must be true');
+});
+
+test('safety: Delete User remains absent (no delete-user action or endpoint)', function () {
+  const admin = fs.readFileSync(path.join(ROOT, 'api', 'admin-users.js'), 'utf8');
+  assert.equal(/action\s*===\s*['"]delete['"]/.test(admin), false, 'no delete action in admin-users');
+  assert.equal(/delete[_-]?user/i.test(admin), false, 'no delete-user handler in admin-users');
+  const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
+  assert.ok(!apiFiles.some(function (f) { return /delete/i.test(f); }), 'no delete-user API file');
 });

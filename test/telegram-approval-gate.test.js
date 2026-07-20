@@ -141,7 +141,7 @@ function makeAdminModel() {
 
 function makeFakeVerifyBot(opts) {
   opts = opts || {};
-  const calls = { sendMessage: [], createChatInviteLink: [], revokeChatInviteLink: [] };
+  const calls = { sendMessage: [], createChatInviteLink: [], revokeChatInviteLink: [], approveChatJoinRequest: [], declineChatJoinRequest: [] };
   const bot = {
     calls: calls,
     inviteThrows: !!opts.inviteThrows,
@@ -151,7 +151,9 @@ function makeFakeVerifyBot(opts) {
     answerCallbackQuery: async function () { return {}; },
     getChatMember: async function () { return { status: 'member' }; },
     createChatInviteLink: async function (chatId, options) { calls.createChatInviteLink.push({ chatId, options }); if (bot.inviteThrows) throw new Error('invite'); return opts.inviteLink || 'https://t.me/+approved'; },
-    revokeChatInviteLink: async function (chatId, link) { calls.revokeChatInviteLink.push({ chatId, link }); return {}; }
+    revokeChatInviteLink: async function (chatId, link) { calls.revokeChatInviteLink.push({ chatId, link }); return {}; },
+    approveChatJoinRequest: async function (chatId, userId) { calls.approveChatJoinRequest.push({ chatId, userId }); return true; },
+    declineChatJoinRequest: async function (chatId, userId) { calls.declineChatJoinRequest.push({ chatId, userId }); return true; }
   };
   return bot;
 }
@@ -211,13 +213,16 @@ test('approve: a VERIFIED pending user can be approved and the invite is created
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.approval_transitioned, true);
   assert.equal(db.getUser(user.id).is_approved, true);
-  // Invite created (member_limit=1) and DMed to the bound private chat with the join buttons.
+  // A single JOIN-REQUEST invite is created (NO member_limit) and DMed to the
+  // bound private chat with a single request-link URL button.
   assert.equal(bot.calls.createChatInviteLink.length, 1);
-  assert.equal(bot.calls.createChatInviteLink[0].options.memberLimit, 1);
+  assert.ok(!('memberLimit' in bot.calls.createChatInviteLink[0].options), 'no member_limit passed');
   const dm = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === String(db.verifications[user.id].telegram_private_chat_id); });
   assert.ok(dm, 'invite DM sent to the bound private chat');
   const flat = dm.options.reply_markup.inline_keyboard.flat();
-  assert.equal(flat.find(function (b) { return b.callback_data; }).callback_data, 'verify_channel_join');
+  assert.equal(flat.length, 1, 'exactly one button (the request link)');
+  assert.equal(flat[0].url, 'https://t.me/+forAda', 'request-link URL button');
+  assert.ok(!flat.some(function (b) { return b.callback_data; }), 'no verify_channel_join callback button');
   assert.equal(res.body.invite_delivery.status, 'sent');
   assert.equal(db.verifications[user.id].invite_delivery_status, 'sent');
 });
