@@ -278,38 +278,7 @@ BEGIN
   RETURN QUERY SELECT 'approved'::text, v_u.id, v_u.username, v.telegram_user_id, v.telegram_private_chat_id;
 END $$;
 
--- H8) Delete a Pending or Blocked account (never Approved, never budi/review).
---     Requires an explicit confirmation username that must match exactly. The
---     ON DELETE CASCADE on the child tables removes challenges + verification
---     rows, and dropping the row releases the unique device_id for reuse.
---     Returns a coarse result_code; performs NO destructive action unless the
---     account is eligible AND the confirmation matches.
-CREATE OR REPLACE FUNCTION public.admin_delete_user(
-  p_username text, p_confirm_username text)
-RETURNS TABLE (result_code text, deleted_user_id uuid, released_device_id text)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
-DECLARE v_u public.app_users%ROWTYPE; v_uname text := lower(coalesce(p_username,''));
-BEGIN
-  IF v_uname = '' OR lower(coalesce(p_confirm_username,'')) <> v_uname THEN
-    RETURN QUERY SELECT 'confirmation_mismatch'::text, NULL::uuid, NULL::text; RETURN;
-  END IF;
-  IF v_uname IN ('budi','review') THEN
-    RETURN QUERY SELECT 'reserved'::text, NULL::uuid, NULL::text; RETURN;
-  END IF;
-
-  SELECT * INTO v_u FROM public.app_users u WHERE lower(u.username) = v_uname FOR UPDATE;
-  IF NOT FOUND THEN RETURN QUERY SELECT 'not_found'::text, NULL::uuid, NULL::text; RETURN; END IF;
-
-  -- Only Pending (is_approved=false) or Blocked users may be deleted.
-  IF v_u.is_approved = true AND v_u.is_blocked = false THEN
-    RETURN QUERY SELECT 'approved_protected'::text, NULL::uuid, NULL::text; RETURN;
-  END IF;
-
-  DELETE FROM public.app_users u WHERE u.id = v_u.id;  -- cascades to challenges + verifications
-  RETURN QUERY SELECT 'deleted'::text, v_u.id, v_u.device_id;
-END $$;
-
--- H9) REPLACE confirm_channel_join: the join callback now requires an APPROVED
+-- H8) REPLACE confirm_channel_join: the join callback now requires an APPROVED
 --     account. Previously it required is_approved=false (pending); the approval
 --     gate flips this so only approved users can complete the join. Fully
 --     schema-qualified/aliased so it is never ambiguous with the OUT params.
@@ -357,7 +326,6 @@ BEGIN
    'public.complete_invite_delivery(uuid,uuid)',
    'public.fail_invite_delivery(uuid,uuid,text)',
    'public.approve_verified_user(text)',
-   'public.admin_delete_user(text,text)',
    'public.confirm_channel_join(bigint)'
   ] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated;', fn);
