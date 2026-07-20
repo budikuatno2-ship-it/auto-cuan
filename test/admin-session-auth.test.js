@@ -44,12 +44,16 @@ function makeRes() {
 }
 
 function withEnv(extra, fn) {
-  const keys = ['SESSION_SECRET', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'NODE_ENV', 'VERCEL_ENV'];
+  const keys = ['SESSION_SECRET', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'NODE_ENV', 'VERCEL_ENV', 'TELEGRAM_VERIFY_CODE_SECRET'];
   const prev = {};
   keys.forEach(k => { prev[k] = process.env[k]; });
   process.env.SESSION_SECRET = SECRET;
   process.env.SUPABASE_URL = 'https://example.test';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key';
+  // v2 registration/pending-login issue a one-time Telegram code (HMAC keyed by
+  // this secret). Provide a fixed test secret so the register endpoint is not in
+  // its fail-closed state during these existing-behavior checks.
+  process.env.TELEGRAM_VERIFY_CODE_SECRET = 'unit-test-verify-code-secret';
   Object.keys(extra || {}).forEach(k => { process.env[k] = extra[k]; });
   return Promise.resolve(fn()).finally(() => {
     keys.forEach(k => { if (prev[k] === undefined) delete process.env[k]; else process.env[k] = prev[k]; });
@@ -68,6 +72,18 @@ function supabaseWithUser(user, capture) {
           insert(p) { if (capture) capture.inserted = p; return { select() { return Promise.resolve({ data: [{ id: 'u1', username: p && p.username }], error: null }); } }; }
         };
         return q;
+      },
+      // v2 endpoints call service-role RPCs. Provide minimal happy-path returns so
+      // the existing login/register behavior checks continue to pass.
+      rpc(name, args) {
+        if (capture) { capture.rpc = capture.rpc || []; capture.rpc.push({ name: name, args: args }); }
+        if (name === 'register_pending_user_with_telegram_challenge') {
+          return Promise.resolve({ data: [{ id: 'u1', username: args && args.p_username, created_at: new Date().toISOString(), challenge_id: 'ch1' }], error: null });
+        }
+        if (name === 'issue_telegram_challenge') {
+          return Promise.resolve({ data: [{ challenge_id: 'ch1', expires_at: new Date().toISOString() }], error: null });
+        }
+        return Promise.resolve({ data: null, error: null });
       }
     };
   };

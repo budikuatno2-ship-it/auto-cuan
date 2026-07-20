@@ -1,9 +1,84 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret } = require('../lib/admin-session');
-const { generateApprovalCode, normalizeTelegramChannelUrl } = require('../lib/free-user-approval');
+const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
+const telegramVerification = require('../lib/telegram-verification');
+const { createVerifyBot } = require('../lib/telegram-verify-bot');
 
 const MAX_DEVICES = 3;
+
+// Max accepted webhook body size (bytes). A normal Telegram update is well under
+// this; anything larger is rejected before parsing/processing.
+const MAX_WEBHOOK_BODY_BYTES = 32 * 1024;
+
+// Constant-time secret comparison that never short-circuits on length.
+function secretsMatch(provided, expected) {
+  if (typeof provided !== 'string' || typeof expected !== 'string' || expected.length === 0) return false;
+  const a = Buffer.from(provided, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  if (a.length !== b.length) {
+    // Compare against itself to keep timing roughly constant, then fail.
+    try { crypto.timingSafeEqual(b, b); } catch (e) {}
+    return false;
+  }
+  try { return crypto.timingSafeEqual(a, b); } catch (e) { return false; }
+}
+
+// Isolated Telegram verification webhook handler. It runs BEFORE any login /
+// logout / session logic, validates its own secret, and never touches cookies,
+// sessions, or CRON_SECRET. It uses TELEGRAM_VERIFY_BOT_TOKEN only (via the
+// verify bot) and never imports the recommendation notifier.
+async function handleVerifyWebhook(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ ok: false });
+  }
+
+  // Fail-closed secret validation BEFORE parsing/processing the update.
+  const expectedSecret = process.env.TELEGRAM_VERIFY_WEBHOOK_SECRET;
+  const providedSecret = req.headers['x-telegram-bot-api-secret-token'];
+  if (!expectedSecret || !secretsMatch(providedSecret, expectedSecret)) {
+    return res.status(401).json({ ok: false });
+  }
+
+  // Strict request-size limit (header-based, then serialized-body based).
+  const contentLength = Number(req.headers['content-length'] || 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_WEBHOOK_BODY_BYTES) {
+    return res.status(413).json({ ok: false });
+  }
+  const update = req.body || {};
+  try {
+    if (JSON.stringify(update).length > MAX_WEBHOOK_BODY_BYTES) {
+      return res.status(413).json({ ok: false });
+    }
+  } catch (e) {
+    return res.status(400).json({ ok: false });
+  }
+
+  // Require a numeric update_id (needed for durable idempotency).
+  if (typeof update.update_id !== 'number' || !Number.isFinite(update.update_id)) {
+    return res.status(200).json({ ok: true, ignored: true });
+  }
+
+  const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    // Cannot process without the DB; ack so Telegram does not hammer retries.
+    return res.status(200).json({ ok: true });
+  }
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+
+  try {
+    const bot = createVerifyBot();
+    const result = await telegramVerification.processWebhookUpdate(update, { supabase, bot });
+    // Only a coarse outcome code is returned/logged — never raw user input.
+    return res.status(200).json({ ok: true, outcome: result && result.outcome });
+  } catch (e) {
+    // Never leak internals; still ack to avoid unbounded Telegram retries.
+    return res.status(200).json({ ok: true });
+  }
+}
 const LEGACY_BUDI_PASSWORD_HASH = crypto
   .createHash('sha256')
   .update('._autocuan_salt_2024', 'utf8')
@@ -44,6 +119,14 @@ function issueSessionCookie(res, user, usernameLower, deviceId) {
 }
 
 module.exports = async function handler(req, res) {
+  // === TELEGRAM VERIFICATION WEBHOOK ===
+  // This isolated action runs FIRST, before logout / password / session / normal
+  // login handling. It validates its own secret, never issues or reads browser
+  // sessions, never touches CRON_SECRET, and uses TELEGRAM_VERIFY_BOT_TOKEN only.
+  if (req.query && req.query.action === 'telegram-verify-webhook') {
+    return await handleVerifyWebhook(req, res);
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
@@ -156,12 +239,30 @@ module.exports = async function handler(req, res) {
     // issuing a session or logging them in. The AC-XXXXXX value is a public
     // recognition code, not an authentication credential.
     if (usernameLower !== 'review' && user.is_approved === false) {
-      return res.status(403).json({
+      // v2: issue a FRESH one-time verification code (rotating/revoking any prior
+      // active challenge) for this pending user. No session is issued and no
+      // channel link is exposed. The raw code is returned only after the RPC
+      // commits. If issuance is unavailable (e.g. secret not configured), we
+      // still surface the recognition code without a verification code.
+      const pendingResponse = {
         success: false,
         approval_status: 'pending',
         approval_code: generateApprovalCode({ id: user.id, username: user.username, created_at: user.created_at }),
-        telegram_channel_url: normalizeTelegramChannelUrl(process.env.TELEGRAM_FREE_CHANNEL_URL)
-      });
+        masked_username: maskUsername(user.username),
+        telegram_bot_url: telegramVerification.BOT_URL
+      };
+      try {
+        if (telegramVerification.hasCodeSecret()) {
+          const issued = await telegramVerification.issueChallengeForUser(supabase, user.id);
+          if (issued) {
+            pendingResponse.telegram_verification_code = issued.displayCode;
+            pendingResponse.telegram_verification_expires_at = issued.expiresAt;
+          }
+        }
+      } catch (e) {
+        console.error('login-user: pending challenge issuance failed');
+      }
+      return res.status(403).json(pendingResponse);
     }
 
     // === REVIEW USER: bypass device binding ===

@@ -1598,11 +1598,16 @@
         <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
             <h4 class="text-lg font-bold text-emerald-300">Pendaftaran berhasil</h4>
             <p class="text-sm text-gray-300">Akun Anda sedang menunggu persetujuan admin.</p>
-            <p class="text-sm text-gray-300">Kode approval: <strong id="registerApprovalCode" class="font-mono tracking-wider text-white"></strong></p>
-            <p class="text-xs leading-relaxed text-gray-400">Simpan kode ini dan pantau pengumuman di channel Telegram.</p>
+            <p class="text-sm text-gray-300">Kode pengguna: <strong id="registerApprovalCode" class="font-mono tracking-wider text-white"></strong></p>
+            <div class="rounded-xl border border-sky-500/30 bg-sky-500/5 p-3 space-y-1.5">
+                <p class="text-xs font-semibold text-sky-300">Kode verifikasi Telegram (satu kali)</p>
+                <p><strong id="registerVerificationCode" class="font-mono text-lg tracking-widest text-white"></strong></p>
+                <p id="registerVerificationExpiry" class="text-[11px] text-gray-400"></p>
+                <p class="text-[11px] leading-relaxed text-gray-400">Salin kode ini, lalu buka bot verifikasi dan kirim kodenya ke chat bot. Jangan bagikan kode ini ke siapa pun.</p>
+            </div>
             <div class="space-y-2">
-                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode</button>
-                <a id="joinFreeTelegramChannel" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Gabung Channel Telegram</a>
+                <button type="button" id="copyApprovalCodeBtn" onclick="copyRegistrationApprovalCode()" class="w-full rounded-xl border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 transition">Salin Kode Verifikasi</button>
+                <a id="openVerificationBot" class="hidden w-full rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-400 transition" target="_blank" rel="noopener noreferrer">Buka Bot Verifikasi Telegram</a>
             </div>
         </div>
     </div>
@@ -2277,9 +2282,11 @@ function resetRegisterApprovalView() {
     document.getElementById('registerFormFields').classList.remove('hidden');
     document.getElementById('registerApprovalPanel').classList.add('hidden');
     document.getElementById('registerApprovalCode').textContent = '';
-    var joinLink = document.getElementById('joinFreeTelegramChannel');
-    joinLink.classList.add('hidden'); joinLink.removeAttribute('href');
-    document.getElementById('copyApprovalCodeBtn').textContent = 'Salin Kode';
+    document.getElementById('registerVerificationCode').textContent = '';
+    document.getElementById('registerVerificationExpiry').textContent = '';
+    var botLink = document.getElementById('openVerificationBot');
+    botLink.classList.add('hidden'); botLink.removeAttribute('href');
+    document.getElementById('copyApprovalCodeBtn').textContent = 'Salin Kode Verifikasi';
 }
 function openRegisterModal() { resetRegisterApprovalView(); document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
 function closeRegisterModal() { document.getElementById('registerModal').classList.add('hidden'); }
@@ -2351,7 +2358,9 @@ function togglePasswordVisibility(inputId, btn) {
 }
 
 // ===== REGISTER =====
-function validFreeTelegramChannelUrl(value) {
+// v2: validate ONLY the fixed verification-bot URL. The private channel invite
+// link is never received or shown by the website.
+function validVerificationBotUrl(value) {
     if (typeof value !== 'string' || !value.trim()) return null;
     try {
         var parsed = new URL(value.trim());
@@ -2361,22 +2370,41 @@ function validFreeTelegramChannelUrl(value) {
     } catch (e) { return null; }
 }
 
+function formatVerificationExpiry(value) {
+    if (!value) return 'Kode berlaku sekitar 15 menit.';
+    var when = new Date(value);
+    if (isNaN(when.getTime())) return 'Kode berlaku sekitar 15 menit.';
+    try {
+        return 'Kode berlaku sampai ' + when.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + '.';
+    } catch (e) {
+        return 'Kode berlaku sekitar 15 menit.';
+    }
+}
+
 // Render the shared approval panel (used after registration AND after a valid
-// pending login). Only shows the join button for a validated Telegram URL.
+// pending login). Shows the public recognition code, the separate one-time
+// verification code, its expiry, and a button that opens the verification bot.
+// The raw code is NEVER placed in the bot URL, and no channel link is shown.
 function displayApprovalPanel(data) {
     var code = String(data && data.approval_code || '');
     document.getElementById('registerApprovalCode').textContent = code;
+
+    var verificationCode = String(data && data.telegram_verification_code || '');
+    document.getElementById('registerVerificationCode').textContent = verificationCode || '(tidak tersedia)';
+    document.getElementById('registerVerificationExpiry').textContent =
+        verificationCode ? formatVerificationExpiry(data && data.telegram_verification_expires_at) : '';
+
     document.getElementById('registerFormFields').classList.add('hidden');
     document.getElementById('registerApprovalPanel').classList.remove('hidden');
 
-    var joinLink = document.getElementById('joinFreeTelegramChannel');
-    var channelUrl = validFreeTelegramChannelUrl(data && data.telegram_channel_url);
-    if (channelUrl) {
-        joinLink.href = channelUrl;
-        joinLink.classList.remove('hidden');
+    var botLink = document.getElementById('openVerificationBot');
+    var botUrl = validVerificationBotUrl(data && data.telegram_bot_url);
+    if (botUrl) {
+        botLink.href = botUrl;
+        botLink.classList.remove('hidden');
     } else {
-        joinLink.classList.add('hidden');
-        joinLink.removeAttribute('href');
+        botLink.classList.add('hidden');
+        botLink.removeAttribute('href');
     }
 }
 
@@ -2398,9 +2426,11 @@ function showPendingLoginApproval(data) {
 }
 
 async function copyRegistrationApprovalCode() {
-    var code = document.getElementById('registerApprovalCode').textContent;
-    if (!code) return;
+    // Copies the one-time Telegram verification code (not the public AC code),
+    // since that is what the user must paste into the verification bot.
+    var code = document.getElementById('registerVerificationCode').textContent;
     var button = document.getElementById('copyApprovalCodeBtn');
+    if (!code || code === '(tidak tersedia)') { button.textContent = 'Kode tidak tersedia'; return; }
     try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(code);

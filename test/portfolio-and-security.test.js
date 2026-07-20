@@ -67,11 +67,15 @@ function makeRes() {
 
 function withEnv(fn) {
   const prevUrl = process.env.SUPABASE_URL, prevKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const prevCodeSecret = process.env.TELEGRAM_VERIFY_CODE_SECRET;
   process.env.SUPABASE_URL = 'https://example.test';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key-DO-NOT-LEAK';
+  // v2 registration issues a one-time Telegram code keyed by this secret.
+  process.env.TELEGRAM_VERIFY_CODE_SECRET = 'portfolio-test-verify-secret';
   return Promise.resolve(fn()).finally(function () {
     if (prevUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = prevUrl;
     if (prevKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = prevKey;
+    if (prevCodeSecret === undefined) delete process.env.TELEGRAM_VERIFY_CODE_SECRET; else process.env.TELEGRAM_VERIFY_CODE_SECRET = prevCodeSecret;
   });
 }
 
@@ -88,6 +92,17 @@ function supabaseWithUser(user, capture) {
           insert(payload) { if (capture) capture.inserted = payload; return { select() { return Promise.resolve({ data: [{ id: 'u1', username: payload && payload.username }], error: null }); } }; }
         };
         return q;
+      },
+      // v2 endpoints call service-role RPCs; capture args for assertions.
+      rpc(name, args) {
+        if (capture) { capture.rpc = capture.rpc || []; capture.rpc.push({ name: name, args: args }); }
+        if (name === 'register_pending_user_with_telegram_challenge') {
+          return Promise.resolve({ data: [{ id: 'u1', username: args && args.p_username, created_at: new Date().toISOString(), challenge_id: 'ch1' }], error: null });
+        }
+        if (name === 'issue_telegram_challenge') {
+          return Promise.resolve({ data: [{ challenge_id: 'ch1', expires_at: new Date().toISOString() }], error: null });
+        }
+        return Promise.resolve({ data: null, error: null });
       }
     };
   };
@@ -407,16 +422,20 @@ test('api/ still exposes exactly 12 endpoint JS files', () => {
   assert.equal(files.length, 12, 'found: ' + files.join(', '));
 });
 
-// 29. Existing valid register behavior still works (success path via stub)
-test('valid registration still succeeds and stores device in devices array', async () => {
+// 29. Existing valid register behavior still works (v2: atomic RPC path via stub).
+// The device id is normalized in Node and passed to the RPC, which stores it in
+// the devices array (jsonb_build_array) inside the migration.
+test('valid registration still succeeds and passes the normalized device id to the RPC', async () => {
   await withEnv(async function () {
     const capture = {};
     const handler = requireApiWithSupabaseStub('../api/register-user', supabaseWithUser(null, capture));
     const res = makeRes();
     await handler({ method: 'POST', body: { username: 'newuser', passwordHash: 'h', deviceId: 'dev_x', userAgent: 'ua' } }, res);
     assert.equal(res.body.success, true);
-    assert.equal(capture.inserted.device_id, 'dev_x');
-    assert.deepEqual(capture.inserted.devices, ['dev_x']);
+    const call = (capture.rpc || []).find(function (c) { return c.name === 'register_pending_user_with_telegram_challenge'; });
+    assert.ok(call, 'registration uses the atomic RPC');
+    assert.equal(call.args.p_device_id, 'dev_x');
     assert.ok(!('password' in res.body));
+    assert.ok(!('telegram_channel_url' in res.body), 'no channel URL in v2 response');
   });
 });

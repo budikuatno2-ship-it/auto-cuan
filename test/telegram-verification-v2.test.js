@@ -1,0 +1,846 @@
+'use strict';
+
+// ===========================================================================
+// Mocked tests for Telegram verification v2.
+//
+// LOCAL / MOCKED ONLY:
+//  - No live Telegram call: a fake bot object records calls and returns canned
+//    values.
+//  - No live Supabase: an in-memory model implements the RPC semantics of
+//    supabase/telegram-verification-v2-migration.sql closely enough to assert
+//    behavior. For endpoint tests, @supabase/supabase-js is stubbed via
+//    Module._load (it is not installed in this sandbox).
+//  - No production, no network, no real secret/token is used or printed.
+// ===========================================================================
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('module');
+
+const ROOT = path.resolve(__dirname, '..');
+const CODE_SECRET = 'unit-test-code-secret-value';
+const WEBHOOK_SECRET = 'unit-test-webhook-secret-value';
+
+process.env.TELEGRAM_VERIFY_CODE_SECRET = CODE_SECRET;
+process.env.TELEGRAM_VERIFY_CHANNEL_ID = '-1000000000001';
+process.env.TELEGRAM_VERIFY_ADMIN_CHAT_ID = '900900900';
+process.env.TELEGRAM_VERIFY_CHANNEL_INVITE_URL = 'https://t.me/+staticFallbackInvite';
+
+const tv = require('../lib/telegram-verification');
+
+const now = () => Date.now();
+const iso = (ms) => new Date(ms).toISOString();
+
+// ---------------------------------------------------------------------------
+// In-memory model of the SQL RPCs
+// ---------------------------------------------------------------------------
+function makeModelDb() {
+  const db = {
+    users: [],                 // {id, username, password_hash, device_id, devices, is_blocked, is_approved, created_at}
+    challenges: [],            // {id, user_id, hash, expires, used, revoked, failed, locked}
+    verifications: {},         // user_id -> row
+    webhook: {},               // update_id -> row
+    senders: {},               // telegram_user_id -> row
+    _failActiveHashTimes: 0,
+    _uid: 1
+  };
+
+  db.seedUser = function (u) {
+    const user = Object.assign({
+      id: 'user-' + (db._uid++), username: 'u', password_hash: 'ph',
+      device_id: 'd', devices: ['d'], is_blocked: false, is_approved: false,
+      created_at: iso(now())
+    }, u);
+    db.users.push(user);
+    return user;
+  };
+  db.getUser = function (id) { return db.users.find(function (x) { return x.id === id; }); };
+  db.seedChallenge = function (c) {
+    const ch = Object.assign({
+      id: 'ch-' + (db._uid++), user_id: null, hash: null,
+      expires: now() + 15 * 60000, used: null, revoked: null, failed: 0, locked: null
+    }, c);
+    db.challenges.push(ch);
+    return ch;
+  };
+  db.seedVerification = function (v) {
+    const row = Object.assign({
+      user_id: null, telegram_user_id: null, telegram_private_chat_id: null,
+      telegram_verified_at: null, channel_joined_at: null,
+      dynamic_invite_link: null, invite_expires_at: null, invite_revoked_at: null,
+      admin_notification_status: 'pending', admin_notification_claim_token: null,
+      admin_notification_claimed_at: null, admin_notification_attempts: 0,
+      admin_notification_last_error: null, admin_notification_sent_at: null
+    }, v);
+    db.verifications[row.user_id] = row;
+    return row;
+  };
+
+  function ok(data) { return Promise.resolve({ data: data, error: null }); }
+  function pgErr(code, message) { return Promise.resolve({ data: null, error: { code: code, message: message } }); }
+
+  function reserved(name) { return name === 'budi' || name === 'review'; }
+  function activeChallengeByHash(hash) {
+    return db.challenges.find(function (c) { return c.hash === hash && !c.used && !c.revoked; });
+  }
+
+  db.rpc = function (name, args) {
+    switch (name) {
+      case 'register_pending_user_with_telegram_challenge': {
+        if (db._failActiveHashTimes > 0) { db._failActiveHashTimes--; return pgErr('23505', 'duplicate key value violates unique constraint "uq_autc_active_hash"'); }
+        if (db.users.find(function (u) { return u.username === args.p_username; })) {
+          return pgErr('23505', 'duplicate key value violates unique constraint "app_users_username_key"');
+        }
+        const user = db.seedUser({ username: args.p_username, password_hash: args.p_password_hash, device_id: args.p_device_id, devices: [args.p_device_id] });
+        const ch = db.seedChallenge({ user_id: user.id, hash: args.p_code_hash, expires: Date.parse(args.p_expires_at) });
+        return ok([{ id: user.id, username: user.username, created_at: user.created_at, challenge_id: ch.id }]);
+      }
+      case 'issue_telegram_challenge': {
+        if (db._failActiveHashTimes > 0) { db._failActiveHashTimes--; return pgErr('23505', 'duplicate key value violates unique constraint "uq_autc_active_hash"'); }
+        const user = db.getUser(args.p_user_id);
+        if (!user || user.is_approved !== false || user.is_blocked !== false || reserved(user.username)) return ok([]);
+        db.challenges.forEach(function (c) { if (c.user_id === user.id && !c.used && !c.revoked) c.revoked = now(); });
+        const ch = db.seedChallenge({ user_id: user.id, hash: args.p_code_hash, expires: Date.parse(args.p_expires_at) });
+        return ok([{ challenge_id: ch.id, expires_at: args.p_expires_at }]);
+      }
+      case 'check_telegram_sender_limit': {
+        const s = db.senders[args.p_telegram_user_id];
+        const locked = !!(s && s.locked && s.locked > now());
+        return ok([{ locked: locked, locked_until: s ? (s.locked ? iso(s.locked) : null) : null }]);
+      }
+      case 'record_invalid_telegram_attempt': {
+        const id = args.p_telegram_user_id;
+        let s = db.senders[id];
+        if (!s) { s = db.senders[id] = { failed: 0, window: now(), locked: null }; }
+        if (s.window < now() - args.p_window_seconds * 1000) { s.failed = 0; s.window = now(); }
+        s.failed += 1;
+        if (s.failed >= args.p_max_attempts) s.locked = now() + args.p_lock_seconds * 1000;
+        return ok([{ locked: !!(s.locked && s.locked > now()), locked_until: s.locked ? iso(s.locked) : null }]);
+      }
+      case 'clear_telegram_sender_limit': {
+        delete db.senders[args.p_telegram_user_id];
+        return ok(null);
+      }
+      case 'consume_challenge_and_bind_telegram': {
+        const ch = activeChallengeByHash(args.p_code_hash);
+        if (!ch) return ok([{ result_code: 'not_found', user_id: null, username: null }]);
+        if (ch.locked && ch.locked > now()) return ok([{ result_code: 'locked', user_id: null, username: null }]);
+        if (ch.expires <= now()) return ok([{ result_code: 'expired', user_id: null, username: null }]);
+        const user = db.getUser(ch.user_id);
+        if (!user || user.is_approved !== false || user.is_blocked !== false || reserved(user.username)) {
+          return ok([{ result_code: 'not_found', user_id: null, username: null }]);
+        }
+        // one telegram id cannot claim a different web account
+        const other = Object.values(db.verifications).find(function (v) { return v.telegram_user_id === args.p_telegram_user_id && v.user_id !== ch.user_id; });
+        if (other) { ch.failed += 1; if (ch.failed >= 5) ch.locked = now() + 15 * 60000; return ok([{ result_code: 'telegram_used_elsewhere', user_id: null, username: null }]); }
+        let v = db.verifications[ch.user_id];
+        if (v && v.telegram_user_id != null && v.telegram_user_id !== args.p_telegram_user_id) {
+          ch.failed += 1; if (ch.failed >= 5) ch.locked = now() + 15 * 60000;
+          return ok([{ result_code: 'bound_other_telegram', user_id: null, username: null }]);
+        }
+        if (!v) v = db.seedVerification({ user_id: ch.user_id });
+        v.telegram_user_id = args.p_telegram_user_id;
+        v.telegram_private_chat_id = args.p_private_chat_id;
+        if (!v.telegram_verified_at) v.telegram_verified_at = now();
+        ch.used = now();
+        return ok([{ result_code: 'ok', user_id: user.id, username: user.username }]);
+      }
+      case 'confirm_channel_join': {
+        const v = Object.values(db.verifications).find(function (x) { return x.telegram_user_id === args.p_telegram_user_id; });
+        if (!v) return ok([{ outcome: 'not_found', user_id: null, admin_notification_status: null }]);
+        if (!v.telegram_verified_at) return ok([{ outcome: 'not_verified', user_id: null, admin_notification_status: null }]);
+        const user = db.getUser(v.user_id);
+        if (!user || user.is_approved !== false || user.is_blocked !== false || reserved(user.username)) {
+          return ok([{ outcome: 'ineligible', user_id: null, admin_notification_status: null }]);
+        }
+        if (v.channel_joined_at) return ok([{ outcome: 'already_joined', user_id: v.user_id, admin_notification_status: v.admin_notification_status }]);
+        v.channel_joined_at = now();
+        if (v.admin_notification_status !== 'sent') v.admin_notification_status = 'pending';
+        return ok([{ outcome: 'joined_now', user_id: v.user_id, admin_notification_status: 'pending' }]);
+      }
+      case 'claim_telegram_webhook_update': {
+        const id = args.p_update_id;
+        const lease = Math.min(Math.max(args.p_lease_seconds || 30, 10), 60) * 1000;
+        let row = db.webhook[id];
+        if (!row) { const tok = 'tok-' + (db._uid++); db.webhook[id] = { token: tok, lease: now() + lease, processed: null, outcome: null }; return ok([{ claim_state: 'claimed', processing_token: tok }]); }
+        if (row.processed) return ok([{ claim_state: 'already_processed', processing_token: null }]);
+        if (row.lease > now()) return ok([{ claim_state: 'lease_active', processing_token: null }]);
+        const tok2 = 'tok-' + (db._uid++); row.token = tok2; row.lease = now() + lease;
+        return ok([{ claim_state: 'reclaimed', processing_token: tok2 }]);
+      }
+      case 'complete_telegram_webhook_update': {
+        const row = db.webhook[args.p_update_id];
+        if (row && !row.processed && row.token === args.p_processing_token) { row.processed = now(); row.outcome = args.p_outcome_code; return ok(true); }
+        return ok(false);
+      }
+      case 'claim_admin_notification': {
+        const v = db.verifications[args.p_user_id];
+        const lease = Math.min(Math.max(args.p_lease_seconds || 120, 30), 300) * 1000;
+        if (!v || !v.channel_joined_at) return ok([]);
+        const claimable = (v.admin_notification_status === 'pending' || v.admin_notification_status === 'failed' ||
+          (v.admin_notification_status === 'claimed' && v.admin_notification_claimed_at && v.admin_notification_claimed_at < now() - lease));
+        if (!claimable) return ok([]);
+        const tok = 'ntok-' + (db._uid++);
+        v.admin_notification_status = 'claimed'; v.admin_notification_claim_token = tok;
+        v.admin_notification_claimed_at = now(); v.admin_notification_attempts += 1;
+        const user = db.getUser(v.user_id);
+        return ok([{ claim_token: tok, user_id: v.user_id, event_ref: 'VF-' + v.user_id + '-' + Math.floor(v.channel_joined_at / 1000), telegram_user_id: v.telegram_user_id, username: user ? user.username : null }]);
+      }
+      case 'complete_admin_notification': {
+        const v = db.verifications[args.p_user_id];
+        if (v && v.admin_notification_claim_token === args.p_claim_token && v.admin_notification_status === 'claimed') { v.admin_notification_status = 'sent'; v.admin_notification_sent_at = now(); return ok(true); }
+        return ok(false);
+      }
+      case 'fail_admin_notification': {
+        const v = db.verifications[args.p_user_id];
+        if (v && v.admin_notification_claim_token === args.p_claim_token && v.admin_notification_status === 'claimed') { v.admin_notification_status = 'failed'; v.admin_notification_last_error = String(args.p_error_code).slice(0, 120); return ok(true); }
+        return ok(false);
+      }
+      case 'save_dynamic_invite_link': {
+        const v = db.verifications[args.p_user_id]; if (v) { v.dynamic_invite_link = args.p_invite_link; v.invite_expires_at = args.p_expires_at; v.invite_revoked_at = null; }
+        return ok(null);
+      }
+      case 'revoke_or_expire_dynamic_invite': {
+        const v = db.verifications[args.p_user_id]; if (v) { v.invite_revoked_at = v.invite_revoked_at || now(); v.dynamic_invite_link = null; }
+        return ok(null);
+      }
+      default:
+        return pgErr('P0001', 'unknown rpc ' + name);
+    }
+  };
+
+  // Minimal PostgREST-like query builder for the few direct table reads/writes.
+  db.from = function (table) {
+    const b = { _table: table, _op: 'select', _filters: [], _payload: null };
+    b.select = function () { b._op = 'select'; return b; };
+    b.insert = function (p) { b._op = 'insert'; b._payload = p; return b; };
+    b.update = function (p) { b._op = 'update'; b._payload = p; return b; };
+    b.eq = function (col, val) { b._filters.push([col, val]); return b; };
+    function rows() {
+      if (table === 'app_users') return db.users;
+      if (table === 'app_user_telegram_verifications') return Object.values(db.verifications);
+      return [];
+    }
+    function match(r) { return b._filters.every(function (f) { return r[f[0]] === f[1]; }); }
+    b.maybeSingle = function () {
+      const found = rows().find(match) || null;
+      return Promise.resolve({ data: found, error: null });
+    };
+    b.then = function (resolve) {
+      if (b._op === 'update') { rows().filter(match).forEach(function (r) { Object.assign(r, b._payload); }); return resolve({ data: null, error: null }); }
+      if (b._op === 'insert') { return resolve({ data: b._payload, error: null }); }
+      return resolve({ data: rows().filter(match), error: null });
+    };
+    return b;
+  };
+
+  return db;
+}
+
+// ---------------------------------------------------------------------------
+// Fake verify bot (records calls; no network)
+// ---------------------------------------------------------------------------
+function makeFakeBot(opts) {
+  opts = opts || {};
+  const calls = { sendMessage: [], editMessageText: [], answerCallbackQuery: [], getChatMember: [], createChatInviteLink: [], revokeChatInviteLink: [] };
+  let msgId = 100;
+  return {
+    calls: calls,
+    sendMessage: async function (chatId, text, options) { calls.sendMessage.push({ chatId, text, options }); return { message_id: ++msgId }; },
+    editMessageText: async function (chatId, messageId, text, options) { calls.editMessageText.push({ chatId, messageId, text, options }); return {}; },
+    answerCallbackQuery: async function (id, options) { calls.answerCallbackQuery.push({ id, options }); return {}; },
+    getChatMember: async function (chatId, userId) { calls.getChatMember.push({ chatId, userId }); if (opts.memberThrows) throw new Error('api'); return opts.member || { status: 'member' }; },
+    createChatInviteLink: async function (chatId, options) { calls.createChatInviteLink.push({ chatId, options }); if (opts.inviteThrows) throw new Error('api'); return opts.inviteLink || 'https://t.me/+dynamicPerUser'; },
+    revokeChatInviteLink: async function (chatId, link) { calls.revokeChatInviteLink.push({ chatId, link }); return {}; }
+  };
+}
+
+// ===========================================================================
+// 1. Code generation / normalization / HMAC
+// ===========================================================================
+test('code: generated code is 8 chars from the unambiguous alphabet', function () {
+  for (let i = 0; i < 200; i++) {
+    const c = tv.generateRawCode();
+    assert.equal(c.length, 8);
+    for (const ch of c) assert.ok(tv.CODE_ALPHABET.indexOf(ch) !== -1, 'char in alphabet: ' + ch);
+    assert.ok(!/[O0I1]/.test(c), 'no ambiguous chars');
+  }
+});
+
+test('code: display format is XXXX-XXXX', function () {
+  assert.equal(tv.formatCodeForDisplay('ABCD2345'), 'ABCD-2345');
+});
+
+test('code: normalization strips separators/whitespace and uppercases', function () {
+  assert.equal(tv.normalizeCode('abcd-2345'), 'ABCD2345');
+  assert.equal(tv.normalizeCode(' a b c d 2 3 4 5 '), 'ABCD2345');
+  assert.equal(tv.normalizeCode('abcd2345'), 'ABCD2345');
+  assert.equal(tv.normalizeCode('short'), null);
+  assert.equal(tv.normalizeCode('ABCD234O'), null, 'O is not in alphabet');
+});
+
+test('hmac: deterministic and depends on secret; hides the raw code', function () {
+  const h1 = tv.computeCodeHash('ABCD2345');
+  const h2 = tv.computeCodeHash('abcd-2345');
+  assert.equal(h1, h2, 'normalized inputs hash equally');
+  assert.match(h1, /^[0-9a-f]{64}$/);
+  assert.ok(h1.indexOf('ABCD2345') === -1);
+});
+
+test('hmac: missing code secret fails closed (null)', function () {
+  const saved = process.env.TELEGRAM_VERIFY_CODE_SECRET;
+  delete process.env.TELEGRAM_VERIFY_CODE_SECRET;
+  try {
+    assert.equal(tv.hasCodeSecret(), false);
+    assert.equal(tv.computeCodeHash('ABCD2345'), null);
+  } finally { process.env.TELEGRAM_VERIFY_CODE_SECRET = saved; }
+});
+
+// ===========================================================================
+// 2. Username masking
+// ===========================================================================
+test('mask: username masking keeps ends, hides middle', function () {
+  assert.equal(tv.maskUsername('budi'), 'bu*i');
+  assert.equal(tv.maskUsername('ab'), 'a*');
+  assert.equal(tv.maskUsername('a'), '*');
+});
+
+// ===========================================================================
+// 3. Membership classifier
+// ===========================================================================
+test('membership: accepts joined states, rejects others', function () {
+  assert.equal(tv.classifyMembership({ status: 'creator' }), true);
+  assert.equal(tv.classifyMembership({ status: 'administrator' }), true);
+  assert.equal(tv.classifyMembership({ status: 'member' }), true);
+  assert.equal(tv.classifyMembership({ status: 'restricted', is_member: true }), true);
+  assert.equal(tv.classifyMembership({ status: 'restricted', is_member: false }), false);
+  assert.equal(tv.classifyMembership({ status: 'left' }), false);
+  assert.equal(tv.classifyMembership({ status: 'kicked' }), false);
+  assert.equal(tv.classifyMembership(null), false);
+});
+
+// ===========================================================================
+// 4. Registration RPC orchestration
+// ===========================================================================
+test('register: returns v2 fields and never a channel URL; passes only HMAC to SQL', async function () {
+  const db = makeModelDb();
+  let captured = null;
+  const origRpc = db.rpc;
+  db.rpc = function (name, args) { if (name === 'register_pending_user_with_telegram_challenge') captured = args; return origRpc(name, args); };
+
+  const reg = await tv.registerPendingUser(db, { username: 'alice', passwordHash: 'ph', deviceId: 'dev1', userAgent: 'UA' });
+  assert.ok(reg.id);
+  assert.match(reg.displayCode, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  assert.ok(reg.rawCode && reg.rawCode.length === 8);
+  // SQL received only the HMAC, not the raw/display code.
+  assert.match(captured.p_code_hash, /^[0-9a-f]{64}$/);
+  assert.ok(captured.p_code_hash.indexOf(reg.rawCode) === -1);
+});
+
+test('register: retries on active-hash collision then succeeds', async function () {
+  const db = makeModelDb();
+  db._failActiveHashTimes = 2;
+  const reg = await tv.registerPendingUser(db, { username: 'bob', passwordHash: 'ph', deviceId: 'dev2', userAgent: '' });
+  assert.ok(reg.id, 'succeeds after bounded retries');
+});
+
+test('register: duplicate username surfaces 23505 to caller', async function () {
+  const db = makeModelDb();
+  db.seedUser({ username: 'carol' });
+  await assert.rejects(
+    tv.registerPendingUser(db, { username: 'carol', passwordHash: 'ph', deviceId: 'd', userAgent: '' }),
+    function (e) { return e.pgcode === '23505'; }
+  );
+});
+
+test('register: fails closed when code secret is missing', async function () {
+  const db = makeModelDb();
+  const saved = process.env.TELEGRAM_VERIFY_CODE_SECRET;
+  delete process.env.TELEGRAM_VERIFY_CODE_SECRET;
+  try {
+    await assert.rejects(tv.registerPendingUser(db, { username: 'z', passwordHash: 'p', deviceId: 'd', userAgent: '' }),
+      function (e) { return e.failClosed === true; });
+  } finally { process.env.TELEGRAM_VERIFY_CODE_SECRET = saved; }
+});
+
+// ===========================================================================
+// 5. Challenge issuance / rotation
+// ===========================================================================
+test('issue: rotates code and revokes previous active challenge', async function () {
+  const db = makeModelDb();
+  const user = db.seedUser({ username: 'dave' });
+  const first = await tv.issueChallengeForUser(db, user.id);
+  const second = await tv.issueChallengeForUser(db, user.id);
+  assert.notEqual(first.challengeId, second.challengeId);
+  const actives = db.challenges.filter(function (c) { return c.user_id === user.id && !c.used && !c.revoked; });
+  assert.equal(actives.length, 1, 'only one active challenge remains');
+});
+
+test('issue: returns null for ineligible (approved) user', async function () {
+  const db = makeModelDb();
+  const user = db.seedUser({ username: 'eve', is_approved: true });
+  const res = await tv.issueChallengeForUser(db, user.id);
+  assert.equal(res, null);
+});
+
+// ===========================================================================
+// 6. Consume + binding
+// ===========================================================================
+async function seedPendingWithCode(db, username, tgBound) {
+  const user = db.seedUser({ username: username });
+  const raw = tv.generateRawCode();
+  db.seedChallenge({ user_id: user.id, hash: tv.computeCodeHash(raw) });
+  if (tgBound != null) db.seedVerification({ user_id: user.id, telegram_user_id: tgBound, telegram_verified_at: now() });
+  return { user, raw };
+}
+
+test('consume: valid active code binds telegram identity', async function () {
+  const db = makeModelDb();
+  const { user, raw } = await seedPendingWithCode(db, 'frank');
+  const r = await tv.consumeAndBind(db, tv.computeCodeHash(raw), 555, 777);
+  assert.equal(r.resultCode, 'ok');
+  assert.equal(r.userId, user.id);
+  assert.equal(db.verifications[user.id].telegram_user_id, 555);
+});
+
+test('consume: expired / revoked / used codes are not usable', async function () {
+  const db = makeModelDb();
+  const u1 = db.seedUser({ username: 'g1' });
+  const expiredRaw = tv.generateRawCode();
+  db.seedChallenge({ user_id: u1.id, hash: tv.computeCodeHash(expiredRaw), expires: now() - 1000 });
+  assert.equal((await tv.consumeAndBind(db, tv.computeCodeHash(expiredRaw), 1, 1)).resultCode, 'expired');
+
+  const u2 = db.seedUser({ username: 'g2' });
+  const revokedRaw = tv.generateRawCode();
+  db.seedChallenge({ user_id: u2.id, hash: tv.computeCodeHash(revokedRaw), revoked: now() });
+  assert.equal((await tv.consumeAndBind(db, tv.computeCodeHash(revokedRaw), 2, 2)).resultCode, 'not_found');
+
+  const u3 = db.seedUser({ username: 'g3' });
+  const usedRaw = tv.generateRawCode();
+  db.seedChallenge({ user_id: u3.id, hash: tv.computeCodeHash(usedRaw), used: now() });
+  assert.equal((await tv.consumeAndBind(db, tv.computeCodeHash(usedRaw), 3, 3)).resultCode, 'not_found');
+});
+
+test('consume: account approved/blocked after issuance stops the code', async function () {
+  const db = makeModelDb();
+  const { user, raw } = await seedPendingWithCode(db, 'harry');
+  user.is_approved = true; // approved after the challenge was issued
+  assert.equal((await tv.consumeAndBind(db, tv.computeCodeHash(raw), 9, 9)).resultCode, 'not_found');
+});
+
+test('consume: one telegram id cannot claim two web accounts', async function () {
+  const db = makeModelDb();
+  // account A already bound to telegram 42
+  const a = await seedPendingWithCode(db, 'accountA', 42);
+  // mark account A binding as existing (bound)
+  // account B tries to bind with the SAME telegram id 42
+  const b = await seedPendingWithCode(db, 'accountB');
+  const r = await tv.consumeAndBind(db, tv.computeCodeHash(b.raw), 42, 100);
+  assert.equal(r.resultCode, 'telegram_used_elsewhere');
+});
+
+test('consume: one web account cannot bind two telegram ids', async function () {
+  const db = makeModelDb();
+  const user = db.seedUser({ username: 'iris' });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 71, telegram_verified_at: now() });
+  const raw = tv.generateRawCode();
+  db.seedChallenge({ user_id: user.id, hash: tv.computeCodeHash(raw) });
+  const r = await tv.consumeAndBind(db, tv.computeCodeHash(raw), 72, 100); // different telegram id
+  assert.equal(r.resultCode, 'bound_other_telegram');
+});
+
+// ===========================================================================
+// 7. Sender rate limit
+// ===========================================================================
+test('sender limit: locks after threshold, check reflects it, clear resets', async function () {
+  const db = makeModelDb();
+  const tgId = 321;
+  let res;
+  for (let i = 0; i < tv.SENDER_MAX_ATTEMPTS; i++) res = await tv.recordInvalidAttempt(db, tgId);
+  assert.equal(res.locked, true);
+  assert.equal((await tv.checkSenderLimit(db, tgId)).locked, true);
+  await tv.clearSenderLimit(db, tgId);
+  assert.equal((await tv.checkSenderLimit(db, tgId)).locked, false);
+});
+
+// ===========================================================================
+// 8. Webhook claim / reclaim / token ownership
+// ===========================================================================
+test('webhook: claim, duplicate, lease, reclaim, and stale-token completion', async function () {
+  const db = makeModelDb();
+  const first = await tv.claimWebhookUpdate(db, 5001);
+  assert.equal(first.claimState, 'claimed');
+  const dup = await tv.claimWebhookUpdate(db, 5001);
+  assert.equal(dup.claimState, 'lease_active');
+  // stale token cannot complete
+  assert.equal(await db.rpc('complete_telegram_webhook_update', { p_update_id: 5001, p_processing_token: 'wrong', p_outcome_code: 'x' }).then(function (r) { return r.data; }), false);
+  // correct token completes
+  assert.equal(await tv.completeWebhookUpdate(db, 5001, first.processingToken, 'verified'), true);
+  // now duplicate -> already processed
+  assert.equal((await tv.claimWebhookUpdate(db, 5001)).claimState, 'already_processed');
+});
+
+test('webhook: expired lease is reclaimable; the old token can no longer complete', async function () {
+  const db = makeModelDb();
+  const c = await tv.claimWebhookUpdate(db, 6001);
+  db.webhook[6001].lease = now() - 1000; // expire the lease
+  const re = await tv.claimWebhookUpdate(db, 6001);
+  assert.equal(re.claimState, 'reclaimed');
+  assert.notEqual(re.processingToken, c.processingToken);
+  assert.equal(await tv.completeWebhookUpdate(db, 6001, c.processingToken, 'x'), false, 'stale token rejected');
+  assert.equal(await tv.completeWebhookUpdate(db, 6001, re.processingToken, 'ok'), true);
+});
+
+// ===========================================================================
+// 9. processWebhookUpdate — message flow
+// ===========================================================================
+test('webhook message: /start sends instructions and no channel link', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  const res = await tv.processWebhookUpdate({ update_id: 1, message: { chat: { id: 10, type: 'private' }, from: { id: 10 }, text: '/start' } }, { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'start');
+  assert.equal(bot.calls.sendMessage.length, 1);
+  assert.ok(bot.calls.sendMessage[0].text.indexOf('t.me') === -1, 'no channel link in /start');
+});
+
+test('webhook message: valid code -> loading edited into success with fixed callback button', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  const { raw } = await seedPendingWithCode(db, 'jane');
+  const res = await tv.processWebhookUpdate({ update_id: 2, message: { chat: { id: 20, type: 'private' }, from: { id: 20 }, text: tv.formatCodeForDisplay(raw) } }, { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'verified');
+  // loading first, then edited into success
+  assert.equal(bot.calls.sendMessage[0].text, tv.MSG.loading);
+  const edit = bot.calls.editMessageText[0];
+  assert.ok(edit.text.indexOf('\u2705 Verifikasi berhasil') === 0);
+  const kb = edit.options.reply_markup.inline_keyboard;
+  const flat = kb.flat();
+  const joinBtn = flat.find(function (b) { return b.callback_data; });
+  assert.equal(joinBtn.callback_data, 'verify_channel_join');
+  // callback data carries NO identity
+  assert.ok(!/\d{2,}/.test(joinBtn.callback_data));
+});
+
+test('webhook message: invalid code -> loading edited into neutral error + sender attempt', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  const res = await tv.processWebhookUpdate({ update_id: 3, message: { chat: { id: 30, type: 'private' }, from: { id: 30 }, text: 'ZZZZZZZZ' } }, { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'not_found');
+  assert.equal(bot.calls.editMessageText[0].text, tv.MSG.neutralError);
+  assert.ok(db.senders[30] && db.senders[30].failed === 1);
+});
+
+test('webhook message: locked sender is rejected before hashing', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  db.senders[40] = { failed: 5, window: now(), locked: now() + 60000 };
+  const res = await tv.processWebhookUpdate({ update_id: 4, message: { chat: { id: 40, type: 'private' }, from: { id: 40 }, text: 'ABCD2345' } }, { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'sender_locked');
+  assert.equal(bot.calls.sendMessage[0].text, tv.MSG.senderLocked);
+  assert.equal(bot.calls.editMessageText.length, 0, 'no loading edit; never processed the code');
+});
+
+test('webhook message: non-private message is ignored', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  const res = await tv.processWebhookUpdate({ update_id: 5, message: { chat: { id: -50, type: 'channel' }, from: { id: 1 }, text: 'ABCD2345' } }, { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'ignored_non_private');
+  assert.equal(bot.calls.sendMessage.length, 0);
+});
+
+// ===========================================================================
+// 10. processWebhookUpdate — callback flow
+// ===========================================================================
+function joinCallback(updateId, tgId) {
+  return { update_id: updateId, callback_query: { id: 'cb' + updateId, from: { id: tgId, username: 'tguser' }, message: { message_id: 900, chat: { id: tgId, type: 'private' } }, data: 'verify_channel_join' } };
+}
+
+test('callback: identity from callback_query.from.id; membership checked; admin notified once', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot({ member: { status: 'member' } });
+  const user = db.seedUser({ username: 'kate' });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 111, telegram_verified_at: now(), dynamic_invite_link: 'https://t.me/+perUser' });
+
+  const res = await tv.processWebhookUpdate(joinCallback(7, 111), { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'joined');
+  // spinner cleared immediately
+  assert.equal(bot.calls.answerCallbackQuery.length, 1);
+  // membership checked with from.id (111)
+  assert.equal(bot.calls.getChatMember[0].userId, 111);
+  // channel_joined_at set + admin notified + status sent
+  assert.ok(db.verifications[user.id].channel_joined_at);
+  assert.equal(db.verifications[user.id].admin_notification_status, 'sent');
+  const adminMsg = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === '900900900'; });
+  assert.ok(adminMsg, 'admin notification sent to verify admin chat');
+  assert.ok(adminMsg.text.indexOf('VF-' + user.id) !== -1, 'includes event ref');
+  // invite revoked + record cleared
+  assert.equal(bot.calls.revokeChatInviteLink.length, 1);
+  assert.equal(db.verifications[user.id].dynamic_invite_link, null);
+});
+
+test('callback: repeated after success does not re-set join time or resend admin note', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot({ member: { status: 'member' } });
+  const user = db.seedUser({ username: 'leo' });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 222, telegram_verified_at: now() });
+  await tv.processWebhookUpdate(joinCallback(8, 222), { supabase: db, bot: bot });
+  const firstJoin = db.verifications[user.id].channel_joined_at;
+  const adminCount1 = bot.calls.sendMessage.filter(function (m) { return String(m.chatId) === '900900900'; }).length;
+
+  const res2 = await tv.processWebhookUpdate(joinCallback(9, 222), { supabase: db, bot: bot });
+  assert.equal(res2.outcome, 'already_joined');
+  assert.equal(db.verifications[user.id].channel_joined_at, firstJoin, 'join timestamp unchanged');
+  const adminCount2 = bot.calls.sendMessage.filter(function (m) { return String(m.chatId) === '900900900'; }).length;
+  assert.equal(adminCount2, adminCount1, 'no second admin notification');
+});
+
+test('callback: not-joined membership -> not_joined, no admin note', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot({ member: { status: 'left' } });
+  const user = db.seedUser({ username: 'mia' });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 333, telegram_verified_at: now() });
+  const res = await tv.processWebhookUpdate(joinCallback(10, 333), { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'not_joined');
+  assert.ok(!db.verifications[user.id].channel_joined_at);
+});
+
+test('callback: unrelated callback data is answered and ignored', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  const res = await tv.processWebhookUpdate({ update_id: 11, callback_query: { id: 'x', from: { id: 1 }, message: { chat: { id: 1, type: 'private' } }, data: 'something_else' } }, { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'ignored_callback');
+  assert.equal(bot.calls.answerCallbackQuery.length, 1);
+  assert.equal(bot.calls.getChatMember.length, 0);
+});
+
+test('webhook: duplicate processed update is not reprocessed', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  db.webhook[12] = { token: 't', lease: now() - 1000, processed: now(), outcome: 'verified' };
+  const res = await tv.processWebhookUpdate({ update_id: 12, message: { chat: { id: 1, type: 'private' }, from: { id: 1 }, text: '/start' } }, { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'duplicate');
+  assert.equal(bot.calls.sendMessage.length, 0);
+});
+
+// ===========================================================================
+// 11. Dynamic invite creation + static fallback
+// ===========================================================================
+test('invite: dynamic link created and persisted on success', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot({ inviteLink: 'https://t.me/+madeDynamic' });
+  const { user, raw } = await seedPendingWithCode(db, 'nina');
+  await tv.processWebhookUpdate({ update_id: 13, message: { chat: { id: 60, type: 'private' }, from: { id: 60 }, text: raw } }, { supabase: db, bot: bot });
+  assert.equal(bot.calls.createChatInviteLink.length, 1);
+  assert.equal(db.verifications[user.id].dynamic_invite_link, 'https://t.me/+madeDynamic');
+});
+
+test('invite: static fallback used when dynamic creation fails', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot({ inviteThrows: true });
+  const { raw } = await seedPendingWithCode(db, 'ollie');
+  await tv.processWebhookUpdate({ update_id: 14, message: { chat: { id: 70, type: 'private' }, from: { id: 70 }, text: raw } }, { supabase: db, bot: bot });
+  const edit = bot.calls.editMessageText[0];
+  const flat = edit.options.reply_markup.inline_keyboard.flat();
+  const urlBtn = flat.find(function (b) { return b.url; });
+  assert.equal(urlBtn.url, 'https://t.me/+staticFallbackInvite');
+});
+
+// ===========================================================================
+// 12. Admin notification: failed send stays retryable; sent is not reclaimed
+// ===========================================================================
+test('notify: failed telegram send marks failed (retryable), not sent', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot({ member: { status: 'member' } });
+  // Make the admin sendMessage fail but membership + others succeed.
+  const user = db.seedUser({ username: 'pat' });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 444, telegram_verified_at: now() });
+  const origSend = bot.sendMessage;
+  bot.sendMessage = async function (chatId, text, options) {
+    if (String(chatId) === '900900900') throw new Error('send failed');
+    return origSend(chatId, text, options);
+  };
+  await tv.processWebhookUpdate(joinCallback(15, 444), { supabase: db, bot: bot });
+  assert.equal(db.verifications[user.id].admin_notification_status, 'failed');
+  assert.notEqual(db.verifications[user.id].admin_notification_status, 'sent');
+});
+
+// ===========================================================================
+// 13. Endpoint tests (supabase stubbed via Module._load)
+// ===========================================================================
+function requireApiWithSupabaseStub(relPath, dbFactory) {
+  const origLoad = Module._load;
+  const abs = require.resolve(relPath);
+  delete require.cache[abs];
+  const db = dbFactory();
+  Module._load = function (request) {
+    if (request === '@supabase/supabase-js') return { createClient: function () { return db; } };
+    return origLoad.apply(this, arguments);
+  };
+  let handler;
+  try { handler = require(relPath); } finally { Module._load = origLoad; delete require.cache[abs]; }
+  return { handler, db };
+}
+
+function makeReq(opts) {
+  return { method: opts.method || 'POST', headers: opts.headers || {}, query: opts.query || {}, body: opts.body || {} };
+}
+function makeRes() {
+  return {
+    statusCode: null, body: null, headers: {},
+    setHeader(k, v) { this.headers[k] = v; return this; },
+    status(c) { this.statusCode = c; return this; },
+    json(b) { this.body = b; return this; }
+  };
+}
+
+test('endpoint register: v2 response has verification code and NO channel URL', async function () {
+  process.env.SUPABASE_URL = 'http://local';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc';
+  const { handler } = requireApiWithSupabaseStub('../api/register-user', makeModelDb);
+  const req = makeReq({ body: { username: 'quinn', passwordHash: 'ph', deviceId: 'dev', userAgent: 'UA' } });
+  const res = makeRes();
+  await handler(req, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.success, true);
+  assert.ok(res.body.telegram_verification_code, 'has one-time code');
+  assert.equal(res.body.telegram_bot_url, 'https://t.me/AutoCuanVerificationBot');
+  assert.ok(!('telegram_channel_url' in res.body), 'no channel URL in response');
+});
+
+test('endpoint register: fails closed without the code secret', async function () {
+  process.env.SUPABASE_URL = 'http://local';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc';
+  const saved = process.env.TELEGRAM_VERIFY_CODE_SECRET;
+  delete process.env.TELEGRAM_VERIFY_CODE_SECRET;
+  try {
+    const { handler } = requireApiWithSupabaseStub('../api/register-user', makeModelDb);
+    const res = makeRes();
+    await handler(makeReq({ body: { username: 'rick', passwordHash: 'ph', deviceId: 'dev' } }), res);
+    assert.equal(res.statusCode, 500);
+    assert.equal(res.body.success, false);
+  } finally { process.env.TELEGRAM_VERIFY_CODE_SECRET = saved; }
+});
+
+test('endpoint login webhook: missing/wrong secret -> 401 before processing', async function () {
+  process.env.TELEGRAM_VERIFY_WEBHOOK_SECRET = WEBHOOK_SECRET;
+  const { handler } = requireApiWithSupabaseStub('../api/login-user', makeModelDb);
+  // missing header
+  let res = makeRes();
+  await handler(makeReq({ query: { action: 'telegram-verify-webhook' }, headers: {} }), res);
+  assert.equal(res.statusCode, 401);
+  // wrong header
+  res = makeRes();
+  await handler(makeReq({ query: { action: 'telegram-verify-webhook' }, headers: { 'x-telegram-bot-api-secret-token': 'nope' } }), res);
+  assert.equal(res.statusCode, 401);
+});
+
+test('endpoint login webhook: oversized body -> 413', async function () {
+  process.env.TELEGRAM_VERIFY_WEBHOOK_SECRET = WEBHOOK_SECRET;
+  const { handler } = requireApiWithSupabaseStub('../api/login-user', makeModelDb);
+  const res = makeRes();
+  await handler(makeReq({
+    query: { action: 'telegram-verify-webhook' },
+    headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET, 'content-length': String(64 * 1024) },
+    body: { update_id: 1 }
+  }), res);
+  assert.equal(res.statusCode, 413);
+});
+
+test('endpoint login webhook: GET is rejected (POST only)', async function () {
+  process.env.TELEGRAM_VERIFY_WEBHOOK_SECRET = WEBHOOK_SECRET;
+  const { handler } = requireApiWithSupabaseStub('../api/login-user', makeModelDb);
+  const res = makeRes();
+  await handler(makeReq({ method: 'GET', query: { action: 'telegram-verify-webhook' }, headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET } }), res);
+  assert.equal(res.statusCode, 405);
+});
+
+test('endpoint login webhook: valid secret + ignored update -> 200, no session cookie', async function () {
+  process.env.SUPABASE_URL = 'http://local';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc';
+  process.env.TELEGRAM_VERIFY_WEBHOOK_SECRET = WEBHOOK_SECRET;
+  const { handler } = requireApiWithSupabaseStub('../api/login-user', makeModelDb);
+  const res = makeRes();
+  await handler(makeReq({
+    query: { action: 'telegram-verify-webhook' },
+    headers: { 'x-telegram-bot-api-secret-token': WEBHOOK_SECRET },
+    body: { update_id: 999 } // no message/callback -> ignored
+  }), res);
+  assert.equal(res.statusCode, 200);
+  assert.ok(!res.headers['Set-Cookie'], 'webhook never sets a session cookie');
+});
+
+test('endpoint login pending: correct password rotates code, issues NO session', async function () {
+  process.env.SUPABASE_URL = 'http://local';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc';
+  const { handler, db } = requireApiWithSupabaseStub('../api/login-user', makeModelDb);
+  db.seedUser({ id: 'u-pending', username: 'sam', password_hash: 'HASH', devices: ['dev'], is_approved: false, is_blocked: false });
+  const res = makeRes();
+  await handler(makeReq({ body: { username: 'sam', passwordHash: 'HASH', deviceId: 'dev', userAgent: 'UA' } }), res);
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.approval_status, 'pending');
+  assert.ok(res.body.telegram_verification_code, 'fresh one-time code issued');
+  assert.equal(res.body.telegram_bot_url, 'https://t.me/AutoCuanVerificationBot');
+  assert.ok(!('telegram_channel_url' in res.body), 'no channel URL');
+  assert.ok(!res.headers['Set-Cookie'], 'no session issued for a pending user');
+});
+
+test('endpoint login: approved budi authenticates normally (unchanged), gets a session', async function () {
+  process.env.SUPABASE_URL = 'http://local';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc';
+  process.env.SESSION_SECRET = 'unit-test-session-secret';
+  const { handler, db } = requireApiWithSupabaseStub('../api/login-user', makeModelDb);
+  db.seedUser({ id: 'u-budi', username: 'budi', password_hash: 'BUDIHASH', devices: ['dev-budi'], is_approved: true, is_blocked: false });
+  const res = makeRes();
+  await handler(makeReq({ body: { username: 'budi', passwordHash: 'BUDIHASH', deviceId: 'dev-budi', userAgent: 'UA' } }), res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.success, true);
+  assert.equal(res.body.isAdmin, true);
+  assert.ok(res.headers['Set-Cookie'], 'approved user still receives a session cookie');
+  assert.ok(!('approval_status' in res.body), 'budi never enters the pending v2 flow');
+});
+
+// ===========================================================================
+// 14. Isolation / hygiene / API count
+// ===========================================================================
+test('isolation: verify bot READS only the verify token (no recommendation token env access)', function () {
+  const src = fs.readFileSync(path.join(ROOT, 'lib', 'telegram-verify-bot.js'), 'utf8');
+  assert.ok(src.indexOf('process.env.TELEGRAM_VERIFY_BOT_TOKEN') !== -1, 'reads verify token');
+  // Actual env access to the recommendation token must not exist (comments are ignored).
+  assert.equal(src.indexOf('process.env.TELEGRAM_BOT_TOKEN') !== -1, false, 'does not read TELEGRAM_BOT_TOKEN');
+  // Must not require the recommendation notifier module.
+  assert.equal(/require\([^)]*telegram-notifier/.test(src), false, 'does not import telegram-notifier');
+});
+
+test('isolation: verification lib does not USE TELEGRAM_BOT_TOKEN or import telegram-notifier', function () {
+  const src = fs.readFileSync(path.join(ROOT, 'lib', 'telegram-verification.js'), 'utf8');
+  assert.equal(src.indexOf('process.env.TELEGRAM_BOT_TOKEN') !== -1, false);
+  assert.equal(/require\([^)]*telegram-notifier/.test(src), false);
+});
+
+test('isolation: new libs never log via console (raw code/text cannot leak to logs)', function () {
+  const a = fs.readFileSync(path.join(ROOT, 'lib', 'telegram-verification.js'), 'utf8');
+  const b = fs.readFileSync(path.join(ROOT, 'lib', 'telegram-verify-bot.js'), 'utf8');
+  assert.equal(a.indexOf('console.') !== -1, false);
+  assert.equal(b.indexOf('console.') !== -1, false);
+});
+
+test('isolation: verify bot token accessor never falls back to recommendation token', function () {
+  const bot = require('../lib/telegram-verify-bot');
+  const savedVerify = process.env.TELEGRAM_VERIFY_BOT_TOKEN;
+  const savedRec = process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.TELEGRAM_VERIFY_BOT_TOKEN;
+  process.env.TELEGRAM_BOT_TOKEN = 'recommendation-token-should-not-be-used';
+  try {
+    assert.equal(bot.__getVerifyBotToken(), null, 'no fallback to TELEGRAM_BOT_TOKEN');
+  } finally {
+    if (savedVerify === undefined) delete process.env.TELEGRAM_VERIFY_BOT_TOKEN; else process.env.TELEGRAM_VERIFY_BOT_TOKEN = savedVerify;
+    if (savedRec === undefined) delete process.env.TELEGRAM_BOT_TOKEN; else process.env.TELEGRAM_BOT_TOKEN = savedRec;
+  }
+});
+
+test('api count: exactly 12 API JavaScript files', function () {
+  const files = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
+  assert.equal(files.length, 12, 'API JS file count must remain 12; got ' + files.length);
+});

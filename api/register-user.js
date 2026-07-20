@@ -2,8 +2,9 @@ const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const {
   generateApprovalCode,
-  normalizeTelegramChannelUrl
+  maskUsername
 } = require('../lib/free-user-approval');
+const telegramVerification = require('../lib/telegram-verification');
 
 // Normalize a client-provided device ID and generate a secure server-side
 // fallback when an older client omits it. Keeps the NOT NULL `device_id`
@@ -78,45 +79,47 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'Username sudah digunakan.' });
     }
 
-    // Insert new user (pending approval by default, first device stored in devices array)
-    const { data, error: insertError } = await supabase
-      .from('app_users')
-      .insert({
-        username: usernameLower,
-        password_hash: passwordHash,
-        device_id: normalizedDeviceId,
-        devices: [normalizedDeviceId],
-        user_agent: userAgent || '',
-        is_blocked: false,
-        is_approved: false
-      })
-      .select('id, username, created_at');
+    // v2: Atomically create the pending user AND its first one-time verification
+    // challenge. The raw code is generated in Node; ONLY its HMAC is passed to
+    // SQL. Fail closed if the code secret is not configured — no user is created.
+    if (!telegramVerification.hasCodeSecret()) {
+      return res.status(500).json({ success: false, error: 'Verifikasi belum dikonfigurasi. Coba lagi nanti.' });
+    }
 
-    if (insertError) {
-      console.error('register-user insert error:', insertError);
-      // Handle unique constraint violations
-      if (insertError.code === '23505') {
+    let registration;
+    try {
+      registration = await telegramVerification.registerPendingUser(supabase, {
+        username: usernameLower,
+        passwordHash: passwordHash,
+        deviceId: normalizedDeviceId,
+        userAgent: userAgent || ''
+      });
+    } catch (rpcError) {
+      // Never surface raw database constraint text. A username/device duplicate
+      // arrives as SQLSTATE 23505 (active-hash collisions are retried internally).
+      if (rpcError && rpcError.pgcode === '23505') {
         return res.status(400).json({ success: false, error: 'Username sudah digunakan.' });
       }
-      // Never surface raw database constraint text to the user.
+      console.error('register-user rpc failed');
       return res.status(500).json({ success: false, error: 'Gagal membuat akun. Silakan coba lagi beberapa saat lagi.' });
     }
 
-    const insertedUser = Array.isArray(data) ? data[0] : data;
-    if (!insertedUser) {
-      console.error('register-user insert returned no public approval source');
-      return res.status(500).json({ success: false, error: 'Akun dibuat, tetapi kode approval belum tersedia. Hubungi admin.' });
+    if (!registration || !registration.id) {
+      console.error('register-user rpc returned no public approval source');
+      return res.status(500).json({ success: false, error: 'Akun dibuat, tetapi kode verifikasi belum tersedia. Hubungi admin.' });
     }
 
-    const approvalCode = generateApprovalCode(insertedUser);
-    const telegramChannelUrl = normalizeTelegramChannelUrl(process.env.TELEGRAM_FREE_CHANNEL_URL);
-
+    // The raw one-time code is returned to the client ONLY after the RPC committed.
+    // The private channel invite link is NEVER exposed by the website.
     return res.status(200).json({
       success: true,
       pending: true,
       approval_status: 'pending',
-      approval_code: approvalCode,
-      telegram_channel_url: telegramChannelUrl
+      masked_username: maskUsername(registration.username),
+      approval_code: generateApprovalCode({ id: registration.id, username: registration.username, created_at: registration.createdAt }),
+      telegram_verification_code: registration.displayCode,
+      telegram_verification_expires_at: registration.expiresAt,
+      telegram_bot_url: telegramVerification.BOT_URL
     });
   } catch (e) {
     console.error('register-user exception:', e);

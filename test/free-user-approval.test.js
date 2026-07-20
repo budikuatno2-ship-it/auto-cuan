@@ -46,11 +46,16 @@ async function withEnv(values, fn) {
     'TELEGRAM_APPROVAL_CHAT_ID', 'TELEGRAM_ENABLED', 'TELEGRAM_BOT_TOKEN',
     'TELEGRAM_CHAT_ID'
   ];
+  keys.push('TELEGRAM_VERIFY_CODE_SECRET');
   const previous = {};
   keys.forEach(function(key) { previous[key] = process.env[key]; delete process.env[key]; });
   process.env.SESSION_SECRET = SESSION_SECRET;
   process.env.SUPABASE_URL = 'https://example.test';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'local-test-key';
+  // v2: registration and pending-login issue a one-time Telegram code (HMAC keyed
+  // by this secret). Provide a fixed test secret so those endpoints are not in
+  // their fail-closed state during these tests.
+  process.env.TELEGRAM_VERIFY_CODE_SECRET = 'free-user-approval-verify-secret';
   Object.keys(values || {}).forEach(function(key) {
     if (values[key] !== undefined) process.env[key] = String(values[key]);
   });
@@ -127,7 +132,7 @@ test('username masking handles short and long usernames without publishing the f
 });
 
 function registrationSupabase(row) {
-  const captured = { inserted: null };
+  const captured = { inserted: null, rpc: [] };
   const client = {
     from() {
       return {
@@ -146,6 +151,16 @@ function registrationSupabase(row) {
           };
         }
       };
+    },
+    // v2: registration uses an atomic service-role RPC (pending user + first
+    // one-time challenge). Only the HMAC is passed to SQL.
+    rpc(name, args) {
+      captured.rpc.push({ name: name, args: args });
+      if (name === 'register_pending_user_with_telegram_challenge') {
+        const r = row || { id: 'registered-id-1', username: args.p_username, created_at: '2026-07-20T00:00:00Z' };
+        return Promise.resolve({ data: [{ id: r.id, username: r.username, created_at: r.created_at, challenge_id: 'ch-1' }], error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
     }
   };
   return { client: client, captured: captured };
@@ -164,14 +179,20 @@ async function registerWith(channelUrl) {
   });
 }
 
-test('successful registration returns pending status, deterministic code, and safe channel URL', async function() {
-  const result = await registerWith('https://t.me/auto_cuan_free');
+test('successful registration returns pending status, deterministic code, and a one-time verification code (no channel URL)', async function() {
+  const result = await registerWith('https://t.me/auto_cuan_free'); // any channel env is ignored by v2
   assert.equal(result.res.statusCode, 200);
   assert.equal(result.res.body.success, true);
   assert.equal(result.res.body.pending, true);
   assert.equal(result.res.body.approval_status, 'pending');
   assert.equal(result.res.body.approval_code, approval.generateApprovalCode({ id: 'registered-id-1' }));
-  assert.equal(result.res.body.telegram_channel_url, 'https://t.me/auto_cuan_free');
+  // v2: a separate one-time verification code + the fixed bot URL; never a channel link.
+  assert.match(result.res.body.telegram_verification_code, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  assert.equal(result.res.body.telegram_bot_url, 'https://t.me/AutoCuanVerificationBot');
+  assert.equal(Object.prototype.hasOwnProperty.call(result.res.body, 'telegram_channel_url'), false);
+  // Only the HMAC reaches SQL — never the raw/display code.
+  const rpcCall = result.captured.rpc.find(function(c) { return c.name === 'register_pending_user_with_telegram_challenge'; });
+  assert.match(rpcCall.args.p_code_hash, /^[0-9a-f]{64}$/);
 });
 
 test('registration response never returns password hash, internal user id, device id, or session data', async function() {
@@ -185,25 +206,29 @@ test('registration response never returns password hash, internal user id, devic
   });
 });
 
-test('missing or invalid Telegram channel URL does not break registration', async function() {
+test('registration succeeds and never exposes a channel URL (v2)', async function() {
   let result = await registerWith(undefined);
   assert.equal(result.res.statusCode, 200);
   assert.equal(result.res.body.approval_status, 'pending');
-  assert.equal(result.res.body.telegram_channel_url, null);
+  assert.ok(result.res.body.telegram_verification_code, 'one-time code present');
+  assert.equal(Object.prototype.hasOwnProperty.call(result.res.body, 'telegram_channel_url'), false);
 
   result = await registerWith('https://example.test/not-telegram');
   assert.equal(result.res.statusCode, 200);
-  assert.equal(result.res.body.telegram_channel_url, null);
+  assert.equal(Object.prototype.hasOwnProperty.call(result.res.body, 'telegram_channel_url'), false);
 });
 
-test('registration UI contains the pending approval panel and approval code output', function() {
+test('registration UI contains the pending approval panel with recognition + one-time verification codes', function() {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
   assert.match(html, /id="registerApprovalPanel"/);
   assert.match(html, /Pendaftaran berhasil/);
   assert.match(html, /Akun Anda sedang menunggu persetujuan admin\./);
-  assert.match(html, /Kode approval:/);
-  assert.match(html, /Simpan kode ini dan pantau pengumuman di channel Telegram\./);
-  assert.match(html, />Salin Kode</);
+  assert.match(html, /Kode pengguna:/);
+  assert.match(html, /id="registerVerificationCode"/);
+  assert.match(html, /id="openVerificationBot"/);
+  assert.match(html, />Salin Kode Verifikasi</);
+  // v2: the private channel link element must no longer exist on the website.
+  assert.doesNotMatch(html, /joinFreeTelegramChannel/);
   assert.ok(extractFunction(html, 'function displayApprovalPanel').includes("textContent = code"));
   const doRegister = extractFunction(html, 'async function doRegister');
   assert.doesNotMatch(doRegister, /setTimeout|openAuthChoiceModal|doLogin/);
@@ -228,13 +253,16 @@ function makeElement(initialClasses) {
 function makeApprovalUi(html) {
   const elements = {
     registerApprovalCode: makeElement(),
+    registerVerificationCode: makeElement(),
+    registerVerificationExpiry: makeElement(),
     regPassword: makeElement(),
     regPasswordConfirm: makeElement(),
     registerFormFields: makeElement(),
     registerApprovalPanel: makeElement(['hidden']),
-    joinFreeTelegramChannel: makeElement(['hidden'])
+    openVerificationBot: makeElement(['hidden'])
   };
-  const source = extractFunction(html, 'function validFreeTelegramChannelUrl') + '\n' +
+  const source = extractFunction(html, 'function validVerificationBotUrl') + '\n' +
+    extractFunction(html, 'function formatVerificationExpiry') + '\n' +
     extractFunction(html, 'function displayApprovalPanel') + '\n' +
     extractFunction(html, 'function showRegistrationApproval') + '\nreturn showRegistrationApproval;';
   const show = new Function('document', 'URL', source)(
@@ -244,22 +272,24 @@ function makeApprovalUi(html) {
   return { elements: elements, show: show };
 }
 
-test('registration UI shows join-channel action only for a valid Telegram URL', function() {
+test('registration UI shows the verification-bot button only for a valid bot URL and shows the one-time code', function() {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
   let ui = makeApprovalUi(html);
-  ui.show({ approval_code: 'AC-7F3A2C', telegram_channel_url: 'https://t.me/free_channel' });
+  ui.show({ approval_code: 'AC-7F3A2C', telegram_verification_code: 'ABCD-2345', telegram_verification_expires_at: new Date(Date.now() + 900000).toISOString(), telegram_bot_url: 'https://t.me/AutoCuanVerificationBot' });
   assert.equal(ui.elements.registerApprovalCode.textContent, 'AC-7F3A2C');
+  assert.equal(ui.elements.registerVerificationCode.textContent, 'ABCD-2345');
   assert.equal(ui.elements.registerApprovalPanel.classList.contains('hidden'), false);
-  assert.equal(ui.elements.joinFreeTelegramChannel.classList.contains('hidden'), false);
-  assert.equal(ui.elements.joinFreeTelegramChannel.href, 'https://t.me/free_channel');
+  assert.equal(ui.elements.openVerificationBot.classList.contains('hidden'), false);
+  assert.equal(ui.elements.openVerificationBot.href, 'https://t.me/AutoCuanVerificationBot');
   assert.equal(ui.elements.regPassword.value, '');
   assert.equal(ui.elements.regPasswordConfirm.value, '');
 
+  // A non-Telegram / unsafe / missing bot URL hides the button (and no channel link exists at all).
   ['https://example.test/channel', 'javascript:alert(1)', '', null].forEach(function(url) {
     ui = makeApprovalUi(html);
-    ui.show({ approval_code: 'AC-7F3A2C', telegram_channel_url: url });
-    assert.equal(ui.elements.joinFreeTelegramChannel.classList.contains('hidden'), true);
-    assert.equal(ui.elements.joinFreeTelegramChannel.href, '');
+    ui.show({ approval_code: 'AC-7F3A2C', telegram_verification_code: 'ABCD-2345', telegram_bot_url: url });
+    assert.equal(ui.elements.openVerificationBot.classList.contains('hidden'), true);
+    assert.equal(ui.elements.openVerificationBot.href, '');
   });
 });
 
@@ -541,6 +571,13 @@ function loginSupabase(user) {
           update() { return { eq() { return Promise.resolve({ data: null, error: null }); } }; }
         };
         return query;
+      },
+      // v2: pending login issues a fresh one-time challenge via this RPC.
+      rpc(name) {
+        if (name === 'issue_telegram_challenge') {
+          return Promise.resolve({ data: [{ challenge_id: 'ch-login-1', expires_at: new Date(Date.now() + 900000).toISOString() }], error: null });
+        }
+        return Promise.resolve({ data: null, error: null });
       }
     };
   };
@@ -562,31 +599,35 @@ function pendingUser(overrides) {
   }, overrides || {});
 }
 
-test('a pre-feature pending user with the correct password receives the deterministic code and no session', async function() {
+test('a pre-feature pending user with the correct password receives a fresh verification code and no session', async function() {
   const res = await runLogin(
     pendingUser(),
     { username: 'olduser', passwordHash: 'correct-hash', deviceId: 'dev1', userAgent: 'ua' },
-    { TELEGRAM_FREE_CHANNEL_URL: 'https://t.me/free_join' }
+    {}
   );
   assert.equal(res.statusCode, 403);
   assert.equal(res.body.success, false);
   assert.equal(res.body.approval_status, 'pending');
   assert.equal(res.body.approval_code, approval.generateApprovalCode({ id: 'old-pending-id' }));
-  assert.equal(res.body.telegram_channel_url, 'https://t.me/free_join');
+  // v2: a fresh one-time verification code + the fixed bot URL; never a channel link.
+  assert.match(res.body.telegram_verification_code, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  assert.equal(res.body.telegram_bot_url, 'https://t.me/AutoCuanVerificationBot');
+  assert.equal(Object.prototype.hasOwnProperty.call(res.body, 'telegram_channel_url'), false);
   // No session is issued and the user is not logged in.
   assert.ok(!res.headers['Set-Cookie'], 'a pending login must not set a session cookie');
   assert.equal(res.body.userId, undefined);
   assert.equal(res.body.isAdmin, undefined);
 });
 
-test('a pending login with an invalid or missing channel URL returns a null channel', async function() {
+test('a pending login never returns a channel URL (v2)', async function() {
   const res = await runLogin(
     pendingUser(),
     { username: 'olduser', passwordHash: 'correct-hash', deviceId: 'dev1', userAgent: 'ua' },
-    { TELEGRAM_FREE_CHANNEL_URL: 'https://example.test/not-telegram' }
+    {}
   );
   assert.equal(res.body.approval_status, 'pending');
-  assert.equal(res.body.telegram_channel_url, null);
+  assert.equal(Object.prototype.hasOwnProperty.call(res.body, 'telegram_channel_url'), false);
+  assert.ok(res.body.telegram_verification_code, 'a fresh one-time code is issued');
 });
 
 test('a wrong password reveals no approval information and no session', async function() {
@@ -633,12 +674,15 @@ function makePendingLoginUi(html) {
     registerError: makeElement(),
     registerSuccess: makeElement(),
     registerApprovalCode: makeElement(),
+    registerVerificationCode: makeElement(),
+    registerVerificationExpiry: makeElement(),
     registerFormFields: makeElement(),
     registerApprovalPanel: makeElement(['hidden']),
-    joinFreeTelegramChannel: makeElement(['hidden'])
+    openVerificationBot: makeElement(['hidden'])
   };
   const source =
-    extractFunction(html, 'function validFreeTelegramChannelUrl') + '\n' +
+    extractFunction(html, 'function validVerificationBotUrl') + '\n' +
+    extractFunction(html, 'function formatVerificationExpiry') + '\n' +
     extractFunction(html, 'function displayApprovalPanel') + '\n' +
     extractFunction(html, 'function closeLoginModal') + '\n' +
     extractFunction(html, 'function showPendingLoginApproval') + '\nreturn showPendingLoginApproval;';
@@ -649,17 +693,18 @@ function makePendingLoginUi(html) {
   return { elements: elements, show: show };
 }
 
-test('pending-login UI shows the approval code and channel button and clears the password', function() {
+test('pending-login UI shows the codes and the verification-bot button and clears the password', function() {
   const html = fs.readFileSync(HTML_PATH, 'utf8');
   const ui = makePendingLoginUi(html);
   ui.elements.loginPassword.value = 'MyLoginP@ss1';
-  ui.show({ approval_status: 'pending', approval_code: 'AC-123ABC', telegram_channel_url: 'https://t.me/free_channel' });
+  ui.show({ approval_status: 'pending', approval_code: 'AC-123ABC', telegram_verification_code: 'WXYZ-2345', telegram_bot_url: 'https://t.me/AutoCuanVerificationBot' });
   assert.equal(ui.elements.registerApprovalCode.textContent, 'AC-123ABC');
+  assert.equal(ui.elements.registerVerificationCode.textContent, 'WXYZ-2345');
   assert.equal(ui.elements.registerApprovalPanel.classList.contains('hidden'), false);
   assert.equal(ui.elements.registerModal.classList.contains('hidden'), false);
   assert.equal(ui.elements.loginModal.classList.contains('hidden'), true);
-  assert.equal(ui.elements.joinFreeTelegramChannel.classList.contains('hidden'), false);
-  assert.equal(ui.elements.joinFreeTelegramChannel.href, 'https://t.me/free_channel');
+  assert.equal(ui.elements.openVerificationBot.classList.contains('hidden'), false);
+  assert.equal(ui.elements.openVerificationBot.href, 'https://t.me/AutoCuanVerificationBot');
   assert.equal(ui.elements.loginPassword.value, '', 'login password cleared after a pending login');
 });
 
