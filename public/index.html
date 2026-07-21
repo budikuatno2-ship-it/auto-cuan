@@ -1628,6 +1628,16 @@
     </div>
 </div>
 
+<!-- DEVICE DETAILS MODAL (Approved Users view) -->
+<div id="deviceDetailsModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="deviceDetailsTitle" onclick="if(event.target===this)closeDeviceModal()">
+    <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
+        <h3 id="deviceDetailsTitle" class="text-base font-bold text-white text-center">Perangkat</h3>
+        <p class="text-[11px] text-gray-500 text-center">ID perangkat disamarkan demi keamanan.</p>
+        <div id="deviceDetailsBody" class="max-h-72 overflow-y-auto"></div>
+        <button onclick="closeDeviceModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Tutup</button>
+    </div>
+</div>
+
 <!-- SELF-SERVICE RESET PASSWORD MODAL -->
 <div id="selfResetModal" class="hidden fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="selfResetModalTitle">
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl space-y-4">
@@ -5488,14 +5498,20 @@ var ADMIN_USER_FILTERS = [
     { key: 'ready', label: 'Siap Di-approve' },
     { key: 'unverified', label: 'Belum Verifikasi' },
     { key: 'pending', label: 'Semua Pending' },
+    { key: 'approved', label: 'Sudah Di-approve' },
     { key: 'blocked', label: 'Blocked' }
 ];
 function userIsPending(u) { return u.is_approved === false && !u.is_blocked; }
 function userIsVerified(u) { return !!u.telegram_verified_at; }
+function userIsApproved(u) { return u.is_approved === true; }
 function adminUserMatchesFilter(u, filter) {
     if (filter === 'blocked') return !!u.is_blocked;
     if (filter === 'unverified') return userIsPending(u) && !userIsVerified(u);
     if (filter === 'pending') return userIsPending(u);
+    // 'approved' ("Sudah Di-approve"): every account with is_approved === true.
+    // Disjoint from the pending filters (which all require is_approved === false),
+    // so approved users are never mixed into the pending views.
+    if (filter === 'approved') return userIsApproved(u);
     // 'ready' (default): pending + not blocked + Telegram-verified.
     return userIsPending(u) && userIsVerified(u);
 }
@@ -5504,6 +5520,168 @@ function telegramStatusLabel(u) {
     if (userIsVerified(u)) return '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-300">Terverifikasi</span>';
     return '<span class="px-2 py-0.5 rounded text-xs bg-gray-500/20 text-gray-400">Belum Verifikasi</span>';
 }
+
+// ===== APPROVED-USERS-HELPERS-START =====
+// Pure, DOM-free helpers for the "Sudah Di-approve" view and its device-details
+// modal. Everything user-controlled (username, device IDs, user agent, Telegram
+// fields) is treated as untrusted and escaped before rendering. Device IDs are
+// masked by default and raw authentication data is never rendered.
+var ADMIN_MAX_DEVICES = 3;
+
+// HTML-escape any value for safe insertion as element text. Pure string impl so
+// it works both in the browser and in headless (Node vm) tests.
+function escapeAdminHtml(value) {
+    return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Escape a value for safe use INSIDE a single-quoted JS string that itself lives
+// inside a double-quoted HTML attribute (e.g. onclick="fn('<here>')"). Escapes
+// the JS-string metacharacters first, then the HTML-attribute metacharacters.
+function adminOnclickArg(value) {
+    var s = String(value == null ? '' : value);
+    s = s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    s = s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return s;
+}
+
+// Mask a device ID so it is recognizable but never fully disclosed. Keeps a
+// short head (and, for long IDs, a short tail) with a fixed-width bullet run in
+// between so the true length is not leaked. Malformed / empty entries degrade to
+// a safe placeholder. Example: "srv_12ab••••••••89cd".
+function maskDeviceId(id) {
+    if (id == null) return '(kosong)';
+    if (typeof id !== 'string') return '(tidak valid)';
+    var s = id.trim();
+    if (s === '') return '(kosong)';
+    var bullets = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+    if (s.length <= 12) return s.slice(0, 4) + bullets;
+    return s.slice(0, 8) + bullets + s.slice(-4);
+}
+
+// Build a safe view-model of a user's registered devices. Tolerates a missing,
+// non-array, or malformed `devices` value and identifies the legacy/current
+// `device_id` when it is present in the list.
+function deviceDetailsModel(user) {
+    var rawList = user && Array.isArray(user.devices) ? user.devices : [];
+    var currentId = user && typeof user.device_id === 'string' && user.device_id.trim() !== ''
+        ? user.device_id : null;
+    var currentInList = false;
+    var items = rawList.map(function (d) {
+        var valid = (typeof d === 'string' && d.trim() !== '');
+        var isCurrent = valid && currentId != null && d === currentId;
+        if (isCurrent) currentInList = true;
+        return { maskedId: maskDeviceId(d), isCurrent: isCurrent, valid: valid };
+    });
+    return {
+        total: items.length,
+        max: ADMIN_MAX_DEVICES,
+        items: items,
+        currentKnown: currentId != null,
+        currentInList: currentInList
+    };
+}
+
+// Render the device-details modal body from the safe view-model. All dynamic
+// text is escaped; only the masked device IDs (never the raw IDs) are shown.
+function renderDeviceDetailsHtml(user) {
+    var m = deviceDetailsModel(user);
+    var uname = escapeAdminHtml(user && user.username);
+    var html = '';
+    html += '<div class="text-xs text-gray-400 mb-2">User: <span class="text-white font-medium">' + uname + '</span></div>';
+    html += '<div class="text-sm text-gray-300 mb-3">Total perangkat: <span class="font-mono text-white">' + m.total + '/' + m.max + '</span></div>';
+    if (m.items.length === 0) {
+        html += '<p class="text-sm text-gray-500">Tidak ada perangkat terdaftar.</p>';
+        return html;
+    }
+    html += '<ul class="space-y-2">';
+    m.items.forEach(function (it, idx) {
+        var badge = it.isCurrent
+            ? ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300">Perangkat saat ini</span>'
+            : '';
+        var invalidBadge = it.valid
+            ? ''
+            : ' <span class="px-1.5 py-0.5 rounded text-[10px] bg-yellow-500/20 text-yellow-300">Format tidak valid</span>';
+        html += '<li class="flex items-center gap-2 text-xs">';
+        html += '<span class="text-gray-500">' + (idx + 1) + '.</span>';
+        html += '<span class="font-mono text-gray-300">' + escapeAdminHtml(it.maskedId) + '</span>';
+        html += badge + invalidBadge;
+        html += '</li>';
+    });
+    html += '</ul>';
+    if (m.currentKnown && !m.currentInList) {
+        html += '<p class="text-[11px] text-gray-500 mt-3">Perangkat legacy (device_id) tidak lagi ada di daftar perangkat aktif.</p>';
+    }
+    return html;
+}
+
+// Render the "Sudah Di-approve" table. Columns: Username, Devices (count +
+// "Lihat Devices"), Telegram status, Created, Last login, Account status, and
+// the safe admin actions (Block/Unblock, Reset Devices, Reset Password). No
+// Delete User and no approve/reject controls are rendered here.
+function renderApprovedUsersTable(list) {
+    var rows = Array.isArray(list) ? list : [];
+    var html = '<div class="overflow-x-auto"><table class="w-full text-sm border-collapse"><thead><tr>';
+    ['Username', 'Devices', 'Telegram', 'Created', 'Last Login', 'Status', 'Actions'].forEach(function (h) {
+        html += '<th class="px-3 py-2 text-left text-blue-400 font-medium border-b border-dark-600/50 bg-dark-700">' + h + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    rows.forEach(function (user) {
+        var arg = adminOnclickArg(user.username);
+        var uname = escapeAdminHtml(user.username);
+        var deviceCount = Array.isArray(user.devices) ? user.devices.length : 0;
+        var deviceLabel = deviceCount + '/' + ADMIN_MAX_DEVICES;
+        var created = user.created_at ? escapeAdminHtml(new Date(user.created_at).toLocaleDateString('id-ID')) : '-';
+        var lastLogin = user.last_login_at ? escapeAdminHtml(new Date(user.last_login_at).toLocaleString('id-ID')) : '-';
+        var statusBadge = user.is_blocked
+            ? '<span class="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">Blocked</span>'
+            : '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Approved</span>';
+        html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
+        html += '<td class="px-3 py-2 text-white font-medium">' + uname + '</td>';
+        html += '<td class="px-3 py-2 text-gray-400 text-xs"><span class="font-mono">' + deviceLabel + '</span> '
+            + '<button onclick="openDeviceModal(\'' + arg + '\')" class="ml-1 px-2 py-0.5 rounded text-[11px] text-blue-400 border border-blue-500/30 hover:bg-blue-500/10">Lihat Devices</button></td>';
+        html += '<td class="px-3 py-2">' + telegramStatusLabel(user) + '</td>';
+        html += '<td class="px-3 py-2 text-gray-400">' + created + '</td>';
+        html += '<td class="px-3 py-2 text-gray-400">' + lastLogin + '</td>';
+        html += '<td class="px-3 py-2">' + statusBadge + '</td>';
+        html += '<td class="px-3 py-2">';
+        if (user.is_blocked) {
+            html += '<button onclick="adminUserAction(\'unblock\',\'' + arg + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>';
+        } else {
+            html += '<button onclick="adminUserAction(\'block\',\'' + arg + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>';
+        }
+        html += '<button onclick="adminUserAction(\'reset_devices\',\'' + arg + '\')" class="px-2 py-1 rounded text-xs text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 mr-1">Reset Devices</button>';
+        html += '<button onclick="openResetPasswordModal(\'' + arg + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reset PW</button>';
+        html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+}
+// ===== APPROVED-USERS-HELPERS-END =====
+
+// Device-details modal open/close (DOM). Looks up the user by username from the
+// already-loaded server data; renders masked device details safely.
+function openDeviceModal(username) {
+    var user = (cachedUsers || []).filter(function (u) { return u.username === username; })[0];
+    var titleEl = document.getElementById('deviceDetailsTitle');
+    var bodyEl = document.getElementById('deviceDetailsBody');
+    if (titleEl) titleEl.textContent = 'Perangkat: ' + (user ? username : '-');
+    if (bodyEl) bodyEl.innerHTML = user
+        ? renderDeviceDetailsHtml(user)
+        : '<p class="text-sm text-gray-500">Data perangkat tidak ditemukan.</p>';
+    var modal = document.getElementById('deviceDetailsModal');
+    if (modal) modal.classList.remove('hidden');
+}
+function closeDeviceModal() {
+    var modal = document.getElementById('deviceDetailsModal');
+    if (modal) modal.classList.add('hidden');
+}
+// ===== DEVICE-MODAL-DOM-END =====
+
 function setAdminUserFilter(key) { adminUserFilter = key; renderAdminUsers(); }
 
 async function loadAdminUsers() {
@@ -5540,6 +5718,14 @@ function renderAdminUsers() {
 
     if (filtered.length === 0) {
         html += '<p class="text-sm text-gray-500">Tidak ada user pada filter ini.</p>';
+        container.innerHTML = html;
+        return;
+    }
+
+    // "Sudah Di-approve" uses a dedicated approved-users table (with device
+    // details + last login). Pending/blocked views keep the existing table.
+    if (adminUserFilter === 'approved') {
+        html += renderApprovedUsersTable(filtered);
         container.innerHTML = html;
         return;
     }
