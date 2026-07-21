@@ -5673,6 +5673,95 @@ function telegramStatusLabel(u) {
     return '<span class="px-2 py-0.5 rounded text-xs bg-gray-500/20 text-gray-400">Belum Verifikasi</span>';
 }
 
+// ===== TELEGRAM-ANALYTICS-START =====
+// Compact, server-derived Telegram member analytics for the User Approval page.
+// All counts come from /api/admin-users action='analytics' (nothing hardcoded).
+// From/To filter on registration date. Unknown historical join dates are clearly
+// labelled and never invented.
+var cachedAnalytics = null;
+var adminAnalyticsFrom = '';
+var adminAnalyticsTo = '';
+
+function analyticsCard(label, value) {
+    return '<div class="bg-[#0f1319] rounded-lg p-2.5 border border-[#1c2333]">'
+        + '<div class="text-[10px] uppercase tracking-wide text-gray-500">' + escapeAdminHtml(label) + '</div>'
+        + '<div class="text-lg font-bold text-white">' + escapeAdminHtml(value) + '</div></div>';
+}
+
+function renderAnalyticsBodyHtml(a) {
+    if (!a) return '<p class="text-xs text-gray-500">Memuat analytics...</p>';
+    var avg = (a.averageReviewScore == null) ? '-' : (a.averageReviewScore + ' / 5');
+    var html = '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">';
+    html += analyticsCard('Total User Website', a.totalUsers);
+    html += analyticsCard('Telegram Terverifikasi', a.telegramVerified);
+    html += analyticsCard('Sudah Di-approve', a.approved);
+    html += analyticsCard('Join Channel', a.joinedChannel);
+    html += analyticsCard('Approved Belum Join', a.approvedNotJoined);
+    html += analyticsCard('Verifikasi Belum Selesai', a.verificationNotCompleted);
+    html += analyticsCard('Eligible Review 30 Hari', a.eligibleForReview);
+    html += analyticsCard('Review Terkirim', a.reviewSubmitted);
+    html += analyticsCard('Rata-rata Skor Review', avg);
+    html += '</div>';
+    if (a.joinDateUnknown && a.joinDateUnknown > 0) {
+        html += '<p class="text-[11px] text-yellow-400/80 mt-2">' + escapeAdminHtml(a.joinDateUnknown)
+            + ' member dengan tanggal join historis <span class="font-semibold">tidak diketahui</span> (tidak dihitung sebagai eligible review).</p>';
+    }
+    var from = (a.range && a.range.from) ? a.range.from : 'awal';
+    var to = (a.range && a.range.to) ? a.range.to : 'sekarang';
+    var rangeLabel = (a.range && (a.range.from || a.range.to)) ? ('Filter tanggal daftar: ' + from + ' s/d ' + to) : 'Filter tanggal: semua';
+    html += '<p class="text-[11px] text-gray-500 mt-1">' + escapeAdminHtml(rangeLabel) + '</p>';
+    return html;
+}
+
+function renderTelegramAnalyticsPanel() {
+    var html = '<div id="telegramAnalyticsPanel" class="mb-4 bg-dark-800/40 rounded-xl p-3 border border-dark-600/40">';
+    html += '<div class="flex flex-wrap items-end gap-2 mb-3">';
+    html += '<div class="text-sm font-bold text-emerald-400 mr-auto">Telegram Analytics</div>';
+    html += '<div><label class="block text-[10px] text-gray-500 mb-0.5">Dari</label><input id="analyticsFromInput" type="date" value="' + escapeAdminHtml(adminAnalyticsFrom) + '" class="bg-[#0b0e14] border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-100 outline-none focus:border-emerald-500"></div>';
+    html += '<div><label class="block text-[10px] text-gray-500 mb-0.5">Sampai</label><input id="analyticsToInput" type="date" value="' + escapeAdminHtml(adminAnalyticsTo) + '" class="bg-[#0b0e14] border border-gray-700 rounded-lg px-2 py-1 text-xs text-gray-100 outline-none focus:border-emerald-500"></div>';
+    html += '<button onclick="applyAnalyticsFilter()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10">Terapkan</button>';
+    html += '<button onclick="resetAnalyticsFilter()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/50 hover:bg-dark-700/40">Reset</button>';
+    html += '</div>';
+    html += '<div id="telegramAnalyticsBody">' + renderAnalyticsBodyHtml(cachedAnalytics) + '</div>';
+    html += '</div>';
+    return html;
+}
+
+async function loadTelegramAnalytics() {
+    try {
+        var adminName = localStorage.getItem('autocuan_user') || '';
+        var body = { adminName: adminName, action: 'analytics' };
+        if (adminAnalyticsFrom) body.from = adminAnalyticsFrom;
+        if (adminAnalyticsTo) body.to = adminAnalyticsTo;
+        var response = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        var data = await response.json();
+        if (data.success && data.analytics) {
+            cachedAnalytics = data.analytics;
+            var bodyEl = document.getElementById('telegramAnalyticsBody');
+            if (bodyEl) bodyEl.innerHTML = renderAnalyticsBodyHtml(cachedAnalytics);
+        }
+    } catch (e) { /* analytics is best-effort; the user list still works */ }
+}
+
+function applyAnalyticsFilter() {
+    var f = document.getElementById('analyticsFromInput');
+    var t = document.getElementById('analyticsToInput');
+    adminAnalyticsFrom = f ? f.value : '';
+    adminAnalyticsTo = t ? t.value : '';
+    var bodyEl = document.getElementById('telegramAnalyticsBody');
+    if (bodyEl) bodyEl.innerHTML = '<p class="text-xs text-gray-500">Memuat analytics...</p>';
+    loadTelegramAnalytics();
+}
+
+function resetAnalyticsFilter() {
+    adminAnalyticsFrom = '';
+    adminAnalyticsTo = '';
+    var f = document.getElementById('analyticsFromInput'); if (f) f.value = '';
+    var t = document.getElementById('analyticsToInput'); if (t) t.value = '';
+    applyAnalyticsFilter();
+}
+// ===== TELEGRAM-ANALYTICS-END =====
+
 // ===== APPROVED-USERS-HELPERS-START =====
 // Pure, DOM-free helpers for the "Sudah Di-approve" view and its device-details
 // modal. Everything user-controlled (username, device IDs, user agent, Telegram
@@ -5846,13 +5935,15 @@ async function loadAdminUsers() {
         if (!data.success) { container.innerHTML = '<p class="text-sm text-yellow-400">' + (data.error || 'Gagal memuat users.') + '</p>'; return; }
         cachedUsers = data.users || [];
         renderAdminUsers();
+        loadTelegramAnalytics();
     } catch(e) { container.innerHTML = '<p class="text-sm text-yellow-400">Gagal memuat user management.</p>'; }
 }
 function renderAdminUsers() {
     var container = document.getElementById('adminLogsContainer');
     if (!Array.isArray(cachedUsers)) cachedUsers = [];
 
-    var html = '<div class="mb-3 flex flex-wrap gap-2 items-center">';
+    var html = renderTelegramAnalyticsPanel();
+    html += '<div class="mb-3 flex flex-wrap gap-2 items-center">';
     html += '<button onclick="loadAdminUsers()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">&#x1F504; Refresh</button>';
     ADMIN_USER_FILTERS.forEach(function(f) {
         var count = cachedUsers.filter(function(u) { return adminUserMatchesFilter(u, f.key); }).length;

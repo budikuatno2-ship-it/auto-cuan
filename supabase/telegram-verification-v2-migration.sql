@@ -38,6 +38,16 @@ CREATE TABLE IF NOT EXISTS public.app_user_telegram_verifications (
   -- chat_join_request can edit that exact message and remove its used button.
   invite_message_id              bigint,
 
+  -- Member-lifecycle fields (fresh-install parity with
+  -- supabase/telegram-member-lifecycle-hotfix.sql). All additive/nullable.
+  --  * 30-day rating: one request, one stored score (constrained 1..5).
+  --  * legacy verification reminders: at most two, second at least 24h later.
+  review_requested_at            timestamptz,
+  review_submitted_at            timestamptz,
+  review_score                   integer CHECK (review_score IS NULL OR (review_score >= 1 AND review_score <= 5)),
+  verification_reminder_count    integer NOT NULL DEFAULT 0,
+  verification_reminded_at       timestamptz,
+
   -- Durable admin-notification outbox (token-owned lease)
   admin_notification_status      text NOT NULL DEFAULT 'pending'
                                    CHECK (admin_notification_status IN ('pending','claimed','sent','failed')),

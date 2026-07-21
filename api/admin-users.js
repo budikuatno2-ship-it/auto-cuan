@@ -2,7 +2,9 @@ const { createClient } = require('@supabase/supabase-js');
 const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
 const telegramNotifier = require('../lib/telegram-notifier');
 const telegramVerification = require('../lib/telegram-verification');
+const telegramLifecycle = require('../lib/telegram-lifecycle');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
+const { computeTelegramAnalytics } = require('../lib/telegram-analytics');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 
 const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
@@ -447,6 +449,61 @@ module.exports = async function handler(req, res) {
       }
 
       return res.status(200).json({ success: true, message: 'User ' + targetUser + ' berhasil di-reject.' });
+    }
+
+    // === TELEGRAM MEMBER ANALYTICS ===
+    // Compact, server-derived lifecycle counts for the Admin User Approval page,
+    // with optional From/To (registration date) filters. Every number comes from
+    // live DB rows via lib/telegram-analytics (nothing hardcoded). Reserved
+    // system accounts (budi/review) are excluded. Unknown historical join dates
+    // are surfaced via joinDateUnknown and never invented.
+    if (action === 'analytics') {
+      const from = (req.body && req.body.from) ? String(req.body.from) : null;
+      const to = (req.body && req.body.to) ? String(req.body.to) : null;
+
+      const { data: usersData, error: usersErr } = await supabase
+        .from('app_users')
+        .select('id, username, is_approved, is_blocked, created_at')
+        .limit(10000);
+      if (usersErr) {
+        console.error('admin-users analytics users error:', usersErr);
+        return res.status(500).json({ success: false, error: 'Gagal memuat analytics.' });
+      }
+
+      let verifications = [];
+      try {
+        const vres = await supabase
+          .from('app_user_telegram_verifications')
+          .select('user_id, telegram_verified_at, telegram_private_chat_id, channel_joined_at, review_requested_at, review_submitted_at, review_score')
+          .limit(10000);
+        if (vres && !vres.error && Array.isArray(vres.data)) verifications = vres.data;
+      } catch (e) { /* analytics degrades gracefully without verification rows */ }
+
+      const analytics = computeTelegramAnalytics(usersData || [], verifications, {
+        from: from,
+        to: to,
+        now: new Date().toISOString()
+      });
+      return res.status(200).json({ success: true, analytics: analytics });
+    }
+
+    // === LEGACY CHANNEL ANNOUNCEMENT (manual, admin-triggered) ===
+    // Prepares/sends ONE generic channel announcement with a safe deep-link
+    // button. It never mass-tags users. Double submission is blocked by a
+    // service-role single-row guard. Without an explicit confirm flag it reports
+    // readiness only (dry-run) so a stray request never posts.
+    if (action === 'legacy_channel_announcement') {
+      const confirm = !!(req.body && req.body.confirm === true);
+      let announcement;
+      try {
+        announcement = await telegramLifecycle.sendLegacyChannelAnnouncement(
+          { supabase: supabase, bot: createVerifyBot() },
+          { dryRun: !confirm }
+        );
+      } catch (e) {
+        announcement = { status: 'error', reason: 'announcement_exception' };
+      }
+      return res.status(200).json({ success: true, announcement: announcement });
     }
 
     // Unknown action
