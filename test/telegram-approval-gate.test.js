@@ -98,6 +98,14 @@ function makeAdminModel() {
         const v = db.verifications[args.p_user_id]; if (v) { v.dynamic_invite_link = args.p_invite_link; v.invite_expires_at = args.p_expires_at; }
         return ok(null);
       }
+      case 'save_invite_message_id': {
+        const v = db.verifications[args.p_user_id]; if (v) { v.invite_message_id = args.p_message_id; }
+        return ok(null);
+      }
+      case 'clear_invite_message_id': {
+        const v = db.verifications[args.p_user_id]; if (v) { v.invite_message_id = null; }
+        return ok(null);
+      }
       default:
         return Promise.resolve({ data: null, error: { code: 'P0001', message: 'unknown rpc ' + name } });
     }
@@ -148,6 +156,7 @@ function makeFakeVerifyBot(opts) {
     sendThrows: !!opts.sendThrows,
     sendMessage: async function (chatId, text, options) { calls.sendMessage.push({ chatId, text, options }); if (bot.sendThrows) throw new Error('send'); return { message_id: 1 }; },
     editMessageText: async function () { return {}; },
+    editMessageReplyMarkup: async function () { return {}; },
     answerCallbackQuery: async function () { return {}; },
     getChatMember: async function () { return { status: 'member' }; },
     createChatInviteLink: async function (chatId, options) { calls.createChatInviteLink.push({ chatId, options }); if (bot.inviteThrows) throw new Error('invite'); return opts.inviteLink || 'https://t.me/+approved'; },

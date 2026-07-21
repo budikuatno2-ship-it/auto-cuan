@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS public.app_user_telegram_verifications (
   invite_expires_at              timestamptz,
   invite_revoked_at              timestamptz,
 
+  -- message_id of the private approval ("Ajukan Bergabung") message, so a later
+  -- chat_join_request can edit that exact message and remove its used button.
+  invite_message_id              bigint,
+
   -- Durable admin-notification outbox (token-owned lease)
   admin_notification_status      text NOT NULL DEFAULT 'pending'
                                    CHECK (admin_notification_status IN ('pending','claimed','sent','failed')),
@@ -480,6 +484,29 @@ BEGIN
    WHERE user_id = p_user_id;
 END $$;
 
+-- 15) Persist the message_id of the private approval ("Ajukan Bergabung")
+--     message so a later chat_join_request can edit that exact message and
+--     remove its used join button.
+CREATE OR REPLACE FUNCTION public.save_invite_message_id(
+  p_user_id uuid, p_message_id bigint)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  UPDATE public.app_user_telegram_verifications
+     SET invite_message_id = p_message_id, updated_at = now()
+   WHERE user_id = p_user_id;
+END $$;
+
+-- 16) Clear the stored approval message_id once its button has been removed.
+CREATE OR REPLACE FUNCTION public.clear_invite_message_id(p_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  UPDATE public.app_user_telegram_verifications
+     SET invite_message_id = NULL, updated_at = now()
+   WHERE user_id = p_user_id;
+END $$;
+
 -- =========================================================================
 -- GRANTS: lock every function to service_role only; owner postgres (DEFINER).
 -- =========================================================================
@@ -500,7 +527,9 @@ BEGIN
    'public.complete_admin_notification(uuid,uuid)',
    'public.fail_admin_notification(uuid,uuid,text)',
    'public.save_dynamic_invite_link(uuid,text,timestamptz)',
-   'public.revoke_or_expire_dynamic_invite(uuid)'
+   'public.revoke_or_expire_dynamic_invite(uuid)',
+   'public.save_invite_message_id(uuid,bigint)',
+   'public.clear_invite_message_id(uuid)'
   ] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated;', fn);
     EXECUTE format('GRANT  EXECUTE ON FUNCTION %s TO service_role;', fn);

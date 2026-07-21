@@ -89,6 +89,14 @@ function makeModelDb() {
         const v = db.verifications[args.p_user_id]; if (v) { v.invite_revoked_at = v.invite_revoked_at || now(); v.dynamic_invite_link = null; }
         return ok(null);
       }
+      case 'save_invite_message_id': {
+        const v = db.verifications[args.p_user_id]; if (v) { v.invite_message_id = args.p_message_id; }
+        return ok(null);
+      }
+      case 'clear_invite_message_id': {
+        const v = db.verifications[args.p_user_id]; if (v) { v.invite_message_id = null; }
+        return ok(null);
+      }
       case 'claim_telegram_webhook_update': {
         const id = args.p_update_id;
         const lease = Math.min(Math.max(args.p_lease_seconds || 30, 10), 60) * 1000;
@@ -151,12 +159,13 @@ function makeModelDb() {
 
 function makeFakeBot(opts) {
   opts = opts || {};
-  const calls = { sendMessage: [], editMessageText: [], answerCallbackQuery: [], getChatMember: [], createChatInviteLink: [], revokeChatInviteLink: [], approveChatJoinRequest: [], declineChatJoinRequest: [] };
+  const calls = { sendMessage: [], editMessageText: [], editMessageReplyMarkup: [], answerCallbackQuery: [], getChatMember: [], createChatInviteLink: [], revokeChatInviteLink: [], approveChatJoinRequest: [], declineChatJoinRequest: [] };
   let msgId = 100;
   return {
     calls: calls,
     sendMessage: async function (chatId, text, options) { calls.sendMessage.push({ chatId, text, options }); return { message_id: ++msgId }; },
-    editMessageText: async function (chatId, messageId, text, options) { calls.editMessageText.push({ chatId, messageId, text, options }); return {}; },
+    editMessageText: async function (chatId, messageId, text, options) { calls.editMessageText.push({ chatId, messageId, text, options }); if (opts.editThrows) throw new Error('api'); return {}; },
+    editMessageReplyMarkup: async function (chatId, messageId) { calls.editMessageReplyMarkup.push({ chatId, messageId }); return {}; },
     answerCallbackQuery: async function (id, options) { calls.answerCallbackQuery.push({ id, options }); return {}; },
     getChatMember: async function (chatId, userId) { calls.getChatMember.push({ chatId, userId }); if (opts.memberThrows) throw new Error('api'); return opts.member || { status: 'member' }; },
     createChatInviteLink: async function (chatId, options) { calls.createChatInviteLink.push({ chatId, options }); if (opts.inviteThrows) throw new Error('api'); return opts.inviteLink || 'https://t.me/+freshLink'; },
@@ -177,7 +186,8 @@ function seedApprovedWithInvite(db, opts) {
     telegram_verified_at: now(),
     dynamic_invite_link: opts.link || 'https://t.me/+storedLink',
     invite_expires_at: iso(now() + 20 * 60000),
-    invite_revoked_at: null
+    invite_revoked_at: null,
+    invite_message_id: opts.messageId != null ? opts.messageId : null
   });
   return user;
 }
@@ -277,6 +287,103 @@ test('join request: channel_joined_at is set ONLY after approveChatJoinRequest s
   assert.ok(!db.verifications[user.id].channel_joined_at, 'NOT marked joined when Telegram approval fails');
   assert.equal(bot.calls.declineChatJoinRequest.length, 0, 'eligible request is never declined');
   assert.ok(db.verifications[user.id].dynamic_invite_link, 'invite NOT cleared when approval failed (recoverable)');
+});
+
+// ===========================================================================
+// chat_join_request — approval-message button cleanup (the fix)
+// ===========================================================================
+test('join request: a successful join EDITS the original approval message and removes its button', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  const user = seedApprovedWithInvite(db, { username: 'edna', tgId: 111, chatId: 7000, link: 'https://t.me/+storedLink', messageId: 4321 });
+  const res = await tv.processWebhookUpdate(joinRequest(20, 111, CHANNEL_ID, 'https://t.me/+storedLink'), { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'joined');
+  // The exact original approval message is edited to the completed text with an
+  // EMPTY inline keyboard (button removed).
+  assert.equal(bot.calls.editMessageText.length, 1);
+  const edit = bot.calls.editMessageText[0];
+  assert.equal(edit.chatId, 7000);
+  assert.equal(edit.messageId, 4321);
+  assert.ok(edit.text.indexOf('Akses channel sudah aktif') !== -1, 'completed text');
+  assert.deepEqual(edit.options.reply_markup, { inline_keyboard: [] }, 'inline keyboard removed');
+  // No separate success message when the edit succeeds.
+  const separate = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === '7000'; });
+  assert.equal(separate, undefined, 'no duplicate separate success message');
+  // invite_message_id cleared ONLY after a successful edit.
+  assert.equal(db.verifications[user.id].invite_message_id, null, 'message id cleared after edit');
+  // Membership + notification still finalized once.
+  assert.ok(db.verifications[user.id].channel_joined_at);
+  assert.equal(db.verifications[user.id].admin_notification_status, 'sent');
+});
+
+test('join request: edit failure keeps membership and sends the fallback success message', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot({ editThrows: true });
+  const user = seedApprovedWithInvite(db, { username: 'fritz', tgId: 222, chatId: 8000, link: 'https://t.me/+storedLink', messageId: 999 });
+  const res = await tv.processWebhookUpdate(joinRequest(21, 222, CHANNEL_ID, 'https://t.me/+storedLink'), { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'joined');
+  // Membership is NOT rolled back.
+  assert.ok(db.verifications[user.id].channel_joined_at, 'membership retained despite edit failure');
+  // Edit was attempted...
+  assert.equal(bot.calls.editMessageText.length, 1);
+  // ...and since it failed, the separate fallback success message was sent.
+  const fallback = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === '8000' && m.text.indexOf('Permintaan bergabung disetujui') !== -1; });
+  assert.ok(fallback, 'fallback success message sent on edit failure');
+  // Retryable: the message reference is retained (NOT cleared) for later cleanup.
+  assert.equal(db.verifications[user.id].invite_message_id, 999, 'message id retained on edit failure');
+});
+
+test('join request: with no stored message id, sends the separate success message (safe)', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  const user = seedApprovedWithInvite(db, { username: 'gil', tgId: 333, chatId: 9000, link: 'https://t.me/+storedLink' }); // no messageId
+  const res = await tv.processWebhookUpdate(joinRequest(22, 333, CHANNEL_ID, 'https://t.me/+storedLink'), { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'joined');
+  assert.equal(bot.calls.editMessageText.length, 0, 'nothing to edit');
+  const separate = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === '9000' && m.text.indexOf('Permintaan bergabung disetujui') !== -1; });
+  assert.ok(separate, 'separate success message sent when no message id is stored');
+});
+
+test('join request: duplicate update_id does not edit or send twice', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  seedApprovedWithInvite(db, { username: 'hana', tgId: 444, chatId: 4400, link: 'https://t.me/+storedLink', messageId: 700 });
+  // Pretend update 30 was already fully processed.
+  db.webhook[30] = { token: 't', lease: now() - 1000, processed: now(), outcome: 'joined' };
+  const res = await tv.processWebhookUpdate(joinRequest(30, 444, CHANNEL_ID, 'https://t.me/+storedLink'), { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'duplicate');
+  assert.equal(bot.calls.editMessageText.length, 0, 'no edit on a duplicate update');
+  assert.equal(bot.calls.approveChatJoinRequest.length, 0, 'no membership action on a duplicate update');
+  assert.equal(bot.calls.sendMessage.length, 0, 'no message on a duplicate update');
+});
+
+test('/start recovery: already-joined user gets a stale invite button cleaned', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  const user = db.seedUser({ username: 'iris', is_approved: true, is_blocked: false });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 555, telegram_private_chat_id: 555, telegram_verified_at: now(), channel_joined_at: now(), invite_message_id: 888 });
+  const res = await tv.processWebhookUpdate({ update_id: 40, message: { chat: { id: 555, type: 'private' }, from: { id: 555 }, text: '/start' } }, { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'start_joined');
+  // The stale approval button is cleaned (edit to completed text, empty keyboard).
+  assert.equal(bot.calls.editMessageText.length, 1);
+  assert.equal(bot.calls.editMessageText[0].messageId, 888);
+  assert.deepEqual(bot.calls.editMessageText[0].options.reply_markup, { inline_keyboard: [] });
+  assert.equal(db.verifications[user.id].invite_message_id, null, 'message id cleared after successful cleanup');
+  // And the user is told access is already complete.
+  const done = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === '555' && m.text.indexOf('Akses kamu sudah lengkap') !== -1; });
+  assert.ok(done, 'already-complete reply sent');
+});
+
+test('/start recovery: already-joined user with no stored button does nothing unsafe', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot();
+  const user = db.seedUser({ username: 'jane', is_approved: true, is_blocked: false });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 666, telegram_private_chat_id: 666, telegram_verified_at: now(), channel_joined_at: now() });
+  const res = await tv.processWebhookUpdate({ update_id: 41, message: { chat: { id: 666, type: 'private' }, from: { id: 666 }, text: '/start' } }, { supabase: db, bot: bot });
+  assert.equal(res.outcome, 'start_joined');
+  assert.equal(bot.calls.editMessageText.length, 0, 'no edit when no stored button');
+  const done = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === '666'; });
+  assert.ok(done && done.text.indexOf('Akses kamu sudah lengkap') !== -1);
 });
 
 // ===========================================================================

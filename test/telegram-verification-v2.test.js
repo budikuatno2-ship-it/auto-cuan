@@ -265,6 +265,14 @@ function makeModelDb() {
         const v = db.verifications[args.p_user_id]; if (v) { v.invite_revoked_at = v.invite_revoked_at || now(); v.dynamic_invite_link = null; }
         return ok(null);
       }
+      case 'save_invite_message_id': {
+        const v = db.verifications[args.p_user_id]; if (v) { v.invite_message_id = args.p_message_id; }
+        return ok(null);
+      }
+      case 'clear_invite_message_id': {
+        const v = db.verifications[args.p_user_id]; if (v) { v.invite_message_id = null; }
+        return ok(null);
+      }
       default:
         return pgErr('P0001', 'unknown rpc ' + name);
     }
@@ -305,12 +313,13 @@ function makeModelDb() {
 // ---------------------------------------------------------------------------
 function makeFakeBot(opts) {
   opts = opts || {};
-  const calls = { sendMessage: [], editMessageText: [], answerCallbackQuery: [], getChatMember: [], createChatInviteLink: [], revokeChatInviteLink: [], approveChatJoinRequest: [], declineChatJoinRequest: [] };
+  const calls = { sendMessage: [], editMessageText: [], editMessageReplyMarkup: [], answerCallbackQuery: [], getChatMember: [], createChatInviteLink: [], revokeChatInviteLink: [], approveChatJoinRequest: [], declineChatJoinRequest: [] };
   let msgId = 100;
   return {
     calls: calls,
     sendMessage: async function (chatId, text, options) { calls.sendMessage.push({ chatId, text, options }); return { message_id: ++msgId }; },
-    editMessageText: async function (chatId, messageId, text, options) { calls.editMessageText.push({ chatId, messageId, text, options }); return {}; },
+    editMessageText: async function (chatId, messageId, text, options) { calls.editMessageText.push({ chatId, messageId, text, options }); if (opts.editThrows) throw new Error('api'); return {}; },
+    editMessageReplyMarkup: async function (chatId, messageId) { calls.editMessageReplyMarkup.push({ chatId, messageId }); return {}; },
     answerCallbackQuery: async function (id, options) { calls.answerCallbackQuery.push({ id, options }); return {}; },
     getChatMember: async function (chatId, userId) { calls.getChatMember.push({ chatId, userId }); if (opts.memberThrows) throw new Error('api'); return opts.member || { status: 'member' }; },
     createChatInviteLink: async function (chatId, options) { calls.createChatInviteLink.push({ chatId, options }); if (opts.inviteThrows) throw new Error('api'); return opts.inviteLink || 'https://t.me/+dynamicPerUser'; },
@@ -804,6 +813,44 @@ test('deliver invite: creates a single-use invite and DMs the join buttons', asy
   assert.ok(!flat.some(function (b) { return b.callback_data; }), 'NO callback button (no verify_channel_join, no Saya Sudah Bergabung)');
   assert.equal(db.verifications[user.id].dynamic_invite_link, 'https://t.me/+approvedInvite');
   assert.equal(db.verifications[user.id].invite_delivery_status, 'sent');
+  // The Telegram message_id of the approval message is persisted so the button
+  // can be cleaned later.
+  assert.equal(typeof db.verifications[user.id].invite_message_id, 'number');
+  assert.ok(db.verifications[user.id].invite_message_id > 0);
+});
+
+test('deliver invite: does NOT complete when the message_id is missing (retryable warning)', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot({ inviteLink: 'https://t.me/+noMsgId' });
+  // sendMessage resolves without a message_id.
+  bot.sendMessage = async function (chatId, text, options) { bot.calls.sendMessage.push({ chatId, text, options }); return {}; };
+  const user = db.seedUser({ username: 'nomsg', is_approved: true });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 909, telegram_private_chat_id: 9090, telegram_verified_at: now() });
+  const result = await tv.deliverApprovalInvite({ supabase: db, bot: bot }, user.id);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.warning, 'invite_message_id_missing');
+  assert.equal(db.verifications[user.id].invite_delivery_status, 'failed', 'not marked sent');
+  // Warning must not expose any Telegram response body or token.
+  assert.ok(String(result.warning).indexOf('token') === -1);
+});
+
+test('deliver invite: replacing an old invite removes the previous button first', async function () {
+  const db = makeModelDb();
+  const bot = makeFakeBot({ inviteLink: 'https://t.me/+replacement' });
+  const user = db.seedUser({ username: 'replace', is_approved: true });
+  db.seedVerification({
+    user_id: user.id, telegram_user_id: 321, telegram_private_chat_id: 3210, telegram_verified_at: now(),
+    dynamic_invite_link: 'https://t.me/+oldLink', invite_message_id: 555
+  });
+  const result = await tv.deliverApprovalInvite({ supabase: db, bot: bot }, user.id);
+  assert.equal(result.status, 'sent');
+  // The previously stored message had its keyboard removed before replacement.
+  assert.equal(bot.calls.editMessageReplyMarkup.length, 1);
+  assert.deepEqual(bot.calls.editMessageReplyMarkup[0], { chatId: 3210, messageId: 555 });
+  // The old link was revoked and a fresh message_id stored.
+  assert.equal(bot.calls.revokeChatInviteLink.length, 1);
+  assert.equal(typeof db.verifications[user.id].invite_message_id, 'number');
+  assert.notEqual(db.verifications[user.id].invite_message_id, 555);
 });
 
 test('deliver invite: never claims an unverified/unapproved account', async function () {
