@@ -15,10 +15,11 @@
 //    ONLY. It never reads TELEGRAM_BOT_TOKEN and never imports the recommendation
 //    notifier. This runner does NOT install cron.
 //
-// PROPOSED once-daily VPS cron (adjust path/time; runs 02:15 UTC):
-//   15 2 * * *  cd /path/to/auto-cuan && SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
-//     TELEGRAM_VERIFY_BOT_TOKEN=... TELEGRAM_VERIFY_CHANNEL_ID=... \
-//     node tools/run-telegram-lifecycle.js --execute >> /var/log/auto-cuan-lifecycle.log 2>&1
+// PROPOSED once-daily VPS cron: call the secure wrapper ONLY. Secrets are loaded
+// by the wrapper from an external, owner-only env file and are NEVER placed in
+// crontab. The wrapper also holds a lock to prevent overlapping runs.
+//   15 2 * * * /home/ubuntu/auto-cuan/tools/run-telegram-lifecycle.sh >> /home/ubuntu/auto-cuan/logs/telegram-lifecycle.log 2>&1
+// See tools/run-telegram-lifecycle.sh and tools/telegram-lifecycle.env.sample.
 // ===========================================================================
 
 function printHelp() {

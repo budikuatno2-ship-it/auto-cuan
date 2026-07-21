@@ -62,11 +62,15 @@ function makeModelDb() {
       user_id: null, telegram_user_id: null, telegram_private_chat_id: null,
       telegram_verified_at: null, channel_joined_at: null,
       review_requested_at: null, review_submitted_at: null, review_score: null,
-      verification_reminder_count: 0, verification_reminded_at: null
+      review_request_claim_token: null, review_request_claim_expires_at: null,
+      verification_reminder_count: 0, verification_reminded_at: null,
+      verification_reminder_claim_token: null, verification_reminder_claim_expires_at: null
     }, v);
     db.verifications[row.user_id] = row;
     return row;
   };
+  function newToken() { return 'ctok-' + (db._uid++); }
+  function leaseMs(sec) { return now() + (Math.min(Math.max(sec || 120, 10), 3600)) * 1000; }
 
   function ok(data) { return Promise.resolve({ data: data, error: null }); }
 
@@ -93,6 +97,7 @@ function makeModelDb() {
         if (!u || u.is_approved !== true || u.is_blocked !== false || reserved(u.username)) return ok([{ outcome: 'ineligible', out_user_id: null }]);
         if (v.review_submitted_at) return ok([{ outcome: 'already_submitted', out_user_id: v.user_id }]);
         v.review_score = score; v.review_submitted_at = now(); if (!v.review_requested_at) v.review_requested_at = now();
+        v.review_request_claim_token = null; v.review_request_claim_expires_at = null;
         return ok([{ outcome: 'recorded', out_user_id: v.user_id }]);
       }
       case 'list_due_review_requests': {
@@ -101,27 +106,48 @@ function makeModelDb() {
           if (!v.telegram_verified_at || v.telegram_private_chat_id == null) return false;
           if (v.channel_joined_at == null || T(v.channel_joined_at) > cutoff) return false;
           if (v.review_requested_at || v.review_submitted_at) return false;
+          if (v.review_request_claim_expires_at != null && T(v.review_request_claim_expires_at) > now()) return false;
           const u = db.getUser(v.user_id);
           return u && u.is_approved === true && u.is_blocked === false && !reserved(u.username);
         }).map(function (v) { return { user_id: v.user_id, telegram_private_chat_id: v.telegram_private_chat_id }; });
         return ok(rows.slice(0, clampLimit(args.p_limit)));
       }
+      // Phase 1: lease only (does NOT set review_requested_at).
       case 'claim_review_request': {
         const v = db.verifications[args.p_user_id];
         const cutoff = now() - 30 * DAY;
+        const skip = ok([{ outcome: 'skip', telegram_private_chat_id: null, claim_token: null }]);
         if (!v || !v.telegram_verified_at || v.telegram_private_chat_id == null || v.channel_joined_at == null ||
-            T(v.channel_joined_at) > cutoff || v.review_requested_at || v.review_submitted_at) {
-          return ok([{ outcome: 'skip', telegram_private_chat_id: null }]);
-        }
+            T(v.channel_joined_at) > cutoff || v.review_requested_at || v.review_submitted_at) return skip;
+        if (v.review_request_claim_expires_at != null && T(v.review_request_claim_expires_at) > now()) return skip;
         const u = db.getUser(v.user_id);
-        if (!u || u.is_approved !== true || u.is_blocked !== false || reserved(u.username)) return ok([{ outcome: 'skip', telegram_private_chat_id: null }]);
-        v.review_requested_at = now();
-        return ok([{ outcome: 'claimed', telegram_private_chat_id: v.telegram_private_chat_id }]);
+        if (!u || u.is_approved !== true || u.is_blocked !== false || reserved(u.username)) return skip;
+        const token = newToken();
+        v.review_request_claim_token = token;
+        v.review_request_claim_expires_at = leaseMs(args.p_lease_seconds);
+        return ok([{ outcome: 'claimed', telegram_private_chat_id: v.telegram_private_chat_id, claim_token: token }]);
+      }
+      // Phase 2 (success): set review_requested_at + clear lease (owner only).
+      case 'commit_review_request': {
+        const v = db.verifications[args.p_user_id];
+        if (!v || args.p_token == null || v.review_request_claim_token !== args.p_token) return ok([{ outcome: 'stale' }]);
+        if (v.review_submitted_at) { v.review_request_claim_token = null; v.review_request_claim_expires_at = null; return ok([{ outcome: 'stale' }]); }
+        if (!v.review_requested_at) v.review_requested_at = now();
+        v.review_request_claim_token = null; v.review_request_claim_expires_at = null;
+        return ok([{ outcome: 'committed' }]);
+      }
+      // Phase 2 (failure): clear lease only, review_requested_at stays null.
+      case 'release_review_request': {
+        const v = db.verifications[args.p_user_id];
+        if (!v || args.p_token == null || v.review_request_claim_token !== args.p_token) return ok([{ outcome: 'stale' }]);
+        v.review_request_claim_token = null; v.review_request_claim_expires_at = null;
+        return ok([{ outcome: 'released' }]);
       }
       case 'list_due_verification_reminders': {
         const rows = Object.values(db.verifications).filter(function (v) {
           if (v.telegram_private_chat_id == null || v.telegram_verified_at) return false;
           if (v.verification_reminder_count >= 2) return false;
+          if (v.verification_reminder_claim_expires_at != null && T(v.verification_reminder_claim_expires_at) > now()) return false;
           const u = db.getUser(v.user_id);
           if (!u || u.is_blocked !== false || reserved(u.username)) return false;
           if (v.verification_reminder_count === 0) return true;
@@ -130,15 +156,35 @@ function makeModelDb() {
         }).map(function (v) { return { user_id: v.user_id, telegram_private_chat_id: v.telegram_private_chat_id, verification_reminder_count: v.verification_reminder_count }; });
         return ok(rows.slice(0, clampLimit(args.p_limit)));
       }
+      // Phase 1: lease only (does NOT increment the delivered counter).
       case 'claim_verification_reminder': {
         const v = db.verifications[args.p_user_id];
-        const skip = ok([{ outcome: 'skip', telegram_private_chat_id: null, reminder_count: null }]);
+        const skip = ok([{ outcome: 'skip', telegram_private_chat_id: null, reminder_count: null, claim_token: null }]);
         if (!v || v.telegram_verified_at || v.telegram_private_chat_id == null || v.verification_reminder_count >= 2) return skip;
+        if (v.verification_reminder_claim_expires_at != null && T(v.verification_reminder_claim_expires_at) > now()) return skip;
         if (v.verification_reminder_count === 1 && (v.verification_reminded_at == null || T(v.verification_reminded_at) > now() - DAY)) return skip;
         const u = db.getUser(v.user_id);
         if (!u || u.is_blocked !== false || reserved(u.username)) return skip;
+        const token = newToken();
+        v.verification_reminder_claim_token = token;
+        v.verification_reminder_claim_expires_at = leaseMs(args.p_lease_seconds);
+        return ok([{ outcome: 'claimed', telegram_private_chat_id: v.telegram_private_chat_id, reminder_count: v.verification_reminder_count, claim_token: token }]);
+      }
+      // Phase 2 (success): increment counter + stamp reminded_at + clear lease.
+      case 'commit_verification_reminder': {
+        const v = db.verifications[args.p_user_id];
+        if (!v || args.p_token == null || v.verification_reminder_claim_token !== args.p_token) return ok([{ outcome: 'stale', reminder_count: null }]);
+        if (v.verification_reminder_count >= 2) { v.verification_reminder_claim_token = null; v.verification_reminder_claim_expires_at = null; return ok([{ outcome: 'stale', reminder_count: v.verification_reminder_count }]); }
         v.verification_reminder_count += 1; v.verification_reminded_at = now();
-        return ok([{ outcome: 'reminded', telegram_private_chat_id: v.telegram_private_chat_id, reminder_count: v.verification_reminder_count }]);
+        v.verification_reminder_claim_token = null; v.verification_reminder_claim_expires_at = null;
+        return ok([{ outcome: 'committed', reminder_count: v.verification_reminder_count }]);
+      }
+      // Phase 2 (failure): clear lease only, counter untouched.
+      case 'release_verification_reminder': {
+        const v = db.verifications[args.p_user_id];
+        if (!v || args.p_token == null || v.verification_reminder_claim_token !== args.p_token) return ok([{ outcome: 'stale' }]);
+        v.verification_reminder_claim_token = null; v.verification_reminder_claim_expires_at = null;
+        return ok([{ outcome: 'released' }]);
       }
       case 'claim_legacy_channel_announcement': {
         const key = args.p_key || 'default';
@@ -706,4 +752,249 @@ test('sql hotfix: additive only, review_score constrained 1..5, service-role-onl
   assert.ok(sql.indexOf('REVOKE ALL ON FUNCTION') !== -1, 'revokes function execute');
   assert.ok(/GRANT\s+EXECUTE\s+ON\s+FUNCTION[\s\S]*service_role/.test(sql), 'grants only to service_role');
   assert.ok(sql.indexOf('ENABLE ROW LEVEL SECURITY') !== -1, 'RLS enabled on new table');
+});
+
+
+// ===========================================================================
+// 9. Retryable delivery (two-phase claim -> send -> commit/release)
+// ===========================================================================
+test('reminder: a FAILED send does not consume an attempt and a later run retries', async function () {
+  const db = makeModelDb();
+  const user = seedReminderCandidate(db, { username: 'legacyRetry', privateChatId: 7101 });
+
+  // First run: the Telegram send throws.
+  const failBot = makeFakeBot({ sendThrows: true });
+  const r1 = await lifecycle.runVerificationReminders({ supabase: db, bot: failBot }, {});
+  assert.equal(r1.sent, 0);
+  assert.equal(r1.failed, 1);
+  assert.equal(r1.released, 1, 'the lease is released on a failed send');
+  assert.equal(db.verifications[user.id].verification_reminder_count, 0, 'a failed send consumes no delivered attempt');
+  assert.equal(db.verifications[user.id].verification_reminder_claim_token, null, 'lease cleared for retry');
+
+  // Second daily run: the send succeeds -> exactly one delivered reminder.
+  const okBot = makeFakeBot();
+  const r2 = await lifecycle.runVerificationReminders({ supabase: db, bot: okBot }, {});
+  assert.equal(r2.sent, 1);
+  assert.equal(okBot.calls.sendMessage.length, 1);
+  assert.equal(db.verifications[user.id].verification_reminder_count, 1, 'delivered reminder recorded on success');
+});
+
+test('reminder: successful reminders stop at EXACTLY two even after failures', async function () {
+  const db = makeModelDb();
+  const user = seedReminderCandidate(db, { username: 'legacyTwo', privateChatId: 7103 });
+
+  // Deliver #1.
+  await lifecycle.runVerificationReminders({ supabase: db, bot: makeFakeBot() }, {});
+  assert.equal(db.verifications[user.id].verification_reminder_count, 1);
+
+  // A failed attempt before the 24h gap must not count and must not send.
+  db.verifications[user.id].verification_reminded_at = now() - 25 * 60 * 60 * 1000;
+  const fail = makeFakeBot({ sendThrows: true });
+  const rf = await lifecycle.runVerificationReminders({ supabase: db, bot: fail }, {});
+  assert.equal(rf.sent, 0);
+  assert.equal(db.verifications[user.id].verification_reminder_count, 1, 'still one delivered');
+
+  // Retry succeeds -> #2 delivered.
+  const ok2 = makeFakeBot();
+  await lifecycle.runVerificationReminders({ supabase: db, bot: ok2 }, {});
+  assert.equal(db.verifications[user.id].verification_reminder_count, 2);
+
+  // No third reminder is ever delivered.
+  db.verifications[user.id].verification_reminded_at = now() - 100 * 60 * 60 * 1000;
+  const ok3 = makeFakeBot();
+  const r3 = await lifecycle.runVerificationReminders({ supabase: db, bot: ok3 }, {});
+  assert.equal(r3.sent, 0);
+  assert.equal(ok3.calls.sendMessage.length, 0);
+  assert.equal(db.verifications[user.id].verification_reminder_count, 2, 'never exceeds two delivered');
+});
+
+test('reminder: concurrent workers do not duplicate a send (lease serializes)', async function () {
+  const db = makeModelDb();
+  const user = seedReminderCandidate(db, { username: 'legacyConc', privateChatId: 7102 });
+
+  // Worker A wins the lease.
+  const a = await lifecycle.claimVerificationReminder(db, user.id, 120);
+  assert.equal(a.outcome, 'claimed');
+  assert.ok(a.claimToken);
+  // Worker B, running at the same time, sees an active lease and skips.
+  const b = await lifecycle.claimVerificationReminder(db, user.id, 120);
+  assert.equal(b.outcome, 'skip');
+  assert.equal(b.claimToken, null);
+  // A leased record is not offered to any other worker via the due list.
+  const due = await lifecycle.listDueVerificationReminders(db, 100);
+  assert.equal(due.length, 0);
+  // Only worker A can commit; the counter advances exactly once.
+  const staleCommit = await lifecycle.commitVerificationReminder(db, user.id, 'ctok-does-not-exist');
+  assert.equal(staleCommit.outcome, 'stale');
+  const okCommit = await lifecycle.commitVerificationReminder(db, user.id, a.claimToken);
+  assert.equal(okCommit.outcome, 'committed');
+  assert.equal(db.verifications[user.id].verification_reminder_count, 1);
+});
+
+test('review: a FAILED send stays retryable and a later run delivers exactly once', async function () {
+  const db = makeModelDb();
+  const user = db.seedUser({ username: 'reviewRetry', is_approved: true, is_blocked: false });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 77, telegram_private_chat_id: 7700, telegram_verified_at: iso(now() - 40 * DAY), channel_joined_at: iso(now() - 31 * DAY) });
+
+  const failBot = makeFakeBot({ sendThrows: true });
+  const r1 = await lifecycle.runReviewRequests({ supabase: db, bot: failBot }, {});
+  assert.equal(r1.sent, 0);
+  assert.equal(r1.released, 1);
+  assert.equal(db.verifications[user.id].review_requested_at, null, 'failed review send leaves it retryable');
+  assert.equal(db.verifications[user.id].review_request_claim_token, null, 'lease cleared for retry');
+
+  const okBot = makeFakeBot();
+  const r2 = await lifecycle.runReviewRequests({ supabase: db, bot: okBot }, {});
+  assert.equal(r2.sent, 1);
+  assert.ok(db.verifications[user.id].review_requested_at, 'delivered review records review_requested_at');
+
+  // Never a duplicate request afterwards.
+  const r3 = await lifecycle.runReviewRequests({ supabase: db, bot: makeFakeBot() }, {});
+  assert.equal(r3.sent, 0);
+});
+
+test('review: concurrent workers do not duplicate a request (lease serializes)', async function () {
+  const db = makeModelDb();
+  const user = db.seedUser({ username: 'reviewConc', is_approved: true, is_blocked: false });
+  db.seedVerification({ user_id: user.id, telegram_user_id: 78, telegram_private_chat_id: 7800, telegram_verified_at: iso(now() - 40 * DAY), channel_joined_at: iso(now() - 31 * DAY) });
+
+  const a = await lifecycle.claimReviewRequest(db, user.id, 120);
+  assert.equal(a.outcome, 'claimed');
+  const b = await lifecycle.claimReviewRequest(db, user.id, 120);
+  assert.equal(b.outcome, 'skip');
+  const due = await lifecycle.listDueReviewRequests(db, 100);
+  assert.equal(due.length, 0);
+  await lifecycle.commitReviewRequest(db, user.id, a.claimToken);
+  assert.ok(db.verifications[user.id].review_requested_at);
+  // A submitted review is terminal: after submission it is never requested again.
+  await db.rpc('record_review_rating', { p_telegram_user_id: 78, p_score: 5 });
+  const dueAfter = await lifecycle.listDueReviewRequests(db, 100);
+  assert.equal(dueAfter.length, 0);
+});
+
+// ===========================================================================
+// 10. Secure VPS runner shell script
+// ===========================================================================
+function runLifecycleShell(env) {
+  const { execFileSync } = require('node:child_process');
+  const script = path.join(ROOT, 'tools', 'run-telegram-lifecycle.sh');
+  const mergedEnv = Object.assign({}, process.env, { NODE_OPTIONS: '' }, env);
+  try {
+    const out = execFileSync('bash', [script], { env: mergedEnv, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return { code: 0, out: out, err: '' };
+  } catch (e) {
+    return { code: (e.status == null ? 1 : e.status), out: String(e.stdout || ''), err: String(e.stderr || '') };
+  }
+}
+function tmpDir() {
+  const os = require('node:os');
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'tglife-'));
+}
+
+test('runner: rejects a missing env file (non-zero exit)', function () {
+  const dir = tmpDir();
+  const envFile = path.join(dir, 'absent.env');
+  const r = runLifecycleShell({ TELEGRAM_LIFECYCLE_ENV_FILE: envFile, TELEGRAM_LIFECYCLE_LOCK_FILE: path.join(dir, 'lock') });
+  assert.notEqual(r.code, 0);
+  assert.ok(/env file not found/i.test(r.err), 'reports missing env file');
+});
+
+test('runner: rejects insecure env-file permissions (group/world access)', function () {
+  const dir = tmpDir();
+  const envFile = path.join(dir, 'insecure.env');
+  fs.writeFileSync(envFile, 'SUPABASE_URL=x\n');
+  fs.chmodSync(envFile, 0o644); // group/world readable -> must be rejected
+  const r = runLifecycleShell({ TELEGRAM_LIFECYCLE_ENV_FILE: envFile, TELEGRAM_LIFECYCLE_LOCK_FILE: path.join(dir, 'lock') });
+  assert.notEqual(r.code, 0);
+  assert.ok(/insecure permissions/i.test(r.err), 'reports insecure permissions');
+});
+
+test('runner: never prints secret values from the env file', function () {
+  const dir = tmpDir();
+  const envFile = path.join(dir, 'secure.env');
+  const SECRET = 'SUPERSECRETVALUE_do_not_leak_1234567890';
+  fs.writeFileSync(envFile, [
+    'SUPABASE_URL=http://local',
+    'SUPABASE_SERVICE_ROLE_KEY=' + SECRET,
+    'TELEGRAM_VERIFY_BOT_TOKEN=' + SECRET,
+    'TELEGRAM_VERIFY_CHANNEL_ID=-100999'
+  ].join('\n') + '\n');
+  fs.chmodSync(envFile, 0o600);
+  // Node will fail fast (no @supabase/supabase-js here); that is fine — we only
+  // assert that no secret value is ever emitted to stdout/stderr.
+  const r = runLifecycleShell({ TELEGRAM_LIFECYCLE_ENV_FILE: envFile, TELEGRAM_LIFECYCLE_LOCK_FILE: path.join(dir, 'lock') });
+  const combined = r.out + r.err;
+  assert.equal(combined.indexOf(SECRET), -1, 'secret value must never be printed');
+});
+
+test('runner: lock prevents overlapping executions (non-zero when held)', async function () {
+  const { spawn } = require('node:child_process');
+  const dir = tmpDir();
+  const envFile = path.join(dir, 'secure.env');
+  const lock = path.join(dir, 'run.lock');
+  fs.writeFileSync(envFile, [
+    'SUPABASE_URL=http://local',
+    'SUPABASE_SERVICE_ROLE_KEY=svc',
+    'TELEGRAM_VERIFY_BOT_TOKEN=tok',
+    'TELEGRAM_VERIFY_CHANNEL_ID=-100999'
+  ].join('\n') + '\n');
+  fs.chmodSync(envFile, 0o600);
+
+  // Hold the lock in a background process (blocking flock) for the duration.
+  const holder = spawn('bash', ['-c', 'exec 9>"$1"; flock 9; sleep 10', '_', lock], { stdio: 'ignore' });
+  await new Promise(function (r) { setTimeout(r, 400); }); // let the holder acquire
+
+  try {
+    const r = runLifecycleShell({ TELEGRAM_LIFECYCLE_ENV_FILE: envFile, TELEGRAM_LIFECYCLE_LOCK_FILE: lock });
+    assert.notEqual(r.code, 0, 'a second run must not proceed while the lock is held');
+    assert.ok(/already in progress/i.test(r.err), 'reports an in-progress run');
+  } finally {
+    holder.kill('SIGKILL');
+  }
+});
+
+test('runner: shell script + sample env exist; sample carries names only (no secrets)', function () {
+  const sh = fs.readFileSync(path.join(ROOT, 'tools', 'run-telegram-lifecycle.sh'), 'utf8');
+  assert.ok(sh.indexOf('flock') !== -1, 'uses a lock');
+  assert.ok(sh.indexOf('run-telegram-lifecycle.js --execute') !== -1, 'invokes the node runner in execute mode');
+  assert.ok(sh.indexOf('/home/ubuntu/auto-cuan-runner/telegram-lifecycle.env') !== -1, 'documents the external env-file path');
+  const sample = fs.readFileSync(path.join(ROOT, 'tools', 'telegram-lifecycle.env.sample'), 'utf8');
+  // Variable names present, values empty (names only).
+  ['SUPABASE_URL=', 'SUPABASE_SERVICE_ROLE_KEY=', 'TELEGRAM_VERIFY_BOT_TOKEN=', 'TELEGRAM_VERIFY_CHANNEL_ID='].forEach(function (k) {
+    assert.ok(sample.indexOf(k) !== -1, 'sample declares ' + k);
+    assert.ok(new RegExp(k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'm').test(sample), k + ' has no value in the sample');
+  });
+  assert.equal(sample.indexOf('TELEGRAM_BOT_TOKEN='), -1, 'sample never mentions the recommendation bot token');
+});
+
+// ===========================================================================
+// 11. SQL + migration guards for the two-phase delivery
+// ===========================================================================
+test('sql hotfix: two-phase claim/commit/release RPCs + lease columns, still additive', function () {
+  const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'telegram-member-lifecycle-hotfix.sql'), 'utf8');
+  ['claim_verification_reminder', 'commit_verification_reminder', 'release_verification_reminder',
+   'claim_review_request', 'commit_review_request', 'release_review_request'].forEach(function (fn) {
+    assert.ok(sql.indexOf('FUNCTION public.' + fn) !== -1, fn + ' function present');
+  });
+  ['verification_reminder_claim_token', 'verification_reminder_claim_expires_at',
+   'review_request_claim_token', 'review_request_claim_expires_at'].forEach(function (c) {
+    assert.ok(sql.indexOf(c) !== -1, c + ' lease column present');
+  });
+  // New signatures are locked down to service_role.
+  assert.ok(sql.indexOf('public.claim_verification_reminder(uuid,integer)') !== -1);
+  assert.ok(sql.indexOf('public.commit_verification_reminder(uuid,uuid)') !== -1);
+  assert.ok(sql.indexOf('public.release_review_request(uuid,uuid)') !== -1);
+  // Still additive / non-destructive.
+  assert.equal(/\bDROP\s+(TABLE|FUNCTION|INDEX|COLUMN|CONSTRAINT|TRIGGER|VIEW|SCHEMA|TYPE)\b/i.test(sql), false, 'no DROP');
+  assert.equal(/\bDELETE\s+FROM\b/i.test(sql), false, 'no destructive DELETE');
+  assert.equal(/\bTRUNCATE\b/i.test(sql), false, 'no TRUNCATE');
+  assert.ok(sql.indexOf('SET search_path = pg_catalog, public') !== -1, 'fixed safe search_path');
+});
+
+test('base migration: fresh install includes the delivery lease columns', function () {
+  const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'telegram-verification-v2-migration.sql'), 'utf8');
+  ['review_request_claim_token', 'review_request_claim_expires_at',
+   'verification_reminder_claim_token', 'verification_reminder_claim_expires_at'].forEach(function (c) {
+    assert.ok(sql.indexOf(c) !== -1, c + ' present in base migration for fresh installs');
+  });
 });

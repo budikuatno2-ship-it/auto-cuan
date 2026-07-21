@@ -42,11 +42,18 @@ CREATE TABLE IF NOT EXISTS public.app_user_telegram_verifications (
   -- supabase/telegram-member-lifecycle-hotfix.sql). All additive/nullable.
   --  * 30-day rating: one request, one stored score (constrained 1..5).
   --  * legacy verification reminders: at most two, second at least 24h later.
+  --  * delivery leases (*_claim_token / *_claim_expires_at) make a failed
+  --    Telegram send retryable without consuming a delivered attempt; delivered
+  --    state advances only on commit. See telegram-member-lifecycle-hotfix.sql.
   review_requested_at            timestamptz,
   review_submitted_at            timestamptz,
   review_score                   integer CHECK (review_score IS NULL OR (review_score >= 1 AND review_score <= 5)),
+  review_request_claim_token       uuid,
+  review_request_claim_expires_at  timestamptz,
   verification_reminder_count    integer NOT NULL DEFAULT 0,
   verification_reminded_at       timestamptz,
+  verification_reminder_claim_token      uuid,
+  verification_reminder_claim_expires_at timestamptz,
 
   -- Durable admin-notification outbox (token-owned lease)
   admin_notification_status      text NOT NULL DEFAULT 'pending'
