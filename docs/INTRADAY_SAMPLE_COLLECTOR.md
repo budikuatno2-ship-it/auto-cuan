@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Collect timestamped intraday observations on **2026-07-20 (Monday)** for research
+Collect timestamped intraday observations on **2026-07-21 (Tuesday)** for research
 and evaluation only. Samples are never published to users.
 
 ## Version 2.0 Changes (Blocker Resolutions)
@@ -10,7 +10,7 @@ and evaluation only. Samples are never published to users.
 | Blocker | Resolution |
 |---------|-----------|
 | B1: VPS timezone | Schedule expressed in WIB; verification commands provided |
-| B2: True one-day | Year-aware date guard rejects any date != 2026-07-20 |
+| B2: True one-day | Year-aware date guard rejects any date != 2026-07-21 |
 | B3: Summary race | Summary generated inline by the 16:00 process; no separate job |
 | B4: Production overlap | Checks production lock file; waits or skips if active |
 | B5: Fresh observations | Forces network fetch per snapshot; records full freshness metadata |
@@ -35,7 +35,9 @@ systemctl list-timers --no-pager 2>/dev/null | head -10
 If the VPS timezone is **Asia/Jakarta (WIB)**, use the schedule below as-is.
 If the VPS timezone is **UTC**, subtract 7 hours from each time.
 
-After verification, update `VERIFIED_VPS_TIMEZONE` in the source code.
+`VERIFIED_VPS_TIMEZONE` in the source is set to `Asia/Jakarta` (the assumed VPS
+timezone). Confirm with the read-only commands above before installing cron; if
+the VPS actually reports UTC, shift every cron hour by -7.
 
 
 ## Safety Guarantees
@@ -88,13 +90,13 @@ Every candidate record includes a `freshness` object:
 ```json
 {
   "provider": "yahoo_chart_1d",
-  "fetch_timestamp": "2026-07-20T02:15:01.234Z",
+  "fetch_timestamp": "2026-07-21T02:15:01.234Z",
   "fetch_duration_ms": 450,
   "network_fetch": true,
   "cache_hit": false,
   "cache_age_seconds": 0,
-  "trading_day_candle_timestamp": "2026-07-20T00:00:00Z",
-  "trading_day_candle_date": "2026-07-20",
+  "trading_day_candle_timestamp": "2026-07-21T00:00:00Z",
+  "trading_day_candle_date": "2026-07-21",
   "is_stale": false,
   "stale_reason": null,
   "candle_count": 65
@@ -127,7 +129,7 @@ The sample collector does NOT alter or interfere with the production worker.
 ## Output Files
 
 ```
-data/intraday-samples/2026-07-20/
+data/intraday-samples/2026-07-21/
   runs.jsonl         — run-level metadata per snapshot
   candidates.jsonl   — per-candidate observation records (with freshness)
   errors.jsonl       — any errors or safety violations
@@ -150,6 +152,12 @@ node tools/intraday-sample-collector.js --scheduled-time 09:15 --dry-run
 
 ## One-Day Scheduling (True One-Time, NOT installed)
 
+All schedule entries invoke the VPS runner
+`/home/ubuntu/auto-cuan-runner/intraday-sample.sh`, which hard-sets
+`DAYTRADE_INTRADAY_SCORE_ENABLED=false` and `DAYTRADE_WORKER_ALLOW_MUTATION=false`
+before calling the collector. The collector additionally rejects any date that is
+not exactly 2026-07-21 (year-aware, Asia/Jakarta).
+
 ### Option A: Using `at` (preferred if atd is available)
 
 ```bash
@@ -157,46 +165,52 @@ node tools/intraday-sample-collector.js --scheduled-time 09:15 --dry-run
 which at && systemctl is-active atd
 
 # Schedule all 21 jobs (example for WIB timezone VPS):
-echo "cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 09:15" | at 09:15 20.07.2026
-echo "cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 09:30" | at 09:30 20.07.2026
+echo "/home/ubuntu/auto-cuan-runner/intraday-sample.sh 09:15" | at 09:15 21.07.2026
+echo "/home/ubuntu/auto-cuan-runner/intraday-sample.sh 09:30" | at 09:30 21.07.2026
 # ... (repeat for all 21 times)
-echo "cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 16:00" | at 16:00 20.07.2026
+echo "/home/ubuntu/auto-cuan-runner/intraday-sample.sh 16:00" | at 16:00 21.07.2026
 ```
 
-### Option B: Temporary cron with date-guarded wrapper
+### Option B: Temporary cron with date-guarded runner (recommended)
 
-The collector itself rejects any date that is not exactly 2026-07-20 (year-aware).
-Even if cron fires on July 20 of another year, the process exits immediately.
+The collector itself rejects any date that is not exactly 2026-07-21 (year-aware).
+Even if cron fires on July 21 of another year, the process exits immediately.
+Combined with the `21 7` day/month fields, the block stops producing data
+naturally after the target date.
 
 **If VPS is Asia/Jakarta (WIB):**
 
 ```cron
-# === INTRADAY SAMPLE COLLECTOR — 2026-07-20 ONLY ===
-# The script itself rejects any date != 2026-07-20.
-# Safe to remove this entire block after 2026-07-20.
-15 9 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 09:15 >> logs/intraday-samples/cron.log 2>&1
-30 9 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 09:30 >> logs/intraday-samples/cron.log 2>&1
-45 9 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 09:45 >> logs/intraday-samples/cron.log 2>&1
-0 10 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 10:00 >> logs/intraday-samples/cron.log 2>&1
-15 10 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 10:15 >> logs/intraday-samples/cron.log 2>&1
-30 10 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 10:30 >> logs/intraday-samples/cron.log 2>&1
-45 10 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 10:45 >> logs/intraday-samples/cron.log 2>&1
-0 11 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 11:00 >> logs/intraday-samples/cron.log 2>&1
-15 11 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 11:15 >> logs/intraday-samples/cron.log 2>&1
-30 11 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 11:30 >> logs/intraday-samples/cron.log 2>&1
-45 11 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 11:45 >> logs/intraday-samples/cron.log 2>&1
-45 13 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 13:45 >> logs/intraday-samples/cron.log 2>&1
-0 14 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 14:00 >> logs/intraday-samples/cron.log 2>&1
-15 14 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 14:15 >> logs/intraday-samples/cron.log 2>&1
-30 14 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 14:30 >> logs/intraday-samples/cron.log 2>&1
-45 14 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 14:45 >> logs/intraday-samples/cron.log 2>&1
-0 15 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 15:00 >> logs/intraday-samples/cron.log 2>&1
-15 15 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 15:15 >> logs/intraday-samples/cron.log 2>&1
-30 15 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 15:30 >> logs/intraday-samples/cron.log 2>&1
-45 15 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 15:45 >> logs/intraday-samples/cron.log 2>&1
-0 16 20 7 * cd /home/ubuntu/auto-cuan-runner && node tools/intraday-sample-collector.js --scheduled-time 16:00 >> logs/intraday-samples/cron.log 2>&1
-# === END INTRADAY SAMPLE COLLECTOR ===
+# === INTRADAY SAMPLE COLLECTOR — 2026-07-21 ONLY — START ===
+# One-day research collection. The runner hard-sets scoring/mutation OFF, and the
+# collector rejects any date != 2026-07-21 (year-aware, Asia/Jakarta).
+# Safe to remove this entire block after 2026-07-21.
+15 9 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 09:15 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+30 9 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 09:30 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+45 9 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 09:45 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+0 10 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 10:00 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+15 10 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 10:15 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+30 10 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 10:30 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+45 10 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 10:45 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+0 11 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 11:00 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+15 11 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 11:15 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+30 11 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 11:30 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+45 11 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 11:45 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+45 13 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 13:45 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+0 14 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 14:00 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+15 14 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 14:15 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+30 14 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 14:30 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+45 14 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 14:45 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+0 15 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 15:00 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+15 15 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 15:15 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+30 15 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 15:30 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+45 15 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 15:45 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+0 16 21 7 * /home/ubuntu/auto-cuan-runner/intraday-sample.sh 16:00 >> /home/ubuntu/auto-cuan/logs/intraday-samples/cron.log 2>&1
+# === INTRADAY SAMPLE COLLECTOR — 2026-07-21 ONLY — END ===
 ```
+
+The final `16:00` entry generates `summary.json` inline after a successful run —
+there is **no** separate summary cron entry.
 
 **If VPS is UTC:** subtract 7 from each hour (09→02, 10→03, etc.)
 
@@ -204,12 +218,13 @@ Even if cron fires on July 20 of another year, the process exits immediately.
 
 ## Rollback & Cleanup
 
-1. Cron entries are harmless after 2026-07-20 (script rejects wrong dates).
+1. Cron entries are harmless after 2026-07-21 (script rejects wrong dates).
 2. Remove cron block: `crontab -e` → delete the marked block.
 3. Or remove at jobs: `atq` → `atrm <job_id>` for each.
 4. Archive data: `tar czf ~/intraday-samples-backup.tar.gz data/intraday-samples/`
-5. Delete: `rm -rf data/intraday-samples/2026-07-20/`
+5. Delete: `rm -rf data/intraday-samples/2026-07-21/`
 6. Remove code: delete `tools/intraday-sample-collector.js`,
+   `intraday-sample.sh`,
    `lib/intraday-sample-lifecycle.js`, `lib/intraday-sample-summary.js`,
    `test/intraday-sample-collector.test.js`
 

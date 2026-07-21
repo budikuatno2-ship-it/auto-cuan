@@ -89,10 +89,10 @@ test('6. sample output is append-only', async () => {
 });
 
 test('7. timestamps use Asia/Jakarta', () => {
-  const utcMs = Date.parse('2026-07-20T02:15:00Z');
+  const utcMs = Date.parse('2026-07-21T02:15:00Z');
   const wib = collector.getWibNow(utcMs);
   assert.equal(wib.hours, 9); assert.equal(wib.minutes, 15);
-  assert.equal(wib.dateStr, '2026-07-20'); assert.equal(wib.timeStr, '09:15');
+  assert.equal(wib.dateStr, '2026-07-21'); assert.equal(wib.timeStr, '09:15');
   assert.equal(collector.TIMEZONE, 'Asia/Jakarta');
 });
 
@@ -160,7 +160,7 @@ test('14. final summary correctly reports missing snapshots', async () => {
   await fs.writeFile(path.join(dir, 'candidates.jsonl'), '');
   await fs.writeFile(path.join(dir, 'errors.jsonl'), '');
   await fs.writeFile(path.join(dir, 'lifecycle.json'), '{}');
-  const r = await summary.generateSummary(dir, collector.APPROVED_SCHEDULE, '2026-07-20');
+  const r = await summary.generateSummary(dir, collector.APPROVED_SCHEDULE, '2026-07-21');
   assert.equal(r.expected_snapshot_count, 21);
   assert.equal(r.completed_snapshot_count, 3);
   assert.equal(r.missing_snapshot_times.length, 18);
@@ -201,26 +201,62 @@ test('B1. schedule times are in WIB and VERIFIED_VPS_TIMEZONE is documented', ()
   }
 });
 
-// B2: Date guard accepts only 2026-07-20
-test('B2. date guard accepts only 2026-07-20 in Asia/Jakarta', () => {
-  // Correct date+year
-  const ok = collector.validateSampleDate(Date.parse('2026-07-20T02:15:00Z'));
+// B2: Date guard accepts only 2026-07-21
+test('B2. date guard accepts only 2026-07-21 in Asia/Jakarta', () => {
+  // Correct date+year (2026-07-21 02:15 UTC = 09:15 WIB on July 21, 2026)
+  const ok = collector.validateSampleDate(Date.parse('2026-07-21T02:15:00Z'));
   assert.equal(ok.valid, true);
   assert.equal(ok.year, 2026);
-  // Wrong day
-  const bad1 = collector.validateSampleDate(Date.parse('2026-07-21T02:15:00Z'));
-  assert.equal(bad1.valid, false);
+  assert.equal(ok.date, '2026-07-21');
+  assert.equal(collector.SAMPLE_DATE, '2026-07-21');
+  // Wrong day (previous sample date 2026-07-20 must now be rejected)
+  const prevDay = collector.validateSampleDate(Date.parse('2026-07-20T02:15:00Z'));
+  assert.equal(prevDay.valid, false);
+  assert.equal(prevDay.reason, 'wrong_date');
+  // Wrong day (next day 2026-07-22 must be rejected)
+  const nextDay = collector.validateSampleDate(Date.parse('2026-07-22T02:15:00Z'));
+  assert.equal(nextDay.valid, false);
+  assert.equal(nextDay.reason, 'wrong_date');
   // Wrong month
-  const bad2 = collector.validateSampleDate(Date.parse('2026-08-20T02:15:00Z'));
+  const bad2 = collector.validateSampleDate(Date.parse('2026-08-21T02:15:00Z'));
   assert.equal(bad2.valid, false);
 });
 
-// B3: Recurring future July 20 invocation is rejected
-test('B3. future July 20 (2027) is rejected by year guard', () => {
-  // 2027-07-20 02:15 UTC = 09:15 WIB on July 20, 2027
-  const future = collector.validateSampleDate(Date.parse('2027-07-20T02:15:00Z'));
+// B2b: WIB day-boundary is respected — 2026-07-20 23:30 UTC is 2026-07-21 06:30 WIB (accepted)
+test('B2b. WIB day boundary maps late-UTC-20 to WIB-21 correctly', () => {
+  const wibEarly = collector.validateSampleDate(Date.parse('2026-07-20T23:30:00Z'));
+  assert.equal(wibEarly.valid, true);
+  assert.equal(wibEarly.date, '2026-07-21');
+  // And 2026-07-21 17:30 UTC = 2026-07-22 00:30 WIB (rejected — rolled into next WIB day)
+  const wibNext = collector.validateSampleDate(Date.parse('2026-07-21T17:30:00Z'));
+  assert.equal(wibNext.valid, false);
+  assert.equal(wibNext.reason, 'wrong_date');
+});
+
+// B2c: Invalid timestamps are rejected, never silently treated as the current date
+test('B2c. invalid timestamp is rejected as invalid_timestamp', () => {
+  const nan = collector.validateSampleDate(Date.parse('not-a-real-date'));
+  assert.equal(nan.valid, false);
+  assert.equal(nan.reason, 'invalid_timestamp');
+  const notNum = collector.validateSampleDate('2026-07-21');
+  assert.equal(notNum.valid, false);
+  assert.equal(notNum.reason, 'invalid_timestamp');
+  const inf = collector.validateSampleDate(Infinity);
+  assert.equal(inf.valid, false);
+  assert.equal(inf.reason, 'invalid_timestamp');
+});
+
+// B3: Recurring future July 21 invocation is rejected by the year guard
+test('B3. future July 21 (2027) is rejected by year guard', () => {
+  // 2027-07-21 02:15 UTC = 09:15 WIB on July 21, 2027
+  const future = collector.validateSampleDate(Date.parse('2027-07-21T02:15:00Z'));
   assert.equal(future.valid, false);
-  assert.equal(future.reason, 'wrong_date');
+  assert.equal(future.reason, 'wrong_year');
+  assert.equal(future.year, 2027);
+  // Past year same date also rejected
+  const past = collector.validateSampleDate(Date.parse('2025-07-21T02:15:00Z'));
+  assert.equal(past.valid, false);
+  assert.equal(past.reason, 'wrong_year');
 });
 
 // B4: Final summary follows successful 16:00 completion (inline)
@@ -491,4 +527,175 @@ test('full dry-run integration completes gracefully', async () => {
     dryRun: true, skipDateValidation: true, skipProductionCheck: true
   });
   assert.ok(result.status === 'success' || result.status === 'error');
+});
+
+
+// ===================================================================
+// 2026-07-21 SCHEDULE STRUCTURE & SAFETY TESTS
+// ===================================================================
+
+test('S1. exactly 21 scheduled runs', () => {
+  assert.equal(collector.APPROVED_SCHEDULE.length, 21);
+  // No duplicate slots
+  assert.equal(new Set(collector.APPROVED_SCHEDULE).size, 21);
+});
+
+test('S2. no runs during the 12:00-13:30 WIB lunch break', () => {
+  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  for (const t of collector.APPROVED_SCHEDULE) {
+    const mins = toMin(t);
+    const inBreak = mins >= collector.BREAK_START_MINUTES && mins <= collector.BREAK_END_MINUTES;
+    assert.equal(inBreak, false, 'Schedule must not contain break-window slot ' + t);
+  }
+  // Break window is exactly 12:00 - 13:30
+  assert.equal(collector.BREAK_START_MINUTES, 12 * 60);
+  assert.equal(collector.BREAK_END_MINUTES, 13 * 60 + 30);
+  // And explicit break times are rejected by the validator
+  for (const t of ['12:00', '12:15', '12:45', '13:00', '13:30']) {
+    assert.equal(collector.validateScheduledTime(t).valid, false);
+  }
+});
+
+test('S3. first run is 09:15 WIB', () => {
+  assert.equal(collector.APPROVED_SCHEDULE[0], '09:15');
+});
+
+test('S4. morning final run is 11:45 WIB (last slot before break)', () => {
+  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const morning = collector.APPROVED_SCHEDULE.filter((t) => toMin(t) < collector.BREAK_START_MINUTES);
+  assert.equal(morning[morning.length - 1], '11:45');
+  assert.equal(morning.length, 11);
+});
+
+test('S5. afternoon first run is 13:45 WIB (first slot after break)', () => {
+  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const afternoon = collector.APPROVED_SCHEDULE.filter((t) => toMin(t) > collector.BREAK_END_MINUTES);
+  assert.equal(afternoon[0], '13:45');
+});
+
+test('S6. final run is 16:00 WIB and it is the last slot', () => {
+  assert.equal(collector.APPROVED_SCHEDULE[collector.APPROVED_SCHEDULE.length - 1], '16:00');
+  assert.equal(collector.FINAL_SNAPSHOT_TIME, '16:00');
+});
+
+test('S7. only the 16:00 run generates the summary (no other slot does)', async () => {
+  const mockFetch = async () => ({
+    candles: Array.from({ length: 25 }, (_, i) => ({
+      time: 1753000000 + i * 86400, date: '2026-07-' + String(i + 1).padStart(2, '0'),
+      open: 100, high: 105, low: 95, close: 102, volume: 1000000
+    })),
+    freshness: { provider: 'yahoo_chart_1d', fetch_timestamp: new Date().toISOString(),
+      network_fetch: true, cache_hit: false, cache_age_seconds: 0, is_stale: false,
+      stale_reason: null, candle_count: 25 }
+  });
+  // A non-final slot must NOT write summary.json
+  const dirA = await tmpdir();
+  await fs.writeFile(path.join(dirA, 'tickers.txt'), 'BBCA\n');
+  const resA = await collector.runSampleCollection({
+    scheduledTime: '15:45', outputDir: dirA, lockFile: path.join(dirA, 's.lock'),
+    tickersFile: path.join(dirA, 'tickers.txt'), cacheDir: dirA, dryRun: false,
+    skipDateValidation: true, skipProductionCheck: true, fetchFn: mockFetch, limit: 1 });
+  assert.equal(resA.status, 'success');
+  assert.equal(resA.summary_generated, false);
+  await assert.rejects(fs.access(path.join(dirA, 'summary.json')));
+
+  // The final 16:00 slot MUST write summary.json inline
+  const dirB = await tmpdir();
+  await fs.writeFile(path.join(dirB, 'tickers.txt'), 'BBCA\n');
+  const resB = await collector.runSampleCollection({
+    scheduledTime: '16:00', outputDir: dirB, lockFile: path.join(dirB, 's.lock'),
+    tickersFile: path.join(dirB, 'tickers.txt'), cacheDir: dirB, dryRun: false,
+    skipDateValidation: true, skipProductionCheck: true, fetchFn: mockFetch, limit: 1 });
+  assert.equal(resB.status, 'success');
+  assert.equal(resB.summary_generated, true);
+  await fs.access(path.join(dirB, 'summary.json')); // exists, no throw
+});
+
+test('S8. scoring stays disabled — enabling it fails the safety gate and blocks the run', async () => {
+  const orig = process.env.DAYTRADE_INTRADAY_SCORE_ENABLED;
+  process.env.DAYTRADE_INTRADAY_SCORE_ENABLED = 'true';
+  try {
+    assert.equal(collector.assertSafetyInvariants().safe, false);
+    const dir = await tmpdir();
+    await fs.writeFile(path.join(dir, 'tickers.txt'), 'BBCA\n');
+    const res = await collector.runSampleCollection({
+      scheduledTime: '09:15', outputDir: dir, lockFile: path.join(dir, 's.lock'),
+      tickersFile: path.join(dir, 'tickers.txt'), cacheDir: dir, dryRun: true,
+      skipDateValidation: true, skipProductionCheck: true, limit: 1 });
+    assert.equal(res.status, 'safety_violation');
+  } finally {
+    if (orig === undefined) delete process.env.DAYTRADE_INTRADAY_SCORE_ENABLED;
+    else process.env.DAYTRADE_INTRADAY_SCORE_ENABLED = orig;
+  }
+});
+
+test('S9. worker mutation stays disabled — DAYTRADE_WORKER_ALLOW_MUTATION=true fails the gate', async () => {
+  const orig = process.env.DAYTRADE_WORKER_ALLOW_MUTATION;
+  process.env.DAYTRADE_WORKER_ALLOW_MUTATION = 'true';
+  try {
+    const gate = collector.assertSafetyInvariants();
+    assert.equal(gate.safe, false);
+    assert.ok(gate.errors.some((e) => e.includes('DAYTRADE_WORKER_ALLOW_MUTATION')));
+    const dir = await tmpdir();
+    await fs.writeFile(path.join(dir, 'tickers.txt'), 'BBCA\n');
+    const res = await collector.runSampleCollection({
+      scheduledTime: '09:15', outputDir: dir, lockFile: path.join(dir, 's.lock'),
+      tickersFile: path.join(dir, 'tickers.txt'), cacheDir: dir, dryRun: true,
+      skipDateValidation: true, skipProductionCheck: true, limit: 1 });
+    assert.equal(res.status, 'safety_violation');
+  } finally {
+    if (orig === undefined) delete process.env.DAYTRADE_WORKER_ALLOW_MUTATION;
+    else process.env.DAYTRADE_WORKER_ALLOW_MUTATION = orig;
+  }
+});
+
+test('S10. runner script hard-sets the safety flags', () => {
+  const runner = require('node:fs').readFileSync(
+    path.join(__dirname, '..', 'intraday-sample.sh'), 'utf8');
+  assert.ok(runner.includes('DAYTRADE_INTRADAY_SCORE_ENABLED=false'));
+  assert.ok(runner.includes('DAYTRADE_WORKER_ALLOW_MUTATION=false'));
+  // Runner invokes the collector, not any scoring/mutation path
+  assert.ok(runner.includes('tools/intraday-sample-collector.js'));
+  assert.ok(!/DAYTRADE_INTRADAY_SCORE_ENABLED=(true|1)/.test(runner));
+});
+
+test('S11. historical 2026-07-20 sample data is not the target and is left untouched', async () => {
+  // The active sample date must be 2026-07-21, never the historical 2026-07-20
+  assert.equal(collector.SAMPLE_DATE, '2026-07-21');
+  assert.notEqual(collector.SAMPLE_DATE, '2026-07-20');
+  // A 2026-07-20 invocation is rejected by the date guard, so it can never write
+  assert.equal(collector.validateSampleDate(Date.parse('2026-07-20T02:15:00Z')).valid, false);
+
+  // Simulate a pre-existing historical 2026-07-20 output dir and verify a
+  // 2026-07-21 run writes only to its own dir, leaving 07-20 files byte-identical.
+  const base = await tmpdir();
+  const histDir = path.join(base, '2026-07-20');
+  await fs.mkdir(histDir, { recursive: true });
+  const histFile = path.join(histDir, 'runs.jsonl');
+  const histContent = JSON.stringify({ type: 'sample_run', sample_date: '2026-07-20', scheduled_time: '09:15' }) + '\n';
+  await fs.writeFile(histFile, histContent);
+  const histStatBefore = await fs.stat(histFile);
+
+  const mockFetch = async () => ({
+    candles: Array.from({ length: 25 }, (_, i) => ({
+      time: 1753000000 + i * 86400, date: '2026-07-' + String(i + 1).padStart(2, '0'),
+      open: 100, high: 105, low: 95, close: 102, volume: 1000000
+    })),
+    freshness: { provider: 'yahoo_chart_1d', fetch_timestamp: new Date().toISOString(),
+      network_fetch: true, cache_hit: false, cache_age_seconds: 0, is_stale: false,
+      stale_reason: null, candle_count: 25 }
+  });
+  const todayDir = path.join(base, '2026-07-21');
+  await fs.writeFile(path.join(base, 'tickers.txt'), 'BBCA\n');
+  const res = await collector.runSampleCollection({
+    scheduledTime: '09:15', outputDir: todayDir, lockFile: path.join(base, 's.lock'),
+    tickersFile: path.join(base, 'tickers.txt'), cacheDir: base, dryRun: false,
+    skipDateValidation: true, skipProductionCheck: true, fetchFn: mockFetch, limit: 1 });
+  assert.equal(res.status, 'success');
+
+  // Historical file unchanged (content + mtime)
+  const histAfter = await fs.readFile(histFile, 'utf8');
+  assert.equal(histAfter, histContent);
+  const histStatAfter = await fs.stat(histFile);
+  assert.equal(histStatAfter.mtimeMs, histStatBefore.mtimeMs);
 });

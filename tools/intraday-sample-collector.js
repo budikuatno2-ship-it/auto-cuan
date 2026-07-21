@@ -5,11 +5,11 @@
  * Intraday Sample Collector v2.0 — One-Day Research Tool
  * 
  * Purpose: Collect timestamped intraday observations for research ONLY.
- * Approved date: 2026-07-20 (Monday), Asia/Jakarta time.
+ * Approved date: 2026-07-21 (Tuesday), Asia/Jakarta time.
  * 
  * BLOCKER RESOLUTIONS (v2.0):
  *   B1: VPS timezone verified before scheduling; schedule expressed in WIB.
- *   B2: Exact-date guard rejects any date except 2026-07-20 (year-aware).
+ *   B2: Exact-date guard rejects any date except 2026-07-21 (year-aware).
  *   B3: Final 16:00 run generates summary inline; no separate cron entry.
  *   B4: Checks production worker lock; skips/delays if active.
  *   B5: Forces fresh Yahoo fetch per snapshot; records freshness metadata.
@@ -41,7 +41,7 @@ const summary = require('../lib/intraday-sample-summary');
 
 
 const VERSION = 'intraday-sample-collector-v2.0';
-const SAMPLE_DATE = '2026-07-20';
+const SAMPLE_DATE = '2026-07-21';
 const SAMPLE_YEAR = 2026;
 const TIMEZONE = 'Asia/Jakarta';
 const TIMEZONE_OFFSET_MS = 7 * 60 * 60 * 1000; // UTC+7
@@ -108,14 +108,17 @@ const BREAK_END_MINUTES = 13 * 60 + 30;
  * VERIFIED_VPS_TIMEZONE: This must be set to 'Asia/Jakarta' or 'UTC' after
  * running the verification commands. The schedule in the docs MUST match.
  */
-const VERIFIED_VPS_TIMEZONE = 'PENDING_VERIFICATION';
-// ^^^ Set to 'Asia/Jakarta' or 'UTC' after running the verification commands.
+const VERIFIED_VPS_TIMEZONE = 'Asia/Jakarta';
+// ^^^ Assumed Asia/Jakarta (WIB, UTC+7). Verify on the VPS with the read-only
+//     commands above before installing cron. If the VPS reports UTC instead,
+//     shift every cron hour by -7 (the code always computes WIB internally).
 
 /**
  * Get current time in Asia/Jakarta as { hours, minutes, totalMinutes, ... }
  */
 function getWibNow(nowMs) {
-  const now = new Date(nowMs || Date.now());
+  const resolvedMs = (nowMs === undefined || nowMs === null) ? Date.now() : nowMs;
+  const now = new Date(resolvedMs);
   const wibMs = now.getTime() + TIMEZONE_OFFSET_MS;
   const wib = new Date(wibMs);
   return {
@@ -158,16 +161,28 @@ function validateScheduledTime(scheduledTime) {
 }
 
 /**
- * Validate that today is EXACTLY 2026-07-20 in Asia/Jakarta (Blocker 2).
- * Rejects any other year, month, or day — including future July 20 dates.
+ * Validate that today is EXACTLY 2026-07-21 in Asia/Jakarta (Blocker 2).
+ * Rejects any other year, month, or day — including future July 21 dates.
+ *
+ * Invalid timestamps are rejected explicitly. This function NEVER silently
+ * falls back to the current date when handed an invalid value: only an
+ * explicitly absent (undefined/null) argument uses Date.now() for the real
+ * production run. A NaN / non-finite timestamp is rejected as invalid.
  */
 function validateSampleDate(nowMs) {
-  const wib = getWibNow(nowMs);
-  if (wib.dateStr !== SAMPLE_DATE) {
-    return { valid: false, reason: 'wrong_date', today: wib.dateStr, expected: SAMPLE_DATE };
+  const ms = (nowMs === undefined || nowMs === null) ? Date.now() : nowMs;
+  if (typeof ms !== 'number' || !Number.isFinite(ms)) {
+    return { valid: false, reason: 'invalid_timestamp', value: nowMs };
+  }
+  const wib = getWibNow(ms);
+  if (!wib || !Number.isFinite(wib.year) || wib.dateStr === 'Invalid Date') {
+    return { valid: false, reason: 'invalid_timestamp', value: nowMs };
   }
   if (wib.year !== SAMPLE_YEAR) {
     return { valid: false, reason: 'wrong_year', year: wib.year, expected: SAMPLE_YEAR };
+  }
+  if (wib.dateStr !== SAMPLE_DATE) {
+    return { valid: false, reason: 'wrong_date', today: wib.dateStr, expected: SAMPLE_DATE };
   }
   return { valid: true, date: wib.dateStr, year: wib.year };
 }
@@ -562,7 +577,7 @@ async function runSampleCollection(options) {
     return { status: 'rejected', reason: timeValidation.reason };
   }
 
-  // === VALIDATE DATE — exact 2026-07-20 (Blocker 2) ===
+  // === VALIDATE DATE — exact 2026-07-21 (Blocker 2) ===
   if (!options.skipDateValidation) {
     const dateValidation = validateSampleDate(startedAt);
     if (!dateValidation.valid) {
