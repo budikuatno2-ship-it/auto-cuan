@@ -2,8 +2,16 @@
 <html lang="id" style="background-color:#0b0e14">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#0b0e14">
+    <meta name="description" content="Auto-Cuan IDX Stock Radar — dashboard watchlist, day trade & swing screener, chart, dan portofolio manual. Alat bantu analisis, bukan rekomendasi beli/jual.">
     <title>Auto-Cuan | SMC Analysis Platform</title>
+    <!-- Premium typography: load Inter (the font-family already referenced below).
+         Non-critical; the system font stack remains a graceful fallback offline. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
     <script>
         // ===== CANONICAL PRODUCTION DOMAIN REDIRECT =====
         // Browser-page-only redirect: runs before any auth/app-init code below.
@@ -568,10 +576,154 @@
         .landing-auth-card { border: 1px solid rgba(148,163,184,.14); background: rgba(15,23,42,.58); border-radius: 18px; padding: 16px; }
         @media (max-width: 900px) { .landing-hero-grid { grid-template-columns: 1fr !important; } .landing-menu { display:none !important; } }
         @media (max-width: 640px) { .landing-container { width: min(100% - 24px, 1180px); } .landing-section { padding: 48px 0; } .landing-hero { padding: 42px 0 36px; } .mock-grid { grid-template-columns: 1fr; } .landing-mobile-wrap { flex-wrap: wrap; } .landing-mobile-wrap .landing-btn { width: 100%; } .landing-nav .landing-btn { width: auto; min-height: 38px; padding: 9px 12px; font-size: 12px; border-radius: 12px; } .landing-nav .landing-container { gap: 10px; } .landing-brand { flex: 1 1 auto; min-width: 0; } .landing-logo { width: 36px; height: 36px; border-radius: 12px; flex: 0 0 auto; } }
+
+        /* ===================================================================
+           PREMIUM UI ELEVATION — cohesive design system + accessibility.
+           Appended intentionally last so these refinements win by cascade
+           order. Presentation-only: no DOM ids, hooks, script, API contract,
+           or behavior is changed here. Element-level rules deliberately sit at
+           lower specificity than the existing Tailwind utility classes, so
+           existing per-element styling continues to win where it is set.
+           =================================================================== */
+        :root {
+            /* Surfaces */
+            --ac-bg: #0b0e14;
+            --ac-surface-1: #0f1319;
+            --ac-surface-2: #151a23;
+            --ac-surface-3: #1c2333;
+            --ac-border: rgba(148,163,184,0.12);
+            --ac-border-strong: rgba(148,163,184,0.22);
+            /* Brand + status (do not rely on colour alone — always pair w/ text/icon) */
+            --ac-brand: #10b981;
+            --ac-brand-strong: #34d399;
+            --ac-brand-ink: #04130d;
+            --ac-info: #38bdf8;
+            --ac-warn: #f59e0b;
+            --ac-danger: #ef4444;
+            /* Text */
+            --ac-text: #e5e7eb;
+            --ac-text-strong: #f8fafc;
+            --ac-text-muted: #94a3b8;
+            --ac-text-faint: #64748b;
+            /* Radius scale */
+            --ac-radius-xs: 8px;
+            --ac-radius-sm: 10px;
+            --ac-radius-md: 14px;
+            --ac-radius-lg: 18px;
+            --ac-radius-xl: 24px;
+            /* Spacing scale (4px base) */
+            --ac-space-1: 4px; --ac-space-2: 8px; --ac-space-3: 12px;
+            --ac-space-4: 16px; --ac-space-5: 20px; --ac-space-6: 24px; --ac-space-8: 32px;
+            /* Elevation scale */
+            --ac-shadow-sm: 0 4px 14px rgba(0,0,0,0.18);
+            --ac-shadow-md: 0 12px 30px rgba(0,0,0,0.22);
+            --ac-shadow-lg: 0 24px 60px rgba(0,0,0,0.30);
+            /* Focus ring */
+            --ac-focus: #34d399;
+            --ac-ring: 0 0 0 3px rgba(52,211,153,0.35);
+            /* Typography */
+            --ac-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: smooth; }
+        body {
+            font-family: var(--ac-font-sans);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+            letter-spacing: -0.005em;
+        }
+        ::selection { background: rgba(52,211,153,0.30); color: #ffffff; }
+        /* Guard against horizontal overflow from wide media / tables on any screen */
+        img, svg, video, canvas, table { max-width: 100%; }
+
+        /* Heading rhythm — element-level (Tailwind leading-*/tracking-* still win) */
+        h1 { letter-spacing: -0.02em; line-height: 1.12; }
+        h2 { letter-spacing: -0.015em; line-height: 1.2; }
+        h3 { letter-spacing: -0.01em; }
+        /* Tabular figures for prices / counters / clocks where the class is used */
+        .tabular-nums, .font-mono { font-variant-numeric: tabular-nums; }
+
+        /* ---- Unified, always-visible keyboard focus (WCAG 2.4.7 / 2.4.11 AA) ---- */
+        a:focus-visible,
+        button:focus-visible,
+        [role="button"]:focus-visible,
+        [role="tab"]:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible,
+        summary:focus-visible,
+        [tabindex]:focus-visible {
+            outline: 2px solid var(--ac-focus);
+            outline-offset: 2px;
+            border-radius: 6px;
+        }
+        input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline-offset: 1px;
+            box-shadow: var(--ac-ring);
+        }
+
+        /* ---- Skip link (keyboard users jump straight to the visible content) ---- */
+        .skip-link {
+            position: fixed; top: 8px; left: 8px; z-index: 100000;
+            transform: translateY(-180%);
+            padding: 10px 14px; border-radius: 10px;
+            background: var(--ac-brand-strong); color: var(--ac-brand-ink);
+            font-size: 13px; font-weight: 800; text-decoration: none;
+            box-shadow: var(--ac-shadow-md);
+            transition: transform 0.18s ease;
+        }
+        .skip-link:focus { transform: translateY(0); outline: none; }
+
+        /* ---- Robust visually-hidden helper (in addition to Tailwind sr-only) ---- */
+        .ac-sr-only {
+            position: absolute !important; width: 1px; height: 1px;
+            padding: 0; margin: -1px; overflow: hidden;
+            clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+        }
+
+        /* ---- Refined form fields (premium, higher-contrast idle border) ---- */
+        input::placeholder, textarea::placeholder { color: #64748b; }
+        input:focus, select:focus, textarea:focus { border-color: rgba(52,211,153,0.55) !important; }
+
+        /* ---- Refined tables ---- */
+        tbody tr { transition: background-color 0.12s ease; }
+
+        /* ---- Nav active state gets a subtle, non-colour-only underline cue ---- */
+        .nav-btn.active { box-shadow: inset 0 -2px 0 rgba(52,211,153,0.5); }
+
+        /* ---- Gentle surface polish + lift on hover for interactive cards ---- */
+        .panel, .dashboard-card, .dashboard-pick-card, .feature-card, .action-card {
+            transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+        .action-card:hover, .feature-card:hover, .dashboard-pick-card:hover { transform: translateY(-1px); }
+        .landing-btn-primary:hover { filter: brightness(1.03); }
+
+        /* ---- Modal surface entrance (respects reduced-motion below) ---- */
+        @keyframes acModalIn { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        [role="dialog"]:not(.hidden) > div { animation: acModalIn 0.18s cubic-bezier(0.2,0.7,0.2,1); }
+
+        /* ---- Comfortable touch targets on small screens ---- */
+        @media (max-width: 640px) {
+            .app-header button, .nav-btn, .header-account button { min-height: 40px; }
+            [role="dialog"] button:not(.absolute) { min-height: 44px; }
+        }
+
+        /* ---- Honor reduced-motion across the whole app (WCAG 2.3.3) ---- */
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.001ms !important;
+            }
+            [role="dialog"]:not(.hidden) > div { animation: none !important; }
+            button:active:not(:disabled) { transform: none !important; }
+        }
     </style>
 </head>
 <body class="min-h-screen text-gray-100">
-<div id="toastContainer"></div>
+<a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
+<div id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <!-- ===== INITIAL LOADING INDICATOR (visible before JS init completes) ===== -->
 <div id="initialLoader" class="min-h-screen w-full flex flex-col items-center justify-center" style="background-color:#0b0e14">
@@ -1411,7 +1563,7 @@
                         </tr>
                     </thead>
                     <tbody id="portTableBody" class="text-gray-300">
-                        <tr id="portEmptyRow"><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>
+                        <tr><td colspan="7" class="px-3 py-8 text-center text-gray-600 text-sm">Belum ada posisi. Klik "+ Tambah Posisi" untuk mulai.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1573,7 +1725,7 @@
         <div class="space-y-3">
             <div><label for="loginUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="loginUsername" placeholder="Masukkan username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
             <div><label for="loginPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="loginPassword" placeholder="Masukkan password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" id="loginPasswordToggle" onclick="togglePasswordVisibility('loginPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div id="loginError" class="hidden text-sm text-red-400 text-center py-1"></div>
+            <div id="loginError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
             <button onclick="doLogin()" id="loginBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Masuk</button>
             <div class="text-center"><button type="button" onclick="closeLoginModal();openSelfResetModal()" class="text-xs text-blue-400 hover:underline">Lupa Password?</button></div>
         </div>
@@ -1591,8 +1743,8 @@
             <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
             <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
             <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
-            <div id="registerError" class="hidden text-sm text-red-400 text-center py-1"></div>
-            <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1"></div>
+            <div id="registerError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
+            <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1" role="status" aria-live="polite"></div>
             <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
         </div>
         <div id="registerApprovalPanel" class="hidden space-y-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
@@ -1622,8 +1774,8 @@
         <p id="resetPasswordTarget" class="text-sm text-gray-400 text-center"></p>
         <div><label for="resetPwInput" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="resetPwInput" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
         <div><label for="resetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="resetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
-        <div id="resetPwError" class="hidden text-sm text-red-400 text-center"></div>
-        <button onclick="doResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
+        <div id="resetPwError" class="hidden text-sm text-red-400 text-center" role="alert" aria-live="assertive"></div>
+        <button id="resetPwSubmitBtn" onclick="doResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
         <button onclick="closeResetPasswordModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
     </div>
 </div>
@@ -1646,9 +1798,9 @@
         <div><label for="selfResetUsername" class="block text-xs font-medium text-gray-400 mb-1.5">Username</label><input type="text" id="selfResetUsername" placeholder="Username terdaftar" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
         <div><label for="selfResetPw" class="block text-xs font-medium text-gray-400 mb-1.5">Password Baru</label><input type="password" id="selfResetPw" placeholder="Minimal 8 karakter" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm"></div>
         <div><label for="selfResetPwConfirm" class="block text-xs font-medium text-gray-400 mb-1.5">Konfirmasi Password</label><input type="password" id="selfResetPwConfirm" placeholder="Ulangi password baru" class="w-full rounded-xl border border-gray-700 bg-[#0b0e14] px-4 py-3 text-gray-100 placeholder-gray-500 outline-none focus:border-emerald-500 text-sm" onkeydown="if(event.key==='Enter')doSelfResetPassword()"></div>
-        <div id="selfResetError" class="hidden text-sm text-red-400 text-center"></div>
-        <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center"></div>
-        <button onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
+        <div id="selfResetError" class="hidden text-sm text-red-400 text-center" role="alert" aria-live="assertive"></div>
+        <div id="selfResetSuccess" class="hidden text-sm text-emerald-400 text-center" role="status" aria-live="polite"></div>
+        <button id="selfResetSubmitBtn" onclick="doSelfResetPassword()" class="w-full rounded-xl bg-emerald-500 px-5 py-3 text-sm font-black text-black hover:bg-emerald-400 transition">Reset Password</button>
         <button onclick="closeSelfResetModal()" class="w-full rounded-xl border border-gray-700 px-5 py-3 text-sm font-medium text-gray-400 hover:text-gray-200 transition">Batal</button>
     </div>
 </div>
@@ -5803,6 +5955,11 @@ async function doResetPassword() {
     var errorEl = document.getElementById('resetPwError'); errorEl.classList.add('hidden');
     if (!isValidPassword(pw)) { errorEl.textContent = 'Password terlalu lemah.'; errorEl.classList.remove('hidden'); return; }
     if (pw !== pwConfirm) { errorEl.textContent = 'Konfirmasi password tidak sama.'; errorEl.classList.remove('hidden'); return; }
+    // Guard against accidental double-submission (repeated clicks / Enter spam).
+    if (doResetPassword._busy) return;
+    doResetPassword._busy = true;
+    var submitBtn = document.getElementById('resetPwSubmitBtn');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.dataset.prevLabel = submitBtn.textContent; submitBtn.innerHTML = '<span class="spinner-sm"></span>Mereset...'; }
     try {
         var newPasswordHash = await hashPassword(pw); var adminName = localStorage.getItem('autocuan_user') || '';
         var response = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName, action: 'reset_password', username: resetPasswordUsername, newPasswordHash: newPasswordHash }) });
@@ -5810,6 +5967,10 @@ async function doResetPassword() {
         if (data.success) { showToast('Password user berhasil direset.', 'success'); closeResetPasswordModal(); }
         else { errorEl.textContent = data.error || 'Gagal mereset password.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
+    finally {
+        doResetPassword._busy = false;
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.prevLabel || 'Reset Password'; }
+    }
 }
 
 // ===== SELF-SERVICE RESET PASSWORD =====
@@ -5822,6 +5983,11 @@ async function doSelfResetPassword() {
     if (username.toLowerCase() === 'budi') { errorEl.textContent = 'Akun admin tidak bisa direset dari halaman ini.'; errorEl.classList.remove('hidden'); return; }
     if (!isValidPassword(pw)) { errorEl.textContent = 'Password terlalu lemah.'; errorEl.classList.remove('hidden'); return; }
     if (pw !== pwConfirm) { errorEl.textContent = 'Konfirmasi password tidak sama.'; errorEl.classList.remove('hidden'); return; }
+    // Guard against accidental double-submission (repeated clicks / Enter spam).
+    if (doSelfResetPassword._busy) return;
+    doSelfResetPassword._busy = true;
+    var selfSubmitBtn = document.getElementById('selfResetSubmitBtn');
+    if (selfSubmitBtn) { selfSubmitBtn.disabled = true; selfSubmitBtn.dataset.prevLabel = selfSubmitBtn.textContent; selfSubmitBtn.innerHTML = '<span class="spinner-sm"></span>Mereset...'; }
     try {
         var newPasswordHash = await hashPassword(pw); var deviceId = getOrCreateDeviceId();
         var response = await fetch('/api/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username.toLowerCase(), newPasswordHash: newPasswordHash, deviceId: deviceId }) });
@@ -5829,6 +5995,10 @@ async function doSelfResetPassword() {
         if (data.success) { successEl.textContent = 'Password berhasil direset. Silakan masuk.'; successEl.classList.remove('hidden'); setTimeout(function() { closeSelfResetModal(); }, 2000); }
         else { errorEl.textContent = data.error || 'Gagal mereset password.'; errorEl.classList.remove('hidden'); }
     } catch(e) { errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.'; errorEl.classList.remove('hidden'); }
+    finally {
+        doSelfResetPassword._busy = false;
+        if (selfSubmitBtn) { selfSubmitBtn.disabled = false; selfSubmitBtn.textContent = selfSubmitBtn.dataset.prevLabel || 'Reset Password'; }
+    }
 }
 
 
@@ -10785,6 +10955,135 @@ function exportDayTradePDF() {
         showToast('PDF berhasil diunduh.', 'success');
     });
 }
+</script>
+<script>
+// ===== ACCESSIBILITY: SKIP-LINK + MODAL FOCUS MANAGEMENT =====
+// Presentation/behaviour-only enhancement. Adds WCAG-aligned keyboard support
+// (Escape-to-close, focus trap, focus restoration) to the auth/admin dialogs
+// that previously had none. It never changes auth, admin, Telegram, screener,
+// or API behaviour; closing simply reuses each dialog's existing close function.
+// onboardingModal is intentionally excluded (it owns special Escape rules), and
+// scrDetailModal keeps its own Escape handler.
+(function () {
+    'use strict';
+
+    // Send keyboard / assistive-tech users straight to the visible main region.
+    window.skipToMainContent = function (event) {
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
+        var candidates = ['#page-dashboard', '#page-analisis', '#page-sektor', '#page-screener',
+            '#page-chart', '#page-portofolio', '#aiSection', '#landingPage', 'main'];
+        var target = null;
+        for (var i = 0; i < candidates.length && !target; i++) {
+            var els = document.querySelectorAll(candidates[i]);
+            for (var j = 0; j < els.length; j++) {
+                if (els[j] && !els[j].classList.contains('hidden') && els[j].offsetParent !== null) { target = els[j]; break; }
+            }
+        }
+        if (!target) return false;
+        if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+        try { target.focus(); } catch (e) {}
+        try { target.scrollIntoView({ block: 'start' }); } catch (e) {}
+        return false;
+    };
+
+    var MODAL_CLOSERS = {
+        loginModal: 'closeLoginModal',
+        registerModal: 'closeRegisterModal',
+        selfResetModal: 'closeSelfResetModal',
+        resetPasswordModal: 'closeResetPasswordModal',
+        deviceDetailsModal: 'closeDeviceModal',
+        authChoiceModal: 'closeAuthChoiceModal',
+        usageReminderModal: 'closeUsageReminder',
+        maintenancePreviewModal: null
+    };
+    var MODAL_IDS = Object.keys(MODAL_CLOSERS);
+    var lastFocusByModal = {};
+    var FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    function isVisible(el) { return el && !el.classList.contains('hidden'); }
+
+    function focusableWithin(modal) {
+        var nodes = modal.querySelectorAll(FOCUSABLE), out = [];
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].offsetParent !== null || nodes[i] === document.activeElement) out.push(nodes[i]);
+        }
+        return out;
+    }
+
+    function preferredInitialFocus(modal) {
+        var fields = modal.querySelectorAll('input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])');
+        for (var i = 0; i < fields.length; i++) { if (fields[i].offsetParent !== null) return fields[i]; }
+        var f = focusableWithin(modal);
+        return f.length ? f[0] : modal;
+    }
+
+    function closeModalById(id) {
+        var fnName = MODAL_CLOSERS[id];
+        if (fnName && typeof window[fnName] === 'function') { window[fnName](); return; }
+        var el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    }
+
+    function topmostOpenModal() {
+        var open = [];
+        for (var i = 0; i < MODAL_IDS.length; i++) {
+            var el = document.getElementById(MODAL_IDS[i]);
+            if (isVisible(el)) open.push(el);
+        }
+        if (!open.length) return null;
+        open.sort(function (a, b) {
+            return (parseInt(getComputedStyle(b).zIndex, 10) || 0) - (parseInt(getComputedStyle(a).zIndex, 10) || 0);
+        });
+        return open[0];
+    }
+
+    // Escape closes the topmost managed modal.
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' && e.key !== 'Esc') return;
+        var modal = topmostOpenModal();
+        if (modal) closeModalById(modal.id);
+    });
+
+    // Trap Tab focus within the topmost managed modal.
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab') return;
+        var modal = topmostOpenModal();
+        if (!modal) return;
+        var f = focusableWithin(modal);
+        if (!f.length) { e.preventDefault(); return; }
+        var first = f[0], last = f[f.length - 1], active = document.activeElement;
+        if (!modal.contains(active)) { e.preventDefault(); first.focus(); return; }
+        if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    });
+
+    // On open: remember the trigger and move focus in. On close: restore focus.
+    function watchModal(id) {
+        var el = document.getElementById(id);
+        if (!el || typeof MutationObserver === 'undefined') return;
+        var wasHidden = el.classList.contains('hidden');
+        new MutationObserver(function () {
+            var hidden = el.classList.contains('hidden');
+            if (hidden === wasHidden) return;
+            wasHidden = hidden;
+            if (!hidden) {
+                lastFocusByModal[id] = document.activeElement;
+                var target = preferredInitialFocus(el);
+                setTimeout(function () { try { target.focus(); } catch (e) {} }, 0);
+            } else {
+                var prev = lastFocusByModal[id];
+                lastFocusByModal[id] = null;
+                if (prev && document.contains(prev) && typeof prev.focus === 'function') {
+                    setTimeout(function () { try { prev.focus(); } catch (e) {} }, 0);
+                }
+            }
+        }).observe(el, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    function init() { MODAL_IDS.forEach(watchModal); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();
 </script>
 </body>
 </html>
