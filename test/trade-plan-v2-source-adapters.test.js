@@ -252,16 +252,17 @@ test('7. replay reports HISTORICAL_STRUCTURE_NOT_CAPTURED for structure-less sto
   }
 });
 
-test('8. replay reports STRUCTURE_PRESENT and rejects a plan whose RR is below the public minimum', () => {
+test('8. replay reports STRUCTURE_PRESENT and a plan whose RR meets the new per-screener minimum is usable', () => {
   const report = replay.replayCandidates({
     candidates: [Object.assign(realDayTradeScored(), { swingLow5: 9250, swingHigh10: 10050, atr14: 120.5 })],
     screener_type: 'DAY_TRADE'
   });
   assert.equal(report.historical_structure_status, 'STRUCTURE_PRESENT');
   assert.equal(report.summary.structural_context_available, 1);
-  assert.equal(report.summary.v2_usable, 0);
-  assert.equal(report.comparisons[0].public_would_use, 'legacy_fallback');
-  assert.ok(report.comparisons[0].trade_plan_v2.warnings.includes(tpv2.WARN.INSUFFICIENT_RR_TO_TP1));
+  // With the new DAY_TRADE minimum of 1.00, a realistic 1.15R TP1 is now usable.
+  assert.equal(report.summary.v2_usable, 1);
+  assert.equal(report.comparisons[0].public_would_use, 'trade_plan_v2');
+  assert.ok(report.comparisons[0].trade_plan_v2.rr_to_tp1 >= 1.00);
 });
 
 // ===================================================================
@@ -427,9 +428,10 @@ test('17. real-shaped ADHI/AHAP/BLTZ/BSWD/BEEF/BNBR replay fixtures preserve hie
   assert.equal(adhi.trade_plan_v2.emergency_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
   assert.equal(adhi.trade_plan_v2.emergency_anchor_price, 146);
   assert.equal(adhi.trade_plan_v2.stop_loss, 157);
-  assert.equal(adhi.v2_usable, false, 'ADHI sub-minimum RR must not be publicly usable');
-  assert.equal(adhi.public_would_use, 'legacy_fallback');
-  assert.ok(adhi.trade_plan_v2.warnings.includes(tpv2.WARN.INSUFFICIENT_RR_TO_TP1));
+  // With the new DAY_TRADE minimum of 1.00, ADHI at rr_to_tp1 ~1.0 is usable.
+  assert.ok(adhi.trade_plan_v2.rr_to_tp1 >= 1.00, 'ADHI rr_to_tp1 must be >= 1.00');
+  assert.equal(adhi.v2_usable, true, 'ADHI meets the new DAY_TRADE minimum of 1.00');
+  assert.equal(adhi.public_would_use, 'trade_plan_v2');
 
   const ahap = byTicker['AHAP'];
   assert.equal(ahap.trade_plan_v2.stop_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);

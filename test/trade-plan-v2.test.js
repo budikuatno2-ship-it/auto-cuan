@@ -370,10 +370,15 @@ test('21. position size is never actually mutated — REDUCE is advisory metadat
 // ===================================================================
 
 test('22. RR below the profile minimum (but >= 1.0) warns without rejecting', () => {
+  // For DAY_TRADE the minimum is now 1.00, so we need an RR slightly below 1.0
+  // but the HARD_MIN_RR is also 1.0. An RR between 0 and 1.0 is outright rejected.
+  // Instead, use SWING_NON_KONGLO (min 1.20) to show the warning band:
+  // entry=1010, swing_low=990, buffer=0.75*20=15, SL=975, risk=35
+  // resistance=1050, obstacleBuffer=5, cappedTp1=1045, baseTp1=1010+1.35*35=1057.25=1057
+  // tp1 = min(1057, 1045) = 1045. reward = 35, rr = 35/35 = 1.0 (>= 1.0, < 1.20)
   const plan = tp.buildTradePlanV2(cleanCandidate({ support: 990, swing_low: 990, resistance: 1050, atr14: 20 }),
-    { screener_type: 'DAY_TRADE' });
-  // risk = 1010-980 = 30, tp1 = 1045, reward = 35, rr ~1.17 (< 1.30, > 1.0).
-  assert.ok(plan.rr_to_tp1 < 1.30 && plan.rr_to_tp1 >= 1.0);
+    { screener_type: 'SWING_NON_KONGLO' });
+  assert.ok(plan.rr_to_tp1 < 1.20 && plan.rr_to_tp1 >= 1.0, 'rr_to_tp1=' + plan.rr_to_tp1 + ' should be between 1.0 and 1.20');
   assert.equal(plan.status, tp.STATUS.WARNING);
   assert.ok(plan.warnings.includes(tp.WARN.INSUFFICIENT_RR_TO_TP1));
 });
@@ -411,7 +416,7 @@ test('26. entry too close to resistance is warned', () => {
 
 test('27. realistic TP1 target returns a complete canonical plan with tick-aligned prices', () => {
   const plan = tp.buildTradePlanV2(cleanCandidate({ resistance: 1080, atr14: 20 }), { screener_type: 'DAY_TRADE' });
-  assert.equal(plan.status, tp.STATUS.WARNING, 'realistic TP1 below the legacy minimum is explicit, not silently OK');
+  assert.equal(plan.status, tp.STATUS.OK, 'realistic TP1 at ' + plan.rr_to_tp1 + 'R passes the DAY_TRADE minimum of 1.00');
   assert.equal(plan.plan_version, 'trade-plan-v2');
   for (const f of ['entry_zone_low', 'entry_zone_high', 'stop_loss', 'tp1', 'support', 'resistance', 'trailing_activation']) {
     assert.ok(idx.isValidIdxPriceLevel(plan[f]), f + ' tick-aligned');
@@ -473,4 +478,198 @@ test('30. support at entry_zone_low is valid but support above the zone is not',
   }), { screener_type: 'DAY_TRADE' });
   assert.equal(above.status, tp.STATUS.REJECTED);
   assert.equal(above.reject_reason, tp.WARN.NO_STRUCTURAL_LEVEL);
+});
+
+
+
+// ===================================================================
+// Real-shaped regression tests (ADHI, BLTZ, BSWD, AHAP, BEEF, BNBR)
+// ===================================================================
+
+test('31. ADHI: rr_to_tp1 meets DAY_TRADE minimum 1.00, status REDUCE_POSITION_SIZE, usable', () => {
+  const plan = tp.buildTradePlanV2({
+    ticker: 'ADHI', entry_low: 162, entry_high: 165, support: 146, major_support: 146,
+    swing_low: 161, resistance: 190, atr14: 6.3571, current_price: 164
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);
+  assert.equal(plan.stop_anchor_price, 161);
+  assert.equal(plan.stop_loss, 157);
+  assert.equal(plan.emergency_anchor_type, tp.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(plan.emergency_anchor_price, 146);
+  assert.equal(plan.tp1, 174);
+  assert.ok(plan.rr_to_tp1 >= 1.00, 'ADHI rr_to_tp1=' + plan.rr_to_tp1 + ' must be >= 1.00');
+  assert.equal(plan.tp1_target_r, 1.15);
+  assert.equal(plan.minimum_rr_to_tp1, 1.00);
+  assert.equal(plan.status, tp.STATUS.REDUCE_POSITION_SIZE);
+});
+
+test('32. BLTZ: support at entry-zone boundary, SL=2520, TP1=2580, usable', () => {
+  const plan = tp.buildTradePlanV2({
+    ticker: 'BLTZ', entry_low: 2540, entry_high: 2550, support: 2540,
+    resistance: 2870, atr14: 23.5714, current_price: 2545
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.stop_anchor_price, 2540);
+  assert.equal(plan.stop_loss, 2520);
+  assert.equal(plan.tp1, 2580);
+  assert.equal(plan.rr_to_tp1, 1);
+  assert.equal(plan.tp1_target_r, 1.15);
+  assert.equal(plan.minimum_rr_to_tp1, 1.00);
+  assert.equal(plan.status, tp.STATUS.OK);
+});
+
+test('33. BSWD: support at entry-zone boundary, SL=1240, TP1=1270, usable', () => {
+  const plan = tp.buildTradePlanV2({
+    ticker: 'BSWD', entry_low: 1250, entry_high: 1255, support: 1250,
+    resistance: 1375, atr14: 9.2857, current_price: 1252
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.stop_anchor_price, 1250);
+  assert.equal(plan.stop_loss, 1240);
+  assert.equal(plan.tp1, 1270);
+  assert.equal(plan.rr_to_tp1, 1);
+  assert.equal(plan.tp1_target_r, 1.15);
+  assert.equal(plan.minimum_rr_to_tp1, 1.00);
+  assert.equal(plan.status, tp.STATUS.OK);
+});
+
+test('34. AHAP: mandatory risk rejection (stop_dist > 7%) still falls back even when RR passes', () => {
+  const plan = tp.buildTradePlanV2({
+    ticker: 'AHAP', entry_low: 96, entry_high: 98, support: 80, major_support: 80,
+    swing_low: 92, resistance: 120, atr14: 6.5714, current_price: 97
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.status, tp.STATUS.REJECTED);
+  assert.equal(plan.reject_reason, tp.WARN.RISK_CANNOT_BE_CONTROLLED);
+  assert.ok(plan.stop_distance_pct > 7, 'stop distance ' + plan.stop_distance_pct + '% must exceed reject threshold');
+  assert.ok(plan.rr_to_tp1 >= 1.00, 'RR passes but risk rejection takes precedence');
+});
+
+test('35. BEEF: no normal structural anchor, REJECTED, emergency major support visible', () => {
+  const plan = tp.buildTradePlanV2({
+    ticker: 'BEEF', entry_low: 310, entry_high: 318, major_support: 122,
+    resistance: 400, atr14: 10, current_price: 315
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.status, tp.STATUS.REJECTED);
+  assert.equal(plan.reject_reason, tp.WARN.NO_STRUCTURAL_LEVEL);
+  assert.equal(plan.stop_anchor_price, null);
+  assert.equal(plan.emergency_anchor_type, tp.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(plan.emergency_anchor_price, 122);
+  assert.ok(plan.emergency_stop < 122);
+});
+
+test('36. BNBR: no normal structural anchor and no valid TP1, REJECTED, emergency visible', () => {
+  const plan = tp.buildTradePlanV2({
+    ticker: 'BNBR', entry_low: 113, entry_high: 116, major_support: 70,
+    resistance: 116, atr14: 8, current_price: 114
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.status, tp.STATUS.REJECTED);
+  assert.equal(plan.reject_reason, tp.WARN.NO_STRUCTURAL_LEVEL);
+  assert.equal(plan.resistance, null, 'resistance at entry zone must be ignored');
+  assert.equal(plan.tp1, null, 'no valid TP1 when resistance inside entry zone');
+  assert.equal(plan.emergency_anchor_type, tp.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(plan.emergency_anchor_price, 70);
+  assert.ok(plan.emergency_stop < 70);
+});
+
+// ===================================================================
+// Boundary RR tests
+// ===================================================================
+
+test('37. Day Trade RR 0.99 is unusable (below minimum 1.00)', () => {
+  // Craft a plan where rr_to_tp1 < 1.0 => REJECTED (HARD_MIN_RR).
+  const plan = tp.buildTradePlanV2({
+    ticker: 'RR099', entry_low: 1000, entry_high: 1010, support: 990, swing_low: 990,
+    resistance: 1035, atr14: 20, current_price: 1008
+  }, { screener_type: 'DAY_TRADE' });
+  // resistance=1035, obstacleBuffer = max(5, 0.20*20)=5, cappedTp1=1030
+  // baseTp1=1010+1.15*30=1044.5=1044. tp1=min(1044,1030)=1030. reward=20. rr=20/30=0.67
+  assert.ok(plan.rr_to_tp1 < 1.0, 'rr_to_tp1=' + plan.rr_to_tp1 + ' must be below 1.0');
+  assert.equal(plan.status, tp.STATUS.REJECTED);
+});
+
+test('38. Day Trade RR exactly 1.00 passes the RR rule', () => {
+  // entry=1010, SL=980, risk=30. resistance=1080, tp1 from R_TARGET.
+  // baseTp1=1010+1.15*30=1044.5 → floor → 1040. reward=30. rr=30/30=1.0.
+  const plan = tp.buildTradePlanV2({
+    ticker: 'RR100', entry_low: 1000, entry_high: 1010, support: 990, swing_low: 990,
+    resistance: 1080, atr14: 20, current_price: 1008
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.rr_to_tp1, 1.0);
+  assert.equal(plan.status, tp.STATUS.OK);
+  assert.equal(plan.minimum_rr_to_tp1, 1.00);
+});
+
+test('39. Swing RR 1.19 is unusable (below SWING_NON_KONGLO minimum 1.20)', () => {
+  // Use SWING_NON_KONGLO with a tight resistance to produce RR between 1.0 and 1.2.
+  // entry=1010, buffer=0.75*20=15, SL=975, risk=35.
+  // resistance=1050, obstacleBuffer=max(5,4)=5, cappedTp1=1045
+  // baseTp1=1010+1.35*35=1057.25=1055. tp1=min(1055,1045)=1045. reward=35. rr=1.0.
+  const plan = tp.buildTradePlanV2({
+    ticker: 'RR119', entry_low: 1000, entry_high: 1010, support: 990, swing_low: 990,
+    resistance: 1050, atr14: 20, current_price: 1008
+  }, { screener_type: 'SWING_NON_KONGLO' });
+  assert.ok(plan.rr_to_tp1 < 1.20, 'rr_to_tp1=' + plan.rr_to_tp1 + ' must be below 1.20');
+  assert.ok(plan.rr_to_tp1 >= 1.0, 'rr_to_tp1 must be at least 1.0');
+  assert.equal(plan.minimum_rr_to_tp1, 1.20);
+  assert.ok(plan.warnings.includes(tp.WARN.INSUFFICIENT_RR_TO_TP1));
+});
+
+test('40. Swing RR 1.20 passes the RR rule', () => {
+  // entry=1010, buffer=0.75*20=15, SL=975, risk=35. tp1_target_r=1.35.
+  // baseTp1=1010+1.35*35=1057.25→1055. resistance=1080, obstacle=5, cap=1075.
+  // tp1=min(1055,1075)=1055. reward=45. rr=45/35=1.2857 >= 1.20.
+  const plan = tp.buildTradePlanV2({
+    ticker: 'RR120', entry_low: 1000, entry_high: 1010, support: 990, swing_low: 990,
+    resistance: 1080, atr14: 20, current_price: 1008
+  }, { screener_type: 'SWING_NON_KONGLO' });
+  assert.ok(plan.rr_to_tp1 >= 1.20, 'rr_to_tp1=' + plan.rr_to_tp1 + ' must be >= 1.20');
+  assert.equal(plan.minimum_rr_to_tp1, 1.20);
+  assert.notEqual(plan.status, tp.STATUS.REJECTED);
+});
+
+// ===================================================================
+// Status usability tests
+// ===================================================================
+
+test('41. REJECTED status never becomes usable regardless of RR', () => {
+  const plan = tp.buildTradePlanV2({
+    ticker: 'REJX', entry_low: 310, entry_high: 318, major_support: 122,
+    resistance: 400, atr14: 10, current_price: 315
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.status, tp.STATUS.REJECTED);
+  const integration = require('../lib/trade-plan-v2-integration');
+  assert.equal(integration.isPlanV2Usable(plan), false);
+});
+
+test('42. stale data never becomes usable', () => {
+  const plan = tp.buildTradePlanV2({
+    ticker: 'STALE', entry_low: 1000, entry_high: 1010, support: 990, swing_low: 990,
+    resistance: 1080, atr14: 20, current_price: 1008, data_stale: true
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.data_freshness.is_stale, true);
+  const integration = require('../lib/trade-plan-v2-integration');
+  assert.equal(integration.isPlanV2Usable(plan), false);
+});
+
+test('43. missing TP1 never becomes usable', () => {
+  const plan = tp.buildTradePlanV2({
+    ticker: 'NOTP', entry_low: 1000, entry_high: 1010, support: 990, swing_low: 990,
+    resistance: null, atr14: 20, current_price: 1008
+  }, { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.tp1, null);
+  const integration = require('../lib/trade-plan-v2-integration');
+  assert.equal(integration.isPlanV2Usable(plan), false);
+});
+
+// ===================================================================
+// Per-screener TP1 contract fields exposed
+// ===================================================================
+
+test('44. canonical output exposes tp1_target_r and minimum_rr_to_tp1 for all screeners', () => {
+  for (const st of ['DAY_TRADE', 'SWING_NON_KONGLO', 'SWING_KONGLO']) {
+    const plan = tp.buildTradePlanV2({
+      ticker: 'TST', entry_low: 1000, entry_high: 1010, support: 990, swing_low: 990,
+      resistance: 1200, atr14: 20, current_price: 1008
+    }, { screener_type: st });
+    assert.equal(plan.tp1_target_r, tp.SCREENER_PROFILES[st].tp1_target_r);
+    assert.equal(plan.minimum_rr_to_tp1, tp.SCREENER_PROFILES[st].min_rr_to_tp1);
+  }
 });

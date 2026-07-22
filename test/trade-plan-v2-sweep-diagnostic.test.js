@@ -122,7 +122,7 @@ test('10. existing Trade Plan V2 outputs remain backward compatible (no-sweep in
     resistance: 1080, atr14: 20, current_price: 1008
   }, { screener_type: 'DAY_TRADE' });
   // Core fields use the nearest confirmed swing low and realistic R target.
-  assert.equal(plan.status, tp.STATUS.WARNING);
+  assert.equal(plan.status, tp.STATUS.OK);
   assert.equal(plan.stop_loss, 980);
   assert.equal(plan.tp1, 1040);
   assert.equal(plan.support, 990);
