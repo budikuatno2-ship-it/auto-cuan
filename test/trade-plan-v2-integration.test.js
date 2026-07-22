@@ -72,14 +72,16 @@ test('1. structural SL sits below support and the structural invalidation', () =
   assert.ok(plan.emergency_stop < plan.stop_loss, 'emergency stop must sit below the SL');
 });
 
-test('2. an active demand gap below structure deepens the SL anchor', () => {
+test('2. an active demand gap below the local anchor remains the emergency/reference structure', () => {
   const cand = goodCandidate();
-  // Active demand gap whose low (9100) sits below the structural level (9250).
+  // The active demand gap is farther below the confirmed swing low (9250), so
+  // it must not widen the normal stop; it remains a separate hard-stop anchor.
   const gaps = [{ gap_type: 'demand', gap_low: 9100, gap_high: 9180, gap_direction: 'DEMAND' }];
   const plan = planFor(cand, 'DAY_TRADE', { gaps });
   assert.ok(plan.nearest_demand_gap && plan.nearest_demand_gap.active, 'demand gap should be active');
-  assert.ok(plan.stop_loss < plan.nearest_demand_gap.gap_low, 'SL must sit below the active demand-gap invalidation');
-  assert.match(plan.stop_loss_reason, /demand-gap/i, 'SL reason should cite the demand-gap anchor');
+  assert.equal(plan.stop_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);
+  assert.equal(plan.emergency_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.DEMAND_GAP_INVALIDATION);
+  assert.ok(plan.emergency_stop < plan.nearest_demand_gap.gap_low, 'emergency stop must sit below demand-gap invalidation');
 });
 
 // ===================================================================
@@ -109,7 +111,7 @@ test('4. TP1 is capped before an active supply gap', () => {
 
 test('5. an excessively wide SL is rejected, not silently passed', () => {
   // Support far below entry => stop distance beyond the DAY_TRADE reject budget.
-  const cand = goodCandidate({ support: 7800, swing_low: 7700, stop_loss: 7600 });
+  const cand = goodCandidate({ support: 8800, swing_low: 8700, stop_loss: 8600 });
   const plan = planFor(cand);
   assert.equal(plan.status, tpv2.STATUS.REJECTED, 'a huge stop distance must be rejected');
   assert.ok(plan.warnings.indexOf('STOP_DISTANCE_EXCEEDS_RISK_BUDGET') >= 0, 'must warn about the risk budget');
@@ -208,11 +210,11 @@ test('12. even with the sweep shadow flag on, public trailing ignores delayed ex
 test('13. public channel falls back to legacy when the V2 plan is rejected', () => {
   const env = { TRADE_PLAN_V2_PUBLIC_ENABLED: 'true' };
   // Excessively wide SL => V2 rejected => fallback to legacy.
-  const cand = goodCandidate({ support: 7800, swing_low: 7700, stop_loss: 7600 });
+  const cand = goodCandidate({ support: 8800, swing_low: 8700, stop_loss: 8600 });
   const resolved = integration.resolvePublicTradePlan(cand, { channel: 'web', mode: 'daytrade', env });
   assert.equal(resolved.source, 'legacy_fallback');
   assert.equal(resolved.fallback, true);
-  assert.equal(resolved.payload.stop_loss, 7600, 'fallback payload must be the legacy plan');
+  assert.equal(resolved.payload.stop_loss, 8600, 'fallback payload must be the legacy plan');
 });
 
 test('14. public channel falls back to legacy when mandatory V2 data is missing', () => {

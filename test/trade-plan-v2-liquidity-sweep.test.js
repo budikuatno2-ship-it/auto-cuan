@@ -195,14 +195,16 @@ test('18. buildTradePlanV2 exposes the full additive canonical schema', () => {
   assert.equal(plan.hard_exit_state, sweep.HARD_EXIT_STATE.ACTIVE); // emergency always active
 });
 
-test('19. an active demand gap below structure deepens the SL below the demand-gap invalidation', () => {
+test('19. an active demand gap below local structure remains a deeper emergency anchor', () => {
   const withoutGap = tp.buildTradePlanV2(baseCandidate(), { screener_type: 'DAY_TRADE' });
   const withGap = tp.buildTradePlanV2(baseCandidate({
     gaps: [{ gap_type: 'FVG', gap_low: 960, gap_high: 980, gap_direction: 'demand' }]
   }), { screener_type: 'DAY_TRADE', observations: [{ open: 1005, high: 1012, low: 1002, close: 1008 }] });
-  assert.ok(withGap.stop_loss < withoutGap.stop_loss, 'SL deepened below the active demand gap');
-  assert.ok(withGap.stop_loss < 960, 'SL sits below the demand-gap invalidation (gap_low)');
-  assert.match(withGap.stop_loss_reason, /demand-gap-adjusted/);
+  assert.equal(withGap.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);
+  assert.equal(withGap.emergency_anchor_type, tp.SUPPORT_ANCHOR_TYPE.DEMAND_GAP_INVALIDATION);
+  assert.ok(withGap.emergency_stop < withGap.nearest_demand_gap.gap_low, 'emergency stop below demand gap');
+  assert.ok(withGap.stop_loss >= withoutGap.stop_loss, 'normal stop does not widen for a more distant emergency anchor');
+  assert.match(withGap.tp1_reason, /realistic|resistance/i);
 });
 
 test('20. an active supply gap constrains TP1 below the gap', () => {

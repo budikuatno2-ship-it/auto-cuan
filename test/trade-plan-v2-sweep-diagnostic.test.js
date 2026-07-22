@@ -121,13 +121,14 @@ test('10. existing Trade Plan V2 outputs remain backward compatible (no-sweep in
     ticker: 'TEST', entry_low: 1000, entry_high: 1010, support: 990, swing_low: 990,
     resistance: 1080, atr14: 20, current_price: 1008
   }, { screener_type: 'DAY_TRADE' });
-  // Core fields keep their previously-locked values.
-  assert.equal(plan.status, tp.STATUS.OK);
+  // Core fields use the nearest confirmed swing low and realistic R target.
+  assert.equal(plan.status, tp.STATUS.WARNING);
   assert.equal(plan.stop_loss, 980);
-  assert.equal(plan.tp1, 1075);
+  assert.equal(plan.tp1, 1040);
   assert.equal(plan.support, 990);
   assert.equal(plan.resistance, 1080);
-  assert.equal(plan.rr_to_tp1, 2.1667);
+  assert.equal(plan.rr_to_tp1, 1);
+  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);
   // Additive fields default safely.
   assert.equal(plan.candle_structure, null);
   assert.deepEqual(plan.active_gap_areas, []);

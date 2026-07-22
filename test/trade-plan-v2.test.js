@@ -39,10 +39,11 @@ test('1. SL sits below the structural level by the required ATR/tick buffer', ()
   assert.ok(idx.isValidIdxPriceLevel(plan.emergency_stop));
 });
 
-test('2. structural level is the MINIMUM of support and confirmed swing low', () => {
+test('2. confirmed swing low is selected as the normal anchor rather than the distant major support', () => {
   const plan = tp.buildTradePlanV2(cleanCandidate({ support: 990, swing_low: 975, atr14: 40 }), { screener_type: 'DAY_TRADE' });
   assert.equal(plan._detail.structural_level, 975);
-  assert.equal(plan.support_source, 'min(support,swing_low)');
+  assert.equal(plan.support_source, tp.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);
+  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);
   assert.equal(plan.stop_loss, idx.roundToIdxTick(975 - 20, 'floor'));
 });
 
@@ -71,9 +72,100 @@ test('4. volatility + trailing profiles differ across the three screeners', () =
   assert.equal(kon.trailing_atr_multiplier, 2.0);
 });
 
+test('9. nearest local support is preferred over a distant major support', () => {
+  const plan = tp.buildTradePlanV2(cleanCandidate({
+    entry_low: 162, entry_high: 165, support: 146, major_support: 146,
+    local_support: 160, swing_low: null, resistance: 190, atr14: 2
+  }), { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.LOCAL_SUPPORT);
+  assert.equal(plan.stop_anchor_price, 160);
+  assert.equal(plan.emergency_anchor_type, tp.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(plan.emergency_anchor_price, 146);
+  assert.ok(plan.stop_loss > plan.emergency_stop);
+});
+
+test('10. a nearer confirmed swing low becomes the normal stop anchor', () => {
+  const plan = tp.buildTradePlanV2(cleanCandidate({
+    entry_low: 162, entry_high: 165, support: 146, swing_low: 161,
+    resistance: 190, atr14: 2
+  }), { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);
+  assert.equal(plan.stop_anchor_price, 161);
+  assert.equal(plan.emergency_anchor_type, tp.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(plan.emergency_anchor_price, 146);
+});
+
+test('11. an active nearby demand-gap invalidation can become the normal anchor', () => {
+  const plan = tp.buildTradePlanV2(cleanCandidate({
+    entry_low: 1000, entry_high: 1010, support: 950, swing_low: 970,
+    resistance: 1100, atr14: 20,
+    gaps: [{ gap_type: 'demand', gap_low: 990, gap_high: 1000, gap_direction: 'demand' }]
+  }), { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.DEMAND_GAP_INVALIDATION);
+  assert.equal(plan.stop_anchor_price, 990);
+  assert.equal(plan.emergency_anchor_type, tp.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(plan.emergency_anchor_price, 950);
+});
+
+test('12. stale, failed, unconfirmed, and equal/above-entry anchors are rejected', () => {
+  const plan = tp.buildTradePlanV2(cleanCandidate({
+    entry_low: 1000, entry_high: 1010,
+    local_support: [{ price: 995, stale: true }, { price: 1000 }, { price: 990, failed: true }, { price: 985, confirmed: false }],
+    support: 960, swing_low: null, resistance: 1100, atr14: 10
+  }), { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(plan.stop_anchor_price, 960);
+});
+
 // ===================================================================
-// Support-test logic (pierce & reclaim vs confirmed breakdown)
+// Resistance hierarchy and realistic targets
 // ===================================================================
+
+test('13. resistance at or below entry is ignored and the nearest valid overhead level wins', () => {
+  const plan = tp.buildTradePlanV2(cleanCandidate({
+    entry_low: 1000, entry_high: 1010, support: 980, swing_low: 985,
+    resistance: 1005, local_resistance: 1050, major_resistance: 1300, atr14: 20
+  }), { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.resistance, 1050);
+  assert.equal(plan.nearest_local_resistance, 1050);
+  assert.equal(plan.resistance_source, 'local_resistance');
+  assert.equal(plan.major_resistance, 1300);
+});
+
+test('14. TP1 uses a realistic R target and distant major resistance becomes conditional TP2', () => {
+  const plan = tp.buildTradePlanV2(cleanCandidate({
+    entry_low: 1000, entry_high: 1010, support: 980, swing_low: 985,
+    local_resistance: 1060, resistance: 1300, major_resistance: 1300, atr14: 20
+  }), { screener_type: 'DAY_TRADE', breakout_confirmed: true });
+  assert.ok(plan.tp1_target_r >= 1.0 && plan.tp1_target_r <= 1.3);
+  assert.ok(plan.tp1 < 1060);
+  assert.equal(plan.tp1_anchor_type, 'R_TARGET');
+  assert.equal(plan.tp2, 1300);
+  assert.equal(plan.tp2_anchor_type, tp.RESISTANCE_ANCHOR_TYPE.MAJOR_RESISTANCE);
+  assert.equal(plan.major_resistance, 1300);
+});
+
+
+test('15. an active supply gap overlapping entry blocks TP1 instead of being bypassed', () => {
+  const plan = tp.buildTradePlanV2(cleanCandidate({
+    entry_low: 1000, entry_high: 1010, support: 980, swing_low: 985,
+    resistance: 1150, atr14: 20,
+    gaps: [{ gap_type: 'supply', gap_low: 990, gap_high: 1020, gap_direction: 'supply' }]
+  }), { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.tp1, null);
+  assert.match(plan.tp1_reason, /supply gap.*entry/i);
+  assert.ok(plan.warnings.includes(tp.WARN.ENTRY_TOO_CLOSE_TO_RESISTANCE));
+});
+
+test('16. typed hierarchy arrays normalize lowercase anchor types', () => {
+  const plan = tp.buildTradePlanV2(cleanCandidate({
+    support: null, swing_low: null, structural_levels: [{ type: 'local_support', price: 990 }],
+    resistance: null, resistance_levels: [{ type: 'local_resistance', price: 1080 }], atr14: 20
+  }), { screener_type: 'DAY_TRADE' });
+  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.LOCAL_SUPPORT);
+  assert.equal(plan.resistance, 1080);
+  assert.equal(plan.nearest_local_resistance, 1080);
+});
 
 test('5. a support wick + reclaim is NOT treated as a confirmed breakdown', () => {
   const res = tp.deriveSupportTestState({
@@ -130,12 +222,13 @@ test('8. an emergency hard-stop level is always retained', () => {
 // Take-profit logic
 // ===================================================================
 
-test('9. TP1 is placed BEFORE the nearest valid resistance', () => {
+test('9. TP1 uses the configured realistic R target and remains before resistance', () => {
   const plan = tp.buildTradePlanV2(cleanCandidate({ resistance: 1080, atr14: 20 }), { screener_type: 'DAY_TRADE' });
   assert.ok(plan.tp1 < plan.resistance, 'TP1 below resistance');
-  const tick = idx.getIdxTickSize(1080);
-  const expectedBuffer = Math.max(tick, 0.20 * 20);
-  assert.equal(plan.tp1, idx.roundToIdxTick(1080 - expectedBuffer, 'floor'));
+  assert.equal(plan.tp1_anchor_type, 'R_TARGET');
+  assert.equal(plan.tp1_target_r, tp.SCREENER_PROFILES.DAY_TRADE.tp1_target_r);
+  const expected = idx.roundToIdxTick(plan.entry_zone_high + plan.tp1_target_r * plan.risk_amount, 'floor');
+  assert.equal(plan.tp1, expected);
   assert.ok(plan.tp1 > plan.entry_zone_high, 'TP1 above entry');
 });
 
@@ -313,14 +406,14 @@ test('26. entry too close to resistance is warned', () => {
   assert.ok(plan.warnings.includes(tp.WARN.ENTRY_TOO_CLOSE_TO_RESISTANCE));
 });
 
-test('27. happy path returns OK with valid canonical fields and tick-aligned prices', () => {
+test('27. realistic TP1 target returns a complete canonical plan with tick-aligned prices', () => {
   const plan = tp.buildTradePlanV2(cleanCandidate({ resistance: 1080, atr14: 20 }), { screener_type: 'DAY_TRADE' });
-  assert.equal(plan.status, tp.STATUS.OK);
+  assert.equal(plan.status, tp.STATUS.WARNING, 'realistic TP1 below the legacy minimum is explicit, not silently OK');
   assert.equal(plan.plan_version, 'trade-plan-v2');
   for (const f of ['entry_zone_low', 'entry_zone_high', 'stop_loss', 'tp1', 'support', 'resistance', 'trailing_activation']) {
     assert.ok(idx.isValidIdxPriceLevel(plan[f]), f + ' tick-aligned');
   }
-  assert.ok(plan.rr_to_tp1 >= 1.30);
+  assert.ok(plan.rr_to_tp1 >= 1.0 && plan.rr_to_tp1 <= 1.3);
 });
 
 // ===================================================================
@@ -349,8 +442,10 @@ test('29. the canonical object always exposes the full documented schema', () =>
   const required = [
     'plan_version', 'screener_type', 'ticker', 'generated_at', 'entry_zone_low', 'entry_zone_high',
     'entry_trigger', 'entry_reason', 'support', 'support_source', 'resistance', 'resistance_source',
-    'stop_loss', 'stop_loss_reason', 'structural_invalidation', 'emergency_stop', 'stop_distance_pct',
-    'tp1', 'tp1_reason', 'tp2', 'tp2_reason', 'trailing_activation', 'trailing_method',
+    'stop_loss', 'stop_loss_reason', 'stop_anchor_type', 'stop_anchor_price', 'structural_invalidation',
+    'emergency_stop', 'emergency_anchor_type', 'emergency_anchor_price', 'stop_distance_pct',
+    'tp1', 'tp1_anchor_type', 'tp1_target_r', 'tp1_reason', 'nearest_local_resistance',
+    'tp2', 'tp2_anchor_type', 'major_resistance', 'tp2_reason', 'trailing_activation', 'trailing_method',
     'trailing_atr_multiplier', 'risk_amount', 'reward_to_tp1', 'reward_to_tp2', 'rr_to_tp1', 'rr_to_tp2',
     'support_test_state', 'resistance_test_state', 'warnings', 'data_freshness'
   ];
