@@ -542,8 +542,60 @@ function buildCandidateRecord(result, scheduledTime, rank, freshness) {
     raw_source_freshness: result.price_asof || null,
     data_quality_status: result.data_quality_status || null,
     data_quality_note: result.data_quality_note || null,
+    // === ADDITIVE structural context (Trade Plan V2 capture) ===================
+    // Preserves the market structure the screener ALREADY computed so future
+    // replays can build a canonical Trade Plan V2 without reverse-deriving support
+    // from the SL or resistance from the TP. Every field is read straight from the
+    // engine result (or derived from the already-captured OHLC) and defaults to
+    // null when genuinely unavailable — never invented. Backward compatible: this
+    // is purely additive and does not alter any existing field, scoring, ranking,
+    // Telegram, or recommendation behaviour.
+    structural_context: buildStructuralContext(result),
     // Freshness metadata per candidate (Blocker 5)
     freshness: freshness || null
+  };
+}
+
+/**
+ * Build the additive structural-context block for a sample record from the REAL
+ * engine result. Reads support / resistance / confirmed swing low / next
+ * resistance / ATR straight from the result (with the analyzer's real aliases),
+ * and derives candle body/wick diagnostics from the already-captured OHLC only.
+ * Never reverse-derives structure from the legacy SL/TP; missing => null.
+ */
+function buildStructuralContext(result) {
+  result = result || {};
+  const n = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+  const open = n(result.open_price);
+  const high = n(result.high_price);
+  const low = n(result.low_price);
+  const close = n(result.last_price != null ? result.last_price : result.close_price);
+  let candle = null;
+  if (open !== null && high !== null && low !== null && close !== null) {
+    const range = high - low;
+    candle = {
+      open: open, high: high, low: low, close: close,
+      body: round2(Math.abs(close - open)),
+      upper_wick: round2(high - Math.max(open, close)),
+      lower_wick: round2(Math.min(open, close) - low),
+      body_ratio: range > 0 ? round2(Math.abs(close - open) / range) : null,
+      close_position: range > 0 ? round2((close - low) / range) : null,
+      is_green: close >= open
+    };
+  }
+  return {
+    support: n(result.support),
+    resistance: n(result.resistance),
+    confirmed_swing_low: n(result.swing_low != null ? result.swing_low : result.swingLow5),
+    next_resistance: n(result.swing_high != null ? result.swing_high
+      : (result.swingHigh10 != null ? result.swingHigh10 : result.next_resistance)),
+    atr14: n(result.atr14),
+    candle_structure: candle,
+    // Active demand/supply gap areas when the screener provided them (Day Trade
+    // does not emit gap pairs today => null; never invented).
+    active_demand_gap: result.demand_gap || result._downsideGap || null,
+    active_supply_gap: result.supply_gap || result._overheadGap || null,
+    structural_source: 'daytrade_analyzer_runtime'
   };
 }
 
@@ -842,7 +894,7 @@ module.exports = {
   checkProductionWorkerActive, waitForProductionWorker,
   fetchFreshCandles, fetchWithFreshnessFallback,
   loadTickerUniverse, appendJsonl, sanitizeRecord,
-  buildCandidateRecord, deriveDistances,
+  buildCandidateRecord, buildStructuralContext, deriveDistances,
   runSampleCollection, parseArgs
 };
 

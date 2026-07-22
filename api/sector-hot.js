@@ -844,6 +844,18 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
           fib_nearest_level: _fibResult.fib_nearest_level || null,
           fib_levels: _fibResult.fib_levels || null
         });
+
+        // Trade Plan V2 SHADOW attach (Swing Konglo). Gated by
+        // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/persisted
+        // output is byte-identical (runtime-only field, not in the persist mapper).
+        // Passes the REAL calculateIndicators analysis + candle context so the
+        // canonical engine gets actual support / resistance / ATR / demand-supply
+        // gaps instead of the flattened row. Scoring untouched.
+        tradePlanV2Integration.attachShadowTradePlanV2(results[results.length - 1], {
+          screener_type: 'SWING_KONGLO',
+          env: process.env,
+          source: { analysis: analysis, row: results[results.length - 1], candles: candles }
+        });
       } catch (e) {
         failedCount++;
         screenerFailedTickers.push({ ticker: item.ticker, reason: 'exception: ' + (e.message || 'unknown').substring(0, 80) });
@@ -852,17 +864,6 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       if (i < universe.length - 1) {
         await delay(250);
       }
-    }
-
-    // Trade Plan V2 SHADOW attach (Swing Konglo). Gated by
-    // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/persisted
-    // output is byte-identical. Runtime-only diagnostic field: the persist mapper
-    // writes explicit columns only, so it is never inserted. Scoring untouched.
-    for (var _tpKi = 0; _tpKi < results.length; _tpKi++) {
-      tradePlanV2Integration.attachShadowTradePlanV2(results[_tpKi], {
-        screener_type: 'SWING_KONGLO',
-        env: process.env
-      });
     }
 
     // If ALL failed, do not wipe cache
@@ -8493,6 +8494,18 @@ async function handleNkScreenerBatch(req, res, supabase) {
         scored.quality_grade = _nkGrade.grade;
       }
 
+      // Trade Plan V2 SHADOW attach (Swing Non-Konglo). Gated by
+      // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/staged
+      // output is byte-identical (runtime-only field, never in sanitizeNkStagingRow).
+      // Attached HERE, BEFORE the ATR fields are stripped below, so the canonical
+      // engine receives the real support / resistance / ATR the NK scorer computed.
+      // Scoring untouched.
+      tradePlanV2Integration.attachShadowTradePlanV2(scored, {
+        screener_type: 'SWING_NON_KONGLO',
+        env: process.env,
+        source: { scored: scored, candles: quoteData && quoteData.candles }
+      });
+
       // Keep ATR soft penalty in persisted score; do not add runtime-only ATR fields to fixed staging schema.
       delete scored.score_before_atr_penalty;
       delete scored.atr_score_penalty;
@@ -8524,16 +8537,8 @@ async function handleNkScreenerBatch(req, res, supabase) {
     }
   }
 
-  // Trade Plan V2 SHADOW attach (Swing Non-Konglo). Gated by
-  // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/staged output
-  // is byte-identical. sanitizeNkStagingRow writes explicit columns only, so this
-  // runtime diagnostic field is never persisted. Scoring untouched.
-  for (var _tpNi = 0; _tpNi < results.length; _tpNi++) {
-    tradePlanV2Integration.attachShadowTradePlanV2(results[_tpNi], {
-      screener_type: 'SWING_NON_KONGLO',
-      env: process.env
-    });
-  }
+  // (Trade Plan V2 shadow attach happens inside the scoring loop above, before
+  // the ATR fields are stripped, so the canonical engine sees the real ATR.)
 
   // Upsert scored candidates into durable staging (idempotent on run_date + ticker).
   // In production, `passed` means candidates that passed hard filters and were selected for staging.
