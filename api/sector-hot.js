@@ -44,6 +44,7 @@ const marketRegime = require('../lib/market-regime');
 const productionEligibility = require('../lib/intraday-production-eligibility');
 const corporateActionGuard = require('../lib/corporate-action-price-scale-guard');
 const smartSetupLabels = require('../lib/smart-setup-labels');
+const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -501,6 +502,10 @@ async function handleScreenerRead(req, res, supabase) {
 
   sortedRows = await enrichConfluenceRows(supabase, sortedRows, true);
 
+  // Trade Plan V2 public decoration (Swing Konglo web). No-op unless
+  // TRADE_PLAN_V2_PUBLIC_ENABLED is true, so the web payload is byte-identical.
+  tradePlanV2Integration.decorateRowsForWeb(sortedRows, { mode: 'swing_konglo', env: process.env });
+
   return res.status(200).json({
     success: true,
     meta: meta || { calculated_at: null, status: 'pending', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, ai_called_count: 0 },
@@ -847,6 +852,17 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
       if (i < universe.length - 1) {
         await delay(250);
       }
+    }
+
+    // Trade Plan V2 SHADOW attach (Swing Konglo). Gated by
+    // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/persisted
+    // output is byte-identical. Runtime-only diagnostic field: the persist mapper
+    // writes explicit columns only, so it is never inserted. Scoring untouched.
+    for (var _tpKi = 0; _tpKi < results.length; _tpKi++) {
+      tradePlanV2Integration.attachShadowTradePlanV2(results[_tpKi], {
+        screener_type: 'SWING_KONGLO',
+        env: process.env
+      });
     }
 
     // If ALL failed, do not wipe cache
@@ -8508,6 +8524,17 @@ async function handleNkScreenerBatch(req, res, supabase) {
     }
   }
 
+  // Trade Plan V2 SHADOW attach (Swing Non-Konglo). Gated by
+  // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/staged output
+  // is byte-identical. sanitizeNkStagingRow writes explicit columns only, so this
+  // runtime diagnostic field is never persisted. Scoring untouched.
+  for (var _tpNi = 0; _tpNi < results.length; _tpNi++) {
+    tradePlanV2Integration.attachShadowTradePlanV2(results[_tpNi], {
+      screener_type: 'SWING_NON_KONGLO',
+      env: process.env
+    });
+  }
+
   // Upsert scored candidates into durable staging (idempotent on run_date + ticker).
   // In production, `passed` means candidates that passed hard filters and were selected for staging.
   // It must not imply persistence unless the durable write/count below succeeds.
@@ -9078,6 +9105,9 @@ async function handleNkScreenerResults(req, res, supabase) {
   nkMeta.batch_index = nkBatchIndex;
   nkMeta.batch_count = nkBatchCount;
   nkMeta.status_label = nkMeta.status === 'scanning' || nkMeta.status === 'finalizing' ? 'SCANNING' : (['published', 'daily', 'completed', 'completed_no_candidates'].indexOf(String(nkMeta.status).toLowerCase()) >= 0 ? 'DAILY/PUBLISHED' : 'STALE SCAN');
+  // Trade Plan V2 public decoration (Swing Non-Konglo web). No-op unless
+  // TRADE_PLAN_V2_PUBLIC_ENABLED is true, so the web payload is byte-identical.
+  tradePlanV2Integration.decorateRowsForWeb(nkSorted, { mode: 'swing_non_konglo', env: process.env });
   return res.status(200).json({ success: true, meta: nkMeta, universe_count: nkMeta.universe_count, scanned_count: nkMeta.scanned_count, failed_count: nkMeta.failed_count, published_count: nkMeta.published_count, result_count: nkMeta.result_count, staging_count: stagingCount, batch_index: nkBatchIndex, batch_count: nkBatchCount, results: nkSorted });
 }
 
@@ -10303,6 +10333,10 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
     });
 
     sortedRows = await enrichConfluenceRows(supabase, sortedRows, false);
+
+    // Trade Plan V2 public decoration (Day Trade web). No-op unless
+    // TRADE_PLAN_V2_PUBLIC_ENABLED is true, so the web payload is byte-identical.
+    tradePlanV2Integration.decorateRowsForWeb(sortedRows, { mode: 'daytrade', env: process.env });
 
     return res.status(200).json({
       success: true,
