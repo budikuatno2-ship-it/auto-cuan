@@ -1,0 +1,7 @@
+{
+  "version": "intraday-sample-collector-v2.0",
+  "sample_date": "2026-07-21",
+  "timezone": "Asia/Jakarta",
+  "total_snapshots": 7,
+  "note": "Synthetic fixture for live shadow-scoring tests (context only; never rewritten)."
+}

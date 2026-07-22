@@ -79,3 +79,8 @@ data/reports/daytrade-adjusted-vs-normal-*.json
 data/intraday-samples/
 logs/intraday-samples/
 tmp/intraday-sample-collector.lock
+
+# Live intraday shadow-scoring outputs (research/shadow only; generated at runtime)
+data/intraday-shadow-scoring-live/
+data/intraday-shadow-scoring/
+tmp/intraday-shadow-scoring-live.lock
