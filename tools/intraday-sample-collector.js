@@ -2,14 +2,19 @@
 'use strict';
 
 /**
- * Intraday Sample Collector v2.0 — One-Day Research Tool
+ * Intraday Sample Collector v2.0 — Date-Parameterized Research Tool
  * 
  * Purpose: Collect timestamped intraday observations for research ONLY.
- * Approved date: 2026-07-21 (Tuesday), Asia/Jakarta time.
+ * The collection date is EXPLICIT via --sample-date YYYY-MM-DD (Asia/Jakarta).
+ * The date is never taken silently from the current wall-clock date; the run is
+ * rejected when the actual WIB date differs from --sample-date. For backward
+ * compatibility the legacy SAMPLE_DATE constant is the default when no
+ * --sample-date is supplied, but the combined pipeline always passes it.
  * 
  * BLOCKER RESOLUTIONS (v2.0):
  *   B1: VPS timezone verified before scheduling; schedule expressed in WIB.
- *   B2: Exact-date guard rejects any date except 2026-07-21 (year-aware).
+ *   B2: Date guard rejects any date whose actual WIB date != --sample-date
+ *       (year-aware) and rejects invalid date formats.
  *   B3: Final 16:00 run generates summary inline; no separate cron entry.
  *   B4: Checks production worker lock; skips/delays if active.
  *   B5: Forces fresh Yahoo fetch per snapshot; records freshness metadata.
@@ -161,15 +166,46 @@ function validateScheduledTime(scheduledTime) {
 }
 
 /**
- * Validate that today is EXACTLY 2026-07-21 in Asia/Jakarta (Blocker 2).
- * Rejects any other year, month, or day — including future July 21 dates.
- *
- * Invalid timestamps are rejected explicitly. This function NEVER silently
- * falls back to the current date when handed an invalid value: only an
- * explicitly absent (undefined/null) argument uses Date.now() for the real
- * production run. A NaN / non-finite timestamp is rejected as invalid.
+ * Parse + validate an explicit sample-date string in strict YYYY-MM-DD form.
+ * Rejects malformed strings and impossible calendar dates (e.g. 2026-13-40,
+ * 2026-02-30). This is the single source of truth for "is this a valid, real
+ * sample date?" and never falls back to the current date.
  */
-function validateSampleDate(nowMs) {
+function parseSampleDate(dateStr) {
+  if (typeof dateStr !== 'string') return { valid: false, reason: 'not_a_string', value: dateStr };
+  const trimmed = dateStr.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (!m) return { valid: false, reason: 'bad_format', value: dateStr };
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month - 1 || dt.getUTCDate() !== day) {
+    return { valid: false, reason: 'not_a_real_date', value: dateStr };
+  }
+  return { valid: true, date: trimmed, year: year, month: month, day: day };
+}
+
+/**
+ * Validate that the actual WIB "today" equals the EXPECTED sample date
+ * (Asia/Jakarta). The expected date is EXPLICIT — callers (and the pipeline)
+ * must pass the sample date they intend to collect. When omitted it defaults to
+ * the legacy SAMPLE_DATE constant purely for backward compatibility; it NEVER
+ * silently uses the current date as the expected value.
+ *
+ * Rejects: an invalid expected-date format, a non-finite / non-numeric
+ * timestamp, a year mismatch, and a day mismatch — including future dates.
+ *
+ * Invalid timestamps are rejected explicitly. Only an explicitly absent
+ * (undefined/null) timestamp uses Date.now() for the real production run; a
+ * NaN / non-finite timestamp is rejected as invalid.
+ */
+function validateSampleDate(nowMs, expectedDate) {
+  const expected = (expectedDate === undefined || expectedDate === null) ? SAMPLE_DATE : expectedDate;
+  const parsed = parseSampleDate(expected);
+  if (!parsed.valid) {
+    return { valid: false, reason: 'invalid_sample_date_format', value: expected, detail: parsed };
+  }
   const ms = (nowMs === undefined || nowMs === null) ? Date.now() : nowMs;
   if (typeof ms !== 'number' || !Number.isFinite(ms)) {
     return { valid: false, reason: 'invalid_timestamp', value: nowMs };
@@ -178,11 +214,11 @@ function validateSampleDate(nowMs) {
   if (!wib || !Number.isFinite(wib.year) || wib.dateStr === 'Invalid Date') {
     return { valid: false, reason: 'invalid_timestamp', value: nowMs };
   }
-  if (wib.year !== SAMPLE_YEAR) {
-    return { valid: false, reason: 'wrong_year', year: wib.year, expected: SAMPLE_YEAR };
+  if (wib.year !== parsed.year) {
+    return { valid: false, reason: 'wrong_year', year: wib.year, expected: parsed.year };
   }
-  if (wib.dateStr !== SAMPLE_DATE) {
-    return { valid: false, reason: 'wrong_date', today: wib.dateStr, expected: SAMPLE_DATE };
+  if (wib.dateStr !== parsed.date) {
+    return { valid: false, reason: 'wrong_date', today: wib.dateStr, expected: parsed.date };
   }
   return { valid: true, date: wib.dateStr, year: wib.year };
 }
@@ -531,11 +567,14 @@ function deriveDistances(record) {
 // ================================================================
 
 function parseArgs(argv) {
-  const args = { scheduledTime: null, limit: null, outputDir: null, lockFile: null,
-    tickersFile: null, dryRun: false, productionLockFile: null, cacheDir: null };
+  const args = { scheduledTime: null, sampleDate: null, sampleRoot: null, limit: null,
+    outputDir: null, lockFile: null, tickersFile: null, dryRun: false,
+    productionLockFile: null, cacheDir: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--scheduled-time' && argv[i + 1]) args.scheduledTime = argv[++i];
+    else if (a === '--sample-date' && argv[i + 1]) args.sampleDate = argv[++i];
+    else if (a === '--sample-root' && argv[i + 1]) args.sampleRoot = argv[++i];
     else if (a === '--limit' && argv[i + 1]) args.limit = Number(argv[++i]);
     else if (a === '--output-dir' && argv[i + 1]) args.outputDir = argv[++i];
     else if (a === '--lock-file' && argv[i + 1]) args.lockFile = argv[++i];
@@ -551,7 +590,17 @@ async function runSampleCollection(options) {
   const startedAt = Date.now();
   options = options || {};
   const scheduledTime = options.scheduledTime;
-  const outputDir = options.outputDir || DEFAULT_OUTPUT_DIR;
+  // Explicit sample date drives validation, lifecycle records, summaries, and
+  // the output directory. Defaults to the legacy SAMPLE_DATE constant purely for
+  // backward compatibility; the pipeline always passes it explicitly. The date
+  // is NEVER silently taken from the current wall-clock date.
+  const sampleDate = (options.sampleDate === undefined || options.sampleDate === null || options.sampleDate === '')
+    ? SAMPLE_DATE : options.sampleDate;
+  const parsedSampleDate = parseSampleDate(sampleDate);
+  const outputDir = options.outputDir
+    || (options.sampleRoot
+      ? path.join(options.sampleRoot, sampleDate)
+      : path.join(process.cwd(), 'data', 'intraday-samples', sampleDate));
   const lockFile = options.lockFile || DEFAULT_LOCK_FILE;
   const tickersFile = options.tickersFile || DEFAULT_TICKERS_FILE;
   const cacheDir = options.cacheDir || DEFAULT_CACHE_DIR;
@@ -577,9 +626,14 @@ async function runSampleCollection(options) {
     return { status: 'rejected', reason: timeValidation.reason };
   }
 
-  // === VALIDATE DATE — exact 2026-07-21 (Blocker 2) ===
+  // === VALIDATE SAMPLE-DATE FORMAT (always — reject invalid formats) ===
+  if (!parsedSampleDate.valid) {
+    return { status: 'rejected', reason: 'invalid_sample_date_format', sample_date: sampleDate, detail: parsedSampleDate };
+  }
+
+  // === VALIDATE DATE — actual WIB date must equal the explicit sample date ===
   if (!options.skipDateValidation) {
-    const dateValidation = validateSampleDate(startedAt);
+    const dateValidation = validateSampleDate(startedAt, sampleDate);
     if (!dateValidation.valid) {
       return { status: 'rejected', reason: dateValidation.reason, detail: dateValidation };
     }
@@ -695,7 +749,7 @@ async function runSampleCollection(options) {
     // === BUILD RUN RECORD ===
     const finishedAt = Date.now();
     const runRecord = {
-      type: 'sample_run', version: VERSION, sample_date: SAMPLE_DATE, timezone: TIMEZONE,
+      type: 'sample_run', version: VERSION, sample_date: sampleDate, timezone: TIMEZONE,
       scheduled_time: scheduledTime,
       actual_start: new Date(startedAt).toISOString(),
       actual_finish: new Date(finishedAt).toISOString(),
@@ -731,7 +785,7 @@ async function runSampleCollection(options) {
     // === GENERATE SUMMARY IF FINAL SNAPSHOT (Blocker 3) ===
     let summaryResult = null;
     if (scheduledTime === FINAL_SNAPSHOT_TIME && !dryRun) {
-      summaryResult = await summary.generateSummary(outputDir, APPROVED_SCHEDULE, SAMPLE_DATE);
+      summaryResult = await summary.generateSummary(outputDir, APPROVED_SCHEDULE, sampleDate);
     }
 
     return {
@@ -759,6 +813,8 @@ if (require.main === module) {
   const args = parseArgs(process.argv);
   runSampleCollection({
     scheduledTime: args.scheduledTime,
+    sampleDate: args.sampleDate,
+    sampleRoot: args.sampleRoot,
     limit: args.limit,
     outputDir: args.outputDir,
     lockFile: args.lockFile,
@@ -781,7 +837,7 @@ module.exports = {
   RUNTIME_BUDGET_MS, DETERMINISTIC_UNIVERSE_SIZE,
   PRODUCTION_LOCK_FILE, PRODUCTION_OVERLAP_WAIT_MS,
   VERIFIED_VPS_TIMEZONE,
-  getWibNow, getMarketSession, validateScheduledTime, validateSampleDate,
+  getWibNow, getMarketSession, validateScheduledTime, validateSampleDate, parseSampleDate,
   assertSafetyInvariants, acquireLock, isPidRunning,
   checkProductionWorkerActive, waitForProductionWorker,
   fetchFreshCandles, fetchWithFreshnessFallback,
