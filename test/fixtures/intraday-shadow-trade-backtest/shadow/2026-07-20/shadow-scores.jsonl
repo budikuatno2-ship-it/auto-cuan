@@ -1,0 +1,9 @@
+{"ticker":"WINR","snapshot":"09:15","shadow_score":90,"confirmation_state":"PROVISIONAL","confirmed_rank":null,"confirmation_reason":"SINGLE_SNAPSHOT_UNCONFIRMED"}
+{"ticker":"WINR","snapshot":"09:30","shadow_score":90,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"WINR","snapshot":"09:45","shadow_score":92,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"WINR","snapshot":"10:00","shadow_score":94,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"WINR","snapshot":"10:15","shadow_score":95,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"WINR","snapshot":"10:30","shadow_score":95,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"WINR","snapshot":"10:45","shadow_score":95,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"SECND","snapshot":"09:30","shadow_score":96,"confirmation_state":"CONFIRMED","confirmed_rank":2,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"SECND","snapshot":"09:45","shadow_score":96,"confirmation_state":"CONFIRMED","confirmed_rank":2,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}

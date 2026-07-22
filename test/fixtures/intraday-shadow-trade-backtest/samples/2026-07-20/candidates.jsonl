@@ -1,0 +1,10 @@
+{"ticker":"WINR","scheduled_time":"09:15","sample_timestamp":"2026-07-20T09:15:03.000Z","current_price":100,"reference_entry_price":100}
+{"ticker":"WINR","scheduled_time":"09:30","sample_timestamp":"2026-07-20T09:30:03.000Z","current_price":101,"reference_entry_price":101}
+{"ticker":"WINR","scheduled_time":"09:45","sample_timestamp":"2026-07-20T09:45:03.000Z","current_price":102,"reference_entry_price":102}
+{"ticker":"WINR","scheduled_time":"10:00","sample_timestamp":"2026-07-20T10:00:03.000Z","current_price":103,"reference_entry_price":103}
+{"ticker":"WINR","scheduled_time":"10:15","sample_timestamp":"2026-07-20T10:15:03.000Z","current_price":104,"reference_entry_price":104}
+{"ticker":"WINR","scheduled_time":"10:30","sample_timestamp":"2026-07-20T10:30:03.000Z","current_price":105,"reference_entry_price":105}
+{"ticker":"WINR","scheduled_time":"10:45","sample_timestamp":"2026-07-20T10:45:03.000Z","current_price":106,"reference_entry_price":106}
+{"ticker":"WINR","scheduled_time":"16:00","sample_timestamp":"2026-07-20T16:00:03.000Z","current_price":110,"reference_entry_price":110}
+{"ticker":"SECND","scheduled_time":"09:30","sample_timestamp":"2026-07-20T09:30:03.000Z","current_price":500,"reference_entry_price":500}
+{"ticker":"SECND","scheduled_time":"09:45","sample_timestamp":"2026-07-20T09:45:03.000Z","current_price":500,"reference_entry_price":500}

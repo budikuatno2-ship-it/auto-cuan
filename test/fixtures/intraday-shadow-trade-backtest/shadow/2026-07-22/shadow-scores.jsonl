@@ -1,0 +1,6 @@
+{"ticker":"OVLA","snapshot":"09:15","shadow_score":80,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"STICKY_PREVIOUSLY_CONFIRMED"}
+{"ticker":"OVLA","snapshot":"09:30","shadow_score":82,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"OVLB","snapshot":"09:45","shadow_score":81,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"OVLB","snapshot":"10:00","shadow_score":83,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"MRGN","snapshot":"10:30","shadow_score":60,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
+{"ticker":"MRGN","snapshot":"10:45","shadow_score":60,"confirmation_state":"CONFIRMED","confirmed_rank":1,"confirmation_reason":"TWO_CONSECUTIVE_SNAPSHOTS"}
