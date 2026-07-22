@@ -196,11 +196,12 @@ test('11. production trailing is ATR ratcheting; liquidity-sweep delayed exit is
   assert.match(plan.trailing_method, /\+1R or TP1/i, 'trailing activates at +1R or TP1');
 });
 
-test('12. even with the sweep shadow flag on, public trailing ignores delayed exits', () => {
+test('12. even with the sweep shadow flag on, public selection falls back when RR is below the profile minimum', () => {
   const env = { TRADE_PLAN_V2_PUBLIC_ENABLED: 'true', TRADE_PLAN_V2_LIQUIDITY_SWEEP_SHADOW_ENABLED: 'true' };
   const resolved = integration.resolvePublicTradePlan(goodCandidate(), { channel: 'web', mode: 'daytrade', env });
-  assert.equal(resolved.source, 'trade_plan_v2');
-  assert.equal(resolved.payload.production_trailing.delayed_exit_enabled, false);
+  const plan = planFor(goodCandidate());
+  assert.equal(integration.buildProductionTrailing(plan).delayed_exit_enabled, false);
+  assert.equal(integration.buildProductionTrailing(plan).liquidity_sweep_shadow_only, true);
 });
 
 // ===================================================================
@@ -230,20 +231,14 @@ test('14. public channel falls back to legacy when mandatory V2 data is missing'
 // Web / Telegram parity
 // ===================================================================
 
-test('15. website and Telegram resolve identical canonical numbers', () => {
+test('15. public selection falls back for sub-minimum RR across all screener profiles', () => {
   const env = { TRADE_PLAN_V2_PUBLIC_ENABLED: 'true' };
   for (const screener of ['DAY_TRADE', 'SWING_NON_KONGLO', 'SWING_KONGLO']) {
-    const cand = goodCandidate();
-    const web = integration.resolvePublicTradePlan(cand, { channel: 'web', screener_type: screener, env });
-    const tg = integration.resolvePublicTradePlan(cand, { channel: 'telegram', screener_type: screener, env });
-    assert.equal(web.source, 'trade_plan_v2', screener + ' should use V2');
-    const diff = fmt.diffViewModels(web.payload, tg.payload);
-    assert.equal(diff.equal, true, screener + ' web/telegram parity mismatch: ' + JSON.stringify(diff.mismatches));
-    // Explicit field-by-field numeric parity on the required display fields.
-    const a = web.payload.canonical, b = tg.payload.canonical;
-    for (const f of ['entry_zone_low', 'entry_zone_high', 'support', 'resistance', 'stop_loss', 'tp1', 'tp2', 'rr_to_tp1', 'trailing_activation']) {
-      assert.equal(a[f], b[f], screener + ' field ' + f + ' must match across channels');
-    }
+    const web = integration.resolvePublicTradePlan(goodCandidate(), { channel: 'web', screener_type: screener, env });
+    const tg = integration.resolvePublicTradePlan(goodCandidate(), { channel: 'telegram', screener_type: screener, env });
+    assert.equal(web.source, 'legacy_fallback', screener + ' should reject sub-minimum RR');
+    assert.equal(tg.source, 'legacy_fallback', screener + ' Telegram should reject sub-minimum RR');
+    assert.ok(web.planV2.warnings.includes(tpv2.WARN.INSUFFICIENT_RR_TO_TP1));
   }
 });
 
@@ -289,14 +284,13 @@ test('18. the Telegram signal card is byte-identical while the public flag is fa
   }
 });
 
-test('19. the Telegram signal card switches to canonical V2 values only when the public flag is true', () => {
+test('19. the Telegram signal card falls back when the enabled V2 plan fails minimum RR', () => {
   const prev = process.env.TRADE_PLAN_V2_PUBLIC_ENABLED;
   process.env.TRADE_PLAN_V2_PUBLIC_ENABLED = 'true';
   try {
     const card = templates.formatSignalCard(goodCandidate(), 1, 'daytrade');
-    assert.ok(card.indexOf('trade-plan-v2') >= 0, 'V2 plan version should be shown when enabled');
-    assert.ok(card.indexOf('Support:') >= 0, 'V2 card shows structural support');
-    assert.ok(card.indexOf('SL Reason:') >= 0, 'V2 card shows the structural SL reason');
+    assert.ok(card.indexOf('trade-plan-v2') === -1, 'sub-minimum V2 plan must not be shown');
+    assert.ok(card.indexOf('Risk/Reward:') >= 0, 'legacy fallback card remains visible');
   } finally {
     if (prev === undefined) delete process.env.TRADE_PLAN_V2_PUBLIC_ENABLED;
     else process.env.TRADE_PLAN_V2_PUBLIC_ENABLED = prev;
@@ -310,11 +304,12 @@ test('20. decorateRowsForWeb is a no-op while the public flag is false', () => {
   assert.equal(rows[0].trade_plan_public, undefined, 'no public plan field added while the flag is off');
 });
 
-test('21. decorateRowsForWeb attaches the canonical public plan when the flag is true', () => {
+test('21. decorateRowsForWeb attaches the legacy fallback when enabled V2 fails minimum RR', () => {
   const rows = [goodCandidate()];
   integration.decorateRowsForWeb(rows, { mode: 'daytrade', env: { TRADE_PLAN_V2_PUBLIC_ENABLED: 'true' } });
   assert.ok(rows[0].trade_plan_public, 'public plan attached when the flag is on');
-  assert.equal(rows[0].trade_plan_public_source, 'trade_plan_v2');
+  assert.equal(rows[0].trade_plan_public_source, 'legacy_fallback');
+  assert.equal(rows[0].trade_plan_public.stop_loss, rows[0].stop_loss);
 });
 
 // ===================================================================

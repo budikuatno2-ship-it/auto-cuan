@@ -252,15 +252,16 @@ test('7. replay reports HISTORICAL_STRUCTURE_NOT_CAPTURED for structure-less sto
   }
 });
 
-test('8. replay reports STRUCTURE_PRESENT and a usable plan for real-structured rows', () => {
+test('8. replay reports STRUCTURE_PRESENT and rejects a plan whose RR is below the public minimum', () => {
   const report = replay.replayCandidates({
     candidates: [Object.assign(realDayTradeScored(), { swingLow5: 9250, swingHigh10: 10050, atr14: 120.5 })],
     screener_type: 'DAY_TRADE'
   });
   assert.equal(report.historical_structure_status, 'STRUCTURE_PRESENT');
   assert.equal(report.summary.structural_context_available, 1);
-  assert.equal(report.summary.v2_usable, 1);
-  assert.equal(report.summary.web_telegram_parity_ok, true);
+  assert.equal(report.summary.v2_usable, 0);
+  assert.equal(report.comparisons[0].public_would_use, 'legacy_fallback');
+  assert.ok(report.comparisons[0].trade_plan_v2.warnings.includes(tpv2.WARN.INSUFFICIENT_RR_TO_TP1));
 });
 
 // ===================================================================
@@ -372,4 +373,100 @@ test('15. sample capture never fabricates structure from SL/TP when absent', () 
 test('16. the API surface remains exactly 12 endpoints', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter((f) => f.endsWith('.js'));
   assert.equal(apiFiles.length, 12, 'API endpoint count must stay 12: ' + apiFiles.join(', '));
+});
+
+
+// ===================================================================
+// 17. Confirmed real-VPS replay fixtures for the remaining hierarchy seams
+// ===================================================================
+
+test('17. real-shaped ADHI/AHAP/BLTZ/BSWD/BEEF/BNBR replay fixtures preserve hierarchy and selection validity', () => {
+  const candidates = [
+    {
+      ticker: 'ADHI', entry_low: 162, entry_high: 165, support: 146, major_support: 146,
+      swing_low: 161, resistance: 190, atr14: 6.3571, current_price: 164
+    },
+    {
+      ticker: 'AHAP', entry_low: 96, entry_high: 98, support: 80, major_support: 80,
+      swing_low: 92, resistance: 120, atr14: 6.5714, current_price: 97
+    },
+    {
+      ticker: 'BLTZ', entry_low: 2540, entry_high: 2550, support: 2540,
+      resistance: 2870, atr14: 23.5714, current_price: 2545
+    },
+    {
+      ticker: 'BSWD', entry_low: 1250, entry_high: 1255, support: 1250,
+      resistance: 1375, atr14: 9.2857, current_price: 1252
+    },
+    {
+      ticker: 'BEEF', entry_low: 310, entry_high: 318, major_support: 122,
+      resistance: 400, atr14: 10, current_price: 315
+    },
+    {
+      ticker: 'BNBR', entry_low: 113, entry_high: 116, major_support: 70,
+      resistance: 116, atr14: 8, current_price: 114
+    }
+  ];
+  const report = replay.replayCandidates({ candidates, screener_type: 'DAY_TRADE' });
+  const byTicker = Object.fromEntries(report.comparisons.map((comparison) => [comparison.ticker, comparison]));
+
+  const canonicalFields = [
+    'stop_anchor_type', 'stop_anchor_price', 'emergency_anchor_type',
+    'emergency_anchor_price', 'stop_distance_pct', 'tp1_anchor_type',
+    'tp1_target_r', 'nearest_local_resistance', 'tp2_anchor_type', 'major_resistance'
+  ];
+  for (const comparison of report.comparisons) {
+    for (const field of canonicalFields) {
+      assert.ok(Object.prototype.hasOwnProperty.call(comparison.trade_plan_v2, field), comparison.ticker + ' missing ' + field);
+    }
+  }
+
+  const adhi = byTicker['ADHI'];
+  assert.equal(adhi.trade_plan_v2.stop_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);
+  assert.equal(adhi.trade_plan_v2.stop_anchor_price, 161);
+  assert.equal(adhi.trade_plan_v2.emergency_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(adhi.trade_plan_v2.emergency_anchor_price, 146);
+  assert.equal(adhi.trade_plan_v2.stop_loss, 157);
+  assert.equal(adhi.v2_usable, false, 'ADHI sub-minimum RR must not be publicly usable');
+  assert.equal(adhi.public_would_use, 'legacy_fallback');
+  assert.ok(adhi.trade_plan_v2.warnings.includes(tpv2.WARN.INSUFFICIENT_RR_TO_TP1));
+
+  const ahap = byTicker['AHAP'];
+  assert.equal(ahap.trade_plan_v2.stop_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.CONFIRMED_SWING_LOW);
+  assert.equal(ahap.trade_plan_v2.stop_anchor_price, 92);
+  assert.equal(ahap.trade_plan_v2.emergency_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(ahap.trade_plan_v2.emergency_anchor_price, 80);
+  assert.equal(ahap.trade_plan_v2.stop_loss, 88);
+  assert.equal(ahap.trade_plan_v2.emergency_stop, 73);
+
+  const bltz = byTicker['BLTZ'];
+  assert.equal(bltz.trade_plan_v2.stop_anchor_price, 2540, 'support at entry_zone_low is accepted');
+  assert.ok(bltz.trade_plan_v2.stop_loss < 2540, 'BLTZ stop must be below boundary support');
+  assert.equal(bltz.trade_plan_v2.tp1_anchor_type, 'R_TARGET');
+  assert.ok(bltz.trade_plan_v2.tp1 > 2550 && bltz.trade_plan_v2.tp1 < 2870, 'BLTZ TP1 must be a realistic R target');
+
+  const bswd = byTicker['BSWD'];
+  assert.equal(bswd.trade_plan_v2.stop_anchor_price, 1250, 'support at entry_zone_low is accepted');
+  assert.ok(bswd.trade_plan_v2.stop_loss < 1250, 'BSWD stop must be below boundary support');
+  assert.equal(bswd.trade_plan_v2.tp1_anchor_type, 'R_TARGET');
+  assert.ok(bswd.trade_plan_v2.tp1 > 1255 && bswd.trade_plan_v2.tp1 < 1375, 'BSWD TP1 must be a realistic R target');
+
+  const beef = byTicker['BEEF'];
+  assert.equal(beef.v2_status, tpv2.STATUS.REJECTED);
+  assert.equal(beef.trade_plan_v2.reject_reason, tpv2.WARN.NO_STRUCTURAL_LEVEL);
+  assert.equal(beef.trade_plan_v2.stop_anchor_price, null);
+  assert.equal(beef.trade_plan_v2.emergency_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(beef.trade_plan_v2.emergency_anchor_price, 122);
+  assert.ok(beef.trade_plan_v2.emergency_stop < 122);
+  assert.equal(beef.public_would_use, 'legacy_fallback');
+
+  const bnbr = byTicker['BNBR'];
+  assert.equal(bnbr.v2_status, tpv2.STATUS.REJECTED);
+  assert.equal(bnbr.trade_plan_v2.reject_reason, tpv2.WARN.NO_STRUCTURAL_LEVEL);
+  assert.equal(bnbr.trade_plan_v2.resistance, null, 'resistance inside entry zone must be ignored');
+  assert.equal(bnbr.trade_plan_v2.tp1, null, 'inside-zone resistance must not create TP1');
+  assert.equal(bnbr.trade_plan_v2.emergency_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(bnbr.trade_plan_v2.emergency_anchor_price, 70);
+  assert.ok(bnbr.trade_plan_v2.emergency_stop < 70);
+  assert.equal(bnbr.public_would_use, 'legacy_fallback');
 });

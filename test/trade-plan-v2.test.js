@@ -107,14 +107,17 @@ test('11. an active nearby demand-gap invalidation can become the normal anchor'
   assert.equal(plan.emergency_anchor_price, 950);
 });
 
-test('12. stale, failed, unconfirmed, and equal/above-entry anchors are rejected', () => {
+test('12. stale, failed, and unconfirmed anchors are rejected but entry-boundary support is valid', () => {
   const plan = tp.buildTradePlanV2(cleanCandidate({
     entry_low: 1000, entry_high: 1010,
     local_support: [{ price: 995, stale: true }, { price: 1000 }, { price: 990, failed: true }, { price: 985, confirmed: false }],
     support: 960, swing_low: null, resistance: 1100, atr14: 10
   }), { screener_type: 'DAY_TRADE' });
-  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
-  assert.equal(plan.stop_anchor_price, 960);
+  assert.equal(plan.stop_anchor_type, tp.SUPPORT_ANCHOR_TYPE.LOCAL_SUPPORT);
+  assert.equal(plan.stop_anchor_price, 1000);
+  assert.ok(plan.stop_loss < 1000);
+  assert.equal(plan.emergency_anchor_type, tp.SUPPORT_ANCHOR_TYPE.MAJOR_SUPPORT);
+  assert.equal(plan.emergency_anchor_price, 960);
 });
 
 // ===================================================================
@@ -452,4 +455,22 @@ test('29. the canonical object always exposes the full documented schema', () =>
   for (const f of required) assert.ok(f in plan, 'missing canonical field ' + f);
   assert.equal(plan.generated_at, '2026-07-22T09:00:00Z');
   assert.equal(plan.screener_type, 'DAY_TRADE');
+});
+
+
+
+test('30. support at entry_zone_low is valid but support above the zone is not', () => {
+  const boundary = tp.buildTradePlanV2(cleanCandidate({
+    entry_low: 1000, entry_high: 1010, support: null, swing_low: null,
+    local_support: 1000, resistance: 1100, atr14: 10
+  }), { screener_type: 'DAY_TRADE' });
+  assert.equal(boundary.stop_anchor_price, 1000);
+  assert.ok(boundary.stop_loss < 1000);
+
+  const above = tp.buildTradePlanV2(cleanCandidate({
+    entry_low: 1000, entry_high: 1010, support: null, swing_low: null,
+    local_support: 1005, resistance: 1100, atr14: 10
+  }), { screener_type: 'DAY_TRADE' });
+  assert.equal(above.status, tp.STATUS.REJECTED);
+  assert.equal(above.reject_reason, tp.WARN.NO_STRUCTURAL_LEVEL);
 });
