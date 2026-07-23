@@ -4,11 +4,17 @@
  * Intraday Plan-Lock tests
  * ========================
  *
- * Verifies the intraday system locks the SELECTED canonical plan (V2 when usable,
- * legacy fallback otherwise), that observations never change the locked numbers,
- * that the deterministic plan_lock_id is stable across re-observation but changes
- * for a genuinely new screener snapshot, and that progress monitoring reads the
- * locked plan.
+ * Verifies the intraday sample collector locks the SELECTED canonical plan using
+ * the DECOUPLED 'intraday_shadow' selection context: V2 when the dedicated
+ * intraday-lock flag + shadow flag are on AND the V2 plan is usable, and the
+ * complete legacy fallback otherwise. Also verifies observations never change the
+ * locked numbers, that the deterministic plan_lock_id is stable across
+ * re-observation but changes for a genuinely new screener snapshot, and that
+ * progress monitoring reads the locked plan.
+ *
+ * The internal intraday plan-lock is governed ONLY by
+ * TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED (+ TRADE_PLAN_V2_SHADOW_ENABLED); the public
+ * flag TRADE_PLAN_V2_PUBLIC_ENABLED never affects it.
  */
 
 const test = require('node:test');
@@ -18,7 +24,8 @@ const integration = require('../lib/trade-plan-v2-integration');
 const collector = require('../tools/intraday-sample-collector');
 const monitor = require('../lib/top5-progress-monitor');
 
-const PUB = { TRADE_PLAN_V2_PUBLIC_ENABLED: 'true' };
+// Intraday-lock context: the collector's real VPS env (public V2 stays OFF).
+const LOCK = { TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED: 'true', TRADE_PLAN_V2_SHADOW_ENABLED: 'true' };
 const OFF = {};
 
 function usableResult(extra) {
@@ -39,8 +46,8 @@ function legacyOnlyResult(extra) {
   }, extra || {});
 }
 
-test('5. intraday sample stores the selected V2 plan and source (public flag on)', () => {
-  const rec = collector.buildCandidateRecord(usableResult(), '09:15', 1, null, '2026-07-23', PUB);
+test('5. intraday sample stores the selected V2 plan and source (intraday lock on)', () => {
+  const rec = collector.buildCandidateRecord(usableResult(), '09:15', 1, null, '2026-07-23', LOCK);
   assert.equal(rec.trade_plan_source, 'trade_plan_v2');
   const p = rec.selected_trade_plan;
   assert.ok(p, 'selected_trade_plan must be persisted');
@@ -56,8 +63,8 @@ test('5. intraday sample stores the selected V2 plan and source (public flag on)
   assert.ok(rec.plan_lock_id && /^tplock_/.test(rec.plan_lock_id));
 });
 
-test('6. intraday sample stores legacy fallback when V2 is rejected (public flag on)', () => {
-  const rec = collector.buildCandidateRecord(legacyOnlyResult(), '09:15', 1, null, '2026-07-23', PUB);
+test('6. intraday sample stores legacy fallback when V2 is rejected (intraday lock on)', () => {
+  const rec = collector.buildCandidateRecord(legacyOnlyResult(), '09:15', 1, null, '2026-07-23', LOCK);
   assert.equal(rec.trade_plan_source, 'legacy_fallback');
   const p = rec.selected_trade_plan;
   assert.equal(p.stop_loss, 95);
@@ -70,7 +77,7 @@ test('6. intraday sample stores legacy fallback when V2 is rejected (public flag
 
 test('7. intraday observations do not change the locked entry, SL, emergency SL, TP1, TP2', () => {
   const result = usableResult();
-  const rec = collector.buildCandidateRecord(result, '09:15', 1, null, '2026-07-23', PUB);
+  const rec = collector.buildCandidateRecord(result, '09:15', 1, null, '2026-07-23', LOCK);
   const locked = JSON.parse(JSON.stringify(rec.selected_trade_plan));
   // Simulate observations at several very different intraday prices. Progress is
   // evaluated against the locked plan; it must NEVER rewrite the locked numbers.
@@ -87,25 +94,27 @@ test('7. intraday observations do not change the locked entry, SL, emergency SL,
 
 test('8. a later observation keeps the same plan-lock identifier', () => {
   const result = usableResult();
-  const a = collector.buildCandidateRecord(result, '09:15', 1, null, '2026-07-23', PUB);
+  const a = collector.buildCandidateRecord(result, '09:15', 1, null, '2026-07-23', LOCK);
   // A later run of the SAME screener snapshot (same numbers, same date).
-  const b = collector.buildCandidateRecord(usableResult(), '15:45', 5, null, '2026-07-23', PUB);
+  const b = collector.buildCandidateRecord(usableResult(), '15:45', 5, null, '2026-07-23', LOCK);
   assert.equal(a.plan_lock_id, b.plan_lock_id, 'the lock id must be stable across observations');
+  // The locked numbers are identical too.
+  assert.deepEqual(a.selected_trade_plan, b.selected_trade_plan);
 });
 
 test('9. a new screener snapshot may intentionally produce a new lock identifier', () => {
-  const a = collector.buildCandidateRecord(usableResult(), '09:15', 1, null, '2026-07-23', PUB);
+  const a = collector.buildCandidateRecord(usableResult(), '09:15', 1, null, '2026-07-23', LOCK);
   // New snapshot: the plan structure changed (a different confirmed swing low
   // yields a different SL) — the lock id MUST change.
-  const b = collector.buildCandidateRecord(usableResult({ swing_low: 9100, support: 9150 }), '09:15', 1, null, '2026-07-23', PUB);
+  const b = collector.buildCandidateRecord(usableResult({ swing_low: 9100, support: 9150 }), '09:15', 1, null, '2026-07-23', LOCK);
   assert.notEqual(a.plan_lock_id, b.plan_lock_id, 'a changed plan must produce a new lock id');
   // A different trading date is also a new snapshot.
-  const c = collector.buildCandidateRecord(usableResult(), '09:15', 1, null, '2026-07-24', PUB);
+  const c = collector.buildCandidateRecord(usableResult(), '09:15', 1, null, '2026-07-24', LOCK);
   assert.notEqual(a.plan_lock_id, c.plan_lock_id, 'a new trading date must produce a new lock id');
 });
 
 test('10. progress monitoring reads the locked selected plan (not the raw row fields)', () => {
-  const rec = collector.buildCandidateRecord(usableResult(), '09:15', 1, null, '2026-07-23', PUB);
+  const rec = collector.buildCandidateRecord(usableResult(), '09:15', 1, null, '2026-07-23', LOCK);
   // Raw row carries DIFFERENT tp1/sl; the locked plan must win.
   const row = {
     ticker: 'BBCA', latest_price: 9860,
@@ -122,7 +131,7 @@ test('10. progress monitoring reads the locked selected plan (not the raw row fi
   assert.equal(progress.tp1_hit, true);
 });
 
-test('bonus: intraday collector default env (public flag off) locks the legacy plan', () => {
+test('bonus: intraday collector default env (intraday lock off) locks the legacy plan', () => {
   const rec = collector.buildCandidateRecord(usableResult(), '09:15', 1, null, '2026-07-23', OFF);
   assert.equal(rec.trade_plan_source, 'legacy');
   assert.equal(rec.selected_trade_plan.stop_loss, 9200); // unchanged legacy SL

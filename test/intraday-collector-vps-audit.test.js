@@ -107,3 +107,38 @@ test('18b. the generated runner + fresh crontab pass a full audit together', () 
   // The cleanup line targets 16:10 WIB.
   assert.ok(cron.indexOf('10 16 * * *') >= 0, 'cleanup must be scheduled at 16:10');
 });
+
+test('18c. collector audit detects a MISSING intraday-lock flag', () => {
+  const runner = audit.buildRunnerScript();
+  const broken = runner.replace('export TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED=true\n', '');
+  const r = audit.auditRunnerScript(broken, { exists: true, executable: true });
+  assert.equal(r.ok, false);
+  assert.equal(r.intraday_lock_enabled, false);
+  assert.ok(r.missing_flags.indexOf('TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED') >= 0);
+  assert.ok(r.issues.some((i) => /TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED/.test(i)));
+});
+
+test('18d. collector audit detects a FALSE intraday-lock flag', () => {
+  const runner = audit.buildRunnerScript().replace(
+    'export TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED=true',
+    'export TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED=false');
+  const r = audit.auditRunnerScript(runner, { exists: true, executable: true });
+  assert.equal(r.ok, false);
+  assert.equal(r.intraday_lock_enabled, false);
+  assert.ok(r.wrong_flags.some((w) => /TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED/.test(w)));
+});
+
+test('18e. the generated runner includes TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED=true while public V2 stays off', () => {
+  const runner = audit.buildRunnerScript();
+  assert.ok(runner.indexOf('export TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED=true') >= 0,
+    'runner must export the intraday-lock flag as true');
+  // Public V2 and the other safety flags are unchanged.
+  assert.ok(runner.indexOf('export TRADE_PLAN_V2_PUBLIC_ENABLED=false') >= 0);
+  assert.ok(runner.indexOf('export TRADE_PLAN_V2_SHADOW_ENABLED=true') >= 0);
+  assert.ok(runner.indexOf('export TRADE_PLAN_V2_LIQUIDITY_SWEEP_SHADOW_ENABLED=true') >= 0);
+  assert.ok(runner.indexOf('export TELEGRAM_ENABLED=0') >= 0);
+  const r = audit.auditRunnerScript(runner, { exists: true, executable: true });
+  assert.equal(r.intraday_lock_enabled, true);
+  assert.equal(r.public_disabled, true);
+  assert.equal(r.ok, true);
+});

@@ -44,8 +44,10 @@ const engine = require('../lib/daytrade-screener-engine');
 const lifecycle = require('../lib/intraday-sample-lifecycle');
 const summary = require('../lib/intraday-sample-summary');
 // Canonical trade-plan selector + deterministic plan-lock. Pure/deterministic:
-// no Supabase, no Telegram, no wall-clock, no mutation. Honours the public flag
-// (default OFF => the locked plan is the unchanged legacy plan).
+// no Supabase, no Telegram, no wall-clock, no mutation. Uses the decoupled
+// 'intraday_shadow' selection context governed by TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED
+// + TRADE_PLAN_V2_SHADOW_ENABLED (default OFF => the locked plan is the unchanged
+// legacy plan); the public flag never affects intraday locking.
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 
 
@@ -509,18 +511,23 @@ function buildCandidateRecord(result, scheduledTime, rank, freshness, sampleDate
   result = result || {};
   // LOCKED canonical trade plan for this intraday candidate. The intraday system
   // must observe against the ALREADY-SELECTED plan — it never recomputes SL / TP
-  // from intraday candles. The selector honours TRADE_PLAN_V2_PUBLIC_ENABLED:
-  //   - flag off (default, and the experimental collector's env) => the unchanged
-  //     legacy plan is locked (source 'legacy');
-  //   - flag on + usable V2 => the V2 plan is locked (source 'trade_plan_v2');
-  //   - flag on + rejected/stale/unsafe V2 => the complete legacy plan is locked
-  //     (source 'legacy_fallback') — never a null SL/TP.
+  // from intraday candles. Selection uses the 'intraday_shadow' context, which is
+  // DECOUPLED from the public website / Telegram rollout:
+  //   - TRADE_PLAN_V2_INTRADAY_LOCK_ENABLED + TRADE_PLAN_V2_SHADOW_ENABLED both on
+  //     and V2 usable => the validated V2 plan is locked (source 'trade_plan_v2');
+  //   - both on but V2 rejected/stale/unsafe/missing/below-min-RR => the complete
+  //     legacy plan is locked (source 'legacy_fallback') — never a null SL/TP;
+  //   - intraday-lock flag off (default) => the unchanged legacy plan is locked
+  //     (source 'legacy').
+  // The public flag (TRADE_PLAN_V2_PUBLIC_ENABLED) NEVER affects this selection,
+  // so locking V2 internally can never enable any public web / Telegram V2 output.
   // The plan_lock_id is deterministic from the screener snapshot identity, so a
   // later observation that merely re-runs keeps the SAME id and can never silently
   // switch between legacy and V2 for the same snapshot.
   const selectedPlan = tradePlanV2Integration.buildLockedTradePlan(result, {
     screener_type: 'DAY_TRADE',
     env: env || process.env,
+    selection_mode: 'intraday_shadow',
     trading_date: (sampleDate === undefined || sampleDate === null || sampleDate === '') ? SAMPLE_DATE : sampleDate,
     generated_at: result.generated_at != null ? result.generated_at : null
   });

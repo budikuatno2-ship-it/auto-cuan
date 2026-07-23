@@ -108,6 +108,10 @@ function buildReport(mode) {
     log_path_writable: logWritable,
     cannot_send_telegram: runnerAudit.telegram_disabled,
     cannot_mutate_scoring_or_supabase: runnerAudit.mutation_disabled && runnerAudit.score_disabled,
+    // Decoupled rollout: the internal intraday plan-lock is enabled while public
+    // website / Telegram V2 stays disabled. Both are verified independently.
+    intraday_lock_enabled: runnerAudit.intraday_lock_enabled,
+    public_v2_disabled: runnerAudit.public_disabled,
     ok: ok
   };
 }
