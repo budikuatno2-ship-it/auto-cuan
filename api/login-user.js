@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret } = require('../lib/admin-session');
-const { requireUserSession, requireNonBlockedUser } = require('../lib/subscription-auth');
+const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret, createOnboardingSessionToken, buildOnboardingCookie, buildClearOnboardingCookie, isSameOrigin } = require('../lib/admin-session');
+const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser } = require('../lib/subscription-auth');
 const identity = require('../lib/subscription-identity');
 const { resolveEntitlements } = require('../lib/entitlements');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
@@ -88,9 +88,8 @@ async function subscriptionDb() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 function safeRequestId(prefix) { return prefix + '_' + crypto.randomBytes(16).toString('base64url'); }
-async function subscriptionAccount(req, db) {
-  return requireNonBlockedUser(req, db);
-}
+async function subscriptionAccount(req, db) { return requireSubscriptionOnboardingUser(req, db); }
+function isUuid(value) { return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value); }
 async function handleSubscriptionTelegramWebhook(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const expected = process.env.TELEGRAM_SUBSCRIPTION_WEBHOOK_SECRET;
@@ -101,19 +100,43 @@ async function handleSubscriptionTelegramWebhook(req, res) {
   if (body.length > MAX_WEBHOOK_BODY_BYTES || !Number.isSafeInteger(update.update_id)) return res.status(200).json({ ok: true });
   const message = update.message || {}, from = message.from || {}, chat = message.chat || {};
   if (chat.type !== 'private' || !Number.isSafeInteger(from.id) || !Number.isSafeInteger(chat.id) || typeof message.text !== 'string') return res.status(200).json({ ok: true });
-  const match = /^\/start\s+([A-Za-z0-9_-]{20,200})$/.exec(message.text.trim());
+  const text = message.text.trim(); const match = /^\/start\s+([A-Za-z0-9_-]{20,200})$/.exec(text);
+  const db = await subscriptionDb(); if (!db) return res.status(200).json({ ok: true });
+  if (/^\/trial(?:@\w+)?$/i.test(text)) {
+    // Telegram sender identity is read only from this authenticated private update.
+    const link=await db.from('telegram_subscription_links').select('user_id').eq('telegram_user_id',from.id).eq('link_state','linked').maybeSingle();
+    if (!link.error && link.data) { try { await db.rpc('activate_subscription_trial',{p_user_id:link.data.user_id,p_activation_idempotency_key:crypto.createHash('sha256').update('telegram-update:'+update.update_id).digest('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12}).*/, '$1-$2-$3-$4-$5'),p_activation_time:new Date().toISOString()}); } catch (_) {} }
+    return res.status(200).json({ok:true});
+  }
   if (!match) return res.status(200).json({ ok: true });
   let tokenHash; try { tokenHash = identity.linkTokenHash(match[1]); } catch (_) { return res.status(200).json({ ok: true }); }
-  const db = await subscriptionDb(); if (!db) return res.status(200).json({ ok: true });
   try { await db.rpc('consume_subscription_telegram_link', { p_token_hash: tokenHash, p_telegram_user_id: from.id, p_chat_id: chat.id, p_update_id: update.update_id }); } catch (_) { /* generic ack only */ }
   return res.status(200).json({ ok: true });
+}
+async function subscriptionLinkStatus(db, userId) {
+  const r=await db.from('telegram_subscription_links').select('link_state').eq('user_id',userId).maybeSingle();
+  return !r.error && !!r.data && r.data.link_state === 'linked';
 }
 async function handleSubscriptionAction(req, res, action) {
   const db = await subscriptionDb(); if (!db) return res.status(503).json({ success:false, error:'Layanan akun tidak tersedia.' });
   const auth = await subscriptionAccount(req, db); if (!auth.ok) return res.status(auth.status).json({ success:false, error:auth.error });
   const account = auth.account;
+  if (action === 'subscription-telegram-link-status') return res.status(200).json({success:true,linked:await subscriptionLinkStatus(db,account.id)});
   if (action === 'subscription-telegram-link-token-create') { let token,hash; try { token=identity.createLinkToken();hash=identity.linkTokenHash(token); } catch (_) { return res.status(503).json({success:false,error:'Tautan Telegram tidak tersedia.'}); } const requestId=safeRequestId('telegram'); const issued=await db.rpc('issue_subscription_telegram_link_token',{p_user_id:account.id,p_token_hash:hash,p_request_id:requestId,p_expires_at:new Date(Date.now()+identity.LINK_TTL_MS).toISOString()}); if(issued.error)return res.status(503).json({success:false,error:'Tautan Telegram tidak tersedia.'}); if(issued.data==='rate_limited') return res.status(429).json({success:false,error:'Tunggu sebentar sebelum membuat tautan baru.'}); const bot=String(process.env.TELEGRAM_SUBSCRIPTION_BOT_USERNAME||'').replace(/^@/,''); return res.status(200).json({success:true,telegram_link:bot?'https://t.me/'+encodeURIComponent(bot)+'?start='+token:token}); }
-  return null;
+  const rows=await db.from('user_entitlements').select('source,status,starts_at,expires_at,lifetime').eq('user_id',account.id);
+  const entitlement=await resolveEntitlements(auth.user,account,db);
+  const trial=(rows.data||[]).filter(r=>r.source==='trial')[0]; const linked=await subscriptionLinkStatus(db,account.id);
+  if(action==='subscription-trial-status') return res.status(200).json({success:true,available:auth.user.username==='budi'?false:!trial,consumed:!!trial,active:entitlement.trial_state==='active',starts_at:trial&&trial.starts_at||null,expires_at:trial&&trial.expires_at||null,duration_days:10,telegram_link_required:!linked,account_approval_state:account.is_approved===true?'approved':'pending',admin:auth.user.username==='budi'});
+  if(action==='subscription-trial-activate') {
+    if(!isSameOrigin(req)) return res.status(403).json({success:false,error:'Permintaan ditolak.'});
+    const id=req.body&&req.body.idempotency_key; if(!isUuid(id)) return res.status(400).json({success:false,error:'Permintaan tidak valid.'});
+    if(!linked) return res.status(409).json({success:false,error:'Hubungkan Telegram terlebih dahulu.'});
+    const activated=await db.rpc('activate_subscription_trial',{p_user_id:account.id,p_activation_idempotency_key:id,p_activation_time:new Date().toISOString()});
+    if(activated.error || !activated.data) return res.status(409).json({success:false,error:'Trial tidak dapat diaktifkan.'});
+    if(auth.onboarding) res.setHeader('Set-Cookie',buildClearOnboardingCookie());
+    return res.status(200).json({success:true,active:activated.data.active===true,starts_at:activated.data.starts_at,expires_at:activated.data.expires_at,duration_days:10,normal_login_required:auth.onboarding===true});
+  }
+  return res.status(400).json({success:false,error:'Aksi tidak valid.'});
 }
 
 const LEGACY_BUDI_PASSWORD_HASH = crypto
@@ -176,7 +199,7 @@ module.exports = async function handler(req, res) {
     const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
 
     const subscriptionAction = (req.query && req.query.action) || action;
-    if (/^subscription-(telegram-link-token-create|telegram-link-status)$/.test(subscriptionAction || '')) {
+    if (/^subscription-(telegram-link-token-create|telegram-link-status|trial-status|trial-activate)$/.test(subscriptionAction || '')) {
       return await handleSubscriptionAction(req, res, subscriptionAction);
     }
 
@@ -228,7 +251,7 @@ module.exports = async function handler(req, res) {
 
     // === LOGOUT === (explicit; does not require a valid token or DB access)
     if (action === 'logout') {
-      res.setHeader('Set-Cookie', buildClearCookie());
+      res.setHeader('Set-Cookie', [buildClearCookie(), buildClearOnboardingCookie()]);
       return res.status(200).json({ success: true });
     }
 
@@ -354,6 +377,8 @@ module.exports = async function handler(req, res) {
       } catch (e) {
         console.error('login-user: pending challenge issuance failed');
       }
+      const onboardingToken = createOnboardingSessionToken({ userId:user.id, username:usernameLower });
+      if (onboardingToken) { res.setHeader('Set-Cookie', buildOnboardingCookie(onboardingToken)); pendingResponse.onboarding = true; }
       return res.status(403).json(pendingResponse);
     }
 

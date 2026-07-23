@@ -160,7 +160,7 @@ BEGIN
  UPDATE public.telegram_subscription_link_tokens SET used_at=now() WHERE id=t.id;
  INSERT INTO public.telegram_subscription_links(user_id,telegram_user_id,telegram_private_chat_id,link_state,linked_at,updated_at) VALUES(t.user_id,p_telegram_user_id,p_chat_id,'linked',now(),now())
  ON CONFLICT(user_id) DO UPDATE SET telegram_user_id=EXCLUDED.telegram_user_id,telegram_private_chat_id=EXCLUDED.telegram_private_chat_id,link_state='linked',linked_at=now(),unlinked_at=NULL,updated_at=now();
- INSERT INTO public.subscription_events(user_id,event_type,metadata) VALUES(t.user_id,'subscription_telegram_linked',jsonb_build_object('telegram_user_id',p_telegram_user_id));
+ INSERT INTO public.subscription_events(user_id,event_type,metadata) VALUES(t.user_id,'subscription_telegram_linked',jsonb_build_object('result_code','linked'));
  RETURN 'linked';
 END $$;
 REVOKE ALL ON FUNCTION public.consume_subscription_telegram_link(text,bigint,bigint,bigint) FROM PUBLIC, anon, authenticated;
@@ -183,3 +183,30 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.issue_subscription_telegram_link_token(uuid,text,text,timestamptz) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.issue_subscription_telegram_link_token(uuid,text,text,timestamptz) TO service_role;
+
+-- Phase 5A: explicit trial activation only.  Ten days is an elapsed 240-hour
+-- interval; this RPC is service-role-only and performs every state change atomically.
+CREATE OR REPLACE FUNCTION public.activate_subscription_trial(p_user_id uuid, p_activation_idempotency_key uuid, p_activation_time timestamptz)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE u public.app_users%ROWTYPE; l public.telegram_subscription_links%ROWTYPE; e public.user_entitlements%ROWTYPE; v_start timestamptz; v_expiry timestamptz;
+BEGIN
+ IF p_user_id IS NULL OR p_activation_idempotency_key IS NULL OR p_activation_time IS NULL OR p_activation_time > now()+interval '5 minutes' OR p_activation_time < now()-interval '5 minutes' THEN RAISE EXCEPTION 'invalid activation'; END IF;
+ SELECT * INTO e FROM public.user_entitlements WHERE activation_idempotency_key=p_activation_idempotency_key FOR UPDATE;
+ IF FOUND THEN IF e.user_id<>p_user_id THEN RAISE EXCEPTION 'activation rejected'; END IF; RETURN jsonb_build_object('active',e.status='active' AND e.starts_at<=now() AND now()<e.expires_at,'starts_at',e.starts_at,'expires_at',e.expires_at); END IF;
+ SELECT * INTO u FROM public.app_users WHERE id=p_user_id FOR UPDATE;
+ IF NOT FOUND OR u.is_blocked THEN RAISE EXCEPTION 'activation rejected'; END IF;
+ IF lower(btrim(u.username))='budi' THEN RETURN jsonb_build_object('active',true,'admin',true); END IF;
+ INSERT INTO public.subscription_events(user_id,event_type,metadata) VALUES(u.id,'subscription_trial_activation_requested',jsonb_build_object('request_id',p_activation_idempotency_key::text,'source_channel','api')) ;
+ SELECT * INTO l FROM public.telegram_subscription_links WHERE user_id=u.id AND link_state='linked' FOR UPDATE;
+ IF NOT FOUND OR l.telegram_user_id IS NULL THEN RAISE EXCEPTION 'telegram required'; END IF;
+ -- Lock the permanent Telegram reservation; unique constraints make concurrent abuse fail closed.
+ IF EXISTS (SELECT 1 FROM public.user_entitlements WHERE user_id=u.id AND source='trial' FOR UPDATE) THEN RAISE EXCEPTION 'trial consumed'; END IF;
+ v_start:=p_activation_time; v_expiry:=v_start + interval '10 days';
+ INSERT INTO public.user_entitlements(user_id,source,status,starts_at,expires_at,lifetime,activation_idempotency_key) VALUES(u.id,'trial','active',v_start,v_expiry,false,p_activation_idempotency_key) RETURNING * INTO e;
+ INSERT INTO public.subscription_trial_telegram_users(telegram_user_id,entitlement_id) VALUES(l.telegram_user_id,e.id);
+ INSERT INTO public.subscription_events(user_id,entitlement_id,event_type,metadata) VALUES(u.id,e.id,'subscription_trial_activated',jsonb_build_object('duration_days',10,'starts_at',v_start,'expires_at',v_expiry));
+ IF u.is_approved=false THEN UPDATE public.app_users SET is_approved=true WHERE id=u.id; INSERT INTO public.subscription_events(user_id,entitlement_id,event_type,metadata) VALUES(u.id,e.id,'account_auto_approved_by_trial',jsonb_build_object('previous_approval_state','pending','new_approval_state','approved')); END IF;
+ RETURN jsonb_build_object('active',true,'starts_at',v_start,'expires_at',v_expiry);
+END $$;
+REVOKE ALL ON FUNCTION public.activate_subscription_trial(uuid,uuid,timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.activate_subscription_trial(uuid,uuid,timestamptz) TO service_role;
