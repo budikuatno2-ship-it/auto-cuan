@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret } = require('../lib/admin-session');
+const { requireUserSession } = require('../lib/subscription-auth');
+const { getEntitlements } = require('../lib/entitlements');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
@@ -133,6 +135,31 @@ module.exports = async function handler(req, res) {
 
   try {
     const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
+
+    // Read-only Phase 1 entitlement endpoint. The identity comes only from the
+    // signed HttpOnly session; request headers and body claims are ignored.
+    if ((req.query && req.query.action === 'subscription-status') || action === 'subscription-status') {
+      const auth = requireUserSession(req);
+      if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.error });
+
+      const SUPABASE_URL = process.env.SUPABASE_URL;
+      const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ success: false, error: 'Status akun tidak tersedia.' });
+      const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { data: account, error } = await supabase.from('app_users')
+        .select('id, username, is_blocked, is_approved')
+        .eq('id', auth.user.id)
+        .maybeSingle();
+      if (error || !account || String(account.username || '').trim().toLowerCase() !== auth.user.username) {
+        return res.status(401).json({ success: false, error: 'Sesi tidak valid.' });
+      }
+      const entitlement = getEntitlements(auth.user, account);
+      return res.status(200).json({
+        success: true,
+        account: { username: account.username, approved: account.is_approved === true, blocked: account.is_blocked === true },
+        entitlement: entitlement
+      });
+    }
 
     // === LOGOUT === (explicit; does not require a valid token or DB access)
     if (action === 'logout') {

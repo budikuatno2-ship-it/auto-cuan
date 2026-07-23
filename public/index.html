@@ -2000,6 +2000,15 @@ function isLoggedInUser() { return getUsername() !== 'guest' && localStorage.get
 function getAuthHeaders() { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; }
 function getDashboardAuthHeaders() { return getAuthHeaders(); }
 function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
+// Display-only compatibility cache. Server-side subscription code never reads
+// this value; the signed HttpOnly cookie remains the sole authority.
+async function refreshSubscriptionStatus() {
+    try {
+        var response = await fetch('/api/login-user?action=subscription-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'subscription-status' }) });
+        var data = await response.json();
+        if (data && data.success && data.entitlement) localStorage.setItem('autocuan_subscription_status', JSON.stringify(data.entitlement));
+    } catch (e) { /* Non-authoritative UI enhancement only. */ }
+}
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
 // Logged-in approved: unlimited (controlled by admin approval)
@@ -2487,6 +2496,7 @@ async function doLogin() {
             localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString());
             if (data.userId) { localStorage.setItem('autocuan_user_id', data.userId); }
             if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
+            refreshSubscriptionStatus();
             logLogin(data.username, false, isAdminUser); closeLoginModal(); closeAuthChoiceModal(); enterApp({ replaceHistory: true });
         } else if (data.approval_status === 'pending' && /^AC-[A-F0-9]{6}$/.test(String(data.approval_code || ''))) {
             // Correct password, but the account is still awaiting admin approval.
