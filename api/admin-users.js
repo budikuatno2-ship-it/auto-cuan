@@ -7,6 +7,7 @@ const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const { computeTelegramAnalytics } = require('../lib/telegram-analytics');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const { validatePriceInput, safePrice } = require('../lib/subscription-catalog');
+const { isSubscriptionFeatureEnabled, getSubscriptionCapability } = require('../lib/subscription-capability');
 
 const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
 
@@ -78,6 +79,9 @@ module.exports = async function handler(req, res) {
     // Catalog authority is intentionally narrower than legacy admin actions:
     // the protected budi identity must be present in the signed session.
     const catalogActions = ['subscription_plan_list', 'subscription_plan_price_preview', 'subscription_plan_price_publish', 'subscription_plan_promo_enable', 'subscription_plan_promo_disable', 'subscription_plan_price_history'];
+    if (catalogActions.indexOf(action) >= 0 && !isSubscriptionFeatureEnabled()) {
+      return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
+    }
     if (catalogActions.indexOf(action) >= 0 && String(auth.session.un || '').toLowerCase() !== 'budi') {
       return res.status(403).json({ success: false, error: 'Akses katalog ditolak.' });
     }
@@ -92,6 +96,11 @@ module.exports = async function handler(req, res) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
+
+    if (catalogActions.indexOf(action) >= 0) {
+      const capability = await getSubscriptionCapability(supabase);
+      if (!capability.ready) return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
+    }
 
     if (action === 'subscription_plan_list' || action === 'subscription_plan_price_history') {
       const planCode = req.body && typeof req.body.plan_code === 'string' ? req.body.plan_code.trim() : null;

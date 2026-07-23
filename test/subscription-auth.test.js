@@ -51,12 +51,12 @@ function loadHandler(createClient) {
 }
 function response() { return { statusCode: null, body: null, status(n) { this.statusCode = n; return this; }, json(o) { this.body = o; return this; } }; }
 function clientFor(account, capture) {
-  return function () { return { from() { return { select() { return this; }, eq(field, value) { capture.eq = [field, value]; return this; }, maybeSingle() { return Promise.resolve({ data: account, error: null }); } }; } }; };
+  return function () { return { from() { return { select() { return this; }, eq(field, value) { capture.eq = [field, value]; return this; }, maybeSingle() { return Promise.resolve({ data: account, error: null }); }, limit() { return Promise.resolve({ data: [], error: null }); } }; } }; };
 }
 
 test('subscription-status uses the signed identity and returns safe fields only', async () => {
-  const oldSecret = process.env.SESSION_SECRET, oldUrl = process.env.SUPABASE_URL, oldKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  process.env.SESSION_SECRET = 'phase-1-test-secret'; process.env.SUPABASE_URL = 'https://example.test'; process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-secret';
+  const oldSecret = process.env.SESSION_SECRET, oldUrl = process.env.SUPABASE_URL, oldKey = process.env.SUPABASE_SERVICE_ROLE_KEY, oldFeature = process.env.SUBSCRIPTION_FEATURE_ENABLED;
+  process.env.SUBSCRIPTION_FEATURE_ENABLED = 'true'; process.env.SESSION_SECRET = 'phase-1-test-secret'; process.env.SUPABASE_URL = 'https://example.test'; process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-secret';
   try {
     const capture = {};
     const handler = loadHandler(clientFor({ id: 'user-a', username: 'alice', is_blocked: false, is_approved: true, password_hash: 'must-not-leak', telegram_user_id: 'must-not-leak' }, capture));
@@ -73,6 +73,7 @@ test('subscription-status uses the signed identity and returns safe fields only'
     if (oldSecret === undefined) delete process.env.SESSION_SECRET; else process.env.SESSION_SECRET = oldSecret;
     if (oldUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = oldUrl;
     if (oldKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = oldKey;
+    if (oldFeature === undefined) delete process.env.SUBSCRIPTION_FEATURE_ENABLED; else process.env.SUBSCRIPTION_FEATURE_ENABLED = oldFeature;
   }
 });
 

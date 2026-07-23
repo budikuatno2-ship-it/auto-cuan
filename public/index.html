@@ -942,7 +942,7 @@
 
 <!-- ===== PAGE: DASHBOARD HOME ===== -->
 <div id="page-dashboard" class="page-content flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
-    <section class="dashboard-card p-4 mb-4" aria-label="Identitas langganan"><h2 class="font-black text-white">Identitas Langganan</h2><p id="subscriptionIdentityStatus" class="text-sm text-gray-400 mt-1">Fitur langganan sedang disiapkan.</p><div class="flex flex-wrap gap-2 mt-3"><button id="subscriptionTelegramLink" class="nav-btn" disabled aria-disabled="true">Hubungkan Telegram</button><button id="subscriptionTrialActivate" class="nav-btn hidden" disabled aria-disabled="true">Mulai Trial 10 Hari</button></div><p id="subscriptionTrialStatus" class="text-xs text-gray-500 mt-3">Kontrol trial dan Telegram akan tersedia setelah konfigurasi langganan siap.</p></section>
+    <section id="subscriptionIdentityCard" class="hidden dashboard-card p-4 mb-4" aria-label="Identitas langganan" hidden><h2 class="font-black text-white">Identitas Langganan</h2><p id="subscriptionIdentityStatus" class="text-sm text-gray-400 mt-1">Fitur langganan sedang disiapkan.</p><div class="flex flex-wrap gap-2 mt-3"><button id="subscriptionTelegramLink" class="nav-btn" disabled aria-disabled="true">Hubungkan Telegram</button><button id="subscriptionTrialActivate" class="nav-btn hidden" disabled aria-disabled="true">Mulai Trial 10 Hari</button></div><p id="subscriptionTrialStatus" class="text-xs text-gray-500 mt-3">Kontrol trial dan Telegram akan tersedia setelah konfigurasi langganan siap.</p></section>
     <div class="space-y-4">
         <!-- Greeting -->
         <div class="dashboard-hero p-4 sm:p-5">
@@ -1659,7 +1659,7 @@
         <div class="p-4 sm:p-6 space-y-4">
             <div class="flex flex-wrap gap-2">
                 <button onclick="loadAdminUsers()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">User Approval</button>
-                <button onclick="loadSubscriptionCatalog()" class="px-4 py-2 rounded-lg text-sm font-medium text-violet-400 border border-violet-500/30 hover:bg-violet-500/10 transition-all">Subscription Plans</button>
+                <button id="subscriptionPlansAdminButton" onclick="loadSubscriptionCatalog()" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-violet-400 border border-violet-500/30 hover:bg-violet-500/10 transition-all" hidden disabled aria-disabled="true">Subscription Plans</button>
                 <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Login Logs</button>
                 <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">AI Analysis</button>
                 <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
@@ -5581,6 +5581,9 @@ window.addEventListener('resize', updateTvHeight); updateTvHeight();
 var lastAdminLogType = 'login';
 var cachedAdminData = null;
 var subscriptionCatalogPublishing = false;
+// This value is intentionally false until a future server-owned capability
+// response confirms both explicit enablement and database readiness.
+var subscriptionCapability = { enabled:false, ready:false };
 
 // Price catalog UI: values always come from the protected admin API. The
 // browser sends no actor identity and disables Publish while a request is live.
@@ -5588,7 +5591,7 @@ function adminIdr(value) { return new Intl.NumberFormat('id-ID', { style: 'curre
 function adminJakarta(value) { return value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }).format(new Date(value)) : '—'; }
 function catalogCall(body) { return fetch('/api/admin-users', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function(r) { return r.json(); }); }
 async function loadSubscriptionCatalog() {
-    var c = document.getElementById('adminLogsContainer'); if (!c) return; c.innerHTML = '<div class="py-4 text-sm text-gray-400">Memuat katalog…</div>';
+    var c = document.getElementById('adminLogsContainer'); if (!c || !subscriptionCapability.ready) return; c.innerHTML = '<div class="py-4 text-sm text-gray-400">Memuat katalog…</div>';
     try { var data = await catalogCall({ action: 'subscription_plan_list' }); if (!data.success) throw new Error(data.error || 'Katalog tidak tersedia.');
       var h = '<div class="space-y-3"><h3 class="text-sm font-semibold text-violet-300">Subscription plan catalog</h3>';
       data.plans.forEach(function(p) { var q = p.current_price || {}; h += '<div class="p-3 rounded-lg bg-dark-700 border border-dark-600/50 text-xs"><div class="flex justify-between gap-2"><b>' + escapeAdminHtml(p.display_name) + '</b><button class="text-violet-300" onclick="editSubscriptionPlan(' + JSON.stringify(p.code).replace(/"/g, '&quot;') + ')">Edit price</button></div><div class="mt-2 text-gray-400">Normal ' + adminIdr(q.normal_price_idr) + ' · Promo ' + (q.promo_enabled ? adminIdr(q.promo_price_idr) : 'nonaktif') + ' · v' + escapeAdminHtml(q.price_version || '—') + '</div><div class="mt-1 text-gray-500">Mulai: ' + adminJakarta(q.promo_starts_at) + ' · Berakhir: ' + (q.promo_ends_at ? adminJakarta(q.promo_ends_at) : 'hingga dinonaktifkan') + '</div><details class="mt-2 text-gray-500"><summary>Riwayat harga</summary>' + (p.history || []).map(function(x) { return '<div>v' + x.price_version + ': ' + adminIdr(x.normal_price_idr) + ' — ' + escapeAdminHtml(x.change_reason || '') + '</div>'; }).join('') + '</details></div>'; }); c.innerHTML = h + '</div>';
