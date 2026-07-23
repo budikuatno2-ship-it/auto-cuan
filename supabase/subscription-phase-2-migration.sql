@@ -127,19 +127,9 @@ END $$;
 REVOKE ALL ON FUNCTION public.publish_subscription_plan_price(text,bigint,bigint,boolean,timestamptz,timestamptz,uuid,text,text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.publish_subscription_plan_price(text,bigint,bigint,boolean,timestamptz,timestamptz,uuid,text,text) TO service_role;
 
--- Phase 4: protected email identity and separate subscription Telegram linking.
--- ADDITIVE ONLY. This file is intentionally unapplied by application code.
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS email text, ADD COLUMN IF NOT EXISTS email_normalized text,
-  ADD COLUMN IF NOT EXISTS email_verified_at timestamptz, ADD COLUMN IF NOT EXISTS email_verification_version integer NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS email_updated_at timestamptz;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_app_users_verified_email ON public.app_users(email_normalized) WHERE email_verified_at IS NOT NULL;
-CREATE TABLE IF NOT EXISTS public.email_otp_challenges (
- id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES public.app_users(id), email_normalized text NOT NULL,
- otp_hash text NOT NULL, expires_at timestamptz NOT NULL, used_at timestamptz, revoked_at timestamptz, attempt_count integer NOT NULL DEFAULT 0,
- locked_until timestamptz, delivery_state text NOT NULL DEFAULT 'pending' CHECK (delivery_state IN ('pending','sent','unavailable','failed')),
- delivery_attempts integer NOT NULL DEFAULT 0, request_id text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
-CREATE UNIQUE INDEX IF NOT EXISTS uq_active_email_otp_per_user ON public.email_otp_challenges(user_id) WHERE used_at IS NULL AND revoked_at IS NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS uq_active_email_otp_per_email ON public.email_otp_challenges(email_normalized) WHERE used_at IS NULL AND revoked_at IS NULL;
+-- Phase 4: separate subscription Telegram linking only. ADDITIVE ONLY; this
+-- migration is intentionally unapplied by application code. Email is not an
+-- identity, eligibility, or delivery mechanism in the first release.
 CREATE TABLE IF NOT EXISTS public.telegram_subscription_links (
  user_id uuid PRIMARY KEY REFERENCES public.app_users(id), telegram_user_id bigint UNIQUE, telegram_private_chat_id bigint,
  link_state text NOT NULL DEFAULT 'unlinked' CHECK (link_state IN ('linked','unlinked')), linked_at timestamptz, unlinked_at timestamptz,
@@ -149,9 +139,8 @@ CREATE TABLE IF NOT EXISTS public.telegram_subscription_link_tokens (
  expires_at timestamptz NOT NULL, used_at timestamptz, revoked_at timestamptz, request_id text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now());
 CREATE UNIQUE INDEX IF NOT EXISTS uq_active_subscription_link_token ON public.telegram_subscription_link_tokens(user_id) WHERE used_at IS NULL AND revoked_at IS NULL;
 CREATE TABLE IF NOT EXISTS public.telegram_subscription_webhook_updates (update_id bigint PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now());
-ALTER TABLE public.email_otp_challenges ENABLE ROW LEVEL SECURITY; ALTER TABLE public.telegram_subscription_links ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.telegram_subscription_link_tokens ENABLE ROW LEVEL SECURITY; ALTER TABLE public.telegram_subscription_webhook_updates ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.email_otp_challenges, public.telegram_subscription_links, public.telegram_subscription_link_tokens, public.telegram_subscription_webhook_updates FROM anon, authenticated;
+ALTER TABLE public.telegram_subscription_links ENABLE ROW LEVEL SECURITY; ALTER TABLE public.telegram_subscription_link_tokens ENABLE ROW LEVEL SECURITY; ALTER TABLE public.telegram_subscription_webhook_updates ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.telegram_subscription_links, public.telegram_subscription_link_tokens, public.telegram_subscription_webhook_updates FROM anon, authenticated;
 
 -- Fixed-search-path RPC: atomically consumes a hashed token and enforces both
 -- legacy and subscription Telegram uniqueness. It does not grant entitlements.
@@ -176,3 +165,21 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.consume_subscription_telegram_link(text,bigint,bigint,bigint) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.consume_subscription_telegram_link(text,bigint,bigint,bigint) TO service_role;
+
+-- Token issuance is serialized per web user. It rejects bursts (one fresh token
+-- every 30 seconds), revokes a prior unused token, and stores no plaintext.
+CREATE OR REPLACE FUNCTION public.issue_subscription_telegram_link_token(p_user_id uuid, p_token_hash text, p_request_id text, p_expires_at timestamptz)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v_last timestamptz;
+BEGIN
+ IF p_user_id IS NULL OR p_token_hash IS NULL OR p_request_id !~ '^[A-Za-z0-9_-]{16,100}$' OR p_expires_at <= now() OR p_expires_at > now() + interval '5 minutes' THEN RAISE EXCEPTION 'invalid link token'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('subscription-telegram-link:' || p_user_id::text, 0));
+ SELECT created_at INTO v_last FROM public.telegram_subscription_link_tokens WHERE user_id=p_user_id ORDER BY created_at DESC LIMIT 1;
+ IF v_last IS NOT NULL AND v_last > now() - interval '30 seconds' THEN RETURN 'rate_limited'; END IF;
+ UPDATE public.telegram_subscription_link_tokens SET revoked_at=now() WHERE user_id=p_user_id AND used_at IS NULL AND revoked_at IS NULL;
+ INSERT INTO public.telegram_subscription_link_tokens(user_id,token_hash,expires_at,request_id) VALUES(p_user_id,p_token_hash,p_expires_at,p_request_id);
+ INSERT INTO public.subscription_events(user_id,event_type,metadata) VALUES(p_user_id,'subscription_telegram_link_token_created',jsonb_build_object('request_id',p_request_id));
+ RETURN 'created';
+END $$;
+REVOKE ALL ON FUNCTION public.issue_subscription_telegram_link_token(uuid,text,text,timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.issue_subscription_telegram_link_token(uuid,text,text,timestamptz) TO service_role;
