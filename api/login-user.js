@@ -7,6 +7,7 @@ const { resolveEntitlements } = require('../lib/entitlements');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
+const vouchers = require('../lib/vouchers');
 
 const MAX_DEVICES = 3;
 
@@ -113,6 +114,24 @@ async function handleSubscriptionTelegramWebhook(req, res) {
   try { await db.rpc('consume_subscription_telegram_link', { p_token_hash: tokenHash, p_telegram_user_id: from.id, p_chat_id: chat.id, p_update_id: update.update_id }); } catch (_) { /* generic ack only */ }
   return res.status(200).json({ ok: true });
 }
+// Separate, no-send voucher administrator webhook. Its secret is distinct from
+// all existing Telegram bot secrets and is checked before decoding content.
+async function handleVoucherAdminTelegramWebhook(req,res) {
+  if(req.method!=='POST') return res.status(405).json({ok:false});
+  const expected=process.env.VOUCHER_ADMIN_TELEGRAM_WEBHOOK_SECRET;
+  if(!expected||!secretsMatch(req.headers['x-telegram-bot-api-secret-token'],expected)) return res.status(401).json({ok:false});
+  if(Number(req.headers['content-length']||0)>MAX_WEBHOOK_BODY_BYTES) return res.status(413).json({ok:false});
+  const update=req.body; if(!update||!Number.isSafeInteger(update.update_id)) return res.status(200).json({ok:true});
+  const m=update.message||{}, from=m.from||{}, chat=m.chat||{};
+  if(chat.type!=='private'||from.id!==6396446903||!Number.isSafeInteger(chat.id)||typeof m.text!=='string') return res.status(200).json({ok:true});
+  const db=await subscriptionDb(); if(!db) return res.status(200).json({ok:true});
+  const dedupe=await db.from('voucher_admin_telegram_webhook_updates').insert({update_id:update.update_id}); if(dedupe.error) return res.status(200).json({ok:true});
+  // No Telegram API call occurs here. Deployments may inject a sender in tests;
+  // production command replies are intentionally deferred until configuration.
+  const command=m.text.trim().split(/\s+/)[0].toLowerCase();
+  if(!['/voucher_create','/voucher_list','/voucher_inspect','/voucher_disable','/voucher_audit','/lifetime_seats'].includes(command)) return res.status(200).json({ok:true});
+  return res.status(200).json({ok:true,command_received:true});
+}
 async function subscriptionLinkStatus(db, userId) {
   const r=await db.from('telegram_subscription_links').select('link_state').eq('user_id',userId).maybeSingle();
   return !r.error && !!r.data && r.data.link_state === 'linked';
@@ -127,6 +146,15 @@ async function handleSubscriptionAction(req, res, action) {
   const entitlement=await resolveEntitlements(auth.user,account,db);
   const trial=(rows.data||[]).filter(r=>r.source==='trial')[0]; const linked=await subscriptionLinkStatus(db,account.id);
   if(action==='subscription-trial-status') return res.status(200).json({success:true,available:auth.user.username==='budi'?false:!trial,consumed:!!trial,active:entitlement.trial_state==='active',starts_at:trial&&trial.starts_at||null,expires_at:trial&&trial.expires_at||null,duration_days:10,telegram_link_required:!linked,account_approval_state:account.is_approved===true?'approved':'pending',admin:auth.user.username==='budi'});
+  if(action==='subscription-voucher-quote') {
+    try { const quote=await vouchers.quoteVoucher(db,account,req.body||{}); await db.from('subscription_events').insert({user_id:account.id,event_type:'subscription_voucher_quote_requested',metadata:{voucher_type:quote.voucher_type,plan_code:quote.selected_plan,normal_price_idr:quote.normal_price_idr,final_price_idr:quote.final_price_idr,source_channel:'web'}}); return res.status(200).json({success:true,quote:quote}); }
+    catch (_) { await db.from('subscription_events').insert({user_id:account.id,event_type:'subscription_voucher_quote_rejected',metadata:{result_code:'unavailable',source_channel:'web'}}); return res.status(400).json({success:false,error:'Voucher tidak valid atau tidak tersedia.'}); }
+  }
+  if(action==='subscription-voucher-redeem') {
+    if(!isSameOrigin(req)) return res.status(403).json({success:false,error:'Permintaan ditolak.'}); const key=req.body&&req.body.idempotency_key; if(!isUuid(key)) return res.status(400).json({success:false,error:'Permintaan tidak valid.'});
+    let hash; try { hash=vouchers.hashCode(req.body&&req.body.code); } catch (_) { return res.status(400).json({success:false,error:'Voucher tidak valid atau tidak tersedia.'}); }
+    const plan=String(req.body&&req.body.plan_code||''); const rpc=plan==='LIFETIME'?'redeem_lifetime_voucher':'redeem_percent_100_voucher'; const result=await db.rpc(rpc,{p_user_id:account.id,p_code_hash:hash,p_plan_code:plan,p_idempotency_key:key}); if(result.error||!result.data)return res.status(409).json({success:false,error:'Voucher tidak valid atau tidak tersedia.'}); return res.status(200).json({success:true,redemption:result.data});
+  }
   if(action==='subscription-trial-activate') {
     if(!isSameOrigin(req)) return res.status(403).json({success:false,error:'Permintaan ditolak.'});
     const id=req.body&&req.body.idempotency_key; if(!isUuid(id)) return res.status(400).json({success:false,error:'Permintaan tidak valid.'});
@@ -187,6 +215,10 @@ module.exports = async function handler(req, res) {
     return await handleSubscriptionTelegramWebhook(req, res);
   }
 
+  if (req.query && req.query.action === 'voucher-admin-telegram-webhook') {
+    return await handleVoucherAdminTelegramWebhook(req, res);
+  }
+
   if (req.query && req.query.action === 'telegram-verify-webhook') {
     return await handleVerifyWebhook(req, res);
   }
@@ -199,7 +231,7 @@ module.exports = async function handler(req, res) {
     const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
 
     const subscriptionAction = (req.query && req.query.action) || action;
-    if (/^subscription-(telegram-link-token-create|telegram-link-status|trial-status|trial-activate)$/.test(subscriptionAction || '')) {
+    if (/^subscription-(telegram-link-token-create|telegram-link-status|trial-status|trial-activate|voucher-quote|voucher-redeem)$/.test(subscriptionAction || '')) {
       return await handleSubscriptionAction(req, res, subscriptionAction);
     }
 

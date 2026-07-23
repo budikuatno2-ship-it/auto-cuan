@@ -7,6 +7,7 @@ const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const { computeTelegramAnalytics } = require('../lib/telegram-analytics');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const { validatePriceInput, safePrice } = require('../lib/subscription-catalog');
+const vouchers = require('../lib/vouchers');
 
 const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
 
@@ -77,7 +78,7 @@ module.exports = async function handler(req, res) {
 
     // Catalog authority is intentionally narrower than legacy admin actions:
     // the protected budi identity must be present in the signed session.
-    const catalogActions = ['subscription_plan_list', 'subscription_plan_price_preview', 'subscription_plan_price_publish', 'subscription_plan_promo_enable', 'subscription_plan_promo_disable', 'subscription_plan_price_history'];
+    const catalogActions = ['subscription_voucher_create', 'subscription_voucher_list', 'subscription_voucher_inspect', 'subscription_voucher_disable', 'subscription_voucher_audit', 'subscription_lifetime_seats', 'subscription_plan_list', 'subscription_plan_price_preview', 'subscription_plan_price_publish', 'subscription_plan_promo_enable', 'subscription_plan_promo_disable', 'subscription_plan_price_history'];
     if (catalogActions.indexOf(action) >= 0 && String(auth.session.un || '').toLowerCase() !== 'budi') {
       return res.status(403).json({ success: false, error: 'Akses katalog ditolak.' });
     }
@@ -92,6 +93,24 @@ module.exports = async function handler(req, res) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
+
+    // Voucher administration is deliberately available only to the protected
+    // signed budi session. DB errors and hashes are never returned to callers.
+    if (action === 'subscription_voucher_create') {
+      try { const created = await vouchers.createVoucher(supabase, auth.session.uid, req.body); return res.status(201).json({ success:true, voucher:created.voucher, plaintext_code:created.plaintext_code, warning:'Simpan kode ini sekarang; kode tidak dapat dilihat lagi.' }); }
+      catch (_) { return res.status(400).json({ success:false, error:'Voucher tidak dapat dibuat.' }); }
+    }
+    if (action === 'subscription_voucher_list' || action === 'subscription_voucher_inspect') {
+      let q=supabase.from('vouchers').select('id,code_hint,voucher_type,allowed_plan_codes,starts_at,ends_at,max_redemptions,per_user_limit,redemption_count,enabled,created_at,disabled_at,disable_reason').order('created_at',{ascending:false}).limit(100);
+      if(action==='subscription_voucher_inspect') { const ref=String(req.body&&req.body.voucher_reference||''); if(!/^[0-9a-f-]{36}$/i.test(ref)) return res.status(400).json({success:false,error:'Voucher tidak valid.'}); q=q.eq('id',ref); }
+      const r=await q; if(r.error) return res.status(503).json({success:false,error:'Voucher tidak tersedia.'}); const values=(r.data||[]).map(vouchers.safeVoucher); return res.status(200).json({success:true, vouchers:values, voucher:action==='subscription_voucher_inspect'?(values[0]||null):undefined});
+    }
+    if (action === 'subscription_voucher_disable') {
+      const ref=String(req.body&&req.body.voucher_reference||''), reason=String(req.body&&req.body.disable_reason||'').trim().slice(0,240); if(!/^[0-9a-f-]{36}$/i.test(ref)||!reason) return res.status(400).json({success:false,error:'Permintaan tidak valid.'});
+      const r=await supabase.from('vouchers').update({enabled:false,disabled_at:new Date().toISOString(),disabled_by_user_id:auth.session.uid,disable_reason:reason}).eq('id',ref).eq('enabled',true).select('id').maybeSingle(); if(r.error) return res.status(503).json({success:false,error:'Voucher tidak dapat dinonaktifkan.'}); await supabase.from('subscription_events').insert({actor_user_id:auth.session.uid,event_type:'subscription_voucher_disabled',metadata:{voucher_reference:ref,result_code:r.data?'disabled':'already_disabled',source_channel:'admin_web'}}); return res.status(200).json({success:true,disabled:!!r.data});
+    }
+    if (action === 'subscription_voucher_audit') { const r=await supabase.from('voucher_redemptions').select('voucher_id,selected_plan_code,voucher_type_snapshot,discount_percent_snapshot,normal_price_idr_snapshot,final_price_idr_snapshot,status,redeemed_at,created_at').order('created_at',{ascending:false}).limit(100); if(r.error)return res.status(503).json({success:false,error:'Audit tidak tersedia.'}); return res.status(200).json({success:true,audit:r.data||[]}); }
+    if (action === 'subscription_lifetime_seats') { const r=await supabase.from('lifetime_seat_ledger').select('seat_number',{count:'exact',head:true}).is('released_at',null); if(r.error)return res.status(503).json({success:false,error:'Seat tidak tersedia.'}); return res.status(200).json({success:true,total:7,allocated:r.count||0,remaining:Math.max(0,7-(r.count||0))}); }
 
     if (action === 'subscription_plan_list' || action === 'subscription_plan_price_history') {
       const planCode = req.body && typeof req.body.plan_code === 'string' ? req.body.plan_code.trim() : null;

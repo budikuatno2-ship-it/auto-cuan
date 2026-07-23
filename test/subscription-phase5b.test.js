@@ -1,0 +1,6 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const v=require('../lib/vouchers'); const root=path.join(__dirname,'..');
+test('voucher codes are CSPRNG-shaped and normalization is deterministic',()=>{const a=v.generateCode(),b=v.generateCode();assert.match(a,/^AC-[A-Z2-9]{20}$/);assert.notEqual(a,b);assert.equal(v.normalizeCode(' ac-AB_CD '),'ACABCD');assert.equal(v.codeHint(a).includes(a),false);});
+test('phase 5B keeps code storage hashed and service-only atomic redemption',()=>{const sql=fs.readFileSync(path.join(root,'supabase/subscription-phase-2-migration.sql'),'utf8');assert.match(sql,/code_hash text NOT NULL UNIQUE/);assert.doesNotMatch(sql,/plaintext_code/);assert.match(sql,/redeem_percent_100_voucher/);assert.match(sql,/redeem_lifetime_voucher/);assert.match(sql,/pg_advisory_xact_lock/);assert.match(sql,/interval '10 days'/);});
+test('endpoint boundary and Phase 6 exclusion remain intact',()=>{assert.equal(fs.readdirSync(path.join(root,'api')).filter(x=>x.endsWith('.js')).length,12);const api=fs.readFileSync(path.join(root,'api','login-user.js'),'utf8');assert.match(api,/subscription-voucher-quote/);assert.match(api,/subscription-voucher-redeem/);assert.doesNotMatch(api,/midtrans/i);});
