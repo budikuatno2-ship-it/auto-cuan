@@ -1,9 +1,10 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret, createOnboardingSessionToken, buildOnboardingCookie, buildClearOnboardingCookie, isSameOrigin } = require('../lib/admin-session');
+const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret, buildClearOnboardingCookie, isSameOrigin } = require('../lib/admin-session');
 const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser } = require('../lib/subscription-auth');
 const identity = require('../lib/subscription-identity');
 const { resolveEntitlements } = require('../lib/entitlements');
+const { isSubscriptionFeatureEnabled, getSubscriptionCapability } = require('../lib/subscription-capability');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
@@ -91,6 +92,7 @@ function safeRequestId(prefix) { return prefix + '_' + crypto.randomBytes(16).to
 async function subscriptionAccount(req, db) { return requireSubscriptionOnboardingUser(req, db); }
 function isUuid(value) { return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value); }
 async function handleSubscriptionTelegramWebhook(req, res) {
+  if (!isSubscriptionFeatureEnabled()) return res.status(404).json({ ok: false });
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const expected = process.env.TELEGRAM_SUBSCRIPTION_WEBHOOK_SECRET;
   if (!expected || !secretsMatch(req.headers['x-telegram-bot-api-secret-token'], expected)) return res.status(401).json({ ok: false });
@@ -118,7 +120,9 @@ async function subscriptionLinkStatus(db, userId) {
   return !r.error && !!r.data && r.data.link_state === 'linked';
 }
 async function handleSubscriptionAction(req, res, action) {
-  const db = await subscriptionDb(); if (!db) return res.status(503).json({ success:false, error:'Layanan akun tidak tersedia.' });
+  if (!isSubscriptionFeatureEnabled()) return res.status(503).json({ success:false, error:'Fitur langganan belum tersedia.' });
+  const db = await subscriptionDb(); if (!db) return res.status(503).json({ success:false, error:'Fitur langganan belum tersedia.' });
+  const capability = await getSubscriptionCapability(db); if (!capability.ready) return res.status(503).json({ success:false, error:'Fitur langganan belum tersedia.' });
   const auth = await subscriptionAccount(req, db); if (!auth.ok) return res.status(auth.status).json({ success:false, error:auth.error });
   const account = auth.account;
   if (action === 'subscription-telegram-link-status') return res.status(200).json({success:true,linked:await subscriptionLinkStatus(db,account.id)});
@@ -199,6 +203,12 @@ module.exports = async function handler(req, res) {
     const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
 
     const subscriptionAction = (req.query && req.query.action) || action;
+    if (subscriptionAction === 'subscription-capability') {
+      if (!isSubscriptionFeatureEnabled()) return res.status(200).json({ success: true, enabled: false, ready: false });
+      const db = await subscriptionDb();
+      const capability = await getSubscriptionCapability(db);
+      return res.status(200).json({ success: true, enabled: capability.enabled, ready: capability.ready });
+    }
     if (/^subscription-(telegram-link-token-create|telegram-link-status|trial-status|trial-activate)$/.test(subscriptionAction || '')) {
       return await handleSubscriptionAction(req, res, subscriptionAction);
     }
@@ -206,10 +216,13 @@ module.exports = async function handler(req, res) {
     // Public, deliberately narrow catalog. It only reads active catalog rows and
     // server-resolves the effective price at this instant.
     if ((req.query && req.query.action === 'subscription-plans') || action === 'subscription-plans') {
+      if (!isSubscriptionFeatureEnabled()) return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
       const url = process.env.SUPABASE_URL;
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!url || !key) return res.status(503).json({ success: false, error: 'Katalog tidak tersedia.' });
       const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const capability = await getSubscriptionCapability(db);
+      if (!capability.ready) return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
       const result = await db.from('subscription_plans').select('code, display_name, kind, duration_months, subscription_plan_prices!inner(normal_price_idr, promo_price_idr, promo_enabled, promo_starts_at, promo_ends_at, active)')
         .eq('active', true).eq('subscription_plan_prices.active', true).order('sort_order');
       if (result.error) return res.status(503).json({ success: false, error: 'Katalog tidak tersedia.' });
@@ -227,6 +240,7 @@ module.exports = async function handler(req, res) {
     // Read-only Phase 1 entitlement endpoint. The identity comes only from the
     // signed HttpOnly session; request headers and body claims are ignored.
     if ((req.query && req.query.action === 'subscription-status') || action === 'subscription-status') {
+      if (!isSubscriptionFeatureEnabled()) return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
       const auth = requireUserSession(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.error });
 
@@ -234,6 +248,8 @@ module.exports = async function handler(req, res) {
       const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ success: false, error: 'Status akun tidak tersedia.' });
       const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+      const capability = await getSubscriptionCapability(supabase);
+      if (!capability.ready) return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
       const { data: account, error } = await supabase.from('app_users')
         .select('id, username, is_blocked, is_approved')
         .eq('id', auth.user.id)
@@ -377,8 +393,8 @@ module.exports = async function handler(req, res) {
       } catch (e) {
         console.error('login-user: pending challenge issuance failed');
       }
-      const onboardingToken = createOnboardingSessionToken({ userId:user.id, username:usernameLower });
-      if (onboardingToken) { res.setHeader('Set-Cookie', buildOnboardingCookie(onboardingToken)); pendingResponse.onboarding = true; }
+      // Subscription onboarding is disabled until its server capability is provisioned.
+      // Do not issue a cookie that could make unfinished subscription actions available.
       return res.status(403).json(pendingResponse);
     }
 

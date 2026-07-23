@@ -942,7 +942,7 @@
 
 <!-- ===== PAGE: DASHBOARD HOME ===== -->
 <div id="page-dashboard" class="page-content flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
-    <section class="dashboard-card p-4 mb-4" aria-label="Identitas langganan"><h2 class="font-black text-white">Identitas Langganan</h2><p id="subscriptionIdentityStatus" class="text-sm text-gray-400 mt-1">Memuat status aman…</p><div class="flex flex-wrap gap-2 mt-3"><button id="subscriptionTelegramLink" class="nav-btn">Hubungkan Telegram</button><button id="subscriptionTrialActivate" class="nav-btn hidden">Mulai Trial 10 Hari</button></div><p id="subscriptionTrialStatus" class="text-xs text-gray-500 mt-3">Telegram adalah identitas langganan.</p></section>
+    <section id="subscriptionIdentityCard" class="hidden dashboard-card p-4 mb-4" aria-label="Identitas langganan" hidden><h2 class="font-black text-white">Identitas Langganan</h2><p id="subscriptionIdentityStatus" class="text-sm text-gray-400 mt-1">Fitur langganan sedang disiapkan.</p><div class="flex flex-wrap gap-2 mt-3"><button id="subscriptionTelegramLink" class="nav-btn" disabled aria-disabled="true">Hubungkan Telegram</button><button id="subscriptionTrialActivate" class="nav-btn hidden" disabled aria-disabled="true">Mulai Trial 10 Hari</button></div><p id="subscriptionTrialStatus" class="text-xs text-gray-500 mt-3">Kontrol trial dan Telegram akan tersedia setelah konfigurasi langganan siap.</p></section>
     <div class="space-y-4">
         <!-- Greeting -->
         <div class="dashboard-hero p-4 sm:p-5">
@@ -1659,7 +1659,7 @@
         <div class="p-4 sm:p-6 space-y-4">
             <div class="flex flex-wrap gap-2">
                 <button onclick="loadAdminUsers()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">User Approval</button>
-                <button onclick="loadSubscriptionCatalog()" class="px-4 py-2 rounded-lg text-sm font-medium text-violet-400 border border-violet-500/30 hover:bg-violet-500/10 transition-all">Subscription Plans</button>
+                <button id="subscriptionPlansAdminButton" onclick="loadSubscriptionCatalog()" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-violet-400 border border-violet-500/30 hover:bg-violet-500/10 transition-all" hidden disabled aria-disabled="true">Subscription Plans</button>
                 <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Login Logs</button>
                 <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">AI Analysis</button>
                 <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
@@ -2002,19 +2002,21 @@ function isLoggedInUser() { return getUsername() !== 'guest' && localStorage.get
 function getAuthHeaders() { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; }
 function getDashboardAuthHeaders() { return getAuthHeaders(); }
 function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
-// Display-only compatibility cache. Server-side subscription code never reads
-// this value; the signed HttpOnly cookie remains the sole authority.
-async function subscriptionIdentityCall(action, body) { var r = await fetch('/api/login-user?action=' + encodeURIComponent(action), { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(body || {action:action}) }); return r.json(); }
-var subscriptionIdentityBusy = false;
-async function refreshSubscriptionIdentity() { try { var t=await subscriptionIdentityCall('subscription-telegram-link-status'), trial=await subscriptionIdentityCall('subscription-trial-status'); var el=document.getElementById('subscriptionIdentityStatus'), note=document.getElementById('subscriptionTrialStatus'), button=document.getElementById('subscriptionTrialActivate'); if(el && t.success) el.textContent='Telegram: '+(t.linked?'terhubung':'belum terhubung'); if(!trial.success) return; if(button) button.classList.toggle('hidden',!trial.available||trial.telegram_link_required||trial.admin); if(note) { if(trial.admin) note.textContent='Admin/full access.'; else if(trial.telegram_link_required) note.textContent='Hubungkan Telegram terlebih dahulu.'; else if(trial.active) note.textContent='Trial aktif: '+new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'}).format(new Date(trial.starts_at))+' sampai '+new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'}).format(new Date(trial.expires_at)); else if(trial.consumed) note.textContent='Trial satu kali telah digunakan.'; else note.textContent='Trial 10 hari tersedia.'; } } catch (_) {} }
-document.addEventListener('click', async function(e) { var id=e.target && e.target.id; if(!id || subscriptionIdentityBusy) return; if(id==='subscriptionTelegramLink') { subscriptionIdentityBusy=true; try { var d=await subscriptionIdentityCall('subscription-telegram-link-token-create',{action:'subscription-telegram-link-token-create'}); if(d.success && d.telegram_link) window.open(d.telegram_link,'_blank','noopener'); showToast(d.success?'Permintaan diproses.':(d.error||'Permintaan gagal.'),d.success?'success':'error'); refreshSubscriptionIdentity(); } finally { subscriptionIdentityBusy=false; } } if(id==='subscriptionTrialActivate') { if(!window.confirm('Mulai trial 10 hari? Trial hanya dapat digunakan sekali.')) return; subscriptionIdentityBusy=true; e.target.disabled=true; try { var d=await subscriptionIdentityCall('subscription-trial-activate',{action:'subscription-trial-activate',idempotency_key:crypto.randomUUID()}); showToast(d.success?(d.normal_login_required?'Trial aktif. Silakan login ulang.':'Trial 10 hari aktif.'):(d.error||'Trial gagal.'),d.success?'success':'error'); refreshSubscriptionIdentity(); } finally { e.target.disabled=false; subscriptionIdentityBusy=false; } } });
-async function refreshSubscriptionStatus() {
+// Subscription provisioning is intentionally unavailable until its schema and
+// configuration are deployed. It is not part of startup and cannot affect free/public UI.
+function safeRequestId() { return generateDeviceUuid(); }
+async function safeSubscriptionRequest(action, body, timeoutMs) {
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = controller ? setTimeout(function() { controller.abort(); }, timeoutMs || 6000) : null;
     try {
-        var response = await fetch('/api/login-user?action=subscription-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'subscription-status' }) });
-        var data = await response.json();
-        if (data && data.success && data.entitlement) localStorage.setItem('autocuan_subscription_status', JSON.stringify(data.entitlement));
-    } catch (e) { /* Non-authoritative UI enhancement only. */ }
+        var response = await fetch('/api/login-user?action=' + encodeURIComponent(action), { method: 'POST', headers: {'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(body || {action:action}), signal:controller ? controller.signal : undefined });
+        var type = String(response.headers.get('content-type') || '').toLowerCase();
+        if (!response.ok || type.indexOf('application/json') === -1) return { success:false, error:'Fitur sementara tidak tersedia.' };
+        try { return await response.json(); } catch (_) { return { success:false, error:'Fitur sementara tidak tersedia.' }; }
+    } catch (_) { return { success:false, error:'Fitur sementara tidak tersedia.' }; }
+    finally { if (timer) clearTimeout(timer); }
 }
+async function refreshSubscriptionStatus() { /* Deferred until subscription capability is provisioned. */ }
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
 // Logged-in approved: unlimited (controlled by admin approval)
@@ -2386,8 +2388,20 @@ function renderShareDt(d) {
     pane.innerHTML = html;
 }
 
+// ===== STARTUP FAIL-SAFE =====
+function renderStartupFallback() {
+    var loader = document.getElementById('initialLoader'); if (loader) loader.remove();
+    var blocked = document.getElementById('blockedScreen'); if (blocked) blocked.classList.add('hidden');
+    var maintenance = document.getElementById('maintenanceScreen'); if (maintenance) maintenance.classList.add('hidden');
+    var dashboard = document.getElementById('dashboardScreen'); if (dashboard) dashboard.classList.add('hidden');
+    var landing = document.getElementById('landingPage'); if (landing) landing.classList.remove('hidden');
+    var notice = document.getElementById('startupFallbackNotice');
+    if (!notice && landing) { notice=document.createElement('p'); notice.id='startupFallbackNotice'; notice.className='mx-auto mt-4 max-w-xl px-4 text-center text-sm text-yellow-300'; notice.setAttribute('role','status'); notice.textContent='Beberapa fitur sementara tidak tersedia.'; landing.prepend(notice); }
+}
+
 // ===== INITIALIZATION =====
 (async function init() {
+    try {
     // === PUBLIC SHARE MODE ===
     var _shareParams = new URLSearchParams(window.location.search);
     if (_shareParams.get('share') === 'screener' && _shareParams.get('token')) {
@@ -2425,9 +2439,16 @@ function renderShareDt(d) {
     if (localStorage.getItem('autocuan_entered_app') === 'true' && localStorage.getItem('auto_cuan_onboarding_seen') !== 'true') {
         setTimeout(function() { showOnboardingGuide(); }, 600);
     }
+    } catch (_) {
+        // Startup is best-effort: no optional failure may hide the public site.
+        renderStartupFallback();
+    } finally {
+        var il = document.getElementById('initialLoader'); if (il) il.remove();
+    }
 })();
-// Safety: remove loader if init takes too long (network timeout)
-setTimeout(function() { var il = document.getElementById('initialLoader'); if (il) il.remove(); }, 5000);
+// The watchdog also renders a usable public screen; merely removing the spinner
+// would otherwise leave a blank page after an early startup exception.
+setTimeout(function() { if (document.getElementById('initialLoader')) renderStartupFallback(); }, 4500);
 
 // Nav scroll indicator: detect overflow and show gradient hint on mobile
 (function() {
@@ -5560,6 +5581,9 @@ window.addEventListener('resize', updateTvHeight); updateTvHeight();
 var lastAdminLogType = 'login';
 var cachedAdminData = null;
 var subscriptionCatalogPublishing = false;
+// This value is intentionally false until a future server-owned capability
+// response confirms both explicit enablement and database readiness.
+var subscriptionCapability = { enabled:false, ready:false };
 
 // Price catalog UI: values always come from the protected admin API. The
 // browser sends no actor identity and disables Publish while a request is live.
@@ -5567,7 +5591,7 @@ function adminIdr(value) { return new Intl.NumberFormat('id-ID', { style: 'curre
 function adminJakarta(value) { return value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }).format(new Date(value)) : '—'; }
 function catalogCall(body) { return fetch('/api/admin-users', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function(r) { return r.json(); }); }
 async function loadSubscriptionCatalog() {
-    var c = document.getElementById('adminLogsContainer'); if (!c) return; c.innerHTML = '<div class="py-4 text-sm text-gray-400">Memuat katalog…</div>';
+    var c = document.getElementById('adminLogsContainer'); if (!c || !subscriptionCapability.ready) return; c.innerHTML = '<div class="py-4 text-sm text-gray-400">Memuat katalog…</div>';
     try { var data = await catalogCall({ action: 'subscription_plan_list' }); if (!data.success) throw new Error(data.error || 'Katalog tidak tersedia.');
       var h = '<div class="space-y-3"><h3 class="text-sm font-semibold text-violet-300">Subscription plan catalog</h3>';
       data.plans.forEach(function(p) { var q = p.current_price || {}; h += '<div class="p-3 rounded-lg bg-dark-700 border border-dark-600/50 text-xs"><div class="flex justify-between gap-2"><b>' + escapeAdminHtml(p.display_name) + '</b><button class="text-violet-300" onclick="editSubscriptionPlan(' + JSON.stringify(p.code).replace(/"/g, '&quot;') + ')">Edit price</button></div><div class="mt-2 text-gray-400">Normal ' + adminIdr(q.normal_price_idr) + ' · Promo ' + (q.promo_enabled ? adminIdr(q.promo_price_idr) : 'nonaktif') + ' · v' + escapeAdminHtml(q.price_version || '—') + '</div><div class="mt-1 text-gray-500">Mulai: ' + adminJakarta(q.promo_starts_at) + ' · Berakhir: ' + (q.promo_ends_at ? adminJakarta(q.promo_ends_at) : 'hingga dinonaktifkan') + '</div><details class="mt-2 text-gray-500"><summary>Riwayat harga</summary>' + (p.history || []).map(function(x) { return '<div>v' + x.price_version + ': ' + adminIdr(x.normal_price_idr) + ' — ' + escapeAdminHtml(x.change_reason || '') + '</div>'; }).join('') + '</details></div>'; }); c.innerHTML = h + '</div>';
