@@ -8,6 +8,7 @@ const { computeTelegramAnalytics } = require('../lib/telegram-analytics');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const { validatePriceInput, safePrice } = require('../lib/subscription-catalog');
 const vouchers = require('../lib/vouchers');
+const { isSubscriptionFeatureEnabled } = require('../lib/subscription-feature');
 
 const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
 
@@ -81,6 +82,9 @@ module.exports = async function handler(req, res) {
     const catalogActions = ['subscription_voucher_create', 'subscription_voucher_list', 'subscription_voucher_inspect', 'subscription_voucher_disable', 'subscription_voucher_audit', 'subscription_lifetime_seats', 'subscription_plan_list', 'subscription_plan_price_preview', 'subscription_plan_price_publish', 'subscription_plan_promo_enable', 'subscription_plan_promo_disable', 'subscription_plan_price_history'];
     if (catalogActions.indexOf(action) >= 0 && String(auth.session.un || '').toLowerCase() !== 'budi') {
       return res.status(403).json({ success: false, error: 'Akses katalog ditolak.' });
+    }
+    if (catalogActions.indexOf(action) >= 0 && !isSubscriptionFeatureEnabled()) {
+      return res.status(404).json({ success: false, error: 'Layanan tidak tersedia.' });
     }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;

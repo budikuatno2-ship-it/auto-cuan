@@ -8,6 +8,7 @@ const { generateApprovalCode, maskUsername } = require('../lib/free-user-approva
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const vouchers = require('../lib/vouchers');
+const { isSubscriptionFeatureEnabled } = require('../lib/subscription-feature');
 
 const MAX_DEVICES = 3;
 
@@ -137,6 +138,7 @@ async function subscriptionLinkStatus(db, userId) {
   return !r.error && !!r.data && r.data.link_state === 'linked';
 }
 async function handleSubscriptionAction(req, res, action) {
+  if (!isSubscriptionFeatureEnabled()) return res.status(404).json({ success:false, error:'Layanan tidak tersedia.' });
   const db = await subscriptionDb(); if (!db) return res.status(503).json({ success:false, error:'Layanan akun tidak tersedia.' });
   const auth = await subscriptionAccount(req, db); if (!auth.ok) return res.status(auth.status).json({ success:false, error:auth.error });
   const account = auth.account;
@@ -212,10 +214,12 @@ module.exports = async function handler(req, res) {
   // login handling. It validates its own secret, never issues or reads browser
   // sessions, never touches CRON_SECRET, and uses TELEGRAM_VERIFY_BOT_TOKEN only.
   if (req.query && req.query.action === 'subscription-telegram-webhook') {
+    if (!isSubscriptionFeatureEnabled()) return res.status(404).json({ ok: false });
     return await handleSubscriptionTelegramWebhook(req, res);
   }
 
   if (req.query && req.query.action === 'voucher-admin-telegram-webhook') {
+    if (!isSubscriptionFeatureEnabled()) return res.status(404).json({ ok: false });
     return await handleVoucherAdminTelegramWebhook(req, res);
   }
 
@@ -238,6 +242,7 @@ module.exports = async function handler(req, res) {
     // Public, deliberately narrow catalog. It only reads active catalog rows and
     // server-resolves the effective price at this instant.
     if ((req.query && req.query.action === 'subscription-plans') || action === 'subscription-plans') {
+      if (!isSubscriptionFeatureEnabled()) return res.status(404).json({ success:false, error:'Layanan tidak tersedia.' });
       const url = process.env.SUPABASE_URL;
       const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!url || !key) return res.status(503).json({ success: false, error: 'Katalog tidak tersedia.' });
@@ -259,6 +264,7 @@ module.exports = async function handler(req, res) {
     // Read-only Phase 1 entitlement endpoint. The identity comes only from the
     // signed HttpOnly session; request headers and body claims are ignored.
     if ((req.query && req.query.action === 'subscription-status') || action === 'subscription-status') {
+      if (!isSubscriptionFeatureEnabled()) return res.status(404).json({ success:false, error:'Layanan tidak tersedia.' });
       const auth = requireUserSession(req);
       if (!auth.ok) return res.status(auth.status).json({ success: false, error: auth.error });
 
