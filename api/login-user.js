@@ -5,6 +5,7 @@ const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboarding
 const identity = require('../lib/subscription-identity');
 const { resolveEntitlements } = require('../lib/entitlements');
 const { isSubscriptionFeatureEnabled, getSubscriptionCapability } = require('../lib/subscription-capability');
+const vouchers = require('../lib/vouchers');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
@@ -115,6 +116,17 @@ async function handleSubscriptionTelegramWebhook(req, res) {
   try { await db.rpc('consume_subscription_telegram_link', { p_token_hash: tokenHash, p_telegram_user_id: from.id, p_chat_id: chat.id, p_update_id: update.update_id }); } catch (_) { /* generic ack only */ }
   return res.status(200).json({ ok: true });
 }
+async function handleVoucherAdminTelegramWebhook(req,res) {
+  if (!isSubscriptionFeatureEnabled()) return res.status(404).json({ok:false});
+  if (req.method !== 'POST') return res.status(405).json({ok:false});
+  const expected=process.env.TELEGRAM_VOUCHER_ADMIN_WEBHOOK_SECRET;
+  if (!expected || !secretsMatch(req.headers['x-telegram-bot-api-secret-token'],expected)) return res.status(401).json({ok:false});
+  const update=req.body||{}, message=update.message||{}, from=message.from||{}, chat=message.chat||{};
+  if (!Number.isSafeInteger(update.update_id) || chat.type!=='private' || !vouchers.isVoucherAdminTelegramUser(from.id)) return res.status(200).json({ok:true});
+  const db=await subscriptionDb(); if (!db) return res.status(200).json({ok:true});
+  try { await db.rpc('record_voucher_admin_telegram_command',{p_update_id:update.update_id,p_telegram_user_id:from.id,p_command:typeof message.text==='string'?message.text.slice(0,160):''}); } catch (_) {}
+  return res.status(200).json({ok:true});
+}
 async function subscriptionLinkStatus(db, userId) {
   const r=await db.from('telegram_subscription_links').select('link_state').eq('user_id',userId).maybeSingle();
   return !r.error && !!r.data && r.data.link_state === 'linked';
@@ -139,6 +151,13 @@ async function handleSubscriptionAction(req, res, action) {
     if(activated.error || !activated.data) return res.status(409).json({success:false,error:'Trial tidak dapat diaktifkan.'});
     if(auth.onboarding) res.setHeader('Set-Cookie',buildClearOnboardingCookie());
     return res.status(200).json({success:true,active:activated.data.active===true,starts_at:activated.data.starts_at,expires_at:activated.data.expires_at,duration_days:10,normal_login_required:auth.onboarding===true});
+  }
+  if(action==='voucher-quote'||action==='voucher-redeem') {
+    if(!isSameOrigin(req)) return res.status(403).json({success:false,error:'Permintaan ditolak.'});
+    let hash; try { hash=vouchers.voucherCodeHash(req.body&&req.body.voucher_code); } catch (_) { return res.status(400).json({success:false,error:'Voucher tidak valid.'}); }
+    const result=await db.rpc(action==='voucher-quote'?'quote_subscription_voucher':'redeem_subscription_voucher',{p_user_id:account.id,p_voucher_code_hash:hash,p_redemption_idempotency_key:action==='voucher-redeem'?req.body&&req.body.idempotency_key:null});
+    if(result.error||!result.data) return res.status(409).json({success:false,error:'Voucher tidak dapat digunakan.'});
+    return res.status(200).json({success:true,voucher:result.data});
   }
   return res.status(400).json({success:false,error:'Aksi tidak valid.'});
 }
@@ -190,6 +209,7 @@ module.exports = async function handler(req, res) {
   if (req.query && req.query.action === 'subscription-telegram-webhook') {
     return await handleSubscriptionTelegramWebhook(req, res);
   }
+  if (req.query && req.query.action === 'voucher-admin-telegram-webhook') return await handleVoucherAdminTelegramWebhook(req,res);
 
   if (req.query && req.query.action === 'telegram-verify-webhook') {
     return await handleVerifyWebhook(req, res);
@@ -209,7 +229,7 @@ module.exports = async function handler(req, res) {
       const capability = await getSubscriptionCapability(db);
       return res.status(200).json({ success: true, enabled: capability.enabled, ready: capability.ready });
     }
-    if (/^subscription-(telegram-link-token-create|telegram-link-status|trial-status|trial-activate)$/.test(subscriptionAction || '')) {
+    if (/^(subscription-(telegram-link-token-create|telegram-link-status|trial-status|trial-activate)|voucher-(quote|redeem))$/.test(subscriptionAction || '')) {
       return await handleSubscriptionAction(req, res, subscriptionAction);
     }
 

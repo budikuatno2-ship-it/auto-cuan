@@ -210,3 +210,63 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.activate_subscription_trial(uuid,uuid,timestamptz) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.activate_subscription_trial(uuid,uuid,timestamptz) TO service_role;
+
+-- Phase 5B: voucher foundations. This remains an unapplied, additive migration.
+-- Voucher plaintext is never stored; application code supplies an HMAC hash only.
+CREATE TABLE IF NOT EXISTS public.subscription_vouchers (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), code_hash text NOT NULL UNIQUE, code_hint text NOT NULL CHECK (length(code_hint) BETWEEN 4 AND 4),
+ plan_code text NOT NULL REFERENCES public.subscription_plans(code), duration_days integer NOT NULL CHECK (duration_days BETWEEN 1 AND 3650),
+ max_redemptions integer NOT NULL DEFAULT 1 CHECK (max_redemptions BETWEEN 1 AND 100000), redemption_count integer NOT NULL DEFAULT 0 CHECK (redemption_count >= 0),
+ active boolean NOT NULL DEFAULT true, expires_at timestamptz, revoked_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), created_by_user_id uuid REFERENCES public.app_users(id),
+ CHECK (redemption_count <= max_redemptions)
+);
+CREATE TABLE IF NOT EXISTS public.subscription_voucher_redemptions (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), voucher_id uuid NOT NULL REFERENCES public.subscription_vouchers(id), user_id uuid NOT NULL REFERENCES public.app_users(id), entitlement_id uuid NOT NULL UNIQUE REFERENCES public.user_entitlements(id),
+ redemption_idempotency_key uuid NOT NULL UNIQUE, redeemed_at timestamptz NOT NULL DEFAULT now(), UNIQUE(voucher_id,user_id)
+);
+CREATE TABLE IF NOT EXISTS public.voucher_admin_telegram_updates (update_id bigint PRIMARY KEY, telegram_user_id bigint NOT NULL, command text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE public.subscription_vouchers ENABLE ROW LEVEL SECURITY; ALTER TABLE public.subscription_voucher_redemptions ENABLE ROW LEVEL SECURITY; ALTER TABLE public.voucher_admin_telegram_updates ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.subscription_vouchers, public.subscription_voucher_redemptions, public.voucher_admin_telegram_updates FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.quote_subscription_voucher(p_user_id uuid,p_voucher_code_hash text,p_redemption_idempotency_key uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v public.subscription_vouchers%ROWTYPE; u public.app_users%ROWTYPE;
+BEGIN
+ SELECT * INTO u FROM public.app_users WHERE id=p_user_id; IF NOT FOUND OR u.is_blocked THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+ SELECT * INTO v FROM public.subscription_vouchers WHERE code_hash=p_voucher_code_hash;
+ IF NOT FOUND OR NOT v.active OR v.revoked_at IS NOT NULL OR v.redemption_count>=v.max_redemptions OR (v.expires_at IS NOT NULL AND v.expires_at<=now()) THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+ INSERT INTO public.subscription_events(user_id,event_type,metadata) VALUES(p_user_id,'voucher_quote_available',jsonb_build_object('voucher_code_hint',v.code_hint,'plan_code',v.plan_code,'duration_days',v.duration_days));
+ RETURN jsonb_build_object('plan_code',v.plan_code,'duration_days',v.duration_days,'expires_at',v.expires_at);
+END $$;
+CREATE OR REPLACE FUNCTION public.redeem_subscription_voucher(p_user_id uuid,p_voucher_code_hash text,p_redemption_idempotency_key uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v public.subscription_vouchers%ROWTYPE; u public.app_users%ROWTYPE; e public.user_entitlements%ROWTYPE; r public.subscription_voucher_redemptions%ROWTYPE; starts timestamptz; expiry timestamptz;
+BEGIN
+ IF p_user_id IS NULL OR p_voucher_code_hash IS NULL OR p_redemption_idempotency_key IS NULL THEN RAISE EXCEPTION 'invalid redemption'; END IF;
+ SELECT * INTO r FROM public.subscription_voucher_redemptions WHERE redemption_idempotency_key=p_redemption_idempotency_key; IF FOUND THEN RETURN jsonb_build_object('redeemed',true,'entitlement_id',r.entitlement_id); END IF;
+ SELECT * INTO u FROM public.app_users WHERE id=p_user_id FOR UPDATE; IF NOT FOUND OR u.is_blocked THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+ SELECT * INTO v FROM public.subscription_vouchers WHERE code_hash=p_voucher_code_hash FOR UPDATE;
+ IF NOT FOUND OR NOT v.active OR v.revoked_at IS NOT NULL OR v.redemption_count>=v.max_redemptions OR (v.expires_at IS NOT NULL AND v.expires_at<=now()) THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+ IF EXISTS(SELECT 1 FROM public.subscription_voucher_redemptions WHERE voucher_id=v.id AND user_id=p_user_id) THEN RAISE EXCEPTION 'already redeemed'; END IF;
+ starts:=now(); expiry:=starts + make_interval(days=>v.duration_days);
+ INSERT INTO public.user_entitlements(user_id,plan_code,source,status,starts_at,expires_at,lifetime,source_reference,activation_idempotency_key) VALUES(p_user_id,v.plan_code,'voucher','active',starts,expiry,false,v.id::text,p_redemption_idempotency_key::text) RETURNING * INTO e;
+ INSERT INTO public.subscription_voucher_redemptions(voucher_id,user_id,entitlement_id,redemption_idempotency_key) VALUES(v.id,p_user_id,e.id,p_redemption_idempotency_key) RETURNING * INTO r;
+ UPDATE public.subscription_vouchers SET redemption_count=redemption_count+1 WHERE id=v.id;
+ INSERT INTO public.subscription_events(user_id,entitlement_id,event_type,metadata) VALUES(p_user_id,e.id,'voucher_redeemed',jsonb_build_object('voucher_code_hint',v.code_hint,'plan_code',v.plan_code,'duration_days',v.duration_days,'result_code','redeemed'));
+ RETURN jsonb_build_object('redeemed',true,'plan_code',v.plan_code,'duration_days',v.duration_days,'starts_at',starts,'expires_at',expiry);
+END $$;
+CREATE OR REPLACE FUNCTION public.create_subscription_voucher(p_voucher_code_hash text,p_voucher_code_hint text,p_plan_code text,p_duration_days integer,p_max_redemptions integer,p_actor_user_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v public.subscription_vouchers%ROWTYPE;
+BEGIN
+ IF p_voucher_code_hash !~ '^[a-f0-9]{64}$' OR p_voucher_code_hint !~ '^[A-Z0-9]{4}$' OR p_plan_code NOT IN ('PREMIUM_1_MONTH','PREMIUM_2_MONTHS','PREMIUM_3_MONTHS','LIFETIME') OR p_duration_days NOT BETWEEN 1 AND 3650 OR p_max_redemptions NOT BETWEEN 1 AND 100000 THEN RAISE EXCEPTION 'invalid voucher'; END IF;
+ INSERT INTO public.subscription_vouchers(code_hash,code_hint,plan_code,duration_days,max_redemptions,created_by_user_id) VALUES(p_voucher_code_hash,p_voucher_code_hint,p_plan_code,p_duration_days,p_max_redemptions,p_actor_user_id) RETURNING * INTO v;
+ INSERT INTO public.subscription_events(actor_user_id,event_type,metadata) VALUES(p_actor_user_id,'voucher_created',jsonb_build_object('voucher_code_hint',v.code_hint,'plan_code',v.plan_code,'duration_days',v.duration_days)); RETURN jsonb_build_object('id',v.id,'code_hint',v.code_hint);
+END $$;
+CREATE OR REPLACE FUNCTION public.revoke_subscription_voucher(p_voucher_code_hash text,p_voucher_code_hint text,p_plan_code text,p_duration_days integer,p_max_redemptions integer,p_actor_user_id uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v public.subscription_vouchers%ROWTYPE; BEGIN SELECT * INTO v FROM public.subscription_vouchers WHERE code_hash=p_voucher_code_hash FOR UPDATE; IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF; UPDATE public.subscription_vouchers SET active=false,revoked_at=now() WHERE id=v.id; INSERT INTO public.subscription_events(actor_user_id,event_type,metadata) VALUES(p_actor_user_id,'voucher_revoked',jsonb_build_object('voucher_code_hint',v.code_hint,'result_code','revoked')); RETURN jsonb_build_object('id',v.id,'revoked',true); END $$;
+CREATE OR REPLACE FUNCTION public.record_voucher_admin_telegram_command(p_update_id bigint,p_telegram_user_id bigint,p_command text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$ BEGIN IF p_telegram_user_id<>6396446903 THEN RAISE EXCEPTION 'unauthorized'; END IF; INSERT INTO public.voucher_admin_telegram_updates(update_id,telegram_user_id,command) VALUES(p_update_id,p_telegram_user_id,left(coalesce(p_command,''),160)) ON CONFLICT DO NOTHING; INSERT INTO public.subscription_events(event_type,metadata) VALUES('voucher_admin_telegram_command',jsonb_build_object('result_code','accepted')); END $$;
+REVOKE ALL ON FUNCTION public.quote_subscription_voucher(uuid,text,uuid), public.redeem_subscription_voucher(uuid,text,uuid), public.create_subscription_voucher(text,text,text,integer,integer,uuid), public.revoke_subscription_voucher(text,text,text,integer,integer,uuid), public.record_voucher_admin_telegram_command(bigint,bigint,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.quote_subscription_voucher(uuid,text,uuid), public.redeem_subscription_voucher(uuid,text,uuid), public.create_subscription_voucher(text,text,text,integer,integer,uuid), public.revoke_subscription_voucher(text,text,text,integer,integer,uuid), public.record_voucher_admin_telegram_command(bigint,bigint,text) TO service_role;
