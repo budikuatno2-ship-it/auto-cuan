@@ -1658,6 +1658,7 @@
         <div class="p-4 sm:p-6 space-y-4">
             <div class="flex flex-wrap gap-2">
                 <button onclick="loadAdminUsers()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">User Approval</button>
+                <button onclick="loadSubscriptionCatalog()" class="px-4 py-2 rounded-lg text-sm font-medium text-violet-400 border border-violet-500/30 hover:bg-violet-500/10 transition-all">Subscription Plans</button>
                 <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Login Logs</button>
                 <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">AI Analysis</button>
                 <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
@@ -5553,6 +5554,33 @@ window.addEventListener('resize', updateTvHeight); updateTvHeight();
 // ===== ADMIN LOGS =====
 var lastAdminLogType = 'login';
 var cachedAdminData = null;
+var subscriptionCatalogPublishing = false;
+
+// Price catalog UI: values always come from the protected admin API. The
+// browser sends no actor identity and disables Publish while a request is live.
+function adminIdr(value) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(value || 0)); }
+function adminJakarta(value) { return value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' }).format(new Date(value)) : '—'; }
+function catalogCall(body) { return fetch('/api/admin-users', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function(r) { return r.json(); }); }
+async function loadSubscriptionCatalog() {
+    var c = document.getElementById('adminLogsContainer'); if (!c) return; c.innerHTML = '<div class="py-4 text-sm text-gray-400">Memuat katalog…</div>';
+    try { var data = await catalogCall({ action: 'subscription_plan_list' }); if (!data.success) throw new Error(data.error || 'Katalog tidak tersedia.');
+      var h = '<div class="space-y-3"><h3 class="text-sm font-semibold text-violet-300">Subscription plan catalog</h3>';
+      data.plans.forEach(function(p) { var q = p.current_price || {}; h += '<div class="p-3 rounded-lg bg-dark-700 border border-dark-600/50 text-xs"><div class="flex justify-between gap-2"><b>' + escapeAdminHtml(p.display_name) + '</b><button class="text-violet-300" onclick="editSubscriptionPlan(' + JSON.stringify(p.code).replace(/"/g, '&quot;') + ')">Edit price</button></div><div class="mt-2 text-gray-400">Normal ' + adminIdr(q.normal_price_idr) + ' · Promo ' + (q.promo_enabled ? adminIdr(q.promo_price_idr) : 'nonaktif') + ' · v' + escapeAdminHtml(q.price_version || '—') + '</div><div class="mt-1 text-gray-500">Mulai: ' + adminJakarta(q.promo_starts_at) + ' · Berakhir: ' + (q.promo_ends_at ? adminJakarta(q.promo_ends_at) : 'hingga dinonaktifkan') + '</div><details class="mt-2 text-gray-500"><summary>Riwayat harga</summary>' + (p.history || []).map(function(x) { return '<div>v' + x.price_version + ': ' + adminIdr(x.normal_price_idr) + ' — ' + escapeAdminHtml(x.change_reason || '') + '</div>'; }).join('') + '</details></div>'; }); c.innerHTML = h + '</div>';
+    } catch(e) { c.innerHTML = '<p class="text-sm text-red-400">' + escapeAdminHtml(e.message) + '</p>'; }
+}
+async function editSubscriptionPlan(code) {
+    if (subscriptionCatalogPublishing) { showToast('Publikasi masih diproses.', 'error'); return; }
+    var normal = prompt('Harga normal IDR (bilangan bulat positif):'); if (normal === null) return;
+    var promo = prompt('Harga promo IDR (kosongkan untuk nonaktif):', ''); if (promo === null) return;
+    var enabled = promo.trim() !== ''; var start = enabled ? prompt('Mulai promo ISO (contoh 2026-07-23T00:00:00+07:00):') : ''; if (enabled && start === null) return;
+    var end = enabled ? prompt('Akhir promo ISO (kosongkan = hingga dinonaktifkan):', '') : ''; if (enabled && end === null) return;
+    var reason = prompt('Alasan perubahan:'); if (reason === null) return;
+    var body = { action: 'subscription_plan_price_preview', plan_code: code, normal_price_idr: normal, promo_price_idr: enabled ? promo : null, promo_enabled: enabled, promo_starts_at: start, promo_ends_at: end, change_reason: reason };
+    var preview = await catalogCall(body); if (!preview.success) { showToast(preview.error || 'Validasi gagal.', 'error'); return; }
+    if (!confirm('Publikasikan versi baru dengan harga efektif ' + adminIdr(preview.preview.effective_price_idr) + '?')) return;
+    body.action = 'subscription_plan_price_publish'; body.submission_id = 'catalog_' + Date.now() + '_' + Math.random().toString(36).slice(2, 14); subscriptionCatalogPublishing = true;
+    try { var result = await catalogCall(body); showToast(result.success ? 'Harga dipublikasikan.' : (result.error || 'Publikasi gagal.'), result.success ? 'success' : 'error'); if (result.success) loadSubscriptionCatalog(); } finally { subscriptionCatalogPublishing = false; }
+}
 
 // ===== SHARE LINK GENERATOR =====
 async function generateShareLink() {
