@@ -942,7 +942,7 @@
 
 <!-- ===== PAGE: DASHBOARD HOME ===== -->
 <div id="page-dashboard" class="page-content flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
-    <section class="dashboard-card p-4 mb-4" aria-label="Identitas langganan"><h2 class="font-black text-white">Identitas Langganan</h2><p id="subscriptionIdentityStatus" class="text-sm text-gray-400 mt-1">Memuat status aman…</p><div class="flex flex-wrap gap-2 mt-3"><button id="subscriptionTelegramLink" class="nav-btn">Hubungkan Telegram</button><button id="subscriptionTrialActivate" class="nav-btn hidden">Mulai Trial 10 Hari</button></div><p id="subscriptionTrialStatus" class="text-xs text-gray-500 mt-3">Telegram adalah identitas langganan.</p></section>
+    <section class="dashboard-card p-4 mb-4" aria-label="Identitas langganan"><h2 class="font-black text-white">Identitas Langganan</h2><p id="subscriptionIdentityStatus" class="text-sm text-gray-400 mt-1">Fitur langganan sedang disiapkan.</p><div class="flex flex-wrap gap-2 mt-3"><button id="subscriptionTelegramLink" class="nav-btn" disabled aria-disabled="true">Hubungkan Telegram</button><button id="subscriptionTrialActivate" class="nav-btn hidden" disabled aria-disabled="true">Mulai Trial 10 Hari</button></div><p id="subscriptionTrialStatus" class="text-xs text-gray-500 mt-3">Kontrol trial dan Telegram akan tersedia setelah konfigurasi langganan siap.</p></section>
     <div class="space-y-4">
         <!-- Greeting -->
         <div class="dashboard-hero p-4 sm:p-5">
@@ -2002,19 +2002,21 @@ function isLoggedInUser() { return getUsername() !== 'guest' && localStorage.get
 function getAuthHeaders() { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; }
 function getDashboardAuthHeaders() { return getAuthHeaders(); }
 function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
-// Display-only compatibility cache. Server-side subscription code never reads
-// this value; the signed HttpOnly cookie remains the sole authority.
-async function subscriptionIdentityCall(action, body) { var r = await fetch('/api/login-user?action=' + encodeURIComponent(action), { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(body || {action:action}) }); return r.json(); }
-var subscriptionIdentityBusy = false;
-async function refreshSubscriptionIdentity() { try { var t=await subscriptionIdentityCall('subscription-telegram-link-status'), trial=await subscriptionIdentityCall('subscription-trial-status'); var el=document.getElementById('subscriptionIdentityStatus'), note=document.getElementById('subscriptionTrialStatus'), button=document.getElementById('subscriptionTrialActivate'); if(el && t.success) el.textContent='Telegram: '+(t.linked?'terhubung':'belum terhubung'); if(!trial.success) return; if(button) button.classList.toggle('hidden',!trial.available||trial.telegram_link_required||trial.admin); if(note) { if(trial.admin) note.textContent='Admin/full access.'; else if(trial.telegram_link_required) note.textContent='Hubungkan Telegram terlebih dahulu.'; else if(trial.active) note.textContent='Trial aktif: '+new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'}).format(new Date(trial.starts_at))+' sampai '+new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'short'}).format(new Date(trial.expires_at)); else if(trial.consumed) note.textContent='Trial satu kali telah digunakan.'; else note.textContent='Trial 10 hari tersedia.'; } } catch (_) {} }
-document.addEventListener('click', async function(e) { var id=e.target && e.target.id; if(!id || subscriptionIdentityBusy) return; if(id==='subscriptionTelegramLink') { subscriptionIdentityBusy=true; try { var d=await subscriptionIdentityCall('subscription-telegram-link-token-create',{action:'subscription-telegram-link-token-create'}); if(d.success && d.telegram_link) window.open(d.telegram_link,'_blank','noopener'); showToast(d.success?'Permintaan diproses.':(d.error||'Permintaan gagal.'),d.success?'success':'error'); refreshSubscriptionIdentity(); } finally { subscriptionIdentityBusy=false; } } if(id==='subscriptionTrialActivate') { if(!window.confirm('Mulai trial 10 hari? Trial hanya dapat digunakan sekali.')) return; subscriptionIdentityBusy=true; e.target.disabled=true; try { var d=await subscriptionIdentityCall('subscription-trial-activate',{action:'subscription-trial-activate',idempotency_key:crypto.randomUUID()}); showToast(d.success?(d.normal_login_required?'Trial aktif. Silakan login ulang.':'Trial 10 hari aktif.'):(d.error||'Trial gagal.'),d.success?'success':'error'); refreshSubscriptionIdentity(); } finally { e.target.disabled=false; subscriptionIdentityBusy=false; } } });
-async function refreshSubscriptionStatus() {
+// Subscription provisioning is intentionally unavailable until its schema and
+// configuration are deployed. It is not part of startup and cannot affect free/public UI.
+function safeRequestId() { return generateDeviceUuid(); }
+async function safeSubscriptionRequest(action, body, timeoutMs) {
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = controller ? setTimeout(function() { controller.abort(); }, timeoutMs || 6000) : null;
     try {
-        var response = await fetch('/api/login-user?action=subscription-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ action: 'subscription-status' }) });
-        var data = await response.json();
-        if (data && data.success && data.entitlement) localStorage.setItem('autocuan_subscription_status', JSON.stringify(data.entitlement));
-    } catch (e) { /* Non-authoritative UI enhancement only. */ }
+        var response = await fetch('/api/login-user?action=' + encodeURIComponent(action), { method: 'POST', headers: {'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(body || {action:action}), signal:controller ? controller.signal : undefined });
+        var type = String(response.headers.get('content-type') || '').toLowerCase();
+        if (!response.ok || type.indexOf('application/json') === -1) return { success:false, error:'Fitur sementara tidak tersedia.' };
+        try { return await response.json(); } catch (_) { return { success:false, error:'Fitur sementara tidak tersedia.' }; }
+    } catch (_) { return { success:false, error:'Fitur sementara tidak tersedia.' }; }
+    finally { if (timer) clearTimeout(timer); }
 }
+async function refreshSubscriptionStatus() { /* Deferred until subscription capability is provisioned. */ }
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
 // Logged-in approved: unlimited (controlled by admin approval)
@@ -2386,8 +2388,20 @@ function renderShareDt(d) {
     pane.innerHTML = html;
 }
 
+// ===== STARTUP FAIL-SAFE =====
+function renderStartupFallback() {
+    var loader = document.getElementById('initialLoader'); if (loader) loader.remove();
+    var blocked = document.getElementById('blockedScreen'); if (blocked) blocked.classList.add('hidden');
+    var maintenance = document.getElementById('maintenanceScreen'); if (maintenance) maintenance.classList.add('hidden');
+    var dashboard = document.getElementById('dashboardScreen'); if (dashboard) dashboard.classList.add('hidden');
+    var landing = document.getElementById('landingPage'); if (landing) landing.classList.remove('hidden');
+    var notice = document.getElementById('startupFallbackNotice');
+    if (!notice && landing) { notice=document.createElement('p'); notice.id='startupFallbackNotice'; notice.className='mx-auto mt-4 max-w-xl px-4 text-center text-sm text-yellow-300'; notice.setAttribute('role','status'); notice.textContent='Beberapa fitur sementara tidak tersedia.'; landing.prepend(notice); }
+}
+
 // ===== INITIALIZATION =====
 (async function init() {
+    try {
     // === PUBLIC SHARE MODE ===
     var _shareParams = new URLSearchParams(window.location.search);
     if (_shareParams.get('share') === 'screener' && _shareParams.get('token')) {
@@ -2425,9 +2439,16 @@ function renderShareDt(d) {
     if (localStorage.getItem('autocuan_entered_app') === 'true' && localStorage.getItem('auto_cuan_onboarding_seen') !== 'true') {
         setTimeout(function() { showOnboardingGuide(); }, 600);
     }
+    } catch (_) {
+        // Startup is best-effort: no optional failure may hide the public site.
+        renderStartupFallback();
+    } finally {
+        var il = document.getElementById('initialLoader'); if (il) il.remove();
+    }
 })();
-// Safety: remove loader if init takes too long (network timeout)
-setTimeout(function() { var il = document.getElementById('initialLoader'); if (il) il.remove(); }, 5000);
+// The watchdog also renders a usable public screen; merely removing the spinner
+// would otherwise leave a blank page after an early startup exception.
+setTimeout(function() { if (document.getElementById('initialLoader')) renderStartupFallback(); }, 4500);
 
 // Nav scroll indicator: detect overflow and show gradient hint on mobile
 (function() {

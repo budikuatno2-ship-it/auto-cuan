@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret, createOnboardingSessionToken, buildOnboardingCookie, buildClearOnboardingCookie, isSameOrigin } = require('../lib/admin-session');
+const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret, buildClearOnboardingCookie, isSameOrigin } = require('../lib/admin-session');
 const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser } = require('../lib/subscription-auth');
 const identity = require('../lib/subscription-identity');
 const { resolveEntitlements } = require('../lib/entitlements');
@@ -377,8 +377,8 @@ module.exports = async function handler(req, res) {
       } catch (e) {
         console.error('login-user: pending challenge issuance failed');
       }
-      const onboardingToken = createOnboardingSessionToken({ userId:user.id, username:usernameLower });
-      if (onboardingToken) { res.setHeader('Set-Cookie', buildOnboardingCookie(onboardingToken)); pendingResponse.onboarding = true; }
+      // Subscription onboarding is disabled until its server capability is provisioned.
+      // Do not issue a cookie that could make unfinished subscription actions available.
       return res.status(403).json(pendingResponse);
     }
 
