@@ -1,7 +1,8 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret } = require('../lib/admin-session');
-const { requireUserSession } = require('../lib/subscription-auth');
+const { requireUserSession, requireNonBlockedUser } = require('../lib/subscription-auth');
+const identity = require('../lib/subscription-identity');
 const { resolveEntitlements } = require('../lib/entitlements');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
@@ -81,6 +82,40 @@ async function handleVerifyWebhook(req, res) {
     return res.status(200).json({ ok: true });
   }
 }
+async function subscriptionDb() {
+  const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+function safeRequestId(prefix) { return prefix + '_' + crypto.randomBytes(16).toString('base64url'); }
+async function subscriptionAccount(req, db) {
+  return requireNonBlockedUser(req, db);
+}
+async function handleSubscriptionTelegramWebhook(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const expected = process.env.TELEGRAM_SUBSCRIPTION_WEBHOOK_SECRET;
+  if (!expected || !secretsMatch(req.headers['x-telegram-bot-api-secret-token'], expected)) return res.status(401).json({ ok: false });
+  if (Number(req.headers['content-length'] || 0) > MAX_WEBHOOK_BODY_BYTES) return res.status(413).json({ ok: false });
+  const update = req.body || {}; let body;
+  try { body = JSON.stringify(update); } catch (_) { return res.status(400).json({ ok: false }); }
+  if (body.length > MAX_WEBHOOK_BODY_BYTES || !Number.isSafeInteger(update.update_id)) return res.status(200).json({ ok: true });
+  const message = update.message || {}, from = message.from || {}, chat = message.chat || {};
+  if (chat.type !== 'private' || !Number.isSafeInteger(from.id) || !Number.isSafeInteger(chat.id) || typeof message.text !== 'string') return res.status(200).json({ ok: true });
+  const match = /^\/start\s+([A-Za-z0-9_-]{20,200})$/.exec(message.text.trim());
+  if (!match) return res.status(200).json({ ok: true });
+  let tokenHash; try { tokenHash = identity.linkTokenHash(match[1]); } catch (_) { return res.status(200).json({ ok: true }); }
+  const db = await subscriptionDb(); if (!db) return res.status(200).json({ ok: true });
+  try { await db.rpc('consume_subscription_telegram_link', { p_token_hash: tokenHash, p_telegram_user_id: from.id, p_chat_id: chat.id, p_update_id: update.update_id }); } catch (_) { /* generic ack only */ }
+  return res.status(200).json({ ok: true });
+}
+async function handleSubscriptionAction(req, res, action) {
+  const db = await subscriptionDb(); if (!db) return res.status(503).json({ success:false, error:'Layanan akun tidak tersedia.' });
+  const auth = await subscriptionAccount(req, db); if (!auth.ok) return res.status(auth.status).json({ success:false, error:auth.error });
+  const account = auth.account;
+  if (action === 'subscription-telegram-link-token-create') { let token,hash; try { token=identity.createLinkToken();hash=identity.linkTokenHash(token); } catch (_) { return res.status(503).json({success:false,error:'Tautan Telegram tidak tersedia.'}); } const requestId=safeRequestId('telegram'); const issued=await db.rpc('issue_subscription_telegram_link_token',{p_user_id:account.id,p_token_hash:hash,p_request_id:requestId,p_expires_at:new Date(Date.now()+identity.LINK_TTL_MS).toISOString()}); if(issued.error)return res.status(503).json({success:false,error:'Tautan Telegram tidak tersedia.'}); if(issued.data==='rate_limited') return res.status(429).json({success:false,error:'Tunggu sebentar sebelum membuat tautan baru.'}); const bot=String(process.env.TELEGRAM_SUBSCRIPTION_BOT_USERNAME||'').replace(/^@/,''); return res.status(200).json({success:true,telegram_link:bot?'https://t.me/'+encodeURIComponent(bot)+'?start='+token:token}); }
+  return null;
+}
+
 const LEGACY_BUDI_PASSWORD_HASH = crypto
   .createHash('sha256')
   .update('._autocuan_salt_2024', 'utf8')
@@ -125,6 +160,10 @@ module.exports = async function handler(req, res) {
   // This isolated action runs FIRST, before logout / password / session / normal
   // login handling. It validates its own secret, never issues or reads browser
   // sessions, never touches CRON_SECRET, and uses TELEGRAM_VERIFY_BOT_TOKEN only.
+  if (req.query && req.query.action === 'subscription-telegram-webhook') {
+    return await handleSubscriptionTelegramWebhook(req, res);
+  }
+
   if (req.query && req.query.action === 'telegram-verify-webhook') {
     return await handleVerifyWebhook(req, res);
   }
@@ -135,6 +174,11 @@ module.exports = async function handler(req, res) {
 
   try {
     const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
+
+    const subscriptionAction = (req.query && req.query.action) || action;
+    if (/^subscription-(telegram-link-token-create|telegram-link-status)$/.test(subscriptionAction || '')) {
+      return await handleSubscriptionAction(req, res, subscriptionAction);
+    }
 
     // Public, deliberately narrow catalog. It only reads active catalog rows and
     // server-resolves the effective price at this instant.

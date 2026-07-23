@@ -126,3 +126,60 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.publish_subscription_plan_price(text,bigint,bigint,boolean,timestamptz,timestamptz,uuid,text,text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.publish_subscription_plan_price(text,bigint,bigint,boolean,timestamptz,timestamptz,uuid,text,text) TO service_role;
+
+-- Phase 4: separate subscription Telegram linking only. ADDITIVE ONLY; this
+-- migration is intentionally unapplied by application code. Email is not an
+-- identity, eligibility, or delivery mechanism in the first release.
+CREATE TABLE IF NOT EXISTS public.telegram_subscription_links (
+ user_id uuid PRIMARY KEY REFERENCES public.app_users(id), telegram_user_id bigint UNIQUE, telegram_private_chat_id bigint,
+ link_state text NOT NULL DEFAULT 'unlinked' CHECK (link_state IN ('linked','unlinked')), linked_at timestamptz, unlinked_at timestamptz,
+ trial_ever_used_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.telegram_subscription_link_tokens (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES public.app_users(id), token_hash text NOT NULL UNIQUE,
+ expires_at timestamptz NOT NULL, used_at timestamptz, revoked_at timestamptz, request_id text NOT NULL UNIQUE, created_at timestamptz NOT NULL DEFAULT now());
+CREATE UNIQUE INDEX IF NOT EXISTS uq_active_subscription_link_token ON public.telegram_subscription_link_tokens(user_id) WHERE used_at IS NULL AND revoked_at IS NULL;
+CREATE TABLE IF NOT EXISTS public.telegram_subscription_webhook_updates (update_id bigint PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now());
+ALTER TABLE public.telegram_subscription_links ENABLE ROW LEVEL SECURITY; ALTER TABLE public.telegram_subscription_link_tokens ENABLE ROW LEVEL SECURITY; ALTER TABLE public.telegram_subscription_webhook_updates ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.telegram_subscription_links, public.telegram_subscription_link_tokens, public.telegram_subscription_webhook_updates FROM anon, authenticated;
+
+-- Fixed-search-path RPC: atomically consumes a hashed token and enforces both
+-- legacy and subscription Telegram uniqueness. It does not grant entitlements.
+CREATE OR REPLACE FUNCTION public.consume_subscription_telegram_link(p_token_hash text, p_telegram_user_id bigint, p_chat_id bigint, p_update_id bigint)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE t public.telegram_subscription_link_tokens%ROWTYPE; legacy_user uuid;
+BEGIN
+ IF p_token_hash IS NULL OR p_telegram_user_id IS NULL OR p_chat_id IS NULL OR p_update_id IS NULL THEN RETURN 'rejected'; END IF;
+ INSERT INTO public.telegram_subscription_webhook_updates(update_id) VALUES(p_update_id) ON CONFLICT DO NOTHING;
+ IF NOT FOUND THEN RETURN 'duplicate'; END IF;
+ SELECT * INTO t FROM public.telegram_subscription_link_tokens WHERE token_hash=p_token_hash FOR UPDATE;
+ IF NOT FOUND OR t.used_at IS NOT NULL OR t.revoked_at IS NOT NULL OR t.expires_at <= now() THEN RETURN 'rejected'; END IF;
+ SELECT user_id INTO legacy_user FROM public.app_user_telegram_verifications WHERE telegram_user_id=p_telegram_user_id AND telegram_verified_at IS NOT NULL;
+ IF legacy_user IS NOT NULL AND legacy_user <> t.user_id THEN RETURN 'rejected'; END IF;
+ IF EXISTS (SELECT 1 FROM public.app_user_telegram_verifications WHERE user_id=t.user_id AND telegram_verified_at IS NOT NULL AND telegram_user_id <> p_telegram_user_id) THEN RETURN 'rejected'; END IF;
+ IF EXISTS (SELECT 1 FROM public.telegram_subscription_links WHERE telegram_user_id=p_telegram_user_id AND user_id <> t.user_id AND link_state='linked') THEN RETURN 'rejected'; END IF;
+ UPDATE public.telegram_subscription_link_tokens SET used_at=now() WHERE id=t.id;
+ INSERT INTO public.telegram_subscription_links(user_id,telegram_user_id,telegram_private_chat_id,link_state,linked_at,updated_at) VALUES(t.user_id,p_telegram_user_id,p_chat_id,'linked',now(),now())
+ ON CONFLICT(user_id) DO UPDATE SET telegram_user_id=EXCLUDED.telegram_user_id,telegram_private_chat_id=EXCLUDED.telegram_private_chat_id,link_state='linked',linked_at=now(),unlinked_at=NULL,updated_at=now();
+ INSERT INTO public.subscription_events(user_id,event_type,metadata) VALUES(t.user_id,'subscription_telegram_linked',jsonb_build_object('telegram_user_id',p_telegram_user_id));
+ RETURN 'linked';
+END $$;
+REVOKE ALL ON FUNCTION public.consume_subscription_telegram_link(text,bigint,bigint,bigint) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.consume_subscription_telegram_link(text,bigint,bigint,bigint) TO service_role;
+
+-- Token issuance is serialized per web user. It rejects bursts (one fresh token
+-- every 30 seconds), revokes a prior unused token, and stores no plaintext.
+CREATE OR REPLACE FUNCTION public.issue_subscription_telegram_link_token(p_user_id uuid, p_token_hash text, p_request_id text, p_expires_at timestamptz)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v_last timestamptz;
+BEGIN
+ IF p_user_id IS NULL OR p_token_hash IS NULL OR p_request_id !~ '^[A-Za-z0-9_-]{16,100}$' OR p_expires_at <= now() OR p_expires_at > now() + interval '5 minutes' THEN RAISE EXCEPTION 'invalid link token'; END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('subscription-telegram-link:' || p_user_id::text, 0));
+ SELECT created_at INTO v_last FROM public.telegram_subscription_link_tokens WHERE user_id=p_user_id ORDER BY created_at DESC LIMIT 1;
+ IF v_last IS NOT NULL AND v_last > now() - interval '30 seconds' THEN RETURN 'rate_limited'; END IF;
+ UPDATE public.telegram_subscription_link_tokens SET revoked_at=now() WHERE user_id=p_user_id AND used_at IS NULL AND revoked_at IS NULL;
+ INSERT INTO public.telegram_subscription_link_tokens(user_id,token_hash,expires_at,request_id) VALUES(p_user_id,p_token_hash,p_expires_at,p_request_id);
+ INSERT INTO public.subscription_events(user_id,event_type,metadata) VALUES(p_user_id,'subscription_telegram_link_token_created',jsonb_build_object('request_id',p_request_id));
+ RETURN 'created';
+END $$;
+REVOKE ALL ON FUNCTION public.issue_subscription_telegram_link_token(uuid,text,text,timestamptz) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.issue_subscription_telegram_link_token(uuid,text,text,timestamptz) TO service_role;
