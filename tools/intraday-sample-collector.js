@@ -43,6 +43,10 @@ const path = require('node:path');
 const engine = require('../lib/daytrade-screener-engine');
 const lifecycle = require('../lib/intraday-sample-lifecycle');
 const summary = require('../lib/intraday-sample-summary');
+// Canonical trade-plan selector + deterministic plan-lock. Pure/deterministic:
+// no Supabase, no Telegram, no wall-clock, no mutation. Honours the public flag
+// (default OFF => the locked plan is the unchanged legacy plan).
+const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 
 
 const VERSION = 'intraday-sample-collector-v2.0';
@@ -501,8 +505,26 @@ function sanitizeRecord(record) {
 
 function round2(n) { return Math.round(n * 100) / 100; }
 
-function buildCandidateRecord(result, scheduledTime, rank, freshness) {
-  return {
+function buildCandidateRecord(result, scheduledTime, rank, freshness, sampleDate, env) {
+  result = result || {};
+  // LOCKED canonical trade plan for this intraday candidate. The intraday system
+  // must observe against the ALREADY-SELECTED plan — it never recomputes SL / TP
+  // from intraday candles. The selector honours TRADE_PLAN_V2_PUBLIC_ENABLED:
+  //   - flag off (default, and the experimental collector's env) => the unchanged
+  //     legacy plan is locked (source 'legacy');
+  //   - flag on + usable V2 => the V2 plan is locked (source 'trade_plan_v2');
+  //   - flag on + rejected/stale/unsafe V2 => the complete legacy plan is locked
+  //     (source 'legacy_fallback') — never a null SL/TP.
+  // The plan_lock_id is deterministic from the screener snapshot identity, so a
+  // later observation that merely re-runs keeps the SAME id and can never silently
+  // switch between legacy and V2 for the same snapshot.
+  const selectedPlan = tradePlanV2Integration.buildLockedTradePlan(result, {
+    screener_type: 'DAY_TRADE',
+    env: env || process.env,
+    trading_date: (sampleDate === undefined || sampleDate === null || sampleDate === '') ? SAMPLE_DATE : sampleDate,
+    generated_at: result.generated_at != null ? result.generated_at : null
+  });
+  const record = {
     ticker: result.ticker || null,
     sample_timestamp: new Date().toISOString(),
     scheduled_time: scheduledTime,
@@ -551,9 +573,18 @@ function buildCandidateRecord(result, scheduledTime, rank, freshness) {
     // is purely additive and does not alter any existing field, scoring, ranking,
     // Telegram, or recommendation behaviour.
     structural_context: buildStructuralContext(result),
+    // === ADDITIVE canonical locked trade plan (Trade Plan V2 rollout) =========
+    // The single selected plan every consumer (web / Telegram / intraday /
+    // progress monitor) refers to, plus a deterministic plan_lock_id. All numbers
+    // are read straight from the canonical selector — NEVER recomputed here or
+    // from intraday candles. Purely additive; no existing field is altered.
+    trade_plan_source: selectedPlan.trade_plan_source,
+    plan_lock_id: selectedPlan.plan_lock_id,
+    selected_trade_plan: selectedPlan,
     // Freshness metadata per candidate (Blocker 5)
     freshness: freshness || null
   };
+  return record;
 }
 
 /**
@@ -780,7 +811,7 @@ async function runSampleCollection(options) {
     const candidateRecords = [];
     for (let i = 0; i < candidates.length; i++) {
       const ticker = candidates[i].ticker;
-      let record = buildCandidateRecord(candidates[i], scheduledTime, i + 1, freshnessByTicker[ticker] || null);
+      let record = buildCandidateRecord(candidates[i], scheduledTime, i + 1, freshnessByTicker[ticker] || null, sampleDate);
       record = deriveDistances(record);
       candidateRecords.push(sanitizeRecord(record));
     }
