@@ -1,7 +1,9 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret } = require('../lib/admin-session');
-const { requireUserSession } = require('../lib/subscription-auth');
+const { requireUserSession, requireNonBlockedUser } = require('../lib/subscription-auth');
+const identity = require('../lib/subscription-identity');
+const { deliverVerificationOtp } = require('../lib/subscription-email');
 const { resolveEntitlements } = require('../lib/entitlements');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
@@ -81,6 +83,60 @@ async function handleVerifyWebhook(req, res) {
     return res.status(200).json({ ok: true });
   }
 }
+async function subscriptionDb() {
+  const url = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+function safeRequestId(prefix) { return prefix + '_' + crypto.randomBytes(16).toString('base64url'); }
+async function subscriptionAccount(req, db) {
+  return requireNonBlockedUser(req, db);
+}
+async function handleSubscriptionTelegramWebhook(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const expected = process.env.TELEGRAM_SUBSCRIPTION_WEBHOOK_SECRET;
+  if (!expected || !secretsMatch(req.headers['x-telegram-bot-api-secret-token'], expected)) return res.status(401).json({ ok: false });
+  if (Number(req.headers['content-length'] || 0) > MAX_WEBHOOK_BODY_BYTES) return res.status(413).json({ ok: false });
+  const update = req.body || {}; let body;
+  try { body = JSON.stringify(update); } catch (_) { return res.status(400).json({ ok: false }); }
+  if (body.length > MAX_WEBHOOK_BODY_BYTES || !Number.isSafeInteger(update.update_id)) return res.status(200).json({ ok: true });
+  const message = update.message || {}, from = message.from || {}, chat = message.chat || {};
+  if (chat.type !== 'private' || !Number.isSafeInteger(from.id) || !Number.isSafeInteger(chat.id) || typeof message.text !== 'string') return res.status(200).json({ ok: true });
+  const match = /^\/start\s+([A-Za-z0-9_-]{20,200})$/.exec(message.text.trim());
+  if (!match) return res.status(200).json({ ok: true });
+  let tokenHash; try { tokenHash = identity.linkTokenHash(match[1]); } catch (_) { return res.status(200).json({ ok: true }); }
+  const db = await subscriptionDb(); if (!db) return res.status(200).json({ ok: true });
+  try { await db.rpc('consume_subscription_telegram_link', { p_token_hash: tokenHash, p_telegram_user_id: from.id, p_chat_id: chat.id, p_update_id: update.update_id }); } catch (_) { /* generic ack only */ }
+  return res.status(200).json({ ok: true });
+}
+async function handleSubscriptionAction(req, res, action) {
+  const db = await subscriptionDb(); if (!db) return res.status(503).json({ success:false, error:'Layanan akun tidak tersedia.' });
+  const auth = await subscriptionAccount(req, db); if (!auth.ok) return res.status(auth.status).json({ success:false, error:auth.error });
+  const account = auth.account;
+  if (action === 'subscription-email-status') return res.status(200).json({ success:true, email_present:!!account.email_normalized, email_verified:!!account.email_verified_at, masked_email:identity.maskEmail(account.email_normalized), verification_required:!!account.email_normalized && !account.email_verified_at });
+  if (action === 'subscription-telegram-link-status') { const q = await db.from('telegram_subscription_links').select('link_state,linked_at').eq('user_id', account.id).maybeSingle(); return res.status(200).json({ success:true, linked:!!(q.data && q.data.link_state === 'linked'), linked_at:q.data && q.data.linked_at || null }); }
+  if (action === 'subscription-email-otp-start') {
+    const email = identity.validEmail(req.body && req.body.email); if (!email) return res.status(400).json({ success:false,error:'Email tidak valid.' });
+    let otp, hash; try { otp=identity.createOtp(); hash=identity.otpHash(account.id,email,otp); } catch (_) { return res.status(503).json({success:false,error:'Verifikasi email tidak tersedia.'}); }
+    const requestId=safeRequestId('email'); const expiresAt=new Date(Date.now()+identity.OTP_TTL_MS).toISOString();
+    await db.from('email_otp_challenges').update({revoked_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('user_id',account.id).is('used_at',null).is('revoked_at',null);
+    const made=await db.from('email_otp_challenges').insert({user_id:account.id,email_normalized:email,otp_hash:hash,expires_at:expiresAt,request_id:requestId,delivery_state:'pending'}); if(made.error) return res.status(409).json({success:false,error:'Email sedang digunakan atau verifikasi tidak tersedia.'});
+    const delivery=await deliverVerificationOtp({to:email,otp,expiresAt}); if(!delivery.ok) { await db.from('email_otp_challenges').update({revoked_at:new Date().toISOString(),delivery_state:'unavailable',delivery_attempts:1}).eq('request_id',requestId); return res.status(503).json({success:false,error:'Pengiriman email belum tersedia.'}); }
+    await db.from('email_otp_challenges').update({delivery_state:'sent',delivery_attempts:1}).eq('request_id',requestId); return res.status(200).json({success:true,masked_email:identity.maskEmail(email),verification_required:true});
+  }
+  if (action === 'subscription-email-otp-verify') {
+    const otp=String(req.body && req.body.otp || ''); if(!/^\d{6}$/.test(otp)) return res.status(400).json({success:false,error:'Kode verifikasi tidak valid.'});
+    const q=await db.from('email_otp_challenges').select('*').eq('user_id',account.id).is('used_at',null).is('revoked_at',null).order('created_at',{ascending:false}).limit(1).maybeSingle(); const c=q.data;
+    if(!c || new Date(c.expires_at)<=new Date() || (c.locked_until && new Date(c.locked_until)>new Date())) return res.status(400).json({success:false,error:'Kode verifikasi tidak dapat digunakan.'});
+    let good=false; try { good=secretsMatch(identity.otpHash(account.id,c.email_normalized,otp),c.otp_hash); } catch (_) {}
+    if(!good) { const attempts=(c.attempt_count||0)+1; await db.from('email_otp_challenges').update({attempt_count:attempts,locked_until:attempts>=identity.OTP_ATTEMPT_LIMIT?new Date(Date.now()+identity.OTP_LOCK_MS).toISOString():null,updated_at:new Date().toISOString()}).eq('id',c.id).is('used_at',null); return res.status(400).json({success:false,error:'Kode verifikasi tidak valid.'}); }
+    const used=await db.from('email_otp_challenges').update({used_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',c.id).is('used_at',null).select('id'); if(!used.data || !used.data.length) return res.status(400).json({success:false,error:'Kode verifikasi tidak dapat digunakan.'});
+    const update=await db.from('app_users').update({email:c.email_normalized,email_normalized:c.email_normalized,email_verified_at:new Date().toISOString(),email_updated_at:new Date().toISOString(),email_verification_version:(account.email_verification_version||0)+1}).eq('id',account.id); if(update.error) return res.status(409).json({success:false,error:'Email tidak dapat diverifikasi.'}); return res.status(200).json({success:true,email_verified:true,masked_email:identity.maskEmail(c.email_normalized)});
+  }
+  if (action === 'subscription-telegram-link-token-create') { let token,hash; try { token=identity.createLinkToken();hash=identity.linkTokenHash(token); } catch (_) { return res.status(503).json({success:false,error:'Tautan Telegram tidak tersedia.'}); } const requestId=safeRequestId('telegram'); await db.from('telegram_subscription_link_tokens').update({revoked_at:new Date().toISOString()}).eq('user_id',account.id).is('used_at',null).is('revoked_at',null); const saved=await db.from('telegram_subscription_link_tokens').insert({user_id:account.id,token_hash:hash,expires_at:new Date(Date.now()+identity.LINK_TTL_MS).toISOString(),request_id:requestId}); if(saved.error)return res.status(503).json({success:false,error:'Tautan Telegram tidak tersedia.'}); const bot=String(process.env.TELEGRAM_SUBSCRIPTION_BOT_USERNAME||'').replace(/^@/,''); return res.status(200).json({success:true,telegram_link:bot?'https://t.me/'+encodeURIComponent(bot)+'?start='+token:token}); }
+  return null;
+}
+
 const LEGACY_BUDI_PASSWORD_HASH = crypto
   .createHash('sha256')
   .update('._autocuan_salt_2024', 'utf8')
@@ -125,6 +181,10 @@ module.exports = async function handler(req, res) {
   // This isolated action runs FIRST, before logout / password / session / normal
   // login handling. It validates its own secret, never issues or reads browser
   // sessions, never touches CRON_SECRET, and uses TELEGRAM_VERIFY_BOT_TOKEN only.
+  if (req.query && req.query.action === 'subscription-telegram-webhook') {
+    return await handleSubscriptionTelegramWebhook(req, res);
+  }
+
   if (req.query && req.query.action === 'telegram-verify-webhook') {
     return await handleVerifyWebhook(req, res);
   }
@@ -135,6 +195,11 @@ module.exports = async function handler(req, res) {
 
   try {
     const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
+
+    const subscriptionAction = (req.query && req.query.action) || action;
+    if (/^subscription-(email-status|email-otp-start|email-otp-verify|telegram-link-token-create|telegram-link-status)$/.test(subscriptionAction || '')) {
+      return await handleSubscriptionAction(req, res, subscriptionAction);
+    }
 
     // Public, deliberately narrow catalog. It only reads active catalog rows and
     // server-resolves the effective price at this instant.
