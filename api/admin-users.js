@@ -8,6 +8,7 @@ const { computeTelegramAnalytics } = require('../lib/telegram-analytics');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const { validatePriceInput, safePrice } = require('../lib/subscription-catalog');
 const { isSubscriptionFeatureEnabled, getSubscriptionCapability } = require('../lib/subscription-capability');
+const vouchers = require('../lib/vouchers');
 
 const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
 
@@ -79,10 +80,16 @@ module.exports = async function handler(req, res) {
     // Catalog authority is intentionally narrower than legacy admin actions:
     // the protected budi identity must be present in the signed session.
     const catalogActions = ['subscription_plan_list', 'subscription_plan_price_preview', 'subscription_plan_price_publish', 'subscription_plan_promo_enable', 'subscription_plan_promo_disable', 'subscription_plan_price_history'];
+    const voucherActions = ['voucher_admin_create', 'voucher_admin_revoke', 'voucher_admin_list'];
+    const protectedSubscriptionActions = catalogActions.concat(voucherActions);
+    // Keep the original catalog gate explicit; vouchers extend, not weaken, it.
     if (catalogActions.indexOf(action) >= 0 && !isSubscriptionFeatureEnabled()) {
       return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
     }
-    if (catalogActions.indexOf(action) >= 0 && String(auth.session.un || '').toLowerCase() !== 'budi') {
+    if (protectedSubscriptionActions.indexOf(action) >= 0 && !isSubscriptionFeatureEnabled()) {
+      return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
+    }
+    if (protectedSubscriptionActions.indexOf(action) >= 0 && String(auth.session.un || '').toLowerCase() !== 'budi') {
       return res.status(403).json({ success: false, error: 'Akses katalog ditolak.' });
     }
 
@@ -97,9 +104,24 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    if (catalogActions.indexOf(action) >= 0) {
+    if (protectedSubscriptionActions.indexOf(action) >= 0) {
       const capability = await getSubscriptionCapability(supabase);
       if (!capability.ready) return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
+    }
+
+    // This is server-only protection for the separate Telegram admin bot that
+    // will be configured later. No voucher controls are rendered in web admin.
+    if (voucherActions.indexOf(action) >= 0) {
+      if (action === 'voucher_admin_list') {
+        const listed=await supabase.from('subscription_vouchers').select('id,code_hint,plan_code,duration_days,max_redemptions,redemption_count,active,expires_at,created_at,revoked_at').order('created_at',{ascending:false}).limit(100);
+        if (listed.error) return res.status(503).json({success:false,error:'Voucher tidak tersedia.'});
+        return res.status(200).json({success:true,vouchers:listed.data||[]});
+      }
+      const code=vouchers.normalizeVoucherCode(req.body&&req.body.voucher_code); let hash;
+      try { hash=vouchers.voucherCodeHash(code); } catch (_) { return res.status(400).json({success:false,error:'Voucher tidak valid.'}); }
+      const result=await supabase.rpc(action==='voucher_admin_create'?'create_subscription_voucher':'revoke_subscription_voucher',{p_voucher_code_hash:hash,p_voucher_code_hint:code.slice(-4),p_plan_code:req.body&&req.body.plan_code,p_duration_days:req.body&&req.body.duration_days,p_max_redemptions:req.body&&req.body.max_redemptions,p_actor_user_id:auth.session.uid});
+      if(result.error) return res.status(409).json({success:false,error:'Voucher tidak dapat diproses.'});
+      return res.status(200).json({success:true,voucher:result.data});
     }
 
     if (action === 'subscription_plan_list' || action === 'subscription_plan_price_history') {
