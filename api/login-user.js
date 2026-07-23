@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret } = require('../lib/admin-session');
 const { requireUserSession } = require('../lib/subscription-auth');
-const { getEntitlements } = require('../lib/entitlements');
+const { resolveEntitlements } = require('../lib/entitlements');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
@@ -136,6 +136,27 @@ module.exports = async function handler(req, res) {
   try {
     const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
 
+    // Public, deliberately narrow catalog. It only reads active catalog rows and
+    // server-resolves the effective price at this instant.
+    if ((req.query && req.query.action === 'subscription-plans') || action === 'subscription-plans') {
+      const url = process.env.SUPABASE_URL;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !key) return res.status(503).json({ success: false, error: 'Katalog tidak tersedia.' });
+      const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+      const result = await db.from('subscription_plans').select('code, display_name, kind, duration_months, subscription_plan_prices!inner(normal_price_idr, promo_price_idr, promo_enabled, promo_starts_at, promo_ends_at, active)')
+        .eq('active', true).eq('subscription_plan_prices.active', true).order('sort_order');
+      if (result.error) return res.status(503).json({ success: false, error: 'Katalog tidak tersedia.' });
+      const now = Date.now();
+      const plans = (result.data || []).map(plan => {
+        const price = Array.isArray(plan.subscription_plan_prices) ? plan.subscription_plan_prices[0] : plan.subscription_plan_prices;
+        const promotionActive = Boolean(price && price.promo_enabled && price.promo_price_idr != null && price.promo_starts_at && new Date(price.promo_starts_at).getTime() <= now && (!price.promo_ends_at || now < new Date(price.promo_ends_at).getTime()));
+        return { code: plan.code, display_name: plan.display_name, kind: plan.kind, duration_months: plan.duration_months,
+          normal_price_idr: price.normal_price_idr, promotional_price_idr: promotionActive ? price.promo_price_idr : null,
+          promotion_active: promotionActive, promo_starts_at: price.promo_starts_at, promo_ends_at: price.promo_ends_at, currency: 'IDR' };
+      });
+      return res.status(200).json({ success: true, plans: plans });
+    }
+
     // Read-only Phase 1 entitlement endpoint. The identity comes only from the
     // signed HttpOnly session; request headers and body claims are ignored.
     if ((req.query && req.query.action === 'subscription-status') || action === 'subscription-status') {
@@ -153,7 +174,7 @@ module.exports = async function handler(req, res) {
       if (error || !account || String(account.username || '').trim().toLowerCase() !== auth.user.username) {
         return res.status(401).json({ success: false, error: 'Sesi tidak valid.' });
       }
-      const entitlement = getEntitlements(auth.user, account);
+      const entitlement = await resolveEntitlements(auth.user, account, supabase);
       return res.status(200).json({
         success: true,
         account: { username: account.username, approved: account.is_approved === true, blocked: account.is_blocked === true },
