@@ -1,0 +1,490 @@
+name: Phase 6A.4 premium access patch
+
+on:
+  push:
+    branches:
+      - codex/implement-subscription-plans-ui
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'chore: run phase 6a4 patch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Apply fail-closed premium access patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def read(path):
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path, text):
+              Path(path).write_text(text, encoding='utf-8')
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {count}')
+              return text.replace(old, new, 1)
+
+          # ------------------------------------------------------------------
+          # Server-only access resolver. Signed HttpOnly session + authoritative
+          # entitlement are the only sources of premium access.
+          # ------------------------------------------------------------------
+          path = 'lib/subscription-auth.js'
+          text = read(path)
+          if "require('./entitlements')" not in text:
+              text = replace_once(
+                  text,
+                  "const { requireAuthenticatedSession, getOnboardingSession } = require('./admin-session');\n",
+                  "const { requireAuthenticatedSession, getOnboardingSession } = require('./admin-session');\nconst { resolveEntitlements } = require('./entitlements');\n",
+                  'subscription-auth entitlement import'
+              )
+
+          marker = '// ===== PREMIUM ENTITLEMENT ACCESS (PHASE 6A.4) ====='
+          if marker not in text:
+              premium_helpers = r'''
+// ===== PREMIUM ENTITLEMENT ACCESS (PHASE 6A.4) =====
+// This is a server-only authorization boundary. It deliberately ignores
+// browser headers, localStorage, query claims, and client-provided plan names.
+async function resolvePremiumAccess(req, supabase) {
+  if (!supabase || typeof supabase.from !== 'function') {
+    return { ok: false, status: 503, error: 'Status akses tidak tersedia.' };
+  }
+
+  let auth;
+  try {
+    auth = await requireNonBlockedUser(req, supabase);
+  } catch (_) {
+    return { ok: false, status: 503, error: 'Status akses tidak tersedia.' };
+  }
+  if (!auth.ok) return auth;
+
+  let entitlement;
+  try {
+    entitlement = await resolveEntitlements(auth.user, auth.account, supabase);
+  } catch (_) {
+    return { ok: false, status: 503, error: 'Status akses tidak tersedia.' };
+  }
+
+  return {
+    ok: true,
+    user: auth.user,
+    account: auth.account,
+    entitlement: entitlement,
+    premium: entitlement && entitlement.premium === true,
+    access_level: entitlement && entitlement.access_level || 'free'
+  };
+}
+
+async function requirePremiumEntitlement(req, supabase) {
+  const access = await resolvePremiumAccess(req, supabase);
+  if (!access.ok) return access;
+  if (!access.premium) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Fitur ini tersedia untuk pengguna Trial dan Premium.',
+      user: access.user,
+      account: access.account,
+      entitlement: access.entitlement
+    };
+  }
+  return access;
+}
+
+'''
+              text = replace_once(
+                  text,
+                  'function requireSubscriptionSession(req) {',
+                  premium_helpers + 'function requireSubscriptionSession(req) {',
+                  'subscription-auth helper insertion'
+              )
+
+          old_export = "module.exports = { getAuthenticatedUser, requireUserSession, requireNonBlockedUser, requireSubscriptionSession, requireSubscriptionOnboardingUser };"
+          new_export = "module.exports = { getAuthenticatedUser, requireUserSession, requireNonBlockedUser, resolvePremiumAccess, requirePremiumEntitlement, requireSubscriptionSession, requireSubscriptionOnboardingUser };"
+          if old_export in text:
+              text = text.replace(old_export, new_export, 1)
+          elif 'requirePremiumEntitlement' not in text.split('module.exports =', 1)[-1]:
+              raise SystemExit('subscription-auth export shape was not recognized')
+          write(path, text)
+
+          # ------------------------------------------------------------------
+          # Lightweight signed-session premium status endpoint. Unlike the plan
+          # catalogue UI, this security status remains fail-closed even when the
+          # optional subscription presentation feature flag is disabled.
+          # ------------------------------------------------------------------
+          path = 'api/login-user.js'
+          text = read(path)
+          text = text.replace(
+              "const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser } = require('../lib/subscription-auth');",
+              "const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser, resolvePremiumAccess } = require('../lib/subscription-auth');",
+              1
+          )
+          status_marker = "subscriptionAction === 'premium-access-status'"
+          if status_marker not in text:
+              anchor = """    if (/^(subscription-(telegram-link-token-create|telegram-link-status|trial-status|trial-activate)|voucher-(quote|redeem))$/.test(subscriptionAction || '')) {
+      return await handleSubscriptionAction(req, res, subscriptionAction);
+    }
+"""
+              block = """    if (subscriptionAction === 'premium-access-status') {
+      const db = await subscriptionDb();
+      if (!db) return res.status(503).json({ success: false, error: 'Status akses tidak tersedia.' });
+      const access = await resolvePremiumAccess(req, db);
+      if (!access.ok) return res.status(access.status || 403).json({ success: false, error: access.error || 'Akses ditolak.' });
+      return res.status(200).json({
+        success: true,
+        premium: access.premium === true,
+        access_level: access.access_level,
+        entitlement_status: access.entitlement && access.entitlement.entitlement_status || 'none',
+        current_plan: access.entitlement && access.entitlement.current_plan || null,
+        expires_at: access.entitlement && access.entitlement.expires_at || null
+      });
+    }
+
+""" + anchor
+              text = replace_once(text, anchor, block, 'premium-access-status route')
+          write(path, text)
+
+          # ------------------------------------------------------------------
+          # Protect every browser-facing Sektor Hot / Screener read before any
+          # premium payload is loaded. Explicit cron and public share actions
+          # retain their existing boundaries.
+          # ------------------------------------------------------------------
+          path = 'api/sector-hot.js'
+          text = read(path)
+          if "requirePremiumEntitlement" not in text.split('\n', 80)[0:80]:
+              text = replace_once(
+                  text,
+                  "const { createClient } = require('@supabase/supabase-js');\n",
+                  "const { createClient } = require('@supabase/supabase-js');\nconst { requirePremiumEntitlement } = require('../lib/subscription-auth');\n",
+                  'sector-hot premium import'
+              )
+
+          guard_marker = '// ===== PREMIUM READ ACCESS GATE (PHASE 6A.4) ====='
+          if guard_marker not in text:
+              anchor = """    const action = req.query.action || null;
+    const groupCode = req.query.group || null;
+"""
+              guard = anchor + """
+    // ===== PREMIUM READ ACCESS GATE (PHASE 6A.4) =====
+    // Fail closed before reading any Sektor Hot or Screener payload. Automation
+    // protected by the existing CRON_SECRET and token-validated public shares
+    // keep their dedicated access paths.
+    const premiumBrowserRead = action === null || action === 'screener' ||
+      action === 'nk-screener-results' || action === 'daytrade-screener';
+    if (premiumBrowserRead && !verifyCronSecret(req)) {
+      const premiumAccess = await requirePremiumEntitlement(req, supabase);
+      if (!premiumAccess.ok) {
+        return res.status(premiumAccess.status || 403).json({
+          success: false,
+          error: premiumAccess.error || 'Akses premium diperlukan.'
+        });
+      }
+      // Internal marker only; never sourced from a browser header.
+      req._premiumAccessGranted = true;
+    }
+"""
+              text = replace_once(text, anchor, guard, 'sector-hot premium guard')
+          write(path, text)
+
+          # ------------------------------------------------------------------
+          # Client: premium navigation is hidden by default, no flash; status is
+          # loaded from a signed-cookie endpoint and direct navigation is guarded.
+          # ------------------------------------------------------------------
+          path = 'public/index.html'
+          text = read(path)
+
+          def premium_button(match):
+              tag = match.group(0)
+              if 'data-premium-nav' not in tag:
+                  tag = tag[:-1] + ' data-premium-nav="true">'
+              class_match = re.search(r'class="([^"]*)"', tag)
+              if class_match and 'hidden' not in class_match.group(1).split():
+                  classes = class_match.group(1) + ' hidden'
+                  tag = tag[:class_match.start(1)] + classes + tag[class_match.end(1):]
+              return tag
+
+          button_pattern = re.compile(r'<button\b[^>]*onclick="navigateTo\(\'(?:sector|sector-hot|screener|portofolio)\'\)"[^>]*>')
+          text, button_count = button_pattern.subn(premium_button, text)
+          if button_count < 3:
+              raise SystemExit(f'expected premium navigation buttons, found {button_count}')
+
+          def premium_page(match):
+              tag = match.group(0)
+              if 'data-premium-page' not in tag:
+                  tag = tag[:-1] + ' data-premium-page="true">'
+              return tag
+
+          page_pattern = re.compile(r'<(?:section|div|main)\b[^>]*id="page-(?:sector|sector-hot|screener|portofolio)"[^>]*>')
+          text, page_count = page_pattern.subn(premium_page, text)
+          if page_count < 3:
+              raise SystemExit(f'expected premium page roots, found {page_count}')
+
+          client_marker = '// ===== PREMIUM ACCESS CLIENT GATE (PHASE 6A.4) ====='
+          if client_marker not in text:
+              nav_match = re.search(r'(?P<prefix>(?:async\s+)?function\s+navigateTo\s*\(\s*(?P<arg>[A-Za-z_$][\w$]*)\s*\)\s*\{)', text)
+              if not nav_match:
+                  raise SystemExit('navigateTo(page) function was not found')
+              arg = nav_match.group('arg')
+              client = r'''
+// ===== PREMIUM ACCESS CLIENT GATE (PHASE 6A.4) =====
+// Display state only. The server independently re-checks the signed session and
+// authoritative entitlement before returning premium payloads.
+var premiumAccessState = { state: 'loading', premium: false, accessLevel: 'free', checkedAt: 0 };
+var premiumAccessRequest = null;
+
+function isPremiumFeaturePage(page) {
+    return ['sector', 'sector-hot', 'screener', 'portofolio'].indexOf(String(page || '')) !== -1;
+}
+
+function hasConfirmedPremiumAccess() {
+    return premiumAccessState.state === 'ready' && premiumAccessState.premium === true;
+}
+
+function applyPremiumAccessUi() {
+    var allowed = hasConfirmedPremiumAccess();
+    document.querySelectorAll('[data-premium-nav="true"]').forEach(function (button) {
+        button.classList.toggle('hidden', !allowed);
+        button.disabled = !allowed;
+        button.setAttribute('aria-hidden', allowed ? 'false' : 'true');
+        if ('inert' in button) button.inert = !allowed;
+    });
+
+    if (!allowed) {
+        document.querySelectorAll('[data-premium-page="true"]').forEach(function (page) {
+            page.classList.add('hidden');
+            page.setAttribute('aria-hidden', 'true');
+            if ('inert' in page) page.inert = true;
+        });
+    } else {
+        document.querySelectorAll('[data-premium-page="true"]').forEach(function (page) {
+            page.removeAttribute('aria-hidden');
+            if ('inert' in page) page.inert = false;
+        });
+    }
+}
+
+function resetPremiumAccess() {
+    premiumAccessState = { state: 'loading', premium: false, accessLevel: 'free', checkedAt: 0 };
+    premiumAccessRequest = null;
+    applyPremiumAccessUi();
+}
+
+async function loadPremiumAccess(force) {
+    if (premiumAccessRequest && !force) return premiumAccessRequest;
+    premiumAccessState = { state: 'loading', premium: false, accessLevel: 'free', checkedAt: Date.now() };
+    applyPremiumAccessUi();
+
+    premiumAccessRequest = (async function () {
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timer = controller ? setTimeout(function () { controller.abort(); }, 6500) : null;
+        try {
+            var response = await fetch('/api/login-user?action=premium-access-status', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ action: 'premium-access-status' }),
+                signal: controller ? controller.signal : undefined
+            });
+            var payload = null;
+            try { payload = await response.json(); } catch (_) {}
+            if (!response.ok || !payload || payload.success !== true) throw new Error('premium_access_unavailable');
+            premiumAccessState = {
+                state: 'ready',
+                premium: payload.premium === true,
+                accessLevel: payload.access_level || 'free',
+                checkedAt: Date.now()
+            };
+        } catch (_) {
+            // Network, timeout, malformed response, disabled storage, and server
+            // errors all fail closed to Free access.
+            premiumAccessState = { state: 'unavailable', premium: false, accessLevel: 'free', checkedAt: Date.now() };
+        } finally {
+            if (timer) clearTimeout(timer);
+            premiumAccessRequest = null;
+            applyPremiumAccessUi();
+        }
+        return premiumAccessState;
+    })();
+
+    return premiumAccessRequest;
+}
+
+'''
+              insert_at = nav_match.start()
+              text = text[:insert_at] + client + text[insert_at:]
+
+              # Re-find after insertion and place the fail-closed route guard at
+              # the very beginning of navigateTo.
+              nav_match = re.search(r'(?P<prefix>(?:async\s+)?function\s+navigateTo\s*\(\s*(?P<arg>[A-Za-z_$][\w$]*)\s*\)\s*\{)', text)
+              guard = "\n    if (isPremiumFeaturePage(" + arg + ") && !hasConfirmedPremiumAccess()) {\n" \
+                      "        if (typeof showToast === 'function') showToast('Fitur ini tersedia untuk pengguna Trial dan Premium.', 'warning');\n" \
+                      "        " + arg + " = 'subscription';\n" \
+                      "    }\n"
+              text = text[:nav_match.end()] + guard + text[nav_match.end():]
+
+          trigger_marker = '/* premium-access-load-trigger */'
+          if trigger_marker not in text:
+              view_match = re.search(r'function\s+setTopLevelView\s*\(\s*([A-Za-z_$][\w$]*)\s*\)\s*\{', text)
+              if not view_match:
+                  raise SystemExit('setTopLevelView(state) function was not found')
+              state_arg = view_match.group(1)
+              trigger = "\n    /* premium-access-load-trigger */\n" \
+                        "    if (" + state_arg + " === 'app') {\n" \
+                        "        setTimeout(function () { loadPremiumAccess(false); }, 0);\n" \
+                        "    } else if (" + state_arg + " === 'landing' || " + state_arg + " === 'blocked' || " + state_arg + " === 'maintenance') {\n" \
+                        "        resetPremiumAccess();\n" \
+                        "    }\n"
+              text = text[:view_match.end()] + trigger + text[view_match.end():]
+
+          write(path, text)
+
+          # ------------------------------------------------------------------
+          # Regression coverage: server authorization, fail-closed UI, route/API
+          # guard presence, admin preservation, and API file-count invariant.
+          # ------------------------------------------------------------------
+          test_path = Path('test/subscription-phase6a-access.test.js')
+          test_path.write_text(r'''\
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const session = require('../lib/admin-session');
+const auth = require('../lib/subscription-auth');
+
+const ROOT = path.resolve(__dirname, '..');
+
+function withSecret(fn) {
+  const old = process.env.SESSION_SECRET;
+  process.env.SESSION_SECRET = 'phase-6a4-test-secret';
+  return Promise.resolve().then(fn).finally(() => {
+    if (old === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = old;
+  });
+}
+
+function request(username) {
+  const token = session.createSessionToken({
+    userId: username === 'budi' ? '00000000-0000-4000-8000-000000000001' : '00000000-0000-4000-8000-000000000002',
+    username,
+    isAdmin: username === 'budi'
+  });
+  return { headers: { cookie: session.SESSION_COOKIE_NAME + '=' + token } };
+}
+
+function database(account, rows, rowError) {
+  return {
+    from(table) {
+      if (table === 'app_users') {
+        return {
+          select() { return this; },
+          eq() { return this; },
+          maybeSingle() { return Promise.resolve({ data: account, error: null }); }
+        };
+      }
+      if (table === 'user_entitlements') {
+        return {
+          select() { return this; },
+          eq() { return Promise.resolve({ data: rows || [], error: rowError || null }); }
+        };
+      }
+      throw new Error('unexpected table ' + table);
+    }
+  };
+}
+
+test('ordinary signed account with no entitlement is Free and premium guard returns 403', async () => withSecret(async () => {
+  const account = { id: '00000000-0000-4000-8000-000000000002', username: 'ujibot0720', is_blocked: false, is_approved: true };
+  const access = await auth.resolvePremiumAccess(request('ujibot0720'), database(account, []));
+  assert.equal(access.ok, true);
+  assert.equal(access.premium, false);
+  assert.equal(access.access_level, 'free');
+  const denied = await auth.requirePremiumEntitlement(request('ujibot0720'), database(account, []));
+  assert.equal(denied.ok, false);
+  assert.equal(denied.status, 403);
+}));
+
+test('active trial is premium and protected budi remains admin even if entitlement storage is unavailable', async () => withSecret(async () => {
+  const now = Date.now();
+  const trialAccount = { id: '00000000-0000-4000-8000-000000000002', username: 'ujibot0720', is_blocked: false, is_approved: true };
+  const trialRows = [{ plan_code: 'TRIAL', source: 'trial', status: 'active', starts_at: new Date(now - 1000).toISOString(), expires_at: new Date(now + 86400000).toISOString(), lifetime: false }];
+  const trial = await auth.requirePremiumEntitlement(request('ujibot0720'), database(trialAccount, trialRows));
+  assert.equal(trial.ok, true);
+  assert.equal(trial.premium, true);
+
+  const adminAccount = { id: '00000000-0000-4000-8000-000000000001', username: 'budi', is_blocked: false, is_approved: true };
+  const admin = await auth.requirePremiumEntitlement(request('budi'), database(adminAccount, [], { message: 'missing table' }));
+  assert.equal(admin.ok, true);
+  assert.equal(admin.access_level, 'admin');
+}));
+
+test('premium API reads are guarded by signed entitlement while cron and public shares retain dedicated paths', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'api', 'sector-hot.js'), 'utf8');
+  assert.match(source, /requirePremiumEntitlement/);
+  assert.match(source, /action === null[\s\S]*action === 'screener'[\s\S]*action === 'nk-screener-results'[\s\S]*action === 'daytrade-screener'/);
+  assert.match(source, /premiumBrowserRead && !verifyCronSecret\(req\)/);
+  assert.match(source, /action === 'public-screener-share'/);
+  assert.doesNotMatch(source, /x-premium|x-access-level|x-subscription-plan/i);
+});
+
+test('client hides premium navigation before confirmation and guards direct navigation', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  assert.match(html, /data-premium-nav="true"[^>]*hidden|class="[^"]*hidden[^"]*"[^>]*data-premium-nav="true"/);
+  assert.match(html, /premium-access-status/);
+  assert.match(html, /hasConfirmedPremiumAccess/);
+  assert.match(html, /isPremiumFeaturePage/);
+  assert.match(html, /Fitur ini tersedia untuk pengguna Trial dan Premium/);
+  assert.match(html, /state: 'unavailable', premium: false/);
+  assert.match(html, /credentials: 'same-origin'/);
+  assert.doesNotMatch(html, /localStorage[^\n]{0,120}(premium|entitlement|access_level)/i);
+});
+
+test('premium status action is signed-session based and API file count remains unchanged', () => {
+  const login = fs.readFileSync(path.join(ROOT, 'api', 'login-user.js'), 'utf8');
+  assert.match(login, /subscriptionAction === 'premium-access-status'/);
+  assert.match(login, /resolvePremiumAccess\(req, db\)/);
+  const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(name => name.endsWith('.js'));
+  assert.equal(apiFiles.length, 12);
+});
+''', encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Validate focused access-control changes
+        run: |
+          npm run build
+          git diff --check
+          node --test test/subscription-phase6a-access.test.js
+          node --test test/subscription-phase6a-ui.test.js test/subscription-phase6a-runtime.test.js test/subscription-auth.test.js test/subscription-phase5c.test.js test/ui-redesign-a11y.test.js test/subscription-phase2.test.js test/subscription-phase5a.test.js
+          node --check api/login-user.js
+          node --check api/sector-hot.js
+          node --check lib/subscription-auth.js
+          test "$(find api -maxdepth 1 -type f -name '*.js' | wc -l | tr -d ' ')" = "12"
+
+      - name: Commit patched implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api/login-user.js api/sector-hot.js lib/subscription-auth.js public/index.html test/subscription-phase6a-access.test.js
+          git commit -m "fix: enforce premium entitlement access"
+          git push origin HEAD:codex/implement-subscription-plans-ui
