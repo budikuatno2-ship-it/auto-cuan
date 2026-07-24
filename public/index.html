@@ -1927,15 +1927,15 @@ function setTopLevelView(state) {
         if ('inert' in el) el.inert = !active;
     });
 }
-// ===== DEVICE BLOCKING =====
-function getBlockedUntil() { return Number(localStorage.getItem('autocuan_blocked_until') || '0'); }
-function isDeviceBlocked() { var b = getBlockedUntil(); return b && Date.now() < b; }
-function blockDeviceForBadName() {
-    localStorage.setItem('autocuan_blocked_until', String(Date.now() + 2*60*60*1000));
-    localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_user');
-    localStorage.removeItem('autocuan_is_admin'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_user_id');
-    showBlockedScreen();
-}
+// ===== LEGACY DEVICE-BLOCK CLEANUP =====
+// A browser-local flag must never decide account access. Older builds stored a
+// two-hour block in localStorage after client-side name validation; clear that
+// stale state and leave authoritative login/account decisions to the server.
+function clearLegacyDeviceBlock() { try { localStorage.removeItem('autocuan_blocked_until'); } catch (_) {} }
+function getBlockedUntil() { clearLegacyDeviceBlock(); return 0; }
+function isDeviceBlocked() { clearLegacyDeviceBlock(); return false; }
+function blockDeviceForBadName() { clearLegacyDeviceBlock(); }
+clearLegacyDeviceBlock();
 function showBlockedScreen() {
     setTopLevelView('blocked');
     updateBlockedCountdown();
@@ -2525,7 +2525,7 @@ function closeSelfResetModal() { document.getElementById('selfResetModal').class
 
 // ===== LOGIN =====
 async function doLogin() {
-    if (isDeviceBlocked()) { showBlockedScreen(); return; }
+    clearLegacyDeviceBlock();
     var usernameInput = document.getElementById('loginUsername').value.trim();
     var password = document.getElementById('loginPassword').value;
     var errorEl = document.getElementById('loginError');
@@ -2538,7 +2538,8 @@ async function doLogin() {
     // derived solely from the authenticated server response (never from localStorage or
     // a client-supplied flag). budi is exempt from the bad-username block just as it was
     // before (it was previously intercepted above this check).
-    if (usernameLower !== 'review' && usernameLower !== 'budi' && isBadUsername(usernameInput)) { closeLoginModal(); blockDeviceForBadName(); return; }
+    // Existing accounts are authenticated by the server. Do not locally block a
+    // device or reject a stored account using a browser-only name heuristic.
     if (!password) { errorEl.textContent = 'Password tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
     loginBtn.disabled = true; loginBtn.innerHTML = '<span class="spinner-sm"></span>Masuk...';
     try {
@@ -2677,7 +2678,7 @@ async function copyRegistrationApprovalCode() {
 }
 
 async function doRegister() {
-    if (isDeviceBlocked()) { showBlockedScreen(); return; }
+    clearLegacyDeviceBlock();
     var usernameInput = document.getElementById('regUsername').value.trim();
     var password = document.getElementById('regPassword').value;
     var passwordConfirm = document.getElementById('regPasswordConfirm').value;
@@ -2687,7 +2688,7 @@ async function doRegister() {
     if (!usernameInput) { errorEl.textContent = 'Username tidak boleh kosong.'; errorEl.classList.remove('hidden'); return; }
     var usernameLower = usernameInput.toLowerCase();
     if (usernameLower === 'budi') { errorEl.textContent = 'Username tidak tersedia.'; errorEl.classList.remove('hidden'); return; }
-    if (isBadUsername(usernameInput)) { closeRegisterModal(); blockDeviceForBadName(); return; }
+    if (isBadUsername(usernameInput)) { errorEl.textContent = 'Nama yang digunakan tidak sesuai ketentuan.'; errorEl.classList.remove('hidden'); return; }
     if (!isValidPassword(password)) { errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka (min 8 karakter).'; errorEl.classList.remove('hidden'); return; }
     if (password !== passwordConfirm) { errorEl.textContent = 'Konfirmasi password tidak sama.'; errorEl.classList.remove('hidden'); return; }
     registerBtn.disabled = true; registerBtn.innerHTML = '<span class="spinner-sm"></span>Mendaftar...';
@@ -2729,7 +2730,7 @@ function showDashboard() {
     // Only flush pending save if there's actually a pending timer (avoids overwriting on initial load)
     if (_saveChatTimer) saveChatHistoryImmediate();
     var username = getUsername(); var isReview = localStorage.getItem('autocuan_is_review') === 'true';
-    if (!isReview && isDeviceBlocked()) { showBlockedScreen(); return; }
+    clearLegacyDeviceBlock();
     setTopLevelView('app');
     var isGuest = (username === 'guest'); var isAdm = isAdmin();
     // Header
