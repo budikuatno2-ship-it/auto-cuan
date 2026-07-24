@@ -6,20 +6,40 @@ on:
     branches: [feat/daytrade-screener-v1]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   export:
     if: github.event.pull_request.head.ref == 'codex/implement-subscription-plans-ui' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
           ref: codex/implement-subscription-plans-ui
-      - name: Create source archive
-        run: tar --exclude=.git --exclude=node_modules -czf /tmp/auto-cuan-pr-source.tar.gz .
-      - uses: actions/upload-artifact@v4
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
         with:
-          name: auto-cuan-pr-source-${{ github.event.pull_request.head.sha }}
-          path: /tmp/auto-cuan-pr-source.tar.gz
-          retention-days: 1
+          node-version: '22'
+          cache: npm
+      - name: Apply final access-policy patch
+        run: python3 .github/scripts/phase6a4_unknown_action.py
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Validate final access policy
+        run: |
+          npm run build
+          git diff --check
+          node --check api/sector-hot.js
+          node --test test/subscription-phase6a-access.test.js
+          node --test test/subscription-phase6a-ui.test.js test/subscription-phase6a-runtime.test.js test/subscription-auth.test.js test/subscription-phase5c.test.js test/ui-redesign-a11y.test.js test/subscription-phase2.test.js test/subscription-phase5a.test.js test/production-loader-hotfix.test.js
+          test "$(find api -maxdepth 1 -type f -name '*.js' | wc -l | tr -d ' ')" = "12"
+      - name: Commit final access policy
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/scripts/phase6a4_unknown_action.py
+          rm -f .github/phase6a4-finalize-trigger*
+          git add -A
+          git commit -m 'fix: reject unknown premium data actions'
+          git push origin HEAD:codex/implement-subscription-plans-ui
