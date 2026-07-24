@@ -41,6 +41,7 @@ jobs:
             echo "phase5c=not_run"
             echo "schema_smoke=not_run"
             echo "prepare_runtime=not_run"
+            echo "prepare_contract_runtime=not_run"
           } >"$LOG_DIR/execution-summary.txt"
           echo "LOG_DIR=$LOG_DIR" >>"$GITHUB_ENV"
       - name: PostgreSQL version
@@ -92,6 +93,14 @@ jobs:
           status=$?
           cat "$LOG_DIR/prepare-runtime.log"
           sed -i "s/^prepare_runtime=.*/prepare_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute prepare contract runtime
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/prepare-contract-runtime.sql >"$LOG_DIR/prepare-contract-runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/prepare-contract-runtime.log"
+          sed -i "s/^prepare_contract_runtime=.*/prepare_contract_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           exit "$status"
       - name: Upload PostgreSQL diagnostics
         if: always()
