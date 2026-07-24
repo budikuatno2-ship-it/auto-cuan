@@ -5,6 +5,9 @@ on:
       - 'supabase/subscription-phase-2-migration.sql'
       - 'supabase/subscription-phase-5c-voucher-admin-migration.sql'
       - 'supabase/subscription-phase-5c-lifecycle-correction.sql'
+      - 'lib/subscription-capability.js'
+      - 'lib/voucher-admin-bot.js'
+      - 'test/subscription-phase5c.test.js'
       - 'test/sql/phase5c/**'
       - '.github/workflows/phase5c-postgres.yml'
 jobs:
@@ -36,6 +39,7 @@ jobs:
           LOG_DIR="$RUNNER_TEMP/phase5c-postgres-logs"
           mkdir -p "$LOG_DIR"
           {
+            echo "node_phase5c=not_run"
             echo "postgres_version=not_run"
             echo "bootstrap=not_run"
             echo "phase2=not_run"
@@ -45,15 +49,24 @@ jobs:
             echo "prepare_runtime=not_run"
             echo "prepare_contract_runtime=not_run"
             echo "lifecycle_runtime=not_run"
+            echo "audit_runtime=not_run"
           } >"$LOG_DIR/execution-summary.txt"
           echo "LOG_DIR=$LOG_DIR" >>"$GITHUB_ENV"
+      - name: Execute Phase 5C Node tests
+        run: |
+          set +e
+          node --test test/subscription-phase5c.test.js >"$LOG_DIR/node-phase5c.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/node-phase5c.log"
+          sed -i "s/^node_phase5c=.*/node_phase5c=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
       - name: PostgreSQL version
         run: |
           set +e
           { psql --version; psql -v ON_ERROR_STOP=1 -c 'SELECT version();'; } >"$LOG_DIR/postgres-version.log" 2>&1
           status=$?
           cat "$LOG_DIR/postgres-version.log"
-          echo "postgres_version=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          sed -i "s/^postgres_version=.*/postgres_version=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           exit "$status"
       - name: Apply bootstrap
         run: |
@@ -61,7 +74,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/bootstrap.sql >"$LOG_DIR/bootstrap.log" 2>&1
           status=$?
           cat "$LOG_DIR/bootstrap.log"
-          echo "bootstrap=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          sed -i "s/^bootstrap=.*/bootstrap=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           exit "$status"
       - name: Apply Phase 2 migration
         run: |
@@ -69,7 +82,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-2-migration.sql >"$LOG_DIR/phase2.log" 2>&1
           status=$?
           cat "$LOG_DIR/phase2.log"
-          echo "phase2=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          sed -i "s/^phase2=.*/phase2=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           if [ "$status" -ne 0 ]; then { echo '## Phase 2 migration failure'; tail -n 60 "$LOG_DIR/phase2.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
           exit "$status"
       - name: Apply Phase 5C migration
@@ -78,7 +91,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-5c-voucher-admin-migration.sql >"$LOG_DIR/phase5c.log" 2>&1
           status=$?
           cat "$LOG_DIR/phase5c.log"
-          echo "phase5c=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          sed -i "s/^phase5c=.*/phase5c=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           if [ "$status" -ne 0 ]; then { echo '## Phase 5C migration failure'; tail -n 60 "$LOG_DIR/phase5c.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
           exit "$status"
       - name: Apply Phase 5C lifecycle correction
@@ -96,7 +109,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/schema-smoke.sql >"$LOG_DIR/schema-smoke.log" 2>&1
           status=$?
           cat "$LOG_DIR/schema-smoke.log"
-          echo "schema_smoke=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          sed -i "s/^schema_smoke=.*/schema_smoke=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           exit "$status"
       - name: Execute prepare runtime
         run: |
@@ -121,6 +134,14 @@ jobs:
           status=$?
           cat "$LOG_DIR/lifecycle-runtime.log"
           sed -i "s/^lifecycle_runtime=.*/lifecycle_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute audit runtime
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/audit-runtime.sql >"$LOG_DIR/audit-runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/audit-runtime.log"
+          sed -i "s/^audit_runtime=.*/audit_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           exit "$status"
       - name: Upload PostgreSQL diagnostics
         if: always()
