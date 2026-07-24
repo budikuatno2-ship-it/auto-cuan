@@ -31,6 +31,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const dtEngine = require('../lib/daytrade-screener-engine');
 const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
@@ -69,6 +70,16 @@ module.exports = async function handler(req, res) {
 
     const action = req.query.action || null;
     const groupCode = req.query.group || null;
+
+    // ===== PREMIUM READ ACCESS GATE (PHASE 6A.4) =====
+    // Public HMAC share links and CRON_SECRET automation retain their own gates.
+    const premiumBrowserRead = action === null || action === 'screener' ||
+      action === 'nk-screener-results' || action === 'daytrade-screener';
+    if (premiumBrowserRead && !verifyCronSecret(req)) {
+      const premiumAccess = await requirePremiumEntitlement(req, supabase);
+      if (!premiumAccess.ok) return res.status(premiumAccess.status || 403).json({ success:false, error:premiumAccess.error || 'Akses premium diperlukan.' });
+      req._premiumAccessGranted = true;
+    }
 
     // === TELEGRAM WEBHOOK: /foreign TICKER lookup (uses this existing endpoint) ===
     if (action === 'telegram-webhook') {
