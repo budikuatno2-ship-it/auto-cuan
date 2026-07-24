@@ -26,11 +26,22 @@ jobs:
       PGDATABASE: phase5c_test
       PGUSER: postgres
       PGPASSWORD: postgres
-      LOG_DIR: ${{ runner.temp }}/phase5c-postgres-logs
     steps:
       - uses: actions/checkout@v4
       - name: Initialize diagnostic logs
-        run: mkdir -p "$LOG_DIR" && : >"$LOG_DIR/execution-summary.txt"
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOG_DIR="$RUNNER_TEMP/phase5c-postgres-logs"
+          mkdir -p "$LOG_DIR"
+          {
+            echo "postgres_version=not_run"
+            echo "bootstrap=not_run"
+            echo "phase2=not_run"
+            echo "phase5c=not_run"
+            echo "schema_smoke=not_run"
+          } >"$LOG_DIR/execution-summary.txt"
+          echo "LOG_DIR=$LOG_DIR" >>"$GITHUB_ENV"
       - name: PostgreSQL version
         run: |
           set +e
