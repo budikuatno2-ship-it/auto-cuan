@@ -394,6 +394,9 @@
         .mobile-nav-row::before { left: 0; background: linear-gradient(to right, #0b0e14, transparent); opacity: .55; }
         .mobile-nav-row::after { right: 0; background: linear-gradient(to left, #0b0e14, transparent); opacity: .85; }
         @media (min-width: 640px) { .nav-scroll-container::after, .mobile-nav-row::before, .mobile-nav-row::after { display: none; } }
+        /* ===== SUBSCRIPTION EXPERIENCE ===== */
+        .subscription-hero { position:relative; overflow:hidden; border:1px solid rgba(52,211,153,.22); border-radius:24px; background:radial-gradient(circle at 90% 10%,rgba(16,185,129,.18),transparent 34%),linear-gradient(135deg,rgba(15,23,42,.95),rgba(16,30,38,.92)); box-shadow:0 20px 44px rgba(0,0,0,.20); }
+        .subscription-summary { border:1px solid rgba(148,163,184,.15); border-radius:18px; background:rgba(2,6,23,.38); }.subscription-card { display:flex; flex-direction:column; min-width:0; border:1px solid rgba(148,163,184,.16); border-radius:20px; background:linear-gradient(165deg,rgba(30,41,59,.72),rgba(15,23,42,.78)); box-shadow:0 12px 30px rgba(0,0,0,.14); transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease; }.subscription-card:hover { transform:translateY(-3px); border-color:rgba(52,211,153,.38); box-shadow:0 18px 38px rgba(0,0,0,.24); }.subscription-card.popular{border-color:rgba(16,185,129,.55);}.subscription-card.lifetime{border-color:rgba(168,85,247,.45);background:radial-gradient(circle at 85% 10%,rgba(168,85,247,.18),transparent 38%),linear-gradient(165deg,rgba(46,16,101,.42),rgba(15,23,42,.88));}.subscription-badge{display:inline-flex;width:fit-content;padding:4px 9px;border-radius:999px;font-size:10px;line-height:1.2;font-weight:800;letter-spacing:.035em;text-transform:uppercase}.subscription-feature{display:flex;gap:8px;font-size:12px;line-height:1.45;color:#cbd5e1}.subscription-feature.no{color:#64748b}.subscription-action{width:100%;min-height:40px;border-radius:12px;font-size:13px;font-weight:800}.subscription-action:disabled{cursor:not-allowed;opacity:.72}
         .page-content { animation: fadeIn 0.15s ease-out; }
 
 
@@ -773,7 +776,7 @@
             <div class="landing-menu hidden md:flex items-center gap-6">
                 <a href="#landingFeatures">Fitur</a><a href="#landingHow">Cara Kerja</a><a href="#landingSafety">Safety</a><a href="#landingPreview">Preview</a><button type="button" onclick="openLoginModal()" class="landing-link">Login</button>
             </div>
-            <button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary shrink-0"><span class="landing-cta-label">Mulai Sekarang</span></button>
+            <div class="flex gap-2"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary shrink-0"><span class="landing-cta-label">Mulai Sekarang</span></button><button type="button" onclick="openSubscriptionPage()" class="landing-btn">Paket Subscription</button></div>
         </div>
     </nav>
     <main>
@@ -891,6 +894,7 @@
                 <button onclick="navigateTo('screener')" class="nav-btn" data-page="screener"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span>Screener</span></button>
                 <button onclick="navigateTo('chart')" class="nav-btn" data-page="chart"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg><span>Chart</span></button>
                 <button onclick="navigateTo('portofolio')" class="nav-btn" data-page="portofolio"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg><span>Portofolio</span></button>
+                <button onclick="navigateTo('subscription')" class="nav-btn" data-page="subscription" aria-label="Lihat paket subscription"><span aria-hidden="true">✦</span><span>Subscription</span></button>
             </nav>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
                 <span class="header-status-chip"><span class="header-status-dot"></span>Live Radar</span>
@@ -936,9 +940,13 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 <span>Portofolio</span>
             </button>
+                <button onclick="navigateTo('subscription')" class="nav-btn" data-page="subscription" aria-label="Lihat paket subscription"><span aria-hidden="true">✦</span><span>Subscription</span></button>
         </div>
     </nav>
 </header>
+
+<!-- ===== PAGE: SUBSCRIPTION ===== -->
+<div id="page-subscription" class="page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7" aria-labelledby="subscriptionPageTitle"><div class="subscription-hero p-5 sm:p-7"><div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Subscription Auto-Cuan</p><h1 id="subscriptionPageTitle" class="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Pilih akses yang sesuai ritme trading Anda.</h1><p class="mt-2 text-sm leading-6 text-slate-300">Bandingkan paket secara transparan. Harga dan status akses dimuat dari server; pembayaran online hadir di fase berikutnya.</p></div><button onclick="loadSubscriptionExperience(true)" class="nav-btn border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">↻ Perbarui status</button></div><div id="subscriptionSummary" class="subscription-summary mt-6 p-4 sm:p-5" aria-live="polite">Memuat ringkasan subscription…</div></div><section class="mt-7" aria-labelledby="subscriptionPlansTitle"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Perbandingan paket</p><h2 id="subscriptionPlansTitle" class="mt-1 text-xl font-black text-white">Pilih paket dengan informasi yang jelas.</h2></div><p class="text-xs text-slate-500">Akses tidak pernah diberikan dari halaman ini.</p></div><div id="subscriptionPlans" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">Memuat katalog paket…</div></section></div>
 
 <!-- ===== PAGE: DASHBOARD HOME ===== -->
 <div id="page-dashboard" class="page-content flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
@@ -2016,7 +2024,23 @@ async function safeSubscriptionRequest(action, body, timeoutMs) {
     } catch (_) { return { success:false, error:'Fitur sementara tidak tersedia.' }; }
     finally { if (timer) clearTimeout(timer); }
 }
-async function refreshSubscriptionStatus() { /* Deferred until subscription capability is provisioned. */ }
+// Phase 6A: catalogue and account facts are loaded only from existing server endpoints.
+var subscriptionExperience={catalogue:null,status:null,catalogueError:false,statusError:false};
+function subscriptionEscape(v){return escapeHtml(String(v==null?'':v));}
+function subscriptionIdr(v){return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(v||0));}
+function subscriptionDate(v){return v?new Intl.DateTimeFormat('id-ID',{dateStyle:'long',timeZone:'Asia/Jakarta'}).format(new Date(v)):'—';}
+function subscriptionPlanName(c,f){return ({FREE:'Free',TRIAL:'Trial 17 Hari',PREMIUM_1_MONTH:'Premium 1 Bulan',PREMIUM_2_MONTHS:'Premium 2 Bulan',PREMIUM_3_MONTHS:'Premium 3 Bulan',LIFETIME:'Lifetime',admin:'Admin'})[c]||f||c||'Free';}
+function subscriptionStatusMeta(e){e=e||{};if(e.lifetime_state==='active')return ['Lifetime','bg-violet-500/15 text-violet-200 border border-violet-400/30'];if(e.entitlement_status==='active'&&e.entitlement_source==='trial')return ['Trial','bg-cyan-500/15 text-cyan-200 border border-cyan-400/30'];if(e.entitlement_status==='active')return ['Aktif','bg-emerald-500/15 text-emerald-200 border border-emerald-400/30'];if(e.expiry_reason)return ['Berakhir','bg-amber-500/15 text-amber-200 border border-amber-400/30'];return ['Gratis','bg-slate-500/15 text-slate-200 border border-slate-400/30'];}
+function subscriptionFeature(t,no){return '<li class="subscription-feature'+(no?' no':'')+'"><span aria-hidden="true">'+(no?'✕':'✓')+'</span><span>'+t+'</span></li>';}
+function subscriptionBenefits(c){if(c==='FREE')return [subscriptionFeature('Tampilan publik dan informasi dasar'),subscriptionFeature('Status akun serta katalog paket'),subscriptionFeature('Akses premium ke radar dan screener',true)];return ['Day Trade Radar, Swing Screener, dan Sector Hot','Chart teknikal: candle, MA, RSI, serta volume','Portofolio manual dan pengingat risiko','Akses premium selama masa aktif paket'].map(function(x){return subscriptionFeature(x);});}
+function renderSubscriptionSummary(){var b=document.getElementById('subscriptionSummary'),logged=isAutocuanLoggedIn(),e=subscriptionExperience.status&&subscriptionExperience.status.entitlement;if(!b)return;if(!logged){b.innerHTML='<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-black text-white">Lihat semua paket tanpa login.</p><p class="mt-1 text-sm text-slate-400">Masuk untuk melihat status dan masa aktif Anda.</p></div><button onclick="openLoginModal()" class="subscription-action px-4 bg-emerald-500 text-slate-950 sm:w-auto">Masuk untuk Berlangganan</button></div>';return;}if(!e||subscriptionExperience.statusError){b.innerHTML='<p class="font-bold text-white">Status subscription belum tersedia.</p><p class="mt-1 text-sm text-slate-400">Katalog tetap dapat dilihat. Coba perbarui beberapa saat lagi.</p>';return;}var m=subscriptionStatusMeta(e),expiry=e.lifetime_state==='active'?'Lifetime':(e.expires_at?subscriptionDate(e.expires_at):'—');b.innerHTML='<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"><div><dt class="text-xs text-slate-500">Paket saat ini</dt><dd class="mt-1 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(e.current_plan))+'</dd></div><div><dt class="text-xs text-slate-500">Status</dt><dd class="mt-1"><span class="subscription-badge '+m[1]+'">'+m[0]+'</span></dd></div><div><dt class="text-xs text-slate-500">Mulai aktif</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(subscriptionDate(e.starts_at))+'</dd></div><div><dt class="text-xs text-slate-500">'+(m[0]==='Trial'?'Sisa trial':'Aktif sampai')+'</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(expiry)+'</dd></div></div><button onclick="subscriptionComingSoon()" class="subscription-action px-4 border border-slate-600 text-slate-200 md:w-auto">Kelola Subscription</button></div>';}
+function subscriptionCard(p,e){var c=p.code,current=e&&(e.current_plan===c||(c==='FREE'&&!e.current_plan&&!e.expiry_reason)),popular=c==='PREMIUM_2_MONTHS',life=c==='LIFETIME',trial=c==='TRIAL',free=c==='FREE',badge=life?'Sekali Bayar':popular?'Paling Populer':c==='PREMIUM_3_MONTHS'?'Lebih Hemat':trial?'Coba Gratis':free?'Gratis':'',price=free||trial?'Rp0':subscriptionIdr(p.promotional_price_idr!=null?p.promotional_price_idr:p.normal_price_idr),normal=p.promotional_price_idr!=null?'<span class="ml-2 text-xs text-slate-500 line-through">'+subscriptionIdr(p.normal_price_idr)+'</span>':'',duration=life?'Sekali bayar · akses Lifetime':trial?'17 hari · aktivasi mengikuti server':free?'Tanpa biaya':'Aktif selama '+p.duration_months+' bulan',action=current?'Paket Saat Ini':!isAutocuanLoggedIn()?'Masuk untuk Berlangganan':trial?'Mulai Trial':e&&e.entitlement_status==='active'?'Perpanjang':'Pilih Paket';return '<article class="subscription-card '+(popular?'popular ':'')+(life?'lifetime ':'')+'p-5"><div class="flex min-h-6 justify-between gap-2">'+(badge?'<span class="subscription-badge bg-emerald-500/15 text-emerald-200 border border-emerald-400/25">'+badge+'</span>':'<span></span>')+(current?'<span class="subscription-badge bg-slate-100 text-slate-900">Paket Saat Ini</span>':'')+'</div><h3 class="mt-4 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(c,p.display_name))+'</h3><p class="mt-1 text-xs text-slate-400">'+duration+'</p><div class="mt-5"><span class="text-2xl font-black text-white">'+price+'</span>'+normal+'</div><ul class="mt-5 space-y-2">'+subscriptionBenefits(c).join('')+'</ul>'+(life?'<p class="mt-4 rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 text-xs leading-5 text-violet-100">Akses Lifetime memakai alokasi tujuh kursi bersama yang dikelola server, bukan akses pengguna tanpa batas.</p>':'')+'<button '+(current?'disabled aria-disabled="true"':'')+' onclick="subscriptionAction()" class="subscription-action mt-6 px-4 '+(current?'border border-emerald-500/35 bg-emerald-500/10 text-emerald-200':life?'bg-violet-500 text-white':popular?'bg-emerald-500 text-slate-950':'border border-slate-600 text-slate-100')+'">'+action+'</button></article>';}
+function renderSubscriptionPlans(){var b=document.getElementById('subscriptionPlans');if(!b)return;if(subscriptionExperience.catalogueError){b.innerHTML='<div class="subscription-card p-5 sm:col-span-2 xl:col-span-3"><p class="font-bold text-white">Katalog belum tersedia.</p><p class="mt-1 text-sm text-slate-400">Kami tidak menampilkan harga perkiraan saat server tidak dapat menyediakan katalog.</p></div>';return;}var ps=subscriptionExperience.catalogue||[];if(!ps.length){b.innerHTML='<div class="subscription-card p-5 sm:col-span-2 xl:col-span-3"><p class="font-bold text-white">Belum ada paket yang tersedia.</p></div>';return;}var e=subscriptionExperience.status&&subscriptionExperience.status.entitlement;b.innerHTML=[{code:'FREE'},{code:'TRIAL'}].concat(ps).map(function(p){return subscriptionCard(p,e);}).join('');}
+function subscriptionAction(){if(!isAutocuanLoggedIn()){openLoginModal();return;}subscriptionComingSoon();}function subscriptionComingSoon(){showToast('Pembayaran online akan tersedia pada Phase 6B. Tidak ada pembelian atau akses yang diproses dari halaman ini.','info');}
+async function loadSubscriptionExperience(force){if(!force&&subscriptionExperience.catalogue){renderSubscriptionSummary();renderSubscriptionPlans();return;}subscriptionExperience.catalogueError=false;subscriptionExperience.statusError=false;try{var r=await fetch('/api/login-user?action=subscription-plans',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'subscription-plans'})}),d=await r.json();if(!r.ok||!d.success)throw new Error();subscriptionExperience.catalogue=d.plans||[];}catch(_){subscriptionExperience.catalogueError=true;}if(isAutocuanLoggedIn())try{var x=await safeSubscriptionRequest('subscription-status',{},6000);if(!x.success)throw new Error();subscriptionExperience.status=x;}catch(_){subscriptionExperience.statusError=true;}else subscriptionExperience.status=null;renderSubscriptionSummary();renderSubscriptionPlans();}
+async function refreshSubscriptionStatus(){if(currentPage==='subscription')await loadSubscriptionExperience(true);}
+function openSubscriptionPage(){var l=document.getElementById('landingPage');if(l)l.classList.add('hidden');document.getElementById('dashboardScreen').classList.remove('hidden');navigateTo('subscription');loadSubscriptionExperience(true);window.scrollTo({top:0,behavior:'smooth'});}
+
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
 // Logged-in approved: unlimited (controlled by admin approval)
@@ -2108,6 +2132,7 @@ function handleAppRoute(opts) {
         else showLandingPage({ skipHistory: true, duringInit: opts.duringInit, promptAuth: true, promptMessage: 'Login atau daftar diperlukan untuk membuka /dashboard.' });
         return;
     }
+    if (path === '/subscription' || path === '/subscription/') { openSubscriptionPage(); return; }
     if ((path === '/' || path === '') && isAutocuanLoggedIn()) {
         enterApp({ replaceHistory: true });
         return;
@@ -2754,6 +2779,7 @@ function navigateTo(page) {
     // Show admin panel only on dashboard
     var adminPanel = document.getElementById('adminPanel');
     if (adminPanel) { if (page === 'dashboard' && isAdmin()) adminPanel.classList.remove('hidden'); else adminPanel.classList.add('hidden'); }
+    if (page === 'subscription') loadSubscriptionExperience(false);
     // Sektor Hot login gate
     if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: false }); scheduleTop5HistoryLoad(); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
     else { clearTop5HistoryLoadTimer(); stopDashboardMonitorAutoRefresh(); }
@@ -11129,7 +11155,7 @@ function exportDayTradePDF() {
     window.skipToMainContent = function (event) {
         if (event && typeof event.preventDefault === 'function') event.preventDefault();
         var candidates = ['#page-dashboard', '#page-analisis', '#page-sektor', '#page-screener',
-            '#page-chart', '#page-portofolio', '#aiSection', '#landingPage', 'main'];
+            '#page-chart', '#page-portofolio', '#page-subscription', '#aiSection', '#landingPage', 'main'];
         var target = null;
         for (var i = 0; i < candidates.length && !target; i++) {
             var els = document.querySelectorAll(candidates[i]);
