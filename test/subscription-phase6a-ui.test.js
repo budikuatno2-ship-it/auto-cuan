@@ -26,3 +26,12 @@ test('Phase 6A uses existing read-only catalogue and entitlement endpoints only'
   assert.doesNotMatch(html, /midtrans/i);
   assert.equal(fs.readdirSync(path.join(__dirname, '..', 'api')).filter(name => name.endsWith('.js')).length, 12);
 });
+
+test('Phase 6A keeps public catalogue loading independent from optional account status', () => {
+  assert.match(html, /fetch\('\/api\/login-user\?action=subscription-plans'/);
+  assert.match(html, /if\(isAutocuanLoggedIn\(\)\)try\{var x=await safeSubscriptionRequest\('subscription-status'/);
+  assert.match(html, /else subscriptionExperience\.status=null;renderSubscriptionSummary\(\);renderSubscriptionPlans\(\);/);
+  assert.match(html, /Masuk untuk melihat status dan masa aktif Anda\./);
+  assert.match(html, /Katalog belum tersedia\./);
+  assert.match(html, /Status subscription belum tersedia\./);
+});
