@@ -1,6 +1,6 @@
 -- Phase 2 voucher redemption correction. UNAPPLIED; service role only.
--- Term access stacks from the latest active term expiry, while lifetime access
--- starts immediately and prevents any further voucher consumption.
+-- Term access stacks from the latest active term expiry and uses the immutable
+-- plan catalog as duration authority. Lifetime access is terminal.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.redeem_subscription_voucher(
@@ -18,6 +18,8 @@ DECLARE
   u public.app_users%ROWTYPE;
   e public.user_entitlements%ROWTYPE;
   r public.subscription_voucher_redemptions%ROWTYPE;
+  replay_hash text;
+  duration_months integer;
   starts timestamptz;
   expiry timestamptz;
   active_term_expiry timestamptz;
@@ -30,7 +32,15 @@ BEGIN
   FROM public.subscription_voucher_redemptions
   WHERE redemption_idempotency_key = p_redemption_idempotency_key;
   IF FOUND THEN
-    RETURN jsonb_build_object('redeemed', true, 'entitlement_id', r.entitlement_id);
+    SELECT code_hash INTO replay_hash FROM public.subscription_vouchers WHERE id = r.voucher_id;
+    IF r.user_id IS DISTINCT FROM p_user_id OR replay_hash IS DISTINCT FROM p_voucher_code_hash THEN
+      RAISE EXCEPTION 'invalid redemption';
+    END IF;
+    RETURN jsonb_build_object(
+      'redeemed', true,
+      'result_code', 'already_redeemed',
+      'entitlement_id', r.entitlement_id
+    );
   END IF;
 
   SELECT * INTO u FROM public.app_users WHERE id = p_user_id FOR UPDATE;
@@ -51,14 +61,13 @@ BEGIN
     RAISE EXCEPTION 'already redeemed';
   END IF;
 
-  -- Serialize all entitlement decisions for this user after the app-user row lock.
   PERFORM 1 FROM public.user_entitlements WHERE user_id = p_user_id FOR UPDATE;
 
-  -- Lifetime is terminal: do not consume either a term or another lifetime voucher.
   IF EXISTS (
     SELECT 1 FROM public.user_entitlements
     WHERE user_id = p_user_id AND lifetime = true AND status = 'active'
   ) THEN
+    IF v.plan_code <> 'LIFETIME' THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
     RETURN jsonb_build_object(
       'redeemed', true,
       'result_code', 'already_lifetime',
@@ -68,25 +77,25 @@ BEGIN
     );
   END IF;
 
+  SELECT p.duration_months INTO duration_months
+  FROM public.subscription_plans p
+  WHERE p.code = v.plan_code AND p.active
+  FOR SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
   IF v.plan_code = 'LIFETIME' THEN
     starts := now();
     expiry := NULL;
   ELSE
+    IF duration_months NOT IN (1,2,3) THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
     SELECT max(expires_at) INTO active_term_expiry
     FROM public.user_entitlements
     WHERE user_id = p_user_id
       AND lifetime = false
       AND status = 'active'
       AND expires_at > now();
-
     starts := greatest(now(), coalesce(active_term_expiry, now()));
-    expiry := CASE v.plan_code
-      WHEN 'PREMIUM_1_MONTH' THEN starts + make_interval(months => 1)
-      WHEN 'PREMIUM_2_MONTHS' THEN starts + make_interval(months => 2)
-      WHEN 'PREMIUM_3_MONTHS' THEN starts + make_interval(months => 3)
-      ELSE NULL
-    END;
-    IF expiry IS NULL THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+    expiry := starts + make_interval(months => duration_months);
   END IF;
 
   INSERT INTO public.user_entitlements(
@@ -114,22 +123,77 @@ BEGIN
     jsonb_build_object(
       'voucher_code_hint', v.code_hint,
       'plan_code', v.plan_code,
-      'duration_days', v.duration_days,
+      'duration_months', duration_months,
       'result_code', 'redeemed'
     )
   );
 
   RETURN jsonb_build_object(
     'redeemed', true,
+    'result_code', 'redeemed',
+    'entitlement_id', e.id,
     'plan_code', v.plan_code,
-    'duration_days', v.duration_days,
+    'duration_months', duration_months,
     'starts_at', starts,
     'expires_at', expiry,
     'lifetime', (v.plan_code = 'LIFETIME')
   );
 END $$;
 
-REVOKE ALL ON FUNCTION public.redeem_subscription_voucher(uuid,text,uuid) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.redeem_subscription_voucher(uuid,text,uuid) TO service_role;
+CREATE OR REPLACE FUNCTION public.create_subscription_voucher(
+  p_voucher_code_hash text,
+  p_voucher_code_hint text,
+  p_plan_code text,
+  p_duration_days integer,
+  p_max_redemptions integer,
+  p_actor_user_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v public.subscription_vouchers%ROWTYPE;
+  plan_kind text;
+  plan_months integer;
+  expected_days integer;
+BEGIN
+  SELECT kind, duration_months INTO plan_kind, plan_months
+  FROM public.subscription_plans
+  WHERE code = p_plan_code AND active
+  FOR SHARE;
+
+  expected_days := CASE WHEN plan_kind = 'lifetime' THEN 1 ELSE plan_months * 30 END;
+  IF p_voucher_code_hash !~ '^[a-f0-9]{64}$'
+     OR p_voucher_code_hint !~ '^[A-Z0-9]{4}$'
+     OR plan_kind IS NULL
+     OR p_duration_days IS DISTINCT FROM expected_days
+     OR p_max_redemptions NOT BETWEEN 1 AND 100000
+  THEN
+    RAISE EXCEPTION 'invalid voucher';
+  END IF;
+
+  INSERT INTO public.subscription_vouchers(
+    code_hash,code_hint,plan_code,duration_days,max_redemptions,created_by_user_id
+  ) VALUES (
+    p_voucher_code_hash,p_voucher_code_hint,p_plan_code,p_duration_days,p_max_redemptions,p_actor_user_id
+  ) RETURNING * INTO v;
+
+  INSERT INTO public.subscription_events(actor_user_id,event_type,metadata)
+  VALUES (
+    p_actor_user_id,
+    'voucher_created',
+    jsonb_build_object(
+      'voucher_code_hint',v.code_hint,
+      'plan_code',v.plan_code,
+      'duration_months',plan_months
+    )
+  );
+  RETURN jsonb_build_object('id',v.id,'code_hint',v.code_hint);
+END $$;
+
+REVOKE ALL ON FUNCTION public.redeem_subscription_voucher(uuid,text,uuid), public.create_subscription_voucher(text,text,text,integer,integer,uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.redeem_subscription_voucher(uuid,text,uuid), public.create_subscription_voucher(text,text,text,integer,integer,uuid) TO service_role;
 
 COMMIT;
