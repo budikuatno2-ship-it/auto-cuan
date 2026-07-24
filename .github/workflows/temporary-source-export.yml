@@ -1,0 +1,25 @@
+name: Temporary source export
+
+on:
+  pull_request:
+    types: [synchronize]
+    branches: [feat/daytrade-screener-v1]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: github.event.pull_request.head.ref == 'codex/implement-subscription-plans-ui' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/implement-subscription-plans-ui
+      - name: Create source archive
+        run: tar --exclude=.git --exclude=node_modules -czf /tmp/auto-cuan-pr-source.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: auto-cuan-pr-source-${{ github.event.pull_request.head.sha }}
+          path: /tmp/auto-cuan-pr-source.tar.gz
+          retention-days: 1
