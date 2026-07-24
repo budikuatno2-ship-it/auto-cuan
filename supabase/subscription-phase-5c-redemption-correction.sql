@@ -212,11 +212,25 @@ BEGIN
 END
 $$;
 
+-- Final readiness marker. The admin bot must remain disabled unless the entire
+-- foundation, lifecycle, admin-command, and redemption chain has been applied.
+CREATE OR REPLACE FUNCTION public.voucher_admin_schema_version()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  SELECT 'phase5c-complete-v4'::text
+$$;
+
 REVOKE ALL ON FUNCTION public.redeem_subscription_voucher(uuid,text,uuid),
-  public.create_subscription_voucher(text,text,text,integer,integer,uuid)
+  public.create_subscription_voucher(text,text,text,integer,integer,uuid),
+  public.voucher_admin_schema_version()
 FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.redeem_subscription_voucher(uuid,text,uuid),
-  public.create_subscription_voucher(text,text,text,integer,integer,uuid)
+  public.create_subscription_voucher(text,text,text,integer,integer,uuid),
+  public.voucher_admin_schema_version()
 TO service_role;
 
 COMMIT;
