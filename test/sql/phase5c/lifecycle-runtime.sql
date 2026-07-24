@@ -3,7 +3,7 @@
 -- Receipt and finalization happy path, including exact idempotent replays.
 DO $$
 DECLARE
-  actor uuid; ref text := 'VB-LC0000000001'; claim jsonb; attempt uuid; token uuid; items jsonb; result jsonb;
+  actor uuid; ref text := 'VB-AC0000000001'; claim jsonb; attempt uuid; token uuid; items jsonb; result jsonb;
   delivered_at_before timestamptz; finalized_at_before timestamptz; rejected boolean := false;
 BEGIN
   SELECT id INTO actor FROM public.app_users WHERE username = 'budi';
@@ -78,7 +78,7 @@ END $$;
 
 -- Uncertain delivery without a receipt remains inactive and cannot finalize.
 DO $$
-DECLARE actor uuid; ref text := 'VB-LC0000000002'; claim jsonb; attempt uuid; token uuid; items jsonb; result jsonb; uncertain_at_before timestamptz; rejected boolean := false;
+DECLARE actor uuid; ref text := 'VB-AC0000000002'; claim jsonb; attempt uuid; token uuid; items jsonb; result jsonb; uncertain_at_before timestamptz; rejected boolean := false;
 BEGIN
   SELECT id INTO actor FROM public.app_users WHERE username='budi';
   INSERT INTO public.voucher_batches(batch_reference,actor_user_id,voucher_type,plan_code,requested_quantity,confirmation_key) VALUES(ref,actor,'PERCENT_100','PREMIUM_1_MONTH',2,gen_random_uuid());
@@ -104,7 +104,7 @@ END $$;
 
 -- A recorded delivery may be marked uncertain after a later failure and safely finalized.
 DO $$
-DECLARE actor uuid; ref text := 'VB-LC0000000003'; claim jsonb; attempt uuid; token uuid; items jsonb; result jsonb;
+DECLARE actor uuid; ref text := 'VB-AC0000000003'; claim jsonb; attempt uuid; token uuid; items jsonb; result jsonb;
 BEGIN
   SELECT id INTO actor FROM public.app_users WHERE username='budi';
   INSERT INTO public.voucher_batches(batch_reference,actor_user_id,voucher_type,plan_code,requested_quantity,confirmation_key) VALUES(ref,actor,'PERCENT_100','PREMIUM_1_MONTH',2,gen_random_uuid());
@@ -119,7 +119,7 @@ END $$;
 
 -- Cancellation rolls prepared state back and permits attempt number 2.
 DO $$
-DECLARE actor uuid; ref text := 'VB-LC0000000004'; claim jsonb; attempt uuid; token uuid; retry_attempt uuid; retry_token uuid; items jsonb; result jsonb;
+DECLARE actor uuid; ref text := 'VB-AC0000000004'; claim jsonb; attempt uuid; token uuid; retry_attempt uuid; retry_token uuid; items jsonb; result jsonb;
 BEGIN
   SELECT id INTO actor FROM public.app_users WHERE username='budi';
   INSERT INTO public.voucher_batches(batch_reference,actor_user_id,voucher_type,plan_code,requested_quantity,confirmation_key) VALUES(ref,actor,'PERCENT_100','PREMIUM_1_MONTH',2,gen_random_uuid());
@@ -145,7 +145,7 @@ END $$;
 
 -- Invalid receipt authority and fields reject without mutation.
 DO $$
-DECLARE actor uuid; ref text := 'VB-LC0000000005'; claim jsonb; attempt uuid; token uuid; items jsonb; rejected boolean; i integer;
+DECLARE actor uuid; ref text := 'VB-AC0000000005'; claim jsonb; attempt uuid; token uuid; items jsonb; rejected boolean; i integer;
 BEGIN
   SELECT id INTO actor FROM public.app_users WHERE username='budi';
   INSERT INTO public.voucher_batches(batch_reference,actor_user_id,voucher_type,plan_code,requested_quantity,confirmation_key) VALUES(ref,actor,'PERCENT_100','PREMIUM_1_MONTH',2,gen_random_uuid());
@@ -174,7 +174,7 @@ END $$;
 
 -- Delivery counter failure and finalize counter failure are atomic.
 DO $$
-DECLARE actor uuid; ref text := 'VB-LC0000000006'; claim jsonb; attempt uuid; token uuid; items jsonb; rejected boolean := false;
+DECLARE actor uuid; ref text := 'VB-AC0000000006'; claim jsonb; attempt uuid; token uuid; items jsonb; rejected boolean := false;
 BEGIN
   SELECT id INTO actor FROM public.app_users WHERE username='budi';
   INSERT INTO public.voucher_batches(batch_reference,actor_user_id,voucher_type,plan_code,requested_quantity,confirmation_key) VALUES(ref,actor,'PERCENT_100','PREMIUM_1_MONTH',2,gen_random_uuid());
@@ -192,12 +192,12 @@ BEGIN
 END $$;
 
 DO $$
-DECLARE actor uuid; ref text := 'VB-LC0000000007'; claim jsonb; attempt uuid; token uuid; items jsonb; rejected boolean := false;
+DECLARE actor uuid; ref text := 'VB-AC0000000007'; claim jsonb; attempt uuid; token uuid; items jsonb; rejected boolean := false;
 BEGIN
   SELECT id INTO actor FROM public.app_users WHERE username='budi';
   INSERT INTO public.voucher_batches(batch_reference,actor_user_id,voucher_type,plan_code,requested_quantity,confirmation_key) VALUES(ref,actor,'PERCENT_100','PREMIUM_1_MONTH',2,gen_random_uuid());
   claim:=public.claim_voucher_admin_batch_chunk(ref); attempt:=(claim->>'attempt_id')::uuid; token:=(claim->>'claim_token')::uuid;
-  items:=jsonb_build_array(jsonb_build_object('code_hash',md5('lc7-a')||md5('lc7-a'),'code_hint','G001'),jsonb_build_object('code_hash',md5('lc7-b')||md5('lc7-b'),'code_hint','G002'));
+  items:=jsonb_build_array(jsonb_build_object('code_hash',md5('lc7-a')||md5('lc7-a'),'code_hint','A701'),jsonb_build_object('code_hash',md5('lc7-b')||md5('lc7-b'),'code_hint','A702'));
   PERFORM public.prepare_voucher_admin_batch_chunk(ref,0,attempt,token,items);
   PERFORM public.record_voucher_admin_chunk_delivery(ref,0,attempt,token,'message',701,2);
   UPDATE public.voucher_batches SET finalized_quantity=2 WHERE batch_reference=ref;
