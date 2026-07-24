@@ -22,7 +22,7 @@ test('persistent entitlement priority is lifetime, paid term, then trial', () =>
 });
 test('migration pins Phase 2 safety invariants', () => {
   assert.match(migration, /interval '10 days'/); assert.doesNotMatch(migration, /17[ -]?day/i);
-  for (const table of ['subscription_plans', 'subscription_plan_prices', 'user_entitlements', 'lifetime_seat_ledger', 'subscription_events']) assert.match(migration, new RegExp(`ALTER TABLE public\\.${table} ENABLE ROW LEVEL SECURITY`));
-  assert.match(migration, /generate_series\(1,7\)/); assert.match(migration, /pg_advisory_xact_lock/);
+  for (const table of ['subscription_plans', 'subscription_plan_prices', 'user_entitlements', 'subscription_events']) assert.match(migration, new RegExp(`ALTER TABLE public\\.${table} ENABLE ROW LEVEL SECURITY`));
+  assert.doesNotMatch(migration, /seat[_ -]?(ledger|number)|allocate[_ -]?lifetime|generate_series\(1,7\)/i); assert.match(migration, /pg_advisory_xact_lock/);
   assert.match(migration, /uq_one_trial_per_web_user/); assert.match(migration, /subscription_trial_telegram_users/);
 });
