@@ -26,15 +26,61 @@ jobs:
       PGDATABASE: phase5c_test
       PGUSER: postgres
       PGPASSWORD: postgres
+      LOG_DIR: ${{ runner.temp }}/phase5c-postgres-logs
     steps:
       - uses: actions/checkout@v4
+      - name: Initialize diagnostic logs
+        run: mkdir -p "$LOG_DIR" && : >"$LOG_DIR/execution-summary.txt"
       - name: PostgreSQL version
-        run: psql --version && psql -c 'SELECT version();'
+        run: |
+          set +e
+          { psql --version; psql -v ON_ERROR_STOP=1 -c 'SELECT version();'; } >"$LOG_DIR/postgres-version.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/postgres-version.log"
+          echo "postgres_version=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          exit "$status"
       - name: Apply bootstrap
-        run: echo 'Applying test/sql/phase5c/bootstrap.sql' && psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/bootstrap.sql
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/bootstrap.sql >"$LOG_DIR/bootstrap.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/bootstrap.log"
+          echo "bootstrap=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          exit "$status"
       - name: Apply Phase 2 migration
-        run: echo 'Applying supabase/subscription-phase-2-migration.sql' && psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-2-migration.sql
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-2-migration.sql >"$LOG_DIR/phase2.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/phase2.log"
+          echo "phase2=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## Phase 2 migration failure'; tail -n 60 "$LOG_DIR/phase2.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
       - name: Apply Phase 5C migration
-        run: echo 'Applying supabase/subscription-phase-5c-voucher-admin-migration.sql' && psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-5c-voucher-admin-migration.sql
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-5c-voucher-admin-migration.sql >"$LOG_DIR/phase5c.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/phase5c.log"
+          echo "phase5c=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## Phase 5C migration failure'; tail -n 60 "$LOG_DIR/phase5c.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
       - name: Schema smoke
-        run: echo 'Applying test/sql/phase5c/schema-smoke.sql' && psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/schema-smoke.sql
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/schema-smoke.sql >"$LOG_DIR/schema-smoke.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/schema-smoke.log"
+          echo "schema_smoke=$([ "$status" -eq 0 ] && echo success || echo failure)" >>"$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Upload PostgreSQL diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase5c-postgres-logs-${{ github.run_id }}
+          path: ${{ runner.temp }}/phase5c-postgres-logs/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Print execution summary
+        if: always()
+        run: cat "$LOG_DIR/execution-summary.txt"
