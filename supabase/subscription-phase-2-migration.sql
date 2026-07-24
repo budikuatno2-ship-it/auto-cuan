@@ -37,13 +37,6 @@ CREATE TABLE IF NOT EXISTS public.subscription_trial_telegram_users (
   telegram_user_id bigint PRIMARY KEY, entitlement_id uuid NOT NULL UNIQUE REFERENCES public.user_entitlements(id),
   claimed_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE TABLE IF NOT EXISTS public.lifetime_seat_ledger (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), seat_number integer NOT NULL CHECK (seat_number BETWEEN 1 AND 7),
-  entitlement_id uuid NOT NULL UNIQUE REFERENCES public.user_entitlements(id), allocation_source text NOT NULL CHECK (allocation_source IN ('payment','voucher','admin')),
-  allocated_at timestamptz NOT NULL DEFAULT now(), released_at timestamptz, release_reason text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_lifetime_active_seat ON public.lifetime_seat_ledger(seat_number) WHERE released_at IS NULL;
 CREATE TABLE IF NOT EXISTS public.subscription_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid REFERENCES public.app_users(id), entitlement_id uuid REFERENCES public.user_entitlements(id),
   event_type text NOT NULL, occurred_at timestamptz NOT NULL DEFAULT now(), actor_user_id uuid REFERENCES public.app_users(id), metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -60,11 +53,10 @@ INSERT INTO public.subscription_plan_prices (plan_code,normal_price_idr,promo_pr
 ALTER TABLE public.subscription_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscription_plan_prices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_entitlements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.lifetime_seat_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscription_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscription_trial_telegram_users ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.subscription_plans, public.subscription_plan_prices, public.user_entitlements,
-  public.lifetime_seat_ledger, public.subscription_events, public.subscription_trial_telegram_users FROM anon, authenticated;
+  public.subscription_events, public.subscription_trial_telegram_users FROM anon, authenticated;
 -- Product identity and price versions are append-only configuration. Operational
 -- code may deactivate a plan/price by inserting a replacement version, never
 -- rewrite identity or money after publication.
@@ -86,20 +78,6 @@ CREATE TRIGGER subscription_plans_immutable BEFORE UPDATE OR DELETE ON public.su
   FOR EACH ROW EXECUTE FUNCTION public.reject_subscription_identity_update();
 CREATE TRIGGER subscription_plan_prices_immutable BEFORE UPDATE OR DELETE ON public.subscription_plan_prices
   FOR EACH ROW EXECUTE FUNCTION public.reject_subscription_identity_update();
-CREATE OR REPLACE FUNCTION public.allocate_lifetime_seat(p_entitlement_id uuid, p_source text)
-RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
-DECLARE v_seat integer;
-BEGIN
-  PERFORM pg_advisory_xact_lock(hashtextextended('lifetime-seat-ledger', 0));
-  SELECT s INTO v_seat FROM generate_series(1,7) s WHERE NOT EXISTS (SELECT 1 FROM public.lifetime_seat_ledger l WHERE l.seat_number=s AND l.released_at IS NULL) ORDER BY s LIMIT 1;
-  IF v_seat IS NULL THEN RAISE EXCEPTION 'lifetime seats exhausted' USING ERRCODE = 'P0001'; END IF;
-  INSERT INTO public.lifetime_seat_ledger(seat_number,entitlement_id,allocation_source) VALUES (v_seat,p_entitlement_id,p_source);
-  RETURN v_seat;
-END $$;
-REVOKE ALL ON FUNCTION public.allocate_lifetime_seat(uuid,text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.reject_subscription_identity_update() FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.allocate_lifetime_seat(uuid,text) TO service_role;
-
 -- Atomic, append-only catalog publication. It is deliberately callable only
 -- with the service-role credential; the API derives actor identity from its
 -- signed session and never accepts browser actor/timestamp authority.
@@ -236,7 +214,7 @@ BEGIN
  SELECT * INTO v FROM public.subscription_vouchers WHERE code_hash=p_voucher_code_hash;
  IF NOT FOUND OR NOT v.active OR v.revoked_at IS NOT NULL OR v.redemption_count>=v.max_redemptions OR (v.expires_at IS NOT NULL AND v.expires_at<=now()) THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
  INSERT INTO public.subscription_events(user_id,event_type,metadata) VALUES(p_user_id,'voucher_quote_available',jsonb_build_object('voucher_code_hint',v.code_hint,'plan_code',v.plan_code,'duration_days',v.duration_days));
- RETURN jsonb_build_object('plan_code',v.plan_code,'duration_days',v.duration_days,'expires_at',v.expires_at);
+ RETURN jsonb_build_object('plan_code',v.plan_code,'duration_days',v.duration_days,'expires_at',v.expires_at,'voucher_type',coalesce(v.voucher_type,CASE WHEN v.plan_code='LIFETIME' THEN 'LIFETIME' ELSE 'PERCENT_100' END),'discount_percent',CASE WHEN v.voucher_type='PERCENT_30' THEN 30 WHEN v.voucher_type='PERCENT_50' THEN 50 ELSE NULL END);
 END $$;
 CREATE OR REPLACE FUNCTION public.redeem_subscription_voucher(p_user_id uuid,p_voucher_code_hash text,p_redemption_idempotency_key uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -246,14 +224,18 @@ BEGIN
  SELECT * INTO r FROM public.subscription_voucher_redemptions WHERE redemption_idempotency_key=p_redemption_idempotency_key; IF FOUND THEN RETURN jsonb_build_object('redeemed',true,'entitlement_id',r.entitlement_id); END IF;
  SELECT * INTO u FROM public.app_users WHERE id=p_user_id FOR UPDATE; IF NOT FOUND OR u.is_blocked THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
  SELECT * INTO v FROM public.subscription_vouchers WHERE code_hash=p_voucher_code_hash FOR UPDATE;
+ IF coalesce(v.voucher_type,'PERCENT_100') IN ('PERCENT_30','PERCENT_50') THEN RAISE EXCEPTION 'voucher requires payment'; END IF;
  IF NOT FOUND OR NOT v.active OR v.revoked_at IS NOT NULL OR v.redemption_count>=v.max_redemptions OR (v.expires_at IS NOT NULL AND v.expires_at<=now()) THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
  IF EXISTS(SELECT 1 FROM public.subscription_voucher_redemptions WHERE voucher_id=v.id AND user_id=p_user_id) THEN RAISE EXCEPTION 'already redeemed'; END IF;
- starts:=now(); expiry:=starts + make_interval(days=>v.duration_days);
- INSERT INTO public.user_entitlements(user_id,plan_code,source,status,starts_at,expires_at,lifetime,source_reference,activation_idempotency_key) VALUES(p_user_id,v.plan_code,'voucher','active',starts,expiry,false,v.id::text,p_redemption_idempotency_key::text) RETURNING * INTO e;
+ IF v.plan_code='LIFETIME' AND EXISTS(SELECT 1 FROM public.user_entitlements WHERE user_id=p_user_id AND lifetime=true AND status='active' FOR UPDATE) THEN
+   RETURN jsonb_build_object('redeemed',true,'result_code','already_lifetime','plan_code','LIFETIME','lifetime',true,'expires_at',NULL);
+ END IF;
+ starts:=now(); expiry:=CASE v.plan_code WHEN 'LIFETIME' THEN NULL WHEN 'PREMIUM_1_MONTH' THEN starts + make_interval(months=>1) WHEN 'PREMIUM_2_MONTHS' THEN starts + make_interval(months=>2) WHEN 'PREMIUM_3_MONTHS' THEN starts + make_interval(months=>3) ELSE NULL END;
+ INSERT INTO public.user_entitlements(user_id,plan_code,source,status,starts_at,expires_at,lifetime,source_reference,activation_idempotency_key) VALUES(p_user_id,v.plan_code,'voucher','active',starts,expiry,(v.plan_code='LIFETIME'),v.id::text,p_redemption_idempotency_key::text) RETURNING * INTO e;
  INSERT INTO public.subscription_voucher_redemptions(voucher_id,user_id,entitlement_id,redemption_idempotency_key) VALUES(v.id,p_user_id,e.id,p_redemption_idempotency_key) RETURNING * INTO r;
  UPDATE public.subscription_vouchers SET redemption_count=redemption_count+1 WHERE id=v.id;
  INSERT INTO public.subscription_events(user_id,entitlement_id,event_type,metadata) VALUES(p_user_id,e.id,'voucher_redeemed',jsonb_build_object('voucher_code_hint',v.code_hint,'plan_code',v.plan_code,'duration_days',v.duration_days,'result_code','redeemed'));
- RETURN jsonb_build_object('redeemed',true,'plan_code',v.plan_code,'duration_days',v.duration_days,'starts_at',starts,'expires_at',expiry);
+ RETURN jsonb_build_object('redeemed',true,'plan_code',v.plan_code,'duration_days',v.duration_days,'starts_at',starts,'expires_at',expiry,'lifetime',(v.plan_code='LIFETIME'));
 END $$;
 CREATE OR REPLACE FUNCTION public.create_subscription_voucher(p_voucher_code_hash text,p_voucher_code_hint text,p_plan_code text,p_duration_days integer,p_max_redemptions integer,p_actor_user_id uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$

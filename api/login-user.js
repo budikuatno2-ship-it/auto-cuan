@@ -4,7 +4,8 @@ const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecr
 const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser } = require('../lib/subscription-auth');
 const identity = require('../lib/subscription-identity');
 const { resolveEntitlements } = require('../lib/entitlements');
-const { isSubscriptionFeatureEnabled, getSubscriptionCapability } = require('../lib/subscription-capability');
+const { isSubscriptionFeatureEnabled, getSubscriptionCapability, isVoucherAdminBotEnabled, getVoucherAdminCapability } = require('../lib/subscription-capability');
+const voucherAdminBot = require('../lib/voucher-admin-bot');
 const vouchers = require('../lib/vouchers');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
@@ -117,14 +118,19 @@ async function handleSubscriptionTelegramWebhook(req, res) {
   return res.status(200).json({ ok: true });
 }
 async function handleVoucherAdminTelegramWebhook(req,res) {
-  if (!isSubscriptionFeatureEnabled()) return res.status(404).json({ok:false});
+  // Dedicated route and dedicated secret: it never shares a verification or customer-bot secret. The retired TELEGRAM_VOUCHER_ADMIN_WEBHOOK_SECRET is intentionally not read.
+  if (!isVoucherAdminBotEnabled()) return res.status(404).json({ok:false});
   if (req.method !== 'POST') return res.status(405).json({ok:false});
-  const expected=process.env.TELEGRAM_VOUCHER_ADMIN_WEBHOOK_SECRET;
+  const expected=process.env.VOUCHER_ADMIN_TELEGRAM_WEBHOOK_SECRET;
   if (!expected || !secretsMatch(req.headers['x-telegram-bot-api-secret-token'],expected)) return res.status(401).json({ok:false});
-  const update=req.body||{}, message=update.message||{}, from=message.from||{}, chat=message.chat||{};
-  if (!Number.isSafeInteger(update.update_id) || chat.type!=='private' || !vouchers.isVoucherAdminTelegramUser(from.id)) return res.status(200).json({ok:true});
-  const db=await subscriptionDb(); if (!db) return res.status(200).json({ok:true});
-  try { await db.rpc('record_voucher_admin_telegram_command',{p_update_id:update.update_id,p_telegram_user_id:from.id,p_command:typeof message.text==='string'?message.text.slice(0,160):''}); } catch (_) {}
+  if (Number(req.headers['content-length']||0)>MAX_WEBHOOK_BODY_BYTES) return res.status(413).json({ok:false});
+  const update=req.body; let serialized;
+  try { serialized=JSON.stringify(update); } catch (_) { return res.status(400).json({ok:false}); }
+  if (!update || serialized.length>MAX_WEBHOOK_BODY_BYTES || !Number.isSafeInteger(update.update_id)) return res.status(200).json({ok:true});
+  const db=await subscriptionDb(); const capability=await getVoucherAdminCapability(db);
+  if (!capability.ready) return res.status(200).json({ok:true});
+  // The bot boundary does not log raw updates, commands, codes, or Telegram identities.
+  try { await voucherAdminBot.processVoucherAdminUpdate(update,{db,capability}); } catch (_) { /* generic Telegram acknowledgement */ }
   return res.status(200).json({ok:true});
 }
 async function subscriptionLinkStatus(db, userId) {

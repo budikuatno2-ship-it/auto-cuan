@@ -1,0 +1,404 @@
+-- Phase 5C attempt-safe voucher administration. UNAPPLIED; service role only.
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS public.voucher_admin_sessions (
+  telegram_user_id bigint PRIMARY KEY CHECK (telegram_user_id = 6396446903),
+  step text NOT NULL,
+  voucher_type text,
+  plan_code text,
+  requested_quantity bigint,
+  confirmation_key uuid,
+  expires_at timestamptz NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.voucher_batches (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  batch_reference text UNIQUE NOT NULL CHECK (batch_reference ~ '^VB-[A-F0-9]{12}$'),
+  actor_user_id uuid NOT NULL REFERENCES public.app_users(id),
+  voucher_type text NOT NULL,
+  plan_code text NOT NULL,
+  requested_quantity bigint NOT NULL CHECK (requested_quantity > 0),
+  generated_quantity bigint NOT NULL DEFAULT 0 CHECK (generated_quantity <= requested_quantity),
+  delivered_quantity bigint NOT NULL DEFAULT 0 CHECK (delivered_quantity <= generated_quantity),
+  finalized_quantity bigint NOT NULL DEFAULT 0 CHECK (finalized_quantity <= delivered_quantity),
+  progress_cursor bigint NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'pending_delivery',
+  confirmation_key uuid UNIQUE NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.voucher_batch_chunks (
+  batch_id uuid NOT NULL REFERENCES public.voucher_batches(id),
+  chunk_index bigint NOT NULL,
+  expected_count integer NOT NULL CHECK (expected_count BETWEEN 1 AND 100),
+  current_attempt_id uuid,
+  status text NOT NULL DEFAULT 'pending',
+  generated_count integer NOT NULL DEFAULT 0,
+  delivered_count integer NOT NULL DEFAULT 0,
+  finalized_count integer NOT NULL DEFAULT 0,
+  PRIMARY KEY (batch_id, chunk_index)
+);
+
+CREATE TABLE IF NOT EXISTS public.voucher_batch_chunk_attempts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  batch_id uuid NOT NULL,
+  chunk_index bigint NOT NULL,
+  attempt_number integer NOT NULL,
+  claim_token uuid NOT NULL,
+  expected_count integer NOT NULL CHECK (expected_count BETWEEN 1 AND 100),
+  stored_count integer NOT NULL DEFAULT 0,
+  delivered_count integer NOT NULL DEFAULT 0,
+  status text NOT NULL CHECK (status IN ('claimed','prepared','delivered','delivery_uncertain','finalized','cancelled')),
+  lease_expires_at timestamptz NOT NULL,
+  delivery_method text,
+  telegram_message_id bigint,
+  prepared_at timestamptz,
+  delivered_at timestamptz,
+  uncertain_at timestamptz,
+  finalized_at timestamptz,
+  cancelled_at timestamptz,
+  last_safe_result_code text,
+  UNIQUE (batch_id, chunk_index, attempt_number),
+  FOREIGN KEY (batch_id, chunk_index) REFERENCES public.voucher_batch_chunks(batch_id, chunk_index)
+);
+
+ALTER TABLE public.subscription_vouchers
+  ADD COLUMN IF NOT EXISTS batch_id uuid REFERENCES public.voucher_batches(id),
+  ADD COLUMN IF NOT EXISTS chunk_index bigint,
+  ADD COLUMN IF NOT EXISTS attempt_id uuid REFERENCES public.voucher_batch_chunk_attempts(id),
+  ADD COLUMN IF NOT EXISTS item_index integer,
+  ADD COLUMN IF NOT EXISTS voucher_type text,
+  ADD COLUMN IF NOT EXISTS voucher_reference text,
+  ADD COLUMN IF NOT EXISTS delivery_pending boolean NOT NULL DEFAULT false;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'subscription_vouchers_voucher_type_check') THEN
+    ALTER TABLE public.subscription_vouchers
+      ADD CONSTRAINT subscription_vouchers_voucher_type_check
+      CHECK (voucher_type IS NULL OR voucher_type IN ('PERCENT_30','PERCENT_50','PERCENT_100','LIFETIME'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'subscription_vouchers_voucher_reference_check') THEN
+    ALTER TABLE public.subscription_vouchers
+      ADD CONSTRAINT subscription_vouchers_voucher_reference_check
+      CHECK (voucher_reference IS NULL OR voucher_reference ~ '^VV-[A-F0-9]{12}$');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'voucher_batches_type_plan_check') THEN
+    ALTER TABLE public.voucher_batches
+      ADD CONSTRAINT voucher_batches_type_plan_check
+      CHECK (
+        (voucher_type = 'LIFETIME' AND plan_code = 'LIFETIME') OR
+        (voucher_type IN ('PERCENT_30','PERCENT_50','PERCENT_100') AND plan_code IN ('PREMIUM_1_MONTH','PREMIUM_2_MONTHS','PREMIUM_3_MONTHS'))
+      );
+  END IF;
+END $$;
+
+DROP INDEX IF EXISTS public.subscription_voucher_chunk_item_idx;
+CREATE UNIQUE INDEX IF NOT EXISTS subscription_voucher_attempt_item_idx
+  ON public.subscription_vouchers(attempt_id, item_index);
+
+ALTER TABLE public.voucher_admin_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.voucher_batches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.voucher_batch_chunks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.voucher_batch_chunk_attempts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.voucher_admin_sessions, public.voucher_batches, public.voucher_batch_chunks, public.voucher_batch_chunk_attempts FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.claim_voucher_admin_batch_chunk(p_batch_reference text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE
+  b public.voucher_batches%ROWTYPE;
+  c public.voucher_batch_chunks%ROWTYPE;
+  a public.voucher_batch_chunk_attempts%ROWTYPE;
+BEGIN
+  SELECT * INTO b FROM public.voucher_batches WHERE batch_reference = p_batch_reference FOR UPDATE;
+  IF NOT FOUND OR b.status = 'cancelled' THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  IF b.finalized_quantity = b.requested_quantity THEN RETURN jsonb_build_object('done', true); END IF;
+  INSERT INTO public.voucher_batch_chunks(batch_id, chunk_index, expected_count, status)
+  VALUES (b.id, b.progress_cursor / 100, least(100, b.requested_quantity - b.finalized_quantity), 'pending')
+  ON CONFLICT DO NOTHING;
+  SELECT * INTO c FROM public.voucher_batch_chunks WHERE batch_id = b.id AND chunk_index = b.progress_cursor / 100 FOR UPDATE;
+  IF c.current_attempt_id IS NOT NULL THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  INSERT INTO public.voucher_batch_chunk_attempts(batch_id, chunk_index, attempt_number, claim_token, expected_count, status, lease_expires_at)
+  VALUES (b.id, c.chunk_index, 1, gen_random_uuid(), c.expected_count, 'claimed', now() + interval '5 minutes')
+  RETURNING * INTO a;
+  UPDATE public.voucher_batch_chunks SET current_attempt_id = a.id, status = 'claimed' WHERE batch_id = b.id AND chunk_index = c.chunk_index;
+  RETURN jsonb_build_object('done', false, 'chunk_index', c.chunk_index, 'attempt_id', a.id, 'claim_token', a.claim_token, 'expected_count', a.expected_count, 'lease_expires_at', a.lease_expires_at, 'mode', 'prepare');
+END $$;
+
+CREATE OR REPLACE FUNCTION public.prepare_voucher_admin_batch_chunk(p_batch_reference text, p_chunk_index bigint, p_attempt_id uuid, p_claim_token uuid, p_items jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE
+  a public.voucher_batch_chunk_attempts%ROWTYPE;
+  n integer;
+BEGIN
+  SELECT a.* INTO a
+  FROM public.voucher_batch_chunk_attempts a
+  JOIN public.voucher_batches b ON b.id = a.batch_id
+  WHERE b.batch_reference = p_batch_reference AND a.chunk_index = p_chunk_index AND a.id = p_attempt_id AND a.claim_token = p_claim_token
+  FOR UPDATE;
+  IF NOT FOUND OR a.status <> 'claimed' OR a.lease_expires_at <= now() OR jsonb_typeof(p_items) <> 'array' OR jsonb_array_length(p_items) <> a.expected_count THEN
+    RAISE EXCEPTION 'voucher unavailable';
+  END IF;
+  n := jsonb_array_length(p_items);
+  UPDATE public.voucher_batch_chunk_attempts SET stored_count = n, status = 'prepared', prepared_at = now(), last_safe_result_code = 'prepared' WHERE id = a.id;
+  RETURN jsonb_build_object('prepared', true, 'already_prepared', false, 'attempt_id', a.id, 'chunk_index', a.chunk_index, 'expected_count', a.expected_count, 'stored_count', n, 'safe_result_code', 'prepared');
+END $$;
+
+CREATE OR REPLACE FUNCTION public.record_voucher_admin_chunk_delivery(p_batch_reference text, p_chunk_index bigint, p_attempt_id uuid, p_claim_token uuid, p_delivery_method text, p_telegram_message_id bigint, p_delivered_count integer)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF p_delivery_method NOT IN ('message','document') OR p_telegram_message_id <= 0 THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  UPDATE public.voucher_batch_chunk_attempts a
+  SET delivered_count = p_delivered_count, status = 'delivered', delivery_method = p_delivery_method, telegram_message_id = p_telegram_message_id, delivered_at = now()
+  FROM public.voucher_batches b
+  WHERE b.id = a.batch_id AND b.batch_reference = p_batch_reference AND a.chunk_index = p_chunk_index AND a.id = p_attempt_id AND a.claim_token = p_claim_token AND a.status = 'prepared' AND a.stored_count = a.expected_count AND p_delivered_count = a.expected_count;
+  IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  RETURN jsonb_build_object('recorded', true);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.mark_voucher_admin_chunk_delivery_uncertain(p_batch_reference text, p_chunk_index bigint, p_attempt_id uuid, p_claim_token uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  UPDATE public.voucher_batch_chunk_attempts a SET status = 'delivery_uncertain', uncertain_at = now()
+  FROM public.voucher_batches b
+  WHERE b.id = a.batch_id AND b.batch_reference = p_batch_reference AND a.chunk_index = p_chunk_index AND a.id = p_attempt_id AND a.claim_token = p_claim_token AND a.status = 'prepared';
+  RETURN jsonb_build_object('uncertain', true);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.finalize_voucher_admin_batch_chunk(p_batch_reference text, p_chunk_index bigint, p_attempt_id uuid, p_claim_token uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  UPDATE public.voucher_batch_chunk_attempts a SET status = 'finalized', finalized_at = now()
+  FROM public.voucher_batches b
+  WHERE b.id = a.batch_id AND b.batch_reference = p_batch_reference AND a.chunk_index = p_chunk_index AND a.id = p_attempt_id AND a.claim_token = p_claim_token AND a.status = 'delivered' AND a.stored_count = a.expected_count AND a.delivered_count = a.expected_count;
+  IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  UPDATE public.subscription_vouchers SET active = true, delivery_pending = false WHERE attempt_id = p_attempt_id;
+  RETURN jsonb_build_object('finalized', true);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.cancel_voucher_admin_batch_chunk(p_batch_reference text, p_chunk_index bigint, p_attempt_id uuid, p_claim_token uuid, p_reason text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  UPDATE public.voucher_batch_chunk_attempts a SET status = 'cancelled', cancelled_at = now(), last_safe_result_code = left(p_reason, 40)
+  FROM public.voucher_batches b
+  WHERE b.id = a.batch_id AND b.batch_reference = p_batch_reference AND a.chunk_index = p_chunk_index AND a.id = p_attempt_id AND a.claim_token = p_claim_token AND a.status IN ('claimed','prepared');
+  RETURN jsonb_build_object('cancelled', true);
+END $$;
+
+REVOKE ALL ON FUNCTION public.claim_voucher_admin_batch_chunk(text), public.prepare_voucher_admin_batch_chunk(text,bigint,uuid,uuid,jsonb), public.record_voucher_admin_chunk_delivery(text,bigint,uuid,uuid,text,bigint,integer), public.mark_voucher_admin_chunk_delivery_uncertain(text,bigint,uuid,uuid), public.finalize_voucher_admin_batch_chunk(text,bigint,uuid,uuid), public.cancel_voucher_admin_batch_chunk(text,bigint,uuid,uuid,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_voucher_admin_batch_chunk(text), public.prepare_voucher_admin_batch_chunk(text,bigint,uuid,uuid,jsonb), public.record_voucher_admin_chunk_delivery(text,bigint,uuid,uuid,text,bigint,integer), public.mark_voucher_admin_chunk_delivery_uncertain(text,bigint,uuid,uuid), public.finalize_voucher_admin_batch_chunk(text,bigint,uuid,uuid), public.cancel_voucher_admin_batch_chunk(text,bigint,uuid,uuid,text) TO service_role;
+
+-- Restored webhook/session foundation and attempt persistence overrides.
+CREATE TABLE IF NOT EXISTS public.voucher_admin_webhook_updates (
+  update_id bigint PRIMARY KEY,
+  processed_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.voucher_batch_audit (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  batch_id uuid REFERENCES public.voucher_batches(id),
+  event_type text NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.voucher_admin_webhook_updates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.voucher_batch_audit ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.voucher_admin_webhook_updates, public.voucher_batch_audit FROM PUBLIC, anon, authenticated;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'voucher_batch_chunks_current_attempt_fk') THEN
+    ALTER TABLE public.voucher_batch_chunks ADD CONSTRAINT voucher_batch_chunks_current_attempt_fk FOREIGN KEY (current_attempt_id) REFERENCES public.voucher_batch_chunk_attempts(id);
+  END IF;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.voucher_admin_actor()
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v uuid;
+BEGIN
+  SELECT id INTO v FROM public.app_users WHERE lower(username) = 'budi';
+  IF v IS NULL THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  RETURN v;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.claim_voucher_admin_webhook_update(p_update_id bigint)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  INSERT INTO public.voucher_admin_webhook_updates(update_id) VALUES (p_update_id) ON CONFLICT DO NOTHING;
+  RETURN FOUND;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.start_voucher_admin_session(p_telegram_user_id bigint, p_expires_at timestamptz)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF p_telegram_user_id <> 6396446903 OR p_expires_at <= now() THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  INSERT INTO public.voucher_admin_sessions VALUES (p_telegram_user_id, 'type', NULL, NULL, NULL, NULL, p_expires_at)
+  ON CONFLICT (telegram_user_id) DO UPDATE SET step = 'type', expires_at = EXCLUDED.expires_at;
+  RETURN jsonb_build_object('started', true);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.advance_voucher_admin_session(p_telegram_user_id bigint, p_step text, p_voucher_type text, p_plan_code text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  UPDATE public.voucher_admin_sessions SET step = p_step, voucher_type = coalesce(p_voucher_type, voucher_type), plan_code = coalesce(p_plan_code, plan_code)
+  WHERE telegram_user_id = p_telegram_user_id AND p_telegram_user_id = 6396446903 AND expires_at > now();
+  IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  RETURN jsonb_build_object('advanced', true);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.set_voucher_admin_quantity(p_telegram_user_id bigint, p_requested_quantity bigint, p_confirmation_key uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE s public.voucher_admin_sessions%ROWTYPE;
+BEGIN
+  UPDATE public.voucher_admin_sessions SET requested_quantity = p_requested_quantity, confirmation_key = p_confirmation_key, step = 'confirm'
+  WHERE telegram_user_id = p_telegram_user_id AND p_telegram_user_id = 6396446903 AND p_requested_quantity > 0 AND expires_at > now()
+  RETURNING * INTO s;
+  IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  RETURN jsonb_build_object('voucher_type', s.voucher_type, 'plan_code', s.plan_code, 'confirmation_key', s.confirmation_key);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.clear_voucher_admin_session(p_telegram_user_id bigint)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  DELETE FROM public.voucher_admin_sessions WHERE telegram_user_id = p_telegram_user_id AND p_telegram_user_id = 6396446903;
+  RETURN true;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.create_voucher_admin_batch(p_telegram_user_id bigint, p_confirmation_key uuid)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE
+  s public.voucher_admin_sessions%ROWTYPE;
+  b public.voucher_batches%ROWTYPE;
+BEGIN
+  SELECT * INTO b FROM public.voucher_batches WHERE confirmation_key = p_confirmation_key;
+  IF FOUND THEN
+    RETURN jsonb_build_object('batch_reference', b.batch_reference, 'requested_quantity', b.requested_quantity, 'voucher_type', b.voucher_type, 'plan_code', b.plan_code, 'already_exists', true, 'progress_cursor', b.progress_cursor);
+  END IF;
+  SELECT * INTO s FROM public.voucher_admin_sessions WHERE telegram_user_id = p_telegram_user_id AND p_telegram_user_id = 6396446903 AND confirmation_key = p_confirmation_key AND expires_at > now();
+  IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  INSERT INTO public.voucher_batches(batch_reference, actor_user_id, voucher_type, plan_code, requested_quantity, confirmation_key)
+  VALUES ('VB-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 12)), public.voucher_admin_actor(), s.voucher_type, s.plan_code, s.requested_quantity, p_confirmation_key)
+  RETURNING * INTO b;
+  RETURN jsonb_build_object('batch_reference', b.batch_reference, 'requested_quantity', b.requested_quantity, 'voucher_type', b.voucher_type, 'plan_code', b.plan_code);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.get_voucher_admin_batch_progress(p_batch_reference text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE b public.voucher_batches%ROWTYPE;
+BEGIN
+  SELECT * INTO b FROM public.voucher_batches WHERE batch_reference = p_batch_reference;
+  IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  RETURN jsonb_build_object('batch_reference', b.batch_reference, 'requested_quantity', b.requested_quantity, 'voucher_type', b.voucher_type, 'plan_code', b.plan_code, 'progress_cursor', b.progress_cursor);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.voucher_admin_command(p_command text, p_reference text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  RETURN jsonb_build_object('message', 'Operasi admin belum tersedia.');
+END $$;
+
+-- Final effective prepare implementation: strict input, replay integrity, and atomic counters.
+CREATE OR REPLACE FUNCTION public.prepare_voucher_admin_batch_chunk(p_batch_reference text, p_chunk_index bigint, p_attempt_id uuid, p_claim_token uuid, p_items jsonb)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE
+  b public.voucher_batches%ROWTYPE;
+  c public.voucher_batch_chunks%ROWTYPE;
+  a public.voucher_batch_chunk_attempts%ROWTYPE;
+  n integer;
+  mismatches integer;
+  affected integer;
+BEGIN
+  SELECT * INTO b FROM public.voucher_batches WHERE batch_reference = p_batch_reference FOR UPDATE;
+  IF NOT FOUND OR b.status = 'cancelled' THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
+  SELECT * INTO c FROM public.voucher_batch_chunks WHERE batch_id = b.id AND chunk_index = p_chunk_index FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
+  SELECT * INTO a FROM public.voucher_batch_chunk_attempts WHERE id = p_attempt_id AND batch_id = b.id AND chunk_index = p_chunk_index FOR UPDATE;
+  IF NOT FOUND OR c.current_attempt_id IS DISTINCT FROM p_attempt_id OR a.claim_token IS DISTINCT FROM p_claim_token THEN
+    RAISE EXCEPTION 'voucher unavailable';
+  END IF;
+
+  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  IF jsonb_array_length(p_items) <> a.expected_count THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(p_items) AS e(item)
+    WHERE CASE
+      WHEN jsonb_typeof(e.item) IS DISTINCT FROM 'object' THEN true
+      ELSE
+        NOT (e.item ? 'code_hash') OR
+        NOT (e.item ? 'code_hint') OR
+        (SELECT count(*) FROM jsonb_object_keys(e.item)) <> 2 OR
+        EXISTS (SELECT 1 FROM jsonb_object_keys(e.item) AS k(key) WHERE k.key NOT IN ('code_hash','code_hint')) OR
+        jsonb_typeof(e.item->'code_hash') IS DISTINCT FROM 'string' OR
+        jsonb_typeof(e.item->'code_hint') IS DISTINCT FROM 'string' OR
+        e.item->>'code_hash' !~ '^[a-f0-9]{64}$' OR
+        e.item->>'code_hint' !~ '^[A-Z0-9]{4}$'
+    END
+  ) THEN
+    RAISE EXCEPTION 'voucher unavailable';
+  END IF;
+
+  IF a.status = 'prepared' THEN
+    SELECT count(*) INTO n FROM public.subscription_vouchers WHERE attempt_id = a.id;
+    IF n <> a.expected_count OR a.stored_count <> a.expected_count THEN RAISE EXCEPTION 'conflicting replay'; END IF;
+    SELECT count(*) INTO mismatches
+    FROM jsonb_array_elements(p_items) WITH ORDINALITY x(item, ord)
+    LEFT JOIN public.subscription_vouchers v ON v.attempt_id = a.id AND v.item_index = x.ord - 1
+    WHERE v.code_hash IS DISTINCT FROM x.item->>'code_hash' OR v.code_hint IS DISTINCT FROM x.item->>'code_hint';
+    IF mismatches <> 0 THEN RAISE EXCEPTION 'conflicting replay'; END IF;
+    RETURN jsonb_build_object('prepared', true, 'already_prepared', true, 'attempt_id', a.id, 'chunk_index', p_chunk_index, 'expected_count', a.expected_count, 'stored_count', n, 'safe_result_code', 'already_prepared');
+  END IF;
+
+  IF a.status <> 'claimed' OR a.lease_expires_at <= now() THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
+  BEGIN
+    INSERT INTO public.subscription_vouchers(voucher_reference, code_hash, code_hint, plan_code, voucher_type, duration_days, max_redemptions, active, batch_id, chunk_index, attempt_id, item_index, delivery_pending, created_by_user_id)
+    SELECT
+      'VV-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 12)),
+      x.item->>'code_hash',
+      x.item->>'code_hint',
+      b.plan_code,
+      b.voucher_type,
+      CASE b.plan_code WHEN 'PREMIUM_1_MONTH' THEN 30 WHEN 'PREMIUM_2_MONTHS' THEN 60 WHEN 'PREMIUM_3_MONTHS' THEN 90 ELSE 1 END,
+      1,
+      false,
+      b.id,
+      p_chunk_index,
+      a.id,
+      x.ord - 1,
+      true,
+      b.actor_user_id
+    FROM jsonb_array_elements(p_items) WITH ORDINALITY x(item, ord);
+  EXCEPTION WHEN unique_violation THEN
+    RAISE EXCEPTION 'voucher unavailable';
+  END;
+
+  SELECT count(*) INTO n FROM public.subscription_vouchers WHERE attempt_id = a.id;
+  IF n <> a.expected_count THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
+  UPDATE public.voucher_batches
+  SET generated_quantity = generated_quantity + n
+  WHERE id = b.id AND generated_quantity + n <= requested_quantity;
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 1 THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
+  UPDATE public.voucher_batch_chunk_attempts
+  SET stored_count = n, status = 'prepared', prepared_at = now(), last_safe_result_code = 'prepared'
+  WHERE id = a.id AND status = 'claimed';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 1 THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
+  UPDATE public.voucher_batch_chunks
+  SET generated_count = n, status = 'prepared'
+  WHERE batch_id = b.id AND chunk_index = p_chunk_index AND current_attempt_id = a.id;
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 1 THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
+  RETURN jsonb_build_object('prepared', true, 'already_prepared', false, 'attempt_id', a.id, 'chunk_index', p_chunk_index, 'expected_count', a.expected_count, 'stored_count', n, 'safe_result_code', 'prepared');
+END $$;
+
+REVOKE ALL ON FUNCTION public.voucher_admin_actor(), public.claim_voucher_admin_webhook_update(bigint), public.start_voucher_admin_session(bigint,timestamptz), public.advance_voucher_admin_session(bigint,text,text,text), public.set_voucher_admin_quantity(bigint,bigint,uuid), public.clear_voucher_admin_session(bigint), public.create_voucher_admin_batch(bigint,uuid), public.get_voucher_admin_batch_progress(text), public.voucher_admin_command(text,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.voucher_admin_actor(), public.claim_voucher_admin_webhook_update(bigint), public.start_voucher_admin_session(bigint,timestamptz), public.advance_voucher_admin_session(bigint,text,text,text), public.set_voucher_admin_quantity(bigint,bigint,uuid), public.clear_voucher_admin_session(bigint), public.create_voucher_admin_batch(bigint,uuid), public.get_voucher_admin_batch_progress(text), public.voucher_admin_command(text,text) TO service_role;
+
+COMMIT;

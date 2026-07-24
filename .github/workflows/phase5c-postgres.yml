@@ -1,0 +1,223 @@
+name: Phase 5C PostgreSQL harness
+on:
+  pull_request:
+    paths:
+      - 'supabase/subscription-phase-2-migration.sql'
+      - 'supabase/subscription-phase-5c-voucher-admin-migration.sql'
+      - 'supabase/subscription-phase-5c-lifecycle-correction.sql'
+      - 'supabase/subscription-phase-5c-admin-command-correction.sql'
+      - 'supabase/subscription-phase-5c-redemption-correction.sql'
+      - 'api/login-user.js'
+      - 'lib/subscription-capability.js'
+      - 'lib/subscription-identity.js'
+      - 'lib/voucher-admin-bot.js'
+      - 'lib/voucher-admin-sender.js'
+      - 'lib/vouchers.js'
+      - 'test/subscription-*.test.js'
+      - 'test/production-loader-hotfix.test.js'
+      - 'test/sql/phase5c/**'
+      - '.github/workflows/phase5c-postgres.yml'
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: phase5c_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d phase5c_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: phase5c_test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Initialize diagnostic logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOG_DIR="$RUNNER_TEMP/phase5c-postgres-logs"
+          mkdir -p "$LOG_DIR"
+          {
+            echo "dependencies=not_run"
+            echo "node_phase5c=not_run"
+            echo "node_subscription=not_run"
+            echo "postgres_version=not_run"
+            echo "bootstrap=not_run"
+            echo "phase2=not_run"
+            echo "phase5c=not_run"
+            echo "phase5c_lifecycle=not_run"
+            echo "phase5c_commands=not_run"
+            echo "phase5c_redemption=not_run"
+            echo "schema_smoke=not_run"
+            echo "prepare_runtime=not_run"
+            echo "prepare_contract_runtime=not_run"
+            echo "lifecycle_runtime=not_run"
+            echo "audit_runtime=not_run"
+            echo "command_runtime=not_run"
+            echo "redemption_runtime=not_run"
+          } >"$LOG_DIR/execution-summary.txt"
+          echo "LOG_DIR=$LOG_DIR" >>"$GITHUB_ENV"
+      - name: Install Node dependencies
+        run: |
+          set +e
+          npm ci --ignore-scripts --no-audit --no-fund >"$LOG_DIR/npm-ci.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/npm-ci.log"
+          sed -i "s/^dependencies=.*/dependencies=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute Phase 5C Node tests
+        run: |
+          set +e
+          node --test test/subscription-phase5c.test.js >"$LOG_DIR/node-phase5c.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/node-phase5c.log"
+          sed -i "s/^node_phase5c=.*/node_phase5c=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute subscription regression suite
+        run: |
+          set +e
+          node --test test/subscription-*.test.js test/production-loader-hotfix.test.js >"$LOG_DIR/node-subscription.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/node-subscription.log"
+          sed -i "s/^node_subscription=.*/node_subscription=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: PostgreSQL version
+        run: |
+          set +e
+          { psql --version; psql -v ON_ERROR_STOP=1 -c 'SELECT version();'; } >"$LOG_DIR/postgres-version.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/postgres-version.log"
+          sed -i "s/^postgres_version=.*/postgres_version=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Apply bootstrap
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/bootstrap.sql >"$LOG_DIR/bootstrap.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/bootstrap.log"
+          sed -i "s/^bootstrap=.*/bootstrap=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Apply Phase 2 migration
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-2-migration.sql >"$LOG_DIR/phase2.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/phase2.log"
+          sed -i "s/^phase2=.*/phase2=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## Phase 2 migration failure'; tail -n 60 "$LOG_DIR/phase2.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Apply Phase 5C migration
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-5c-voucher-admin-migration.sql >"$LOG_DIR/phase5c.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/phase5c.log"
+          sed -i "s/^phase5c=.*/phase5c=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## Phase 5C migration failure'; tail -n 60 "$LOG_DIR/phase5c.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Apply Phase 5C lifecycle correction
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-5c-lifecycle-correction.sql >"$LOG_DIR/phase5c-lifecycle.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/phase5c-lifecycle.log"
+          sed -i "s/^phase5c_lifecycle=.*/phase5c_lifecycle=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## Phase 5C lifecycle correction failure'; tail -n 60 "$LOG_DIR/phase5c-lifecycle.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Apply Phase 5C admin command correction
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-5c-admin-command-correction.sql >"$LOG_DIR/phase5c-commands.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/phase5c-commands.log"
+          sed -i "s/^phase5c_commands=.*/phase5c_commands=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## Phase 5C admin command correction failure'; tail -n 60 "$LOG_DIR/phase5c-commands.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Apply Phase 5C redemption correction
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-5c-redemption-correction.sql >"$LOG_DIR/phase5c-redemption.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/phase5c-redemption.log"
+          sed -i "s/^phase5c_redemption=.*/phase5c_redemption=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## Phase 5C redemption correction failure'; tail -n 60 "$LOG_DIR/phase5c-redemption.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Schema smoke
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/schema-smoke.sql >"$LOG_DIR/schema-smoke.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/schema-smoke.log"
+          sed -i "s/^schema_smoke=.*/schema_smoke=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute prepare runtime
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/prepare-runtime.sql >"$LOG_DIR/prepare-runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/prepare-runtime.log"
+          sed -i "s/^prepare_runtime=.*/prepare_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute prepare contract runtime
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/prepare-contract-runtime.sql >"$LOG_DIR/prepare-contract-runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/prepare-contract-runtime.log"
+          sed -i "s/^prepare_contract_runtime=.*/prepare_contract_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute lifecycle runtime
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/lifecycle-runtime.sql >"$LOG_DIR/lifecycle-runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/lifecycle-runtime.log"
+          sed -i "s/^lifecycle_runtime=.*/lifecycle_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute audit runtime
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/audit-runtime.sql >"$LOG_DIR/audit-runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/audit-runtime.log"
+          sed -i "s/^audit_runtime=.*/audit_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute command runtime
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/command-runtime.sql >"$LOG_DIR/command-runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/command-runtime.log"
+          sed -i "s/^command_runtime=.*/command_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute redemption runtime
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/redemption-runtime.sql >"$LOG_DIR/redemption-runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/redemption-runtime.log"
+          sed -i "s/^redemption_runtime=.*/redemption_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Upload PostgreSQL diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase5c-postgres-logs-${{ github.run_id }}
+          path: ${{ runner.temp }}/phase5c-postgres-logs/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Print execution summary
+        if: always()
+        run: cat "$LOG_DIR/execution-summary.txt"
