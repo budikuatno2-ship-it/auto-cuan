@@ -10,10 +10,13 @@ test('Phase 6A exposes public subscription entry points and a responsive compari
   assert.match(html, /Paket Subscription/);
   assert.match(html, /id="page-subscription"/);
   assert.match(html, /grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3/);
-  ['Free', 'Trial 17 Hari', 'Premium 1 Bulan', 'Premium 2 Bulan', 'Premium 3 Bulan', 'Lifetime'].forEach(label => assert.ok(html.includes(label), label));
+  ['Free', 'Trial 10 Hari', 'Premium 1 Bulan', 'Premium 2 Bulan', 'Premium 3 Bulan', 'Lifetime'].forEach(label => assert.ok(html.includes(label), label));
   assert.match(html, /Paling Populer/);
   assert.match(html, /Lebih Hemat/);
   assert.match(html, /tujuh kursi bersama/);
+  assert.doesNotMatch(html, /Trial\s+1[7] Hari/);
+  assert.doesNotMatch(html, /1[7] hari · aktivasi mengikuti server/);
+  assert.match(html, /subscriptionRemainingTime\(e\.expires_at\)/);
 });
 
 test('Phase 6A uses existing read-only catalogue and entitlement endpoints only', () => {
