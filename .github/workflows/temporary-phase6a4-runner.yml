@@ -1,0 +1,45 @@
+name: Temporary Phase 6A.4 runner
+
+on:
+  push:
+    branches: [feat/daytrade-screener-v1]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-pr:
+    if: github.event.head_commit.message == 'chore: execute phase 6a4 patch [skip ci]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/implement-subscription-plans-ui
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Apply patch
+        run: python3 .github/scripts/phase6a4_patch.py
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Validate
+        run: |
+          npm run build
+          git diff --check
+          node --test test/subscription-phase6a-access.test.js
+          node --test test/subscription-phase6a-ui.test.js test/subscription-phase6a-runtime.test.js test/subscription-auth.test.js test/subscription-phase5c.test.js test/ui-redesign-a11y.test.js test/subscription-phase2.test.js test/subscription-phase5a.test.js
+          node --check api/login-user.js
+          node --check api/sector-hot.js
+          node --check lib/subscription-auth.js
+          test "$(find api -maxdepth 1 -type f -name '*.js' | wc -l | tr -d ' ')" = "12"
+      - name: Commit implementation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/scripts/phase6a4_patch.py .github/workflows/phase6a4-premium-access-patch.yml
+          git add api/login-user.js api/sector-hot.js lib/subscription-auth.js public/index.html test/subscription-phase6a-access.test.js
+          git commit -m 'fix: enforce premium entitlement access'
+          git push origin HEAD:codex/implement-subscription-plans-ui
