@@ -13,7 +13,7 @@ DECLARE
   items jsonb;
   rejected boolean := false;
 BEGIN
-  IF public.voucher_admin_schema_version() <> 'phase5c-lifecycle-v2' THEN
+  IF public.voucher_admin_schema_version() <> 'phase5c-lifecycle-v3' THEN
     RAISE EXCEPTION 'voucher admin schema marker mismatch';
   END IF;
 
