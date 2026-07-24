@@ -102,7 +102,9 @@ BEGIN
  items:=jsonb_build_array(jsonb_build_object('code_hash',repeat('9',64),'code_hint','DUP0'),jsonb_build_object('code_hash',repeat('8',64),'code_hint','DUP1'));
  BEGIN
    PERFORM public.prepare_voucher_admin_batch_chunk(ref,0,attempt,token,items);
- EXCEPTION WHEN unique_violation THEN rejected:=true;
+ EXCEPTION WHEN others THEN
+   IF SQLERRM<>'voucher unavailable' THEN RAISE; END IF;
+   rejected:=true;
  END;
  IF NOT rejected THEN RAISE EXCEPTION 'duplicate hash prepare accepted'; END IF;
  IF EXISTS(SELECT 1 FROM public.subscription_vouchers WHERE attempt_id=attempt)
