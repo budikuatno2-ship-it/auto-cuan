@@ -1,15 +1,22 @@
 -- Phase 5C lifecycle correction. UNAPPLIED; service role only.
 BEGIN;
 
+CREATE OR REPLACE FUNCTION public.voucher_admin_schema_version()
+RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+  SELECT 'phase5c-lifecycle-v2'::text
+$$;
+
 CREATE OR REPLACE FUNCTION public.claim_voucher_admin_batch_chunk(p_batch_reference text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE
   b public.voucher_batches%ROWTYPE;
   c public.voucher_batch_chunks%ROWTYPE;
   a public.voucher_batch_chunk_attempts%ROWTYPE;
+  current_attempt public.voucher_batch_chunk_attempts%ROWTYPE;
   next_attempt integer;
   next_chunk bigint;
   remaining bigint;
+  affected integer;
 BEGIN
   SELECT * INTO b FROM public.voucher_batches WHERE batch_reference = p_batch_reference FOR UPDATE;
   IF NOT FOUND OR b.status = 'cancelled' THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
@@ -27,8 +34,31 @@ BEGIN
   ON CONFLICT (batch_id, chunk_index) DO NOTHING;
 
   SELECT * INTO c FROM public.voucher_batch_chunks WHERE batch_id = b.id AND chunk_index = next_chunk FOR UPDATE;
-  IF NOT FOUND OR c.expected_count <> least(100, remaining)::integer OR c.current_attempt_id IS NOT NULL THEN
+  IF NOT FOUND OR c.expected_count <> least(100, remaining)::integer THEN
     RAISE EXCEPTION 'voucher unavailable';
+  END IF;
+
+  IF c.current_attempt_id IS NOT NULL THEN
+    SELECT * INTO current_attempt
+    FROM public.voucher_batch_chunk_attempts
+    WHERE id = c.current_attempt_id AND batch_id = b.id AND chunk_index = c.chunk_index
+    FOR UPDATE;
+    IF NOT FOUND OR current_attempt.status <> 'claimed' OR current_attempt.lease_expires_at > now() THEN
+      RAISE EXCEPTION 'voucher unavailable';
+    END IF;
+
+    UPDATE public.voucher_batch_chunk_attempts
+    SET status = 'cancelled', cancelled_at = coalesce(cancelled_at, now()), last_safe_result_code = 'lease_expired'
+    WHERE id = current_attempt.id AND status = 'claimed' AND lease_expires_at <= now();
+    GET DIAGNOSTICS affected = ROW_COUNT;
+    IF affected <> 1 THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+
+    UPDATE public.voucher_batch_chunks
+    SET current_attempt_id = NULL, status = 'pending', generated_count = 0, delivered_count = 0, finalized_count = 0
+    WHERE batch_id = b.id AND chunk_index = c.chunk_index AND current_attempt_id = current_attempt.id;
+    GET DIAGNOSTICS affected = ROW_COUNT;
+    IF affected <> 1 THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+    c.current_attempt_id := NULL;
   END IF;
 
   SELECT coalesce(max(attempt_number), 0) + 1 INTO next_attempt
@@ -42,7 +72,8 @@ BEGIN
   UPDATE public.voucher_batch_chunks
   SET current_attempt_id = a.id, status = 'claimed', generated_count = 0, delivered_count = 0, finalized_count = 0
   WHERE batch_id = b.id AND chunk_index = c.chunk_index AND current_attempt_id IS NULL;
-  IF NOT FOUND THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 1 THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
 
   RETURN jsonb_build_object('done', false, 'chunk_index', c.chunk_index, 'attempt_id', a.id, 'claim_token', a.claim_token, 'expected_count', a.expected_count, 'lease_expires_at', a.lease_expires_at, 'attempt_number', a.attempt_number, 'mode', 'prepare');
 END $$;
@@ -244,7 +275,7 @@ BEGIN
   RETURN jsonb_build_object('cancelled', true, 'already_cancelled', false, 'removed_count', removed, 'safe_result_code', 'cancelled');
 END $$;
 
-REVOKE ALL ON FUNCTION public.claim_voucher_admin_batch_chunk(text), public.record_voucher_admin_chunk_delivery(text,bigint,uuid,uuid,text,bigint,integer), public.mark_voucher_admin_chunk_delivery_uncertain(text,bigint,uuid,uuid), public.finalize_voucher_admin_batch_chunk(text,bigint,uuid,uuid), public.cancel_voucher_admin_batch_chunk(text,bigint,uuid,uuid,text) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.claim_voucher_admin_batch_chunk(text), public.record_voucher_admin_chunk_delivery(text,bigint,uuid,uuid,text,bigint,integer), public.mark_voucher_admin_chunk_delivery_uncertain(text,bigint,uuid,uuid), public.finalize_voucher_admin_batch_chunk(text,bigint,uuid,uuid), public.cancel_voucher_admin_batch_chunk(text,bigint,uuid,uuid,text) TO service_role;
+REVOKE ALL ON FUNCTION public.voucher_admin_schema_version(), public.claim_voucher_admin_batch_chunk(text), public.record_voucher_admin_chunk_delivery(text,bigint,uuid,uuid,text,bigint,integer), public.mark_voucher_admin_chunk_delivery_uncertain(text,bigint,uuid,uuid), public.finalize_voucher_admin_batch_chunk(text,bigint,uuid,uuid), public.cancel_voucher_admin_batch_chunk(text,bigint,uuid,uuid,text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.voucher_admin_schema_version(), public.claim_voucher_admin_batch_chunk(text), public.record_voucher_admin_chunk_delivery(text,bigint,uuid,uuid,text,bigint,integer), public.mark_voucher_admin_chunk_delivery_uncertain(text,bigint,uuid,uuid), public.finalize_voucher_admin_batch_chunk(text,bigint,uuid,uuid), public.cancel_voucher_admin_batch_chunk(text,bigint,uuid,uuid,text) TO service_role;
 
 COMMIT;
