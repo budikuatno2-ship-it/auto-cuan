@@ -264,3 +264,18 @@ test('visible subscription copy is Indonesian and keeps the 10-day/manual-transf
   assert.doesNotMatch(html, />Subscription Plans<|Subscription plan catalog|>Edit price</);
   assert.doesNotMatch(html, /Trial\s+17 Hari|17 hari · aktivasi mengikuti server/i);
 });
+
+
+test('unknown sector-hot actions cannot fall through to premium list or detail payloads', async () => withSessionSecret(async () => {
+  await withApiHandler('../api/sector-hot', database(account(), []), async handler => {
+    for (const query of [{ action: 'unknown-action' }, { action: 'unknown-action', group: 'TEST' }]) {
+      const res = responseCapture();
+      await handler({ method: 'GET', query, headers: {} }, res);
+      assert.equal(res.statusCode, 400);
+      assert.deepEqual(res.body, { success: false, error: 'Aksi tidak valid.' });
+      assert.equal('groups' in res.body, false);
+      assert.equal('members' in res.body, false);
+      assert.equal('results' in res.body, false);
+    }
+  });
+}));
