@@ -1,6 +1,6 @@
 \set ON_ERROR_STOP on
 DO $$
-DECLARE b uuid; c jsonb; r jsonb; a uuid; t uuid; items jsonb; rows_before bigint; refs_before text[]; hashes_before text[]; hints_before text[]; batch_generated bigint; batch_status text; chunk_generated integer; chunk_status text; current_attempt uuid; attempt_stored integer; attempt_status text; attempt_time timestamptz; indexes_before bigint[]; active_before boolean[]; pending_before boolean[]; progress_before bigint; result_before text; changed_hash_rejected boolean := false; changed_hint_rejected boolean := false; extra_key_rejected boolean := false;
+DECLARE b uuid; c jsonb; r jsonb; a uuid; t uuid; items jsonb; rows_before bigint; refs_before text[]; hashes_before text[]; hints_before text[]; batch_generated bigint; batch_status text; chunk_generated integer; chunk_status text; current_attempt uuid; attempt_stored integer; attempt_status text; attempt_time timestamptz; indexes_before integer[]; active_before boolean[]; pending_before boolean[]; progress_before bigint; result_before text; changed_hash_rejected boolean := false; changed_hint_rejected boolean := false; extra_key_rejected boolean := false;
 BEGIN
  SELECT id INTO b FROM public.app_users WHERE username='budi';
  INSERT INTO public.voucher_batches(id,batch_reference,actor_user_id,voucher_type,plan_code,requested_quantity,confirmation_key) VALUES(gen_random_uuid(),'VB-C1D2E3F4A5B6',b,'PERCENT_100','PREMIUM_1_MONTH',2,'22222222-2222-4222-8222-222222222222');
