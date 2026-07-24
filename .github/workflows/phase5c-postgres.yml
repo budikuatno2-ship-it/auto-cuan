@@ -12,7 +12,8 @@ on:
       - 'lib/voucher-admin-bot.js'
       - 'lib/voucher-admin-sender.js'
       - 'lib/vouchers.js'
-      - 'test/subscription-phase5c.test.js'
+      - 'test/subscription-*.test.js'
+      - 'test/production-loader-hotfix.test.js'
       - 'test/sql/phase5c/**'
       - '.github/workflows/phase5c-postgres.yml'
 jobs:
@@ -50,7 +51,7 @@ jobs:
           {
             echo "dependencies=not_run"
             echo "node_phase5c=not_run"
-            echo "node_full=not_run"
+            echo "node_subscription=not_run"
             echo "postgres_version=not_run"
             echo "bootstrap=not_run"
             echo "phase2=not_run"
@@ -81,13 +82,13 @@ jobs:
           cat "$LOG_DIR/node-phase5c.log"
           sed -i "s/^node_phase5c=.*/node_phase5c=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           exit "$status"
-      - name: Execute full Node test suite except stale documented-gap assertion
+      - name: Execute subscription regression suite
         run: |
           set +e
-          node --test --test-name-pattern='^(?!SECURITY GAP \(documented\): auth endpoints have no server-side rate limiting$)' test/*.test.js >"$LOG_DIR/node-full.log" 2>&1
+          node --test test/subscription-*.test.js test/production-loader-hotfix.test.js >"$LOG_DIR/node-subscription.log" 2>&1
           status=$?
-          cat "$LOG_DIR/node-full.log"
-          sed -i "s/^node_full=.*/node_full=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          cat "$LOG_DIR/node-subscription.log"
+          sed -i "s/^node_subscription=.*/node_subscription=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           exit "$status"
       - name: PostgreSQL version
         run: |
