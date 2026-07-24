@@ -230,7 +230,7 @@ BEGIN
  IF v.plan_code='LIFETIME' AND EXISTS(SELECT 1 FROM public.user_entitlements WHERE user_id=p_user_id AND lifetime=true AND status='active' FOR UPDATE) THEN
    RETURN jsonb_build_object('redeemed',true,'result_code','already_lifetime','plan_code','LIFETIME','lifetime',true,'expires_at',NULL);
  END IF;
- starts:=now(); expiry:=CASE WHEN v.plan_code='LIFETIME' THEN NULL ELSE starts + make_interval(days=>v.duration_days) END;
+ starts:=now(); expiry:=CASE v.plan_code WHEN 'LIFETIME' THEN NULL WHEN 'PREMIUM_1_MONTH' THEN starts + make_interval(months=>1) WHEN 'PREMIUM_2_MONTHS' THEN starts + make_interval(months=>2) WHEN 'PREMIUM_3_MONTHS' THEN starts + make_interval(months=>3) ELSE NULL END;
  INSERT INTO public.user_entitlements(user_id,plan_code,source,status,starts_at,expires_at,lifetime,source_reference,activation_idempotency_key) VALUES(p_user_id,v.plan_code,'voucher','active',starts,expiry,(v.plan_code='LIFETIME'),v.id::text,p_redemption_idempotency_key::text) RETURNING * INTO e;
  INSERT INTO public.subscription_voucher_redemptions(voucher_id,user_id,entitlement_id,redemption_idempotency_key) VALUES(v.id,p_user_id,e.id,p_redemption_idempotency_key) RETURNING * INTO r;
  UPDATE public.subscription_vouchers SET redemption_count=redemption_count+1 WHERE id=v.id;
