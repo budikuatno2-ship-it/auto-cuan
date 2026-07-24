@@ -214,7 +214,7 @@ BEGIN
  SELECT * INTO v FROM public.subscription_vouchers WHERE code_hash=p_voucher_code_hash;
  IF NOT FOUND OR NOT v.active OR v.revoked_at IS NOT NULL OR v.redemption_count>=v.max_redemptions OR (v.expires_at IS NOT NULL AND v.expires_at<=now()) THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
  INSERT INTO public.subscription_events(user_id,event_type,metadata) VALUES(p_user_id,'voucher_quote_available',jsonb_build_object('voucher_code_hint',v.code_hint,'plan_code',v.plan_code,'duration_days',v.duration_days));
- RETURN jsonb_build_object('plan_code',v.plan_code,'duration_days',v.duration_days,'expires_at',v.expires_at);
+ RETURN jsonb_build_object('plan_code',v.plan_code,'duration_days',v.duration_days,'expires_at',v.expires_at,'voucher_type',coalesce(v.voucher_type,CASE WHEN v.plan_code='LIFETIME' THEN 'LIFETIME' ELSE 'PERCENT_100' END),'discount_percent',CASE WHEN v.voucher_type='PERCENT_30' THEN 30 WHEN v.voucher_type='PERCENT_50' THEN 50 ELSE NULL END);
 END $$;
 CREATE OR REPLACE FUNCTION public.redeem_subscription_voucher(p_user_id uuid,p_voucher_code_hash text,p_redemption_idempotency_key uuid)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
@@ -224,6 +224,7 @@ BEGIN
  SELECT * INTO r FROM public.subscription_voucher_redemptions WHERE redemption_idempotency_key=p_redemption_idempotency_key; IF FOUND THEN RETURN jsonb_build_object('redeemed',true,'entitlement_id',r.entitlement_id); END IF;
  SELECT * INTO u FROM public.app_users WHERE id=p_user_id FOR UPDATE; IF NOT FOUND OR u.is_blocked THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
  SELECT * INTO v FROM public.subscription_vouchers WHERE code_hash=p_voucher_code_hash FOR UPDATE;
+ IF coalesce(v.voucher_type,'PERCENT_100') IN ('PERCENT_30','PERCENT_50') THEN RAISE EXCEPTION 'voucher requires payment'; END IF;
  IF NOT FOUND OR NOT v.active OR v.revoked_at IS NOT NULL OR v.redemption_count>=v.max_redemptions OR (v.expires_at IS NOT NULL AND v.expires_at<=now()) THEN RAISE EXCEPTION 'voucher unavailable'; END IF;
  IF EXISTS(SELECT 1 FROM public.subscription_voucher_redemptions WHERE voucher_id=v.id AND user_id=p_user_id) THEN RAISE EXCEPTION 'already redeemed'; END IF;
  IF v.plan_code='LIFETIME' AND EXISTS(SELECT 1 FROM public.user_entitlements WHERE user_id=p_user_id AND lifetime=true AND status='active' FOR UPDATE) THEN
