@@ -5,6 +5,7 @@ on:
       - 'supabase/subscription-phase-2-migration.sql'
       - 'supabase/subscription-phase-5c-voucher-admin-migration.sql'
       - 'supabase/subscription-phase-5c-lifecycle-correction.sql'
+      - 'supabase/subscription-phase-5c-admin-command-correction.sql'
       - 'lib/subscription-capability.js'
       - 'lib/voucher-admin-bot.js'
       - 'test/subscription-phase5c.test.js'
@@ -45,11 +46,13 @@ jobs:
             echo "phase2=not_run"
             echo "phase5c=not_run"
             echo "phase5c_lifecycle=not_run"
+            echo "phase5c_commands=not_run"
             echo "schema_smoke=not_run"
             echo "prepare_runtime=not_run"
             echo "prepare_contract_runtime=not_run"
             echo "lifecycle_runtime=not_run"
             echo "audit_runtime=not_run"
+            echo "command_runtime=not_run"
           } >"$LOG_DIR/execution-summary.txt"
           echo "LOG_DIR=$LOG_DIR" >>"$GITHUB_ENV"
       - name: Execute Phase 5C Node tests
@@ -103,6 +106,15 @@ jobs:
           sed -i "s/^phase5c_lifecycle=.*/phase5c_lifecycle=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           if [ "$status" -ne 0 ]; then { echo '## Phase 5C lifecycle correction failure'; tail -n 60 "$LOG_DIR/phase5c-lifecycle.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
           exit "$status"
+      - name: Apply Phase 5C admin command correction
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/subscription-phase-5c-admin-command-correction.sql >"$LOG_DIR/phase5c-commands.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/phase5c-commands.log"
+          sed -i "s/^phase5c_commands=.*/phase5c_commands=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## Phase 5C admin command correction failure'; tail -n 60 "$LOG_DIR/phase5c-commands.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
       - name: Schema smoke
         run: |
           set +e
@@ -142,6 +154,14 @@ jobs:
           status=$?
           cat "$LOG_DIR/audit-runtime.log"
           sed -i "s/^audit_runtime=.*/audit_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute command runtime
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/phase5c/command-runtime.sql >"$LOG_DIR/command-runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/command-runtime.log"
+          sed -i "s/^command_runtime=.*/command_runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           exit "$status"
       - name: Upload PostgreSQL diagnostics
         if: always()
