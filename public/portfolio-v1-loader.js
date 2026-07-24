@@ -223,20 +223,9 @@
             var sale = api.calculatePartialSale(position, (doc.getElementById('pfEnhSellLots') || {}).value, (doc.getElementById('pfEnhSellPrice') || {}).value);
             if (!sale.ok) { toast(sale.error, 'error'); return false; }
             position.realizedPL = Number(position.realizedPL || 0) + sale.realizedPL;
-            state.history.push({
-              ticker: position.ticker,
-              action: sale.closesPosition ? 'close' : 'sell',
-              lots: sale.lotsSold,
-              price: sale.salePrice,
-              realizedPL: sale.realizedPL,
-              timestamp: Date.now()
-            });
+            state.history.push({ ticker: position.ticker, action: sale.closesPosition ? 'close' : 'sell', lots: sale.lotsSold, price: sale.salePrice, realizedPL: sale.realizedPL, timestamp: Date.now() });
             if (sale.closesPosition) state.positions.splice(index, 1);
-            else {
-              position.lots = sale.remainingLots;
-              position.investedCapital = sale.remainingInvested;
-              position.updatedAt = Date.now();
-            }
+            else { position.lots = sale.remainingLots; position.investedCapital = sale.remainingInvested; position.updatedAt = Date.now(); }
             writeState(state);
             var action = sale.realizedPL < 0 ? 'Cut Loss' : (sale.realizedPL > 0 ? 'Take Profit' : 'Penjualan impas');
             toast(action + ' dicatat: ' + money(sale.realizedPL) + '.', sale.realizedPL < 0 ? 'warning' : 'success');
@@ -251,10 +240,7 @@
               var tone = sale.realizedPL < 0 ? 'text-red-300' : (sale.realizedPL > 0 ? 'text-emerald-300' : 'text-gray-300');
               box.innerHTML = '<p>Jenis pencatatan: <strong class="' + tone + '">' + action + '</strong></p><p>Realized P/L: <strong class="' + tone + '">' + money(sale.realizedPL) + '</strong></p><p>Sisa posisi: <strong>' + sale.remainingLots + ' lot</strong>. Average buy sisa posisi tetap <strong>' + money(sale.remainingAverage) + '</strong>.</p><p class="text-xs text-gray-500">Rumus: (harga jual − average buy) × lot dijual × 100 saham.</p>';
             }
-            ['pfEnhSellLots', 'pfEnhSellPrice'].forEach(function (id) {
-              var input = doc.getElementById(id);
-              if (input) input.addEventListener('input', preview);
-            });
+            ['pfEnhSellLots', 'pfEnhSellPrice'].forEach(function (id) { var input = doc.getElementById(id); if (input) input.addEventListener('input', preview); });
             preview();
           });
       }
@@ -263,26 +249,20 @@
         var container = doc.getElementById('pfPositions');
         if (!container) return;
         Array.prototype.forEach.call(container.querySelectorAll('article[data-index]'), function (card) {
-          var index = Number(card.getAttribute('data-index'));
           var statusEl = card.querySelector('h4 + p');
           var status = statusEl ? statusEl.textContent.trim() : '';
           var averageDown = card.querySelector('button[data-action="average"]');
           if (averageDown) averageDown.textContent = 'Average Down';
-          var actionRow = card.querySelector('button[data-action]') ? card.querySelector('button[data-action]').parentElement : null;
+          var addButton = card.querySelector('button[data-action="add"]');
+          var actionRow = addButton ? addButton.parentElement : null;
           if (actionRow && !actionRow.querySelector('[data-pf-action="average-up"]')) {
             var up = doc.createElement('button');
-            up.type = 'button';
-            up.className = 'pf-action';
-            up.setAttribute('data-pf-action', 'average-up');
-            up.textContent = 'Average Up';
+            up.type = 'button'; up.className = 'pf-action'; up.setAttribute('data-pf-action', 'average-up'); up.textContent = 'Average Up';
             actionRow.insertBefore(up, actionRow.querySelector('button[data-action="sell"]'));
           }
           if (actionRow && !actionRow.querySelector('[data-pf-action="exit"]')) {
             var exit = doc.createElement('button');
-            exit.type = 'button';
-            exit.className = 'pf-action';
-            exit.setAttribute('data-pf-action', 'exit');
-            exit.textContent = 'Cut Loss / Take Profit';
+            exit.type = 'button'; exit.className = 'pf-action'; exit.setAttribute('data-pf-action', 'exit'); exit.textContent = 'Cut Loss / Take Profit';
             actionRow.insertBefore(exit, actionRow.querySelector('button[data-action="close"]'));
           }
           if (!card.querySelector('[data-pf-explanation]')) {
@@ -290,8 +270,7 @@
             detail.setAttribute('data-pf-explanation', 'true');
             detail.className = 'mt-3 rounded-lg border border-dark-600/40 bg-dark-800/30 p-3';
             detail.innerHTML = '<summary class="cursor-pointer text-xs font-semibold text-blue-300">Apa arti status dan angka ini?</summary><p class="mt-2 text-xs leading-relaxed text-gray-400">' + api.escapeHtml(statusExplanation(status)) + '</p><p class="mt-2 text-[11px] text-gray-500">Semua status dan perhitungan menggunakan rumus tetap dari data posisi Anda, bukan AI.</p>';
-            if (actionRow) actionRow.insertAdjacentElement('beforebegin', detail);
-            else card.appendChild(detail);
+            if (actionRow) actionRow.insertAdjacentElement('beforebegin', detail); else card.appendChild(detail);
           }
         });
         enhanceHistory();
