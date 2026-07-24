@@ -181,7 +181,7 @@ BEGIN
     ELSE NULL
   END;
 
-  IF p.id IS NULL
+  IF p.code IS NULL
      OR p_voucher_code_hash !~ '^[a-f0-9]{64}$'
      OR p_voucher_code_hint !~ '^[A-Z0-9]{4}$'
      OR p_duration_days IS DISTINCT FROM expected_days
