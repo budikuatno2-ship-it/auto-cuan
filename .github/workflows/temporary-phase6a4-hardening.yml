@@ -45,8 +45,8 @@ jobs:
           API_COUNT="$(find api -maxdepth 1 -type f -name '*.js' | wc -l | tr -d ' ')"
           echo "API_COUNT=$API_COUNT" | tee -a /tmp/phase6a4-hardening.log
           test "$API_COUNT" = "12"
-          if grep -RniE 'Trial 17 Hari|17 hari · aktivasi mengikuti server|Kelola Subscription|pembayaran online hadir di fase berikutnya' public test --exclude-dir=node_modules | tee -a /tmp/phase6a4-hardening.log; then
-            echo 'Retired copy remains.' | tee -a /tmp/phase6a4-hardening.log
+          if grep -RniE 'Trial 17 Hari|17 hari · aktivasi mengikuti server|Kelola Subscription|pembayaran online hadir di fase berikutnya' public --exclude-dir=node_modules | tee -a /tmp/phase6a4-hardening.log; then
+            echo 'Retired copy remains in public UI.' | tee -a /tmp/phase6a4-hardening.log
             exit 1
           fi
       - name: Upload validation log
