@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret, buildClearOnboardingCookie, isSameOrigin } = require('../lib/admin-session');
-const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser } = require('../lib/subscription-auth');
+const { requireUserSession, requireNonBlockedUser, requireSubscriptionOnboardingUser, resolvePremiumAccess } = require('../lib/subscription-auth');
 const identity = require('../lib/subscription-identity');
 const { resolveEntitlements } = require('../lib/entitlements');
 const { isSubscriptionFeatureEnabled, getSubscriptionCapability, isVoucherAdminBotEnabled, getVoucherAdminCapability } = require('../lib/subscription-capability');
@@ -235,6 +235,18 @@ module.exports = async function handler(req, res) {
       const capability = await getSubscriptionCapability(db);
       return res.status(200).json({ success: true, enabled: capability.enabled, ready: capability.ready });
     }
+    if (subscriptionAction === 'premium-access-status') {
+      res.setHeader('Cache-Control', 'private, no-store');
+      const db = await subscriptionDb();
+      if (!db) return res.status(503).json({ success:false, error:'Status akses tidak tersedia.' });
+      const access = await resolvePremiumAccess(req, db);
+      if (!access.ok) return res.status(access.status || 403).json({ success:false, error:access.error || 'Akses ditolak.' });
+      return res.status(200).json({ success:true, premium:access.premium === true, access_level:access.access_level,
+        entitlement_status:access.entitlement && access.entitlement.entitlement_status || 'none',
+        current_plan:access.entitlement && access.entitlement.current_plan || null,
+        expires_at:access.entitlement && access.entitlement.expires_at || null });
+    }
+
     if (/^(subscription-(telegram-link-token-create|telegram-link-status|trial-status|trial-activate)|voucher-(quote|redeem))$/.test(subscriptionAction || '')) {
       return await handleSubscriptionAction(req, res, subscriptionAction);
     }

@@ -31,6 +31,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const dtEngine = require('../lib/daytrade-screener-engine');
 const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
@@ -69,6 +70,30 @@ module.exports = async function handler(req, res) {
 
     const action = req.query.action || null;
     const groupCode = req.query.group || null;
+
+    // ===== ACTION ALLOWLIST (PHASE 6A.4) =====
+    // Unknown actions must never fall through to the default Sektor Hot list/detail
+    // response, because that would bypass the premium read policy.
+    const knownActions = new Set([
+      'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks',
+      'web-daily-picks', 'web-top5-history', 'web-top5-history-archive',
+      'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
+      'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
+      'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members'
+    ]);
+    if (action !== null && !knownActions.has(action)) {
+      return res.status(400).json({ success: false, error: 'Aksi tidak valid.' });
+    }
+
+    // ===== PREMIUM READ ACCESS GATE (PHASE 6A.4) =====
+    // Public HMAC share links and CRON_SECRET automation retain their own gates.
+    const premiumBrowserRead = action === null || action === 'screener' ||
+      action === 'nk-screener-results' || action === 'daytrade-screener';
+    if (premiumBrowserRead && !verifyCronSecret(req)) {
+      const premiumAccess = await requirePremiumEntitlement(req, supabase);
+      if (!premiumAccess.ok) return res.status(premiumAccess.status || 403).json({ success:false, error:premiumAccess.error || 'Akses premium diperlukan.' });
+      req._premiumAccessGranted = true;
+    }
 
     // === TELEGRAM WEBHOOK: /foreign TICKER lookup (uses this existing endpoint) ===
     if (action === 'telegram-webhook') {
@@ -126,7 +151,7 @@ module.exports = async function handler(req, res) {
       return await handleForeignImportUpload(req, res, supabase);
     }
 
-    // === DAY TRADE SCREENER: READ (public — returns latest results) ===
+    // === DAY TRADE SCREENER: READ (premium browser read) ===
     if (action === 'daytrade-screener') {
       return await handleDayTradeScreenerRead(req, res, supabase);
     }
@@ -153,6 +178,7 @@ module.exports = async function handler(req, res) {
 
     // === DEBUG: member diagnostics for a specific group (Preview QA only) ===
     if (action === 'debug-members') {
+      if (!verifyCronSecret(req)) return res.status(401).json({ success: false, error: 'Unauthorized.' });
       var debugGroup = String(req.query.group || '').toUpperCase().trim();
       if (!debugGroup) return res.status(200).json({ success: false, error: 'group parameter required' });
       var dbMapping = await supabase.from('sector_hot_group_members').select('ticker, stock_name, member_type, is_active, sort_order').eq('group_code', debugGroup);

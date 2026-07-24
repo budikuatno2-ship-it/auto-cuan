@@ -12,7 +12,7 @@ DECLARE
   voucher_ref text;
   test_hash text := md5('command-a') || md5('command-a');
 BEGIN
-  IF public.voucher_admin_schema_version() <> 'phase5c-lifecycle-v3' THEN
+  IF public.voucher_admin_schema_version() <> 'phase5c-complete-v4' THEN
     RAISE EXCEPTION 'voucher admin command schema marker mismatch';
   END IF;
   SELECT id INTO actor FROM public.app_users WHERE username='budi';
