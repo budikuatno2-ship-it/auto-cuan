@@ -82,23 +82,31 @@ test('voucher type labels do not concatenate the lifetime identifier', () => {
 });
 
 test('malformed Telegram updates are ignored without claiming durable state', async () => {
-  const db = dbWith(() => ({ data: true }));
+  const env = { SUBSCRIPTION_FEATURE_ENABLED: 'true', VOUCHER_ADMIN_BOT_ENABLED: 'true', TELEGRAM_VOUCHER_ADMIN_BOT_TOKEN: '1234567890:valid-test-token', VOUCHER_CODE_PEPPER: 'phase5c-test-pepper-long-enough' };
+  const malformed = [
+    { update_id: 1 },
+    { update_id: 2, message: { from: { id: 6396446903 }, text: '/menu' } },
+    { update_id: 3, message: { chat: { id: 6396446903 }, from: { id: 6396446903 }, text: '/menu' } },
+    { update_id: 4, message: { chat: { id: 6396446903, type: 'group' }, from: { id: 6396446903 }, text: '/menu' } }
+  ];
+  for (const update of malformed) {
+    const db = dbWith(() => ({ data: true }));
+    const result = await bot.processVoucherAdminUpdate(update, { db, env, capability: { ready: true }, sender: { sendMessage: async () => ({ message_id: 1 }) } });
+    assert.equal(result.outcome, 'ignored');
+    assert.equal(db.calls.length, 0);
+  }
+});
+
+test('valid authorized private admin chat is still claimed and handled', async () => {
+  const db = dbWith(name => name === 'claim_voucher_admin_webhook_update' ? { data: true } : { data: {} });
+  let replies = 0;
   const result = await bot.processVoucherAdminUpdate(
-    { update_id: 1, message: { from: { id: 6396446903 }, text: '/menu' } },
-    {
-      db,
-      env: {
-        SUBSCRIPTION_FEATURE_ENABLED: 'true',
-        VOUCHER_ADMIN_BOT_ENABLED: 'true',
-        VOUCHER_ADMIN_TELEGRAM_BOT_TOKEN: '1234567890:valid-test-token',
-        VOUCHER_CODE_PEPPER: 'phase5c-test-pepper-long-enough'
-      },
-      capability: { ready: true },
-      sender: { sendMessage: async () => ({ message_id: 1 }) }
-    }
+    { update_id: 5, message: { chat: { id: 6396446903, type: 'private' }, from: { id: 6396446903 }, text: '/menu' } },
+    { db, env: { SUBSCRIPTION_FEATURE_ENABLED: 'true', VOUCHER_ADMIN_BOT_ENABLED: 'true', TELEGRAM_VOUCHER_ADMIN_BOT_TOKEN: '1234567890:valid-test-token', VOUCHER_CODE_PEPPER: 'phase5c-test-pepper-long-enough' }, capability: { ready: true }, sender: { sendMessage: async () => { replies++; return { message_id: 1 }; } } }
   );
-  assert.equal(result.outcome, 'ignored');
-  assert.equal(db.calls.length, 0);
+  assert.equal(result.outcome, 'menu');
+  assert.equal(db.calls[0].name, 'claim_voucher_admin_webhook_update');
+  assert.equal(replies, 1);
 });
 
 test('delivery does not report a claim failure as a completed batch', async () => {
