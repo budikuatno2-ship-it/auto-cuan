@@ -1,0 +1,23 @@
+ized P/L', s.unrealizedPL == null ? '—' : money(s.unrealizedPL), s.unrealizedPL == null ? 'text-gray-400' : (s.unrealizedPL >= 0 ? 'text-emerald-300' : 'text-red-300')) + summaryCard('Unrealized %', pct(s.unrealizedPct), s.unrealizedPct == null ? 'text-gray-400' : (s.unrealizedPct >= 0 ? 'text-emerald-300' : 'text-red-300')) + summaryCard('Realized P/L', money(s.realizedPL), s.realizedPL >= 0 ? 'text-emerald-300' : 'text-red-300') + summaryCard('Estimasi Risiko Stop', money(s.estimatedRisk), 'text-amber-300') + summaryCard('Posisi Aktif', String(s.active)) + summaryCard('Stale / Tidak Ada', s.stale + ' / ' + s.unavailable);
+      doc.getElementById('pfSummaryNote').textContent = s.incomplete ? 'Total nilai belum lengkap karena ada harga yang belum tersedia.' : 'Semua nilai menggunakan harga terakhir yang tersedia.';
+
+      if (!runtime.state.positions.length) {
+        positionsEl.innerHTML = '<div class="xl:col-span-2 rounded-xl border border-dashed border-dark-600 p-8 text-center text-sm text-gray-500">Belum ada posisi. Gunakan Kalkulator Posisi di atas untuk mulai.</div>';
+      } else {
+        positionsEl.innerHTML = runtime.state.positions.map(positionCard).join('');
+      }
+      if (!runtime.state.history.length) historyEl.innerHTML = '<p class="text-sm text-gray-500">Belum ada transaksi jual atau posisi ditutup.</p>';
+      else historyEl.innerHTML = runtime.state.history.slice().reverse().slice(0, 20).map(function (h) {
+        return '<div class="flex flex-wrap justify-between gap-2 rounded-lg border border-dark-600/40 p-3 text-xs"><span class="font-semibold text-white">' + escapeHtml(h.ticker) + ' · ' + escapeHtml(h.action) + ' · ' + h.lots + ' lot</span><span class="text-gray-400">' + money(h.price) + ' · P/L ' + money(h.realizedPL) + ' · ' + new Date(h.timestamp).toLocaleString('id-ID') + '</span></div>';
+      }).join('');
+    }
+
+    function positionCard(p, index) {
+      var m = positionMetrics(p);
+      var status = statusForPosition(p);
+      var tone = status === 'Stop loss terlewati' ? 'text-red-300' : (status === 'Mendekati stop loss' ? 'text-amber-300' : (status === 'Mendekati target' ? 'text-emerald-300' : 'text-gray-300'));
+      var priceMeta = m.priced ? money(p.lastPrice) + (p.priceStale ? ' · T-1/stale' : '') : '—';
+      var error = p.quoteError ? '<p class="mt-2 text-xs text-red-300">' + escapeHtml(p.quoteError) + '</p>' : '';
+      return '<article class="portfolio-card p-4" data-index="' + index + '">' +
+        '<div class="flex items-start justify-between gap-3"><div><h4 class="text-lg font-black text-white">' + escapeHtml(p.ticker) + '</h4><p class="text-xs ' + tone + '">' + escapeHtml(status) + '</p></div><button data-action="refresh" class="px-3 py-1.5 rounded-lg text-xs text-blue-300 border border-blue-500/30" ' + (runtime.refreshInFlight.has(p.ticker) ? 'disabled' : '') + '>' + (runtime.refreshInFlight.has(p.ticker) ? 'Memuat…' : 'Refresh') + '</button></div>' +
+        '<div class="mt-3 grid grid-cols-2 sm

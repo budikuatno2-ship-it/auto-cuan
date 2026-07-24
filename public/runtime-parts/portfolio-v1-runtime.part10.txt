@@ -1,0 +1,34 @@
+dden'); content.classList.remove('hidden');
+      if (runtime.identity !== identity) { runtime.state = loadState(); render(); }
+    }
+
+    function init() {
+      if (!installUI()) return;
+      runtime.state = loadState();
+      ensureActiveState(); render();
+      var page = doc.getElementById('page-portofolio');
+      if (page && typeof win.MutationObserver === 'function') {
+        new win.MutationObserver(function () { if (!page.classList.contains('hidden')) { ensureActiveState(); render(); } }).observe(page, { attributes: true, attributeFilter: ['class'] });
+      }
+      win.setInterval(ensureActiveState, 1000);
+    }
+
+    win.getPortfolioKey = function () { return getKey(); };
+    win.loadPortfolio = function () { return runtime.state.positions.slice(); };
+    win.savePortfolio = function (positions) { runtime.state.positions = Array.isArray(positions) ? positions.map(sanitizePosition).filter(Boolean) : []; saveState(runtime.state); render(); };
+    win.openAddPositionForm = function () { var el = doc.getElementById('pfTicker'); if (el) { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } };
+    win.closeAddPositionForm = function () {};
+    win.savePosition = onCalculate;
+    win.deletePosition = function (index) { if (runtime.state.positions[index]) openDeleteDialog(index); };
+    win.renderPortfolio = function () { ensureActiveState(); render(); };
+    win.renderPortfolioTable = win.renderPortfolio;
+    win.refreshPortfolioPrices = refreshAll;
+    win.clearPortfolioTimer = function () {};
+
+    if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', init, { once: true });
+    else init();
+  }
+
+  api.bootstrap = bootstrap;
+  if (root.document) bootstrap(root);
+})(typeof window !== 'undefined' ? window : null);

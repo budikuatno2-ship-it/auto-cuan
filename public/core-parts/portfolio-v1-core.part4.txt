@@ -1,0 +1,63 @@
+uoteError: raw.quoteError ? String(raw.quoteError).slice(0, 120) : ''
+    };
+    return out;
+  }
+
+  function sanitizeHistory(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var ticker = normalizeTicker(raw.ticker);
+    var lots = positiveInteger(raw.lots, MAX_LOTS);
+    var price = finitePositive(raw.price, MAX_PRICE);
+    if (!ticker || !lots || !price) return null;
+    return {
+      ticker: ticker,
+      action: ['sell', 'close', 'delete'].indexOf(raw.action) >= 0 ? raw.action : 'sell',
+      lots: lots,
+      price: price,
+      realizedPL: Number.isFinite(Number(raw.realizedPL)) ? Number(raw.realizedPL) : 0,
+      timestamp: Number.isFinite(Number(raw.timestamp)) ? Number(raw.timestamp) : Date.now()
+    };
+  }
+
+  function storageKey(identity) {
+    var key = String(identity == null ? '' : identity).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 100);
+    return key ? 'autocuan_portfolio_v1_' + key : null;
+  }
+
+  function parseStoredState(rawText) {
+    try {
+      var parsed = rawText ? JSON.parse(rawText) : {};
+      var positions = Array.isArray(parsed.positions) ? parsed.positions.map(sanitizePosition).filter(Boolean) : [];
+      var history = Array.isArray(parsed.history) ? parsed.history.map(sanitizeHistory).filter(Boolean).slice(-MAX_HISTORY) : [];
+      return { version: 1, positions: positions, history: history };
+    } catch (_) {
+      return { version: 1, positions: [], history: [] };
+    }
+  }
+
+  function positionMetrics(position) {
+    var shares = position.lots * LOT_SIZE;
+    var invested = position.averageBuy * shares;
+    var priced = finitePositive(position.lastPrice, MAX_PRICE) !== null;
+    var currentValue = priced ? position.lastPrice * shares : null;
+    var unrealized = priced ? currentValue - invested : null;
+    return {
+      shares: shares,
+      invested: invested,
+      priced: priced,
+      currentValue: currentValue,
+      unrealizedPL: unrealized,
+      unrealizedPct: priced && invested > 0 ? unrealized / invested * 100 : null,
+      estimatedLossAtStop: Math.max(0, (position.averageBuy - position.stop) * shares),
+      distanceAvgToStopPct: (position.averageBuy - position.stop) / position.averageBuy * 100,
+      distanceCurrentToStopPct: priced ? (position.lastPrice - position.stop) / position.lastPrice * 100 : null,
+      potentialProfit: position.target ? (position.target - position.averageBuy) * shares : null,
+      riskReward: position.target && position.averageBuy > position.stop ? (position.target - position.averageBuy) / (position.averageBuy - position.stop) : null
+    };
+  }
+
+  function statusForPosition(position) {
+    if (!finitePositive(position.lastPrice, MAX_PRICE)) return 'Harga belum tersedia';
+    if (position.lastPrice <= position.stop) return 'Stop loss terlewati';
+    if (position.target && position.lastPrice >= position.target * 0.97) return 'Mendekati target';
+    var stopBuffer = Math.max((position.averageBuy - position.stop) * 0.2, position.averageBuy * 0.0

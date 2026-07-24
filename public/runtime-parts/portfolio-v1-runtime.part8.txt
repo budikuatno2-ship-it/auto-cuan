@@ -1,0 +1,40 @@
+en" value="' + p.lots + '"><p class="text-sm text-gray-300">Menutup seluruh ' + p.lots + ' lot.</p>' : modalField('pfSellLots','Lot Dijual','1');
+      openModal((closeAll ? 'Tutup posisi ' : 'Jual sebagian ') + p.ticker, lotsField + modalField('pfSellPrice','Harga Jual',String(p.lastPrice || p.averageBuy)), function () {
+        var sale = calculatePartialSale(p, doc.getElementById('pfSellLots').value, doc.getElementById('pfSellPrice').value);
+        if (!sale.ok) { showToastSafe(sale.error, 'error'); return false; }
+        p.realizedPL += sale.realizedPL;
+        runtime.state.history.push({ ticker: p.ticker, action: sale.closesPosition ? 'close' : 'sell', lots: sale.lotsSold, price: sale.salePrice, realizedPL: sale.realizedPL, timestamp: Date.now() });
+        if (sale.closesPosition) runtime.state.positions.splice(index, 1);
+        else { p.lots = sale.remainingLots; p.investedCapital = sale.remainingInvested; p.updatedAt = Date.now(); }
+        saveAndRender(sale.closesPosition ? 'Posisi ditutup.' : 'Penjualan sebagian dicatat.');
+      });
+    }
+
+    function openEditDialog(index) {
+      var p = runtime.state.positions[index];
+      openModal('Edit stop/target ' + p.ticker, modalField('pfEditStop','Stop Baru',String(p.stop)) + modalField('pfEditTarget','Target Baru (kosongkan jika tidak ada)',p.target == null ? '' : String(p.target)), function () {
+        var stop = finitePositive(doc.getElementById('pfEditStop').value, MAX_PRICE);
+        var targetRaw = doc.getElementById('pfEditTarget').value;
+        var target = String(targetRaw).trim() === '' ? null : finitePositive(targetRaw, MAX_PRICE);
+        if (!stop || stop >= p.averageBuy) { showToastSafe('Stop harus positif dan di bawah avg buy.', 'error'); return false; }
+        if (target !== null && target <= p.averageBuy) { showToastSafe('Target harus di atas avg buy.', 'error'); return false; }
+        p.stop = stop; p.target = target; p.updatedAt = Date.now(); saveAndRender('Stop/target diperbarui.');
+      });
+    }
+
+    function openDeleteDialog(index) {
+      var p = runtime.state.positions[index];
+      openModal('Hapus data ' + p.ticker, '<p class="text-sm text-red-200">Penghapusan tidak menghitung penjualan atau realized P/L. Gunakan Tutup Posisi untuk mencatat transaksi jual.</p>', function () {
+        runtime.state.history.push({ ticker: p.ticker, action: 'delete', lots: p.lots, price: p.lastPrice || p.averageBuy, realizedPL: 0, timestamp: Date.now() });
+        runtime.state.positions.splice(index, 1); saveAndRender('Data posisi dihapus.');
+      });
+    }
+
+    function openModal(title, body, onConfirm, onOpen) {
+      var modal = doc.getElementById('pfModal');
+      doc.getElementById('pfModalTitle').textContent = title;
+      doc.getElementById('pfModalBody').innerHTML = body;
+      var confirm = doc.getElementById('pfModalConfirm');
+      confirm.disabled = false;
+      confirm.onclick = function () { var result = onConfirm(); if (result !== false) closeModal(); };
+  

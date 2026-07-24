@@ -1,0 +1,22 @@
+city:.55;cursor:not-allowed}</style>' +
+        '<div class="space-y-4" data-portfolio-v1="true">' +
+          '<div class="portfolio-head-row flex items-center justify-between flex-wrap gap-3">' +
+            '<div><h2 class="text-xl font-extrabold text-white">Portofolio V1</h2><p class="text-sm text-gray-400 mt-1">Kalkulator posisi dan pencatatan manual. Tidak terhubung ke broker dan bukan rekomendasi transaksi.</p></div>' +
+            '<button id="pfRefreshAll" class="px-3 py-2 rounded-lg text-xs font-medium text-blue-300 border border-blue-500/30 hover:bg-blue-500/10">Refresh Semua Harga</button>' +
+          '</div>' +
+          '<section class="portfolio-card p-4 space-y-4" aria-labelledby="pfCalcTitle">' +
+            '<div><h3 id="pfCalcTitle" class="text-base font-bold text-white">Kalkulator Posisi</h3><p class="text-xs text-gray-500 mt-1">1 lot IDX = 100 saham. Ukuran posisi mengikuti batas budget dan risiko yang lebih ketat.</p></div>' +
+            '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">' +
+              field('pfTicker','Ticker','BBCA','text') + field('pfBudget','Budget / Modal','5000000','number') + field('pfBuy','Harga Beli','9000','number') + field('pfStop','Stop / Invalidasi','8730','number') + field('pfTarget','Target (opsional)','9540','number') +
+              '<label class="block"><span class="block text-[11px] text-gray-500 mb-1">Profil Risiko</span><select id="pfRisk" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 text-sm"><option value="rendah">Rendah · 0,5%</option><option value="sedang" selected>Sedang · 1%</option><option value="tinggi">Tinggi · 2%</option></select></label>' +
+            '</div>' +
+            '<div class="flex flex-wrap gap-2"><button id="pfCalculate" class="px-4 py-2 rounded-lg text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400">Hitung Posisi</button><button id="pfAddCalculated" class="hidden px-4 py-2 rounded-lg text-sm font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10">Tambahkan ke Portofolio</button></div>' +
+            '<div id="pfCalcError" class="hidden text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3"></div>' +
+            '<div id="pfCalcResult" class="hidden grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"></div>' +
+          '</section>' +
+          '<section class="space-y-3" aria-labelledby="pfActiveTitle">' +
+            '<div><h3 id="pfActiveTitle" class="text-base font-bold text-white">Posisi Aktif</h3><p id="pfSummaryNote" class="text-xs text-gray-500 mt-1"></p></div>' +
+            '<div id="pfSummary" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2"></div>' +
+            '<div id="pfPositions" class="grid grid-cols-1 xl:grid-cols-2 gap-3"></div>' +
+          '</section>' +
+          '<section class="portfolio-card p-4"><details><summary class="cursor-pointer text-sm font-semibold text-gray-300">Riwayat Transaksi Lokal

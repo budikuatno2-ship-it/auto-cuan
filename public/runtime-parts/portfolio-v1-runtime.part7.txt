@@ -1,0 +1,35 @@
+e').value, MAX_PRICE);
+        var avg = lots && price ? weightedAverage(p.averageBuy, p.lots, price, lots) : null;
+        if (!avg) { showToastSafe('Lot atau harga tambahan tidak valid.', 'error'); return false; }
+        p.averageBuy = avg; p.lots += lots; p.investedCapital = avg * p.lots * LOT_SIZE; p.updatedAt = Date.now();
+        saveAndRender('Tambahan posisi disimpan.');
+      });
+    }
+
+    function openAverageDialog(index) {
+      var p = runtime.state.positions[index];
+      runtime.averageSimulation = null;
+      openModal('Simulasi average down ' + p.ticker,
+        modalField('pfAvgPrice','Harga Tambahan',String(p.lastPrice || p.averageBuy)) + modalField('pfAvgLots','Lot Tambahan (opsional)','') + modalField('pfAvgBudget','Budget Tambahan (opsional)','') + '<button id="pfAvgSimulate" class="px-3 py-2 rounded-lg text-xs border border-blue-500/30 text-blue-300">Hitung Simulasi</button><div id="pfAvgResult" class="text-sm text-gray-300 space-y-2"></div>',
+        function () {
+          var sim = runtime.averageSimulation;
+          if (!sim || !sim.ok) { showToastSafe('Hitung simulasi dahulu.', 'error'); return false; }
+          if (!sim.canApply) { showToastSafe('Tidak dapat diterapkan karena posisi sudah melewati invalidasi.', 'error'); return false; }
+          p.averageBuy = sim.newAverage; p.lots = sim.newTotalLots; p.investedCapital = sim.newInvested; p.updatedAt = Date.now();
+          saveAndRender('Average down diterapkan setelah konfirmasi.');
+        },
+        function () {
+          doc.getElementById('pfAvgSimulate').addEventListener('click', function () {
+            var sim = simulateAverageDown(p, { price: doc.getElementById('pfAvgPrice').value, lots: doc.getElementById('pfAvgLots').value, budget: doc.getElementById('pfAvgBudget').value });
+            runtime.averageSimulation = sim.ok ? sim : null;
+            var result = doc.getElementById('pfAvgResult');
+            if (!sim.ok) { result.innerHTML = '<p class="text-red-300">' + escapeHtml(sim.error) + '</p>'; return; }
+            result.innerHTML = '<p>Avg baru: <strong>' + money(sim.newAverage) + '</strong></p><p>Total lot: <strong>' + sim.newTotalLots + '</strong></p><p>Modal tambahan: <strong>' + money(sim.additionalCapital) + '</strong></p><p>Estimasi risiko ke stop: <strong>' + money(sim.estimatedLoss) + ' (' + pct(sim.resultingRiskPct) + ')</strong></p>' + (sim.exceedsRisk ? '<p class="text-amber-300">Risiko melebihi profil ' + escapeHtml(p.riskProfile) + '.</p>' : '') + (sim.invalidated ? '<p class="text-red-300 font-semibold">Average down tidak disarankan karena harga telah melewati batas invalidasi.</p>' : '<p class="text-gray-500">Simulasi matematika, bukan rekomendasi pembelian.</p>');
+            doc.getElementById('pfModalConfirm').disabled = !sim.canApply;
+          });
+        });
+    }
+
+    function openSellDialog(index, closeAll) {
+      var p = runtime.state.positions[index];
+      var lotsField = closeAll ? '<input id="pfSellLots" type="hidd

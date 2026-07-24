@@ -1,0 +1,45 @@
+</summary><div id="pfHistory" class="mt-3 space-y-2"></div></details></section>' +
+        '</div>' +
+        '<div id="pfModal" class="hidden fixed inset-0 z-[10000] bg-black/70 backdrop-blur-sm p-4 items-center justify-center" role="dialog" aria-modal="true">' +
+          '<div class="w-full max-w-lg rounded-2xl border border-dark-600 bg-dark-800 p-5 shadow-2xl"><div class="flex justify-between gap-4"><h3 id="pfModalTitle" class="text-lg font-bold text-white"></h3><button id="pfModalClose" class="text-gray-400 text-xl" aria-label="Tutup">&times;</button></div><div id="pfModalBody" class="mt-4 space-y-3"></div><div class="mt-5 flex justify-end gap-2"><button id="pfModalCancel" class="px-4 py-2 rounded-lg text-sm text-gray-300 border border-dark-600">Batal</button><button id="pfModalConfirm" class="px-4 py-2 rounded-lg text-sm font-semibold text-black bg-emerald-500">Konfirmasi</button></div></div>' +
+        '</div>';
+    }
+
+    function field(id, label, placeholder, type) {
+      return '<label class="block"><span class="block text-[11px] text-gray-500 mb-1">' + escapeHtml(label) + '</span><input id="' + id + '" type="' + type + '" inputmode="' + (type === 'number' ? 'decimal' : 'text') + '" placeholder="' + escapeHtml(placeholder) + '" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50"></label>';
+    }
+
+    function summaryCard(label, value, tone) {
+      return '<div class="portfolio-card p-3"><p class="text-[10px] text-gray-500">' + escapeHtml(label) + '</p><p class="text-sm font-semibold ' + (tone || 'text-gray-200') + '">' + escapeHtml(value) + '</p></div>';
+    }
+
+    function installUI() {
+      var content = doc.getElementById('portofolioContent');
+      if (!content) return false;
+      content.innerHTML = html();
+      content.classList.add('space-y-4');
+      bindUI();
+      runtime.installed = true;
+      return true;
+    }
+
+    function bindUI() {
+      doc.getElementById('pfCalculate').addEventListener('click', onCalculate);
+      doc.getElementById('pfAddCalculated').addEventListener('click', addCalculated);
+      doc.getElementById('pfRefreshAll').addEventListener('click', refreshAll);
+      doc.getElementById('pfPositions').addEventListener('click', onPositionAction);
+      doc.getElementById('pfModalClose').addEventListener('click', closeModal);
+      doc.getElementById('pfModalCancel').addEventListener('click', closeModal);
+    }
+
+    function onCalculate() {
+      var result = calculatePositionSize({
+        ticker: doc.getElementById('pfTicker').value,
+        budget: doc.getElementById('pfBudget').value,
+        buyPrice: doc.getElementById('pfBuy').value,
+        stop: doc.getElementById('pfStop').value,
+        target: doc.getElementById('pfTarget').value,
+        profile: doc.getElementById('pfRisk').value
+      });
+      runtime.calculatorResult = result.ok ? result : null;
+      var err = doc.getElementB

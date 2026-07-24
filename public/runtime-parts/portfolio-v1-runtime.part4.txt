@@ -1,0 +1,46 @@
+yId('pfCalcError');
+      var out = doc.getElementById('pfCalcResult');
+      var add = doc.getElementById('pfAddCalculated');
+      if (!result.ok) {
+        err.textContent = result.error; err.classList.remove('hidden'); out.classList.add('hidden'); add.classList.add('hidden'); return;
+      }
+      err.classList.add('hidden');
+      out.innerHTML = summaryCard('Saran Lot', result.suggestedLots + ' lot') + summaryCard('Jumlah Saham', result.shares.toLocaleString('id-ID')) + summaryCard('Nilai Beli', money(result.purchaseValue)) + summaryCard('Sisa Dana', money(result.remainingCash)) + summaryCard('Maks. Rugi', money(result.maxLoss), 'text-amber-300') + summaryCard('Risiko Aktual', pct(result.actualRiskPct), 'text-amber-300') + (result.target ? summaryCard('Potensi Profit', money(result.potentialProfit), 'text-emerald-300') + summaryCard('Risk / Reward', result.riskReward.toFixed(2) + 'x', 'text-blue-300') : '');
+      out.classList.remove('hidden'); add.classList.remove('hidden');
+    }
+
+    function addCalculated() {
+      var r = runtime.calculatorResult;
+      if (!r || !r.ok) return;
+      var existingIndex = runtime.state.positions.findIndex(function (p) { return p.ticker === r.ticker; });
+      if (existingIndex >= 0) {
+        var existing = runtime.state.positions[existingIndex];
+        var avg = weightedAverage(existing.averageBuy, existing.lots, r.buyPrice, r.suggestedLots);
+        openModal('Tambah posisi ' + r.ticker,
+          '<p class="text-sm text-gray-300">Posisi sudah ada. Tambahan ini akan mengubah rata-rata beli.</p>' +
+          summaryCard('Lot Lama', existing.lots + ' lot') + summaryCard('Lot Tambahan', r.suggestedLots + ' lot') + summaryCard('Avg Lama', money(existing.averageBuy)) + summaryCard('Avg Baru', money(avg)),
+          function () {
+            existing.averageBuy = avg;
+            existing.lots += r.suggestedLots;
+            existing.investedCapital = avg * existing.lots * LOT_SIZE;
+            existing.riskBudget = Math.max(existing.riskBudget || 0, r.budget);
+            existing.updatedAt = Date.now();
+            saveAndRender('Posisi berhasil ditambahkan.');
+          });
+        return;
+      }
+      runtime.state.positions.push(sanitizePosition({
+        ticker: r.ticker, lots: r.suggestedLots, averageBuy: r.buyPrice, stop: r.stop,
+        target: r.target, riskProfile: r.profile, riskBudget: r.budget,
+        createdAt: Date.now(), updatedAt: Date.now(), realizedPL: 0
+      }));
+      saveAndRender('Posisi berhasil ditambahkan.');
+    }
+
+    function render() {
+      if (!runtime.installed) return;
+      var positionsEl = doc.getElementById('pfPositions');
+      var summaryEl = doc.getElementById('pfSummary');
+      var historyEl = doc.getElementById('pfHistory');
+      var s = portfolioSummary(runtime.state.positions);
+      summaryEl.innerHTML = summaryCard('Modal Aktif', money(s.invested)) + summaryCard('Nilai Saat Ini', s.unrealizedPL == null ? '—' : money(s.currentValue)) + summaryCard('Unreal

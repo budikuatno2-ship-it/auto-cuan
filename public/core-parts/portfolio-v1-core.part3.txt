@@ -1,0 +1,61 @@
+turn { ok: false, error: 'Lot atau budget tambahan tidak valid.' };
+    }
+    var newAverage = weightedAverage(position.averageBuy, position.lots, price, lots);
+    var newTotalLots = position.lots + lots;
+    var additionalCapital = price * lots * LOT_SIZE;
+    var newInvested = newAverage * newTotalLots * LOT_SIZE;
+    var estimatedLoss = Math.max(0, (newAverage - position.stop) * newTotalLots * LOT_SIZE);
+    var basis = finitePositive(position.riskBudget, MAX_MONEY) || newInvested;
+    var resultingRiskPct = basis > 0 ? (estimatedLoss / basis) * 100 : 0;
+    var limitPct = (riskRate(position.riskProfile) || 0) * 100;
+    var invalidated = finitePositive(position.lastPrice, MAX_PRICE) !== null && position.lastPrice <= position.stop;
+    return {
+      ok: true,
+      additionalLots: lots,
+      additionalShares: lots * LOT_SIZE,
+      additionalPrice: price,
+      additionalCapital: additionalCapital,
+      newTotalLots: newTotalLots,
+      newTotalShares: newTotalLots * LOT_SIZE,
+      newAverage: newAverage,
+      newInvested: newInvested,
+      estimatedLoss: estimatedLoss,
+      resultingRiskPct: resultingRiskPct,
+      riskLimitPct: limitPct,
+      exceedsRisk: limitPct > 0 && resultingRiskPct > limitPct + 1e-9,
+      invalidated: invalidated,
+      canApply: !invalidated
+    };
+  }
+
+  function isValidPosition(raw) {
+    if (!raw || typeof raw !== 'object') return false;
+    if (!normalizeTicker(raw.ticker)) return false;
+    if (!positiveInteger(raw.lots, MAX_LOTS)) return false;
+    if (!finitePositive(raw.averageBuy, MAX_PRICE)) return false;
+    if (!finitePositive(raw.stop, MAX_PRICE) || raw.stop >= raw.averageBuy) return false;
+    if (raw.target != null && raw.target !== '' && (!finitePositive(raw.target, MAX_PRICE) || raw.target <= raw.averageBuy)) return false;
+    if (!riskRate(raw.riskProfile)) return false;
+    return true;
+  }
+
+  function sanitizePosition(raw) {
+    if (!isValidPosition(raw)) return null;
+    var now = Date.now();
+    var out = {
+      ticker: normalizeTicker(raw.ticker),
+      lots: Number(raw.lots),
+      averageBuy: Number(raw.averageBuy),
+      investedCapital: Number(raw.averageBuy) * Number(raw.lots) * LOT_SIZE,
+      stop: Number(raw.stop),
+      target: raw.target == null || raw.target === '' ? null : Number(raw.target),
+      riskProfile: String(raw.riskProfile).toLowerCase(),
+      riskBudget: finitePositive(raw.riskBudget, MAX_MONEY) || Number(raw.averageBuy) * Number(raw.lots) * LOT_SIZE,
+      realizedPL: Number.isFinite(Number(raw.realizedPL)) ? Number(raw.realizedPL) : 0,
+      createdAt: Number.isFinite(Number(raw.createdAt)) ? Number(raw.createdAt) : now,
+      updatedAt: Number.isFinite(Number(raw.updatedAt)) ? Number(raw.updatedAt) : now,
+      lastPrice: finitePositive(raw.lastPrice, MAX_PRICE),
+      priceSource: raw.priceSource ? String(raw.priceSource).slice(0, 80) : '',
+      priceDate: raw.priceDate ? String(raw.priceDate).slice(0, 40) : '',
+      priceStale: !!raw.priceStale,
+      q

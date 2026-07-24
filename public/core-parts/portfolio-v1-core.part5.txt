@@ -1,0 +1,72 @@
+1);
+    if (position.lastPrice <= position.stop + stopBuffer) return 'Mendekati stop loss';
+    return position.lastPrice >= position.averageBuy ? 'Di atas harga rata-rata' : 'Di bawah harga rata-rata';
+  }
+
+  function acceptQuote(data) {
+    if (!data || data.success !== true) return null;
+    var last = finitePositive(data.last, MAX_PRICE);
+    if (!last) return null;
+    return {
+      price: last,
+      stale: !!data.price_stale,
+      source: String(data.price_source || (data.price_stale ? 'Close T-1' : 'Quote')).slice(0, 80),
+      date: String(data.price_date || data.latestBarDate || '').slice(0, 40)
+    };
+  }
+
+  function portfolioSummary(positions) {
+    var summary = {
+      invested: 0, currentValue: 0, pricedCost: 0, unrealizedPL: null, unrealizedPct: null,
+      realizedPL: 0, estimatedRisk: 0, active: 0, stale: 0, unavailable: 0, incomplete: false
+    };
+    (Array.isArray(positions) ? positions : []).forEach(function (p) {
+      if (!isValidPosition(p)) return;
+      var m = positionMetrics(p);
+      summary.active += 1;
+      summary.invested += m.invested;
+      summary.realizedPL += Number.isFinite(Number(p.realizedPL)) ? Number(p.realizedPL) : 0;
+      summary.estimatedRisk += m.estimatedLossAtStop;
+      if (m.priced) {
+        summary.currentValue += m.currentValue;
+        summary.pricedCost += m.invested;
+        if (p.priceStale) summary.stale += 1;
+      } else {
+        summary.unavailable += 1;
+      }
+    });
+    summary.incomplete = summary.unavailable > 0;
+    if (summary.pricedCost > 0) {
+      summary.unrealizedPL = summary.currentValue - summary.pricedCost;
+      summary.unrealizedPct = summary.unrealizedPL / summary.pricedCost * 100;
+    }
+    return summary;
+  }
+
+  return {
+    LOT_SIZE: LOT_SIZE,
+    MAX_MONEY: MAX_MONEY,
+    MAX_PRICE: MAX_PRICE,
+    MAX_LOTS: MAX_LOTS,
+    MAX_HISTORY: MAX_HISTORY,
+    RISK_PROFILES: RISK_PROFILES,
+    finitePositive: finitePositive,
+    positiveInteger: positiveInteger,
+    normalizeTicker: normalizeTicker,
+    escapeHtml: escapeHtml,
+    riskRate: riskRate,
+    calculatePositionSize: calculatePositionSize,
+    weightedAverage: weightedAverage,
+    calculatePartialSale: calculatePartialSale,
+    simulateAverageDown: simulateAverageDown,
+    isValidPosition: isValidPosition,
+    sanitizePosition: sanitizePosition,
+    sanitizeHistory: sanitizeHistory,
+    storageKey: storageKey,
+    parseStoredState: parseStoredState,
+    positionMetrics: positionMetrics,
+    statusForPosition: statusForPosition,
+    acceptQuote: acceptQuote,
+    portfolioSummary: portfolioSummary
+  };
+});

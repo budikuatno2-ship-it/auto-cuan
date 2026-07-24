@@ -1,0 +1,80 @@
+(function (root) {
+  'use strict';
+  var api = root && root.AutoCuanPortfolioV1;
+  if (!api) return;
+  var LOT_SIZE = api.LOT_SIZE;
+  var MAX_PRICE = api.MAX_PRICE;
+  var MAX_LOTS = api.MAX_LOTS;
+  var MAX_HISTORY = api.MAX_HISTORY;
+  var finitePositive = api.finitePositive;
+  var positiveInteger = api.positiveInteger;
+  var escapeHtml = api.escapeHtml;
+  var calculatePositionSize = api.calculatePositionSize;
+  var weightedAverage = api.weightedAverage;
+  var calculatePartialSale = api.calculatePartialSale;
+  var simulateAverageDown = api.simulateAverageDown;
+  var sanitizePosition = api.sanitizePosition;
+  var sanitizeHistory = api.sanitizeHistory;
+  var storageKey = api.storageKey;
+  var parseStoredState = api.parseStoredState;
+  var positionMetrics = api.positionMetrics;
+  var statusForPosition = api.statusForPosition;
+  var acceptQuote = api.acceptQuote;
+  var portfolioSummary = api.portfolioSummary;
+
+  function bootstrap(win) {
+    if (!win || !win.document) return;
+    var doc = win.document;
+    var runtime = {
+      identity: null,
+      state: { version: 1, positions: [], history: [] },
+      refreshInFlight: new Set(),
+      installed: false,
+      calculatorResult: null,
+      averageSimulation: null
+    };
+
+    function money(value) {
+      if (value == null || !Number.isFinite(Number(value))) return '—';
+      var n = Math.round(Number(value));
+      return (n < 0 ? '-Rp ' : 'Rp ') + Math.abs(n).toLocaleString('id-ID');
+    }
+
+    function pct(value) {
+      return value == null || !Number.isFinite(Number(value)) ? '—' : Number(value).toFixed(2) + '%';
+    }
+
+    function currentIdentity() {
+      var id = win.localStorage.getItem('autocuan_user_id');
+      var user = win.localStorage.getItem('autocuan_user');
+      var logged = win.localStorage.getItem('autocuan_logged_in');
+      if (logged !== 'true' && typeof win.isLoggedInUser === 'function' && !win.isLoggedInUser()) return null;
+      return id || user || null;
+    }
+
+    function getKey() { return storageKey(currentIdentity()); }
+
+    function loadState() {
+      var key = getKey();
+      runtime.identity = currentIdentity();
+      if (!key) return { version: 1, positions: [], history: [] };
+      var state = parseStoredState(win.localStorage.getItem(key));
+      return state;
+    }
+
+    function saveState(state) {
+      var key = getKey();
+      if (!key) return false;
+      state.history = (state.history || []).slice(-MAX_HISTORY);
+      win.localStorage.setItem(key, JSON.stringify(state));
+      return true;
+    }
+
+    function showToastSafe(message, type) {
+      if (typeof win.showToast === 'function') win.showToast(message, type || 'success');
+      else win.alert(message);
+    }
+
+    function html() {
+      return '' +
+        '<style>.pf-action{padding:.45rem .65rem;border-radius:.6rem;font-size:.75rem;color:#cbd5e1;border:1px solid rgba(71,85,105,.55);background:rgba(15,19,25,.45)}.pf-action:hover{border-color:rgba(16,185,129,.45);color:#6ee7b7}.pf-action:disabled{opa

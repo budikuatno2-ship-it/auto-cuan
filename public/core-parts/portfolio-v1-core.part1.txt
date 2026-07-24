@@ -1,0 +1,71 @@
+(function (root, factory) {
+  'use strict';
+  var api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.AutoCuanPortfolioV1 = api;
+})(typeof window !== 'undefined' ? window : null, function () {
+  'use strict';
+
+  var LOT_SIZE = 100;
+  var MAX_MONEY = 1000000000000000;
+  var MAX_PRICE = 1000000000;
+  var MAX_LOTS = 100000000;
+  var MAX_HISTORY = 100;
+  var RISK_PROFILES = Object.freeze({ rendah: 0.005, sedang: 0.01, tinggi: 0.02 });
+
+  function finitePositive(value, max) {
+    var n = Number(value);
+    return Number.isFinite(n) && n > 0 && (!max || n <= max) ? n : null;
+  }
+
+  function positiveInteger(value, max) {
+    var n = Number(value);
+    return Number.isSafeInteger(n) && n > 0 && (!max || n <= max) ? n : null;
+  }
+
+  function normalizeTicker(raw) {
+    var ticker = String(raw == null ? '' : raw).trim().toUpperCase().replace(/\.JK$/i, '');
+    return /^[A-Z]{3,5}$/.test(ticker) ? ticker : null;
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>'"]/g, function (ch) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[ch];
+    });
+  }
+
+  function riskRate(profile) {
+    return RISK_PROFILES[profile] || null;
+  }
+
+  function calculatePositionSize(input) {
+    input = input || {};
+    var ticker = normalizeTicker(input.ticker);
+    if (!ticker) return { ok: false, error: 'Ticker harus 3–5 huruf.' };
+    var budget = finitePositive(input.budget, MAX_MONEY);
+    if (!budget) return { ok: false, error: 'Budget harus angka positif yang wajar.' };
+    var buyPrice = finitePositive(input.buyPrice, MAX_PRICE);
+    if (!buyPrice) return { ok: false, error: 'Harga beli harus angka positif.' };
+    var stop = finitePositive(input.stop, MAX_PRICE);
+    if (!stop) return { ok: false, error: 'Stop loss harus angka positif.' };
+    if (stop >= buyPrice) return { ok: false, error: 'Stop loss harus di bawah harga beli.' };
+    var target = null;
+    if (String(input.target == null ? '' : input.target).trim() !== '') {
+      target = finitePositive(input.target, MAX_PRICE);
+      if (!target) return { ok: false, error: 'Target harus angka positif.' };
+      if (target <= buyPrice) return { ok: false, error: 'Target harus di atas harga beli.' };
+    }
+    var profile = String(input.profile || '').toLowerCase();
+    var rate = riskRate(profile);
+    if (!rate) return { ok: false, error: 'Profil risiko tidak valid.' };
+
+    var affordableLots = Math.floor(budget / (buyPrice * LOT_SIZE));
+    var riskAmount = budget * rate;
+    var lossPerLot = (buyPrice - stop) * LOT_SIZE;
+    var riskLimitedLots = Math.floor(riskAmount / lossPerLot);
+    var suggestedLots = Math.min(affordableLots, riskLimitedLots);
+    if (!positiveInteger(suggestedLots, MAX_LOTS)) {
+      return { ok: false, error: 'Budget atau batas risiko belum cukup untuk membeli 1 lot.' };
+    }
+    var shares = suggestedLots * LOT_SIZE;
+    var purchaseValue = shares * bu

@@ -1,12 +1,16 @@
 {
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/app-shell.html"
+    },
+    {
       "source": "/review",
       "destination": "/index.html"
     },
     {
       "source": "/dashboard",
-      "destination": "/index.html"
+      "destination": "/app-shell.html"
     }
   ],
   "crons": [

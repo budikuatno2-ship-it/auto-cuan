@@ -1,0 +1,61 @@
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+      if (onOpen) onOpen();
+    }
+
+    function closeModal() {
+      var modal = doc.getElementById('pfModal');
+      if (!modal) return;
+      modal.classList.add('hidden'); modal.classList.remove('flex');
+      doc.getElementById('pfModalConfirm').onclick = null;
+      runtime.averageSimulation = null;
+    }
+
+    function saveAndRender(message) {
+      runtime.state.positions = runtime.state.positions.map(sanitizePosition).filter(Boolean);
+      runtime.state.history = runtime.state.history.map(sanitizeHistory).filter(Boolean).slice(-MAX_HISTORY);
+      saveState(runtime.state); render(); closeModal(); if (message) showToastSafe(message, 'success');
+    }
+
+    async function fetchQuote(ticker) {
+      var headers = typeof win.getAuthHeaders === 'function' ? win.getAuthHeaders() : {};
+      var controller = typeof win.AbortController === 'function' ? new win.AbortController() : null;
+      var timer = controller ? win.setTimeout(function () { controller.abort(); }, 12000) : null;
+      try {
+        var response = await win.fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&portfolio=1', { headers: headers, signal: controller ? controller.signal : undefined });
+        var data = await response.json();
+        var accepted = acceptQuote(data);
+        if (!accepted) throw new Error((data && data.error) || 'Harga tidak tersedia.');
+        return accepted;
+      } finally { if (timer) win.clearTimeout(timer); }
+    }
+
+    async function refreshTicker(index) {
+      var p = runtime.state.positions[index];
+      if (!p || runtime.refreshInFlight.has(p.ticker)) return;
+      runtime.refreshInFlight.add(p.ticker); p.quoteError = ''; render();
+      try {
+        var q = await fetchQuote(p.ticker);
+        p.lastPrice = q.price; p.priceStale = q.stale; p.priceSource = q.source; p.priceDate = q.date; p.quoteError = '';
+        saveState(runtime.state);
+      } catch (error) { p.quoteError = error && error.message ? error.message : 'Gagal memperbarui harga.'; }
+      finally { runtime.refreshInFlight.delete(p.ticker); render(); }
+    }
+
+    async function refreshAll() {
+      var btn = doc.getElementById('pfRefreshAll');
+      if (btn && btn.disabled) return;
+      if (btn) { btn.disabled = true; btn.textContent = 'Memuat…'; }
+      await Promise.all(runtime.state.positions.map(function (_, index) { return refreshTicker(index); }));
+      if (btn) { btn.disabled = false; btn.textContent = 'Refresh Semua Harga'; }
+    }
+
+    function ensureActiveState() {
+      var identity = currentIdentity();
+      var gate = doc.getElementById('portofolioLoginGate');
+      var content = doc.getElementById('portofolioContent');
+      if (!content || !gate) return;
+      if (!identity) {
+        runtime.identity = null; runtime.state = { version: 1, positions: [], history: [] };
+        content.classList.add('hidden'); gate.classList.remove('hidden'); return;
+      }
+      gate.classList.add('hi

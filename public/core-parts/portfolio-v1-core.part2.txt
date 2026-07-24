@@ -1,0 +1,73 @@
+yPrice;
+    var remainingCash = budget - purchaseValue;
+    var maxLoss = shares * (buyPrice - stop);
+    var actualRiskPct = budget > 0 ? (maxLoss / budget) * 100 : 0;
+    var potentialProfit = target ? shares * (target - buyPrice) : null;
+    var riskReward = target && maxLoss > 0 ? potentialProfit / maxLoss : null;
+
+    return {
+      ok: true,
+      ticker: ticker,
+      budget: budget,
+      buyPrice: buyPrice,
+      stop: stop,
+      target: target,
+      profile: profile,
+      riskRate: rate,
+      affordableLots: affordableLots,
+      riskAmount: riskAmount,
+      lossPerLot: lossPerLot,
+      riskLimitedLots: riskLimitedLots,
+      suggestedLots: suggestedLots,
+      shares: shares,
+      purchaseValue: purchaseValue,
+      remainingCash: remainingCash,
+      maxLoss: maxLoss,
+      actualRiskPct: actualRiskPct,
+      potentialProfit: potentialProfit,
+      riskReward: riskReward
+    };
+  }
+
+  function weightedAverage(oldAverage, oldLots, newPrice, newLots) {
+    var oldAvg = finitePositive(oldAverage, MAX_PRICE);
+    var oldLotN = positiveInteger(oldLots, MAX_LOTS);
+    var price = finitePositive(newPrice, MAX_PRICE);
+    var newLotN = positiveInteger(newLots, MAX_LOTS);
+    if (!oldAvg || !oldLotN || !price || !newLotN || oldLotN + newLotN > MAX_LOTS) return null;
+    return ((oldAvg * oldLotN) + (price * newLotN)) / (oldLotN + newLotN);
+  }
+
+  function calculatePartialSale(position, lotsSold, salePrice) {
+    if (!isValidPosition(position)) return { ok: false, error: 'Data posisi tidak valid.' };
+    var sold = positiveInteger(lotsSold, position.lots);
+    if (!sold) return { ok: false, error: 'Lot jual harus bilangan bulat dan tidak melebihi posisi.' };
+    var price = finitePositive(salePrice, MAX_PRICE);
+    if (!price) return { ok: false, error: 'Harga jual harus angka positif.' };
+    var realized = (price - position.averageBuy) * sold * LOT_SIZE;
+    var remainingLots = position.lots - sold;
+    return {
+      ok: true,
+      lotsSold: sold,
+      salePrice: price,
+      realizedPL: realized,
+      remainingLots: remainingLots,
+      remainingInvested: position.averageBuy * remainingLots * LOT_SIZE,
+      closesPosition: remainingLots === 0,
+      remainingAverage: position.averageBuy
+    };
+  }
+
+  function simulateAverageDown(position, input) {
+    if (!isValidPosition(position)) return { ok: false, error: 'Data posisi tidak valid.' };
+    input = input || {};
+    var price = finitePositive(input.price, MAX_PRICE);
+    if (!price) return { ok: false, error: 'Harga tambahan harus angka positif.' };
+    var lots = null;
+    if (String(input.lots == null ? '' : input.lots).trim() !== '') lots = positiveInteger(input.lots, MAX_LOTS);
+    if (!lots && String(input.budget == null ? '' : input.budget).trim() !== '') {
+      var budget = finitePositive(input.budget, MAX_MONEY);
+      if (budget) lots = Math.floor(budget / (price * LOT_SIZE));
+    }
+    if (!positiveInteger(lots, MAX_LOTS) || position.lots + lots > MAX_LOTS) {
+      re

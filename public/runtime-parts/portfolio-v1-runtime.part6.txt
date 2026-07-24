@@ -1,0 +1,33 @@
+:grid-cols-4 gap-2">' +
+          summaryCard('Lot / Saham', p.lots + ' / ' + m.shares.toLocaleString('id-ID')) + summaryCard('Avg Buy', money(p.averageBuy)) + summaryCard('Last Price', priceMeta) + summaryCard('Modal', money(m.invested)) +
+          summaryCard('Nilai Saat Ini', money(m.currentValue)) + summaryCard('Unrealized P/L', money(m.unrealizedPL), m.unrealizedPL == null ? 'text-gray-400' : (m.unrealizedPL >= 0 ? 'text-emerald-300' : 'text-red-300')) + summaryCard('P/L %', pct(m.unrealizedPct), m.unrealizedPct == null ? 'text-gray-400' : (m.unrealizedPct >= 0 ? 'text-emerald-300' : 'text-red-300')) + summaryCard('Realized P/L', money(p.realizedPL), p.realizedPL >= 0 ? 'text-emerald-300' : 'text-red-300') +
+          summaryCard('Stop', money(p.stop), 'text-amber-300') + summaryCard('Jarak ke Stop', pct(m.distanceCurrentToStopPct), 'text-amber-300') + summaryCard('Risiko ke Stop', money(m.estimatedLossAtStop), 'text-amber-300') + summaryCard('Target / RR', p.target ? money(p.target) + ' / ' + m.riskReward.toFixed(2) + 'x' : '—', 'text-emerald-300') +
+        '</div>' + error +
+        '<div class="mt-3 flex flex-wrap gap-2"><button data-action="add" class="pf-action">Tambah Posisi</button><button data-action="average" class="pf-action">Simulasi Average Down</button><button data-action="sell" class="pf-action">Jual Sebagian</button><button data-action="close" class="pf-action">Tutup Posisi</button><button data-action="edit" class="pf-action">Edit Stop/Target</button><button data-action="delete" class="pf-action text-red-300">Hapus Data</button></div>' +
+      '</article>';
+    }
+
+    function onPositionAction(event) {
+      var button = event.target.closest('button[data-action]');
+      if (!button) return;
+      var card = button.closest('[data-index]');
+      var index = Number(card && card.getAttribute('data-index'));
+      var position = runtime.state.positions[index];
+      if (!position) return;
+      var action = button.getAttribute('data-action');
+      if (action === 'refresh') refreshTicker(index);
+      else if (action === 'add') openAddDialog(index);
+      else if (action === 'average') openAverageDialog(index);
+      else if (action === 'sell') openSellDialog(index, false);
+      else if (action === 'close') openSellDialog(index, true);
+      else if (action === 'edit') openEditDialog(index);
+      else if (action === 'delete') openDeleteDialog(index);
+    }
+
+    function modalField(id, label, placeholder) { return field(id, label, placeholder, 'number'); }
+
+    function openAddDialog(index) {
+      var p = runtime.state.positions[index];
+      openModal('Tambah posisi ' + p.ticker, modalField('pfAddLots','Lot Tambahan','1') + modalField('pfAddPrice','Harga Tambahan',String(p.lastPrice || p.averageBuy)) + '<div id="pfAddPreview" class="text-sm text-gray-400"></div>', function () {
+        var lots = positiveInteger(doc.getElementById('pfAddLots').value, MAX_LOTS);
+        var price = finitePositive(doc.getElementById('pfAddPric
