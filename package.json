@@ -5,7 +5,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "build": "node -e 'const fs=require(\"fs\");const p=\"public/index.html\";let s=fs.readFileSync(p,\"utf8\");const q=String.fromCharCode(39);const patch=(a,b,n)=>{if(s.includes(a))s=s.replace(a,b);else if(!s.includes(b))throw new Error(\"Missing production hotfix target: \"+n);};const oldW=\"setTimeout(function() { if (document.getElementById(\"+q+\"initialLoader\"+q+\")) renderStartupFallback(); }, 4500);\";const newW=\"setTimeout(function() { var loader=document.getElementById(\"+q+\"initialLoader\"+q+\"); if (loader && !loader.classList.contains(\"+q+\"hidden\"+q+\")) renderStartupFallback(); }, 4500);\";patch(oldW,newW,\"startup watchdog\");patch(\"Bandingkan manfaat, harga, dan masa aktif setiap paket. Pembayaran melalui transfer bank akan tersedia pada tahap berikutnya.\",\"Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan.\",\"subscription hero copy\");patch(\"Pembayaran melalui transfer bank akan tersedia pada tahap berikutnya. Tidak ada pembelian atau akses yang diproses dari halaman ini.\",\"Pilihan pembayaran belum dibuka. Tidak ada pembelian atau akses yang diproses dari halaman ini.\",\"subscription action copy\");fs.writeFileSync(p,s);console.log(\"Applied production startup hotfixes\");'",
+    "build": "echo 'No build step needed'",
     "start": "vercel dev",
     "aftermarket:top5-lock": "node tools/run-after-market-top5-lock.js"
   },
