@@ -7,7 +7,7 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'),
 
 test('Phase 6A exposes public subscription entry points and a responsive comparison page', () => {
   assert.match(html, /data-page="subscription"/);
-  assert.match(html, /Paket Subscription/);
+  assert.match(html, /Paket Langganan/);
   assert.match(html, /id="page-subscription"/);
   assert.match(html, /grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3/);
   ['Free', 'Trial 10 Hari', 'Premium 1 Bulan', 'Premium 2 Bulan', 'Premium 3 Bulan', 'Lifetime'].forEach(label => assert.ok(html.includes(label), label));
@@ -22,7 +22,7 @@ test('Phase 6A exposes public subscription entry points and a responsive compari
 test('Phase 6A uses existing read-only catalogue and entitlement endpoints only', () => {
   assert.match(html, /action=subscription-plans/);
   assert.match(html, /safeSubscriptionRequest\('subscription-status'/);
-  assert.match(html, /Pembayaran online akan tersedia pada Phase 6B/);
+  assert.match(html, /Pembayaran melalui transfer bank akan tersedia pada tahap berikutnya/);
   assert.doesNotMatch(html, /midtrans/i);
   assert.equal(fs.readdirSync(path.join(__dirname, '..', 'api')).filter(name => name.endsWith('.js')).length, 12);
 });
@@ -31,7 +31,25 @@ test('Phase 6A keeps public catalogue loading independent from optional account 
   assert.match(html, /fetch\('\/api\/login-user\?action=subscription-plans'/);
   assert.match(html, /if\(isAutocuanLoggedIn\(\)\)try\{var x=await safeSubscriptionRequest\('subscription-status'/);
   assert.match(html, /else subscriptionExperience\.status=null;renderSubscriptionSummary\(\);renderSubscriptionPlans\(\);/);
-  assert.match(html, /Masuk untuk melihat status dan masa aktif Anda\./);
-  assert.match(html, /Katalog belum tersedia\./);
-  assert.match(html, /Status subscription belum tersedia\./);
+  assert.match(html, /Masuk untuk melihat status langganan dan masa aktif Anda\./);
+  assert.match(html, /Status langganan belum dapat dimuat\./);
+  assert.match(html, /Data langganan belum dapat dimuat\./);
+  assert.match(html, /Daftar paket belum dapat dimuat\./);
+  assert.doesNotMatch(html, /Katalog tetap dapat dilihat/);
+  assert.doesNotMatch(html, /pembayaran online hadir di fase berikutnya/);
+});
+
+
+test('startup uses one accessible top-level view and keeps a loading shell visible', () => {
+  assert.match(html, /id="initialLoader"/);
+  assert.match(html, /Memuat Auto-Cuan\.\.\./);
+  assert.match(html, /function setTopLevelView\(state\)/);
+  assert.match(html, /el\.setAttribute\('aria-hidden'/);
+  assert.match(html, /el\.inert = !active/);
+  assert.match(html, /setTopLevelView\('blocked'\)/);
+  assert.match(html, /setTopLevelView\('maintenance'\)/);
+  assert.match(html, /setTopLevelView\('landing'\)/);
+  assert.match(html, /setTopLevelView\('app'\)/);
+  assert.doesNotMatch(html, /Auto-CuanIDX Stock Radar/);
+  assert.doesNotMatch(html, /FiturCara KerjaSafetyPreviewLogin/);
 });
