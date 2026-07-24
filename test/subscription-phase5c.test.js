@@ -10,7 +10,8 @@ const capability = require('../lib/subscription-capability');
 const root = path.join(__dirname, '..');
 const foundationSql = fs.readFileSync(path.join(root, 'supabase', 'subscription-phase-5c-voucher-admin-migration.sql'), 'utf8');
 const lifecycleSql = fs.readFileSync(path.join(root, 'supabase', 'subscription-phase-5c-lifecycle-correction.sql'), 'utf8');
-const combinedSql = foundationSql + '\n' + lifecycleSql;
+const commandSql = fs.readFileSync(path.join(root, 'supabase', 'subscription-phase-5c-admin-command-correction.sql'), 'utf8');
+const combinedSql = foundationSql + '\n' + lifecycleSql + '\n' + commandSql;
 const batch = { batch_reference: 'VB-A1B2C3D4E5F6', voucher_type: 'PERCENT_100', plan_code: 'PREMIUM_1_MONTH' };
 const claimData = { chunk_index: 0, attempt_id: 'attempt-1', claim_token: 'token-1', expected_count: 1 };
 
@@ -33,37 +34,38 @@ test.afterEach(() => {
   delete process.env.VOUCHER_CODE_PEPPER;
 });
 
-test('canonical attempt and lifecycle contracts are service-role only', () => {
+test('canonical attempt, lifecycle, and command contracts are service-role only', () => {
   for (const name of [
     'claim_voucher_admin_batch_chunk(text)',
     'prepare_voucher_admin_batch_chunk(text,bigint,uuid,uuid,jsonb)',
     'record_voucher_admin_chunk_delivery(text,bigint,uuid,uuid,text,bigint,integer)',
     'mark_voucher_admin_chunk_delivery_uncertain(text,bigint,uuid,uuid)',
     'finalize_voucher_admin_batch_chunk(text,bigint,uuid,uuid)',
-    'cancel_voucher_admin_batch_chunk(text,bigint,uuid,uuid,text)'
+    'cancel_voucher_admin_batch_chunk(text,bigint,uuid,uuid,text)',
+    'voucher_admin_command(text,text)'
   ]) {
     assert.match(combinedSql, new RegExp('FUNCTION public\\.' + name.split('(')[0]));
     assert.match(combinedSql, new RegExp('REVOKE ALL ON FUNCTION[^;]*' + name.replace(/[()]/g, '\\$&')));
     assert.match(combinedSql, new RegExp('GRANT EXECUTE ON FUNCTION[^;]*' + name.replace(/[()]/g, '\\$&')));
   }
-  assert.match(lifecycleSql, /voucher_admin_schema_version/);
-  assert.match(lifecycleSql, /phase5c-lifecycle-v2/);
+  assert.match(commandSql, /voucher_admin_schema_version/);
+  assert.match(commandSql, /phase5c-lifecycle-v3/);
   assert.match(combinedSql, /voucher_batch_chunk_attempts/);
   assert.match(foundationSql, /DROP INDEX IF EXISTS public\.subscription_voucher_chunk_item_idx/);
 });
 
-test('voucher admin capability requires configuration and lifecycle schema marker', async () => {
+test('voucher admin capability requires configuration and complete schema marker', async () => {
   const env = {
     SUBSCRIPTION_FEATURE_ENABLED: 'true',
     VOUCHER_ADMIN_BOT_ENABLED: 'true',
     VOUCHER_ADMIN_TELEGRAM_BOT_TOKEN: '1234567890:valid-test-token',
     VOUCHER_CODE_PEPPER: 'phase5c-test-pepper-long-enough'
   };
-  const ready = await capability.getVoucherAdminCapability({ rpc: async () => ({ data: 'phase5c-lifecycle-v2' }) }, env);
+  const ready = await capability.getVoucherAdminCapability({ rpc: async () => ({ data: 'phase5c-lifecycle-v3' }) }, env);
   assert.equal(ready.ready, true);
-  const stale = await capability.getVoucherAdminCapability({ rpc: async () => ({ data: 'phase5c-lifecycle-v1' }) }, env);
+  const stale = await capability.getVoucherAdminCapability({ rpc: async () => ({ data: 'phase5c-lifecycle-v2' }) }, env);
   assert.equal(stale.ready, false);
-  const missingConfig = await capability.getVoucherAdminCapability({ rpc: async () => ({ data: 'phase5c-lifecycle-v2' }) }, { ...env, VOUCHER_CODE_PEPPER: '' });
+  const missingConfig = await capability.getVoucherAdminCapability({ rpc: async () => ({ data: 'phase5c-lifecycle-v3' }) }, { ...env, VOUCHER_CODE_PEPPER: '' });
   assert.equal(missingConfig.ready, false);
   assert.equal(missingConfig.reason, 'configuration');
 });
