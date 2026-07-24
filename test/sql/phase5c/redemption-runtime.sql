@@ -7,7 +7,7 @@ DECLARE
   key uuid := '81000000-0000-4000-8000-000000000001'::uuid;
   hash_one text := md5('stack-one') || md5('stack-one');
   hash_two text := md5('stack-two') || md5('stack-two');
-  result jsonb; entitlement_id uuid; rejected boolean := false;
+  result jsonb; redeemed_entitlement_id uuid; rejected boolean := false;
 BEGIN
   SELECT id INTO actor FROM public.app_users WHERE username='budi';
   INSERT INTO public.app_users(username,is_approved) VALUES('redemption_stack_user',true) RETURNING id INTO user_id;
@@ -23,18 +23,18 @@ BEGIN
   VALUES(hash_two,'S002','PREMIUM_2_MONTHS','PERCENT_100',60,1,true,actor);
 
   result := public.redeem_subscription_voucher(user_id,hash_one,key);
-  entitlement_id := (result->>'entitlement_id')::uuid;
+  redeemed_entitlement_id := (result->>'entitlement_id')::uuid;
   IF result->>'redeemed'<>'true' OR result->>'result_code'<>'redeemed'
      OR result->>'plan_code'<>'PREMIUM_1_MONTH' OR (result->>'duration_months')::integer<>1
      OR (result->>'starts_at')::timestamptz IS DISTINCT FROM existing_expiry
      OR (result->>'expires_at')::timestamptz IS DISTINCT FROM existing_expiry + interval '1 month'
   THEN RAISE EXCEPTION 'stacked term redemption response failed'; END IF;
   IF (SELECT redemption_count FROM public.subscription_vouchers WHERE code_hash=hash_one)<>1
-     OR (SELECT count(*) FROM public.subscription_voucher_redemptions WHERE entitlement_id=entitlement_id)<>1
+     OR (SELECT count(*) FROM public.subscription_voucher_redemptions r WHERE r.entitlement_id=redeemed_entitlement_id)<>1
   THEN RAISE EXCEPTION 'stacked term redemption state failed'; END IF;
 
   result := public.redeem_subscription_voucher(user_id,hash_one,key);
-  IF result->>'result_code'<>'already_redeemed' OR (result->>'entitlement_id')::uuid<>entitlement_id
+  IF result->>'result_code'<>'already_redeemed' OR (result->>'entitlement_id')::uuid<>redeemed_entitlement_id
      OR (SELECT redemption_count FROM public.subscription_vouchers WHERE code_hash=hash_one)<>1
      OR (SELECT count(*) FROM public.subscription_voucher_redemptions WHERE redemption_idempotency_key=key)<>1
   THEN RAISE EXCEPTION 'redemption idempotent replay failed'; END IF;
