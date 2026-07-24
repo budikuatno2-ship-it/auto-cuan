@@ -20,7 +20,7 @@ test('startup always has a public landing fallback and a bounded watchdog', () =
   assert.match(html, /catch \(_\) \{[\s\S]{0,180}renderStartupFallback\(\)/);
   // Keep this semantic rather than coupled to comment length inside the finally block.
   assert.match(html, /finally \{[\s\S]{0,420}initialLoader[\s\S]{0,420}renderStartupFallback\(\)/);
-  assert.match(html, /setTimeout\(function\(\) \{ if \(document\.getElementById\('initialLoader'\)\) renderStartupFallback\(\); \}, 4500\)/);
+  assert.match(html, /setTimeout\(function\(\) \{ var loader = document\.getElementById\('initialLoader'\); if \(loader && !loader\.classList\.contains\('hidden'\)\) renderStartupFallback\(\); \}, 4500\)/);
   assert.match(html, /Beberapa fitur sementara tidak tersedia\./);
 });
 

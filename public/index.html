@@ -397,7 +397,8 @@
         /* ===== SUBSCRIPTION EXPERIENCE ===== */
         .subscription-hero { position:relative; overflow:hidden; border:1px solid rgba(52,211,153,.22); border-radius:24px; background:radial-gradient(circle at 90% 10%,rgba(16,185,129,.18),transparent 34%),linear-gradient(135deg,rgba(15,23,42,.95),rgba(16,30,38,.92)); box-shadow:0 20px 44px rgba(0,0,0,.20); }
         .subscription-summary { border:1px solid rgba(148,163,184,.15); border-radius:18px; background:rgba(2,6,23,.38); }.subscription-card { display:flex; flex-direction:column; min-width:0; border:1px solid rgba(148,163,184,.16); border-radius:20px; background:linear-gradient(165deg,rgba(30,41,59,.72),rgba(15,23,42,.78)); box-shadow:0 12px 30px rgba(0,0,0,.14); transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease; }.subscription-card:hover { transform:translateY(-3px); border-color:rgba(52,211,153,.38); box-shadow:0 18px 38px rgba(0,0,0,.24); }.subscription-card.popular{border-color:rgba(16,185,129,.55);}.subscription-card.lifetime{border-color:rgba(168,85,247,.45);background:radial-gradient(circle at 85% 10%,rgba(168,85,247,.18),transparent 38%),linear-gradient(165deg,rgba(46,16,101,.42),rgba(15,23,42,.88));}.subscription-badge{display:inline-flex;width:fit-content;padding:4px 9px;border-radius:999px;font-size:10px;line-height:1.2;font-weight:800;letter-spacing:.035em;text-transform:uppercase}.subscription-feature{display:flex;gap:8px;font-size:12px;line-height:1.45;color:#cbd5e1}.subscription-feature.no{color:#64748b}.subscription-action{width:100%;min-height:40px;border-radius:12px;font-size:13px;font-weight:800}.subscription-action:disabled{cursor:not-allowed;opacity:.72}
-        .page-content { animation: fadeIn 0.15s ease-out; }
+        /* Page shells are top-aligned; loaders live inside the active page. */
+        .page-content { animation: fadeIn 0.15s ease-out; align-self: stretch; min-height: 0; }
 
 
         /* ===== DESKTOP HEADER BALANCE + SITE-WIDE POLISH ===== */
@@ -890,10 +891,10 @@
             <nav class="desktop-nav flex-1 items-center justify-center min-w-0" aria-label="Navigasi utama desktop">
                 <button onclick="navigateTo('dashboard')" class="nav-btn active" data-page="dashboard"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg><span>Dashboard</span></button>
                 <button onclick="navigateTo('analisis')" class="nav-btn" data-page="analisis"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span>Analisis Saham</span></button>
-                <button onclick="navigateTo('sektor')" class="nav-btn hidden" data-page="sektor" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Sektor Hot</span></button>
-                <button onclick="navigateTo('screener')" class="nav-btn hidden" data-page="screener" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span>Screener</span></button>
+                <button onclick="navigateTo('sektor')" class="nav-btn" data-page="sektor"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg><span>Sektor Hot</span></button>
+                <button onclick="navigateTo('screener')" class="nav-btn" data-page="screener"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span>Screener</span></button>
                 <button onclick="navigateTo('chart')" class="nav-btn" data-page="chart"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg><span>Chart</span></button>
-                <button onclick="navigateTo('portofolio')" class="nav-btn hidden" data-page="portofolio" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg><span>Portofolio</span></button>
+                <button onclick="navigateTo('portofolio')" class="nav-btn" data-page="portofolio"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg><span>Portofolio</span></button>
                 <button onclick="navigateTo('subscription')" class="nav-btn" data-page="subscription" aria-label="Lihat paket langganan"><span aria-hidden="true">✦</span><span>Langganan</span></button>
             </nav>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
@@ -924,11 +925,11 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 <span>Analisis Saham</span>
             </button>
-            <button onclick="navigateTo('sektor')" class="nav-btn hidden" data-page="sektor" data-premium-nav="true">
+            <button onclick="navigateTo('sektor')" class="nav-btn" data-page="sektor">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 <span>Sektor Hot</span>
             </button>
-            <button onclick="navigateTo('screener')" class="nav-btn hidden" data-page="screener" data-premium-nav="true">
+            <button onclick="navigateTo('screener')" class="nav-btn" data-page="screener">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 <span>Screener</span>
             </button>
@@ -936,7 +937,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
                 <span>Chart</span>
             </button>
-            <button onclick="navigateTo('portofolio')" class="nav-btn hidden" data-page="portofolio" data-premium-nav="true">
+            <button onclick="navigateTo('portofolio')" class="nav-btn" data-page="portofolio">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 <span>Portofolio</span>
             </button>
@@ -993,14 +994,14 @@
                 <p class="text-sm font-semibold text-gray-200">Analisis</p>
                 <p class="text-[10px] text-gray-500 mt-0.5">BBCA, IHSG, dll</p>
             </button>
-            <button onclick="navigateTo('sektor')" class="action-card group hidden" data-premium-nav="true">
+            <button onclick="navigateTo('sektor')" class="action-card group">
                 <div class="action-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </div>
                 <p class="text-sm font-semibold text-gray-200">Sektor Hot</p>
                 <p class="text-[10px] text-gray-500 mt-0.5">Grup konglomerat</p>
             </button>
-            <button onclick="navigateTo('screener')" class="action-card group hidden" data-premium-nav="true">
+            <button onclick="navigateTo('screener')" class="action-card group">
                 <div class="action-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
@@ -1014,7 +1015,7 @@
                 <p class="text-sm font-semibold text-gray-200">Chart</p>
                 <p class="text-[10px] text-gray-500 mt-0.5">Grafik saham</p>
             </button>
-            <button onclick="navigateTo('portofolio')" class="action-card group hidden" data-premium-nav="true">
+            <button onclick="navigateTo('portofolio')" class="action-card group">
                 <div class="action-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 </div>
@@ -1914,10 +1915,6 @@ function isBadUsername(name) {
 // ===== TOP-LEVEL VIEW STATE =====
 // Exactly one of loading, block, maintenance, landing, or app is interactive at a time.
 function setTopLevelView(state) {
-    /* premium-access-load-trigger */
-    if (state === 'app') setTimeout(function(){ loadPremiumAccess(false); },0);
-    else if (state === 'landing' || state === 'blocked' || state === 'maintenance') resetPremiumAccess();
-
     var ids = { loading:'initialLoader', blocked:'blockedScreen', maintenance:'maintenanceScreen', landing:'landingPage', app:'dashboardScreen' };
     Object.keys(ids).forEach(function(key) {
         var el = document.getElementById(ids[key]); if (!el) return;
@@ -2480,7 +2477,7 @@ function renderStartupFallback() {
 })();
 // The watchdog also renders a usable public screen; merely removing the spinner
 // would otherwise leave a blank page after an early startup exception.
-setTimeout(function() { if (document.getElementById('initialLoader')) renderStartupFallback(); }, 4500);
+setTimeout(function() { var loader = document.getElementById('initialLoader'); if (loader && !loader.classList.contains('hidden')) renderStartupFallback(); }, 4500);
 
 // Nav scroll indicator: detect overflow and show gradient hint on mobile
 (function() {
@@ -2863,17 +2860,17 @@ async function loadPremiumAccess(force) {
 }
 
 function navigateTo(page) {
-    if (isPremiumFeaturePage(page) && !hasConfirmedPremiumAccess()) {
-        if (typeof showToast === 'function') showToast('Fitur ini tersedia untuk pengguna Trial dan Premium.', 'warning');
-        page = 'subscription';
-    }
+    var target = document.getElementById('page-' + page);
+    if (!target) return;
+    if (currentPage === page && !target.classList.contains('hidden')) return;
 
     currentPage = page;
-    // Hide all pages
+    // Render the selected shell synchronously. Its own fetches may update only
+    // internal loading states after the page is already visible.
     document.querySelectorAll('.page-content').forEach(function(el) { el.classList.add('hidden'); });
-    // Show target page
-    var target = document.getElementById('page-' + page);
-    if (target) { target.classList.remove('hidden'); target.classList.add('flex-1'); }
+    target.classList.remove('hidden');
+    target.classList.add('flex-1');
+    if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
     // Update nav active state
     document.querySelectorAll('.nav-btn').forEach(function(btn) {
         btn.classList.remove('active');
