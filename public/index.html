@@ -1667,7 +1667,7 @@
         <div class="p-4 sm:p-6 space-y-4">
             <div class="flex flex-wrap gap-2">
                 <button onclick="loadAdminUsers()" class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition-all">User Approval</button>
-                <button id="subscriptionPlansAdminButton" onclick="loadSubscriptionCatalog()" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-violet-400 border border-violet-500/30 hover:bg-violet-500/10 transition-all" hidden disabled aria-disabled="true">Subscription Plans</button>
+                <button id="subscriptionPlansAdminButton" onclick="loadSubscriptionCatalog()" class="hidden px-4 py-2 rounded-lg text-sm font-medium text-violet-400 border border-violet-500/30 hover:bg-violet-500/10 transition-all" hidden disabled aria-disabled="true">Paket Langganan</button>
                 <button onclick="loadAdminLogs('login')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">Login Logs</button>
                 <button onclick="loadAdminLogs('analysis')" class="px-4 py-2 rounded-lg text-sm font-medium text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all">AI Analysis</button>
                 <button onclick="loadWebsiteSettings()" class="px-4 py-2 rounded-lg text-sm font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-all">Website Settings</button>
@@ -2046,14 +2046,14 @@ function subscriptionPlanName(c,f){return ({FREE:'Free',TRIAL:'Trial 10 Hari',PR
 function subscriptionRemainingTime(expiresAt){var ms=new Date(expiresAt).getTime()-Date.now();if(!Number.isFinite(ms)||ms<=0)return 'kurang dari 1 hari';var days=Math.floor(ms/86400000),hours=Math.floor((ms%86400000)/3600000);return days>0?days+' hari '+hours+' jam':hours+' jam';}
 function subscriptionStatusMeta(e){e=e||{};if(e.lifetime_state==='active')return ['Lifetime','bg-violet-500/15 text-violet-200 border border-violet-400/30'];if(e.entitlement_status==='active'&&e.entitlement_source==='trial')return ['Trial','bg-cyan-500/15 text-cyan-200 border border-cyan-400/30'];if(e.entitlement_status==='active')return ['Aktif','bg-emerald-500/15 text-emerald-200 border border-emerald-400/30'];if(e.expiry_reason)return ['Berakhir','bg-amber-500/15 text-amber-200 border border-amber-400/30'];return ['Gratis','bg-slate-500/15 text-slate-200 border border-slate-400/30'];}
 function subscriptionFeature(t,no){return '<li class="subscription-feature'+(no?' no':'')+'"><span aria-hidden="true">'+(no?'✕':'✓')+'</span><span>'+t+'</span></li>';}
-function subscriptionBenefits(c){if(c==='FREE')return [subscriptionFeature('Tampilan publik dan informasi dasar'),subscriptionFeature('Status akun serta katalog paket'),subscriptionFeature('Akses premium ke radar dan screener',true)];return ['Day Trade Radar, Swing Screener, dan Sector Hot','Chart teknikal: candle, MA, RSI, serta volume','Portofolio manual dan pengingat risiko','Akses premium selama masa aktif paket'].map(function(x){return subscriptionFeature(x);});}
-function renderSubscriptionSummary(){var b=document.getElementById('subscriptionSummary'),logged=isAutocuanLoggedIn(),e=subscriptionExperience.status&&subscriptionExperience.status.entitlement;if(!b)return;if(!logged){b.innerHTML='<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-black text-white">Lihat semua paket tanpa login.</p><p class="mt-1 text-sm text-slate-400">Masuk untuk melihat status langganan dan masa aktif Anda.</p></div><button onclick="openLoginModal()" class="subscription-action px-4 bg-emerald-500 text-slate-950 sm:w-auto">Masuk untuk Berlangganan</button></div>';return;}if(!e||subscriptionExperience.statusError){var both=subscriptionExperience.catalogueError; b.innerHTML=both?'<p class="font-bold text-white">Data langganan belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Status akun dan daftar paket sedang tidak tersedia. Silakan coba lagi.</p>':'<p class="font-bold text-white">Status langganan belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Anda tetap dapat membandingkan paket di bawah.</p>';return;}var m=subscriptionStatusMeta(e),expiry=e.lifetime_state==='active'?'Lifetime':(e.expires_at?subscriptionDate(e.expires_at):'—'),remaining=m[0]==='Trial'&&e.expires_at?' <span class="text-cyan-200">('+subscriptionRemainingTime(e.expires_at)+' tersisa)</span>':'';b.innerHTML='<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"><div><dt class="text-xs text-slate-500">Paket saat ini</dt><dd class="mt-1 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(e.current_plan))+'</dd></div><div><dt class="text-xs text-slate-500">Status</dt><dd class="mt-1"><span class="subscription-badge '+m[1]+'">'+m[0]+'</span></dd></div><div><dt class="text-xs text-slate-500">Mulai aktif</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(subscriptionDate(e.starts_at))+'</dd></div><div><dt class="text-xs text-slate-500">'+(m[0]==='Trial'?'Sisa trial':'Aktif sampai')+'</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(expiry)+remaining+'</dd></div></div><button onclick="subscriptionComingSoon()" class="subscription-action px-4 border border-slate-600 text-slate-200 md:w-auto">Kelola Subscription</button></div>';}
+function subscriptionBenefits(c){if(c==='FREE')return [subscriptionFeature('Tampilan publik dan informasi dasar'),subscriptionFeature('Status akun serta katalog paket'),subscriptionFeature('Screener, Sektor Hot, dan Portofolio',true)];return ['Day Trade Radar, Swing Screener, dan Sektor Hot','Chart teknikal: candle, MA, RSI, serta volume','Portofolio manual dan pengingat risiko','Akses premium selama masa aktif paket'].map(function(x){return subscriptionFeature(x);});}
+function renderSubscriptionSummary(){var b=document.getElementById('subscriptionSummary'),logged=isAutocuanLoggedIn(),e=subscriptionExperience.status&&subscriptionExperience.status.entitlement;if(!b)return;if(!logged){b.innerHTML='<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-black text-white">Lihat semua paket tanpa login.</p><p class="mt-1 text-sm text-slate-400">Masuk untuk melihat status langganan dan masa aktif Anda.</p></div><button onclick="openLoginModal()" class="subscription-action px-4 bg-emerald-500 text-slate-950 sm:w-auto">Masuk untuk Berlangganan</button></div>';return;}if(!e||subscriptionExperience.statusError){var both=subscriptionExperience.catalogueError; b.innerHTML=both?'<p class="font-bold text-white">Data langganan belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Status akun dan daftar paket sedang tidak tersedia. Silakan coba lagi.</p>':'<p class="font-bold text-white">Status langganan belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Anda tetap dapat membandingkan paket di bawah.</p>';return;}var m=subscriptionStatusMeta(e),expiry=e.lifetime_state==='active'?'Lifetime':(e.expires_at?subscriptionDate(e.expires_at):'—'),remaining=m[0]==='Trial'&&e.expires_at?' <span class="text-cyan-200">('+subscriptionRemainingTime(e.expires_at)+' tersisa)</span>':'';b.innerHTML='<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"><div><dt class="text-xs text-slate-500">Paket saat ini</dt><dd class="mt-1 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(e.current_plan))+'</dd></div><div><dt class="text-xs text-slate-500">Status</dt><dd class="mt-1"><span class="subscription-badge '+m[1]+'">'+m[0]+'</span></dd></div><div><dt class="text-xs text-slate-500">Mulai aktif</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(subscriptionDate(e.starts_at))+'</dd></div><div><dt class="text-xs text-slate-500">'+(m[0]==='Trial'?'Sisa trial':'Aktif sampai')+'</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(expiry)+remaining+'</dd></div></div><button onclick="subscriptionComingSoon()" class="subscription-action px-4 border border-slate-600 text-slate-200 md:w-auto">Kelola Langganan</button></div>';}
 function subscriptionCard(p,e){var c=p.code,current=e&&(e.current_plan===c||(c==='FREE'&&!e.current_plan&&!e.expiry_reason)),popular=c==='PREMIUM_2_MONTHS',life=c==='LIFETIME',trial=c==='TRIAL',free=c==='FREE',badge=life?'Sekali Bayar':popular?'Paling Populer':c==='PREMIUM_3_MONTHS'?'Lebih Hemat':trial?'Coba Gratis':free?'Gratis':'',price=free||trial?'Rp0':subscriptionIdr(p.promotional_price_idr!=null?p.promotional_price_idr:p.normal_price_idr),normal=p.promotional_price_idr!=null?'<span class="ml-2 text-xs text-slate-500 line-through">'+subscriptionIdr(p.normal_price_idr)+'</span>':'',duration=life?'Sekali bayar · akses Lifetime':trial?'10 hari · aktivasi mengikuti server':free?'Tanpa biaya':'Aktif selama '+p.duration_months+' bulan',action=current?'Paket Saat Ini':!isAutocuanLoggedIn()?'Masuk untuk Berlangganan':trial?'Mulai Trial':e&&e.entitlement_status==='active'?'Perpanjang':'Pilih Paket';return '<article class="subscription-card '+(popular?'popular ':'')+(life?'lifetime ':'')+'p-5"><div class="flex min-h-6 justify-between gap-2">'+(badge?'<span class="subscription-badge bg-emerald-500/15 text-emerald-200 border border-emerald-400/25">'+badge+'</span>':'<span></span>')+(current?'<span class="subscription-badge bg-slate-100 text-slate-900">Paket Saat Ini</span>':'')+'</div><h3 class="mt-4 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(c,p.display_name))+'</h3><p class="mt-1 text-xs text-slate-400">'+duration+'</p><div class="mt-5"><span class="text-2xl font-black text-white">'+price+'</span>'+normal+'</div><ul class="mt-5 space-y-2">'+subscriptionBenefits(c).join('')+'</ul>'+(life?'<p class="mt-4 rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 text-xs leading-5 text-violet-100">Akses Lifetime memakai alokasi tujuh kursi bersama yang dikelola server, bukan akses pengguna tanpa batas.</p>':'')+'<button '+(current?'disabled aria-disabled="true"':'')+' onclick="subscriptionAction()" class="subscription-action mt-6 px-4 '+(current?'border border-emerald-500/35 bg-emerald-500/10 text-emerald-200':life?'bg-violet-500 text-white':popular?'bg-emerald-500 text-slate-950':'border border-slate-600 text-slate-100')+'">'+action+'</button></article>';}
 function renderSubscriptionPlans(){var b=document.getElementById('subscriptionPlans');if(!b)return;if(subscriptionExperience.catalogueError){b.innerHTML='<div class="subscription-card p-5 sm:col-span-2 xl:col-span-3"><p class="font-bold text-white">Daftar paket belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Silakan coba lagi beberapa saat.</p></div>';return;}var ps=subscriptionExperience.catalogue||[];if(!ps.length){b.innerHTML='<div class="subscription-card p-5 sm:col-span-2 xl:col-span-3"><p class="font-bold text-white">Belum ada paket yang tersedia.</p></div>';return;}var e=subscriptionExperience.status&&subscriptionExperience.status.entitlement;b.innerHTML=[{code:'FREE'},{code:'TRIAL'}].concat(ps).map(function(p){return subscriptionCard(p,e);}).join('');}
 function subscriptionAction(){if(!isAutocuanLoggedIn()){openLoginModal();return;}subscriptionComingSoon();}function subscriptionComingSoon(){showToast('Pembayaran melalui transfer bank akan tersedia pada tahap berikutnya. Tidak ada pembelian atau akses yang diproses dari halaman ini.','info');}
 async function loadSubscriptionExperience(force){if(!force&&subscriptionExperience.catalogue){renderSubscriptionSummary();renderSubscriptionPlans();return;}subscriptionExperience.catalogueError=false;subscriptionExperience.statusError=false;try{var r=await fetch('/api/login-user?action=subscription-plans',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'subscription-plans'})}),d=await r.json();if(!r.ok||!d.success)throw new Error();subscriptionExperience.catalogue=d.plans||[];}catch(_){subscriptionExperience.catalogueError=true;}if(isAutocuanLoggedIn())try{var x=await safeSubscriptionRequest('subscription-status',{},6000);if(!x.success)throw new Error();subscriptionExperience.status=x;}catch(_){subscriptionExperience.statusError=true;}else subscriptionExperience.status=null;renderSubscriptionSummary();renderSubscriptionPlans();}
 async function refreshSubscriptionStatus(){if(currentPage==='subscription')await loadSubscriptionExperience(true);}
-function openSubscriptionPage(){var l=document.getElementById('landingPage');if(l)l.classList.add('hidden');document.getElementById('dashboardScreen').classList.remove('hidden');navigateTo('subscription');loadSubscriptionExperience(true);window.scrollTo({top:0,behavior:'smooth'});}
+function openSubscriptionPage(){setTopLevelView('app');navigateTo('subscription');loadSubscriptionExperience(true);window.scrollTo({top:0,behavior:'smooth'});}
 
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
@@ -2768,35 +2768,97 @@ function clearTop5HistoryLoadTimer() {
 // Display state is fail-closed; API endpoints independently re-authorize.
 var premiumAccessState = { state:'loading', premium:false, accessLevel:'free', checkedAt:0 };
 var premiumAccessRequest = null;
+var premiumAccessController = null;
+var premiumAccessGeneration = 0;
+var premiumAccessRefreshTimer = null;
 function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','screener','portofolio'].indexOf(String(page || '')) !== -1; }
 function hasConfirmedPremiumAccess() { return premiumAccessState.state === 'ready' && premiumAccessState.premium === true; }
+function clearRenderedPremiumData() {
+    if (typeof stopScreenerPolling === 'function') stopScreenerPolling();
+    if (typeof stopNkPolling === 'function') stopNkPolling();
+    if (typeof stopDtPolling === 'function') stopDtPolling();
+    if (typeof _sektorCache !== 'undefined') _sektorCache = null;
+    if (typeof _screenerCache !== 'undefined') _screenerCache = null;
+    if (typeof _nkScreenerCache !== 'undefined') _nkScreenerCache = null;
+    if (typeof _dtScreenerCache !== 'undefined') _dtScreenerCache = null;
+    ['sektorGroupsGrid','sektorDetailTable','screenerTableBody','nkScreenerTableBody','nkCardGrid','dtScreenerTableBody','portTableBody','portMobileCards'].forEach(function(id){
+        var el=document.getElementById(id); if (el) el.textContent='';
+    });
+    var summary=document.getElementById('portSummary'); if (summary) summary.classList.add('hidden');
+    var addForm=document.getElementById('addPositionForm'); if (addForm) addForm.classList.add('hidden');
+}
 function applyPremiumAccessUi() {
     var allowed=hasConfirmedPremiumAccess();
     document.querySelectorAll('[data-premium-nav="true"]').forEach(function(button){
         button.classList.toggle('hidden',!allowed); button.disabled=!allowed;
         button.setAttribute('aria-hidden',allowed?'false':'true'); if ('inert' in button) button.inert=!allowed;
     });
-    if (!allowed) document.querySelectorAll('[data-premium-page="true"]').forEach(function(page){
-        page.classList.add('hidden'); page.setAttribute('aria-hidden','true'); if ('inert' in page) page.inert=true;
+    document.querySelectorAll('[data-premium-page="true"]').forEach(function(page){
+        if (allowed) { page.removeAttribute('aria-hidden'); if ('inert' in page) page.inert=false; }
+        else { page.classList.add('hidden'); page.setAttribute('aria-hidden','true'); if ('inert' in page) page.inert=true; }
     });
+    if (!allowed && isPremiumFeaturePage(currentPage)) {
+        clearRenderedPremiumData();
+        navigateTo('subscription');
+    }
 }
-function resetPremiumAccess() { premiumAccessState={state:'loading',premium:false,accessLevel:'free',checkedAt:0}; premiumAccessRequest=null; applyPremiumAccessUi(); }
+function cancelPremiumAccessRequest() {
+    premiumAccessGeneration += 1;
+    if (premiumAccessController) { try { premiumAccessController.abort(); } catch (_) {} }
+    premiumAccessController = null;
+    premiumAccessRequest = null;
+    if (premiumAccessRefreshTimer) { clearTimeout(premiumAccessRefreshTimer); premiumAccessRefreshTimer=null; }
+}
+function schedulePremiumAccessRefresh(expiresAt) {
+    if (premiumAccessRefreshTimer) clearTimeout(premiumAccessRefreshTimer);
+    var regularDelay=5*60*1000, expiryDelay=expiresAt?new Date(expiresAt).getTime()-Date.now()+1000:regularDelay;
+    var delay=Math.max(1000,Math.min(regularDelay,Number.isFinite(expiryDelay)?expiryDelay:regularDelay));
+    premiumAccessRefreshTimer=setTimeout(function(){ premiumAccessRefreshTimer=null; loadPremiumAccess(true); },delay);
+}
+function resetPremiumAccess() {
+    var wasPremium=premiumAccessState.premium===true;
+    cancelPremiumAccessRequest();
+    premiumAccessState={state:'loading',premium:false,accessLevel:'free',checkedAt:0};
+    if (wasPremium) clearRenderedPremiumData();
+    applyPremiumAccessUi();
+}
 async function loadPremiumAccess(force) {
     if (premiumAccessRequest && !force) return premiumAccessRequest;
-    premiumAccessState={state:'loading',premium:false,accessLevel:'free',checkedAt:Date.now()}; applyPremiumAccessUi();
-    premiumAccessRequest=(async function(){
-        var controller=typeof AbortController!=='undefined'?new AbortController():null;
+    if (force) cancelPremiumAccessRequest();
+    var generation=++premiumAccessGeneration;
+    var controller=typeof AbortController!=='undefined'?new AbortController():null;
+    premiumAccessController=controller;
+    var priorState=premiumAccessState;
+    var priorExpiry=priorState.expiresAt?new Date(priorState.expiresAt).getTime():null;
+    var retainConfirmedAccess=priorState.state==='ready'&&priorState.premium===true&&(!Number.isFinite(priorExpiry)||Date.now()<priorExpiry);
+    if (!retainConfirmedAccess) {
+        var wasPremium=priorState.premium===true;
+        premiumAccessState={state:'loading',premium:false,accessLevel:'free',checkedAt:Date.now()};
+        if (wasPremium) clearRenderedPremiumData();
+        applyPremiumAccessUi();
+    }
+    var request=(async function(){
         var timer=controller?setTimeout(function(){controller.abort();},6500):null;
         try {
-            var response=await fetch('/api/login-user?action=premium-access-status',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({action:'premium-access-status'}),signal:controller?controller.signal:undefined});
+            var response=await fetch('/api/login-user?action=premium-access-status',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({action:'premium-access-status'}),signal:controller?controller.signal:undefined});
             var payload=null; try { payload=await response.json(); } catch (_) {}
             if (!response.ok || !payload || payload.success!==true) throw new Error('premium_access_unavailable');
-            premiumAccessState={state:'ready',premium:payload.premium===true,accessLevel:payload.access_level||'free',checkedAt:Date.now()};
-        } catch (_) { premiumAccessState={state:'unavailable',premium:false,accessLevel:'free',checkedAt:Date.now()}; }
-        finally { if (timer) clearTimeout(timer); premiumAccessRequest=null; applyPremiumAccessUi(); }
+            if (generation!==premiumAccessGeneration) return premiumAccessState;
+            premiumAccessState={state:'ready',premium:payload.premium===true,accessLevel:payload.access_level||'free',checkedAt:Date.now(),expiresAt:payload.expires_at||null};
+        } catch (_) {
+            if (generation!==premiumAccessGeneration) return premiumAccessState;
+            premiumAccessState={state:'unavailable',premium:false,accessLevel:'free',checkedAt:Date.now()};
+        } finally {
+            if (timer) clearTimeout(timer);
+            if (generation===premiumAccessGeneration) {
+                premiumAccessController=null; premiumAccessRequest=null; applyPremiumAccessUi();
+                schedulePremiumAccessRefresh(premiumAccessState.expiresAt||null);
+            }
+        }
         return premiumAccessState;
     })();
-    return premiumAccessRequest;
+    premiumAccessRequest=request;
+    return request;
 }
 
 function navigateTo(page) {
@@ -5663,8 +5725,8 @@ function catalogCall(body) { return fetch('/api/admin-users', { method: 'POST', 
 async function loadSubscriptionCatalog() {
     var c = document.getElementById('adminLogsContainer'); if (!c || !subscriptionCapability.ready) return; c.innerHTML = '<div class="py-4 text-sm text-gray-400">Memuat katalog…</div>';
     try { var data = await catalogCall({ action: 'subscription_plan_list' }); if (!data.success) throw new Error(data.error || 'Katalog tidak tersedia.');
-      var h = '<div class="space-y-3"><h3 class="text-sm font-semibold text-violet-300">Subscription plan catalog</h3>';
-      data.plans.forEach(function(p) { var q = p.current_price || {}; h += '<div class="p-3 rounded-lg bg-dark-700 border border-dark-600/50 text-xs"><div class="flex justify-between gap-2"><b>' + escapeAdminHtml(p.display_name) + '</b><button class="text-violet-300" onclick="editSubscriptionPlan(' + JSON.stringify(p.code).replace(/"/g, '&quot;') + ')">Edit price</button></div><div class="mt-2 text-gray-400">Normal ' + adminIdr(q.normal_price_idr) + ' · Promo ' + (q.promo_enabled ? adminIdr(q.promo_price_idr) : 'nonaktif') + ' · v' + escapeAdminHtml(q.price_version || '—') + '</div><div class="mt-1 text-gray-500">Mulai: ' + adminJakarta(q.promo_starts_at) + ' · Berakhir: ' + (q.promo_ends_at ? adminJakarta(q.promo_ends_at) : 'hingga dinonaktifkan') + '</div><details class="mt-2 text-gray-500"><summary>Riwayat harga</summary>' + (p.history || []).map(function(x) { return '<div>v' + x.price_version + ': ' + adminIdr(x.normal_price_idr) + ' — ' + escapeAdminHtml(x.change_reason || '') + '</div>'; }).join('') + '</details></div>'; }); c.innerHTML = h + '</div>';
+      var h = '<div class="space-y-3"><h3 class="text-sm font-semibold text-violet-300">Katalog paket langganan</h3>';
+      data.plans.forEach(function(p) { var q = p.current_price || {}; h += '<div class="p-3 rounded-lg bg-dark-700 border border-dark-600/50 text-xs"><div class="flex justify-between gap-2"><b>' + escapeAdminHtml(p.display_name) + '</b><button class="text-violet-300" onclick="editSubscriptionPlan(' + JSON.stringify(p.code).replace(/"/g, '&quot;') + ')">Ubah harga</button></div><div class="mt-2 text-gray-400">Normal ' + adminIdr(q.normal_price_idr) + ' · Promo ' + (q.promo_enabled ? adminIdr(q.promo_price_idr) : 'nonaktif') + ' · v' + escapeAdminHtml(q.price_version || '—') + '</div><div class="mt-1 text-gray-500">Mulai: ' + adminJakarta(q.promo_starts_at) + ' · Berakhir: ' + (q.promo_ends_at ? adminJakarta(q.promo_ends_at) : 'hingga dinonaktifkan') + '</div><details class="mt-2 text-gray-500"><summary>Riwayat harga</summary>' + (p.history || []).map(function(x) { return '<div>v' + x.price_version + ': ' + adminIdr(x.normal_price_idr) + ' — ' + escapeAdminHtml(x.change_reason || '') + '</div>'; }).join('') + '</details></div>'; }); c.innerHTML = h + '</div>';
     } catch(e) { c.innerHTML = '<p class="text-sm text-red-400">' + escapeAdminHtml(e.message) + '</p>'; }
 }
 async function editSubscriptionPlan(code) {

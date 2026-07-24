@@ -164,6 +164,7 @@ module.exports = async function handler(req, res) {
 
     // === DEBUG: member diagnostics for a specific group (Preview QA only) ===
     if (action === 'debug-members') {
+      if (!verifyCronSecret(req)) return res.status(401).json({ success: false, error: 'Unauthorized.' });
       var debugGroup = String(req.query.group || '').toUpperCase().trim();
       if (!debugGroup) return res.status(200).json({ success: false, error: 'group parameter required' });
       var dbMapping = await supabase.from('sector_hot_group_members').select('ticker, stock_name, member_type, is_active, sort_order').eq('group_code', debugGroup);

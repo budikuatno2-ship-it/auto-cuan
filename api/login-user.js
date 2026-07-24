@@ -236,6 +236,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ success: true, enabled: capability.enabled, ready: capability.ready });
     }
     if (subscriptionAction === 'premium-access-status') {
+      res.setHeader('Cache-Control', 'private, no-store');
       const db = await subscriptionDb();
       if (!db) return res.status(503).json({ success:false, error:'Status akses tidak tersedia.' });
       const access = await resolvePremiumAccess(req, db);
