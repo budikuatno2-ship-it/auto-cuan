@@ -2,9 +2,11 @@ name: One-off startup watchdog hotfix
 
 on:
   push:
-    branches: [feat/daytrade-screener-v1]
+    branches:
+      - feat/daytrade-screener-v1
     paths:
       - '.github/workflows/oneoff-startup-watchdog-hotfix.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
