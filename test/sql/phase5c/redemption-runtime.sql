@@ -71,7 +71,7 @@ BEGIN
   SELECT id INTO actor FROM public.app_users WHERE username='budi';
   INSERT INTO public.app_users(username,is_approved) VALUES('redemption_sequence_user',true) RETURNING id INTO user_id;
   INSERT INTO public.user_entitlements(user_id,plan_code,source,status,starts_at,expires_at,lifetime,activation_idempotency_key)
-  VALUES(user_id,'PREMIUM_1_MONTH','trial','active',now()-interval '3 days',base_expiry,false,'redemption-sequence-existing');
+  VALUES(user_id,'PREMIUM_1_MONTH','payment','active',now()-interval '3 days',base_expiry,false,'redemption-sequence-existing');
   INSERT INTO public.subscription_vouchers(code_hash,code_hint,plan_code,voucher_type,duration_days,max_redemptions,active,created_by_user_id)
   VALUES(hash_one,'Q001','PREMIUM_1_MONTH','PERCENT_100',30,1,true,actor),
         (hash_two,'Q002','PREMIUM_2_MONTHS','PERCENT_100',60,1,true,actor);
