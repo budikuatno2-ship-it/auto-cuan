@@ -16,6 +16,260 @@
 <body>
   <main id="shell" class="shell"><div><div class="spin"></div><strong>Memuat Auto-Cuan…</strong><p style="font-size:13px;color:#64748b">Menyiapkan dashboard aman.</p></div></main>
   <script>
+    function portfolioBudgetFinderSource() {
+      return '(' + function (win) {
+        'use strict';
+        var doc = win.document;
+        var api = null;
+        var compareInFlight = false;
+        var MAX_TICKERS = 20;
+        var QUOTE_CONCURRENCY = 4;
+
+        function money(value) {
+          if (value == null || !Number.isFinite(Number(value))) return '—';
+          return 'Rp ' + Math.round(Number(value)).toLocaleString('id-ID');
+        }
+
+        function toast(message, type) {
+          if (typeof win.showToast === 'function') win.showToast(message, type || 'success');
+          else win.alert(message);
+        }
+
+        function normalizeTickers(value) {
+          var seen = new Set();
+          String(value || '').toUpperCase().split(/[\s,;|]+/).forEach(function (raw) {
+            var ticker = api && api.normalizeTicker ? api.normalizeTicker(raw) : null;
+            if (ticker && !seen.has(ticker) && seen.size < MAX_TICKERS) seen.add(ticker);
+          });
+          return Array.from(seen);
+        }
+
+        function screenerTickers() {
+          var root = doc.getElementById('page-screener');
+          if (!root) return [];
+          var found = new Set();
+          Array.prototype.forEach.call(root.querySelectorAll('[data-ticker],[data-symbol]'), function (node) {
+            [node.getAttribute('data-ticker'), node.getAttribute('data-symbol')].forEach(function (raw) {
+              var ticker = api.normalizeTicker(raw);
+              if (ticker) found.add(ticker);
+            });
+          });
+          var ignored = new Set(['ALL','RISK','SCORE','EXEC','READY','WATCH','INVALID','STATUS','TYPE','SEARCH','SWING','REBOUND','SPEC','PDF','FAILED','SCANNED','UNIVERSE','HIDE','VERY','HIGH','LOW','MEDIUM']);
+          var matches = String(root.textContent || '').toUpperCase().match(/\b[A-Z]{3,5}(?:\.JK)?\b/g) || [];
+          matches.forEach(function (raw) {
+            var ticker = api.normalizeTicker(raw);
+            if (ticker && !ignored.has(ticker)) found.add(ticker);
+          });
+          return Array.from(found).slice(0, MAX_TICKERS);
+        }
+
+        function inputField(id, label, placeholder, type, value) {
+          return '<label class="block"><span class="block text-[11px] text-gray-500 mb-1">' + api.escapeHtml(label) + '</span><input id="' + id + '" type="' + type + '" inputmode="' + (type === 'number' ? 'decimal' : 'text') + '" value="' + api.escapeHtml(value || '') + '" placeholder="' + api.escapeHtml(placeholder) + '" class="w-full px-3 py-2 rounded-lg bg-dark-800/80 border border-dark-600/40 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-emerald-500/50"></label>';
+        }
+
+        function buildSection() {
+          var calcTitle = doc.getElementById('pfCalcTitle');
+          var calcSection = calcTitle && calcTitle.closest('section');
+          if (!calcSection) return false;
+          if (doc.getElementById('pfBudgetFinder')) return true;
+
+          var section = doc.createElement('section');
+          section.id = 'pfBudgetFinder';
+          section.className = 'portfolio-card p-4 space-y-4';
+          var currentBudget = (doc.getElementById('pfBudget') || {}).value || '';
+          var currentTicker = api.normalizeTicker((doc.getElementById('pfTicker') || {}).value) || '';
+          section.innerHTML = '' +
+            '<div class="flex flex-wrap items-start justify-between gap-3">' +
+              '<div><h3 class="text-base font-bold text-white">Cari Saham Sesuai Budget</h3><p class="text-xs text-gray-500 mt-1">Bandingkan ticker pilihan Anda berdasarkan harga terakhir dan batas alokasi. Bukan rekomendasi saham dan tidak memakai AI.</p></div>' +
+              '<button id="pfBudgetFromScreener" type="button" class="px-3 py-2 rounded-lg text-xs text-blue-300 border border-blue-500/30 hover:bg-blue-500/10">Ambil dari Screener</button>' +
+            '</div>' +
+            '<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">' +
+              inputField('pfBudgetCompareBudget','Budget Total','5000000','number',currentBudget) +
+              inputField('pfBudgetAllocation','Alokasi Maks. per Saham (%)','30','number','30') +
+              inputField('pfBudgetMaxPrice','Harga Maks. (opsional)','5000','number','') +
+              inputField('pfBudgetTickers','Ticker Dibandingkan','BBCA, BBRI, TLKM','text',currentTicker) +
+            '</div>' +
+            '<div class="flex flex-wrap items-center gap-2"><button id="pfBudgetCompare" type="button" class="px-4 py-2 rounded-lg text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400">Bandingkan Ticker</button><span id="pfBudgetStatus" class="text-xs text-gray-500">Maksimal 20 ticker per pencarian.</span></div>' +
+            '<div id="pfBudgetError" class="hidden rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300"></div>' +
+            '<div id="pfBudgetResults" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>';
+          calcSection.insertAdjacentElement('afterend', section);
+
+          var style = doc.createElement('style');
+          style.textContent = '#pfBudgetFinder .pf-budget-card{min-width:0}#pfBudgetFinder .pf-budget-card p{overflow-wrap:anywhere}[data-portfolio-v1] article .portfolio-card p{overflow-wrap:anywhere}';
+          doc.head.appendChild(style);
+
+          doc.getElementById('pfBudgetFromScreener').addEventListener('click', function () {
+            var tickers = screenerTickers();
+            if (!tickers.length) {
+              toast('Belum ada kandidat Screener yang terbaca. Buka Screener sampai hasil tampil, lalu kembali ke Portofolio, atau ketik ticker manual.', 'warning');
+              return;
+            }
+            var input = doc.getElementById('pfBudgetTickers');
+            input.value = normalizeTickers((input.value ? input.value + ',' : '') + tickers.join(',')).join(', ');
+            toast(tickers.length + ' ticker diambil secara read-only dari tampilan Screener.', 'success');
+          });
+
+          doc.getElementById('pfBudgetCompare').addEventListener('click', compareTickers);
+          doc.getElementById('pfBudgetResults').addEventListener('click', function (event) {
+            var button = event.target.closest('button[data-use-ticker]');
+            if (!button) return;
+            var ticker = button.getAttribute('data-use-ticker');
+            var price = Number(button.getAttribute('data-use-price'));
+            var budget = Number((doc.getElementById('pfBudgetCompareBudget') || {}).value);
+            var tickerInput = doc.getElementById('pfTicker');
+            var budgetInput = doc.getElementById('pfBudget');
+            var buyInput = doc.getElementById('pfBuy');
+            var stopInput = doc.getElementById('pfStop');
+            var targetInput = doc.getElementById('pfTarget');
+            if (!tickerInput || !budgetInput || !buyInput || !stopInput || !targetInput) return;
+            tickerInput.value = ticker;
+            budgetInput.value = Number.isFinite(budget) ? String(Math.round(budget)) : '';
+            buyInput.value = Number.isFinite(price) ? String(price) : '';
+            stopInput.value = '';
+            targetInput.value = '';
+            var calcSectionEl = doc.getElementById('pfCalcTitle');
+            if (calcSectionEl) calcSectionEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            win.setTimeout(function () { stopInput.focus(); }, 350);
+            toast(ticker + ' dimasukkan ke Kalkulator. Isi stop/invalidation agar jumlah lot dapat dihitung berdasarkan risiko.', 'success');
+          });
+          return true;
+        }
+
+        async function fetchQuote(ticker) {
+          var headers = typeof win.getAuthHeaders === 'function' ? win.getAuthHeaders() : {};
+          var controller = typeof win.AbortController === 'function' ? new win.AbortController() : null;
+          var timer = controller ? win.setTimeout(function () { controller.abort(); }, 12000) : null;
+          try {
+            var response = await win.fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&portfolio=1', {
+              headers: headers,
+              signal: controller ? controller.signal : undefined,
+              cache: 'no-store'
+            });
+            var data = await response.json().catch(function () { return {}; });
+            var quote = api.acceptQuote(data);
+            if (!response.ok || !quote) throw new Error((data && data.error) || 'Harga tidak tersedia.');
+            return quote;
+          } finally {
+            if (timer) win.clearTimeout(timer);
+          }
+        }
+
+        async function compareTickers() {
+          if (compareInFlight) return;
+          var errorEl = doc.getElementById('pfBudgetError');
+          var resultsEl = doc.getElementById('pfBudgetResults');
+          var statusEl = doc.getElementById('pfBudgetStatus');
+          var button = doc.getElementById('pfBudgetCompare');
+          var budget = api.finitePositive((doc.getElementById('pfBudgetCompareBudget') || {}).value, api.MAX_MONEY);
+          var allocationPct = Number((doc.getElementById('pfBudgetAllocation') || {}).value);
+          var maxPriceRaw = String((doc.getElementById('pfBudgetMaxPrice') || {}).value || '').trim();
+          var maxPrice = maxPriceRaw ? api.finitePositive(maxPriceRaw, api.MAX_PRICE) : null;
+          var tickers = normalizeTickers((doc.getElementById('pfBudgetTickers') || {}).value);
+
+          errorEl.classList.add('hidden');
+          if (!budget) return showError('Budget harus angka positif yang wajar.');
+          if (!Number.isFinite(allocationPct) || allocationPct <= 0 || allocationPct > 100) return showError('Alokasi per saham harus lebih dari 0% dan maksimal 100%.');
+          if (maxPriceRaw && !maxPrice) return showError('Harga maksimum tidak valid.');
+          if (!tickers.length) return showError('Masukkan minimal satu ticker, atau gunakan tombol Ambil dari Screener.');
+
+          compareInFlight = true;
+          button.disabled = true;
+          button.textContent = 'Mengambil Harga…';
+          statusEl.textContent = 'Memproses 0/' + tickers.length + ' ticker…';
+          resultsEl.innerHTML = '<div class="md:col-span-2 xl:col-span-3 rounded-xl border border-dark-600/40 p-5 text-center text-sm text-gray-500">Mengambil harga secara bertahap agar halaman tetap ringan…</div>';
+          var allocation = budget * allocationPct / 100;
+          var rows = new Array(tickers.length);
+          var cursor = 0;
+          var completed = 0;
+
+          async function worker() {
+            while (true) {
+              var index = cursor++;
+              if (index >= tickers.length) return;
+              var ticker = tickers[index];
+              try {
+                var quote = await fetchQuote(ticker);
+                var lots = Math.floor(allocation / (quote.price * api.LOT_SIZE));
+                var cost = lots > 0 ? lots * quote.price * api.LOT_SIZE : 0;
+                rows[index] = { ticker: ticker, ok: true, quote: quote, lots: lots, cost: cost, remaining: allocation - cost, withinPrice: !maxPrice || quote.price <= maxPrice };
+              } catch (error) {
+                rows[index] = { ticker: ticker, ok: false, error: error && error.message ? error.message : 'Harga tidak tersedia.' };
+              }
+              completed += 1;
+              statusEl.textContent = 'Memproses ' + completed + '/' + tickers.length + ' ticker…';
+            }
+          }
+
+          try {
+            var workerCount = Math.min(QUOTE_CONCURRENCY, tickers.length);
+            var workers = [];
+            for (var i = 0; i < workerCount; i += 1) workers.push(worker());
+            await Promise.all(workers);
+            renderRows(rows, budget, allocationPct, allocation, maxPrice);
+          } finally {
+            compareInFlight = false;
+            button.disabled = false;
+            button.textContent = 'Bandingkan Ticker';
+          }
+
+          function showError(message) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+          }
+        }
+
+        function renderRows(rows, budget, allocationPct, allocation, maxPrice) {
+          var resultsEl = doc.getElementById('pfBudgetResults');
+          var statusEl = doc.getElementById('pfBudgetStatus');
+          var ordered = rows.slice().sort(function (a, b) {
+            var aRank = a.ok && a.withinPrice && a.lots > 0 ? 0 : (a.ok ? 1 : 2);
+            var bRank = b.ok && b.withinPrice && b.lots > 0 ? 0 : (b.ok ? 1 : 2);
+            if (aRank !== bRank) return aRank - bRank;
+            if (a.ok && b.ok) return a.quote.price - b.quote.price;
+            return a.ticker.localeCompare(b.ticker);
+          });
+          var matched = ordered.filter(function (row) { return row.ok && row.withinPrice && row.lots > 0; }).length;
+          statusEl.textContent = matched + ' dari ' + ordered.length + ' ticker dapat dibeli minimal 1 lot dalam alokasi ' + allocationPct.toFixed(0) + '% (' + money(allocation) + ') per saham.';
+          resultsEl.innerHTML = ordered.map(function (row) {
+            if (!row.ok) {
+              return '<article class="pf-budget-card portfolio-card p-4 border border-red-500/10"><div class="flex justify-between gap-3"><h4 class="font-black text-white">' + api.escapeHtml(row.ticker) + '</h4><span class="text-xs text-red-300">Gagal</span></div><p class="mt-3 text-xs text-red-300">' + api.escapeHtml(row.error) + '</p></article>';
+            }
+            var affordable = row.lots > 0 && row.withinPrice;
+            var note = !row.withinPrice ? 'Di atas batas harga maksimum' : (row.lots > 0 ? 'Terjangkau dalam alokasi' : 'Alokasi belum cukup untuk 1 lot');
+            var tone = affordable ? 'text-emerald-300' : 'text-amber-300';
+            var stale = row.quote.stale ? ' · T-1/stale' : '';
+            return '<article class="pf-budget-card portfolio-card p-4">' +
+              '<div class="flex items-start justify-between gap-3"><div><h4 class="text-lg font-black text-white">' + api.escapeHtml(row.ticker) + '</h4><p class="text-xs ' + tone + '">' + api.escapeHtml(note) + '</p></div><span class="text-xs text-gray-500">' + api.escapeHtml(row.quote.source + stale) + '</span></div>' +
+              '<div class="mt-3 grid grid-cols-2 gap-2">' +
+                card('Harga Terakhir', money(row.quote.price)) +
+                card('Maks. Lot', row.lots + ' lot') +
+                card('Nilai Pembelian', row.lots > 0 ? money(row.cost) : '—') +
+                card('Sisa Alokasi', row.lots > 0 ? money(row.remaining) : money(allocation)) +
+              '</div>' +
+              '<p class="mt-3 text-[11px] text-gray-500">Budget total ' + money(budget) + ' · batas per saham ' + allocationPct.toFixed(0) + '%' + (maxPrice ? ' · harga maks. ' + money(maxPrice) : '') + '. Jumlah final tetap harus dihitung dengan stop dan profil risiko.</p>' +
+              '<button type="button" data-use-ticker="' + api.escapeHtml(row.ticker) + '" data-use-price="' + row.quote.price + '" class="mt-3 px-3 py-2 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10">Masukkan ke Kalkulator</button>' +
+            '</article>';
+          }).join('');
+        }
+
+        function card(label, value) {
+          return '<div class="rounded-lg border border-dark-600/40 bg-dark-800/30 p-3"><p class="text-[10px] text-gray-500">' + api.escapeHtml(label) + '</p><p class="text-sm font-semibold text-gray-200">' + api.escapeHtml(value) + '</p></div>';
+        }
+
+        function init(attempt) {
+          api = win.AutoCuanPortfolioV1;
+          if (!api || !doc.getElementById('pfCalcTitle')) {
+            if ((attempt || 0) < 80) win.setTimeout(function () { init((attempt || 0) + 1); }, 100);
+            return;
+          }
+          buildSection();
+        }
+
+        if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { init(0); }, { once: true });
+        else init(0);
+      }.toString() + ')(window);';
+    }
+
     (async function () {
       var shell = document.getElementById('shell');
       try {
@@ -23,7 +277,8 @@
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var source = await response.text();
         if (source.indexOf('</body>') === -1) throw new Error('Dokumen dasar tidak valid');
-        source = source.replace('</body>', '<script src="/portfolio-v1-loader-v2.js?v=2"><\/script></body>');
+        var finder = portfolioBudgetFinderSource().replace(/<\/script/gi, '<\\/script');
+        source = source.replace('</body>', '<script src="/portfolio-v1-loader-v2.js?v=2"><\/script><script>' + finder + '<\/script></body>');
         document.open(); document.write(source); document.close();
       } catch (error) {
         shell.innerHTML = '<div><h1 style="font-size:20px;color:#f8fafc">Auto-Cuan gagal dimuat</h1><p style="font-size:13px;color:#fca5a5">' + String(error && error.message || 'Kesalahan tidak diketahui').replace(/[&<>"']/g, '') + '</p><button onclick="location.reload()">Coba Lagi</button></div>';
