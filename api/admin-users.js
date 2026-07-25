@@ -1,3 +1,4 @@
+const runtimeEnv = require('../lib/runtime-env');
 const { createClient } = require('@supabase/supabase-js');
 const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
 const telegramNotifier = require('../lib/telegram-notifier');
@@ -26,6 +27,9 @@ function buildApprovalNotificationMessage(user) {
 }
 
 async function sendApprovalNotification(user) {
+  if (runtimeEnv.runtimeEnvironment() === 'staging') {
+    return { status: 'skipped', reason: 'staging_legacy_approval_notifications_disabled' };
+  }
   if (process.env.TELEGRAM_APPROVAL_NOTIFICATIONS_ENABLED !== '1') {
     return { status: 'skipped', reason: 'approval_notifications_disabled' };
   }
@@ -75,8 +79,8 @@ module.exports = async function handler(req, res) {
 
     const { action, username } = req.body || {};
 
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const SUPABASE_URL = runtimeEnv.resolve('SUPABASE_URL');
+    const SUPABASE_KEY = runtimeEnv.resolve('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
       return res.status(500).json({ success: false, error: 'Database belum dikonfigurasi.' });
@@ -87,9 +91,9 @@ module.exports = async function handler(req, res) {
     });
 
     if (action === 'membership_admin_bind_challenge') {
-      if (!process.env.ADMIN_TELEGRAM_BIND_PEPPER) return res.status(503).json({ success: false, error: 'Admin binding belum dikonfigurasi.' });
+      if (!runtimeEnv.resolve('ADMIN_TELEGRAM_BIND_PEPPER')) return res.status(503).json({ success: false, error: 'Admin binding belum dikonfigurasi.' });
       const rawCode = membership.generateVoucherCode(12);
-      const codeHash = membership.voucherHash(rawCode, process.env.ADMIN_TELEGRAM_BIND_PEPPER);
+      const codeHash = membership.voucherHash(rawCode, runtimeEnv.resolve('ADMIN_TELEGRAM_BIND_PEPPER'));
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
       await supabase.from('membership_admin_bind_challenges').update({ used_at: new Date().toISOString() }).eq('user_id', auth.session.uid).is('used_at', null);
       const inserted = await supabase.from('membership_admin_bind_challenges').insert({ user_id: auth.session.uid, code_hash: codeHash, expires_at: expiresAt });
@@ -117,8 +121,8 @@ module.exports = async function handler(req, res) {
 
     if (action === 'membership_expiry_enforcement') {
       const report = await membershipService.runChannelExpiryEnforcement({
-        enabled: process.env.CHANNEL_DESTRUCTIVE_ENFORCEMENT_ENABLED === '1', confirm: req.body.confirm,
-        channelId: process.env.TELEGRAM_VERIFY_CHANNEL_ID, bot: createVerifyBot()
+        enabled: runtimeEnv.resolve('CHANNEL_DESTRUCTIVE_ENFORCEMENT_ENABLED') === '1', confirm: req.body.confirm,
+        channelId: runtimeEnv.resolve('TELEGRAM_VERIFY_CHANNEL_ID'), bot: createVerifyBot()
       });
       return res.status(200).json({ success: true, report });
     }
@@ -523,3 +527,5 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
   }
 };
+
+module.exports.sendApprovalNotification = sendApprovalNotification;

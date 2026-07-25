@@ -1,3 +1,4 @@
+const runtimeEnv = require('../lib/runtime-env');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecret } = require('../lib/admin-session');
@@ -35,7 +36,7 @@ async function handleVerifyWebhook(req, res) {
   }
 
   // Fail-closed secret validation BEFORE parsing/processing the update.
-  const expectedSecret = process.env.TELEGRAM_VERIFY_WEBHOOK_SECRET;
+  const expectedSecret = runtimeEnv.resolve('TELEGRAM_VERIFY_WEBHOOK_SECRET');
   const providedSecret = req.headers['x-telegram-bot-api-secret-token'];
   if (!expectedSecret || !secretsMatch(providedSecret, expectedSecret)) {
     return res.status(401).json({ ok: false });
@@ -60,8 +61,8 @@ async function handleVerifyWebhook(req, res) {
     return res.status(200).json({ ok: true, ignored: true });
   }
 
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const SUPABASE_URL = runtimeEnv.resolve('SUPABASE_URL');
+  const SUPABASE_KEY = runtimeEnv.resolve('SUPABASE_SERVICE_ROLE_KEY');
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     // Cannot process without the DB; ack so Telegram does not hammer retries.
     return res.status(200).json({ ok: true });
@@ -182,8 +183,8 @@ module.exports = async function handler(req, res) {
     }
 
     // Supabase setup
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const SUPABASE_URL = runtimeEnv.resolve('SUPABASE_URL');
+    const SUPABASE_KEY = runtimeEnv.resolve('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
       return res.status(500).json({ success: false, error: 'Database belum dikonfigurasi.' });
