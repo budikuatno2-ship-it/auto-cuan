@@ -6,6 +6,8 @@ const telegramLifecycle = require('../lib/telegram-lifecycle');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const { computeTelegramAnalytics } = require('../lib/telegram-analytics');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
+const membership = require('../lib/telegram-membership');
+const membershipService = require('../lib/telegram-membership-service');
 
 const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
 
@@ -84,6 +86,43 @@ module.exports = async function handler(req, res) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
+
+    if (action === 'membership_admin_bind_challenge') {
+      if (!process.env.ADMIN_TELEGRAM_BIND_PEPPER) return res.status(503).json({ success: false, error: 'Admin binding belum dikonfigurasi.' });
+      const rawCode = membership.generateVoucherCode(12);
+      const codeHash = membership.voucherHash(rawCode, process.env.ADMIN_TELEGRAM_BIND_PEPPER);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      await supabase.from('membership_admin_bind_challenges').update({ used_at: new Date().toISOString() }).eq('user_id', auth.session.uid).is('used_at', null);
+      const inserted = await supabase.from('membership_admin_bind_challenges').insert({ user_id: auth.session.uid, code_hash: codeHash, expires_at: expiresAt });
+      if (inserted.error) return res.status(500).json({ success: false, error: 'Gagal membuat kode binding.' });
+      return res.status(200).json({ success: true, code: rawCode, expires_at: expiresAt });
+    }
+
+    if (action === 'membership_payment_list') return res.status(200).json({ success: true, pending: await membershipService.pending() });
+    if (action === 'membership_payment_proof') {
+      if (!/^[0-9a-f-]{36}$/i.test(req.body.proofId || '')) return res.status(400).json({ success: false, error: 'Bukti tidak valid.' });
+      const proof = await membershipService.proof(req.body.proofId);
+      if (proof.file_size > membership.MAX_PROOF_BYTES) return res.status(413).json({ success: false, error: 'Bukti terlalu besar.' });
+      const bytes = await createVerifyBot().downloadFile(proof.telegram_file_id);
+      if (bytes.length > membership.MAX_PROOF_BYTES || bytes.length > proof.file_size) return res.status(413).json({ success: false, error: 'Bukti terlalu besar.' });
+      res.setHeader('Content-Type', proof.mime_type); res.setHeader('Cache-Control', 'private, no-store');
+      return res.status(200).send(bytes);
+    }
+    if (action === 'membership_payment_review') {
+      const approve = req.body.decision === 'approve';
+      if (!approve && req.body.decision !== 'reject') return res.status(400).json({ success: false, error: 'Keputusan tidak valid.' });
+      if (!/^[A-Za-z0-9_-]{16,128}$/.test(req.body.idempotencyKey || '')) return res.status(400).json({ success: false, error: 'Idempotency key diperlukan.' });
+      const result = await membershipService.review(req.body.purchaseId, approve, req.body.reason, auth.session.uid, req.body.idempotencyKey);
+      return res.status(200).json({ success: true, result, audit: await membershipService.audit(req.body.purchaseId) });
+    }
+
+    if (action === 'membership_expiry_enforcement') {
+      const report = await membershipService.runChannelExpiryEnforcement({
+        enabled: process.env.CHANNEL_DESTRUCTIVE_ENFORCEMENT_ENABLED === '1', confirm: req.body.confirm,
+        channelId: process.env.TELEGRAM_VERIFY_CHANNEL_ID, bot: createVerifyBot()
+      });
+      return res.status(200).json({ success: true, report });
+    }
 
     // === LIST USERS ===
     if (action === 'list') {

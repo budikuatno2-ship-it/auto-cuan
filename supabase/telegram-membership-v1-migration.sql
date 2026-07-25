@@ -10,12 +10,12 @@ CREATE TABLE IF NOT EXISTS public.membership_admin_telegram_links (
 CREATE TABLE IF NOT EXISTS public.membership_packages (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), slug text NOT NULL UNIQUE, name text NOT NULL, description text NOT NULL,
  duration_days integer CHECK (duration_days IN (30,90) OR duration_days IS NULL), lifetime boolean NOT NULL DEFAULT false,
- price_idr bigint NOT NULL CHECK (price_idr >= 0), active boolean NOT NULL DEFAULT true, sort_order integer NOT NULL DEFAULT 0,
- created_at timestamptz NOT NULL DEFAULT now(), CHECK (lifetime = (duration_days IS NULL)));
+ price_idr bigint CHECK (price_idr > 0), active boolean NOT NULL DEFAULT false, sort_order integer NOT NULL DEFAULT 0,
+ created_at timestamptz NOT NULL DEFAULT now(), CHECK (lifetime = (duration_days IS NULL)), CHECK (NOT active OR price_idr IS NOT NULL));
 INSERT INTO public.membership_packages(slug,name,description,duration_days,lifetime,price_idr,sort_order) VALUES
- ('channel-30','Channel 30 Hari','Akses bot dan channel selama 30 hari.',30,false,149000,10),
- ('channel-90','Channel 90 Hari','Akses bot dan channel selama 90 hari.',90,false,349000,20),
- ('lifetime','Lifetime','Akses bot, channel, dan dashboard web selamanya.',null,true,1499000,30)
+ ('channel-30','Channel 30 Hari','Akses bot dan channel selama 30 hari.',30,false,null,10),
+ ('channel-90','Channel 90 Hari','Akses bot dan channel selama 90 hari.',90,false,null,20),
+ ('lifetime','Lifetime','Akses bot, channel, dan dashboard web selamanya.',null,true,null,30)
 ON CONFLICT (slug) DO NOTHING;
 CREATE TABLE IF NOT EXISTS public.membership_vouchers (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), code_hash text NOT NULL UNIQUE, code_hint text NOT NULL, discount_type text NOT NULL CHECK(discount_type IN ('fixed','percent')),
@@ -42,13 +42,15 @@ CREATE TABLE IF NOT EXISTS public.membership_entitlements (
 CREATE INDEX IF NOT EXISTS membership_entitlement_expiry_idx ON public.membership_entitlements(status,ends_at);
 CREATE TABLE IF NOT EXISTS public.membership_voucher_redemptions (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), voucher_id uuid NOT NULL REFERENCES public.membership_vouchers(id), user_id uuid NOT NULL REFERENCES public.app_users(id),
- purchase_id uuid NOT NULL UNIQUE REFERENCES public.membership_purchases(id), discount_idr bigint NOT NULL, redeemed_at timestamptz NOT NULL DEFAULT now(),
+ purchase_id uuid NOT NULL UNIQUE REFERENCES public.membership_purchases(id), discount_idr bigint NOT NULL, status text NOT NULL DEFAULT 'reserved' CHECK(status IN ('reserved','finalized','released')), redeemed_at timestamptz, reserved_at timestamptz NOT NULL DEFAULT now(), released_at timestamptz,
  UNIQUE(voucher_id,user_id,purchase_id));
 CREATE TABLE IF NOT EXISTS public.membership_channel_grants (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES public.app_users(id), telegram_user_id bigint NOT NULL,
- entitlement_id uuid REFERENCES public.membership_entitlements(id), invite_link_hash text, expires_at timestamptz, joined_at timestamptz, revoked_at timestamptz,
+ entitlement_id uuid REFERENCES public.membership_entitlements(id), invite_link_hash text, invite_used_at timestamptz, invite_expires_at timestamptz, expires_at timestamptz, joined_at timestamptz, revoked_at timestamptz,
  created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(user_id,telegram_user_id,entitlement_id));
 CREATE INDEX IF NOT EXISTS membership_channel_expiry_idx ON public.membership_channel_grants(expires_at) WHERE revoked_at IS NULL;
+CREATE TABLE IF NOT EXISTS public.membership_channel_exemptions (
+ telegram_user_id bigint PRIMARY KEY, reason text NOT NULL CHECK(reason IN ('owner','admin')), created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS public.membership_processed_telegram_updates (
  update_id bigint PRIMARY KEY, claimed_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS public.membership_audit_events (
@@ -64,12 +66,13 @@ ALTER TABLE public.membership_payment_proofs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.membership_entitlements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.membership_voucher_redemptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.membership_channel_grants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.membership_channel_exemptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.membership_processed_telegram_updates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.membership_audit_events ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.membership_admin_bind_challenges, public.membership_admin_telegram_links,
  public.membership_packages, public.membership_vouchers, public.membership_purchases,
  public.membership_payment_proofs, public.membership_entitlements, public.membership_voucher_redemptions,
- public.membership_channel_grants, public.membership_processed_telegram_updates, public.membership_audit_events
+ public.membership_channel_grants, public.membership_channel_exemptions, public.membership_processed_telegram_updates, public.membership_audit_events
  FROM anon, authenticated;
 GRANT SELECT ON public.membership_packages TO authenticated;
 
@@ -82,7 +85,7 @@ CREATE OR REPLACE FUNCTION public.membership_dashboard_access(p_user_id uuid) RE
 CREATE OR REPLACE FUNCTION public.membership_account_for_telegram(p_telegram_user_id bigint) RETURNS jsonb LANGUAGE sql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$
  SELECT COALESCE((SELECT jsonb_build_object('verified',v.telegram_verified_at IS NOT NULL,'isAdmin',false,'userId',v.user_id,'entitlement',CASE WHEN e.id IS NULL THEN NULL ELSE jsonb_build_object('status',e.status,'lifetime',e.lifetime,'endsAt',e.ends_at) END) FROM public.app_user_telegram_verifications v LEFT JOIN LATERAL (SELECT * FROM public.membership_entitlements x WHERE x.user_id=v.user_id ORDER BY x.lifetime DESC,x.ends_at DESC NULLS FIRST LIMIT 1)e ON true WHERE v.telegram_user_id=p_telegram_user_id), 'null'::jsonb); $$;
 CREATE OR REPLACE FUNCTION public.membership_enforce_channel_expiry(p_dry_run boolean DEFAULT true) RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
- SELECT jsonb_build_object('dryRun',p_dry_run,'candidates',count(*),'note','Configured owners/admins are excluded; run migration report before destructive enforcement') FROM public.membership_channel_grants g WHERE g.revoked_at IS NULL AND g.expires_at < now() AND NOT EXISTS(SELECT 1 FROM public.membership_admin_telegram_links a WHERE a.telegram_user_id=g.telegram_user_id AND a.revoked_at IS NULL); $$;
+ SELECT jsonb_build_object('dryRun',p_dry_run,'candidates',count(*),'note','Configured owners/admins are excluded; run migration report before destructive enforcement') FROM public.membership_channel_grants g WHERE g.revoked_at IS NULL AND g.expires_at < now() AND NOT EXISTS(SELECT 1 FROM public.membership_admin_telegram_links a WHERE a.telegram_user_id=g.telegram_user_id AND a.revoked_at IS NULL) AND NOT EXISTS(SELECT 1 FROM public.membership_channel_exemptions x WHERE x.telegram_user_id=g.telegram_user_id); $$;
 REVOKE ALL ON FUNCTION public.membership_claim_telegram_update(bigint), public.membership_release_telegram_update(bigint), public.membership_dashboard_access(uuid), public.membership_account_for_telegram(bigint), public.membership_enforce_channel_expiry(boolean) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.membership_claim_telegram_update(bigint), public.membership_release_telegram_update(bigint), public.membership_dashboard_access(uuid), public.membership_account_for_telegram(bigint), public.membership_enforce_channel_expiry(boolean) TO service_role;
 
@@ -98,29 +101,31 @@ BEGIN
  SELECT * INTO pkg FROM public.membership_packages WHERE id=p_package_id AND active FOR SHARE; IF NOT FOUND THEN RAISE EXCEPTION 'package_unavailable'; END IF; sub:=pkg.price_idr;
  IF p_voucher_hash IS NOT NULL THEN
   SELECT * INTO v FROM public.membership_vouchers WHERE code_hash=p_voucher_hash AND active AND now()>=valid_from AND (valid_until IS NULL OR now()<valid_until) FOR UPDATE;
-  IF NOT FOUND OR (v.package_ids IS NOT NULL AND NOT p_package_id=ANY(v.package_ids)) OR (v.total_limit IS NOT NULL AND v.redemption_count>=v.total_limit) OR (SELECT count(*) FROM public.membership_voucher_redemptions WHERE voucher_id=v.id AND user_id=u)>=v.per_account_limit THEN RAISE EXCEPTION 'voucher_unavailable'; END IF;
+  IF NOT FOUND OR (v.package_ids IS NOT NULL AND NOT p_package_id=ANY(v.package_ids)) OR (v.total_limit IS NOT NULL AND (v.redemption_count+(SELECT count(*) FROM public.membership_voucher_redemptions r JOIN public.membership_purchases p ON p.id=r.purchase_id WHERE r.voucher_id=v.id AND r.status='reserved' AND p.expires_at>now()))>=v.total_limit) OR (SELECT count(*) FROM public.membership_voucher_redemptions r JOIN public.membership_purchases p ON p.id=r.purchase_id WHERE r.voucher_id=v.id AND r.user_id=u AND r.status IN ('reserved','finalized') AND (r.status='finalized' OR p.expires_at>now()))>=v.per_account_limit THEN RAISE EXCEPTION 'voucher_unavailable'; END IF;
   disc:=CASE WHEN v.discount_type='percent' THEN floor(sub*v.discount_value/100) ELSE v.discount_value END; disc:=least(sub,disc,coalesce(v.max_discount_idr,sub));
  END IF;
  INSERT INTO public.membership_purchases(user_id,package_id,voucher_id,status,subtotal_idr,discount_idr,final_amount_idr,bank_instructions,expires_at) VALUES(u,pkg.id,v.id,'awaiting_payment',sub,disc,sub-disc,p_bank_instructions,now()+interval '24 hours') RETURNING id INTO pid;
- IF v.id IS NOT NULL THEN INSERT INTO public.membership_voucher_redemptions(voucher_id,user_id,purchase_id,discount_idr) VALUES(v.id,u,pid,disc); UPDATE public.membership_vouchers SET redemption_count=redemption_count+1 WHERE id=v.id; END IF;
+ IF v.id IS NOT NULL THEN INSERT INTO public.membership_voucher_redemptions(voucher_id,user_id,purchase_id,discount_idr,status) VALUES(v.id,u,pid,disc,'reserved'); END IF;
  INSERT INTO public.membership_audit_events(event_type,purchase_id,metadata) VALUES('purchase_created',pid,jsonb_build_object('amount',sub-disc)); RETURN jsonb_build_object('purchaseId',pid,'finalAmount',sub-disc,'status','awaiting_payment','bankInstructions',p_bank_instructions);
 END $$;
 CREATE OR REPLACE FUNCTION public.membership_submit_payment_proof(p_telegram_user_id bigint,p_purchase_id uuid,p_file_id text,p_file_unique_id text,p_mime_type text,p_file_size bigint) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE u uuid;
 BEGIN SELECT user_id INTO u FROM public.app_user_telegram_verifications WHERE telegram_user_id=p_telegram_user_id AND telegram_verified_at IS NOT NULL;
  IF p_mime_type NOT IN ('image/jpeg','image/png','application/pdf') OR p_file_size<=0 OR p_file_size>8388608 THEN RAISE EXCEPTION 'invalid_proof'; END IF;
- UPDATE public.membership_purchases SET status='awaiting_admin_review',updated_at=now() WHERE id=p_purchase_id AND user_id=u AND status IN ('awaiting_payment','rejected'); IF NOT FOUND THEN RAISE EXCEPTION 'purchase_state_conflict'; END IF;
+ UPDATE public.membership_purchases SET status='awaiting_admin_review',updated_at=now() WHERE id=p_purchase_id AND user_id=u AND status IN ('awaiting_payment','rejected') AND expires_at>now(); IF NOT FOUND THEN RAISE EXCEPTION 'purchase_state_conflict'; END IF;
  INSERT INTO public.membership_payment_proofs(purchase_id,telegram_file_id,telegram_file_unique_id,mime_type,file_size) VALUES(p_purchase_id,p_file_id,p_file_unique_id,p_mime_type,p_file_size);
  INSERT INTO public.membership_audit_events(event_type,purchase_id) VALUES('proof_submitted',p_purchase_id); RETURN jsonb_build_object('accepted',true); END $$;
 CREATE OR REPLACE FUNCTION public.membership_review_purchase(p_purchase_id uuid,p_approve boolean,p_reason text,p_admin_user_id uuid,p_idempotency_key text) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE p public.membership_purchases; pkg public.membership_packages; end_at timestamptz;
 BEGIN
  IF EXISTS(SELECT 1 FROM public.membership_audit_events WHERE idempotency_key=p_idempotency_key) THEN RETURN jsonb_build_object('duplicate',true); END IF;
- SELECT * INTO p FROM public.membership_purchases WHERE id=p_purchase_id FOR UPDATE; IF p.status<>'awaiting_admin_review' THEN RAISE EXCEPTION 'purchase_state_conflict'; END IF;
+ SELECT * INTO p FROM public.membership_purchases WHERE id=p_purchase_id FOR UPDATE; IF p.status<>'awaiting_admin_review' OR p.expires_at<=now() THEN RAISE EXCEPTION 'purchase_state_conflict'; END IF;
  IF NOT p_approve THEN IF length(trim(coalesce(p_reason,'')))<3 THEN RAISE EXCEPTION 'reason_required'; END IF; UPDATE public.membership_purchases SET status='rejected',rejected_at=now(),rejection_reason=p_reason,updated_at=now() WHERE id=p.id; ELSE
   SELECT * INTO pkg FROM public.membership_packages WHERE id=p.package_id; IF NOT pkg.lifetime THEN SELECT greatest(now(),coalesce(max(ends_at),now())) + make_interval(days=>pkg.duration_days) INTO end_at FROM public.membership_entitlements WHERE user_id=p.user_id AND status='active' AND NOT lifetime; END IF;
   INSERT INTO public.membership_entitlements(user_id,purchase_id,status,ends_at,lifetime) VALUES(p.user_id,p.id,'active',end_at,pkg.lifetime) ON CONFLICT(purchase_id) DO NOTHING;
   UPDATE public.membership_purchases SET status='approved',approved_at=now(),updated_at=now() WHERE id=p.id;
+  UPDATE public.membership_voucher_redemptions SET status='finalized',redeemed_at=now() WHERE purchase_id=p.id AND status='reserved';
+  UPDATE public.membership_vouchers SET redemption_count=redemption_count+1 WHERE id=p.voucher_id AND p.voucher_id IS NOT NULL;
  END IF;
  INSERT INTO public.membership_audit_events(event_type,actor_user_id,purchase_id,idempotency_key,metadata) VALUES(CASE WHEN p_approve THEN 'purchase_approved' ELSE 'purchase_rejected' END,p_admin_user_id,p.id,p_idempotency_key,jsonb_build_object('reason',p_reason)); RETURN jsonb_build_object('approved',p_approve,'duplicate',false); END $$;
 CREATE OR REPLACE FUNCTION public.membership_issue_channel_grant(p_telegram_user_id bigint) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
@@ -133,12 +138,25 @@ CREATE OR REPLACE FUNCTION public.membership_consume_admin_bind_challenge(p_code
 DECLARE c public.membership_admin_bind_challenges;
 BEGIN
  IF p_telegram_user_id IS NULL OR p_private_chat_id IS NULL OR p_telegram_user_id<>p_private_chat_id THEN RETURN false; END IF;
- SELECT * INTO c FROM public.membership_admin_bind_challenges WHERE code_hash=p_code_hash AND used_at IS NULL AND expires_at>now() AND failed_attempts<5 FOR UPDATE;
- IF NOT FOUND THEN RETURN false; END IF;
- IF EXISTS(SELECT 1 FROM public.membership_admin_telegram_links WHERE (user_id=c.user_id OR telegram_user_id=p_telegram_user_id) AND revoked_at IS NULL) THEN RETURN false; END IF;
+ SELECT c0.* INTO c FROM public.membership_admin_bind_challenges c0 JOIN public.app_users u ON u.id=c0.user_id AND lower(u.username)='budi' AND u.is_approved=true AND u.is_blocked=false WHERE c0.code_hash=p_code_hash AND c0.used_at IS NULL AND c0.expires_at>now() AND c0.failed_attempts<5 FOR UPDATE;
+ IF NOT FOUND THEN INSERT INTO public.membership_audit_events(event_type,metadata) VALUES('admin_telegram_bind_failed',jsonb_build_object('reason','invalid_or_expired')); RETURN false; END IF;
+ IF EXISTS(SELECT 1 FROM public.membership_admin_telegram_links WHERE (user_id=c.user_id OR telegram_user_id=p_telegram_user_id) AND revoked_at IS NULL) THEN INSERT INTO public.membership_audit_events(event_type,actor_user_id,metadata) VALUES('admin_telegram_bind_failed',c.user_id,jsonb_build_object('reason','already_bound')); RETURN false; END IF;
  UPDATE public.membership_admin_bind_challenges SET used_at=now() WHERE id=c.id AND used_at IS NULL;
  INSERT INTO public.membership_admin_telegram_links(user_id,telegram_user_id,private_chat_id) VALUES(c.user_id,p_telegram_user_id,p_private_chat_id);
  INSERT INTO public.membership_audit_events(event_type,actor_user_id,metadata) VALUES('admin_telegram_bound',c.user_id,jsonb_build_object('telegramUserId',p_telegram_user_id)); RETURN true;
 END $$;
-REVOKE ALL ON FUNCTION public.membership_consume_admin_bind_challenge(text,bigint,bigint) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.membership_consume_admin_bind_challenge(text,bigint,bigint) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.membership_record_channel_invite(p_grant_id uuid,p_telegram_user_id bigint,p_invite_hash text) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+BEGIN UPDATE public.membership_channel_grants SET invite_link_hash=p_invite_hash,invite_expires_at=now()+interval '15 minutes' WHERE id=p_grant_id AND telegram_user_id=p_telegram_user_id AND revoked_at IS NULL; RETURN FOUND; END $$;
+CREATE OR REPLACE FUNCTION public.membership_claim_channel_join(p_telegram_user_id bigint,p_invite_hash text) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE g public.membership_channel_grants;
+BEGIN SELECT * INTO g FROM public.membership_channel_grants WHERE telegram_user_id=p_telegram_user_id AND invite_link_hash=p_invite_hash AND invite_used_at IS NULL AND revoked_at IS NULL AND invite_expires_at>now() FOR UPDATE; IF NOT FOUND THEN RETURN NULL; END IF; UPDATE public.membership_channel_grants SET invite_used_at=now(),joined_at=now(),invite_link_hash=NULL,invite_expires_at=NULL WHERE id=g.id; INSERT INTO public.membership_audit_events(event_type,actor_user_id,metadata) VALUES('channel_join_approved',g.user_id,jsonb_build_object('grantId',g.id)); RETURN jsonb_build_object('grantId',g.id); END $$;
+CREATE OR REPLACE FUNCTION public.membership_channel_expiry_candidates() RETURNS SETOF jsonb LANGUAGE sql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$
+ SELECT jsonb_build_object('grant_id',g.id,'telegram_user_id',g.telegram_user_id) FROM public.membership_channel_grants g JOIN public.membership_entitlements e ON e.id=g.entitlement_id WHERE g.revoked_at IS NULL AND NOT e.lifetime AND e.ends_at<=now() AND NOT EXISTS(SELECT 1 FROM public.membership_admin_telegram_links a WHERE a.telegram_user_id=g.telegram_user_id AND a.revoked_at IS NULL) AND NOT EXISTS(SELECT 1 FROM public.membership_channel_exemptions x WHERE x.telegram_user_id=g.telegram_user_id); $$;
+CREATE OR REPLACE FUNCTION public.membership_revoke_channel_grant(p_grant_id uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+BEGIN UPDATE public.membership_channel_grants SET revoked_at=now(),invite_link_hash=NULL WHERE id=p_grant_id AND revoked_at IS NULL; RETURN FOUND; END $$;
+CREATE OR REPLACE FUNCTION public.membership_expire_purchases() RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE n integer;
+BEGIN UPDATE public.membership_purchases SET status='expired',updated_at=now() WHERE status IN ('draft','awaiting_payment','proof_submitted','awaiting_admin_review','rejected') AND expires_at<=now(); GET DIAGNOSTICS n=ROW_COUNT; UPDATE public.membership_voucher_redemptions r SET status='released',released_at=now() FROM public.membership_purchases p WHERE r.purchase_id=p.id AND r.status='reserved' AND p.status IN ('expired','cancelled'); RETURN n; END $$;
+REVOKE ALL ON FUNCTION public.membership_consume_admin_bind_challenge(text,bigint,bigint),public.membership_record_channel_invite(uuid,bigint,text),public.membership_claim_channel_join(bigint,text),public.membership_channel_expiry_candidates(),public.membership_revoke_channel_grant(uuid),public.membership_expire_purchases() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.membership_consume_admin_bind_challenge(text,bigint,bigint),public.membership_record_channel_invite(uuid,bigint,text),public.membership_claim_channel_join(bigint,text),public.membership_channel_expiry_candidates(),public.membership_revoke_channel_grant(uuid),public.membership_expire_purchases() TO service_role;
