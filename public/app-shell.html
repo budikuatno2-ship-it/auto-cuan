@@ -16,6 +16,632 @@
 <body>
   <main id="shell" class="shell"><div><div class="spin"></div><strong>Memuat Auto-Cuan…</strong><p style="font-size:13px;color:#64748b">Menyiapkan dashboard aman.</p></div></main>
   <script>
+
+function portfolioJournalSource() {
+  return '(' + function (win) {
+    'use strict';
+
+    var doc = win.document;
+    var api = null;
+    var editingId = null;
+    var MAX_ENTRIES = 250;
+    var MAX_NOTES_PER_ENTRY = 100;
+    var MAX_TEXT = 1600;
+    var MAX_BACKUP_BYTES = 512 * 1024;
+    var STATUS = Object.freeze({
+      planned: 'Direncanakan',
+      active: 'Aktif',
+      finished: 'Selesai',
+      cancelled: 'Batal'
+    });
+
+    function cleanText(value, maxLength) {
+      return String(value == null ? '' : value)
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+        .trim()
+        .slice(0, maxLength || MAX_TEXT);
+    }
+
+    function normalizeTicker(value) {
+      if (api && typeof api.normalizeTicker === 'function') return api.normalizeTicker(value);
+      var ticker = cleanText(value, 10).toUpperCase().replace(/\.JK$/i, '');
+      return /^[A-Z]{3,5}$/.test(ticker) ? ticker : null;
+    }
+
+    function escapeHtml(value) {
+      if (api && typeof api.escapeHtml === 'function') return api.escapeHtml(value);
+      return String(value == null ? '' : value).replace(/[&<>'"]/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[ch];
+      });
+    }
+
+    function makeId(prefix) {
+      if (win.crypto && typeof win.crypto.randomUUID === 'function') return prefix + '_' + win.crypto.randomUUID();
+      return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+    }
+
+    function validTimestamp(value, fallback) {
+      var n = Number(value);
+      return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+    }
+
+    function sanitizeChecklist(raw) {
+      raw = raw || {};
+      return {
+        setup: !!raw.setup,
+        positionSize: !!raw.positionSize,
+        stopDefined: !!raw.stopDefined,
+        targetDefined: !!raw.targetDefined,
+        riskAccepted: !!raw.riskAccepted
+      };
+    }
+
+    function sanitizeNote(raw) {
+      raw = raw || {};
+      var text = cleanText(raw.text, MAX_TEXT);
+      if (!text) return null;
+      return {
+        id: cleanText(raw.id, 100) || makeId('note'),
+        text: text,
+        timestamp: validTimestamp(raw.timestamp, Date.now())
+      };
+    }
+
+    function sanitizeEntry(raw) {
+      raw = raw || {};
+      var ticker = normalizeTicker(raw.ticker);
+      if (!ticker) return null;
+      var status = Object.prototype.hasOwnProperty.call(STATUS, raw.status) ? raw.status : 'planned';
+      var createdAt = validTimestamp(raw.createdAt, Date.now());
+      var notes = (Array.isArray(raw.notes) ? raw.notes : [])
+        .map(sanitizeNote)
+        .filter(Boolean)
+        .slice(-MAX_NOTES_PER_ENTRY);
+      return {
+        id: cleanText(raw.id, 100) || makeId('journal'),
+        ticker: ticker,
+        status: status,
+        entryReason: cleanText(raw.entryReason, MAX_TEXT),
+        thesis: cleanText(raw.thesis, MAX_TEXT),
+        invalidationReason: cleanText(raw.invalidationReason, MAX_TEXT),
+        targetReason: cleanText(raw.targetReason, MAX_TEXT),
+        checklist: sanitizeChecklist(raw.checklist),
+        notes: notes,
+        createdAt: createdAt,
+        updatedAt: validTimestamp(raw.updatedAt, createdAt)
+      };
+    }
+
+    function parseState(raw) {
+      if (!raw) return { version: 1, entries: [] };
+      var parsed;
+      try { parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; }
+      catch (error) { return { version: 1, entries: [] }; }
+      var source = parsed && parsed.state ? parsed.state : parsed;
+      var entries = source && Array.isArray(source.entries) ? source.entries : [];
+      return {
+        version: 1,
+        entries: entries.map(sanitizeEntry).filter(Boolean).slice(0, MAX_ENTRIES)
+      };
+    }
+
+    win.AutoCuanPortfolioJournalV1 = {
+      cleanText: cleanText,
+      normalizeTicker: normalizeTicker,
+      sanitizeNote: sanitizeNote,
+      sanitizeEntry: sanitizeEntry,
+      parseState: parseState
+    };
+
+    function portfolioKey() {
+      return typeof win.getPortfolioKey === 'function' ? win.getPortfolioKey() : null;
+    }
+
+    function journalKey() {
+      var key = portfolioKey();
+      return key ? key + '_journal_v1' : null;
+    }
+
+    function loadState() {
+      var key = journalKey();
+      if (!key) return { version: 1, entries: [] };
+      return parseState(win.localStorage.getItem(key));
+    }
+
+    function saveState(state) {
+      var key = journalKey();
+      if (!key) return false;
+      var safe = parseState(state);
+      win.localStorage.setItem(key, JSON.stringify(safe));
+      return true;
+    }
+
+    function toast(message, type) {
+      if (typeof win.showToast === 'function') win.showToast(message, type || 'success');
+      else win.alert(message);
+    }
+
+    function activeTickers() {
+      var set = new Set();
+      var positions = typeof win.loadPortfolio === 'function' ? win.loadPortfolio() : [];
+      (Array.isArray(positions) ? positions : []).forEach(function (position) {
+        var ticker = normalizeTicker(position && position.ticker);
+        if (ticker) set.add(ticker);
+      });
+      return set;
+    }
+
+    function formatDate(timestamp) {
+      try {
+        return new Date(timestamp).toLocaleString('id-ID', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        });
+      } catch (error) {
+        return '—';
+      }
+    }
+
+    function checklistCount(checklist) {
+      return Object.keys(sanitizeChecklist(checklist)).filter(function (key) {
+        return !!checklist[key];
+      }).length;
+    }
+
+    function statusTone(status) {
+      if (status === 'active') return 'text-emerald-300 border-emerald-500/25 bg-emerald-500/10';
+      if (status === 'finished') return 'text-blue-300 border-blue-500/25 bg-blue-500/10';
+      if (status === 'cancelled') return 'text-red-300 border-red-500/25 bg-red-500/10';
+      return 'text-amber-300 border-amber-500/25 bg-amber-500/10';
+    }
+
+    function fieldBlock(label, value) {
+      if (!value) return '';
+      return '<div class="rounded-lg border border-dark-600/40 bg-dark-800/30 p-3">' +
+        '<p class="text-[10px] uppercase tracking-wide text-gray-500">' + escapeHtml(label) + '</p>' +
+        '<p class="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-gray-300">' + escapeHtml(value) + '</p>' +
+      '</div>';
+    }
+
+    function entryCard(entry, linked) {
+      var completed = checklistCount(entry.checklist);
+      var nextAction = entry.status === 'planned'
+        ? '<button type="button" data-j-action="status" data-next-status="active" data-id="' + escapeHtml(entry.id) + '" class="pf-action text-emerald-300">Jadikan Aktif</button>'
+        : (entry.status === 'active'
+          ? '<button type="button" data-j-action="status" data-next-status="finished" data-id="' + escapeHtml(entry.id) + '" class="pf-action text-blue-300">Tandai Selesai</button>'
+          : '<button type="button" data-j-action="status" data-next-status="active" data-id="' + escapeHtml(entry.id) + '" class="pf-action">Aktifkan Lagi</button>');
+      var cancelAction = entry.status !== 'cancelled'
+        ? '<button type="button" data-j-action="status" data-next-status="cancelled" data-id="' + escapeHtml(entry.id) + '" class="pf-action text-amber-300">Batalkan</button>'
+        : '';
+      var notes = entry.notes.length
+        ? '<details class="rounded-lg border border-dark-600/40 bg-dark-800/20 p-3"><summary class="cursor-pointer text-xs font-semibold text-blue-300">Catatan perkembangan (' + entry.notes.length + ')</summary><div class="mt-3 space-y-2">' +
+          entry.notes.slice().reverse().map(function (note) {
+            return '<div class="rounded-lg border border-dark-600/30 p-3"><p class="whitespace-pre-wrap text-xs text-gray-300">' + escapeHtml(note.text) + '</p><p class="mt-2 text-[10px] text-gray-500">' + escapeHtml(formatDate(note.timestamp)) + '</p></div>';
+          }).join('') + '</div></details>'
+        : '<p class="text-xs text-gray-500">Belum ada catatan perkembangan.</p>';
+
+      return '<article class="portfolio-card p-4 space-y-3" data-journal-id="' + escapeHtml(entry.id) + '">' +
+        '<div class="flex flex-wrap items-start justify-between gap-3">' +
+          '<div><div class="flex flex-wrap items-center gap-2"><h4 class="text-lg font-black text-white">' + escapeHtml(entry.ticker) + '</h4>' +
+          '<span class="rounded-full border px-2 py-1 text-[10px] font-semibold ' + statusTone(entry.status) + '">' + escapeHtml(STATUS[entry.status]) + '</span>' +
+          (linked ? '<span class="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-300">Terkait posisi aktif</span>' : '') +
+          '</div><p class="mt-1 text-[10px] text-gray-500">Diperbarui ' + escapeHtml(formatDate(entry.updatedAt)) + ' · Checklist ' + completed + '/5</p></div>' +
+        '</div>' +
+        '<div class="grid grid-cols-1 md:grid-cols-2 gap-2">' +
+          fieldBlock('Alasan entry', entry.entryReason) +
+          fieldBlock('Thesis / skenario', entry.thesis) +
+          fieldBlock('Alasan stop / invalidasi', entry.invalidationReason) +
+          fieldBlock('Alasan target / exit', entry.targetReason) +
+        '</div>' +
+        '<div class="rounded-lg border border-dark-600/40 p-3"><p class="text-[10px] uppercase tracking-wide text-gray-500">Checklist</p><p class="mt-1 text-xs text-gray-300">' +
+          [
+            entry.checklist.setup ? '✓ Setup' : '○ Setup',
+            entry.checklist.positionSize ? '✓ Position sizing' : '○ Position sizing',
+            entry.checklist.stopDefined ? '✓ Stop' : '○ Stop',
+            entry.checklist.targetDefined ? '✓ Target' : '○ Target',
+            entry.checklist.riskAccepted ? '✓ Risiko' : '○ Risiko'
+          ].join(' · ') +
+        '</p></div>' +
+        notes +
+        '<div class="flex flex-wrap gap-2">' +
+          '<button type="button" data-j-action="edit" data-id="' + escapeHtml(entry.id) + '" class="pf-action">Edit Rencana</button>' +
+          '<button type="button" data-j-action="note" data-id="' + escapeHtml(entry.id) + '" class="pf-action text-blue-300">Tambah Catatan</button>' +
+          nextAction + cancelAction +
+          '<button type="button" data-j-action="delete" data-id="' + escapeHtml(entry.id) + '" class="pf-action text-red-300">Hapus Jurnal</button>' +
+        '</div>' +
+      '</article>';
+    }
+
+    function renderSummary(entries) {
+      var summary = doc.getElementById('pfJournalSummary');
+      if (!summary) return;
+      var counts = { planned: 0, active: 0, finished: 0, cancelled: 0 };
+      entries.forEach(function (entry) { counts[entry.status] += 1; });
+      summary.innerHTML =
+        '<div class="rounded-lg border border-dark-600/40 p-3"><p class="text-[10px] text-gray-500">Total</p><p class="text-sm font-semibold text-white">' + entries.length + '</p></div>' +
+        '<div class="rounded-lg border border-dark-600/40 p-3"><p class="text-[10px] text-gray-500">Direncanakan</p><p class="text-sm font-semibold text-amber-300">' + counts.planned + '</p></div>' +
+        '<div class="rounded-lg border border-dark-600/40 p-3"><p class="text-[10px] text-gray-500">Aktif</p><p class="text-sm font-semibold text-emerald-300">' + counts.active + '</p></div>' +
+        '<div class="rounded-lg border border-dark-600/40 p-3"><p class="text-[10px] text-gray-500">Selesai / Batal</p><p class="text-sm font-semibold text-blue-300">' + (counts.finished + counts.cancelled) + '</p></div>';
+    }
+
+    function render() {
+      var list = doc.getElementById('pfJournalList');
+      if (!list) return;
+      var key = journalKey();
+      if (!key) {
+        renderSummary([]);
+        list.innerHTML = '<div class="rounded-xl border border-dashed border-dark-600 p-6 text-center text-sm text-gray-500">Masuk ke akun untuk menggunakan jurnal lokal.</div>';
+        return;
+      }
+
+      var entries = loadState().entries;
+      var statusFilter = (doc.getElementById('pfJournalFilterStatus') || {}).value || 'all';
+      var search = cleanText((doc.getElementById('pfJournalSearch') || {}).value, 10).toUpperCase();
+      var filtered = entries.filter(function (entry) {
+        return (statusFilter === 'all' || entry.status === statusFilter) &&
+          (!search || entry.ticker.indexOf(search) !== -1);
+      });
+      var linked = activeTickers();
+      renderSummary(entries);
+      if (!filtered.length) {
+        list.innerHTML = '<div class="rounded-xl border border-dashed border-dark-600 p-6 text-center text-sm text-gray-500">Belum ada jurnal yang cocok dengan filter.</div>';
+        return;
+      }
+      list.innerHTML = filtered
+        .sort(function (a, b) { return b.updatedAt - a.updatedAt; })
+        .map(function (entry) { return entryCard(entry, linked.has(entry.ticker)); })
+        .join('');
+    }
+
+    function resetForm() {
+      editingId = null;
+      var ids = ['pfJournalTicker', 'pfJournalEntryReason', 'pfJournalThesis', 'pfJournalInvalidation', 'pfJournalTargetReason'];
+      ids.forEach(function (id) { var el = doc.getElementById(id); if (el) el.value = ''; });
+      var status = doc.getElementById('pfJournalStatus');
+      if (status) status.value = 'planned';
+      Array.prototype.forEach.call(doc.querySelectorAll('[data-j-check]'), function (box) { box.checked = false; });
+      var save = doc.getElementById('pfJournalSave');
+      if (save) save.textContent = 'Simpan Rencana';
+      var cancel = doc.getElementById('pfJournalCancelEdit');
+      if (cancel) cancel.classList.add('hidden');
+    }
+
+    function formChecklist() {
+      var result = {};
+      Array.prototype.forEach.call(doc.querySelectorAll('[data-j-check]'), function (box) {
+        result[box.getAttribute('data-j-check')] = !!box.checked;
+      });
+      return sanitizeChecklist(result);
+    }
+
+    function readForm() {
+      return sanitizeEntry({
+        id: editingId || makeId('journal'),
+        ticker: (doc.getElementById('pfJournalTicker') || {}).value,
+        status: (doc.getElementById('pfJournalStatus') || {}).value,
+        entryReason: (doc.getElementById('pfJournalEntryReason') || {}).value,
+        thesis: (doc.getElementById('pfJournalThesis') || {}).value,
+        invalidationReason: (doc.getElementById('pfJournalInvalidation') || {}).value,
+        targetReason: (doc.getElementById('pfJournalTargetReason') || {}).value,
+        checklist: formChecklist(),
+        notes: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      });
+    }
+
+    function saveForm() {
+      if (!journalKey()) { toast('Masuk ke akun terlebih dahulu.', 'error'); return; }
+      var entry = readForm();
+      if (!entry) { toast('Ticker harus 3–5 huruf yang valid.', 'error'); return; }
+      if (!entry.entryReason && !entry.thesis && !entry.invalidationReason && !entry.targetReason) {
+        toast('Isi minimal satu bagian alasan atau skenario.', 'error');
+        return;
+      }
+
+      var state = loadState();
+      var existingIndex = editingId ? state.entries.findIndex(function (item) { return item.id === editingId; }) : -1;
+      if (existingIndex >= 0) {
+        var existing = state.entries[existingIndex];
+        entry.createdAt = existing.createdAt;
+        entry.notes = existing.notes;
+        state.entries[existingIndex] = entry;
+      } else {
+        state.entries.unshift(entry);
+      }
+      if (state.entries.length > MAX_ENTRIES) state.entries = state.entries.slice(0, MAX_ENTRIES);
+      saveState(state);
+      resetForm();
+      render();
+      toast(existingIndex >= 0 ? 'Rencana jurnal diperbarui.' : 'Rencana jurnal disimpan.', 'success');
+    }
+
+    function fillForm(entry) {
+      editingId = entry.id;
+      doc.getElementById('pfJournalTicker').value = entry.ticker;
+      doc.getElementById('pfJournalStatus').value = entry.status;
+      doc.getElementById('pfJournalEntryReason').value = entry.entryReason;
+      doc.getElementById('pfJournalThesis').value = entry.thesis;
+      doc.getElementById('pfJournalInvalidation').value = entry.invalidationReason;
+      doc.getElementById('pfJournalTargetReason').value = entry.targetReason;
+      Array.prototype.forEach.call(doc.querySelectorAll('[data-j-check]'), function (box) {
+        box.checked = !!entry.checklist[box.getAttribute('data-j-check')];
+      });
+      doc.getElementById('pfJournalSave').textContent = 'Simpan Perubahan';
+      doc.getElementById('pfJournalCancelEdit').classList.remove('hidden');
+      var section = doc.getElementById('pfJournalSection');
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function openNoteModal(entry) {
+      var modal = doc.getElementById('pfJournalNoteModal');
+      if (!modal) return;
+      modal.setAttribute('data-entry-id', entry.id);
+      doc.getElementById('pfJournalNoteTitle').textContent = 'Catatan ' + entry.ticker;
+      doc.getElementById('pfJournalNoteText').value = '';
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      win.setTimeout(function () { doc.getElementById('pfJournalNoteText').focus(); }, 0);
+    }
+
+    function closeNoteModal() {
+      var modal = doc.getElementById('pfJournalNoteModal');
+      if (!modal) return;
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      modal.removeAttribute('data-entry-id');
+      doc.getElementById('pfJournalNoteText').value = '';
+    }
+
+    function saveNote() {
+      var modal = doc.getElementById('pfJournalNoteModal');
+      var id = modal && modal.getAttribute('data-entry-id');
+      var text = cleanText((doc.getElementById('pfJournalNoteText') || {}).value, MAX_TEXT);
+      if (!id || !text) { toast('Catatan tidak boleh kosong.', 'error'); return; }
+      var state = loadState();
+      var entry = state.entries.find(function (item) { return item.id === id; });
+      if (!entry) { closeNoteModal(); return; }
+      entry.notes.push({ id: makeId('note'), text: text, timestamp: Date.now() });
+      entry.notes = entry.notes.slice(-MAX_NOTES_PER_ENTRY);
+      entry.updatedAt = Date.now();
+      saveState(state);
+      closeNoteModal();
+      render();
+      toast('Catatan perkembangan ditambahkan.', 'success');
+    }
+
+    function onListClick(event) {
+      var button = event.target.closest('button[data-j-action]');
+      if (!button) return;
+      var id = button.getAttribute('data-id');
+      var state = loadState();
+      var index = state.entries.findIndex(function (entry) { return entry.id === id; });
+      if (index < 0) return;
+      var entry = state.entries[index];
+      var action = button.getAttribute('data-j-action');
+
+      if (action === 'edit') {
+        fillForm(entry);
+        return;
+      }
+      if (action === 'note') {
+        openNoteModal(entry);
+        return;
+      }
+      if (action === 'status') {
+        var next = button.getAttribute('data-next-status');
+        if (!Object.prototype.hasOwnProperty.call(STATUS, next)) return;
+        entry.status = next;
+        entry.updatedAt = Date.now();
+        saveState(state);
+        render();
+        toast('Status ' + entry.ticker + ' menjadi ' + STATUS[next] + '.', 'success');
+        return;
+      }
+      if (action === 'delete') {
+        if (!win.confirm('Hapus jurnal ' + entry.ticker + '? Posisi Portfolio tidak akan dihapus.')) return;
+        state.entries.splice(index, 1);
+        saveState(state);
+        if (editingId === id) resetForm();
+        render();
+        toast('Jurnal dihapus.', 'success');
+      }
+    }
+
+    function safeFilename(extension) {
+      return 'auto-cuan-jurnal-' + new Date().toISOString().slice(0, 10) + '.' + extension;
+    }
+
+    function download(filename, content, mime) {
+      var blob = new Blob([content], { type: mime });
+      var url = win.URL.createObjectURL(blob);
+      var link = doc.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      doc.body.appendChild(link);
+      link.click();
+      link.remove();
+      win.setTimeout(function () { win.URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function csvCell(value) {
+      var text = String(value == null ? '' : value);
+      return /[",\n\r]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    }
+
+    function exportJson() {
+      if (!journalKey()) { toast('Masuk ke akun terlebih dahulu.', 'error'); return; }
+      var envelope = {
+        schema: 'autocuan-portfolio-journal-v1',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        state: loadState()
+      };
+      download(safeFilename('json'), JSON.stringify(envelope, null, 2), 'application/json;charset=utf-8');
+      toast('Backup jurnal dibuat.', 'success');
+    }
+
+    function exportCsv() {
+      var entries = loadState().entries;
+      if (!entries.length) { toast('Belum ada jurnal untuk diekspor.', 'warning'); return; }
+      var rows = [['Ticker', 'Status', 'Alasan Entry', 'Thesis', 'Alasan Stop', 'Alasan Target', 'Checklist', 'Catatan', 'Dibuat', 'Diperbarui']];
+      entries.forEach(function (entry) {
+        rows.push([
+          entry.ticker,
+          STATUS[entry.status],
+          entry.entryReason,
+          entry.thesis,
+          entry.invalidationReason,
+          entry.targetReason,
+          checklistCount(entry.checklist) + '/5',
+          entry.notes.map(function (note) { return new Date(note.timestamp).toISOString() + ' - ' + note.text; }).join(' | '),
+          new Date(entry.createdAt).toISOString(),
+          new Date(entry.updatedAt).toISOString()
+        ]);
+      });
+      var csv = '\ufeff' + rows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
+      download(safeFilename('csv'), csv, 'text/csv;charset=utf-8');
+      toast('Jurnal CSV diekspor.', 'success');
+    }
+
+    function importJson(file) {
+      if (!file) return;
+      if (!journalKey()) { toast('Masuk ke akun terlebih dahulu.', 'error'); return; }
+      if (file.size > MAX_BACKUP_BYTES) { toast('File terlalu besar. Maksimal 512 KB.', 'error'); return; }
+      file.text().then(function (text) {
+        var parsed;
+        try { parsed = JSON.parse(text); }
+        catch (error) { throw new Error('File bukan JSON yang valid.'); }
+        if (parsed && parsed.schema && parsed.schema !== 'autocuan-portfolio-journal-v1') throw new Error('Format backup jurnal tidak dikenali.');
+        var state = parseState(parsed);
+        if (!win.confirm('Pulihkan ' + state.entries.length + ' jurnal? Data jurnal akun ini akan diganti.')) return;
+        saveState(state);
+        resetForm();
+        render();
+        toast('Backup jurnal dipulihkan.', 'success');
+      }).catch(function (error) {
+        toast(error && error.message ? error.message : 'Gagal memulihkan jurnal.', 'error');
+      }).finally(function () {
+        var input = doc.getElementById('pfJournalImportInput');
+        if (input) input.value = '';
+      });
+    }
+
+    function buildSection() {
+      if (doc.getElementById('pfJournalSection')) return true;
+      var calcTitle = doc.getElementById('pfCalcTitle');
+      var calcSection = calcTitle && calcTitle.closest('section');
+      if (!calcSection) return false;
+
+      var section = doc.createElement('section');
+      section.id = 'pfJournalSection';
+      section.className = 'portfolio-card p-4 space-y-4';
+      section.innerHTML =
+        '<div class="flex flex-wrap items-start justify-between gap-3">' +
+          '<div><h3 class="text-base font-bold text-white">Jurnal & Rencana Posisi</h3><p class="mt-1 text-xs text-gray-500">Catatan manual per akun di browser. Tidak memakai AI, tidak dikirim ke broker, dan tidak mengubah posisi tanpa tindakan Anda.</p></div>' +
+          '<div class="flex flex-wrap gap-2"><button id="pfJournalExportJson" type="button" class="pf-action text-blue-300">Backup JSON</button><button id="pfJournalImportJson" type="button" class="pf-action text-amber-300">Pulihkan</button><button id="pfJournalExportCsv" type="button" class="pf-action text-emerald-300">Ekspor CSV</button><input id="pfJournalImportInput" type="file" accept="application/json,.json" class="hidden"></div>' +
+        '</div>' +
+        '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">' +
+          '<label class="block"><span class="mb-1 block text-[11px] text-gray-500">Ticker</span><input id="pfJournalTicker" list="pfJournalTickerList" maxlength="8" placeholder="BBCA" class="w-full rounded-lg border border-dark-600/40 bg-dark-800/80 px-3 py-2 text-sm text-gray-100 focus:border-emerald-500/50 focus:outline-none"><datalist id="pfJournalTickerList"></datalist></label>' +
+          '<label class="block"><span class="mb-1 block text-[11px] text-gray-500">Status Rencana</span><select id="pfJournalStatus" class="w-full rounded-lg border border-dark-600/40 bg-dark-800/80 px-3 py-2 text-sm text-gray-100"><option value="planned">Direncanakan</option><option value="active">Aktif</option><option value="finished">Selesai</option><option value="cancelled">Batal</option></select></label>' +
+          '<label class="block"><span class="mb-1 block text-[11px] text-gray-500">Alasan Entry</span><textarea id="pfJournalEntryReason" maxlength="' + MAX_TEXT + '" rows="3" placeholder="Mengapa posisi ini dipertimbangkan?" class="w-full resize-y rounded-lg border border-dark-600/40 bg-dark-800/80 px-3 py-2 text-sm text-gray-100 focus:border-emerald-500/50 focus:outline-none"></textarea></label>' +
+          '<label class="block"><span class="mb-1 block text-[11px] text-gray-500">Thesis / Skenario</span><textarea id="pfJournalThesis" maxlength="' + MAX_TEXT + '" rows="3" placeholder="Skenario yang diharapkan dan kondisi pendukungnya." class="w-full resize-y rounded-lg border border-dark-600/40 bg-dark-800/80 px-3 py-2 text-sm text-gray-100 focus:border-emerald-500/50 focus:outline-none"></textarea></label>' +
+          '<label class="block"><span class="mb-1 block text-[11px] text-gray-500">Alasan Stop / Invalidasi</span><textarea id="pfJournalInvalidation" maxlength="' + MAX_TEXT + '" rows="3" placeholder="Kondisi yang membuat rencana tidak lagi valid." class="w-full resize-y rounded-lg border border-dark-600/40 bg-dark-800/80 px-3 py-2 text-sm text-gray-100 focus:border-emerald-500/50 focus:outline-none"></textarea></label>' +
+          '<label class="block"><span class="mb-1 block text-[11px] text-gray-500">Alasan Target / Exit</span><textarea id="pfJournalTargetReason" maxlength="' + MAX_TEXT + '" rows="3" placeholder="Dasar target atau rencana keluar." class="w-full resize-y rounded-lg border border-dark-600/40 bg-dark-800/80 px-3 py-2 text-sm text-gray-100 focus:border-emerald-500/50 focus:outline-none"></textarea></label>' +
+        '</div>' +
+        '<div class="rounded-xl border border-dark-600/40 p-3"><p class="text-xs font-semibold text-gray-300">Checklist sebelum entry atau menambah posisi</p><div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs text-gray-400">' +
+          '<label class="flex items-center gap-2"><input type="checkbox" data-j-check="setup"> Setup sesuai analisis</label>' +
+          '<label class="flex items-center gap-2"><input type="checkbox" data-j-check="positionSize"> Ukuran posisi dihitung</label>' +
+          '<label class="flex items-center gap-2"><input type="checkbox" data-j-check="stopDefined"> Stop ditentukan</label>' +
+          '<label class="flex items-center gap-2"><input type="checkbox" data-j-check="targetDefined"> Target / exit disiapkan</label>' +
+          '<label class="flex items-center gap-2"><input type="checkbox" data-j-check="riskAccepted"> Risiko dapat diterima</label>' +
+        '</div></div>' +
+        '<div class="flex flex-wrap gap-2"><button id="pfJournalSave" type="button" class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-400">Simpan Rencana</button><button id="pfJournalCancelEdit" type="button" class="pf-action hidden">Batal Edit</button><button id="pfJournalReset" type="button" class="pf-action">Kosongkan Form</button></div>' +
+        '<div class="border-t border-dark-600/40 pt-4 space-y-3">' +
+          '<div class="flex flex-wrap items-end justify-between gap-3"><div><h4 class="text-sm font-bold text-white">Daftar Jurnal</h4><p class="mt-1 text-xs text-gray-500">Jurnal otomatis ditandai ketika ticker yang sama ada di Posisi Aktif.</p></div><div class="flex flex-wrap gap-2"><input id="pfJournalSearch" maxlength="8" placeholder="Cari ticker" class="rounded-lg border border-dark-600/40 bg-dark-800/80 px-3 py-2 text-xs text-gray-100"><select id="pfJournalFilterStatus" class="rounded-lg border border-dark-600/40 bg-dark-800/80 px-3 py-2 text-xs text-gray-100"><option value="all">Semua status</option><option value="planned">Direncanakan</option><option value="active">Aktif</option><option value="finished">Selesai</option><option value="cancelled">Batal</option></select></div></div>' +
+          '<div id="pfJournalSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>' +
+          '<div id="pfJournalList" class="grid grid-cols-1 xl:grid-cols-2 gap-3"></div>' +
+        '</div>';
+
+      calcSection.insertAdjacentElement('afterend', section);
+
+      var modal = doc.createElement('div');
+      modal.id = 'pfJournalNoteModal';
+      modal.className = 'hidden fixed inset-0 z-[10020] items-center justify-center bg-black/70 p-4 backdrop-blur-sm';
+      modal.innerHTML =
+        '<div class="w-full max-w-lg rounded-2xl border border-dark-600 bg-dark-800 p-5 shadow-2xl"><div class="flex items-start justify-between gap-3"><h3 id="pfJournalNoteTitle" class="text-lg font-bold text-white">Tambah Catatan</h3><button id="pfJournalNoteClose" type="button" class="text-xl text-gray-400" aria-label="Tutup">&times;</button></div><textarea id="pfJournalNoteText" maxlength="' + MAX_TEXT + '" rows="6" placeholder="Catat perkembangan, perubahan skenario, atau alasan keputusan." class="mt-4 w-full resize-y rounded-lg border border-dark-600/40 bg-dark-900/70 px-3 py-2 text-sm text-gray-100 focus:border-emerald-500/50 focus:outline-none"></textarea><p class="mt-2 text-xs text-gray-500">Catatan diberi timestamp otomatis dan tetap tersimpan lokal di akun ini.</p><div class="mt-4 flex justify-end gap-2"><button id="pfJournalNoteCancel" type="button" class="pf-action">Batal</button><button id="pfJournalNoteSave" type="button" class="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black">Simpan Catatan</button></div></div>';
+      doc.body.appendChild(modal);
+
+      var style = doc.createElement('style');
+      style.id = 'pfJournalStyles';
+      style.textContent =
+        '#pfJournalSection textarea{min-height:78px}#pfJournalSection .pf-action,#pfJournalNoteModal .pf-action{margin-top:0;min-height:38px}' +
+        '#pfJournalSection article,#pfJournalSection .grid>div{min-width:0}#pfJournalSection p{overflow-wrap:anywhere}' +
+        '#pfJournalNoteModal>div{max-height:90vh;overflow-y:auto}' +
+        '@media(max-width:640px){#pfJournalNoteModal{align-items:flex-end;padding:10px}#pfJournalNoteModal>div{border-bottom-left-radius:0;border-bottom-right-radius:0}}';
+      doc.head.appendChild(style);
+
+      doc.getElementById('pfJournalSave').addEventListener('click', saveForm);
+      doc.getElementById('pfJournalReset').addEventListener('click', resetForm);
+      doc.getElementById('pfJournalCancelEdit').addEventListener('click', resetForm);
+      doc.getElementById('pfJournalList').addEventListener('click', onListClick);
+      doc.getElementById('pfJournalFilterStatus').addEventListener('change', render);
+      doc.getElementById('pfJournalSearch').addEventListener('input', render);
+      doc.getElementById('pfJournalExportJson').addEventListener('click', exportJson);
+      doc.getElementById('pfJournalExportCsv').addEventListener('click', exportCsv);
+      doc.getElementById('pfJournalImportJson').addEventListener('click', function () { doc.getElementById('pfJournalImportInput').click(); });
+      doc.getElementById('pfJournalImportInput').addEventListener('change', function (event) { importJson(event.target.files && event.target.files[0]); });
+      doc.getElementById('pfJournalNoteClose').addEventListener('click', closeNoteModal);
+      doc.getElementById('pfJournalNoteCancel').addEventListener('click', closeNoteModal);
+      doc.getElementById('pfJournalNoteSave').addEventListener('click', saveNote);
+      modal.addEventListener('click', function (event) { if (event.target === modal) closeNoteModal(); });
+      doc.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !modal.classList.contains('hidden')) closeNoteModal();
+      });
+
+      var positions = doc.getElementById('pfPositions');
+      if (positions && typeof win.MutationObserver === 'function') {
+        new win.MutationObserver(function () { render(); }).observe(positions, { childList: true });
+      }
+      var page = doc.getElementById('page-portofolio');
+      if (page && typeof win.MutationObserver === 'function') {
+        new win.MutationObserver(function () {
+          if (!page.classList.contains('hidden')) {
+            refreshTickerOptions();
+            render();
+          }
+        }).observe(page, { attributes: true, attributeFilter: ['class'] });
+      }
+      return true;
+    }
+
+    function refreshTickerOptions() {
+      var list = doc.getElementById('pfJournalTickerList');
+      if (!list) return;
+      list.innerHTML = Array.from(activeTickers()).sort().map(function (ticker) {
+        return '<option value="' + escapeHtml(ticker) + '"></option>';
+      }).join('');
+    }
+
+    function init(attempt) {
+      api = win.AutoCuanPortfolioV1;
+      if (!api || !doc.getElementById('pfCalcTitle') || typeof win.getPortfolioKey !== 'function') {
+        if ((attempt || 0) < 120) win.setTimeout(function () { init((attempt || 0) + 1); }, 100);
+        return;
+      }
+      if (doc.documentElement.hasAttribute('data-pf-journal-ready')) return;
+      doc.documentElement.setAttribute('data-pf-journal-ready', 'true');
+      buildSection();
+      refreshTickerOptions();
+      render();
+    }
+
+    if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { init(0); }, { once: true });
+    else init(0);
+  }.toString() + ')(window);';
+}
+
     (async function () {
       var shell = document.getElementById('shell');
       try {
@@ -23,7 +649,8 @@
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var source = await response.text();
         if (source.indexOf('</body>') === -1) throw new Error('Dokumen dasar tidak valid');
-        source = source.replace('</body>', '<script src="/portfolio-v1-loader-v2.js?v=2"><\/script></body>');
+        var journal = portfolioJournalSource().replace(/<\/script/gi, '<\\/script');
+        source = source.replace('</body>', '<script src="/portfolio-v1-loader-v2.js?v=2"><\/script><script>' + journal + '<\/script></body>');
         document.open(); document.write(source); document.close();
       } catch (error) {
         shell.innerHTML = '<div><h1 style="font-size:20px;color:#f8fafc">Auto-Cuan gagal dimuat</h1><p style="font-size:13px;color:#fca5a5">' + String(error && error.message || 'Kesalahan tidak diketahui').replace(/[&<>"']/g, '') + '</p><button onclick="location.reload()">Coba Lagi</button></div>';
