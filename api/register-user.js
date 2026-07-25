@@ -1,3 +1,4 @@
+const runtimeEnv = require('../lib/runtime-env');
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
 const {
@@ -52,8 +53,8 @@ module.exports = async function handler(req, res) {
     }
 
     // Supabase setup
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const SUPABASE_URL = runtimeEnv.resolve('SUPABASE_URL');
+    const SUPABASE_KEY = runtimeEnv.resolve('SUPABASE_SERVICE_ROLE_KEY');
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
       return res.status(500).json({ success: false, error: 'Database belum dikonfigurasi.' });
