@@ -45,7 +45,7 @@ function makeModelDb() {
   db.seedUser = function (u) {
     const user = Object.assign({
       id: 'user-' + (db._uid++), username: 'u', is_blocked: false, is_approved: false,
-      created_at: iso(now())
+      created_at: iso(now()), membershipAccess: 'active'
     }, u);
     db.users.push(user);
     return user;
@@ -68,6 +68,13 @@ function makeModelDb() {
 
   db.rpc = function (name, args) {
     switch (name) {
+      case 'membership_account_for_telegram': {
+        const v = Object.values(db.verifications).find(function (x) { return String(x.telegram_user_id) === String(args.p_telegram_user_id); });
+        const user = v && db.getUser(v.user_id);
+        if (!user) return ok(null);
+        if (user.username === 'budi' && user.adminBinding === true) return ok({ verified: true, isAdmin: true, botAccess: true });
+        return ok({ verified: true, isAdmin: false, botAccess: user.membershipAccess === 'active' });
+      }
       case 'confirm_channel_join': {
         const v = Object.values(db.verifications).find(function (x) { return x.telegram_user_id === args.p_telegram_user_id; });
         if (!v) return ok([{ outcome: 'not_found', user_id: null, admin_notification_status: null }]);
@@ -178,7 +185,7 @@ function makeFakeBot(opts) {
 // Seed an approved+verified account holding a currently-valid stored invite link.
 function seedApprovedWithInvite(db, opts) {
   opts = opts || {};
-  const user = db.seedUser({ username: opts.username || 'appr', is_approved: true, is_blocked: false });
+  const user = db.seedUser({ username: opts.username || 'appr', is_approved: true, is_blocked: false, membershipAccess: opts.membershipAccess || 'active', adminBinding: opts.adminBinding === true });
   db.seedVerification({
     user_id: user.id,
     telegram_user_id: opts.tgId,
@@ -275,6 +282,25 @@ test('join request: matching approved Telegram id with the stored valid link is 
   assert.ok(adminMsg && adminMsg.text.indexOf('VF-' + user.id) !== -1, 'joined admin notification with deterministic event ref');
   const userMsg = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === '7000'; });
   assert.ok(userMsg && userMsg.text.indexOf('Permintaan bergabung disetujui') !== -1, 'user privately confirmed');
+});
+
+for (const denied of ['none', 'expired', 'revoked']) {
+  test('join request: verified approved user with ' + denied + ' entitlement is declined and old invite cleared', async function () {
+    const db = makeModelDb(); const bot = makeFakeBot();
+    const user = seedApprovedWithInvite(db, { username: 'denied-' + denied, tgId: 9100 + denied.length, link: 'https://t.me/+old-' + denied, membershipAccess: denied });
+    const res = await tv.processWebhookUpdate(joinRequest(900 + denied.length, 9100 + denied.length, CHANNEL_ID, 'https://t.me/+old-' + denied), { supabase: db, bot });
+    assert.equal(res.outcome, 'declined_membership_required');
+    assert.equal(bot.calls.approveChatJoinRequest.length, 0);
+    assert.equal(bot.calls.declineChatJoinRequest.length, 1);
+    assert.equal(db.verifications[user.id].dynamic_invite_link, null);
+  });
+}
+
+test('join request: securely bound Budi is exempt from purchase', async function () {
+  const db = makeModelDb(); const bot = makeFakeBot();
+  seedApprovedWithInvite(db, { username: 'budi', tgId: 9191, link: 'https://t.me/+admin', membershipAccess: 'none', adminBinding: true });
+  const res = await tv.processWebhookUpdate(joinRequest(9191, 9191, CHANNEL_ID, 'https://t.me/+admin'), { supabase: db, bot });
+  assert.equal(res.outcome, 'joined'); assert.equal(bot.calls.approveChatJoinRequest.length, 1);
 });
 
 test('join request: channel_joined_at is set ONLY after approveChatJoinRequest succeeds', async function () {

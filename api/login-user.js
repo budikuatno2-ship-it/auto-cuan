@@ -4,6 +4,7 @@ const { createSessionToken, buildSessionCookie, buildClearCookie, getSessionSecr
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
+const membershipWebhook = require('../lib/telegram-membership-webhook');
 
 const MAX_DEVICES = 3;
 
@@ -69,15 +70,27 @@ async function handleVerifyWebhook(req, res) {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 
+  const result = await dispatchWebhookResponse(update, { supabase, bot: createVerifyBot(), membership: membershipWebhook });
+  return res.status(result.status).json(result.body);
+}
+async function dispatchWebhookResponse(update, deps) {
+  const isMembership = deps.membership.isMembershipUpdate(update);
   try {
-    const bot = createVerifyBot();
-    const result = await telegramVerification.processWebhookUpdate(update, { supabase, bot });
-    // Only a coarse outcome code is returned/logged — never raw user input.
-    return res.status(200).json({ ok: true, outcome: result && result.outcome });
-  } catch (e) {
-    // Never leak internals; still ack to avoid unbounded Telegram retries.
-    return res.status(200).json({ ok: true });
+    const result = await dispatchTelegramUpdate(update, deps);
+    return { status: 200, body: { ok: true, outcome: result && result.outcome } };
+  } catch (error) {
+    if (isMembership) return { status: 500, body: { ok: false, retryable: true } };
+    return { status: 200, body: { ok: true } };
   }
+}
+async function dispatchTelegramUpdate(update, deps) {
+  const membership = deps.membership;
+  if (update.chat_join_request) {
+    const joinOutcome = await membership.processChannelJoinRequest(update, { bot: deps.bot });
+    if (joinOutcome) return { outcome: joinOutcome };
+  }
+  if (membership.isMembershipUpdate(update)) return { outcome: await membership.processUpdate(update) };
+  return telegramVerification.processWebhookUpdate(update, { supabase: deps.supabase, bot: deps.bot });
 }
 const LEGACY_BUDI_PASSWORD_HASH = crypto
   .createHash('sha256')
@@ -116,6 +129,15 @@ function issueSessionCookie(res, user, usernameLower, deviceId) {
     // Never log token/secret/device. Fail-closed: no session is considered issued.
   }
   return result;
+}
+
+async function mayIssueDashboardSession(supabase, user, usernameLower) {
+  if (usernameLower === 'budi') return true;
+  try {
+    const result = await supabase.rpc('membership_dashboard_access', { p_user_id: user.id });
+    const value = Array.isArray(result.data) ? result.data[0] : result.data;
+    return !result.error && value && value.allowed === true;
+  } catch (error) { return false; }
 }
 
 module.exports = async function handler(req, res) {
@@ -265,6 +287,17 @@ module.exports = async function handler(req, res) {
       return res.status(403).json(pendingResponse);
     }
 
+    // A correct password and Telegram verification alone never create a web
+    // dashboard session. Normal users require an active Lifetime entitlement.
+    if (!await mayIssueDashboardSession(supabase, user, usernameLower)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Dashboard terkunci. Aktifkan paket Lifetime melalui bot utama Auto-Cuan.',
+        dashboard_locked: true,
+        telegram_bot_url: telegramVerification.BOT_URL
+      });
+    }
+
     // === REVIEW USER: bypass device binding ===
     if (usernameLower === 'review') {
       const { error: updateError } = await supabase
@@ -350,3 +383,7 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
   }
 };
+module.exports.secretsMatch = secretsMatch;
+module.exports.mayIssueDashboardSession = mayIssueDashboardSession;
+module.exports.dispatchTelegramUpdate = dispatchTelegramUpdate;
+module.exports.dispatchWebhookResponse = dispatchWebhookResponse;

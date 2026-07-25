@@ -1,11 +1,12 @@
 const { createClient } = require('@supabase/supabase-js');
 const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
 const telegramNotifier = require('../lib/telegram-notifier');
-const telegramVerification = require('../lib/telegram-verification');
 const telegramLifecycle = require('../lib/telegram-lifecycle');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const { computeTelegramAnalytics } = require('../lib/telegram-analytics');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
+const membership = require('../lib/telegram-membership');
+const membershipService = require('../lib/telegram-membership-service');
 
 const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
 
@@ -84,6 +85,43 @@ module.exports = async function handler(req, res) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
+
+    if (action === 'membership_admin_bind_challenge') {
+      if (!process.env.ADMIN_TELEGRAM_BIND_PEPPER) return res.status(503).json({ success: false, error: 'Admin binding belum dikonfigurasi.' });
+      const rawCode = membership.generateVoucherCode(12);
+      const codeHash = membership.voucherHash(rawCode, process.env.ADMIN_TELEGRAM_BIND_PEPPER);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      await supabase.from('membership_admin_bind_challenges').update({ used_at: new Date().toISOString() }).eq('user_id', auth.session.uid).is('used_at', null);
+      const inserted = await supabase.from('membership_admin_bind_challenges').insert({ user_id: auth.session.uid, code_hash: codeHash, expires_at: expiresAt });
+      if (inserted.error) return res.status(500).json({ success: false, error: 'Gagal membuat kode binding.' });
+      return res.status(200).json({ success: true, code: rawCode, expires_at: expiresAt });
+    }
+
+    if (action === 'membership_payment_list') return res.status(200).json({ success: true, pending: await membershipService.pending() });
+    if (action === 'membership_payment_proof') {
+      if (!/^[0-9a-f-]{36}$/i.test(req.body.proofId || '')) return res.status(400).json({ success: false, error: 'Bukti tidak valid.' });
+      const proof = await membershipService.proof(req.body.proofId);
+      if (proof.file_size > membership.MAX_PROOF_BYTES) return res.status(413).json({ success: false, error: 'Bukti terlalu besar.' });
+      const bytes = await createVerifyBot().downloadFile(proof.telegram_file_id, membership.MAX_PROOF_BYTES);
+      if (bytes.length > membership.MAX_PROOF_BYTES || bytes.length > proof.file_size) return res.status(413).json({ success: false, error: 'Bukti terlalu besar.' });
+      res.setHeader('Content-Type', proof.mime_type); res.setHeader('Cache-Control', 'private, no-store');
+      return res.status(200).send(bytes);
+    }
+    if (action === 'membership_payment_review') {
+      const approve = req.body.decision === 'approve';
+      if (!approve && req.body.decision !== 'reject') return res.status(400).json({ success: false, error: 'Keputusan tidak valid.' });
+      if (!/^[A-Za-z0-9_-]{16,128}$/.test(req.body.idempotencyKey || '')) return res.status(400).json({ success: false, error: 'Idempotency key diperlukan.' });
+      const result = await membershipService.review(req.body.purchaseId, approve, req.body.reason, auth.session.uid, req.body.idempotencyKey);
+      return res.status(200).json({ success: true, result, audit: await membershipService.audit(req.body.purchaseId) });
+    }
+
+    if (action === 'membership_expiry_enforcement') {
+      const report = await membershipService.runChannelExpiryEnforcement({
+        enabled: process.env.CHANNEL_DESTRUCTIVE_ENFORCEMENT_ENABLED === '1', confirm: req.body.confirm,
+        channelId: process.env.TELEGRAM_VERIFY_CHANNEL_ID, bot: createVerifyBot()
+      });
+      return res.status(200).json({ success: true, report });
+    }
 
     // === LIST USERS ===
     if (action === 'list') {
@@ -261,9 +299,8 @@ module.exports = async function handler(req, res) {
     // A pending account may be approved ONLY when its Telegram identity is bound
     // and verified, a private chat is known, it is not blocked, and it is not a
     // reserved account. Existing already-approved accounts (including budi) are
-    // left untouched. On a genuine false->true transition we create + deliver a
-    // dynamic single-use channel invite; a delivery failure NEVER rolls back the
-    // approval (it is persisted as retryable and surfaced as a warning).
+    // left untouched. Account approval establishes identity only; paid channel
+    // access is always requested separately through the membership bot.
     if (action === 'approve') {
       if (!username) {
         return res.status(400).json({ success: false, error: 'Username diperlukan.' });
@@ -353,30 +390,13 @@ module.exports = async function handler(req, res) {
       // Legacy approval announcement (dedicated approval chat; unchanged).
       const approvalNotification = await sendApprovalNotification(transitionedUser);
 
-      // Stage 3: create + deliver the dynamic single-use channel invite. Fully
-      // guarded — the account stays approved even if delivery fails.
-      let inviteDelivery = { status: 'skipped' };
-      try {
-        inviteDelivery = await telegramVerification.deliverApprovalInvite(
-          { supabase: supabase, bot: createVerifyBot() },
-          transitionedUser.id
-        );
-      } catch (e) {
-        inviteDelivery = { status: 'error', warning: 'invite_delivery_exception' };
-      }
-
-      const inviteOk = inviteDelivery && inviteDelivery.status === 'sent';
       const response = {
         success: true,
         approval_transitioned: true,
-        message: 'User ' + targetUser + ' berhasil di-approve.',
+        message: 'User ' + targetUser + ' berhasil di-approve. Akses channel memerlukan paket aktif dan harus diminta melalui bot utama.',
         approval_notification: approvalNotification,
-        invite_delivery: { status: inviteDelivery ? inviteDelivery.status : 'unknown' }
+        invite_delivery: { status: 'skipped', reason: 'membership_required' }
       };
-      if (!inviteOk) {
-        response.warning = 'Akun sudah di-approve, tetapi pengiriman link channel belum berhasil. Gunakan "Kirim Ulang Invite" untuk mencoba lagi.';
-        response.invite_delivery.retryable = true;
-      }
       return res.status(200).json(response);
     }
 
@@ -407,21 +427,10 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ success: false, error: 'Invite hanya bisa dikirim untuk akun yang sudah disetujui dan tidak diblokir.' });
       }
 
-      let inviteDelivery = { status: 'skipped' };
-      try {
-        inviteDelivery = await telegramVerification.deliverApprovalInvite(
-          { supabase: supabase, bot: createVerifyBot() },
-          acct.id
-        );
-      } catch (e) {
-        inviteDelivery = { status: 'error', warning: 'invite_delivery_exception' };
-      }
-
-      const inviteOk = inviteDelivery && inviteDelivery.status === 'sent';
-      return res.status(200).json({
-        success: true,
-        invite_delivery: { status: inviteDelivery ? inviteDelivery.status : 'unknown', retryable: !inviteOk },
-        message: inviteOk ? 'Link channel berhasil dikirim ulang.' : 'Pengiriman link channel belum berhasil. Coba lagi nanti.'
+      return res.status(409).json({
+        success: false,
+        invite_delivery: { status: 'skipped', reason: 'membership_flow_required' },
+        message: 'Invite lama dinonaktifkan. User harus memiliki paket aktif dan memakai menu Akses Channel pada bot utama.'
       });
     }
 

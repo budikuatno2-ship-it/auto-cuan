@@ -102,6 +102,9 @@ function supabaseWithUser(user, capture) {
         if (name === 'issue_telegram_challenge') {
           return Promise.resolve({ data: [{ challenge_id: 'ch1', expires_at: new Date().toISOString() }], error: null });
         }
+        if (name === 'membership_dashboard_access') {
+          return Promise.resolve({ data: { allowed: !!(user && user.test_lifetime) }, error: null });
+        }
         return Promise.resolve({ data: null, error: null });
       }
     };
@@ -290,7 +293,7 @@ test('register-user normalizes/ backfills device id (never null)', () => {
 // 14 + 16 + 20 + 21. Login validates account+password; device id alone cannot auth.
 test('login-user requires the correct password; device id alone cannot authenticate', async () => {
   await withEnv(async function () {
-    const user = { id: 'u1', username: 'alice', password_hash: 'goodhash', devices: ['dev_known'], is_blocked: false, is_approved: true };
+    const user = { id: 'u1', username: 'alice', password_hash: 'goodhash', devices: ['dev_known'], is_blocked: false, is_approved: true, test_lifetime: true };
     // Correct password + known device -> success, and NO password in response
     let handler = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(user));
     let res = makeRes();

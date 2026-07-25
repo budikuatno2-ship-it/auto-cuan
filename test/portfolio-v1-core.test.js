@@ -101,9 +101,11 @@ test('portfolio summary excludes unavailable quote values instead of treating th
   assert.equal(summary.incomplete, true);
 });
 
-test('app shell injects only Portfolio V1 script and does not contain screener logic', () => {
+test('app shell injects Portfolio V1 loader v2 and Portfolio Journal without screener logic', () => {
   const shell = fs.readFileSync(path.join(__dirname, '../public/app-shell.html'), 'utf8');
-  assert.match(shell, /portfolio-v1-loader\.js\?v=1/);
+  assert.match(shell, /portfolio-v1-loader-v2\.js\?v=2/);
+  assert.match(shell, /portfolioJournalSource\(\)/);
+  assert.match(shell, /AutoCuanPortfolioJournalV1/);
   assert.doesNotMatch(shell, /swing|konglo|daytrade_score|sector-hot/i);
 });
 
