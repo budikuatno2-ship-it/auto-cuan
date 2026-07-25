@@ -94,9 +94,10 @@ test('channel access comes from server-owned channel flags rather than every pai
   assert.equal(core.accessFor({...base,entitlement:{status:'active',lifetime:true,endsAt:null},channelAccess:true,dashboardAccess:true}).dashboard,true);
 });
 
-test('V2 migrations encode the 30/90/lifetime and Rp10k channel rules',()=>{
+test('V2 migrations encode checkout, Rp10k renewal, and hard channel expiry guards',()=>{
   const schema=fs.readFileSync('supabase/telegram-membership-v2-01-checkout-schema.sql','utf8');
   const approval=fs.readFileSync('supabase/telegram-membership-v2-02-channel-approval.sql','utf8');
+  const expiry=fs.readFileSync('supabase/telegram-membership-v2-03-channel-expiry-guard.sql','utf8');
   assert.match(schema,/channel-addon-30/);
   assert.match(schema,/30,false,10000,true/);
   assert.match(schema,/Bot 30 Hari[\s\S]*Tidak termasuk akses channel/);
@@ -106,5 +107,7 @@ test('V2 migrations encode the 30/90/lifetime and Rp10k channel rules',()=>{
   assert.match(approval,/base_package\.duration_days=90/);
   assert.match(approval,/covered_end\+interval '30 days'/);
   assert.match(approval,/channel_not_included/);
-  assert.doesNotMatch(schema+approval,/password_hash|device_id|raw_code|voucher_pepper/);
+  assert.match(expiry,/grant_row\.expires_at IS NOT NULL AND grant_row\.expires_at<=now\(\)/);
+  assert.match(expiry,/expires_at IS NULL OR expires_at>now\(\)/);
+  assert.doesNotMatch(schema+approval+expiry,/password_hash|device_id|raw_code|voucher_pepper/);
 });
