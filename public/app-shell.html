@@ -270,6 +270,324 @@
       }.toString() + ')(window);';
     }
 
+    function portfolioBatchToolsSource() {
+      return '(' + function (win) {
+        'use strict';
+        var doc = win.document;
+        var api = null;
+        var renderQueued = false;
+        var restoreBusy = false;
+        var MAX_BACKUP_BYTES = 1024 * 1024;
+        var MAX_POSITIONS = 250;
+
+        function toast(message, type) {
+          if (typeof win.showToast === 'function') win.showToast(message, type || 'success');
+          else win.alert(message);
+        }
+
+        function money(value) {
+          if (value == null || !Number.isFinite(Number(value))) return '—';
+          var amount = Math.round(Number(value));
+          return (amount < 0 ? '-Rp ' : 'Rp ') + Math.abs(amount).toLocaleString('id-ID');
+        }
+
+        function pct(value) {
+          return value == null || !Number.isFinite(Number(value)) ? '—' : Number(value).toFixed(2) + '%';
+        }
+
+        function currentKey() {
+          return typeof win.getPortfolioKey === 'function' ? win.getPortfolioKey() : null;
+        }
+
+        function readState() {
+          var key = currentKey();
+          if (!key) return null;
+          return api.parseStoredState(win.localStorage.getItem(key));
+        }
+
+        function sanitizeState(raw) {
+          var source = raw && raw.state ? raw.state : raw;
+          if (!source || (!Array.isArray(source.positions) && !Array.isArray(source.history))) return null;
+          var rawPositions = Array.isArray(source.positions) ? source.positions.slice(0, MAX_POSITIONS) : [];
+          var rawHistory = Array.isArray(source.history) ? source.history.slice(-api.MAX_HISTORY) : [];
+          return {
+            version: 1,
+            positions: rawPositions.map(api.sanitizePosition).filter(Boolean),
+            history: rawHistory.map(api.sanitizeHistory).filter(Boolean)
+          };
+        }
+
+        function writeState(state) {
+          var key = currentKey();
+          if (!key) return false;
+          win.localStorage.setItem(key, JSON.stringify(state));
+          if (typeof win.renderPortfolio === 'function') win.renderPortfolio();
+          queueRiskRender();
+          return true;
+        }
+
+        function safeFilename(prefix, extension) {
+          var date = new Date().toISOString().slice(0, 10);
+          return prefix + '-' + date + '.' + extension;
+        }
+
+        function downloadText(filename, text, mime) {
+          var blob = new Blob([text], { type: mime || 'text/plain;charset=utf-8' });
+          var url = win.URL.createObjectURL(blob);
+          var link = doc.createElement('a');
+          link.href = url;
+          link.download = filename;
+          link.style.display = 'none';
+          doc.body.appendChild(link);
+          link.click();
+          link.remove();
+          win.setTimeout(function () { win.URL.revokeObjectURL(url); }, 1000);
+        }
+
+        function csvCell(value) {
+          var text = String(value == null ? '' : value);
+          return /[",\n\r]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+        }
+
+        function exportBackup() {
+          var state = readState();
+          if (!state) { toast('Masuk ke akun terlebih dahulu sebelum membuat backup.', 'error'); return; }
+          var envelope = {
+            schema: 'autocuan-portfolio-v1',
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            state: state
+          };
+          downloadText(safeFilename('auto-cuan-portfolio-backup', 'json'), JSON.stringify(envelope, null, 2), 'application/json;charset=utf-8');
+          toast('Backup Portfolio dibuat. Simpan file ini secara pribadi.', 'success');
+        }
+
+        function exportHistory() {
+          var state = readState();
+          if (!state) { toast('Masuk ke akun terlebih dahulu.', 'error'); return; }
+          if (!state.history.length) { toast('Belum ada riwayat transaksi untuk diekspor.', 'warning'); return; }
+          var rows = [['Waktu','Ticker','Aksi','Lot','Harga','Realized P/L']];
+          state.history.forEach(function (item) {
+            rows.push([
+              new Date(item.timestamp).toISOString(), item.ticker, item.action,
+              item.lots, item.price, item.realizedPL
+            ]);
+          });
+          var csv = '\ufeff' + rows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n');
+          downloadText(safeFilename('auto-cuan-riwayat-transaksi', 'csv'), csv, 'text/csv;charset=utf-8');
+          toast('Riwayat transaksi berhasil diekspor.', 'success');
+        }
+
+        function restoreFromFile(file) {
+          if (restoreBusy || !file) return;
+          if (file.size > MAX_BACKUP_BYTES) { toast('File backup terlalu besar. Maksimal 1 MB.', 'error'); return; }
+          var key = currentKey();
+          if (!key) { toast('Masuk ke akun terlebih dahulu sebelum memulihkan backup.', 'error'); return; }
+          restoreBusy = true;
+          file.text().then(function (text) {
+            var parsed;
+            try { parsed = JSON.parse(text); }
+            catch (error) { throw new Error('File bukan JSON yang valid.'); }
+            if (parsed && parsed.schema && parsed.schema !== 'autocuan-portfolio-v1') throw new Error('Format backup tidak dikenali.');
+            var state = sanitizeState(parsed);
+            if (!state) throw new Error('Backup tidak berisi data Portfolio yang valid.');
+            var originalPositions = parsed && parsed.state && Array.isArray(parsed.state.positions) ? parsed.state.positions.length : (Array.isArray(parsed.positions) ? parsed.positions.length : 0);
+            var originalHistory = parsed && parsed.state && Array.isArray(parsed.state.history) ? parsed.state.history.length : (Array.isArray(parsed.history) ? parsed.history.length : 0);
+            var message = 'Pulihkan ' + state.positions.length + ' posisi dan ' + state.history.length + ' riwayat ke akun yang sedang login? Data Portfolio lokal saat ini akan diganti.';
+            if (!win.confirm(message)) return;
+            writeState(state);
+            var discarded = (originalPositions - state.positions.length) + (originalHistory - state.history.length);
+            toast(discarded > 0 ? 'Backup dipulihkan; ' + discarded + ' record tidak valid diabaikan.' : 'Backup Portfolio berhasil dipulihkan.', discarded > 0 ? 'warning' : 'success');
+          }).catch(function (error) {
+            toast(error && error.message ? error.message : 'Gagal membaca backup.', 'error');
+          }).finally(function () {
+            restoreBusy = false;
+            var input = doc.getElementById('pfRestoreInput');
+            if (input) input.value = '';
+          });
+        }
+
+        function ensureStyles() {
+          if (doc.getElementById('pfBatchStyles')) return;
+          var style = doc.createElement('style');
+          style.id = 'pfBatchStyles';
+          style.textContent = '' +
+            '[data-portfolio-v1] .portfolio-card,[data-portfolio-v1] article,[data-portfolio-v1] .grid>div{min-width:0}' +
+            '#pfPositions article .grid p:last-child,#pfSummary p:last-child{overflow-wrap:anywhere;word-break:normal;line-height:1.3}' +
+            '#pfPositions .pf-action{min-height:40px;margin-top:0}' +
+            '#pfDataToolbar button{margin-top:0;min-height:40px}' +
+            '#pfRiskInsights .pf-risk-card{min-width:0}' +
+            '#pfModal>div{max-height:min(90vh,760px);display:flex;flex-direction:column}' +
+            '#pfModalBody{overflow-y:auto;overscroll-behavior:contain;padding-right:2px}' +
+            'body.pf-modal-open{overflow:hidden}' +
+            '@media(max-width:640px){#pfModal{padding:10px;align-items:flex-end}#pfModal>div{max-height:92vh;border-bottom-left-radius:0;border-bottom-right-radius:0}#pfDataToolbar .pf-data-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}#pfDataToolbar .pf-data-actions button:last-of-type{grid-column:1/-1}#pfPositions article .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}';
+          doc.head.appendChild(style);
+        }
+
+        function ensureToolbar() {
+          if (doc.getElementById('pfDataToolbar')) return;
+          var root = doc.querySelector('[data-portfolio-v1="true"]');
+          var head = root && root.querySelector('.portfolio-head-row');
+          if (!head) return;
+          var section = doc.createElement('section');
+          section.id = 'pfDataToolbar';
+          section.className = 'portfolio-card p-4 flex flex-wrap items-center justify-between gap-3';
+          section.innerHTML = '' +
+            '<div><h3 class="text-sm font-bold text-white">Data Portfolio Lokal</h3><p class="text-xs text-gray-500 mt-1">Backup dan ekspor hanya memakai data akun ini di browser. Tidak dikirim ke broker atau AI.</p></div>' +
+            '<div class="pf-data-actions flex flex-wrap gap-2">' +
+              '<button id="pfBackupJson" type="button" class="px-3 py-2 rounded-lg text-xs text-blue-300 border border-blue-500/30 hover:bg-blue-500/10">Backup JSON</button>' +
+              '<button id="pfRestoreJson" type="button" class="px-3 py-2 rounded-lg text-xs text-amber-300 border border-amber-500/30 hover:bg-amber-500/10">Pulihkan Backup</button>' +
+              '<button id="pfExportHistory" type="button" class="px-3 py-2 rounded-lg text-xs text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10">Ekspor Riwayat CSV</button>' +
+              '<input id="pfRestoreInput" type="file" accept="application/json,.json" class="hidden">' +
+            '</div>';
+          head.insertAdjacentElement('afterend', section);
+          doc.getElementById('pfBackupJson').addEventListener('click', exportBackup);
+          doc.getElementById('pfExportHistory').addEventListener('click', exportHistory);
+          doc.getElementById('pfRestoreJson').addEventListener('click', function () { doc.getElementById('pfRestoreInput').click(); });
+          doc.getElementById('pfRestoreInput').addEventListener('change', function (event) { restoreFromFile(event.target.files && event.target.files[0]); });
+        }
+
+        function ensureRiskPanel() {
+          var summary = doc.getElementById('pfSummary');
+          if (!summary) return null;
+          var panel = doc.getElementById('pfRiskInsights');
+          if (panel) return panel;
+          panel = doc.createElement('section');
+          panel.id = 'pfRiskInsights';
+          panel.className = 'portfolio-card p-4 space-y-3';
+          summary.insertAdjacentElement('afterend', panel);
+          return panel;
+        }
+
+        function riskReport() {
+          var positions = typeof win.loadPortfolio === 'function' ? win.loadPortfolio() : [];
+          var summary = api.portfolioSummary(positions);
+          var largest = null;
+          var warnings = [];
+
+          positions.forEach(function (position) {
+            var metrics = api.positionMetrics(position);
+            var concentration = summary.invested > 0 ? metrics.invested / summary.invested * 100 : 0;
+            if (!largest || concentration > largest.concentration) largest = { ticker: position.ticker, concentration: concentration, invested: metrics.invested };
+
+            var rate = api.RISK_PROFILES[position.riskProfile] || 0;
+            var allowedRisk = Number(position.riskBudget || 0) * rate;
+            if (allowedRisk > 0 && metrics.estimatedLossAtStop > allowedRisk * 1.05) {
+              warnings.push({ tone: 'amber', text: position.ticker + ': estimasi risiko ke stop ' + money(metrics.estimatedLossAtStop) + ' melebihi batas profil awal ' + money(allowedRisk) + '.' });
+            }
+            if (metrics.priced && position.lastPrice <= position.stop) {
+              warnings.push({ tone: 'red', text: position.ticker + ': harga terakhir sudah sama dengan atau di bawah stop/invalidation.' });
+            } else if (metrics.priced && metrics.distanceCurrentToStopPct != null && metrics.distanceCurrentToStopPct <= 3) {
+              warnings.push({ tone: 'amber', text: position.ticker + ': jarak harga terakhir ke stop tinggal ' + pct(metrics.distanceCurrentToStopPct) + '.' });
+            }
+            if (position.priceStale) warnings.push({ tone: 'gray', text: position.ticker + ': harga yang dipakai bertanda T-1/stale.' });
+            if (!metrics.priced) warnings.push({ tone: 'gray', text: position.ticker + ': harga belum tersedia sehingga total nilai belum lengkap.' });
+          });
+
+          if (largest && largest.concentration >= 50) {
+            warnings.unshift({ tone: 'amber', text: largest.ticker + ' mencakup ' + pct(largest.concentration) + ' dari modal aktif. Ini menunjukkan konsentrasi posisi yang tinggi.' });
+          } else if (largest && largest.concentration >= 35) {
+            warnings.unshift({ tone: 'gray', text: largest.ticker + ' mencakup ' + pct(largest.concentration) + ' dari modal aktif.' });
+          }
+
+          var totalRiskPct = summary.invested > 0 ? summary.estimatedRisk / summary.invested * 100 : null;
+          if (totalRiskPct != null && totalRiskPct > 5) {
+            warnings.unshift({ tone: 'amber', text: 'Estimasi risiko seluruh posisi ke stop mencapai ' + pct(totalRiskPct) + ' dari modal aktif.' });
+          }
+          return { positions: positions, summary: summary, largest: largest, totalRiskPct: totalRiskPct, warnings: warnings.slice(0, 8) };
+        }
+
+        function renderRiskPanel() {
+          renderQueued = false;
+          var panel = ensureRiskPanel();
+          if (!panel) return;
+          var report = riskReport();
+          if (!report.positions.length) {
+            panel.innerHTML = '<div><h3 class="text-sm font-bold text-white">Kontrol Risiko Portfolio</h3><p class="text-xs text-gray-500 mt-1">Tambahkan posisi untuk melihat konsentrasi, risiko total ke stop, dan kualitas harga.</p></div>';
+            return;
+          }
+          var issueCount = report.summary.stale + report.summary.unavailable;
+          var largestText = report.largest ? report.largest.ticker + ' · ' + pct(report.largest.concentration) : '—';
+          var cards = '' +
+            '<div class="pf-risk-card rounded-xl border border-dark-600/40 bg-dark-800/30 p-3"><p class="text-[10px] text-gray-500">Konsentrasi Terbesar</p><p class="text-sm font-semibold text-gray-200">' + api.escapeHtml(largestText) + '</p></div>' +
+            '<div class="pf-risk-card rounded-xl border border-dark-600/40 bg-dark-800/30 p-3"><p class="text-[10px] text-gray-500">Risiko Total ke Stop</p><p class="text-sm font-semibold text-amber-300">' + api.escapeHtml(money(report.summary.estimatedRisk) + ' · ' + pct(report.totalRiskPct)) + '</p></div>' +
+            '<div class="pf-risk-card rounded-xl border border-dark-600/40 bg-dark-800/30 p-3"><p class="text-[10px] text-gray-500">Quote Stale / Tidak Ada</p><p class="text-sm font-semibold ' + (issueCount ? 'text-amber-300' : 'text-emerald-300') + '">' + report.summary.stale + ' / ' + report.summary.unavailable + '</p></div>';
+          var warnings = report.warnings.length ? '<div class="space-y-2">' + report.warnings.map(function (warning) {
+            var cls = warning.tone === 'red' ? 'border-red-500/20 bg-red-500/10 text-red-200' : (warning.tone === 'amber' ? 'border-amber-500/20 bg-amber-500/10 text-amber-200' : 'border-dark-600/40 bg-dark-800/30 text-gray-400');
+            return '<p class="rounded-lg border p-3 text-xs ' + cls + '">' + api.escapeHtml(warning.text) + '</p>';
+          }).join('') + '</div>' : '<p class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-200">Belum ada peringatan angka berdasarkan posisi dan harga terakhir yang tersedia.</p>';
+          panel.innerHTML = '' +
+            '<div><h3 class="text-sm font-bold text-white">Kontrol Risiko Portfolio</h3><p class="text-xs text-gray-500 mt-1">Ringkasan deterministik dari modal, stop, dan quote. Bukan rekomendasi transaksi.</p></div>' +
+            '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">' + cards + '</div>' + warnings;
+        }
+
+        function queueRiskRender() {
+          if (renderQueued) return;
+          renderQueued = true;
+          var schedule = win.requestAnimationFrame || function (callback) { return win.setTimeout(callback, 16); };
+          schedule(renderRiskPanel);
+        }
+
+        function bindRenderObservers() {
+          if (doc.documentElement.hasAttribute('data-pf-batch-observers')) return;
+          doc.documentElement.setAttribute('data-pf-batch-observers', 'true');
+          var positions = doc.getElementById('pfPositions');
+          var summary = doc.getElementById('pfSummary');
+          if (typeof win.MutationObserver === 'function') {
+            if (positions) new win.MutationObserver(queueRiskRender).observe(positions, { childList: true });
+            if (summary) new win.MutationObserver(queueRiskRender).observe(summary, { childList: true });
+          }
+        }
+
+        function bindModalQA() {
+          var modal = doc.getElementById('pfModal');
+          if (!modal || modal.hasAttribute('data-pf-batch-bound')) return;
+          modal.setAttribute('data-pf-batch-bound', 'true');
+          modal.addEventListener('click', function (event) {
+            if (event.target === modal) {
+              var close = doc.getElementById('pfModalClose');
+              if (close) close.click();
+            }
+          });
+          doc.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+              var close = doc.getElementById('pfModalClose');
+              if (close) close.click();
+            }
+          });
+          if (typeof win.MutationObserver === 'function') {
+            new win.MutationObserver(function () {
+              var open = !modal.classList.contains('hidden');
+              doc.body.classList.toggle('pf-modal-open', open);
+              if (open) {
+                var close = doc.getElementById('pfModalClose');
+                if (close) win.setTimeout(function () { close.focus(); }, 0);
+              }
+            }).observe(modal, { attributes: true, attributeFilter: ['class'] });
+          }
+        }
+
+        function init(attempt) {
+          api = win.AutoCuanPortfolioV1;
+          if (!api || !doc.getElementById('pfSummary') || !doc.getElementById('pfPositions')) {
+            if ((attempt || 0) < 100) win.setTimeout(function () { init((attempt || 0) + 1); }, 100);
+            return;
+          }
+          if (doc.documentElement.hasAttribute('data-pf-batch-ready')) return;
+          doc.documentElement.setAttribute('data-pf-batch-ready', 'true');
+          ensureStyles();
+          ensureToolbar();
+          ensureRiskPanel();
+          bindRenderObservers();
+          bindModalQA();
+          queueRiskRender();
+        }
+
+        if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { init(0); }, { once: true });
+        else init(0);
+      }.toString() + ')(window);';
+    }
+
     (async function () {
       var shell = document.getElementById('shell');
       try {
@@ -278,7 +596,8 @@
         var source = await response.text();
         if (source.indexOf('</body>') === -1) throw new Error('Dokumen dasar tidak valid');
         var finder = portfolioBudgetFinderSource().replace(/<\/script/gi, '<\\/script');
-        source = source.replace('</body>', '<script src="/portfolio-v1-loader-v2.js?v=2"><\/script><script>' + finder + '<\/script></body>');
+        var tools = portfolioBatchToolsSource().replace(/<\/script/gi, '<\\/script');
+        source = source.replace('</body>', '<script src="/portfolio-v1-loader-v2.js?v=2"><\/script><script>' + finder + '<\/script><script>' + tools + '<\/script></body>');
         document.open(); document.write(source); document.close();
       } catch (error) {
         shell.innerHTML = '<div><h1 style="font-size:20px;color:#f8fafc">Auto-Cuan gagal dimuat</h1><p style="font-size:13px;color:#fca5a5">' + String(error && error.message || 'Kesalahan tidak diketahui').replace(/[&<>"']/g, '') + '</p><button onclick="location.reload()">Coba Lagi</button></div>';
