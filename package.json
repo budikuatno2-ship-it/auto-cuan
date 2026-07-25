@@ -7,6 +7,7 @@
   "scripts": {
     "build": "echo 'No build step needed'",
     "start": "vercel dev",
+    "test:telegram-membership-v1": "node --test test/telegram-verification-v2.test.js test/telegram-approval-gate.test.js test/telegram-join-request-gate.test.js test/telegram-invite-button-cleanup.test.js test/telegram-member-lifecycle.test.js",
     "aftermarket:top5-lock": "node tools/run-after-market-top5-lock.js"
   },
   "engines": {
