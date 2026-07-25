@@ -61,11 +61,16 @@ LANGUAGE sql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$
  'active',v.active,'valid_until',v.valid_until,'total_limit',v.total_limit,'redemption_count',v.redemption_count)
  FROM public.membership_vouchers v ORDER BY v.created_at DESC LIMIT 20; $$;
 CREATE OR REPLACE FUNCTION public.membership_admin_bot_voucher_detail(p_identifier text) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$ DECLARE result jsonb; n integer; BEGIN
+LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$
+DECLARE result jsonb; n integer; identifier_uuid uuid;
+BEGIN
+ IF p_identifier ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+  identifier_uuid:=p_identifier::uuid;
+ END IF;
  SELECT count(*),min(jsonb_build_object('id',v.id,'code_hint',v.code_hint,'discount_type',v.discount_type,'discount_value',v.discount_value,
  'package_slugs',coalesce((SELECT string_agg(p.slug,',') FROM public.membership_packages p WHERE p.id=ANY(v.package_ids)),'all'),'active',v.active,
  'valid_until',v.valid_until,'total_limit',v.total_limit,'redemption_count',v.redemption_count)::text)::jsonb INTO n,result
- FROM public.membership_vouchers v WHERE (p_identifier ~* '^[0-9a-f-]{36}$' AND v.id=p_identifier::uuid) OR upper(v.code_hint)=upper(p_identifier);
+ FROM public.membership_vouchers v WHERE (identifier_uuid IS NOT NULL AND v.id=identifier_uuid) OR upper(v.code_hint)=upper(p_identifier);
  IF n<>1 THEN RETURN NULL; END IF; RETURN result; END $$;
 CREATE OR REPLACE FUNCTION public.membership_admin_bot_deactivate_voucher(p_voucher_id uuid,p_admin_user_id uuid) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$ DECLARE was_active boolean; BEGIN
@@ -87,40 +92,48 @@ CREATE OR REPLACE FUNCTION public.membership_admin_bot_audit(p_purchase_id uuid 
 LANGUAGE sql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$ SELECT jsonb_build_object('event_type',event_type,'purchase_id',purchase_id,'created_at',created_at)
  FROM public.membership_audit_events WHERE p_purchase_id IS NULL OR purchase_id=p_purchase_id ORDER BY created_at DESC LIMIT 20; $$;
 
--- Return only the context required for durable best-effort admin notification.
-CREATE OR REPLACE FUNCTION public.membership_submit_payment_proof(p_telegram_user_id bigint,p_purchase_id uuid,p_file_id text,p_file_unique_id text,p_mime_type text,p_file_size bigint) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$ DECLARE uid uuid; p public.membership_purchases; pkg public.membership_packages; uname text; BEGIN
- SELECT user_id INTO uid FROM public.app_user_telegram_verifications WHERE telegram_user_id=p_telegram_user_id AND telegram_verified_at IS NOT NULL;
- IF uid IS NULL OR p_mime_type NOT IN ('image/jpeg','image/png','application/pdf') OR p_file_size<=0 OR p_file_size>8388608 THEN RAISE EXCEPTION 'proof_invalid'; END IF;
- UPDATE public.membership_purchases SET status='awaiting_admin_review',updated_at=now() WHERE id=p_purchase_id AND user_id=uid AND status IN ('awaiting_payment','rejected') AND expires_at>now() RETURNING * INTO p;
- IF NOT FOUND THEN RAISE EXCEPTION 'purchase_state_conflict'; END IF;
- INSERT INTO public.membership_payment_proofs(purchase_id,telegram_file_id,telegram_file_unique_id,mime_type,file_size) VALUES(p_purchase_id,p_file_id,p_file_unique_id,p_mime_type,p_file_size);
- INSERT INTO public.membership_audit_events(event_type,purchase_id) VALUES('proof_submitted',p_purchase_id);
- SELECT * INTO pkg FROM public.membership_packages WHERE id=p.package_id; SELECT username INTO uname FROM public.app_users WHERE id=uid;
- RETURN jsonb_build_object('accepted',true,'purchaseId',p.id,'notificationText','Bukti baru #'||left(p.id::text,8)||E'\nAkun: '||left(uname,2)||'****'||E'\nPaket: '||pkg.name||E'\nJumlah: Rp'||p.final_amount_idr); END $$;
+-- Call the existing core proof RPC, then add only sanitized admin-notification context.
+CREATE OR REPLACE FUNCTION public.membership_admin_bot_submit_payment_proof(p_telegram_user_id bigint,p_purchase_id uuid,p_file_id text,p_file_unique_id text,p_mime_type text,p_file_size bigint) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE core_result jsonb; notification_context jsonb;
+BEGIN
+ core_result:=public.membership_submit_payment_proof(p_telegram_user_id,p_purchase_id,p_file_id,p_file_unique_id,p_mime_type,p_file_size);
+ SELECT jsonb_build_object(
+  'purchaseId',p.id,
+  'notificationText','Bukti baru #'||left(p.id::text,8)||E'\nAkun: '||left(u.username,2)||'****'||E'\nPaket: '||pkg.name||E'\nJumlah: Rp'||p.final_amount_idr
+ ) INTO notification_context
+ FROM public.membership_purchases p
+ JOIN public.app_users u ON u.id=p.user_id
+ JOIN public.membership_packages pkg ON pkg.id=p.package_id
+ WHERE p.id=p_purchase_id AND p.status='awaiting_admin_review'
+ AND EXISTS(SELECT 1 FROM public.membership_payment_proofs pr WHERE pr.purchase_id=p.id AND pr.telegram_file_unique_id=p_file_unique_id);
+ IF notification_context IS NULL THEN RAISE EXCEPTION 'proof_context_unavailable'; END IF;
+ RETURN coalesce(core_result,'{}'::jsonb)||notification_context;
+END $$;
 
--- Enrich the existing transactional result without changing its entitlement/idempotency rules.
-CREATE OR REPLACE FUNCTION public.membership_review_purchase(p_purchase_id uuid,p_approve boolean,p_reason text,p_admin_user_id uuid,p_idempotency_key text) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$ DECLARE p public.membership_purchases; pkg public.membership_packages; end_at timestamptz; duplicate boolean:=false; chat bigint; BEGIN
- IF EXISTS(SELECT 1 FROM public.membership_audit_events WHERE idempotency_key=p_idempotency_key) THEN duplicate:=true; ELSE
-  SELECT * INTO p FROM public.membership_purchases WHERE id=p_purchase_id FOR UPDATE; IF p.status<>'awaiting_admin_review' OR p.expires_at<=now() THEN RAISE EXCEPTION 'purchase_state_conflict'; END IF;
-  SELECT * INTO pkg FROM public.membership_packages WHERE id=p.package_id; IF EXISTS(SELECT 1 FROM public.app_users WHERE id=p.user_id AND is_blocked=true) THEN RAISE EXCEPTION 'blocked_account'; END IF;
-  IF NOT p_approve THEN IF length(trim(coalesce(p_reason,'')))<3 THEN RAISE EXCEPTION 'reason_required'; END IF; UPDATE public.membership_purchases SET status='rejected',rejected_at=now(),rejection_reason=p_reason,updated_at=now() WHERE id=p.id;
-  ELSE UPDATE public.membership_purchases SET status='approved',approved_at=now(),updated_at=now() WHERE id=p.id; UPDATE public.app_users SET is_approved=true WHERE id=p.user_id AND is_approved=false AND is_blocked=false;
-   IF pkg.lifetime THEN INSERT INTO public.membership_entitlements(user_id,purchase_id,status,lifetime,ends_at) VALUES(p.user_id,p.id,'active',true,NULL);
-   ELSE SELECT greatest(now(),coalesce(max(ends_at),now()))+make_interval(days=>pkg.duration_days) INTO end_at FROM public.membership_entitlements WHERE user_id=p.user_id AND status='active' AND lifetime=false; INSERT INTO public.membership_entitlements(user_id,purchase_id,status,lifetime,ends_at) VALUES(p.user_id,p.id,'active',false,end_at); END IF;
-   UPDATE public.membership_voucher_redemptions SET status='finalized',redeemed_at=now() WHERE purchase_id=p.id AND status='reserved'; UPDATE public.membership_vouchers SET redemption_count=redemption_count+1 WHERE id=p.voucher_id AND p.voucher_id IS NOT NULL;
-  END IF;
-  INSERT INTO public.membership_audit_events(event_type,actor_user_id,purchase_id,idempotency_key,metadata) VALUES(CASE WHEN p_approve THEN 'purchase_approved' ELSE 'purchase_rejected' END,p_admin_user_id,p.id,p_idempotency_key,jsonb_build_object('reason',p_reason));
- END IF;
- SELECT * INTO p FROM public.membership_purchases WHERE id=p_purchase_id; SELECT * INTO pkg FROM public.membership_packages WHERE id=p.package_id; SELECT telegram_private_chat_id INTO chat FROM public.app_user_telegram_verifications WHERE user_id=p.user_id AND telegram_verified_at IS NOT NULL;
- SELECT ends_at INTO end_at FROM public.membership_entitlements WHERE purchase_id=p.id;
- RETURN jsonb_build_object('approved',p_approve,'duplicate',duplicate,'customer_chat_id',chat,'package_name',pkg.name,'lifetime',pkg.lifetime,'ends_at',end_at); END $$;
+-- Call the existing core review RPC, then add only sanitized customer-notification context.
+CREATE OR REPLACE FUNCTION public.membership_admin_bot_review_purchase(p_purchase_id uuid,p_approve boolean,p_reason text,p_admin_user_id uuid,p_idempotency_key text) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
+DECLARE core_result jsonb; review_context jsonb;
+BEGIN
+ core_result:=public.membership_review_purchase(p_purchase_id,p_approve,p_reason,p_admin_user_id,p_idempotency_key);
+ SELECT jsonb_build_object(
+  'customer_chat_id',v.telegram_private_chat_id,
+  'package_name',pkg.name,
+  'lifetime',pkg.lifetime,
+  'ends_at',e.ends_at
+ ) INTO review_context
+ FROM public.membership_purchases p
+ JOIN public.membership_packages pkg ON pkg.id=p.package_id
+ LEFT JOIN public.app_user_telegram_verifications v ON v.user_id=p.user_id AND v.telegram_verified_at IS NOT NULL
+ LEFT JOIN public.membership_entitlements e ON e.purchase_id=p.id
+ WHERE p.id=p_purchase_id;
+ IF review_context IS NULL THEN RAISE EXCEPTION 'review_context_unavailable'; END IF;
+ RETURN coalesce(core_result,'{}'::jsonb)||review_context;
+END $$;
 
-REVOKE ALL ON FUNCTION public.membership_admin_bot_context(bigint),public.membership_admin_bot_claim_update(bigint),public.membership_admin_bot_release_update(bigint),public.membership_admin_bot_pending_payments(),public.membership_admin_bot_claim_proof_notification(uuid),public.membership_admin_bot_release_proof_notification(uuid),public.membership_admin_bot_create_voucher(text,text,text,bigint,text,integer,integer,uuid),public.membership_admin_bot_list_vouchers(),public.membership_admin_bot_voucher_detail(text),public.membership_admin_bot_deactivate_voucher(uuid,uuid),public.membership_admin_bot_user_lookup(text),public.membership_admin_bot_audit(uuid) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.membership_admin_bot_context(bigint),public.membership_admin_bot_claim_update(bigint),public.membership_admin_bot_release_update(bigint),public.membership_admin_bot_pending_payments(),public.membership_admin_bot_claim_proof_notification(uuid),public.membership_admin_bot_release_proof_notification(uuid),public.membership_admin_bot_create_voucher(text,text,text,bigint,text,integer,integer,uuid),public.membership_admin_bot_list_vouchers(),public.membership_admin_bot_voucher_detail(text),public.membership_admin_bot_deactivate_voucher(uuid,uuid),public.membership_admin_bot_user_lookup(text),public.membership_admin_bot_audit(uuid) TO service_role;
-REVOKE ALL ON FUNCTION public.membership_submit_payment_proof(bigint,uuid,text,text,text,bigint),public.membership_review_purchase(uuid,boolean,text,uuid,text) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.membership_submit_payment_proof(bigint,uuid,text,text,text,bigint),public.membership_review_purchase(uuid,boolean,text,uuid,text) TO service_role;
+REVOKE ALL ON FUNCTION public.membership_admin_bot_context(bigint),public.membership_admin_bot_claim_update(bigint),public.membership_admin_bot_release_update(bigint),public.membership_admin_bot_pending_payments(),public.membership_admin_bot_claim_proof_notification(uuid),public.membership_admin_bot_release_proof_notification(uuid),public.membership_admin_bot_create_voucher(text,text,text,bigint,text,integer,integer,uuid),public.membership_admin_bot_list_vouchers(),public.membership_admin_bot_voucher_detail(text),public.membership_admin_bot_deactivate_voucher(uuid,uuid),public.membership_admin_bot_user_lookup(text),public.membership_admin_bot_audit(uuid),public.membership_admin_bot_submit_payment_proof(bigint,uuid,text,text,text,bigint),public.membership_admin_bot_review_purchase(uuid,boolean,text,uuid,text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.membership_admin_bot_context(bigint),public.membership_admin_bot_claim_update(bigint),public.membership_admin_bot_release_update(bigint),public.membership_admin_bot_pending_payments(),public.membership_admin_bot_claim_proof_notification(uuid),public.membership_admin_bot_release_proof_notification(uuid),public.membership_admin_bot_create_voucher(text,text,text,bigint,text,integer,integer,uuid),public.membership_admin_bot_list_vouchers(),public.membership_admin_bot_voucher_detail(text),public.membership_admin_bot_deactivate_voucher(uuid,uuid),public.membership_admin_bot_user_lookup(text),public.membership_admin_bot_audit(uuid),public.membership_admin_bot_submit_payment_proof(bigint,uuid,text,text,text,bigint),public.membership_admin_bot_review_purchase(uuid,boolean,text,uuid,text) TO service_role;
 
 -- Schema-clone repair: backend tables remain service-role only (no new anon/authenticated grants).
 GRANT SELECT,INSERT,UPDATE,DELETE ON public.app_users,public.app_user_telegram_verifications,public.membership_admin_telegram_links,public.membership_packages,public.membership_vouchers,public.membership_purchases,public.membership_payment_proofs,public.membership_entitlements,public.membership_voucher_redemptions,public.membership_channel_grants,public.membership_audit_events TO service_role;
