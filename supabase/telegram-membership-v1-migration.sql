@@ -84,7 +84,20 @@ BEGIN INSERT INTO public.membership_processed_telegram_updates(update_id) VALUES
 CREATE OR REPLACE FUNCTION public.membership_release_telegram_update(p_update_id bigint) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 BEGIN DELETE FROM public.membership_processed_telegram_updates WHERE update_id=p_update_id AND claimed_at > now()-interval '30 seconds'; RETURN FOUND; END $$;
 CREATE OR REPLACE FUNCTION public.membership_dashboard_access(p_user_id uuid) RETURNS jsonb LANGUAGE sql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$
- SELECT jsonb_build_object('allowed', EXISTS(SELECT 1 FROM public.app_user_telegram_verifications v JOIN public.membership_entitlements e ON e.user_id=v.user_id WHERE v.user_id=p_user_id AND v.telegram_verified_at IS NOT NULL AND e.status='active' AND e.lifetime)); $$;
+ SELECT jsonb_build_object('allowed', EXISTS(
+   SELECT 1
+   FROM public.app_users u
+   JOIN public.app_user_telegram_verifications v ON v.user_id=u.id
+   JOIN public.membership_entitlements e ON e.user_id=u.id
+   WHERE u.id=p_user_id
+     AND u.is_approved=true
+     AND u.is_blocked=false
+     AND v.telegram_verified_at IS NOT NULL
+     AND e.status='active'
+     AND e.lifetime=true
+     AND e.revoked_at IS NULL
+     AND (e.ends_at IS NULL OR e.ends_at>now())
+ )); $$;
 CREATE OR REPLACE FUNCTION public.membership_account_for_telegram(p_telegram_user_id bigint) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$
 DECLARE a public.membership_admin_telegram_links; u public.app_users; v public.app_user_telegram_verifications; e public.membership_entitlements; pkg public.membership_packages; pending_review boolean;
 BEGIN

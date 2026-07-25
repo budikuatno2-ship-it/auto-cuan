@@ -46,6 +46,18 @@ test('dashboard session policy denies term users and permits Lifetime/admin',asy
  assert.equal(await loginHandler.mayIssueDashboardSession(fake({allowed:false}),{id:'u'},'budi'),true);
  assert.equal(await loginHandler.mayIssueDashboardSession(fake({allowed:false}),{id:'u'},'review'),false);
 });
+test('dashboard eligibility fails closed for current account, verification and entitlement state',()=>{
+ const valid={approved:true,blocked:false,verified:true,entitlement:{status:'active',lifetime:true,revokedAt:null,endsAt:null}};
+ assert.equal(core.dashboardEligible(valid),true);
+ assert.equal(core.dashboardEligible({...valid,blocked:true}),false);
+ assert.equal(core.dashboardEligible({...valid,approved:false}),false);
+ assert.equal(core.dashboardEligible({...valid,entitlement:{...valid.entitlement,status:'revoked',revokedAt:'2026-01-01'}}),false);
+ assert.equal(core.dashboardEligible({...valid,entitlement:{...valid.entitlement,lifetime:false}}),false);
+ assert.equal(core.dashboardEligible({...valid,verified:false}),false);
+ assert.equal(core.accessFor({verified:true,isAdmin:true}).dashboard,true);
+ const sql=fs.readFileSync('supabase/telegram-membership-v1-migration.sql','utf8');
+ assert.match(sql,/membership_dashboard_access[\s\S]*u\.is_approved=true[\s\S]*u\.is_blocked=false[\s\S]*v\.telegram_verified_at IS NOT NULL[\s\S]*e\.status='active'[\s\S]*e\.lifetime=true[\s\S]*e\.revoked_at IS NULL/);
+});
 test('failed claimed updates release once, retry, while success and duplicates stay durable',async()=>{
  let claimed=false,releases=0,runs=0;
  const db={claimUpdate:async()=>{if(claimed)return false;claimed=true;return true;},releaseUpdate:async()=>{releases++;claimed=false;},account:async()=>{runs++;return {verified:false};}};
