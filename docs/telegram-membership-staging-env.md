@@ -28,3 +28,16 @@ confirmation `REMOVE_EXPIRED_MEMBERS`.
 Unset `AUTO_CUAN_ENV` (or set it to `production`) to retain canonical Production
 variable names. Any other selector is rejected. Staging never falls back to a
 canonical Production variable.
+# Dedicated admin bot (staging only; never fall back to production names)
+
+Configure these Preview/Staging variables before registering the admin webhook:
+
+- `STAGING_TELEGRAM_ADMIN_BOT_TOKEN`
+- `STAGING_TELEGRAM_ADMIN_WEBHOOK_SECRET`
+- `STAGING_TELEGRAM_ADMIN_BOT_USERNAME` (leading `@` is optional)
+
+Production uses the separate canonical names `TELEGRAM_ADMIN_BOT_TOKEN`,
+`TELEGRAM_ADMIN_WEBHOOK_SECRET`, and `TELEGRAM_ADMIN_BOT_USERNAME`. The admin
+webhook endpoint is `api/admin-users.js?action=telegram-admin-webhook`. Apply
+`supabase/telegram-admin-bot-v1-migration.sql` to the isolated staging schema
+before registering that staging URL with Telegram.
