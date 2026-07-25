@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS public.membership_voucher_redemptions (
 CREATE TABLE IF NOT EXISTS public.membership_channel_grants (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES public.app_users(id), telegram_user_id bigint NOT NULL,
  entitlement_id uuid REFERENCES public.membership_entitlements(id), invite_link_hash text, invite_used_at timestamptz, invite_expires_at timestamptz, join_claim_token uuid, join_claim_expires_at timestamptz, expires_at timestamptz, joined_at timestamptz, revoked_at timestamptz,
- created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(user_id,telegram_user_id,entitlement_id));
+ enforcement_completed_at timestamptz, created_at timestamptz NOT NULL DEFAULT now(), UNIQUE(user_id,telegram_user_id,entitlement_id));
 CREATE INDEX IF NOT EXISTS membership_channel_expiry_idx ON public.membership_channel_grants(expires_at) WHERE revoked_at IS NULL;
 CREATE TABLE IF NOT EXISTS public.membership_channel_exemptions (
  telegram_user_id bigint PRIMARY KEY, reason text NOT NULL CHECK(reason IN ('owner','admin')), created_at timestamptz NOT NULL DEFAULT now());
@@ -86,17 +86,18 @@ BEGIN DELETE FROM public.membership_processed_telegram_updates WHERE update_id=p
 CREATE OR REPLACE FUNCTION public.membership_dashboard_access(p_user_id uuid) RETURNS jsonb LANGUAGE sql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$
  SELECT jsonb_build_object('allowed', EXISTS(SELECT 1 FROM public.app_user_telegram_verifications v JOIN public.membership_entitlements e ON e.user_id=v.user_id WHERE v.user_id=p_user_id AND v.telegram_verified_at IS NOT NULL AND e.status='active' AND e.lifetime)); $$;
 CREATE OR REPLACE FUNCTION public.membership_account_for_telegram(p_telegram_user_id bigint) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$
-DECLARE a public.membership_admin_telegram_links; u public.app_users; v public.app_user_telegram_verifications; e public.membership_entitlements; pkg public.membership_packages; pending boolean; channel_ok boolean;
+DECLARE a public.membership_admin_telegram_links; u public.app_users; v public.app_user_telegram_verifications; e public.membership_entitlements; pkg public.membership_packages; pending_review boolean;
 BEGIN
  SELECT * INTO a FROM public.membership_admin_telegram_links WHERE telegram_user_id=p_telegram_user_id AND revoked_at IS NULL;
- IF FOUND THEN SELECT * INTO u FROM public.app_users WHERE id=a.user_id AND lower(username)='budi' AND is_approved=true AND is_blocked=false; IF FOUND THEN RETURN jsonb_build_object('verified',true,'isAdmin',true,'username',u.username,'botAccess',true,'channelAccess',true,'dashboardAccess',true,'entitlement',NULL,'pendingPurchase',false); END IF; END IF;
+ IF FOUND THEN SELECT * INTO u FROM public.app_users WHERE id=a.user_id AND lower(username)='budi' AND is_approved=true AND is_blocked=false; IF FOUND THEN RETURN jsonb_build_object('verified',true,'isAdmin',true,'username',u.username,'accountStatus','active','blocked',false,'botAccess',true,'channelAccess',true,'dashboardAccess',true,'entitlement',NULL,'pendingPurchase',false); END IF; END IF;
  SELECT * INTO v FROM public.app_user_telegram_verifications WHERE telegram_user_id=p_telegram_user_id AND telegram_verified_at IS NOT NULL; IF NOT FOUND THEN RETURN NULL; END IF;
- SELECT * INTO u FROM public.app_users WHERE id=v.user_id;
+ SELECT * INTO u FROM public.app_users WHERE id=v.user_id; IF NOT FOUND THEN RETURN NULL; END IF;
+ SELECT EXISTS(SELECT 1 FROM public.membership_purchases p WHERE p.user_id=v.user_id AND p.status IN ('proof_submitted','awaiting_admin_review')) INTO pending_review;
+ IF u.is_blocked=true THEN RETURN jsonb_build_object('verified',true,'isAdmin',false,'username',u.username,'accountStatus','blocked','blocked',true,'botAccess',false,'channelAccess',false,'dashboardAccess',false,'entitlement',NULL,'pendingPurchase',pending_review); END IF;
+ IF u.is_approved IS NOT TRUE THEN RETURN jsonb_build_object('verified',true,'isAdmin',false,'username',u.username,'accountStatus','pending','blocked',false,'botAccess',false,'channelAccess',false,'dashboardAccess',false,'entitlement',NULL,'pendingPurchase',pending_review); END IF;
  SELECT * INTO e FROM public.membership_entitlements x WHERE x.user_id=v.user_id AND x.status='active' AND (x.lifetime OR x.ends_at>now()) ORDER BY x.lifetime DESC,x.ends_at DESC NULLS FIRST LIMIT 1;
  IF e.id IS NOT NULL THEN SELECT * INTO pkg FROM public.membership_packages WHERE id=(SELECT package_id FROM public.membership_purchases WHERE id=e.purchase_id); END IF;
- SELECT EXISTS(SELECT 1 FROM public.membership_channel_grants g WHERE g.user_id=v.user_id AND g.revoked_at IS NULL AND (g.expires_at IS NULL OR g.expires_at>now())) INTO channel_ok;
- SELECT EXISTS(SELECT 1 FROM public.membership_purchases p WHERE p.user_id=v.user_id AND p.status IN ('proof_submitted','awaiting_admin_review')) INTO pending;
- RETURN jsonb_build_object('verified',true,'isAdmin',false,'username',u.username,'botAccess',e.id IS NOT NULL,'channelAccess',channel_ok,'dashboardAccess',coalesce(e.lifetime,false),'entitlement',CASE WHEN e.id IS NULL THEN NULL ELSE jsonb_build_object('status',e.status,'lifetime',e.lifetime,'startsAt',e.starts_at,'endsAt',e.ends_at,'packageName',pkg.name) END,'pendingPurchase',pending);
+ RETURN jsonb_build_object('verified',true,'isAdmin',false,'username',u.username,'accountStatus','approved','blocked',false,'botAccess',e.id IS NOT NULL,'channelAccess',e.id IS NOT NULL,'dashboardAccess',coalesce(e.lifetime,false),'entitlement',CASE WHEN e.id IS NULL THEN NULL ELSE jsonb_build_object('status',e.status,'lifetime',e.lifetime,'startsAt',e.starts_at,'endsAt',e.ends_at,'packageName',pkg.name) END,'pendingPurchase',pending_review);
 END $$;
 CREATE OR REPLACE FUNCTION public.membership_enforce_channel_expiry(p_dry_run boolean DEFAULT true) RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
  SELECT jsonb_build_object('dryRun',p_dry_run,'candidates',count(*),'note','Configured owners/admins are excluded; run migration report before destructive enforcement') FROM public.membership_channel_grants g WHERE g.revoked_at IS NULL AND g.expires_at < now() AND NOT EXISTS(SELECT 1 FROM public.membership_admin_telegram_links a WHERE a.telegram_user_id=g.telegram_user_id AND a.revoked_at IS NULL) AND NOT EXISTS(SELECT 1 FROM public.membership_channel_exemptions x WHERE x.telegram_user_id=g.telegram_user_id); $$;
@@ -110,8 +111,8 @@ CREATE OR REPLACE FUNCTION public.membership_create_purchase(p_telegram_user_id 
 DECLARE u uuid; pkg public.membership_packages; v public.membership_vouchers; sub bigint; disc bigint:=0; pid uuid;
 BEGIN
  IF length(trim(coalesce(p_bank_instructions,''))) < 10 OR length(p_bank_instructions) > 1000 THEN RAISE EXCEPTION 'bank_instructions_unavailable'; END IF;
- SELECT user_id INTO u FROM public.app_user_telegram_verifications WHERE telegram_user_id=p_telegram_user_id AND telegram_verified_at IS NOT NULL;
- IF u IS NULL THEN RAISE EXCEPTION 'verified_account_required'; END IF;
+ SELECT v.user_id INTO u FROM public.app_user_telegram_verifications v JOIN public.app_users au ON au.id=v.user_id WHERE v.telegram_user_id=p_telegram_user_id AND v.telegram_verified_at IS NOT NULL AND au.is_blocked=false;
+ IF u IS NULL THEN RAISE EXCEPTION 'verified_unblocked_account_required'; END IF;
  SELECT * INTO pkg FROM public.membership_packages WHERE id=p_package_id AND active FOR SHARE; IF NOT FOUND THEN RAISE EXCEPTION 'package_unavailable'; END IF; sub:=pkg.price_idr;
  IF p_voucher_hash IS NOT NULL THEN
   SELECT * INTO v FROM public.membership_vouchers WHERE code_hash=p_voucher_hash AND active AND now()>=valid_from AND (valid_until IS NULL OR now()<valid_until) FOR UPDATE;
@@ -124,7 +125,7 @@ BEGIN
 END $$;
 CREATE OR REPLACE FUNCTION public.membership_submit_payment_proof(p_telegram_user_id bigint,p_purchase_id uuid,p_file_id text,p_file_unique_id text,p_mime_type text,p_file_size bigint) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE u uuid;
-BEGIN SELECT user_id INTO u FROM public.app_user_telegram_verifications WHERE telegram_user_id=p_telegram_user_id AND telegram_verified_at IS NOT NULL;
+BEGIN SELECT v.user_id INTO u FROM public.app_user_telegram_verifications v JOIN public.app_users au ON au.id=v.user_id WHERE v.telegram_user_id=p_telegram_user_id AND v.telegram_verified_at IS NOT NULL AND au.is_blocked=false;
  IF p_mime_type NOT IN ('image/jpeg','image/png','application/pdf') OR p_file_size<=0 OR p_file_size>8388608 THEN RAISE EXCEPTION 'invalid_proof'; END IF;
  UPDATE public.membership_purchases SET status='awaiting_admin_review',updated_at=now() WHERE id=p_purchase_id AND user_id=u AND status IN ('awaiting_payment','rejected') AND expires_at>now(); IF NOT FOUND THEN RAISE EXCEPTION 'purchase_state_conflict'; END IF;
  INSERT INTO public.membership_payment_proofs(purchase_id,telegram_file_id,telegram_file_unique_id,mime_type,file_size) VALUES(p_purchase_id,p_file_id,p_file_unique_id,p_mime_type,p_file_size);
@@ -152,7 +153,7 @@ BEGIN
   u:=admin_link.user_id; SELECT id INTO gid FROM public.membership_channel_grants WHERE user_id=u AND telegram_user_id=p_telegram_user_id AND entitlement_id IS NULL AND revoked_at IS NULL LIMIT 1;
   IF gid IS NULL THEN INSERT INTO public.membership_channel_grants(user_id,telegram_user_id,entitlement_id,expires_at) VALUES(u,p_telegram_user_id,NULL,NULL) RETURNING id INTO gid; END IF;
  ELSE
-  SELECT user_id INTO u FROM public.app_user_telegram_verifications WHERE telegram_user_id=p_telegram_user_id AND telegram_verified_at IS NOT NULL;
+  SELECT v.user_id INTO u FROM public.app_user_telegram_verifications v JOIN public.app_users au ON au.id=v.user_id WHERE v.telegram_user_id=p_telegram_user_id AND v.telegram_verified_at IS NOT NULL AND au.is_approved=true AND au.is_blocked=false;
   SELECT * INTO e FROM public.membership_entitlements WHERE user_id=u AND status='active' AND (lifetime OR ends_at>now()) ORDER BY lifetime DESC,ends_at DESC NULLS FIRST LIMIT 1; IF NOT FOUND THEN RAISE EXCEPTION 'entitlement_required'; END IF;
   INSERT INTO public.membership_channel_grants(user_id,telegram_user_id,entitlement_id,expires_at) VALUES(u,p_telegram_user_id,e.id,CASE WHEN e.lifetime THEN NULL ELSE e.ends_at END) ON CONFLICT(user_id,telegram_user_id,entitlement_id) DO UPDATE SET expires_at=excluded.expires_at,revoked_at=NULL RETURNING id INTO gid;
  END IF;
@@ -180,17 +181,28 @@ END $$;
 CREATE OR REPLACE FUNCTION public.membership_record_channel_invite(p_grant_id uuid,p_telegram_user_id bigint,p_invite_hash text) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 BEGIN UPDATE public.membership_channel_grants SET invite_link_hash=p_invite_hash,invite_expires_at=now()+interval '15 minutes' WHERE id=p_grant_id AND telegram_user_id=p_telegram_user_id AND revoked_at IS NULL; RETURN FOUND; END $$;
 CREATE OR REPLACE FUNCTION public.membership_claim_channel_join(p_telegram_user_id bigint,p_invite_hash text) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
-DECLARE g public.membership_channel_grants; token uuid:=gen_random_uuid();
-BEGIN SELECT * INTO g FROM public.membership_channel_grants WHERE telegram_user_id=p_telegram_user_id AND invite_link_hash=p_invite_hash AND invite_used_at IS NULL AND revoked_at IS NULL AND invite_expires_at>now() AND (join_claim_expires_at IS NULL OR join_claim_expires_at<=now()) FOR UPDATE SKIP LOCKED; IF NOT FOUND THEN RETURN NULL; END IF; UPDATE public.membership_channel_grants SET join_claim_token=token,join_claim_expires_at=now()+interval '30 seconds' WHERE id=g.id; RETURN jsonb_build_object('grantId',g.id,'claimToken',token); END $$;
+DECLARE g public.membership_channel_grants; token uuid:=gen_random_uuid(); access_ok boolean;
+BEGIN
+ SELECT * INTO g FROM public.membership_channel_grants WHERE telegram_user_id=p_telegram_user_id AND invite_link_hash=p_invite_hash AND invite_used_at IS NULL AND invite_expires_at>now() AND (join_claim_expires_at IS NULL OR join_claim_expires_at<=now()) FOR UPDATE SKIP LOCKED; IF NOT FOUND THEN RETURN NULL; END IF;
+ SELECT (EXISTS(SELECT 1 FROM public.membership_admin_telegram_links a JOIN public.app_users u ON u.id=a.user_id WHERE a.telegram_user_id=p_telegram_user_id AND a.user_id=g.user_id AND a.revoked_at IS NULL AND g.revoked_at IS NULL AND lower(u.username)='budi' AND u.is_approved=true AND u.is_blocked=false) OR EXISTS(SELECT 1 FROM public.app_user_telegram_verifications v JOIN public.app_users u ON u.id=v.user_id JOIN public.membership_entitlements e ON e.id=g.entitlement_id AND e.user_id=u.id WHERE v.telegram_user_id=p_telegram_user_id AND v.telegram_verified_at IS NOT NULL AND u.is_approved=true AND u.is_blocked=false AND g.revoked_at IS NULL AND e.status='active' AND (e.lifetime OR e.ends_at>now()))) INTO access_ok;
+ IF NOT access_ok THEN UPDATE public.membership_channel_grants SET invite_link_hash=NULL,invite_expires_at=NULL,join_claim_token=NULL,join_claim_expires_at=NULL WHERE id=g.id; RETURN jsonb_build_object('invalid',true,'grantId',g.id); END IF;
+ UPDATE public.membership_channel_grants SET join_claim_token=token,join_claim_expires_at=now()+interval '30 seconds' WHERE id=g.id; RETURN jsonb_build_object('grantId',g.id,'claimToken',token,'invalid',false);
+END $$;
 CREATE OR REPLACE FUNCTION public.membership_finalize_channel_join(p_grant_id uuid,p_claim_token uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
-DECLARE uid uuid;
-BEGIN UPDATE public.membership_channel_grants SET invite_used_at=now(),joined_at=now(),invite_link_hash=NULL,invite_expires_at=NULL,join_claim_token=NULL,join_claim_expires_at=NULL WHERE id=p_grant_id AND join_claim_token=p_claim_token AND join_claim_expires_at>now() AND joined_at IS NULL RETURNING user_id INTO uid; IF NOT FOUND THEN RETURN false; END IF; INSERT INTO public.membership_audit_events(event_type,actor_user_id,metadata) VALUES('channel_join_approved',uid,jsonb_build_object('grantId',p_grant_id)); RETURN true; END $$;
+DECLARE g public.membership_channel_grants; access_ok boolean;
+BEGIN
+ SELECT * INTO g FROM public.membership_channel_grants WHERE id=p_grant_id AND join_claim_token=p_claim_token AND join_claim_expires_at>now() AND joined_at IS NULL FOR UPDATE; IF NOT FOUND THEN RETURN false; END IF;
+ SELECT (EXISTS(SELECT 1 FROM public.membership_admin_telegram_links a JOIN public.app_users u ON u.id=a.user_id WHERE a.telegram_user_id=g.telegram_user_id AND a.user_id=g.user_id AND a.revoked_at IS NULL AND g.revoked_at IS NULL AND lower(u.username)='budi' AND u.is_approved=true AND u.is_blocked=false) OR EXISTS(SELECT 1 FROM public.app_user_telegram_verifications v JOIN public.app_users u ON u.id=v.user_id JOIN public.membership_entitlements e ON e.id=g.entitlement_id AND e.user_id=u.id WHERE v.telegram_user_id=g.telegram_user_id AND v.telegram_verified_at IS NOT NULL AND u.is_approved=true AND u.is_blocked=false AND g.revoked_at IS NULL AND e.status='active' AND (e.lifetime OR e.ends_at>now()))) INTO access_ok;
+ IF NOT access_ok THEN UPDATE public.membership_channel_grants SET invite_link_hash=NULL,invite_expires_at=NULL,join_claim_token=NULL,join_claim_expires_at=NULL WHERE id=g.id; RETURN false; END IF;
+ UPDATE public.membership_channel_grants SET invite_used_at=now(),joined_at=now(),invite_link_hash=NULL,invite_expires_at=NULL,join_claim_token=NULL,join_claim_expires_at=NULL WHERE id=g.id;
+ INSERT INTO public.membership_audit_events(event_type,actor_user_id,metadata) VALUES('channel_join_approved',g.user_id,jsonb_build_object('grantId',p_grant_id)); RETURN true;
+END $$;
 CREATE OR REPLACE FUNCTION public.membership_release_channel_join(p_grant_id uuid,p_claim_token uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 BEGIN UPDATE public.membership_channel_grants SET join_claim_token=NULL,join_claim_expires_at=NULL WHERE id=p_grant_id AND join_claim_token=p_claim_token AND joined_at IS NULL; RETURN FOUND; END $$;
 CREATE OR REPLACE FUNCTION public.membership_channel_expiry_candidates() RETURNS SETOF jsonb LANGUAGE sql SECURITY DEFINER STABLE SET search_path=pg_catalog,public AS $$
- SELECT jsonb_build_object('grant_id',g.id,'telegram_user_id',g.telegram_user_id) FROM public.membership_channel_grants g JOIN public.membership_entitlements e ON e.id=g.entitlement_id WHERE g.revoked_at IS NULL AND NOT e.lifetime AND e.ends_at<=now() AND NOT EXISTS(SELECT 1 FROM public.membership_admin_telegram_links a WHERE a.telegram_user_id=g.telegram_user_id AND a.revoked_at IS NULL) AND NOT EXISTS(SELECT 1 FROM public.membership_channel_exemptions x WHERE x.telegram_user_id=g.telegram_user_id); $$;
+ SELECT jsonb_build_object('grant_id',g.id,'telegram_user_id',g.telegram_user_id) FROM public.membership_channel_grants g LEFT JOIN public.app_users u ON u.id=g.user_id LEFT JOIN public.membership_entitlements e ON e.id=g.entitlement_id WHERE g.enforcement_completed_at IS NULL AND NOT EXISTS(SELECT 1 FROM public.membership_admin_telegram_links a JOIN public.app_users au ON au.id=a.user_id WHERE a.telegram_user_id=g.telegram_user_id AND a.user_id=g.user_id AND a.revoked_at IS NULL AND lower(au.username)='budi' AND au.is_approved=true AND au.is_blocked=false) AND NOT EXISTS(SELECT 1 FROM public.membership_channel_exemptions x WHERE x.telegram_user_id=g.telegram_user_id) AND (g.revoked_at IS NOT NULL OR u.id IS NULL OR u.is_blocked=true OR u.is_approved IS NOT TRUE OR e.id IS NULL OR e.status IN ('revoked','expired') OR (e.lifetime=false AND e.ends_at<=now())); $$;
 CREATE OR REPLACE FUNCTION public.membership_revoke_channel_grant(p_grant_id uuid) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
-BEGIN UPDATE public.membership_channel_grants SET revoked_at=now(),invite_link_hash=NULL WHERE id=p_grant_id AND revoked_at IS NULL; RETURN FOUND; END $$;
+BEGIN UPDATE public.membership_channel_grants SET revoked_at=coalesce(revoked_at,now()),invite_link_hash=NULL,enforcement_completed_at=now() WHERE id=p_grant_id AND enforcement_completed_at IS NULL; RETURN FOUND; END $$;
 CREATE OR REPLACE FUNCTION public.membership_expire_purchases() RETURNS integer LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE n integer;
 BEGIN UPDATE public.membership_purchases SET status='expired',updated_at=now() WHERE status IN ('draft','awaiting_payment','proof_submitted','awaiting_admin_review','rejected') AND expires_at<=now(); GET DIAGNOSTICS n=ROW_COUNT; UPDATE public.membership_voucher_redemptions r SET status='released',released_at=now() FROM public.membership_purchases p WHERE r.purchase_id=p.id AND r.status='reserved' AND p.status IN ('expired','cancelled'); RETURN n; END $$;

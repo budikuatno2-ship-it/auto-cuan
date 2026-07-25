@@ -85,7 +85,10 @@ async function dispatchWebhookResponse(update, deps) {
 }
 async function dispatchTelegramUpdate(update, deps) {
   const membership = deps.membership;
-  if (update.chat_join_request && await membership.processChannelJoinRequest(update, { bot: deps.bot })) return { outcome: 'membership_join_approved' };
+  if (update.chat_join_request) {
+    const joinOutcome = await membership.processChannelJoinRequest(update, { bot: deps.bot });
+    if (joinOutcome) return { outcome: joinOutcome };
+  }
   if (membership.isMembershipUpdate(update)) return { outcome: await membership.processUpdate(update) };
   return telegramVerification.processWebhookUpdate(update, { supabase: deps.supabase, bot: deps.bot });
 }

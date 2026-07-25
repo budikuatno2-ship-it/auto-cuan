@@ -37,6 +37,7 @@ test('dynamic menus match unverified, unpaid, and active states',()=>{
  assert.deepEqual(core.menuFor({verified:false}),['Verifikasi Akun','Paket','Hubungi Admin']);
  assert.deepEqual(core.menuFor({verified:true}),['Akun Saya','Paket','Beli Paket','Gunakan Voucher','Hubungi Admin']);
  assert.deepEqual(core.menuFor(activeAccount(false)),['Akun Saya','Paket Aktif','Beli / Perpanjang','Akses Channel','Gunakan Voucher','Cara Pakai','Hubungi Admin']);
+ assert.deepEqual(core.menuFor({verified:true,blocked:true,accountStatus:'blocked'}),['Akun Saya','Hubungi Admin']);
 });
 test('dashboard session policy denies term users and permits Lifetime/admin',async()=>{
  const fake=value=>({rpc:async()=>({data:value,error:null})});
@@ -87,7 +88,7 @@ test('channel access creates a join-request invite bound to Telegram id',async()
 test('membership join request validates Telegram identity before Telegram calls',async()=>{
  const calls=[]; const db={claimChannelJoin:async(id,invite)=>id===77&&invite==='invite'?{grantId:'g',claimToken:'token'}:null,finalizeChannelJoin:async(g,t)=>calls.push(['finalize',g,t]),releaseChannelJoin:async(g,t)=>calls.push(['release',g,t])};
  const bot={approveChatJoinRequest:async(c,id)=>calls.push(['approve',c,id]),revokeChatInviteLink:async(c,i)=>calls.push(['revoke',c,i])};
- assert.equal(await membershipWebhook.processChannelJoinRequest({chat_join_request:{from:{id:77},chat:{id:-1},invite_link:{invite_link:'invite'}}},{db,bot}),true);
+ assert.equal(await membershipWebhook.processChannelJoinRequest({chat_join_request:{from:{id:77},chat:{id:-1},invite_link:{invite_link:'invite'}}},{db,bot}),'membership_join_approved');
  assert.deepEqual(calls,[['approve',-1,77],['finalize','g','token'],['revoke',-1,'invite']]);
  assert.equal(await membershipWebhook.processChannelJoinRequest({chat_join_request:{from:{id:88},chat:{id:-1},invite_link:{invite_link:'invite'}}},{db,bot}),false);
 });
@@ -96,6 +97,7 @@ test('failed Telegram join approval releases lease without finalization',async()
  const bot={approveChatJoinRequest:async()=>{throw new Error('telegram_failed');},revokeChatInviteLink:async()=>calls.push('revoke')};
  await assert.rejects(membershipWebhook.processChannelJoinRequest({chat_join_request:{from:{id:1},chat:{id:-1},invite_link:{invite_link:'invite'}}},{db,bot}),/telegram_failed/);assert.deepEqual(calls,['release']);
 });
+test('stale blocked membership invite is declined and revoked without Telegram approval',async()=>{const calls=[];const db={claimChannelJoin:async()=>({invalid:true,grantId:'g'})};const bot={approveChatJoinRequest:async()=>calls.push('approve'),declineChatJoinRequest:async()=>calls.push('decline'),revokeChatInviteLink:async()=>calls.push('revoke')};assert.equal(await membershipWebhook.processChannelJoinRequest({chat_join_request:{from:{id:1},chat:{id:-1},invite_link:{invite_link:'invite'}}},{db,bot}),'membership_join_denied');assert.deepEqual(calls,['decline','revoke']);});
 test('/start uses dynamic menu and account details remain safe',async()=>{
  const messages=[];const account={verified:true,username:'alice',entitlement:{packageName:'Lifetime',status:'active',startsAt:'2026-01-01',lifetime:true},channelAccess:true,dashboardAccess:true,pendingPurchase:true};
  const db={claimUpdate:async()=>true,account:async()=>account};await withBotStubs({sendMessage:async(c,t,o)=>messages.push({t,o})},async()=>assert.equal(await membershipWebhook.processUpdate({update_id:30,message:{text:'/start',from:{id:1},chat:{id:1,type:'private'}}},db),'menu'));
@@ -107,6 +109,9 @@ test('voucher resolves a safe package slug and never asks for a UUID',async()=>{
 });
 test('bound Budi has access without entitlement while a normal unpaid account does not',()=>{assert.deepEqual(core.accessFor({verified:true,isAdmin:true}),{bot:true,channel:true,dashboard:true,reason:'admin'});assert.deepEqual(core.accessFor({verified:true}),{bot:false,channel:false,dashboard:false,reason:'unpaid'});const sql=fs.readFileSync('supabase/telegram-membership-v1-migration.sql','utf8');assert.match(sql,/membership_admin_telegram_links WHERE telegram_user_id=p_telegram_user_id AND revoked_at IS NULL/);});
 test('paid access matrix enforces channel and dashboard business rule',()=>{const term=core.accessFor(activeAccount(false)),lifetime=core.accessFor(activeAccount(true));assert.equal(term.channel,true);assert.equal(term.dashboard,false);assert.equal(lifetime.channel,true);assert.equal(lifetime.dashboard,true);});
+test('blocked and pending accounts fail closed with purchase exception only for pending',()=>{const blocked={verified:true,blocked:true,accountStatus:'blocked',entitlement:{status:'active',lifetime:false,endsAt:'2099-01-01'}},pending={verified:true,blocked:false,accountStatus:'pending'};assert.deepEqual(core.accessFor(blocked),{bot:false,channel:false,dashboard:false,reason:'blocked'});assert.equal(core.canPurchase(blocked),false);assert.equal(core.canPurchase(pending),true);assert.deepEqual(core.accessFor(pending),{bot:false,channel:false,dashboard:false,reason:'pending'});});
+test('revoked, expired, blocked and approval-revoked grants are enforcement candidates',()=>{const now=new Date('2026-01-02');assert.equal(core.isEnforcementCandidate({approved:true,entitlement:{status:'revoked',lifetime:false,endsAt:'2099-01-01'},now}),true);assert.equal(core.isEnforcementCandidate({approved:true,entitlement:{status:'active',lifetime:false,endsAt:'2026-01-01'},now}),true);assert.equal(core.isEnforcementCandidate({approved:true,blocked:true,entitlement:{status:'active',lifetime:true},now}),true);assert.equal(core.isEnforcementCandidate({approved:false,entitlement:{status:'active',lifetime:true},now}),true);assert.equal(core.isEnforcementCandidate({approved:true,entitlement:{status:'active',lifetime:true},now}),false);assert.equal(core.isEnforcementCandidate({isAdmin:true,grantRevoked:true}),false);});
+test('protected RPCs recheck blocked, approval, entitlement and stale-join state',()=>{const sql=fs.readFileSync('supabase/telegram-membership-v1-migration.sql','utf8');assert.match(sql,/verified_unblocked_account_required/);assert.match(sql,/au\.is_approved=true AND au\.is_blocked=false/);assert.match(sql,/membership_finalize_channel_join[\s\S]*u\.is_approved=true AND u\.is_blocked=false[\s\S]*e\.status='active'/);assert.match(sql,/membership_channel_expiry_candidates[\s\S]*u\.is_blocked=true[\s\S]*e\.status IN \('revoked','expired'\)/);});
 test('expiry enforcement defaults dry-run and requires both enablement and exact confirmation',async()=>{
  let removed=0; const db={expiryCandidates:async()=>[{grant_id:'g',telegram_user_id:77}],revokeChannelGrant:async()=>{removed++;}};
  const bot={banChatMember:async()=>{removed++;},unbanChatMember:async()=>{removed++;}};
