@@ -23,7 +23,7 @@
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var source = await response.text();
         if (source.indexOf('</body>') === -1) throw new Error('Dokumen dasar tidak valid');
-        source = source.replace('</body>', '<script src="/portfolio-v1-loader.js?v=1"><\/script></body>');
+        source = source.replace('</body>', '<script src="/portfolio-v1-loader-v2.js?v=2"><\/script></body>');
         document.open(); document.write(source); document.close();
       } catch (error) {
         shell.innerHTML = '<div><h1 style="font-size:20px;color:#f8fafc">Auto-Cuan gagal dimuat</h1><p style="font-size:13px;color:#fca5a5">' + String(error && error.message || 'Kesalahan tidak diketahui').replace(/[&<>"']/g, '') + '</p><button onclick="location.reload()">Coba Lagi</button></div>';
