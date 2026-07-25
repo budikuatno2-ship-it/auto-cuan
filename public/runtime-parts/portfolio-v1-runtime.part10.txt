@@ -32,3 +32,329 @@ dden'); content.classList.remove('hidden');
   api.bootstrap = bootstrap;
   if (root.document) bootstrap(root);
 })(typeof window !== 'undefined' ? window : null);
+;(function (win) {
+  'use strict';
+  var doc = win.document;
+  var api = win.AutoCuanPortfolioV1;
+  var renderQueued = false;
+  if (!doc || !api) return;
+
+  function money(value) {
+    if (value == null || !Number.isFinite(Number(value))) return '—';
+    var amount = Math.round(Number(value));
+    return (amount < 0 ? '-Rp ' : 'Rp ') + Math.abs(amount).toLocaleString('id-ID');
+  }
+
+  function pct(value) {
+    return value == null || !Number.isFinite(Number(value)) ? '—' : Number(value).toFixed(2) + '%';
+  }
+
+  function toast(message, type) {
+    if (typeof win.showToast === 'function') win.showToast(message, type || 'success');
+    else win.alert(message);
+  }
+
+  function positions() {
+    var list = typeof win.loadPortfolio === 'function' ? win.loadPortfolio() : [];
+    return Array.isArray(list) ? list : [];
+  }
+
+  function journalKey() {
+    var key = typeof win.getPortfolioKey === 'function' ? win.getPortfolioKey() : null;
+    return key ? key + '_journal_v1' : null;
+  }
+
+  function journalState() {
+    var key = journalKey();
+    if (!key) return { version: 1, entries: [] };
+    var raw = win.localStorage.getItem(key);
+    var journalApi = win.AutoCuanPortfolioJournalV1;
+    if (journalApi && typeof journalApi.parseState === 'function') return journalApi.parseState(raw);
+    try {
+      var parsed = JSON.parse(raw || '{}');
+      return { version: 1, entries: Array.isArray(parsed.entries) ? parsed.entries : [] };
+    } catch (error) {
+      return { version: 1, entries: [] };
+    }
+  }
+
+  function entryForTicker(entries, ticker) {
+    var candidates = entries.filter(function (entry) { return entry && entry.ticker === ticker; });
+    if (!candidates.length) return null;
+    var priority = { active: 0, planned: 1, finished: 2, cancelled: 3 };
+    candidates.sort(function (a, b) {
+      var aRank = priority[a.status] == null ? 9 : priority[a.status];
+      var bRank = priority[b.status] == null ? 9 : priority[b.status];
+      if (aRank !== bRank) return aRank - bRank;
+      return Number(b.updatedAt || 0) - Number(a.updatedAt || 0);
+    });
+    return candidates[0];
+  }
+
+  function ensureStyles() {
+    if (doc.getElementById('pfPlanRiskStyles')) return;
+    var style = doc.createElement('style');
+    style.id = 'pfPlanRiskStyles';
+    style.textContent = '' +
+      '#pfPlanRiskPanel .pf-plan-risk-card{min-width:0}' +
+      '#pfPlanRiskPanel p{overflow-wrap:anywhere}' +
+      '#pfPositions [data-pf-journal-action]{margin-top:0;min-height:40px}' +
+      '@media(max-width:640px){#pfPlanRiskPanel .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}';
+    doc.head.appendChild(style);
+  }
+
+  function ensurePanel() {
+    var summary = doc.getElementById('pfSummary');
+    if (!summary) return null;
+    var panel = doc.getElementById('pfPlanRiskPanel');
+    if (!panel) {
+      panel = doc.createElement('section');
+      panel.id = 'pfPlanRiskPanel';
+      panel.className = 'portfolio-card p-4 space-y-3';
+      panel.setAttribute('aria-live', 'polite');
+      summary.insertAdjacentElement('afterend', panel);
+    }
+    return panel;
+  }
+
+  function buildReport() {
+    var current = positions();
+    var entries = journalState().entries;
+    var summary = api.portfolioSummary(current);
+    var largest = null;
+    var covered = 0;
+    var warnings = [];
+    var activeTickers = new Set();
+
+    current.forEach(function (position) {
+      activeTickers.add(position.ticker);
+      var metrics = api.positionMetrics(position);
+      var concentration = summary.invested > 0 ? metrics.invested / summary.invested * 100 : 0;
+      if (!largest || concentration > largest.concentration) largest = { ticker: position.ticker, concentration: concentration };
+
+      var journal = entryForTicker(entries, position.ticker);
+      if (journal && journal.status !== 'cancelled') covered += 1;
+      else warnings.push({ tone: 'amber', text: position.ticker + ': posisi aktif belum memiliki jurnal yang dapat dipakai.' });
+
+      var rate = api.RISK_PROFILES[position.riskProfile] || 0;
+      var allowedRisk = Number(position.riskBudget || 0) * rate;
+      if (allowedRisk > 0 && metrics.estimatedLossAtStop > allowedRisk * 1.05) {
+        warnings.push({ tone: 'amber', text: position.ticker + ': risiko ke stop ' + money(metrics.estimatedLossAtStop) + ' melebihi batas profil awal ' + money(allowedRisk) + '.' });
+      }
+      if (metrics.priced && position.lastPrice <= position.stop) {
+        warnings.push({ tone: 'red', text: position.ticker + ': harga terakhir sudah sama dengan atau di bawah stop/invalidation.' });
+      } else if (metrics.priced && metrics.distanceCurrentToStopPct != null && metrics.distanceCurrentToStopPct <= 3) {
+        warnings.push({ tone: 'amber', text: position.ticker + ': jarak ke stop tinggal ' + pct(metrics.distanceCurrentToStopPct) + '.' });
+      }
+      if (position.priceStale) warnings.push({ tone: 'gray', text: position.ticker + ': harga bertanda T-1/stale.' });
+      if (!metrics.priced) warnings.push({ tone: 'gray', text: position.ticker + ': harga belum tersedia sehingga total nilai belum lengkap.' });
+    });
+
+    entries.forEach(function (entry) {
+      if (entry.status === 'active' && !activeTickers.has(entry.ticker)) {
+        warnings.push({ tone: 'gray', text: entry.ticker + ': jurnal berstatus Aktif tetapi ticker belum ada di Posisi Aktif.' });
+      }
+    });
+
+    if (largest && largest.concentration >= 50) {
+      warnings.unshift({ tone: 'amber', text: largest.ticker + ' mencakup ' + pct(largest.concentration) + ' dari modal aktif.' });
+    }
+    var totalRiskPct = summary.invested > 0 ? summary.estimatedRisk / summary.invested * 100 : null;
+    if (totalRiskPct != null && totalRiskPct > 5) {
+      warnings.unshift({ tone: 'amber', text: 'Estimasi risiko seluruh posisi ke stop mencapai ' + pct(totalRiskPct) + ' dari modal aktif.' });
+    }
+
+    return {
+      positions: current,
+      summary: summary,
+      largest: largest,
+      covered: covered,
+      coveragePct: current.length ? covered / current.length * 100 : null,
+      totalRiskPct: totalRiskPct,
+      warnings: warnings.slice(0, 8)
+    };
+  }
+
+  function riskCard(label, value, tone) {
+    return '<div class="pf-plan-risk-card rounded-xl border border-dark-600/40 bg-dark-800/30 p-3"><p class="text-[10px] text-gray-500">' + api.escapeHtml(label) + '</p><p class="text-sm font-semibold ' + (tone || 'text-gray-200') + '">' + api.escapeHtml(value) + '</p></div>';
+  }
+
+  function renderPanel() {
+    renderQueued = false;
+    var panel = ensurePanel();
+    if (!panel) return;
+    var report = buildReport();
+    if (!report.positions.length) {
+      panel.innerHTML = '<div><h3 class="text-sm font-bold text-white">Kontrol Risiko & Kesiapan Jurnal</h3><p class="mt-1 text-xs text-gray-500">Tambahkan posisi untuk melihat konsentrasi, risiko ke stop, dan keterhubungan jurnal.</p></div>';
+      return;
+    }
+
+    var issueCount = report.summary.stale + report.summary.unavailable;
+    var largestText = report.largest ? report.largest.ticker + ' · ' + pct(report.largest.concentration) : '—';
+    var cards = '' +
+      riskCard('Jurnal Posisi', report.covered + '/' + report.positions.length + ' · ' + pct(report.coveragePct), report.covered === report.positions.length ? 'text-emerald-300' : 'text-amber-300') +
+      riskCard('Konsentrasi Terbesar', largestText, report.largest && report.largest.concentration >= 50 ? 'text-amber-300' : 'text-gray-200') +
+      riskCard('Risiko Total ke Stop', money(report.summary.estimatedRisk) + ' · ' + pct(report.totalRiskPct), 'text-amber-300') +
+      riskCard('Quote Stale / Tidak Ada', report.summary.stale + ' / ' + report.summary.unavailable, issueCount ? 'text-amber-300' : 'text-emerald-300');
+
+    var warnings = report.warnings.length
+      ? '<div class="space-y-2">' + report.warnings.map(function (warning) {
+        var cls = warning.tone === 'red' ? 'border-red-500/20 bg-red-500/10 text-red-200' : (warning.tone === 'amber' ? 'border-amber-500/20 bg-amber-500/10 text-amber-200' : 'border-dark-600/40 bg-dark-800/30 text-gray-400');
+        return '<p class="rounded-lg border p-3 text-xs ' + cls + '">' + api.escapeHtml(warning.text) + '</p>';
+      }).join('') + '</div>'
+      : '<p class="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-200">Belum ada peringatan angka atau keterhubungan jurnal dari data yang tersedia.</p>';
+
+    panel.innerHTML = '<div><h3 class="text-sm font-bold text-white">Kontrol Risiko & Kesiapan Jurnal</h3><p class="mt-1 text-xs text-gray-500">Ringkasan deterministik dari posisi, stop, quote, dan jurnal lokal. Bukan rekomendasi transaksi.</p></div><div class="grid grid-cols-2 lg:grid-cols-4 gap-2">' + cards + '</div>' + warnings;
+  }
+
+  function queueRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    var schedule = win.requestAnimationFrame || function (callback) { return win.setTimeout(callback, 16); };
+    schedule(function () {
+      decoratePositionCards();
+      renderPanel();
+    });
+  }
+
+  function openJournalList(ticker) {
+    var search = doc.getElementById('pfJournalSearch');
+    var filter = doc.getElementById('pfJournalFilterStatus');
+    if (search) {
+      search.value = ticker;
+      search.dispatchEvent(new win.Event('input', { bubbles: true }));
+    }
+    if (filter) {
+      filter.value = 'all';
+      filter.dispatchEvent(new win.Event('change', { bubbles: true }));
+    }
+    var section = doc.getElementById('pfJournalSection');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function prepareJournalForm(position) {
+    var ticker = doc.getElementById('pfJournalTicker');
+    var status = doc.getElementById('pfJournalStatus');
+    if (!ticker || !status) return;
+    var reset = doc.getElementById('pfJournalReset');
+    if (reset) reset.click();
+    ticker.value = position.ticker;
+    status.value = 'active';
+    var positionSize = doc.querySelector('[data-j-check="positionSize"]');
+    var stopDefined = doc.querySelector('[data-j-check="stopDefined"]');
+    var targetDefined = doc.querySelector('[data-j-check="targetDefined"]');
+    var riskAccepted = doc.querySelector('[data-j-check="riskAccepted"]');
+    if (positionSize) positionSize.checked = Number(position.lots) > 0;
+    if (stopDefined) stopDefined.checked = Number(position.stop) > 0;
+    if (targetDefined) targetDefined.checked = Number(position.target) > 0;
+    if (riskAccepted) riskAccepted.checked = !!position.riskProfile;
+    var section = doc.getElementById('pfJournalSection');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    win.setTimeout(function () {
+      var reason = doc.getElementById('pfJournalEntryReason');
+      if (reason) reason.focus();
+    }, 350);
+    toast(position.ticker + ' dimasukkan ke form jurnal. Isi alasan atau skenario sebelum menyimpan.', 'success');
+  }
+
+  function openQuickNote(entry) {
+    openJournalList(entry.ticker);
+    win.setTimeout(function () {
+      var safeId = String(entry.id).replace(/["\\]/g, '');
+      var button = doc.querySelector('button[data-j-action="note"][data-id="' + safeId + '"]');
+      if (button) button.click();
+      else toast('Jurnal ditemukan, tetapi tombol catatan belum siap. Buka jurnal lalu coba lagi.', 'warning');
+    }, 80);
+  }
+
+  function decoratePositionCards() {
+    var container = doc.getElementById('pfPositions');
+    if (!container) return;
+    var current = positions();
+    var entries = journalState().entries;
+    Array.prototype.forEach.call(container.querySelectorAll('article[data-index]'), function (card) {
+      var index = Number(card.getAttribute('data-index'));
+      var position = current[index];
+      if (!position) return;
+      var actionButton = card.querySelector('button[data-action="add"]');
+      var actionRow = actionButton ? actionButton.parentElement : null;
+      if (!actionRow) return;
+
+      Array.prototype.forEach.call(actionRow.querySelectorAll('[data-pf-journal-action]'), function (node) { node.remove(); });
+      var entry = entryForTicker(entries, position.ticker);
+      var primary = doc.createElement('button');
+      primary.type = 'button';
+      primary.className = 'pf-action text-blue-300';
+      primary.setAttribute('data-pf-journal-action', entry ? 'open' : 'create');
+      primary.setAttribute('data-index', String(index));
+      primary.textContent = entry ? 'Buka Jurnal' : 'Buat Jurnal';
+      actionRow.appendChild(primary);
+
+      if (entry) {
+        var note = doc.createElement('button');
+        note.type = 'button';
+        note.className = 'pf-action text-emerald-300';
+        note.setAttribute('data-pf-journal-action', 'note');
+        note.setAttribute('data-index', String(index));
+        note.textContent = 'Catatan Cepat';
+        actionRow.appendChild(note);
+      }
+    });
+  }
+
+  function bindActions() {
+    var container = doc.getElementById('pfPositions');
+    if (!container || container.hasAttribute('data-pf-journal-link-bound')) return;
+    container.setAttribute('data-pf-journal-link-bound', 'true');
+    container.addEventListener('click', function (event) {
+      var button = event.target.closest('button[data-pf-journal-action]');
+      if (!button) return;
+      event.preventDefault();
+      var index = Number(button.getAttribute('data-index'));
+      var position = positions()[index];
+      if (!position) return;
+      var entry = entryForTicker(journalState().entries, position.ticker);
+      var action = button.getAttribute('data-pf-journal-action');
+      if (action === 'create') prepareJournalForm(position);
+      else if (action === 'open' && entry) openJournalList(entry.ticker);
+      else if (action === 'note' && entry) openQuickNote(entry);
+    });
+  }
+
+  function bindObservers() {
+    var positionsEl = doc.getElementById('pfPositions');
+    var journalList = doc.getElementById('pfJournalList');
+    if (typeof win.MutationObserver === 'function') {
+      if (positionsEl && !positionsEl.hasAttribute('data-pf-plan-observer')) {
+        positionsEl.setAttribute('data-pf-plan-observer', 'true');
+        new win.MutationObserver(queueRender).observe(positionsEl, { childList: true });
+      }
+      if (journalList && !journalList.hasAttribute('data-pf-plan-observer')) {
+        journalList.setAttribute('data-pf-plan-observer', 'true');
+        new win.MutationObserver(queueRender).observe(journalList, { childList: true });
+      }
+    }
+    doc.addEventListener('click', function (event) {
+      if (event.target.closest('#pfJournalSave,[data-j-action],#pfJournalImportJson,#pfJournalNoteSave')) {
+        win.setTimeout(queueRender, 0);
+      }
+    });
+  }
+
+  function init(attempt) {
+    if (!doc.getElementById('pfPositions') || !doc.getElementById('pfSummary') || !doc.getElementById('pfJournalSection') || !win.AutoCuanPortfolioJournalV1) {
+      if ((attempt || 0) < 120) win.setTimeout(function () { init((attempt || 0) + 1); }, 100);
+      return;
+    }
+    if (doc.documentElement.hasAttribute('data-pf-plan-risk-ready')) return;
+    doc.documentElement.setAttribute('data-pf-plan-risk-ready', 'true');
+    ensureStyles();
+    ensurePanel();
+    bindActions();
+    bindObservers();
+    queueRender();
+  }
+
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { init(0); }, { once: true });
+  else init(0);
+})(typeof window !== 'undefined' ? window : null);
