@@ -8,8 +8,9 @@
     "build": "echo 'No build step needed'",
     "start": "vercel dev",
     "aftermarket:top5-lock": "node tools/run-after-market-top5-lock.js",
-    "test:telegram-membership-v1": "node --test test/telegram-membership-v1.test.js"
-    ,"test:telegram-admin-bot": "node --test test/telegram-admin-bot.test.js"
+    "test:telegram-membership-v1": "node --test test/telegram-membership-v1.test.js",
+    "test:telegram-admin-bot": "node --test test/telegram-admin-bot.test.js",
+    "test:telegram-membership-v2": "node --test test/telegram-admin-bot.test.js test/telegram-membership-empty-packages.test.js test/telegram-membership-v2-checkout.test.js"
   },
   "engines": {
     "node": "22.x"
