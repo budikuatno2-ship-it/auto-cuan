@@ -8,6 +8,7 @@ const { computeTelegramAnalytics } = require('../lib/telegram-analytics');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const membership = require('../lib/telegram-membership');
 const membershipService = require('../lib/telegram-membership-service');
+const telegramAdminWebhook = require('../lib/telegram-admin-webhook');
 
 const CANONICAL_LOGIN_URL = 'https://autocuan.web.id';
 
@@ -62,6 +63,10 @@ async function sendApprovalNotification(user) {
 }
 
 module.exports = async function handler(req, res) {
+  // Dedicated bot route is isolated from browser origin/session/cookie logic.
+  if (req.query && req.query.action === 'telegram-admin-webhook') {
+    return telegramAdminWebhook.handle(req, res);
+  }
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }

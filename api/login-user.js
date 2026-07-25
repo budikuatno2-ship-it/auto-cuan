@@ -90,6 +90,11 @@ async function dispatchTelegramUpdate(update, deps) {
     const joinOutcome = await membership.processChannelJoinRequest(update, { bot: deps.bot });
     if (joinOutcome) return { outcome: joinOutcome };
   }
+  const slashCode = membership.verificationCodeFromCommand && membership.verificationCodeFromCommand(update);
+  if (slashCode) {
+    const verificationUpdate = Object.assign({}, update, { message: Object.assign({}, update.message, { text: slashCode }) });
+    return telegramVerification.processWebhookUpdate(verificationUpdate, { supabase: deps.supabase, bot: deps.bot });
+  }
   if (membership.isMembershipUpdate(update)) return { outcome: await membership.processUpdate(update) };
   return telegramVerification.processWebhookUpdate(update, { supabase: deps.supabase, bot: deps.bot });
 }
