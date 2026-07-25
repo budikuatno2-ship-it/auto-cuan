@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
       if (!/^[0-9a-f-]{36}$/i.test(req.body.proofId || '')) return res.status(400).json({ success: false, error: 'Bukti tidak valid.' });
       const proof = await membershipService.proof(req.body.proofId);
       if (proof.file_size > membership.MAX_PROOF_BYTES) return res.status(413).json({ success: false, error: 'Bukti terlalu besar.' });
-      const bytes = await createVerifyBot().downloadFile(proof.telegram_file_id);
+      const bytes = await createVerifyBot().downloadFile(proof.telegram_file_id, membership.MAX_PROOF_BYTES);
       if (bytes.length > membership.MAX_PROOF_BYTES || bytes.length > proof.file_size) return res.status(413).json({ success: false, error: 'Bukti terlalu besar.' });
       res.setHeader('Content-Type', proof.mime_type); res.setHeader('Cache-Control', 'private, no-store');
       return res.status(200).send(bytes);

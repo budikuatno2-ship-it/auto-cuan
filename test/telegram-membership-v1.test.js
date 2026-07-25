@@ -43,6 +43,15 @@ test('dashboard session policy denies term users and permits Lifetime/admin',asy
  assert.equal(await loginHandler.mayIssueDashboardSession(fake({allowed:false}),{id:'u'},'normal'),false);
  assert.equal(await loginHandler.mayIssueDashboardSession(fake({allowed:true}),{id:'u'},'normal'),true);
  assert.equal(await loginHandler.mayIssueDashboardSession(fake({allowed:false}),{id:'u'},'budi'),true);
+ assert.equal(await loginHandler.mayIssueDashboardSession(fake({allowed:false}),{id:'u'},'review'),false);
+});
+test('failed claimed updates release once, retry, while success and duplicates stay durable',async()=>{
+ let claimed=false,releases=0,runs=0;
+ const db={claimUpdate:async()=>{if(claimed)return false;claimed=true;return true;},releaseUpdate:async()=>{releases++;claimed=false;},account:async()=>{runs++;return {verified:false};}};
+ await withBotStubs({sendMessage:async()=>{throw new Error('bot_down');}},async()=>{await assert.rejects(membershipWebhook.processUpdate({update_id:20,message:{text:'/menu',from:{id:1},chat:{id:1,type:'private'}}},db),/bot_down/);});
+ assert.equal(releases,1); assert.equal(claimed,false);
+ await withBotStubs({sendMessage:async()=>({})},async()=>assert.equal(await membershipWebhook.processUpdate({update_id:20,message:{text:'/menu',from:{id:1},chat:{id:1,type:'private'}}},db),'menu'));
+ assert.equal(releases,1); assert.equal(await membershipWebhook.processUpdate({update_id:20,message:{text:'/menu',from:{id:1},chat:{id:1,type:'private'}}},db),'duplicate'); assert.equal(runs,2);
 });
 test('admin binding is private, hashed, single-use through the service contract',async()=>{
  let calls=0; const db={claimUpdate:async()=>true,bindAdmin:async(id,chat,code)=>{calls++;assert.equal(id,99);assert.equal(chat,99);assert.equal(code,'ONETIME');return calls===1;}};
@@ -70,12 +79,27 @@ test('channel access creates a join-request invite bound to Telegram id',async()
  assert.deepEqual(calls,[['g',77,'https://t.me/+safe']]);process.env.TELEGRAM_VERIFY_CHANNEL_ID=old;
 });
 test('membership join request validates Telegram identity before Telegram calls',async()=>{
- const calls=[]; const db={claimChannelJoin:async(id,invite)=>id===77&&invite==='invite'?{grantId:'g'}:null};
+ const calls=[]; const db={claimChannelJoin:async(id,invite)=>id===77&&invite==='invite'?{grantId:'g',claimToken:'token'}:null,finalizeChannelJoin:async(g,t)=>calls.push(['finalize',g,t]),releaseChannelJoin:async(g,t)=>calls.push(['release',g,t])};
  const bot={approveChatJoinRequest:async(c,id)=>calls.push(['approve',c,id]),revokeChatInviteLink:async(c,i)=>calls.push(['revoke',c,i])};
  assert.equal(await membershipWebhook.processChannelJoinRequest({chat_join_request:{from:{id:77},chat:{id:-1},invite_link:{invite_link:'invite'}}},{db,bot}),true);
- assert.deepEqual(calls,[['approve',-1,77],['revoke',-1,'invite']]);
+ assert.deepEqual(calls,[['approve',-1,77],['finalize','g','token'],['revoke',-1,'invite']]);
  assert.equal(await membershipWebhook.processChannelJoinRequest({chat_join_request:{from:{id:88},chat:{id:-1},invite_link:{invite_link:'invite'}}},{db,bot}),false);
 });
+test('failed Telegram join approval releases lease without finalization',async()=>{
+ const calls=[];const db={claimChannelJoin:async()=>({grantId:'g',claimToken:'t'}),finalizeChannelJoin:async()=>calls.push('finalize'),releaseChannelJoin:async()=>calls.push('release')};
+ const bot={approveChatJoinRequest:async()=>{throw new Error('telegram_failed');},revokeChatInviteLink:async()=>calls.push('revoke')};
+ await assert.rejects(membershipWebhook.processChannelJoinRequest({chat_join_request:{from:{id:1},chat:{id:-1},invite_link:{invite_link:'invite'}}},{db,bot}),/telegram_failed/);assert.deepEqual(calls,['release']);
+});
+test('/start uses dynamic menu and account details remain safe',async()=>{
+ const messages=[];const account={verified:true,username:'alice',entitlement:{packageName:'Lifetime',status:'active',startsAt:'2026-01-01',lifetime:true},channelAccess:true,dashboardAccess:true,pendingPurchase:true};
+ const db={claimUpdate:async()=>true,account:async()=>account};await withBotStubs({sendMessage:async(c,t,o)=>messages.push({t,o})},async()=>assert.equal(await membershipWebhook.processUpdate({update_id:30,message:{text:'/start',from:{id:1},chat:{id:1,type:'private'}}},db),'menu'));
+ assert.deepEqual(messages[0].o.reply_markup,core.menuKeyboard(account));const text=membershipWebhook.accountMessage(account);assert.match(text,/Akun: alice/);assert.match(text,/Paket: Lifetime/);assert.match(text,/Berakhir: Lifetime/);assert.match(text,/Menunggu tinjauan admin/);assert.doesNotMatch(text,/proof|hash|role|userId/i);
+});
+test('voucher resolves a safe package slug and never asks for a UUID',async()=>{
+ let resolved,created;const db={claimUpdate:async()=>true,account:async()=>({verified:true}),packageBySlug:async slug=>{resolved=slug;return{id:'internal-uuid'};},createPurchase:async(id,pkg,code)=>{created={id,pkg,code};return{finalAmount:1,bankInstructions:'Transfer resmi',purchaseId:'order'};}};
+ await withBotStubs({sendMessage:async()=>({})},async()=>assert.equal(await membershipWebhook.processUpdate({update_id:31,message:{text:'VOUCHER HEMAT channel-30',from:{id:7},chat:{id:7,type:'private'}}},db),'voucher_purchase_created'));assert.equal(resolved,'channel-30');assert.deepEqual(created,{id:7,pkg:'internal-uuid',code:'HEMAT'});
+});
+test('bound Budi has access without entitlement while a normal unpaid account does not',()=>{assert.deepEqual(core.accessFor({verified:true,isAdmin:true}),{bot:true,channel:true,dashboard:true,reason:'admin'});assert.deepEqual(core.accessFor({verified:true}),{bot:false,channel:false,dashboard:false,reason:'unpaid'});const sql=fs.readFileSync('supabase/telegram-membership-v1-migration.sql','utf8');assert.match(sql,/membership_admin_telegram_links WHERE telegram_user_id=p_telegram_user_id AND revoked_at IS NULL/);});
 test('expiry enforcement defaults dry-run and requires both enablement and exact confirmation',async()=>{
  let removed=0; const db={expiryCandidates:async()=>[{grant_id:'g',telegram_user_id:77}],revokeChannelGrant:async()=>{removed++;}};
  const bot={banChatMember:async()=>{removed++;},unbanChatMember:async()=>{removed++;}};
@@ -84,6 +108,7 @@ test('expiry enforcement defaults dry-run and requires both enablement and exact
  report=await membershipService.runChannelExpiryEnforcement({db,bot,enabled:true,confirm:'REMOVE_EXPIRED_MEMBERS',channelId:'c'});assert.equal(report.removed,1);assert.equal(removed,3);
 });
 test('proof validation bounds MIME, metadata, and byte size',()=>{assert.equal(core.validateProof({mime_type:'image/jpeg',file_size:50,file_id:'Ab_1'}).ok,true);assert.equal(core.validateProof({mime_type:'text/html',file_size:50,file_id:'Ab_1'}).ok,false);assert.equal(core.validateProof({mime_type:'image/png',file_size:core.MAX_PROOF_BYTES+1,file_id:'Ab_1'}).ok,false);});
+test('Telegram proof download rejects Content-Length before buffering',async()=>{const oldFetch=global.fetch,oldToken=process.env.TELEGRAM_VERIFY_BOT_TOKEN;process.env.TELEGRAM_VERIFY_BOT_TOKEN='test-token';let calls=0;global.fetch=async()=>++calls===1?{ok:true,json:async()=>({ok:true,result:{file_path:'proof.jpg'}})}:{ok:true,headers:{get:()=>String(core.MAX_PROOF_BYTES+1)},body:{getReader(){throw new Error('must_not_buffer');}}};try{await assert.rejects(telegramBot.downloadFile('safe_file',core.MAX_PROOF_BYTES),e=>e.code==='telegram_file_too_large');assert.equal(calls,2);}finally{global.fetch=oldFetch;if(oldToken===undefined)delete process.env.TELEGRAM_VERIFY_BOT_TOKEN;else process.env.TELEGRAM_VERIFY_BOT_TOKEN=oldToken;}});
 test('voucher hashing and server discount math are deterministic',()=>{assert.equal(core.voucherHash('ab-cd','pepper'),core.voucherHash('ABCD','pepper'));assert.deepEqual(core.calculatePrice({id:'p',price_idr:10000},{discount_type:'percent',discount_value:25,package_ids:['p']},new Date()),{subtotal:10000,discount:2500,finalAmount:7500});});
 test('migration packages are inactive until an operator configures prices',()=>{const sql=fs.readFileSync('supabase/telegram-membership-v1-migration.sql','utf8');assert.match(sql,/active boolean NOT NULL DEFAULT false/);assert.match(sql,/false,null,10/);assert.match(sql,/status='released'/);assert.match(sql,/expires_at>now\(\)/);});
 test('recursive Vercel API JavaScript function count remains exactly 12',()=>{const {execFileSync}=require('child_process');const count=execFileSync('bash',['-lc',"find api -type f -name '*.js' | wc -l"],{encoding:'utf8'}).trim();assert.equal(count,'12');});

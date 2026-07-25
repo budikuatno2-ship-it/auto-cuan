@@ -126,7 +126,7 @@ function issueSessionCookie(res, user, usernameLower, deviceId) {
 }
 
 async function mayIssueDashboardSession(supabase, user, usernameLower) {
-  if (usernameLower === 'budi' || usernameLower === 'review') return true;
+  if (usernameLower === 'budi') return true;
   try {
     const result = await supabase.rpc('membership_dashboard_access', { p_user_id: user.id });
     const value = Array.isArray(result.data) ? result.data[0] : result.data;
