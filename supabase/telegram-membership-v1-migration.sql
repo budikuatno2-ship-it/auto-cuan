@@ -135,11 +135,13 @@ BEGIN
  IF EXISTS(SELECT 1 FROM public.membership_audit_events WHERE idempotency_key=p_idempotency_key) THEN RETURN jsonb_build_object('duplicate',true); END IF;
  SELECT * INTO p FROM public.membership_purchases WHERE id=p_purchase_id FOR UPDATE; IF p.status<>'awaiting_admin_review' OR p.expires_at<=now() THEN RAISE EXCEPTION 'purchase_state_conflict'; END IF;
  IF NOT p_approve THEN IF length(trim(coalesce(p_reason,'')))<3 THEN RAISE EXCEPTION 'reason_required'; END IF; UPDATE public.membership_purchases SET status='rejected',rejected_at=now(),rejection_reason=p_reason,updated_at=now() WHERE id=p.id; ELSE
+  IF EXISTS(SELECT 1 FROM public.app_users u WHERE u.id=p.user_id AND u.is_blocked=true) THEN RAISE EXCEPTION 'blocked_account'; END IF;
   SELECT * INTO pkg FROM public.membership_packages WHERE id=p.package_id; IF NOT pkg.lifetime THEN SELECT greatest(now(),coalesce(max(ends_at),now())) + make_interval(days=>pkg.duration_days) INTO end_at FROM public.membership_entitlements WHERE user_id=p.user_id AND status='active' AND NOT lifetime; END IF;
   INSERT INTO public.membership_entitlements(user_id,purchase_id,status,ends_at,lifetime) VALUES(p.user_id,p.id,'active',end_at,pkg.lifetime) ON CONFLICT(purchase_id) DO NOTHING;
   UPDATE public.membership_purchases SET status='approved',approved_at=now(),updated_at=now() WHERE id=p.id;
   UPDATE public.membership_voucher_redemptions SET status='finalized',redeemed_at=now() WHERE purchase_id=p.id AND status='reserved';
   UPDATE public.membership_vouchers SET redemption_count=redemption_count+1 WHERE id=p.voucher_id AND p.voucher_id IS NOT NULL;
+  UPDATE public.app_users SET is_approved=true WHERE id=p.user_id AND is_approved=false AND is_blocked=false;
  END IF;
  INSERT INTO public.membership_audit_events(event_type,actor_user_id,purchase_id,idempotency_key,metadata) VALUES(CASE WHEN p_approve THEN 'purchase_approved' ELSE 'purchase_rejected' END,p_admin_user_id,p.id,p_idempotency_key,jsonb_build_object('reason',p_reason)); RETURN jsonb_build_object('approved',p_approve,'duplicate',false); END $$;
 CREATE OR REPLACE FUNCTION public.membership_issue_channel_grant(p_telegram_user_id bigint) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $$

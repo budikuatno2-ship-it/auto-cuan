@@ -1,7 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
 const telegramNotifier = require('../lib/telegram-notifier');
-const telegramVerification = require('../lib/telegram-verification');
 const telegramLifecycle = require('../lib/telegram-lifecycle');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const { computeTelegramAnalytics } = require('../lib/telegram-analytics');
@@ -300,9 +299,8 @@ module.exports = async function handler(req, res) {
     // A pending account may be approved ONLY when its Telegram identity is bound
     // and verified, a private chat is known, it is not blocked, and it is not a
     // reserved account. Existing already-approved accounts (including budi) are
-    // left untouched. On a genuine false->true transition we create + deliver a
-    // dynamic single-use channel invite; a delivery failure NEVER rolls back the
-    // approval (it is persisted as retryable and surfaced as a warning).
+    // left untouched. Account approval establishes identity only; paid channel
+    // access is always requested separately through the membership bot.
     if (action === 'approve') {
       if (!username) {
         return res.status(400).json({ success: false, error: 'Username diperlukan.' });
@@ -392,30 +390,13 @@ module.exports = async function handler(req, res) {
       // Legacy approval announcement (dedicated approval chat; unchanged).
       const approvalNotification = await sendApprovalNotification(transitionedUser);
 
-      // Stage 3: create + deliver the dynamic single-use channel invite. Fully
-      // guarded — the account stays approved even if delivery fails.
-      let inviteDelivery = { status: 'skipped' };
-      try {
-        inviteDelivery = await telegramVerification.deliverApprovalInvite(
-          { supabase: supabase, bot: createVerifyBot() },
-          transitionedUser.id
-        );
-      } catch (e) {
-        inviteDelivery = { status: 'error', warning: 'invite_delivery_exception' };
-      }
-
-      const inviteOk = inviteDelivery && inviteDelivery.status === 'sent';
       const response = {
         success: true,
         approval_transitioned: true,
-        message: 'User ' + targetUser + ' berhasil di-approve.',
+        message: 'User ' + targetUser + ' berhasil di-approve. Akses channel memerlukan paket aktif dan harus diminta melalui bot utama.',
         approval_notification: approvalNotification,
-        invite_delivery: { status: inviteDelivery ? inviteDelivery.status : 'unknown' }
+        invite_delivery: { status: 'skipped', reason: 'membership_required' }
       };
-      if (!inviteOk) {
-        response.warning = 'Akun sudah di-approve, tetapi pengiriman link channel belum berhasil. Gunakan "Kirim Ulang Invite" untuk mencoba lagi.';
-        response.invite_delivery.retryable = true;
-      }
       return res.status(200).json(response);
     }
 
@@ -446,21 +427,10 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ success: false, error: 'Invite hanya bisa dikirim untuk akun yang sudah disetujui dan tidak diblokir.' });
       }
 
-      let inviteDelivery = { status: 'skipped' };
-      try {
-        inviteDelivery = await telegramVerification.deliverApprovalInvite(
-          { supabase: supabase, bot: createVerifyBot() },
-          acct.id
-        );
-      } catch (e) {
-        inviteDelivery = { status: 'error', warning: 'invite_delivery_exception' };
-      }
-
-      const inviteOk = inviteDelivery && inviteDelivery.status === 'sent';
-      return res.status(200).json({
-        success: true,
-        invite_delivery: { status: inviteDelivery ? inviteDelivery.status : 'unknown', retryable: !inviteOk },
-        message: inviteOk ? 'Link channel berhasil dikirim ulang.' : 'Pengiriman link channel belum berhasil. Coba lagi nanti.'
+      return res.status(409).json({
+        success: false,
+        invite_delivery: { status: 'skipped', reason: 'membership_flow_required' },
+        message: 'Invite lama dinonaktifkan. User harus memiliki paket aktif dan memakai menu Akses Channel pada bot utama.'
       });
     }
 

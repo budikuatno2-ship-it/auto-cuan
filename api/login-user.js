@@ -70,14 +70,17 @@ async function handleVerifyWebhook(req, res) {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 
+  const result = await dispatchWebhookResponse(update, { supabase, bot: createVerifyBot(), membership: membershipWebhook });
+  return res.status(result.status).json(result.body);
+}
+async function dispatchWebhookResponse(update, deps) {
+  const isMembership = deps.membership.isMembershipUpdate(update);
   try {
-    const bot = createVerifyBot();
-    const result = await dispatchTelegramUpdate(update, { supabase, bot, membership: membershipWebhook });
-    // Only a coarse outcome code is returned/logged — never raw user input.
-    return res.status(200).json({ ok: true, outcome: result && result.outcome });
-  } catch (e) {
-    // Never leak internals; still ack to avoid unbounded Telegram retries.
-    return res.status(200).json({ ok: true });
+    const result = await dispatchTelegramUpdate(update, deps);
+    return { status: 200, body: { ok: true, outcome: result && result.outcome } };
+  } catch (error) {
+    if (isMembership) return { status: 500, body: { ok: false, retryable: true } };
+    return { status: 200, body: { ok: true } };
   }
 }
 async function dispatchTelegramUpdate(update, deps) {
@@ -380,3 +383,4 @@ module.exports = async function handler(req, res) {
 module.exports.secretsMatch = secretsMatch;
 module.exports.mayIssueDashboardSession = mayIssueDashboardSession;
 module.exports.dispatchTelegramUpdate = dispatchTelegramUpdate;
+module.exports.dispatchWebhookResponse = dispatchWebhookResponse;

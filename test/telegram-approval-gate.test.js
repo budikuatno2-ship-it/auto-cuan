@@ -212,7 +212,7 @@ test('approve: an UNVERIFIED pending user cannot be approved', async function ()
   assert.equal(bot.calls.createChatInviteLink.length, 0, 'no invite created for unverified user');
 });
 
-test('approve: a VERIFIED pending user can be approved and the invite is created + sent', async function () {
+test('approve: a VERIFIED pending user is approved without a legacy channel invite', async function () {
   const db = makeAdminModel();
   const bot = makeFakeVerifyBot({ inviteLink: 'https://t.me/+forAda' });
   const user = seedVerifiedPending(db, 'ada');
@@ -222,21 +222,13 @@ test('approve: a VERIFIED pending user can be approved and the invite is created
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.approval_transitioned, true);
   assert.equal(db.getUser(user.id).is_approved, true);
-  // A single JOIN-REQUEST invite is created (NO member_limit) and DMed to the
-  // bound private chat with a single request-link URL button.
-  assert.equal(bot.calls.createChatInviteLink.length, 1);
-  assert.ok(!('memberLimit' in bot.calls.createChatInviteLink[0].options), 'no member_limit passed');
-  const dm = bot.calls.sendMessage.find(function (m) { return String(m.chatId) === String(db.verifications[user.id].telegram_private_chat_id); });
-  assert.ok(dm, 'invite DM sent to the bound private chat');
-  const flat = dm.options.reply_markup.inline_keyboard.flat();
-  assert.equal(flat.length, 1, 'exactly one button (the request link)');
-  assert.equal(flat[0].url, 'https://t.me/+forAda', 'request-link URL button');
-  assert.ok(!flat.some(function (b) { return b.callback_data; }), 'no verify_channel_join callback button');
-  assert.equal(res.body.invite_delivery.status, 'sent');
-  assert.equal(db.verifications[user.id].invite_delivery_status, 'sent');
+  assert.equal(bot.calls.createChatInviteLink.length, 0);
+  assert.equal(res.body.invite_delivery.status, 'skipped');
+  assert.equal(res.body.invite_delivery.reason, 'membership_required');
+  assert.match(res.body.message, /paket aktif/i);
 });
 
-test('approve: account STAYS approved even when invite delivery fails (warning returned, retryable)', async function () {
+test('approve: account approval never depends on invite delivery', async function () {
   const db = makeAdminModel();
   const bot = makeFakeVerifyBot({ inviteThrows: true });
   const user = seedVerifiedPending(db, 'grace');
@@ -246,10 +238,8 @@ test('approve: account STAYS approved even when invite delivery fails (warning r
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.approval_transitioned, true);
   assert.equal(db.getUser(user.id).is_approved, true, 'approval NOT rolled back on delivery failure');
-  assert.notEqual(res.body.invite_delivery.status, 'sent');
-  assert.equal(res.body.invite_delivery.retryable, true);
-  assert.ok(res.body.warning, 'warning surfaced to the admin UI');
-  assert.equal(db.verifications[user.id].invite_delivery_status, 'failed');
+  assert.equal(res.body.invite_delivery.status, 'skipped');
+  assert.equal(bot.calls.createChatInviteLink.length, 0);
 });
 
 test('approve: an already-approved budi is an untouched no-op (no transition, no invite)', async function () {
@@ -289,22 +279,19 @@ test('approve: repeated approval does not re-deliver (idempotent)', async functi
   assert.deepEqual(res.body.approval_notification, { status: 'skipped', reason: 'no_approval_transition' });
 });
 
-test('retry_invite: a failed delivery can be retried and then succeeds', async function () {
+test('retry_invite: legacy delivery is disabled in favor of paid membership flow', async function () {
   const db = makeAdminModel();
   const bot = makeFakeVerifyBot({ inviteThrows: true });
   const user = seedVerifiedPending(db, 'nina');
   const handler = loadAdminUsers(db, bot);
-  // Approve -> invite delivery fails.
   let res = makeRes();
   await handler(adminReq({ action: 'approve', username: 'nina' }), res);
-  assert.equal(db.verifications[user.id].invite_delivery_status, 'failed');
-  // Fix the bot and retry.
   bot.inviteThrows = false;
   res = makeRes();
   await handler(adminReq({ action: 'retry_invite', username: 'nina' }), res);
-  assert.equal(res.statusCode, 200);
-  assert.equal(res.body.invite_delivery.status, 'sent');
-  assert.equal(db.verifications[user.id].invite_delivery_status, 'sent');
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.invite_delivery.status, 'skipped');
+  assert.equal(bot.calls.createChatInviteLink.length, 0);
 });
 
 // ===========================================================================
