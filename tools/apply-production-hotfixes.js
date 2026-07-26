@@ -1,5 +1,6 @@
 'use strict';
 
+// Deployment retrigger only; no runtime behavior change.
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
