@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const Module = require('node:module');
-const handleContextAI = require('../lib/context-ai-router-v4');
+const handleContextAI = require('../lib/context-ai-router-v5');
 
 const sourcePath = path.join(__dirname, '..', 'lib', 'analyze-legacy.js');
 const virtualPath = path.join(__dirname, 'analyze-legacy.virtual.js');
