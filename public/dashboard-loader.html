@@ -33,7 +33,7 @@
       if (!response.ok) throw new Error('Dashboard tidak tersedia.');
       var html = await response.text();
 
-      html = html.replace('</head>', '<style>.nav-btn[data-premium-nav="true"]{display:flex!important}.action-card[data-premium-nav="true"]{display:block!important}[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}</style></head>');
+      html = html.replace('</head>', '<link rel="stylesheet" href="/dashboard-responsive-fixes.css"><style>.nav-btn[data-premium-nav="true"]{display:flex!important}.action-card[data-premium-nav="true"]{display:block!important}[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}</style></head>');
       html = html.replace(/onclick="navigateTo\('portofolio'\)"/g, 'onclick="window.location.href=\'/portfolio-planner\'"');
       html = html.replace('>Posisi manual</p>', '>Decision Center</p>');
       html = html.replace('</body>', '<script src="/dashboard-approved-enhancements.js"><\/script><script src="/stock-analysis-ai.js"><\/script></body>');
