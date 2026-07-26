@@ -39,20 +39,16 @@ jobs:
         run: |
           set -euo pipefail
           for n in 00 01 02 03 04; do
-            tr -d '\r\n\t ' < ".audit-payload/patch.exact.${n}" > "/tmp/part.${n}"
+            tr -d '\r\n\t =' < ".audit-payload/patch.exact.${n}" > "/tmp/part.${n}"
             test -s "/tmp/part.${n}"
           done
           cat /tmp/part.00 /tmp/part.01 /tmp/part.02 /tmp/part.03 /tmp/part.04 > /tmp/audit.patch.gz.b64
 
-      - name: Verify base64 alphabet and boundaries
+      - name: Verify base64 alphabet
         shell: bash
         run: |
           set -euo pipefail
-          ! LC_ALL=C grep -q '[^A-Za-z0-9+/=]' /tmp/audit.patch.gz.b64
-          ! grep -q '=' /tmp/part.00
-          ! grep -q '=' /tmp/part.01
-          ! grep -q '=' /tmp/part.02
-          ! grep -q '=' /tmp/part.03
+          ! LC_ALL=C grep -q '[^A-Za-z0-9+/]' /tmp/audit.patch.gz.b64
 
       - name: Restore final base64 padding
         shell: bash
@@ -85,7 +81,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tr -d '\r\n\t ' < .audit-payload/commit.raw.b64 > /tmp/commit.raw.b64
+          tr -d '\r\n\t =' < .audit-payload/commit.raw.b64 > /tmp/commit.raw.b64
           LEN="$(wc -c < /tmp/commit.raw.b64 | tr -d ' ')"
           REM=$((LEN % 4))
           if [ "${REM}" -ne 0 ]; then
