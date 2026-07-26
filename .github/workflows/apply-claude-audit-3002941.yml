@@ -1,0 +1,61 @@
+name: Apply Claude production audit 3002941
+
+on:
+  push:
+    branches:
+      - agent/apply-claude-audit-3002941
+    paths:
+      - '.audit-payload/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout payload branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/apply-claude-audit-3002941
+          fetch-depth: 0
+
+      - name: Reconstruct and verify payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .audit-payload/patch.part.* > /tmp/audit.patch.gz.b64
+          base64 -d /tmp/audit.patch.gz.b64 | gzip -d > /tmp/audit.patch
+          base64 -d .audit-payload/commit.raw.b64 > /tmp/commit.raw
+          echo '6666b48f835dadb971440d9f9e0d9bc81f69a2eb462a06bdb25e146417104e5a  /tmp/audit.patch' | sha256sum -c -
+
+      - name: Apply exact audited commit and push
+        shell: bash
+        env:
+          BASE_COMMIT: ac67e23a702aa265dad8046f02ca6eb98636ecd4
+          TARGET_TREE: 2526c4d7a532de8c8443090805e9785e021eeafe
+          TARGET_COMMIT: 300294115d1be85cc588d7c2d339df410a6a7e8a
+          TARGET_BRANCH: feat/daytrade-screener-v1
+        run: |
+          set -euo pipefail
+          git fetch origin "${TARGET_BRANCH}"
+          CURRENT="$(git rev-parse "origin/${TARGET_BRANCH}")"
+          test "${CURRENT}" = "${BASE_COMMIT}"
+
+          git checkout --detach "${BASE_COMMIT}"
+          git apply --index --binary /tmp/audit.patch
+
+          TREE="$(git write-tree)"
+          test "${TREE}" = "${TARGET_TREE}"
+
+          COMMIT="$(git hash-object -t commit -w /tmp/commit.raw)"
+          test "${COMMIT}" = "${TARGET_COMMIT}"
+
+          git update-ref "refs/heads/${TARGET_BRANCH}" "${TARGET_COMMIT}" "${BASE_COMMIT}"
+          git push origin "refs/heads/${TARGET_BRANCH}:refs/heads/${TARGET_BRANCH}"
+
+      - name: Remove temporary delivery branch
+        if: success()
+        shell: bash
+        run: git push origin --delete agent/apply-claude-audit-3002941 || true
