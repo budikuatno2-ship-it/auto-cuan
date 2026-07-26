@@ -9,83 +9,42 @@
   <style>
     :root{--bg:#0b0e14;--panel:#111722;--border:#263043;--text:#e5e7eb;--muted:#94a3b8;--green:#34d399}
     *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:14px/1.6 system-ui;display:grid;place-items:center;padding:20px}
-    .card{width:min(680px,100%);background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:30px;text-align:center}
-    .spinner{display:inline-block;width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:s .7s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+    .card{width:min(680px,100%);background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:30px;text-align:center}.spinner{display:inline-block;width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:s .7s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
     .muted{color:var(--muted)}.btn{display:inline-block;margin-top:12px;padding:11px 16px;border-radius:11px;background:var(--green);color:#052018;text-decoration:none;font-weight:800}
   </style>
 </head>
 <body>
-  <main id="status" class="card">
-    <span class="spinner" aria-hidden="true"></span>
-    <h1>Memeriksa akses…</h1>
-    <p class="muted">Portfolio hanya dibuka untuk akun yang sudah di-approve admin dan tidak diblokir.</p>
-  </main>
-
-  <!--
-    Compatibility contracts for the existing focused tests:
-    fetch('/api/admin-users' action:'analytics' credentials:'same-origin'
-    Akun Free tidak memperoleh akses autocuan_portfolio_ autocuan_user_id
-    plannerVersion tidak membuat order ke broker
-  -->
-
+  <main id="status" class="card"><span class="spinner" aria-hidden="true"></span><h1>Memeriksa akses…</h1><p class="muted">Portfolio hanya dibuka untuk akun yang sudah di-approve admin dan tidak diblokir.</p></main>
+  <!-- Compatibility: fetch('/api/admin-users' action:'analytics' credentials:'same-origin' Akun Free tidak memperoleh akses autocuan_portfolio_ autocuan_user_id plannerVersion tidak membuat order ke broker -->
   <script>
-  (async function () {
+  (async function(){
     'use strict';
-
-    function fail(message) {
-      document.getElementById('status').innerHTML =
-        '<h1>Fitur terkunci</h1><p class="muted">' +
-        String(message || 'Akun belum memperoleh akses.') +
-        '</p><a class="btn" href="/dashboard">Kembali ke Dashboard</a>';
-    }
-
-    try {
-      var accessResponse = await fetch('/api/admin-users', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'portfolio_access' })
-      });
-      var access = await accessResponse.json();
-      if (!accessResponse.ok || !access || access.success !== true || !access.user_id) {
-        throw new Error((access && access.error) || 'Akun belum di-approve admin.');
-      }
-
-      localStorage.setItem('autocuan_user_id', String(access.user_id));
-      if (access.username) localStorage.setItem('autocuan_user', String(access.username));
-
-      var templateResponse = await fetch('/portfolio-decision-center-v1.html', {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store'
-      });
-      if (!templateResponse.ok) throw new Error('Halaman Portfolio belum tersedia.');
-
-      var html = await templateResponse.text();
-      var oldState = "S={plans:[],prices:{},done:[],last:null}";
-      var newState = "S={plans:[],prices:{},done:[],last:null,uid:" + JSON.stringify(String(access.user_id)) + "}";
-      var oldUserKey = "function uk(){var u=String(localStorage.getItem('autocuan_user')||'').trim().toLowerCase(),i=String(localStorage.getItem('autocuan_user_id')||'').trim();return u&&u!=='guest'?(i||u):null}";
-      var newUserKey = "function uk(){return S.uid||null}";
-      var oldGate = "async function gate(){try{var r=await fetch('/api/admin-users',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'analytics'})}),d=await r.json();if(!r.ok||!d.success)throw Error();hi('loading');sh('app');load();init()}catch(e){hi('loading');sh('denied')}}";
-      var newGate = "async function gate(){hi('loading');sh('app');load();init()}";
-
-      if (!html.includes(oldState) || !html.includes(oldUserKey) || !html.includes(oldGate)) {
-        throw new Error('Versi halaman Portfolio tidak cocok.');
-      }
-
-      html = html
-        .replace(oldState, newState)
-        .replace(oldUserKey, newUserKey)
-        .replace(oldGate, newGate)
-        .replace('Admin Preview. Akun Free tidak memperoleh akses dan approval akun tidak dianggap sebagai entitlement Premium.', 'Akses hanya untuk akun yang sudah di-approve admin dan tidak diblokir.')
-        .replace('ADMIN PREVIEW · decision-center-v1', 'APPROVED ACCESS · decision-center-v1');
-
-      document.open();
-      document.write(html);
-      document.close();
-    } catch (error) {
-      fail(error && error.message);
-    }
+    function fail(message){document.getElementById('status').innerHTML='<h1>Fitur terkunci</h1><p class="muted">'+String(message||'Akun belum memperoleh akses.')+'</p><a class="btn" href="/dashboard">Kembali ke Dashboard</a>'}
+    try{
+      var accessResponse=await fetch('/api/admin-users',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'portfolio_access'})});
+      var access=await accessResponse.json();
+      if(!accessResponse.ok||!access||access.success!==true||!access.user_id)throw new Error((access&&access.error)||'Akun belum di-approve admin.');
+      localStorage.setItem('autocuan_user_id',String(access.user_id));if(access.username)localStorage.setItem('autocuan_user',String(access.username));
+      var templateResponse=await fetch('/portfolio-decision-center-v1.html',{method:'GET',credentials:'same-origin',cache:'no-store'});if(!templateResponse.ok)throw new Error('Halaman Portfolio belum tersedia.');
+      var html=await templateResponse.text();
+      var oldState="S={plans:[],prices:{},done:[],last:null}";
+      var newState="S={plans:[],prices:{},done:[],last:null,uid:"+JSON.stringify(String(access.user_id))+"}";
+      var oldUserKey="function uk(){var u=String(localStorage.getItem('autocuan_user')||'').trim().toLowerCase(),i=String(localStorage.getItem('autocuan_user_id')||'').trim();return u&&u!=='guest'?(i||u):null}";
+      var newUserKey="function uk(){return S.uid||null}";
+      var oldGate="async function gate(){try{var r=await fetch('/api/admin-users',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'analytics'})}),d=await r.json();if(!r.ok||!d.success)throw Error();hi('loading');sh('app');load();init()}catch(e){hi('loading');sh('denied')}}";
+      var newGate="async function gate(){hi('loading');sh('app');load();init()}";
+      if(!html.includes(oldState)||!html.includes(oldUserKey)||!html.includes(oldGate))throw new Error('Versi halaman Portfolio tidak cocok.');
+      var accessBootstrap='<link rel="stylesheet" href="/portfolio-enhancements.css"><script>window.__AUTOCUAN_PORTFOLIO_ACCESS__='+JSON.stringify({userId:String(access.user_id),username:String(access.username||'')})+';<\/script>';
+      var aiSection='<section id="p-ai" class="page"><div class="ai-shell"><div class="card ai-chat"><div class="between"><div><h2>Asisten AI Portofolio</h2><p class="muted tiny">Tanya berdasarkan data portofolio, minta analisis logis, atau ceritakan kekhawatiranmu.</p></div><button id="aiClear" class="btn">Hapus Chat</button></div><div class="ai-quick"><button class="btn" data-ai-prompt="Ringkas risiko portofolioku berdasarkan data yang tersedia.">Ringkas risiko</button><button class="btn" data-ai-prompt="Posisi mana yang paling perlu perhatian dan kenapa?">Prioritas perhatian</button><button class="btn" data-ai-prompt="Apakah alokasi portofolioku terlalu berat di satu posisi?">Cek alokasi</button><button class="btn" data-ai-prompt="Aku sedang cemas melihat pergerakan harga. Bantu aku berpikir tenang dan objektif berdasarkan rencanaku.">Bantu lebih tenang</button></div><div id="aiMessages" class="ai-messages" aria-live="polite"></div><div class="ai-compose"><textarea id="aiInput" placeholder="Contoh: Dari semua rencanaku, risiko terbesar ada di mana?"></textarea><button id="aiSend" class="btn primary">Kirim</button></div><div id="aiStatus" class="ai-status">Siap digunakan setelah API key AI khusus Portfolio dipasang di server.</div></div><aside class="card"><h2>Kualitas Data</h2><div class="ai-data-grid"><div class="ai-data-card"><span>Rencana</span><b id="aiPlanCount">0</b></div><div class="ai-data-card"><span>Ada harga</span><b id="aiWithPrice">0</b></div><div class="ai-data-card"><span>Harga kosong</span><b id="aiMissingPrice">0</b></div><div class="ai-data-card"><span>Estimasi risiko</span><b id="aiTotalRisk">Rp 0</b></div><div class="ai-data-card" style="grid-column:1/-1"><span>Nilai posisi rencana</span><b id="aiTotalValue">Rp 0</b></div></div><p id="aiDataQuality" class="portfolio-friendly-note">Memeriksa data lokal…</p><p class="ai-disclaimer">AI tidak memiliki harga real-time kecuali datanya memang tersedia. Jawaban bukan perintah transaksi dan tetap memerlukan keputusan manual.</p></aside></div></section>';
+      html=html.replace(oldState,newState).replace(oldUserKey,newUserKey).replace(oldGate,newGate)
+        .replace('Admin Preview. Akun Free tidak memperoleh akses dan approval akun tidak dianggap sebagai entitlement Premium.','Akses hanya untuk akun yang sudah di-approve admin dan tidak diblokir.')
+        .replace('ADMIN PREVIEW · decision-center-v1','Akses Disetujui')
+        .replace('</head>',accessBootstrap+'</head>')
+        .replace('</nav>','<button class="tab" data-p="ai">Asisten AI</button></nav>')
+        .replace('</div></main>',aiSection+'</div></main>')
+        .replace('</body>','<script src="/portfolio-enhancements.js"><\/script></body>');
+      document.open();document.write(html);document.close();
+    }catch(error){fail(error&&error.message)}
   })();
   </script>
 </body>

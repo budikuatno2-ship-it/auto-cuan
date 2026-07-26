@@ -8,8 +8,8 @@
   <title>Auto-Cuan</title>
   <style>
     body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0e14;color:#94a3b8;font:14px system-ui}
-    .loader{width:34px;height:34px;border:3px solid #263043;border-top-color:#34d399;border-radius:50%;animation:s .7s linear infinite}
-    @keyframes s{to{transform:rotate(360deg)}}
+    .loader{width:34px;height:34px;border:3px solid #263043;border-top-color:#34d399;border-radius:50%;animation:s .7s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+    .error{max-width:560px;padding:28px;text-align:center}.error h1{color:#e5e7eb}.error a{color:#34d399}
   </style>
 </head>
 <body>
@@ -18,27 +18,31 @@
   (async function(){
     'use strict';
     try {
+      var accessResponse = await fetch('/api/admin-users', {
+        method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'portfolio_access'})
+      });
+      var access = await accessResponse.json();
+      if (!accessResponse.ok || !access || access.success !== true || !access.user_id) {
+        throw new Error((access && access.error) || 'Akun belum di-approve admin.');
+      }
+      localStorage.setItem('autocuan_user_id', String(access.user_id));
+      if (access.username) localStorage.setItem('autocuan_user', String(access.username));
+
       var response = await fetch('/index.html', { credentials:'same-origin', cache:'no-store' });
       if (!response.ok) throw new Error('Dashboard tidak tersedia.');
       var html = await response.text();
 
-      // Website access is approval-based. Subscription belongs to the later
-      // Telegram flow, so it must not appear in the website navigation yet.
-      html = html.replace('</head>', '<style>[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}</style></head>');
-
-      // The visible Portfolio entry must open the completed Decision Center,
-      // not the legacy manual-only page.
+      html = html.replace('</head>', '<style>.nav-btn[data-premium-nav="true"]{display:flex!important}.action-card[data-premium-nav="true"]{display:block!important}[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}</style></head>');
       html = html.replace(/onclick="navigateTo\('portofolio'\)"/g, 'onclick="window.location.href=\'/portfolio-planner\'"');
       html = html.replace('>Posisi manual</p>', '>Decision Center</p>');
-
-      // Defensive runtime guard for any old in-page call left in cached markup.
-      html = html.replace('</body>', '<script>(function(){var old=window.navigateTo;if(typeof old===\'function\'){window.navigateTo=function(page){if(page===\'portofolio\'){window.location.href=\'/portfolio-planner\';return;}if(page===\'subscription\'){return;}return old.apply(this,arguments);};}})();<\/script></body>');
+      html = html.replace('</body>', '<script src="/dashboard-approved-enhancements.js"><\/script></body>');
 
       document.open();
       document.write(html);
       document.close();
     } catch (error) {
-      document.body.innerHTML = '<main style="max-width:520px;padding:24px;text-align:center"><h1 style="color:#e5e7eb">Dashboard gagal dimuat</h1><p>' + String(error && error.message || 'Silakan muat ulang halaman.') + '</p><a href="/" style="color:#34d399">Kembali</a></main>';
+      document.body.innerHTML = '<main class="error"><h1>Dashboard terkunci</h1><p>' + String(error && error.message || 'Silakan login kembali.') + '</p><a href="/">Kembali ke halaman utama</a></main>';
     }
   })();
   </script>
