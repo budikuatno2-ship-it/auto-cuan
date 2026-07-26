@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/dashboard",
-      "destination": "/dashboard-loader.html"
+      "destination": "/index.html"
     },
     {
       "source": "/review",
@@ -24,7 +24,7 @@
       "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
     },
     {
-      "source": "/dashboard-loader.html",
+      "source": "/index.html",
       "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
     },
     {
@@ -33,6 +33,14 @@
     },
     {
       "source": "/portfolio-enhancements.css",
+      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+    },
+    {
+      "source": "/website-approved-access.js",
+      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+    },
+    {
+      "source": "/admin-user-delete-enhancement.js",
       "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
     },
     {
@@ -45,18 +53,6 @@
     },
     {
       "source": "/stock-analysis-ai.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/dashboard-approved-access-guard.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/dashboard-approved-enhancements.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/admin-delete-user.js",
       "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
     }
   ],
