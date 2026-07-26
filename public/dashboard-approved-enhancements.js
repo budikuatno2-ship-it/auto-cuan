@@ -1,24 +1,26 @@
 (function () {
   'use strict';
 
-  function approvedFeatureElements() {
-    return document.querySelectorAll('[data-premium-nav="true"]');
-  }
+  if (window.__AUTOCUAN_APPROVED_ENHANCEMENTS_STARTED__) return;
+  window.__AUTOCUAN_APPROVED_ENHANCEMENTS_STARTED__ = true;
 
   function keepApprovedFeaturesVisible() {
-    approvedFeatureElements().forEach(function (el) {
-      el.classList.remove('hidden');
-      el.removeAttribute('hidden');
-      el.setAttribute('aria-hidden', 'false');
+    document.querySelectorAll('[data-premium-nav="true"]').forEach(function (el) {
+      if (el.classList.contains('hidden')) el.classList.remove('hidden');
+      if (el.hasAttribute('hidden')) el.removeAttribute('hidden');
+      if (el.getAttribute('aria-hidden') !== 'false') el.setAttribute('aria-hidden', 'false');
     });
+
     document.querySelectorAll('[data-page="subscription"],#page-subscription,#subscriptionIdentityCard').forEach(function (el) {
-      el.classList.add('hidden');
-      el.setAttribute('hidden', '');
+      if (!el.classList.contains('hidden')) el.classList.add('hidden');
+      if (!el.hasAttribute('hidden')) el.setAttribute('hidden', '');
     });
   }
 
   function wirePortfolioLinks() {
     document.querySelectorAll('[data-page="portofolio"]').forEach(function (el) {
+      if (el.dataset.portfolioRouteWired === 'true') return;
+      el.dataset.portfolioRouteWired = 'true';
       el.onclick = function (event) {
         if (event) event.preventDefault();
         window.location.href = '/portfolio-planner';
@@ -92,18 +94,26 @@
     }
   }
 
-  function init() {
+  function applyApprovedUi() {
     keepApprovedFeaturesVisible();
     wirePortfolioLinks();
-    loadHealth();
-    var observer = new MutationObserver(function () {
-      keepApprovedFeaturesVisible();
-      wirePortfolioLinks();
-    });
-    observer.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
-    setInterval(function () { if (!document.hidden) loadHealth(); }, 5 * 60 * 1000);
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  function init() {
+    applyApprovedUi();
+    loadHealth();
+
+    // A few bounded retries cover the app's normal async startup without any
+    // MutationObserver or permanent DOM loop.
+    [250, 1000, 2500].forEach(function (delay) {
+      setTimeout(applyApprovedUi, delay);
+    });
+
+    setInterval(function () {
+      if (!document.hidden) loadHealth();
+    }, 5 * 60 * 1000);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
 })();
