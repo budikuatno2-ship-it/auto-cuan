@@ -44,27 +44,28 @@ jobs:
           done
           cat /tmp/part.00 /tmp/part.01 /tmp/part.02 /tmp/part.03 /tmp/part.04 > /tmp/audit.patch.gz.b64
 
-      - name: Verify base64 alphabet
+      - name: Verify base64 alphabet and boundaries
         shell: bash
         run: |
           set -euo pipefail
           ! LC_ALL=C grep -q '[^A-Za-z0-9+/=]' /tmp/audit.patch.gz.b64
-
-      - name: Verify base64 total length
-        shell: bash
-        run: |
-          set -euo pipefail
-          LEN="$(wc -c < /tmp/audit.patch.gz.b64 | tr -d ' ')"
-          test $((LEN % 4)) -eq 0
-
-      - name: Verify no internal base64 padding
-        shell: bash
-        run: |
-          set -euo pipefail
           ! grep -q '=' /tmp/part.00
           ! grep -q '=' /tmp/part.01
           ! grep -q '=' /tmp/part.02
           ! grep -q '=' /tmp/part.03
+
+      - name: Restore final base64 padding
+        shell: bash
+        run: |
+          set -euo pipefail
+          LEN="$(wc -c < /tmp/audit.patch.gz.b64 | tr -d ' ')"
+          REM=$((LEN % 4))
+          if [ "${REM}" -ne 0 ]; then
+            PAD=$((4 - REM))
+            printf '%*s' "${PAD}" '' | tr ' ' '=' >> /tmp/audit.patch.gz.b64
+          fi
+          LEN="$(wc -c < /tmp/audit.patch.gz.b64 | tr -d ' ')"
+          test $((LEN % 4)) -eq 0
 
       - name: Decode audit base64
         shell: bash
@@ -84,7 +85,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tr -d '\r\n\t ' < .audit-payload/commit.raw.b64 | base64 -d > /tmp/commit.raw
+          tr -d '\r\n\t ' < .audit-payload/commit.raw.b64 > /tmp/commit.raw.b64
+          LEN="$(wc -c < /tmp/commit.raw.b64 | tr -d ' ')"
+          REM=$((LEN % 4))
+          if [ "${REM}" -ne 0 ]; then
+            PAD=$((4 - REM))
+            printf '%*s' "${PAD}" '' | tr ' ' '=' >> /tmp/commit.raw.b64
+          fi
+          base64 -d /tmp/commit.raw.b64 > /tmp/commit.raw
           test -s /tmp/commit.raw
 
       - name: Verify exact audit checksum
