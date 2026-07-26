@@ -496,8 +496,10 @@ test('12: no password/device/approval/block mutation of budi across all flows', 
     await h({ method: 'POST', headers: sameOrigin(cookie), body: { action: 'list' } }, res);
     aggregate.push.apply(aggregate, sink);
     assertNoBudiAccountMutation(aggregate);
-    // Confirm admin-users has hard guards that refuse to mutate budi even if asked.
-    const src = fs.readFileSync(path.join(ROOT, 'api', 'admin-users.js'), 'utf8');
+    // Confirm the admin-users flow has hard guards that refuse to mutate budi
+    // even if asked. The wrapper lives in api/, the legacy actions in lib/.
+    const src = fs.readFileSync(path.join(ROOT, 'api', 'admin-users.js'), 'utf8') +
+      fs.readFileSync(path.join(ROOT, 'lib', 'admin-users-handler.js'), 'utf8');
     ['block', 'reset password', 'reset', 'reject'].forEach(() => {});
     assert.match(src, /Tidak dapat memblokir admin/);
     assert.match(src, /Tidak dapat mereset password admin/);
@@ -516,8 +518,13 @@ test('budi login is routed through the real server (no local-only admin shortcut
   assert.doesNotMatch(html, /autocuan_is_admin', 'true'\)/);
   // Admin is derived from the server response, gated on the server-identified username.
   assert.match(html, /data\.isAdmin === true && String\(data\.username[^)]*\)\.toLowerCase\(\) === 'budi'/);
-  // budi is exempt from the bad-username block (parity with prior behavior).
-  assert.match(html, /usernameLower !== 'review' && usernameLower !== 'budi' && isBadUsername/);
+  // The bad-username filter now lives only at registration time; login has no
+  // client-side username gate, so budi keeps logging in through the server.
+  const loginStart = html.indexOf('async function doLogin');
+  const loginEnd = html.indexOf('function showPendingLoginApproval');
+  assert.ok(loginStart > 0 && loginEnd > loginStart, 'doLogin boundaries found');
+  assert.doesNotMatch(html.slice(loginStart, loginEnd), /isBadUsername/);
+  assert.match(html, /usernameLower === 'budi'[\s\S]{0,120}Username tidak tersedia/);
 });
 
 // API endpoint count remains exactly 12.

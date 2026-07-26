@@ -127,15 +127,21 @@ test('supports large integer values with BigInt calculations', () => {
   assert.match(out.result.estimatedStopLossIdr.exact, /^\d+$/);
 });
 
-test('planner preview is protected by the existing signed admin endpoint', () => {
-  assert.match(html, /fetch\('\/api\/admin-users'/);
-  assert.match(html, /action:\s*'analytics'/);
-  assert.match(html, /credentials:\s*'same-origin'/);
+test('planner access is decided by the signed approval endpoint', () => {
+  assert.match(html, /fetchWithTimeout\('\/api\/admin-users'/);
+  assert.match(html, /action:'portfolio_access'/);
+  assert.match(html, /credentials:'same-origin'/);
+  // The bounded gate always resolves into content or a retry state.
+  assert.match(html, /var ACCESS_TIMEOUT_MS=9000/);
+  assert.match(html, /Portfolio belum berhasil dibuka/);
 });
 
-test('planner does not treat account approval as premium entitlement', () => {
-  assert.doesNotMatch(html, /is_approved|approval_status|X-User-Id|X-Username/);
-  assert.match(html, /Akun Free tidak memperoleh akses/);
+test('planner never trusts browser-supplied identity for authorization', () => {
+  // The local-data namespace comes from the server response (state.uid), and
+  // localStorage writes are UI persistence only — the API session decides.
+  assert.match(html, /state\.uid=String\(data\.user_id\)/);
+  assert.match(html, /'autocuan_portfolio_plans_'\+state\.uid/);
+  assert.doesNotMatch(html, /localStorage\.getItem\('autocuan_user_id'\)[^\n]{0,80}portfolio_access/);
 });
 
 test('browser receives no service-role secret and creates no broker order', () => {
@@ -146,7 +152,7 @@ test('browser receives no service-role secret and creates no broker order', () =
 test('confirmed plan uses the existing per-user manual portfolio key', () => {
   assert.match(html, /autocuan_portfolio_/);
   assert.match(html, /autocuan_user_id/);
-  assert.match(html, /plannerVersion/);
+  assert.match(html, /window\.AutoCuanPortfolioPlannerV1\.calculate/);
 });
 
 test('vercel route exposes only the isolated preview page', () => {

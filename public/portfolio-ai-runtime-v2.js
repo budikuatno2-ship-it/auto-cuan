@@ -96,9 +96,16 @@
   function saveChat() { writeJson(chatKey, state.messages.slice(-20)); }
   function loadChat() {
     var rows = readJson(chatKey, []);
-    state.messages = Array.isArray(rows) ? rows.slice(-20).filter(function (row) {
+    var cleaned = Array.isArray(rows) ? rows.slice(-20).filter(function (row) {
       return row && (row.role === 'user' || row.role === 'assistant') && String(row.content || '').trim();
     }) : [];
+    // Drop consecutive duplicates left behind by older double-send bugs.
+    state.messages = cleaned.filter(function (row, index) {
+      if (index === 0) return true;
+      var previous = cleaned[index - 1];
+      return previous.role !== row.role || String(previous.content).trim() !== String(row.content).trim();
+    });
+    saveChat();
   }
 
   function clearTimers() {
@@ -158,7 +165,12 @@
       loading.innerHTML = '<span id="aiLoadingText">Lagi baca data portofoliomu dulu…</span><span class="ai-loading-dot"></span><span class="ai-loading-dot"></span><span class="ai-loading-dot"></span>';
       host.appendChild(loading);
     }
-    host.scrollTop = host.scrollHeight;
+    // The page scrollbar is the only scrollbar: follow the newest message by
+    // keeping it in view instead of scrolling an inner chat viewport.
+    var last = host.lastElementChild;
+    if (last && typeof last.scrollIntoView === 'function' && !document.hidden) {
+      try { last.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+    }
   }
 
   function addMessage(role, content) {
@@ -247,7 +259,7 @@
       : null;
 
     var lines = [
-      'AI cloud-nya lagi kurang kooperatif, tapi datamu tetap bisa dibaca lewat **mode data lokal**.',
+      '_Jalur AI utama sedang sibuk, jadi ringkasan ini dibuat langsung dari data portofolio yang tersimpan._',
       '',
       '### Ringkasan portofolio',
       '- Posisi/rencana tersimpan: **' + plans.length + '**',
@@ -297,7 +309,7 @@
       var response = await fetch('/api/analyze', {
         method: 'POST',
         credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
         body: JSON.stringify({
           source: 'portfolio_chat',
           chatMessage: text,
@@ -314,7 +326,7 @@
     } catch (error) {
       var fallbackContext = contextNow();
       addMessage('assistant', localFallback(text, fallbackContext));
-      if (status) status.textContent = 'AI cloud lagi ngadat, jadi sistem pakai mode data lokal biar kamu tetap dapat jawaban.';
+      if (status) status.textContent = 'Jalur AI utama sedang sibuk. Jawaban sementara dibuat dari data portofolio yang tersedia.';
       console.warn('portfolio-ai cloud fallback', error && error.message);
     } finally {
       setSending(false);

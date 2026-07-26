@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'), assert=require('node:assert/strict'), fs=require('node:fs'), path=require('node:path');
-const root=path.join(__dirname,'..'), migration=fs.readFileSync(path.join(root,'supabase','subscription-phase-2-migration.sql'),'utf8'), login=fs.readFileSync(path.join(root,'api','login-user.js'),'utf8'), admin=fs.readFileSync(path.join(root,'api','admin-users.js'),'utf8');
+const root=path.join(__dirname,'..'), migration=fs.readFileSync(path.join(root,'supabase','subscription-phase-2-migration.sql'),'utf8'), login=fs.readFileSync(path.join(root,'api','login-user.js'),'utf8'), admin=fs.readFileSync(path.join(root,'api','admin-users.js'),'utf8')+fs.readFileSync(path.join(root,'lib','admin-users-handler.js'),'utf8');
 const vouchers=require('../lib/vouchers'), identity=require('../lib/subscription-identity');
 test('Phase 5B stores only HMAC voucher codes and redeems atomically through service-only RPCs',()=>{
   process.env.VOUCHER_CODE_PEPPER='phase5b-test-pepper-long-enough'; const hash=vouchers.voucherCodeHash(' abcdef12 ');

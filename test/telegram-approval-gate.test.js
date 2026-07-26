@@ -172,14 +172,19 @@ function makeFakeVerifyBot(opts) {
 function loadAdminUsers(db, verifyBot) {
   const origLoad = Module._load;
   const abs = require.resolve('../api/admin-users');
+  // The wrapper delegates to lib/admin-users-handler.js; reload it too so the
+  // stubbed supabase/bot reach the legacy actions instead of a cached copy.
+  const handlerAbs = require.resolve('../lib/admin-users-handler');
   delete require.cache[abs];
+  delete require.cache[handlerAbs];
   Module._load = function (request) {
     if (request === '@supabase/supabase-js') return { createClient: function () { return db; } };
     if (request === '../lib/telegram-verify-bot') return { createVerifyBot: function () { return verifyBot; } };
     return origLoad.apply(this, arguments);
   };
   let handler;
-  try { handler = require('../api/admin-users'); } finally { Module._load = origLoad; delete require.cache[abs]; }
+  try { handler = require('../api/admin-users'); }
+  finally { Module._load = origLoad; delete require.cache[abs]; delete require.cache[handlerAbs]; }
   return handler;
 }
 

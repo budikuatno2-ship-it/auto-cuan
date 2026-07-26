@@ -135,16 +135,20 @@ test('8: vercel.json contains no "redirects" key / no host-based redirect rule',
   assert.doesNotMatch(vercelJsonRaw, /autocuan\.web\.id/);
 });
 
-// 9. Existing /dashboard and /review rewrites remain unchanged.
+// 9. Existing /dashboard and /review rewrites remain unchanged, and the
+// portfolio planner keeps its clean route. No other rewrites may appear.
 test('9: existing /review and /dashboard rewrites remain intact', () => {
   var rewrites = vercelJson.rewrites || [];
   var review = rewrites.find(function (r) { return r.source === '/review'; });
   var dashboard = rewrites.find(function (r) { return r.source === '/dashboard'; });
+  var planner = rewrites.find(function (r) { return r.source === '/portfolio-planner'; });
   assert.ok(review, 'expected /review rewrite');
   assert.equal(review.destination, '/index.html');
   assert.ok(dashboard, 'expected /dashboard rewrite');
   assert.equal(dashboard.destination, '/index.html');
-  assert.equal(rewrites.length, 2, 'no extra rewrites were introduced');
+  assert.ok(planner, 'expected /portfolio-planner rewrite');
+  assert.equal(planner.destination, '/portfolio-planner.html');
+  assert.equal(rewrites.length, 3, 'no extra rewrites were introduced');
 });
 
 // 10. Existing Vercel cron remains unchanged.

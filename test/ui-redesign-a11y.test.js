@@ -141,7 +141,12 @@ test('budi remains safely supported (server-gated admin, exempt from bad-name bl
   assert.doesNotMatch(html, /if \(password === '\.'\)/);
   assert.doesNotMatch(html, /autocuan_is_admin', 'true'\)/);
   assert.match(html, /data\.isAdmin === true && String\(data\.username[^)]*\)\.toLowerCase\(\) === 'budi'/);
-  assert.match(html, /usernameLower !== 'review' && usernameLower !== 'budi' && isBadUsername/);
+  // The bad-username filter now lives at registration only; login has no
+  // client-side username gate, so budi's login path is untouched.
+  const loginStart = html.indexOf('async function doLogin');
+  const loginEnd = html.indexOf('function showPendingLoginApproval');
+  assert.ok(loginStart > 0 && loginEnd > loginStart, 'doLogin boundaries found');
+  assert.doesNotMatch(html.slice(loginStart, loginEnd), /isBadUsername/);
 });
 
 // ---------------------------------------------------------------------------
@@ -270,13 +275,14 @@ test('doSelfResetPassword guards against duplicate submissions', () => {
 // ---------------------------------------------------------------------------
 // 16+17. Delete User remains absent; API JS count remains exactly 12
 // ---------------------------------------------------------------------------
-test('Delete User remains absent (frontend + admin API)', () => {
+test('Delete User lives only in the guarded admin flow (not in the approved table)', () => {
   const start = html.indexOf('function renderApprovedUsersTable');
   const end = html.indexOf('// ===== APPROVED-USERS-HELPERS-END =====');
-  assert.equal(/delete/i.test(html.slice(start, end)), false);
+  assert.equal(/delete/i.test(html.slice(start, end)), false, 'approved table itself stays delete-free');
   const adminApi = fs.readFileSync(path.join(ROOT, 'api', 'admin-users.js'), 'utf8');
-  assert.equal(/action\s*===\s*['"]delete['"]/.test(adminApi), false);
-  assert.equal(/delete[_-]?user/i.test(adminApi), false);
+  assert.ok(/action === 'delete_user'/.test(adminApi), 'delete_user action exists');
+  assert.ok(/requireAdminSession\(req\)/.test(adminApi), 'delete requires a signed admin session');
+  assert.ok(/targetUsername === 'budi' \|\| targetUsername === 'review'/.test(adminApi), 'budi/review protected');
 });
 
 test('API JavaScript file count remains exactly 12', () => {

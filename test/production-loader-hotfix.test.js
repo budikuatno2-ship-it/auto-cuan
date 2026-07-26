@@ -20,8 +20,21 @@ test('startup always has a public landing fallback and a bounded watchdog', () =
   assert.match(html, /catch \(_\) \{[\s\S]{0,180}renderStartupFallback\(\)/);
   // Keep this semantic rather than coupled to comment length inside the finally block.
   assert.match(html, /finally \{[\s\S]{0,420}initialLoader[\s\S]{0,420}renderStartupFallback\(\)/);
-  assert.match(html, /setTimeout\(function\(\) \{ if \(document\.getElementById\('initialLoader'\)\) renderStartupFallback\(\); \}, 4500\)/);
+  assert.match(html, /setTimeout\(function\(\) \{ var loader=document\.getElementById\('initialLoader'\); if \(loader && !loader\.classList\.contains\('hidden'\)\) renderStartupFallback\(\); \}, 4500\)/);
   assert.match(html, /Beberapa fitur sementara tidak tersedia\./);
+});
+
+test('startup watchdog cannot replace an already active signed-in view', () => {
+  assert.doesNotMatch(html, /setTimeout\(function\(\) \{ if \(document\.getElementById\('initialLoader'\)\) renderStartupFallback\(\); \}, 4500\)/);
+  assert.match(html, /loader && !loader\.classList\.contains\('hidden'\)/);
+  assert.match(html, /var activeView = document\.querySelector\('#landingPage:not\(\.hidden\), #dashboardScreen:not\(\.hidden\), #blockedScreen:not\(\.hidden\), #maintenanceScreen:not\(\.hidden\)'\);/);
+  assert.match(html, /if \(activeView\) return;/);
+  assert.match(html, /if \(isAutocuanLoggedIn\(\)\) \{[\s\S]{0,220}handleAppRoute/);
+});
+
+test('subscription page does not advertise unfinished phase wording', () => {
+  assert.match(html, /Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan\./);
+  assert.doesNotMatch(html, /tersedia pada tahap berikutnya/);
 });
 
 test('unprovisioned subscription controls fail closed without startup requests', () => {
@@ -67,7 +80,9 @@ test('server-owned capability defaults disabled and probes enabled schema safely
 
 test('API subscription actions are server-gated while normal admin functions stay separate', () => {
   const loginApi = fs.readFileSync(path.join(root, 'api', 'login-user.js'), 'utf8');
-  const adminApi = fs.readFileSync(path.join(root, 'api', 'admin-users.js'), 'utf8');
+  // The wrapper lives in api/admin-users.js; legacy admin actions in lib/.
+  const adminApi = fs.readFileSync(path.join(root, 'api', 'admin-users.js'), 'utf8') +
+    fs.readFileSync(path.join(root, 'lib', 'admin-users-handler.js'), 'utf8');
   assert.match(loginApi, /subscriptionAction === 'subscription-capability'/);
   assert.match(loginApi, /if \(!isSubscriptionFeatureEnabled\(\)\) return res\.status\(503\)/);
   assert.match(adminApi, /catalogActions\.indexOf\(action\) >= 0 && !isSubscriptionFeatureEnabled\(\)/);

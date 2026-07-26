@@ -47,9 +47,11 @@ function makeRes() {
   };
 }
 
+// Registration is atomic (v2): the handler calls the
+// register_pending_user_with_telegram_challenge RPC instead of a raw insert.
 function makeSupabaseMock(opts) {
   opts = opts || {};
-  var captured = { inserted: null };
+  var captured = { inserted: null, rpcName: null, rpcArgs: null };
   var client = {
     from() {
       return {
@@ -61,6 +63,15 @@ function makeSupabaseMock(opts) {
           return { select() { return Promise.resolve({ data: [{ id: 1, username: row.username, created_at: 'now' }], error: opts.insertError || null }); } };
         }
       };
+    },
+    rpc(name, args) {
+      captured.rpcName = name;
+      captured.rpcArgs = args;
+      if (opts.rpcError) return Promise.resolve({ data: null, error: opts.rpcError });
+      return Promise.resolve({
+        data: [{ id: 1, username: args.p_username, created_at: 'now', challenge_id: 'ch-1' }],
+        error: null
+      });
     }
   };
   return { client: client, captured: captured };
@@ -85,11 +96,14 @@ function loadHandlerWithMock(mock) {
 function withEnv(fn) {
   var prevUrl = process.env.SUPABASE_URL;
   var prevKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  var prevCode = process.env.TELEGRAM_VERIFY_CODE_SECRET;
   process.env.SUPABASE_URL = 'https://example.test';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
+  process.env.TELEGRAM_VERIFY_CODE_SECRET = 'register-test-code-secret';
   return Promise.resolve(fn()).finally(function() {
     if (prevUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = prevUrl;
     if (prevKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = prevKey;
+    if (prevCode === undefined) delete process.env.TELEGRAM_VERIFY_CODE_SECRET; else process.env.TELEGRAM_VERIFY_CODE_SECRET = prevCode;
   });
 }
 
@@ -101,8 +115,8 @@ test('registration with a valid client device id succeeds and inserts that id', 
     await handler({ method: 'POST', body: { username: 'alice', passwordHash: 'h', deviceId: 'dev_client-1', userAgent: 'ua' } }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.success, true);
-    assert.equal(mock.captured.inserted.device_id, 'dev_client-1');
-    assert.deepEqual(mock.captured.inserted.devices, ['dev_client-1']);
+    assert.equal(mock.captured.rpcName, 'register_pending_user_with_telegram_challenge');
+    assert.equal(mock.captured.rpcArgs.p_device_id, 'dev_client-1');
   });
 });
 
@@ -114,9 +128,8 @@ test('registration without a device id receives a server-generated fallback', as
     await handler({ method: 'POST', body: { username: 'bob', passwordHash: 'h' } }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.success, true);
-    assert.ok(mock.captured.inserted.device_id, 'device_id must be present');
-    assert.ok(mock.captured.inserted.device_id.indexOf('srv_') === 0);
-    assert.deepEqual(mock.captured.inserted.devices, [mock.captured.inserted.device_id]);
+    assert.ok(mock.captured.rpcArgs.p_device_id, 'device_id must be present');
+    assert.ok(mock.captured.rpcArgs.p_device_id.indexOf('srv_') === 0);
   });
 });
 
@@ -133,9 +146,9 @@ test('the database insert never receives a null device_id', async () => {
       var handler = loadHandlerWithMock(mock);
       var res = makeRes();
       await handler({ method: 'POST', body: inputs[i] }, res);
-      assert.notEqual(mock.captured.inserted.device_id, null);
-      assert.notEqual(mock.captured.inserted.device_id, undefined);
-      assert.ok(String(mock.captured.inserted.device_id).length > 0);
+      assert.notEqual(mock.captured.rpcArgs.p_device_id, null);
+      assert.notEqual(mock.captured.rpcArgs.p_device_id, undefined);
+      assert.ok(String(mock.captured.rpcArgs.p_device_id).length > 0);
     }
   });
 });
@@ -148,7 +161,7 @@ test('existing username validation remains intact', async () => {
     await handler({ method: 'POST', body: { username: 'taken', passwordHash: 'h', deviceId: 'dev_x' } }, res);
     assert.equal(res.statusCode, 400);
     assert.match(res.body.error, /sudah digunakan/);
-    assert.equal(mock.captured.inserted, null, 'must not insert when username exists');
+    assert.equal(mock.captured.rpcName, null, 'must not register when username exists');
   });
 });
 
@@ -176,13 +189,25 @@ test('missing password is still rejected as incomplete data', async () => {
 
 test('raw database constraint text is never shown to the user', async () => {
   await withEnv(async function() {
-    var mock = makeSupabaseMock({ insertError: { code: '23502', message: 'null value in column "device_id" of relation "app_users" violates not-null constraint' } });
+    var mock = makeSupabaseMock({ rpcError: { code: '23502', message: 'null value in column "device_id" of relation "app_users" violates not-null constraint' } });
     var handler = loadHandlerWithMock(mock);
     var res = makeRes();
     await handler({ method: 'POST', body: { username: 'dave', passwordHash: 'h', deviceId: 'dev_x' } }, res);
     assert.equal(res.statusCode, 500);
     assert.doesNotMatch(res.body.error, /device_id|not-null|constraint|null value/i);
     assert.match(res.body.error, /Gagal membuat akun/);
+  });
+});
+
+test('a duplicate username from the atomic RPC maps to the friendly 400', async () => {
+  await withEnv(async function() {
+    var mock = makeSupabaseMock({ rpcError: { code: '23505', message: 'duplicate key value violates unique constraint "app_users_username_key"' } });
+    var handler = loadHandlerWithMock(mock);
+    var res = makeRes();
+    await handler({ method: 'POST', body: { username: 'dupe', passwordHash: 'h', deviceId: 'dev_x' } }, res);
+    assert.equal(res.statusCode, 400);
+    assert.match(res.body.error, /sudah digunakan/);
+    assert.doesNotMatch(res.body.error, /constraint|duplicate key/i);
   });
 });
 
@@ -193,8 +218,7 @@ test('login-user remains compatible: register still stores device in devices arr
     var handler = loadHandlerWithMock(mock);
     var res = makeRes();
     await handler({ method: 'POST', body: { username: 'eve', passwordHash: 'h', deviceId: 'dev_login' } }, res);
-    assert.ok(Array.isArray(mock.captured.inserted.devices));
-    assert.ok(mock.captured.inserted.devices.indexOf('dev_login') >= 0);
+    assert.equal(mock.captured.rpcArgs.p_device_id, 'dev_login');
     var loginSrc = fs.readFileSync(path.resolve(__dirname, '..', 'api', 'login-user.js'), 'utf8');
     assert.ok(loginSrc.indexOf('currentDevices.includes(deviceId)') >= 0, 'login still matches devices array');
   });

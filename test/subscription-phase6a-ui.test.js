@@ -5,10 +5,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
-test('Phase 6A exposes public subscription entry points and a responsive comparison page', () => {
-  assert.match(html, /data-page="subscription"/);
-  assert.match(html, /Paket Langganan/);
+test('subscription page stays dormant: markup preserved, every entry point hidden', () => {
+  // The comparison page markup is kept for the future rollout…
   assert.match(html, /id="page-subscription"/);
+  assert.match(html, /Paket Langganan/);
+  // …but no navigation button or CTA can reach it while payment is postponed.
+  assert.doesNotMatch(html, /data-page="subscription"/);
+  assert.doesNotMatch(html, /onclick="openSubscriptionPage\(\)"/);
+  assert.doesNotMatch(html, /onclick="navigateTo\('subscription'\)"/);
   assert.match(html, /grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3/);
   ['Free', 'Trial 10 Hari', 'Premium 1 Bulan', 'Premium 2 Bulan', 'Premium 3 Bulan', 'Lifetime'].forEach(label => assert.ok(html.includes(label), label));
   assert.match(html, /Paling Populer/);
@@ -22,7 +26,8 @@ test('Phase 6A exposes public subscription entry points and a responsive compari
 test('Phase 6A uses existing read-only catalogue and entitlement endpoints only', () => {
   assert.match(html, /action=subscription-plans/);
   assert.match(html, /safeSubscriptionRequest\('subscription-status'/);
-  assert.match(html, /Pembayaran melalui transfer bank akan tersedia pada tahap berikutnya/);
+  assert.match(html, /Pilihan pembayaran belum dibuka/);
+  assert.doesNotMatch(html, /tersedia pada tahap berikutnya/);
   assert.doesNotMatch(html, /midtrans/i);
   assert.equal(fs.readdirSync(path.join(__dirname, '..', 'api')).filter(name => name.endsWith('.js')).length, 12);
 });

@@ -77,9 +77,15 @@ test('subscription-status uses the signed identity and returns safe fields only'
   }
 });
 
-test('subscription safety invariants retain 12 API files and no delete-user capability', () => {
+test('subscription safety invariants retain 12 API files and a guarded delete flow', () => {
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter((name) => name.endsWith('.js'));
   assert.equal(apiFiles.length, 12);
-  const handlers = apiFiles.map((name) => fs.readFileSync(path.join(ROOT, 'api', name), 'utf8')).join('\n');
-  assert.doesNotMatch(handlers, /action\s*===\s*['"]delete|action\s*:\s*['"]delete/i);
+  const adminUsers = fs.readFileSync(path.join(ROOT, 'api', 'admin-users.js'), 'utf8');
+  // Account deletion exists ONLY inside admin-users behind the signed admin
+  // session; no other handler may grow a delete action.
+  assert.match(adminUsers, /action === 'delete_user'/);
+  assert.match(adminUsers, /requireAdminSession\(req\)/);
+  const others = apiFiles.filter((name) => name !== 'admin-users.js')
+    .map((name) => fs.readFileSync(path.join(ROOT, 'api', name), 'utf8')).join('\n');
+  assert.doesNotMatch(others, /action\s*===\s*['"]delete|action\s*:\s*['"]delete/i);
 });

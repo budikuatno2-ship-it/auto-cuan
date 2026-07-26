@@ -408,11 +408,15 @@ test('no wildcard CORS is configured for the API', () => {
 });
 
 // 19. Documented gap: no server-side rate limiting on auth endpoints (see report)
-test('SECURITY GAP (documented): auth endpoints have no server-side rate limiting', () => {
+test('SECURITY GAP (documented): credential auth has no server-side rate limiting', () => {
   const login = fs.readFileSync(path.join(ROOT, 'api', 'login-user.js'), 'utf8');
   const register = fs.readFileSync(path.join(ROOT, 'api', 'register-user.js'), 'utf8');
-  // Confirm the gap exists (no limiter present) — remediation requires shared infra.
-  assert.doesNotMatch(login, /rateLimit|rate_limit|tooManyRequests|429/i);
+  // Confirm the gap exists (no limiter present) — remediation requires shared
+  // infra. The dormant subscription link-token limiter earlier in the file is
+  // not a credential limiter, so only the credential section is checked.
+  const credentialSection = login.slice(login.indexOf("if (action === 'logout')"));
+  assert.ok(credentialSection.length > 0, 'credential section found');
+  assert.doesNotMatch(credentialSection, /rateLimit|rate_limit|tooManyRequests|429/i);
   assert.doesNotMatch(register, /rateLimit|rate_limit|tooManyRequests|429/i);
 });
 

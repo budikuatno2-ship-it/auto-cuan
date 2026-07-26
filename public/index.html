@@ -776,7 +776,7 @@
             <div class="landing-menu hidden md:flex items-center gap-6">
                 <a href="#landingFeatures">Fitur</a><a href="#landingHow">Cara Kerja</a><a href="#landingSafety">Safety</a><a href="#landingPreview">Preview</a><button type="button" onclick="openLoginModal()" class="landing-link">Login</button>
             </div>
-            <div class="flex gap-2"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary shrink-0"><span class="landing-cta-label">Mulai Sekarang</span></button><button type="button" onclick="openSubscriptionPage()" class="landing-btn">Paket Langganan</button></div>
+            <div class="flex gap-2"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary shrink-0"><span class="landing-cta-label">Mulai Sekarang</span></button></div>
         </div>
     </nav>
     <main>
@@ -894,8 +894,7 @@
                 <button onclick="navigateTo('screener')" class="nav-btn hidden" data-page="screener" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span>Screener</span></button>
                 <button onclick="navigateTo('chart')" class="nav-btn" data-page="chart"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg><span>Chart</span></button>
                 <button onclick="navigateTo('portofolio')" class="nav-btn hidden" data-page="portofolio" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg><span>Portofolio</span></button>
-                <button onclick="navigateTo('subscription')" class="nav-btn" data-page="subscription" aria-label="Lihat paket langganan"><span aria-hidden="true">✦</span><span>Langganan</span></button>
-            </nav>
+                            </nav>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
                 <span class="header-status-chip"><span class="header-status-dot"></span>Live Radar</span>
                 <span class="header-status-chip safe">Safety ON</span>
@@ -940,13 +939,12 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 <span>Portofolio</span>
             </button>
-                <button onclick="navigateTo('subscription')" class="nav-btn" data-page="subscription" aria-label="Lihat paket langganan"><span aria-hidden="true">✦</span><span>Langganan</span></button>
-        </div>
+                        </div>
     </nav>
 </header>
 
 <!-- ===== PAGE: SUBSCRIPTION ===== -->
-<div id="page-subscription" class="page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7" aria-labelledby="subscriptionPageTitle"><div class="subscription-hero p-5 sm:p-7"><div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Paket Langganan Auto-Cuan</p><h1 id="subscriptionPageTitle" class="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Pilih paket yang sesuai dengan ritme trading Anda.</h1><p class="mt-2 text-sm leading-6 text-slate-300">Bandingkan manfaat, harga, dan masa aktif setiap paket. Pembayaran melalui transfer bank akan tersedia pada tahap berikutnya.</p></div><button onclick="loadSubscriptionExperience(true)" class="nav-btn border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">↻ Muat ulang data</button></div><div id="subscriptionSummary" class="subscription-summary mt-6 p-4 sm:p-5" aria-live="polite">Memuat ringkasan langganan…</div></div><section class="mt-7" aria-labelledby="subscriptionPlansTitle"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Perbandingan paket</p><h2 id="subscriptionPlansTitle" class="mt-1 text-xl font-black text-white">Pilih paket dengan informasi yang jelas.</h2></div><p class="text-xs text-slate-500">Akses tidak pernah diberikan dari halaman ini.</p></div><div id="subscriptionPlans" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">Memuat daftar paket…</div></section></div>
+<div id="page-subscription" class="page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7" aria-labelledby="subscriptionPageTitle"><div class="subscription-hero p-5 sm:p-7"><div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div class="max-w-2xl"><p class="text-xs font-black uppercase tracking-[.16em] text-emerald-300">Paket Langganan Auto-Cuan</p><h1 id="subscriptionPageTitle" class="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">Pilih paket yang sesuai dengan ritme trading Anda.</h1><p class="mt-2 text-sm leading-6 text-slate-300">Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan.</p></div><button onclick="loadSubscriptionExperience(true)" class="nav-btn border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">↻ Muat ulang data</button></div><div id="subscriptionSummary" class="subscription-summary mt-6 p-4 sm:p-5" aria-live="polite">Memuat ringkasan langganan…</div></div><section class="mt-7" aria-labelledby="subscriptionPlansTitle"><div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p class="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Perbandingan paket</p><h2 id="subscriptionPlansTitle" class="mt-1 text-xl font-black text-white">Pilih paket dengan informasi yang jelas.</h2></div><p class="text-xs text-slate-500">Akses tidak pernah diberikan dari halaman ini.</p></div><div id="subscriptionPlans" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">Memuat daftar paket…</div></section></div>
 
 <!-- ===== PAGE: DASHBOARD HOME ===== -->
 <div id="page-dashboard" class="page-content flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4">
@@ -2050,10 +2048,10 @@ function subscriptionBenefits(c){if(c==='FREE')return [subscriptionFeature('Tamp
 function renderSubscriptionSummary(){var b=document.getElementById('subscriptionSummary'),logged=isAutocuanLoggedIn(),e=subscriptionExperience.status&&subscriptionExperience.status.entitlement;if(!b)return;if(!logged){b.innerHTML='<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p class="text-sm font-black text-white">Lihat semua paket tanpa login.</p><p class="mt-1 text-sm text-slate-400">Masuk untuk melihat status langganan dan masa aktif Anda.</p></div><button onclick="openLoginModal()" class="subscription-action px-4 bg-emerald-500 text-slate-950 sm:w-auto">Masuk untuk Berlangganan</button></div>';return;}if(!e||subscriptionExperience.statusError){var both=subscriptionExperience.catalogueError; b.innerHTML=both?'<p class="font-bold text-white">Data langganan belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Status akun dan daftar paket sedang tidak tersedia. Silakan coba lagi.</p>':'<p class="font-bold text-white">Status langganan belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Anda tetap dapat membandingkan paket di bawah.</p>';return;}var m=subscriptionStatusMeta(e),expiry=e.lifetime_state==='active'?'Lifetime':(e.expires_at?subscriptionDate(e.expires_at):'—'),remaining=m[0]==='Trial'&&e.expires_at?' <span class="text-cyan-200">('+subscriptionRemainingTime(e.expires_at)+' tersisa)</span>':'';b.innerHTML='<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"><div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"><div><dt class="text-xs text-slate-500">Paket saat ini</dt><dd class="mt-1 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(e.current_plan))+'</dd></div><div><dt class="text-xs text-slate-500">Status</dt><dd class="mt-1"><span class="subscription-badge '+m[1]+'">'+m[0]+'</span></dd></div><div><dt class="text-xs text-slate-500">Mulai aktif</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(subscriptionDate(e.starts_at))+'</dd></div><div><dt class="text-xs text-slate-500">'+(m[0]==='Trial'?'Sisa trial':'Aktif sampai')+'</dt><dd class="mt-1 font-semibold text-white">'+subscriptionEscape(expiry)+remaining+'</dd></div></div><button onclick="subscriptionComingSoon()" class="subscription-action px-4 border border-slate-600 text-slate-200 md:w-auto">Kelola Langganan</button></div>';}
 function subscriptionCard(p,e){var c=p.code,current=e&&(e.current_plan===c||(c==='FREE'&&!e.current_plan&&!e.expiry_reason)),popular=c==='PREMIUM_2_MONTHS',life=c==='LIFETIME',trial=c==='TRIAL',free=c==='FREE',badge=life?'Sekali Bayar':popular?'Paling Populer':c==='PREMIUM_3_MONTHS'?'Lebih Hemat':trial?'Coba Gratis':free?'Gratis':'',price=free||trial?'Rp0':subscriptionIdr(p.promotional_price_idr!=null?p.promotional_price_idr:p.normal_price_idr),normal=p.promotional_price_idr!=null?'<span class="ml-2 text-xs text-slate-500 line-through">'+subscriptionIdr(p.normal_price_idr)+'</span>':'',duration=life?'Sekali bayar · akses Lifetime':trial?'10 hari · aktivasi mengikuti server':free?'Tanpa biaya':'Aktif selama '+p.duration_months+' bulan',action=current?'Paket Saat Ini':!isAutocuanLoggedIn()?'Masuk untuk Berlangganan':trial?'Mulai Trial':e&&e.entitlement_status==='active'?'Perpanjang':'Pilih Paket';return '<article class="subscription-card '+(popular?'popular ':'')+(life?'lifetime ':'')+'p-5"><div class="flex min-h-6 justify-between gap-2">'+(badge?'<span class="subscription-badge bg-emerald-500/15 text-emerald-200 border border-emerald-400/25">'+badge+'</span>':'<span></span>')+(current?'<span class="subscription-badge bg-slate-100 text-slate-900">Paket Saat Ini</span>':'')+'</div><h3 class="mt-4 text-lg font-black text-white">'+subscriptionEscape(subscriptionPlanName(c,p.display_name))+'</h3><p class="mt-1 text-xs text-slate-400">'+duration+'</p><div class="mt-5"><span class="text-2xl font-black text-white">'+price+'</span>'+normal+'</div><ul class="mt-5 space-y-2">'+subscriptionBenefits(c).join('')+'</ul>'+(life?'<p class="mt-4 rounded-xl border border-violet-400/20 bg-violet-500/10 p-3 text-xs leading-5 text-violet-100">Akses Lifetime memakai alokasi tujuh kursi bersama yang dikelola server, bukan akses pengguna tanpa batas.</p>':'')+'<button '+(current?'disabled aria-disabled="true"':'')+' onclick="subscriptionAction()" class="subscription-action mt-6 px-4 '+(current?'border border-emerald-500/35 bg-emerald-500/10 text-emerald-200':life?'bg-violet-500 text-white':popular?'bg-emerald-500 text-slate-950':'border border-slate-600 text-slate-100')+'">'+action+'</button></article>';}
 function renderSubscriptionPlans(){var b=document.getElementById('subscriptionPlans');if(!b)return;if(subscriptionExperience.catalogueError){b.innerHTML='<div class="subscription-card p-5 sm:col-span-2 xl:col-span-3"><p class="font-bold text-white">Daftar paket belum dapat dimuat.</p><p class="mt-1 text-sm text-slate-400">Silakan coba lagi beberapa saat.</p></div>';return;}var ps=subscriptionExperience.catalogue||[];if(!ps.length){b.innerHTML='<div class="subscription-card p-5 sm:col-span-2 xl:col-span-3"><p class="font-bold text-white">Belum ada paket yang tersedia.</p></div>';return;}var e=subscriptionExperience.status&&subscriptionExperience.status.entitlement;b.innerHTML=[{code:'FREE'},{code:'TRIAL'}].concat(ps).map(function(p){return subscriptionCard(p,e);}).join('');}
-function subscriptionAction(){if(!isAutocuanLoggedIn()){openLoginModal();return;}subscriptionComingSoon();}function subscriptionComingSoon(){showToast('Pembayaran melalui transfer bank akan tersedia pada tahap berikutnya. Tidak ada pembelian atau akses yang diproses dari halaman ini.','info');}
+function subscriptionAction(){if(!isAutocuanLoggedIn()){openLoginModal();return;}subscriptionComingSoon();}function subscriptionComingSoon(){showToast('Pilihan pembayaran belum dibuka. Tidak ada pembelian atau akses yang diproses dari halaman ini.','info');}
 async function loadSubscriptionExperience(force){if(!force&&subscriptionExperience.catalogue){renderSubscriptionSummary();renderSubscriptionPlans();return;}subscriptionExperience.catalogueError=false;subscriptionExperience.statusError=false;try{var r=await fetch('/api/login-user?action=subscription-plans',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'subscription-plans'})}),d=await r.json();if(!r.ok||!d.success)throw new Error();subscriptionExperience.catalogue=d.plans||[];}catch(_){subscriptionExperience.catalogueError=true;}if(isAutocuanLoggedIn())try{var x=await safeSubscriptionRequest('subscription-status',{},6000);if(!x.success)throw new Error();subscriptionExperience.status=x;}catch(_){subscriptionExperience.statusError=true;}else subscriptionExperience.status=null;renderSubscriptionSummary();renderSubscriptionPlans();}
 async function refreshSubscriptionStatus(){if(currentPage==='subscription')await loadSubscriptionExperience(true);}
-function openSubscriptionPage(){setTopLevelView('app');navigateTo('subscription');loadSubscriptionExperience(true);window.scrollTo({top:0,behavior:'smooth'});}
+function openSubscriptionPage(){if(isAutocuanLoggedIn())enterApp({replaceHistory:true});else showLandingPage({replaceHistory:true});}
 
 // === UNIFIED AI USAGE LIMIT ===
 // Anonymous (guest/non-login): 3 AI requests per WIB day (unified — analysis + chat both count)
@@ -2425,6 +2423,16 @@ function renderShareDt(d) {
 
 // ===== STARTUP FAIL-SAFE =====
 function renderStartupFallback() {
+    // Never replace a view that startup has already selected. The loader stays
+    // mounted but hidden, so checking only for its DOM existence caused the
+    // watchdog to send signed-in users back to the public landing page.
+    var activeView = document.querySelector('#landingPage:not(.hidden), #dashboardScreen:not(.hidden), #blockedScreen:not(.hidden), #maintenanceScreen:not(.hidden)');
+    if (activeView) return;
+    if (isAutocuanLoggedIn()) {
+        try { handleAppRoute({ duringInit: true }); }
+        catch (_) { setTopLevelView('app'); showDashboard(); }
+        return;
+    }
     setTopLevelView('landing');
     var landing = document.getElementById('landingPage');
     var notice = document.getElementById('startupFallbackNotice');
@@ -2480,7 +2488,7 @@ function renderStartupFallback() {
 })();
 // The watchdog also renders a usable public screen; merely removing the spinner
 // would otherwise leave a blank page after an early startup exception.
-setTimeout(function() { if (document.getElementById('initialLoader')) renderStartupFallback(); }, 4500);
+setTimeout(function() { var loader=document.getElementById('initialLoader'); if (loader && !loader.classList.contains('hidden')) renderStartupFallback(); }, 4500);
 
 // Nav scroll indicator: detect overflow and show gradient hint on mobile
 (function() {
@@ -2774,6 +2782,10 @@ var premiumAccessGeneration = 0;
 var premiumAccessRefreshTimer = null;
 function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','screener','portofolio'].indexOf(String(page || '')) !== -1; }
 function hasConfirmedPremiumAccess() { return premiumAccessState.state === 'ready' && premiumAccessState.premium === true; }
+// Website access is approval-based: only a definitive server "no" locks features.
+// A pending check or a transient network failure must never lock out or bounce
+// a signed-in approved user.
+function isDeniedWebsiteAccess() { return premiumAccessState.state === 'ready' && premiumAccessState.premium !== true; }
 function clearRenderedPremiumData() {
     if (typeof stopScreenerPolling === 'function') stopScreenerPolling();
     if (typeof stopNkPolling === 'function') stopNkPolling();
@@ -2798,9 +2810,9 @@ function applyPremiumAccessUi() {
         if (allowed) { page.removeAttribute('aria-hidden'); if ('inert' in page) page.inert=false; }
         else { page.classList.add('hidden'); page.setAttribute('aria-hidden','true'); if ('inert' in page) page.inert=true; }
     });
-    if (!allowed && isPremiumFeaturePage(currentPage)) {
+    if (isDeniedWebsiteAccess() && isPremiumFeaturePage(currentPage)) {
         clearRenderedPremiumData();
-        navigateTo('subscription');
+        navigateTo('dashboard');
     }
 }
 function cancelPremiumAccessRequest() {
@@ -2841,14 +2853,27 @@ async function loadPremiumAccess(force) {
     var request=(async function(){
         var timer=controller?setTimeout(function(){controller.abort();},6500):null;
         try {
-            var response=await fetch('/api/login-user?action=premium-access-status',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({action:'premium-access-status'}),signal:controller?controller.signal:undefined});
+            // Approval-based website access: the signed server session plus
+            // is_approved/is_blocked in the database decide access. Subscription
+            // entitlement is intentionally NOT consulted for website features.
+            var response=await fetch('/api/admin-users',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'content-type':'application/json'},body:JSON.stringify({action:'portfolio_access'}),signal:controller?controller.signal:undefined});
             var payload=null; try { payload=await response.json(); } catch (_) {}
-            if (!response.ok || !payload || payload.success!==true) throw new Error('premium_access_unavailable');
             if (generation!==premiumAccessGeneration) return premiumAccessState;
-            premiumAccessState={state:'ready',premium:payload.premium===true,accessLevel:payload.access_level||'free',checkedAt:Date.now(),expiresAt:payload.expires_at||null};
+            if (response.ok && payload && payload.success===true && payload.user_id) {
+                premiumAccessState={state:'ready',premium:true,accessLevel:'approved',checkedAt:Date.now(),expiresAt:null};
+            } else if (response.status===401 || response.status===403) {
+                // Definitive server "no" (anonymous, blocked, or unapproved).
+                premiumAccessState={state:'ready',premium:false,accessLevel:'free',checkedAt:Date.now(),expiresAt:null};
+            } else {
+                throw new Error('premium_access_unavailable');
+            }
         } catch (_) {
             if (generation!==premiumAccessGeneration) return premiumAccessState;
-            premiumAccessState={state:'unavailable',premium:false,accessLevel:'free',checkedAt:Date.now()};
+            // Transient failure: keep confirmed access instead of logging the user
+            // out of features; retry happens via the scheduled refresh.
+            if (!(priorState.state==='ready' && priorState.premium===true)) {
+                premiumAccessState={state:'unavailable',premium:false,accessLevel:'free',checkedAt:Date.now()};
+            }
         } finally {
             if (timer) clearTimeout(timer);
             if (generation===premiumAccessGeneration) {
@@ -2863,9 +2888,18 @@ async function loadPremiumAccess(force) {
 }
 
 function navigateTo(page) {
-    if (isPremiumFeaturePage(page) && !hasConfirmedPremiumAccess()) {
-        if (typeof showToast === 'function') showToast('Fitur ini tersedia untuk pengguna Trial dan Premium.', 'warning');
-        page = 'subscription';
+    if (page === 'subscription') {
+        // Subscription is postponed: no page, no redirect target.
+        page = 'dashboard';
+    }
+    if (isPremiumFeaturePage(page) && isDeniedWebsiteAccess()) {
+        if (typeof showToast === 'function') showToast('Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin.', 'warning');
+        page = 'dashboard';
+    }
+    if (page === 'portofolio') {
+        // Portofolio lives on its own page (Decision Center).
+        window.location.assign('/portfolio-planner');
+        return;
     }
 
     currentPage = page;
@@ -4704,9 +4738,13 @@ async function handleSend() {
 
     if (!msg && !hasFile) return;
 
-    // If on analisis page, route follow-up to analisis result area
+    // If on analisis page, route follow-up to analisis result area.
+    // Hold the send lock for the whole request so a double click or a second
+    // Enter press cannot fire two /api/analyze calls.
     if (currentPage === 'analisis' && msg && !hasFile) {
-        await handleAnalisisFollowUp(msg);
+        isSending = true;
+        try { await handleAnalisisFollowUp(msg); }
+        finally { isSending = false; }
         return;
     }
 
@@ -5293,7 +5331,9 @@ function addAIBubble(html, isStructured) {
                 setTimeout(function() { _moRunning = false; }, 150);
             });
         });
-        _mo.observe(contentDiv, { childList: true, subtree: true, characterData: true });
+        // childList-only: the callback rewrites text nodes, so observing
+        // characterData would make the observer react to its own edits.
+        _mo.observe(contentDiv, { childList: true, subtree: true });
         setTimeout(function() { _mo.disconnect(); }, 2000);
     }
     container.scrollTop = container.scrollHeight;
@@ -6189,8 +6229,10 @@ function renderAdminUsers() {
         if (user.is_blocked) { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">Blocked</span>'; }
         else if (user.is_approved === false) { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-yellow-500/20 text-yellow-400">Pending</span>'; }
         else { statusBadge = '<span class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400">Approved</span>'; }
+        var safeName = escapeAdminHtml(user.username);
+        var clickName = adminOnclickArg(user.username);
         html += '<tr class="border-b border-dark-600/30 hover:bg-dark-700/30">';
-        html += '<td class="px-3 py-2 text-white font-medium">' + user.username + '</td>';
+        html += '<td class="px-3 py-2 text-white font-medium">' + safeName + '</td>';
         html += '<td class="px-3 py-2 text-gray-400 text-xs font-mono">' + deviceLabel + '</td>';
         html += '<td class="px-3 py-2">' + telegramStatusLabel(user) + '</td>';
         html += '<td class="px-3 py-2 text-gray-400">' + created + '</td>';
@@ -6198,20 +6240,20 @@ function renderAdminUsers() {
         html += '<td class="px-3 py-2">';
         if (user.is_approved === false && !user.is_blocked) {
             if (userIsVerified(user)) {
-                html += '<button onclick="adminUserAction(\'approve\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Approve</button>';
+                html += '<button onclick="adminUserAction(\'approve\',\'' + clickName + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Approve</button>';
             } else {
                 // Approve is rejected for an unverified pending account.
                 html += '<button disabled title="User belum verifikasi Telegram" class="px-2 py-1 rounded text-xs text-gray-600 border border-dark-600/50 mr-1 cursor-not-allowed">Approve</button>';
             }
         }
         if (user.is_approved !== false && !user.is_blocked) {
-            html += '<button onclick="adminUserAction(\'reject\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reject</button>';
-            html += '<button onclick="adminUserAction(\'retry_invite\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-sky-400 border border-sky-500/30 hover:bg-sky-500/10 mr-1">Kirim Ulang Invite</button>';
+            html += '<button onclick="adminUserAction(\'reject\',\'' + clickName + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reject</button>';
+            html += '<button onclick="adminUserAction(\'retry_invite\',\'' + clickName + '\')" class="px-2 py-1 rounded text-xs text-sky-400 border border-sky-500/30 hover:bg-sky-500/10 mr-1">Kirim Ulang Invite</button>';
         }
-        if (user.is_blocked) { html += '<button onclick="adminUserAction(\'unblock\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>'; }
-        else { html += '<button onclick="adminUserAction(\'block\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>'; }
-        html += '<button onclick="adminUserAction(\'reset_devices\',\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 mr-1">Reset Devices</button>';
-        html += '<button onclick="openResetPasswordModal(\'' + user.username + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reset PW</button>';
+        if (user.is_blocked) { html += '<button onclick="adminUserAction(\'unblock\',\'' + clickName + '\')" class="px-2 py-1 rounded text-xs text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 mr-1">Unblock</button>'; }
+        else { html += '<button onclick="adminUserAction(\'block\',\'' + clickName + '\')" class="px-2 py-1 rounded text-xs text-red-400 border border-red-500/30 hover:bg-red-500/10 mr-1">Block</button>'; }
+        html += '<button onclick="adminUserAction(\'reset_devices\',\'' + clickName + '\')" class="px-2 py-1 rounded text-xs text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 mr-1">Reset Devices</button>';
+        html += '<button onclick="openResetPasswordModal(\'' + clickName + '\')" class="px-2 py-1 rounded text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 mr-1">Reset PW</button>';
         html += '</td></tr>';
     });
     html += '</tbody></table></div>';
@@ -6219,9 +6261,12 @@ function renderAdminUsers() {
 }
 async function adminUserAction(action, username) {
     if (!confirm('Konfirmasi: ' + action + ' untuk user "' + username + '"?')) return;
+    // One admin action at a time: repeated clicks must not fire repeated POSTs.
+    if (adminUserAction._busy) return;
+    adminUserAction._busy = true;
     try {
         var adminName = localStorage.getItem('autocuan_user') || '';
-        var response = await fetch('/api/admin-users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName, action: action, username: username }) });
+        var response = await fetch('/api/admin-users', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: adminName, action: action, username: username }) });
         var data = await response.json();
         if (data.success) {
             showToast(data.message || 'Berhasil.', 'success');
@@ -6230,6 +6275,7 @@ async function adminUserAction(action, username) {
         }
         else { showToast('Gagal: ' + (data.error || 'Unknown error'), 'error'); }
     } catch(e) { showToast('Koneksi gagal.', 'error'); }
+    finally { adminUserAction._busy = false; }
 }
 // ===== RESET PASSWORD (Admin) =====
 var resetPasswordUsername = '';
@@ -7249,6 +7295,9 @@ async function loadSektorHot() {
     var listView = document.getElementById('sektorListView');
     var detailView = document.getElementById('sektorDetailView');
     if (!grid) return;
+    // Rapid re-navigation must not stack overlapping fetches onto the grid.
+    if (loadSektorHot._busy) return;
+    loadSektorHot._busy = true;
     listView.classList.remove('hidden');
     detailView.classList.add('hidden');
 
@@ -7326,6 +7375,8 @@ async function loadSektorHot() {
         grid.innerHTML = html;
     } catch (e) {
         grid.innerHTML = '<div class="col-span-full text-center py-12"><p class="text-sm text-red-400">Gagal memuat data Sektor Hot.</p></div>';
+    } finally {
+        loadSektorHot._busy = false;
     }
 }
 
@@ -11376,5 +11427,9 @@ function exportDayTradePDF() {
     else init();
 })();
 </script>
+<script src="/website-approved-access.js?v=20260726-src1"></script>
+<script src="/admin-user-delete-enhancement.js?v=20260726-src1"></script>
+<script src="/ai-chat-renderer.js?v=20260726-src1"></script>
+<script src="/stock-analysis-ai.js?v=20260726-src1"></script>
 </body>
 </html>

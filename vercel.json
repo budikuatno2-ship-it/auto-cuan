@@ -32,10 +32,6 @@
       "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
     },
     {
-      "source": "/portfolio-enhancements.css",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
       "source": "/website-approved-access.js",
       "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
     },

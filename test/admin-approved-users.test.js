@@ -297,13 +297,15 @@ test('API JavaScript file count remains exactly 12', function () {
   assert.equal(files.length, 12, 'API JS file count must remain 12; got ' + files.length);
 });
 
-test('Delete User remains absent (admin API + frontend)', function () {
+test('Delete User is guarded (admin API) and absent from the approved table', function () {
   const adminApi = fs.readFileSync(path.join(ROOT, 'api', 'admin-users.js'), 'utf8');
-  assert.equal(/action\s*===\s*['"]delete['"]/.test(adminApi), false, 'no delete action in admin-users API');
-  assert.equal(/delete[_-]?user/i.test(adminApi), false, 'no delete-user handler in admin-users API');
+  assert.ok(/action === 'delete_user'/.test(adminApi), 'delete_user action exists');
+  assert.ok(/requireAdminSession\(req\)/.test(adminApi), 'delete requires a signed admin session');
+  assert.ok(/targetUsername === 'budi' \|\| targetUsername === 'review'/.test(adminApi), 'budi/review protected');
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.ok(!apiFiles.some(function (f) { return /delete/i.test(f); }), 'no delete-user API file');
-  // The approved view must not offer a delete control.
+  assert.ok(!apiFiles.some(function (f) { return /delete/i.test(f); }), 'no separate delete-user API file');
+  // The approved view itself must not offer a delete control; deletion lives in
+  // the dedicated admin enhancement with exact-username confirmation.
   const html = fs.readFileSync(HTML_PATH, 'utf8');
   const start = html.indexOf('function renderApprovedUsersTable');
   const end = html.indexOf('// ===== APPROVED-USERS-HELPERS-END =====');

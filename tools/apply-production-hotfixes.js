@@ -1,197 +1,152 @@
 'use strict';
 
-// Deployment retrigger only; no runtime behavior change.
+// Production build gate for the Auto-Cuan website.
+//
+// Historical note: this script used to REWRITE production files at build time
+// (string-patching index.html, the AI router, and the portfolio runtime).
+// Every one of those hotfixes is now baked directly into the source files, so
+// this script is a pure validator: it writes nothing, is idempotent by
+// construction, and fails the build with a precise message when a guarded
+// regression returns.
+
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+const ROOT = path.join(__dirname, '..');
+
 function read(relativePath) {
-  return fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+  return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 }
 
-function write(relativePath, content) {
-  fs.writeFileSync(path.join(__dirname, '..', relativePath), content);
+function fail(message) {
+  throw new Error('Build validation failed: ' + message);
 }
 
-function replaceRequired(source, before, after, label) {
-  if (source.includes(before)) return source.replace(before, after);
-  if (source.includes(after)) return source;
-  throw new Error('Missing production hotfix target: ' + label);
+function assertOk(condition, message) {
+  if (!condition) fail(message);
 }
 
-function patchIndex() {
-  let source = read('public/index.html');
-  const q = String.fromCharCode(39);
-
-  const oldWatchdog = 'setTimeout(function() { if (document.getElementById(' + q + 'initialLoader' + q + ')) renderStartupFallback(); }, 4500);';
-  const newWatchdog = 'setTimeout(function() { var loader=document.getElementById(' + q + 'initialLoader' + q + '); if (loader && !loader.classList.contains(' + q + 'hidden' + q + ')) renderStartupFallback(); }, 4500);';
-  source = replaceRequired(source, oldWatchdog, newWatchdog, 'startup watchdog');
-
-  source = replaceRequired(
-    source,
-    'Bandingkan manfaat, harga, dan masa aktif setiap paket. Pembayaran melalui transfer bank akan tersedia pada tahap berikutnya.',
-    'Bandingkan manfaat, harga, dan masa aktif setiap paket secara transparan.',
-    'subscription hero copy'
-  );
-  source = replaceRequired(
-    source,
-    'Pembayaran melalui transfer bank akan tersedia pada tahap berikutnya. Tidak ada pembelian atau akses yang diproses dari halaman ini.',
-    'Pilihan pembayaran belum dibuka. Tidak ada pembelian atau akses yang diproses dari halaman ini.',
-    'subscription action copy'
-  );
-
-  source = source.replace(/<button[^>]*onclick="openSubscriptionPage\(\)"[^>]*>\s*Paket Langganan\s*<\/button>/g, '');
-  source = source.replace(/<button[^>]*onclick="navigateTo\('subscription'\)"[^>]*>[\s\S]*?<\/button>/g, '');
-
-  source = replaceRequired(
-    source,
-    "if (isPremiumFeaturePage(page) && !hasConfirmedPremiumAccess()) {",
-    'if (false) {',
-    'legacy premium navigation gate'
-  );
-  source = replaceRequired(
-    source,
-    'if (!allowed && isPremiumFeaturePage(currentPage)) {',
-    'if (false) {',
-    'legacy premium current-page gate'
-  );
-  source = replaceRequired(
-    source,
-    "function openSubscriptionPage(){setTopLevelView('app');navigateTo('subscription');loadSubscriptionExperience(true);window.scrollTo({top:0,behavior:'smooth'});}",
-    "function openSubscriptionPage(){if(isAutocuanLoggedIn())enterApp({replaceHistory:true});else showLandingPage({replaceHistory:true});}",
-    'subscription route disable'
-  );
-
-  const scripts = [
-    '/website-approved-access.js?v=20260726-final2',
-    '/admin-user-delete-enhancement.js?v=20260726-final2',
-    '/ai-chat-renderer.js?v=20260726-final2',
-    '/stock-analysis-ai.js?v=20260726-final2'
-  ];
-  const injection = scripts.map((src) => '<script src="' + src + '"></script>').join('\n');
-  if (!source.includes('/website-approved-access.js?v=20260726-final2')) {
-    source = source.replace('</body>', injection + '\n</body>');
-  }
-
-  write('public/index.html', source);
+function countOccurrences(haystack, needle) {
+  return haystack.split(needle).length - 1;
 }
 
-function patchContextRouter() {
-  let source = read('lib/context-ai-router-v4.js');
-  source = replaceRequired(
-    source,
-    "  const preferred = sticky.get(stickyKey);\n  const live = pool.filter((model) => modelHealth(model).cooldownUntil <= now);\n  const cooling = pool.filter((model) => modelHealth(model).cooldownUntil > now);\n  const allowSticky = preferred && live.includes(preferred) && ((source === 'stock_analysis_followup' || task === 'heavy') || !EXPENSIVE_MODELS.has(preferred));\n  return dedupe((allowSticky ? [preferred] : []).concat(live, cooling));",
-    "  const preferred = sticky.get(stickyKey);\n  const globalPreferred = sticky.get(userId + ':global');\n  const live = pool.filter((model) => modelHealth(model).cooldownUntil <= now);\n  const cooling = pool.filter((model) => modelHealth(model).cooldownUntil > now);\n  const allowGlobal = globalPreferred && live.includes(globalPreferred) && ((source === 'stock_analysis_followup' || task === 'heavy') || !EXPENSIVE_MODELS.has(globalPreferred));\n  const allowSticky = preferred && live.includes(preferred) && ((source === 'stock_analysis_followup' || task === 'heavy') || !EXPENSIVE_MODELS.has(preferred));\n  return dedupe((allowGlobal ? [globalPreferred] : []).concat(allowSticky ? [preferred] : [], live, cooling));",
-    'shared healthy AI model preference'
-  );
-  source = replaceRequired(
-    source,
-    "      sticky.set(userId + ':' + source + ':' + task, model);",
-    "      sticky.set(userId + ':' + source + ':' + task, model);\n      sticky.set(userId + ':global', model);",
-    'shared AI success memory'
-  );
-  write('lib/context-ai-router-v4.js', source);
+// --- 1. JavaScript syntax -----------------------------------------------
+const SYNTAX_CHECKED = [
+  'public/website-approved-access.js',
+  'public/admin-user-delete-enhancement.js',
+  'public/ai-chat-renderer.js',
+  'public/portfolio-ai-runtime-v2.js',
+  'public/portfolio-planner-v1.js',
+  'public/stock-analysis-ai.js',
+  'lib/context-ai-router-v4.js',
+  'lib/context-ai-router-v5.js',
+  'lib/analyze-legacy.js',
+  'api/admin-users.js',
+  'api/analyze.js',
+  'api/sector-hot.js'
+];
+SYNTAX_CHECKED.forEach(function (file) {
+  new vm.Script(read(file), { filename: file });
+});
+
+// Every inline script in the main page must parse.
+const index = read('public/index.html');
+let inlineCount = 0;
+for (const match of index.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) {
+  if (!match[1].trim()) continue;
+  inlineCount += 1;
+  new vm.Script(match[1], { filename: 'public/index.html <script> #' + inlineCount });
 }
+assertOk(inlineCount > 0, 'no inline scripts found in public/index.html');
 
-function patchPortfolioRuntime() {
-  let source = read('public/portfolio-ai-runtime-v2.js');
-  source = replaceRequired(
-    source,
-    "  function loadChat() {\n    var rows = readJson(chatKey, []);\n    state.messages = Array.isArray(rows) ? rows.slice(-20).filter(function (row) {\n      return row && (row.role === 'user' || row.role === 'assistant') && String(row.content || '').trim();\n    }) : [];\n  }",
-    "  function loadChat() {\n    var rows = readJson(chatKey, []);\n    var cleaned = Array.isArray(rows) ? rows.slice(-20).filter(function (row) {\n      return row && (row.role === 'user' || row.role === 'assistant') && String(row.content || '').trim();\n    }) : [];\n    state.messages = cleaned.filter(function (row, index) {\n      if (index === 0) return true;\n      var previous = cleaned[index - 1];\n      return previous.role !== row.role || String(previous.content).trim() !== String(row.content).trim();\n    });\n    saveChat();\n  }",
-    'portfolio chat duplicate cleanup'
-  );
-  source = replaceRequired(
-    source,
-    "        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({\n          source: 'portfolio_chat',",
-    "        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),\n        body: JSON.stringify({\n          source: 'portfolio_chat',",
-    'portfolio AI auth headers'
-  );
-  source = replaceRequired(
-    source,
-    "      if (status) status.textContent = 'AI cloud lagi ngadat, jadi sistem pakai mode data lokal biar kamu tetap dapat jawaban.';",
-    "      if (status) status.textContent = 'Jalur AI utama sedang sibuk. Jawaban sementara dibuat dari data portofolio yang tersedia.';",
-    'portfolio fallback status'
-  );
-  write('public/portfolio-ai-runtime-v2.js', source);
-}
+// --- 2. Vercel function budget ------------------------------------------
+const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) { return name.endsWith('.js'); });
+assertOk(apiFiles.length === 12, 'Vercel API function count changed: expected 12, got ' + apiFiles.length);
 
-function patchRenderer() {
-  let source = read('public/ai-chat-renderer.js');
-  source = replaceRequired(
-    source,
-    "    candidates.forEach(function (el) {\n      if (el.querySelector && el.querySelector('.ai-loading-dot, .spinner-sm')) return;\n      var raw = el.getAttribute('data-ai-raw') || el.textContent || '';",
-    "    candidates.forEach(function (el) {\n      if (el.querySelector && el.querySelector('.ai-loading-dot, .spinner-sm')) return;\n      if (el.classList.contains('ai-rich-text') && !el.hasAttribute('data-ai-raw')) return;\n      var raw = el.getAttribute('data-ai-raw') || el.textContent || '';",
-    'preserve pre-rendered portfolio markdown'
-  );
-  write('public/ai-chat-renderer.js', source);
-}
+// --- 3. Subscription stays hidden ----------------------------------------
+assertOk(!/onclick="openSubscriptionPage\(\)"/.test(index), 'Subscription entry point is visible again.');
+assertOk(!/onclick="navigateTo\('subscription'\)"/.test(index), 'Subscription nav button is visible again.');
+assertOk(!index.includes('tersedia pada tahap berikutnya'), 'Unfinished subscription phase wording returned.');
 
-function patchPortfolioPage() {
-  let source = read('public/portfolio-planner.html');
-  source = replaceRequired(
-    source,
-    '.ai-shell{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px}',
-    '.ai-shell{display:grid;grid-template-columns:1fr;gap:16px}.ai-shell aside{order:2}',
-    'portfolio AI vertical layout'
-  );
-  write('public/portfolio-planner.html', source);
-}
+// --- 4. Approval-based website access ------------------------------------
+assertOk(!index.includes("if (isPremiumFeaturePage(page) && !hasConfirmedPremiumAccess()) {"),
+  'Legacy premium navigation gate is active again.');
+assertOk(!index.includes('if (!allowed && isPremiumFeaturePage(currentPage)) {'),
+  'Legacy premium current-page gate is active again.');
+assertOk(index.includes('function isDeniedWebsiteAccess()'),
+  'Definitive-deny helper for website access is missing.');
+assertOk(index.includes("body:JSON.stringify({action:'portfolio_access'})"),
+  'Website access no longer checks the approval-based endpoint.');
+assertOk(!index.includes("fetch('/api/login-user?action=premium-access-status'"),
+  'Website access is coupled to subscription entitlement again.');
 
-function validateBuild() {
-  const jsFiles = [
-    'public/website-approved-access.js',
-    'public/admin-user-delete-enhancement.js',
-    'public/ai-chat-renderer.js',
-    'public/portfolio-ai-runtime-v2.js',
-    'public/stock-analysis-ai.js',
-    'lib/context-ai-router-v4.js',
-    'api/admin-users.js'
-  ];
-  jsFiles.forEach(function (file) {
-    new vm.Script(read(file), { filename: file });
-  });
+// --- 5. Startup watchdog cannot bounce a signed-in view -------------------
+assertOk(!index.includes("setTimeout(function() { if (document.getElementById('initialLoader')) renderStartupFallback(); }, 4500);"),
+  'Unguarded startup watchdog returned.');
+assertOk(index.includes("var loader=document.getElementById('initialLoader'); if (loader && !loader.classList.contains('hidden')) renderStartupFallback();"),
+  'Guarded startup watchdog is missing.');
+assertOk(index.includes('if (activeView) return;'),
+  'renderStartupFallback no longer preserves the active view.');
 
-  const apiFiles = fs.readdirSync(path.join(__dirname, '..', 'api'))
-    .filter(function (name) { return name.endsWith('.js'); });
-  if (apiFiles.length !== 12) {
-    throw new Error('Vercel API function count changed: expected 12, got ' + apiFiles.length);
-  }
+// --- 6. Runtime scripts included exactly once -----------------------------
+[
+  '/website-approved-access.js?v=',
+  '/admin-user-delete-enhancement.js?v=',
+  '/ai-chat-renderer.js?v=',
+  '/stock-analysis-ai.js?v='
+].forEach(function (src) {
+  const count = countOccurrences(index, '<script src="' + src);
+  assertOk(count === 1, src + ' must be included exactly once in index.html (found ' + count + ')');
+});
 
-  const index = read('public/index.html');
-  if (/onclick="openSubscriptionPage\(\)"/.test(index) || /onclick="navigateTo\('subscription'\)"/.test(index)) {
-    throw new Error('Subscription entry point is still visible.');
-  }
-  if (index.includes('if (isPremiumFeaturePage(page) && !hasConfirmedPremiumAccess()) {') ||
-      index.includes('if (!allowed && isPremiumFeaturePage(currentPage)) {')) {
-    throw new Error('Legacy website premium gate is still active.');
-  }
-  if (!index.includes('/website-approved-access.js?v=20260726-final2') ||
-      !index.includes('/admin-user-delete-enhancement.js?v=20260726-final2')) {
-    throw new Error('Approved access/admin enhancement was not injected.');
-  }
+// --- 7. Renderer and observers --------------------------------------------
+const renderer = read('public/ai-chat-renderer.js');
+assertOk(!/characterData\s*:\s*true/.test(renderer), 'AI renderer characterData feedback loop returned.');
+assertOk(renderer.includes("el.classList.contains('ai-rich-text') && !el.hasAttribute('data-ai-raw')"),
+  'AI renderer no longer preserves pre-rendered content.');
+assertOk(!/characterData\s*:\s*true/.test(index), 'index.html observes characterData it rewrites.');
+assertOk(!index.includes('document.write('), 'document.write returned to index.html.');
 
-  const renderer = read('public/ai-chat-renderer.js');
-  if (/characterData\s*:\s*true/.test(renderer)) {
-    throw new Error('AI renderer characterData feedback loop returned.');
-  }
+// --- 8. Portfolio page ------------------------------------------------------
+const portfolio = read('public/portfolio-planner.html');
+assertOk(portfolio.includes('.ai-shell{display:grid;grid-template-columns:1fr;'),
+  'Portfolio AI layout is not vertical.');
+assertOk(!/\.ai-messages\{[^}]*overflow\s*:\s*auto/.test(portfolio),
+  'Portfolio chat regained a nested scrollbar.');
+assertOk(portfolio.includes('var ACCESS_TIMEOUT_MS=9000'),
+  'Portfolio access check lost its bounded timeout.');
+assertOk(portfolio.includes("$('retryAccess').onclick=checkAccess"),
+  'Portfolio access failure lost its retry button.');
+assertOk(!portfolio.includes('document.write('), 'document.write returned to the portfolio page.');
 
-  const portfolio = read('public/portfolio-planner.html');
-  if (!portfolio.includes('.ai-shell{display:grid;grid-template-columns:1fr;gap:16px}')) {
-    throw new Error('Portfolio AI layout is not vertical.');
-  }
+const portfolioRuntime = read('public/portfolio-ai-runtime-v2.js');
+assertOk(portfolioRuntime.includes('previous.role !== row.role'),
+  'Portfolio chat duplicate cleanup is missing.');
+assertOk(portfolioRuntime.includes('if (!text || state.sending) return;'),
+  'Portfolio AI send lock is missing.');
 
-  const vercel = JSON.parse(read('vercel.json'));
-  const dashboardRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/dashboard'; });
-  if (!dashboardRewrite || dashboardRewrite.destination !== '/index.html') {
-    throw new Error('/dashboard must rewrite directly to /index.html.');
-  }
-}
+// --- 9. Routing and dead files ---------------------------------------------
+const vercel = JSON.parse(read('vercel.json'));
+const dashboardRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/dashboard'; });
+assertOk(dashboardRewrite && dashboardRewrite.destination === '/index.html',
+  '/dashboard must rewrite directly to /index.html.');
+assertOk(!JSON.stringify(vercel).includes('dashboard-loader'),
+  'vercel.json references dashboard-loader again.');
 
-patchIndex();
-patchContextRouter();
-patchPortfolioRuntime();
-patchRenderer();
-patchPortfolioPage();
-validateBuild();
-console.log('Applied and validated production website/AI hotfixes');
+[
+  'public/dashboard-loader.html',
+  'public/dashboard-approved-access-guard.js',
+  'public/dashboard-approved-enhancements.js',
+  'public/admin-delete-user.js',
+  'public/dashboard-responsive-fixes.css',
+  'public/portfolio-ai-recovery.js',
+  'public/portfolio-enhancements.js',
+  'public/portfolio-enhancements.css',
+  'public/portfolio-decision-center-v1.html'
+].forEach(function (file) {
+  assertOk(!fs.existsSync(path.join(ROOT, file)), 'Obsolete runtime patch file returned: ' + file);
+});
+assertOk(!index.includes('dashboard-loader'), 'index.html references dashboard-loader again.');
+
+console.log('Production website validation passed (' + SYNTAX_CHECKED.length + ' files syntax-checked, ' + apiFiles.length + ' API functions).');

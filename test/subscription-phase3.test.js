@@ -27,8 +27,14 @@ test('atomic publication RPC preserves catalog invariants and is service-role-on
   assert.match(migration, /interval '10 days'/); assert.doesNotMatch(migration, /17[ -]?day/i);
 });
 test('admin router keeps signed-session, same-origin, budi, and safe-action guards', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'api', 'admin-users.js'), 'utf8');
+  // The wrapper lives in api/, the legacy admin actions in lib/.
+  const source = fs.readFileSync(path.join(__dirname, '..', 'api', 'admin-users.js'), 'utf8') +
+    fs.readFileSync(path.join(__dirname, '..', 'lib', 'admin-users-handler.js'), 'utf8');
   assert.match(source, /requireAdminSession/); assert.match(source, /isSameOrigin/);
   assert.match(source, /auth\.session\.un.*budi/); assert.match(source, /subscription_plan_price_publish/);
-  assert.doesNotMatch(source, /action\s*===\s*['"]delete/i);
+  // Deletion exists only as the guarded delete_user action (admin session,
+  // same-origin, budi/review protected); no bare 'delete' action may appear.
+  assert.doesNotMatch(source, /action\s*===\s*['"]delete['"]/i);
+  assert.match(source, /action === 'delete_user'/);
+  assert.match(source, /targetUsername === 'budi' \|\| targetUsername === 'review'/);
 });

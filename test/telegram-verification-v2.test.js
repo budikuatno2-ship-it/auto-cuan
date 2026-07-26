@@ -1098,10 +1098,11 @@ test('hygiene: member_limit is never sent when creating an invite link', functio
   assert.ok(/creates_join_request\s*:\s*true/.test(src), 'creates_join_request must be true');
 });
 
-test('safety: Delete User remains absent (no delete-user action or endpoint)', function () {
+test('safety: Delete User is admin-gated and never a separate endpoint', function () {
   const admin = fs.readFileSync(path.join(ROOT, 'api', 'admin-users.js'), 'utf8');
-  assert.equal(/action\s*===\s*['"]delete['"]/.test(admin), false, 'no delete action in admin-users');
-  assert.equal(/delete[_-]?user/i.test(admin), false, 'no delete-user handler in admin-users');
+  assert.ok(/action === 'delete_user'/.test(admin), 'delete_user action exists');
+  assert.ok(/requireAdminSession\(req\)/.test(admin), 'delete requires a signed admin session');
+  assert.ok(/targetUsername === 'budi' \|\| targetUsername === 'review'/.test(admin), 'budi/review protected');
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.ok(!apiFiles.some(function (f) { return /delete/i.test(f); }), 'no delete-user API file');
+  assert.ok(!apiFiles.some(function (f) { return /delete/i.test(f); }), 'no separate delete-user API file');
 });

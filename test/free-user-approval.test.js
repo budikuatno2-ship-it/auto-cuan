@@ -25,8 +25,12 @@ function makeRes() {
 
 function loadApiWithSupabase(relPath, createClient) {
   const absolute = require.resolve(relPath);
+  // api/admin-users.js delegates to lib/admin-users-handler.js; both must be
+  // reloaded so the injected supabase stub reaches the legacy actions too.
+  const handlerAbsolute = require.resolve('../lib/admin-users-handler');
   const originalLoad = Module._load;
   delete require.cache[absolute];
+  delete require.cache[handlerAbsolute];
   Module._load = function(request) {
     if (request === '@supabase/supabase-js') return { createClient: createClient };
     return originalLoad.apply(this, arguments);
@@ -36,6 +40,7 @@ function loadApiWithSupabase(relPath, createClient) {
   } finally {
     Module._load = originalLoad;
     delete require.cache[absolute];
+    delete require.cache[handlerAbsolute];
   }
 }
 

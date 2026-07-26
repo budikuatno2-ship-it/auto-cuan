@@ -184,6 +184,9 @@
 
     candidates.forEach(function (el) {
       if (el.querySelector && el.querySelector('.ai-loading-dot, .spinner-sm')) return;
+      // Content the app already rendered as structured HTML must not be
+      // flattened back through textContent and re-rendered.
+      if (el.classList.contains('ai-rich-text') && !el.hasAttribute('data-ai-raw')) return;
       var raw = el.getAttribute('data-ai-raw') || el.textContent || '';
       if (!raw.trim()) return;
       var signature = raw.length + ':' + raw.slice(0, 40);

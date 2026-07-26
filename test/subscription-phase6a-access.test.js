@@ -108,13 +108,23 @@ async function withApiHandler(moduleName, db, fn) {
   }
 }
 
-test('non-admin account with no active entitlement resolves to Free and is denied premium', async () => withSessionSecret(async () => {
+test('non-admin account with no active entitlement resolves to Free but keeps approved website access', async () => withSessionSecret(async () => {
   const db = database(account(), []);
+  // The dormant subscription resolver still reports Free…
   const access = await auth.resolvePremiumAccess(signedRequest('ujibot0720'), db);
   assert.equal(access.ok, true);
   assert.equal(access.premium, false);
   assert.equal(access.access_level, 'free');
-  const denied = await auth.requirePremiumEntitlement(signedRequest('ujibot0720'), db);
+  // …but website access is approval-based and entitlement-independent.
+  const allowed = await auth.requirePremiumEntitlement(signedRequest('ujibot0720'), db);
+  assert.equal(allowed.ok, true);
+  assert.equal(allowed.premium, true);
+  assert.equal(allowed.access_level, 'approved');
+  // An unapproved account is still denied.
+  const denied = await auth.requirePremiumEntitlement(
+    signedRequest('ujibot0720'),
+    database(account('ujibot0720', { is_approved: false }), [])
+  );
   assert.equal(denied.ok, false);
   assert.equal(denied.status, 403);
 }));
@@ -159,7 +169,7 @@ test('active Trial, paid term, Lifetime, and protected budi receive premium acce
   );
   assert.equal(admin.ok, true);
   assert.equal(admin.premium, true);
-  assert.equal(admin.access_level, 'admin');
+  assert.equal(admin.access_level, 'approved');
 }));
 
 test('an arbitrary signed admin claim cannot turn a non-budi account into admin', async () => withSessionSecret(async () => {
@@ -170,7 +180,7 @@ test('an arbitrary signed admin claim cannot turn a non-budi account into admin'
   assert.equal(access.access_level, 'free');
 }));
 
-test('premium browser API reads reject guest and Free sessions before returning payloads', async () => withSessionSecret(async () => {
+test('premium browser API reads reject guest, unapproved, and blocked sessions before returning payloads', async () => withSessionSecret(async () => {
   await withApiHandler('../api/sector-hot', database(account(), []), async handler => {
     const guestRes = responseCapture();
     await handler({ method: 'GET', query: { action: 'screener' }, headers: {} }, guestRes);
@@ -178,19 +188,26 @@ test('premium browser API reads reject guest and Free sessions before returning 
     assert.equal(guestRes.body.success, false);
     assert.equal('results' in guestRes.body, false);
     assert.equal('groups' in guestRes.body, false);
-
-    for (const action of [null, 'screener', 'nk-screener-results', 'daytrade-screener']) {
-      const freeRes = responseCapture();
-      const req = signedRequest('ujibot0720');
-      req.method = 'GET';
-      req.query = action === null ? {} : { action };
-      await handler(req, freeRes);
-      assert.equal(freeRes.statusCode, 403, String(action));
-      assert.equal(freeRes.body.success, false, String(action));
-      assert.equal('results' in freeRes.body, false, String(action));
-      assert.equal('groups' in freeRes.body, false, String(action));
-    }
   });
+
+  for (const badAccount of [
+    account('ujibot0720', { is_approved: false }),
+    account('ujibot0720', { is_blocked: true })
+  ]) {
+    await withApiHandler('../api/sector-hot', database(badAccount, []), async handler => {
+      for (const action of [null, 'screener', 'nk-screener-results', 'daytrade-screener']) {
+        const deniedRes = responseCapture();
+        const req = signedRequest('ujibot0720');
+        req.method = 'GET';
+        req.query = action === null ? {} : { action };
+        await handler(req, deniedRes);
+        assert.equal(deniedRes.statusCode, 403, String(action));
+        assert.equal(deniedRes.body.success, false, String(action));
+        assert.equal('results' in deniedRes.body, false, String(action));
+        assert.equal('groups' in deniedRes.body, false, String(action));
+      }
+    });
+  }
 }));
 
 test('premium status endpoint returns only signed server state and fails closed for guests', async () => withSessionSecret(async () => {
@@ -242,8 +259,12 @@ test('client hides premium navigation, cancels stale checks, and restores access
   assert.match(html, /page\.removeAttribute\('aria-hidden'\)/);
   assert.match(html, /page\.inert=false/);
   assert.match(html, /clearRenderedPremiumData/);
-  assert.match(html, /Fitur ini tersedia untuk pengguna Trial dan Premium/);
-  assert.match(html, /function openSubscriptionPage\(\)\{setTopLevelView\('app'\)/);
+  // Access is approval-based: only a definitive server "no" locks features,
+  // and the denial message names admin approval, not a paid tier.
+  assert.match(html, /function isDeniedWebsiteAccess\(\)/);
+  assert.match(html, /Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin/);
+  assert.doesNotMatch(html, /Fitur ini tersedia untuk pengguna Trial dan Premium/);
+  assert.match(html, /function openSubscriptionPage\(\)\{if\(isAutocuanLoggedIn\(\)\)enterApp/);
   assert.doesNotMatch(html, /localStorage[^\n]{0,140}(premium|entitlement|access_level)/i);
 });
 
@@ -255,11 +276,16 @@ test('premium status uses signed-session server state, disables caching, and API
   assert.equal(fs.readdirSync(path.join(ROOT, 'api')).filter(name => name.endsWith('.js')).length, 12);
 });
 
-test('visible subscription copy is Indonesian and keeps the 10-day/manual-transfer policy', () => {
+test('subscription copy stays Indonesian, dormant, and free of unfinished phase wording', () => {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   assert.match(html, /Kelola Langganan/);
   assert.match(html, /Day Trade Radar, Swing Screener, dan Sektor Hot/);
-  assert.match(html, /Pembayaran melalui transfer bank akan tersedia/);
+  // Payment is postponed: the "coming in the next phase" promise must not show.
+  assert.doesNotMatch(html, /tersedia pada tahap berikutnya/);
+  assert.match(html, /Pilihan pembayaran belum dibuka/);
+  // No visible entry points into the dormant subscription page.
+  assert.doesNotMatch(html, /onclick="openSubscriptionPage\(\)"/);
+  assert.doesNotMatch(html, /onclick="navigateTo\('subscription'\)"/);
   assert.doesNotMatch(html, /Kelola Subscription/);
   assert.doesNotMatch(html, />Subscription Plans<|Subscription plan catalog|>Edit price</);
   assert.doesNotMatch(html, /Trial\s+17 Hari|17 hari · aktivasi mengikuti server/i);

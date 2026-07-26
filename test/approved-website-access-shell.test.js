@@ -12,111 +12,137 @@ function read(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 }
 
-function makeClassList(initial) {
-  const values = new Set(initial || []);
-  return {
-    remove: (...names) => names.forEach((name) => values.delete(name)),
-    contains: (name) => values.has(name),
-    toggle: (name, force) => force ? values.add(name) : values.delete(name)
-  };
-}
-
-function makeElement(page, classes) {
-  const attributes = new Map([
-    ['data-page', page],
-    ['disabled', ''],
-    ['hidden', '']
-  ]);
-  return {
-    classList: makeClassList(classes),
-    dataset: {},
-    disabled: true,
-    tabIndex: -1,
-    removed: false,
-    textContent: '',
-    onclick: null,
-    style: {
-      values: {},
-      setProperty(name, value) { this.values[name] = value; },
-      removeProperty(name) { delete this.values[name]; }
-    },
-    removeAttribute(name) { attributes.delete(name); },
-    setAttribute(name, value) { attributes.set(name, value); },
-    getAttribute(name) { return attributes.get(name); },
-    remove() { this.removed = true; }
-  };
-}
-
-test('dashboard loader establishes approved access before legacy dashboard boot', () => {
-  const loader = read('public/dashboard-loader.html');
-
-  assert.match(loader, /action:'portfolio_access'/);
-  assert.match(loader, /premium-access-status/);
-  assert.match(loader, /premium:true/);
-  assert.match(loader, /access_level:'approved_website'/);
-  assert.match(loader, /doc\.head\.insertBefore\(bootstrap, doc\.head\.firstChild\)/);
-  assert.match(loader, /if \(isPremiumFeaturePage\(page\) && !hasConfirmedPremiumAccess\(\)\)/);
-  assert.match(loader, /if \(!allowed && isPremiumFeaturePage\(currentPage\)\)/);
-  assert.match(loader, /\[data-page="subscription"\],#page-subscription,#subscriptionIdentityCard/);
-  assert.match(loader, /window\.location\.href='\/portfolio-planner'/);
+test('obsolete stacked runtime patches stay removed', () => {
+  [
+    'public/dashboard-loader.html',
+    'public/dashboard-approved-access-guard.js',
+    'public/dashboard-approved-enhancements.js',
+    'public/admin-delete-user.js',
+    'public/dashboard-responsive-fixes.css',
+    'public/portfolio-ai-recovery.js',
+    'public/portfolio-enhancements.js',
+    'public/portfolio-enhancements.css',
+    'public/portfolio-decision-center-v1.html',
+    'lib/sector-hot-legacy.js',
+    '.github/workflows/oneoff-startup-watchdog-hotfix.yml'
+  ].forEach((file) => {
+    assert.equal(fs.existsSync(path.join(ROOT, file)), false, file + ' must stay deleted');
+  });
 });
 
-test('approved guard unlocks website features without replacing native navigation', () => {
-  const guard = read('public/dashboard-approved-access-guard.js');
+test('index.html gates website features on the approval endpoint, not entitlement', () => {
+  const html = read('public/index.html');
+  assert.match(html, /function isDeniedWebsiteAccess\(\)/);
+  assert.match(html, /body:JSON\.stringify\(\{action:'portfolio_access'\}\)/);
+  assert.doesNotMatch(html, /fetch\('\/api\/login-user\?action=premium-access-status'/);
+  // Only a definitive server "no" locks navigation or bounces the page.
+  assert.match(html, /isPremiumFeaturePage\(page\) && isDeniedWebsiteAccess\(\)/);
+  assert.match(html, /isDeniedWebsiteAccess\(\) && isPremiumFeaturePage\(currentPage\)/);
+  assert.doesNotMatch(html, /navigateTo\('subscription'\)/);
+});
 
-  assert.doesNotMatch(guard, /window\.navigateTo\s*=/);
-  assert.doesNotMatch(guard, /window\.loadPremiumAccess\s*=/);
-  assert.doesNotMatch(guard, /window\.hasConfirmedPremiumAccess\s*=/);
+test('approved runtime is restore-only: no nav override, no broad observer', () => {
+  const runtime = read('public/website-approved-access.js');
+  assert.doesNotMatch(runtime, /window\.navigateTo\s*=/);
+  assert.doesNotMatch(runtime, /window\.hasConfirmedPremiumAccess\s*=/);
+  assert.doesNotMatch(runtime, /new MutationObserver/);
+  assert.match(runtime, /action: 'portfolio_access'/);
+  assert.match(runtime, /credentials: 'same-origin'/);
+});
 
-  const sector = makeElement('sektor', ['hidden', 'opacity-50', 'pointer-events-none']);
-  const screener = makeElement('screener', ['hidden', 'cursor-not-allowed']);
-  const portfolio = makeElement('portofolio', ['action-card', 'hidden', 'grayscale']);
-  const subscription = makeElement('subscription', []);
-  const subtitle = { textContent: 'Posisi manual' };
+test('approved runtime restores a cookie-backed session into UI state', async () => {
+  const runtime = read('public/website-approved-access.js');
+  const storage = new Map();
+  const removedSelectors = [];
+  let enteredApp = null;
+  let appliedUi = 0;
 
-  const document = {
-    readyState: 'complete',
-    documentElement: {},
-    querySelectorAll(selector) {
-      if (selector === '[data-premium-nav="true"]') return [sector, screener, portfolio];
-      if (selector === '[data-page="subscription"],#page-subscription,#subscriptionIdentityCard') return [subscription];
-      if (selector === '[data-page="portofolio"]') return [portfolio];
-      if (selector === '.action-card[data-page="portofolio"] p') return [subtitle];
-      return [];
-    },
-    addEventListener() {}
-  };
-
-  const window = { location: { href: '/dashboard' } };
   const sandbox = {
-    window,
-    document,
+    window: {
+      location: { pathname: '/dashboard' },
+      enterApp(opts) { enteredApp = opts; },
+      applyPremiumAccessUi() { appliedUi += 1; },
+      updateLandingCtas() {},
+      closeAuthChoiceModal() {}
+    },
+    document: {
+      readyState: 'complete',
+      querySelectorAll(selector) { removedSelectors.push(selector); return []; },
+      getElementById() { return null; },
+      addEventListener() {}
+    },
+    localStorage: {
+      getItem: (key) => (storage.has(key) ? storage.get(key) : null),
+      setItem: (key, value) => storage.set(key, String(value)),
+      removeItem: (key) => storage.delete(key)
+    },
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({ success: true, user_id: 'uid-123', username: 'Trader' })
+    }),
     Date,
-    console,
-    requestAnimationFrame(callback) { callback(); },
-    setTimeout(callback) { callback(); return 1; },
-    MutationObserver: class { observe() {} }
+    JSON,
+    console
   };
+  sandbox.window.localStorage = sandbox.localStorage;
 
   vm.createContext(sandbox);
-  vm.runInContext(guard, sandbox);
+  vm.runInContext(runtime, sandbox);
+  await new Promise((resolve) => setTimeout(resolve, 10));
 
-  for (const element of [sector, screener, portfolio]) {
-    assert.equal(element.disabled, false);
-    assert.equal(element.classList.contains('hidden'), false);
-    assert.equal(element.style.values['pointer-events'], 'auto');
-  }
+  assert.equal(storage.get('autocuan_user_id'), 'uid-123');
+  assert.equal(storage.get('autocuan_user'), 'trader');
+  assert.equal(storage.get('autocuan_logged_in'), 'true');
+  assert.equal(sandbox.window.__AUTOCUAN_APPROVED_WEBSITE_ACCESS__.userId, 'uid-123');
+  assert.equal(sandbox.window.__AUTOCUAN_APPROVED_WEBSITE_ACCESS__.username, 'Trader');
+  assert.equal(sandbox.window.premiumAccessState.premium, true);
+  assert.equal(sandbox.window.premiumAccessState.accessLevel, 'approved');
+  assert.ok(appliedUi >= 1, 'native premium UI application runs');
+  assert.equal(enteredApp && enteredApp.replaceHistory, true);
+  assert.ok(removedSelectors.some((s) => s.includes('#page-subscription')));
+});
 
-  assert.equal(subscription.removed, true);
-  assert.equal(window.premiumAccessState.premium, true);
-  assert.equal(subtitle.textContent, 'Decision Center');
-  portfolio.onclick({ preventDefault() {}, stopPropagation() {} });
-  assert.equal(window.location.href, '/portfolio-planner');
+test('a failed or anonymous status check never grants or fakes access', async () => {
+  const runtime = read('public/website-approved-access.js');
+  const storage = new Map();
+  let enteredApp = false;
+
+  const sandbox = {
+    window: {
+      location: { pathname: '/dashboard' },
+      enterApp() { enteredApp = true; },
+      applyPremiumAccessUi() {}
+    },
+    document: {
+      readyState: 'complete',
+      querySelectorAll() { return []; },
+      getElementById() { return null; },
+      addEventListener() {}
+    },
+    localStorage: {
+      getItem: (key) => (storage.has(key) ? storage.get(key) : null),
+      setItem: (key, value) => storage.set(key, String(value)),
+      removeItem: (key) => storage.delete(key)
+    },
+    fetch: async () => ({ ok: false, status: 401, json: async () => ({ success: false }) }),
+    Date,
+    JSON,
+    console
+  };
+  sandbox.window.localStorage = sandbox.localStorage;
+
+  vm.createContext(sandbox);
+  vm.runInContext(runtime, sandbox);
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.equal(storage.has('autocuan_logged_in'), false, 'no login flag from a rejected check');
+  assert.equal(enteredApp, false, 'no forced app entry without server approval');
+  assert.equal(sandbox.window.premiumAccessState, undefined, 'no fake premium state');
 });
 
 test('website data APIs use approval-based server access', () => {
   const auth = read('lib/subscription-auth.js');
-  const sectorHot = read('lib/sector-hot-legacy.js');
+  const sectorHot = read('api/sector-hot.js');
   const adminUsers = read('api/admin-users.js');
 
   assert.match(auth, /access\.account\.is_approved !== true/);

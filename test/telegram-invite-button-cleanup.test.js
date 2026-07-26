@@ -103,12 +103,14 @@ test('API JavaScript file count remains exactly 12', function () {
   assert.equal(files.length, 12, 'API JS file count must remain 12; got ' + files.length);
 });
 
-test('Delete User remains absent (admin API + no delete-user endpoint)', function () {
+test('Delete User is admin-gated and protects system accounts (no extra endpoint)', function () {
   const adminApi = fs.readFileSync(path.join(ROOT, 'api', 'admin-users.js'), 'utf8');
-  assert.equal(/action\s*===\s*['"]delete['"]/.test(adminApi), false, 'no delete action');
-  assert.equal(/delete[_-]?user/i.test(adminApi), false, 'no delete-user handler');
+  assert.ok(/action === 'delete_user'/.test(adminApi), 'delete_user action exists');
+  assert.ok(/requireAdminSession\(req\)/.test(adminApi), 'delete requires a signed admin session');
+  assert.ok(/isSameOrigin\(req\)/.test(adminApi), 'delete requires a same-origin request');
+  assert.ok(/targetUsername === 'budi' \|\| targetUsername === 'review'/.test(adminApi), 'budi/review cannot be deleted');
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (f) { return f.endsWith('.js'); });
-  assert.ok(!apiFiles.some(function (f) { return /delete/i.test(f); }), 'no delete-user API file');
+  assert.ok(!apiFiles.some(function (f) { return /delete/i.test(f); }), 'no separate delete-user API function');
 });
 
 test('Approved Users view remains intact (filter, device helpers, safe actions)', function () {
