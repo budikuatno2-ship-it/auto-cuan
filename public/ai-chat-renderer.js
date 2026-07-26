@@ -83,11 +83,17 @@
     return html.join('');
   }
 
+  function setTextIfChanged(node, value) {
+    var next = String(value == null ? '' : value);
+    if (node && node.textContent !== next) node.textContent = next;
+  }
+
   function polishNode(node) {
     if (!node || node.nodeType !== 1) return;
 
     if (node.matches && node.matches('#aiStatus')) {
-      node.textContent = friendlyText(node.textContent).replace(/\s*Model:\s*[^.]+\.?/gi, '').trim();
+      var cleanedStatus = friendlyText(node.textContent).replace(/\s*Model:\s*[^.]+\.?/gi, '').trim();
+      setTextIfChanged(node, cleanedStatus);
     }
 
     var modelLabels = node.querySelectorAll ? node.querySelectorAll('[class*="text-"][class*="gray"]') : [];
@@ -115,7 +121,7 @@
 
     var loadingTexts = node.querySelectorAll ? node.querySelectorAll('#stockAiLoadingText, #aiLoadingText') : [];
     Array.prototype.forEach.call(loadingTexts, function (el) {
-      el.textContent = friendlyText(el.textContent);
+      setTextIfChanged(el, friendlyText(el.textContent));
     });
   }
 
@@ -125,19 +131,21 @@
 
   window.AutoCuanAI = { renderMarkdown: renderMarkdown, friendlyText: friendlyText, polishNode: polishNode };
 
+  // Important: only process newly inserted elements. Observing characterData and
+  // re-writing the same text created a feedback loop that could freeze Chrome.
   var observer = new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {
-      if (mutation.type === 'characterData') polishNode(mutation.target.parentElement);
-      Array.prototype.forEach.call(mutation.addedNodes || [], function (added) { polishNode(added); });
-      if (mutation.target && mutation.target.nodeType === 1) polishNode(mutation.target);
+      Array.prototype.forEach.call(mutation.addedNodes || [], function (added) {
+        if (added && added.nodeType === 1) polishNode(added);
+      });
     });
   });
 
   function start() {
     polishNode(document.body);
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
 })();
