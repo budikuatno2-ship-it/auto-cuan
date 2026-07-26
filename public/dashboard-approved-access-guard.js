@@ -4,9 +4,6 @@
   if (window.__AUTOCUAN_APPROVED_ACCESS_GUARD__) return;
   window.__AUTOCUAN_APPROVED_ACCESS_GUARD__ = true;
 
-  var APPROVED_PAGES = { sektor: true, screener: true, portofolio: true };
-  var originalNavigateTo = typeof window.navigateTo === 'function' ? window.navigateTo : null;
-
   function unlockElement(el) {
     if (!el) return;
     el.classList.remove('hidden', 'opacity-40', 'opacity-50', 'opacity-60', 'cursor-not-allowed', 'pointer-events-none', 'grayscale');
@@ -20,7 +17,7 @@
     el.style.setProperty('opacity', '1', 'important');
     el.style.setProperty('pointer-events', 'auto', 'important');
     el.style.setProperty('cursor', 'pointer', 'important');
-    el.style.removeProperty('filter');
+    el.style.setProperty('filter', 'none', 'important');
   }
 
   function removeSubscription() {
@@ -29,65 +26,8 @@
     });
   }
 
-  function setActiveNav(page) {
-    document.querySelectorAll('.nav-btn').forEach(function (button) {
-      button.classList.toggle('active', button.getAttribute('data-page') === page);
-    });
-  }
-
-  function showPage(page) {
-    if (page === 'portofolio') {
-      window.location.href = '/portfolio-planner';
-      return;
-    }
-
-    var target = document.getElementById('page-' + page);
-    if (!target) return;
-
-    try { window.currentPage = page; } catch (_) {}
-    document.querySelectorAll('.page-content').forEach(function (el) {
-      el.classList.add('hidden');
-    });
-    target.classList.remove('hidden');
-    target.classList.add('flex-1');
-    setActiveNav(page);
-
-    if (page === 'sektor') {
-      var sektorGate = document.getElementById('sektorLoginGate');
-      var sektorContent = document.getElementById('sektorContent');
-      if (sektorGate) sektorGate.classList.add('hidden');
-      if (sektorContent) sektorContent.classList.remove('hidden');
-      if (typeof window.loadSektorHot === 'function') window.loadSektorHot();
-    }
-
-    if (page === 'screener') {
-      var screenerGate = document.getElementById('screenerLoginGate');
-      var screenerContent = document.getElementById('screenerContent');
-      if (screenerGate) screenerGate.classList.add('hidden');
-      if (screenerContent) screenerContent.classList.remove('hidden');
-      if (typeof window.loadSwingScreener === 'function') window.loadSwingScreener();
-    }
-
-    window.scrollTo({ top: 0, behavior: 'auto' });
-  }
-
-  function approvedNavigateTo(page) {
-    page = String(page || '');
-    if (APPROVED_PAGES[page]) {
-      showPage(page);
-      return;
-    }
-    if (page === 'subscription') {
-      showPage('dashboard');
-      return;
-    }
-    if (originalNavigateTo) return originalNavigateTo(page);
-  }
-
-  function overrideLegacyPremiumGate() {
+  function markApprovedState() {
     try {
-      window.hasConfirmedPremiumAccess = function () { return true; };
-      window.isPremiumFeaturePage = function () { return false; };
       window.premiumAccessState = {
         state: 'ready',
         premium: true,
@@ -95,33 +35,33 @@
         checkedAt: Date.now(),
         expiresAt: null
       };
-      window.loadPremiumAccess = async function () { return window.premiumAccessState; };
-      window.navigateTo = approvedNavigateTo;
     } catch (_) {}
   }
 
-  function wireDirectClicks() {
-    document.querySelectorAll('[data-premium-nav="true"]').forEach(function (el) {
-      unlockElement(el);
-      var page = el.getAttribute('data-page');
-      if (!APPROVED_PAGES[page]) return;
-      if (el.dataset.approvedDirectClick === 'true') return;
-      el.dataset.approvedDirectClick = 'true';
+  function wirePortfolio() {
+    document.querySelectorAll('[data-page="portofolio"]').forEach(function (el) {
+      if (el.dataset.approvedPortfolioWired === 'true') return;
+      el.dataset.approvedPortfolioWired = 'true';
       el.onclick = function (event) {
         if (event) {
           event.preventDefault();
           event.stopPropagation();
         }
-        approvedNavigateTo(page);
+        window.location.href = '/portfolio-planner';
         return false;
       };
+    });
+
+    document.querySelectorAll('.action-card[data-page="portofolio"] p').forEach(function (el) {
+      if (String(el.textContent || '').trim() === 'Posisi manual') el.textContent = 'Decision Center';
     });
   }
 
   function apply() {
-    overrideLegacyPremiumGate();
+    markApprovedState();
     removeSubscription();
-    wireDirectClicks();
+    document.querySelectorAll('[data-premium-nav="true"]').forEach(unlockElement);
+    wirePortfolio();
   }
 
   var scheduled = false;
