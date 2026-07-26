@@ -39,13 +39,9 @@ function patchIndex() {
   );
 
   // Website access is approval-based. Subscription belongs to the later Telegram phase.
+  // Keep the dormant markup structurally intact; remove only entry points and hide it at runtime.
   source = source.replace(/<button[^>]*onclick="openSubscriptionPage\(\)"[^>]*>\s*Paket Langganan\s*<\/button>/g, '');
   source = source.replace(/<button[^>]*onclick="navigateTo\('subscription'\)"[^>]*>[\s\S]*?<\/button>/g, '');
-  source = source.replace(
-    /<div id="page-subscription"[\s\S]*?<\/div>\s*\n\s*<!-- ===== PAGE: DASHBOARD HOME ===== -->/,
-    '<!-- Subscription UI intentionally hidden until the later Telegram/payment phase. -->\n\n<!-- ===== PAGE: DASHBOARD HOME ===== -->'
-  );
-  source = source.replace(/<section id="subscriptionIdentityCard"[\s\S]*?<\/section>/g, '');
 
   source = replaceRequired(
     source,
@@ -64,12 +60,6 @@ function patchIndex() {
     "function openSubscriptionPage(){setTopLevelView('app');navigateTo('subscription');loadSubscriptionExperience(true);window.scrollTo({top:0,behavior:'smooth'});}",
     "function openSubscriptionPage(){if(isAutocuanLoggedIn())enterApp({replaceHistory:true});else showLandingPage({replaceHistory:true});}",
     'subscription route disable'
-  );
-  source = replaceRequired(
-    source,
-    "if (path === '/subscription' || path === '/subscription/') { openSubscriptionPage(); return; }",
-    "if (path === '/subscription' || path === '/subscription/') { openSubscriptionPage(); return; }",
-    'subscription route compatibility'
   );
 
   const scripts = [
