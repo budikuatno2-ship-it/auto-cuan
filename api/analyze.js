@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const Module = require('node:module');
-const handlePortfolioAI = require('../lib/portfolio-ai');
+const handleContextAI = require('../lib/context-ai-router');
 
 const sourcePath = path.join(__dirname, '..', 'lib', 'analyze-legacy.js');
 const virtualPath = path.join(__dirname, 'analyze-legacy.virtual.js');
@@ -14,8 +14,9 @@ legacyModule._compile(fs.readFileSync(sourcePath, 'utf8'), virtualPath);
 const legacyAnalyze = legacyModule.exports;
 
 module.exports = async function handler(req, res) {
-  if (req && req.method === 'POST' && req.body && req.body.source === 'portfolio_chat') {
-    return handlePortfolioAI(req, res);
+  const source = req && req.method === 'POST' && req.body && req.body.source;
+  if (source === 'portfolio_chat' || source === 'stock_analysis_followup') {
+    return handleContextAI(req, res);
   }
   return legacyAnalyze(req, res);
 };
