@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0b0e14">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
   <title>Auto-Cuan</title>
   <style>
     body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0e14;color:#94a3b8;font:14px system-ui}
@@ -17,29 +18,92 @@
   <script>
   (async function(){
     'use strict';
+
+    function removeSubscription(doc) {
+      doc.querySelectorAll('[data-page="subscription"],#page-subscription,#subscriptionIdentityCard').forEach(function (el) {
+        el.remove();
+      });
+    }
+
+    function revealWebsiteFeatures(doc) {
+      doc.querySelectorAll('[data-premium-nav="true"]').forEach(function (el) {
+        el.classList.remove('hidden');
+        el.removeAttribute('hidden');
+        el.setAttribute('aria-hidden', 'false');
+        el.style.removeProperty('display');
+      });
+    }
+
+    function wirePortfolio(doc) {
+      doc.querySelectorAll('[data-page="portofolio"]').forEach(function (el) {
+        el.setAttribute('onclick', "window.location.href='/portfolio-planner';return false");
+      });
+      doc.querySelectorAll('.action-card[data-page="portofolio"] p').forEach(function (el) {
+        if (String(el.textContent || '').trim() === 'Posisi manual') el.textContent = 'Decision Center';
+      });
+    }
+
     try {
       var accessResponse = await fetch('/api/admin-users', {
-        method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
+        method:'POST',
+        credentials:'same-origin',
+        cache:'no-store',
+        headers:{'Content-Type':'application/json'},
         body:JSON.stringify({action:'portfolio_access'})
       });
       var access = await accessResponse.json();
       if (!accessResponse.ok || !access || access.success !== true || !access.user_id) {
         throw new Error((access && access.error) || 'Akun belum di-approve admin.');
       }
+
       localStorage.setItem('autocuan_user_id', String(access.user_id));
       if (access.username) localStorage.setItem('autocuan_user', String(access.username));
 
-      var response = await fetch('/index.html', { credentials:'same-origin', cache:'no-store' });
+      var response = await fetch('/index.html?approved-shell=20260726c', {
+        credentials:'same-origin',
+        cache:'no-store',
+        headers:{'Cache-Control':'no-cache'}
+      });
       if (!response.ok) throw new Error('Dashboard tidak tersedia.');
-      var html = await response.text();
 
-      html = html.replace('</head>', '<link rel="stylesheet" href="/dashboard-responsive-fixes.css"><style>.nav-btn[data-premium-nav="true"]{display:flex!important}.action-card[data-premium-nav="true"]{display:block!important}[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}</style></head>');
-      html = html.replace(/onclick="navigateTo\('portofolio'\)"/g, 'onclick="window.location.href=\'/portfolio-planner\'"');
-      html = html.replace('>Posisi manual</p>', '>Decision Center</p>');
-      html = html.replace('</body>', '<script src="/dashboard-approved-enhancements.js"><\/script><script src="/ai-chat-renderer.js"><\/script><script src="/stock-analysis-ai.js"><\/script></body>');
+      var parser = new DOMParser();
+      var doc = parser.parseFromString(await response.text(), 'text/html');
+      revealWebsiteFeatures(doc);
+      removeSubscription(doc);
+      wirePortfolio(doc);
+
+      var responsive = doc.createElement('link');
+      responsive.rel = 'stylesheet';
+      responsive.href = '/dashboard-responsive-fixes.css?v=20260726c';
+      doc.head.appendChild(responsive);
+
+      var forceStyle = doc.createElement('style');
+      forceStyle.textContent = '[data-premium-nav="true"]{display:flex!important}[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}';
+      doc.head.appendChild(forceStyle);
+
+      var accessData = doc.createElement('script');
+      accessData.textContent = 'window.__AUTOCUAN_APPROVED_WEBSITE_ACCESS__=' + JSON.stringify({
+        userId:String(access.user_id),
+        username:String(access.username || '')
+      }) + ';';
+      doc.body.appendChild(accessData);
+
+      [
+        '/dashboard-approved-enhancements.js?v=20260726c',
+        '/ai-chat-renderer.js?v=20260726c',
+        '/stock-analysis-ai.js?v=20260726c'
+      ].forEach(function (src) {
+        var script = doc.createElement('script');
+        script.src = src;
+        doc.body.appendChild(script);
+      });
+
+      var restoreUrl = doc.createElement('script');
+      restoreUrl.textContent = "try{history.replaceState(null,'','/dashboard')}catch(e){}";
+      doc.body.appendChild(restoreUrl);
 
       document.open();
-      document.write(html);
+      document.write('<!doctype html>' + doc.documentElement.outerHTML);
       document.close();
     } catch (error) {
       document.body.innerHTML = '<main class="error"><h1>Dashboard terkunci</h1><p>' + String(error && error.message || 'Silakan login kembali.') + '</p><a href="/">Kembali ke halaman utama</a></main>';
