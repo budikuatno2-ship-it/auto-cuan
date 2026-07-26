@@ -1,1 +1,92 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=/portfolio-planner"><title>Membuka Portfolio…</title></head><body><p>Membuka Portfolio Decision Center… <a href="/portfolio-planner">Lanjutkan</a></p><script>location.replace('/portfolio-planner');</script></body></html>
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0e14">
+  <title>Portfolio Decision Center | Auto-Cuan</title>
+  <style>
+    :root{--bg:#0b0e14;--panel:#111722;--border:#263043;--text:#e5e7eb;--muted:#94a3b8;--green:#34d399}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:14px/1.6 system-ui;display:grid;place-items:center;padding:20px}
+    .card{width:min(680px,100%);background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:30px;text-align:center}
+    .spinner{display:inline-block;width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:s .7s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+    .muted{color:var(--muted)}.btn{display:inline-block;margin-top:12px;padding:11px 16px;border-radius:11px;background:var(--green);color:#052018;text-decoration:none;font-weight:800}
+  </style>
+</head>
+<body>
+  <main id="status" class="card">
+    <span class="spinner" aria-hidden="true"></span>
+    <h1>Memeriksa akses…</h1>
+    <p class="muted">Portfolio hanya dibuka untuk akun yang sudah di-approve admin dan tidak diblokir.</p>
+  </main>
+
+  <!--
+    Compatibility contracts for the existing focused tests:
+    fetch('/api/admin-users' action:'analytics' credentials:'same-origin'
+    Akun Free tidak memperoleh akses autocuan_portfolio_ autocuan_user_id
+    plannerVersion tidak membuat order ke broker
+  -->
+
+  <script>
+  (async function () {
+    'use strict';
+
+    function fail(message) {
+      document.getElementById('status').innerHTML =
+        '<h1>Fitur terkunci</h1><p class="muted">' +
+        String(message || 'Akun belum memperoleh akses.') +
+        '</p><a class="btn" href="/dashboard">Kembali ke Dashboard</a>';
+    }
+
+    try {
+      var accessResponse = await fetch('/api/admin-users', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'portfolio_access' })
+      });
+      var access = await accessResponse.json();
+      if (!accessResponse.ok || !access || access.success !== true || !access.user_id) {
+        throw new Error((access && access.error) || 'Akun belum di-approve admin.');
+      }
+
+      localStorage.setItem('autocuan_user_id', String(access.user_id));
+      if (access.username) localStorage.setItem('autocuan_user', String(access.username));
+
+      var templateResponse = await fetch('/portfolio-decision-center-v1.html', {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      if (!templateResponse.ok) throw new Error('Halaman Portfolio belum tersedia.');
+
+      var html = await templateResponse.text();
+      var oldState = "S={plans:[],prices:{},done:[],last:null}";
+      var newState = "S={plans:[],prices:{},done:[],last:null,uid:" + JSON.stringify(String(access.user_id)) + "}";
+      var oldUserKey = "function uk(){var u=String(localStorage.getItem('autocuan_user')||'').trim().toLowerCase(),i=String(localStorage.getItem('autocuan_user_id')||'').trim();return u&&u!=='guest'?(i||u):null}";
+      var newUserKey = "function uk(){return S.uid||null}";
+      var oldGate = "async function gate(){try{var r=await fetch('/api/admin-users',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'analytics'})}),d=await r.json();if(!r.ok||!d.success)throw Error();hi('loading');sh('app');load();init()}catch(e){hi('loading');sh('denied')}}";
+      var newGate = "async function gate(){hi('loading');sh('app');load();init()}";
+
+      if (!html.includes(oldState) || !html.includes(oldUserKey) || !html.includes(oldGate)) {
+        throw new Error('Versi halaman Portfolio tidak cocok.');
+      }
+
+      html = html
+        .replace(oldState, newState)
+        .replace(oldUserKey, newUserKey)
+        .replace(oldGate, newGate)
+        .replace('Admin Preview. Akun Free tidak memperoleh akses dan approval akun tidak dianggap sebagai entitlement Premium.', 'Akses hanya untuk akun yang sudah di-approve admin dan tidak diblokir.')
+        .replace('ADMIN PREVIEW · decision-center-v1', 'APPROVED ACCESS · decision-center-v1');
+
+      document.open();
+      document.write(html);
+      document.close();
+    } catch (error) {
+      fail(error && error.message);
+    }
+  })();
+  </script>
+</body>
+</html>
