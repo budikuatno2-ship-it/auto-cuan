@@ -9,15 +9,33 @@
     });
   }
 
+  function normalizeSpacing(value) {
+    var text = String(value == null ? '' : value)
+      .replace(/<br\s*\/?\s*>/gi, '\n')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\r/g, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n[ \t]+/g, '\n')
+      .replace(/([.!?])(?=[A-ZÀ-ÖØ-Þ])/g, '$1\n\n')
+      .replace(/\b(Kenapa belum bisa dibilang aman\?|Risikonya|Saran realistis|Intinya|Kesimpulan|Konfirmasi|Invalidasi|Pendapat saya|Pilihan skenario)\s*/gi, '\n\n### $1\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+    return text;
+  }
+
   function friendlyText(value) {
-    var text = String(value == null ? '' : value).trim();
+    var text = normalizeSpacing(value);
     return text
+      .replace(/AI cloud-nya lagi kurang kooperatif, tapi datamu tetap bisa dibaca lewat \*\*mode data lokal\*\*\.?/gi,
+        '### Analisis data berhasil\nSistem memakai data portofolio yang tersimpan agar jawaban tetap tersedia.')
+      .replace(/AI cloud lagi ngadat, jadi sistem pakai mode data lokal biar kamu tetap dapat jawaban\.?/gi,
+        'Analisis selesai memakai data portofolio yang tersedia.')
       .replace(/Model terlalu lama menyelesaikan jawaban\. Sistem tidak mencoba model lain karena request pertama mungkin tetap dihitung provider\. Coba lagi nanti dengan pertanyaan yang lebih singkat\./gi,
-        'AI-nya lagi mikir kelamaan. Biar token nggak kebuang, sistem nggak nembak model lain dulu. Coba lagi bentar dengan pertanyaan yang lebih ringkas ya.')
+        'AI-nya lagi mikir kelamaan. Biar token nggak kebuang, sistem berhenti dulu. Coba lagi bentar dengan pertanyaan yang lebih ringkas ya.')
       .replace(/Model yang tersedia menolak request atau sedang penuh\. Fallback dihentikan agar token tidak terbuang\. Coba lagi setelah beberapa saat\./gi,
-        'Model yang lagi aktif belum bisa nerima request ini. Sistem berhenti dulu biar tokenmu nggak kebakar. Coba lagi sebentar ya.')
+        'Jalur AI yang aktif lagi penuh. Sistem berhenti dulu biar token nggak kebakar. Coba lagi sebentar ya.')
       .replace(/Model yang dicoba sedang gangguan atau traffic ramai\. Sistem menghentikan fallback agar token tidak terbuang\. Coba lagi setelah beberapa saat\./gi,
-        'Model yang dicoba lagi ramai atau gangguan. Sistem stop dulu biar tokenmu nggak kebakar. Coba lagi bentar ya.')
+        'Jalur AI lagi ramai atau gangguan. Sistem stop dulu biar token nggak kebakar. Coba lagi bentar ya.')
       .replace(/Mohon bersabar ya, traffic model sedang ramai…/gi,
         'Sedikit lebih lama nih—traffic lagi ramai, tapi pertanyaanmu masih jalan…')
       .replace(/Memuat data(?: analisis| portofolio)? dan memilih model terbaik…/gi,
@@ -31,11 +49,13 @@
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    html = html.replace(/(^|\s)\*([^*]+)\*(?=\s|$|[.,!?])/g, '$1<em>$2</em>');
+    html = html.replace(/(^|\s)_([^_]+)_(?=\s|$|[.,!?])/g, '$1<em>$2</em>');
     return html;
   }
 
   function renderMarkdown(value) {
-    var text = friendlyText(value).replace(/\r/g, '');
+    var text = friendlyText(value);
     var lines = text.split('\n');
     var html = [];
     var listType = '';
@@ -126,13 +146,11 @@
   }
 
   var style = document.createElement('style');
-  style.textContent = '.ai-rich-text{white-space:normal!important}.ai-rich-text p{margin:.45rem 0;line-height:1.65}.ai-rich-text p:first-child{margin-top:0}.ai-rich-text p:last-child{margin-bottom:0}.ai-rich-text h3,.ai-rich-text h4{margin:1rem 0 .45rem;font-size:1rem;line-height:1.35;color:#f1f5f9}.ai-rich-text ul,.ai-rich-text ol{margin:.45rem 0 .75rem;padding-left:1.35rem}.ai-rich-text li{margin:.28rem 0;line-height:1.6}.ai-rich-text strong{color:#f8fafc;font-weight:750}.ai-rich-text code{padding:.1rem .35rem;border-radius:.35rem;background:rgba(15,23,42,.75);color:#a7f3d0;font: .9em ui-monospace,SFMono-Regular,Menlo,monospace}';
+  style.textContent = '.ai-rich-text{white-space:normal!important;line-height:1.7}.ai-rich-text p{display:block;margin:0 0 12px;line-height:1.7}.ai-rich-text p:first-child{margin-top:0}.ai-rich-text p:last-child{margin-bottom:0}.ai-rich-text h3,.ai-rich-text h4{display:block;margin:18px 0 8px;font-size:1rem;line-height:1.4;color:#f1f5f9}.ai-rich-text ul,.ai-rich-text ol{display:block;margin:6px 0 14px;padding-left:1.4rem}.ai-rich-text li{margin:6px 0;line-height:1.65}.ai-rich-text strong{color:#f8fafc;font-weight:750}.ai-rich-text em{color:#dbeafe}.ai-rich-text code{padding:.1rem .35rem;border-radius:.35rem;background:rgba(15,23,42,.75);color:#a7f3d0;font:.9em ui-monospace,SFMono-Regular,Menlo,monospace}';
   document.head.appendChild(style);
 
   window.AutoCuanAI = { renderMarkdown: renderMarkdown, friendlyText: friendlyText, polishNode: polishNode };
 
-  // Important: only process newly inserted elements. Observing characterData and
-  // re-writing the same text created a feedback loop that could freeze Chrome.
   var observer = new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {
       Array.prototype.forEach.call(mutation.addedNodes || [], function (added) {
