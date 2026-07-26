@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="id" style="background:#0b0e14">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0e14">
+  <title>Auto-Cuan</title>
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0e14;color:#94a3b8;font:14px system-ui}
+    .loader{width:34px;height:34px;border:3px solid #263043;border-top-color:#34d399;border-radius:50%;animation:s .7s linear infinite}
+    @keyframes s{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div class="loader" aria-label="Memuat dashboard"></div>
+  <script>
+  (async function(){
+    'use strict';
+    try {
+      var response = await fetch('/index.html', { credentials:'same-origin', cache:'no-store' });
+      if (!response.ok) throw new Error('Dashboard tidak tersedia.');
+      var html = await response.text();
+
+      // Website access is approval-based. Subscription belongs to the later
+      // Telegram flow, so it must not appear in the website navigation yet.
+      html = html.replace('</head>', '<style>[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}</style></head>');
+
+      // The visible Portfolio entry must open the completed Decision Center,
+      // not the legacy manual-only page.
+      html = html.replace(/onclick="navigateTo\('portofolio'\)"/g, 'onclick="window.location.href=\'/portfolio-planner\'"');
+      html = html.replace('>Posisi manual</p>', '>Decision Center</p>');
+
+      // Defensive runtime guard for any old in-page call left in cached markup.
+      html = html.replace('</body>', '<script>(function(){var old=window.navigateTo;if(typeof old===\'function\'){window.navigateTo=function(page){if(page===\'portofolio\'){window.location.href=\'/portfolio-planner\';return;}if(page===\'subscription\'){return;}return old.apply(this,arguments);};}})();<\/script></body>');
+
+      document.open();
+      document.write(html);
+      document.close();
+    } catch (error) {
+      document.body.innerHTML = '<main style="max-width:520px;padding:24px;text-align:center"><h1 style="color:#e5e7eb">Dashboard gagal dimuat</h1><p>' + String(error && error.message || 'Silakan muat ulang halaman.') + '</p><a href="/" style="color:#34d399">Kembali</a></main>';
+    }
+  })();
+  </script>
+</body>
+</html>
