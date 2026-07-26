@@ -14,9 +14,9 @@ function write(relativePath, content) {
 }
 
 function replaceRequired(source, before, after, label) {
+  if (source.includes(before)) return source.replace(before, after);
   if (source.includes(after)) return source;
-  if (!source.includes(before)) throw new Error('Missing production hotfix target: ' + label);
-  return source.replace(before, after);
+  throw new Error('Missing production hotfix target: ' + label);
 }
 
 function patchIndex() {
