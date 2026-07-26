@@ -10,7 +10,7 @@
     },
     {
       "source": "/portfolio-planner",
-      "destination": "/portfolio-planner.html"
+      "destination": "/api/portfolio-planner"
     }
   ],
   "crons": [
