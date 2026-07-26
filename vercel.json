@@ -4,18 +4,41 @@
       "maxDuration": 60
     }
   },
+  "redirects": [
+    {
+      "source": "/dashboard",
+      "destination": "/dashboard-loader.html",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/review",
       "destination": "/index.html"
     },
     {
-      "source": "/dashboard",
-      "destination": "/dashboard-loader.html"
-    },
-    {
       "source": "/portfolio-planner",
       "destination": "/portfolio-planner.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/dashboard-loader.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/dashboard-approved-enhancements.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     }
   ],
   "crons": [
