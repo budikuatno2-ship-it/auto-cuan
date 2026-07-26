@@ -125,8 +125,20 @@ function patchRenderer() {
   write('public/ai-chat-renderer.js', source);
 }
 
+function patchPortfolioPage() {
+  let source = read('public/portfolio-planner.html');
+  source = replaceRequired(
+    source,
+    '.ai-shell{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px}',
+    '.ai-shell{display:grid;grid-template-columns:1fr;gap:16px}.ai-shell aside{order:2}',
+    'portfolio AI vertical layout'
+  );
+  write('public/portfolio-planner.html', source);
+}
+
 patchIndex();
 patchContextRouter();
 patchPortfolioRuntime();
 patchRenderer();
+patchPortfolioPage();
 console.log('Applied production website and AI hotfixes');
