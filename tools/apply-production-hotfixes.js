@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 function read(relativePath) {
   return fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
@@ -136,9 +137,60 @@ function patchPortfolioPage() {
   write('public/portfolio-planner.html', source);
 }
 
+function validateBuild() {
+  const jsFiles = [
+    'public/website-approved-access.js',
+    'public/admin-user-delete-enhancement.js',
+    'public/ai-chat-renderer.js',
+    'public/portfolio-ai-runtime-v2.js',
+    'public/stock-analysis-ai.js',
+    'lib/context-ai-router-v4.js',
+    'api/admin-users.js'
+  ];
+  jsFiles.forEach(function (file) {
+    new vm.Script(read(file), { filename: file });
+  });
+
+  const apiFiles = fs.readdirSync(path.join(__dirname, '..', 'api'))
+    .filter(function (name) { return name.endsWith('.js'); });
+  if (apiFiles.length !== 12) {
+    throw new Error('Vercel API function count changed: expected 12, got ' + apiFiles.length);
+  }
+
+  const index = read('public/index.html');
+  if (/onclick="openSubscriptionPage\(\)"/.test(index) || /onclick="navigateTo\('subscription'\)"/.test(index)) {
+    throw new Error('Subscription entry point is still visible.');
+  }
+  if (index.includes('if (isPremiumFeaturePage(page) && !hasConfirmedPremiumAccess()) {') ||
+      index.includes('if (!allowed && isPremiumFeaturePage(currentPage)) {')) {
+    throw new Error('Legacy website premium gate is still active.');
+  }
+  if (!index.includes('/website-approved-access.js?v=20260726-final2') ||
+      !index.includes('/admin-user-delete-enhancement.js?v=20260726-final2')) {
+    throw new Error('Approved access/admin enhancement was not injected.');
+  }
+
+  const renderer = read('public/ai-chat-renderer.js');
+  if (/characterData\s*:\s*true/.test(renderer)) {
+    throw new Error('AI renderer characterData feedback loop returned.');
+  }
+
+  const portfolio = read('public/portfolio-planner.html');
+  if (!portfolio.includes('.ai-shell{display:grid;grid-template-columns:1fr;gap:16px}')) {
+    throw new Error('Portfolio AI layout is not vertical.');
+  }
+
+  const vercel = JSON.parse(read('vercel.json'));
+  const dashboardRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/dashboard'; });
+  if (!dashboardRewrite || dashboardRewrite.destination !== '/index.html') {
+    throw new Error('/dashboard must rewrite directly to /index.html.');
+  }
+}
+
 patchIndex();
 patchContextRouter();
 patchPortfolioRuntime();
 patchRenderer();
 patchPortfolioPage();
-console.log('Applied production website and AI hotfixes');
+validateBuild();
+console.log('Applied and validated production website/AI hotfixes');
