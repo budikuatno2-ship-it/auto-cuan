@@ -16,20 +16,75 @@
       .replace(/\r/g, '')
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n[ \t]+/g, '\n')
-      .replace(/([.!?])(?=[A-ZÀ-ÖØ-Þ])/g, '$1\n\n')
-      .replace(/\b(Kenapa belum bisa dibilang aman\?|Risikonya|Saran realistis|Intinya|Kesimpulan|Konfirmasi|Invalidasi|Pendapat saya|Pilihan skenario)\s*/gi, '\n\n### $1\n')
+      // Restore a missing sentence space without breaking decimal values such as 11.50.
+      .replace(/(^|[^0-9])\.([0-9])/g, '$1. $2')
+      .replace(/([.!?])(?=[A-ZÀ-ÖØ-Þ])/g, '$1 ')
+      .replace(/([,:;])(?=[A-ZÀ-ÖØ-Þ])/g, '$1 ')
+      .replace(/\b(Risikonya|Intinya|Kesimpulannya)(?=[A-ZÀ-ÖØ-Þ])/gi, '$1\n\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
     return text;
   }
 
-  function friendlyText(value) {
+  function structureLongProse(value) {
     var text = normalizeSpacing(value);
+    if (text.length < 280) return text;
+
+    var markers = [
+      'Kenapa belum bisa dibilang aman\\?',
+      'Kenapa belum bisa disebut aman\\?',
+      'Kenapa',
+      'Risikonya',
+      'Saran realistis',
+      'Saran paling masuk akal(?: sekarang)?',
+      'Data yang dipakai',
+      'Yang masih kurang',
+      'Pilihan skenario',
+      'Skenario paling masuk akal',
+      'Pendapat saya',
+      'Intinya',
+      'Kesimpulan'
+    ];
+    var markerRegex = new RegExp('(?:^|\\s*)(' + markers.join('|') + ')\\s*', 'gi');
+    text = text.replace(markerRegex, function (_, heading, offset) {
+      return (offset > 0 ? '\n\n' : '') + '### ' + heading + '\n';
+    });
+
+    var lines = text.split('\n');
+    var output = [];
+    lines.forEach(function (line) {
+      var trimmed = line.trim();
+      if (!trimmed || /^#{1,3}\s/.test(trimmed) || /^[-*]\s/.test(trimmed) || /^\d+[.)]\s/.test(trimmed) || trimmed.length < 320) {
+        output.push(trimmed);
+        return;
+      }
+
+      var sentences = trimmed.split(/(?<=[.!?])\s+(?=[A-ZÀ-ÖØ-Þ0-9])/g);
+      var paragraph = '';
+      sentences.forEach(function (sentence) {
+        sentence = sentence.trim();
+        if (!sentence) return;
+        var startsNewThought = /^(Kalau|Bila|Namun|Tapi|Jadi|Karena|Perlu diingat|Yang paling penting|Rekomendasi)/i.test(sentence);
+        if (paragraph && (startsNewThought || paragraph.length + sentence.length > 300)) {
+          output.push(paragraph.trim());
+          output.push('');
+          paragraph = '';
+        }
+        paragraph += (paragraph ? ' ' : '') + sentence;
+      });
+      if (paragraph) output.push(paragraph.trim());
+    });
+
+    return output.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  function friendlyText(value) {
+    var text = structureLongProse(value);
     return text
       .replace(/AI cloud-nya lagi kurang kooperatif, tapi datamu tetap bisa dibaca lewat \*\*mode data lokal\*\*\.?/gi,
-        '### Analisis data berhasil\nSistem memakai data portofolio yang tersimpan agar jawaban tetap tersedia.')
+        '### Mode data lokal\nJalur AI utama sedang sibuk, jadi sistem memakai data portofolio yang tersimpan agar jawaban tetap tersedia.')
       .replace(/AI cloud lagi ngadat, jadi sistem pakai mode data lokal biar kamu tetap dapat jawaban\.?/gi,
-        'Analisis selesai memakai data portofolio yang tersedia.')
+        'Jawaban sementara dibuat dari data portofolio yang tersedia.')
       .replace(/Model terlalu lama menyelesaikan jawaban\. Sistem tidak mencoba model lain karena request pertama mungkin tetap dihitung provider\. Coba lagi nanti dengan pertanyaan yang lebih singkat\./gi,
         'AI-nya lagi mikir kelamaan. Biar token nggak kebuang, sistem berhenti dulu. Coba lagi bentar dengan pertanyaan yang lebih ringkas ya.')
       .replace(/Model yang tersedia menolak request atau sedang penuh\. Fallback dihentikan agar token tidak terbuang\. Coba lagi setelah beberapa saat\./gi,
@@ -146,11 +201,18 @@
   }
 
   var style = document.createElement('style');
-  style.textContent = '.ai-rich-text{white-space:normal!important;line-height:1.7}.ai-rich-text p{display:block;margin:0 0 12px;line-height:1.7}.ai-rich-text p:first-child{margin-top:0}.ai-rich-text p:last-child{margin-bottom:0}.ai-rich-text h3,.ai-rich-text h4{display:block;margin:18px 0 8px;font-size:1rem;line-height:1.4;color:#f1f5f9}.ai-rich-text ul,.ai-rich-text ol{display:block;margin:6px 0 14px;padding-left:1.4rem}.ai-rich-text li{margin:6px 0;line-height:1.65}.ai-rich-text strong{color:#f8fafc;font-weight:750}.ai-rich-text em{color:#dbeafe}.ai-rich-text code{padding:.1rem .35rem;border-radius:.35rem;background:rgba(15,23,42,.75);color:#a7f3d0;font:.9em ui-monospace,SFMono-Regular,Menlo,monospace}';
+  style.textContent = '.ai-rich-text{display:flex!important;flex-direction:column!important;gap:0!important;white-space:normal!important;line-height:1.72;max-width:100%}.ai-rich-text p{display:block;margin:0 0 14px;line-height:1.72}.ai-rich-text p:first-child{margin-top:0}.ai-rich-text p:last-child{margin-bottom:0}.ai-rich-text h3,.ai-rich-text h4{display:block;margin:20px 0 9px;font-size:1rem;line-height:1.4;color:#f1f5f9}.ai-rich-text h3:first-child,.ai-rich-text h4:first-child{margin-top:0}.ai-rich-text ul,.ai-rich-text ol{display:block;margin:7px 0 16px;padding-left:1.45rem}.ai-rich-text li{margin:7px 0;line-height:1.68}.ai-rich-text strong{color:#f8fafc;font-weight:750}.ai-rich-text em{color:#dbeafe}.ai-rich-text code{padding:.1rem .35rem;border-radius:.35rem;background:rgba(15,23,42,.75);color:#a7f3d0;font:.9em ui-monospace,SFMono-Regular,Menlo,monospace}.ai-message.ai-assistant,.ai-content.ai-followup{overflow-wrap:anywhere;word-break:normal}';
   document.head.appendChild(style);
 
-  window.AutoCuanAI = { renderMarkdown: renderMarkdown, friendlyText: friendlyText, polishNode: polishNode };
+  window.AutoCuanAI = {
+    renderMarkdown: renderMarkdown,
+    friendlyText: friendlyText,
+    structureLongProse: structureLongProse,
+    polishNode: polishNode
+  };
 
+  // Process only newly inserted elements. Do not observe characterData: rewriting
+  // the observer's own text changes can create a feedback loop and freeze Chrome.
   var observer = new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {
       Array.prototype.forEach.call(mutation.addedNodes || [], function (added) {
