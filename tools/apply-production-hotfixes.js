@@ -38,8 +38,6 @@ function patchIndex() {
     'subscription action copy'
   );
 
-  // Website access is approval-based. Subscription belongs to the later Telegram phase.
-  // Keep the dormant markup structurally intact; remove only entry points and hide it at runtime.
   source = source.replace(/<button[^>]*onclick="openSubscriptionPage\(\)"[^>]*>\s*Paket Langganan\s*<\/button>/g, '');
   source = source.replace(/<button[^>]*onclick="navigateTo\('subscription'\)"[^>]*>[\s\S]*?<\/button>/g, '');
 
@@ -116,7 +114,19 @@ function patchPortfolioRuntime() {
   write('public/portfolio-ai-runtime-v2.js', source);
 }
 
+function patchRenderer() {
+  let source = read('public/ai-chat-renderer.js');
+  source = replaceRequired(
+    source,
+    "    candidates.forEach(function (el) {\n      if (el.querySelector && el.querySelector('.ai-loading-dot, .spinner-sm')) return;\n      var raw = el.getAttribute('data-ai-raw') || el.textContent || '';",
+    "    candidates.forEach(function (el) {\n      if (el.querySelector && el.querySelector('.ai-loading-dot, .spinner-sm')) return;\n      if (el.classList.contains('ai-rich-text') && !el.hasAttribute('data-ai-raw')) return;\n      var raw = el.getAttribute('data-ai-raw') || el.textContent || '';",
+    'preserve pre-rendered portfolio markdown'
+  );
+  write('public/ai-chat-renderer.js', source);
+}
+
 patchIndex();
 patchContextRouter();
 patchPortfolioRuntime();
+patchRenderer();
 console.log('Applied production website and AI hotfixes');
