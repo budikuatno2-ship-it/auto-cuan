@@ -29,8 +29,12 @@
       doc.querySelectorAll('[data-premium-nav="true"]').forEach(function (el) {
         el.classList.remove('hidden');
         el.removeAttribute('hidden');
+        el.removeAttribute('disabled');
         el.setAttribute('aria-hidden', 'false');
+        el.setAttribute('aria-disabled', 'false');
         el.style.removeProperty('display');
+        el.style.removeProperty('opacity');
+        el.style.removeProperty('pointer-events');
       });
     }
 
@@ -59,26 +63,32 @@
       localStorage.setItem('autocuan_user_id', String(access.user_id));
       if (access.username) localStorage.setItem('autocuan_user', String(access.username));
 
-      var response = await fetch('/index.html?approved-shell=20260726d', {
+      var response = await fetch('/index.html?approved-shell=20260726e', {
         credentials:'same-origin',
         cache:'no-store',
         headers:{'Cache-Control':'no-cache'}
       });
       if (!response.ok) throw new Error('Dashboard tidak tersedia.');
 
+      var source = await response.text();
+      source = source.replace(
+        "if (isPremiumFeaturePage(page) && !hasConfirmedPremiumAccess()) {",
+        "if (false) {"
+      );
+
       var parser = new DOMParser();
-      var doc = parser.parseFromString(await response.text(), 'text/html');
+      var doc = parser.parseFromString(source, 'text/html');
       revealWebsiteFeatures(doc);
       removeSubscription(doc);
       wirePortfolio(doc);
 
       var responsive = doc.createElement('link');
       responsive.rel = 'stylesheet';
-      responsive.href = '/dashboard-responsive-fixes.css?v=20260726d';
+      responsive.href = '/dashboard-responsive-fixes.css?v=20260726e';
       doc.head.appendChild(responsive);
 
       var forceStyle = doc.createElement('style');
-      forceStyle.textContent = '[data-premium-nav="true"]{display:flex!important}[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}';
+      forceStyle.textContent = 'nav [data-premium-nav="true"]{display:flex!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important}.action-card[data-premium-nav="true"]{display:block!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important}[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}';
       doc.head.appendChild(forceStyle);
 
       var accessData = doc.createElement('script');
@@ -89,10 +99,10 @@
       doc.body.appendChild(accessData);
 
       [
-        '/dashboard-approved-access-guard.js?v=20260726d',
-        '/dashboard-approved-enhancements.js?v=20260726d',
-        '/ai-chat-renderer.js?v=20260726d',
-        '/stock-analysis-ai.js?v=20260726d'
+        '/dashboard-approved-access-guard.js?v=20260726e',
+        '/dashboard-approved-enhancements.js?v=20260726e',
+        '/ai-chat-renderer.js?v=20260726e',
+        '/stock-analysis-ai.js?v=20260726e'
       ].forEach(function (src) {
         var script = doc.createElement('script');
         script.src = src;
