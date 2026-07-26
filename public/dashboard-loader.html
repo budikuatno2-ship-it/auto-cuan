@@ -27,7 +27,7 @@
 
     function revealWebsiteFeatures(doc) {
       doc.querySelectorAll('[data-premium-nav="true"]').forEach(function (el) {
-        el.classList.remove('hidden');
+        el.classList.remove('hidden','opacity-40','opacity-50','opacity-60','cursor-not-allowed','pointer-events-none','grayscale');
         el.removeAttribute('hidden');
         el.removeAttribute('disabled');
         el.setAttribute('aria-hidden', 'false');
@@ -35,6 +35,8 @@
         el.style.removeProperty('display');
         el.style.removeProperty('opacity');
         el.style.removeProperty('pointer-events');
+        el.style.removeProperty('cursor');
+        el.style.removeProperty('filter');
       });
     }
 
@@ -45,6 +47,26 @@
       doc.querySelectorAll('.action-card[data-page="portofolio"] p').forEach(function (el) {
         if (String(el.textContent || '').trim() === 'Posisi manual') el.textContent = 'Decision Center';
       });
+    }
+
+    function approvedBootstrap(access) {
+      return '(function(){\n' +
+        "'use strict';\n" +
+        'var approved=' + JSON.stringify({ userId:String(access.user_id), username:String(access.username || '') }) + ';\n' +
+        'window.__AUTOCUAN_APPROVED_WEBSITE_ACCESS__=approved;\n' +
+        'var nativeFetch=window.fetch.bind(window);\n' +
+        'window.fetch=function(input,init){\n' +
+        "  var raw=typeof input==='string'?input:(input&&input.url)||'';\n" +
+        '  try {\n' +
+        '    var url=new URL(raw,window.location.origin);\n' +
+        "    if(url.pathname==='/api/login-user'&&url.searchParams.get('action')==='premium-access-status'){\n" +
+        "      var body=JSON.stringify({success:true,premium:true,access_level:'approved_website',entitlement_status:'approved',current_plan:null,expires_at:null});\n" +
+        "      return Promise.resolve(new Response(body,{status:200,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}}));\n" +
+        '    }\n' +
+        '  } catch (_) {}\n' +
+        '  return nativeFetch(input,init);\n' +
+        '};\n' +
+        '})();';
     }
 
     try {
@@ -63,7 +85,7 @@
       localStorage.setItem('autocuan_user_id', String(access.user_id));
       if (access.username) localStorage.setItem('autocuan_user', String(access.username));
 
-      var response = await fetch('/index.html?approved-shell=20260726e', {
+      var response = await fetch('/index.html?approved-shell=20260726f', {
         credentials:'same-origin',
         cache:'no-store',
         headers:{'Cache-Control':'no-cache'}
@@ -75,6 +97,10 @@
         "if (isPremiumFeaturePage(page) && !hasConfirmedPremiumAccess()) {",
         "if (false) {"
       );
+      source = source.replace(
+        "if (!allowed && isPremiumFeaturePage(currentPage)) {",
+        "if (false) {"
+      );
 
       var parser = new DOMParser();
       var doc = parser.parseFromString(source, 'text/html');
@@ -82,27 +108,24 @@
       removeSubscription(doc);
       wirePortfolio(doc);
 
+      var bootstrap = doc.createElement('script');
+      bootstrap.textContent = approvedBootstrap(access);
+      doc.head.insertBefore(bootstrap, doc.head.firstChild);
+
       var responsive = doc.createElement('link');
       responsive.rel = 'stylesheet';
-      responsive.href = '/dashboard-responsive-fixes.css?v=20260726e';
+      responsive.href = '/dashboard-responsive-fixes.css?v=20260726f';
       doc.head.appendChild(responsive);
 
       var forceStyle = doc.createElement('style');
-      forceStyle.textContent = 'nav [data-premium-nav="true"]{display:flex!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important}.action-card[data-premium-nav="true"]{display:block!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important}[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}';
+      forceStyle.textContent = 'nav [data-premium-nav="true"]{display:flex!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important;filter:none!important}.action-card[data-premium-nav="true"]{display:block!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important;filter:none!important}[data-page="subscription"],#page-subscription,#subscriptionIdentityCard{display:none!important}';
       doc.head.appendChild(forceStyle);
 
-      var accessData = doc.createElement('script');
-      accessData.textContent = 'window.__AUTOCUAN_APPROVED_WEBSITE_ACCESS__=' + JSON.stringify({
-        userId:String(access.user_id),
-        username:String(access.username || '')
-      }) + ';';
-      doc.body.appendChild(accessData);
-
       [
-        '/dashboard-approved-access-guard.js?v=20260726e',
-        '/dashboard-approved-enhancements.js?v=20260726e',
-        '/ai-chat-renderer.js?v=20260726e',
-        '/stock-analysis-ai.js?v=20260726e'
+        '/dashboard-approved-access-guard.js?v=20260726f',
+        '/dashboard-approved-enhancements.js?v=20260726f',
+        '/ai-chat-renderer.js?v=20260726f',
+        '/stock-analysis-ai.js?v=20260726f'
       ].forEach(function (src) {
         var script = doc.createElement('script');
         script.src = src;
