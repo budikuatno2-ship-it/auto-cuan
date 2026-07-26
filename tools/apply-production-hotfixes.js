@@ -93,6 +93,30 @@ function patchContextRouter() {
   write('lib/context-ai-router-v4.js', source);
 }
 
+function patchPortfolioRuntime() {
+  let source = read('public/portfolio-ai-runtime-v2.js');
+  source = replaceRequired(
+    source,
+    "  function loadChat() {\n    var rows = readJson(chatKey, []);\n    state.messages = Array.isArray(rows) ? rows.slice(-20).filter(function (row) {\n      return row && (row.role === 'user' || row.role === 'assistant') && String(row.content || '').trim();\n    }) : [];\n  }",
+    "  function loadChat() {\n    var rows = readJson(chatKey, []);\n    var cleaned = Array.isArray(rows) ? rows.slice(-20).filter(function (row) {\n      return row && (row.role === 'user' || row.role === 'assistant') && String(row.content || '').trim();\n    }) : [];\n    state.messages = cleaned.filter(function (row, index) {\n      if (index === 0) return true;\n      var previous = cleaned[index - 1];\n      return previous.role !== row.role || String(previous.content).trim() !== String(row.content).trim();\n    });\n    saveChat();\n  }",
+    'portfolio chat duplicate cleanup'
+  );
+  source = replaceRequired(
+    source,
+    "        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({\n          source: 'portfolio_chat',",
+    "        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),\n        body: JSON.stringify({\n          source: 'portfolio_chat',",
+    'portfolio AI auth headers'
+  );
+  source = replaceRequired(
+    source,
+    "      if (status) status.textContent = 'AI cloud lagi ngadat, jadi sistem pakai mode data lokal biar kamu tetap dapat jawaban.';",
+    "      if (status) status.textContent = 'Jalur AI utama sedang sibuk. Jawaban sementara dibuat dari data portofolio yang tersedia.';",
+    'portfolio fallback status'
+  );
+  write('public/portfolio-ai-runtime-v2.js', source);
+}
+
 patchIndex();
 patchContextRouter();
+patchPortfolioRuntime();
 console.log('Applied production website and AI hotfixes');
