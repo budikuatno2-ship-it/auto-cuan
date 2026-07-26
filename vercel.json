@@ -32,6 +32,15 @@
       ]
     },
     {
+      "source": "/dashboard-approved-access-guard.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
       "source": "/dashboard-approved-enhancements.js",
       "headers": [
         {
