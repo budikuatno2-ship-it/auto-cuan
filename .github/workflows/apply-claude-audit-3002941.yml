@@ -32,15 +32,39 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find .audit-payload -maxdepth 1 -type f -printf '%f\n' | sort
           test "$(find .audit-payload -maxdepth 1 -name 'patch.exact.*' | wc -l | tr -d ' ')" = '5'
 
-      - name: Concatenate audit base64
+      - name: Normalize audit base64 parts
         shell: bash
         run: |
           set -euo pipefail
-          cat .audit-payload/patch.exact.00 .audit-payload/patch.exact.01 .audit-payload/patch.exact.02 .audit-payload/patch.exact.03 .audit-payload/patch.exact.04 | tr -d '\r\n\t ' > /tmp/audit.patch.gz.b64
-          test -s /tmp/audit.patch.gz.b64
+          for n in 00 01 02 03 04; do
+            tr -d '\r\n\t ' < ".audit-payload/patch.exact.${n}" > "/tmp/part.${n}"
+            test -s "/tmp/part.${n}"
+          done
+          cat /tmp/part.00 /tmp/part.01 /tmp/part.02 /tmp/part.03 /tmp/part.04 > /tmp/audit.patch.gz.b64
+
+      - name: Verify base64 alphabet
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! LC_ALL=C grep -q '[^A-Za-z0-9+/=]' /tmp/audit.patch.gz.b64
+
+      - name: Verify base64 total length
+        shell: bash
+        run: |
+          set -euo pipefail
+          LEN="$(wc -c < /tmp/audit.patch.gz.b64 | tr -d ' ')"
+          test $((LEN % 4)) -eq 0
+
+      - name: Verify no internal base64 padding
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q '=' /tmp/part.00
+          ! grep -q '=' /tmp/part.01
+          ! grep -q '=' /tmp/part.02
+          ! grep -q '=' /tmp/part.03
 
       - name: Decode audit base64
         shell: bash
