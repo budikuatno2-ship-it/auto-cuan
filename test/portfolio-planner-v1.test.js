@@ -1,8 +1,13 @@
 'use strict';
 
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const planner = require('../public/portfolio-planner-v1.js');
+
+const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'portfolio-planner.html'), 'utf8');
+const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'));
 
 function valid(overrides) {
   return Object.assign({
@@ -120,4 +125,31 @@ test('supports large integer values with BigInt calculations', () => {
   assert.equal(out.ok, true);
   assert.match(out.result.positionValueIdr.exact, /^\d+$/);
   assert.match(out.result.estimatedStopLossIdr.exact, /^\d+$/);
+});
+
+test('planner preview is protected by the existing signed admin endpoint', () => {
+  assert.match(html, /fetch\('\/api\/admin-users'/);
+  assert.match(html, /action:\s*'analytics'/);
+  assert.match(html, /credentials:\s*'same-origin'/);
+});
+
+test('planner does not treat account approval as premium entitlement', () => {
+  assert.doesNotMatch(html, /is_approved|approval_status|X-User-Id|X-Username/);
+  assert.match(html, /Akun Free tidak memperoleh akses/);
+});
+
+test('browser receives no service-role secret and creates no broker order', () => {
+  assert.doesNotMatch(html, /SUPABASE_SERVICE_ROLE_KEY|service[_-]?role|MIDTRANS|brokerage|placeOrder|buyOrder|sellOrder/i);
+  assert.match(html, /tidak membuat order ke broker/i);
+});
+
+test('confirmed plan uses the existing per-user manual portfolio key', () => {
+  assert.match(html, /autocuan_portfolio_/);
+  assert.match(html, /autocuan_user_id/);
+  assert.match(html, /plannerVersion/);
+});
+
+test('vercel route exposes only the isolated preview page', () => {
+  const route = vercel.rewrites.find((item) => item.source === '/portfolio-planner');
+  assert.deepEqual(route, { source: '/portfolio-planner', destination: '/portfolio-planner.html' });
 });
