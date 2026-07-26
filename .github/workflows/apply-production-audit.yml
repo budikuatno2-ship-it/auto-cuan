@@ -1,0 +1,78 @@
+name: Apply verified production audit
+
+on:
+  push:
+    branches:
+      - audit-delivery-3002941
+    paths:
+      - .github/workflows/apply-production-audit.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-production-audit-3002941
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout delivery payload
+        uses: actions/checkout@v4
+        with:
+          ref: audit-delivery-3002941
+          path: delivery
+          fetch-depth: 1
+
+      - name: Checkout exact production base
+        uses: actions/checkout@v4
+        with:
+          ref: ac67e23a702aa265dad8046f02ca6eb98636ecd4
+          path: repo
+          fetch-depth: 0
+
+      - name: Reconstruct and verify audit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C repo rev-parse HEAD)" = "ac67e23a702aa265dad8046f02ca6eb98636ecd4"
+          cat delivery/.audit/payload.part{01..11} | base64 -d > /tmp/autocuan-production-audit.patch.gz
+          gzip -dc /tmp/autocuan-production-audit.patch.gz > /tmp/autocuan-production-audit.patch
+          test "$(sha256sum /tmp/autocuan-production-audit.patch | awk '{print $1}')" = "6666b48f835dadb971440d9f9e0d9bc81f69a2eb462a06bdb25e146417104e5a"
+          git -C repo apply --index --unidiff-zero /tmp/autocuan-production-audit.patch
+          test "$(git -C repo write-tree)" = "2526c4d7a532de8c8443090805e9785e021eeafe"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: repo/package-lock.json
+
+      - name: Install dependencies
+        working-directory: repo
+        run: npm ci --ignore-scripts
+
+      - name: Validate build twice and API count
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build
+          npm run build
+          test "$(find api -maxdepth 1 -type f -name '*.js' | wc -l | tr -d ' ')" = "12"
+          node --test test/website-production-audit.test.js
+          test "$(git write-tree)" = "2526c4d7a532de8c8443090805e9785e021eeafe"
+
+      - name: Create verified result commit
+        working-directory: repo
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix: consolidate production website audit"
+          test "$(git rev-parse HEAD^{tree})" = "2526c4d7a532de8c8443090805e9785e021eeafe"
+          git push origin HEAD:refs/heads/audit-result-3002941 --force-with-lease
