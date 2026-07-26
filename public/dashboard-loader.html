@@ -19,9 +19,16 @@
   (async function(){
     'use strict';
 
+    function isSubscriptionText(value) {
+      return /paket langganan|langganan|subscription/i.test(String(value || '').trim());
+    }
+
     function removeSubscription(doc) {
       doc.querySelectorAll('[data-page="subscription"],#page-subscription,#subscriptionIdentityCard').forEach(function (el) {
         el.remove();
+      });
+      doc.querySelectorAll('a,button').forEach(function (el) {
+        if (isSubscriptionText(el.textContent)) el.remove();
       });
     }
 
@@ -74,7 +81,7 @@
         method:'POST',
         credentials:'same-origin',
         cache:'no-store',
-        headers:{'Content-Type':'application/json'},
+        headers:{'Content-Type':'application/json','Cache-Control':'no-cache'},
         body:JSON.stringify({action:'portfolio_access'})
       });
       var access = await accessResponse.json();
@@ -85,7 +92,7 @@
       localStorage.setItem('autocuan_user_id', String(access.user_id));
       if (access.username) localStorage.setItem('autocuan_user', String(access.username));
 
-      var response = await fetch('/index.html?approved-shell=20260726f', {
+      var response = await fetch('/index.html?approved-shell=20260726g', {
         credentials:'same-origin',
         cache:'no-store',
         headers:{'Cache-Control':'no-cache'}
@@ -114,7 +121,7 @@
 
       var responsive = doc.createElement('link');
       responsive.rel = 'stylesheet';
-      responsive.href = '/dashboard-responsive-fixes.css?v=20260726f';
+      responsive.href = '/dashboard-responsive-fixes.css?v=20260726g';
       doc.head.appendChild(responsive);
 
       var forceStyle = doc.createElement('style');
@@ -122,10 +129,11 @@
       doc.head.appendChild(forceStyle);
 
       [
-        '/dashboard-approved-access-guard.js?v=20260726f',
-        '/dashboard-approved-enhancements.js?v=20260726f',
-        '/ai-chat-renderer.js?v=20260726f',
-        '/stock-analysis-ai.js?v=20260726f'
+        '/dashboard-approved-access-guard.js?v=20260726g',
+        '/dashboard-approved-enhancements.js?v=20260726g',
+        '/admin-delete-user.js?v=20260726g',
+        '/ai-chat-renderer.js?v=20260726g',
+        '/stock-analysis-ai.js?v=20260726g'
       ].forEach(function (src) {
         var script = doc.createElement('script');
         script.src = src;
@@ -140,7 +148,7 @@
       document.write('<!doctype html>' + doc.documentElement.outerHTML);
       document.close();
     } catch (error) {
-      document.body.innerHTML = '<main class="error"><h1>Dashboard terkunci</h1><p>' + String(error && error.message || 'Silakan login kembali.') + '</p><a href="/">Kembali ke halaman utama</a></main>';
+      document.body.innerHTML = '<main class="error"><h1>Dashboard belum terbuka</h1><p>' + String(error && error.message || 'Silakan login kembali.') + '</p><a href="/">Login ulang</a></main>';
     }
   })();
   </script>
