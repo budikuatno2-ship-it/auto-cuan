@@ -42,7 +42,7 @@
         .replace('</head>',accessBootstrap+'</head>')
         .replace('</nav>','<button class="tab" data-p="ai">Asisten AI</button></nav>')
         .replace('</div></main>',aiSection+'</div></main>')
-        .replace('</body>','<script src="/portfolio-ai-recovery.js?v=20260726a"><\/script><script src="/ai-chat-renderer.js?v=20260726a"><\/script><script src="/portfolio-enhancements.js?v=20260726a"><\/script></body>');
+        .replace('</body>','<script src="/portfolio-ai-recovery.js?v=20260726b"><\/script><script src="/ai-chat-renderer.js?v=20260726b"><\/script><script src="/portfolio-enhancements.js?v=20260726b"><\/script><script src="/portfolio-ai-runtime-v2.js?v=20260726b"><\/script></body>');
       document.open();document.write(html);document.close();
     }catch(error){fail(error&&error.message)}
   })();
