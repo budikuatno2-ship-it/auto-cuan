@@ -6,7 +6,7 @@
     },
     {
       "source": "/dashboard",
-      "destination": "/index.html"
+      "destination": "/dashboard-loader.html"
     },
     {
       "source": "/portfolio-planner",
