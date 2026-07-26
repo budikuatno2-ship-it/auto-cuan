@@ -28,14 +28,40 @@ jobs:
           ref: agent/apply-claude-audit-3002941
           fetch-depth: 0
 
-      - name: Reconstruct exact audit payload
+      - name: Verify payload file count
         shell: bash
         run: |
           set -euo pipefail
+          find .audit-payload -maxdepth 1 -type f -printf '%f\n' | sort
           test "$(find .audit-payload -maxdepth 1 -name 'patch.exact.*' | wc -l | tr -d ' ')" = '5'
-          cat .audit-payload/patch.exact.* > /tmp/audit.patch.gz.b64
-          base64 -d /tmp/audit.patch.gz.b64 | gzip -d > /tmp/audit.patch
+
+      - name: Concatenate audit base64
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .audit-payload/patch.exact.00 .audit-payload/patch.exact.01 .audit-payload/patch.exact.02 .audit-payload/patch.exact.03 .audit-payload/patch.exact.04 > /tmp/audit.patch.gz.b64
+          test -s /tmp/audit.patch.gz.b64
+
+      - name: Decode audit base64
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d /tmp/audit.patch.gz.b64 > /tmp/audit.patch.gz
+          test -s /tmp/audit.patch.gz
+
+      - name: Decompress audit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -dc /tmp/audit.patch.gz > /tmp/audit.patch
+          test -s /tmp/audit.patch
+
+      - name: Decode exact commit object
+        shell: bash
+        run: |
+          set -euo pipefail
           base64 -d .audit-payload/commit.raw.b64 > /tmp/commit.raw
+          test -s /tmp/commit.raw
 
       - name: Verify exact audit checksum
         shell: bash
