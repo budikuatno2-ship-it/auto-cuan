@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0e14">
+  <title>Smart Portfolio Planner | Auto-Cuan</title>
+  <style>
+    :root{--bg:#0b0e14;--panel:#111722;--border:#263043;--text:#e5e7eb;--muted:#94a3b8;--green:#34d399;--red:#f87171;--amber:#fbbf24;--blue:#60a5fa}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}.shell{max-width:1180px;margin:auto;padding:20px 16px 48px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}.brand{display:flex;align-items:center;gap:10px}.logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#10b981,#22d3ee);display:grid;place-items:center;color:#07110f;font-weight:900}.brand h1{font-size:18px;margin:0}.brand p{margin:2px 0 0;color:var(--muted);font-size:12px}.back{color:var(--green);text-decoration:none;border:1px solid rgba(52,211,153,.28);padding:9px 12px;border-radius:10px}.gate,.card{background:linear-gradient(180deg,rgba(21,28,40,.96),rgba(15,20,30,.96));border:1px solid var(--border);border-radius:16px;box-shadow:0 12px 35px rgba(0,0,0,.18)}.gate{padding:28px;text-align:center}.gate h2{margin:8px 0}.gate p{color:var(--muted);max-width:620px;margin:8px auto}.spinner{display:inline-block;width:28px;height:28px;border:3px solid #263043;border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.hidden{display:none!important}.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.82fr);gap:16px}.card{padding:18px}.card h2{font-size:15px;margin:0 0 14px}.sub{color:var(--muted);font-size:12px;margin:-8px 0 16px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}.field label{font-size:12px;color:#cbd5e1;font-weight:650}.field small{color:var(--muted);font-size:10px}.field input,.field select{width:100%;border:1px solid var(--border);background:#0d121b;color:var(--text);border-radius:10px;padding:11px 12px;outline:none}.field input:focus,.field select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.12)}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.btn{border:0;border-radius:11px;padding:11px 15px;font-weight:750;cursor:pointer}.btn-primary{background:var(--green);color:#062018}.btn-secondary{background:#202938;color:#dbeafe;border:1px solid #334155}.btn:disabled{opacity:.45;cursor:not-allowed}.error{margin-top:14px;border:1px solid rgba(248,113,113,.3);background:rgba(248,113,113,.08);color:#fecaca;padding:11px 12px;border-radius:10px}.warning{margin-top:12px;border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,.08);color:#fde68a;padding:10px 12px;border-radius:10px}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.metric{background:#0d121b;border:1px solid #222c3d;border-radius:12px;padding:12px}.metric span{display:block;color:var(--muted);font-size:10px;margin-bottom:4px}.metric b{font-size:16px}.metric.hero{grid-column:1/-1;border-color:rgba(52,211,153,.35);background:rgba(16,185,129,.07)}.metric.hero b{font-size:24px;color:#6ee7b7}.guidance{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}.guidance h3{font-size:13px;margin:0 0 8px}.guide-row{display:flex;justify-content:space-between;gap:10px;padding:7px 0;color:var(--muted);border-bottom:1px dashed rgba(148,163,184,.12)}.guide-row b{color:var(--text)}.disclaimer{margin-top:16px;color:var(--muted);font-size:11px}.success{margin-top:12px;color:#a7f3d0;border:1px solid rgba(52,211,153,.3);background:rgba(52,211,153,.08);padding:10px 12px;border-radius:10px}.badge{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(96,165,250,.3);color:#bfdbfe;background:rgba(96,165,250,.08);border-radius:999px;padding:5px 9px;font-size:10px;font-weight:800;margin-bottom:12px}@media(max-width:860px){.layout{grid-template-columns:1fr}.top{align-items:flex-start}.back{white-space:nowrap}}@media(max-width:560px){.grid,.metrics{grid-template-columns:1fr}.metric.hero{grid-column:auto}.shell{padding:14px 10px 36px}.card{padding:14px}.brand p{display:none}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="brand"><div class="logo">AC</div><div><h1>Smart Portfolio Planner</h1><p>Perhitungan lot berdasarkan modal dan batas risiko</p></div></div>
+      <a class="back" href="/dashboard">← Kembali</a>
+    </header>
+
+    <section id="gateLoading" class="gate"><span class="spinner" aria-hidden="true"></span><h2>Memeriksa akses aman…</h2><p>Planner dibuka hanya setelah sesi server terverifikasi.</p></section>
+    <section id="gateDenied" class="gate hidden"><div style="font-size:32px">🔒</div><h2>Smart Portfolio Planner terkunci</h2><p>Versi branch ini masih dalam tahap Admin Preview. Akun Free tidak memperoleh akses dan approval akun tidak dianggap sebagai entitlement Premium.</p><a class="back" href="/dashboard">Kembali ke Auto-Cuan</a></section>
+
+    <div id="plannerApp" class="hidden">
+      <div class="badge">ADMIN PREVIEW · portfolio-planner-v1</div>
+      <div class="layout">
+        <section class="card">
+          <h2>1. Modal dan Risiko</h2>
+          <p class="sub">Semua nilai rupiah dihitung dengan integer dan lot selalu dibulatkan turun.</p>
+          <div class="grid">
+            <div class="field full"><label for="capital">Modal tersedia</label><input id="capital" inputmode="numeric" value="5000000" autocomplete="off"><small>Contoh: 5000000</small></div>
+            <div class="field"><label for="profile">Profil risiko</label><select id="profile"><option value="LOW">Rendah</option><option value="MEDIUM" selected>Sedang</option><option value="HIGH">Tinggi</option></select></div>
+            <div class="field"><label for="riskPct">Risiko per transaksi (%)</label><input id="riskPct" type="number" min="0.01" step="0.01" value="1.00"></div>
+            <div class="field"><label for="reservePct">Dana cadangan (%)</label><input id="reservePct" type="number" min="0" max="90" step="0.1" value="10"></div>
+            <div class="field"><label for="maxPositions">Maksimal posisi aktif</label><input id="maxPositions" type="number" min="1" max="20" step="1" value="4"></div>
+          </div>
+
+          <h2 style="margin-top:22px">2. Rencana Posisi</h2>
+          <div class="grid">
+            <div class="field full"><label for="ticker">Ticker</label><input id="ticker" maxlength="8" placeholder="Contoh: BBCA" autocomplete="off"></div>
+            <div class="field"><label for="entry">Harga entry</label><input id="entry" inputmode="numeric" placeholder="Contoh: 250"></div>
+            <div class="field"><label for="stop">Stop loss</label><input id="stop" inputmode="numeric" placeholder="Contoh: 240"></div>
+            <div class="field"><label for="tp1">TP1 (opsional)</label><input id="tp1" inputmode="numeric" placeholder="Contoh: 270"></div>
+            <div class="field"><label for="tp2">TP2 (opsional)</label><input id="tp2" inputmode="numeric" placeholder="Contoh: 290"></div>
+          </div>
+          <div class="actions"><button id="calculateBtn" class="btn btn-primary" type="button">Hitung posisi</button><button id="resetBtn" class="btn btn-secondary" type="button">Reset</button></div>
+          <div id="formError" class="error hidden" role="alert"></div>
+        </section>
+
+        <section class="card" aria-live="polite">
+          <h2>3. Hasil Perhitungan</h2>
+          <p class="sub">Belum ada hasil. Isi rencana posisi lalu tekan “Hitung posisi”.</p>
+          <div id="resultEmpty" style="color:var(--muted);padding:24px 0;text-align:center">Hasil lot, alokasi, dan batas rugi akan muncul di sini.</div>
+          <div id="resultPanel" class="hidden">
+            <div class="metrics">
+              <div class="metric hero"><span>Jumlah lot yang disarankan</span><b id="outLots">—</b></div>
+              <div class="metric"><span>Nilai posisi</span><b id="outValue">—</b></div>
+              <div class="metric"><span>Maksimal kerugian</span><b id="outLoss">—</b></div>
+              <div class="metric"><span>Risiko rupiah</span><b id="outBudget">—</b></div>
+              <div class="metric"><span>Sisa dana</span><b id="outCash">—</b></div>
+              <div class="metric"><span>Alokasi modal</span><b id="outAllocation">—</b></div>
+              <div class="metric"><span>Reward/Risk TP1</span><b id="outRR1">—</b></div>
+              <div class="metric"><span>Reward/Risk TP2</span><b id="outRR2">—</b></div>
+            </div>
+            <div class="guidance"><h3>Panduan keterjangkauan</h3><div class="guide-row"><span>Harga maksimal untuk 1 lot</span><b id="outMaxOneLot">—</b></div><div class="guide-row"><span>Harga maksimal 1 lot sesuai alokasi posisi</span><b id="outMaxPositionLot">—</b></div></div>
+            <div id="resultWarnings"></div>
+            <div class="actions"><button id="addBtn" class="btn btn-primary" type="button" disabled>Tambah ke Portofolio</button></div>
+            <div id="saveSuccess" class="success hidden" role="status"></div>
+          </div>
+          <p class="disclaimer">Alat ini hanya membantu perhitungan ukuran posisi. Bukan rekomendasi beli/jual, tidak menjamin keuntungan, dan tidak membuat order ke broker. Average down serta cut loss otomatis tidak dijalankan.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="/portfolio-planner-v1.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      var planner = window.AutoCuanPortfolioPlannerV1;
+      var lastCalculation = null;
+
+      function byId(id) { return document.getElementById(id); }
+      function show(id) { var el = byId(id); if (el) el.classList.remove('hidden'); }
+      function hide(id) { var el = byId(id); if (el) el.classList.add('hidden'); }
+      function rupiah(value) { var n = Number(value); return Number.isFinite(n) ? 'Rp ' + Math.round(n).toLocaleString('id-ID') : '—'; }
+      function bpsToPct(value) { return (Number(value || 0) / 100).toFixed(2) + '%'; }
+      function rr(value) { return value && value.bps != null ? (Number(value.bps) / 10000).toFixed(2) + 'x' : '—'; }
+      function pctToBps(value) { var n = Number(value); return Number.isFinite(n) ? Math.round(n * 100) : NaN; }
+      function safeTicker(raw) { var t = String(raw || '').trim().toUpperCase().replace(/\.JK$/i, ''); return /^[A-Z]{3,5}$/.test(t) ? t : null; }
+
+      async function checkAdminAccess() {
+        try {
+          var response = await fetch('/api/admin-users', {
+            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'analytics' })
+          });
+          if (!response.ok) throw new Error('locked');
+          var data = await response.json();
+          if (!data || data.success !== true) throw new Error('locked');
+          hide('gateLoading'); show('plannerApp');
+        } catch (e) {
+          hide('gateLoading'); show('gateDenied');
+        }
+      }
+
+      function applyPreset() {
+        var p = planner.RISK_PRESETS[byId('profile').value];
+        byId('riskPct').value = (p.defaultRiskBps / 100).toFixed(2);
+        byId('maxPositions').value = String(p.defaultMaxPositions);
+        byId('riskPct').max = String(p.maxRiskBps / 100);
+      }
+
+      function error(message) { byId('formError').textContent = message; show('formError'); }
+      function clearMessages() { hide('formError'); hide('saveSuccess'); byId('resultWarnings').innerHTML = ''; }
+
+      function calculate() {
+        clearMessages();
+        var ticker = safeTicker(byId('ticker').value);
+        if (!ticker) { error('Ticker harus 3–5 huruf, misalnya BBCA.'); return; }
+        var out = planner.calculate({
+          capitalIdr: byId('capital').value,
+          riskProfile: byId('profile').value,
+          riskBps: pctToBps(byId('riskPct').value),
+          reserveBps: pctToBps(byId('reservePct').value),
+          maxPositions: byId('maxPositions').value,
+          entryPriceIdr: byId('entry').value,
+          stopLossIdr: byId('stop').value,
+          tp1Idr: byId('tp1').value,
+          tp2Idr: byId('tp2').value
+        });
+        if (!out.ok) { error((out.errors && out.errors[0] && out.errors[0].message) || 'Perhitungan tidak valid.'); byId('addBtn').disabled = true; lastCalculation = null; return; }
+        out.ticker = ticker;
+        lastCalculation = out;
+        hide('resultEmpty'); show('resultPanel');
+        byId('outLots').textContent = out.result.recommendedLots.value.toLocaleString('id-ID') + ' lot';
+        byId('outValue').textContent = rupiah(out.result.positionValueIdr.value);
+        byId('outLoss').textContent = rupiah(out.result.estimatedStopLossIdr.value);
+        byId('outBudget').textContent = rupiah(out.result.riskBudgetIdr.value);
+        byId('outCash').textContent = rupiah(out.result.remainingCashIdr.value);
+        byId('outAllocation').textContent = bpsToPct(out.result.allocationBps.value);
+        byId('outRR1').textContent = rr(out.result.rewardRiskTp1);
+        byId('outRR2').textContent = rr(out.result.rewardRiskTp2);
+        byId('outMaxOneLot').textContent = rupiah(out.guidance.maxPriceForOneLotIdr.value);
+        byId('outMaxPositionLot').textContent = rupiah(out.guidance.maxPricePerPositionOneLotIdr.value);
+        if (out.warnings && out.warnings.length) byId('resultWarnings').innerHTML = out.warnings.map(function (w) { return '<div class="warning">' + String(w.message).replace(/[<>&]/g, '') + '</div>'; }).join('');
+        byId('addBtn').disabled = false;
+      }
+
+      function portfolioKey() {
+        var user = String(localStorage.getItem('autocuan_user') || '').trim().toLowerCase();
+        var userId = String(localStorage.getItem('autocuan_user_id') || '').trim();
+        if (!user || user === 'guest') return null;
+        return 'autocuan_portfolio_' + (userId || user);
+      }
+
+      function addToPortfolio() {
+        if (!lastCalculation || !lastCalculation.ok) return;
+        var key = portfolioKey();
+        if (!key) { error('Sesi lokal belum lengkap. Login ulang dari halaman utama.'); return; }
+        var list = [];
+        try { var raw = localStorage.getItem(key); list = raw ? JSON.parse(raw) : []; if (!Array.isArray(list)) list = []; } catch (e) { list = []; }
+        list.push({
+          ticker: lastCalculation.ticker,
+          lot: lastCalculation.result.recommendedLots.value,
+          avgBuy: lastCalculation.input.entryPriceIdr.value,
+          addedAt: Date.now(),
+          plannerVersion: lastCalculation.version,
+          riskProfile: lastCalculation.input.riskProfile,
+          riskBps: lastCalculation.input.riskBps,
+          stopLoss: lastCalculation.input.stopLossIdr.value,
+          tp1: lastCalculation.input.tp1Idr ? lastCalculation.input.tp1Idr.value : null,
+          tp2: lastCalculation.input.tp2Idr ? lastCalculation.input.tp2Idr.value : null,
+          estimatedMaxLoss: lastCalculation.result.estimatedStopLossIdr.value
+        });
+        localStorage.setItem(key, JSON.stringify(list));
+        byId('saveSuccess').textContent = lastCalculation.ticker + ' berhasil ditambahkan ke Portofolio manual. Tidak ada order broker yang dibuat.';
+        show('saveSuccess');
+        byId('addBtn').disabled = true;
+      }
+
+      function reset() {
+        byId('capital').value = '5000000'; byId('profile').value = 'MEDIUM'; byId('reservePct').value = '10';
+        byId('ticker').value = ''; byId('entry').value = ''; byId('stop').value = ''; byId('tp1').value = ''; byId('tp2').value = '';
+        applyPreset(); clearMessages(); show('resultEmpty'); hide('resultPanel'); lastCalculation = null;
+      }
+
+      byId('profile').addEventListener('change', applyPreset);
+      byId('calculateBtn').addEventListener('click', calculate);
+      byId('resetBtn').addEventListener('click', reset);
+      byId('addBtn').addEventListener('click', addToPortfolio);
+      byId('ticker').addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-Z.]/g, '').slice(0, 8); });
+      checkAdminAccess();
+    })();
+  </script>
+</body>
+</html>
