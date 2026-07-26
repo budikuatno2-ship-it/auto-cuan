@@ -7,6 +7,10 @@
     {
       "source": "/dashboard",
       "destination": "/index.html"
+    },
+    {
+      "source": "/portfolio-planner",
+      "destination": "/portfolio-planner.html"
     }
   ],
   "crons": [
