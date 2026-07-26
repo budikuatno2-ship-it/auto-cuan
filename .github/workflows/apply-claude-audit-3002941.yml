@@ -25,7 +25,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .audit-payload/patch.part.* > /tmp/audit.patch.gz.b64
+          test "$(find .audit-payload -maxdepth 1 -name 'patch.exact.*' | wc -l)" -eq 5
+          cat .audit-payload/patch.exact.* > /tmp/audit.patch.gz.b64
           base64 -d /tmp/audit.patch.gz.b64 | gzip -d > /tmp/audit.patch
           base64 -d .audit-payload/commit.raw.b64 > /tmp/commit.raw
           echo '6666b48f835dadb971440d9f9e0d9bc81f69a2eb462a06bdb25e146417104e5a  /tmp/audit.patch' | sha256sum -c -
