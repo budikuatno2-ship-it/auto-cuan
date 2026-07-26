@@ -4,14 +4,11 @@
       "maxDuration": 60
     }
   },
-  "redirects": [
+  "rewrites": [
     {
       "source": "/dashboard",
-      "destination": "/dashboard-loader.html",
-      "permanent": false
-    }
-  ],
-  "rewrites": [
+      "destination": "/dashboard-loader.html"
+    },
     {
       "source": "/review",
       "destination": "/index.html"
@@ -22,6 +19,15 @@
     }
   ],
   "headers": [
+    {
+      "source": "/dashboard",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
     {
       "source": "/dashboard-loader.html",
       "headers": [
@@ -69,6 +75,15 @@
     },
     {
       "source": "/dashboard-approved-enhancements.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/admin-delete-user.js",
       "headers": [
         {
           "key": "Cache-Control",
