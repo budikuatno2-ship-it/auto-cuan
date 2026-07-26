@@ -13,6 +13,18 @@
       return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char];
     });
   }
+  function renderAnswer(value) {
+    if (window.AutoCuanAI && typeof window.AutoCuanAI.renderMarkdown === 'function') {
+      return window.AutoCuanAI.renderMarkdown(value);
+    }
+    return '<p style="white-space:pre-wrap">' + escapeHtml(value) + '</p>';
+  }
+  function friendly(value) {
+    if (window.AutoCuanAI && typeof window.AutoCuanAI.friendlyText === 'function') {
+      return window.AutoCuanAI.friendlyText(value);
+    }
+    return String(value == null ? '' : value);
+  }
   function currentTicker() {
     var active = String(window.activeTicker || '').trim().toUpperCase();
     var input = byId('analisisInput');
@@ -56,18 +68,17 @@
   }
   function appendLoading() {
     var root = byId('analisisResult'); if (!root) return;
-    root.insertAdjacentHTML('beforeend', '<div id="stockAiLoading" class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><span class="spinner-sm"></span></div><div class="bg-dark-700/60 border border-dark-600/30 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%]"><p id="stockAiLoadingText" class="text-sm text-blue-200">Memuat data analisis dan memilih model terbaik…</p></div></div>');
-    timers.push(setTimeout(function () { var el = byId('stockAiLoadingText'); if (el) el.textContent = 'Masih memproses data dan mencoba model cadangan…'; }, 6000));
-    timers.push(setTimeout(function () { var el = byId('stockAiLoadingText'); if (el) el.textContent = 'Mohon bersabar ya, traffic model sedang ramai…'; }, 13000));
+    root.insertAdjacentHTML('beforeend', '<div id="stockAiLoading" class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><span class="spinner-sm"></span></div><div class="bg-dark-700/60 border border-dark-600/30 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[88%]"><p id="stockAiLoadingText" class="text-sm text-blue-200">Lagi baca datanya dan nyari jalur AI yang paling pas…</p></div></div>');
+    timers.push(setTimeout(function () { var el = byId('stockAiLoadingText'); if (el) el.textContent = 'Masih diproses ya, lagi cek jalur cadangan yang sehat…'; }, 9000));
+    timers.push(setTimeout(function () { var el = byId('stockAiLoadingText'); if (el) el.textContent = 'Sedikit lebih lama nih—traffic lagi ramai, tapi pertanyaanmu masih jalan…'; }, 20000));
     scrollBottom();
   }
   function removeLoading() {
     clearTimers(); var el = byId('stockAiLoading'); if (el) el.remove();
   }
-  function appendAssistant(text, model) {
+  function appendAssistant(text) {
     var root = byId('analisisResult'); if (!root) return;
-    var modelHtml = model ? '<div class="mt-2 text-[10px] text-gray-600">Model: ' + escapeHtml(model) + '</div>' : '';
-    root.insertAdjacentHTML('beforeend', '<div class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="ai-content ai-followup bg-dark-700/60 border border-dark-600/30 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%]"><div class="text-sm text-gray-200" style="white-space:pre-wrap">' + escapeHtml(text) + '</div>' + modelHtml + '</div></div>');
+    root.insertAdjacentHTML('beforeend', '<div class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="ai-content ai-followup ai-rich-text bg-dark-700/60 border border-dark-600/30 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%]">' + renderAnswer(friendly(text)) + '</div></div>');
     scrollBottom();
   }
   function setBusy(active) {
@@ -82,7 +93,7 @@
     var note = document.createElement('div');
     note.id = 'stockAiScopeNote';
     note.className = 'mb-2 text-[11px] text-blue-200 bg-blue-500/5 border border-blue-500/15 rounded-lg px-3 py-2';
-    note.textContent = 'Tanya lanjutan khusus ticker dan hasil analisis yang sedang tampil. Pertanyaan alokasi seluruh posisi ada di Asisten AI Portofolio.';
+    note.textContent = 'Tanya lanjutan khusus ticker dan hasil analisis yang sedang tampil. Buat bahas semua posisi sekaligus, pakai Asisten AI Portofolio ya.';
     wrap.insertBefore(note, wrap.firstChild);
   }
   async function send() {
@@ -92,7 +103,7 @@
     if (!message) return;
     var ticker = currentTicker(); var snapshot = analysisSnapshot();
     if (!ticker || !snapshot) {
-      appendAssistant('Jalankan analisis ticker dulu ya. Setelah hasilnya muncul, baru kirim pertanyaan lanjutan di sini.');
+      appendAssistant('Analisis tickernya dulu ya. Setelah hasilnya muncul, baru lanjut tanya di sini.');
       return;
     }
     var history = readHistory(ticker);
@@ -109,10 +120,10 @@
       });
       var data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'AI Analisis Saham belum tersedia.');
-      removeLoading(); appendAssistant(data.reply, data.model_used);
+      removeLoading(); appendAssistant(data.reply);
       history.push({ role:'user', content:message }, { role:'assistant', content:data.reply }); writeHistory(ticker, history);
     } catch (error) {
-      removeLoading(); appendAssistant(String(error && error.message || 'AI Analisis Saham sedang gangguan. Coba lagi sebentar ya.'));
+      removeLoading(); appendAssistant(friendly(String(error && error.message || 'AI-nya lagi gangguan. Coba lagi bentar ya.')));
     } finally { setBusy(false); }
   }
   function bind() {
