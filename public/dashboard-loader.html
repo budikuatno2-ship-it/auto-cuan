@@ -59,7 +59,7 @@
       localStorage.setItem('autocuan_user_id', String(access.user_id));
       if (access.username) localStorage.setItem('autocuan_user', String(access.username));
 
-      var response = await fetch('/index.html?approved-shell=20260726c', {
+      var response = await fetch('/index.html?approved-shell=20260726d', {
         credentials:'same-origin',
         cache:'no-store',
         headers:{'Cache-Control':'no-cache'}
@@ -74,7 +74,7 @@
 
       var responsive = doc.createElement('link');
       responsive.rel = 'stylesheet';
-      responsive.href = '/dashboard-responsive-fixes.css?v=20260726c';
+      responsive.href = '/dashboard-responsive-fixes.css?v=20260726d';
       doc.head.appendChild(responsive);
 
       var forceStyle = doc.createElement('style');
@@ -89,9 +89,10 @@
       doc.body.appendChild(accessData);
 
       [
-        '/dashboard-approved-enhancements.js?v=20260726c',
-        '/ai-chat-renderer.js?v=20260726c',
-        '/stock-analysis-ai.js?v=20260726c'
+        '/dashboard-approved-access-guard.js?v=20260726d',
+        '/dashboard-approved-enhancements.js?v=20260726d',
+        '/ai-chat-renderer.js?v=20260726d',
+        '/stock-analysis-ai.js?v=20260726d'
       ].forEach(function (src) {
         var script = doc.createElement('script');
         script.src = src;
