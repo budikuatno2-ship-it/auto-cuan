@@ -1471,7 +1471,11 @@
             <input id="chartTickerInput" type="text" placeholder="Ketik ticker: BBCA, IHSG..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')loadChartPage()">
             <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Lihat Chart</button>
         </div>
-        <div id="chartPageContainer" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden min-w-0">
+        <div class="flex gap-2" role="tablist" aria-label="Jenis chart">
+            <button id="technicalChartTab" role="tab" aria-selected="true" onclick="showChartTab('technical')" class="px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-semibold">Technical Chart</button>
+            <button id="patternChartTab" role="tab" aria-selected="false" onclick="showChartTab('pattern')" class="px-4 py-2 rounded-lg bg-dark-700 text-gray-300 text-sm font-semibold">Pattern</button>
+        </div>
+        <div id="chartPageContainer" role="tabpanel" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden min-w-0">
             <div class="flex items-center justify-center py-16 text-gray-500 text-sm">
                 <div class="text-center">
                     <svg class="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
@@ -1479,6 +1483,7 @@
                 </div>
             </div>
         </div>
+        <div id="patternPageContainer" role="tabpanel" class="hidden bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden min-w-0"></div>
     </div>
 </div>
 
@@ -3271,11 +3276,78 @@ async function handleAnalisisFollowUp(msg) {
 }
 
 // ===== CHART PAGE =====
+var _chartPageData = null;
+var _patternMapManager = null;
+var _patternImageUrl = null;
+var _chartPageLoadVersion = 0;
+
+function showChartTab(tab) {
+    var isPattern = tab === 'pattern';
+    var technicalTab = document.getElementById('technicalChartTab');
+    var patternTab = document.getElementById('patternChartTab');
+    document.getElementById('chartPageContainer').classList.toggle('hidden', isPattern);
+    document.getElementById('patternPageContainer').classList.toggle('hidden', !isPattern);
+    technicalTab.setAttribute('aria-selected', String(!isPattern));
+    patternTab.setAttribute('aria-selected', String(isPattern));
+    technicalTab.className = 'px-4 py-2 rounded-lg text-sm font-semibold ' + (!isPattern ? 'bg-emerald-500 text-black' : 'bg-dark-700 text-gray-300');
+    patternTab.className = 'px-4 py-2 rounded-lg text-sm font-semibold ' + (isPattern ? 'bg-emerald-500 text-black' : 'bg-dark-700 text-gray-300');
+    if (isPattern) renderPatternTab(); // lazy: renderer is never invoked by page/chart loading
+}
+
+async function renderPatternTab() {
+    var container = document.getElementById('patternPageContainer');
+    if (!container) return;
+    if (!_chartPageData) {
+        container.innerHTML = '<div class="p-6 text-center text-sm text-gray-500">Pilih ticker dan muat Technical Chart terlebih dahulu.</div>';
+        return;
+    }
+    var data = _chartPageData;
+    var candidate = data.patternMap || null; // trusted deterministic output only; never infer from a label
+    var status = data.t1_status === 'stale' ? 'T-1 terlambat (stale)' : (data.t1_status === 'missing' ? 'Data T-1 tidak tersedia' : 'T-1 kalender belum diverifikasi');
+    var patternName = candidate && candidate.name ? candidate.name : 'Tidak terdeteksi';
+    var patternStatus = candidate && candidate.status ? candidate.status : 'Tidak dapat divisualisasikan';
+    container.innerHTML = '<div class="p-4 space-y-4"><div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">' +
+      '<div><span class="text-gray-500">Ticker</span><b class="block text-gray-200">' + escapeHtml(data.ticker) + '</b></div>' +
+      '<div><span class="text-gray-500">Timeframe</span><b class="block text-gray-200">1D</b></div>' +
+      '<div><span class="text-gray-500">Tanggal data aktual</span><b class="block text-gray-200">' + escapeHtml(data.actual_data_date || 'Tidak tersedia') + '</b></div>' +
+      '<div><span class="text-gray-500">Freshness</span><b class="block text-gray-200">' + escapeHtml(status) + '</b></div>' +
+      '<div><span class="text-gray-500">Pattern / Status</span><b class="block text-gray-200">' + escapeHtml(patternName) + ' — ' + escapeHtml(patternStatus) + '</b></div></div>' +
+      '<div id="patternMapImage" class="min-h-48 flex items-center justify-center rounded-xl bg-dark-900/40 text-center text-sm text-gray-500 p-5">Memeriksa geometry deterministik...</div>' +
+      '<div id="patternWarnings" class="text-xs text-amber-300">Peringatan: Pattern bersifat deterministik dan hanya memakai data T-1. Konfirmasi manual tetap diperlukan.</div>' +
+      '<div class="border-t border-dark-600/30 pt-4 space-y-2"><label for="patternQuestion" class="block text-sm font-semibold text-gray-200">Tanya tentang pattern yang ditampilkan</label>' +
+      '<div class="flex gap-2"><input id="patternQuestion" class="flex-1 px-3 py-2 rounded-lg bg-dark-700 text-sm text-gray-100" placeholder="Contoh: Apa arti status pattern ini?"><button onclick="submitPatternQuestion()" class="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm">Kirim</button></div>' +
+      '<div class="text-[11px] text-gray-500">Contoh: “Apa arti PRZ?” · “Di mana invalidation?” · “Apa yang perlu dikonfirmasi?”</div><div id="patternAnswer" class="text-sm text-gray-300" aria-live="polite"></div></div></div>';
+    if (!_patternMapManager) _patternMapManager = new PatternMap.RequestManager(fetch.bind(window));
+    var result = await _patternMapManager.render(candidate);
+    var imageBox = document.getElementById('patternMapImage');
+    if (!imageBox || data !== _chartPageData || result.obsolete) return;
+    if (result.empty) imageBox.textContent = result.message;
+    else if (result.error) imageBox.textContent = result.message;
+    else {
+        if (_patternImageUrl) URL.revokeObjectURL(_patternImageUrl);
+        _patternImageUrl = URL.createObjectURL(result.blob);
+        imageBox.innerHTML = '<img src="' + _patternImageUrl + '" width="1200" height="700" class="w-full h-auto max-h-[700px] object-contain" alt="Pattern Map ' + escapeHtml(data.ticker) + ' tanggal T-1 ' + escapeHtml(data.actual_data_date || '') + '">';
+    }
+}
+
+function submitPatternQuestion() {
+    var input = document.getElementById('patternQuestion');
+    var answer = document.getElementById('patternAnswer');
+    if (!input || !answer || !input.value.trim()) return;
+    // MVP intentionally has no AI/network call. Answers remain bounded to displayed data.
+    answer.textContent = 'Q&A AI belum tersedia pada fase MVP. Gunakan level dan status deterministik yang ditampilkan di atas; sistem tidak akan mendeteksi pattern atau membuat level baru.';
+}
+
 async function loadChartPage() {
     var input = document.getElementById('chartTickerInput');
     var ticker = (input.value || '').trim().toUpperCase();
     if (!ticker) return;
     input.value = ticker;
+
+    var loadVersion = ++_chartPageLoadVersion;
+    _chartPageData = null;
+    if (_patternMapManager) _patternMapManager.cancel();
+    showChartTab('technical');
 
     var container = document.getElementById('chartPageContainer');
     if (!container) return;
@@ -3293,10 +3365,12 @@ async function loadChartPage() {
     try {
         var resp = await fetch('/api/candles?ticker=' + encodeURIComponent(ticker));
         var data = await resp.json();
+        if (loadVersion !== _chartPageLoadVersion) return;
         if (!data.success || !data.candles || data.candles.length === 0) {
             document.getElementById(chartId + '_container').innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Data chart untuk ' + ticker + ' belum tersedia. Coba ticker lain atau ulangi beberapa saat lagi.</div>';
             return;
         }
+        _chartPageData = data;
         if (typeof loadLightweightCharts === 'function') await loadLightweightCharts();
         if (typeof renderLightweightChart === 'function') await renderLightweightChart(chartId, data.candles, data.metrics || null, ticker, { variant: 'page' });
     } catch(e) {
@@ -11431,5 +11505,6 @@ function exportDayTradePDF() {
 <script src="/admin-user-delete-enhancement.js?v=20260726-src1"></script>
 <script src="/ai-chat-renderer.js?v=20260726-src1"></script>
 <script src="/stock-analysis-ai.js?v=20260726-src1"></script>
+<script src="/pattern-map.js?v=20260727-mvp1"></script>
 </body>
 </html>
