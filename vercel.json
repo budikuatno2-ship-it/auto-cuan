@@ -1,61 +1,28 @@
 {
   "functions": {
-    "api/analyze.js": {
-      "maxDuration": 60
-    }
+    "api/analyze.js": { "maxDuration": 60 }
   },
   "rewrites": [
-    {
-      "source": "/dashboard",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/review",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/portfolio-planner",
-      "destination": "/portfolio-planner.html"
-    }
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/review", "destination": "/index.html" },
+    { "source": "/portfolio-planner", "destination": "/portfolio-command-center.html" }
   ],
   "headers": [
-    {
-      "source": "/dashboard",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/index.html",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/portfolio-planner.html",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/website-approved-access.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/admin-user-delete-enhancement.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/ai-chat-renderer.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/portfolio-ai-runtime-v2.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    },
-    {
-      "source": "/stock-analysis-ai.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
-    }
+    { "source": "/dashboard", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/index.html", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/portfolio-planner.html", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/portfolio-command-center.html", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/portfolio-command-center.css", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/portfolio-command-center-model.js", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/portfolio-command-center.js", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/portfolio-position-scenarios.js", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/website-approved-access.js", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/admin-user-delete-enhancement.js", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/ai-chat-renderer.js", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/portfolio-ai-runtime-v2.js", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] },
+    { "source": "/stock-analysis-ai.js", "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}] }
   ],
   "crons": [
-    {
-      "path": "/api/sector-hot?action=telegram-daily-picks",
-      "schedule": "0 1 * * 1-5"
-    }
+    { "path": "/api/sector-hot?action=telegram-daily-picks", "schedule": "0 1 * * 1-5" }
   ]
 }
