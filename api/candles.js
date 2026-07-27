@@ -6,6 +6,8 @@
 
 var cache = {};
 var CACHE_TTL = 5 * 60 * 1000;
+var t1Policy = require('../lib/chart-t1-policy');
+var clock = { now: function() { return new Date(); } };
 
 module.exports = async function handler(req, res) {
   try {
@@ -32,7 +34,8 @@ module.exports = async function handler(req, res) {
     }
 
     var cached = cache[ticker];
-    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+    var requestJakartaToday = t1Policy.formatJakartaDate(clock.now());
+    if (cached && cached.data && cached.data.jakarta_today === requestJakartaToday && (Date.now() - cached.timestamp < CACHE_TTL)) {
       return res.status(200).json(cached.data);
     }
 
@@ -72,13 +75,13 @@ module.exports = async function handler(req, res) {
 
     var chartResult = json && json.chart && json.chart.result && json.chart.result[0];
     if (!chartResult || !chartResult.timestamp) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Data tidak ditemukan.' });
+      return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'Data tidak ditemukan.' }, t1Policy.buildMetadata(null, clock.now())));
     }
 
     var timestamps = chartResult.timestamp || [];
     var indicators = chartResult.indicators && chartResult.indicators.quote && chartResult.indicators.quote[0];
     if (!indicators) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'OHLCV kosong.' });
+      return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'OHLCV kosong.' }, t1Policy.buildMetadata(null, clock.now())));
     }
 
     var opens = indicators.open || [];
@@ -90,9 +93,11 @@ module.exports = async function handler(req, res) {
     var candles = [];
     for (var i = 0; i < timestamps.length; i++) {
       var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
-      if (c != null && o != null && h != null && l != null && !isNaN(c)) {
+      var timestampMs = Number(timestamps[i]) * 1000;
+      var candleDate = isFinite(timestampMs) ? t1Policy.formatJakartaDate(new Date(timestampMs)) : null;
+      if (candleDate && c != null && o != null && h != null && l != null && !isNaN(c)) {
         candles.push({
-          time: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
+          time: candleDate,
           open: Math.round(o * 100) / 100,
           high: Math.round(h * 100) / 100,
           low: Math.round(l * 100) / 100,
@@ -102,8 +107,14 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    // Enforce the completed-daily-candle policy before latest or any indicator
+    // is calculated. This removes today's partial Jakarta candle and any
+    // future-dated provider rows while preserving the provider's chronology.
+    var cutoff = t1Policy.retainCompletedCandles(candles, clock.now());
+    candles = cutoff.candles;
+
     if (candles.length === 0) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Tidak ada candle valid.' });
+      return res.status(200).json(Object.assign({ success: false, ticker: ticker, error: 'Tidak ada candle harian selesai sebelum tanggal Jakarta hari ini.' }, cutoff.metadata));
     }
 
     // Calculate latest metrics
@@ -111,7 +122,7 @@ module.exports = async function handler(req, res) {
     var volumeArr = candles.map(function(c) { return c.volume; });
     var latest = candles[candles.length - 1];
 
-    var result = {
+    var result = Object.assign({
       success: true,
       ticker: ticker,
       source: 'Data Historis T-1',
@@ -134,7 +145,7 @@ module.exports = async function handler(req, res) {
         volumeVsAvg20: calcVolumeRatio(volumeArr, latest.volume, 20)
       },
       candles: candles
-    };
+    }, cutoff.metadata);
 
     cache[ticker] = { data: result, timestamp: Date.now() };
     return res.status(200).json(result);
@@ -143,6 +154,11 @@ module.exports = async function handler(req, res) {
     console.error('candles error:', err);
     return res.status(200).json({ success: false, ticker: 'unknown', error: 'Kesalahan internal.' });
   }
+};
+
+module.exports.__test = {
+  clock: clock,
+  clearCache: function() { cache = {}; }
 };
 
 function calcMA(prices, period) {
