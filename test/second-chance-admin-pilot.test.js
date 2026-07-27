@@ -106,6 +106,41 @@ test('historical send blocked; failure is not sent; success is concurrent/idempo
   assert.equal((await p.runPilot({ ...current, sendTelegram })).status, 'already_sent'); assert.equal(calls, 1);
 });
 
+test('retryable send retries only the same identity and persisted payload', async () => {
+  const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-retry-same-')); let calls = 0, deliveredText = '';
+  const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
+  const options = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
+  assert.equal((await p.runPilot({ ...options, sendTelegram: async () => ({ sent: false }) })).status, 'failed');
+  const stateFile = path.join(stateDir, '2026-07-27.json'); const persisted = await p.readState(stateFile); persisted.selected.current_price = 174; await p.writeState(stateFile, persisted);
+  const retried = await p.runPilot({ ...options, sendTelegram: async text => { calls++; deliveredText = text; return { sent: true }; } });
+  assert.equal(retried.status, 'sent'); assert.equal(calls, 1); assert.match(deliveredText, /Current price: 174/); assert.equal(retried.selection_details.current_price, 174);
+});
+
+test('retry identity mismatch and shadow overwrite both fail closed', async () => {
+  const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-retry-mismatch-')); let calls = 0;
+  const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
+  const base = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
+  assert.equal((await p.runPilot({ ...base, sendTelegram: async () => ({ sent: false }) })).status, 'failed');
+  const stateFile = path.join(stateDir, '2026-07-27.json'); const before = await fs.readFile(stateFile);
+  const shadow = await p.runPilot({ ...base, mode: 'shadow', env: {}, sendTelegram: async () => { calls++; return { sent: true }; } });
+  assert.equal(shadow.status, 'blocked_retry_requires_send'); assert.deepEqual(await fs.readFile(stateFile), before); assert.equal(calls, 0);
+  const records = (await fs.readFile(fixture, 'utf8')).trim().split('\n').map(line => ({ ...JSON.parse(line), ticker: 'ZZZZ' })); const changed = await tempFixture(records);
+  const mismatch = await p.runPilot({ ...base, sourceFile: changed.file, sendTelegram: async () => { calls++; return { sent: true }; } });
+  assert.equal(mismatch.status, 'blocked_retry_identity_mismatch'); assert.equal(mismatch.telegram_block_reason, 'retry_identity_mismatch'); assert.deepEqual(await fs.readFile(stateFile), before); assert.equal(calls, 0);
+  const changedThrough = await p.runPilot({ ...base, throughTime: '09:45', sendTelegram: async () => { calls++; return { sent: true }; } });
+  assert.equal(changedThrough.status, 'blocked_retry_identity_mismatch'); assert.deepEqual(await fs.readFile(stateFile), before); assert.equal(calls, 0);
+});
+
+test('concurrent same-identity retry invokes Telegram at most once', async () => {
+  const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-retry-concurrent-')); let calls = 0;
+  const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
+  const options = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
+  await p.runPilot({ ...options, sendTelegram: async () => ({ sent: false }) });
+  const sendTelegram = async () => { calls++; await new Promise(resolve => setTimeout(resolve, 30)); return { sent: true }; };
+  const results = await Promise.all([p.runPilot({ ...options, sendTelegram }), p.runPilot({ ...options, sendTelegram })]);
+  assert.equal(calls, 1); assert.equal(results.filter(result => result.status === 'sent').length, 1); assert.ok(results.some(result => ['lock_busy', 'already_sent'].includes(result.status)));
+});
+
 test('live locks stay, stale dead-owner locks recover, concurrent recovery has one winner', async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-lock-')); const lock = path.join(dir, 'date.lock'); const old = new Date(0).toISOString();
   await fs.writeFile(lock, JSON.stringify({ pid: process.pid, created_at: old })); assert.equal(await p.acquireLock(lock, { nowMs: Date.now(), staleMs: 1 }), null); assert.ok(await fs.stat(lock));
