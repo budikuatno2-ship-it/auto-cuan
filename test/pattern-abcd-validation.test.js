@@ -175,8 +175,12 @@ test('duplicate directory filename aliases conflict independent of file ordering
 });
 
 test('aggregate report counts, percentages, distributions, and dedup totals are deterministic', () => {
-  const fake = (cs, o) => ({ ticker: o.ticker, windowsScanned: 2, reasonCounts: { found: 1, insufficient_pivots: 1 }, deduplicatedObservations: 3,
-    noPatternExamples: [], events: [{ ...event(), ticker: o.ticker, candidateId: 'id-' + o.ticker, firstSeenStatus: o.ticker === 'BBCA' ? 'candidate' : 'confirmed', direction: o.ticker === 'BBCA' ? 'bullish' : 'bearish' }] });
+  const fake = (cs, o) => {
+    const direction = o.ticker === 'BBCA' ? 'bullish' : 'bearish';
+    return { ticker: o.ticker, windowsScanned: 2, reasonCounts: { found: 1, insufficient_pivots: 1 }, deduplicatedObservations: 3,
+      noPatternExamples: [], events: [{ ...event(direction), ticker: o.ticker, candidateId: 'id-' + o.ticker,
+        firstSeenStatus: o.ticker === 'BBCA' ? 'candidate' : 'confirmed', direction }] };
+  };
   const entries = [{ rawTicker: 'TLKM', candles: candles(3) }, { rawTicker: 'BBCA', candles: candles(3) }];
   const run = () => CLI.processEntries(entries, { walkForward: fake, horizons: [5] }); const result = run();
   assert.equal(Object.values(result.aggregateReasonDistribution).reduce((n, r) => n + r.count, 0), result.totalWindows);
