@@ -10,6 +10,7 @@ const p = require('../lib/second-chance-admin-pilot');
 const fixture = path.join(__dirname, 'fixtures', 'second-chance', '2026-07-27', 'candidates.jsonl');
 function o(time, override) { return { ticker: 'TEST', scheduled_time: time, current_price: 100, score: 23, relative_volume: 1.5, volume: time === '09:30' ? 200 : (time === '09:45' ? 300 : 100), entry_low: 100, entry_high: 106, tp1: 106, tp2: 110, sl: 94, data_quality_status: 'CORPORATE_ACTION_RISK', freshness: { is_stale: false }, ...override }; }
 function series(overrides) { return [o('09:15', { score: 10, relative_volume: 1, volume: 100, ...overrides?.[0] }), o('09:30', overrides?.[1]), o('09:45', overrides?.[2])]; }
+function definiteApiFailure() { return { sent: false, reason: 'api_error', chunks_sent: 0 }; }
 async function tempFixture(records) { const root = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-')); const file = path.join(root, 'candidates.jsonl'); await fs.writeFile(file, records.map(x => JSON.stringify(x)).join('\n') + '\n'); return { root, file }; }
 
 test('BAJA: pending at 09:45 and selected exactly at 10:00', async () => {
@@ -100,7 +101,7 @@ test('historical send blocked; failure is not sent; success is concurrent/idempo
   const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
   assert.equal((await p.runPilot({ sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-28T05:00:00Z'), env })).status, 'blocked_historical_send');
   const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-send-')); const current = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
-  assert.equal((await p.runPilot({ ...current, sendTelegram: async () => ({ sent: false }) })).status, 'failed'); assert.equal((await p.readState(path.join(stateDir, '2026-07-27.json'))).status, 'send_failed_retryable');
+  assert.equal((await p.runPilot({ ...current, sendTelegram: async () => definiteApiFailure() })).status, 'failed'); assert.equal((await p.readState(path.join(stateDir, '2026-07-27.json'))).status, 'send_failed_retryable');
   let calls = 0; const sendTelegram = async () => { calls++; await new Promise(r => setTimeout(r, 30)); return { sent: true }; };
   const results = await Promise.all([p.runPilot({ ...current, sendTelegram }), p.runPilot({ ...current, sendTelegram })]); assert.equal(results.filter(x => x.status === 'sent').length, 1); assert.ok(results.some(x => ['lock_busy', 'already_sent'].includes(x.status))); assert.equal(calls, 1);
   assert.equal((await p.runPilot({ ...current, sendTelegram })).status, 'already_sent'); assert.equal(calls, 1);
@@ -110,7 +111,7 @@ test('retryable send retries only the same identity and persisted payload', asyn
   const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-retry-same-')); let calls = 0, deliveredText = '';
   const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
   const options = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
-  assert.equal((await p.runPilot({ ...options, sendTelegram: async () => ({ sent: false }) })).status, 'failed');
+  assert.equal((await p.runPilot({ ...options, sendTelegram: async () => definiteApiFailure() })).status, 'failed');
   const stateFile = path.join(stateDir, '2026-07-27.json'); const persisted = await p.readState(stateFile); persisted.selected.current_price = 174; await p.writeState(stateFile, persisted);
   const retried = await p.runPilot({ ...options, sendTelegram: async text => { calls++; deliveredText = text; return { sent: true }; } });
   assert.equal(retried.status, 'sent'); assert.equal(calls, 1); assert.match(deliveredText, /Current price: 174/); assert.equal(retried.selection_details.current_price, 174);
@@ -120,7 +121,7 @@ test('retry identity mismatch and shadow overwrite both fail closed', async () =
   const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-retry-mismatch-')); let calls = 0;
   const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
   const base = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
-  assert.equal((await p.runPilot({ ...base, sendTelegram: async () => ({ sent: false }) })).status, 'failed');
+  assert.equal((await p.runPilot({ ...base, sendTelegram: async () => definiteApiFailure() })).status, 'failed');
   const stateFile = path.join(stateDir, '2026-07-27.json'); const before = await fs.readFile(stateFile);
   const shadow = await p.runPilot({ ...base, mode: 'shadow', env: {}, sendTelegram: async () => { calls++; return { sent: true }; } });
   assert.equal(shadow.status, 'blocked_retry_requires_send'); assert.deepEqual(await fs.readFile(stateFile), before); assert.equal(calls, 0);
@@ -135,7 +136,7 @@ test('concurrent same-identity retry invokes Telegram at most once', async () =>
   const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-retry-concurrent-')); let calls = 0;
   const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
   const options = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
-  await p.runPilot({ ...options, sendTelegram: async () => ({ sent: false }) });
+  await p.runPilot({ ...options, sendTelegram: async () => definiteApiFailure() });
   const sendTelegram = async () => { calls++; await new Promise(resolve => setTimeout(resolve, 30)); return { sent: true }; };
   const results = await Promise.all([p.runPilot({ ...options, sendTelegram }), p.runPilot({ ...options, sendTelegram })]);
   assert.equal(calls, 1); assert.equal(results.filter(result => result.status === 'sent').length, 1); assert.ok(results.some(result => ['lock_busy', 'already_sent'].includes(result.status)));
@@ -156,12 +157,31 @@ test('thrown/uncertain Telegram result is durable and blocks automatic resend', 
   const second = await p.runPilot(options); assert.equal(second.status, 'blocked_delivery_uncertain'); assert.equal(calls, 1);
 });
 
-test('non-explicit Telegram response is uncertain, while explicit sent:false is retryable', async () => {
+test('non-explicit Telegram response is uncertain', async () => {
   const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-response-'));
   const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
   const options = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
   assert.equal((await p.runPilot({ ...options, sendTelegram: async () => ({}) })).status, 'blocked_delivery_uncertain');
   assert.equal((await p.readState(path.join(stateDir, '2026-07-27.json'))).status, 'delivery_uncertain');
+});
+
+test('Telegram sent:false classification distinguishes definite rejection from uncertain transport', async () => {
+  const cases = [
+    [{ sent: false, reason: 'telegram_timeout', chunks_sent: 0 }, 'uncertain', 'delivery_uncertain'],
+    [{ sent: false, reason: 'fetch_error', chunks_sent: 0 }, 'uncertain', 'delivery_uncertain'],
+    [{ sent: false, reason: 'api_error', chunks_sent: 1 }, 'uncertain', 'delivery_uncertain'],
+    [{ sent: false, reason: 'api_error', chunks_sent: 0 }, 'retryable', 'send_failed_retryable'],
+    [{ sent: false }, 'uncertain', 'delivery_uncertain']
+  ];
+  const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
+  for (const [adapterResult, classification, stateStatus] of cases) {
+    assert.equal(p.classifyTelegramResult(adapterResult), classification);
+    const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-classify-'));
+    const result = await p.runPilot({ sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir, sendTelegram: async () => adapterResult });
+    assert.equal(result.status, classification === 'retryable' ? 'failed' : 'blocked_delivery_uncertain');
+    assert.equal((await p.readState(path.join(stateDir, '2026-07-27.json'))).status, stateStatus);
+  }
+  for (const reason of ['telegram_disabled', 'missing_token', 'missing_chat_id', 'empty_message']) assert.equal(p.classifyTelegramResult({ sent: false, reason, chunks_sent: 0 }), 'retryable');
 });
 
 test('sent-state persistence failure leaves send_in_progress and blocks resend', async () => {
