@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const A = require('../tools/acquire-pattern-abcd-data');
+const V = require('../lib/pattern-abcd-validation');
 const VCLI = require('../tools/validate-pattern-abcd-history');
 
 function payload(timestamp = 1704074400, values = {}) {
@@ -97,6 +98,20 @@ test('run produces deterministic hashes and atomically removes stale dataset fil
   assert.equal(fs.existsSync(path.join(output1, 'STALE.json')), false);
   assert.equal(fs.readdirSync(output1).filter(name => name.endsWith('.json')).length, 30);
   assert.equal('acquisitionDateUtc' in first, false);
+});
+
+test('walk-forward retains the latest bounded no-pattern examples', () => {
+  const candles = Array.from({ length: 25 }, (_, index) => ({
+    time: `2024-01-${String(index + 1).padStart(2, '0')}`,
+    open: 100, high: 102, low: 98, close: 100, volume: 10
+  }));
+  const result = V.walkForwardAbcdValidation(candles, {
+    ticker: 'BBCA',
+    detectPattern: () => ({ candidate: null, reason: 'insufficient_pivots' })
+  });
+  assert.equal(result.noPatternExamples.length, 20);
+  assert.equal(result.noPatternExamples[0].dataDate, '2024-01-06');
+  assert.equal(result.noPatternExamples.at(-1).dataDate, '2024-01-25');
 });
 
 test('audit samples select the newest deterministic events and no-pattern windows', () => {
