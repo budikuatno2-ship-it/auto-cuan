@@ -3352,7 +3352,7 @@ async function renderPatternTab() {
         return;
     }
     var data = _chartPageData;
-    var candidate = data.patternMap || null; // no producer exists today; preview stays default-off
+    var candidate = data.patternMap || null; // deterministic server geometry; preview stays default-off
     var renderContext = { ticker: data.ticker, timeframe: '1D', dataDate: data.actual_data_date, candles: data.candles };
     var status = data.t1_status === 'stale' ? 'T-1 terlambat (stale)' : (data.t1_status === 'missing' ? 'Data T-1 tidak tersedia' : 'T-1 kalender belum diverifikasi');
     var patternName = candidate && candidate.name ? candidate.name : 'Tidak terdeteksi';

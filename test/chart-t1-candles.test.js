@@ -112,6 +112,9 @@ test('endpoint filters before latest and every indicator, and preserves response
   assert.equal(res.body.t1_verified, false);
   assert.ok(Array.isArray(res.body.candles));
   assert.deepEqual(res.body.candles.map((c) => c.time), rows.slice(0, 24).map((r) => policy.formatJakartaDate(new Date(r.timestamp * 1000))));
+  assert.equal(res.body.patternMap, null);
+  assert.match(res.body.pattern_map_meta.reason, /^[a-z0-9_]{1,64}$/);
+  assert.deepEqual(res.body.pattern_map_meta, { engine: 'abcd-t1-v1', status: 'none', reason: 'invalid_ohlc' });
 });
 
 test('malformed timestamps are discarded and completed filtered result is cached', async (t) => {
@@ -172,4 +175,46 @@ test('empty upstream result returns explicit missing metadata', async (t) => {
   assert.equal(res.body.success, false);
   assert.equal(res.body.t1_status, 'missing');
   assert.equal(res.body.t1_reason, 'no_completed_candle_before_jakarta_today');
+});
+
+test('endpoint detector receives only finalized T-1 candles and binds ticker, date and candle set', async (t) => {
+  handler.__test.clearCache(); handler.__test.clock.now = () => atJakarta('2026-07-27');
+  t.after(() => { handler.__test.clock.now = () => new Date(); handler.__test.resetPatternDetector(); delete global.fetch; handler.__test.clearCache(); });
+  const rows = [];
+  for (let day = 1; day <= 24; day++) rows.push({ timestamp: unixAtJakarta(`2026-07-${String(day).padStart(2, '0')}`), open: day + 1, high: day + 3, low: day, close: day + 2, volume: day });
+  rows.push({ timestamp: unixAtJakarta('2026-07-27'), open: 900, high: 902, low: 899, close: 901, volume: 1 });
+  global.fetch = async () => ({ ok: true, json: async () => yahooPayload(rows) });
+  handler.__test.setPatternDetector((candles, options) => ({ candidate: { marker: true, ticker: options.ticker, dataDate: options.dataDate, candles }, reason: 'found' }));
+  const res = await callApi('bbca');
+  assert.equal(res.body.patternMap.ticker, 'BBCA'); assert.equal(res.body.patternMap.dataDate, '2026-07-24');
+  assert.strictEqual(res.body.patternMap.candles, res.body.candles);
+  assert.equal(res.body.patternMap.candles.some(c => c.time === '2026-07-27'), false);
+  assert.deepEqual(res.body.pattern_map_meta, { engine: 'abcd-t1-v1', status: 'found', reason: 'found' });
+});
+
+test('detector failure is isolated and cached response stays deterministic', async (t) => {
+  handler.__test.clearCache(); handler.__test.clock.now = () => atJakarta('2026-07-27');
+  t.after(() => { handler.__test.clock.now = () => new Date(); handler.__test.resetPatternDetector(); delete global.fetch; handler.__test.clearCache(); });
+  let fetches = 0;
+  global.fetch = async () => { fetches++; return { ok: true, json: async () => yahooPayload(Array.from({ length: 20 }, (_, i) => ({
+    timestamp: unixAtJakarta(`2026-07-${String(i + 1).padStart(2, '0')}`), open: 10, high: 12, low: 9, close: 11, volume: 1
+  }))) }; };
+  handler.__test.setPatternDetector(() => { throw new Error('private stack value'); });
+  const first = await callApi('TLKM'), second = await callApi('TLKM');
+  assert.equal(first.body.success, true); assert.equal(first.body.patternMap, null);
+  assert.deepEqual(first.body.pattern_map_meta, { engine: 'abcd-t1-v1', status: 'none', reason: 'detector_error' });
+  assert.doesNotMatch(JSON.stringify(first.body), /private stack value/); assert.deepEqual(second.body, first.body); assert.equal(fetches, 1);
+});
+
+test('Jakarta date cache binding cannot return an obsolete pattern result', async (t) => {
+  handler.__test.clearCache(); let today = '2026-07-27'; handler.__test.clock.now = () => atJakarta(today);
+  t.after(() => { handler.__test.clock.now = () => new Date(); handler.__test.resetPatternDetector(); delete global.fetch; handler.__test.clearCache(); });
+  let fetches = 0; global.fetch = async () => { fetches++; return { ok: true, json: async () => yahooPayload([
+    { timestamp: unixAtJakarta('2026-07-24'), open: 10, high: 12, low: 9, close: 11, volume: 1 },
+    { timestamp: unixAtJakarta('2026-07-27'), open: 11, high: 13, low: 10, close: 12, volume: 1 }
+  ]) }; };
+  handler.__test.setPatternDetector((candles) => ({ candidate: null, reason: `none_${candles.at(-1).time}` }));
+  const first = await callApi('ASII'); today = '2026-07-28'; const second = await callApi('ASII');
+  assert.equal(first.body.actual_data_date, '2026-07-24'); assert.equal(second.body.actual_data_date, '2026-07-27');
+  assert.notEqual(first.body.pattern_map_meta.reason, second.body.pattern_map_meta.reason); assert.equal(fetches, 2);
 });

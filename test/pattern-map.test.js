@@ -97,9 +97,9 @@ test('explicit preview flag exposes tabs, and removing it safely restores Techni
   assert.equal(h.elements.patternPageContainer.classList.contains('hidden'), true);
 });
 
-test('live candles contract does not falsely expose patternMap geometry', () => {
-  assert.doesNotMatch(candlesApi, /patternMap\s*:/);
-  assert.match(html, /no producer exists today; preview stays default-off/);
+test('live candles contract exposes only deterministic geometry while preview stays default-off', () => {
+  assert.match(candlesApi, /patternMap/);
+  assert.match(html, /deterministic server geometry; preview stays default-off/);
 });
 
 test('labels or absent geometry return required empty state without QuickChart', async () => {

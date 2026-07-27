@@ -7,6 +7,7 @@
 var cache = {};
 var CACHE_TTL = 5 * 60 * 1000;
 var t1Policy = require('../lib/chart-t1-policy');
+var patternDetector = require('../lib/pattern-abcd').detectAbcdPattern;
 var clock = { now: function() { return new Date(); } };
 
 module.exports = async function handler(req, res) {
@@ -147,6 +148,20 @@ module.exports = async function handler(req, res) {
       candles: candles
     }, cutoff.metadata);
 
+    // Geometry consumes only the finalized candle array above. Its failure is
+    // isolated so Technical Chart retains the normal successful response.
+    try {
+      var patternResult = patternDetector(candles, { ticker: ticker, dataDate: cutoff.metadata.actual_data_date });
+      result.patternMap = patternResult.candidate || null;
+      result.pattern_map_meta = {
+        engine: 'abcd-t1-v1', status: patternResult.candidate ? 'found' : 'none',
+        reason: String(patternResult.reason || 'no_pattern').slice(0, 64)
+      };
+    } catch (detectorError) {
+      result.patternMap = null;
+      result.pattern_map_meta = { engine: 'abcd-t1-v1', status: 'none', reason: 'detector_error' };
+    }
+
     cache[ticker] = { data: result, timestamp: Date.now() };
     return res.status(200).json(result);
 
@@ -158,7 +173,9 @@ module.exports = async function handler(req, res) {
 
 module.exports.__test = {
   clock: clock,
-  clearCache: function() { cache = {}; }
+  clearCache: function() { cache = {}; },
+  setPatternDetector: function(detector) { patternDetector = detector; },
+  resetPatternDetector: function() { patternDetector = require('../lib/pattern-abcd').detectAbcdPattern; }
 };
 
 function calcMA(prices, period) {
