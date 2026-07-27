@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const PatternMap = require('../public/pattern-map');
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 const candlesApi = fs.readFileSync(path.join(__dirname, '..', 'api', 'candles.js'), 'utf8');
@@ -16,9 +17,9 @@ function fixture() {
     id: 'det-1', ruleVersion: 'rules-1', name: 'Trusted ABCD', status: 'confirmed',
     provenance: 'deterministic-pattern-engine-v1', ticker: 'BBCA', timeframe: '1D', dataDate: '2026-07-26',
     candles, points: {
-      X: { time: candles[0].time, value: 9000, candleIndex: 0 }, A: { time: candles[1].time, value: 9300, candleIndex: 1 },
-      B: { time: candles[2].time, value: 9100, candleIndex: 2 }, C: { time: candles[3].time, value: 9350, candleIndex: 3 },
-      D: { time: candles[4].time, value: 9125, candleIndex: 4 }
+      X: { time: candles[0].time, value: candles[0].low, candleIndex: 0, priceField: 'low' }, A: { time: candles[1].time, value: candles[1].high, candleIndex: 1, priceField: 'high' },
+      B: { time: candles[2].time, value: candles[2].low, candleIndex: 2, priceField: 'low' }, C: { time: candles[3].time, value: candles[3].high, candleIndex: 3, priceField: 'high' },
+      D: { time: candles[4].time, value: candles[4].low, candleIndex: 4, priceField: 'low' }
     }, prz: { low: 9075, high: 9150 }, confirmation: 9300, invalidation: 9000, tp1: 9500, tp2: 9700,
     currentPrice: candles.at(-1).close, confirmationEvidence: { type: 'daily-close', date: '2026-07-26' }
   };
@@ -26,6 +27,37 @@ function fixture() {
 }
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
 function response(blob) { return { ok: true, blob: async () => blob }; }
+
+function extractFunction(name) {
+  const start = html.indexOf(`function ${name}(`);
+  assert.ok(start >= 0, `missing ${name}`);
+  const brace = html.indexOf('{', start); let depth = 0;
+  for (let i = brace; i < html.length; i++) {
+    if (html[i] === '{') depth++;
+    if (html[i] === '}' && --depth === 0) return html.slice(start, i + 1);
+  }
+  throw new Error(`unbalanced ${name}`);
+}
+
+function tabHarness(search) {
+  function element(classes) {
+    const values = new Set(classes.split(/\s+/).filter(Boolean));
+    return { attributes: {}, classList: {
+      add: name => values.add(name), remove: name => values.delete(name), contains: name => values.has(name),
+      toggle(name, force) { if (force === undefined) force = !values.has(name); force ? values.add(name) : values.delete(name); return force; }
+    }, setAttribute(name, value) { this.attributes[name] = value; } };
+  }
+  const elements = {
+    technicalChartTab: element('bg-emerald-500 text-black'),
+    patternChartTab: element('hidden bg-dark-700 text-gray-300'),
+    chartPageContainer: element(''), patternPageContainer: element('hidden')
+  };
+  const sandbox = { URLSearchParams, window: { location: { search: search || '' } },
+    document: { getElementById: id => elements[id] }, resetPatternMap() {}, renderPatternTab() {} };
+  vm.createContext(sandbox);
+  vm.runInContext(['patternMapPreviewEnabled', 'setChartTabSelected', 'applyPatternMapPreviewPolicy', 'showChartTab'].map(extractFunction).join('\n'), sandbox);
+  return { ...sandbox, elements };
+}
 
 function invalid(mutator) {
   const value = fixture(); mutator(value); return PatternMap.validateCandidate(value.candidate, value.context);
@@ -38,6 +70,31 @@ test('production Pattern tab is default-off and lazy; initial Chart load has no 
   assert.match(html, /patternMapPreview.*=== '1'/);
   assert.match(html, /if \(isPattern\) renderPatternTab\(\)/);
   assert.doesNotMatch(load, /renderPatternTab\s*\(|quickchart\.io/i);
+});
+
+test('default-off gate survives Technical Chart loads and rejects direct Pattern invocation', () => {
+  const h = tabHarness('');
+  assert.equal(h.elements.patternChartTab.classList.contains('hidden'), true);
+  assert.equal(h.showChartTab('technical'), true);
+  assert.equal(h.elements.patternChartTab.classList.contains('hidden'), true);
+  assert.match(html.slice(html.indexOf('async function loadChartPage('), html.indexOf('// ===== MODE SYSTEM')), /showChartTab\('technical'\)/);
+  assert.equal(h.showChartTab('pattern'), false);
+  assert.equal(h.elements.chartPageContainer.classList.contains('hidden'), false);
+  assert.equal(h.elements.patternPageContainer.classList.contains('hidden'), true);
+  assert.equal(h.elements.patternChartTab.classList.contains('hidden'), true);
+});
+
+test('explicit preview flag exposes tabs, and removing it safely restores Technical Chart', () => {
+  const h = tabHarness('?patternMapPreview=1');
+  assert.equal(h.applyPatternMapPreviewPolicy(), true);
+  assert.equal(h.elements.patternChartTab.classList.contains('hidden'), false);
+  assert.equal(h.showChartTab('pattern'), true);
+  assert.equal(h.elements.chartPageContainer.classList.contains('hidden'), true);
+  h.window.location.search = '';
+  assert.equal(h.applyPatternMapPreviewPolicy(), false);
+  assert.equal(h.elements.patternChartTab.classList.contains('hidden'), true);
+  assert.equal(h.elements.chartPageContainer.classList.contains('hidden'), false);
+  assert.equal(h.elements.patternPageContainer.classList.contains('hidden'), true);
 });
 
 test('live candles contract does not falsely expose patternMap geometry', () => {
@@ -77,6 +134,29 @@ test('unordered, out-of-source, and invalid pivots are rejected', () => {
   assert.equal(invalid(v => { v.candidate.points.B.time = v.candidate.points.A.time; }).reason, 'unordered_pivots');
   assert.equal(invalid(v => { v.candidate.points.D.candleIndex = 99; }).reason, 'pivot_outside_source');
   assert.equal(invalid(v => { v.candidate.points.X.value = NaN; }).reason, 'invalid_pivot');
+});
+
+test('pivot prices must exactly bind to the allowlisted source candle high or low', () => {
+  const high = fixture();
+  assert.equal(high.candidate.points.A.priceField, 'high');
+  assert.equal(PatternMap.validateCandidate(high.candidate, high.context).valid, true);
+  const low = fixture();
+  assert.equal(low.candidate.points.X.priceField, 'low');
+  assert.equal(PatternMap.validateCandidate(low.candidate, low.context).valid, true);
+  assert.equal(invalid(v => { v.candidate.points.A.priceField = 'low'; }).reason, 'pivot_price_mismatch');
+  assert.equal(invalid(v => { v.candidate.points.A.value = v.candidate.candles[1].high - 1; }).reason, 'pivot_price_mismatch');
+  assert.equal(invalid(v => { v.candidate.points.A.value = v.candidate.candles[1].high + 1000; }).reason, 'pivot_price_mismatch');
+  assert.equal(invalid(v => { delete v.candidate.points.A.priceField; }).reason, 'invalid_pivot_price_field');
+});
+
+test('sanitized pivots preserve only allowlisted priceField and renderer does not adjust values', () => {
+  const value = fixture(); value.candidate.points.X.privateNote = 'do not send';
+  const data = PatternMap.publicPatternData(value.candidate, value.context);
+  assert.deepEqual(data.points.X, { time: value.candidate.points.X.time, value: value.candidate.points.X.value,
+    candleIndex: 0, priceField: 'low' });
+  assert.equal(data.points.X.privateNote, undefined);
+  const legs = PatternMap.buildQuickChartConfig(value.candidate, value.context).data.datasets.find(d => d.label === 'X-A-B-C-D');
+  assert.equal(legs.data[0].y, value.candidate.points.X.value);
 });
 
 test('reversed PRZ, invalid levels, and unproven confirmed status are rejected', () => {

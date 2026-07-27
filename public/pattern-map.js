@@ -62,10 +62,12 @@
     for (var p = 0; p < POINT_NAMES.length; p++) {
       var point = candidate.points[POINT_NAMES[p]];
       if (!plain(point) || !validDate(point.time) || !finite(point.value) || !Number.isInteger(point.candleIndex)) return { valid: false, reason: 'invalid_pivot' };
+      if (point.priceField !== 'high' && point.priceField !== 'low') return { valid: false, reason: 'invalid_pivot_price_field' };
       if (priorDate && priorDate >= point.time) return { valid: false, reason: 'unordered_pivots' };
       if (point.candleIndex < 0 || point.candleIndex >= candidate.candles.length || candidate.candles[point.candleIndex].time !== point.time) {
         return { valid: false, reason: 'pivot_outside_source' };
       }
+      if (point.value !== candidate.candles[point.candleIndex][point.priceField]) return { valid: false, reason: 'pivot_price_mismatch' };
       priorDate = point.time;
     }
     if (!plain(candidate.prz) || !finite(candidate.prz.low) || !finite(candidate.prz.high) || candidate.prz.low > candidate.prz.high) {
@@ -86,7 +88,8 @@
     if (!validation.valid) return null;
     var points = {};
     POINT_NAMES.forEach(function(name) {
-      points[name] = { time: candidate.points[name].time, value: candidate.points[name].value, candleIndex: candidate.points[name].candleIndex };
+      points[name] = { time: candidate.points[name].time, value: candidate.points[name].value,
+        candleIndex: candidate.points[name].candleIndex, priceField: candidate.points[name].priceField };
     });
     return {
       id: candidate.id, ruleVersion: candidate.ruleVersion, name: candidate.name, status: candidate.status,

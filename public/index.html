@@ -3288,8 +3288,33 @@ function patternMapPreviewEnabled() {
 }
 
 function initPatternMapPreview() {
-    var tab = document.getElementById('patternChartTab');
-    if (tab && patternMapPreviewEnabled()) tab.classList.remove('hidden');
+    applyPatternMapPreviewPolicy();
+}
+
+function setChartTabSelected(tab, selected) {
+    if (!tab) return;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.classList.toggle('bg-emerald-500', selected);
+    tab.classList.toggle('text-black', selected);
+    tab.classList.toggle('bg-dark-700', !selected);
+    tab.classList.toggle('text-gray-300', !selected);
+}
+
+function applyPatternMapPreviewPolicy() {
+    var enabled = patternMapPreviewEnabled();
+    var technicalTab = document.getElementById('technicalChartTab');
+    var patternTab = document.getElementById('patternChartTab');
+    var technicalPanel = document.getElementById('chartPageContainer');
+    var patternPanel = document.getElementById('patternPageContainer');
+    if (patternTab) patternTab.classList.toggle('hidden', !enabled);
+    if (!enabled) {
+        if (technicalPanel) technicalPanel.classList.remove('hidden');
+        if (patternPanel) patternPanel.classList.add('hidden');
+        setChartTabSelected(technicalTab, true);
+        setChartTabSelected(patternTab, false);
+        resetPatternMap();
+    }
+    return enabled;
 }
 
 function revokePatternImageUrl() {
@@ -3307,15 +3332,16 @@ else initPatternMapPreview();
 
 function showChartTab(tab) {
     var isPattern = tab === 'pattern';
+    if (isPattern && !applyPatternMapPreviewPolicy()) return false;
     var technicalTab = document.getElementById('technicalChartTab');
     var patternTab = document.getElementById('patternChartTab');
     document.getElementById('chartPageContainer').classList.toggle('hidden', isPattern);
     document.getElementById('patternPageContainer').classList.toggle('hidden', !isPattern);
-    technicalTab.setAttribute('aria-selected', String(!isPattern));
-    patternTab.setAttribute('aria-selected', String(isPattern));
-    technicalTab.className = 'px-4 py-2 rounded-lg text-sm font-semibold ' + (!isPattern ? 'bg-emerald-500 text-black' : 'bg-dark-700 text-gray-300');
-    patternTab.className = 'px-4 py-2 rounded-lg text-sm font-semibold ' + (isPattern ? 'bg-emerald-500 text-black' : 'bg-dark-700 text-gray-300');
+    setChartTabSelected(technicalTab, !isPattern);
+    setChartTabSelected(patternTab, isPattern);
+    patternTab.classList.toggle('hidden', !patternMapPreviewEnabled());
     if (isPattern) renderPatternTab(); // lazy: renderer is never invoked by page/chart loading
+    return true;
 }
 
 async function renderPatternTab() {
