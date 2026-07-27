@@ -22,7 +22,7 @@ The offline-only downloader:
 ```sh
 node tools/acquire-pattern-abcd-data.js --universe data/daytrade-observe-tickers.txt \
   --output data/abcd-validation --manifest data/reports/abcd-acquisition-manifest.json \
-  --from 2023-01-01 --to 2026-07-24 --limit 60 --min-candles 700 --concurrency 3
+  --from 2023-01-01 --to 2026-07-27 --limit 60 --min-candles 700 --concurrency 3
 ```
 
 Input to the validator may be one JSON file whose root is a ticker map (or `{ "tickers": { ... } }`):
@@ -40,7 +40,7 @@ node tools/validate-pattern-abcd-history.js \
   --input data/abcd-validation \
   --output data/reports/abcd-validation-2023-2026.json \
   --from 2023-01-01 \
-  --to 2026-07-24 \
+  --to 2026-07-27 \
   --horizons 5,10,20 \
   --json
 ```
@@ -51,24 +51,45 @@ node tools/validate-pattern-abcd-history.js \
 
 For every completed candle, the scanner makes a new `slice(0, asOfIndex + 1)`, passes only that array to `detectAbcdPattern`, and sets `dataDate` to its last date. Thus later candles cannot affect an earlier pivot, ATR, status, or selection. Each renderer candidate is checked with the unchanged `PatternMap.validateCandidate` contract. Its stable detector ID is recorded only at its first observable date; later observations increment the deduplication count.
 
-`firstSeenDate` is the usable observation date—not D and not confirmation evidence. Outcomes inspect only candles whose date is strictly later. For each requested horizon, bullish highs touch targets and lows touch invalidation; bearish lows touch targets and highs touch invalidation. Processing is chronological. A daily candle touching a target and invalidation has unknowable intraday order, so invalidation wins conservatively and `sameBarConflict` is retained.
+`firstSeenDate` is the usable observation date—not D and not confirmation evidence. A D pivot requires right-side confirmation candles, so the price can already have crossed TP1, TP2, or invalidation before the pattern first becomes observable. Those geometries are valid detector observations but are not eligible as new entries at `firstSeenDate`.
 
-Terminal outcomes are `tp2_before_invalidation`, `tp1_before_invalidation`, `invalidation_before_tp1`, `unresolved`, or `insufficient_future_data`. MFE, MAE, their percentages, bars-to-level, risk distance, and target reward/risk are diagnostic frequencies—not brokerage-adjusted P&L. Invalid/nonsensical levels are bounded and excluded from valid-event denominators.
+The report therefore separates:
 
-Results are separated by bullish/bearish direction, candidate/confirmed first-seen status, and horizon. Aggregate outcome rows expose counts and explicit TP1-before-invalidation, TP2-before-invalidation, invalidation-first, unresolved, insufficient-future-data, and same-bar-conflict rates. No combined result is called “accuracy.”
+- `eligible` candidates whose current price remains between invalidation and TP1 at first observation;
+- `tp1_reached_before_first_seen`;
+- `tp2_reached_before_first_seen`;
+- `invalidation_reached_before_first_seen`;
+- structurally malformed `invalid_event_levels`.
+
+Only `eligible` candidates enter forward 5/10/20-bar TP and invalidation denominators. Ineligible first-seen candidates remain counted transparently in `firstSeenEligibilityDistribution` and `outcomeAggregate`; they are not mislabeled as malformed levels.
+
+For eligible candidates, outcomes inspect only candles whose date is strictly later than `firstSeenDate`. Bullish highs touch targets and lows touch invalidation; bearish lows touch targets and highs touch invalidation. Processing is chronological. A daily candle touching a target and invalidation has unknowable intraday order, so invalidation wins conservatively and `sameBarConflict` is retained.
+
+Terminal eligible outcomes are `tp2_before_invalidation`, `tp1_before_invalidation`, `invalidation_before_tp1`, `unresolved`, or `insufficient_future_data`. MFE, MAE, their percentages, bars-to-level, risk distance, and target reward/risk are diagnostic frequencies—not brokerage-adjusted P&L.
+
+Results are separated by bullish/bearish direction, candidate/confirmed first-seen status, first-seen eligibility, and horizon. Aggregate outcome rows expose candidate count, eligible denominator, stale-at-first-seen counts and rates, malformed-event count, and explicit TP1-before-invalidation, TP2-before-invalidation, invalidation-first, unresolved, insufficient-future-data, and same-bar-conflict rates. No combined result is called “accuracy.”
 
 `aggregateReasonDistribution` sums every scanned window by bounded reason; each `percentagePct` uses `totalWindows` as its denominator and is rounded to four decimal places. Its counts therefore sum exactly to `totalWindows`. The report also exposes `foundWindowCount`, `noPatternWindowCount`, `totalDeduplicatedObservations`, `directionDistribution`, `firstSeenStatusDistribution`, aggregate outcomes, candidate counts and rates per ticker-year, and deterministic samples of up to five bullish, bearish, and no-pattern observations. Audit samples prefer the newest observation date, then ticker, then stable candidate ID.
 
-Performance aggregation requires strict levels. Bullish events must satisfy `invalidation < currentPriceAtFirstSeen < tp1 < tp2`; bearish events must satisfy `invalidation > currentPriceAtFirstSeen > tp1 > tp2`. All levels must be finite and positive with positive risk and finite reward/risk. Malformed events are not repaired and receive the bounded `invalid_event_levels` classification.
+Static level structure remains strict: bullish requires `invalidation < tp1 < tp2`, bearish requires `invalidation > tp1 > tp2`, and all values must be finite and positive. Crossed targets at first observation are classified as timing eligibility, not repaired, reordered, or treated as a fresh entry.
 
 ## Limitations
 
-Daily OHLC cannot establish intraday ordering or fills. The production-compatible source is unadjusted Yahoo OHLCV, so split and corporate-action discontinuities require explicit audit. Survivorship and corporate-action quality depend on the supplied dataset, and no fees, liquidity, slippage, or portfolio rules are modeled. Historical outcome frequency is distinct from detector geometry correctness and from live trading performance. The validation library makes no network, database, AI, notification, production-cache, portfolio, or order calls. Pattern Preview remains unchanged and default-off.
+Daily OHLC cannot establish intraday ordering or fills. The production-compatible source is unadjusted Yahoo OHLCV, so split and corporate-action discontinuities require explicit audit. Survivorship and corporate-action quality depend on the supplied dataset, and no fees, liquidity, slippage, or portfolio rules are modeled. Historical outcome frequency is distinct from detector geometry correctness and from live trading performance. The validation library makes no network, database, AI, notification, production-cache, portfolio, or order calls. Pattern Preview remains default-off.
 
-## Issue #304 execution record (2026-07-27 UTC)
+## VPS execution record (2026-07-28 WIB)
 
-The acquisition command was genuinely attempted against 60 symbols, but the task environment's outbound proxy rejected Yahoo connectivity. The initial blocked run produced zero usable datasets, so no aggregate result or candidate sample is claimed and no market data is committed. The empty dataset SHA-256 was `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945`.
+The merged acquisition and validation tools were executed on the Auto-Cuan VPS against the deterministic first 60 normalized repository-universe symbols for `2023-01-01` through `2026-07-27`.
 
-The real QuickChart test was also attempted with `RUN_QUICKCHART_INTEGRATION=1 node --test test/pattern-map-quickchart.integration.test.js`; the same outbound restriction blocked the request. Vercel build status can be checked independently, but a successful build does not prove browser-to-QuickChart completion.
+- 54 usable ticker datasets and 6 `insufficient_candles` failures;
+- 45,579 completed daily candles and walk-forward windows;
+- dataset SHA-256 `b319d8a1715783e8330be5e239275ea87842430981082cfcbf8ae8f6354e2519`;
+- manifest SHA-256 `4dae2b9b82387a8782a4d1075357921fe889e6e311cc4817f3cda28161e4395e`;
+- 54 unique candidates, 738 deduplicated later observations, and 792 found windows;
+- 28 bullish and 26 bearish candidates;
+- 32 first seen as candidate and 22 first seen as confirmed;
+- 30 eligible forward-evaluation candidates and 24 candidates whose targets were already crossed before first observation.
 
-**Rollout decision: remain default-off.** Preview requires `window.__AUTOCUAN_PATTERN_MAP_PREVIEW__ = true` or `?patternMapPreview=1`. Roll back by removing the query/flag or setting the window flag to `false`. AI Q&A remains disabled. Activation is blocked until real-data validation, manual candidate audit, real PNG proof, and hosted-browser proof succeed.
+The initial QuickChart integration request returned a valid PNG with HTTP 200, `image/png`, a valid PNG signature, and non-empty candlestick output. It measured `2400×1400` because QuickChart defaults `devicePixelRatio` to 2. The renderer now explicitly sends `devicePixelRatio: 1`, making the requested output exactly `1200×700` while preserving the same chart configuration.
+
+**Rollout decision: remain default-off until the corrected report is rerun and the resulting candidate samples are reviewed.** Preview requires `window.__AUTOCUAN_PATTERN_MAP_PREVIEW__ = true` or `?patternMapPreview=1`. Roll back by removing the query/flag or setting the window flag to `false`. AI Q&A remains disabled.
