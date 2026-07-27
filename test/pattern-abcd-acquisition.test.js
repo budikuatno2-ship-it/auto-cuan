@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const A = require('../tools/acquire-pattern-abcd-data');
+const VCLI = require('../tools/validate-pattern-abcd-history');
 
 function payload(timestamp = 1704074400, values = {}) {
   return { chart: { result: [{
@@ -96,4 +97,37 @@ test('run produces deterministic hashes and atomically removes stale dataset fil
   assert.equal(fs.existsSync(path.join(output1, 'STALE.json')), false);
   assert.equal(fs.readdirSync(output1).filter(name => name.endsWith('.json')).length, 30);
   assert.equal('acquisitionDateUtc' in first, false);
+});
+
+test('audit samples select the newest deterministic events and no-pattern windows', () => {
+  const events = [
+    { ticker: 'TLKM', direction: 'bullish', firstSeenDate: '2024-01-01', candidateId: 'old' },
+    { ticker: 'BBCA', direction: 'bullish', firstSeenDate: '2024-02-01', candidateId: 'new-b' },
+    { ticker: 'ASII', direction: 'bullish', firstSeenDate: '2024-02-01', candidateId: 'new-a' },
+    { ticker: 'BMRI', direction: 'bearish', firstSeenDate: '2024-03-01', candidateId: 'bear' }
+  ];
+  const scans = [{ noPatternExamples: [
+    { ticker: 'BBCA', dataDate: '2024-01-01', reason: 'insufficient_pivots' },
+    { ticker: 'ASII', dataDate: '2024-04-01', reason: 'no_ratio_match' }
+  ] }];
+  const sample = VCLI.deterministicSamples(events, scans);
+  assert.deepEqual(sample.bullish.map(row => row.candidateId), ['new-a', 'new-b', 'old']);
+  assert.equal(sample.bearish[0].candidateId, 'bear');
+  assert.equal(sample.noPattern[0].dataDate, '2024-04-01');
+});
+
+test('aggregate outcomes include explicit counts and deterministic rates', () => {
+  const events = [
+    { outcomes: { 5: { classification: 'tp2_before_invalidation', sameBarConflict: false } } },
+    { outcomes: { 5: { classification: 'invalidation_before_tp1', sameBarConflict: true } } },
+    { outcomes: { 5: { classification: 'invalid_event_levels', sameBarConflict: false } } }
+  ];
+  const row = VCLI.outcomeAggregate(events, [5])['5'];
+  assert.equal(row.eventCount, 2);
+  assert.equal(row.invalidEventCount, 1);
+  assert.equal(row.tp1BeforeInvalidationCount, 1);
+  assert.equal(row.tp2BeforeInvalidationCount, 1);
+  assert.equal(row.invalidationFirstCount, 1);
+  assert.equal(row.tp1BeforeInvalidationRatePct, 50);
+  assert.equal(row.sameBarConflictRatePct, 50);
 });
