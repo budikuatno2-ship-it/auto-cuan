@@ -9,11 +9,11 @@ function fixture(direction, tail) {
   for (let i = 0; i < 28; i++) candles.push({ time: `2026-06-${String(i + 1).padStart(2, '0')}`, open: 105, high: 107, low: 103, close: 105 });
   const set = (i, open, high, low, close) => { candles[i] = { ...candles[i], open, high, low, close }; };
   if (direction === 'bullish') {
-    set(4, 100, 106, 85, 100); set(8, 108, 120, 104, 110); set(12, 104, 108, 100, 104);
+    set(4, 100, 106, 85, 100); set(8, 108, 120, 104, 110); set(12, 104, 107, 100, 104);
     set(16, 108, 114, 104, 109); set(20, 99, 102, 94, 98);
     for (let i = 21; i < 28; i++) set(i, 98, 101, 96, 98);
   } else {
-    set(4, 110, 125, 104, 110); set(8, 100, 106, 90, 100); set(12, 106, 110, 102, 106);
+    set(4, 110, 125, 104, 110); set(8, 100, 106, 90, 100); set(12, 106, 110, 103, 106);
     set(16, 101, 105, 96, 101); set(20, 111, 116, 108, 112);
     for (let i = 21; i < 28; i++) set(i, 112, 114, 109, 112);
   }
@@ -31,6 +31,11 @@ for (const direction of ['bullish', 'bearish']) {
     assert.ok(PatternMap.buildQuickChartConfig(candidate, context(candles)));
     assert.deepEqual(Object.values(candidate.points).map(p => p.candleIndex), [4, 8, 12, 16, 20]);
     for (const point of Object.values(candidate.points)) assert.equal(point.value, candles[point.candleIndex][point.priceField]);
+    const points = Object.values(candidate.points);
+    for (let i = 1; i < points.length; i++) {
+      assert.ok(points[i - 1].candleIndex < points[i].candleIndex);
+      assert.ok(points[i - 1].time < points[i].time);
+    }
   });
 }
 
@@ -47,6 +52,41 @@ test('confirmed pivots exclude last three bars and reject equal-price ambiguity'
   assert.equal(detector.discoverPivots(candles).some(p => p.index >= candles.length - 3), false);
   const tied = fixture('bullish'); tied[7].high = tied[8].high;
   assert.equal(detector.discoverPivots(tied).some(p => p.index === 8 && p.type === 'high'), false);
+});
+
+test('outside bar qualifying as strict high and low emits neither pivot', () => {
+  const candles = fixture('bullish');
+  candles[24] = { ...candles[24], open: 105, high: 130, low: 70, close: 105 };
+  const pivots = detector.discoverPivots(candles);
+  assert.equal(pivots.some(p => p.index === 24), false);
+  const output = detect(candles);
+  assert.equal(output.candidate, null);
+});
+
+test('duplicate or non-chronological pivot indexes and dates are rejected defensively', () => {
+  const candles = fixture('bullish'); const pivots = detector.discoverPivots(candles);
+  assert.equal(detector.__test.validatePivotSequence(pivots), true);
+  const duplicateIndex = pivots.map(p => ({ ...p })); duplicateIndex[3].index = duplicateIndex[2].index;
+  assert.equal(detector.__test.validatePivotSequence(duplicateIndex), false);
+  assert.equal(detector.__test.evaluateGroup(candles, duplicateIndex, { ticker: 'BBCA', dataDate: candles.at(-1).time }).reason,
+    'ambiguous_or_duplicate_pivots');
+  const duplicateDate = pivots.map(p => ({ ...p })); duplicateDate[3].time = duplicateDate[2].time;
+  assert.equal(detector.__test.validatePivotSequence(duplicateDate), false);
+  assert.equal(detector.__test.evaluateGroup(candles, duplicateDate, { ticker: 'BBCA', dataDate: candles.at(-1).time }).reason,
+    'ambiguous_or_duplicate_pivots');
+});
+
+test('stable ID includes fixed rule version and every deterministic identity field', () => {
+  const pivots = detector.discoverPivots(fixture('bullish'));
+  const stableId = detector.__test.stableId;
+  const first = stableId('BBCA', 'bullish', 'abcd-t1-v1', pivots);
+  assert.equal(first, stableId('BBCA', 'bullish', 'abcd-t1-v1', pivots));
+  assert.match(first, /abcd-t1-v1/); assert.ok(first.length <= 80);
+  assert.notEqual(first, stableId('BBCA', 'bullish', 'abcd-t1-v2', pivots));
+  assert.notEqual(first, stableId('BBCA', 'bearish', 'abcd-t1-v1', pivots));
+  const changedDate = pivots.map(p => ({ ...p })); changedDate[0].time = '2026-06-04';
+  assert.notEqual(first, stableId('BBCA', 'bullish', 'abcd-t1-v1', changedDate));
+  assert.equal(detect(fixture('bullish')).candidate.id, 'abcd-BBCA-bullish-abcd-t1-v1-20260605-20260609-20260613-20260617-20260621');
 });
 
 test('same-type pivots keep only the more extreme and equal extremes keep earlier', () => {

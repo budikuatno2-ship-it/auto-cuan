@@ -13,7 +13,10 @@ requested only after a user explicitly enables and opens the existing preview.
 
 - Confirmed swing highs/lows use a strict three-candle window on both sides.
   Equal highs or lows in that window are not pivots. Consecutive pivots of one
-  type retain the more extreme; an equal extreme retains the earlier pivot.
+  type retain the more extreme; an equal extreme retains the earlier pivot. An
+  outside bar qualifying as both a strict high and strict low is ambiguous and
+  emits neither pivot. Candidate indexes and dates must both be unique, strictly
+  increasing, and reference five different source candles.
 - Consecutive alternating `X/A/B/C/D` groups are tested. `BC/AB` must be
   `0.618..0.786`, `CD/AB` must be `0.90..1.10`, and D may be at most 25 bars old.
 - The permitted CD/AB range directly defines the PRZ. No tolerance is widened.
@@ -25,6 +28,8 @@ requested only after a user explicitly enables and opens the existing preview.
   D in the reversal direction.
 - Multiple active candidates rank by newest D, CD/AB closest to 1, BC/AB closest
   to the configured midpoint, then lexicographic pivot-date sequence.
+- Stable identity contains ticker, direction, `abcd-t1-v1`, and all five pivot
+  dates; it contains no clock, random, request, or database-derived value.
 
 No pattern is a normal result. Examples include insufficient candles, pivots or
 ATR; invalid OHLC; ratios outside fixed limits; a stale D; or invalidation. The
