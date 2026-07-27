@@ -119,17 +119,34 @@ test('malformed timestamps are discarded and completed filtered result is cached
   handler.__test.clock.now = () => atJakarta('2026-07-27');
   t.after(() => { handler.__test.clock.now = () => new Date(); delete global.fetch; handler.__test.clearCache(); });
   let fetches = 0;
-  const rows = [
-    { timestamp: 'bad', open: 1, high: 2, low: 0, close: 1, volume: 10 },
-    { timestamp: unixAtJakarta('2026-07-24'), open: 10, high: 12, low: 9, close: 11, volume: 100 },
-    { timestamp: unixAtJakarta('2026-07-27'), open: 99, high: 100, low: 98, close: 99, volume: 999 }
+  const malformed = [
+    null, undefined, '', '   ', '0', '1721800000', false, true, [], [0], {},
+    '0x10', NaN, Infinity, -Infinity
   ];
+  const rows = malformed.map((timestamp, index) => ({
+    timestamp, open: 1000 + index, high: 1002 + index, low: 999 + index,
+    close: 1001 + index, volume: 100000 + index
+  }));
+  for (let day = 5; day <= 24; day++) rows.push({
+    timestamp: unixAtJakarta('2026-07-' + String(day).padStart(2, '0')),
+    open: day - 1, high: day + 1, low: day - 2, close: day, volume: day * 100
+  });
+  rows.push(
+    { timestamp: unixAtJakarta('2026-07-27'), open: 99, high: 100, low: 98, close: 99, volume: 999 }
+  );
   global.fetch = async () => { fetches++; return { ok: true, json: async () => yahooPayload(rows) }; };
   const first = await callApi('TLKM');
   const second = await callApi('TLKM');
   assert.equal(fetches, 1);
-  assert.deepEqual(first.body.candles.map((c) => c.time), ['2026-07-24']);
-  assert.deepEqual(second.body.candles.map((c) => c.time), ['2026-07-24']);
+  assert.equal(first.body.candles.length, 20);
+  assert.equal(second.body.candles.length, 20);
+  assert.equal(first.body.candles.some((c) => c.time.startsWith('1970-')), false);
+  assert.deepEqual(first.body.latest, { date: '2026-07-24', last: 24, open: 23, high: 25, low: 22, volume: 2400 });
+  assert.deepEqual(first.body.metrics, { ma20: 14.5, ma50: null, ma100: null, ma200: null, rsi14: 100, volumeAvg20: 1450, volumeVsAvg20: 1.66 });
+  assert.equal(first.body.actual_data_date, '2026-07-24');
+  assert.deepEqual(second.body.latest, first.body.latest);
+  assert.deepEqual(second.body.metrics, first.body.metrics);
+  assert.equal(second.body.actual_data_date, '2026-07-24');
   assert.equal(second.body.jakarta_today, '2026-07-27');
 });
 

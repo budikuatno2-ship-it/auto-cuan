@@ -93,8 +93,8 @@ module.exports = async function handler(req, res) {
     var candles = [];
     for (var i = 0; i < timestamps.length; i++) {
       var c = closes[i], o = opens[i], h = highs[i], l = lows[i], v = volumes[i];
-      var timestampMs = Number(timestamps[i]) * 1000;
-      var candleDate = isFinite(timestampMs) ? t1Policy.formatJakartaDate(new Date(timestampMs)) : null;
+      var timestampSeconds = t1Policy.normalizeUnixTimestampSeconds(timestamps[i]);
+      var candleDate = timestampSeconds == null ? null : t1Policy.formatJakartaDate(new Date(timestampSeconds * 1000));
       if (candleDate && c != null && o != null && h != null && l != null && !isNaN(c)) {
         candles.push({
           time: candleDate,
