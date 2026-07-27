@@ -81,9 +81,13 @@ test('invalid candles reject only their ticker-level scan', () => {
   assert.equal(failure.error.reason, 'duplicate_date'); assert.equal(good.error, undefined); assert.equal(good.windowsScanned, 3);
 });
 
-test('non-finite or nonsensical levels are excluded with bounded reason', () => {
-  const e = event(); e.tp1 = Infinity; const o = V.evaluateAbcdOutcome(e, future([]), { horizons: [5] });
-  assert.equal(o.invalidReason, 'non_finite_or_non_positive_level'); assert.equal(o.horizons['5'].classification, 'invalid_event_levels');
+test('non-finite or structurally nonsensical levels are excluded with bounded reason', () => {
+  const nonFinite = event(); nonFinite.tp1 = Infinity;
+  const first = V.evaluateAbcdOutcome(nonFinite, future([]), { horizons: [5] });
+  assert.equal(first.invalidReason, 'non_finite_or_non_positive_level'); assert.equal(first.horizons['5'].classification, 'invalid_event_levels');
+  const badOrder = { ...event(), tp1: 111, tp2: 110 };
+  const second = V.evaluateAbcdOutcome(badOrder, future([]), { horizons: [5] });
+  assert.equal(second.invalidReason, 'nonsensical_level_order'); assert.equal(second.horizons['5'].classification, 'invalid_event_levels');
 });
 
 test('incomplete horizons retain observed TP1, TP2, and invalidation outcomes', () => {
@@ -101,15 +105,22 @@ test('same-bar policy credits only TP1 reached on an earlier candle', () => {
   assert.equal(first.classification, 'invalidation_before_tp1'); assert.equal(first.sameBarConflict, true);
 });
 
-test('strict bullish and bearish level ordering rejects every malformed boundary', () => {
-  const invalid = [
-    { ...event(), tp1: 99 }, { ...event(), tp2: 105 }, { ...event(), invalidation: 100 },
-    { ...event('bearish'), tp1: 101 }, { ...event('bearish'), tp2: 95 }, { ...event('bearish'), invalidation: 100 }
+test('crossed levels are ineligible at first seen rather than malformed', () => {
+  const cases = [
+    [{ ...event(), currentPriceAtFirstSeen: 106 }, 'tp1_reached_before_first_seen'],
+    [{ ...event(), currentPriceAtFirstSeen: 111 }, 'tp2_reached_before_first_seen'],
+    [{ ...event(), currentPriceAtFirstSeen: 94 }, 'invalidation_reached_before_first_seen'],
+    [{ ...event('bearish'), currentPriceAtFirstSeen: 94 }, 'tp1_reached_before_first_seen'],
+    [{ ...event('bearish'), currentPriceAtFirstSeen: 89 }, 'tp2_reached_before_first_seen'],
+    [{ ...event('bearish'), currentPriceAtFirstSeen: 106 }, 'invalidation_reached_before_first_seen']
   ];
-  invalid.forEach(e => assert.equal(V.evaluateAbcdOutcome(e, [], { horizons: [5] }).horizons['5'].classification, 'invalid_event_levels'));
-  assert.equal(V.evaluateAbcdOutcome({ ...event(), invalidation: 100 }, [], { horizons: [5] }).invalidReason, 'nonsensical_level_order');
-  assert.equal(V.evaluateAbcdOutcome(event(), future([{ high: 106, low: 99 }]), { horizons: [1] }).horizons['1'].classification, 'tp1_before_invalidation');
-  assert.equal(V.evaluateAbcdOutcome(event('bearish'), future([{ high: 101, low: 94 }]), { horizons: [1] }).horizons['1'].classification, 'tp1_before_invalidation');
+  for (const [value, reason] of cases) {
+    const result = V.evaluateAbcdOutcome(value, [], { horizons: [5] });
+    assert.equal(result.invalidReason, null);
+    assert.equal(result.firstSeenEligibility, reason);
+    assert.equal(result.horizons['5'].classification, 'ineligible_at_first_seen');
+    assert.equal(result.horizons['5'].firstSeenOutcome, reason);
+  }
 });
 
 test('directory null and null candles become bounded ticker failures while valid tickers complete', () => {
@@ -172,5 +183,19 @@ test('aggregate report counts, percentages, distributions, and dedup totals are 
   assert.deepEqual(result.aggregateReasonDistribution, { found: { count: 2, percentagePct: 50 }, insufficient_pivots: { count: 2, percentagePct: 50 } });
   assert.equal(result.totalDeduplicatedObservations, 6); assert.equal(result.foundWindowCount + result.noPatternWindowCount, result.totalWindows);
   assert.deepEqual(result.directionDistribution, { bullish: 1, bearish: 1 }); assert.deepEqual(result.firstSeenStatusDistribution, { candidate: 1, confirmed: 1 });
+  assert.deepEqual(result.firstSeenEligibilityDistribution, { eligible: 2, tp1_reached_before_first_seen: 0, tp2_reached_before_first_seen: 0, invalidation_reached_before_first_seen: 0, invalid_event_levels: 0 });
   assert.equal(JSON.stringify(result), JSON.stringify(run()));
+});
+
+test('aggregate outcomes separate eligible, stale, and invalid candidates', () => {
+  const events = [
+    { outcomes: { 5: { classification: 'tp2_before_invalidation', sameBarConflict: false } } },
+    { outcomes: { 5: { classification: 'ineligible_at_first_seen', firstSeenOutcome: 'tp1_reached_before_first_seen', sameBarConflict: false } } },
+    { outcomes: { 5: { classification: 'ineligible_at_first_seen', firstSeenOutcome: 'tp2_reached_before_first_seen', sameBarConflict: false } } },
+    { outcomes: { 5: { classification: 'invalid_event_levels', sameBarConflict: false } } }
+  ];
+  const row = CLI.outcomeAggregate(events, [5])['5'];
+  assert.equal(row.candidateEventCount, 4); assert.equal(row.eventCount, 1); assert.equal(row.ineligibleAtFirstSeenCount, 2); assert.equal(row.invalidEventCount, 1);
+  assert.equal(row.tp1AlreadyReachedCount, 1); assert.equal(row.tp2AlreadyReachedCount, 1);
+  assert.equal(row.eligibleEventRatePct, 25); assert.equal(row.ineligibleAtFirstSeenRatePct, 50); assert.equal(row.invalidEventRatePct, 25);
 });
