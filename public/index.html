@@ -1471,9 +1471,9 @@
             <input id="chartTickerInput" type="text" placeholder="Ketik ticker: BBCA, IHSG..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')loadChartPage()">
             <button onclick="loadChartPage()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Lihat Chart</button>
         </div>
-        <div class="flex gap-2" role="tablist" aria-label="Jenis chart">
+        <div class="flex flex-wrap gap-2" role="tablist" aria-label="Jenis chart">
             <button id="technicalChartTab" role="tab" aria-selected="true" onclick="showChartTab('technical')" class="px-4 py-2 rounded-lg bg-emerald-500 text-black text-sm font-semibold">Technical Chart</button>
-            <button id="patternChartTab" role="tab" aria-selected="false" onclick="showChartTab('pattern')" class="px-4 py-2 rounded-lg bg-dark-700 text-gray-300 text-sm font-semibold">Pattern</button>
+            <button id="patternChartTab" role="tab" aria-selected="false" onclick="showChartTab('pattern')" class="hidden px-4 py-2 rounded-lg bg-dark-700 text-gray-300 text-sm font-semibold">Pattern Preview</button>
         </div>
         <div id="chartPageContainer" role="tabpanel" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden min-w-0">
             <div class="flex items-center justify-center py-16 text-gray-500 text-sm">
@@ -2893,6 +2893,7 @@ async function loadPremiumAccess(force) {
 }
 
 function navigateTo(page) {
+    if (page !== 'chart' && typeof resetPatternMap === 'function') resetPatternMap();
     if (page === 'subscription') {
         // Subscription is postponed: no page, no redirect target.
         page = 'dashboard';
@@ -3281,6 +3282,29 @@ var _patternMapManager = null;
 var _patternImageUrl = null;
 var _chartPageLoadVersion = 0;
 
+function patternMapPreviewEnabled() {
+    if (typeof window === 'undefined') return false;
+    return window.__AUTOCUAN_PATTERN_MAP_PREVIEW__ === true || new URLSearchParams(window.location.search).get('patternMapPreview') === '1';
+}
+
+function initPatternMapPreview() {
+    var tab = document.getElementById('patternChartTab');
+    if (tab && patternMapPreviewEnabled()) tab.classList.remove('hidden');
+}
+
+function revokePatternImageUrl() {
+    if (_patternImageUrl) URL.revokeObjectURL(_patternImageUrl);
+    _patternImageUrl = null;
+}
+
+function resetPatternMap() {
+    if (_patternMapManager) _patternMapManager.cancel();
+    revokePatternImageUrl();
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPatternMapPreview);
+else initPatternMapPreview();
+
 function showChartTab(tab) {
     var isPattern = tab === 'pattern';
     var technicalTab = document.getElementById('technicalChartTab');
@@ -3302,7 +3326,8 @@ async function renderPatternTab() {
         return;
     }
     var data = _chartPageData;
-    var candidate = data.patternMap || null; // trusted deterministic output only; never infer from a label
+    var candidate = data.patternMap || null; // no producer exists today; preview stays default-off
+    var renderContext = { ticker: data.ticker, timeframe: '1D', dataDate: data.actual_data_date, candles: data.candles };
     var status = data.t1_status === 'stale' ? 'T-1 terlambat (stale)' : (data.t1_status === 'missing' ? 'Data T-1 tidak tersedia' : 'T-1 kalender belum diverifikasi');
     var patternName = candidate && candidate.name ? candidate.name : 'Tidak terdeteksi';
     var patternStatus = candidate && candidate.status ? candidate.status : 'Tidak dapat divisualisasikan';
@@ -3314,11 +3339,11 @@ async function renderPatternTab() {
       '<div><span class="text-gray-500">Pattern / Status</span><b class="block text-gray-200">' + escapeHtml(patternName) + ' — ' + escapeHtml(patternStatus) + '</b></div></div>' +
       '<div id="patternMapImage" class="min-h-48 flex items-center justify-center rounded-xl bg-dark-900/40 text-center text-sm text-gray-500 p-5">Memeriksa geometry deterministik...</div>' +
       '<div id="patternWarnings" class="text-xs text-amber-300">Peringatan: Pattern bersifat deterministik dan hanya memakai data T-1. Konfirmasi manual tetap diperlukan.</div>' +
-      '<div class="border-t border-dark-600/30 pt-4 space-y-2"><label for="patternQuestion" class="block text-sm font-semibold text-gray-200">Tanya tentang pattern yang ditampilkan</label>' +
-      '<div class="flex gap-2"><input id="patternQuestion" class="flex-1 px-3 py-2 rounded-lg bg-dark-700 text-sm text-gray-100" placeholder="Contoh: Apa arti status pattern ini?"><button onclick="submitPatternQuestion()" class="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm">Kirim</button></div>' +
-      '<div class="text-[11px] text-gray-500">Contoh: “Apa arti PRZ?” · “Di mana invalidation?” · “Apa yang perlu dikonfirmasi?”</div><div id="patternAnswer" class="text-sm text-gray-300" aria-live="polite"></div></div></div>';
+      '<div class="border-t border-dark-600/30 pt-4 space-y-2"><span class="inline-flex rounded-full bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-300">Preview nonaktif — AI segera hadir</span><label for="patternQuestion" class="block text-sm font-semibold text-gray-200">Tanya tentang pattern yang ditampilkan</label>' +
+      '<div class="flex flex-wrap gap-2"><input id="patternQuestion" disabled aria-disabled="true" class="min-w-0 flex-1 px-3 py-2 rounded-lg bg-dark-700 text-sm text-gray-500 opacity-70" placeholder="Q&A belum tersedia"><button disabled aria-disabled="true" class="px-4 py-2 rounded-lg bg-dark-600 text-gray-500 text-sm cursor-not-allowed">AI segera hadir</button></div>' +
+      '<div class="text-[11px] text-gray-500">Tidak ada AI atau permintaan jaringan dari bagian ini.</div></div></div>';
     if (!_patternMapManager) _patternMapManager = new PatternMap.RequestManager(fetch.bind(window));
-    var result = await _patternMapManager.render(candidate);
+    var result = await _patternMapManager.render(candidate, renderContext);
     var imageBox = document.getElementById('patternMapImage');
     if (!imageBox || data !== _chartPageData || result.obsolete) return;
     if (result.empty) imageBox.textContent = result.message;
@@ -3330,14 +3355,6 @@ async function renderPatternTab() {
     }
 }
 
-function submitPatternQuestion() {
-    var input = document.getElementById('patternQuestion');
-    var answer = document.getElementById('patternAnswer');
-    if (!input || !answer || !input.value.trim()) return;
-    // MVP intentionally has no AI/network call. Answers remain bounded to displayed data.
-    answer.textContent = 'Q&A AI belum tersedia pada fase MVP. Gunakan level dan status deterministik yang ditampilkan di atas; sistem tidak akan mendeteksi pattern atau membuat level baru.';
-}
-
 async function loadChartPage() {
     var input = document.getElementById('chartTickerInput');
     var ticker = (input.value || '').trim().toUpperCase();
@@ -3346,7 +3363,7 @@ async function loadChartPage() {
 
     var loadVersion = ++_chartPageLoadVersion;
     _chartPageData = null;
-    if (_patternMapManager) _patternMapManager.cancel();
+    resetPatternMap();
     showChartTab('technical');
 
     var container = document.getElementById('chartPageContainer');
@@ -11505,6 +11522,6 @@ function exportDayTradePDF() {
 <script src="/admin-user-delete-enhancement.js?v=20260726-src1"></script>
 <script src="/ai-chat-renderer.js?v=20260726-src1"></script>
 <script src="/stock-analysis-ai.js?v=20260726-src1"></script>
-<script src="/pattern-map.js?v=20260727-mvp1"></script>
+<script src="/pattern-map.js?v=20260727-audit2"></script>
 </body>
 </html>

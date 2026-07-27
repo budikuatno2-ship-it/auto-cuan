@@ -29,3 +29,19 @@ candidate and must not be treated as exchange-calendar verification.
 
 Pattern Map remains blocked: it must consume this policy and may not represent
 `calendar_unverified` data as verified T-1.
+
+## Pattern Map preview status
+
+The runtime currently has **no trusted deterministic producer** for the full
+Pattern Map contract (stable candidate/rule identity, ordered X/A/B/C/D candle
+references, PRZ, confirmation, invalidation, TP1/TP2, and provenance).
+`/api/candles` intentionally does not claim or fabricate that geometry. The
+Pattern tab is therefore a default-off renderer preview, enabled only with the
+explicit `window.__AUTOCUAN_PATTERN_MAP_PREVIEW__ = true` switch or the
+`?patternMapPreview=1` preview query parameter. This is renderer infrastructure,
+not an operational production Pattern Map.
+
+Activation also remains blocked until the hosted QuickChart Chart.js v4 runtime
+is proven to register the financial candlestick controller and its date adapter,
+and a browser-origin POST from the Vercel preview is proven CORS-safe. A Node.js
+or mocked-fetch result alone is not sufficient evidence for either condition.
