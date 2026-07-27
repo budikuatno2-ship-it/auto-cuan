@@ -148,7 +148,8 @@
     var self = this;
     token.promise = this.fetchImpl('https://quickchart.io/chart', { method: 'POST', signal: controller.signal,
       headers: { 'Content-Type': 'application/json', 'Accept': 'image/png' },
-      body: JSON.stringify({ version: '4', width: 1200, height: 700, format: 'png', backgroundColor: '#111827', chart: config })
+      body: JSON.stringify({ version: '4', width: 1200, height: 700, devicePixelRatio: 1,
+        format: 'png', backgroundColor: '#111827', chart: config })
     }).then(function(response) {
       if (!response.ok) throw new Error('QuickChart HTTP ' + response.status);
       return response.blob();
