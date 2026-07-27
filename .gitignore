@@ -57,7 +57,10 @@ tmp/
 
 # Offline ABCD historical validation market data and generated reports
 data/abcd-validation/
+data/abcd-validation.staging-*/
+data/abcd-validation.previous-*/
 data/reports/abcd-validation-*.json
+data/reports/abcd-acquisition-*.json
 
 # Generated Day Trade cache audit reports
 data/reports/daytrade-cache-audit-*.md

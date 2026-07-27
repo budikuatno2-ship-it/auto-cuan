@@ -15,6 +15,7 @@ function calendarDate(value) { var d; if (!DATE_RE.test(String(value || ''))) re
 function parseDate(value, name) { if (value && !calendarDate(value)) throw new Error('--' + name + ' must be a real YYYY-MM-DD calendar date'); return value; }
 function failure(ticker, reason) { return { ticker: TICKER_RE.test(ticker) ? ticker : null, reason: FAILURE_REASONS.has(reason) ? reason : 'ticker_processing_exception' }; }
 function safeJson(file) { try { return { value: JSON.parse(fs.readFileSync(file, 'utf8')) }; } catch (e) { return { reason: e instanceof SyntaxError ? 'json_parse_error' : 'file_read_error' }; } }
+function pct(n, d) { return d ? Math.round(n / d * 1000000) / 10000 : 0; }
 
 // Entries preserve aliases until normalization, so collisions cannot be lost to
 // object assignment. Paths and exception messages never enter report records.
@@ -28,8 +29,6 @@ function loadInput(input) {
       if (parsed.reason) return { rawTicker: filenameTicker, reason: parsed.reason };
       var value = parsed.value;
       if (value === null || typeof value !== 'object') return { rawTicker: filenameTicker, reason: 'invalid_file_schema' };
-      // A directory file has exactly one identity: its filename. A payload
-      // identity that normalizes to the same ticker is an ambiguous duplicate.
       if (!Array.isArray(value) && Object.prototype.hasOwnProperty.call(value, 'ticker')) {
         if (normalizeTicker(value.ticker) === normalizeTicker(filenameTicker)) return { rawTicker: filenameTicker, reason: 'duplicate_normalized_ticker' };
         return { rawTicker: filenameTicker, reason: 'invalid_ticker' };
@@ -44,7 +43,55 @@ function loadInput(input) {
 }
 function reasonAggregate(scans, total) {
   var counts = {}; scans.forEach(function(scan) { Object.keys(scan.reasonCounts).forEach(function(reason) { counts[reason] = (counts[reason] || 0) + scan.reasonCounts[reason]; }); });
-  var out = {}; Object.keys(counts).sort().forEach(function(reason) { out[reason] = { count: counts[reason], percentagePct: total ? Math.round(counts[reason] / total * 1000000) / 10000 : 0 }; }); return out;
+  var out = {}; Object.keys(counts).sort().forEach(function(reason) { out[reason] = { count: counts[reason], percentagePct: pct(counts[reason], total) }; }); return out;
+}
+function deterministicSamples(events, scans) {
+  function newest(direction) {
+    return events.filter(function(event) { return event.direction === direction; }).slice().sort(function(a, b) {
+      return b.firstSeenDate.localeCompare(a.firstSeenDate) || a.ticker.localeCompare(b.ticker) || a.candidateId.localeCompare(b.candidateId);
+    }).slice(0, 5);
+  }
+  var none = [];
+  scans.forEach(function(scan) { none = none.concat(scan.noPatternExamples || []); });
+  none.sort(function(a, b) { return b.dataDate.localeCompare(a.dataDate) || a.ticker.localeCompare(b.ticker) || a.reason.localeCompare(b.reason); });
+  return { bullish: newest('bullish'), bearish: newest('bearish'), noPattern: none.slice(0, 5) };
+}
+function tickerYearRates(events, scans) {
+  var windows = {}, candidates = {};
+  scans.forEach(function(scan) { scan.windowYears.forEach(function(year) { var key = scan.ticker + '|' + year; windows[key] = (windows[key] || 0) + 1; }); });
+  events.forEach(function(event) { var key = event.ticker + '|' + event.firstSeenDate.slice(0, 4); candidates[key] = (candidates[key] || 0) + 1; });
+  return Object.keys(windows).sort().map(function(key) {
+    var parts = key.split('|'), count = candidates[key] || 0, windowCount = windows[key];
+    return { ticker: parts[0], year: Number(parts[1]), candidateCount: count, windowsScanned: windowCount,
+      candidatesPerTickerYear: count, candidatesPer100Windows: pct(count, windowCount) };
+  });
+}
+function outcomeAggregate(events, horizons) {
+  var output = {};
+  horizons.forEach(function(horizon) {
+    var row = { eventCount: 0, invalidEventCount: 0, tp1BeforeInvalidationCount: 0, tp2BeforeInvalidationCount: 0,
+      invalidationFirstCount: 0, unresolvedCount: 0, insufficientFutureDataCount: 0, sameBarConflictCount: 0 };
+    events.forEach(function(event) {
+      var outcome = event.outcomes[String(horizon)];
+      if (!outcome) return;
+      if (outcome.classification === 'invalid_event_levels') { row.invalidEventCount++; return; }
+      row.eventCount++;
+      if (outcome.classification === 'tp1_before_invalidation' || outcome.classification === 'tp2_before_invalidation') row.tp1BeforeInvalidationCount++;
+      if (outcome.classification === 'tp2_before_invalidation') row.tp2BeforeInvalidationCount++;
+      if (outcome.classification === 'invalidation_before_tp1') row.invalidationFirstCount++;
+      if (outcome.classification === 'unresolved') row.unresolvedCount++;
+      if (outcome.classification === 'insufficient_future_data') row.insufficientFutureDataCount++;
+      if (outcome.sameBarConflict) row.sameBarConflictCount++;
+    });
+    row.tp1BeforeInvalidationRatePct = pct(row.tp1BeforeInvalidationCount, row.eventCount);
+    row.tp2BeforeInvalidationRatePct = pct(row.tp2BeforeInvalidationCount, row.eventCount);
+    row.invalidationFirstRatePct = pct(row.invalidationFirstCount, row.eventCount);
+    row.unresolvedRatePct = pct(row.unresolvedCount, row.eventCount);
+    row.insufficientFutureDataRatePct = pct(row.insufficientFutureDataCount, row.eventCount);
+    row.sameBarConflictRatePct = pct(row.sameBarConflictCount, row.eventCount);
+    output[String(horizon)] = row;
+  });
+  return output;
 }
 function processEntries(entries, options) {
   options = options || {}; var from = options.from, to = options.to, hs = options.horizons || Validation.DEFAULT_HORIZONS;
@@ -59,7 +106,7 @@ function processEntries(entries, options) {
     if (!TICKER_RE.test(symbol)) { failures.push(failure(symbol, 'invalid_ticker')); return; }
     if (frequencies[symbol] > 1) { failures.push(failure(symbol, 'duplicate_normalized_ticker')); return; }
     try {
-      var quality = Validation.validateCandles(entry.candles); // validate complete source before filtering
+      var quality = Validation.validateCandles(entry.candles);
       if (!quality.valid) { var f = failure(symbol, quality.reason); if (Number.isInteger(quality.candleIndex)) f.candleIndex = quality.candleIndex; failures.push(f); return; }
       var selected = entry.candles.filter(function(c) { return (!from || c.time >= from) && (!to || c.time <= to); });
       var scan = scanFn(selected, { ticker: symbol });
@@ -68,7 +115,8 @@ function processEntries(entries, options) {
       try { scan.events.forEach(function(event) { event.outcomes = outcomeFn(event, selected, { horizons: hs }).horizons; tickerEvents.push(event); }); }
       catch (_) { failures.push(failure(symbol, 'outcome_exception')); return; }
       totalCandles += selected.length; scans.push({ ticker: symbol, windowsScanned: scan.windowsScanned, reasonCounts: scan.reasonCounts,
-        deduplicatedObservations: scan.deduplicatedObservations, noPatternExamples: scan.noPatternExamples }); events = events.concat(tickerEvents);
+        deduplicatedObservations: scan.deduplicatedObservations, noPatternExamples: scan.noPatternExamples,
+        windowYears: selected.map(function(c) { return c.time.slice(0, 4); }) }); events = events.concat(tickerEvents);
     } catch (_) { failures.push(failure(symbol, 'ticker_processing_exception')); }
   });
   failures.sort(function(a, b) { return String(a.ticker).localeCompare(String(b.ticker)) || a.reason.localeCompare(b.reason) || (a.candleIndex || 0) - (b.candleIndex || 0); });
@@ -80,7 +128,8 @@ function processEntries(entries, options) {
     candleCount: totalCandles, totalWindows: totalWindows, uniqueCandidateCount: events.length,
     aggregateReasonDistribution: aggregate, totalDeduplicatedObservations: scans.reduce(function(n, s) { return n + s.deduplicatedObservations; }, 0),
     foundWindowCount: found, noPatternWindowCount: totalWindows - found, directionDistribution: directions,
-    firstSeenStatusDistribution: statuses, cohorts: Validation.summarizeAbcdValidation(events, { horizons: hs }) };
+    firstSeenStatusDistribution: statuses, outcomeAggregate: outcomeAggregate(events, hs), candidatesPerTickerYear: tickerYearRates(events, scans),
+    deterministicAuditSamples: deterministicSamples(events, scans), cohorts: Validation.summarizeAbcdValidation(events, { horizons: hs }) };
 }
 function main(argv, overrides) {
   var opt = args(argv), from, to; if (!opt.input) throw new Error('--input is required'); if (!opt.output && !opt.json) throw new Error('--output or --json is required');
@@ -90,8 +139,10 @@ function main(argv, overrides) {
   var canonicalSource = JSON.stringify(entries.map(function(e) { return [normalizeTicker(e.rawTicker), e.reason || null, e.candles]; }).sort());
   var report = Object.assign({ schemaVersion: 1, methodology: 'walk-forward-truncated-daily-candles', inputSha256: crypto.createHash('sha256').update(canonicalSource).digest('hex'),
     requestedRange: { from: from || null, to: to || null }, horizons: hs.slice().sort(function(a, b) { return a - b; }) }, processed);
-  var text = JSON.stringify(report, null, 2) + '\n'; if (opt.output) fs.writeFileSync(path.resolve(opt.output), text); if (opt.json) process.stdout.write(text); return report;
+  var text = JSON.stringify(report, null, 2) + '\n';
+  if (opt.output) { var output = path.resolve(opt.output); fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, text); }
+  if (opt.json) process.stdout.write(text); return report;
 }
 if (require.main === module) { try { main(process.argv.slice(2)); } catch (e) { process.stderr.write('ABCD validation error: ' + e.message + '\n'); process.exitCode = 1; } }
 module.exports = { main: main, loadInput: loadInput, processEntries: processEntries, normalizeTicker: normalizeTicker,
-  parseDate: parseDate, args: args };
+  parseDate: parseDate, args: args, deterministicSamples: deterministicSamples, outcomeAggregate: outcomeAggregate, tickerYearRates: tickerYearRates };
