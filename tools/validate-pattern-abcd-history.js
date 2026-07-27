@@ -69,12 +69,22 @@ function tickerYearRates(events, scans) {
 function outcomeAggregate(events, horizons) {
   var output = {};
   horizons.forEach(function(horizon) {
-    var row = { eventCount: 0, invalidEventCount: 0, tp1BeforeInvalidationCount: 0, tp2BeforeInvalidationCount: 0,
-      invalidationFirstCount: 0, unresolvedCount: 0, insufficientFutureDataCount: 0, sameBarConflictCount: 0 };
+    var row = { candidateEventCount: 0, eventCount: 0, invalidEventCount: 0, ineligibleAtFirstSeenCount: 0,
+      tp1AlreadyReachedCount: 0, tp2AlreadyReachedCount: 0, invalidationAlreadyReachedCount: 0,
+      tp1BeforeInvalidationCount: 0, tp2BeforeInvalidationCount: 0, invalidationFirstCount: 0,
+      unresolvedCount: 0, insufficientFutureDataCount: 0, sameBarConflictCount: 0 };
     events.forEach(function(event) {
       var outcome = event.outcomes[String(horizon)];
       if (!outcome) return;
+      row.candidateEventCount++;
       if (outcome.classification === 'invalid_event_levels') { row.invalidEventCount++; return; }
+      if (outcome.classification === 'ineligible_at_first_seen') {
+        row.ineligibleAtFirstSeenCount++;
+        if (outcome.firstSeenOutcome === 'tp1_reached_before_first_seen') row.tp1AlreadyReachedCount++;
+        if (outcome.firstSeenOutcome === 'tp2_reached_before_first_seen') row.tp2AlreadyReachedCount++;
+        if (outcome.firstSeenOutcome === 'invalidation_reached_before_first_seen') row.invalidationAlreadyReachedCount++;
+        return;
+      }
       row.eventCount++;
       if (outcome.classification === 'tp1_before_invalidation' || outcome.classification === 'tp2_before_invalidation') row.tp1BeforeInvalidationCount++;
       if (outcome.classification === 'tp2_before_invalidation') row.tp2BeforeInvalidationCount++;
@@ -83,6 +93,12 @@ function outcomeAggregate(events, horizons) {
       if (outcome.classification === 'insufficient_future_data') row.insufficientFutureDataCount++;
       if (outcome.sameBarConflict) row.sameBarConflictCount++;
     });
+    row.eligibleEventRatePct = pct(row.eventCount, row.candidateEventCount);
+    row.ineligibleAtFirstSeenRatePct = pct(row.ineligibleAtFirstSeenCount, row.candidateEventCount);
+    row.invalidEventRatePct = pct(row.invalidEventCount, row.candidateEventCount);
+    row.tp1AlreadyReachedRatePct = pct(row.tp1AlreadyReachedCount, row.candidateEventCount);
+    row.tp2AlreadyReachedRatePct = pct(row.tp2AlreadyReachedCount, row.candidateEventCount);
+    row.invalidationAlreadyReachedRatePct = pct(row.invalidationAlreadyReachedCount, row.candidateEventCount);
     row.tp1BeforeInvalidationRatePct = pct(row.tp1BeforeInvalidationCount, row.eventCount);
     row.tp2BeforeInvalidationRatePct = pct(row.tp2BeforeInvalidationCount, row.eventCount);
     row.invalidationFirstRatePct = pct(row.invalidationFirstCount, row.eventCount);
@@ -92,6 +108,16 @@ function outcomeAggregate(events, horizons) {
     output[String(horizon)] = row;
   });
   return output;
+}
+function firstSeenEligibilityDistribution(events) {
+  var out = { eligible: 0, tp1_reached_before_first_seen: 0, tp2_reached_before_first_seen: 0,
+    invalidation_reached_before_first_seen: 0, invalid_event_levels: 0 };
+  events.forEach(function(event) {
+    var key = event.firstSeenEligibility;
+    if (Object.prototype.hasOwnProperty.call(out, key)) out[key]++;
+    else out.invalid_event_levels++;
+  });
+  return out;
 }
 function processEntries(entries, options) {
   options = options || {}; var from = options.from, to = options.to, hs = options.horizons || Validation.DEFAULT_HORIZONS;
@@ -112,8 +138,14 @@ function processEntries(entries, options) {
       var scan = scanFn(selected, { ticker: symbol });
       if (!scan || scan.error) { failures.push(failure(symbol, scan && scan.error && scan.error.reason)); return; }
       var tickerEvents = [];
-      try { scan.events.forEach(function(event) { event.outcomes = outcomeFn(event, selected, { horizons: hs }).horizons; tickerEvents.push(event); }); }
-      catch (_) { failures.push(failure(symbol, 'outcome_exception')); return; }
+      try {
+        scan.events.forEach(function(event) {
+          var evaluation = outcomeFn(event, selected, { horizons: hs });
+          event.firstSeenEligibility = evaluation.firstSeenEligibility || (evaluation.invalidReason ? 'invalid_event_levels' : 'eligible');
+          event.outcomes = evaluation.horizons;
+          tickerEvents.push(event);
+        });
+      } catch (_) { failures.push(failure(symbol, 'outcome_exception')); return; }
       totalCandles += selected.length; scans.push({ ticker: symbol, windowsScanned: scan.windowsScanned, reasonCounts: scan.reasonCounts,
         deduplicatedObservations: scan.deduplicatedObservations, noPatternExamples: scan.noPatternExamples,
         windowYears: selected.map(function(c) { return c.time.slice(0, 4); }) }); events = events.concat(tickerEvents);
@@ -128,7 +160,8 @@ function processEntries(entries, options) {
     candleCount: totalCandles, totalWindows: totalWindows, uniqueCandidateCount: events.length,
     aggregateReasonDistribution: aggregate, totalDeduplicatedObservations: scans.reduce(function(n, s) { return n + s.deduplicatedObservations; }, 0),
     foundWindowCount: found, noPatternWindowCount: totalWindows - found, directionDistribution: directions,
-    firstSeenStatusDistribution: statuses, outcomeAggregate: outcomeAggregate(events, hs), candidatesPerTickerYear: tickerYearRates(events, scans),
+    firstSeenStatusDistribution: statuses, firstSeenEligibilityDistribution: firstSeenEligibilityDistribution(events),
+    outcomeAggregate: outcomeAggregate(events, hs), candidatesPerTickerYear: tickerYearRates(events, scans),
     deterministicAuditSamples: deterministicSamples(events, scans), cohorts: Validation.summarizeAbcdValidation(events, { horizons: hs }) };
 }
 function main(argv, overrides) {
@@ -137,7 +170,7 @@ function main(argv, overrides) {
   var hs = opt.horizons ? opt.horizons.split(',').map(Number) : Validation.DEFAULT_HORIZONS, entries = loadInput(path.resolve(opt.input));
   var processed = processEntries(entries, Object.assign({ from: from, to: to, horizons: hs }, overrides));
   var canonicalSource = JSON.stringify(entries.map(function(e) { return [normalizeTicker(e.rawTicker), e.reason || null, e.candles]; }).sort());
-  var report = Object.assign({ schemaVersion: 1, methodology: 'walk-forward-truncated-daily-candles', inputSha256: crypto.createHash('sha256').update(canonicalSource).digest('hex'),
+  var report = Object.assign({ schemaVersion: 2, methodology: 'walk-forward-truncated-daily-candles', inputSha256: crypto.createHash('sha256').update(canonicalSource).digest('hex'),
     requestedRange: { from: from || null, to: to || null }, horizons: hs.slice().sort(function(a, b) { return a - b; }) }, processed);
   var text = JSON.stringify(report, null, 2) + '\n';
   if (opt.output) { var output = path.resolve(opt.output); fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, text); }
@@ -145,4 +178,5 @@ function main(argv, overrides) {
 }
 if (require.main === module) { try { main(process.argv.slice(2)); } catch (e) { process.stderr.write('ABCD validation error: ' + e.message + '\n'); process.exitCode = 1; } }
 module.exports = { main: main, loadInput: loadInput, processEntries: processEntries, normalizeTicker: normalizeTicker,
-  parseDate: parseDate, args: args, deterministicSamples: deterministicSamples, outcomeAggregate: outcomeAggregate, tickerYearRates: tickerYearRates };
+  parseDate: parseDate, args: args, deterministicSamples: deterministicSamples, outcomeAggregate: outcomeAggregate,
+  firstSeenEligibilityDistribution: firstSeenEligibilityDistribution, tickerYearRates: tickerYearRates };
