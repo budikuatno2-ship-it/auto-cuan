@@ -12,7 +12,13 @@
   var plansKey = 'autocuan_portfolio_plans_' + uid;
   var pricesKey = 'autocuan_portfolio_prices_' + uid;
   var syncKey = 'autocuan_portfolio_price_sync_v2_' + uid;
-  var state = { messages: [], sending: false, timers: [] };
+  var state = {
+    messages: [],
+    sending: false,
+    timers: [],
+    composing: false,
+    userAtBottom: true
+  };
 
   function byId(id) { return document.getElementById(id); }
   function readJson(key, fallback) {
@@ -99,7 +105,6 @@
     var cleaned = Array.isArray(rows) ? rows.slice(-20).filter(function (row) {
       return row && (row.role === 'user' || row.role === 'assistant') && String(row.content || '').trim();
     }) : [];
-    // Drop consecutive duplicates left behind by older double-send bugs.
     state.messages = cleaned.filter(function (row, index) {
       if (index === 0) return true;
       var previous = cleaned[index - 1];
@@ -119,7 +124,7 @@
     }
     var div = document.createElement('div');
     div.textContent = String(value || '');
-    return div.innerHTML.replace(/\n/g, '<br>');
+    return '<p>' + div.innerHTML.replace(/\n+/g, '</p><p>') + '</p>';
   }
 
   function renderSummary() {
@@ -134,20 +139,58 @@
       byId('aiDataQuality').textContent = summary.plan_count === 0
         ? 'Belum ada posisi atau rencana tersimpan.'
         : summary.positions_missing_price > 0
-          ? 'Lagi sinkron harga terbaru untuk posisi yang masih kosong.'
-          : 'Data posisi dan harga sudah siap dipakai.';
+          ? summary.positions_missing_price + ' posisi belum memiliki harga terbaru yang tersimpan.'
+          : 'Data posisi dan harga tersimpan siap digunakan.';
     }
+  }
+
+  function nearBottom(host) {
+    if (!host) return true;
+    return host.scrollHeight - host.scrollTop - host.clientHeight < 72;
+  }
+
+  function jumpButton() {
+    var button = byId('aiJumpLatest');
+    if (button) return button;
+    var chat = document.querySelector('.ai-chat');
+    if (!chat) return null;
+    button = document.createElement('button');
+    button.id = 'aiJumpLatest';
+    button.type = 'button';
+    button.className = 'ai-jump-latest hidden';
+    button.textContent = 'Pesan terbaru ↓';
+    button.addEventListener('click', function () { scrollToLatest(true); });
+    chat.appendChild(button);
+    return button;
+  }
+
+  function updateJumpButton() {
+    var button = jumpButton();
+    if (!button) return;
+    button.classList.toggle('hidden', state.userAtBottom || state.messages.length < 2);
+  }
+
+  function scrollToLatest(smooth) {
+    var host = byId('aiMessages');
+    if (!host) return;
+    state.userAtBottom = true;
+    var behavior = smooth && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto';
+    try { host.scrollTo({ top: host.scrollHeight, behavior: behavior }); }
+    catch (_) { host.scrollTop = host.scrollHeight; }
+    updateJumpButton();
   }
 
   function renderChat() {
     var host = byId('aiMessages');
     if (!host) return;
+    var previousTop = host.scrollTop;
+    var shouldFollow = state.userAtBottom || nearBottom(host) || !host.childElementCount;
     host.innerHTML = '';
 
     if (!state.messages.length) {
       var intro = document.createElement('div');
       intro.className = 'ai-message ai-system';
-      intro.textContent = 'Tanya apa aja soal posisi, risiko, alokasi, atau kekhawatiranmu. Sistem bakal pakai data yang tersedia dan jujur kalau datanya belum cukup.';
+      intro.textContent = 'Tanyakan risiko, alokasi, atau prioritas posisi. Jawaban menggunakan data yang tersimpan dan akan menyebutkan jika datanya belum cukup.';
       host.appendChild(intro);
     }
 
@@ -162,19 +205,26 @@
     if (state.sending) {
       var loading = document.createElement('div');
       loading.className = 'ai-message ai-assistant ai-loading';
-      loading.innerHTML = '<span id="aiLoadingText">Lagi baca data portofoliomu dulu…</span><span class="ai-loading-dot"></span><span class="ai-loading-dot"></span><span class="ai-loading-dot"></span>';
+      loading.innerHTML = '<span id="aiLoadingText">Membaca data portofolio…</span><span class="ai-loading-dot"></span><span class="ai-loading-dot"></span><span class="ai-loading-dot"></span>';
       host.appendChild(loading);
     }
-    // The page scrollbar is the only scrollbar: follow the newest message by
-    // keeping it in view instead of scrolling an inner chat viewport.
-    var last = host.lastElementChild;
-    if (last && typeof last.scrollIntoView === 'function' && !document.hidden) {
-      try { last.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
-    }
+
+    requestAnimationFrame(function () {
+      if (shouldFollow) scrollToLatest(false);
+      else {
+        host.scrollTop = previousTop;
+        state.userAtBottom = nearBottom(host);
+        updateJumpButton();
+      }
+    });
   }
 
   function addMessage(role, content) {
-    state.messages.push({ role: role, content: String(content || '') });
+    var next = String(content || '').trim();
+    if (!next) return;
+    var previous = state.messages[state.messages.length - 1];
+    if (previous && previous.role === role && String(previous.content).trim() === next) return;
+    state.messages.push({ role: role, content: next });
     state.messages = state.messages.slice(-20);
     saveChat();
     renderChat();
@@ -186,17 +236,20 @@
     var input = byId('aiInput');
     var send = byId('aiSend');
     if (input) input.disabled = active;
-    if (send) send.disabled = active;
+    if (send) {
+      send.disabled = active;
+      send.textContent = active ? 'Memproses…' : 'Kirim';
+    }
     renderChat();
     if (!active) return;
 
     state.timers.push(setTimeout(function () {
       var text = byId('aiLoadingText');
-      if (text) text.textContent = 'Masih diproses ya, lagi nyari jalur AI yang sehat…';
+      if (text) text.textContent = 'Masih memproses dan memeriksa jalur AI yang tersedia…';
     }, 7000));
     state.timers.push(setTimeout(function () {
       var text = byId('aiLoadingText');
-      if (text) text.textContent = 'Agak lama nih, tapi request-mu masih jalan. Santai bentar ya…';
+      if (text) text.textContent = 'Proses membutuhkan waktu lebih lama. Permintaan masih berjalan…';
     }, 17000));
   }
 
@@ -248,47 +301,31 @@
     var plans = context.plans || [];
     var summary = context.summary || {};
     if (!plans.length) {
-      return 'Belum ada posisi atau rencana yang bisa dibaca. Isi dulu ticker, harga entry, jumlah lot, dan stop loss. Setelah itu sistem bisa menghitung risiko, konsentrasi modal, dan posisi yang paling perlu diperhatikan.';
+      return 'Belum ada posisi atau rencana yang dapat dinilai. Tambahkan ticker, harga entry, jumlah lot, dan batas risiko terlebih dahulu.';
     }
 
     var largest = plans.slice().sort(function (a, b) {
       return Number(b.estimatedMaxLossIdr || 0) - Number(a.estimatedMaxLossIdr || 0);
     })[0];
     var riskPct = Number(summary.total_position_value) > 0
-      ? (Number(summary.total_estimated_risk || 0) / Number(summary.total_position_value) * 100)
+      ? Number(summary.total_estimated_risk || 0) / Number(summary.total_position_value) * 100
       : null;
-
-    var lines = [
-      '_Jalur AI utama sedang sibuk, jadi ringkasan ini dibuat langsung dari data portofolio yang tersimpan._',
-      '',
-      '### Ringkasan portofolio',
-      '- Posisi/rencana tersimpan: **' + plans.length + '**',
-      '- Nilai posisi rencana: **' + money(summary.total_position_value) + '**',
-      '- Estimasi risiko maksimum: **' + money(summary.total_estimated_risk) + '**' + (riskPct != null ? ' atau sekitar **' + riskPct.toFixed(2) + '%** dari nilai posisi.' : '.'),
-      '- Posisi yang sudah punya harga terbaru: **' + Number(summary.positions_with_price || 0) + '**',
-      '- Harga yang masih kosong: **' + Number(summary.positions_missing_price || 0) + '**',
-      '',
-      '### Yang paling perlu diperhatikan'
-    ];
+    var lines = ['Jalur AI utama sedang sibuk. Ringkasan berikut dibuat dari data portofolio yang tersimpan.'];
 
     if (largest) {
-      lines.push('- Risiko nominal terbesar saat ini ada di **' + largest.ticker + '**, sekitar **' + money(largest.estimatedMaxLossIdr) + '**.');
+      lines.push('**Prioritas perhatian:** ' + largest.ticker + ' memiliki estimasi risiko nominal terbesar, sekitar **' + money(largest.estimatedMaxLossIdr) + '**.');
       if (largest.entryPriceIdr && largest.stopLossIdr) {
         var distance = (largest.entryPriceIdr - largest.stopLossIdr) / largest.entryPriceIdr * 100;
-        lines.push('- Jarak entry ke stop loss **' + largest.ticker + '** sekitar **' + distance.toFixed(2) + '%**.');
+        lines.push('Jarak entry ke stop loss sekitar **' + distance.toFixed(2) + '%**. Pastikan level tersebut benar-benar menjadi batas invalidasi.');
       }
     }
 
+    lines.push('Total estimasi risiko tersimpan adalah **' + money(summary.total_estimated_risk) + '**' + (riskPct != null ? ', sekitar **' + riskPct.toFixed(2) + '%** dari nilai posisi.' : '.'));
     if (Number(summary.positions_missing_price || 0) > 0) {
-      lines.push('- P/L berjalan belum bisa dinilai penuh karena masih ada harga terbaru yang kosong. Sistem sedang mencoba sinkron otomatis.');
+      lines.push('Sebagian harga belum tersedia, sehingga P/L berjalan belum dapat dinilai penuh.');
     }
-
-    lines.push('', '### Saran paling masuk akal sekarang');
-    lines.push('- Pastikan stop loss setiap posisi memang level invalidasi, bukan sekadar angka biar kelihatan aman.');
-    lines.push('- Jangan tambah posisi baru sebelum total risiko gabungan masih sesuai batas yang kamu sanggupi.');
-    lines.push('- Untuk keputusan spesifik seperti average down atau cut loss, cek harga terbaru dan validitas setup dulu—jangan cuma lihat harga merah/hijau.');
-    lines.push('', '_Pertanyaanmu: “' + String(question || '').slice(0, 180) + '”_');
-    return lines.join('\n');
+    lines.push('Langkah praktis: periksa harga terbaru dan validitas stop loss sebelum menambah posisi atau melakukan average down.');
+    return lines.join('\n\n');
   }
 
   async function sendMessage(text) {
@@ -299,7 +336,7 @@
     var input = byId('aiInput');
     var status = byId('aiStatus');
     if (input) input.value = '';
-    if (status) status.textContent = 'Lagi baca data dan nyusun jawaban…';
+    if (status) status.textContent = 'Membaca data dan menyusun jawaban…';
     setSending(true);
 
     try {
@@ -319,14 +356,13 @@
       });
       var data = await response.json().catch(function () { return {}; });
       if (!response.ok || !data.success || !data.reply) {
-        throw new Error(data.error || 'AI cloud lagi nggak bisa dipakai.');
+        throw new Error(data.error || 'Jalur AI belum tersedia.');
       }
       addMessage('assistant', data.reply);
-      if (status) status.textContent = 'Jawaban dibuat dari data portofolio yang tersedia.';
+      if (status) status.textContent = 'Jawaban menggunakan data portofolio yang tersedia.';
     } catch (error) {
-      var fallbackContext = contextNow();
-      addMessage('assistant', localFallback(text, fallbackContext));
-      if (status) status.textContent = 'Jalur AI utama sedang sibuk. Jawaban sementara dibuat dari data portofolio yang tersedia.';
+      addMessage('assistant', localFallback(text, contextNow()));
+      if (status) status.textContent = 'Jalur AI utama sedang sibuk. Ringkasan lokal ditampilkan.';
       console.warn('portfolio-ai cloud fallback', error && error.message);
     } finally {
       setSending(false);
@@ -346,23 +382,35 @@
     var input = replaceControl('aiInput');
     var send = replaceControl('aiSend');
     var clear = replaceControl('aiClear');
+    var messages = byId('aiMessages');
 
+    if (messages) {
+      messages.addEventListener('scroll', function () {
+        state.userAtBottom = nearBottom(messages);
+        updateJumpButton();
+      }, { passive: true });
+    }
     if (send) send.addEventListener('click', function (event) {
       event.preventDefault();
       sendMessage(input && input.value);
     });
-    if (input) input.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        sendMessage(input.value);
-      }
-    });
+    if (input) {
+      input.addEventListener('compositionstart', function () { state.composing = true; });
+      input.addEventListener('compositionend', function () { state.composing = false; });
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && !event.shiftKey && !state.composing && !event.isComposing) {
+          event.preventDefault();
+          sendMessage(input.value);
+        }
+      });
+    }
     if (clear) clear.addEventListener('click', function (event) {
       event.preventDefault();
       state.messages = [];
+      state.userAtBottom = true;
       saveChat();
       renderChat();
-      if (byId('aiStatus')) byId('aiStatus').textContent = 'Chat sudah dibersihkan.';
+      if (byId('aiStatus')) byId('aiStatus').textContent = 'Percakapan telah dibersihkan.';
     });
 
     document.querySelectorAll('[data-ai-prompt]').forEach(function (oldButton) {
@@ -375,15 +423,70 @@
     });
   }
 
+  function installPremiumLayout() {
+    if (!document.getElementById('portfolio-ai-premium-layout')) {
+      var style = document.createElement('style');
+      style.id = 'portfolio-ai-premium-layout';
+      style.textContent = [
+        '#page-ai{--ai-surface:#0b111b;--ai-surface-2:#101925;--ai-line:rgba(148,163,184,.16);--ai-accent:#34d399}',
+        '#page-ai .ai-shell{max-width:none!important;display:grid!important;grid-template-columns:minmax(0,1.9fr) minmax(270px,.72fr)!important;gap:16px!important;align-items:stretch}',
+        '#page-ai .ai-chat{position:relative;min-width:0;height:min(680px,calc(100dvh - 205px));min-height:520px;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto;overflow:hidden;padding:18px;background:linear-gradient(155deg,rgba(16,25,37,.98),rgba(8,13,22,.99));border-color:rgba(74,222,128,.18);box-shadow:0 22px 70px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.025)}',
+        '#page-ai .ai-chat>.between{padding-bottom:12px;border-bottom:1px solid rgba(148,163,184,.11)}',
+        '#page-ai .ai-chat h2{font-size:1.08rem;margin-bottom:3px}',
+        '#page-ai .ai-quick{margin:10px 0 8px;gap:7px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}',
+        '#page-ai .ai-quick::-webkit-scrollbar{display:none}',
+        '#page-ai .ai-quick .btn{border-radius:999px;background:rgba(15,23,42,.82);border-color:rgba(148,163,184,.16);color:#cbd5e1;box-shadow:none}',
+        '#page-ai .ai-quick .btn:hover,#page-ai .ai-quick .btn:focus-visible{border-color:rgba(52,211,153,.5);color:#d1fae5;background:rgba(16,185,129,.09)}',
+        '#page-ai .ai-messages{min-height:0!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-gutter:stable;display:flex;flex-direction:column;gap:10px;padding:12px 6px 16px 2px;scroll-behavior:smooth}',
+        '#page-ai .ai-messages::-webkit-scrollbar{width:8px}#page-ai .ai-messages::-webkit-scrollbar-track{background:transparent}#page-ai .ai-messages::-webkit-scrollbar-thumb{background:rgba(100,116,139,.38);border-radius:999px}',
+        '#page-ai .ai-message{box-shadow:none;font-size:13.5px;line-height:1.58}',
+        '#page-ai .ai-user{max-width:min(520px,82%);background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(6,95,70,.12));border-color:rgba(52,211,153,.24);color:#ecfdf5}',
+        '#page-ai .ai-assistant{max-width:min(760px,96%);background:rgba(6,11,19,.78);border-color:rgba(148,163,184,.14);padding:14px 16px}',
+        '#page-ai .ai-system{margin:auto;max-width:560px;padding:18px 14px;border:1px dashed rgba(148,163,184,.15);border-radius:14px;background:rgba(15,23,42,.3)}',
+        '#page-ai .ai-compose{margin:0;padding-top:11px;border-top:1px solid rgba(148,163,184,.11);background:linear-gradient(180deg,rgba(8,13,22,0),rgba(8,13,22,.98) 24%)}',
+        '#page-ai .ai-compose textarea{min-height:54px;max-height:130px;background:rgba(5,10,17,.92);border-color:rgba(148,163,184,.2);border-radius:13px;resize:none}',
+        '#page-ai .ai-compose textarea:focus{border-color:rgba(52,211,153,.58);box-shadow:0 0 0 3px rgba(52,211,153,.08)}',
+        '#page-ai .ai-compose .btn{min-width:92px;border-radius:12px}',
+        '#page-ai .ai-status{margin:7px 2px 0;color:#7f9bb7;font-size:11.5px}',
+        '#page-ai .ai-shell>aside{order:initial!important;align-self:stretch;padding:16px;background:linear-gradient(180deg,rgba(15,23,35,.95),rgba(9,15,24,.98));border-color:rgba(148,163,184,.14);box-shadow:0 18px 54px rgba(0,0,0,.2)}',
+        '#page-ai .ai-data-grid{grid-template-columns:1fr!important;gap:8px}',
+        '#page-ai .ai-data-card{padding:10px 11px;border-radius:10px;background:rgba(5,10,17,.62)}',
+        '#page-ai .ai-data-card[style]{grid-column:auto!important}',
+        '#page-ai .ai-jump-latest{position:absolute;z-index:5;right:26px;bottom:104px;padding:7px 11px;border:1px solid rgba(52,211,153,.35);border-radius:999px;background:rgba(6,78,59,.94);color:#d1fae5;font:700 11px/1.2 inherit;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3)}',
+        '#page-ai .ai-jump-latest.hidden{display:none}',
+        '#page-ai button:focus-visible,#page-ai textarea:focus-visible{outline:2px solid rgba(110,231,183,.75);outline-offset:2px}',
+        '@media(max-width:980px){#page-ai .ai-shell{grid-template-columns:1fr!important}#page-ai .ai-chat{height:clamp(540px,72dvh,680px)}#page-ai .ai-shell>aside{order:2!important}#page-ai .ai-data-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}}',
+        '@media(max-width:620px){#page-ai .ai-chat{height:clamp(500px,70dvh,640px);min-height:500px;padding:13px}#page-ai .ai-chat>.between{align-items:flex-start}#page-ai .ai-chat>.between .btn{padding:7px 9px;min-height:34px}#page-ai .ai-quick{margin-top:8px}#page-ai .ai-user{max-width:92%}#page-ai .ai-assistant{max-width:98%;padding:12px 13px}#page-ai .ai-compose{grid-template-columns:minmax(0,1fr) auto!important}#page-ai .ai-compose .btn{width:auto!important;min-width:76px;padding:9px 12px}#page-ai .ai-data-grid{grid-template-columns:1fr 1fr!important}#page-ai .ai-jump-latest{right:18px;bottom:103px}}',
+        '@media(prefers-reduced-motion:reduce){#page-ai .ai-messages{scroll-behavior:auto}#page-ai *{animation-duration:.01ms!important;transition-duration:.01ms!important}}'
+      ].join('');
+      document.head.appendChild(style);
+    }
+
+    var quicks = document.querySelectorAll('[data-ai-prompt]');
+    var replacements = [
+      { label: 'Ringkas risiko', prompt: 'Ringkas risiko portofolioku berdasarkan data yang tersedia.' },
+      { label: 'Prioritas perhatian', prompt: 'Posisi mana yang paling perlu perhatian dan kenapa?' },
+      { label: 'Cek alokasi', prompt: 'Apakah alokasi portofolioku terlalu berat di satu posisi?' },
+      { label: 'Evaluasi objektif', prompt: 'Bantu saya menilai posisi secara tenang dan objektif berdasarkan data yang tersimpan.' }
+    ];
+    Array.prototype.forEach.call(quicks, function (button, index) {
+      if (!replacements[index]) return;
+      button.textContent = replacements[index].label;
+      button.setAttribute('data-ai-prompt', replacements[index].prompt);
+    });
+    jumpButton();
+  }
+
   async function init() {
+    installPremiumLayout();
     loadChat();
     bindCleanControls();
     renderChat();
     renderSummary();
     var status = byId('aiStatus');
-    if (status) status.textContent = 'AI siap. Harga posisi akan disinkronkan otomatis.';
+    if (status) status.textContent = 'AI siap. Harga tersimpan akan diperbarui bila tersedia.';
     var updated = await syncMissingPrices(false);
-    if (updated && status) status.textContent = updated + ' harga posisi berhasil disinkronkan. AI siap dipakai.';
+    if (updated && status) status.textContent = updated + ' harga posisi berhasil diperbarui.';
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
