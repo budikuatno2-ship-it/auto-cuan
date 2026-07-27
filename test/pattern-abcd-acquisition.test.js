@@ -1,0 +1,7 @@
+'use strict';
+const test = require('node:test'); const assert = require('node:assert/strict');
+const A = require('../tools/acquire-pattern-abcd-data');
+test('normalizes IDX/Yahoo tickers and rejects malformed symbols', () => { assert.equal(A.normalizeTicker(' bbca.jk '), 'BBCA'); assert.equal(A.normalizeTicker('../x'), null); });
+test('Yahoo timestamps must be exact UTC-midnight epoch seconds', () => { assert.equal(A.yahooDate(1704067200), '2024-01-01'); assert.equal(A.yahooDate(1704067201), null); assert.equal(A.yahooDate(1.5), null); });
+test('Yahoo normalization skips null prices but rejects malformed timestamps', () => { const payload = { chart: { result: [{ timestamp: [1704067200], indicators: { quote: [{ open: [10], high: [12], low: [9], close: [11], volume: [20] }] } }] } }; assert.deepEqual(A.normalizeYahoo(payload)[0], { time: '2024-01-01', open: 10, high: 12, low: 9, close: 11, volume: 20 }); payload.chart.result[0].timestamp[0]++; assert.throws(() => A.normalizeYahoo(payload), /malformed_yahoo_timestamp/); });
+test('bounded worker isolates a ticker failure and preserves manifest order', async () => { let active = 0, maximum = 0; const result = await A.mapBounded(['A','B','C'], 2, async value => { active++; maximum = Math.max(maximum, active); await new Promise(r => setTimeout(r, 5)); active--; if (value === 'B') throw new Error('nope'); return value; }); assert.equal(maximum, 2); assert.deepEqual(result, [{ value: 'A' }, { error: 'nope' }, { value: 'C' }]); });

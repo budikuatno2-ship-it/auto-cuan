@@ -46,6 +46,13 @@ function reasonAggregate(scans, total) {
   var counts = {}; scans.forEach(function(scan) { Object.keys(scan.reasonCounts).forEach(function(reason) { counts[reason] = (counts[reason] || 0) + scan.reasonCounts[reason]; }); });
   var out = {}; Object.keys(counts).sort().forEach(function(reason) { out[reason] = { count: counts[reason], percentagePct: total ? Math.round(counts[reason] / total * 1000000) / 10000 : 0 }; }); return out;
 }
+function deterministicSamples(events, scans) {
+  function first(direction) { return events.filter(function(e) { return e.direction === direction; }).slice().sort(function(a, b) { return a.candidateId.localeCompare(b.candidateId); }).slice(0, 5); }
+  var none = []; scans.forEach(function(scan) { none = none.concat(scan.noPatternExamples); }); none.sort(function(a, b) { return a.ticker.localeCompare(b.ticker) || a.dataDate.localeCompare(b.dataDate) || a.reason.localeCompare(b.reason); });
+  return { bullish: first('bullish'), bearish: first('bearish'), noPattern: none.slice(0, 5) };
+}
+function tickerYearRates(events, scans) { var windows = {}, candidates = {}; scans.forEach(function(scan) { scan.windowYears.forEach(function(year) { var key = scan.ticker + '|' + year; windows[key] = (windows[key] || 0) + 1; }); }); events.forEach(function(event) { var key = event.ticker + '|' + event.firstSeenDate.slice(0, 4); candidates[key] = (candidates[key] || 0) + 1; }); return Object.keys(windows).sort().map(function(key) { var parts = key.split('|'), count = candidates[key] || 0; return { ticker: parts[0], year: Number(parts[1]), candidateCount: count, windowsScanned: windows[key], candidatesPerTickerYear: count }; }); }
+function outcomeAggregate(events, hs) { var output = {}; hs.forEach(function(h) { var row = { eventCount: 0, tp1BeforeInvalidationCount: 0, tp2BeforeInvalidationCount: 0, invalidationFirstCount: 0, unresolvedCount: 0, insufficientFutureDataCount: 0, sameBarConflictCount: 0 }; events.forEach(function(e) { var o = e.outcomes[String(h)]; if (!o || o.classification === 'invalid_event_levels') return; row.eventCount++; if (o.classification === 'tp1_before_invalidation' || o.classification === 'tp2_before_invalidation') row.tp1BeforeInvalidationCount++; if (o.classification === 'tp2_before_invalidation') row.tp2BeforeInvalidationCount++; if (o.classification === 'invalidation_before_tp1') row.invalidationFirstCount++; if (o.classification === 'unresolved') row.unresolvedCount++; if (o.classification === 'insufficient_future_data') row.insufficientFutureDataCount++; if (o.sameBarConflict) row.sameBarConflictCount++; }); output[String(h)] = row; }); return output; }
 function processEntries(entries, options) {
   options = options || {}; var from = options.from, to = options.to, hs = options.horizons || Validation.DEFAULT_HORIZONS;
   var scanFn = options.walkForward || Validation.walkForwardAbcdValidation, outcomeFn = options.evaluateOutcome || Validation.evaluateAbcdOutcome;
@@ -68,7 +75,7 @@ function processEntries(entries, options) {
       try { scan.events.forEach(function(event) { event.outcomes = outcomeFn(event, selected, { horizons: hs }).horizons; tickerEvents.push(event); }); }
       catch (_) { failures.push(failure(symbol, 'outcome_exception')); return; }
       totalCandles += selected.length; scans.push({ ticker: symbol, windowsScanned: scan.windowsScanned, reasonCounts: scan.reasonCounts,
-        deduplicatedObservations: scan.deduplicatedObservations, noPatternExamples: scan.noPatternExamples }); events = events.concat(tickerEvents);
+        deduplicatedObservations: scan.deduplicatedObservations, noPatternExamples: scan.noPatternExamples, windowYears: selected.map(function(c) { return c.time.slice(0, 4); }) }); events = events.concat(tickerEvents);
     } catch (_) { failures.push(failure(symbol, 'ticker_processing_exception')); }
   });
   failures.sort(function(a, b) { return String(a.ticker).localeCompare(String(b.ticker)) || a.reason.localeCompare(b.reason) || (a.candleIndex || 0) - (b.candleIndex || 0); });
@@ -80,7 +87,8 @@ function processEntries(entries, options) {
     candleCount: totalCandles, totalWindows: totalWindows, uniqueCandidateCount: events.length,
     aggregateReasonDistribution: aggregate, totalDeduplicatedObservations: scans.reduce(function(n, s) { return n + s.deduplicatedObservations; }, 0),
     foundWindowCount: found, noPatternWindowCount: totalWindows - found, directionDistribution: directions,
-    firstSeenStatusDistribution: statuses, cohorts: Validation.summarizeAbcdValidation(events, { horizons: hs }) };
+    firstSeenStatusDistribution: statuses, outcomeAggregate: outcomeAggregate(events, hs), candidatesPerTickerYear: tickerYearRates(events, scans),
+    deterministicAuditSamples: deterministicSamples(events, scans), cohorts: Validation.summarizeAbcdValidation(events, { horizons: hs }) };
 }
 function main(argv, overrides) {
   var opt = args(argv), from, to; if (!opt.input) throw new Error('--input is required'); if (!opt.output && !opt.json) throw new Error('--output or --json is required');
@@ -94,4 +102,4 @@ function main(argv, overrides) {
 }
 if (require.main === module) { try { main(process.argv.slice(2)); } catch (e) { process.stderr.write('ABCD validation error: ' + e.message + '\n'); process.exitCode = 1; } }
 module.exports = { main: main, loadInput: loadInput, processEntries: processEntries, normalizeTicker: normalizeTicker,
-  parseDate: parseDate, args: args };
+  parseDate: parseDate, args: args, deterministicSamples: deterministicSamples, outcomeAggregate: outcomeAggregate };
