@@ -25,3 +25,41 @@ window.FCA_STOCKS = {
   "KOTA": { name: "DMS Propertindo Tbk.", reason: "Papan Pemantauan Khusus" },
   "BOSS": { name: "Borneo Olah Sarana Sukses Tbk.", reason: "Papan Pemantauan Khusus" }
 };
+
+// The Pattern Radar is an optional admin-only presentation module. Load it
+// after the base document exists so it can safely attach to the existing nav,
+// Pattern authorization gate, and Technical Chart functions without blocking
+// the initial dashboard render.
+(function loadPatternRadar() {
+  if (typeof document === 'undefined') return;
+  function load() {
+    if (document.querySelector('script[data-pattern-radar-loader]')) return;
+    var script = document.createElement('script');
+    script.src = '/pattern-radar.js?v=20260728-radar2';
+    script.async = true;
+    script.setAttribute('data-pattern-radar-loader', 'true');
+    document.head.appendChild(script);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once: true });
+  else load();
+})();
+
+// Defense in depth for exact session expiry. PatternMapAdminAccess owns the
+// signed-session clock; this small watcher removes the discovery UI as soon as
+// that gate is no longer fresh, even when the page stays open without focus or
+// visibility events.
+(function watchPatternRadarAccess() {
+  if (typeof window === 'undefined' || typeof document === 'undefined' || typeof window.setInterval !== 'function') return;
+  window.setInterval(function () {
+    var gate = window.PatternMapAdminAccess;
+    if (!gate || typeof gate.isAllowed !== 'function' || gate.isAllowed()) return;
+    ['patternRadarDesktopNav', 'patternRadarMobileNav'].forEach(function (id) {
+      var nav = document.getElementById(id);
+      if (nav) nav.remove();
+    });
+    var page = document.getElementById('page-pattern');
+    if (!page || page.classList.contains('hidden')) return;
+    page.classList.add('hidden');
+    if (typeof window.navigateTo === 'function') window.navigateTo('chart');
+  }, 1000);
+})();
