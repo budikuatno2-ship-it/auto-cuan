@@ -1,6 +1,9 @@
 name: Pattern Score Validation
 
 on:
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
   push:
     branches:
       - fix/pattern-screener-labels-reentry
