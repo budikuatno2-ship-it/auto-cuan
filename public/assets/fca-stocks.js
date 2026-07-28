@@ -26,7 +26,9 @@ window.FCA_STOCKS = {
   }
   function load() {
     append('/ui-stability-fix.js?v=20260728-ui-stability-v1', 'data-ui-stability-loader', function () {
-      append('/pattern-stable-runtime.js?v=20260728-pattern-stable-v1', 'data-pattern-stable-loader');
+      append('/pattern-stable-runtime.js?v=20260728-pattern-stable-v1', 'data-pattern-stable-loader', function () {
+        append('/ui-final-fixes.js?v=20260728-final-ui-v1', 'data-ui-final-fixes-loader');
+      });
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once: true });
