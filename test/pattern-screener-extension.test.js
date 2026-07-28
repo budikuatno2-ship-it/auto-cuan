@@ -54,22 +54,23 @@ test('generic and malformed pattern labels are ignored', () => {
   assert.equal(extension.labelText('[object Object]'), null);
 });
 
-test('Screener-only cards are clearly contextual and never fabricate a Pattern Map button', () => {
-  const html = extension.setupOnlyCardHtml({ ticker:'BBRI', labels:['VCP Setup', 'Cup and Handle'], sources:['Swing Konglo'] });
-  assert.match(html, /Pattern dan setup resmi dari Screener terbaru/);
-  assert.match(html, /bukan sinyal BUY otomatis/);
-  assert.match(html, /data-setup-chart="BBRI"/);
-  assert.doesNotMatch(html, /data-ps-map|Lihat Peta/);
+test('Screener setup labels enrich existing Pattern cards only', () => {
+  const source = read('public/pattern-screener-extension.js');
+  assert.match(source, /syncExistingCards/);
+  assert.match(source, /querySelectorAll\('\[data-screener-only="1"\]'\)/);
+  assert.match(source, /card\.remove\(\)/);
+  assert.match(source, /\.ps-card:not\(\[data-screener-only="1"\]\)/);
+  assert.doesNotMatch(source, /setupOnlyCardHtml|data-setup-chart|insertAdjacentHTML\('beforeend'/);
 });
 
-test('artifact and redundant Chart control guards are narrow', () => {
+test('artifact cleanup stays narrow and the dead Technical Chart control is always removed', () => {
   assert.equal(extension.isStandaloneArtifact(';'), true);
   assert.equal(extension.isStandaloneArtifact(' ; \n'), true);
   assert.equal(extension.isStandaloneArtifact('Risiko; keputusan manual.'), false);
   assert.equal(extension.isRedundantChartControl('Technical Chart', '', ''), true);
+  assert.equal(extension.isRedundantChartControl(' Technical Chart ', 'technicalChartTab', 'chart'), true);
   assert.equal(extension.isRedundantChartControl('Lihat Chart', '', ''), false);
-  assert.equal(extension.isRedundantChartControl('Technical Chart', 'technicalChartTab', ''), false);
-  assert.equal(extension.isRedundantChartControl('Technical Chart', '', 'chart'), false);
+  assert.equal(extension.isRedundantChartControl('Buka Chart', '', ''), false);
 });
 
 test('runtime loads after stable Pattern and preserves protected systems', () => {
@@ -77,15 +78,15 @@ test('runtime loads after stable Pattern and preserves protected systems', () =>
   const source = read('public/pattern-screener-extension.js');
   new vm.Script(source, { filename:'pattern-screener-extension.js' });
   assert.ok(loader.indexOf('/pattern-stable-runtime.js') < loader.indexOf('/pattern-screener-extension.js'));
-  assert.match(loader, /pattern-screener-v3/);
+  assert.match(loader, /pattern-stable-v3/);
+  assert.match(loader, /pattern-screener-v5/);
   assert.match(source, /smart_setup_labels/);
   assert.match(source, /classic_chart_patterns/);
   assert.match(source, /primary_classic_pattern/);
   assert.match(source, /action=screener/);
   assert.match(source, /action=nk-screener-results/);
   assert.match(source, /action=daytrade-screener/);
-  assert.match(source, /recoverReentry/);
-  assert.match(source, /isRedundantChartControl/);
+  assert.match(source, /removeRedundantChartControl/);
   assert.match(source, /isStandaloneArtifact/);
   assert.doesNotMatch(source, /sendTelegram|telegramNotifier|supabase\.from|createOrder|DAYTRADE_INTRADAY_SCORE_ENABLED|smart_setup_score_bonus\s*=/i);
 });
