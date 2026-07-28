@@ -1,0 +1,42 @@
+name: Pattern Score Validation
+
+on:
+  push:
+    branches:
+      - fix/pattern-screener-labels-reentry
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Syntax checks
+        run: |
+          node --check lib/classic-chart-patterns.js
+          node --check lib/smart-setup-labels.js
+          node --check api/candles.js
+          node --check public/pattern-stable-runtime.js
+          node --check public/pattern-screener-extension.js
+      - name: Focused tests
+        run: |
+          node --test \
+            test/classic-chart-patterns.test.js \
+            test/smart-setup-labels.test.js \
+            test/pattern-radar.test.js \
+            test/pattern-screener-extension.test.js \
+            test/pattern-map.test.js \
+            test/chart-t1-candles.test.js
+      - name: Production build gate
+        run: npm run build
+      - name: API count
+        run: test "$(find api -maxdepth 1 -type f -name '*.js' | wc -l | tr -d ' ')" = "12"
