@@ -7,7 +7,7 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
 
-  var VERSION = '20260728-pattern-screener-v4';
+  var VERSION = '20260728-pattern-screener-v5';
   var TICKER_RE = /^[A-Z]{3,5}$/;
   var SOURCES = [
     { name:'Swing Konglo', url:'/api/sector-hot?action=screener' },
@@ -69,8 +69,8 @@
   function isStandaloneArtifact(value) {
     return /^(?:;|\||[-*_]{3,}|#{1,6}|\*\*|__)$/.test(String(value == null ? '' : value).trim());
   }
-  function isRedundantChartControl(value, id, dataPage) {
-    return String(value == null ? '' : value).trim() === 'Technical Chart' && String(id || '') !== 'technicalChartTab' && String(dataPage || '') !== 'chart';
+  function isRedundantChartControl(value) {
+    return String(value == null ? '' : value).trim() === 'Technical Chart';
   }
   function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
@@ -174,7 +174,7 @@
       var page = input && input.closest ? input.closest('.page-content') : doc.getElementById('page-chart');
       if (!page) return;
       Array.prototype.forEach.call(page.querySelectorAll('button'), function (button) {
-        if (isRedundantChartControl(button.textContent, button.id, button.getAttribute('data-page'))) button.remove();
+        if (isRedundantChartControl(button.textContent)) button.remove();
       });
     }
 
