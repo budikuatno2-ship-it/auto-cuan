@@ -24,14 +24,16 @@ jobs:
           node --check public/pattern-screener-extension.js
           node --check public/portfolio-runtime-fix.js
           node --check public/assets/fca-stocks.js
-      - name: Focused regression tests
-        run: |
-          node --test \
-            test/pattern-radar.test.js \
-            test/pattern-screener-extension.test.js \
-            test/portfolio-command-center.test.js \
-            test/classic-chart-patterns.test.js \
-            test/pattern-ranking-integration.test.js
+      - name: Pattern Radar tests
+        run: node --test test/pattern-radar.test.js
+      - name: Pattern enrichment tests
+        run: node --test test/pattern-screener-extension.test.js
+      - name: Portfolio tests
+        run: node --test test/portfolio-command-center.test.js
+      - name: Classic detector tests
+        run: node --test test/classic-chart-patterns.test.js
+      - name: Ranking integration tests
+        run: node --test test/pattern-ranking-integration.test.js
       - name: Production build gate
         run: npm run build
       - name: API count
