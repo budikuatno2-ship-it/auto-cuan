@@ -7,13 +7,14 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
 
-  var VERSION = '20260728-pattern-screener-v2';
+  var VERSION = '20260728-pattern-screener-v3';
   var TICKER_RE = /^[A-Z]{3,5}$/;
   var SOURCES = [
     { name:'Swing Konglo', url:'/api/sector-hot?action=screener' },
     { name:'Swing Non-Konglo', url:'/api/sector-hot?action=nk-screener-results' },
     { name:'Day Trade', url:'/api/sector-hot?action=daytrade-screener' }
   ];
+  var GENERIC_PATTERN_LABELS = /^(?:no clear pattern|insufficient data|none|null|unknown|no pattern)$/i;
 
   function normalizeTicker(value) {
     var ticker = String(value == null ? '' : value).trim().toUpperCase().replace(/\.JK$/, '');
@@ -27,18 +28,41 @@
     return [];
   }
 
+  function labelText(value) {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      value = value.setup_label || value.pattern_label || value.label || value.name || value.setup_type || value.type || value.pattern;
+    }
+    value = String(value == null ? '' : value).trim();
+    if (!value || value === '[object Object]' || GENERIC_PATTERN_LABELS.test(value)) return null;
+    return value;
+  }
+
+  function appendLabel(labels, value) {
+    var label = labelText(value);
+    if (label && labels.indexOf(label) < 0) labels.push(label);
+  }
+
   function officialSetupLabels(row) {
     if (!row || typeof row !== 'object' || Array.isArray(row)) return [];
     var containers = [row];
     if (row.raw_payload && typeof row.raw_payload === 'object' && !Array.isArray(row.raw_payload)) containers.push(row.raw_payload);
     var labels = [];
     containers.forEach(function (container) {
-      if (Array.isArray(container.smart_setup_labels)) container.smart_setup_labels.forEach(function (label) {
-        label = String(label == null ? '' : label).trim();
-        if (label && labels.indexOf(label) < 0) labels.push(label);
+      [
+        container.smart_setup_labels,
+        container.classic_chart_patterns,
+        container.classicPatterns,
+        container.chart_patterns
+      ].forEach(function (values) {
+        (Array.isArray(values) ? values : []).forEach(function (value) { appendLabel(labels, value); });
       });
-      var primary = String(container.primary_smart_setup == null ? '' : container.primary_smart_setup).trim();
-      if (primary && labels.indexOf(primary) < 0) labels.push(primary);
+      [
+        container.primary_smart_setup,
+        container.primary_classic_pattern,
+        container.pattern_label,
+        container.candle_pattern,
+        container.candle_pattern_label
+      ].forEach(function (value) { appendLabel(labels, value); });
     });
     return labels;
   }
@@ -80,9 +104,9 @@
 
   function setupOnlyCardHtml(setup) {
     return '<article class="ps-card ps-setup-only" data-screener-only="1" data-setup-ticker="' + esc(setup.ticker) + '" data-setup-signature="' + esc(setupSignature(setup)) + '">' +
-      '<div class="ps-card-head"><div><div class="ps-ticker">' + esc(setup.ticker) + '</div><div class="ps-name">Setup resmi dari Screener terbaru</div></div><span class="ps-badge">Setup Screener</span></div>' +
+      '<div class="ps-card-head"><div><div class="ps-ticker">' + esc(setup.ticker) + '</div><div class="ps-name">Pattern dan setup resmi dari Screener terbaru</div></div><span class="ps-badge">Konteks Screener</span></div>' +
       '<div class="ps-setup-chips">' + setup.labels.map(function (label) { return '<span class="ps-setup-chip">' + esc(label) + '</span>'; }).join('') + '</div>' +
-      '<p class="ps-setup-source">Sumber: ' + esc(setup.sources.join(', ')) + '. Label setup bukan sinyal BUY.</p>' +
+      '<p class="ps-setup-source">Sumber: ' + esc(setup.sources.join(', ')) + '. Pattern memperkuat konteks dan ranking, bukan sinyal BUY otomatis.</p>' +
       '<div class="ps-card-actions"><button class="ps-btn alt" data-setup-chart="' + esc(setup.ticker) + '">Buka Chart</button></div></article>';
   }
 
@@ -141,7 +165,7 @@
       return !!status && /^Selesai memindai\b/.test(String(status.textContent || '').trim());
     }
 
-    function existingAbcdCards(grid) {
+    function existingPatternCards(grid) {
       var map = Object.create(null);
       Array.prototype.forEach.call(grid.querySelectorAll('.ps-card:not([data-screener-only="1"])'), function (card) {
         var ticker = normalizeTicker(card.querySelector('.ps-ticker') && card.querySelector('.ps-ticker').textContent);
@@ -150,7 +174,7 @@
       return map;
     }
 
-    function syncAbcdCard(card, setup) {
+    function syncPatternCard(card, setup) {
       var signature = setupSignature(setup);
       if (card.getAttribute('data-setup-signature') === signature) return;
       card.setAttribute('data-setup-signature', signature);
@@ -170,7 +194,7 @@
         source = doc.createElement('p'); source.className = 'ps-setup-source';
         chips.parentNode.insertBefore(source, chips.nextSibling);
       }
-      var text = 'Juga terdeteksi oleh: ' + setup.sources.join(', ') + '.';
+      var text = 'Juga terdeteksi oleh: ' + setup.sources.join(', ') + '. Bonus Swing tetap dibatasi safety gate.';
       if (source.textContent !== text) source.textContent = text;
     }
 
@@ -180,10 +204,10 @@
       if (!grid) return;
       state.rendering = true;
       try {
-        var abcd = existingAbcdCards(grid);
+        var patternCards = existingPatternCards(grid);
         var desiredOnly = Object.create(null);
         state.setups.forEach(function (setup) {
-          if (abcd[setup.ticker]) syncAbcdCard(abcd[setup.ticker], setup);
+          if (patternCards[setup.ticker]) syncPatternCard(patternCards[setup.ticker], setup);
           else if (scanFinished()) desiredOnly[setup.ticker] = setup;
         });
         var currentOnly = Object.create(null);
@@ -199,9 +223,6 @@
         Object.keys(desiredOnly).forEach(function (ticker) {
           if (!currentOnly[ticker]) grid.insertAdjacentHTML('beforeend', setupOnlyCardHtml(desiredOnly[ticker]));
         });
-        var subtitle = doc.querySelector('#page-pattern .ps-sub');
-        var subtitleText = 'Menampilkan ABCD T-1 valid serta setup resmi yang sudah dihasilkan Screener terbaru. Tidak ada pencarian ticker manual.';
-        if (subtitle && subtitle.textContent !== subtitleText) subtitle.textContent = subtitleText;
         if (scanFinished()) {
           var tickers = Object.create(null);
           Array.prototype.forEach.call(grid.querySelectorAll('.ps-ticker'), function (node) { var ticker = normalizeTicker(node.textContent); if (ticker) tickers[ticker] = true; });
@@ -267,6 +288,7 @@
       root.navigateTo('chart');
       var input = doc.getElementById('chartTickerInput');
       if (input) input.value = ticker;
+      if (typeof root.loadChartPage === 'function') root.loadChartPage();
     }
 
     addStyles(); cleanArtifacts(doc.body); removeRedundantChartControl();
@@ -312,6 +334,7 @@
     version:VERSION,
     normalizeTicker:normalizeTicker,
     rowsFromPayload:rowsFromPayload,
+    labelText:labelText,
     officialSetupLabels:officialSetupLabels,
     extractScreenerSetups:extractScreenerSetups,
     isStandaloneArtifact:isStandaloneArtifact,
