@@ -1,0 +1,21 @@
+name: Pattern Integration Audit
+
+on:
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show existing integrations
+        run: |
+          echo '=== CANDLE ENGINE REFERENCES ==='
+          grep -n -C 8 'candleEngine' api/sector-hot.js || true
+          echo '=== SMART SETUP REFERENCES ==='
+          grep -n -C 5 'applySmartSetupLabels' api/sector-hot.js || true
