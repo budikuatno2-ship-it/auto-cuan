@@ -136,11 +136,12 @@ test('average down guard allows manual review only when every guard passes', () 
 
 test('scenario module formats money, keeps Quick calculations local, and overrides the old generic guard', () => {
   const source = read('public/portfolio-position-scenarios.js');
+  const canonicalModel = read('public/portfolio-command-center-model.js');
   assert.match(source, /formatMoneyInput/);
   assert.match(source, /Rp ' \+ Number\(raw\)\.toLocaleString\('id-ID'\)/);
   assert.match(source, /event\.stopImmediatePropagation\(\)/);
   assert.match(source, /Model\.averageDownDecision/);
-  assert.match(source, /AVG DOWN BOLEH DIREVIEW/);
+  assert.match(canonicalModel, /AVG DOWN BOLEH DIREVIEW/);
   assert.match(source, /\(plan\.stop - plan\.entry\) \* shares/);
   assert.match(source, /tp1Result \/ riskAbs/);
   assert.doesNotMatch(source, /sendTelegram|createOrder|broker/i);
