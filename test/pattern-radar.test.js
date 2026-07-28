@@ -54,7 +54,7 @@ test('collectTickers deduplicates every screener source without a fallback or fi
   assert.equal(ui.constants.SCAN_CONCURRENCY, 4);
 });
 
-test('reliable Pattern config uses a regular line chart with close, XABCD, levels, and PRZ', () => {
+test('reliable ABCD map uses a regular line chart with close, XABCD, levels, and PRZ', () => {
   const value = chartFixture();
   const config = ui.buildReliableChartConfig(value.candidate, value.context);
   assert.equal(config.type, 'line');
@@ -86,19 +86,31 @@ test('mapBounded keeps Pattern scanning at the concurrency ceiling', async () =>
   assert.deepEqual(result, [2, 4, 6, 8, 10, 12, 14]);
 });
 
-test('dashboard loads only the stable runtime and Pattern stays lazy on existing APIs', () => {
+test('dashboard loads stable Pattern v2 then Screener extension v3 on existing APIs', () => {
   const loader = read('public/assets/fca-stocks.js');
   const source = read('public/pattern-stable-runtime.js');
   assert.match(loader, /\/ui-stability-fix\.js\?v=20260728-ui-stability-v1/);
-  assert.match(loader, /\/pattern-stable-runtime\.js\?v=20260728-pattern-stable-v1/);
+  assert.match(loader, /\/pattern-stable-runtime\.js\?v=20260728-pattern-stable-v2/);
+  assert.match(loader, /\/pattern-screener-extension\.js\?v=20260728-pattern-screener-v3/);
   assert.doesNotMatch(loader, /pattern-radar\.js/);
   assert.match(source, /action=screener/);
   assert.match(source, /action=nk-screener-results/);
   assert.match(source, /action=daytrade-screener/);
   assert.match(source, /\/api\/candles\?ticker=/);
   assert.match(source, /PatternMap\.validateCandidate/);
+  assert.match(source, /classicPatterns/);
+  assert.match(source, /Triangle, Flag, Pennant, Cup & Handle/);
+  assert.match(source, /data-classic-only/);
   assert.match(source, /https:\/\/quickchart\.io\/chart/);
   assert.match(source, /data-ps-map/);
   assert.match(source, /root\.location\.pathname === '\/pattern'/);
   assert.doesNotMatch(source, /MAX_SCAN|FALLBACK_TICKERS|candlestick/);
+});
+
+test('classic-only cards do not receive a fabricated map button', () => {
+  const source = read('public/pattern-stable-runtime.js');
+  const classicBranch = source.slice(source.indexOf("if (!c) {"), source.indexOf("return '<article class=\"ps-card ' + direction", source.indexOf("if (!c) {") + 20));
+  assert.match(classicBranch, /data-classic-only/);
+  assert.match(classicBranch, /data-ps-chart/);
+  assert.doesNotMatch(classicBranch, /data-ps-map|Lihat Peta/);
 });
