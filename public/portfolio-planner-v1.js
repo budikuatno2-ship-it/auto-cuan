@@ -183,3 +183,58 @@
     normalizeProfile: normalizeProfile
   };
 });
+(function installPortfolioUiPolish(root) {
+  'use strict';
+  if (!root || !root.document || root.__AUTOCUAN_PORTFOLIO_UI_POLISH__) return;
+  root.__AUTOCUAN_PORTFOLIO_UI_POLISH__ = true;
+
+  function addStyles() {
+    if (root.document.getElementById('portfolioUiPolishStyles')) return;
+    var style = root.document.createElement('style');
+    style.id = 'portfolioUiPolishStyles';
+    style.textContent = [
+      '.top{border-bottom:0!important;padding-bottom:6px!important}',
+      '#app .tabs{position:static!important;top:auto!important;z-index:auto!important;overflow:visible!important;flex-wrap:wrap!important;background:none!important;border:0!important;padding:14px 0 12px!important}',
+      '.portfolio-check-row{display:flex!important;align-items:center!important;gap:10px!important;line-height:1.4!important;cursor:pointer!important}',
+      '.portfolio-check-row #riskValid{width:18px!important;height:18px!important;min-height:0!important;padding:0!important;margin:0!important;flex:0 0 18px!important;accent-color:var(--green)}',
+      '@media(max-width:620px){#app .tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}#app .tabs .tab{width:100%!important;white-space:normal!important;text-align:center!important;padding:9px 8px!important}}'
+    ].join('');
+    root.document.head.appendChild(style);
+  }
+
+  function applyCopyAndLayout() {
+    addStyles();
+
+    var subtitle = root.document.querySelector('.brand p');
+    if (subtitle && subtitle.textContent.trim() === 'Rencanakan posisi, pantau risiko, dan ambil keputusan lebih tenang.') {
+      subtitle.textContent = 'Rencanakan posisi, pantau risiko, dan ambil keputusan dengan lebih tenang.';
+    }
+
+    var summary = root.document.getElementById('page-summary');
+    if (summary) {
+      var headings = summary.querySelectorAll('h2');
+      Array.prototype.forEach.call(headings, function (heading) {
+        if (heading.textContent.trim() === 'Sektor Hot Setelah Close') heading.textContent = 'Sektor Hot Terbaru';
+      });
+      var sectorList = root.document.getElementById('sectorHotList');
+      if (sectorList) {
+        var sectorCopy = sectorList.previousElementSibling;
+        if (sectorCopy && sectorCopy.classList.contains('muted')) {
+          sectorCopy.textContent = 'Ringkasan sektor dari cache server terakhir yang tersedia.';
+        }
+        var loading = sectorList.querySelector('.empty');
+        if (loading && loading.textContent.trim() === 'Memuat data sektor…') loading.textContent = 'Memuat ringkasan sektor…';
+      }
+    }
+
+    var riskValid = root.document.getElementById('riskValid');
+    var riskLabel = riskValid && riskValid.closest('label');
+    if (riskLabel) riskLabel.classList.add('portfolio-check-row');
+
+    var tabs = root.document.querySelector('#app .tabs[role="tablist"]');
+    if (tabs) tabs.setAttribute('aria-label', 'Navigasi Portfolio');
+  }
+
+  if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', applyCopyAndLayout, { once: true });
+  else applyCopyAndLayout();
+})(typeof window !== 'undefined' ? window : null);
