@@ -1,4 +1,4 @@
-name: Pattern Integration Audit
+name: Final Pattern Score Integration
 
 on:
   pull_request:
@@ -6,22 +6,242 @@ on:
       - feat/daytrade-screener-v1
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  finalize:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Collect existing integrations
-        run: |
-          {
-            echo '=== CANDLE ENGINE REFERENCES ==='
-            grep -n -C 12 'candleEngine' api/sector-hot.js || true
-            echo '=== SMART SETUP REFERENCES ==='
-            grep -n -C 8 'applySmartSetupLabels' api/sector-hot.js || true
-          } > pattern-integration-audit.txt
-      - uses: actions/upload-artifact@v4
         with:
-          name: pattern-integration-audit
-          path: pattern-integration-audit.txt
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Apply final integration
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'marker not found in {path}: {old[:120]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          # Shared bounded score helpers.
+          replace_once('lib/smart-setup-labels.js',
+              "const SWING_PATTERN_SCORE_VERSION = 'swing-pattern-score-v1';\n",
+              "const SWING_PATTERN_SCORE_VERSION = 'swing-pattern-score-v2';\nconst MAX_DAYTRADE_PATTERN_SCORE_ADJUSTMENT = 2;\nconst MIN_DAYTRADE_PATTERN_SCORE_ADJUSTMENT = -3;\nconst DAYTRADE_PATTERN_SCORE_VERSION = 'daytrade-pattern-score-v1';\n")
+
+          replace_once('lib/smart-setup-labels.js',
+              "function applySwingPatternScore(row, context, blocked) {\n",
+              "function deriveSwingPatternScoreAdjustment(row, detection, blocked) {\n  row = row || {};\n  detection = detection || {};\n  var status = String(row.status || row.final_status || row.swing_tier || '').toUpperCase();\n  var blockedStatus = /AVOID|INVALID|HINDARI|WAIT_PULLBACK|SPECULATIVE|STALE|REVALIDATION|HISTORY_INSUFFICIENT/.test(status);\n  var price = n(row.last_price) || n(row.latest_price) || n(row.current_price) || n(row.price);\n  if (blocked || blockedStatus || isSafetyBlocked(row) || (price != null && price < 50)) return 0;\n  var adjustment = (n(detection.smart_setup_score_bonus) || 0) + (n(detection.classic_pattern_score_adjustment) || 0);\n  return clamp(adjustment, MIN_SWING_PATTERN_SCORE_ADJUSTMENT, MAX_SWING_PATTERN_SCORE_ADJUSTMENT);\n}\n\nfunction deriveDayTradePatternScoreAdjustment(row, detection, blocked) {\n  row = row || {};\n  detection = detection || {};\n  var status = String(row.status || row.final_status || '').toUpperCase();\n  if (blocked || isSafetyBlocked(row) || /AVOID|HINDARI|WAIT_PULLBACK|SPECULATIVE|STALE|REVALIDATION|HISTORY_INSUFFICIENT/.test(status)) return 0;\n  var patterns = Array.isArray(detection.classic_chart_patterns) ? detection.classic_chart_patterns : [];\n  var primary = detection.primary_classic_pattern || patterns.reduce(function(best, pattern) {\n    var current = Math.abs(n(pattern && pattern.score_adjustment) || 0);\n    var previous = Math.abs(n(best && best.score_adjustment) || 0);\n    return current > previous ? pattern : best;\n  }, null);\n  if (!primary) return 0;\n  var bias = String(primary.bias || '').toLowerCase();\n  var patternStatus = String(primary.status || 'candidate').toLowerCase();\n  var volume = n(row.volume_ratio_20d) || n(row.volume_ratio_avg20) || n(row.volume_ratio) || 0;\n  var change = n(row.change_pct) || 0;\n  var entryDistance = n(row.entry_distance_pct);\n  var overextended = row._overextendedMA20 === true || change > 5 || (entryDistance != null && entryDistance > 4);\n  if (bias === 'bearish') {\n    if (/confirmed|breakdown|near_breakdown|breakout/.test(patternStatus)) return MIN_DAYTRADE_PATTERN_SCORE_ADJUSTMENT;\n    return -2;\n  }\n  if (bias !== 'bullish' || overextended || volume < 0.8) return 0;\n  if (/confirmed|breakout|near_breakout/.test(patternStatus) && volume >= 1.0) return MAX_DAYTRADE_PATTERN_SCORE_ADJUSTMENT;\n  return 1;\n}\n\nfunction applySwingPatternScore(row, context, blocked) {\n")
+
+          replace_once('lib/smart-setup-labels.js',
+              "  var adjustment = blocked ? 0 : (n(row.smart_setup_score_bonus) || 0) + (n(row.classic_pattern_score_adjustment) || 0);\n  adjustment = clamp(adjustment, MIN_SWING_PATTERN_SCORE_ADJUSTMENT, MAX_SWING_PATTERN_SCORE_ADJUSTMENT);\n",
+              "  var adjustment = deriveSwingPatternScoreAdjustment(row, row, blocked);\n")
+
+          replace_once('lib/smart-setup-labels.js',
+              "  row.score = row.swing_pattern_adjusted_score;\n",
+              "  if (context && context.apply_runtime_score === true) row.score = row.swing_pattern_adjusted_score;\n")
+
+          replace_once('lib/smart-setup-labels.js',
+              "  applySwingPatternScore: applySwingPatternScore,\n",
+              "  applySwingPatternScore: applySwingPatternScore,\n  deriveSwingPatternScoreAdjustment: deriveSwingPatternScoreAdjustment,\n  deriveDayTradePatternScoreAdjustment: deriveDayTradePatternScoreAdjustment,\n  MAX_DAYTRADE_PATTERN_SCORE_ADJUSTMENT: MAX_DAYTRADE_PATTERN_SCORE_ADJUSTMENT,\n  MIN_DAYTRADE_PATTERN_SCORE_ADJUSTMENT: MIN_DAYTRADE_PATTERN_SCORE_ADJUSTMENT,\n  DAYTRADE_PATTERN_SCORE_VERSION: DAYTRADE_PATTERN_SCORE_VERSION,\n")
+
+          # Swing Konglo and Non-Konglo: adjust persisted ranking score only after
+          # classification, so status/action/safety remain based on the base score.
+          replace_once('api/sector-hot.js',
+              "const smartSetupLabels = require('../lib/smart-setup-labels');\n",
+              "const smartSetupLabels = require('../lib/smart-setup-labels');\n")
+
+          replace_once('api/sector-hot.js',
+              "        var scoring = scoreAndClassify(analysis);\n\n        // Compute transaction value metrics from candle data\n",
+              "        var scoring = scoreAndClassify(analysis);\n        var _swingPatternDetection = smartSetupLabels.detectSmartSetupLabels(\n          Object.assign({}, analysis, { ticker: item.ticker, status: scoring.status, score: scoring.score, category: 'Swing Konglo' }),\n          candles.slice(0, -1),\n          { mode: 'swing' }\n        );\n        var _swingPatternAdjustment = smartSetupLabels.deriveSwingPatternScoreAdjustment(\n          Object.assign({}, analysis, { ticker: item.ticker, status: scoring.status, score: scoring.score, category: 'Swing Konglo' }),\n          _swingPatternDetection,\n          false\n        );\n        scoring.score = Math.max(0, Math.min(100, scoring.score + _swingPatternAdjustment));\n\n        // Compute transaction value metrics from candle data\n")
+
+          replace_once('api/sector-hot.js',
+              "      const scored = calculateNkSetupScore(quoteData);\n      scored.ticker = ticker;\n",
+              "      const scored = calculateNkSetupScore(quoteData);\n      var _nkPatternDetection = smartSetupLabels.detectSmartSetupLabels(\n        Object.assign({}, quoteData, { ticker: ticker, status: scored.status, score: scored.score, category: 'Swing Non-Konglo' }),\n        (quoteData.candles || []).slice(0, -1),\n        { mode: 'swing' }\n      );\n      var _nkPatternAdjustment = smartSetupLabels.deriveSwingPatternScoreAdjustment(\n        Object.assign({}, quoteData, { ticker: ticker, status: scored.status, score: scored.score, category: 'Swing Non-Konglo' }),\n        _nkPatternDetection,\n        false\n      );\n      scored.score = Math.max(0, Math.min(100, scored.score + _nkPatternAdjustment));\n      scored.ticker = ticker;\n")
+
+          # Day Trade: classic pattern is T-1 context and adjusts only final ranking
+          # score. Classification is calculated from the base composite score first.
+          replace_once('lib/daytrade-screener-engine.js',
+              "var candleEngine = require('./candle-pattern-engine');\n",
+              "var candleEngine = require('./candle-pattern-engine');\nvar classicChartPatterns = require('./classic-chart-patterns');\nvar smartSetupLabels = require('./smart-setup-labels');\n")
+
+          replace_once('lib/daytrade-screener-engine.js',
+              "function scoreDayTrade(data, runMode, board, candleResult) {\n",
+              "function scoreDayTrade(data, runMode, board, candleResult, classicPatternResult) {\n")
+
+          replace_once('lib/daytrade-screener-engine.js',
+              "  // 9. Time plan\n  var timePlan = generateTimePlan(classification.status, runMode, data);\n",
+              "  // Classic T-1 pattern only changes ranking score; classification above is immutable.\n  var classicDetection = {\n    classic_chart_patterns: classicPatternResult && classicPatternResult.patterns || [],\n    primary_classic_pattern: classicPatternResult && classicPatternResult.primary_pattern || null\n  };\n  var classicPatternScoreAdjustment = smartSetupLabels.deriveDayTradePatternScoreAdjustment(\n    Object.assign({}, data, levels, { status: classification.status, board: board }),\n    classicDetection,\n    !liqResult.pass || data.data_quality_valid === false\n  );\n  var scoreBeforeClassicPatternAdjustment = compositeScore;\n  var rankingScore = Math.max(0, Math.min(100, compositeScore + classicPatternScoreAdjustment));\n\n  // 9. Time plan\n  var timePlan = generateTimePlan(classification.status, runMode, data);\n")
+
+          replace_once('lib/daytrade-screener-engine.js',
+              "    daytrade_score: compositeScore,\n",
+              "    daytrade_score: rankingScore,\n    score_before_classic_pattern_adjustment: scoreBeforeClassicPatternAdjustment,\n    classic_pattern_score_adjustment: classicPatternScoreAdjustment,\n    classic_pattern_score_version: smartSetupLabels.DAYTRADE_PATTERN_SCORE_VERSION,\n    classic_chart_patterns: classicDetection.classic_chart_patterns,\n    primary_classic_pattern: classicDetection.primary_classic_pattern,\n")
+
+          replace_once('lib/daytrade-screener-engine.js',
+              "      var candleResult = candleEngine.detectPattern(candles.slice(-3), candleCtx);\n\n      var scored = scoreDayTrade(analysis, runMode, item.board, candleResult);\n",
+              "      var candleResult = candleEngine.detectPattern(candles.slice(-3), candleCtx);\n      var classicPatternResult = classicChartPatterns.detectClassicChartPatterns(candles.slice(0, -1), { ticker: item.ticker });\n\n      var scored = scoreDayTrade(analysis, runMode, item.board, candleResult, classicPatternResult);\n")
+
+          # Day Trade read sorting uses the already persisted adjusted score and fixes
+          # priority 0 being treated as fallback 9.
+          replace_once('api/sector-hot.js',
+              "      var pa = statusPriority[a.status] || 9;\n      var pb = statusPriority[b.status] || 9;\n",
+              "      var pa = statusPriority[a.status] != null ? statusPriority[a.status] : 9;\n      var pb = statusPriority[b.status] != null ? statusPriority[b.status] : 9;\n")
+          replace_once('api/sector-hot.js',
+              "      smartSetupLabels.applySmartSetupLabels(daytradeReadRow);\n",
+              "      smartSetupLabels.applySmartSetupLabels(daytradeReadRow, { mode: 'daytrade' });\n")
+
+          # Focused regression tests.
+          test_file = Path('test/classic-chart-patterns.test.js')
+          text = test_file.read_text()
+          old = "test('bearish pattern may reduce Swing ranking but Day Trade score remains unchanged', () => {"
+          if old not in text:
+              raise SystemExit('classic score test marker missing')
+          start = text.index(old)
+          text = text[:start] + r'''test('Swing pattern adjustment is bounded and does not mutate score unless explicitly requested', () => {
+  const swing = {
+    ticker:'BEAR', swing_tier:'WATCHLIST', score:70, last_price:100,
+    classic_chart_patterns:[{ label:'Head and Shoulders', type:'HEAD_AND_SHOULDERS', bias:'Bearish', score_adjustment:-4 }]
+  };
+  const detection = smart.detectSmartSetupLabels(swing, [], { mode:'swing' });
+  assert.equal(smart.deriveSwingPatternScoreAdjustment(swing, detection, false), -4);
+  smart.applySmartSetupLabels(swing, { mode:'swing' });
+  assert.equal(swing.score, 70);
+  assert.equal(swing.swing_pattern_adjusted_score, 66);
+  smart.applySwingPatternScore(swing, { mode:'swing', apply_runtime_score:true }, false);
+  assert.equal(swing.score, 66);
+});
+
+test('Day Trade pattern adjustment is smaller, confirmation-aware, and safety bounded', () => {
+  const bullish = {
+    status:'EARLY_RADAR', last_price:100, change_pct:2, volume_ratio_20d:1.3, entry_distance_pct:2
+  };
+  assert.equal(smart.deriveDayTradePatternScoreAdjustment(bullish, {
+    primary_classic_pattern:{ label:'Bull Flag', bias:'Bullish', status:'breakout', score_adjustment:3 },
+    classic_chart_patterns:[]
+  }, false), 2);
+  assert.equal(smart.deriveDayTradePatternScoreAdjustment(bullish, {
+    primary_classic_pattern:{ label:'Bull Flag', bias:'Bullish', status:'candidate', score_adjustment:2 },
+    classic_chart_patterns:[]
+  }, false), 1);
+  assert.equal(smart.deriveDayTradePatternScoreAdjustment(bullish, {
+    primary_classic_pattern:{ label:'Double Top', bias:'Bearish', status:'confirmed', score_adjustment:-4 },
+    classic_chart_patterns:[]
+  }, false), -3);
+  assert.equal(smart.deriveDayTradePatternScoreAdjustment(Object.assign({}, bullish, { status:'AVOID' }), {
+    primary_classic_pattern:{ label:'Double Bottom', bias:'Bullish', status:'confirmed', score_adjustment:4 },
+    classic_chart_patterns:[]
+  }, false), 0);
+});
+''' 
+          test_file.write_text(text)
+
+          Path('test/daytrade-classic-pattern-score.test.js').write_text(r'''\
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const engine = require('../lib/daytrade-screener-engine');
+const ROOT = path.join(__dirname, '..');
+
+function baseData() {
+  return {
+    ticker:'TEST', last_price:100, open_price:99, high_price:102, low_price:98,
+    previous_close:99, change_pct:1.01, volume_today:2_000_000, value_today:2_000_000_000,
+    avg_volume_20d:1_500_000, avg_value_7d:1_500_000_000, volume_ratio_20d:1.33,
+    rsi14:55, ma20:98, ma50:95, resistance:104, support:94, range_position:50,
+    distance_to_breakout_pct:4, atr14:2, swingLow5:96, swingHigh10:105,
+    _priceAboveOpen:true, _priceNearHigh:false, _fadeFromHigh:0.2,
+    _aboveMA20:true, _aboveMA50:true, _overextendedMA20:false,
+    data_quality_valid:true
+  };
+}
+
+test('Day Trade classic bonus changes ranking score but not base classification', () => {
+  const data = baseData();
+  const base = engine.scoreDayTrade(data, 'MORNING_SCOUT', 'UTAMA', null, { patterns:[], primary_pattern:null });
+  const boosted = engine.scoreDayTrade(data, 'MORNING_SCOUT', 'UTAMA', null, {
+    patterns:[{ label:'Bull Flag', bias:'Bullish', status:'breakout', score_adjustment:3 }],
+    primary_pattern:{ label:'Bull Flag', bias:'Bullish', status:'breakout', score_adjustment:3 }
+  });
+  assert.equal(boosted.status, base.status);
+  assert.equal(boosted.daytrade_score, Math.min(100, base.daytrade_score + 2));
+  assert.equal(boosted.classic_pattern_score_adjustment, 2);
+});
+
+test('Day Trade bearish penalty is capped and blocked rows receive no bullish bypass', () => {
+  const data = baseData();
+  const bearish = engine.scoreDayTrade(data, 'MORNING_SCOUT', 'UTAMA', null, {
+    patterns:[{ label:'Double Top', bias:'Bearish', status:'confirmed', score_adjustment:-4 }],
+    primary_pattern:{ label:'Double Top', bias:'Bearish', status:'confirmed', score_adjustment:-4 }
+  });
+  assert.equal(bearish.classic_pattern_score_adjustment, -3);
+  assert.ok(bearish.daytrade_score >= 0);
+
+  const illiquid = baseData();
+  illiquid.value_today = 1;
+  illiquid.avg_value_7d = 1;
+  const blocked = engine.scoreDayTrade(illiquid, 'MORNING_SCOUT', 'UTAMA', null, {
+    patterns:[{ label:'Double Bottom', bias:'Bullish', status:'confirmed', score_adjustment:4 }],
+    primary_pattern:{ label:'Double Bottom', bias:'Bullish', status:'confirmed', score_adjustment:4 }
+  });
+  assert.equal(blocked.status, 'AVOID');
+  assert.equal(blocked.classic_pattern_score_adjustment, 0);
+});
+
+test('production source detects classic patterns from completed T-1 candles', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'lib/daytrade-screener-engine.js'), 'utf8');
+  const sector = fs.readFileSync(path.join(ROOT, 'api/sector-hot.js'), 'utf8');
+  assert.match(source, /detectClassicChartPatterns\(candles\.slice\(0, -1\)/);
+  assert.match(source, /score_before_classic_pattern_adjustment/);
+  assert.match(source, /classic_pattern_score_adjustment/);
+  assert.match(sector, /deriveSwingPatternScoreAdjustment/);
+  assert.match(sector, /candles\.slice\(0, -1\)/);
+  assert.match(sector, /quoteData\.candles \|\| \[\]\)\.slice\(0, -1\)/);
+});
+''')
+
+          # Extend production build guards.
+          validator = Path('tools/apply-production-hotfixes.js')
+          v = validator.read_text()
+          marker = "  'lib/analyze-legacy.js',\n"
+          if "'lib/classic-chart-patterns.js'" not in v:
+              v = v.replace(marker, "  'lib/analyze-legacy.js',\n  'lib/classic-chart-patterns.js',\n  'lib/smart-setup-labels.js',\n  'lib/daytrade-screener-engine.js',\n", 1)
+          guard = "assertOk(patternStable.includes('PatternMap.validateCandidate'), 'Pattern renderer no longer validates server geometry.');\n"
+          addition = "assertOk(patternStable.includes('PatternMap.validateCandidate'), 'Pattern renderer no longer validates server geometry.');\nassertOk(read('lib/daytrade-screener-engine.js').includes('detectClassicChartPatterns(candles.slice(0, -1)'), 'Day Trade no longer uses completed T-1 classic pattern context.');\nassertOk(read('lib/smart-setup-labels.js').includes('MAX_DAYTRADE_PATTERN_SCORE_ADJUSTMENT = 2'), 'Day Trade pattern bonus cap changed.');\nassertOk(read('lib/smart-setup-labels.js').includes('MIN_DAYTRADE_PATTERN_SCORE_ADJUSTMENT = -3'), 'Day Trade pattern penalty cap changed.');\nassertOk(read('api/sector-hot.js').includes('deriveSwingPatternScoreAdjustment'), 'Swing classic pattern ranking integration is missing.');\n"
+          if "Day Trade pattern bonus cap changed" not in v:
+              if guard not in v:
+                  raise SystemExit('validator pattern guard marker missing')
+              v = v.replace(guard, addition, 1)
+          validator.write_text(v)
+
+          # Temporary workflow must not remain in the final PR.
+          Path('.github/workflows/pattern-integration-audit.yml').unlink()
+          PY
+
+          node --check lib/classic-chart-patterns.js
+          node --check lib/smart-setup-labels.js
+          node --check lib/daytrade-screener-engine.js
+          node --check api/sector-hot.js
+          node --check public/pattern-screener-extension.js
+          node --test \
+            test/classic-chart-patterns.test.js \
+            test/daytrade-classic-pattern-score.test.js \
+            test/pattern-radar.test.js \
+            test/pattern-screener-extension.test.js
+          npm run build
+          test "$(find api -maxdepth 1 -type f -name '*.js' | wc -l | tr -d ' ')" = "12"
+          git diff --check
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: apply bounded classic-pattern ranking to Swing and Day Trade"
+          git push origin HEAD:${GITHUB_HEAD_REF}
