@@ -15,7 +15,7 @@
     },
     {
       "source": "/portfolio-planner",
-      "destination": "/portfolio-planner.html"
+      "destination": "/portfolio-command-center.html"
     }
   ],
   "headers": [
@@ -29,6 +29,26 @@
     },
     {
       "source": "/portfolio-planner.html",
+      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+    },
+    {
+      "source": "/portfolio-command-center.html",
+      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+    },
+    {
+      "source": "/portfolio-command-center.css",
+      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+    },
+    {
+      "source": "/portfolio-command-center-model.js",
+      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+    },
+    {
+      "source": "/portfolio-command-center.js",
+      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+    },
+    {
+      "source": "/portfolio-position-scenarios.js",
       "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
     },
     {
