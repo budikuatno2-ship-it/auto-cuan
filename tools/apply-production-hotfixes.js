@@ -39,6 +39,7 @@ const SYNTAX_CHECKED = [
   'public/stock-analysis-ai.js',
   'public/ui-stability-fix.js',
   'public/pattern-stable-runtime.js',
+  'public/pattern-screener-extension.js',
   'public/assets/fca-stocks.js',
   'lib/context-ai-router-v4.js',
   'lib/context-ai-router-v5.js',
@@ -114,6 +115,7 @@ const commandModel = read('public/portfolio-command-center-model.js');
 const commandScenarios = read('public/portfolio-position-scenarios.js');
 const stability = read('public/ui-stability-fix.js');
 const patternStable = read('public/pattern-stable-runtime.js');
+const patternExtension = read('public/pattern-screener-extension.js');
 let commandInlineCount = 0;
 for (const match of commandHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) {
   if (!match[1].trim()) continue;
@@ -145,16 +147,24 @@ const portfolioRuntime = read('public/portfolio-ai-runtime-v2.js');
 assertOk(portfolioRuntime.includes('previous.role !== row.role'), 'Portfolio chat duplicate cleanup is missing.');
 assertOk(portfolioRuntime.includes('if (!text || state.sending) return;'), 'Portfolio AI send lock is missing.');
 
-// --- 9. Stable Pattern runtime --------------------------------------------
+// --- 9. Stable Pattern runtime and Screener setup extension ---------------
 const fcaLoader = read('public/assets/fca-stocks.js');
 assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260728-ui-stability-v1'), 'Shared UI stability runtime loader is missing.');
 assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260728-pattern-stable-v1'), 'Stable Pattern runtime loader is missing.');
+assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260728-pattern-screener-v2'), 'Screener Pattern extension loader is missing.');
+assertOk(fcaLoader.indexOf('/pattern-stable-runtime.js') < fcaLoader.indexOf('/pattern-screener-extension.js'), 'Screener Pattern extension must load after the stable runtime.');
 assertOk(!fcaLoader.includes('/pattern-radar.js'), 'The duplicate Pattern Radar runtime is still loaded.');
 assertOk(patternStable.includes('action=screener') && patternStable.includes('action=nk-screener-results') && patternStable.includes('action=daytrade-screener'), 'Pattern Radar no longer reads all three latest screener sources.');
 assertOk(stability.includes("type: 'line'"), 'Pattern map reliable line-chart renderer is missing.');
 assertOk(!patternStable.includes('MAX_SCAN') && !patternStable.includes('FALLBACK_TICKERS'), 'Pattern fixed cap or fallback universe returned.');
 assertOk(patternStable.includes("root.location.pathname === '/pattern'"), 'Direct Pattern route bootstrap is missing.');
 assertOk(patternStable.includes('PatternMap.validateCandidate'), 'Pattern renderer no longer validates server geometry.');
+assertOk(patternExtension.includes('smart_setup_labels') && patternExtension.includes('primary_smart_setup'), 'Pattern Radar no longer reads official Screener setup fields.');
+assertOk(patternExtension.includes('action=screener') && patternExtension.includes('action=nk-screener-results') && patternExtension.includes('action=daytrade-screener'), 'Screener Pattern extension no longer reads all three existing sources.');
+assertOk(patternExtension.includes('recoverReentry') && patternExtension.includes('ensureVisible'), 'Pattern re-entry recovery is missing.');
+assertOk(patternExtension.includes('isRedundantChartControl') && patternExtension.includes('isStandaloneArtifact'), 'Chart duplicate or global artifact cleanup is missing.');
+assertOk(patternExtension.includes('Label setup bukan sinyal BUY'), 'Screener-only setup cards lost their non-signal disclosure.');
+assertOk(!/sendTelegram|telegramNotifier|supabase\.from|createOrder|DAYTRADE_INTRADAY_SCORE_ENABLED/i.test(patternExtension), 'Screener Pattern extension touched a protected runtime.');
 
 // --- 10. Routing and dead files -------------------------------------------
 const vercel = JSON.parse(read('vercel.json'));
