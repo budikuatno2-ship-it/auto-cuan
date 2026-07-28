@@ -261,7 +261,10 @@
 
   function refreshAccess(force) {
     if (force !== true && hasFreshAccess()) return Promise.resolve(true);
-    if (state.request) return state.request.promise;
+    if (state.request) {
+      if (force !== true) return state.request.promise;
+      cancelAccessRequest();
+    }
 
     var requestVersion = ++state.version;
     var controller = typeof root.AbortController === 'function' ? new root.AbortController() : null;
