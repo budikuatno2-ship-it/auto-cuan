@@ -28,8 +28,14 @@ jobs:
         run: node --test test/pattern-radar.test.js
       - name: Pattern enrichment tests
         run: node --test test/pattern-screener-extension.test.js
-      - name: Portfolio tests
-        run: node --test test/portfolio-command-center.test.js
+      - name: Portfolio asset tests
+        run: node --test --test-name-pattern="command center v2 assets" test/portfolio-command-center.test.js
+      - name: Portfolio access tests
+        run: node --test --test-name-pattern="access stays" test/portfolio-command-center.test.js
+      - name: Portfolio legacy delete tests
+        run: node --test --test-name-pattern="legacy Portfolio plans" test/portfolio-command-center.test.js
+      - name: Portfolio calculation tests
+        run: node --test --test-name-pattern="rupiah|affordability|average down|scenario module|status and snapshot" test/portfolio-command-center.test.js
       - name: Classic detector tests
         run: node --test test/classic-chart-patterns.test.js
       - name: Ranking integration tests
