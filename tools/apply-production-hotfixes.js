@@ -41,11 +41,14 @@ const SYNTAX_CHECKED = [
   'public/pattern-stable-runtime.js',
   'public/pattern-screener-extension.js',
   'public/assets/fca-stocks.js',
+  'lib/classic-chart-patterns.js',
+  'lib/smart-setup-labels.js',
   'lib/context-ai-router-v4.js',
   'lib/context-ai-router-v5.js',
   'lib/analyze-legacy.js',
   'api/admin-users.js',
   'api/analyze.js',
+  'api/candles.js',
   'api/sector-hot.js'
 ];
 SYNTAX_CHECKED.forEach(function (file) {
@@ -147,24 +150,49 @@ const portfolioRuntime = read('public/portfolio-ai-runtime-v2.js');
 assertOk(portfolioRuntime.includes('previous.role !== row.role'), 'Portfolio chat duplicate cleanup is missing.');
 assertOk(portfolioRuntime.includes('if (!text || state.sending) return;'), 'Portfolio AI send lock is missing.');
 
-// --- 9. Stable Pattern runtime and Screener setup extension ---------------
+// --- 9. Stable Pattern runtime, classic detector, and Swing ranking -------
 const fcaLoader = read('public/assets/fca-stocks.js');
+const classicPatterns = read('lib/classic-chart-patterns.js');
+const smartSetups = read('lib/smart-setup-labels.js');
+const candlesApi = read('api/candles.js');
 assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260728-ui-stability-v1'), 'Shared UI stability runtime loader is missing.');
-assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260728-pattern-stable-v1'), 'Stable Pattern runtime loader is missing.');
-assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260728-pattern-screener-v2'), 'Screener Pattern extension loader is missing.');
+assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260728-pattern-stable-v2'), 'Stable Pattern v2 runtime loader is missing.');
+assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260728-pattern-screener-v3'), 'Screener Pattern v3 extension loader is missing.');
 assertOk(fcaLoader.indexOf('/pattern-stable-runtime.js') < fcaLoader.indexOf('/pattern-screener-extension.js'), 'Screener Pattern extension must load after the stable runtime.');
 assertOk(!fcaLoader.includes('/pattern-radar.js'), 'The duplicate Pattern Radar runtime is still loaded.');
 assertOk(patternStable.includes('action=screener') && patternStable.includes('action=nk-screener-results') && patternStable.includes('action=daytrade-screener'), 'Pattern Radar no longer reads all three latest screener sources.');
-assertOk(stability.includes("type: 'line'"), 'Pattern map reliable line-chart renderer is missing.');
+assertOk(stability.includes("type: 'line'"), 'ABCD map reliable line-chart renderer is missing.');
 assertOk(!patternStable.includes('MAX_SCAN') && !patternStable.includes('FALLBACK_TICKERS'), 'Pattern fixed cap or fallback universe returned.');
 assertOk(patternStable.includes("root.location.pathname === '/pattern'"), 'Direct Pattern route bootstrap is missing.');
-assertOk(patternStable.includes('PatternMap.validateCandidate'), 'Pattern renderer no longer validates server geometry.');
+assertOk(patternStable.includes('PatternMap.validateCandidate'), 'ABCD renderer no longer validates server geometry.');
+assertOk(patternStable.includes('classicPatterns') && patternStable.includes('data-classic-only'), 'Classic Pattern Radar rendering is missing.');
+assertOk(patternStable.includes('Triangle, Flag, Pennant, Cup & Handle'), 'Expanded Pattern Radar disclosure is missing.');
 assertOk(patternExtension.includes('smart_setup_labels') && patternExtension.includes('primary_smart_setup'), 'Pattern Radar no longer reads official Screener setup fields.');
+assertOk(patternExtension.includes('classic_chart_patterns') && patternExtension.includes('primary_classic_pattern'), 'Pattern Radar no longer reads official classic pattern fields.');
+assertOk(patternExtension.includes('labelText') && !patternExtension.includes("String(label == null ? '' : label).trim()"), 'Object setup-label normalization regressed.');
 assertOk(patternExtension.includes('action=screener') && patternExtension.includes('action=nk-screener-results') && patternExtension.includes('action=daytrade-screener'), 'Screener Pattern extension no longer reads all three existing sources.');
 assertOk(patternExtension.includes('recoverReentry') && patternExtension.includes('ensureVisible'), 'Pattern re-entry recovery is missing.');
 assertOk(patternExtension.includes('isRedundantChartControl') && patternExtension.includes('isStandaloneArtifact'), 'Chart duplicate or global artifact cleanup is missing.');
-assertOk(patternExtension.includes('Label setup bukan sinyal BUY'), 'Screener-only setup cards lost their non-signal disclosure.');
+assertOk(patternExtension.includes('bukan sinyal BUY otomatis'), 'Screener-only pattern cards lost their non-signal disclosure.');
 assertOk(!/sendTelegram|telegramNotifier|supabase\.from|createOrder|DAYTRADE_INTRADAY_SCORE_ENABLED/i.test(patternExtension), 'Screener Pattern extension touched a protected runtime.');
+
+[
+  'ASCENDING_TRIANGLE','DESCENDING_TRIANGLE','SYMMETRICAL_TRIANGLE',
+  'BULL_FLAG','BEAR_FLAG','BULL_PENNANT','BEAR_PENNANT',
+  'CUP_AND_HANDLE','INVERTED_CUP_AND_HANDLE','RISING_WEDGE','FALLING_WEDGE',
+  'HEAD_AND_SHOULDERS','INVERSE_HEAD_AND_SHOULDERS','DOUBLE_TOP','DOUBLE_BOTTOM','GAP_UP','GAP_DOWN'
+].forEach(function (marker) { assertOk(classicPatterns.includes(marker), 'Classic detector missing ' + marker); });
+assertOk(classicPatterns.includes('MAX_SCORE_ADJUSTMENT = 4') && classicPatterns.includes('MIN_SCORE_ADJUSTMENT = -4'), 'Classic pattern score bounds changed.');
+assertOk(!/sendTelegram|telegramNotifier|supabase|createOrder|action_label\s*=/.test(classicPatterns), 'Classic detector crossed a protected boundary.');
+assertOk(smartSetups.includes('MAX_SWING_PATTERN_SCORE_ADJUSTMENT = 5'), 'Swing positive pattern cap is not +5.');
+assertOk(smartSetups.includes('MIN_SWING_PATTERN_SCORE_ADJUSTMENT = -4'), 'Swing negative pattern cap is not -4.');
+assertOk(smartSetups.includes('if (!row || !isSwingCandidate(row, context)) return row;'), 'Pattern adjustment is no longer Swing-only.');
+assertOk(smartSetups.includes('if (row.swing_pattern_score_version === SWING_PATTERN_SCORE_VERSION) return row;'), 'Swing pattern score idempotency guard is missing.');
+assertOk(smartSetups.includes('var adjustment = blocked ? 0'), 'Safety-blocked pattern adjustment is no longer forced to zero.');
+assertOk(!/action_label\s*=|final_status\s*=|signal_action\s*=|sendTelegram|telegramNotifier|supabase\.from/.test(smartSetups), 'Pattern scoring changed action/status or protected systems.');
+assertOk(candlesApi.includes("require('../lib/classic-chart-patterns').detectClassicChartPatterns"), 'Candles API no longer computes classic patterns from T-1 candles.');
+assertOk(candlesApi.includes('delete publicData.classicPatterns') && candlesApi.includes('delete publicData.classic_pattern_meta'), 'Classic patterns are no longer admin-only.');
+assertOk(candlesApi.includes('candles.slice(-90)'), 'Classic detector no longer uses a bounded T-1 window.');
 
 // --- 10. Routing and dead files -------------------------------------------
 const vercel = JSON.parse(read('vercel.json'));
