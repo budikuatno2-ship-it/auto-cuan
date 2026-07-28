@@ -91,3 +91,8 @@ tmp/intraday-sample-collector.lock
 data/intraday-shadow-scoring-live/
 data/intraday-shadow-scoring/
 tmp/intraday-shadow-scoring-live.lock
+
+# Intraday Fast Watcher shadow-only runtime outputs
+data/intraday-fast-watcher-observations/
+data/intraday-fast-watcher-state/
+data/intraday-fast-watcher-events/
