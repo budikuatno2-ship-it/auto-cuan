@@ -8,9 +8,30 @@ var cache = {};
 var CACHE_TTL = 5 * 60 * 1000;
 var t1Policy = require('../lib/chart-t1-policy');
 var patternDetector = require('../lib/pattern-abcd').detectAbcdPattern;
+var adminSession = require('../lib/admin-session');
 var clock = { now: function() { return new Date(); } };
 
+function hasPatternMapAccess(req) {
+  var auth = adminSession.requireAdminSession(req);
+  return auth.ok === true && String(auth.session && auth.session.un || '').trim().toLowerCase() === 'budi';
+}
+
+function responseForRequest(data, req) {
+  if (!data || typeof data !== 'object' || hasPatternMapAccess(req)) return data;
+  var publicData = Object.assign({}, data);
+  delete publicData.patternMap;
+  delete publicData.pattern_map_meta;
+  return publicData;
+}
+
+function setPrivateResponseHeaders(res) {
+  if (!res || typeof res.setHeader !== 'function') return;
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('Vary', 'Cookie');
+}
+
 module.exports = async function handler(req, res) {
+  setPrivateResponseHeaders(res);
   try {
     var ticker = null;
 
@@ -37,7 +58,7 @@ module.exports = async function handler(req, res) {
     var cached = cache[ticker];
     var requestJakartaToday = t1Policy.formatJakartaDate(clock.now());
     if (cached && cached.data && cached.data.jakarta_today === requestJakartaToday && (Date.now() - cached.timestamp < CACHE_TTL)) {
-      return res.status(200).json(cached.data);
+      return res.status(200).json(responseForRequest(cached.data, req));
     }
 
     // Map ticker to Yahoo Finance symbol
@@ -162,8 +183,11 @@ module.exports = async function handler(req, res) {
       result.pattern_map_meta = { engine: 'abcd-t1-v1', status: 'none', reason: 'detector_error' };
     }
 
+    // Cache the complete deterministic result once, then apply the signed-session
+    // response policy per request. This prevents a guest/non-admin cache hit from
+    // receiving Pattern geometry while keeping Technical Chart caching unchanged.
     cache[ticker] = { data: result, timestamp: Date.now() };
-    return res.status(200).json(result);
+    return res.status(200).json(responseForRequest(result, req));
 
   } catch (err) {
     console.error('candles error:', err);
@@ -175,7 +199,9 @@ module.exports.__test = {
   clock: clock,
   clearCache: function() { cache = {}; },
   setPatternDetector: function(detector) { patternDetector = detector; },
-  resetPatternDetector: function() { patternDetector = require('../lib/pattern-abcd').detectAbcdPattern; }
+  resetPatternDetector: function() { patternDetector = require('../lib/pattern-abcd').detectAbcdPattern; },
+  hasPatternMapAccess: hasPatternMapAccess,
+  responseForRequest: responseForRequest
 };
 
 function calcMA(prices, period) {
