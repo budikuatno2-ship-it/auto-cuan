@@ -11,16 +11,23 @@ window.FCA_STOCKS = {
   "BOSS": { name: "Borneo Olah Sarana Sukses Tbk.", reason: "Papan Pemantauan Khusus" }
 };
 
-(function loadUiStabilityFix() {
+(function loadStablePatternRuntime() {
   'use strict';
   if (typeof document === 'undefined') return;
-  function load() {
-    if (document.querySelector('script[data-ui-stability-loader]')) return;
+  function append(src, marker, onload) {
+    var existing = document.querySelector('script[' + marker + ']');
+    if (existing) { if (onload) onload(); return; }
     var script = document.createElement('script');
-    script.src = '/ui-stability-fix.js?v=20260728-ui-stability-v1';
+    script.src = src;
     script.async = true;
-    script.setAttribute('data-ui-stability-loader', 'true');
+    script.setAttribute(marker, 'true');
+    if (onload) script.onload = onload;
     document.head.appendChild(script);
+  }
+  function load() {
+    append('/ui-stability-fix.js?v=20260728-ui-stability-v1', 'data-ui-stability-loader', function () {
+      append('/pattern-stable-runtime.js?v=20260728-pattern-stable-v1', 'data-pattern-stable-loader');
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once: true });
   else load();
