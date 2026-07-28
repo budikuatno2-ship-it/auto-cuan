@@ -1,0 +1,25 @@
+name: PR 314 temporary validation
+
+on:
+  push:
+    branches:
+      - fix/pattern-screener-labels-reentry
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Focused Pattern and Portfolio tests
+        run: node --test test/pattern-screener-extension.test.js test/pattern-radar.test.js test/portfolio-command-center.test.js
+      - name: Production build gate
+        run: npm run build
