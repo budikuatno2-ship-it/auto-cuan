@@ -221,6 +221,29 @@
     ].join('');
     doc.head.appendChild(style);
 
+    var icons = {
+      today: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 13h5l2-7 3 12 2-5h4"/>',
+      planner: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 4h14v16H5zM8 8h8M8 12h3M14 12h2M8 16h8"/>',
+      watch: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.8 12s3.4-5 9.2-5 9.2 5 9.2 5-3.4 5-9.2 5-9.2-5-9.2-5Z"/><circle cx="12" cy="12" r="2.4"/>',
+      risk: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 3 5 6v5c0 4.6 2.7 7.8 7 10 4.3-2.2 7-5.4 7-10V6l-7-3Z"/><path stroke-linecap="round" stroke-width="1.8" d="M9 12h6M12 9v6"/>',
+      scenarios: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 4v6a2 2 0 0 0 2 2h8M6 20v-4a2 2 0 0 1 2-2h8M16 8l4 4-4 4"/>',
+      journal: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4Z"/><path stroke-linecap="round" stroke-width="1.8" d="M8 8h7M8 12h7M8 16h4"/>',
+      ai: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m12 3 1.2 3.3L16.5 7.5l-3.3 1.2L12 12l-1.2-3.3-3.3-1.2 3.3-1.2L12 3ZM18 13l.8 2.2L21 16l-2.2.8L18 19l-.8-2.2L15 16l2.2-.8L18 13ZM6 14l1 2.7 2.7 1L7 18.7 6 21l-1-2.3-2.7-1 2.7-1L6 14Z"/>'
+    };
+    Array.prototype.forEach.call(doc.querySelectorAll('#tabStrip [data-tab]'), function (button) {
+      if (button.querySelector('.tab-icon')) return;
+      var key = button.getAttribute('data-tab');
+      var label = button.textContent.trim();
+      button.innerHTML = '<svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">' + (icons[key] || icons.today) + '</svg><span>' + label + '</span>';
+    });
+    var aiHead = doc.querySelector('.ai-chat>.card-head>div');
+    if (aiHead && !aiHead.querySelector('.eyebrow')) {
+      var eyebrow = doc.createElement('p');
+      eyebrow.className = 'eyebrow';
+      eyebrow.textContent = 'PORTFOLIO COPILOT';
+      aiHead.insertBefore(eyebrow, aiHead.firstChild);
+    }
+
     function artifactOnly(value) {
       return /^(?:;|\||[-*_]{3,}|#{1,6}|\*\*|__)$/.test(String(value == null ? '' : value).trim());
     }
