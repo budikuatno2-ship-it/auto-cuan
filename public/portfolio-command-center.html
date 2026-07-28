@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080c12">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <title>Portfolio Command Center | Auto-Cuan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="/portfolio-command-center.css?v=20260727-v1">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">AC</div>
+        <div class="brand-copy">
+          <h1>Portfolio Command Center</h1>
+          <p>Satu pusat keputusan untuk modal, posisi, risiko, perubahan, dan jurnal.</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="sessionChip" class="session-chip"><span class="status-dot"></span>Memeriksa sesi</span>
+        <a class="btn ghost link-btn" href="/dashboard">← Dashboard</a>
+      </div>
+    </header>
+
+    <section id="accessGate" class="access-gate">
+      <span class="spinner" aria-hidden="true"></span>
+      <h2>Memeriksa akses aman…</h2>
+      <p class="muted">Pemeriksaan dibatasi maksimal 9 detik. Jika gagal, tombol coba lagi akan muncul.</p>
+    </section>
+
+    <div id="app" class="hidden">
+      <nav id="tabStrip" class="tab-strip" role="tablist" aria-label="Portfolio Command Center">
+        <button class="tab active" role="tab" aria-selected="true" data-tab="today">Hari Ini</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="planner">Rencana Posisi</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="watch">Pantauan</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="risk">Risiko & Avg Down</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="scenarios">Skenario Posisi</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="journal">Jurnal</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="ai">Asisten AI</button>
+      </nav>
+
+      <section id="page-today" class="page active" role="tabpanel">
+        <div class="decision-hero">
+          <div>
+            <p class="eyebrow">DECISION COCKPIT · HARI INI</p>
+            <h2 id="decisionTitle">Bangun rencana yang jelas sebelum mengambil posisi.</h2>
+            <p id="decisionNote">Command Center membaca rencana, harga tersimpan, batas risiko, serta perubahan lokal. Tidak membuat order atau keputusan otomatis.</p>
+          </div>
+          <div id="postureCard" class="posture neutral"><span>Postur portofolio</span><strong id="postureLabel">Memuat…</strong></div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric"><span>Rencana / posisi</span><strong id="sumPlans">0</strong><small id="sumPriced">0 memiliki harga</small></div>
+          <div class="metric"><span>Perlu perhatian</span><strong id="sumAttention">0</strong><small>berdasarkan level tersimpan</small></div>
+          <div class="metric"><span>Total eksposur</span><strong id="sumExposure">Rp 0</strong><small>nilai posisi/rencana</small></div>
+          <div class="metric"><span>Estimasi risiko</span><strong id="sumRisk">Rp 0</strong><small id="sumPnl">P/L —</small></div>
+        </div>
+
+        <div class="grid dashboard section-gap">
+          <div class="stack">
+            <article class="card">
+              <div class="card-head"><div><h2>Tindakan Hari Ini</h2><p>Prioritas terurut dari level paling mendesak.</p></div><button id="refreshToday" class="btn small">Refresh data</button></div>
+              <div id="todayActions" class="empty">Belum ada posisi yang perlu tindakan.</div>
+            </article>
+            <article class="card">
+              <div class="card-head"><div><h2>Apa yang Berubah?</h2><p>Membandingkan snapshot lokal terakhir, bukan menebak pergerakan pasar.</p></div><button id="captureSnapshot" class="btn small">Simpan snapshot</button></div>
+              <div id="changeTimeline" class="empty">Belum ada snapshot pembanding.</div>
+            </article>
+          </div>
+          <aside class="stack">
+            <article class="card">
+              <div class="card-head"><div><h2>Kualitas Data</h2><p>Ketahui batas data sebelum bertindak.</p></div></div>
+              <div class="data-rows">
+                <div class="data-row"><span>Harga tersedia</span><strong id="qualityPriced">0 / 0</strong></div>
+                <div class="data-row"><span>Pembaruan harga</span><strong id="qualityUpdated">Belum ada</strong></div>
+                <div class="data-row"><span>Sumber harga</span><strong>Endpoint Auto-Cuan</strong></div>
+                <div class="data-row"><span>Eksekusi broker</span><strong>Tidak ada</strong></div>
+              </div>
+              <p id="qualityNote" class="note">Harga tersimpan bukan jaminan data real-time.</p>
+            </article>
+            <article class="card">
+              <div class="card-head"><div><h2>Sektor Hot Setelah Close</h2><p>Cache server, tidak dihitung ulang di browser.</p></div></div>
+              <div id="sectorHotList" class="sector-grid"><div class="empty">Memuat sektor…</div></div>
+            </article>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-planner" class="page" role="tabpanel">
+        <div class="grid two">
+          <article class="card">
+            <div class="card-head"><div><h2>Budget-to-Stock Planner</h2><p>Mulai dari modal dan batas alokasi, lalu lihat rentang harga saham yang masuk.</p></div></div>
+            <div class="form-grid">
+              <div class="field full"><label for="budgetCapital">Modal tersedia</label><input id="budgetCapital" inputmode="numeric" value="5000000"></div>
+              <div class="field"><label for="budgetProfile">Profil risiko</label><select id="budgetProfile"><option value="LOW">Rendah</option><option value="MEDIUM" selected>Sedang</option><option value="HIGH">Tinggi</option></select></div>
+              <div class="field"><label for="budgetReserve">Dana cadangan (%)</label><input id="budgetReserve" type="number" min="0" max="90" value="10"></div>
+              <div class="field"><label for="budgetPositions">Maksimal posisi aktif</label><input id="budgetPositions" type="number" min="1" max="20" value="4"></div>
+              <div class="field"><label for="budgetTicker">Cek ticker tertentu</label><input id="budgetTicker" maxlength="8" placeholder="BBRI"></div>
+            </div>
+            <div class="actions"><button id="calculateBudget" class="btn primary">Hitung Kapasitas</button><button id="checkBudgetTicker" class="btn">Cek Ticker</button></div>
+            <div id="budgetError" class="error hidden"></div>
+            <div id="budgetBands" class="budget-band-grid"></div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h2>Kandidat Sesuai Budget</h2><p>Kandidat berasal dari ticker sektor cache atau ticker yang kamu periksa. Kelayakan tetap perlu dianalisis.</p></div></div>
+            <div id="budgetCandidates" class="empty">Hitung kapasitas untuk melihat kandidat.</div>
+          </article>
+        </div>
+
+        <div class="grid two section-gap">
+          <article class="card">
+            <div class="card-head"><div><h2>Rencana Posisi Manual</h2><p>Stop loss wajib berada di bawah entry. TP boleh dikosongkan.</p></div></div>
+            <div class="form-grid">
+              <div class="field full"><label for="capital">Modal tersedia</label><input id="capital" inputmode="numeric" value="5000000"></div>
+              <div class="field"><label for="riskProfile">Profil risiko</label><select id="riskProfile"><option value="LOW">Rendah</option><option value="MEDIUM" selected>Sedang</option><option value="HIGH">Tinggi</option></select></div>
+              <div class="field"><label for="riskPct">Risiko per transaksi (%)</label><input id="riskPct" type="number" step="0.01" value="1"></div>
+              <div class="field"><label for="reservePct">Dana cadangan (%)</label><input id="reservePct" type="number" value="10"></div>
+              <div class="field"><label for="maxPositions">Maksimal posisi</label><input id="maxPositions" type="number" value="4"></div>
+              <div class="field full"><label for="ticker">Ticker</label><input id="ticker" maxlength="8" placeholder="BBRI"></div>
+              <div class="field"><label for="entry">Harga entry</label><input id="entry" inputmode="numeric"></div>
+              <div class="field"><label for="stop">Stop loss</label><input id="stop" inputmode="numeric"></div>
+              <div class="field"><label for="tp1">TP1</label><input id="tp1" inputmode="numeric"></div>
+              <div class="field"><label for="tp2">TP2</label><input id="tp2" inputmode="numeric"></div>
+            </div>
+            <div class="actions"><button id="calculatePlan" class="btn primary">Hitung Rencana</button><button id="resetPlan" class="btn">Reset</button></div>
+            <div id="plannerError" class="error hidden"></div>
+          </article>
+          <article class="card">
+            <div class="card-head"><div><h2>Hasil Perhitungan</h2><p>Menggunakan kalkulator posisi Auto-Cuan yang sudah ada.</p></div></div>
+            <div id="planEmpty" class="empty">Isi ticker, entry, dan stop loss terlebih dahulu.</div>
+            <div id="planResult" class="hidden">
+              <div class="metric-grid compact">
+                <div class="metric"><span>Lot disarankan</span><b id="outLots">—</b></div>
+                <div class="metric"><span>Nilai posisi</span><b id="outValue">—</b></div>
+                <div class="metric"><span>Maksimal rugi</span><b id="outLoss">—</b></div>
+                <div class="metric"><span>Sisa dana</span><b id="outCash">—</b></div>
+                <div class="metric"><span>Alokasi</span><b id="outAllocation">—</b></div>
+                <div class="metric"><span>RR TP1</span><b id="outRr1">—</b></div>
+                <div class="metric"><span>RR TP2</span><b id="outRr2">—</b></div>
+                <div class="metric"><span>Harga maks/lot</span><b id="outMaxPrice">—</b></div>
+              </div>
+              <div id="planWarnings"></div>
+              <button id="savePlan" class="btn primary" disabled>Simpan ke Pantauan</button>
+              <div id="saveMessage" class="success hidden"></div>
+            </div>
+            <p class="fine-print">Bukan rekomendasi beli/jual dan tidak membuat order ke broker.</p>
+          </article>
+        </div>
+
+        <article class="card section-gap">
+          <div class="card-head"><div><h2>Sudah Keburu Entry?</h2><p>Catat posisi yang sudah dimiliki agar ikut dipantau.</p></div></div>
+          <div class="form-grid three">
+            <div class="field"><label for="ownedTicker">Ticker</label><input id="ownedTicker" maxlength="8" placeholder="BBCA"></div>
+            <div class="field"><label for="ownedEntry">Harga beli rata-rata</label><input id="ownedEntry" inputmode="numeric"></div>
+            <div class="field"><label for="ownedLots">Jumlah lot</label><input id="ownedLots" type="number" min="1"></div>
+            <div class="field"><label for="ownedStop">Stop loss rencana</label><input id="ownedStop" inputmode="numeric"></div>
+            <div class="field"><label for="ownedTp1">TP1</label><input id="ownedTp1" inputmode="numeric"></div>
+            <div class="field"><label for="ownedTp2">TP2</label><input id="ownedTp2" inputmode="numeric"></div>
+          </div>
+          <div class="actions"><button id="saveOwned" class="btn">Catat Posisi</button></div>
+          <div id="ownedMessage" class="success hidden"></div>
+        </article>
+      </section>
+
+      <section id="page-watch" class="page" role="tabpanel">
+        <article class="card">
+          <div class="card-head"><div><h2>Pantauan Posisi</h2><p>Klik ticker untuk membuka Ticker Intelligence.</p></div><button id="refreshPrices" class="btn">Refresh Harga</button></div>
+          <div id="watchEmpty" class="empty">Belum ada posisi atau rencana tersimpan.</div>
+          <div id="watchTable" class="table-wrap hidden"><table><thead><tr><th>Ticker</th><th>Status</th><th>Lot</th><th>Entry</th><th>Harga</th><th>P/L</th><th>Stop</th><th>TP1 / TP2</th><th>Aksi</th></tr></thead><tbody id="watchBody"></tbody></table></div>
+          <div id="watchCards" class="mobile-position-list"></div>
+        </article>
+      </section>
+
+      <section id="page-risk" class="page" role="tabpanel">
+        <div class="grid two">
+          <article class="card">
+            <div class="card-head"><div><h2>Cut Loss & Average Down Guard</h2><p>Guard matematis, bukan perintah transaksi otomatis.</p></div></div>
+            <div class="form-grid">
+              <div class="field full"><label for="riskPlan">Pilih posisi</label><select id="riskPlan"></select></div>
+              <div class="field"><label for="riskCurrent">Harga saat ini</label><input id="riskCurrent" inputmode="numeric"></div>
+              <div class="field"><label for="riskAddLots">Lot tambahan</label><input id="riskAddLots" type="number" min="0" value="1"></div>
+              <div class="field"><label for="riskFunds">Dana tersedia</label><input id="riskFunds" inputmode="numeric" value="1000000"></div>
+              <div class="field"><label for="riskLimit">Batas risiko total</label><input id="riskLimit" inputmode="numeric"></div>
+              <label class="check-row full"><input id="riskValid" type="checkbox"> Setup masih valid berdasarkan analisis terbaru</label>
+            </div>
+            <div class="actions"><button id="evaluateRisk" class="btn primary">Evaluasi</button></div>
+          </article>
+          <article class="card"><div class="card-head"><div><h2>Hasil Guard</h2><p>Nilai kembali kondisi teknikal sebelum bertindak.</p></div></div><div id="riskResult" class="empty">Pilih posisi lalu isi harga saat ini.</div></article>
+        </div>
+      </section>
+
+      <section id="page-scenarios" class="page" role="tabpanel">
+        <div class="decision-hero">
+          <div>
+            <p class="eyebrow">WHAT-IF · SKENARIO POSISI</p>
+            <h2>Lihat dampak stop, TP1, TP2, dan pelepasan bertahap sebelum mengambil keputusan.</h2>
+            <p>Semua angka dihitung dari entry, lot, stop loss, dan target yang tersimpan. Ini simulasi lokal, bukan sinyal atau order otomatis.</p>
+          </div>
+          <div class="field" style="min-width:210px">
+            <label for="scenarioTp1Pct">Porsi dilepas di TP1</label>
+            <select id="scenarioTp1Pct"><option value="25">25%</option><option value="50" selected>50%</option><option value="75">75%</option></select>
+          </div>
+        </div>
+        <div class="metric-grid">
+          <div class="metric"><span>Posisi disimulasikan</span><strong id="scenarioCount">0</strong><small id="scenarioComplete">0 lengkap</small></div>
+          <div class="metric"><span>Total jika stop</span><strong id="scenarioStopTotal">Rp 0</strong><small>berdasarkan level tersimpan</small></div>
+          <div class="metric"><span>Total jika TP1</span><strong id="scenarioTp1Total">Rp 0</strong><small>semua lot mencapai TP1</small></div>
+          <div class="metric"><span>Total skenario bertahap</span><strong id="scenarioPartialTotal">Rp 0</strong><small>TP1 lalu sisa ke TP2</small></div>
+        </div>
+        <article class="card section-gap">
+          <div class="card-head"><div><h2>Rincian per Posisi</h2><p>Posisi yang datanya belum lengkap akan ditandai jelas.</p></div><button id="refreshScenarios" class="btn small">Hitung Ulang</button></div>
+          <div id="scenarioList" class="empty">Belum ada posisi atau rencana untuk disimulasikan.</div>
+        </article>
+      </section>
+
+      <section id="page-alerts" class="page hidden" aria-hidden="true">
+        <div id="alertPrices"></div>
+        <div id="alertList"></div>
+        <button id="checkAlerts" type="button"></button>
+      </section>
+
+      <section id="page-journal" class="page" role="tabpanel">
+        <div class="grid dashboard">
+          <div class="stack">
+            <article class="card">
+              <div class="card-head"><div><h2>Trading Journal</h2><p>Catat keputusan dan disiplin, bukan hanya hasil.</p></div></div>
+              <div id="journalList" class="empty">Belum ada catatan jurnal.</div>
+              <button id="exportJournal" class="hidden" type="button" tabindex="-1" aria-hidden="true"></button>
+            </article>
+          </div>
+          <aside class="stack">
+            <article class="card">
+              <div class="card-head"><div><h2>Ringkasan Disiplin</h2><p>Hanya dari catatan yang kamu isi.</p></div></div>
+              <div class="data-rows">
+                <div class="data-row"><span>Total catatan</span><strong id="journalTotal">0</strong></div>
+                <div class="data-row"><span>Entry tercatat</span><strong id="journalEntries">0</strong></div>
+                <div class="data-row"><span>Target tercatat</span><strong id="journalPositive">0</strong></div>
+                <div class="data-row"><span>Stop tercatat</span><strong id="journalStopped">0</strong></div>
+                <div class="data-row"><span>Disiplin rencana</span><strong id="journalDiscipline">—</strong></div>
+              </div>
+              <button id="openJournalModal" class="btn primary full-button">Tambah Catatan</button>
+            </article>
+          </aside>
+        </div>
+      </section>
+
+      <section id="page-ai" class="page" role="tabpanel">
+        <div class="ai-shell">
+          <article class="card ai-chat">
+            <div class="card-head"><div><h2>Asisten AI Portofolio</h2><p>Khusus posisi, alokasi, risiko, dan rencana tersimpan.</p></div><button id="aiClear" class="btn small">Hapus Chat</button></div>
+            <div class="ai-quick">
+              <button class="btn" data-ai-prompt="Ringkas risiko portofolioku berdasarkan data yang tersedia.">Ringkas risiko</button>
+              <button class="btn" data-ai-prompt="Posisi mana yang paling perlu perhatian dan kenapa?">Prioritas perhatian</button>
+              <button class="btn" data-ai-prompt="Apakah alokasi portofolioku terlalu berat di satu posisi?">Cek alokasi</button>
+              <button class="btn" data-ai-prompt="Bantu saya menilai posisi secara tenang dan objektif berdasarkan data yang tersimpan.">Evaluasi objektif</button>
+            </div>
+            <div id="aiMessages" class="ai-messages" aria-live="polite"></div>
+            <div class="ai-compose"><textarea id="aiInput" placeholder="Contoh: Risiko terbesar ada di posisi mana?"></textarea><button id="aiSend" class="btn primary">Kirim</button></div>
+            <div id="aiStatus" class="ai-status">Menunggu akses aman…</div>
+          </article>
+          <aside class="card">
+            <div class="card-head"><div><h2>Kualitas Data AI</h2><p>Ringkasan konteks yang dikirim ke AI.</p></div></div>
+            <div class="ai-data-grid">
+              <div class="ai-data-card"><span>Rencana</span><b id="aiPlanCount">0</b></div>
+              <div class="ai-data-card"><span>Ada harga</span><b id="aiWithPrice">0</b></div>
+              <div class="ai-data-card"><span>Harga kosong</span><b id="aiMissingPrice">0</b></div>
+              <div class="ai-data-card"><span>Estimasi risiko</span><b id="aiTotalRisk">Rp 0</b></div>
+              <div class="ai-data-card"><span>Nilai posisi</span><b id="aiTotalValue">Rp 0</b></div>
+            </div>
+            <p id="aiDataQuality" class="note">Memeriksa data lokal…</p>
+            <p class="ai-disclaimer">AI tidak memiliki harga real-time kecuali data tersebut memang tersedia. Keputusan tetap manual.</p>
+          </aside>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
+  <aside id="tickerDrawer" class="drawer hidden" aria-modal="true" role="dialog" aria-labelledby="drawerTicker">
+    <div class="drawer-head"><div><p class="eyebrow">TICKER INTELLIGENCE</p><h2 id="drawerTicker">—</h2><p id="drawerSubtitle" class="muted">Data tersimpan</p></div><button id="closeDrawer" class="btn small" aria-label="Tutup">✕</button></div>
+    <div id="drawerContent"></div>
+  </aside>
+
+  <div id="journalBackdrop" class="modal-backdrop hidden"></div>
+  <section id="journalModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="journalModalTitle">
+    <div class="card-head"><div><h2 id="journalModalTitle">Tambah Catatan Jurnal</h2><p>Catat fakta dan alasan keputusan secara ringkas.</p></div><button id="closeJournalModal" class="btn small">✕</button></div>
+    <div class="form-grid">
+      <div class="field"><label for="journalTicker">Ticker</label><input id="journalTicker" maxlength="8" placeholder="BBRI"></div>
+      <div class="field"><label for="journalAction">Tindakan</label><select id="journalAction"><option value="REVIEW">Review</option><option value="ENTRY">Entry</option><option value="SKIP">Lewati</option><option value="TP1">TP1</option><option value="TP2">TP2</option><option value="STOP">Stop</option><option value="EXIT_POSITIVE">Keluar positif</option><option value="EXIT_MANUAL">Keluar manual</option></select></div>
+      <div class="field"><label for="journalPrice">Harga</label><input id="journalPrice" inputmode="numeric"></div>
+      <div class="field"><label for="journalLots">Lot</label><input id="journalLots" type="number" min="0"></div>
+      <div class="field full"><label for="journalNote">Catatan</label><textarea id="journalNote" placeholder="Alasan, kondisi, dan pelajaran yang perlu diingat."></textarea></div>
+      <label class="check-row full"><input id="journalFollowed" type="checkbox"> Keputusan mengikuti rencana yang sudah dibuat</label>
+    </div>
+    <div class="actions"><button id="saveJournal" class="btn primary">Simpan Catatan</button><button id="cancelJournal" class="btn">Batal</button></div>
+    <div id="journalError" class="error hidden"></div>
+  </section>
+
+  <div id="toastHost" class="toast-host" aria-live="polite"></div>
+
+  <script src="/portfolio-planner-v1.js?v=20260726-src1"></script>
+  <script src="/ai-chat-renderer.js?v=20260727-premium-v2"></script>
+  <script src="/portfolio-command-center-model.js?v=20260727-v1"></script>
+  <script src="/portfolio-command-center.js?v=20260727-v1"></script>
+  <script src="/portfolio-position-scenarios.js?v=20260727-v1"></script>
+</body>
+</html>
