@@ -10,66 +10,171 @@
       "destination": "/index.html"
     },
     {
+      "source": "/pattern",
+      "destination": "/index.html"
+    },
+    {
       "source": "/review",
       "destination": "/index.html"
     },
     {
       "source": "/portfolio-planner",
-      "destination": "/portfolio-command-center.html"
+      "destination": "/portfolio-command-center-v2.html"
     }
   ],
   "headers": [
     {
       "source": "/dashboard",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/pattern",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/index.html",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/portfolio-planner.html",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/portfolio-command-center.html",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/portfolio-command-center-v2.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/portfolio-command-center.css",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/portfolio-command-center-model.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/portfolio-command-center.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/portfolio-position-scenarios.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/ui-stability-fix.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/pattern-stable-runtime.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/website-approved-access.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/admin-user-delete-enhancement.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/ai-chat-renderer.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/portfolio-ai-runtime-v2.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     },
     {
       "source": "/stock-analysis-ai.js",
-      "headers": [{"key":"Cache-Control","value":"private, no-store, no-cache, must-revalidate, max-age=0"}]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
     }
   ],
   "crons": [
