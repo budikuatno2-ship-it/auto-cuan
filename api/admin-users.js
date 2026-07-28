@@ -66,6 +66,35 @@ async function resolveApprovedAccess(req, res) {
   });
 }
 
+function resolvePatternMapAccess(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, allowed: false, error: 'Method not allowed' });
+  }
+
+  if (!isSameOrigin(req)) {
+    return res.status(403).json({ success: false, allowed: false, error: 'Permintaan ditolak.' });
+  }
+
+  const auth = requireAdminSession(req);
+  if (!auth.ok) {
+    return res.status(auth.status).json({ success: false, allowed: false, error: auth.error });
+  }
+
+  if (String(auth.session.un || '').trim().toLowerCase() !== 'budi') {
+    return res.status(403).json({ success: false, allowed: false, error: 'Akses admin ditolak.' });
+  }
+
+  return res.status(200).json({
+    success: true,
+    allowed: true,
+    access: 'admin',
+    username: 'budi',
+    expires_at: new Date(auth.session.exp * 1000).toISOString()
+  });
+}
+
 async function deleteUser(req, res) {
   if (!isSameOrigin(req)) {
     return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
@@ -147,6 +176,10 @@ module.exports = async function handler(req, res) {
 
   if (action === 'portfolio_access') {
     return resolveApprovedAccess(req, res);
+  }
+
+  if (action === 'pattern_map_access') {
+    return resolvePatternMapAccess(req, res);
   }
 
   if (action === 'delete_user') {

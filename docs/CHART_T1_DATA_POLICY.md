@@ -2,9 +2,9 @@
 
 `/api/candles` returns only Yahoo daily candles whose **Asia/Jakarta market
 date is strictly earlier than the current Asia/Jakarta date**. The cutoff is
-applied before `latest`, candle count, moving averages, RSI, and volume metrics
-are calculated, and only the filtered response is placed in the in-memory
-cache.
+applied before `latest`, candle count, moving averages, RSI, volume metrics,
+and deterministic Pattern detection are calculated. Only the filtered result
+is placed in the in-memory cache.
 
 This is a minimum completed-candle guarantee, not a complete IDX calendar. The
 repository has weekday/weekend helpers but no authoritative, maintained IDX
@@ -27,21 +27,34 @@ candidate and must not be treated as exchange-calendar verification.
 - `t1_verified`: always `false` until an authoritative calendar is integrated.
 - `t1_reason`: stable machine-readable explanation of the status.
 
-Pattern Map remains blocked: it must consume this policy and may not represent
+Pattern Map must consume this policy and may not represent
 `calendar_unverified` data as verified T-1.
 
-## Pattern Map preview status
+## Pattern Map authorization
 
-The runtime currently has **no trusted deterministic producer** for the full
-Pattern Map contract (stable candidate/rule identity, ordered X/A/B/C/D candle
-references, PRZ, confirmation, invalidation, TP1/TP2, and provenance).
-`/api/candles` intentionally does not claim or fabricate that geometry. The
-Pattern tab is therefore a default-off renderer preview, enabled only with the
-explicit `window.__AUTOCUAN_PATTERN_MAP_PREVIEW__ = true` switch or the
-`?patternMapPreview=1` preview query parameter. This is renderer infrastructure,
-not an operational production Pattern Map.
+Pattern Map is **admin-only**. The browser asks the existing
+`/api/admin-users` endpoint for `pattern_map_access`; access is granted only
+when the request carries a current, valid HMAC-signed `ac_sess` HttpOnly cookie
+whose server-owned admin claim belongs to `budi`. Guest, approved non-admin,
+tampered, missing, and expired sessions are denied.
 
-Activation also remains blocked until the hosted QuickChart Chart.js v4 runtime
-is proven to register the financial candlestick controller and its date adapter,
-and a browser-origin POST from the Vercel preview is proven CORS-safe. A Node.js
-or mocked-fetch result alone is not sufficient evidence for either condition.
+The legacy `?patternMapPreview=1` query parameter and
+`window.__AUTOCUAN_PATTERN_MAP_PREVIEW__` browser flag are not authorization
+inputs and cannot expose or render Pattern Map.
+
+`/api/candles` keeps one internal T-1 result cache, but applies authorization to
+every response. `patternMap` and `pattern_map_meta` are removed for guest and
+non-admin requests, including cache hits. Responses are marked `private,
+no-store` and vary by `Cookie` so a shared HTTP cache cannot leak Pattern
+geometry. Technical Chart fields remain unchanged.
+
+The browser gate starts hidden, rechecks the signed session before rendering,
+and revalidates on focus/visibility changes. Logout or session expiry restores
+Technical Chart, cancels active Pattern rendering, and revokes the current
+object URL through the existing reset path.
+
+QuickChart remains lazy: the initial page and Technical Chart load make no
+QuickChart request. A request is made only after an authorized admin selects
+Pattern Map and a trusted deterministic candidate passes the renderer
+contract. Pattern Q&A remains disabled and no AI detects, draws, ranks, or
+changes Pattern geometry.

@@ -169,3 +169,224 @@
   return { EMPTY_MESSAGE: EMPTY_MESSAGE, validateCandidate: validateCandidate, publicPatternData: publicPatternData,
     buildQuickChartConfig: buildQuickChartConfig, cacheKey: cacheKey, RequestManager: RequestManager };
 });
+
+// Browser-only authorization gate. The legacy query/window preview switches in
+// index.html are intentionally ignored here: only a current server-verified,
+// signed admin session may expose or render Pattern Map.
+(function installPatternMapAdminGate(root) {
+  'use strict';
+  if (!root || !root.document || typeof root.fetch !== 'function') return;
+
+  var state = {
+    allowed: false,
+    expiresAt: 0,
+    request: null,
+    version: 0,
+    expiryTimer: null
+  };
+  var originalRenderPatternTab = typeof root.renderPatternTab === 'function' ? root.renderPatternTab : null;
+  var originalLogout = typeof root.logout === 'function' ? root.logout : null;
+  var originalEnterApp = typeof root.enterApp === 'function' ? root.enterApp : null;
+
+  function getElement(id) { return root.document.getElementById(id); }
+
+  function setSelected(tab, selected) {
+    if (!tab) return;
+    if (typeof root.setChartTabSelected === 'function') {
+      root.setChartTabSelected(tab, selected);
+      return;
+    }
+    tab.setAttribute('aria-selected', String(selected));
+    tab.classList.toggle('bg-emerald-500', selected);
+    tab.classList.toggle('text-black', selected);
+    tab.classList.toggle('bg-dark-700', !selected);
+    tab.classList.toggle('text-gray-300', !selected);
+  }
+
+  function clearExpiryTimer() {
+    if (state.expiryTimer != null && typeof root.clearTimeout === 'function') root.clearTimeout(state.expiryTimer);
+    state.expiryTimer = null;
+  }
+
+  function switchToTechnical(hidePatternTab) {
+    var technicalTab = getElement('technicalChartTab');
+    var patternTab = getElement('patternChartTab');
+    var technicalPanel = getElement('chartPageContainer');
+    var patternPanel = getElement('patternPageContainer');
+    if (technicalPanel) technicalPanel.classList.remove('hidden');
+    if (patternPanel) patternPanel.classList.add('hidden');
+    if (patternTab) patternTab.classList.toggle('hidden', hidePatternTab === true);
+    setSelected(technicalTab, true);
+    setSelected(patternTab, false);
+  }
+
+  function cancelAccessRequest() {
+    if (state.request && state.request.controller) state.request.controller.abort();
+    state.request = null;
+  }
+
+  function denyAccess() {
+    state.version += 1;
+    cancelAccessRequest();
+    clearExpiryTimer();
+    state.allowed = false;
+    state.expiresAt = 0;
+    switchToTechnical(true);
+    if (typeof root.resetPatternMap === 'function') root.resetPatternMap();
+    return false;
+  }
+
+  function hasFreshAccess() {
+    if (state.allowed !== true || !Number.isFinite(state.expiresAt) || state.expiresAt <= Date.now()) {
+      if (state.allowed === true) denyAccess();
+      return false;
+    }
+    return true;
+  }
+
+  function grantAccess(expiresAt) {
+    clearExpiryTimer();
+    state.allowed = true;
+    state.expiresAt = expiresAt;
+    var patternTab = getElement('patternChartTab');
+    if (patternTab) {
+      patternTab.classList.remove('hidden');
+      patternTab.textContent = 'Pattern Map';
+    }
+    if (typeof root.setTimeout === 'function') {
+      state.expiryTimer = root.setTimeout(function() { denyAccess(); }, Math.max(0, expiresAt - Date.now() + 25));
+    }
+    return true;
+  }
+
+  function refreshAccess(force) {
+    if (force !== true && hasFreshAccess()) return Promise.resolve(true);
+    if (state.request) {
+      if (force !== true) return state.request.promise;
+      cancelAccessRequest();
+    }
+
+    var requestVersion = ++state.version;
+    var controller = typeof root.AbortController === 'function' ? new root.AbortController() : null;
+    var options = {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'pattern_map_access' })
+    };
+    if (controller) options.signal = controller.signal;
+
+    var promise = root.fetch('/api/admin-users', options).then(function(response) {
+      if (!response || !response.ok) return null;
+      return response.json();
+    }).then(function(data) {
+      if (requestVersion !== state.version) return false;
+      var expiresAt = data && Date.parse(data.expires_at);
+      var allowed = Boolean(data && data.success === true && data.allowed === true && data.access === 'admin' &&
+        String(data.username || '').toLowerCase() === 'budi' && Number.isFinite(expiresAt) && expiresAt > Date.now());
+      return allowed ? grantAccess(expiresAt) : denyAccess();
+    }).catch(function(error) {
+      if (requestVersion !== state.version || error && error.name === 'AbortError') return false;
+      return denyAccess();
+    }).finally(function() {
+      if (state.request && state.request.version === requestVersion) state.request = null;
+    });
+
+    state.request = { promise: promise, controller: controller, version: requestVersion };
+    return promise;
+  }
+
+  root.patternMapPreviewEnabled = function() {
+    return hasFreshAccess();
+  };
+
+  root.applyPatternMapPreviewPolicy = function() {
+    if (!hasFreshAccess()) {
+      switchToTechnical(true);
+      return false;
+    }
+    var patternTab = getElement('patternChartTab');
+    if (patternTab) patternTab.classList.remove('hidden');
+    return true;
+  };
+
+  root.showChartTab = function(tab) {
+    if (tab !== 'pattern') {
+      if (!hasFreshAccess()) {
+        switchToTechnical(true);
+        return true;
+      }
+      switchToTechnical(false);
+      return true;
+    }
+
+    return refreshAccess(true).then(function(allowed) {
+      if (!allowed || !hasFreshAccess()) return false;
+      var technicalTab = getElement('technicalChartTab');
+      var patternTab = getElement('patternChartTab');
+      var technicalPanel = getElement('chartPageContainer');
+      var patternPanel = getElement('patternPageContainer');
+      if (technicalPanel) technicalPanel.classList.add('hidden');
+      if (patternPanel) patternPanel.classList.remove('hidden');
+      if (patternTab) patternTab.classList.remove('hidden');
+      setSelected(technicalTab, false);
+      setSelected(patternTab, true);
+      return Promise.resolve(root.renderPatternTab()).then(function() { return true; });
+    });
+  };
+
+  root.renderPatternTab = function() {
+    return refreshAccess(false).then(function(allowed) {
+      if (!allowed || !hasFreshAccess() || !originalRenderPatternTab) return false;
+      return originalRenderPatternTab.apply(root, []);
+    });
+  };
+
+  root.initPatternMapPreview = function() {
+    denyAccess();
+    return refreshAccess(true);
+  };
+
+  if (originalLogout) {
+    root.logout = function() {
+      denyAccess();
+      return originalLogout.apply(root, arguments);
+    };
+  }
+
+  if (originalEnterApp) {
+    root.enterApp = function() {
+      var result = originalEnterApp.apply(root, arguments);
+      Promise.resolve(result).finally(function() { refreshAccess(true); });
+      return result;
+    };
+  }
+
+  root.PatternMapAdminAccess = Object.freeze({
+    refresh: refreshAccess,
+    isAllowed: hasFreshAccess,
+    deny: denyAccess
+  });
+
+  function boot() {
+    denyAccess();
+    refreshAccess(true);
+  }
+
+  if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+
+  if (typeof root.addEventListener === 'function') {
+    root.addEventListener('focus', function() { refreshAccess(true); });
+    root.addEventListener('storage', function(event) {
+      if (!event || ['autocuan_logged_in', 'autocuan_user', 'autocuan_is_admin'].indexOf(event.key) < 0) return;
+      if (event.newValue == null || event.newValue === 'false' || event.newValue === 'guest') denyAccess();
+      else refreshAccess(true);
+    });
+  }
+  if (typeof root.document.addEventListener === 'function') {
+    root.document.addEventListener('visibilitychange', function() {
+      if (root.document.visibilityState === 'visible') refreshAccess(true);
+    });
+  }
+})(typeof window !== 'undefined' ? window : null);
