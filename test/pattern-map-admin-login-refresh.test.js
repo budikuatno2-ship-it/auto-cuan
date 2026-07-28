@@ -91,20 +91,30 @@ function jsonResponse(body, ok) {
   return { ok: ok !== false, status: ok === false ? 403 : 200, json: async () => body };
 }
 
-test('an in-page admin login refreshes signed Pattern access without a reload', async () => {
-  let response = jsonResponse({ success: false, allowed: false }, false);
-  const h = harness(async () => response);
+function abortError() {
+  return Object.assign(new Error('aborted'), { name: 'AbortError' });
+}
 
-  await h.sandbox.PatternMapAdminAccess.refresh(true);
+test('an in-page admin login replaces a still-pending guest check without a reload', async () => {
+  let fetchCount = 0;
+  let firstSignal;
+  const h = harness(async (url, options) => {
+    fetchCount += 1;
+    if (fetchCount === 1) {
+      firstSignal = options.signal;
+      return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(abortError())));
+    }
+    return jsonResponse(adminResponse(), true);
+  });
+
   assert.equal(h.sandbox.PatternMapAdminAccess.isAllowed(), false);
-  assert.equal(h.elements.patternChartTab.classList.contains('hidden'), true);
-
-  response = jsonResponse(adminResponse(), true);
   h.sandbox.enterApp();
   await new Promise(resolve => setImmediate(resolve));
   await new Promise(resolve => setImmediate(resolve));
 
   assert.equal(h.calls.enterApp, 1);
+  assert.equal(fetchCount, 2);
+  assert.equal(firstSignal.aborted, true, 'stale guest verification must be cancelled');
   assert.equal(h.sandbox.PatternMapAdminAccess.isAllowed(), true);
   assert.equal(h.elements.patternChartTab.classList.contains('hidden'), false);
   assert.equal(h.elements.patternChartTab.textContent, 'Pattern Map');
@@ -120,7 +130,7 @@ test('Technical Chart does not abort a pending admin-session verification', asyn
     return pending;
   });
 
-  const access = h.sandbox.PatternMapAdminAccess.refresh(true);
+  const access = h.sandbox.PatternMapAdminAccess.refresh(false);
   assert.equal(h.sandbox.showChartTab('technical'), true);
   assert.equal(capturedSignal.aborted, false);
   assert.equal(h.elements.chartPageContainer.classList.contains('hidden'), false);
