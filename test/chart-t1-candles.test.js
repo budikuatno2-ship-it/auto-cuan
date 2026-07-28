@@ -3,7 +3,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const policy = require('../lib/chart-t1-policy');
+const adminSession = require('../lib/admin-session');
 const handler = require('../api/candles');
+
+const SESSION_SECRET = 'chart-t1-candles-admin-test-secret';
 
 function atJakarta(date, hour) {
   return new Date(date + 'T' + String(hour == null ? 12 : hour).padStart(2, '0') + ':00:00+07:00');
@@ -76,12 +79,27 @@ function yahooPayload(rows) {
 function unixAtJakarta(date) { return Date.parse(date + 'T09:00:00+07:00') / 1000; }
 
 function mockResponse() {
-  return { code: null, body: null, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } };
+  return {
+    code: null,
+    body: null,
+    headers: {},
+    setHeader(name, value) { this.headers[name] = value; },
+    status(code) { this.code = code; return this; },
+    json(body) { this.body = body; return this; }
+  };
+}
+
+function adminCookie() {
+  process.env.SESSION_SECRET = SESSION_SECRET;
+  const token = adminSession.createSessionToken({
+    userId: 'admin-1', username: 'budi', isAdmin: true, deviceId: 'chart-test-device'
+  });
+  return 'ac_sess=' + token;
 }
 
 async function callApi(ticker) {
   const res = mockResponse();
-  await handler({ method: 'GET', query: { ticker: ticker || 'BBCA' } }, res);
+  await handler({ method: 'GET', query: { ticker: ticker || 'BBCA' }, headers: { cookie: adminCookie() } }, res);
   return res;
 }
 
@@ -115,6 +133,8 @@ test('endpoint filters before latest and every indicator, and preserves response
   assert.equal(res.body.patternMap, null);
   assert.match(res.body.pattern_map_meta.reason, /^[a-z0-9_]{1,64}$/);
   assert.deepEqual(res.body.pattern_map_meta, { engine: 'abcd-t1-v1', status: 'none', reason: 'invalid_ohlc' });
+  assert.equal(res.headers['Cache-Control'], 'private, no-store');
+  assert.equal(res.headers.Vary, 'Cookie');
 });
 
 test('malformed timestamps are discarded and completed filtered result is cached', async (t) => {
