@@ -22,18 +22,21 @@ test('command center v2 assets parse and route from portfolio-planner', () => {
   const pure = read('public/portfolio-command-center-model.js');
   const scenarios = read('public/portfolio-position-scenarios.js');
   const stability = read('public/ui-stability-fix.js');
+  const runtimeFix = read('public/portfolio-runtime-fix.js');
   const css = read('public/portfolio-command-center.css');
   const vercel = JSON.parse(read('vercel.json'));
   new vm.Script(ui, { filename: 'portfolio-command-center.js' });
   new vm.Script(pure, { filename: 'portfolio-command-center-model.js' });
   new vm.Script(scenarios, { filename: 'portfolio-position-scenarios.js' });
   new vm.Script(stability, { filename: 'ui-stability-fix.js' });
+  new vm.Script(runtimeFix, { filename: 'portfolio-runtime-fix.js' });
   const route = (vercel.rewrites || []).find((row) => row.source === '/portfolio-planner');
   assert.ok(route);
   assert.equal(route.destination, '/portfolio-command-center-v2.html');
   assert.match(html, /Portfolio Command Center/);
   assert.match(html, /fetch\('\/portfolio-command-center\.html\?v=/);
   assert.match(html, /\/ui-stability-fix\.js\?v=/);
+  assert.match(html, /\/portfolio-runtime-fix\.js\?v=20260728-portfolio-runtime-fix-v1/);
   assert.match(legacyHtml, /Budget-to-Stock Planner/);
   assert.match(legacyHtml, /Skenario Posisi/);
   assert.match(legacyHtml, /Trading Journal/);
@@ -42,12 +45,13 @@ test('command center v2 assets parse and route from portfolio-planner', () => {
   assert.match(stability, /pruneStandaloneArtifacts/);
   assert.match(stability, /\.tab-strip\{top:10px/);
   assert.match(css, /prefers-reduced-motion/);
-  assert.doesNotMatch(html + legacyHtml + ui + scenarios + stability, /document\.write\(|\beval\(|new Function\(/);
+  assert.doesNotMatch(html + legacyHtml + ui + scenarios + stability + runtimeFix, /document\.write\(|\beval\(|new Function\(/);
 });
 
 test('access stays server-verified and uses existing APIs only', () => {
   const ui = read('public/portfolio-command-center.js');
   const scenarios = read('public/portfolio-position-scenarios.js');
+  const runtimeFix = read('public/portfolio-runtime-fix.js');
   assert.match(ui, /ACCESS_TIMEOUT_MS = 9000/);
   assert.match(ui, /action: 'portfolio_access'/);
   assert.match(ui, /credentials: 'same-origin'/);
@@ -55,7 +59,19 @@ test('access stays server-verified and uses existing APIs only', () => {
   assert.match(scenarios, /action=nk-screener-results/);
   assert.match(scenarios, /action=daytrade-screener/);
   assert.match(scenarios, /\/api\/quote\?ticker=/);
-  assert.doesNotMatch(ui + scenarios, /broker-order|telegram|supabase\.from/i);
+  assert.doesNotMatch(ui + scenarios + runtimeFix, /broker-order|telegram|supabase\.from|createOrder/i);
+});
+
+test('legacy Portfolio plans receive stable IDs and delete is intercepted before the broken handler', () => {
+  const runtimeFix = read('public/portfolio-runtime-fix.js');
+  assert.match(runtimeFix, /function stableLegacyId/);
+  assert.match(runtimeFix, /if \(plan\.id != null && String\(plan\.id\)\.trim\(\)\) return plan/);
+  assert.match(runtimeFix, /id:stableLegacyId\(plan, index, used\)/);
+  assert.match(runtimeFix, /doc\.addEventListener\('click',[\s\S]*true\)/);
+  assert.match(runtimeFix, /event\.stopImmediatePropagation\(\)/);
+  assert.match(runtimeFix, /legacyFallback = !planId && requestedTicker && planTicker === requestedTicker/);
+  assert.match(runtimeFix, /berhasil dihapus/);
+  assert.match(runtimeFix, /\^0\\s\+perubahan\\s\+dicatat/);
 });
 
 test('rupiah input parser accepts formatted Indonesian currency', () => {
