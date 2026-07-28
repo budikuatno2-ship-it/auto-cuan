@@ -37,6 +37,9 @@ const SYNTAX_CHECKED = [
   'public/portfolio-command-center.js',
   'public/portfolio-position-scenarios.js',
   'public/stock-analysis-ai.js',
+  'public/ui-stability-fix.js',
+  'public/pattern-stable-runtime.js',
+  'public/assets/fca-stocks.js',
   'lib/context-ai-router-v4.js',
   'lib/context-ai-router-v5.js',
   'lib/analyze-legacy.js',
@@ -103,16 +106,30 @@ assertOk(portfolioFallback.includes('var ACCESS_TIMEOUT_MS=9000'), 'Portfolio fa
 assertOk(portfolioFallback.includes("$('retryAccess').onclick=checkAccess"), 'Portfolio fallback access failure lost its retry button.');
 assertOk(!portfolioFallback.includes('document.write('), 'document.write returned to the portfolio fallback.');
 
-const commandHtml = read('public/portfolio-command-center.html');
+const commandHtml = read('public/portfolio-command-center-v2.html');
+const legacyCommandHtml = read('public/portfolio-command-center.html');
 const commandCss = read('public/portfolio-command-center.css');
 const commandUi = read('public/portfolio-command-center.js');
 const commandModel = read('public/portfolio-command-center-model.js');
 const commandScenarios = read('public/portfolio-position-scenarios.js');
-assertOk(commandHtml.includes('Portfolio Command Center'), 'Portfolio Command Center page is missing.');
-assertOk(commandHtml.includes('Budget-to-Stock Planner'), 'Budget-to-Stock Planner is missing.');
-assertOk(commandHtml.includes('Skenario Posisi'), 'Position scenarios are missing.');
-assertOk(commandHtml.includes('id="exportJournal" class="hidden"'), 'Journal export control is visible again.');
-assertOk(!/>Pengingat Harga</.test(commandHtml), 'The obsolete visible price-alert tab returned.');
+const stability = read('public/ui-stability-fix.js');
+const patternStable = read('public/pattern-stable-runtime.js');
+let commandInlineCount = 0;
+for (const match of commandHtml.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) {
+  if (!match[1].trim()) continue;
+  commandInlineCount += 1;
+  new vm.Script(match[1], { filename: 'public/portfolio-command-center-v2.html <script> #' + commandInlineCount });
+}
+assertOk(commandInlineCount === 1, 'Portfolio v2 loader must contain exactly one inline bootstrap script.');
+assertOk(commandHtml.includes('Portfolio Command Center'), 'Portfolio Command Center v2 loader is missing.');
+assertOk(commandHtml.includes("fetch('/portfolio-command-center.html?v="), 'Portfolio v2 no longer hydrates the audited Command Center markup.');
+assertOk(commandHtml.includes('/ui-stability-fix.js?v='), 'Portfolio UI stability runtime is missing from the v2 loader.');
+assertOk(legacyCommandHtml.includes('Budget-to-Stock Planner'), 'Budget-to-Stock Planner is missing.');
+assertOk(legacyCommandHtml.includes('Skenario Posisi'), 'Position scenarios are missing.');
+assertOk(legacyCommandHtml.includes('id="exportJournal" class="hidden"'), 'Journal export control is visible again.');
+assertOk(!/>Pengingat Harga</.test(legacyCommandHtml), 'The obsolete visible price-alert tab returned.');
+assertOk(countOccurrences(stability, 'class="tab-icon"') >= 1 && ['today:', 'planner:', 'watch:', 'risk:', 'scenarios:', 'journal:', 'ai:'].every(function (key) { return stability.includes(key); }), 'Portfolio segmented navigation icon set is incomplete.');
+assertOk(stability.includes('PORTFOLIO COPILOT'), 'Portfolio AI premium heading is missing.');
 assertOk(commandUi.includes('var ACCESS_TIMEOUT_MS = 9000'), 'Command Center access timeout is missing.');
 assertOk(commandUi.includes("action: 'portfolio_access'"), 'Command Center no longer uses server-verified portfolio access.');
 assertOk(commandModel.includes('averageDownDecision'), 'Average-down decision guard is missing.');
@@ -121,18 +138,32 @@ assertOk(commandScenarios.includes('event.stopImmediatePropagation()'), 'The old
 assertOk(commandScenarios.includes('action=screener') && commandScenarios.includes('action=nk-screener-results') && commandScenarios.includes('action=daytrade-screener'), 'Budget matching no longer reads the latest screeners.');
 assertOk(commandCss.includes('.check-row input{width:auto;min-height:auto}'), 'Portfolio checkbox sizing regressed.');
 assertOk(commandCss.includes('@media (prefers-reduced-motion: reduce)'), 'Reduced-motion support is missing.');
-assertOk(!commandHtml.includes('document.write(') && !commandUi.includes('document.write(') && !commandScenarios.includes('document.write('), 'document.write returned to Command Center.');
+assertOk(stability.includes('pruneStandaloneArtifacts'), 'Standalone UI artifact cleanup is missing.');
+assertOk(!commandHtml.includes('document.write(') && !legacyCommandHtml.includes('document.write(') && !commandUi.includes('document.write(') && !commandScenarios.includes('document.write(') && !stability.includes('document.write('), 'document.write returned to Command Center.');
 
 const portfolioRuntime = read('public/portfolio-ai-runtime-v2.js');
 assertOk(portfolioRuntime.includes('previous.role !== row.role'), 'Portfolio chat duplicate cleanup is missing.');
 assertOk(portfolioRuntime.includes('if (!text || state.sending) return;'), 'Portfolio AI send lock is missing.');
 
-// --- 9. Routing and dead files -------------------------------------------
+// --- 9. Stable Pattern runtime --------------------------------------------
+const fcaLoader = read('public/assets/fca-stocks.js');
+assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260728-ui-stability-v1'), 'Shared UI stability runtime loader is missing.');
+assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260728-pattern-stable-v1'), 'Stable Pattern runtime loader is missing.');
+assertOk(!fcaLoader.includes('/pattern-radar.js'), 'The duplicate Pattern Radar runtime is still loaded.');
+assertOk(patternStable.includes('action=screener') && patternStable.includes('action=nk-screener-results') && patternStable.includes('action=daytrade-screener'), 'Pattern Radar no longer reads all three latest screener sources.');
+assertOk(stability.includes("type: 'line'"), 'Pattern map reliable line-chart renderer is missing.');
+assertOk(!patternStable.includes('MAX_SCAN') && !patternStable.includes('FALLBACK_TICKERS'), 'Pattern fixed cap or fallback universe returned.');
+assertOk(patternStable.includes("root.location.pathname === '/pattern'"), 'Direct Pattern route bootstrap is missing.');
+assertOk(patternStable.includes('PatternMap.validateCandidate'), 'Pattern renderer no longer validates server geometry.');
+
+// --- 10. Routing and dead files -------------------------------------------
 const vercel = JSON.parse(read('vercel.json'));
 const dashboardRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/dashboard'; });
+const patternRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/pattern'; });
 const portfolioRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/portfolio-planner'; });
 assertOk(dashboardRewrite && dashboardRewrite.destination === '/index.html', '/dashboard must rewrite directly to /index.html.');
-assertOk(portfolioRewrite && portfolioRewrite.destination === '/portfolio-command-center.html', '/portfolio-planner must open the Command Center.');
+assertOk(patternRewrite && patternRewrite.destination === '/index.html', '/pattern must rewrite directly to /index.html.');
+assertOk(portfolioRewrite && portfolioRewrite.destination === '/portfolio-command-center-v2.html', '/portfolio-planner must open Command Center v2.');
 assertOk(!JSON.stringify(vercel).includes('dashboard-loader'), 'vercel.json references dashboard-loader again.');
 
 [

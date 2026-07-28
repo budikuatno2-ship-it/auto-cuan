@@ -15,25 +15,34 @@ function model() {
   return require(file);
 }
 
-test('command center assets parse and route from portfolio-planner', () => {
-  const html = read('public/portfolio-command-center.html');
+test('command center v2 assets parse and route from portfolio-planner', () => {
+  const html = read('public/portfolio-command-center-v2.html');
+  const legacyHtml = read('public/portfolio-command-center.html');
   const ui = read('public/portfolio-command-center.js');
   const pure = read('public/portfolio-command-center-model.js');
   const scenarios = read('public/portfolio-position-scenarios.js');
+  const stability = read('public/ui-stability-fix.js');
   const css = read('public/portfolio-command-center.css');
   const vercel = JSON.parse(read('vercel.json'));
   new vm.Script(ui, { filename: 'portfolio-command-center.js' });
   new vm.Script(pure, { filename: 'portfolio-command-center-model.js' });
   new vm.Script(scenarios, { filename: 'portfolio-position-scenarios.js' });
+  new vm.Script(stability, { filename: 'ui-stability-fix.js' });
   const route = (vercel.rewrites || []).find((row) => row.source === '/portfolio-planner');
   assert.ok(route);
-  assert.equal(route.destination, '/portfolio-command-center.html');
+  assert.equal(route.destination, '/portfolio-command-center-v2.html');
   assert.match(html, /Portfolio Command Center/);
-  assert.match(html, /Budget-to-Stock Planner/);
-  assert.match(html, /Skenario Posisi/);
-  assert.match(html, /Trading Journal/);
+  assert.match(html, /fetch\('\/portfolio-command-center\.html\?v=/);
+  assert.match(html, /\/ui-stability-fix\.js\?v=/);
+  assert.match(legacyHtml, /Budget-to-Stock Planner/);
+  assert.match(legacyHtml, /Skenario Posisi/);
+  assert.match(legacyHtml, /Trading Journal/);
+  assert.match(stability, /PORTFOLIO COPILOT/);
+  for (const key of ['today:', 'planner:', 'watch:', 'risk:', 'scenarios:', 'journal:', 'ai:']) assert.match(stability, new RegExp(key));
+  assert.match(stability, /pruneStandaloneArtifacts/);
+  assert.match(stability, /\.tab-strip\{top:10px/);
   assert.match(css, /prefers-reduced-motion/);
-  assert.doesNotMatch(html + ui + scenarios, /document\.write\(|\beval\(|new Function\(/);
+  assert.doesNotMatch(html + legacyHtml + ui + scenarios + stability, /document\.write\(|\beval\(|new Function\(/);
 });
 
 test('access stays server-verified and uses existing APIs only', () => {
