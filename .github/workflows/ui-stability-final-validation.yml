@@ -34,8 +34,20 @@ jobs:
         run: node --test --test-name-pattern="access stays" test/portfolio-command-center.test.js
       - name: Portfolio legacy delete tests
         run: node --test --test-name-pattern="legacy Portfolio plans" test/portfolio-command-center.test.js
-      - name: Portfolio calculation tests
-        run: node --test --test-name-pattern="rupiah|affordability|average down|scenario module|status and snapshot" test/portfolio-command-center.test.js
+      - name: Portfolio rupiah tests
+        run: node --test --test-name-pattern="rupiah input parser" test/portfolio-command-center.test.js
+      - name: Portfolio affordability tests
+        run: node --test --test-name-pattern="affordability produces" test/portfolio-command-center.test.js
+      - name: Portfolio stop guard tests
+        run: node --test --test-name-pattern="returns cut loss" test/portfolio-command-center.test.js
+      - name: Portfolio block guard tests
+        run: node --test --test-name-pattern="blocks invalid setup" test/portfolio-command-center.test.js
+      - name: Portfolio allow guard tests
+        run: node --test --test-name-pattern="allows manual review" test/portfolio-command-center.test.js
+      - name: Portfolio scenario tests
+        run: node --test --test-name-pattern="scenario module" test/portfolio-command-center.test.js
+      - name: Portfolio snapshot tests
+        run: node --test --test-name-pattern="status and snapshot" test/portfolio-command-center.test.js
       - name: Classic detector tests
         run: node --test test/classic-chart-patterns.test.js
       - name: Ranking integration tests
