@@ -65,8 +65,11 @@ test('browser source separates Pattern from manual Chart and keeps rendering laz
   assert.match(source, /manager\.render\(row\.candidate, row\.context\)/);
 });
 
-test('deferred loader is installed without adding a new API endpoint', () => {
+test('deferred loader and exact-expiry watcher are installed without a new API endpoint', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'fca-stocks.js'), 'utf8');
-  assert.match(source, /\/pattern-radar\.js\?v=20260728-radar1/);
+  assert.match(source, /\/pattern-radar\.js\?v=20260728-radar2/);
   assert.match(source, /data-pattern-radar-loader/);
+  assert.match(source, /watchPatternRadarAccess/);
+  assert.match(source, /gate\.isAllowed\(\)/);
+  assert.match(source, /window\.navigateTo\('chart'\)/);
 });
