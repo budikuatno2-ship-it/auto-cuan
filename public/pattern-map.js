@@ -297,7 +297,10 @@
   };
 
   root.applyPatternMapPreviewPolicy = function() {
-    if (!hasFreshAccess()) return denyAccess();
+    if (!hasFreshAccess()) {
+      switchToTechnical(true);
+      return false;
+    }
     var patternTab = getElement('patternChartTab');
     if (patternTab) patternTab.classList.remove('hidden');
     return true;
@@ -305,7 +308,10 @@
 
   root.showChartTab = function(tab) {
     if (tab !== 'pattern') {
-      if (!hasFreshAccess()) return denyAccess();
+      if (!hasFreshAccess()) {
+        switchToTechnical(true);
+        return true;
+      }
       switchToTechnical(false);
       return true;
     }
@@ -328,7 +334,7 @@
   root.renderPatternTab = function() {
     return refreshAccess(false).then(function(allowed) {
       if (!allowed || !hasFreshAccess() || !originalRenderPatternTab) return false;
-      return originalRenderPatternTab.apply(root, arguments);
+      return originalRenderPatternTab.apply(root, []);
     });
   };
 
