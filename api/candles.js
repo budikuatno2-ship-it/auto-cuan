@@ -8,6 +8,7 @@ var cache = {};
 var CACHE_TTL = 5 * 60 * 1000;
 var t1Policy = require('../lib/chart-t1-policy');
 var patternDetector = require('../lib/pattern-abcd').detectAbcdPattern;
+var classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns;
 var adminSession = require('../lib/admin-session');
 var clock = { now: function() { return new Date(); } };
 
@@ -21,6 +22,8 @@ function responseForRequest(data, req) {
   var publicData = Object.assign({}, data);
   delete publicData.patternMap;
   delete publicData.pattern_map_meta;
+  delete publicData.classicPatterns;
+  delete publicData.classic_pattern_meta;
   return publicData;
 }
 
@@ -183,6 +186,23 @@ module.exports = async function handler(req, res) {
       result.pattern_map_meta = { engine: 'abcd-t1-v1', status: 'none', reason: 'detector_error' };
     }
 
+    // Classic formations are separate from ABCD geometry. They provide
+    // context/ranking only and deliberately do not fabricate Pattern Map lines.
+    try {
+      var classicResult = classicPatternDetector(candles.slice(-90), { ticker: ticker, dataDate: cutoff.metadata.actual_data_date });
+      result.classicPatterns = classicResult.patterns || [];
+      result.classic_pattern_meta = {
+        engine: classicResult.rule_version || 'classic-chart-patterns-v1',
+        status: result.classicPatterns.length ? 'found' : 'none',
+        count: result.classicPatterns.length,
+        score_adjustment: classicResult.score_adjustment || 0,
+        diagnostics: classicResult.diagnostics || []
+      };
+    } catch (classicError) {
+      result.classicPatterns = [];
+      result.classic_pattern_meta = { engine:'classic-chart-patterns-v1', status:'none', count:0, score_adjustment:0, diagnostics:['detector_error'] };
+    }
+
     // Cache the complete deterministic result once, then apply the signed-session
     // response policy per request. This prevents a guest/non-admin cache hit from
     // receiving Pattern geometry while keeping Technical Chart caching unchanged.
@@ -200,6 +220,8 @@ module.exports.__test = {
   clearCache: function() { cache = {}; },
   setPatternDetector: function(detector) { patternDetector = detector; },
   resetPatternDetector: function() { patternDetector = require('../lib/pattern-abcd').detectAbcdPattern; },
+  setClassicPatternDetector: function(detector) { classicPatternDetector = detector; },
+  resetClassicPatternDetector: function() { classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns; },
   hasPatternMapAccess: hasPatternMapAccess,
   responseForRequest: responseForRequest
 };
