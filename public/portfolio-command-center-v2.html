@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080c12">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <title>Portfolio Command Center | Auto-Cuan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="/portfolio-command-center.css?v=20260728-ui2">
+  <style>#portfolioV2Loader{min-height:100dvh;display:grid;place-items:center;background:#080c12;color:#94a3b8;font:600 13px Inter,system-ui,sans-serif}#portfolioV2Loader span{width:34px;height:34px;border:3px solid #1f2937;border-top-color:#34d399;border-radius:50%;animation:v2spin .8s linear infinite}@keyframes v2spin{to{transform:rotate(360deg)}}</style>
+</head>
+<body><div id="portfolioV2Loader"><div><span style="display:block;margin:0 auto 12px"></span>Menyiapkan Portfolio Command Center…</div></div>
+<script>
+(function () {
+  'use strict';
+  var assets = [
+    '/portfolio-planner-v1.js?v=20260726-src1',
+    '/ai-chat-renderer.js?v=20260728-premium-v3',
+    '/portfolio-command-center-model.js?v=20260727-v1',
+    '/portfolio-command-center.js?v=20260727-v1',
+    '/portfolio-position-scenarios.js?v=20260727-v1',
+    '/ui-stability-fix.js?v=20260728-ui-stability-v1'
+  ];
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = function () { reject(new Error('Gagal memuat ' + src)); };
+      document.body.appendChild(script);
+    });
+  }
+  fetch('/portfolio-command-center.html?v=20260727-v1', { credentials:'same-origin', cache:'no-store' })
+    .then(function (response) { if (!response.ok) throw new Error('HTTP ' + response.status); return response.text(); })
+    .then(function (html) {
+      var parsed = new DOMParser().parseFromString(html, 'text/html');
+      Array.prototype.forEach.call(parsed.body.querySelectorAll('script'), function (node) { node.remove(); });
+      document.body.innerHTML = parsed.body.innerHTML;
+      return assets.reduce(function (promise, src) { return promise.then(function () { return loadScript(src); }); }, Promise.resolve());
+    })
+    .catch(function (error) {
+      document.body.innerHTML = '<main id="portfolioV2Loader"><div><strong style="display:block;color:#f8fafc;margin-bottom:8px">Portfolio belum berhasil dibuka</strong><span style="display:none"></span>' + String(error.message || error) + '<br><a href="/portfolio-planner" style="display:inline-block;margin-top:14px;color:#6ee7b7">Coba lagi</a></div></main>';
+    });
+})();
+</script>
+</body>
+</html>
