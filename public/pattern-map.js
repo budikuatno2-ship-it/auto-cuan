@@ -186,6 +186,7 @@
   };
   var originalRenderPatternTab = typeof root.renderPatternTab === 'function' ? root.renderPatternTab : null;
   var originalLogout = typeof root.logout === 'function' ? root.logout : null;
+  var originalEnterApp = typeof root.enterApp === 'function' ? root.enterApp : null;
 
   function getElement(id) { return root.document.getElementById(id); }
 
@@ -347,6 +348,14 @@
     root.logout = function() {
       denyAccess();
       return originalLogout.apply(root, arguments);
+    };
+  }
+
+  if (originalEnterApp) {
+    root.enterApp = function() {
+      var result = originalEnterApp.apply(root, arguments);
+      Promise.resolve(result).finally(function() { refreshAccess(true); });
+      return result;
     };
   }
 
