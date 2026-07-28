@@ -25,3 +25,21 @@ window.FCA_STOCKS = {
   "KOTA": { name: "DMS Propertindo Tbk.", reason: "Papan Pemantauan Khusus" },
   "BOSS": { name: "Borneo Olah Sarana Sukses Tbk.", reason: "Papan Pemantauan Khusus" }
 };
+
+// The Pattern Radar is an optional admin-only presentation module. Load it
+// after the base document exists so it can safely attach to the existing nav,
+// Pattern authorization gate, and Technical Chart functions without blocking
+// the initial dashboard render.
+(function loadPatternRadar() {
+  if (typeof document === 'undefined') return;
+  function load() {
+    if (document.querySelector('script[data-pattern-radar-loader]')) return;
+    var script = document.createElement('script');
+    script.src = '/pattern-radar.js?v=20260728-radar1';
+    script.async = true;
+    script.setAttribute('data-pattern-radar-loader', 'true');
+    document.head.appendChild(script);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once: true });
+  else load();
+})();
