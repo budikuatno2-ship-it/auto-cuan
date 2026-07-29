@@ -1,7 +1,12 @@
+'use strict';
+
 const { createClient } = require('@supabase/supabase-js');
 const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
+const securityGuard = require('../lib/security-guard');
 
 module.exports = async function handler(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
@@ -28,12 +33,15 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    // Fetch all 4 tables
-    const [loginRes, searchRes, analysisRes, usageRes] = await Promise.all([
+    // Existing analytics remain authoritative. Security events are loaded
+    // independently and degrade to an unavailable status until the additive
+    // Security Phase 1 migration is applied.
+    const [loginRes, searchRes, analysisRes, usageRes, security] = await Promise.all([
       supabase.from('login_logs').select('*').order('created_at', { ascending: false }).limit(50),
       supabase.from('search_logs').select('*').order('created_at', { ascending: false }).limit(100),
       supabase.from('ai_analysis_logs').select('id, username, ticker, mode, created_at').order('created_at', { ascending: false }).limit(50),
-      supabase.from('ai_usage_logs').select('*').order('created_at', { ascending: false }).limit(100)
+      supabase.from('ai_usage_logs').select('*').order('created_at', { ascending: false }).limit(100),
+      securityGuard.loadSecurityDashboard(supabase)
     ]);
 
     if (loginRes.error || searchRes.error || analysisRes.error || usageRes.error) {
@@ -78,6 +86,12 @@ module.exports = async function handler(req, res) {
       searchLogs,
       aiAnalysisLogs,
       aiUsageLogs,
+      securityEvents: security.events,
+      securitySummary: security.summary,
+      securityStatus: Object.assign(
+        securityGuard.getPublicStatus(),
+        { available: security.available, reason: security.reason }
+      ),
       summary: {
         totalLogins,
         totalSearches,
