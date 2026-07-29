@@ -10,6 +10,7 @@ const vouchers = require('../lib/vouchers');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
+const securityGuard = require('../lib/security-guard');
 
 const MAX_DEVICES = 3;
 
@@ -287,7 +288,7 @@ module.exports = async function handler(req, res) {
       if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(503).json({ success: false, error: 'Status akun tidak tersedia.' });
       const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
       const capability = await getSubscriptionCapability(supabase);
-      if (!capability.ready) return res.status(503).json({ success: false, error: 'Fitur langganan belum tersedia.' });
+      if (!capability.ready) return res.status(503).json({ success: false, error: 'Status akun tidak tersedia.' });
       const { data: account, error } = await supabase.from('app_users')
         .select('id, username, is_blocked, is_approved')
         .eq('id', auth.user.id)
@@ -340,10 +341,21 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
+    // Durable pre-auth guard. It is disabled by default and becomes enforcing only
+    // after the additive Supabase migration and SECURITY_GUARD_MODE=enforce are set.
+    const loginGuard = await securityGuard.beginLogin({ req, db: supabase, username: usernameLower });
+    if (loginGuard.deny) {
+      if (loginGuard.retryAfterSeconds > 0) res.setHeader('Retry-After', String(loginGuard.retryAfterSeconds));
+      return res.status(loginGuard.httpStatus || 429).json({
+        success: false,
+        error: loginGuard.publicError || 'Terlalu banyak percobaan login. Coba lagi nanti.'
+      });
+    }
+
     // Find user by username
     const { data: user, error: findError } = await supabase
       .from('app_users')
-      .select('id, username, password_hash, device_id, devices, is_blocked, is_approved')
+      .select('id, username, password_hash, device_id, devices, is_blocked, is_approved, created_at')
       .eq('username', usernameLower)
       .maybeSingle();
 
@@ -357,6 +369,7 @@ module.exports = async function handler(req, res) {
     // Account-state messages (blocked / not approved) are only revealed AFTER the
     // correct password is provided.
     if (!user) {
+      await loginGuard.failure('unknown_account');
       console.error('login-user: authentication failed (unknown account)');
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
@@ -375,6 +388,7 @@ module.exports = async function handler(req, res) {
         isRegisteredDevice(user, deviceId);
 
       if (!legacyBudiMayLogin) {
+        await loginGuard.failure(legacyBudiPasswordMatches ? 'legacy_admin_rejected' : 'bad_password');
         console.error('login-user: authentication failed (bad password)');
         return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
       }
@@ -385,6 +399,7 @@ module.exports = async function handler(req, res) {
       if (!legacySession.issued) {
         return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
       }
+      await loginGuard.credentialAccepted('legacy_admin_login_success');
       return res.status(200).json({
         success: true,
         username: usernameLower,
@@ -393,8 +408,9 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Database credentials are valid from here on; preserve the existing normal
-    // login, account-state, and device-registration behavior unchanged.
+    // Database credentials are valid from here on. Clear account/pair failure
+    // state before existing account-state and device rules are evaluated.
+    await loginGuard.credentialAccepted('credentials_valid');
 
     // Check if blocked
     if (user.is_blocked) {
