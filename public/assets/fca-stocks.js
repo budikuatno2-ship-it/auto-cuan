@@ -26,8 +26,10 @@ window.FCA_STOCKS = {
   }
   function load() {
     append('/ui-stability-fix.js?v=20260728-ui-stability-v1', 'data-ui-stability-loader', function () {
-      append('/pattern-stable-runtime.js?v=20260728-pattern-stable-v3', 'data-pattern-stable-loader', function () {
-        append('/pattern-screener-extension.js?v=20260728-pattern-screener-v5', 'data-pattern-screener-extension-loader');
+      append('/pattern-tab-resume-guard.js?v=20260729-pattern-tab-resume-v1', 'data-pattern-tab-resume-loader', function () {
+        append('/pattern-stable-runtime.js?v=20260728-pattern-stable-v3', 'data-pattern-stable-loader', function () {
+          append('/pattern-screener-extension.js?v=20260729-pattern-screener-v6', 'data-pattern-screener-extension-loader');
+        });
       });
     });
   }
