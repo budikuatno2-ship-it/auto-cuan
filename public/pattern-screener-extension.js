@@ -7,13 +7,14 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
 
-  var VERSION = '20260728-pattern-screener-v5';
+  var VERSION = '20260729-pattern-screener-v6';
   var TICKER_RE = /^[A-Z]{3,5}$/;
   var SOURCES = [
     { name:'Swing Konglo', url:'/api/sector-hot?action=screener' },
     { name:'Swing Non-Konglo', url:'/api/sector-hot?action=nk-screener-results' },
     { name:'Day Trade', url:'/api/sector-hot?action=daytrade-screener' }
   ];
+  var SOURCE_PRIORITY = { 'Day Trade':3, 'Swing Konglo':2, 'Swing Non-Konglo':1 };
   var GENERIC_PATTERN_LABELS = /^(?:no clear pattern|insufficient data|none|null|unknown|no pattern)$/i;
 
   function normalizeTicker(value) {
@@ -51,6 +52,63 @@
     });
     return labels;
   }
+  function finite(value) {
+    var number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+  function planContainers(row) {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return [];
+    var result = [row];
+    [row.raw_payload, row.trade_plan, row.tradePlan, row.levels].forEach(function (value) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) result.push(value);
+    });
+    if (row.raw_payload && typeof row.raw_payload === 'object' && !Array.isArray(row.raw_payload)) {
+      [row.raw_payload.trade_plan, row.raw_payload.tradePlan, row.raw_payload.levels].forEach(function (value) {
+        if (value && typeof value === 'object' && !Array.isArray(value)) result.push(value);
+      });
+    }
+    return result;
+  }
+  function firstFinite(containers, keys) {
+    for (var i = 0; i < containers.length; i += 1) {
+      for (var j = 0; j < keys.length; j += 1) {
+        var value = finite(containers[i][keys[j]]);
+        if (value != null) return value;
+      }
+    }
+    return null;
+  }
+  function officialTradePlan(row, sourceName) {
+    var containers = planContainers(row);
+    if (!containers.length) return null;
+    var plan = {
+      source:String(sourceName || 'Screener'),
+      entry_low:firstFinite(containers, ['entry_low','entryLow','entry_1','entry1']),
+      entry_high:firstFinite(containers, ['entry_high','entryHigh','entry_2','entry2']),
+      stop_loss:firstFinite(containers, ['stop_loss','stopLoss','sl','invalidation']),
+      tp1:firstFinite(containers, ['tp1','target1','target_1','take_profit_1']),
+      tp2:firstFinite(containers, ['tp2','target2','target_2','take_profit_2']),
+      risk_reward:firstFinite(containers, ['risk_reward','riskReward','rr'])
+    };
+    if ([plan.entry_low, plan.entry_high, plan.stop_loss, plan.tp1, plan.tp2, plan.risk_reward].every(function (value) { return value == null; })) return null;
+    if (plan.entry_low == null && plan.entry_high != null) plan.entry_low = plan.entry_high;
+    if (plan.entry_high == null && plan.entry_low != null) plan.entry_high = plan.entry_low;
+    return plan;
+  }
+  function planCompleteness(plan) {
+    if (!plan) return 0;
+    return ['entry_low','entry_high','stop_loss','tp1','tp2','risk_reward'].reduce(function (score, key) {
+      return score + (finite(plan[key]) == null ? 0 : 1);
+    }, 0);
+  }
+  function chooseTradePlan(plans) {
+    var list = (Array.isArray(plans) ? plans : []).filter(Boolean).slice();
+    list.sort(function (left, right) {
+      return (planCompleteness(right) - planCompleteness(left)) ||
+        ((SOURCE_PRIORITY[right.source] || 0) - (SOURCE_PRIORITY[left.source] || 0));
+    });
+    return list[0] || null;
+  }
   function extractScreenerSetups(sources) {
     var map = Object.create(null);
     (Array.isArray(sources) ? sources : []).forEach(function (source) {
@@ -58,13 +116,22 @@
       rowsFromPayload(source && source.payload).forEach(function (row) {
         var ticker = normalizeTicker(row && (row.ticker || row.symbol || row.code));
         var labels = officialSetupLabels(row);
-        if (!ticker || !labels.length) return;
-        if (!map[ticker]) map[ticker] = { ticker:ticker, labels:[], sources:[] };
+        var plan = officialTradePlan(row, sourceName);
+        if (!ticker || (!labels.length && !plan)) return;
+        if (!map[ticker]) map[ticker] = { ticker:ticker, labels:[], sources:[], plans:[] };
         labels.forEach(function (label) { if (map[ticker].labels.indexOf(label) < 0) map[ticker].labels.push(label); });
         if (map[ticker].sources.indexOf(sourceName) < 0) map[ticker].sources.push(sourceName);
+        if (plan) {
+          var existingIndex = map[ticker].plans.findIndex(function (item) { return item.source === sourceName; });
+          if (existingIndex < 0) map[ticker].plans.push(plan);
+          else if (planCompleteness(plan) > planCompleteness(map[ticker].plans[existingIndex])) map[ticker].plans[existingIndex] = plan;
+        }
       });
     });
-    return Object.keys(map).sort().map(function (ticker) { return map[ticker]; });
+    return Object.keys(map).sort().map(function (ticker) {
+      var item = map[ticker];
+      return { ticker:item.ticker, labels:item.labels, sources:item.sources, tradePlan:chooseTradePlan(item.plans) };
+    });
   }
   function isStandaloneArtifact(value) {
     return /^(?:;|\||[-*_]{3,}|#{1,6}|\*\*|__)$/.test(String(value == null ? '' : value).trim());
@@ -77,7 +144,23 @@
       return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char];
     });
   }
-  function setupSignature(setup) { return setup.ticker + '|' + setup.labels.join('|') + '|' + setup.sources.join('|'); }
+  function number(value) {
+    var n = finite(value);
+    return n == null ? '—' : n.toLocaleString('id-ID', { maximumFractionDigits:2 });
+  }
+  function entryText(plan) {
+    if (!plan) return '—';
+    var low = finite(plan.entry_low), high = finite(plan.entry_high);
+    if (low == null && high == null) return '—';
+    if (low == null) low = high;
+    if (high == null) high = low;
+    return low === high ? number(low) : number(low) + '–' + number(high);
+  }
+  function setupSignature(setup) {
+    var plan = setup.tradePlan || {};
+    return setup.ticker + '|' + setup.labels.join('|') + '|' + setup.sources.join('|') + '|' +
+      [plan.source, plan.entry_low, plan.entry_high, plan.stop_loss, plan.tp1, plan.tp2, plan.risk_reward].join('|');
+  }
 
   function install(root) {
     if (!root || !root.document || root.__AUTOCUAN_PATTERN_SCREENER_EXTENSION__) return false;
@@ -93,6 +176,12 @@
         '.ps-setup-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}',
         '.ps-setup-chip{display:inline-flex;align-items:center;min-height:25px;padding:4px 8px;border:1px solid rgba(52,211,153,.20);border-radius:999px;background:rgba(16,185,129,.065);color:#9ff3d3;font-size:9px;font-weight:800}',
         '.ps-setup-source{margin-top:8px;color:#6f7f96;font-size:9px;line-height:1.5}',
+        '.ps-screener-plan{margin-top:12px;padding:10px;border:1px solid rgba(56,189,248,.16);border-radius:12px;background:rgba(14,116,144,.055)}',
+        '.ps-screener-plan-title{margin-bottom:7px;color:#7dd3fc;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.04em}',
+        '.ps-screener-levels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}',
+        '.ps-screener-level{min-width:0;padding:7px;border:1px solid rgba(148,163,184,.09);border-radius:9px;background:rgba(2,6,23,.32)}',
+        '.ps-screener-level span{display:block;color:#64748b;font-size:8px;text-transform:uppercase}.ps-screener-level b{display:block;margin-top:2px;color:#e5e7eb;font-size:11px;overflow-wrap:anywhere}',
+        '@media(max-width:760px){.ps-screener-levels{grid-template-columns:repeat(2,minmax(0,1fr))}}',
         '[data-ui-artifact="1"],[data-screener-only="1"]{display:none!important}'
       ].join('');
       doc.head.appendChild(style);
@@ -122,24 +211,48 @@
         return state.setups;
       } finally { state.loading = false; }
     }
+    function syncTradePlan(card, plan) {
+      var box = card.querySelector('.ps-screener-plan');
+      if (!plan) { if (box) box.remove(); return; }
+      if (!box) {
+        box = doc.createElement('div');
+        box.className = 'ps-screener-plan';
+        var actions = card.querySelector('.ps-card-actions');
+        actions ? card.insertBefore(box, actions) : card.appendChild(box);
+      }
+      box.innerHTML = '<div class="ps-screener-plan-title">Level Screener · ' + esc(plan.source) + '</div>' +
+        '<div class="ps-screener-levels">' +
+        '<div class="ps-screener-level"><span>Entry</span><b>' + entryText(plan) + '</b></div>' +
+        '<div class="ps-screener-level"><span>Stop Loss</span><b>' + number(plan.stop_loss) + '</b></div>' +
+        '<div class="ps-screener-level"><span>TP1</span><b>' + number(plan.tp1) + '</b></div>' +
+        '<div class="ps-screener-level"><span>TP2</span><b>' + number(plan.tp2) + '</b></div>' +
+        '<div class="ps-screener-level"><span>R/R</span><b>' + number(plan.risk_reward) + '</b></div>' +
+        '</div>';
+    }
     function syncCard(card, setup) {
       var signature = setupSignature(setup);
       if (card.getAttribute('data-setup-signature') === signature) return;
       card.setAttribute('data-setup-signature', signature);
       var chips = card.querySelector('.ps-setup-chips');
-      if (!chips) {
-        chips = doc.createElement('div');
-        chips.className = 'ps-setup-chips';
-        var actions = card.querySelector('.ps-card-actions');
-        actions ? card.insertBefore(chips, actions) : card.appendChild(chips);
-      }
-      chips.innerHTML = setup.labels.map(function (label) { return '<span class="ps-setup-chip">' + esc(label) + '</span>'; }).join('');
       var source = card.querySelector('.ps-setup-source');
-      if (!source) {
-        source = doc.createElement('p'); source.className = 'ps-setup-source';
-        chips.parentNode.insertBefore(source, chips.nextSibling);
+      if (setup.labels.length) {
+        if (!chips) {
+          chips = doc.createElement('div');
+          chips.className = 'ps-setup-chips';
+          var actions = card.querySelector('.ps-card-actions');
+          actions ? card.insertBefore(chips, actions) : card.appendChild(chips);
+        }
+        chips.innerHTML = setup.labels.map(function (label) { return '<span class="ps-setup-chip">' + esc(label) + '</span>'; }).join('');
+        if (!source) {
+          source = doc.createElement('p'); source.className = 'ps-setup-source';
+          chips.parentNode.insertBefore(source, chips.nextSibling);
+        }
+        source.textContent = 'Juga terdeteksi oleh: ' + setup.sources.join(', ') + '. Label ini hanya memperkuat konteks.';
+      } else {
+        if (chips) chips.remove();
+        if (source) source.remove();
       }
-      source.textContent = 'Juga terdeteksi oleh: ' + setup.sources.join(', ') + '. Label ini hanya memperkuat konteks.';
+      syncTradePlan(card, setup.tradePlan);
     }
     function syncExistingCards() {
       if (state.rendering) return;
@@ -202,10 +315,13 @@
     rowsFromPayload:rowsFromPayload,
     labelText:labelText,
     officialSetupLabels:officialSetupLabels,
+    officialTradePlan:officialTradePlan,
+    chooseTradePlan:chooseTradePlan,
     extractScreenerSetups:extractScreenerSetups,
     isStandaloneArtifact:isStandaloneArtifact,
     isRedundantChartControl:isRedundantChartControl,
     setupSignature:setupSignature,
+    entryText:entryText,
     install:install
   };
 });
