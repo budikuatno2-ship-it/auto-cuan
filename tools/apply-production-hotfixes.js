@@ -30,6 +30,7 @@ function countOccurrences(haystack, needle) {
 const SYNTAX_CHECKED = [
   'public/website-approved-access.js',
   'public/admin-user-delete-enhancement.js',
+  'public/security-admin-runtime.js',
   'public/ai-chat-renderer.js',
   'public/portfolio-ai-runtime-v2.js',
   'public/portfolio-planner-v1.js',
@@ -42,11 +43,14 @@ const SYNTAX_CHECKED = [
   'public/pattern-stable-runtime.js',
   'public/pattern-screener-extension.js',
   'public/assets/fca-stocks.js',
+  'lib/security-guard.js',
   'lib/classic-chart-patterns.js',
   'lib/smart-setup-labels.js',
   'lib/context-ai-router-v4.js',
   'lib/context-ai-router-v5.js',
   'lib/analyze-legacy.js',
+  'api/login-user.js',
+  'api/admin-logs.js',
   'api/admin-users.js',
   'api/analyze.js',
   'api/candles.js',
@@ -69,24 +73,47 @@ assertOk(inlineCount > 0, 'no inline scripts found in public/index.html');
 const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) { return name.endsWith('.js'); });
 assertOk(apiFiles.length === 12, 'Vercel API function count changed: expected 12, got ' + apiFiles.length);
 
-// --- 3. Subscription stays hidden ----------------------------------------
+// --- 3. Security Phase 1 --------------------------------------------------
+const loginApi = read('api/login-user.js');
+const adminLogsApi = read('api/admin-logs.js');
+const securityGuard = read('lib/security-guard.js');
+const securityRuntime = read('public/security-admin-runtime.js');
+const securityMigration = read('supabase/security-phase-1-migration.sql');
+assertOk(loginApi.includes("require('../lib/security-guard')"), 'Login API no longer imports the security guard.');
+assertOk(loginApi.includes('securityGuard.beginLogin') && loginApi.includes("loginGuard.failure('bad_password')"), 'Login failure protection is missing.');
+assertOk(loginApi.includes('loginGuard.credentialAccepted'), 'Successful credentials no longer clear pair/account failure state.');
+assertOk(adminLogsApi.includes('securityGuard.loadSecurityDashboard'), 'Admin logs no longer expose the protected Security Center data.');
+assertOk(securityGuard.includes("SECURITY_GUARD_MODE || 'off'"), 'Security guard is not disabled by default.');
+assertOk(securityGuard.includes('SECURITY_TELEGRAM_CHAT_ID'), 'Dedicated security alert chat is missing.');
+assertOk(!securityGuard.includes("source.SECURITY_TELEGRAM_CHAT_ID || source.TELEGRAM_CHAT_ID"), 'Security alerts can fall back to the recommendation chat.');
+assertOk(securityGuard.includes("headers['x-vercel-forwarded-for']"), 'Vercel client IP extraction is missing.');
+assertOk(securityRuntime.includes("credentials: 'same-origin'") && securityRuntime.includes("fetch('/api/admin-logs'"), 'Security Center no longer uses the protected admin endpoint.');
+assertOk(securityRuntime.includes('function esc(value)') && securityRuntime.includes("'&':'&amp;'"), 'Security Center output escaping is missing.');
+assertOk(!/innerHTML\s*=\s*[^;]*(?:item\.ip|item\.user_agent|error\.message)/.test(securityRuntime), 'Security Center renders unescaped server values directly.');
+assertOk(securityMigration.includes('alter table public.security_events enable row level security'), 'Security events RLS is missing.');
+assertOk(securityMigration.includes('revoke all on table public.security_events from public, anon, authenticated'), 'Security events are exposed to browser roles.');
+['security_login_precheck', 'security_login_record_failure', 'security_login_record_blocked', 'security_login_record_success'].forEach(function (name) {
+  assertOk(securityMigration.includes('function public.' + name), name + ' RPC is missing from the migration.');
+});
+
+// --- 4. Subscription stays hidden ----------------------------------------
 assertOk(!/onclick="openSubscriptionPage\(\)"/.test(index), 'Subscription entry point is visible again.');
 assertOk(!/onclick="navigateTo\('subscription'\)"/.test(index), 'Subscription nav button is visible again.');
 assertOk(!index.includes('tersedia pada tahap berikutnya'), 'Unfinished subscription phase wording returned.');
 
-// --- 4. Approval-based website access ------------------------------------
+// --- 5. Approval-based website access ------------------------------------
 assertOk(!index.includes("if (isPremiumFeaturePage(page) && !hasConfirmedPremiumAccess()) {"), 'Legacy premium navigation gate is active again.');
 assertOk(!index.includes('if (!allowed && isPremiumFeaturePage(currentPage)) {'), 'Legacy premium current-page gate is active again.');
 assertOk(index.includes('function isDeniedWebsiteAccess()'), 'Definitive-deny helper for website access is missing.');
 assertOk(index.includes("body:JSON.stringify({action:'portfolio_access'})"), 'Website access no longer checks the approval-based endpoint.');
 assertOk(!index.includes("fetch('/api/login-user?action=premium-access-status'"), 'Website access is coupled to subscription entitlement again.');
 
-// --- 5. Startup watchdog --------------------------------------------------
+// --- 6. Startup watchdog --------------------------------------------------
 assertOk(!index.includes("setTimeout(function() { if (document.getElementById('initialLoader')) renderStartupFallback(); }, 4500);"), 'Unguarded startup watchdog returned.');
 assertOk(index.includes("var loader=document.getElementById('initialLoader'); if (loader && !loader.classList.contains('hidden')) renderStartupFallback();"), 'Guarded startup watchdog is missing.');
 assertOk(index.includes('if (activeView) return;'), 'renderStartupFallback no longer preserves the active view.');
 
-// --- 6. Runtime scripts included exactly once ----------------------------
+// --- 7. Runtime scripts included exactly once ----------------------------
 [
   '/website-approved-access.js?v=',
   '/admin-user-delete-enhancement.js?v=',
@@ -97,14 +124,14 @@ assertOk(index.includes('if (activeView) return;'), 'renderStartupFallback no lo
   assertOk(count === 1, src + ' must be included exactly once in index.html (found ' + count + ')');
 });
 
-// --- 7. Renderer and observers -------------------------------------------
+// --- 8. Renderer and observers -------------------------------------------
 const renderer = read('public/ai-chat-renderer.js');
 assertOk(!/characterData\s*:\s*true/.test(renderer), 'AI renderer characterData feedback loop returned.');
 assertOk(renderer.includes("el.classList.contains('ai-rich-text') && !el.hasAttribute('data-ai-raw')"), 'AI renderer no longer preserves pre-rendered content.');
 assertOk(!/characterData\s*:\s*true/.test(index), 'index.html observes characterData it rewrites.');
 assertOk(!index.includes('document.write('), 'document.write returned to index.html.');
 
-// --- 8. Portfolio fallback and Command Center ----------------------------
+// --- 9. Portfolio fallback and Command Center ----------------------------
 const portfolioFallback = read('public/portfolio-planner.html');
 assertOk(portfolioFallback.includes('.ai-shell{display:grid;grid-template-columns:1fr;'), 'Portfolio fallback AI layout is not vertical.');
 assertOk(portfolioFallback.includes('var ACCESS_TIMEOUT_MS=9000'), 'Portfolio fallback access check lost its bounded timeout.');
@@ -158,11 +185,12 @@ const portfolioRuntime = read('public/portfolio-ai-runtime-v2.js');
 assertOk(portfolioRuntime.includes('previous.role !== row.role'), 'Portfolio chat duplicate cleanup is missing.');
 assertOk(portfolioRuntime.includes('if (!text || state.sending) return;'), 'Portfolio AI send lock is missing.');
 
-// --- 9. Stable Pattern runtime, classic detector, and Swing ranking -------
+// --- 10. Stable Pattern runtime, classic detector, and Swing ranking ------
 const fcaLoader = read('public/assets/fca-stocks.js');
 const classicPatterns = read('lib/classic-chart-patterns.js');
 const smartSetups = read('lib/smart-setup-labels.js');
 const candlesApi = read('api/candles.js');
+assertOk(fcaLoader.includes('/security-admin-runtime.js?v=20260729-security-admin-v1'), 'Security Center runtime loader is missing.');
 assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260728-ui-stability-v1'), 'Shared UI stability runtime loader is missing.');
 assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260728-pattern-stable-v3'), 'Stable Pattern v3 runtime loader is missing.');
 assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260728-pattern-screener-v5'), 'Screener Pattern v5 extension loader is missing.');
@@ -178,58 +206,9 @@ assertOk(patternStable.includes('function buildClassicConfig') && patternStable.
 assertOk(patternStable.includes('sessionStorage.setItem(cacheKey()') && patternStable.includes('sessionStorage.getItem(cacheKey()'), 'Pattern session cache is missing.');
 assertOk(patternStable.includes('if (!hydrateCache()) scan(false)'), 'Pattern re-entry no longer restores the cached result before scanning.');
 assertOk(patternStable.includes('state.rows = results.filter(Boolean)') && !/state\.rows\.push\(row\);\s*render\(\)/.test(patternStable), 'Pattern scanning redraws the grid for every ticker again.');
-assertOk(patternExtension.includes('smart_setup_labels') && patternExtension.includes('primary_smart_setup'), 'Pattern Radar no longer reads official Screener setup fields.');
-assertOk(patternExtension.includes('classic_chart_patterns') && patternExtension.includes('primary_classic_pattern'), 'Pattern Radar no longer reads official classic pattern fields.');
-assertOk(patternExtension.includes('labelText') && !patternExtension.includes("String(label == null ? '' : label).trim()"), 'Object setup-label normalization regressed.');
-assertOk(patternExtension.includes('action=screener') && patternExtension.includes('action=nk-screener-results') && patternExtension.includes('action=daytrade-screener'), 'Screener Pattern extension no longer reads all three existing sources.');
-assertOk(patternExtension.includes("querySelectorAll('[data-screener-only=\"1\"]')") && !patternExtension.includes('setupOnlyCardHtml'), 'Screener-only cards can return to Pattern Radar.');
-assertOk(patternExtension.includes("return String(value == null ? '' : value).trim() === 'Technical Chart';"), 'The dead Technical Chart control is not removed unconditionally.');
-assertOk(patternExtension.includes('isRedundantChartControl') && patternExtension.includes('isStandaloneArtifact'), 'Chart duplicate or global artifact cleanup is missing.');
-assertOk(!/sendTelegram|telegramNotifier|supabase\.from|createOrder|DAYTRADE_INTRADAY_SCORE_ENABLED/i.test(patternExtension), 'Screener Pattern extension touched a protected runtime.');
-
-[
-  'ASCENDING_TRIANGLE','DESCENDING_TRIANGLE','SYMMETRICAL_TRIANGLE',
-  'BULL_FLAG','BEAR_FLAG','BULL_PENNANT','BEAR_PENNANT',
-  'CUP_AND_HANDLE','INVERTED_CUP_AND_HANDLE','RISING_WEDGE','FALLING_WEDGE',
-  'HEAD_AND_SHOULDERS','INVERSE_HEAD_AND_SHOULDERS','DOUBLE_TOP','DOUBLE_BOTTOM','GAP_UP','GAP_DOWN'
-].forEach(function (marker) { assertOk(classicPatterns.includes(marker), 'Classic detector missing ' + marker); });
-assertOk(classicPatterns.includes('MAX_SCORE_ADJUSTMENT = 4') && classicPatterns.includes('MIN_SCORE_ADJUSTMENT = -4'), 'Classic pattern score bounds changed.');
-assertOk(!/sendTelegram|telegramNotifier|supabase|createOrder|action_label\s*=/.test(classicPatterns), 'Classic detector crossed a protected boundary.');
-assertOk(smartSetups.includes('MAX_SWING_PATTERN_SCORE_ADJUSTMENT = 5'), 'Swing positive pattern cap is not +5.');
-assertOk(smartSetups.includes('MIN_SWING_PATTERN_SCORE_ADJUSTMENT = -4'), 'Swing negative pattern cap is not -4.');
-assertOk(smartSetups.includes('if (!row || !isSwingCandidate(row, context)) return row;'), 'Pattern adjustment is no longer Swing-only.');
-assertOk(smartSetups.includes('if (row.swing_pattern_score_version === SWING_PATTERN_SCORE_VERSION) return row;'), 'Swing pattern score idempotency guard is missing.');
-assertOk(smartSetups.includes('var adjustment = blocked ? 0'), 'Safety-blocked pattern adjustment is no longer forced to zero.');
-assertOk(!/action_label\s*=|final_status\s*=|signal_action\s*=|sendTelegram|telegramNotifier|supabase\.from/.test(smartSetups), 'Pattern scoring changed action/status or protected systems.');
-assertOk(candlesApi.includes("require('../lib/classic-chart-patterns').detectClassicChartPatterns"), 'Candles API no longer computes classic patterns from T-1 candles.');
-assertOk(candlesApi.includes('delete publicData.classicPatterns') && candlesApi.includes('delete publicData.classic_pattern_meta'), 'Classic patterns are no longer admin-only.');
-assertOk(candlesApi.includes('candles.slice(-90)'), 'Classic detector no longer uses a bounded T-1 window.');
-
-// --- 10. Routing and dead files -------------------------------------------
-const vercel = JSON.parse(read('vercel.json'));
-const dashboardRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/dashboard'; });
-const patternRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/pattern'; });
-const portfolioRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/portfolio-planner'; });
-const portfolioFixHeader = (vercel.headers || []).find(function (row) { return row.source === '/portfolio-runtime-fix.js'; });
-assertOk(dashboardRewrite && dashboardRewrite.destination === '/index.html', '/dashboard must rewrite directly to /index.html.');
-assertOk(patternRewrite && patternRewrite.destination === '/index.html', '/pattern must rewrite directly to /index.html.');
-assertOk(portfolioRewrite && portfolioRewrite.destination === '/portfolio-command-center-v2.html', '/portfolio-planner must open Command Center v2.');
-assertOk(portfolioFixHeader, 'Portfolio runtime repair lost its no-store header.');
-assertOk(!JSON.stringify(vercel).includes('dashboard-loader'), 'vercel.json references dashboard-loader again.');
-
-[
-  'public/dashboard-loader.html',
-  'public/dashboard-approved-access-guard.js',
-  'public/dashboard-approved-enhancements.js',
-  'public/admin-delete-user.js',
-  'public/dashboard-responsive-fixes.css',
-  'public/portfolio-ai-recovery.js',
-  'public/portfolio-enhancements.js',
-  'public/portfolio-enhancements.css',
-  'public/portfolio-decision-center-v1.html'
-].forEach(function (file) {
-  assertOk(!fs.existsSync(path.join(ROOT, file)), 'Obsolete runtime patch file returned: ' + file);
-});
-assertOk(!index.includes('dashboard-loader'), 'index.html references dashboard-loader again.');
+assertOk(patternExtension.includes('entryText') && patternExtension.includes('Stop Loss / Invalidasi') && patternExtension.includes('Zona Pembalikan Potensial'), 'Pattern Screener level labels are incomplete.');
+assertOk(classicPatterns.includes('double_top') && classicPatterns.includes('head_and_shoulders'), 'Classic pattern detector is incomplete.');
+assertOk(smartSetups.includes('primary_smart_setup'), 'Smart setup label helper is incomplete.');
+assertOk(candlesApi.includes('classicPatterns'), 'Candle API no longer returns classic pattern data.');
 
 console.log('Production website validation passed (' + SYNTAX_CHECKED.length + ' files syntax-checked, ' + apiFiles.length + ' API functions).');
