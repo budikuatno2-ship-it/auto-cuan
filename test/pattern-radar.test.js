@@ -87,7 +87,7 @@ test('mapBounded keeps Pattern scanning at the concurrency ceiling', async () =>
   assert.deepEqual(result, [2, 4, 6, 8, 10, 12, 14]);
 });
 
-test('dashboard loads tab-resume guard before stable Pattern v3 and Screener extension v6', () => {
+test('dashboard loads tab-resume guard before stable Pattern v3 and cache-busted Screener extension v6', () => {
   const loader = read('public/assets/fca-stocks.js');
   const guard = read('public/pattern-tab-resume-guard.js');
   const source = read('public/pattern-stable-runtime.js');
@@ -95,7 +95,7 @@ test('dashboard loads tab-resume guard before stable Pattern v3 and Screener ext
   new vm.Script(source, { filename:'pattern-stable-runtime.js' });
   assert.match(loader, /\/pattern-tab-resume-guard\.js\?v=20260729-pattern-tab-resume-v1/);
   assert.match(loader, /\/pattern-stable-runtime\.js\?v=20260728-pattern-stable-v3/);
-  assert.match(loader, /\/pattern-screener-extension\.js\?v=20260729-pattern-screener-v6/);
+  assert.match(loader, /\/pattern-screener-extension\.js\?v=20260728-pattern-screener-v5&rev=20260729-pattern-screener-v6/);
   assert.ok(loader.indexOf('/pattern-tab-resume-guard.js') < loader.indexOf('/pattern-stable-runtime.js'));
   assert.doesNotMatch(loader, /pattern-radar\.js/);
   assert.match(source, /action=screener/);
