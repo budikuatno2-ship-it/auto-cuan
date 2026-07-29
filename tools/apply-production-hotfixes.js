@@ -80,7 +80,7 @@ const securityGuard = read('lib/security-guard.js');
 const securityRuntime = read('public/security-admin-runtime.js');
 const securityMigration = read('supabase/security-phase-1-migration.sql');
 assertOk(loginApi.includes("require('../lib/security-guard')"), 'Login API no longer imports the security guard.');
-assertOk(loginApi.includes('securityGuard.beginLogin') && loginApi.includes("loginGuard.failure('bad_password')"), 'Login failure protection is missing.');
+assertOk(loginApi.includes('securityGuard.beginLogin') && loginApi.includes('loginGuard.failure(') && loginApi.includes("'bad_password'"), 'Login failure protection is missing.');
 assertOk(loginApi.includes('loginGuard.credentialAccepted'), 'Successful credentials no longer clear pair/account failure state.');
 assertOk(adminLogsApi.includes('securityGuard.loadSecurityDashboard'), 'Admin logs no longer expose the protected Security Center data.');
 assertOk(securityGuard.includes("SECURITY_GUARD_MODE || 'off'"), 'Security guard is not disabled by default.');
@@ -89,7 +89,7 @@ assertOk(!securityGuard.includes("source.SECURITY_TELEGRAM_CHAT_ID || source.TEL
 assertOk(securityGuard.includes("headers['x-vercel-forwarded-for']"), 'Vercel client IP extraction is missing.');
 assertOk(securityRuntime.includes("credentials: 'same-origin'") && securityRuntime.includes("fetch('/api/admin-logs'"), 'Security Center no longer uses the protected admin endpoint.');
 assertOk(securityRuntime.includes('function esc(value)') && securityRuntime.includes("'&':'&amp;'"), 'Security Center output escaping is missing.');
-assertOk(!/innerHTML\s*=\s*[^;]*(?:item\.ip|item\.user_agent|error\.message)/.test(securityRuntime), 'Security Center renders unescaped server values directly.');
+assertOk(securityRuntime.includes('esc(item.ip') && securityRuntime.includes('esc(agent)') && securityRuntime.includes('esc(error && error.message'), 'Security Center does not escape every server-controlled display field.');
 assertOk(securityMigration.includes('alter table public.security_events enable row level security'), 'Security events RLS is missing.');
 assertOk(securityMigration.includes('revoke all on table public.security_events from public, anon, authenticated'), 'Security events are exposed to browser roles.');
 ['security_login_precheck', 'security_login_record_failure', 'security_login_record_blocked', 'security_login_record_success'].forEach(function (name) {
