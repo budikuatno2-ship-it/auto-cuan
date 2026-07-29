@@ -206,9 +206,60 @@ assertOk(patternStable.includes('function buildClassicConfig') && patternStable.
 assertOk(patternStable.includes('sessionStorage.setItem(cacheKey()') && patternStable.includes('sessionStorage.getItem(cacheKey()'), 'Pattern session cache is missing.');
 assertOk(patternStable.includes('if (!hydrateCache()) scan(false)'), 'Pattern re-entry no longer restores the cached result before scanning.');
 assertOk(patternStable.includes('state.rows = results.filter(Boolean)') && !/state\.rows\.push\(row\);\s*render\(\)/.test(patternStable), 'Pattern scanning redraws the grid for every ticker again.');
-assertOk(patternExtension.includes('entryText') && patternExtension.includes('Stop Loss / Invalidasi') && patternExtension.includes('Zona Pembalikan Potensial'), 'Pattern Screener level labels are incomplete.');
-assertOk(classicPatterns.includes('double_top') && classicPatterns.includes('head_and_shoulders'), 'Classic pattern detector is incomplete.');
-assertOk(smartSetups.includes('primary_smart_setup'), 'Smart setup label helper is incomplete.');
-assertOk(candlesApi.includes('classicPatterns'), 'Candle API no longer returns classic pattern data.');
+assertOk(patternExtension.includes('smart_setup_labels') && patternExtension.includes('primary_smart_setup'), 'Pattern Radar no longer reads official Screener setup fields.');
+assertOk(patternExtension.includes('classic_chart_patterns') && patternExtension.includes('primary_classic_pattern'), 'Pattern Radar no longer reads official classic pattern fields.');
+assertOk(patternExtension.includes('labelText') && !patternExtension.includes("String(label == null ? '' : label).trim()"), 'Object setup-label normalization regressed.');
+assertOk(patternExtension.includes('action=screener') && patternExtension.includes('action=nk-screener-results') && patternExtension.includes('action=daytrade-screener'), 'Screener Pattern extension no longer reads all three existing sources.');
+assertOk(patternExtension.includes("querySelectorAll('[data-screener-only=\"1\"]')") && !patternExtension.includes('setupOnlyCardHtml'), 'Screener-only cards can return to Pattern Radar.');
+assertOk(patternExtension.includes("return String(value == null ? '' : value).trim() === 'Technical Chart';"), 'The dead Technical Chart control is not removed unconditionally.');
+assertOk(patternExtension.includes('isRedundantChartControl') && patternExtension.includes('isStandaloneArtifact'), 'Chart duplicate or global artifact cleanup is missing.');
+assertOk(!/sendTelegram|telegramNotifier|supabase\.from|createOrder|DAYTRADE_INTRADAY_SCORE_ENABLED/i.test(patternExtension), 'Screener Pattern extension touched a protected runtime.');
+
+[
+  'ASCENDING_TRIANGLE','DESCENDING_TRIANGLE','SYMMETRICAL_TRIANGLE',
+  'BULL_FLAG','BEAR_FLAG','BULL_PENNANT','BEAR_PENNANT',
+  'CUP_AND_HANDLE','INVERTED_CUP_AND_HANDLE','RISING_WEDGE','FALLING_WEDGE',
+  'HEAD_AND_SHOULDERS','INVERSE_HEAD_AND_SHOULDERS','DOUBLE_TOP','DOUBLE_BOTTOM','GAP_UP','GAP_DOWN'
+].forEach(function (marker) { assertOk(classicPatterns.includes(marker), 'Classic detector missing ' + marker); });
+assertOk(classicPatterns.includes('MAX_SCORE_ADJUSTMENT = 4') && classicPatterns.includes('MIN_SCORE_ADJUSTMENT = -4'), 'Classic pattern score bounds changed.');
+assertOk(!/sendTelegram|telegramNotifier|supabase|createOrder|action_label\s*=/.test(classicPatterns), 'Classic detector crossed a protected boundary.');
+assertOk(smartSetups.includes('MAX_SWING_PATTERN_SCORE_ADJUSTMENT = 5'), 'Swing positive pattern cap is not +5.');
+assertOk(smartSetups.includes('MIN_SWING_PATTERN_SCORE_ADJUSTMENT = -4'), 'Swing negative pattern cap is not -4.');
+assertOk(smartSetups.includes('if (!row || !isSwingCandidate(row, context)) return row;'), 'Pattern adjustment is no longer Swing-only.');
+assertOk(smartSetups.includes('if (row.swing_pattern_score_version === SWING_PATTERN_SCORE_VERSION) return row;'), 'Swing pattern score idempotency guard is missing.');
+assertOk(smartSetups.includes('var adjustment = blocked ? 0'), 'Safety-blocked pattern adjustment is no longer forced to zero.');
+assertOk(!/action_label\s*=|final_status\s*=|signal_action\s*=|sendTelegram|telegramNotifier|supabase\.from/.test(smartSetups), 'Pattern scoring changed action/status or protected systems.');
+assertOk(candlesApi.includes("require('../lib/classic-chart-patterns').detectClassicChartPatterns"), 'Candles API no longer computes classic patterns from T-1 candles.');
+assertOk(candlesApi.includes('delete publicData.classicPatterns') && candlesApi.includes('delete publicData.classic_pattern_meta'), 'Classic patterns are no longer admin-only.');
+assertOk(candlesApi.includes('candles.slice(-90)'), 'Classic detector no longer uses a bounded T-1 window.');
+
+// --- 11. Routing and dead files ------------------------------------------
+const vercel = JSON.parse(read('vercel.json'));
+const dashboardRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/dashboard'; });
+const patternRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/pattern'; });
+const portfolioRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/portfolio-planner'; });
+const portfolioFixHeader = (vercel.headers || []).find(function (row) { return row.source === '/portfolio-runtime-fix.js'; });
+const securityHeader = (vercel.headers || []).find(function (row) { return row.source === '/security-admin-runtime.js'; });
+assertOk(dashboardRewrite && dashboardRewrite.destination === '/index.html', '/dashboard must rewrite directly to /index.html.');
+assertOk(patternRewrite && patternRewrite.destination === '/index.html', '/pattern must rewrite directly to /index.html.');
+assertOk(portfolioRewrite && portfolioRewrite.destination === '/portfolio-command-center-v2.html', '/portfolio-planner must open Command Center v2.');
+assertOk(portfolioFixHeader, 'Portfolio runtime repair lost its no-store header.');
+assertOk(securityHeader, 'Security Center runtime lost its no-store header.');
+assertOk(!JSON.stringify(vercel).includes('dashboard-loader'), 'vercel.json references dashboard-loader again.');
+
+[
+  'public/dashboard-loader.html',
+  'public/dashboard-approved-access-guard.js',
+  'public/dashboard-approved-enhancements.js',
+  'public/admin-delete-user.js',
+  'public/dashboard-responsive-fixes.css',
+  'public/portfolio-ai-recovery.js',
+  'public/portfolio-enhancements.js',
+  'public/portfolio-enhancements.css',
+  'public/portfolio-decision-center-v1.html'
+].forEach(function (file) {
+  assertOk(!fs.existsSync(path.join(ROOT, file)), 'Obsolete runtime patch file returned: ' + file);
+});
+assertOk(!index.includes('dashboard-loader'), 'index.html references dashboard-loader again.');
 
 console.log('Production website validation passed (' + SYNTAX_CHECKED.length + ' files syntax-checked, ' + apiFiles.length + ' API functions).');
