@@ -36,6 +36,7 @@ const SYNTAX_CHECKED = [
   'public/portfolio-command-center-model.js',
   'public/portfolio-command-center.js',
   'public/portfolio-position-scenarios.js',
+  'public/portfolio-runtime-fix.js',
   'public/stock-analysis-ai.js',
   'public/ui-stability-fix.js',
   'public/pattern-stable-runtime.js',
@@ -116,6 +117,7 @@ const commandCss = read('public/portfolio-command-center.css');
 const commandUi = read('public/portfolio-command-center.js');
 const commandModel = read('public/portfolio-command-center-model.js');
 const commandScenarios = read('public/portfolio-position-scenarios.js');
+const portfolioFix = read('public/portfolio-runtime-fix.js');
 const stability = read('public/ui-stability-fix.js');
 const patternStable = read('public/pattern-stable-runtime.js');
 const patternExtension = read('public/pattern-screener-extension.js');
@@ -129,6 +131,7 @@ assertOk(commandInlineCount === 1, 'Portfolio v2 loader must contain exactly one
 assertOk(commandHtml.includes('Portfolio Command Center'), 'Portfolio Command Center v2 loader is missing.');
 assertOk(commandHtml.includes("fetch('/portfolio-command-center.html?v="), 'Portfolio v2 no longer hydrates the audited Command Center markup.');
 assertOk(commandHtml.includes('/ui-stability-fix.js?v='), 'Portfolio UI stability runtime is missing from the v2 loader.');
+assertOk(commandHtml.includes('/portfolio-runtime-fix.js?v=20260728-portfolio-runtime-fix-v1'), 'Portfolio delete repair runtime is missing from the v2 loader.');
 assertOk(legacyCommandHtml.includes('Budget-to-Stock Planner'), 'Budget-to-Stock Planner is missing.');
 assertOk(legacyCommandHtml.includes('Skenario Posisi'), 'Position scenarios are missing.');
 assertOk(legacyCommandHtml.includes('id="exportJournal" class="hidden"'), 'Journal export control is visible again.');
@@ -144,7 +147,12 @@ assertOk(commandScenarios.includes('action=screener') && commandScenarios.includ
 assertOk(commandCss.includes('.check-row input{width:auto;min-height:auto}'), 'Portfolio checkbox sizing regressed.');
 assertOk(commandCss.includes('@media (prefers-reduced-motion: reduce)'), 'Reduced-motion support is missing.');
 assertOk(stability.includes('pruneStandaloneArtifacts'), 'Standalone UI artifact cleanup is missing.');
-assertOk(!commandHtml.includes('document.write(') && !legacyCommandHtml.includes('document.write(') && !commandUi.includes('document.write(') && !commandScenarios.includes('document.write(') && !stability.includes('document.write('), 'document.write returned to Command Center.');
+assertOk(portfolioFix.includes('function stableLegacyId'), 'Legacy Portfolio ID migration is missing.');
+assertOk(portfolioFix.includes("doc.addEventListener('click'") && portfolioFix.includes('event.stopImmediatePropagation()'), 'Portfolio delete repair no longer intercepts the broken handler.');
+assertOk(portfolioFix.includes('legacyFallback = !planId && requestedTicker && planTicker === requestedTicker'), 'Legacy ticker fallback deletion is missing.');
+assertOk(portfolioFix.includes('^0\\s+perubahan\\s+dicatat'), 'Empty snapshot toast cleanup is missing.');
+assertOk(!/sendTelegram|telegramNotifier|supabase\.from|createOrder|broker-order/i.test(portfolioFix), 'Portfolio repair crossed a protected boundary.');
+assertOk(!commandHtml.includes('document.write(') && !legacyCommandHtml.includes('document.write(') && !commandUi.includes('document.write(') && !commandScenarios.includes('document.write(') && !stability.includes('document.write(') && !portfolioFix.includes('document.write('), 'document.write returned to Command Center.');
 
 const portfolioRuntime = read('public/portfolio-ai-runtime-v2.js');
 assertOk(portfolioRuntime.includes('previous.role !== row.role'), 'Portfolio chat duplicate cleanup is missing.');
@@ -156,8 +164,8 @@ const classicPatterns = read('lib/classic-chart-patterns.js');
 const smartSetups = read('lib/smart-setup-labels.js');
 const candlesApi = read('api/candles.js');
 assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260728-ui-stability-v1'), 'Shared UI stability runtime loader is missing.');
-assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260728-pattern-stable-v2'), 'Stable Pattern v2 runtime loader is missing.');
-assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260728-pattern-screener-v3'), 'Screener Pattern v3 extension loader is missing.');
+assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260728-pattern-stable-v3'), 'Stable Pattern v3 runtime loader is missing.');
+assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260728-pattern-screener-v5'), 'Screener Pattern v5 extension loader is missing.');
 assertOk(fcaLoader.indexOf('/pattern-stable-runtime.js') < fcaLoader.indexOf('/pattern-screener-extension.js'), 'Screener Pattern extension must load after the stable runtime.');
 assertOk(!fcaLoader.includes('/pattern-radar.js'), 'The duplicate Pattern Radar runtime is still loaded.');
 assertOk(patternStable.includes('action=screener') && patternStable.includes('action=nk-screener-results') && patternStable.includes('action=daytrade-screener'), 'Pattern Radar no longer reads all three latest screener sources.');
@@ -166,14 +174,17 @@ assertOk(!patternStable.includes('MAX_SCAN') && !patternStable.includes('FALLBAC
 assertOk(patternStable.includes("root.location.pathname === '/pattern'"), 'Direct Pattern route bootstrap is missing.');
 assertOk(patternStable.includes('PatternMap.validateCandidate'), 'ABCD renderer no longer validates server geometry.');
 assertOk(patternStable.includes('classicPatterns') && patternStable.includes('data-classic-only'), 'Classic Pattern Radar rendering is missing.');
-assertOk(patternStable.includes('Triangle, Flag, Pennant, Cup & Handle'), 'Expanded Pattern Radar disclosure is missing.');
+assertOk(patternStable.includes('function buildClassicConfig') && patternStable.includes('Titik pembentuk pola'), 'Classic Pattern inline visual is missing.');
+assertOk(patternStable.includes('sessionStorage.setItem(cacheKey()') && patternStable.includes('sessionStorage.getItem(cacheKey()'), 'Pattern session cache is missing.');
+assertOk(patternStable.includes('if (!hydrateCache()) scan(false)'), 'Pattern re-entry no longer restores the cached result before scanning.');
+assertOk(patternStable.includes('state.rows = results.filter(Boolean)') && !/state\.rows\.push\(row\);\s*render\(\)/.test(patternStable), 'Pattern scanning redraws the grid for every ticker again.');
 assertOk(patternExtension.includes('smart_setup_labels') && patternExtension.includes('primary_smart_setup'), 'Pattern Radar no longer reads official Screener setup fields.');
 assertOk(patternExtension.includes('classic_chart_patterns') && patternExtension.includes('primary_classic_pattern'), 'Pattern Radar no longer reads official classic pattern fields.');
 assertOk(patternExtension.includes('labelText') && !patternExtension.includes("String(label == null ? '' : label).trim()"), 'Object setup-label normalization regressed.');
 assertOk(patternExtension.includes('action=screener') && patternExtension.includes('action=nk-screener-results') && patternExtension.includes('action=daytrade-screener'), 'Screener Pattern extension no longer reads all three existing sources.');
-assertOk(patternExtension.includes('recoverReentry') && patternExtension.includes('ensureVisible'), 'Pattern re-entry recovery is missing.');
+assertOk(patternExtension.includes("querySelectorAll('[data-screener-only=\"1\"]')") && !patternExtension.includes('setupOnlyCardHtml'), 'Screener-only cards can return to Pattern Radar.');
+assertOk(patternExtension.includes("return String(value == null ? '' : value).trim() === 'Technical Chart';"), 'The dead Technical Chart control is not removed unconditionally.');
 assertOk(patternExtension.includes('isRedundantChartControl') && patternExtension.includes('isStandaloneArtifact'), 'Chart duplicate or global artifact cleanup is missing.');
-assertOk(patternExtension.includes('bukan sinyal BUY otomatis'), 'Screener-only pattern cards lost their non-signal disclosure.');
 assertOk(!/sendTelegram|telegramNotifier|supabase\.from|createOrder|DAYTRADE_INTRADAY_SCORE_ENABLED/i.test(patternExtension), 'Screener Pattern extension touched a protected runtime.');
 
 [
@@ -199,9 +210,11 @@ const vercel = JSON.parse(read('vercel.json'));
 const dashboardRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/dashboard'; });
 const patternRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/pattern'; });
 const portfolioRewrite = (vercel.rewrites || []).find(function (row) { return row.source === '/portfolio-planner'; });
+const portfolioFixHeader = (vercel.headers || []).find(function (row) { return row.source === '/portfolio-runtime-fix.js'; });
 assertOk(dashboardRewrite && dashboardRewrite.destination === '/index.html', '/dashboard must rewrite directly to /index.html.');
 assertOk(patternRewrite && patternRewrite.destination === '/index.html', '/pattern must rewrite directly to /index.html.');
 assertOk(portfolioRewrite && portfolioRewrite.destination === '/portfolio-command-center-v2.html', '/portfolio-planner must open Command Center v2.');
+assertOk(portfolioFixHeader, 'Portfolio runtime repair lost its no-store header.');
 assertOk(!JSON.stringify(vercel).includes('dashboard-loader'), 'vercel.json references dashboard-loader again.');
 
 [

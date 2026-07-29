@@ -114,6 +114,15 @@
       ]
     },
     {
+      "source": "/portfolio-runtime-fix.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
       "source": "/ui-stability-fix.js",
       "headers": [
         {

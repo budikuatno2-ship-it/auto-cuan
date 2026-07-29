@@ -4,6 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const ROOT = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -86,12 +87,16 @@ test('mapBounded keeps Pattern scanning at the concurrency ceiling', async () =>
   assert.deepEqual(result, [2, 4, 6, 8, 10, 12, 14]);
 });
 
-test('dashboard loads stable Pattern v2 then Screener extension v3 on existing APIs', () => {
+test('dashboard loads tab-resume guard before stable Pattern v3 and cache-busted Screener extension v6', () => {
   const loader = read('public/assets/fca-stocks.js');
+  const guard = read('public/pattern-tab-resume-guard.js');
   const source = read('public/pattern-stable-runtime.js');
-  assert.match(loader, /\/ui-stability-fix\.js\?v=20260728-ui-stability-v1/);
-  assert.match(loader, /\/pattern-stable-runtime\.js\?v=20260728-pattern-stable-v2/);
-  assert.match(loader, /\/pattern-screener-extension\.js\?v=20260728-pattern-screener-v3/);
+  new vm.Script(guard, { filename:'pattern-tab-resume-guard.js' });
+  new vm.Script(source, { filename:'pattern-stable-runtime.js' });
+  assert.match(loader, /\/pattern-tab-resume-guard\.js\?v=20260729-pattern-tab-resume-v1/);
+  assert.match(loader, /\/pattern-stable-runtime\.js\?v=20260728-pattern-stable-v3/);
+  assert.match(loader, /\/pattern-screener-extension\.js\?v=20260728-pattern-screener-v5&rev=20260729-pattern-screener-v6/);
+  assert.ok(loader.indexOf('/pattern-tab-resume-guard.js') < loader.indexOf('/pattern-stable-runtime.js'));
   assert.doesNotMatch(loader, /pattern-radar\.js/);
   assert.match(source, /action=screener/);
   assert.match(source, /action=nk-screener-results/);
@@ -99,7 +104,6 @@ test('dashboard loads stable Pattern v2 then Screener extension v3 on existing A
   assert.match(source, /\/api\/candles\?ticker=/);
   assert.match(source, /PatternMap\.validateCandidate/);
   assert.match(source, /classicPatterns/);
-  assert.match(source, /Triangle, Flag, Pennant, Cup & Handle/);
   assert.match(source, /data-classic-only/);
   assert.match(source, /https:\/\/quickchart\.io\/chart/);
   assert.match(source, /data-ps-map/);
@@ -107,10 +111,26 @@ test('dashboard loads stable Pattern v2 then Screener extension v3 on existing A
   assert.doesNotMatch(source, /MAX_SCAN|FALLBACK_TICKERS|candlestick/);
 });
 
-test('classic-only cards do not receive a fabricated map button', () => {
+test('Pattern results survive page re-entry and scanning no longer redraws every ticker result', () => {
   const source = read('public/pattern-stable-runtime.js');
-  const classicBranch = source.slice(source.indexOf("if (!c) {"), source.indexOf("return '<article class=\"ps-card ' + direction", source.indexOf("if (!c) {") + 20));
+  assert.match(source, /sessionStorage\.setItem\(cacheKey\(\)/);
+  assert.match(source, /sessionStorage\.getItem\(cacheKey\(\)/);
+  assert.match(source, /dateKey:jakartaDateKey\(\)/);
+  assert.match(source, /if \(!hydrateCache\(\)\) scan\(false\)/);
+  assert.match(source, /state\.rows = results\.filter\(Boolean\)/);
+  assert.match(source, /persistCache\(\)/);
+  assert.doesNotMatch(source, /state\.rows\.push\(row\);\s*render\(\)/);
+});
+
+test('every classic-only Pattern card can render an inline visual instead of a setup-only card', () => {
+  const source = read('public/pattern-stable-runtime.js');
+  const classicStart = source.indexOf("if (!c) {");
+  const abcdStart = source.indexOf("return '<article class=\"ps-card ' + direction", classicStart + 20);
+  const classicBranch = source.slice(classicStart, abcdStart);
   assert.match(classicBranch, /data-classic-only/);
+  assert.match(classicBranch, /data-ps-map/);
+  assert.match(classicBranch, /Lihat Pola/);
   assert.match(classicBranch, /data-ps-chart/);
-  assert.doesNotMatch(classicBranch, /data-ps-map|Lihat Peta/);
+  assert.match(source, /function buildClassicConfig/);
+  assert.match(source, /Titik pembentuk pola/);
 });
