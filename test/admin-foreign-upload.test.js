@@ -2,12 +2,33 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const Module = require('node:module');
 
 const SESSION_SECRET = 'admin-foreign-upload-unit-test-secret';
 process.env.SESSION_SECRET = SESSION_SECRET;
 
 const session = require('../lib/admin-session');
-const handler = require('../api/admin-foreign-upload');
+const foreign = require('../lib/admin-foreign-upload');
+
+function requireAdminUsersWithSupabaseStub() {
+  const originalLoad = Module._load;
+  const endpointPath = require.resolve('../api/admin-users');
+  delete require.cache[endpointPath];
+
+  Module._load = function patchedLoad(request) {
+    if (request === '@supabase/supabase-js') {
+      return { createClient: function createClient() { return {}; } };
+    }
+    return originalLoad.apply(this, arguments);
+  };
+
+  try {
+    return require('../api/admin-users');
+  } finally {
+    Module._load = originalLoad;
+    delete require.cache[endpointPath];
+  }
+}
 
 function makeRes() {
   return {
@@ -49,7 +70,7 @@ test('parser accepts ISO and US dates, .JK tickers, and computes foreign net', (
     '7/31/2026,TLKM,3000,3050,2980,3020,2000,30,6040000,-5'
   ].join('\n');
 
-  const parsed = handler._test.parseForeignCsv(csv);
+  const parsed = foreign.parseForeignCsv(csv);
   assert.equal(parsed.rows.length, 2);
   assert.equal(parsed.rows[0].ticker, 'BBCA');
   assert.equal(parsed.rows[0].foreign_net, 85750);
@@ -65,7 +86,7 @@ test('parser accepts angle-bracket header labels', () => {
     '2026-07-30,BBRI,4000,4050,3980,4020,1000,10,4020000,25'
   ].join('\n');
 
-  const parsed = handler._test.parseForeignCsv(csv);
+  const parsed = foreign.parseForeignCsv(csv);
   assert.equal(parsed.rows.length, 1);
   assert.equal(parsed.rows[0].ticker, 'BBRI');
 });
@@ -78,26 +99,28 @@ test('parser rejects duplicate date and ticker rows', () => {
   ].join('\n');
 
   assert.throws(
-    () => handler._test.parseForeignCsv(csv),
+    () => foreign.parseForeignCsv(csv),
     /Data duplikat 2026-07-30\|BBCA/
   );
 });
 
 test('parser rejects missing required headers and invalid dates', () => {
   assert.throws(
-    () => handler._test.parseForeignCsv('date,ticker\n2026-07-30,BBCA'),
+    () => foreign.parseForeignCsv('date,ticker\n2026-07-30,BBCA'),
     /Kolom CSV wajib tidak ditemukan/
   );
 
   assert.throws(
-    () => handler._test.parseForeignCsv(`${HEADER}\n2026-02-31,BBCA,1,1,1,1,1,1,1,1`),
+    () => foreign.parseForeignCsv(`${HEADER}\n2026-02-31,BBCA,1,1,1,1,1,1,1,1`),
     /Tanggal tidak valid/
   );
 });
 
-test('preview works with a signed Budi admin session and never needs database access', async () => {
+test('preview works through existing admin-users endpoint with signed Budi session', async () => {
+  const handler = requireAdminUsersWithSupabaseStub();
   const req = makeAdminRequest({
-    action: 'preview',
+    action: 'foreign_upload',
+    mode: 'preview',
     csv: `${HEADER}\n2026-07-30,BBCA,1,1,1,8575,1,1,1,10`
   });
   const res = makeRes();
@@ -110,18 +133,24 @@ test('preview works with a signed Budi admin session and never needs database ac
   assert.equal(res.body.summary.row_count, 1);
 });
 
-test('endpoint rejects missing session and non-Budi admin session', async () => {
+test('existing admin endpoint rejects missing session and non-Budi admin session', async () => {
+  const handler = requireAdminUsersWithSupabaseStub();
   let res = makeRes();
   await handler({
     method: 'POST',
     headers: { host: 'app.test', origin: 'https://app.test' },
-    body: { action: 'preview', csv: `${HEADER}\n2026-07-30,BBCA,1,1,1,1,1,1,1,1` }
+    body: {
+      action: 'foreign_upload',
+      mode: 'preview',
+      csv: `${HEADER}\n2026-07-30,BBCA,1,1,1,1,1,1,1,1`
+    }
   }, res);
   assert.equal(res.statusCode, 401);
 
   res = makeRes();
   await handler(makeAdminRequest({
-    action: 'preview',
+    action: 'foreign_upload',
+    mode: 'preview',
     csv: `${HEADER}\n2026-07-30,BBCA,1,1,1,1,1,1,1,1`
   }, 'alice'), res);
   assert.equal(res.statusCode, 403);
