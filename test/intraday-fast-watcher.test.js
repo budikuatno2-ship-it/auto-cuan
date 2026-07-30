@@ -243,7 +243,10 @@ test('live mode only supports engine market windows and at most four workers', (
 assert.equal(live.runModeForTime('09:00'), 'MORNING_SCOUT');
 assert.equal(live.runModeForTime('11:00'), 'MIDDAY_CHECK');
 assert.equal(live.runModeForTime('13:33'), 'AFTERNOON_EXIT');
-assert.equal(live.runModeForTime('15:03'), null);
+assert.equal(live.runModeForTime('15:03'), 'AFTERNOON_EXIT');
+assert.equal(live.runModeForTime('15:49'), 'AFTERNOON_EXIT');
+assert.equal(live.runModeForTime('16:00'), 'AFTERNOON_EXIT');
+assert.equal(live.runModeForTime('16:01'), null);
 assert.deepEqual(live.chunkRoundRobin([1,2,3,4,5], 4), [[1,5],[2],[3],[4]]);
 });
 test('live source cannot publish, send Telegram, build a universe, or enable intraday score adjustment', async () => {
