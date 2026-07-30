@@ -282,12 +282,9 @@
       }, 30);
     }
     processScope(doc);
-    new root.MutationObserver(function (records) {
-      records.forEach(function (record) {
-        Array.prototype.forEach.call(record.addedNodes || [], function (node) {
-          if (node && node.nodeType === 1) schedule(node);
-        });
-      });
+    new root.MutationObserver(function () {
+      // Pattern render uses innerHTML and may add many cards in one mutation.
+      // Always rescan the bounded Pattern page so no sibling card is skipped.
       schedule(doc);
     }).observe(doc.body, { childList:true, subtree:true });
     return true;
