@@ -6,6 +6,7 @@ const {
   requireAdminSession,
   isSameOrigin
 } = require('../lib/admin-session');
+const { handleAdminForeignUpload } = require('../lib/admin-foreign-upload');
 const originalHandler = require('../lib/admin-users-handler');
 
 function getSupabase() {
@@ -95,6 +96,38 @@ function resolvePatternMapAccess(req, res) {
   });
 }
 
+async function foreignUpload(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  if (!isSameOrigin(req)) {
+    return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+  }
+
+  const auth = requireAdminSession(req);
+  if (!auth.ok) {
+    return res.status(auth.status).json({ success: false, error: auth.error });
+  }
+
+  if (String(auth.session.un || '').trim().toLowerCase() !== 'budi') {
+    return res.status(403).json({ success: false, error: 'Akses admin ditolak.' });
+  }
+
+  const mode = String(req.body && req.body.mode || '').trim().toLowerCase();
+  let supabase = null;
+  if (mode === 'import') {
+    supabase = getSupabase();
+    if (!supabase) {
+      return res.status(503).json({ success: false, error: 'Database belum dikonfigurasi.' });
+    }
+  }
+
+  return handleAdminForeignUpload(req, res, supabase);
+}
+
 async function deleteUser(req, res) {
   if (!isSameOrigin(req)) {
     return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
@@ -180,6 +213,10 @@ module.exports = async function handler(req, res) {
 
   if (action === 'pattern_map_access') {
     return resolvePatternMapAccess(req, res);
+  }
+
+  if (action === 'foreign_upload') {
+    return foreignUpload(req, res);
   }
 
   if (action === 'delete_user') {
