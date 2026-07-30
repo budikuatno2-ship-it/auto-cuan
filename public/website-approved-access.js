@@ -26,6 +26,17 @@
     });
   }
 
+  function loadFastWatcherRefreshRuntime() {
+    if (window.__AUTOCUAN_FAST_WATCHER_WEB_REFRESH_LOADER__) return;
+    window.__AUTOCUAN_FAST_WATCHER_WEB_REFRESH_LOADER__ = true;
+    if (document.querySelector('script[data-autocuan-fast-watcher-refresh]')) return;
+    var script = document.createElement('script');
+    script.src = '/fast-watcher-live-refresh.js?v=20260730-v1';
+    script.async = true;
+    script.setAttribute('data-autocuan-fast-watcher-refresh', '1');
+    document.head.appendChild(script);
+  }
+
   function markApprovedAccess() {
     if (typeof window.applyPremiumAccessUi !== 'function') return;
     window.premiumAccessState = {
@@ -86,6 +97,7 @@
 
   function init() {
     hideSubscriptionUi();
+    loadFastWatcherRefreshRuntime();
     restoreApprovedSession();
   }
 
