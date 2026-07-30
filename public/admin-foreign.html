@@ -198,15 +198,15 @@
         metrics.hidden = false;
       }
 
-      async function callApi(action) {
+      async function callApi(mode) {
         var text = csvText.value;
         if (!text.trim()) throw new Error('Pilih file atau tempel data CSV terlebih dahulu.');
 
-        var response = await fetch('/api/admin-foreign-upload', {
+        var response = await fetch('/api/admin-users', {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: action, csv: text })
+          body: JSON.stringify({ action: 'foreign_upload', mode: mode, csv: text })
         });
 
         var data;
