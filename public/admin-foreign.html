@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0e14">
+  <title>Admin Foreign Data | Auto-Cuan</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0e14;
+      --panel: #111722;
+      --panel-2: #151d2a;
+      --border: #263244;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --green: #34d399;
+      --green-dark: #059669;
+      --red: #f87171;
+      --amber: #fbbf24;
+      --blue: #60a5fa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(16,185,129,.10), transparent 32rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .wrap { width: min(960px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 56px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 42px; height: 42px; border-radius: 14px;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, #10b981, #047857);
+      color: #03120d; font-weight: 900; box-shadow: 0 12px 35px rgba(16,185,129,.18);
+    }
+    h1 { margin: 0; font-size: clamp(20px, 4vw, 28px); }
+    .subtitle { margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .back {
+      color: #cbd5e1; text-decoration: none; border: 1px solid var(--border);
+      padding: 9px 12px; border-radius: 10px; font-size: 13px; background: rgba(17,23,34,.72);
+    }
+    .panel {
+      background: rgba(17,23,34,.92); border: 1px solid var(--border); border-radius: 18px;
+      padding: 22px; box-shadow: 0 20px 70px rgba(0,0,0,.22); margin-bottom: 16px;
+    }
+    .notice {
+      display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid rgba(96,165,250,.22); background: rgba(59,130,246,.07); color: #bfdbfe;
+      font-size: 13px; line-height: 1.55; margin-bottom: 18px;
+    }
+    label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .help { color: var(--muted); font-size: 12px; line-height: 1.55; margin: 6px 0 14px; }
+    input[type="file"] {
+      display: block; width: 100%; border: 1px dashed #3a4a61; border-radius: 12px;
+      padding: 14px; background: var(--panel-2); color: #dbeafe; margin-bottom: 16px;
+    }
+    textarea {
+      width: 100%; min-height: 280px; resize: vertical; border-radius: 12px;
+      border: 1px solid var(--border); background: #0d131d; color: #d1fae5;
+      padding: 14px; font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      outline: none;
+    }
+    textarea:focus { border-color: var(--green-dark); box-shadow: 0 0 0 3px rgba(16,185,129,.10); }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    button {
+      appearance: none; border: 0; border-radius: 11px; padding: 11px 16px;
+      font-weight: 800; cursor: pointer; transition: transform .12s ease, opacity .12s ease;
+    }
+    button:active:not(:disabled) { transform: scale(.98); }
+    button:disabled { cursor: not-allowed; opacity: .42; }
+    .primary { background: var(--green); color: #032017; }
+    .secondary { background: #263244; color: #e2e8f0; }
+    .danger { background: rgba(248,113,113,.12); color: #fecaca; border: 1px solid rgba(248,113,113,.2); }
+    .status { display: none; margin-top: 18px; border-radius: 14px; padding: 14px; font-size: 13px; line-height: 1.55; }
+    .status.show { display: block; }
+    .status.loading { color: #bfdbfe; background: rgba(59,130,246,.08); border: 1px solid rgba(96,165,250,.22); }
+    .status.success { color: #bbf7d0; background: rgba(16,185,129,.08); border: 1px solid rgba(52,211,153,.24); }
+    .status.error { color: #fecaca; background: rgba(239,68,68,.08); border: 1px solid rgba(248,113,113,.24); }
+    .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+    .metric { padding: 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); }
+    .metric span { display: block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+    .metric strong { display: block; color: #f8fafc; font-size: 16px; overflow-wrap: anywhere; }
+    .format {
+      overflow-x: auto; white-space: nowrap; padding: 10px 12px; background: #0d131d;
+      border: 1px solid var(--border); border-radius: 10px; color: #a7f3d0;
+      font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .footer-note { color: var(--muted); font-size: 11px; line-height: 1.55; margin-top: 14px; }
+    @media (max-width: 680px) {
+      .wrap { width: min(100% - 20px, 960px); padding-top: 18px; }
+      .topbar { align-items: flex-start; }
+      .panel { padding: 16px; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .back { padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">AC</div>
+        <div>
+          <h1>Upload Data Foreign</h1>
+          <div class="subtitle">Panel admin Auto-Cuan · sesi login Budi diperlukan</div>
+        </div>
+      </div>
+      <a class="back" href="/">← Dashboard</a>
+    </header>
+
+    <section class="panel">
+      <div class="notice">
+        <span>🔒</span>
+        <div>Upload dilakukan melalui API server-side dengan sesi admin. Secret database dan <code>CRON_SECRET</code> tidak pernah dikirim ke browser.</div>
+      </div>
+
+      <label for="csvFile">Pilih file CSV</label>
+      <input id="csvFile" type="file" accept=".csv,text/csv">
+
+      <label for="csvText">Atau tempel isi CSV</label>
+      <div class="help">Format kolom wajib:</div>
+      <div class="format">date,ticker,open,high,low,close,volume,freq,valuasi,nbsa</div>
+      <div class="help">Tanggal boleh <code>YYYY-MM-DD</code> atau <code>MM/DD/YYYY</code>. Ticker <code>.JK</code> akan dinormalisasi otomatis.</div>
+      <textarea id="csvText" spellcheck="false" placeholder="date,ticker,open,high,low,close,volume,freq,valuasi,nbsa&#10;2026-07-30,BBCA,8500,8600,8450,8575,12345678,45678,105000000000,1250000"></textarea>
+
+      <div class="actions">
+        <button id="previewBtn" class="secondary" type="button">Periksa Data</button>
+        <button id="uploadBtn" class="primary" type="button" disabled>Upload ke Auto-Cuan</button>
+        <button id="clearBtn" class="danger" type="button">Bersihkan</button>
+      </div>
+
+      <div id="statusBox" class="status" role="status" aria-live="polite"></div>
+      <div id="metrics" class="metrics" hidden></div>
+
+      <div class="footer-note">
+        Import bersifat idempotent berdasarkan kombinasi tanggal dan ticker. Data lama tetap dibatasi pada tujuh tanggal perdagangan terbaru per ticker.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var fileInput = document.getElementById('csvFile');
+      var csvText = document.getElementById('csvText');
+      var previewBtn = document.getElementById('previewBtn');
+      var uploadBtn = document.getElementById('uploadBtn');
+      var clearBtn = document.getElementById('clearBtn');
+      var statusBox = document.getElementById('statusBox');
+      var metrics = document.getElementById('metrics');
+      var previewedText = '';
+
+      function setBusy(busy, label) {
+        previewBtn.disabled = busy;
+        uploadBtn.disabled = busy || previewedText !== csvText.value || !previewedText;
+        clearBtn.disabled = busy;
+        if (label) showStatus('loading', label);
+      }
+
+      function showStatus(type, message) {
+        statusBox.className = 'status show ' + type;
+        statusBox.textContent = message;
+      }
+
+      function hideMetrics() {
+        metrics.hidden = true;
+        metrics.innerHTML = '';
+      }
+
+      function addMetric(label, value) {
+        var card = document.createElement('div');
+        card.className = 'metric';
+        var title = document.createElement('span');
+        title.textContent = label;
+        var strong = document.createElement('strong');
+        strong.textContent = value == null ? '-' : String(value);
+        card.appendChild(title);
+        card.appendChild(strong);
+        metrics.appendChild(card);
+      }
+
+      function renderPreview(summary) {
+        metrics.innerHTML = '';
+        addMetric('Jumlah baris', summary.row_count);
+        addMetric('Ticker unik', summary.ticker_count);
+        addMetric('Jumlah tanggal', summary.date_count);
+        addMetric('Tanggal awal', summary.first_date);
+        addMetric('Tanggal akhir', summary.last_date);
+        addMetric('Checksum', String(summary.sha256 || '').slice(0, 12) + '…');
+        metrics.hidden = false;
+      }
+
+      async function callApi(mode) {
+        var text = csvText.value;
+        if (!text.trim()) throw new Error('Pilih file atau tempel data CSV terlebih dahulu.');
+
+        var response = await fetch('/api/admin-users', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'foreign_upload', mode: mode, csv: text })
+        });
+
+        var data;
+        try {
+          data = await response.json();
+        } catch (_) {
+          throw new Error('Respons server tidak valid.');
+        }
+
+        if (!response.ok || !data.success) {
+          if (response.status === 401) throw new Error('Sesi login habis. Masuk kembali sebagai admin Budi.');
+          if (response.status === 403) throw new Error('Akses ditolak. Halaman ini hanya untuk admin Budi.');
+          throw new Error(data.error || 'Proses data foreign gagal.');
+        }
+        return data;
+      }
+
+      function invalidatePreview() {
+        previewedText = '';
+        uploadBtn.disabled = true;
+        hideMetrics();
+      }
+
+      fileInput.addEventListener('change', async function () {
+        invalidatePreview();
+        var file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        if (file.size > 3 * 1024 * 1024) {
+          showStatus('error', 'Ukuran file melebihi batas 3 MB.');
+          fileInput.value = '';
+          return;
+        }
+        try {
+          csvText.value = await file.text();
+          showStatus('success', 'File berhasil dibaca. Klik “Periksa Data” sebelum upload.');
+        } catch (_) {
+          showStatus('error', 'File tidak dapat dibaca oleh browser.');
+        }
+      });
+
+      csvText.addEventListener('input', invalidatePreview);
+
+      previewBtn.addEventListener('click', async function () {
+        setBusy(true, 'Memeriksa format, tanggal, ticker, dan duplikasi…');
+        hideMetrics();
+        try {
+          var data = await callApi('preview');
+          previewedText = csvText.value;
+          renderPreview(data.summary || {});
+          showStatus('success', 'Data valid. Periksa ringkasan lalu klik “Upload ke Auto-Cuan”.');
+        } catch (error) {
+          previewedText = '';
+          showStatus('error', error.message || 'Pemeriksaan gagal.');
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      uploadBtn.addEventListener('click', async function () {
+        if (!previewedText || previewedText !== csvText.value) {
+          showStatus('error', 'Data berubah. Jalankan “Periksa Data” kembali.');
+          return;
+        }
+
+        setBusy(true, 'Mengunggah dan menyimpan data foreign… jangan tutup halaman.');
+        try {
+          var data = await callApi('import');
+          renderPreview(data.summary || {});
+          showStatus(
+            'success',
+            'Upload selesai. ' +
+            String(data.upserted_count || 0) + ' baris tersimpan; ' +
+            String(data.deleted_old_count || 0) + ' baris lama dibersihkan.'
+          );
+        } catch (error) {
+          showStatus('error', error.message || 'Upload gagal.');
+        } finally {
+          setBusy(false);
+        }
+      });
+
+      clearBtn.addEventListener('click', function () {
+        fileInput.value = '';
+        csvText.value = '';
+        previewedText = '';
+        uploadBtn.disabled = true;
+        hideMetrics();
+        statusBox.className = 'status';
+        statusBox.textContent = '';
+      });
+    }());
+  </script>
+</body>
+</html>
