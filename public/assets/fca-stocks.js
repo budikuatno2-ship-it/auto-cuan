@@ -27,7 +27,9 @@ window.FCA_STOCKS = {
   function load() {
     // Independent admin-only enhancement. Loading it never gates Pattern or the
     // rest of the website; its API remains protected by the signed admin session.
-    append('/security-admin-runtime.js?v=20260729-security-admin-v1', 'data-security-admin-loader');
+    append('/security-admin-runtime.js?v=20260729-security-admin-v1', 'data-security-admin-loader', function () {
+      append('/admin-tools-runtime.js?v=20260731-admin-tools-v1', 'data-admin-tools-loader');
+    });
     append('/ui-stability-fix.js?v=20260728-ui-stability-v1', 'data-ui-stability-loader', function () {
       append('/pattern-tab-resume-guard.js?v=20260729-pattern-tab-resume-v1', 'data-pattern-tab-resume-loader', function () {
         append('/pattern-stable-runtime.js?v=20260728-pattern-stable-v3', 'data-pattern-stable-loader', function () {
