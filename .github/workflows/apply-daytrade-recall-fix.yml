@@ -1,18 +1,17 @@
 name: Apply Day Trade Recall Fix
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/daytrade-finalizer-watcher-recall-20260801
-    paths:
-      - tools/apply-daytrade-recall-fix-once.js
-      - .github/workflows/apply-daytrade-recall-fix.yml
+      - feat/daytrade-screener-v1
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   apply-and-test:
+    if: github.head_ref == 'fix/daytrade-finalizer-watcher-recall-20260801'
     runs-on: ubuntu-latest
     steps:
       - name: Check out patch branch
