@@ -1,0 +1,66 @@
+name: Apply Day Trade Recall Fix
+
+on:
+  push:
+    branches:
+      - fix/daytrade-finalizer-watcher-recall-20260801
+    paths:
+      - tools/apply-daytrade-recall-fix-once.js
+      - .github/workflows/apply-daytrade-recall-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out patch branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/daytrade-finalizer-watcher-recall-20260801
+          fetch-depth: 0
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Apply source patch
+        run: node tools/apply-daytrade-recall-fix-once.js
+
+      - name: Syntax checks
+        run: |
+          node --check api/sector-hot.js
+          node --check lib/daytrade-screener-engine.js
+          node --check lib/intraday-fast-watcher-pool.js
+          node --check lib/intraday-fast-watcher-live.js
+          node --check lib/intraday-fast-watcher-guarded-live.js
+
+      - name: Focused regression tests
+        run: |
+          node --test \
+            test/daytrade-finalizer-schema-contract.test.js \
+            test/daytrade-run-mode-window.test.js \
+            test/intraday-fast-watcher-recall.test.js \
+            test/intraday-fast-watcher-lifecycle-reset.test.js
+
+      - name: Commit patched source and tests
+        run: |
+          git config user.name "auto-cuan-fix-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add api/sector-hot.js \
+            lib/daytrade-screener-engine.js \
+            lib/intraday-fast-watcher-pool.js \
+            lib/intraday-fast-watcher-live.js \
+            lib/intraday-fast-watcher-guarded-live.js \
+            test/daytrade-finalizer-schema-contract.test.js \
+            test/daytrade-run-mode-window.test.js \
+            test/intraday-fast-watcher-recall.test.js
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No source changes to commit"
+          else
+            git commit -m "fix: recover Day Trade candidates and watcher recall [skip ci]"
+            git push origin HEAD:fix/daytrade-finalizer-watcher-recall-20260801
+          fi
