@@ -10806,7 +10806,82 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   var sendEmptyNoticeRequested = getDayTradeEmptyNoticeRequested(req);
   var radarRequested = getDayTradeRadarRequested(req);
   var forceRadarDebug = getDayTradeForceRadarDebugRequested(req);
-  var telegramResult = await sendDayTradeTelegramNotification(supabase, runId, runDate, savedCount, sendEmptyNoticeRequested, radarRequested, { force_radar_debug: forceRadarDebug, raw_batch_passed_count: rawBatchPassedCount, pre_publish_candidate_count: prePublishCandidateCount, scanned_count: totalScanned });
+
+  // Fast Watcher is the exclusive owner of public Day Trade signals.
+  // Day Trade still scans, saves results, and prepares the shortlist.
+  var requestFlags = Object.assign(
+    {},
+    (req && req.query) || {},
+    (req && req.body && typeof req.body === 'object') ? req.body : {}
+  );
+  var deferValue = String(
+    requestFlags.defer_to_fast_watcher == null
+      ? ''
+      : requestFlags.defer_to_fast_watcher
+  ).trim().toLowerCase();
+  var deferToFastWatcher =
+    deferValue === '1' ||
+    deferValue === 'true' ||
+    deferValue === 'on';
+
+  var telegramResult;
+
+  if (deferToFastWatcher) {
+    // Preserve an operational heartbeat when the completed scan saved no
+    // candidates, but never send a stock signal or radar candidate here.
+    if (savedCount === 0 || sendEmptyNoticeRequested) {
+      var deferredHeartbeatMessage =
+        formatDayTradeEmptyHeartbeatTelegramMessage(
+          totalScanned,
+          rawBatchPassedCount,
+          'deferred_to_fast_watcher'
+        );
+
+      var deferredHeartbeatSend =
+        await telegramNotifier.sendTelegramMessage(
+          deferredHeartbeatMessage
+        );
+
+      telegramResult = {
+        sent: deferredHeartbeatSend.sent === true,
+        skipped: deferredHeartbeatSend.sent !== true,
+        reason: deferredHeartbeatSend.sent === true
+          ? 'daytrade_empty_heartbeat_sent'
+          : 'telegram_send_failed',
+        message: deferredHeartbeatMessage,
+        deferred_to_fast_watcher: true,
+        signal_delivery_deferred: true,
+        radar_requested: false,
+        published_count: savedCount
+      };
+    } else {
+      telegramResult = {
+        sent: false,
+        skipped: true,
+        reason: 'deferred_to_fast_watcher',
+        deferred_to_fast_watcher: true,
+        signal_delivery_deferred: true,
+        telegram_attempted: false,
+        radar_requested: false,
+        published_count: savedCount
+      };
+    }
+  } else {
+    telegramResult = await sendDayTradeTelegramNotification(
+      supabase,
+      runId,
+      runDate,
+      savedCount,
+      sendEmptyNoticeRequested,
+      radarRequested,
+      {
+        force_radar_debug: forceRadarDebug,
+        raw_batch_passed_count: rawBatchPassedCount,
+        pre_publish_candidate_count: prePublishCandidateCount,
+        scanned_count: totalScanned
+      }
+    );
+  }
   var responsePayload = {
     success: true,
     status: 'published',
