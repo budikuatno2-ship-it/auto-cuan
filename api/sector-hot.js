@@ -10735,11 +10735,45 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   // Read all rows currently in daytrade_screener_latest, keep only top 50 by score
   var { data: allRows, error: readErr } = await supabase
     .from('daytrade_screener_latest')
-    .select('ticker, daytrade_score, status, action_label')
+    .select('ticker, daytrade_score, status')
     .order('daytrade_score', { ascending: false });
 
   var rawBatchPassedCount = counters ? (counters.passed_count || 0) : 0;
-  var prePublishCandidateCount = allRows ? allRows.length : 0;
+  if (readErr) {
+    var failedScannedCount = counters ? (counters.scanned_count || universeCount) : universeCount;
+    var failedTickerCount = counters ? (counters.failed_count || 0) : 0;
+    console.error('[daytrade-screener-finalize] candidate read failed:', readErr.message || readErr);
+    await updateDtMeta(supabase, {
+      status: 'failed',
+      run_date: runDate,
+      run_mode: runMode,
+      run_id: runId,
+      universe_count: universeCount,
+      scanned_count: failedScannedCount,
+      failed_count: failedTickerCount,
+      passed_count: rawBatchPassedCount,
+      published_count: 0,
+      top_count: 0,
+      message: 'Day Trade finalization failed while reading saved candidates.'
+    });
+    return res.status(500).json({
+      success: false,
+      status: 'failed',
+      error_code: 'daytrade_finalize_read_failed',
+      error: 'Day Trade candidates were scanned but could not be finalized.',
+      run_id: runId,
+      run_mode: runMode,
+      run_date: runDate,
+      universe_count: universeCount,
+      scanned_count: failedScannedCount,
+      failed_count: failedTickerCount,
+      passed_count: rawBatchPassedCount,
+      raw_batch_passed_count: rawBatchPassedCount,
+      published_count: 0
+    });
+  }
+  allRows = allRows || [];
+  var prePublishCandidateCount = allRows.length;
   // Preserve batch progress diagnostics separately from rows that survive DB read/trim.
   // This prevents a production false-zero from hiding the fact that earlier batches had candidates.
   var totalPassed = Math.max(prePublishCandidateCount, rawBatchPassedCount);
@@ -10749,7 +10783,34 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   if (allRows && allRows.length > 50) {
     var tickersToRemove = allRows.slice(50).map(function(r) { return r.ticker; });
     if (tickersToRemove.length > 0) {
-      await supabase.from('daytrade_screener_latest').delete().in('ticker', tickersToRemove);
+      var { error: trimErr } = await supabase.from('daytrade_screener_latest').delete().in('ticker', tickersToRemove);
+      if (trimErr) {
+        console.error('[daytrade-screener-finalize] top-50 trim failed:', trimErr.message || trimErr);
+        await updateDtMeta(supabase, {
+          status: 'failed',
+          run_date: runDate,
+          run_mode: runMode,
+          run_id: runId,
+          universe_count: universeCount,
+          scanned_count: counters ? (counters.scanned_count || universeCount) : universeCount,
+          failed_count: counters ? (counters.failed_count || 0) : 0,
+          passed_count: rawBatchPassedCount,
+          published_count: 0,
+          top_count: 0,
+          message: 'Day Trade finalization failed while trimming candidates.'
+        });
+        return res.status(500).json({
+          success: false,
+          status: 'failed',
+          error_code: 'daytrade_finalize_trim_failed',
+          error: 'Day Trade candidates were saved but the Top 50 trim failed.',
+          run_id: runId,
+          run_date: runDate,
+          raw_batch_passed_count: rawBatchPassedCount,
+          pre_publish_candidate_count: prePublishCandidateCount,
+          published_count: 0
+        });
+      }
     }
     savedCount = 50;
   }
@@ -10762,7 +10823,8 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   }).length;
 
   var statusDistribution = buildDtValueDistribution(publishedRows, 'status');
-  var actionLabelDistribution = buildDtValueDistribution(publishedRows, 'action_label');
+  // action_label is a runtime/display label and is not persisted in this table.
+  var actionLabelDistribution = {};
   var actionableDefinition = 'READY_BREAKOUT + PRE_SPIKE_WATCH';
   var topZeroReason = topCount === 0
     ? 'No READY_BREAKOUT or PRE_SPIKE_WATCH candidates. Most candidates are WAIT_PULLBACK / EARLY_RADAR / AVOID, so they are radar/watchlist only.'
