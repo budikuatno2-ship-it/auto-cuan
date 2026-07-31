@@ -1,0 +1,40 @@
+name: Validate Day Trade Recall Full Suite
+
+on:
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: github.head_ref == 'fix/daytrade-finalizer-watcher-recall-20260801'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out patch branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/daytrade-finalizer-watcher-recall-20260801
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax checks
+        run: |
+          node --check api/sector-hot.js
+          node --check lib/daytrade-screener-engine.js
+          node --check lib/intraday-fast-watcher-pool.js
+          node --check lib/intraday-fast-watcher-live.js
+          node --check lib/intraday-fast-watcher-guarded-live.js
+
+      - name: Run complete repository test suite
+        run: node --test test/*.test.js
