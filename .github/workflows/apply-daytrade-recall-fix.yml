@@ -25,6 +25,20 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Repair staged test generator quoting
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tools/apply-daytrade-recall-fix-once.js')
+          source = path.read_text()
+          old = "    now: `2026-07-31T${String(Number(time.slice(0, 2)) - 7).padStart(2, '0')}:${time.slice(3)}:00.000Z`"
+          new = "    now: '2026-07-31T' + String(Number(time.slice(0, 2)) - 7).padStart(2, '0') + ':' + time.slice(3) + ':00.000Z'"
+          if old not in source:
+              raise SystemExit('staged quoting target not found')
+          path.write_text(source.replace(old, new, 1))
+          PY
+          node --check tools/apply-daytrade-recall-fix-once.js
+
       - name: Apply source patch
         run: node tools/apply-daytrade-recall-fix-once.js
 
