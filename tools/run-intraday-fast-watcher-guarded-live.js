@@ -27,7 +27,7 @@ function parseArgs(argv) {
   }
   return args;
 }
-const USAGE = `Usage:\nnode tools/run-intraday-fast-watcher-guarded-live.js \\\n  --sample-date YYYY-MM-DD --scheduled-time HH:MM --shortlist-file PATH \\\n  [--max-shortlist 20] [--concurrency 4] [--timeout-ms 12000] \\\n  [--state-dir PATH] [--event-dir PATH] [--published-dir PATH] \\\n  [--observation-root PATH] [--cache-dir PATH] [--production-lock-file PATH] \\\n  [--dry-run] [--json]\n\nKill switches default OFF:\nFAST_WATCHER_LIVE_ENABLED=1\nFAST_WATCHER_PUBLISH_ENABLED=1\nFAST_WATCHER_TELEGRAM_ENABLED=1`;
+const USAGE = `Usage:\nnode tools/run-intraday-fast-watcher-guarded-live.js \\\n  --sample-date YYYY-MM-DD --scheduled-time HH:MM --shortlist-file PATH \\\n  [--max-shortlist 20] [--concurrency 4] [--timeout-ms 12000] \\\n  [--state-dir PATH] [--event-dir PATH] [--published-dir PATH] \\\n  [--observation-root PATH] [--cache-dir PATH] [--production-lock-file PATH] \\\n  [--dry-run] [--json]\n\nKill switches default OFF:\nFAST_WATCHER_LIVE_ENABLED=1\nFAST_WATCHER_PUBLISH_ENABLED=1\nFAST_WATCHER_TELEGRAM_ENABLED=1\nFAST_WATCHER_RADAR_TELEGRAM_ENABLED=1`;
 async function main(argv) {
   const args = parseArgs(argv || process.argv);
   if (args.help) { process.stdout.write(USAGE + '\n'); return 0; }
@@ -41,7 +41,7 @@ async function main(argv) {
     maxShortlist: args.maxShortlist, concurrency: args.concurrency, timeoutMs: args.timeoutMs, dryRun: args.dryRun, env: process.env
   });
   if (args.json) process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  else process.stdout.write(`Fast Watcher guarded-live: ${result.status}; shortlist=${result.shortlist_count || 0}; pool=${result.active_pool_count || 0}; confirmed=${(result.confirmed || []).length}; system=${result.system_published || 0}; telegram=${result.telegram_sent || 0}\n`);
+  else process.stdout.write(`Fast Watcher guarded-live: ${result.status}; shortlist=${result.shortlist_count || 0}; pool=${result.active_pool_count || 0}; confirmed=${(result.confirmed || []).length}; radar=${result.radar_items_sent || 0}; system=${result.system_published || 0}; telegram=${result.telegram_sent || 0}\n`);
   return new Set(['invalid_input', 'shortlist_missing', 'shortlist_invalid', 'lock_busy', 'skipped_due_to_production_lock']).has(result.status) ? 1 : 0;
 }
 if (require.main === module) main(process.argv).then(code => { process.exitCode = code; }).catch(error => { process.stderr.write(`FATAL: ${error.message}\n`); process.exitCode = 1; });
