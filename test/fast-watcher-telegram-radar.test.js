@@ -57,9 +57,9 @@ test('Telegram radar copy is compact and keeps entry TP and SL', () => {
   assert.match(message, /Pantauan, belum sinyal beli/);
   assert.match(message, /Entry Rp105–Rp110/);
   assert.match(message, /TP Rp118 \/ Rp124 \| SL Rp102/);
-  assert.match(message, /jangan chase/);
-  assert.match(message, /Entry hanya setelah konfirmasi Fast Watcher/);
-  assert.doesNotMatch(message, /Technical Context|Pattern \/ Setup|Trading Plan/);
+  assert.match(message, /Jangan beli kalau harganya sudah terlalu tinggi/);
+  assert.match(message, /Entry hanya setelah konfirmasi momentum/);
+  assert.doesNotMatch(message, /Fast Watcher|jangan chase|Technical Context|Pattern \/ Setup|Trading Plan/);
   assert.ok(message.length < 700);
 });
 
