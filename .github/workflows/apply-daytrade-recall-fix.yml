@@ -43,11 +43,11 @@ jobs:
               ),
               (
                   "    priorState.tickers[`OLD${index}`] = {",
-                  "    priorState.tickers['OLD' + index] = {"
+                  "    priorState.tickers['OL' + String.fromCharCode(65 + index)] = {"
               ),
               (
                   "    ticker: `NEW${index}`, status: 'EARLY_RADAR', daytrade_score: 80 - index",
-                  "    ticker: 'NEW' + index, status: 'EARLY_RADAR', daytrade_score: 80 - index"
+                  "    ticker: 'NE' + String.fromCharCode(65 + index), status: 'EARLY_RADAR', daytrade_score: 80 - index"
               ),
           ]
 
