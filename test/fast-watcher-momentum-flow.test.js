@@ -122,3 +122,32 @@ test('live Telegram copy names the metric as a proxy and exposes its components'
   assert.match(message, /Kecepatan harga:/);
   assert.match(message, /Akselerasi volume:/);
 });
+
+
+test('initial snapshot stays neutral until temporal flow exists', () => {
+  const result = momentum.scoreObservation(
+    observation({
+      scheduled_time: '09:10',
+      current_price: 100,
+      volume: 1000,
+      average_volume: 700,
+      relative_volume: 1.5,
+      high: 103,
+      low: 98
+    }),
+    {
+      first_price: 100,
+      in_latest_shortlist: true
+    }
+  );
+
+  assert.equal(
+    result.metrics.momentum_flow_label,
+    'DATA_AWAL'
+  );
+
+  assert.equal(
+    result.metrics.momentum_flow_publish_bonus,
+    0
+  );
+});
