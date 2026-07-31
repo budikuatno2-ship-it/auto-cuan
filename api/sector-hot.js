@@ -10824,64 +10824,21 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     deferValue === 'true' ||
     deferValue === 'on';
 
-  var telegramResult;
-
-  if (deferToFastWatcher) {
-    // Preserve an operational heartbeat when the completed scan saved no
-    // candidates, but never send a stock signal or radar candidate here.
-    if (savedCount === 0 || sendEmptyNoticeRequested) {
-      var deferredHeartbeatMessage =
-        formatDayTradeEmptyHeartbeatTelegramMessage(
-          totalScanned,
-          rawBatchPassedCount,
-          'deferred_to_fast_watcher'
-        );
-
-      var deferredHeartbeatSend =
-        await telegramNotifier.sendTelegramMessage(
-          deferredHeartbeatMessage
-        );
-
-      telegramResult = {
-        sent: deferredHeartbeatSend.sent === true,
-        skipped: deferredHeartbeatSend.sent !== true,
-        reason: deferredHeartbeatSend.sent === true
-          ? 'daytrade_empty_heartbeat_sent'
-          : 'telegram_send_failed',
-        message: deferredHeartbeatMessage,
-        deferred_to_fast_watcher: true,
-        signal_delivery_deferred: true,
-        radar_requested: false,
-        published_count: savedCount
-      };
-    } else {
-      telegramResult = {
-        sent: false,
-        skipped: true,
-        reason: 'deferred_to_fast_watcher',
-        deferred_to_fast_watcher: true,
-        signal_delivery_deferred: true,
-        telegram_attempted: false,
-        radar_requested: false,
-        published_count: savedCount
-      };
+  var telegramResult = await sendDayTradeTelegramNotification(
+    supabase,
+    runId,
+    runDate,
+    savedCount,
+    sendEmptyNoticeRequested,
+    radarRequested,
+    {
+      force_radar_debug: forceRadarDebug,
+      raw_batch_passed_count: rawBatchPassedCount,
+      pre_publish_candidate_count: prePublishCandidateCount,
+      scanned_count: totalScanned,
+      defer_delivery: deferToFastWatcher
     }
-  } else {
-    telegramResult = await sendDayTradeTelegramNotification(
-      supabase,
-      runId,
-      runDate,
-      savedCount,
-      sendEmptyNoticeRequested,
-      radarRequested,
-      {
-        force_radar_debug: forceRadarDebug,
-        raw_batch_passed_count: rawBatchPassedCount,
-        pre_publish_candidate_count: prePublishCandidateCount,
-        scanned_count: totalScanned
-      }
-    );
-  }
+  );
   var responsePayload = {
     success: true,
     status: 'published',
@@ -11409,11 +11366,12 @@ function formatDayTradeEmptyHeartbeatTelegramMessage(scannedCount, rawBatchPasse
 
 async function sendDayTradeTelegramNotification(supabase, runId, runDate, publishedCount, sendEmptyNotice, sendRadarFallback, options) {
   options = options || {};
+  var deferDelivery = options.defer_delivery === true;
   var forceRadarDebug = options.force_radar_debug === true;
   var duplicateRunHit = _dtTelegramLastRunId === runId;
   var allowRadarRetry = duplicateRunHit && sendRadarFallback && (_dtTelegramLastRunReason === 'no_signal_no_radar_candidates' || _dtTelegramLastRunReason === 'no_final_signal_but_radar_disabled' || _dtTelegramLastRunReason === 'radar_candidates_all_hard_reject') && _dtTelegramLastRadarRunId !== runId;
   // Duplicate guard: same run_id = don't send the normal Signal twice, but allow one explicit radar retry after a silent no-signal result.
-  if (duplicateRunHit && !allowRadarRetry && !forceRadarDebug) {
+  if (!deferDelivery && duplicateRunHit && !allowRadarRetry && !forceRadarDebug) {
     return { sent: false, skipped: true, reason: (_dtTelegramLastRadarRunId === runId && sendRadarFallback) ? 'duplicate_radar_guard' : 'duplicate_run_id', duplicate_guard_hit: true, radar_requested: !!sendRadarFallback };
   }
 
@@ -11531,6 +11489,76 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       radar_rejected: radarRejected
     });
     diagnostics.price_freshness = buildPriceFreshnessDiagnostics(candidates.map(function(raw) { return attachPriceFreshness(Object.assign({}, raw), { meta: daytradeMeta, run_date: daytradeMeta.run_date }); }));
+
+    // Build and return the shortlist, but let Fast Watcher own every public
+    // stock signal. Operational empty heartbeat remains allowed.
+    if (deferDelivery) {
+      var deferredResult = {
+        sent: false,
+        skipped: true,
+        reason: 'deferred_to_fast_watcher',
+        deferred_to_fast_watcher: true,
+        signal_delivery_deferred: true,
+        telegram_attempted: false,
+        published_count: publishedCount,
+        raw_candidate_count: rawCount,
+        raw_candidates_count: rawCount,
+        verified_count: verifiedCandidates.length,
+        high_conviction_count: highConvictionCandidates.length,
+        min_tp1_pass_count: minTp1Candidates.length,
+        public_safe_count: nonAvoid.length,
+        selected_count: finalList.length,
+        strict_signal_count: finalList.length,
+        radar_count: radarCandidates.length,
+        radar_monitor_count: radarCandidates.length,
+        hard_reject_count: diagnostics.hard_reject_count || 0,
+        radar_requested: false,
+        radar_sent: false,
+        radar_candidates: radarCandidates.map(function(r) {
+          return r.ticker;
+        }),
+        radar_blocked_count: diagnostics.radar_blocked_count,
+        radar_rejection_reasons:
+          diagnostics.radar_rejection_reasons,
+        sample_radar_rejected:
+          diagnostics.sample_radar_rejected,
+        diagnostics: diagnostics
+      };
+
+      if (
+        finalList.length === 0 &&
+        (
+          sendEmptyNotice ||
+          rawCount === 0 ||
+          radarCandidates.length === 0
+        )
+      ) {
+        var deferredHeartbeatMsg =
+          formatDayTradeEmptyHeartbeatTelegramMessage(
+            options.scanned_count || publishedCount,
+            options.raw_batch_passed_count || rawCount,
+            'deferred_to_fast_watcher'
+          );
+
+        var deferredHeartbeat =
+          await telegramNotifier.sendTelegramMessage(
+            deferredHeartbeatMsg
+          );
+
+        return Object.assign(deferredResult, {
+          sent: deferredHeartbeat.sent === true,
+          skipped: deferredHeartbeat.sent !== true,
+          reason: deferredHeartbeat.sent === true
+            ? 'daytrade_empty_heartbeat_sent'
+            : 'telegram_send_failed',
+          message: deferredHeartbeatMsg,
+          deferred_to_fast_watcher: true,
+          signal_delivery_deferred: true
+        });
+      }
+
+      return deferredResult;
+    }
 
     // Step 6: If no candidate survives the public Telegram final gate, stay silent by default.
     if (finalList.length === 0) {
