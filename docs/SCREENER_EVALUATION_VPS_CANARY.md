@@ -24,7 +24,7 @@ to reconstruct it.
 Synthetic example (abridged):
 
 ```json
-{"schema_version":1,"strategy":"DAY_TRADE","run_id":"synthetic-run","ticker":"TEST","candidate_revision":1,"observed_at":"2026-07-31T03:00:00.000Z","feature_as_of_ts":null,"feature_as_of_provenance":"unavailable_from_current_engine","ohlcv_sofar":{"open":null,"high":null,"low":null,"close":null,"volume":null,"provenance":"unavailable_from_current_engine"},"rvol_raw":1.2,"rvol_seasonal":null,"score_components_raw":{"momentum":10},"score_raw":88,"score_display":88,"status":"WATCH","passed":true,"rejection_codes":[],"gate_trace":{"schema_version":1,"rule_set_version":"daytrade-v1","gates":{}},"publication":{"published":false,"rank":null}}
+{"schema_version":1,"strategy":"DAY_TRADE","run_id":"synthetic-run","run_mode":"MORNING_SCOUT","scheduled_slot":null,"scheduler_source":null,"code_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","config_hash":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","ticker":"TEST","candidate_revision":1,"observed_at":"2026-07-31T03:00:00.000Z","feature_as_of_ts":null,"feature_as_of_provenance":"unavailable_from_current_engine","data_source":"synthetic_fixture","data_lag_ms":null,"ohlcv_sofar":{"open":null,"high":null,"low":null,"close":null,"volume":null,"provenance":"unavailable_from_current_engine"},"rvol_raw":1.2,"rvol_seasonal":null,"rvol_seasonal_provenance":"unavailable_no_validated_curve","score_components_raw":{"momentum":10},"score_raw":88,"score_display":88,"status":"WATCH","passed":true,"rejection_codes":[],"gate_trace":{"schema_version":1,"rule_set_version":"daytrade-v1","gates":{}},"levels":{"raw":null,"normalized":null,"provenance":"unavailable_from_current_engine"},"publication":{"published":false,"rank":null}}
 ```
 
 ## Write and integrity contract
@@ -37,9 +37,11 @@ gzip member containing one bounded JSON line; concatenated gzip members remain a
 stream, while per-run ownership avoids unsafe cross-process appends. Finalization
 atomically renames the file closed and atomically writes a manifest containing its
 relative path, bytes, record count, first/last timestamp and SHA-256 checksum.
-Partial `.open` files are never cleanup-eligible and may be quarantined by a future
-reviewed recovery operation. Validation rejects non-JSON values, oversized records,
-unsupported gate versions/operators and secret/account-shaped fields. All logger
+All records are validated before file creation. An I/O or finalization failure
+atomically moves its file from `raw` to `quarantine` with a bounded invalid-status
+sidecar, so a protected `.open` file is not leaked. Validation rejects unknown or
+missing contract fields, non-JSON values, oversized records, unsupported gate
+versions/operators, and secret/account patterns in both keys and string values. All logger
 errors are swallowed by `observeEvaluation` after optional local error reporting,
 and the exact production value is returned.
 
@@ -54,7 +56,9 @@ or 5.44 million/year before retention.
 
 Run `node tools/audit-screener-evaluation-retention.js --root <path>`. It is always
 dry-run: it lists, but never removes, closed raw files older than 60 days that have
-a readable finalization manifest, oldest first. Current-day and `.open` files are
+a correctly located finalization manifest whose size and SHA-256 match the closed
+file, oldest first. Absolute, traversal, and out-of-root paths are invalid.
+Current-market-day protection is derived explicitly in `Asia/Jakarta`, and `.open` files are
 always protected. Manifests, aggregates, outcomes, published summaries and config
 provenance are never candidates. Closed technical files older than 14 days are
 reported separately; current-day and open technical files remain protected. The report flags that writers should stop when
