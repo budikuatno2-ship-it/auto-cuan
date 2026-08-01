@@ -46,6 +46,7 @@ const productionEligibility = require('../lib/intraday-production-eligibility');
 const corporateActionGuard = require('../lib/corporate-action-price-scale-guard');
 const smartSetupLabels = require('../lib/smart-setup-labels');
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
+const dayTradeEvaluation = require('../lib/daytrade-evaluation-adapter');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -10661,7 +10662,7 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
       scanned_count: totalScanned,
       failed_count: totalFailed,
       passed_count: totalPassed
-    });
+    }, { candidates: results, batch_index: batchIndex, failed_count: failedTickers.length, observed_at: now });
   }
 
   // Update meta with accumulated progress
@@ -10675,7 +10676,7 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     message: 'Batch ' + (batchIndex + 1) + '/' + batchCount + ' done. Scanned ' + totalScanned + '/' + universeCount + '. Passed: ' + totalPassed + '.'
   });
 
-  return res.status(200).json({
+  var runningPayload = {
     success: true,
     status: 'running',
     run_id: runId,
@@ -10697,7 +10698,13 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
     next_batch: batchIndex + 1,
     batch_save_error: batchSaveError || null,
     failed_tickers: failedTickers.length > 0 ? failedTickers.slice(0, 10) : undefined
+  };
+  runningPayload = dayTradeEvaluation.attachEvaluationCapture(runningPayload, req, results, {
+    env: process.env, runId: runId, runMode: runMode, batchIndex: batchIndex,
+    scheduledSlot: req.query.scheduled_slot, schedulerSource: req.query.scheduler_source,
+    codeSha: process.env.VERCEL_GIT_COMMIT_SHA, observedAt: now, failedCount: failedTickers.length
   });
+  return res.status(200).json(runningPayload);
   } catch (e) {
     console.error('daytrade screener run error:', e.message);
     if (runId) {
@@ -10731,7 +10738,7 @@ function buildDtValueDistribution(rows, fieldName) {
   return dist;
 }
 
-async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, counters) {
+async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, counters, evaluationBatch) {
   // Read all rows currently in daytrade_screener_latest, keep only top 50 by score
   var { data: allRows, error: readErr } = await supabase
     .from('daytrade_screener_latest')
@@ -10964,6 +10971,13 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     if (telegramResult.radar_blocked_count !== undefined) responsePayload.radar_blocked_count = telegramResult.radar_blocked_count;
     if (telegramResult.radar_rejection_reasons) responsePayload.radar_rejection_reasons = telegramResult.radar_rejection_reasons;
     if (telegramResult.sample_radar_rejected) responsePayload.sample_radar_rejected = telegramResult.sample_radar_rejected;
+  }
+  if (evaluationBatch && Array.isArray(evaluationBatch.candidates)) {
+    responsePayload = dayTradeEvaluation.attachEvaluationCapture(responsePayload, req, evaluationBatch.candidates, {
+      env: process.env, runId: runId, runMode: runMode, batchIndex: evaluationBatch.batch_index,
+      scheduledSlot: req.query.scheduled_slot, schedulerSource: req.query.scheduler_source,
+      codeSha: process.env.VERCEL_GIT_COMMIT_SHA, observedAt: evaluationBatch.observed_at, failedCount: evaluationBatch.failed_count
+    });
   }
   return res.status(200).json(responsePayload);
 }
