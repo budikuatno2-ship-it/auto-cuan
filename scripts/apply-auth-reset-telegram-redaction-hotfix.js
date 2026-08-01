@@ -453,7 +453,7 @@ test('SQL and endpoint contracts preserve device retirement and redact Telegram 
   assert.match(sql, /approve_auth_password_reset_request_v2/);
   assert.match(sql, /consume_auth_password_reset_v2/);
   assert.match(sql, /device_id = 'retired_'/);
-  assert.match(sql, /devices = '\[\]'::jsonb/);
+  assert.equal(sql.includes("devices = '[]'::jsonb"), true);
   assert.match(sql, /REVOKE ALL ON FUNCTION[\s\S]*FROM PUBLIC, anon, authenticated/);
   assert.match(endpoint, /consume_auth_password_reset_v2/);
   assert.match(endpoint, /notifyPasswordResetCompleted/);

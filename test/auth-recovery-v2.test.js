@@ -219,7 +219,7 @@ test('approved Telegram callback stores only a reset-token HMAC and sends a one-
         if (name === 'claim_auth_recovery_webhook_update') {
           return { data: [{ claimed: true }], error: null };
         }
-        if (name === 'approve_auth_password_reset_request') {
+        if (name === 'approve_auth_password_reset_request_v2') {
           return { data: [{ result_code: 'ok', user_id: 'u1', username: 'budi', telegram_private_chat_id: 77 }], error: null };
         }
         if (name === 'complete_auth_recovery_webhook_update') {
@@ -246,7 +246,7 @@ test('approved Telegram callback stores only a reset-token HMAC and sends a one-
 
     assert.equal(result.handled, true);
     assert.equal(result.outcome, 'reset_approved');
-    const approval = captures.find(function (entry) { return entry.name === 'approve_auth_password_reset_request'; });
+    const approval = captures.find(function (entry) { return entry.name === 'approve_auth_password_reset_request_v2'; });
     assert.ok(approval);
     assert.match(approval.args.p_reset_token_hash, /^[a-f0-9]{64}$/);
     assert.equal(edits.length, 1);
