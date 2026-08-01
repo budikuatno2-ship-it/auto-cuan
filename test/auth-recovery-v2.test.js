@@ -261,7 +261,7 @@ test('frontend and SQL contracts remove device authority and keep browser access
   const migration = fs.readFileSync(path.join(ROOT, 'supabase', 'auth-telegram-recovery-v1-migration.sql'), 'utf8');
   const loader = fs.readFileSync(path.join(ROOT, 'public', 'website-approved-access.js'), 'utf8');
 
-  assert.match(frontend, /action: 'login'/);
+  assert.match(frontend, /authRequest\('login'/);
   assert.doesNotMatch(frontend, /deviceId\s*:/);
   assert.match(frontend, /session-status/);
   assert.match(frontend, /clearLocalAuthState/);
