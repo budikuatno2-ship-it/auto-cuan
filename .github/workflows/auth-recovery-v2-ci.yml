@@ -1,0 +1,44 @@
+name: Auth Recovery V2 CI
+
+on:
+  push:
+    branches:
+      - fix/telegram-auth-recovery-session-20260801
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
+
+permissions:
+  contents: read
+
+jobs:
+  auth-recovery-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Syntax checks
+        run: |
+          node --check api/reset-password.js
+          node --check lib/auth-recovery.js
+          node --check public/auth-v2.js
+          node --check public/website-approved-access.js
+          node --check scripts/create-budi-telegram-enrollment.js
+      - name: Focused authentication tests
+        run: |
+          node --test \
+            test/auth-recovery-v2.test.js \
+            test/admin-session-auth.test.js \
+            test/budi-existing-user-compatibility.test.js \
+            test/telegram-verification-v2.test.js \
+            test/telegram-approval-gate.test.js
+      - name: Preserve API file count
+        run: |
+          count="$(find api -maxdepth 1 -type f -name '*.js' | wc -l | tr -d ' ')"
+          echo "API_JS_COUNT=$count"
+          test "$count" = "12"
