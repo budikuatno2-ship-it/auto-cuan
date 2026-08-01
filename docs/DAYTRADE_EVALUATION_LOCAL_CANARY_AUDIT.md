@@ -36,7 +36,9 @@ The existing paths are **not** safe canary entry points:
 
 `tools/run-daytrade-evaluation-canary.js` is deliberately standalone and is not
 imported by production/VPS orchestration. It requires `--execute`, an absolute
-caller-supplied `--evaluation-root`, and one to five explicit `--tickers`. The code
+caller-supplied external `--evaluation-root`, and one to five explicit
+`TICKER:BOARD` pairs. Boards are never inferred: this phase accepts the engine's
+eligible `UTAMA` and `PENGEMBANGAN` boards. The code
 SHA is read from the local Git checkout, not accepted as a CLI argument. It calls
 the batch engine locally with `captureEvaluationInitial: true`, validates every
 mapped record before logger construction, and writes only through the existing
@@ -44,11 +46,18 @@ gzip/manifest logger. It has no Supabase, API-action, Vercel, Telegram, monitor,
 publication, ranking, cron, runtime-file, cache-write, automatic-deletion, or
 `data/intraday-*` path.
 
+Before the provider is called, the harness rejects filesystem root, the repository
+and all repository descendants (including symlink resolutions), and requires both
+the tracked worktree and index to match HEAD. Untracked runtime files do not block
+execution. A provider failure or any result-count mismatch aborts before logger
+creation, so partial and empty canaries cannot finalize successfully.
+
 Example syntax (documentation only; no live canary was run):
 
 ```sh
 node tools/run-daytrade-evaluation-canary.js --execute \
-  --evaluation-root /absolute/caller/owned/path --tickers BBCA,BBRI
+  --evaluation-root /home/ubuntu/auto-cuan-evaluation \
+  --tickers BBCA:UTAMA,BBRI:UTAMA
 ```
 
 Standard output is a single JSON object containing only record count, compressed

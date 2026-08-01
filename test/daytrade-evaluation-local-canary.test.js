@@ -36,19 +36,22 @@ function fakeEngine(rows = [candidate()]) {
   };
 }
 
-function options(root, tickers = ['TEST']) { return { execute: true, evaluationRoot: root, tickers }; }
+function item(ticker, board = 'UTAMA') { return { ticker, board }; }
+function options(root, tickers = [item('TEST')]) { return { execute: true, evaluationRoot: root, tickers }; }
 function dependencies(overrides = {}) {
-  return { engine: fakeEngine(), fetchCandles: async () => [], resolveCodeSha: () => 'a'.repeat(40), now: '2026-08-01T03:00:00.000Z', diskAudit: { writes_should_stop: false }, ...overrides };
+  return { engine: fakeEngine(), fetchCandles: async () => [], verifyCleanCheckout: () => {}, resolveCodeSha: () => 'a'.repeat(40), now: '2026-08-01T03:00:00.000Z', afterCalculationNow: () => '2026-08-01T03:01:00.000Z', diskAudit: { writes_should_stop: false }, ...overrides };
 }
 
 test('requires acknowledgement, caller root, and at most five validated tickers', () => {
-  assert.throws(() => canary.validateOptions({ execute: false, evaluationRoot: '/tmp/x', tickers: ['A'] }), /--execute/);
-  assert.throws(() => canary.validateOptions({ execute: true, evaluationRoot: 'relative', tickers: ['A'] }), /absolute/);
-  assert.throws(() => canary.validateOptions({ execute: true, evaluationRoot: '/tmp/x', tickers: ['A','B','C','D','E','F'] }), /maximum 5/);
+  assert.throws(() => canary.validateOptions({ execute: false, evaluationRoot: '/tmp/x', tickers: [item('A')] }), /--execute/);
+  assert.throws(() => canary.validateOptions({ execute: true, evaluationRoot: 'relative', tickers: [item('A')] }), /absolute/);
+  assert.throws(() => canary.validateOptions({ execute: true, evaluationRoot: '/tmp/x', tickers: ['A','B','C','D','E','F'].map(value => item(value)) }), /maximum 5/);
+  assert.throws(() => canary.validateOptions({ execute: true, evaluationRoot: '/tmp/x', tickers: [item('A', null)] }), /allowed board/);
   assert.throws(() => canary.parseArgs(['node','tool','--code-sha','secret']), /unknown option/);
+  assert.deepEqual(canary.parseArgs(['node','tool','--execute','--evaluation-root','/tmp/x','--tickers','BBCA:UTAMA,ACES:PENGEMBANGAN']).tickers, [item('BBCA'), item('ACES','PENGEMBANGAN')]);
 });
 
-test('local canary makes no network/API call and writes only gzip plus manifest below caller root', async () => {
+test('injected provider path cannot call Vercel/production API and writes only below caller root', async () => {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-canary-parent-'));
   const root = path.join(parent, 'evaluation-only');
   const originalFetch = global.fetch;
@@ -69,9 +72,55 @@ test('local canary makes no network/API call and writes only gzip plus manifest 
   assert.equal(manifest.byte_size, gzip.length);
   assert.equal(manifest.sha256, crypto.createHash('sha256').update(gzip).digest('hex'));
   assert.equal(JSON.parse(zlib.gunzipSync(gzip).toString()).publication.published, false);
+  assert.equal(JSON.parse(zlib.gunzipSync(gzip).toString()).observed_at, '2026-08-01T03:01:00.000Z');
   const retention = auditRetention({ root, now: '2026-08-01T03:00:00.000Z', freeBytes: 100 * 1024 ** 3 });
   assert.equal(retention.dry_run, true);
   assert.equal(retention.writes_should_stop, false);
+});
+
+test('dirty tracked checkout stops before provider and logger', async () => {
+  const root = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dt-canary-dirty-')), 'output');
+  let providerCalls = 0; let loggerCalls = 0;
+  await assert.rejects(canary.runCanary(options(root), dependencies({
+    verifyCleanCheckout: () => { throw new canary.CanaryError('TRACKED_CHECKOUT_DIRTY'); },
+    fetchCandles: async () => { providerCalls++; }, createLogger: () => { loggerCalls++; }
+  })), /TRACKED_CHECKOUT_DIRTY/);
+  assert.equal(providerCalls, 0); assert.equal(loggerCalls, 0); assert.equal(fs.existsSync(root), false);
+});
+
+test('partial and total calculation failures create no files and disclose counts only', async () => {
+  for (const calculation of [
+    { results: [candidate()], failed: [{ ticker: 'HIDDEN', reason: 'provider URL hidden' }] },
+    { results: [], failed: [{ ticker: 'HIDDEN1' }, { ticker: 'HIDDEN2' }] }
+  ]) {
+    const root = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dt-canary-incomplete-')), 'output');
+    let loggerCalls = 0;
+    const incompleteEngine = fakeEngine(); incompleteEngine.runDayTradeBatch = async () => calculation;
+    const requested = calculation.results.length ? [item('TEST'), item('TWO')] : [item('ONE'), item('TWO')];
+    await assert.rejects(canary.runCanary(options(root, requested), dependencies({ engine: incompleteEngine, createLogger: () => { loggerCalls++; } })), error => {
+      assert.match(error.message, /^CALCULATION_INCOMPLETE requested=2 results=\d failed=\d$/);
+      assert.doesNotMatch(error.message, /HIDDEN|provider|URL/); return true;
+    });
+    assert.equal(loggerCalls, 0); assert.equal(fs.existsSync(root), false);
+  }
+});
+
+test('evaluation root rejects filesystem/repository paths and symlinks but accepts external roots', () => {
+  assert.throws(() => canary.assertSafeEvaluationRoot(path.parse(process.cwd()).root), /UNSAFE_EVALUATION_ROOT/);
+  assert.throws(() => canary.assertSafeEvaluationRoot(canary.REPOSITORY_ROOT), /UNSAFE_EVALUATION_ROOT/);
+  assert.throws(() => canary.assertSafeEvaluationRoot(path.join(canary.REPOSITORY_ROOT, 'logs', 'canary')), /UNSAFE_EVALUATION_ROOT/);
+  assert.throws(() => canary.assertSafeEvaluationRoot(path.join(canary.REPOSITORY_ROOT, 'data', 'intraday-test')), /UNSAFE_EVALUATION_ROOT/);
+  const external = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-canary-root-'));
+  const link = path.join(external, 'repo-link'); fs.symlinkSync(canary.REPOSITORY_ROOT, link, 'dir');
+  assert.throws(() => canary.assertSafeEvaluationRoot(link), /UNSAFE_EVALUATION_ROOT/);
+  assert.equal(canary.assertSafeEvaluationRoot(path.join(external, 'safe')), path.join(external, 'safe'));
+  assert.equal(canary.assertSafeEvaluationRoot('/home/ubuntu/auto-cuan-evaluation'), '/home/ubuntu/auto-cuan-evaluation');
+});
+
+test('CLI failures use stable messages and never include raw paths', () => {
+  const raw = new Error('EACCES: /private/caller/evaluation/path');
+  assert.equal(canary.failureMessage(raw), 'CANARY_FAILED INTERNAL_ERROR');
+  assert.equal(canary.failureMessage(new canary.CanaryError('UNSAFE_EVALUATION_ROOT')), 'CANARY_FAILED UNSAFE_EVALUATION_ROOT');
 });
 
 test('malformed mapping and invalid SHA fail before logger creation', async () => {
