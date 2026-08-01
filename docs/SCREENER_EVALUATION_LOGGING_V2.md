@@ -65,34 +65,41 @@ reference enums, prices use a deliberately sized fixed-point type after catalog
 sampling, and hashes are 32-byte `bytea`. JSON has an explicit schema version and
 byte-size check. No unrestricted diagnostic prose is accepted.
 
-The proposal has **12 domain entities**. A thirteenth supporting registry is added
-because counting every tried configuration cannot be reconstructed from hashes.
+The proposal has **12 domain entities**. Two supporting entities are required:
+`evaluation_configurations` stores deduplicated canonical configurations, while
+`evaluation_experiments` records each use of a configuration in a period, fold, or
+rerun. The corrected plan therefore has **14 relations**. Configuration and
+experiment identity are deliberately separate: one canonical configuration can be
+reused by many experiments, and every experiment remains countable.
 
 | Relation | Purpose and essential keys/constraints | Mutability / proposed stage |
 |---|---|---|
-| `evaluation_experiments` | `experiment_id`, optional parent, canonical `config_json`, unique `config_hash`, created reason/code, evaluation start/end, `summary_ref`, promotion flag/time. Configuration identity may be reused by many runs. A separate experiment row exists for every tested configuration, not just production. | Append-only; promotion metadata updated only by a designated review job. **B1**. |
-| `evaluation_universe_snapshots` | One ticker in a point-in-time universe: (`universe_snapshot_id`,`ticker`) unique; strategy, `as_of_ts`, source/version, inclusion and bounded exclusion codes. | Append-only; monthly partition by `as_of_ts`. **B1**. |
+| `evaluation_configurations` | `configuration_id`, canonical `config_json`, unique `config_hash`, config schema version and creation timestamp. It contains no evaluation period, result, fold, promotion, or experiment-specific state. | Append-only and reusable. **B1**. |
+| `evaluation_experiments` | `experiment_id`, required configuration FK, optional parent experiment, created reason/code, evaluation start/end and fold/rerun metadata, `summary_ref`/result reference, promotion flag/time. Multiple rows may reference the same configuration. Every tested experiment—not only production promotions—gets a row. | Append-only; promotion metadata updated only by a designated review job. **B1**. |
+| `evaluation_universe_snapshots` | One ticker in a point-in-time universe: (`universe_snapshot_id`,`ticker`) unique; strategy, `as_of_ts`, source/version, inclusion and bounded exclusion codes. | Append-only and **unpartitioned in B1** so the stated uniqueness is enforceable. Partitioning is a measured later migration. |
 | `evaluation_konglo_mappings` | Dated membership with ticker/group, `valid_from`, nullable `valid_to`, source/as-of; exclusion prevents overlapping validity for the same mapping. | Version/supersede, never rewrite old validity. **B1**. |
 | `evaluation_tick_size_references` | Dated price-band/tick rows, source/version, validity interval; non-overlapping bands and validity constraints. | Version/supersede. **B2**, after authoritative source is chosen. |
 | `evaluation_auto_reject_references` | Dated board/price-band ARA/ARB rules with source/version and validity. | Version/supersede. **B2**. |
 | `evaluation_cost_assumptions` | Versioned fees, tax, spread/slippage and capacity assumptions; currency, price unit, bar-volume unit, `shares_per_lot=100`, validity and source. | Append/version only. **B2**. |
-| `evaluation_scan_runs` | FK experiment; strategy, deterministic `logical_run_key`, `scheduled_slot`, scheduler source, lifecycle status (`STARTED`, `COMPLETED`, `PARTIAL`, `FAILED`, `SKIPPED`), scheduled/started/finished timestamps, parent run, partial flag, bounded failure fields, canonical config plus hash, code/rule versions and counts. Unique (`strategy`,`logical_run_key`) **without scheduler source**, so two schedulers cannot claim the same logical slot. Check terminal timestamps/status consistency. | Insert STARTED; only owner may transition lifecycle/count/error fields. No decision fields. **B1**. |
-| `evaluation_candidate_snapshots` | FK run and universe; stable evaluation candidate ID, source candidate/setup refs, ticker, `feature_as_of_ts`, `last_bar_close_ts`, bar-complete flag, data source/as-of and lag; OHLC/volume-so-far; `rvol_raw`, nullable `rvol_seasonal` plus curve version; typed raw components, `score_raw`, capped/display score; raw and tick-normalized entry/SL/TP; classification/rank; bounded rejection-code array; versioned bounded `gate_trace`. Unique (`scan_run_id`,`ticker`,`candidate_revision`). Represents passed **and rejected** rows. | Append-only; monthly partition by feature date. **B1**, initially one canary strategy only after Phase C approval. |
-| `evaluation_fast_watcher_arms` | FK parent candidate, observation timestamp/setup/event refs, arm (`FULL_SCAN`,`FAST_WATCHER`), eligibility, `would_publish`, `did_publish`, rank/capacity rank and bounded guard/rejection codes. Unique (parent candidate, observation time, arm, rule version). Exactly two arms are expected and checked by contract query/deferred validation. | Append-only. Monthly partition. **B2**; no watcher behavior changes. |
+| `evaluation_scan_runs` | FK experiment and configuration; strategy, deterministic `logical_run_key`, `scheduled_slot`, scheduler source, lifecycle status (`STARTED`, `COMPLETED`, `PARTIAL`, `FAILED`, `SKIPPED`), scheduled/started/finished timestamps, parent run, partial flag, bounded failure fields, immutable copies of canonical `config_json` and `config_hash`, code/rule versions and counts. Unique (`strategy`,`logical_run_key`) **without scheduler source**, so two schedulers cannot claim the same logical slot. The copies must match the configuration FK. Check terminal timestamps/status consistency. | Insert STARTED; only owner may transition lifecycle/count/error fields. No decision fields. **B1**. |
+| `evaluation_candidate_snapshots` | FK run and universe; stable evaluation candidate ID, source candidate/setup refs, ticker, `feature_as_of_ts`, `last_bar_close_ts`, bar-complete flag, data source/as-of and lag; OHLC/volume-so-far; `rvol_raw`, nullable `rvol_seasonal` plus curve version; typed raw components, `score_raw`, capped/display score; raw and tick-normalized entry/SL/TP; classification/rank; bounded rejection-code array; versioned bounded `gate_trace`. Unique (`scan_run_id`,`ticker`,`candidate_revision`). Represents passed **and rejected** rows. | Append-only and **unpartitioned in B1**, preserving its UUID PK and stated uniqueness; initially one canary strategy only after Phase C approval. |
+| `evaluation_fast_watcher_arms` | FK parent candidate, observation timestamp/setup/event refs, arm (`FULL_SCAN`,`FAST_WATCHER`), eligibility, `would_publish`, `did_publish`, rank/capacity rank and bounded guard/rejection codes. Unique (parent candidate, observation time, arm, rule version). Exactly two arms are expected and checked by contract query/deferred validation. | Append-only and initially unpartitioned. **B2**; no watcher behavior changes. |
 | `evaluation_published_signals` | Stable `signal_id`, candidate/arm FK, stable `setup_id`, strategy/source, publication decision timestamp, rank, immutable plan snapshot and rule/version. Unique source publication identity. | Append-only; correction creates superseding signal. **B1 contract**, wiring later. |
 | `evaluation_delivery_attempts` | Attempt ID, signal FK, channel, message type, `message_version`, deterministic `logical_message_key`, attempt number, timestamps/status, provider message ref, bounded error. Unique (`channel`,`logical_message_key`,`attempt_no`); a separate unique successful logical message prevents duplicate success while retaining failed attempts. Logical key derives from stable signal/setup + message type/version, never ticker/date. | Attempt/status fields written by delivery logger only. **B1 contract**, no rerouting/wiring. |
-| `evaluation_price_paths` | Signal/candidate FK, bar interval, bar start/end, source/as-of, OHLCV and completeness. Unique (signal, interval, bar start, source version). Only bars genuinely captured point-in-time are allowed; no later daily-candle reconstruction. | Append-only, monthly partition; **B3/later**, after source/retention approval. |
+| `evaluation_price_paths` | Signal/candidate FK, bar interval, bar start/end, source/as-of, OHLCV and completeness. Unique (signal, interval, bar start, source version). Only bars genuinely captured point-in-time are allowed; no later daily-candle reconstruction. | Append-only and initially unpartitioned; **B3/later**, after source/retention approval. |
 | `evaluation_outcomes` | `outcome_id`, signal FK, `label_version`, label/execution-contract version, horizon end, label interval, feature information interval, purge overlap, parameterized embargo, result and bounded evidence. Unique (`signal_id`,`label_version`). | Label rows append-only; corrections use a new label version/supersession. **B3/later**. |
 
 ```text
-evaluation_experiments 1──* evaluation_scan_runs 1──* evaluation_candidate_snapshots
-                                  │                         │
-evaluation_universe_snapshots *───┘                         ├──* evaluation_fast_watcher_arms
-                                                            └──* evaluation_published_signals
-evaluation_konglo_mappings (as-of lookup)                              │
-evaluation_tick_size_references (as-of lookup)                         ├──* evaluation_delivery_attempts
-evaluation_auto_reject_references (as-of lookup)                       ├──* evaluation_price_paths
-evaluation_cost_assumptions (version FK from label contract)           └──* evaluation_outcomes
+evaluation_configurations 1──* evaluation_experiments 1──* evaluation_scan_runs
+              └──────────────* evaluation_scan_runs (immutable config copy/FK)
+                                                    │
+evaluation_universe_snapshots *─────────────────────┼──* evaluation_candidate_snapshots
+                                                    │              ├──* evaluation_fast_watcher_arms
+                                                    │              └──* evaluation_published_signals
+evaluation_konglo_mappings (as-of lookup)           │                            │
+evaluation_tick_size_references (as-of lookup)      │                            ├──* evaluation_delivery_attempts
+evaluation_auto_reject_references (as-of lookup)    │                            ├──* evaluation_price_paths
+evaluation_cost_assumptions (label-contract FK)     │                            └──* evaluation_outcomes
 ```
 
 ### Standard contracts
@@ -133,34 +140,74 @@ fixed 50-day embargo.
 
 ## 3. Volume, storage, indexes, and retention
 
-Planning assumptions (replace with read-only production counts before DDL): 250 IDX
-sessions/year; 3 Day Trade slots × 800 rows, one Konglo scan × 150, one Non-Konglo
-scan × 800, and 16 Fast Watcher observations × 20 parents × 2 arms per session.
+These are **repository-only planning assumptions**, not observed production facts.
+The repository describes run modes and runner paths but is not authoritative for
+the active VPS cron cadence, duplicate/retry behavior, live universe sizes, row
+width, or live table counts. In particular, an audited production operation may
+run Day Trade about every 12 minutes through market hours—approximately 25–30 full
+runs/session—so three slots is only the low sensitivity case, not the likely base.
 
-| Data | Rows/session | Rows/year | Planning bytes/row incl. TOAST/index share | Annual planning size |
+All cases assume 250 IDX sessions/year, 800 evaluated candidates per Day Trade run,
+one 150-row Konglo scan and one 800-row Non-Konglo scan/session. Candidate storage
+uses 2.5–4.0 KiB/row including a planning allowance for TOAST and indexes.
+
+| Sensitivity | Day Trade runs/session | Candidate rows/session | Candidate rows/year | Candidate storage/year |
 |---|---:|---:|---:|---:|
-| Candidate snapshots | 3,350 | 837,500 | 2.5–4.0 KiB | 2.0–3.2 GiB |
-| Fast Watcher arms | 640 | 160,000 | 0.7–1.2 KiB | 0.11–0.18 GiB |
-| Universe snapshots | 1,750 | 437,500 | 0.25–0.5 KiB | 0.10–0.21 GiB |
-| Runs/signals/delivery/outcomes/reference rows | <100 typical | <25,000 | 0.5–2 KiB | <0.05 GiB |
-| Price paths (deferred example: 5 signals × 60 one-minute bars) | 300 | 75,000 | 0.25–0.5 KiB | 0.02–0.04 GiB |
+| Low / limited cadence | 3 | 3,350 | 837,500 | 2.0–3.2 GiB |
+| Base / audited high-frequency cadence | 25 | 20,950 | 5,237,500 | 12.5–20.0 GiB |
+| High / full 12-minute cadence | 30 | 24,950 | 6,237,500 | 14.9–23.8 GiB |
 
-Expected base case is about **1.51 million rows/year and 2.3–3.7 GiB/year** including
-the illustrative price-path capture. A stress case of five 800-ticker scans/day
-raises candidates to 1.0M/year and roughly 2.4–3.8 GiB for that table alone.
-Unbounded full-universe minute paths are explicitly out of scope; 800 × 300 bars ×
-250 days would add 60M rows/year.
+Non-candidate planning remains 160,000 Fast Watcher arm rows/year (0.11–0.18 GiB),
+437,500 reusable universe-membership rows/year (0.10–0.21 GiB), fewer than 25,000
+run/signal/delivery/outcome/reference rows (<0.05 GiB), and an illustrative 75,000
+bounded price-path rows (0.02–0.04 GiB). Thus the annual **total** planning range is
+approximately **1.54M rows / 2.3–3.7 GiB** at low cadence, **5.94M rows /
+12.8–20.5 GiB** at the 25-run base, and **6.94M rows / 15.2–24.3 GiB** at 30 runs.
+These figures exclude WAL, backups, replicas, partition metadata and archive format
+overhead, which must be budgeted separately. Unbounded full-universe minute paths
+remain out of scope: 800 × 300 bars × 250 days would add 60M rows/year.
 
-Partition candidate, universe, watcher-arm and price-path facts monthly by market
-date/timestamp. Start with narrow indexes: run logical identity; candidates
+Final sizing and the Phase B physical design require a **read-only VPS scheduler
+inventory and live Supabase catalog counts/sizes** (including actual runs/session,
+evaluated rows/run, retry duplication, `pg_total_relation_size`, index sizes and
+sample row widths). No migration should be finalized from repository estimates.
+
+### Partition-key and uniqueness audit
+
+PostgreSQL native partitioned-table primary/unique constraints generally must
+include every partition-key column. B1 therefore deliberately creates its high-row
+tables **unpartitioned** until the live PostgreSQL/Supabase version, cadence, sizes,
+and query workload are confirmed. This makes every PK/unique constraint stated in
+the ERD enforceable and avoids pretending that a globally unique UUID constraint
+can be declared on a date-partitioned parent without the date.
+
+The affected relations and valid forms for a possible later monthly-partitioning
+migration are:
+
+| Relation | Candidate partition key | Constraints that must change to include it |
+|---|---|---|
+| `evaluation_universe_snapshots` | `as_of_date` derived/stored from `as_of_ts` | PK/unique identity becomes (`as_of_date`,`universe_snapshot_id`,`ticker`); all referencing FKs carry `as_of_date`. |
+| `evaluation_candidate_snapshots` | `feature_date` derived/stored from `feature_as_of_ts` | PK becomes (`feature_date`,`candidate_id`); evaluation uniqueness becomes (`feature_date`,`scan_run_id`,`ticker`,`candidate_revision`); child FKs carry `feature_date`. |
+| `evaluation_fast_watcher_arms` | `observation_date` | PK and arm uniqueness include `observation_date`; its candidate FK must also carry the candidate's `feature_date` if candidates are partitioned. |
+| `evaluation_price_paths` | `bar_date` derived/stored from bar start | PK and (`signal_id`,`interval`,`bar_start`,`source_version`) uniqueness include `bar_date`; consumers cannot assume global uniqueness without it. |
+
+`evaluation_scan_runs` stays unpartitioned so (`strategy`,`logical_run_key`) remains
+globally enforceable across scheduler sources. Signals, delivery attempts, outcomes,
+configurations and experiments also stay unpartitioned under this plan. A later
+partition migration must prove the composite FK/unique forms on the confirmed
+PostgreSQL version and backfill/validate dates before switching; application-level
+deduplication is not an acceptable substitute for database constraints.
+
+Start with narrow indexes: run logical identity; candidates
 (`scan_run_id`,`ticker`) and BRIN feature time; signals (`setup_id`, published time);
 delivery logical key/status; outcomes (signal,label version); BRIN path time plus
 signal/bar uniqueness. Avoid indexing JSONB and low-selectivity booleans by default.
 Prefer integer basis points/scaled integers or bounded `numeric(p,s)` after sampling
 actual ranges; avoid unconstrained `numeric` and duplicate indexes.
 
-Proposed retention: 90 days hot for raw candidate/watcher/path partitions; keep
-runs, published signals, delivery audit, experiment registry and outcomes hot for
+Proposed retention after a later partitioning decision is 90 days hot for raw
+candidate/watcher/path data; keep runs, published signals, delivery audit,
+configuration and experiment registries, and outcomes hot for
 at least two years. After 90 days, detach/export raw partitions to checksummed,
 encrypted object storage (Parquet), verify manifest/count/min-max/hash, then drop
 only under a reviewed retention job. Keep enough archived raw history to reproduce
@@ -194,10 +241,12 @@ ACLs, default privileges, sequence ACLs and function execute grants, and must pr
 
 ## 5. Staged rollout and rollback
 
-* **B1—foundation draft, still unapplied/default-off:** registry, universe, runs,
-  candidates, signals and delivery-attempt contract; SQL contract tests; canonical
-  config/gate normalizers; a no-op adapter whose disabled path performs no client
-  creation/write and returns the existing value unchanged. Do not wire producers.
+* **B1—foundation draft, still unapplied/default-off:** separate configuration and
+  experiment registries, universe, runs, candidates, signals and delivery-attempt
+  contract; SQL contract tests; canonical config/gate normalizers; a no-op adapter
+  whose disabled path performs no client creation/write and returns the existing
+  value unchanged. High-row B1 tables remain unpartitioned so all proposed unique
+  constraints are valid. Do not wire producers.
 * **B2—reference/counterfactual draft:** dated mapping/market-rule/cost tables and
   paired watcher arms, only after authoritative source and paired-arm invariants are
   approved. Still default-off.
@@ -260,8 +309,9 @@ Subject to explicit approval, B1 should add only:
   unchanged returned production value.
 * `test/sql/screener-evaluation-logging-v2.contract.sql` — keys, cross-scheduler
   logical uniqueness, lifecycle, versioned outcomes contract, RLS/grants and
-  rollback-scope assertions (outcome/path tables may be skeletal or deferred per
-  the approved B1 boundary).
+  rollback-scope assertions, separate reusable configuration/experiment identity,
+  and verification that B1 does not declare invalid partitioned uniqueness
+  (outcome/path tables may be skeletal or deferred per the approved B1 boundary).
 * `tools/validate-screener-evaluation-v2.js` — static SQL/contract checks usable
   without a production connection.
 
