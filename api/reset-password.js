@@ -302,7 +302,7 @@ async function completePasswordReset(req, res, db) {
     });
   }
 
-  const result = await db.rpc('consume_auth_password_reset', {
+  const result = await db.rpc('consume_auth_password_reset_v2', {
     p_reset_token_hash: resetTokenHash,
     p_new_password_hash: newPasswordHash
   });
@@ -319,10 +319,30 @@ async function completePasswordReset(req, res, db) {
     });
   }
 
+  let telegramNotice = { updated: false, fallbackSent: false };
+  try {
+    telegramNotice = await recovery.notifyPasswordResetCompleted(
+      createVerifyBot(),
+      row.reset_message_chat_id,
+      row.reset_message_id,
+      row.username
+    );
+  } catch (_) {}
+
+  if (telegramNotice.updated || telegramNotice.fallbackSent) {
+    try {
+      await db
+        .from('auth_recovery_requests')
+        .update({ telegram_completion_notified_at: new Date().toISOString() })
+        .eq('id', row.request_id);
+    } catch (_) {}
+  }
+
   clearSession(res);
   return res.status(200).json({
     success: true,
     username: row.username,
+    telegram_confirmation_updated: telegramNotice.updated === true,
     message: 'Password berhasil diperbarui. Silakan login menggunakan password baru.'
   });
 }
