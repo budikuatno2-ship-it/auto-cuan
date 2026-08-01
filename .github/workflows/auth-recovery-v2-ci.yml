@@ -29,14 +29,18 @@ jobs:
           node --check public/auth-v2.js
           node --check public/website-approved-access.js
           node --check scripts/create-budi-telegram-enrollment.js
+          node --check tools/validate-auth-recovery-v2.js
       - name: Focused authentication tests
         run: |
           node --test \
             test/auth-recovery-v2.test.js \
+            test/auth-recovery-device-retirement.test.js \
             test/admin-session-auth.test.js \
             test/budi-existing-user-compatibility.test.js \
             test/telegram-verification-v2.test.js \
             test/telegram-approval-gate.test.js
+      - name: Production build validation
+        run: npm run build
       - name: Preserve API file count
         run: |
           count="$(find api -maxdepth 1 -type f -name '*.js' | wc -l | tr -d ' ')"
