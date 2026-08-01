@@ -9,9 +9,9 @@ accepted record strategy. Fast Watcher is not wired.
 
 The existing producer is `handleDayTradeScreenerRun`/`finalizeDtScreener` in
 `api/sector-hot.js`; calculation remains in `lib/daytrade-screener-engine.js` and
-the VPS orchestration path is `tools/run-all-screeners-vps.js`. This PR deliberately
-does not modify those files. A later activation PR may call `observeEvaluation`
-only after the existing decision is complete and must prove output equivalence.
+the VPS orchestration path is `tools/run-all-screeners-vps.js`. The Phase B0.1 inventory confirms the existing run action is mutating and has no safe
+observational mode. No response transport or network canary is wired; a future change
+must first add and review a genuinely non-mutating trusted calculation path.
 
 Records accept scan identity/time, run mode and scheduler slot/source, code SHA,
 canonical configuration hash, candidate revision, source/as-of/lag, so-far OHLCV,
@@ -24,7 +24,7 @@ to reconstruct it.
 Synthetic example (abridged):
 
 ```json
-{"schema_version":1,"strategy":"DAY_TRADE","run_id":"synthetic-run","run_mode":"MORNING_SCOUT","scheduled_slot":null,"scheduler_source":null,"code_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","config_hash":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","ticker":"TEST","candidate_revision":1,"observed_at":"2026-07-31T03:00:00.000Z","feature_as_of_ts":null,"feature_as_of_provenance":"unavailable_from_current_engine","data_source":"synthetic_fixture","data_lag_ms":null,"ohlcv_sofar":{"open":null,"high":null,"low":null,"close":null,"volume":null,"provenance":"unavailable_from_current_engine"},"rvol_raw":1.2,"rvol_seasonal":null,"rvol_seasonal_provenance":"unavailable_no_validated_curve","score_components_raw":{"momentum":10},"score_raw":88,"score_display":88,"status":"WATCH","passed":true,"rejection_codes":[],"gate_trace":{"schema_version":1,"rule_set_version":"daytrade-v1","gates":{}},"levels":{"raw":null,"normalized":null,"provenance":"unavailable_from_current_engine"},"publication":{"published":false,"rank":null}}
+{"schema_version":1,"strategy":"DAY_TRADE","run_id":"synthetic-run","run_mode":"MORNING_SCOUT","batch_index":0,"scheduled_slot":null,"scheduler_source":null,"code_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","config_hash":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","ticker":"TEST","candidate_revision":1,"observed_at":"2026-07-31T03:00:00.000Z","feature_as_of_ts":null,"feature_as_of_provenance":"unavailable_from_current_engine","data_source":"synthetic_fixture","data_lag_ms":null,"ohlcv_sofar":{"open":null,"high":null,"low":null,"close":null,"volume":null,"provenance":"unavailable_from_current_engine"},"rvol_raw":1.2,"rvol_seasonal":null,"rvol_seasonal_provenance":"unavailable_no_validated_curve","score_components_raw":{"momentum":10},"score_components_provenance":"synthetic_all_available","score_raw":88,"score_display":88,"status":"EARLY_RADAR","passed":true,"rejection_codes":[],"gate_trace":{"schema_version":1,"rule_set_version":"daytrade-v1","gates":{}},"levels":{"raw":null,"normalized":null,"provenance":"unavailable_from_current_engine"},"publication":{"published":false,"rank":null}}
 ```
 
 ## Write and integrity contract

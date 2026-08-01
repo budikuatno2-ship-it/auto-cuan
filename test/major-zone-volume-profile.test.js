@@ -90,4 +90,9 @@ test('volume profile PoC is context only and not a standalone buy signal', () =>
   var scored = engine.scoreDayTrade(data, 'MORNING_SCOUT', 'UTAMA', null);
   assert.notEqual(scored.status, 'A_PLUS_SETUP');
   assert.ok(!Object.prototype.hasOwnProperty.call(scored, 'volume_profile_poc'), 'scoreDayTrade alone does not use PoC as a buy signal');
+  assert.equal(Object.prototype.hasOwnProperty.call(scored, 'daytrade_evaluation_initial'), false);
+  var captured = engine.scoreDayTrade(data, 'MORNING_SCOUT', 'UTAMA', null, { captureEvaluationInitial: true });
+  assert.equal(Object.prototype.hasOwnProperty.call(captured, 'daytrade_evaluation_initial'), true);
+  assert.equal(captured.status, scored.status);
+  assert.equal(captured.daytrade_score, scored.daytrade_score);
 });
