@@ -9,3 +9,18 @@ test('unavailable components remain null with explicit provenance',()=>{const c=
 test('missing or invalid code SHA fails only mapping',()=>{assert.throws(()=>adapter.adaptDayTradeCandidate(candidate(),{...context(),codeSha:null}),/code SHA unavailable/);assert.equal(adapter.buildEvaluationEnvelope([candidate()],{...context(),codeSha:null}).diagnostic.reason,'validation_failed');});
 test('count and exact final serialized byte caps fail open',()=>{assert.equal(adapter.buildEvaluationEnvelope([candidate(),candidate({ticker:'TWO'})],context(),{maxRecords:1,maxBytes:999999}).diagnostic.reason,'record_count_cap');assert.equal(adapter.buildEvaluationEnvelope([candidate()],context(),{maxBytes:100}).diagnostic.reason,'response_byte_cap');const ok=adapter.buildEvaluationEnvelope([candidate()],context());assert.equal(Buffer.byteLength(JSON.stringify(ok.envelope)),ok.envelope.serialized_bytes);});
 test('measured synthetic 50/75 record sizes stay bounded',()=>{for(const count of [50,75]){const rows=Array.from({length:count},(_,i)=>candidate({ticker:'T'+String(i).padStart(3,'0')})),built=adapter.buildEvaluationEnvelope(rows,context(count===75)),serialized=Buffer.from(built.serialized),compressed=zlib.gzipSync(serialized);assert.equal(serialized.length,built.envelope.serialized_bytes);assert.ok(serialized.length<=adapter.MAX_ENVELOPE_BYTES);process.stdout.write(`SYNTHETIC_EVALUATION_SIZE records=${count} serialized_bytes=${serialized.length} compressed_bytes=${compressed.length}\n`);}});
+test('initial strong classification survives a later breakout downgrade without changing normal output',()=>{
+  const idx=require('../lib/idx-tick-normalization');const original=idx.normalizeLevelsToIdxTicks;
+  idx.normalizeLevelsToIdxTicks=(levels)=>({...levels,risk_reward:2,tick_normalized:false,tick_notes:null});
+  const data={ticker:'LATE',last_price:100,open_price:99,high_price:101,low_price:98,atr14:1,swingLow5:98,swingHigh10:110,change_pct:2,previous_close:98,volume_today:4000000,value_today:4000000000,avg_volume_20d:1000000,avg_value_7d:1000000000,volume_ratio_20d:4,rsi14:60,ma20:95,ma50:90,resistance:120,support:98,range_position:70,distance_to_breakout_pct:1,_priceAboveOpen:true,_overextendedMA20:false};
+  try {
+    const normal=engine.scoreDayTrade(data,'MORNING_SCOUT','UTAMA',{pattern:'Strong breakout candle',note:'synthetic'});
+    const captured=engine.scoreDayTrade(data,'MORNING_SCOUT','UTAMA',{pattern:'Strong breakout candle',note:'synthetic'},{captureEvaluationInitial:true});
+    assert.equal(captured.daytrade_evaluation_initial.status,'TRADE_CANDIDATE');
+    assert.equal(captured.status,'EARLY_RADAR');
+    assert.equal(normal.status,'EARLY_RADAR');
+    assert.equal(Object.prototype.hasOwnProperty.call(normal,'daytrade_evaluation_initial'),false);
+    const withoutSnapshot={...captured};delete withoutSnapshot.daytrade_evaluation_initial;assert.deepEqual(withoutSnapshot,normal);
+    assert.equal(Object.isFrozen(captured.daytrade_evaluation_initial),true);
+  } finally { idx.normalizeLevelsToIdxTicks=original; }
+});

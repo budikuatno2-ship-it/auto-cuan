@@ -21,7 +21,7 @@ Using the real schema and synthetic repeated records in `test/daytrade-evaluatio
 | Records | Final serialized bytes | gzip bytes |
 | ---: | ---: | ---: |
 | 50 | 145,057 | 2,153 |
-| 75 | 217,407 | 2,656 |
+| 75 | 217,407 | 2,659 |
 
 These are measured fixture sizes, not production estimates. The envelope limit is 75 records and 524,288 bytes. The byte check is performed after the final `serialized_bytes` value has stabilized, against exactly the serialized string returned by the builder. Production compression must be measured only after a safe non-mutating transport is approved.
 
