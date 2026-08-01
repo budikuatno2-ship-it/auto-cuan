@@ -7,6 +7,7 @@ const childProcess = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const zlib = require('node:zlib');
 const engine = require('../lib/daytrade-screener-engine');
 const ohlcv = require('../lib/daytrade-ohlcv-cache');
 const adapter = require('../lib/daytrade-evaluation-adapter');
@@ -50,7 +51,7 @@ function validateOptions(options) {
   if (typeof options.evaluationRoot !== 'string' || !path.isAbsolute(options.evaluationRoot)) throw new TypeError('--evaluation-root must be a caller-supplied absolute path');
   if (!Array.isArray(options.tickers) || options.tickers.length < 1) throw new TypeError('--tickers requires 1 to 5 comma-separated tickers');
   if (options.tickers.length > MAX_TICKERS) throw new RangeError('maximum 5 tickers');
-  if (new Set(options.tickers.map(item => item.ticker + ':' + item.board)).size !== options.tickers.length) throw new TypeError('ticker and board pairs must be unique');
+  if (new Set(options.tickers.map(item => item.ticker)).size !== options.tickers.length) throw new TypeError('tickers must be unique');
   if (options.tickers.some(item => !item || !/^[A-Z0-9.-]{1,20}$/.test(item.ticker || '') || !ALLOWED_BOARDS.has(item.board))) throw new TypeError('each ticker requires an allowed board (UTAMA or PENGEMBANGAN)');
   assertSafeEvaluationRoot(options.evaluationRoot);
   return options;
@@ -61,48 +62,72 @@ function jakartaWeekday(now) {
 }
 
 function failEvidence() { throw new CanaryError('EXISTING_EVIDENCE_UNVERIFIABLE'); }
+function regularDirectory(directory) {
+  return fs.existsSync(directory) && !fs.lstatSync(directory).isSymbolicLink() && fs.statSync(directory).isDirectory();
+}
+function protocolFiles(root, name) {
+  const protocolRoot = path.join(root, name);
+  if (!fs.existsSync(protocolRoot)) return [];
+  if (!regularDirectory(protocolRoot)) failEvidence();
+  const files = []; const stack = [protocolRoot];
+  while (stack.length) {
+    const directory = stack.pop();
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) failEvidence();
+      if (entry.isDirectory()) stack.push(target);
+      else if (entry.isFile()) files.push(target);
+      else failEvidence();
+    }
+  }
+  return files;
+}
 function inspectFinalizedEvidence(root, date, slot) {
   if (!fs.existsSync(root)) return { duplicate: false, finalizedSamples: 0 };
   try {
-    if (fs.lstatSync(root).isSymbolicLink() || !fs.statSync(root).isDirectory()) failEvidence();
-    const manifestsRoot = path.join(root, 'manifests');
-    if (!fs.existsSync(manifestsRoot)) return { duplicate: false, finalizedSamples: 0 };
-    if (fs.lstatSync(manifestsRoot).isSymbolicLink() || !fs.statSync(manifestsRoot).isDirectory()) failEvidence();
-    const stack = [manifestsRoot]; let duplicate = false; let finalizedSamples = 0;
-    while (stack.length) {
-      const directory = stack.pop();
-      for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-        const manifestFile = path.join(directory, entry.name);
-        if (entry.isSymbolicLink()) failEvidence();
-        if (entry.isDirectory()) { stack.push(manifestFile); continue; }
-        if (!entry.isFile() || !entry.name.endsWith('.manifest.json')) failEvidence();
+    if (!regularDirectory(root)) failEvidence();
+    const rawRoot = path.join(root, 'raw');
+    const rawFiles = protocolFiles(root, 'raw');
+    const manifestFiles = protocolFiles(root, 'manifests');
+    const quarantineFiles = protocolFiles(root, 'quarantine');
+    if (quarantineFiles.length || rawFiles.some(file => file.endsWith('.open.jsonl.gz'))) failEvidence();
+    if (rawFiles.some(file => !file.endsWith('.jsonl.gz')) || manifestFiles.some(file => !file.endsWith('.manifest.json'))) failEvidence();
+    const finalizedRaw = new Set(rawFiles.map(file => path.resolve(file)));
+    const claimedRaw = new Set(); let duplicate = false; let finalizedSamples = 0;
+    for (const manifestFile of manifestFiles) {
         const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
-        if (!manifest || manifest.schema_version !== 1 || manifest.strategy !== 'DAY_TRADE' ||
+        const keys = ['schema_version', 'strategy', 'run_id', 'relative_path', 'byte_size', 'record_count', 'first_timestamp', 'last_timestamp', 'sha256', 'finalized_at'];
+        if (!manifest || Object.keys(manifest).sort().join() !== keys.sort().join() || manifest.schema_version !== 1 || manifest.strategy !== 'DAY_TRADE' ||
+          typeof manifest.run_id !== 'string' || !/^[A-Za-z0-9_.-]{1,128}$/.test(manifest.run_id) ||
           typeof manifest.relative_path !== 'string' || path.isAbsolute(manifest.relative_path) ||
           manifest.relative_path.split(/[\\/]/).includes('..') || !Number.isInteger(manifest.record_count) || manifest.record_count < 1 ||
-          !Number.isInteger(manifest.byte_size) || manifest.byte_size < 1 || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) failEvidence();
+          !Number.isInteger(manifest.byte_size) || manifest.byte_size < 1 || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '') ||
+          typeof manifest.first_timestamp !== 'string' || typeof manifest.last_timestamp !== 'string' || !Number.isFinite(Date.parse(manifest.finalized_at))) failEvidence();
         const rawFile = path.resolve(root, manifest.relative_path);
-        const rawRoot = path.resolve(root, 'raw');
         const match = manifest.relative_path.replaceAll('\\', '/').match(/^raw\/(\d{4}-\d{2}-\d{2})\/day-trade\/([^/]+\.jsonl\.gz)$/);
-        if (!match || rawFile === rawRoot || !rawFile.startsWith(rawRoot + path.sep) ||
+        if (!match || rawFile === path.resolve(rawRoot) || !rawFile.startsWith(path.resolve(rawRoot) + path.sep) ||
           path.resolve(manifestFile) !== path.resolve(root, 'manifests', match[1], path.basename(rawFile) + '.manifest.json') ||
-          !fs.existsSync(rawRoot) || fs.lstatSync(rawRoot).isSymbolicLink() || !fs.statSync(rawRoot).isDirectory() ||
-          !fs.existsSync(rawFile) || fs.lstatSync(rawFile).isSymbolicLink() || !fs.statSync(rawFile).isFile() ||
+          !finalizedRaw.has(rawFile) || claimedRaw.has(rawFile) ||
           !fs.realpathSync.native(rawFile).startsWith(fs.realpathSync.native(rawRoot) + path.sep)) failEvidence();
+        claimedRaw.add(rawFile);
         const content = fs.readFileSync(rawFile);
         if (content.length !== manifest.byte_size || crypto.createHash('sha256')['update'](content).digest('hex') !== manifest.sha256) failEvidence();
-        const lines = require('node:zlib').gunzipSync(content).toString('utf8').trim().split('\n');
+        const lines = zlib.gunzipSync(content).toString('utf8').trim().split('\n');
         if (lines.length !== manifest.record_count) failEvidence();
         const records = lines.map(line => normalizeEvaluationRecord(JSON.parse(line)));
         if (records.some(record => marketDate(new Date(record.observed_at)) !== match[1])) failEvidence();
+        const identityKeys = ['run_id', 'code_sha', 'config_hash', 'run_mode', 'scheduler_source', 'scheduled_slot', 'observed_at'];
+        if (records.some(record => record.run_id !== manifest.run_id) || identityKeys.some(key => new Set(records.map(record => record[key])).size !== 1) ||
+          new Set(records.map(record => record.ticker)).size !== records.length || manifest.first_timestamp !== records[0].observed_at ||
+          manifest.last_timestamp !== records[records.length - 1].observed_at) failEvidence();
         const slots = new Set(records.map(record => record.scheduled_slot));
         if (slots.size !== 1) failEvidence();
         if (records[0].scheduled_slot === null && records.every(record => record.scheduler_source === 'manual_vps_local_canary')) continue;
         if (!SAMPLE_SLOTS.has(records[0].scheduled_slot) || records.some(record => record.scheduler_source !== 'manual_market_day_sample')) failEvidence();
         finalizedSamples++;
         if (match[1] === date && records[0].scheduled_slot === slot) duplicate = true;
-      }
     }
+    if (claimedRaw.size !== finalizedRaw.size) failEvidence();
     return { duplicate, finalizedSamples };
   } catch (error) {
     if (error instanceof CanaryError) throw error;
@@ -162,7 +187,10 @@ async function runCanary(options, dependencies = {}) {
   if (failedCount !== 0 || resultCount !== tickers.length) {
     throw new CanaryError('CALCULATION_INCOMPLETE', 'requested=' + tickers.length + ' results=' + resultCount + ' failed=' + failedCount);
   }
-  const observedAt = (dependencies.afterCalculationNow ? new Date(dependencies.afterCalculationNow()) : new Date()).toISOString();
+  const observedDate = dependencies.afterCalculationNow ? new Date(dependencies.afterCalculationNow()) : new Date();
+  if (!Number.isFinite(observedDate.getTime())) throw new CanaryError('OBSERVED_TIME_INVALID');
+  if (marketDate(observedDate) !== currentMarketDate) throw new CanaryError('MARKET_DATE_CHANGED_DURING_RUN');
+  const observedAt = observedDate.toISOString();
   const context = {
     runId,
     runMode,

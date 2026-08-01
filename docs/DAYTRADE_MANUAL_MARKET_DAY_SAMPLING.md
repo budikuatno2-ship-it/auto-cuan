@@ -35,14 +35,20 @@ is a stop condition for this phase.
 
 ## Finalized-evidence proof and fail-closed rules
 
-Before provider access or logger creation, the manual tool walks only the
-`manifests` tree below the supplied root. Each manifest must be a regular file
-in the exact logger-produced location. Its relative raw path must remain in
-`raw/<date>/day-trade`, and the raw root/file must be regular, non-symlinked,
-realpath-contained files. The gzip byte size, SHA-256, record count, strict
-record contract, Jakarta record date, single slot, and manual scheduler source
-must all agree. Any parse, gzip, validation, traversal, symlink, checksum, count,
-or identity ambiguity fails closed.
+Before provider access or logger creation, the manual tool walks the complete
+`raw`, `manifests`, and `quarantine` protocol trees below the supplied root.
+Protocol roots and intermediate components must be real directories, every
+finalized gzip must have exactly one manifest, and every manifest must have
+exactly one finalized gzip. Open gzip files, unresolved quarantine files,
+symlinks, orphan evidence, and unexpected file types fail closed.
+
+Each manifest must be a regular file in the exact logger-produced location. Its
+relative raw path must remain in `raw/<date>/day-trade`. The gzip byte size,
+SHA-256, record count, strict record contract, Jakarta record date, manifest run
+ID and timestamps, and immutable record identity must all agree. Any parse,
+gzip, validation, traversal, checksum, count, or identity ambiguity fails
+closed. A second Jakarta-date check after calculation prevents a run from
+finalizing across midnight WIB.
 
 The finalized B0.2 one-shot evidence is recognized narrowly by its null slot and
 `manual_vps_local_canary` source. It is verified but cannot collide with a B0.3
