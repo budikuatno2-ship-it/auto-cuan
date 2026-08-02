@@ -34,8 +34,11 @@ set +a
 AI_EVAL_BASE_URL="${AI_EVAL_BASE_URL:-https://openagentic.id/api/v1}"
 AI_EVAL_MODEL="${AI_EVAL_MODEL:-claude-sonnet-4.6}"
 AI_EVAL_STORAGE_BUCKET="${AI_EVAL_STORAGE_BUCKET:-ai-eval-private}"
+RUN_OUTPUT="$OUTPUT_DIR/$RUN_ID"
+DONE_FILE="$RUN_OUTPUT/WORKER_DONE"
 
-mkdir -p "$WORK_DIR" "$OUTPUT_DIR"
+mkdir -p "$WORK_DIR" "$RUN_OUTPUT"
+rm -f "$DONE_FILE"
 cd "$ROOT_DIR"
 
 if [ ! -f "$DATASET_GZ" ]; then
@@ -51,8 +54,10 @@ FIFO="$WORK_DIR/dataset-${RUN_ID}.jsonl.pipe"
 rm -f "$FIFO"
 mkfifo -m 600 "$FIFO"
 DECOMPRESS_PID=""
+UPLOADER_PID=""
 cleanup() {
   if [ -n "$DECOMPRESS_PID" ]; then kill "$DECOMPRESS_PID" 2>/dev/null || true; fi
+  if [ -n "$UPLOADER_PID" ]; then kill "$UPLOADER_PID" 2>/dev/null || true; fi
   rm -f "$FIFO"
 }
 trap cleanup EXIT INT TERM
@@ -62,12 +67,22 @@ DECOMPRESS_PID=$!
 
 export AI_EVAL_BASE_URL AI_EVAL_MODEL AI_EVAL_RUN_ID="$RUN_ID" AI_EVAL_STORAGE_BUCKET
 
+"$NODE_BIN" tools/upload-ai-eval-shards.js \
+  --watch \
+  --run-id="$RUN_ID" \
+  --output-dir="$RUN_OUTPUT" \
+  --done-file="$DONE_FILE" \
+  --storage-bucket="$AI_EVAL_STORAGE_BUCKET" \
+  --index-sample-every=100 &
+UPLOADER_PID=$!
+
+set +e
 "$NODE_BIN" tools/run-ai-eval-cloud.js \
   --execute \
   --dataset="$FIFO" \
-  --output-dir="$OUTPUT_DIR/$RUN_ID" \
-  --state-file="$OUTPUT_DIR/$RUN_ID/state.json" \
-  --stop-file="$OUTPUT_DIR/$RUN_ID/STOP" \
+  --output-dir="$RUN_OUTPUT" \
+  --state-file="$RUN_OUTPUT/state.json" \
+  --stop-file="$RUN_OUTPUT/STOP" \
   --run-id="$RUN_ID" \
   --base-url="$AI_EVAL_BASE_URL" \
   --model="$AI_EVAL_MODEL" \
@@ -81,5 +96,14 @@ export AI_EVAL_BASE_URL AI_EVAL_MODEL AI_EVAL_RUN_ID="$RUN_ID" AI_EVAL_STORAGE_B
   --min-style-score=80 \
   --shard-rows=250 \
   --storage-bucket="$AI_EVAL_STORAGE_BUCKET" \
-  --index-sample-every=100 \
-  --upload
+  --index-sample-every=100
+WORKER_STATUS=$?
+set -e
+
+touch "$DONE_FILE"
+wait "$UPLOADER_PID" || {
+  echo "AI_EVAL_UPLOADER_FAILED=1" >&2
+  if [ "$WORKER_STATUS" -eq 0 ]; then WORKER_STATUS=3; fi
+}
+UPLOADER_PID=""
+exit "$WORKER_STATUS"
