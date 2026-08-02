@@ -6,6 +6,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const generator = require('../tools/generate-ai-eval-dataset');
+const complete = require('../tools/generate-ai-eval-complete-dataset');
+const snapshotStore = require('../lib/ai-context-snapshot-store');
 const contract = require('../lib/ai-answer-contract');
 const cloud = require('../tools/run-ai-eval-cloud');
 
@@ -39,6 +41,56 @@ test('generator creates both stock-analysis and portfolio cases', () => {
   assert.ok(portfolio.context.plans.length >= 1);
   assert.equal(stock.expected.style, 'gen_z_natural_professional');
   assert.equal(portfolio.expected.style, 'gen_z_natural_professional');
+});
+
+test('complete generator keeps stock facts database-backed and portfolio features broad', () => {
+  const snapshots = complete.normalizeSnapshots([
+    {
+      source: 'stock_analysis_followup',
+      context_key: 'INCO',
+      updated_at: '2026-08-03T04:00:00+07:00',
+      payload: {
+        ticker: 'INCO',
+        analysis_text: 'Harga terakhir: 3150\nEntry: 3170–3240\nStop Loss: 3020\nTP1: 3470\nTP2: 3820\nR/R: 1.05',
+        captured_at: '2026-08-03T04:00:00+07:00'
+      }
+    }
+  ]);
+  const next = generator.rng(20260803);
+  const stock = complete.stockCase(0, next, snapshots);
+  const portfolio = complete.portfolioCase(0, next, snapshots);
+  assert.equal(stock.context.data_origin, 'database_snapshot');
+  assert.equal(stock.context.ticker, 'INCO');
+  assert.ok(stock.expected.allowed_numbers.includes(3150));
+  assert.ok(complete.PORTFOLIO_INTENTS.includes('budget_to_stock'));
+  assert.ok(complete.PORTFOLIO_INTENTS.includes('average_down'));
+  assert.ok(complete.PORTFOLIO_INTENTS.includes('journal_review'));
+  assert.ok(complete.PORTFOLIO_INTENTS.includes('snapshot_changes'));
+  assert.ok(complete.PORTFOLIO_INTENTS.includes('emotional_decision'));
+  assert.ok(portfolio.context.feature_scope.includes('lot-sizing'));
+  assert.ok(portfolio.context.feature_scope.includes('position-comparison'));
+  assert.equal(portfolio.expected.opinion_allowed, true);
+});
+
+test('snapshot store separates stock analysis from portfolio data', () => {
+  const stock = snapshotStore.sanitizeStockContext({
+    ticker: 'bbca.jk',
+    analysis_text: 'Harga terakhir 9000 dan entry 8800.',
+    captured_at: '2026-08-03T04:00:00+07:00'
+  });
+  const portfolio = snapshotStore.sanitizePortfolioContext({
+    plans: [{ ticker: 'BBRI', entryPriceIdr: 4000, stopLossIdr: 3800, lots: 5 }],
+    prices: { BBRI: 4050 },
+    budget: { capitalIdr: 5000000, reservePct: 20, maxPositions: 4 },
+    journal: [{ ticker: 'BBRI', action: 'ENTRY', note: 'sesuai rencana', followedPlan: true }],
+    changes: [{ type: 'PRICE_CHANGED', ticker: 'BBRI', text: 'naik' }]
+  });
+  assert.equal(stock.ticker, 'BBCA');
+  assert.equal(stock.data_origin, 'analysis_snapshot');
+  assert.equal(portfolio.plans[0].ticker, 'BBRI');
+  assert.equal(portfolio.budget.capitalIdr, 5000000);
+  assert.equal(portfolio.journal.length, 1);
+  assert.equal(portfolio.changes.length, 1);
 });
 
 test('answer contract accepts supported snapshot levels', () => {
@@ -108,6 +160,16 @@ test('prompts request natural Gen Z style without influencer slang', () => {
   assert.match(judgePrompt, /bukan alay, bukan kaku/);
 });
 
+test('production AI instruction separates facts, opinion, simulation, and context scopes', () => {
+  const api = fs.readFileSync(path.join(ROOT, 'api/analyze.js'), 'utf8');
+  assert.match(api, /Fokus hanya pada ticker dan snapshot Analisis Saham/);
+  assert.match(api, /budget-to-stock/);
+  assert.match(api, /fakta\/data yang dipakai/);
+  assert.match(api, /analisis atau opini/);
+  assert.match(api, /label SIMULASI/);
+  assert.match(api, /hydrateContext/);
+});
+
 test('phone control page contains no provider or service-role secret', () => {
   const page = fs.readFileSync(path.join(ROOT, 'public/admin-ai-eval.html'), 'utf8');
   assert.ok(page.includes("fetch('/api/admin-users'"));
@@ -115,7 +177,7 @@ test('phone control page contains no provider or service-role secret', () => {
   assert.ok(!page.includes('SUPABASE_SERVICE_ROLE_KEY'));
 });
 
-test('one-time launcher pins the agreed provider controls', () => {
+test('one-time launcher pins provider controls and database-backed dataset source', () => {
   const launcher = fs.readFileSync(path.join(ROOT, 'tools/run-ai-eval-once.sh'), 'utf8');
   assert.ok(launcher.includes('https://openagentic.id/api/v1'));
   assert.ok(launcher.includes('claude-sonnet-4.6'));
@@ -123,4 +185,7 @@ test('one-time launcher pins the agreed provider controls', () => {
   assert.ok(launcher.includes('--concurrency=4'));
   assert.ok(launcher.includes('AI_EVAL_TOKEN_BUDGET'));
   assert.ok(launcher.includes('--judge-mode=all'));
+  assert.ok(launcher.includes('build-ai-eval-snapshot-source.js'));
+  assert.ok(launcher.includes('generate-ai-eval-complete-dataset.js'));
+  assert.ok(launcher.includes('--require-real-stock'));
 });
