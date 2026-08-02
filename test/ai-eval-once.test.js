@@ -49,6 +49,20 @@ test('answer contract accepts supported snapshot levels', () => {
   assert.equal(result.valid, true, result.errors.join('; '));
 });
 
+test('answer contract ignores source-backed date and time tokens', () => {
+  const answer = validAnswer();
+  answer.warnings = [
+    'Snapshot diambil 2026-08-03 09:00 WIB, kondisi pasar bisa sudah berubah.',
+    'R/R 1.05 tergolong rendah.'
+  ];
+  const result = contract.validateAnswer(answer, {
+    allowed_numbers: allowed.concat([1.05]),
+    require_snapshot_scope: true
+  });
+  assert.equal(result.valid, true, result.errors.join('; '));
+  assert.deepEqual(contract.numbersInText('Snapshot 2026-08-03 09:00 WIB, harga 980 dan R/R 1.05.'), [980, 1.05]);
+});
+
 test('answer contract rejects an invented number inside structured levels', () => {
   const answer = validAnswer({ last: 1020, entry_low: 980, entry_high: 1000, stop_loss: 777, tp1: 1080, tp2: 1150 });
   const result = contract.validateAnswer(answer, {
@@ -107,6 +121,6 @@ test('one-time launcher pins the agreed provider controls', () => {
   assert.ok(launcher.includes('claude-sonnet-4.6'));
   assert.ok(launcher.includes('--rpm=30'));
   assert.ok(launcher.includes('--concurrency=4'));
-  assert.ok(launcher.includes('--max-total-tokens=50000000'));
+  assert.ok(launcher.includes('AI_EVAL_TOKEN_BUDGET'));
   assert.ok(launcher.includes('--judge-mode=all'));
 });
