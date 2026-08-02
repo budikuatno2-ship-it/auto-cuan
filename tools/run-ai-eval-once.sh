@@ -55,7 +55,9 @@ rm -f "$FIFO"
 mkfifo -m 600 "$FIFO"
 DECOMPRESS_PID=""
 UPLOADER_PID=""
+WORKER_PID=""
 cleanup() {
+  if [ -n "$WORKER_PID" ]; then kill "$WORKER_PID" 2>/dev/null || true; fi
   if [ -n "$DECOMPRESS_PID" ]; then kill "$DECOMPRESS_PID" 2>/dev/null || true; fi
   if [ -n "$UPLOADER_PID" ]; then kill "$UPLOADER_PID" 2>/dev/null || true; fi
   rm -f "$FIFO"
@@ -76,7 +78,6 @@ export AI_EVAL_BASE_URL AI_EVAL_MODEL AI_EVAL_RUN_ID="$RUN_ID" AI_EVAL_STORAGE_B
   --index-sample-every=100 &
 UPLOADER_PID=$!
 
-set +e
 "$NODE_BIN" tools/run-ai-eval-cloud.js \
   --execute \
   --dataset="$FIFO" \
@@ -96,9 +97,14 @@ set +e
   --min-style-score=80 \
   --shard-rows=250 \
   --storage-bucket="$AI_EVAL_STORAGE_BUCKET" \
-  --index-sample-every=100
+  --index-sample-every=100 &
+WORKER_PID=$!
+
+set +e
+wait "$WORKER_PID"
 WORKER_STATUS=$?
 set -e
+WORKER_PID=""
 
 touch "$DONE_FILE"
 wait "$UPLOADER_PID" || {
