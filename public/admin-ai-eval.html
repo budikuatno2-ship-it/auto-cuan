@@ -86,14 +86,14 @@
     stop.disabled=busy||done||run.desired_state==='STOPPED';
   }
 
-  async function request(method,body){
-    var response=await fetch('/api/admin-ai-eval',{method:method,headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store'});
+  async function request(payload){
+    var response=await fetch('/api/admin-users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),credentials:'same-origin',cache:'no-store'});
     var data=await response.json().catch(function(){return {success:false,error:'Respons server tidak valid.'}});
     if(!response.ok||!data.success)throw new Error(data.error||'Request gagal.');
     return data;
   }
   async function refresh(){
-    try{var data=await request('GET');render(data.run);showError('')}
+    try{var data=await request({action:'ai_eval_status'});render(data.run);showError('')}
     catch(error){showError(error.message);if(/sesi|akses|admin/i.test(error.message))card.innerHTML='<div class="loading">Login sebagai admin budi dari halaman utama, lalu buka halaman ini lagi.</div>'}
   }
   async function action(name){
@@ -101,7 +101,7 @@
     if(name==='start'&&!confirm('Mulai/resume pengumpulan data satu kali dengan hard budget 50 juta token?'))return;
     if(name==='stop'&&!confirm('Stop worker sekarang? Hasil yang sudah tersimpan tidak dihapus.'))return;
     setBusy(true);showError('');
-    try{var data=await request('POST',{action:name});render(data.run)}
+    try{var data=await request({action:'ai_eval_control',control_action:name});render(data.run)}
     catch(error){showError(error.message)}finally{setBusy(false);setTimeout(refresh,800)}
   }
   start.addEventListener('click',function(){action('start')});
