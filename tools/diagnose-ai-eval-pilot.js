@@ -1,5 +1,7 @@
 'use strict';
 
+require('./openagentic-response-normalizer');
+
 const fs = require('node:fs');
 const path = require('node:path');
 const cloud = require('./run-ai-eval-cloud');
@@ -108,6 +110,7 @@ async function main() {
   process.stdout.write(JSON.stringify({
     success: true,
     retry_count: 0,
+    transport: 'sse-reassembled',
     answer_max_tokens: ANSWER_MAX_TOKENS,
     judge_max_tokens: JUDGE_MAX_TOKENS,
     results
