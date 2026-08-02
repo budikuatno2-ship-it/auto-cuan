@@ -2,6 +2,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
+const { once } = require('node:events');
 
 function arg(name, fallback) {
   const prefix = '--' + name + '=';
@@ -174,34 +176,32 @@ function makeCase(index, next, stockRatio) {
   return stock ? makeStockCase(index, next) : makePortfolioCase(index, next);
 }
 
-function writeRows(output, count, next, stockRatio) {
+async function writeRows(output, count, next, stockRatio) {
   fs.mkdirSync(path.dirname(output), { recursive: true });
-  const fd = fs.openSync(output, 'w');
-  try {
-    let buffer = '';
-    for (let i = 0; i < count; i += 1) {
-      buffer += JSON.stringify(makeCase(i, next, stockRatio)) + '\n';
-      if (buffer.length >= 4 * 1024 * 1024) {
-        fs.writeSync(fd, buffer, null, 'utf8');
-        buffer = '';
-      }
-    }
-    if (buffer) fs.writeSync(fd, buffer, null, 'utf8');
-  } finally {
-    fs.closeSync(fd);
+  const target = fs.createWriteStream(output, { flags: 'w' });
+  const writer = output.endsWith('.gz') ? zlib.createGzip({ level: 9 }) : target;
+  if (writer !== target) writer.pipe(target);
+
+  for (let i = 0; i < count; i += 1) {
+    const line = JSON.stringify(makeCase(i, next, stockRatio)) + '\n';
+    if (!writer.write(line, 'utf8')) await once(writer, 'drain');
   }
+  writer.end();
+  await once(target, 'finish');
 }
 
-function main() {
+async function main() {
   const count = boundedInt(arg('count', '500'), 500, 1, 1000000);
   const seed = boundedInt(arg('seed', '20260803'), 20260803, 1, 2147483647);
   const stockRatio = boundedInt(arg('stock-ratio', '60'), 60, 0, 100);
-  const output = path.resolve(arg('output', 'tmp/ai-eval-dataset.jsonl'));
+  const output = path.resolve(arg('output', 'tmp/ai-eval-dataset.jsonl.gz'));
   const next = rng(seed);
-  writeRows(output, count, next, stockRatio);
-  process.stdout.write(JSON.stringify({ success: true, count, seed, stock_ratio_pct: stockRatio, portfolio_ratio_pct: 100 - stockRatio, output }) + '\n');
+  await writeRows(output, count, next, stockRatio);
+  process.stdout.write(JSON.stringify({ success: true, count, seed, stock_ratio_pct: stockRatio, portfolio_ratio_pct: 100 - stockRatio, compression: output.endsWith('.gz') ? 'gzip' : 'none', output }) + '\n');
 }
 
-if (require.main === module) main();
+if (require.main === module) {
+  main().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });
+}
 
 module.exports = { rng, idxRound, makeStockCase, makePortfolioCase, makeCase, writeRows };
