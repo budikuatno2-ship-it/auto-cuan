@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>AI Data Lab — Auto-Cuan</title>
+  <style>
+    :root{color-scheme:dark;--bg:#070a11;--card:#101622;--line:#263044;--text:#eef2ff;--muted:#929db1;--green:#5ee6b5;--amber:#f7c75d;--red:#ff7c8b;--blue:#7bb8ff}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -10%,#17243a 0,#070a11 42%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:calc(18px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+    main{width:min(720px,100%);margin:0 auto}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.back{color:var(--muted);text-decoration:none;font-size:14px}.badge{font-size:11px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;color:var(--blue);background:#111c2d}
+    h1{font-size:24px;line-height:1.15;margin:0 0 6px}p{margin:0}.lead{font-size:13px;line-height:1.6;color:var(--muted);margin-bottom:16px}.card{background:rgba(16,22,34,.92);border:1px solid var(--line);border-radius:20px;padding:16px;margin-bottom:12px;box-shadow:0 18px 50px rgba(0,0,0,.18)}
+    .status-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.status{font-size:20px;font-weight:800}.desired{font-size:11px;color:var(--muted);margin-top:4px}.dot{width:10px;height:10px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 4px rgba(146,157,177,.12);margin-top:5px}.dot.running{background:var(--green);box-shadow:0 0 0 4px rgba(94,230,181,.12)}.dot.paused{background:var(--amber);box-shadow:0 0 0 4px rgba(247,199,93,.12)}.dot.failed,.dot.blocked{background:var(--red);box-shadow:0 0 0 4px rgba(255,124,139,.12)}
+    .meter{height:10px;border-radius:999px;background:#080c14;border:1px solid #202a3c;overflow:hidden;margin:14px 0 7px}.meter>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#4ed5aa,#71b9ff);transition:width .35s ease}.meter-label{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}.metric{background:#0b101a;border:1px solid #20293a;border-radius:13px;padding:11px}.metric b{display:block;font-size:17px;line-height:1.1}.metric span{display:block;font-size:10px;color:var(--muted);margin-top:5px}
+    .config{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;font-size:12px}.config dt{color:var(--muted)}.config dd{margin:0;text-align:right;overflow-wrap:anywhere}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions button{border:0;border-radius:14px;min-height:48px;font:inherit;font-weight:750;cursor:pointer}.primary{background:var(--green);color:#04251a}.pause{background:#2a2415;color:var(--amber);border:1px solid #5e4d22!important}.stop{grid-column:1/-1;background:#2b141a;color:var(--red);border:1px solid #5c2530!important}.actions button:disabled{opacity:.42;cursor:not-allowed}.note{font-size:11px;line-height:1.55;color:var(--muted);margin-top:12px}.error{display:none;color:#ff9aaa;background:#2b1118;border:1px solid #5d2631;border-radius:13px;padding:11px;font-size:12px;line-height:1.5;margin-top:12px}.error.show{display:block}.heartbeat{font-size:11px;color:var(--muted);margin-top:10px}.loading{text-align:center;padding:20px;color:var(--muted);font-size:13px}
+    @media(min-width:620px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.actions{grid-template-columns:1fr 1fr 1fr}.stop{grid-column:auto}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="top"><a class="back" href="/">← Kembali</a><span class="badge">ADMIN · SEKALI JALAN</span></div>
+  <h1>AI Data Lab</h1>
+  <p class="lead">Pengumpulan data satu kali untuk Analisis Saham dan Asisten Portofolio. Proses berjalan di VPS, jadi HP dan laptop boleh ditutup setelah statusnya RUNNING.</p>
+
+  <section class="card" id="statusCard"><div class="loading">Mengambil status…</div></section>
+
+  <section class="card">
+    <dl class="config">
+      <dt>Model</dt><dd>claude-sonnet-4.6</dd>
+      <dt>Base URL</dt><dd>openagentic.id/api/v1</dd>
+      <dt>Batas request</dt><dd>30 RPM · concurrency 4</dd>
+      <dt>Budget keras</dt><dd>50.000.000 token</dd>
+      <dt>Dataset</dt><dd>1.000.000 kasus · 60% saham / 40% portofolio</dd>
+      <dt>Evaluasi</dt><dd>Setiap jawaban · retry sampai lolos/budget habis</dd>
+      <dt>Penyimpanan</dt><dd>JSONL.GZ + ringkasan MD.GZ</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <div class="actions">
+      <button class="primary" id="startButton" type="button">Mulai / Resume</button>
+      <button class="pause" id="pauseButton" type="button">Pause</button>
+      <button class="stop" id="stopButton" type="button">Stop</button>
+    </div>
+    <div class="error" id="errorBox"></div>
+    <p class="note">Mulai hanya membuat satu run. Setelah COMPLETED, run tidak bisa dimulai ulang. Tombol Stop menghentikan worker; hasil yang sudah tersimpan tetap aman dan dapat dilanjutkan selama budget belum habis.</p>
+  </section>
+</main>
+<script>
+(function(){
+  'use strict';
+  var card=document.getElementById('statusCard');
+  var start=document.getElementById('startButton');
+  var pause=document.getElementById('pauseButton');
+  var stop=document.getElementById('stopButton');
+  var errorBox=document.getElementById('errorBox');
+  var busy=false;
+
+  function fmt(n){return Number(n||0).toLocaleString('id-ID')}
+  function time(value){if(!value)return '—';try{return new Date(value).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'medium',timeStyle:'medium'})+' WIB'}catch(_){return value}}
+  function esc(value){return String(value==null?'':value).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]})}
+  function showError(message){errorBox.textContent=message||'';errorBox.classList.toggle('show',Boolean(message))}
+  function setBusy(value){busy=value;start.disabled=value;pause.disabled=value;stop.disabled=value}
+
+  function render(run){
+    if(!run){
+      card.innerHTML='<div class="status-row"><div><div class="status">Belum dimulai</div><div class="desired">Tekan Mulai untuk membuat run satu kali.</div></div><span class="dot"></span></div>';
+      start.disabled=busy;pause.disabled=true;stop.disabled=true;return;
+    }
+    var status=String(run.status||'UNKNOWN');
+    var dot=status.toLowerCase();
+    var pct=Math.max(0,Math.min(100,Number(run.token_progress_pct)||0));
+    card.innerHTML='<div class="status-row"><div><div class="status">'+esc(status)+'</div><div class="desired">Target: '+esc(run.desired_state)+' · '+esc(run.model)+'</div></div><span class="dot '+esc(dot)+'"></span></div>'+
+      '<div class="meter"><span style="width:'+pct+'%"></span></div><div class="meter-label"><span>'+fmt(run.tokens_used)+' token</span><span>'+pct.toFixed(3)+'% dari 50 juta</span></div>'+
+      '<div class="grid">'+
+      '<div class="metric"><b>'+fmt(run.cases_completed)+'</b><span>kasus selesai</span></div>'+
+      '<div class="metric"><b>'+fmt(run.cases_passed)+'</b><span>jawaban lolos</span></div>'+
+      '<div class="metric"><b>'+fmt(run.retries)+'</b><span>retry</span></div>'+
+      '<div class="metric"><b>'+fmt(run.provider_failures)+'</b><span>provider gagal</span></div></div>'+
+      '<div class="heartbeat">Heartbeat VPS: '+esc(time(run.last_heartbeat_at))+' · Shard '+fmt(run.current_shard)+'</div>'+
+      (run.last_error?'<div class="error show">'+esc(run.last_error)+'</div>':'');
+    var done=status==='COMPLETED'||Number(run.tokens_remaining)<=0;
+    start.disabled=busy||done||run.desired_state==='RUNNING';
+    pause.disabled=busy||done||run.desired_state!=='RUNNING';
+    stop.disabled=busy||done||run.desired_state==='STOPPED';
+  }
+
+  async function request(method,body){
+    var response=await fetch('/api/admin-ai-eval',{method:method,headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined,credentials:'same-origin',cache:'no-store'});
+    var data=await response.json().catch(function(){return {success:false,error:'Respons server tidak valid.'}});
+    if(!response.ok||!data.success)throw new Error(data.error||'Request gagal.');
+    return data;
+  }
+  async function refresh(){
+    try{var data=await request('GET');render(data.run);showError('')}
+    catch(error){showError(error.message);if(/sesi|akses|admin/i.test(error.message))card.innerHTML='<div class="loading">Login sebagai admin budi dari halaman utama, lalu buka halaman ini lagi.</div>'}
+  }
+  async function action(name){
+    if(busy)return;
+    if(name==='start'&&!confirm('Mulai/resume pengumpulan data satu kali dengan hard budget 50 juta token?'))return;
+    if(name==='stop'&&!confirm('Stop worker sekarang? Hasil yang sudah tersimpan tidak dihapus.'))return;
+    setBusy(true);showError('');
+    try{var data=await request('POST',{action:name});render(data.run)}
+    catch(error){showError(error.message)}finally{setBusy(false);setTimeout(refresh,800)}
+  }
+  start.addEventListener('click',function(){action('start')});
+  pause.addEventListener('click',function(){action('pause')});
+  stop.addEventListener('click',function(){action('stop')});
+  refresh();setInterval(refresh,5000);
+})();
+</script>
+</body>
+</html>
