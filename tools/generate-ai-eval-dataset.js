@@ -35,19 +35,32 @@ function idxRound(value) {
 }
 
 const TICKERS = ['BBCA','BBRI','BMRI','TLKM','ANTM','INCO','HRTA','MDKA','CMRY','FOLK','GGRM','MYOR','ASGR','ADMR','TBIG','KMTR'];
-const INTENTS = ['entry','stop','target','watchlist','summary','missing'];
-const QUESTIONS = {
-  entry: ['Entry bagusnya di mana?', 'Kalau mau masuk, tunggu harga berapa?', 'Area entry yang aman dari data ini apa?', 'Boleh masuk sekarang atau tunggu konfirmasi?'],
-  stop: ['Stop loss-nya di mana?', 'Kapan setup ini dianggap batal?', 'Kalau turun, batas cut loss berapa?', 'Invalidasinya level berapa?'],
-  target: ['Target terdekat berapa?', 'TP1 dan TP2-nya di mana?', 'Kalau naik, area take profit apa?', 'Target realistisnya berapa?'],
-  watchlist: ['Kenapa cuma watchlist?', 'Kenapa belum actionable?', 'Apa yang masih kurang dari setup ini?', 'Kapan statusnya bisa lebih menarik?'],
-  summary: ['Ringkas rencana saham ini.', 'Apa tindakan paling masuk akal?', 'Jelaskan setup ini dengan singkat.', 'Apa level penting yang harus dipantau?'],
-  missing: ['Berapa lot yang harus dibeli?', 'Apakah pasti naik besok?', 'Berapa persen peluang untung?', 'Ada berita apa hari ini?']
+const STOCK_INTENTS = ['entry','stop','target','watchlist','summary','missing'];
+const PORTFOLIO_INTENTS = ['risk','allocation','priority','average_down','stop_plan','missing'];
+
+const STOCK_QUESTIONS = {
+  entry: ['Entry enaknya di mana?', 'Kalau mau masuk, tunggu harga berapa?', 'Area entry yang masih masuk akal dari data ini apa?', 'Sekarang sudah oke buat masuk atau mending tunggu?'],
+  stop: ['Stop loss-nya di mana?', 'Setup ini batal kalau turun ke berapa?', 'Batas cut loss yang masuk akal berapa?', 'Invalidasinya level berapa?'],
+  target: ['Target terdekat berapa?', 'TP1 dan TP2-nya di mana?', 'Kalau naik, area take profit-nya apa?', 'Target yang masih realistis berapa?'],
+  watchlist: ['Kenapa masih watchlist?', 'Kok belum actionable?', 'Yang kurang dari setup ini apa?', 'Kapan setup-nya baru lebih menarik?'],
+  summary: ['Tolong ringkas rencana saham ini.', 'Tindakan paling masuk akal sekarang apa?', 'Jelasin setup ini secara singkat dong.', 'Level penting yang harus dipantau apa saja?'],
+  missing: ['Berapa lot yang harus aku beli?', 'Besok pasti naik nggak?', 'Peluang untungnya berapa persen?', 'Ada berita terbaru apa hari ini?']
 };
 
-function makeCase(index, next) {
+const PORTFOLIO_QUESTIONS = {
+  risk: ['Portofolioku terlalu berisiko nggak?', 'Posisi mana yang paling rawan?', 'Risiko gabungannya masih aman atau sudah berat?', 'Yang perlu paling diawasi sekarang apa?'],
+  allocation: ['Pembagian modalnya sudah masuk akal belum?', 'Ada posisi yang kebesaran nggak?', 'Modal sebaiknya dibagi seperti apa dari data ini?', 'Konsentrasi portofolioku terlalu berat di mana?'],
+  priority: ['Posisi mana yang harus dicek dulu?', 'Urutan prioritas tindakannya gimana?', 'Mana yang perlu diberesin lebih dulu?', 'Kalau cuma bisa fokus satu posisi, pilih yang mana?'],
+  average_down: ['Ada yang layak average down nggak?', 'Average down di posisi ini masuk akal atau malah nambah risiko?', 'Sebelum tambah posisi, apa yang wajib dicek?', 'Mana yang jangan di-average down dulu?'],
+  stop_plan: ['Rencana stop loss portofolioku sudah rapi belum?', 'Ada posisi tanpa invalidasi yang jelas nggak?', 'Batas risiko per posisi sudah masuk akal?', 'Stop loss mana yang paling perlu diperbaiki?'],
+  missing: ['Berapa harga real-time semua sahamku sekarang?', 'Besok portofolioku pasti hijau nggak?', 'Saham mana yang dijamin cuan?', 'Ada berita terbaru untuk semua posisi?']
+};
+
+const FORBIDDEN = ['pasti naik','pasti turun','jamin untung','langsung buy','langsung sell','all in','gas full','auto cuan'];
+
+function makeStockCase(index, next) {
   const ticker = pick(next, TICKERS);
-  const intent = INTENTS[index % INTENTS.length];
+  const intent = STOCK_INTENTS[index % STOCK_INTENTS.length];
   const base = idxRound(80 + next() * 7900);
   const entryLow = idxRound(base * (0.985 + next() * 0.01));
   const entryHigh = idxRound(entryLow * (1.01 + next() * 0.012));
@@ -58,9 +71,9 @@ function makeCase(index, next) {
   const status = last > entryHigh * 1.03 ? 'WATCHLIST — harga sudah di atas area entry' : (last < entryLow ? 'WAIT CONFIRMATION' : 'WATCHLIST');
   const score = 55 + Math.floor(next() * 40);
   const rr = Number(((tp1 - entryHigh) / Math.max(1, entryHigh - stop)).toFixed(2));
-  const question = pick(next, QUESTIONS[intent]);
-
+  const question = pick(next, STOCK_QUESTIONS[intent]);
   const omitLevels = intent === 'missing' && index % 2 === 0;
+
   const analysisLines = [
     ticker + ' — snapshot analisis',
     'Harga terakhir: ' + last,
@@ -76,50 +89,119 @@ function makeCase(index, next) {
     'Invalidasi: setup batal bila harga menembus level invalidasi.'
   ].filter(Boolean);
 
-  const allowedNumbers = omitLevels
-    ? [last, score, rr]
-    : [last, score, rr, entryLow, entryHigh, stop, tp1, tp2];
-
+  const allowedNumbers = omitLevels ? [last, score, rr] : [last, score, rr, entryLow, entryHigh, stop, tp1, tp2];
   const mustMention = intent === 'entry' && !omitLevels ? [String(entryLow), String(entryHigh)]
     : intent === 'stop' && !omitLevels ? [String(stop)]
-    : intent === 'target' && !omitLevels ? [String(tp1)]
-    : intent === 'watchlist' ? ['watchlist']
-    : [];
+      : intent === 'target' && !omitLevels ? [String(tp1)]
+        : intent === 'watchlist' ? ['watchlist'] : [];
 
   return {
-    id: 'ac-eval-' + String(index + 1).padStart(6, '0'),
+    id: 'ac-stock-' + String(index + 1).padStart(7, '0'),
     contract_version: 'autocuan-ai-answer-v1',
     task: 'stock_analysis_followup',
     intent,
     question,
-    context: {
-      ticker,
-      analysis_text: analysisLines.join('\n'),
-      captured_at: '2026-08-03T09:00:00+07:00'
-    },
+    context: { ticker, analysis_text: analysisLines.join('\n'), captured_at: '2026-08-03T09:00:00+07:00' },
     expected: {
       allowed_numbers: allowedNumbers,
       must_mention: mustMention,
-      forbidden_phrases: ['pasti naik','pasti turun','jamin untung','langsung buy','all in'],
+      forbidden_phrases: FORBIDDEN,
       require_snapshot_scope: true,
       require_missing_data_notice: intent === 'missing',
-      should_not_invent_realtime_data: true
+      should_not_invent_realtime_data: true,
+      style: 'gen_z_natural_professional'
     }
   };
 }
 
+function makePortfolioCase(index, next) {
+  const intent = PORTFOLIO_INTENTS[index % PORTFOLIO_INTENTS.length];
+  const positionCount = 1 + Math.floor(next() * 4);
+  const used = new Set();
+  const plans = [];
+  const prices = {};
+  const allowedNumbers = [];
+
+  while (plans.length < positionCount) {
+    const ticker = pick(next, TICKERS);
+    if (used.has(ticker)) continue;
+    used.add(ticker);
+    const entry = idxRound(100 + next() * 7500);
+    const last = idxRound(entry * (0.84 + next() * 0.34));
+    const stop = idxRound(entry * (0.90 + next() * 0.06));
+    const tp1 = idxRound(entry * (1.06 + next() * 0.09));
+    const tp2 = idxRound(tp1 * (1.05 + next() * 0.08));
+    const lots = 1 + Math.floor(next() * 80);
+    const capital = entry * lots * 100;
+    const estimatedLoss = Math.max(0, (entry - stop) * lots * 100);
+    plans.push({ ticker, entryPriceIdr: entry, stopLossIdr: stop, tp1Idr: tp1, tp2Idr: tp2, lots, estimatedMaxLossIdr: estimatedLoss, capitalIdr: capital, source: 'simulation' });
+    prices[ticker] = last;
+    allowedNumbers.push(entry, last, stop, tp1, tp2, lots, estimatedLoss, capital);
+  }
+
+  const totalCapital = plans.reduce((sum, row) => sum + row.capitalIdr, 0);
+  const totalRisk = plans.reduce((sum, row) => sum + row.estimatedMaxLossIdr, 0);
+  allowedNumbers.push(totalCapital, totalRisk, positionCount);
+  const question = pick(next, PORTFOLIO_QUESTIONS[intent]);
+  const missingIntent = intent === 'missing';
+
+  return {
+    id: 'ac-portfolio-' + String(index + 1).padStart(7, '0'),
+    contract_version: 'autocuan-ai-answer-v1',
+    task: 'portfolio_chat',
+    intent,
+    question,
+    context: {
+      plans,
+      prices,
+      summary: { position_count: positionCount, total_capital_idr: totalCapital, estimated_max_loss_idr: totalRisk },
+      data_note: 'Harga adalah snapshot simulasi tersimpan, bukan harga real-time.'
+    },
+    expected: {
+      allowed_numbers: allowedNumbers,
+      must_mention: intent === 'risk' ? ['risiko'] : [],
+      forbidden_phrases: FORBIDDEN,
+      require_snapshot_scope: true,
+      require_missing_data_notice: missingIntent,
+      should_not_invent_realtime_data: true,
+      style: 'gen_z_natural_professional'
+    }
+  };
+}
+
+function makeCase(index, next, stockRatio) {
+  const stock = (index % 100) < stockRatio;
+  return stock ? makeStockCase(index, next) : makePortfolioCase(index, next);
+}
+
+function writeRows(output, count, next, stockRatio) {
+  fs.mkdirSync(path.dirname(output), { recursive: true });
+  const fd = fs.openSync(output, 'w');
+  try {
+    let buffer = '';
+    for (let i = 0; i < count; i += 1) {
+      buffer += JSON.stringify(makeCase(i, next, stockRatio)) + '\n';
+      if (buffer.length >= 4 * 1024 * 1024) {
+        fs.writeSync(fd, buffer, null, 'utf8');
+        buffer = '';
+      }
+    }
+    if (buffer) fs.writeSync(fd, buffer, null, 'utf8');
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 function main() {
-  const count = boundedInt(arg('count', '500'), 500, 1, 100000);
+  const count = boundedInt(arg('count', '500'), 500, 1, 1000000);
   const seed = boundedInt(arg('seed', '20260803'), 20260803, 1, 2147483647);
+  const stockRatio = boundedInt(arg('stock-ratio', '60'), 60, 0, 100);
   const output = path.resolve(arg('output', 'tmp/ai-eval-dataset.jsonl'));
   const next = rng(seed);
-  const rows = [];
-  for (let i = 0; i < count; i += 1) rows.push(makeCase(i, next));
-  fs.mkdirSync(path.dirname(output), { recursive: true });
-  fs.writeFileSync(output, rows.map((row) => JSON.stringify(row)).join('\n') + '\n', 'utf8');
-  process.stdout.write(JSON.stringify({ success: true, count, seed, output }) + '\n');
+  writeRows(output, count, next, stockRatio);
+  process.stdout.write(JSON.stringify({ success: true, count, seed, stock_ratio_pct: stockRatio, portfolio_ratio_pct: 100 - stockRatio, output }) + '\n');
 }
 
 if (require.main === module) main();
 
-module.exports = { rng, idxRound, makeCase };
+module.exports = { rng, idxRound, makeStockCase, makePortfolioCase, makeCase, writeRows };
