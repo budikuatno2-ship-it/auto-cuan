@@ -30,19 +30,15 @@ window.FCA_STOCKS = {
     append('/security-admin-runtime.js?v=20260729-security-admin-v1', 'data-security-admin-loader', function () {
       append('/admin-tools-runtime.js?v=20260731-admin-tools-v1', 'data-admin-tools-loader');
     });
-    // Floating mobile navigation. Independent of Pattern: it mirrors whatever
-    // #mainNav currently exposes, so it never gates or unlocks a destination.
-    append('/mobile-nav.js?v=20260802-mobile-nav-v2', 'data-mobile-nav-loader');
-    // Shared fullscreen chart viewer, used by both the Chart page and Pattern.
-    append('/chart-viewer.js?v=20260802-chart-viewer-v1', 'data-chart-viewer-loader');
-    // Real-device stabilization: fixes Android tap-vs-drag, replaces the oversized
-    // mobile menu card with separate floating actions, follows the visual viewport
-    // for fullscreen charts, and prevents desktop header status overlap.
-    append('/mobile-ui-runtime-v3.js?v=20260802-mobile-ui-runtime-v3', 'data-mobile-ui-runtime-v3-loader', function () {
-      // Final follow-up keeps the replacement launcher synchronized with
-      // login/logout, viewport changes, and compact fullscreen sizing.
-      append('/mobile-ui-runtime-v4.js?v=20260803-mobile-ui-runtime-v4', 'data-mobile-ui-runtime-v4-loader');
+
+    // Load the original navigation and shared chart viewer first, then one
+    // consolidated real-device stabilizer. This avoids competing runtime patches.
+    append('/mobile-nav.js?v=20260802-mobile-nav-v2', 'data-mobile-nav-loader', function () {
+      append('/chart-viewer.js?v=20260802-chart-viewer-v1', 'data-chart-viewer-loader', function () {
+        append('/mobile-ui-runtime-v5.js?v=20260803-mobile-ui-runtime-v5', 'data-mobile-ui-runtime-v5-loader');
+      });
     });
+
     append('/ui-stability-fix.js?v=20260802-ui-stability-v2', 'data-ui-stability-loader', function () {
       append('/pattern-tab-resume-guard.js?v=20260802-pattern-tab-resume-v2', 'data-pattern-tab-resume-loader', function () {
         append('/pattern-stable-runtime.js?v=20260802-pattern-stable-v5', 'data-pattern-stable-loader', function () {
