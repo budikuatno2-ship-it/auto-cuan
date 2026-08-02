@@ -14,7 +14,7 @@
     .meter{height:10px;border-radius:999px;background:#080c14;border:1px solid #202a3c;overflow:hidden;margin:14px 0 7px}.meter>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#4ed5aa,#71b9ff);transition:width .35s ease}.meter-label{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--muted)}
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}.metric{background:#0b101a;border:1px solid #20293a;border-radius:13px;padding:11px}.metric b{display:block;font-size:17px;line-height:1.1}.metric span{display:block;font-size:10px;color:var(--muted);margin-top:5px}
     .config{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;font-size:12px}.config dt{color:var(--muted)}.config dd{margin:0;text-align:right;overflow-wrap:anywhere}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions button{border:0;border-radius:14px;min-height:48px;font:inherit;font-weight:750;cursor:pointer}.primary{background:var(--green);color:#04251a}.pause{background:#2a2415;color:var(--amber);border:1px solid #5e4d22!important}.stop{grid-column:1/-1;background:#2b141a;color:var(--red);border:1px solid #5c2530!important}.actions button:disabled{opacity:.42;cursor:not-allowed}.note{font-size:11px;line-height:1.55;color:var(--muted);margin-top:12px}.error{display:none;color:#ff9aaa;background:#2b1118;border:1px solid #5d2631;border-radius:13px;padding:11px;font-size:12px;line-height:1.5;margin-top:12px}.error.show{display:block}.heartbeat{font-size:11px;color:var(--muted);margin-top:10px}.loading{text-align:center;padding:20px;color:var(--muted);font-size:13px}
-    @media(min-width:620px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.actions{grid-template-columns:1fr 1fr 1fr}.stop{grid-column:auto}}
+    @media(min-width:620px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.actions{grid-template-columns:1fr 1fr 1fr}.stop{grid-column:auto}}
   </style>
 </head>
 <body>
@@ -32,7 +32,9 @@
       <dt>Batas request</dt><dd>30 RPM · concurrency 4</dd>
       <dt>Budget keras</dt><dd>50.000.000 token</dd>
       <dt>Dataset</dt><dd>1.000.000 kasus · 60% saham / 40% portofolio</dd>
-      <dt>Evaluasi</dt><dd>Setiap jawaban · retry sampai lolos/budget habis</dd>
+      <dt>Output jawaban</dt><dd>Maksimal 8.192 token · boleh selesai lebih pendek</dd>
+      <dt>Evaluasi</dt><dd>Setiap jawaban · maksimal 3 percobaan per kasus</dd>
+      <dt>Progres</dt><dd>Sinkron ke admin sekitar setiap 5 detik</dd>
       <dt>Penyimpanan</dt><dd>JSONL.GZ + ringkasan MD.GZ</dd>
     </dl>
   </section>
@@ -74,8 +76,10 @@
     card.innerHTML='<div class="status-row"><div><div class="status">'+esc(status)+'</div><div class="desired">Target: '+esc(run.desired_state)+' · '+esc(run.model)+'</div></div><span class="dot '+esc(dot)+'"></span></div>'+
       '<div class="meter"><span style="width:'+pct+'%"></span></div><div class="meter-label"><span>'+fmt(run.tokens_used)+' token</span><span>'+pct.toFixed(3)+'% dari 50 juta</span></div>'+
       '<div class="grid">'+
+      '<div class="metric"><b>'+fmt(run.cases_attempted)+'</b><span>percobaan provider</span></div>'+
       '<div class="metric"><b>'+fmt(run.cases_completed)+'</b><span>kasus selesai</span></div>'+
       '<div class="metric"><b>'+fmt(run.cases_passed)+'</b><span>jawaban lolos</span></div>'+
+      '<div class="metric"><b>'+fmt(run.cases_failed_eval)+'</b><span>gagal evaluasi</span></div>'+
       '<div class="metric"><b>'+fmt(run.retries)+'</b><span>retry</span></div>'+
       '<div class="metric"><b>'+fmt(run.provider_failures)+'</b><span>provider gagal</span></div></div>'+
       '<div class="heartbeat">Heartbeat VPS: '+esc(time(run.last_heartbeat_at))+' · Shard '+fmt(run.current_shard)+'</div>'+
