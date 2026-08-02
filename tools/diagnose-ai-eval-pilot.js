@@ -4,6 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const cloud = require('./run-ai-eval-cloud');
 
+const ANSWER_MAX_TOKENS = 8192;
+const JUDGE_MAX_TOKENS = 2048;
+
 function arg(name, fallback) {
   const prefix = '--' + name + '=';
   const found = process.argv.find((item) => item.startsWith(prefix));
@@ -48,13 +51,13 @@ async function diagnoseCase(testCase, config) {
     { role: 'system', content: cloud.answerSystemPrompt(testCase.task) },
     { role: 'user', content: JSON.stringify({ question: testCase.question, context: testCase.context }) }
   ];
-  const answerResponse = await providerCall(config.baseUrl, config.apiKey, config.model, answerMessages, 380);
+  const answerResponse = await providerCall(config.baseUrl, config.apiKey, config.model, answerMessages, ANSWER_MAX_TOKENS);
   const parsedAnswer = cloud.parseJsonReply(answerResponse.reply);
   const deterministic = parsedAnswer ? cloud.deterministicEvaluation(testCase, parsedAnswer) : {
     pass: false,
     score: 0,
     errors: ['answer JSON tidak valid'],
-    raw_reply: answerResponse.reply.slice(0, 1500)
+    raw_reply: answerResponse.reply.slice(0, 4000)
   };
 
   let judge = null;
@@ -63,13 +66,13 @@ async function diagnoseCase(testCase, config) {
       { role: 'system', content: cloud.judgeSystemPrompt() },
       { role: 'user', content: JSON.stringify({ question: testCase.question, context: testCase.context, expected: testCase.expected, answer: deterministic.normalized }) }
     ];
-    const judgeResponse = await providerCall(config.baseUrl, config.apiKey, config.model, judgeMessages, 220);
+    const judgeResponse = await providerCall(config.baseUrl, config.apiKey, config.model, judgeMessages, JUDGE_MAX_TOKENS);
     judge = cloud.parseJsonReply(judgeResponse.reply) || {
       pass: false,
       score: 0,
       style_score: 0,
       errors: ['judge JSON tidak valid'],
-      raw_reply: judgeResponse.reply.slice(0, 1500)
+      raw_reply: judgeResponse.reply.slice(0, 4000)
     };
   }
 
@@ -78,6 +81,8 @@ async function diagnoseCase(testCase, config) {
     task: testCase.task,
     intent: testCase.intent,
     question: testCase.question,
+    answer_max_tokens: ANSWER_MAX_TOKENS,
+    judge_max_tokens: JUDGE_MAX_TOKENS,
     provider_model_reported: answerResponse.data && answerResponse.data.model || null,
     provider_usage: answerResponse.data && answerResponse.data.usage || null,
     answer: parsedAnswer || answerResponse.reply,
@@ -100,7 +105,13 @@ async function main() {
 
   const results = [];
   for (const row of rows) results.push(await diagnoseCase(row, config));
-  process.stdout.write(JSON.stringify({ success: true, retry_count: 0, results }, null, 2) + '\n');
+  process.stdout.write(JSON.stringify({
+    success: true,
+    retry_count: 0,
+    answer_max_tokens: ANSWER_MAX_TOKENS,
+    judge_max_tokens: JUDGE_MAX_TOKENS,
+    results
+  }, null, 2) + '\n');
 }
 
 main().catch((error) => {
