@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="${AUTO_CUAN_ROOT:-/home/ubuntu/auto-cuan}"
 NODE_BIN="${NODE_BIN:-/home/ubuntu/.local/node-v22/bin/node}"
 WORK_DIR="${AI_EVAL_WORK_DIR:-/home/ubuntu/auto-cuan-ai-eval}"
-DATASET_GZ="${AI_EVAL_DATASET_GZ:-$WORK_DIR/dataset-1m.jsonl.gz}"
+DATASET_GZ="${AI_EVAL_DATASET_GZ:-$WORK_DIR/dataset-quality.jsonl.gz}"
 OUTPUT_DIR="${AI_EVAL_OUTPUT_DIR:-$WORK_DIR/output}"
 ENV_FILE="${AI_EVAL_ENV_FILE:-/home/ubuntu/auto-cuan/.env.ai-eval-once}"
 RUN_ID="${AI_EVAL_RUN_ID:-}"
@@ -34,6 +34,9 @@ set +a
 AI_EVAL_BASE_URL="${AI_EVAL_BASE_URL:-https://openagentic.id/api/v1}"
 AI_EVAL_MODEL="${AI_EVAL_MODEL:-claude-sonnet-4.6}"
 AI_EVAL_STORAGE_BUCKET="${AI_EVAL_STORAGE_BUCKET:-ai-eval-private}"
+AI_EVAL_CASE_TARGET="${AI_EVAL_CASE_TARGET:-1000000}"
+AI_EVAL_TOKEN_BUDGET="${AI_EVAL_TOKEN_BUDGET:-50000000}"
+AI_EVAL_MAX_DUPLICATE_STREAK="${AI_EVAL_MAX_DUPLICATE_STREAK:-50000}"
 RUN_OUTPUT="$OUTPUT_DIR/$RUN_ID"
 DONE_FILE="$RUN_OUTPUT/WORKER_DONE"
 
@@ -42,11 +45,12 @@ rm -f "$DONE_FILE"
 cd "$ROOT_DIR"
 
 if [ ! -f "$DATASET_GZ" ]; then
-  echo "Generating one-time 1,000,000-case compressed dataset..."
-  "$NODE_BIN" tools/generate-ai-eval-dataset.js \
-    --count=1000000 \
+  echo "Generating up to ${AI_EVAL_CASE_TARGET} unique quality-first cases..."
+  "$NODE_BIN" tools/generate-ai-eval-quality-dataset.js \
+    --count="$AI_EVAL_CASE_TARGET" \
     --stock-ratio=60 \
     --seed=20260803 \
+    --max-duplicate-streak="$AI_EVAL_MAX_DUPLICATE_STREAK" \
     --output="$DATASET_GZ"
 fi
 
@@ -78,7 +82,7 @@ export AI_EVAL_BASE_URL AI_EVAL_MODEL AI_EVAL_RUN_ID="$RUN_ID" AI_EVAL_STORAGE_B
   --index-sample-every=100 &
 UPLOADER_PID=$!
 
-"$NODE_BIN" tools/run-ai-eval-cloud.js \
+"$NODE_BIN" --require "$ROOT_DIR/tools/openagentic-response-normalizer.js" tools/run-ai-eval-cloud.js \
   --execute \
   --dataset="$FIFO" \
   --output-dir="$RUN_OUTPUT" \
@@ -89,7 +93,7 @@ UPLOADER_PID=$!
   --model="$AI_EVAL_MODEL" \
   --rpm=30 \
   --concurrency=4 \
-  --max-total-tokens=50000000 \
+  --max-total-tokens="$AI_EVAL_TOKEN_BUDGET" \
   --max-output-tokens=380 \
   --judge-mode=all \
   --judge-max-tokens=220 \
