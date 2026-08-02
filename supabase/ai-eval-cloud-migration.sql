@@ -1,4 +1,4 @@
--- Auto-Cuan cloud AI evaluation control plane.
+-- Auto-Cuan one-time cloud AI evaluation control plane.
 -- PREPARE ONLY. Do not apply automatically to production.
 -- Raw prompts and answers are stored as compressed JSONL objects; Postgres stores
 -- compact status, counters, hashes, scores, and object locations.
@@ -36,6 +36,9 @@ create table if not exists public.ai_eval_runs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create unique index if not exists ai_eval_runs_name_uidx
+  on public.ai_eval_runs (name);
 
 create table if not exists public.ai_eval_chunks (
   id bigserial primary key,
@@ -91,9 +94,17 @@ revoke all on public.ai_eval_chunks from anon, authenticated;
 revoke all on public.ai_eval_case_index from anon, authenticated;
 revoke all on sequence public.ai_eval_chunks_id_seq from anon, authenticated;
 
+-- Private object storage for compressed shards. Only the service role accesses it.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('ai-eval-private', 'ai-eval-private', false, 52428800, array['application/gzip'])
+on conflict (id) do update set
+  public = false,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 -- The VPS worker uses SUPABASE_SERVICE_ROLE_KEY and therefore bypasses RLS.
--- Phone controls must go through the existing signed-admin server endpoint; never
--- expose the service-role key or provider API key to the browser.
+-- Phone controls go through the signed-admin server endpoint. Never expose the
+-- service-role key or provider API key to the browser, database, or repository.
 
 create or replace function public.touch_ai_eval_run_updated_at()
 returns trigger
