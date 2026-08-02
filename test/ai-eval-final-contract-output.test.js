@@ -39,6 +39,38 @@ test('database snapshot descriptions normalize to snapshot scope', () => {
   assert.equal(answer.source_scope, 'snapshot');
 });
 
+test('plain small counters do not fail financial grounding', () => {
+  const result = contract.validateAnswer({
+    direct_answer: 'Ada 6 hal yang perlu dicek. Entry tetap di 112 dan target di 120.',
+    reasoning: 'Dua skenario utama tetap memakai level dari snapshot.',
+    action: 'Tunggu entry 112.',
+    invalidation: 'Batal jika level 109 ditembus.',
+    levels: { last: 114, entry_low: 112, entry_high: null, stop_loss: 109, tp1: 120, tp2: null },
+    source_scope: 'snapshot'
+  }, {
+    allowed_numbers: [109, 112, 114, 120],
+    require_snapshot_scope: true
+  });
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
+test('unsupported price percentage and lot numbers still fail grounding', () => {
+  const result = contract.validateAnswer({
+    direct_answer: 'Entry di 6, risikonya 7%, lalu tambah 8 lot.',
+    action: 'Tunggu.',
+    invalidation: 'Ikuti stop.',
+    levels: {},
+    source_scope: 'snapshot'
+  }, {
+    allowed_numbers: [109, 112, 114, 120],
+    require_snapshot_scope: true
+  });
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' | '), /6/);
+  assert.match(result.errors.join(' | '), /7/);
+  assert.match(result.errors.join(' | '), /8/);
+});
+
 test('one-time launcher uses high output caps and bounded retries', () => {
   const launcher = read('tools/run-ai-eval-once.sh');
   const bounded = read('tools/run-ai-eval-cloud-bounded.js');
