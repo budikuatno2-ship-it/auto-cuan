@@ -41,6 +41,20 @@ function buildPatchedSource() {
 
   source = replaceOnce(
     source,
+    "    const response = await providerCall(config, messages, config.maxOutputTokens);\n    promptTokens += Number(response.usage && response.usage.prompt_tokens || 0);\n    completionTokens += Number(response.usage && response.usage.completion_tokens || 0);",
+    "    const response = await providerCall(config, messages, config.maxOutputTokens);\n    promptTokens += Number(response.usage && response.usage.prompt_tokens || 0);\n    completionTokens += Number(response.usage && response.usage.completion_tokens || 0);\n    if (typeof config.progressReporter === 'function') await config.progressReporter(false, 'RUNNING');",
+    'answer request progress sync'
+  );
+
+  source = replaceOnce(
+    source,
+    "      judge = await modelJudge(config, testCase, deterministic.normalized);\n      promptTokens += Number(judge.usage && judge.usage.prompt_tokens || 0);\n      completionTokens += Number(judge.usage && judge.usage.completion_tokens || 0);",
+    "      judge = await modelJudge(config, testCase, deterministic.normalized);\n      promptTokens += Number(judge.usage && judge.usage.prompt_tokens || 0);\n      completionTokens += Number(judge.usage && judge.usage.completion_tokens || 0);\n      if (typeof config.progressReporter === 'function') await config.progressReporter(false, 'RUNNING');",
+    'judge request progress sync'
+  );
+
+  source = replaceOnce(
+    source,
     "      feedback = 'Request sebelumnya gagal: ' + response.error + '. Coba lagi dan tetap keluarkan JSON valid.';",
     "      lastFailure = { stage: 'provider', errors: [String(response.error || 'provider gagal')], feedback: String(response.error || '') };\n      feedback = 'Request sebelumnya gagal: ' + response.error + '. Coba lagi dan tetap keluarkan JSON valid.';",
     'provider rejection capture'
@@ -90,9 +104,23 @@ function buildPatchedSource() {
 
   source = replaceOnce(
     source,
+    "  await updateRunStatus(config, state, 'RUNNING');\n\n  const input = fs.createReadStream(config.dataset, 'utf8');",
+    "  await updateRunStatus(config, state, 'RUNNING');\n\n  let progressSyncChain = Promise.resolve();\n  let lastProgressSyncAt = 0;\n  config.progressReporter = function progressReporter(force, status) {\n    const shouldForce = force === true;\n    const nextStatus = status || 'RUNNING';\n    const task = progressSyncChain.then(async () => {\n      const now = Date.now();\n      if (!shouldForce && now - lastProgressSyncAt < 5000) return;\n      await updateRunStatus(config, state, nextStatus);\n      lastProgressSyncAt = Date.now();\n    });\n    progressSyncChain = task.catch((error) => {\n      state.lastError = 'Gagal sinkronisasi progres: ' + String(error && error.message || error).slice(0, 900);\n      saveState(config, state);\n    });\n    return progressSyncChain;\n  };\n\n  const input = fs.createReadStream(config.dataset, 'utf8');",
+    'live admin progress reporter'
+  );
+
+  source = replaceOnce(
+    source,
     "      if (result.budgetStop) { stopped = true; break; }\n      const errors =",
-    "      if (result.budgetStop) { stopped = true; break; }\n      if (result.exhausted) {\n        const rejection = {\n          id: testCase.id,\n          task: testCase.task,\n          intent: testCase.intent,\n          question: testCase.question,\n          attempts: result.attempts,\n          prompt_tokens: result.promptTokens,\n          completion_tokens: result.completionTokens,\n          failure: result.failure,\n          completed_at: new Date().toISOString()\n        };\n        fs.appendFileSync(path.join(config.outputDir, 'rejections.jsonl'), JSON.stringify(rejection) + '\\n', 'utf8');\n        completed.add(String(testCase.id));\n        fs.appendFileSync(config.completedFile, String(testCase.id) + '\\n', 'utf8');\n        state.casesCompleted += 1;\n        state.casesFailedEval += 1;\n        process.stdout.write(JSON.stringify({ rejected_case: testCase.id, attempts: result.attempts, failure: result.failure }) + '\\n');\n        continue;\n      }\n      const errors =",
+    "      if (result.budgetStop) { stopped = true; break; }\n      if (result.exhausted) {\n        const rejection = {\n          id: testCase.id,\n          task: testCase.task,\n          intent: testCase.intent,\n          question: testCase.question,\n          attempts: result.attempts,\n          prompt_tokens: result.promptTokens,\n          completion_tokens: result.completionTokens,\n          failure: result.failure,\n          completed_at: new Date().toISOString()\n        };\n        fs.appendFileSync(path.join(config.outputDir, 'rejections.jsonl'), JSON.stringify(rejection) + '\\n', 'utf8');\n        completed.add(String(testCase.id));\n        fs.appendFileSync(config.completedFile, String(testCase.id) + '\\n', 'utf8');\n        state.casesCompleted += 1;\n        state.casesFailedEval += 1;\n        saveState(config, state);\n        if (typeof config.progressReporter === 'function') await config.progressReporter(false, 'RUNNING');\n        process.stdout.write(JSON.stringify({ rejected_case: testCase.id, attempts: result.attempts, failure: result.failure }) + '\\n');\n        continue;\n      }\n      const errors =",
     'failed case persistence'
+  );
+
+  source = replaceOnce(
+    source,
+    "      if (state.casesCompleted % 100 === 0) await updateRunStatus(config, state, 'RUNNING');",
+    "      if (typeof config.progressReporter === 'function') await config.progressReporter(false, 'RUNNING');",
+    'successful case live progress sync'
   );
 
   return source;
