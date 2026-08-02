@@ -2,36 +2,50 @@
 
 const handleContextAI = require('../lib/context-ai-router-v6');
 const legacyAnalyze = require('../lib/analyze-legacy');
+const { hydrateContext } = require('../lib/ai-context-snapshot-store');
 
 function styleInstruction(source) {
   const focus = source === 'stock_analysis_followup'
-    ? 'Fokus pada ticker dan snapshot analisis yang terbuka.'
-    : 'Fokus pada posisi, alokasi, risiko, dan rencana yang tersimpan.';
+    ? [
+        'Fokus hanya pada ticker dan snapshot Analisis Saham yang sedang dibahas.',
+        'Boleh menilai entry, konfirmasi, invalidasi, stop loss, target, risk/reward, skenario naik/turun, serta kelemahan setup.',
+        'Jangan berubah menjadi penilaian seluruh portofolio dan jangan membuat angka baru.'
+      ]
+    : [
+        'Fokus pada Asisten AI Portofolio dan seluruh fitur portofolio:',
+        'budget-to-stock, kemampuan membeli lot, ukuran posisi, alokasi, risiko gabungan, prioritas posisi, average down, cut loss, target, alert, jurnal, disiplin, perubahan snapshot, perbandingan posisi, dan simulasi what-if.',
+        'Jangan menganalisis satu saham dari nol; gunakan posisi, rencana, harga, dan skenario yang tersedia pada konteks.'
+      ];
   return [
     'Aturan jawaban wajib:',
-    'gunakan bahasa Indonesia yang tenang, profesional, alami, dan ringkas; gunakan kata "kamu".',
-    'Jangan gunakan bestie, lo, lu, gue, bahasa influencer, analogi dramatis, atau kalimat menakut-nakuti.',
-    'Jawab langsung pada 1-2 kalimat pertama. Pertanyaan sederhana 80-180 kata; ringkasan 180-350 kata.',
-    'Maksimal tiga bagian dan lima bullet. Jangan mengulang pertanyaan, kesimpulan, atau seluruh data.',
-    'Jangan keluarkan --- atau heading kosong; hindari tabel Markdown.',
-    'Bedakan data tersimpan dari harga real-time. Jangan mengarang angka, level, indikator, berita, atau kepastian harga.',
-    'Beri satu langkah praktis, lalu berhenti.',
-    focus
+    ...focus,
+    'Gunakan bahasa Indonesia yang natural, tenang, ringkas, dan enak dibaca; gunakan kata “kamu”.',
+    'Mulai dengan jawaban langsung. Setelah itu pisahkan secara jelas: fakta/data yang dipakai, analisis atau opini, tindakan praktis, risiko/invalidation, dan data yang masih kurang.',
+    'Opini diperbolehkan dan harus berguna, tetapi jangan menyamarkan opini sebagai fakta atau kepastian.',
+    'Simulasi diperbolehkan untuk budget, lot, average down, perubahan posisi, dan skenario what-if. Semua asumsi simulasi wajib diberi label SIMULASI dan tidak boleh disebut sebagai transaksi nyata.',
+    'Jangan mengarang harga, level, indikator, berita, posisi, transaksi, probabilitas, atau kondisi real-time.',
+    'Bila pertanyaan membutuhkan berita terbaru, harga real-time, atau data luar yang tidak ada pada konteks, katakan terus terang bahwa sumber terbaru belum tersedia.',
+    'Jangan memakai bestie, bro, cuy, lo, lu, gue, bahasa influencer, analogi dramatis, janji keuntungan, atau perintah BUY/SELL mutlak.',
+    'Pertanyaan typo, pendek, ambigu, atau lanjutan harus dipahami dari konteks dan riwayat; bila tetap ambigu, jelaskan asumsi yang dipakai.',
+    'Jawab pertanyaan sederhana sekitar 80–180 kata dan analisis kompleks sekitar 180–350 kata. Hindari pengulangan dan tabel Markdown.',
+    'Beri satu sampai tiga langkah praktis, lalu berhenti.'
   ].join(' ');
 }
 
-function withResponseStyle(req) {
+async function prepareContextRequest(req) {
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
+  const source = body.source;
+  const context = await hydrateContext(req, source, body.context);
   const history = Array.isArray(body.history) ? body.history.slice(-3) : [];
-  history.push({ role: 'user', content: styleInstruction(body.source) });
-  req.body = Object.assign({}, body, { history });
+  history.push({ role: 'user', content: styleInstruction(source) });
+  req.body = Object.assign({}, body, { context, history });
   return req;
 }
 
 module.exports = async function handler(req, res) {
   const source = req && req.method === 'POST' && req.body && req.body.source;
   if (source === 'portfolio_chat' || source === 'stock_analysis_followup') {
-    return handleContextAI(withResponseStyle(req), res);
+    return handleContextAI(await prepareContextRequest(req), res);
   }
   return legacyAnalyze(req, res);
 };
