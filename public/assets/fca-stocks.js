@@ -35,7 +35,9 @@ window.FCA_STOCKS = {
     // consolidated real-device stabilizer. This avoids competing runtime patches.
     append('/mobile-nav.js?v=20260802-mobile-nav-v2', 'data-mobile-nav-loader', function () {
       append('/chart-viewer.js?v=20260802-chart-viewer-v1', 'data-chart-viewer-loader', function () {
-        append('/mobile-ui-runtime-v5.js?v=20260803-mobile-ui-runtime-v5', 'data-mobile-ui-runtime-v5-loader');
+        append('/mobile-ui-runtime-v5.js?v=20260803-mobile-ui-runtime-v5', 'data-mobile-ui-runtime-v5-loader', function () {
+          append('/mobile-ui-runtime-v6.js?v=20260803-mobile-ui-runtime-v6', 'data-mobile-ui-runtime-v6-loader');
+        });
       });
     });
 
