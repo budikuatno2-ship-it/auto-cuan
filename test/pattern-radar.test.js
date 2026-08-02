@@ -60,11 +60,28 @@ test('reliable ABCD map uses a regular line chart with close, XABCD, levels, and
   const config = ui.buildReliableChartConfig(value.candidate, value.context);
   assert.equal(config.type, 'line');
   assert.equal(config.data.labels.length, value.context.candles.length);
-  for (const label of ['Harga penutupan', 'X-A-B-C-D', 'Konfirmasi', 'Invalidasi', 'TP1', 'TP2', 'Harga terakhir', 'PRZ atas', 'PRZ bawah']) {
-    assert.ok(config.data.datasets.some(dataset => dataset.label === label), label);
+  const labels = config.data.datasets.map(dataset => dataset.label);
+  // Level datasets carry their price in the label so the legend is
+  // self-describing; match on the level name prefix, not the exact string.
+  for (const name of ['Harga penutupan', 'X-A-B-C-D', 'Konfirmasi', 'Invalidasi', 'TP1', 'TP2', 'Harga terakhir', 'PRZ ', 'PRZ bawah']) {
+    assert.ok(labels.some(label => String(label).startsWith(name)), name);
   }
   assert.ok(config.data.datasets.every(dataset => dataset.type !== 'candlestick'));
   assert.equal(config.options.scales.x.type, 'category');
+});
+
+test('generated Pattern chart scales its type and tick density to the viewport', () => {
+  const value = chartFixture();
+  const narrow = ui.buildReliableChartConfig(value.candidate, value.context, { narrow: true });
+  const wide = ui.buildReliableChartConfig(value.candidate, value.context, { narrow: false });
+  // Axis labels must stay legible after the browser downscales the PNG, so the
+  // narrow variant thins out x ticks rather than shrinking the type below 12px.
+  assert.ok(narrow.options.scales.x.ticks.font.size >= 12);
+  assert.ok(wide.options.scales.x.ticks.font.size >= narrow.options.scales.x.ticks.font.size);
+  assert.ok(narrow.options.scales.x.ticks.maxTicksLimit < wide.options.scales.x.ticks.maxTicksLimit);
+  assert.ok(narrow.options.plugins.title.font.size >= 16);
+  assert.equal(ui.levelLabel('Konfirmasi', 9300), 'Konfirmasi  9.300');
+  assert.equal(ui.levelLabel('Konfirmasi', null), 'Konfirmasi');
 });
 
 test('visible artifact cleanup removes standalone typo punctuation without altering normal prose', () => {
@@ -87,14 +104,14 @@ test('mapBounded keeps Pattern scanning at the concurrency ceiling', async () =>
   assert.deepEqual(result, [2, 4, 6, 8, 10, 12, 14]);
 });
 
-test('dashboard loads tab-resume guard before stable Pattern v3 and cache-busted Screener extension v6', () => {
+test('dashboard loads tab-resume guard before stable Pattern v5 and cache-busted Screener extension v6', () => {
   const loader = read('public/assets/fca-stocks.js');
   const guard = read('public/pattern-tab-resume-guard.js');
   const source = read('public/pattern-stable-runtime.js');
   new vm.Script(guard, { filename:'pattern-tab-resume-guard.js' });
   new vm.Script(source, { filename:'pattern-stable-runtime.js' });
-  assert.match(loader, /\/pattern-tab-resume-guard\.js\?v=20260729-pattern-tab-resume-v1/);
-  assert.match(loader, /\/pattern-stable-runtime\.js\?v=20260728-pattern-stable-v3/);
+  assert.match(loader, /\/pattern-tab-resume-guard\.js\?v=20260802-pattern-tab-resume-v2/);
+  assert.match(loader, /\/pattern-stable-runtime\.js\?v=20260802-pattern-stable-v5/);
   assert.match(loader, /\/pattern-screener-extension\.js\?v=20260728-pattern-screener-v5&rev=20260729-pattern-screener-v6/);
   assert.ok(loader.indexOf('/pattern-tab-resume-guard.js') < loader.indexOf('/pattern-stable-runtime.js'));
   assert.doesNotMatch(loader, /pattern-radar\.js/);

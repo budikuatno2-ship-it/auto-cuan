@@ -169,16 +169,18 @@ test('config supports financial/mixed overlays and a bounded PRZ fill', () => {
   const value = fixture();
   const config = PatternMap.buildQuickChartConfig(value.candidate, value.context);
   assert.equal(config.data.datasets[0].type, 'candlestick');
-  for (const label of ['X-A-B-C-D', 'Confirmation', 'Invalidation', 'TP1', 'TP2', 'Current', 'PRZ upper', 'PRZ lower']) {
-    assert.ok(config.data.datasets.some(d => d.label === label), label);
+  const labels = config.data.datasets.map(d => String(d.label));
+  // Level datasets print their price into the label, so match by name prefix.
+  for (const name of ['X-A-B-C-D', 'Konfirmasi', 'Invalidasi', 'TP1', 'TP2', 'Harga terakhir', 'PRZ ', 'PRZ bawah']) {
+    assert.ok(labels.some(label => label.startsWith(name)), name);
   }
-  const upperIndex = config.data.datasets.findIndex(d => d.label === 'PRZ upper');
-  const lowerIndex = config.data.datasets.findIndex(d => d.label === 'PRZ lower');
+  const upperIndex = labels.findIndex(label => label.startsWith('PRZ ') && label !== 'PRZ bawah');
+  const lowerIndex = labels.indexOf('PRZ bawah');
   assert.equal(lowerIndex, upperIndex + 1);
   assert.equal(config.data.datasets[upperIndex].data[0].y, value.candidate.prz.high);
   assert.equal(config.data.datasets[lowerIndex].data[0].y, value.candidate.prz.low);
   assert.ok(config.data.datasets[lowerIndex].data[0].y <= config.data.datasets[upperIndex].data[0].y);
-  assert.deepEqual(config.data.datasets[lowerIndex].fill, { target: '-1', above: 'rgba(168,85,247,.18)', below: 'rgba(168,85,247,.18)' });
+  assert.deepEqual(config.data.datasets[lowerIndex].fill, { target: '-1', above: 'rgba(168,85,247,.26)', below: 'rgba(168,85,247,.26)' });
 });
 
 test('QuickChart POST selects v4, is bounded, and allowlists public fields', async () => {
@@ -205,7 +207,7 @@ test('ticker change aborts and ignores obsolete work without a renderer failure'
   }));
   const old = manager.render(one.candidate, one.context); const current = manager.render(two.candidate, two.context);
   assert.equal(requests[0].options.signal.aborted, true); requests[1].resolve(response({}));
-  assert.deepEqual(await old, { obsolete: true }); assert.equal((await current).key, PatternMap.cacheKey(two.candidate));
+  assert.deepEqual(await old, { obsolete: true }); assert.equal((await current).key, PatternMap.cacheKey(two.candidate, PatternMap.patternImageSpec()));
 });
 
 test('object URLs are revoked on replacement, ticker reset, and Chart-page exit', () => {

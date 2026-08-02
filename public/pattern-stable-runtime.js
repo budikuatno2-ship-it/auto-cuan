@@ -10,7 +10,7 @@
       return;
     }
     if (root.__AUTOCUAN_PATTERN_STABLE__) return;
-    root.__AUTOCUAN_PATTERN_STABLE__ = '20260728-pattern-stable-v3';
+    root.__AUTOCUAN_PATTERN_STABLE__ = '20260802-pattern-stable-v5';
 
     var originalNavigate = root.navigateTo;
     var originalLogout = typeof root.logout === 'function' ? root.logout : null;
@@ -88,22 +88,35 @@
       style.id = 'patternStableStyles';
       style.textContent = [
         '#patternChartTab,#patternPageContainer{display:none!important}',
-        '.ps-shell{padding:18px;border:1px solid rgba(148,163,184,.15);border-radius:22px;background:linear-gradient(145deg,rgba(18,25,36,.98),rgba(8,14,22,.98));box-shadow:0 24px 68px rgba(0,0,0,.22)}',
-        '.ps-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}.ps-title{font-size:23px;font-weight:900;color:#f8fafc}.ps-sub{margin-top:4px;max-width:850px;font-size:12px;color:#94a3b8}.ps-actions,.ps-card-actions{display:flex;gap:8px;flex-wrap:wrap}',
-        '.ps-btn{min-height:40px;padding:9px 13px;border:1px solid rgba(52,211,153,.28);border-radius:11px;background:rgba(16,185,129,.08);color:#6ee7b7;font-size:12px;font-weight:800;cursor:pointer}.ps-btn.alt{border-color:rgba(148,163,184,.18);background:rgba(15,23,42,.58);color:#cbd5e1}.ps-btn:disabled{opacity:.5}',
-        '.ps-progress{margin-top:14px;padding:12px 14px;border:1px solid rgba(148,163,184,.12);border-radius:14px;background:rgba(2,6,23,.38)}.ps-progress-row{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#94a3b8}.ps-track{height:7px;margin-top:8px;overflow:hidden;border-radius:999px;background:#151a23}.ps-fill{height:100%;width:0;background:linear-gradient(90deg,#10b981,#22d3ee);transition:width .18s}',
-        '.ps-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:14px}.ps-card{min-width:0;padding:15px;border:1px solid rgba(148,163,184,.14);border-radius:17px;background:rgba(15,23,42,.52)}.ps-card.bullish{border-color:rgba(52,211,153,.24)}.ps-card.bearish{border-color:rgba(248,113,113,.23)}.ps-card.bilateral{border-color:rgba(96,165,250,.22)}',
-        '.ps-card-head{display:flex;justify-content:space-between;gap:12px}.ps-ticker{font-size:20px;font-weight:950;color:#f8fafc}.ps-name{margin-top:1px;font-size:12px;color:#94a3b8}.ps-badge{height:fit-content;padding:4px 8px;border:1px solid rgba(96,165,250,.25);border-radius:999px;background:rgba(59,130,246,.08);color:#93c5fd;font-size:10px;font-weight:850;white-space:nowrap}',
-        '.ps-pattern-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}.ps-pattern-chip{display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border:1px solid rgba(96,165,250,.2);border-radius:999px;background:rgba(59,130,246,.075);color:#bfdbfe;font-size:10px;font-weight:850}.ps-pattern-chip.bullish{border-color:rgba(52,211,153,.23);background:rgba(16,185,129,.08);color:#a7f3d0}.ps-pattern-chip.bearish{border-color:rgba(248,113,113,.23);background:rgba(239,68,68,.07);color:#fecaca}.ps-pattern-note{margin-top:9px;color:#7f8da3;font-size:10px;line-height:1.55}',
-        '.ps-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:13px}.ps-level{padding:8px;border:1px solid rgba(148,163,184,.10);border-radius:11px;background:rgba(2,6,23,.34)}.ps-level span{display:block;color:#64748b;font-size:9px;text-transform:uppercase}.ps-level b{display:block;margin-top:2px;color:#e5e7eb;font-size:12px;overflow-wrap:anywhere}.ps-card-actions{margin-top:12px}',
-        '.ps-map{display:none;min-height:250px;margin-top:12px;padding:10px;align-items:center;justify-content:center;overflow:hidden;border:1px solid rgba(148,163,184,.12);border-radius:13px;background:rgba(2,6,23,.44);color:#94a3b8;font-size:12px;text-align:center}.ps-map.open{display:flex}.ps-map img{width:100%;max-height:700px;object-fit:contain;border-radius:9px}.ps-empty{margin-top:14px;padding:34px 18px;border:1px dashed rgba(148,163,184,.18);border-radius:16px;background:rgba(2,6,23,.30);color:#94a3b8;text-align:center}',
-        '@media(max-width:760px){.ps-grid{grid-template-columns:1fr}.ps-levels{grid-template-columns:repeat(2,minmax(0,1fr))}.ps-shell{padding:14px}.ps-actions{width:100%}.ps-actions .ps-btn{flex:1}}'
+        '.ps-shell{padding:20px;border:1px solid var(--ac-line,rgba(148,163,184,.12));border-radius:var(--ac-radius-xl,20px);background:var(--ac-surface-1,linear-gradient(145deg,rgba(18,25,36,.98),rgba(8,14,22,.98)));box-shadow:var(--ac-shadow-2,0 24px 68px rgba(0,0,0,.22))}',
+        '.ps-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}',
+        '.ps-eyebrow{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6ee7b7}',
+        '.ps-title{margin-top:6px;font-size:24px;line-height:1.15;font-weight:800;letter-spacing:-.02em;color:#f8fafc}.ps-sub{margin-top:6px;max-width:62ch;font-size:12.5px;line-height:1.6;color:#94a3b8}.ps-actions,.ps-card-actions{display:flex;gap:8px;flex-wrap:wrap}',
+        '.ps-btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 14px;border:1px solid rgba(52,211,153,.30);border-radius:12px;background:rgba(16,185,129,.10);color:#6ee7b7;font-size:12.5px;font-weight:700;cursor:pointer;transition:background .15s ease,border-color .15s ease}.ps-btn:hover:not(:disabled){background:rgba(16,185,129,.16);border-color:rgba(52,211,153,.45)}.ps-btn.alt{border-color:rgba(148,163,184,.18);background:rgba(15,23,42,.58);color:#cbd5e1}.ps-btn.alt:hover:not(:disabled){background:rgba(30,41,59,.72)}.ps-btn:disabled{opacity:.5;cursor:not-allowed}',
+        '.ps-progress{margin-top:18px;padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:14px;background:rgba(2,6,23,.38)}.ps-progress-row{display:flex;justify-content:space-between;gap:12px;font-size:11.5px;color:#94a3b8}.ps-track{height:6px;margin-top:9px;overflow:hidden;border-radius:999px;background:#151a23}.ps-fill{height:100%;width:0;background:linear-gradient(90deg,#10b981,#22d3ee);transition:width .18s}',
+        '.ps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin-top:18px}',
+        '.ps-card{display:flex;flex-direction:column;min-width:0;padding:16px;border:1px solid rgba(148,163,184,.13);border-radius:var(--ac-radius-lg,16px);background:var(--ac-surface-2,rgba(15,23,42,.52));box-shadow:var(--ac-shadow-1,0 10px 28px rgba(0,0,0,.18));transition:border-color .15s ease,transform .15s ease}.ps-card:hover{transform:translateY(-1px)}.ps-card.bullish{border-color:rgba(52,211,153,.26)}.ps-card.bearish{border-color:rgba(248,113,113,.24)}.ps-card.bilateral{border-color:rgba(96,165,250,.24)}',
+        '.ps-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.ps-ticker{font-size:21px;line-height:1.1;font-weight:800;letter-spacing:-.01em;color:#f8fafc}.ps-name{margin-top:3px;font-size:12px;line-height:1.5;color:#94a3b8}.ps-badge{flex:0 0 auto;padding:5px 9px;border:1px solid rgba(96,165,250,.25);border-radius:999px;background:rgba(59,130,246,.08);color:#93c5fd;font-size:10px;font-weight:700;white-space:nowrap}',
+        '.ps-pattern-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}.ps-pattern-chip{display:inline-flex;align-items:center;min-height:26px;padding:4px 10px;border:1px solid rgba(96,165,250,.20);border-radius:999px;background:rgba(59,130,246,.075);color:#bfdbfe;font-size:10.5px;font-weight:700}.ps-pattern-chip.bullish{border-color:rgba(52,211,153,.24);background:rgba(16,185,129,.08);color:#a7f3d0}.ps-pattern-chip.bearish{border-color:rgba(248,113,113,.24);background:rgba(239,68,68,.07);color:#fecaca}.ps-pattern-note{margin-top:10px;color:#8395ab;font-size:11px;line-height:1.6}',
+        '.ps-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}.ps-level{padding:9px 10px;border:1px solid rgba(148,163,184,.10);border-radius:12px;background:rgba(2,6,23,.34)}.ps-level span{display:block;color:#7c8ba1;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.ps-level b{display:block;margin-top:3px;color:#e8edf5;font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ps-card-actions{margin-top:auto;padding-top:14px}',
+        // Scroll rather than clip: a tall generated image must stay fully reachable
+        // on a phone instead of being cut off by the frame.
+        '.ps-map{position:relative;display:none;margin-top:12px;padding:10px;overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(148,163,184,.12);border-radius:14px;background:rgba(2,6,23,.44);color:#94a3b8;font-size:12px;text-align:center}.ps-map.open{display:block}',
+        '.ps-map img{display:block;width:100%;height:auto;border-radius:10px;background:#111827}',
+        '.ps-map-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}',
+        '.ps-map-tool{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 13px;border:1px solid rgba(148,163,184,.18);border-radius:11px;background:rgba(15,23,42,.66);color:#cbd5e1;font-size:11.5px;font-weight:700;text-decoration:none;cursor:pointer}.ps-map-tool:hover{border-color:rgba(52,211,153,.40);color:#6ee7b7}',
+        '@media(max-width:520px){.ps-map-tools .ps-map-tool{flex:1 1 0}}',
+        '.ps-empty{margin-top:18px;padding:36px 18px;border:1px dashed rgba(148,163,184,.18);border-radius:16px;background:rgba(2,6,23,.30);color:#94a3b8;font-size:12.5px;line-height:1.6;text-align:center}',
+        '@media(max-width:760px){.ps-grid{grid-template-columns:1fr;gap:12px}.ps-shell{padding:16px;border-radius:18px}.ps-title{font-size:21px}.ps-actions{width:100%}.ps-actions .ps-btn{flex:1 1 0}.ps-card-actions .ps-btn{flex:1 1 0}}',
+        // Below 420px a 2-up level grid squeezes prices onto two lines. One row
+        // per level keeps every number readable on the smallest common phones.
+        '@media(max-width:420px){.ps-levels{grid-template-columns:1fr;gap:6px}.ps-level{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:8px 11px}.ps-level span{font-size:10px}.ps-level b{margin-top:0;text-align:right}}'
       ].join('');
       doc.head.appendChild(style);
     }
 
     function pageHtml() {
-      return '<section class="ps-shell"><div class="ps-head"><div><h2 class="ps-title">Pattern Radar</h2><p class="ps-sub">Hanya menampilkan saham yang benar-benar memiliki ABCD atau pola chart konservatif T-1. Label setup Screener hanya menjadi informasi tambahan, bukan kartu pattern tersendiri.</p></div><div class="ps-actions"><button id="psRefresh" class="ps-btn">Scan Ulang</button><button id="psTechnical" class="ps-btn alt">Buka Chart</button></div></div><div class="ps-progress"><div class="ps-progress-row"><span id="psStatus">Siap memindai.</span><span id="psCount">0 saham pattern</span></div><div class="ps-track"><div id="psFill" class="ps-fill"></div></div></div><div id="psGrid" class="ps-grid"></div><div id="psEmpty" class="ps-empty">Belum ada hasil scan Pattern hari ini.</div></section>';
+      return '<section class="ps-shell"><div class="ps-head"><div><p class="ps-eyebrow">Analisis Teknikal</p><h2 class="ps-title">Pattern Radar</h2><p class="ps-sub">Hanya menampilkan saham yang benar-benar memiliki ABCD atau pola chart konservatif T-1. Label setup Screener hanya menjadi informasi tambahan, bukan kartu pattern tersendiri.</p></div><div class="ps-actions"><button id="psRefresh" class="ps-btn">Scan Ulang</button><button id="psTechnical" class="ps-btn alt">Buka Chart</button></div></div><div class="ps-progress"><div class="ps-progress-row"><span id="psStatus">Siap memindai.</span><span id="psCount">0 saham pattern</span></div><div class="ps-track"><div id="psFill" class="ps-fill"></div></div></div><div id="psGrid" class="ps-grid"></div><div id="psEmpty" class="ps-empty">Belum ada hasil scan Pattern hari ini.</div></section>';
     }
     function place(node) {
       var screen = doc.getElementById('dashboardScreen');
@@ -113,13 +126,34 @@
       else if (footer && node.nextSibling !== footer) screen.insertBefore(node, footer);
       return node;
     }
+    // Visibility is three attributes, not one. `applyPremiumAccessUi` in
+    // index.html used to set `hidden` + `aria-hidden` + `inert` on this page
+    // (it was tagged `data-premium-page`) while only `hidden` was ever cleared,
+    // which left Pattern rendered but completely dead to touch. The page is no
+    // longer premium-tagged — its access is owned by the stricter signed-admin
+    // gate below — and every transition now moves all three together, which also
+    // heals a node left inert by a cached older build.
+    function setPageVisible(node, visible) {
+      if (!node) return node;
+      node.classList.toggle('hidden', !visible);
+      if (visible) {
+        node.removeAttribute('aria-hidden');
+        if ('inert' in node) node.inert = false;
+        else node.removeAttribute('inert');
+      } else {
+        node.setAttribute('aria-hidden', 'true');
+        if ('inert' in node) node.inert = true;
+        else node.setAttribute('inert', '');
+      }
+      return node;
+    }
+
     function page() {
       var node = doc.getElementById('page-pattern');
       if (!node) {
         node = doc.createElement('div');
         node.id = 'page-pattern';
         node.className = 'page-content hidden flex-1 max-w-[1200px] w-full mx-auto px-3 sm:px-5 py-4';
-        node.setAttribute('data-premium-page', 'true');
         node.innerHTML = pageHtml();
         place(node);
         doc.getElementById('psRefresh').onclick = function () { clearCache(); state.cacheHydrated = true; scan(true); };
@@ -127,6 +161,8 @@
         node.addEventListener('click', function (event) {
           var mapButton = event.target.closest('[data-ps-map]');
           if (mapButton) draw(mapButton.getAttribute('data-ps-map'), mapButton);
+          var zoomButton = event.target.closest('[data-ps-zoom]');
+          if (zoomButton) expand(zoomButton.getAttribute('data-ps-zoom'));
           var chartButton = event.target.closest('[data-ps-chart]');
           if (chartButton) openChart(chartButton.getAttribute('data-ps-chart'));
         });
@@ -163,11 +199,11 @@
       if (state.allowed) ensureNav(); else { removeNav(); hide(); }
       return state.allowed;
     }
-    function hide() { var node = doc.getElementById('page-pattern'); if (node) node.classList.add('hidden'); }
+    function hide() { setPageVisible(doc.getElementById('page-pattern'), false); }
     function show() {
       originalNavigate('chart');
       doc.querySelectorAll('.page-content').forEach(function (node) { node.classList.add('hidden'); });
-      page().classList.remove('hidden');
+      setPageVisible(page(), true);
       doc.querySelectorAll('.nav-btn[data-page]').forEach(function (button) { button.classList.toggle('active', button.getAttribute('data-page') === 'pattern'); });
       try { root.history.replaceState({}, '', '/pattern'); } catch (_) {}
       if (typeof root.closeSidebar === 'function') root.closeSidebar();
@@ -176,7 +212,7 @@
 
     function clearImages() {
       Object.keys(state.controllers).forEach(function (key) { try { state.controllers[key].abort(); } catch (_) {} });
-      Object.keys(state.urls).forEach(function (key) { try { root.URL.revokeObjectURL(state.urls[key]); } catch (_) {} });
+      Object.keys(state.urls).forEach(function (key) { try { root.URL.revokeObjectURL(state.urls[key].url); } catch (_) {} });
       state.controllers = {}; state.urls = {};
     }
     function progress(done, total, overrideText) {
@@ -298,7 +334,8 @@
       }
       return result;
     }
-    function buildClassicConfig(row) {
+    function buildClassicConfig(row, presentation) {
+      var look = Ui.chartPresentation(presentation);
       var candles = row.context && Array.isArray(row.context.candles) ? row.context.candles.slice(-90) : [];
       if (candles.length < 5) return null;
       var labels = candles.map(function (c) { return c.time || c.date || ''; });
@@ -335,38 +372,114 @@
       return {
         type:'line',
         data:{ labels:labels, datasets:[
-          { label:'Harga penutupan', data:close, borderColor:'#94a3b8', backgroundColor:'rgba(148,163,184,.08)', borderWidth:2, pointRadius:0, tension:.12, fill:true },
-          { label:'Titik pembentuk pola', data:guide, borderColor:'#38bdf8', backgroundColor:'#38bdf8', borderWidth:3, pointRadius:6, pointBorderWidth:2, pointBorderColor:'#082f49', spanGaps:true, tension:0 }
+          { label:'Harga penutupan', data:close, borderColor:'#b6c2d3', backgroundColor:'rgba(148,163,184,.10)', borderWidth:2.4, pointRadius:0, tension:.12, fill:true },
+          { label:'Titik pembentuk pola', data:guide, borderColor:'#38bdf8', backgroundColor:'#38bdf8', borderWidth:3.2, pointRadius:look.point, pointBorderWidth:2, pointBorderColor:'#082f49', spanGaps:true, tension:0 }
         ]},
-        options:{ responsive:false, animation:false, interaction:{mode:'index',intersect:false}, layout:{padding:{top:8,right:18,bottom:8,left:8}}, plugins:{ title:{display:true,text:String(primary.label || 'Chart Pattern')+' · '+row.ticker+' · T-1 '+row.dataDate,color:'#f8fafc',font:{size:18,weight:'bold'},padding:{bottom:14}}, subtitle:{display:!!primary.reason,text:String(primary.reason || ''),color:'#94a3b8',font:{size:11}}, legend:{display:true,position:'top',labels:{color:'#cbd5e1',boxWidth:18,boxHeight:3,padding:12,font:{size:11}}}}, scales:{x:{type:'category',ticks:{color:'#8190a5',maxTicksLimit:12,maxRotation:0,autoSkip:true,font:{size:10}},grid:{color:'rgba(148,163,184,.08)'},border:{color:'rgba(148,163,184,.18)'}},y:{ticks:{color:'#8190a5',font:{size:10}},grid:{color:'rgba(148,163,184,.08)'},border:{color:'rgba(148,163,184,.18)'}}}}
+        options:{ responsive:false, animation:false, interaction:{mode:'index',intersect:false}, layout:{padding:{top:10,right:20,bottom:10,left:10}}, plugins:{ title:{display:true,text:String(primary.label || 'Chart Pattern')+' · '+row.ticker+' · T-1 '+row.dataDate,color:'#f8fafc',font:{size:look.title,weight:'bold'},padding:{bottom:look.narrow?10:16}}, subtitle:{display:!!primary.reason,text:String(primary.reason || ''),color:'#a3b1c6',font:{size:look.subtitle}}, legend:{display:true,position:'top',labels:{color:'#d7e0ec',boxWidth:look.narrow?14:20,boxHeight:3,padding:look.narrow?8:12,font:{size:look.legend}}}}, scales:{x:{type:'category',ticks:{color:'#a3b1c6',maxTicksLimit:look.maxTicks,maxRotation:0,autoSkip:true,font:{size:look.tick}},grid:{color:'rgba(148,163,184,.10)'},border:{color:'rgba(148,163,184,.22)'}},y:{ticks:{color:'#a3b1c6',font:{size:look.tick}},grid:{color:'rgba(148,163,184,.10)'},border:{color:'rgba(148,163,184,.22)'}}}}
       };
+    }
+    function imageHtml(ticker, dataDate, url, spec) {
+      return '<img src="' + url + '" width="' + spec.width + '" height="' + spec.height + '" decoding="async" ' +
+        'alt="Visual pattern ' + esc(ticker) + ' data T-1 ' + esc(dataDate || '') + '">';
+    }
+    function saveName(ticker) {
+      var stamp = jakartaDateKey().replace(/-/g, '');
+      return 'auto-cuan-' + String(ticker || 'PATTERN').toUpperCase() + '-pattern-' + stamp + '-WIB.png';
+    }
+    // Downloads the exact blob already rendered, so the saved file keeps the full
+    // devicePixelRatio-2 bitmap instead of the downscaled on-screen copy.
+    function mapTools(ticker, url) {
+      return '<div class="ps-map-tools">' +
+        '<button type="button" class="ps-map-tool" data-ps-zoom="' + esc(ticker) + '">Perbesar</button>' +
+        '<a class="ps-map-tool ps-map-save" download="' + esc(saveName(ticker)) + '" href="' + url + '">Simpan PNG</a>' +
+        '</div>';
     }
     async function draw(ticker, button) {
       var row = state.rows.find(function (item) { return item.ticker === ticker; });
       var box = doc.getElementById('psMap-' + ticker);
       if (!row || !box) return;
       box.classList.add('open');
-      if (state.urls[ticker]) { box.innerHTML = '<img src="' + state.urls[ticker] + '" alt="Pattern ' + esc(ticker) + '">'; return; }
+      // Resolution is chosen from the viewport: a phone gets a narrower logical
+      // canvas so labels stay readable after downscaling, and every device gets
+      // devicePixelRatio 2 so the PNG is crisp rather than soft. A cached image
+      // rendered for a different viewport class (rotation, resize) is discarded.
+      var spec = typeof root.PatternMap.patternImageSpec === 'function'
+        ? root.PatternMap.patternImageSpec(root.innerWidth)
+        : { width:1200, height:700, devicePixelRatio:2, narrow:false };
+      var cached = state.urls[ticker];
+      if (cached && cached.spec.width === spec.width) { box.innerHTML = imageHtml(ticker, row.dataDate, cached.url, cached.spec) + mapTools(ticker, cached.url); return; }
+      if (cached) { try { root.URL.revokeObjectURL(cached.url); } catch (_) {} delete state.urls[ticker]; }
       box.textContent = 'Menyusun visual pattern…';
       if (button) button.disabled = true;
       var controller = new AbortController();
       if (state.controllers[ticker]) state.controllers[ticker].abort();
       state.controllers[ticker] = controller;
       try {
-        var config = row.candidate ? Ui.buildReliableChartConfig(row.candidate, row.context) : buildClassicConfig(row);
+        var config = row.candidate ? Ui.buildReliableChartConfig(row.candidate, row.context, spec) : buildClassicConfig(row, spec);
         if (!config) throw new Error('invalid_chart_config');
-        var response = await root.fetch('https://quickchart.io/chart', { method:'POST', signal:controller.signal, headers:{'Content-Type':'application/json','Accept':'image/png'}, body:JSON.stringify({ version:'4', width:1200, height:700, devicePixelRatio:1, format:'png', backgroundColor:'#111827', chart:config }) });
+        var response = await root.fetch('https://quickchart.io/chart', { method:'POST', signal:controller.signal, headers:{'Content-Type':'application/json','Accept':'image/png'}, body:JSON.stringify({ version:'4', width:spec.width, height:spec.height, devicePixelRatio:spec.devicePixelRatio, format:'png', backgroundColor:'#111827', chart:config }) });
         if (!response.ok) throw new Error('QuickChart HTTP ' + response.status);
         var blob = await response.blob();
         if (!blob || blob.size < 500) throw new Error('empty_chart_image');
-        state.urls[ticker] = root.URL.createObjectURL(blob);
-        box.innerHTML = '<img src="' + state.urls[ticker] + '" alt="Pattern ' + esc(ticker) + ' T-1 ' + esc(row.dataDate) + '">';
+        state.urls[ticker] = { url:root.URL.createObjectURL(blob), spec:spec };
+        box.innerHTML = imageHtml(ticker, row.dataDate, state.urls[ticker].url, spec) + mapTools(ticker, state.urls[ticker].url);
       } catch (error) {
         if (!error || error.name !== 'AbortError') box.textContent = 'Visual pattern belum dapat dimuat. Buka Chart tetap tersedia.';
       } finally {
         if (state.controllers[ticker] === controller) delete state.controllers[ticker];
         if (button) button.disabled = false;
       }
+    }
+    // Pattern geometry expressed as chart overlays, so the fullscreen viewer draws the
+    // same levels the card lists — on the real chart engine the Chart page uses.
+    function viewerPriceLines(candidate) {
+      if (!candidate) return [];
+      var lines = [
+        ['Konfirmasi', candidate.confirmation, '#22c55e'],
+        ['Invalidasi', candidate.invalidation, '#ef4444'],
+        ['TP1', candidate.tp1, '#f59e0b'],
+        ['TP2', candidate.tp2, '#fbbf24'],
+        ['PRZ atas', candidate.prz && candidate.prz.high, '#c084fc'],
+        ['PRZ bawah', candidate.prz && candidate.prz.low, '#c084fc']
+      ];
+      return lines.map(function (line) {
+        return { title:line[0], price:Number(line[1]), color:line[2], lineWidth:1, lineStyle:2 };
+      }).filter(function (line) { return Number.isFinite(line.price); });
+    }
+    function viewerMarkers(candidate) {
+      if (!candidate || !candidate.points) return [];
+      return ['X', 'A', 'B', 'C', 'D'].map(function (name) {
+        var point = candidate.points[name];
+        if (!point || !point.time) return null;
+        var below = point.priceField === 'low';
+        return {
+          time:point.time,
+          position:below ? 'belowBar' : 'aboveBar',
+          color:'#38bdf8',
+          shape:below ? 'arrowUp' : 'arrowDown',
+          text:name
+        };
+      }).filter(Boolean);
+    }
+    function expand(ticker) {
+      var row = state.rows.find(function (item) { return item.ticker === ticker; });
+      if (!row || typeof root.openChartViewer !== 'function') return;
+      var cached = state.urls[ticker];
+      var primary = (row.classicPatterns && row.classicPatterns[0]) || {};
+      var name = (row.candidate && row.candidate.name) || primary.label || 'Chart Pattern';
+      root.openChartViewer({
+        title:row.ticker + ' · ' + name,
+        subtitle:'T-1 ' + (row.dataDate || '') + ' · konfirmasi manual tetap diperlukan',
+        ticker:row.ticker,
+        candles:(row.context && Array.isArray(row.context.candles)) ? row.context.candles : [],
+        priceLines:viewerPriceLines(row.candidate),
+        markers:viewerMarkers(row.candidate),
+        // Always supplied, so the viewer still has something to show if the chart
+        // engine cannot load.
+        image:cached ? { src:cached.url, width:cached.spec.width, height:cached.spec.height,
+          alt:'Visual pattern ' + row.ticker } : null,
+        download:cached ? { href:cached.url, name:saveName(row.ticker) } : null
+      });
     }
     function openChart(ticker) {
       root.navigateTo('chart');

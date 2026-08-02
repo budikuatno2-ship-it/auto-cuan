@@ -1,6 +1,6 @@
 'use strict';
 
-const handleContextAI = require('../lib/context-ai-router-v5');
+const handleContextAI = require('../lib/context-ai-router-v6');
 const legacyAnalyze = require('../lib/analyze-legacy');
 
 function styleInstruction(source) {

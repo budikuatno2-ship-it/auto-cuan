@@ -28,11 +28,26 @@ window.FCA_STOCKS = {
     // Independent admin-only enhancement. Loading it never gates Pattern or the
     // rest of the website; its API remains protected by the signed admin session.
     append('/security-admin-runtime.js?v=20260729-security-admin-v1', 'data-security-admin-loader', function () {
-      append('/admin-tools-runtime.js?v=20260731-admin-tools-v1', 'data-admin-tools-loader');
+      append('/admin-tools-runtime.js?v=20260803-admin-tools-v2', 'data-admin-tools-loader');
     });
-    append('/ui-stability-fix.js?v=20260728-ui-stability-v1', 'data-ui-stability-loader', function () {
-      append('/pattern-tab-resume-guard.js?v=20260729-pattern-tab-resume-v1', 'data-pattern-tab-resume-loader', function () {
-        append('/pattern-stable-runtime.js?v=20260728-pattern-stable-v3', 'data-pattern-stable-loader', function () {
+
+    // Load the original navigation and shared chart viewer first, then one
+    // consolidated real-device stabilizer. This avoids competing runtime patches.
+    append('/mobile-nav.js?v=20260802-mobile-nav-v2', 'data-mobile-nav-loader', function () {
+      append('/chart-viewer.js?v=20260802-chart-viewer-v1', 'data-chart-viewer-loader', function () {
+        append('/mobile-ui-runtime-v5.js?v=20260803-mobile-ui-runtime-v5', 'data-mobile-ui-runtime-v5-loader', function () {
+          append('/mobile-ui-runtime-v6.js?v=20260803-mobile-ui-runtime-v6', 'data-mobile-ui-runtime-v6-loader');
+        });
+      });
+    });
+
+    // Dashboard presentation now exposes only the already-computed final Top 5.
+    // It does not recalculate candidates or read individual screener outputs.
+    append('/dashboard-top5-only-ui.js?v=20260803-top5-only-ui-v1', 'data-dashboard-top5-only-ui-loader');
+
+    append('/ui-stability-fix.js?v=20260802-ui-stability-v2', 'data-ui-stability-loader', function () {
+      append('/pattern-tab-resume-guard.js?v=20260802-pattern-tab-resume-v2', 'data-pattern-tab-resume-loader', function () {
+        append('/pattern-stable-runtime.js?v=20260802-pattern-stable-v5', 'data-pattern-stable-loader', function () {
           append('/pattern-screener-extension.js?v=20260728-pattern-screener-v5&rev=20260729-pattern-screener-v6', 'data-pattern-screener-extension-loader', function () {
             append('/pattern-direction-safety.js?v=20260731-pattern-direction-safety-v1', 'data-pattern-direction-safety-loader');
           });

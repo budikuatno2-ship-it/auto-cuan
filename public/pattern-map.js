@@ -10,6 +10,27 @@
   var EMPTY_MESSAGE = 'Belum ada pattern yang dapat divisualisasikan untuk saham ini.';
   var DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+  // Rendering resolution for the generated Pattern PNG.
+  //
+  // Two independent knobs decide how readable the result is on a device:
+  //   - the LOGICAL canvas size, which fixes how large the fonts look once the
+  //     image is scaled into its container. A phone downscales a 1200px canvas
+  //     by ~3.4x, so a 13px axis label lands at ~4 unreadable pixels. A narrower
+  //     logical canvas keeps the same labels legible.
+  //   - devicePixelRatio, which only multiplies the output bitmap. Pinning it to
+  //     2 gives a crisp image on retina screens without changing the layout.
+  function patternImageSpec(viewportWidth) {
+    var width = Number(viewportWidth);
+    if (!Number.isFinite(width) || width <= 0) width = 1200;
+    if (width < 640) return { width: 600, height: 480, devicePixelRatio: 2, narrow: true };
+    if (width < 1024) return { width: 900, height: 560, devicePixelRatio: 2, narrow: false };
+    return { width: 1200, height: 700, devicePixelRatio: 2, narrow: false };
+  }
+  function viewportWidth(root) {
+    var scope = root || (typeof window !== 'undefined' ? window : null);
+    return scope && Number.isFinite(Number(scope.innerWidth)) ? Number(scope.innerWidth) : 0;
+  }
+
   function finite(value) { return typeof value === 'number' && Number.isFinite(value); }
   function plain(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -100,46 +121,77 @@
     };
   }
 
-  function lineDataset(label, points, color, dash) {
+  function lineDataset(label, points, color, dash, width) {
     return { type: 'line', label: label, data: points, parsing: false, borderColor: color,
-      backgroundColor: color, borderWidth: 2, borderDash: dash || [], pointRadius: 3, fill: false };
+      backgroundColor: color, borderWidth: width || 2, borderDash: dash || [], pointRadius: 3, fill: false };
   }
   function horizontal(data, value) {
     return [{ x: data.candles[0].x, y: value }, { x: data.candles[data.candles.length - 1].x, y: value }];
   }
+  // Levels read as bare colours in a legend. Printing the price next to the name
+  // makes every annotation self-describing at a glance, on any screen size.
+  function levelLabel(name, value) {
+    if (value == null || value === '') return name;
+    var number = Number(value);
+    if (!Number.isFinite(number)) return name;
+    return name + '  ' + number.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
 
-  function buildQuickChartConfig(candidate, context) {
+  function buildQuickChartConfig(candidate, context, presentation) {
     var data = publicPatternData(candidate, context);
     if (!data) return null;
+    var narrow = Boolean(presentation && presentation.narrow);
     var legs = POINT_NAMES.map(function(name) { return { x: data.points[name].time, y: data.points[name].value }; });
     var datasets = [
       { type: 'candlestick', label: data.ticker, data: data.candles, parsing: false,
         color: { up: '#10b981', down: '#ef4444', unchanged: '#94a3b8' } },
-      lineDataset('X-A-B-C-D', legs, '#38bdf8')
+      { type: 'line', label: 'X-A-B-C-D', data: legs, parsing: false, borderColor: '#38bdf8',
+        backgroundColor: '#38bdf8', borderWidth: 3, pointRadius: narrow ? 5 : 6, pointBorderWidth: 2,
+        pointBorderColor: '#082f49', fill: false }
     ];
-    [['Confirmation', data.confirmation, '#22c55e'], ['Invalidation', data.invalidation, '#ef4444'],
-      ['TP1', data.tp1, '#f59e0b'], ['TP2', data.tp2, '#fbbf24'], ['Current', data.currentPrice, '#e2e8f0']].forEach(function(level) {
-      datasets.push(lineDataset(level[0], horizontal(data, level[1]), level[2], [6, 4]));
+    [['Konfirmasi', data.confirmation, '#22c55e'], ['Invalidasi', data.invalidation, '#ef4444'],
+      ['TP1', data.tp1, '#f59e0b'], ['TP2', data.tp2, '#fbbf24'], ['Harga terakhir', data.currentPrice, '#e2e8f0']].forEach(function(level) {
+      datasets.push(lineDataset(levelLabel(level[0], level[1]), horizontal(data, level[1]), level[2], [7, 5], 2));
     });
     // Upper precedes lower. The lower dataset fills exactly to the previous
     // dataset, producing a bounded [low, high] band instead of filling to axis.
-    datasets.push({ type: 'line', label: 'PRZ upper', data: horizontal(data, data.prz.high), parsing: false,
-      borderColor: 'rgba(168,85,247,.8)', pointRadius: 0, fill: false });
-    datasets.push({ type: 'line', label: 'PRZ lower', data: horizontal(data, data.prz.low), parsing: false,
-      borderColor: 'rgba(168,85,247,.8)', backgroundColor: 'rgba(168,85,247,.18)', pointRadius: 0,
-      fill: { target: '-1', above: 'rgba(168,85,247,.18)', below: 'rgba(168,85,247,.18)' } });
+    datasets.push({ type: 'line', label: 'PRZ ' + data.prz.low + '–' + data.prz.high, data: horizontal(data, data.prz.high), parsing: false,
+      borderColor: 'rgba(192,132,252,.95)', borderWidth: 1.6, pointRadius: 0, fill: false });
+    datasets.push({ type: 'line', label: 'PRZ bawah', data: horizontal(data, data.prz.low), parsing: false,
+      borderColor: 'rgba(192,132,252,.95)', backgroundColor: 'rgba(168,85,247,.26)', borderWidth: 1.6, pointRadius: 0,
+      fill: { target: '-1', above: 'rgba(168,85,247,.26)', below: 'rgba(168,85,247,.26)' } });
+    var axis = {
+      ticks: { color: '#a3b1c6', font: { size: narrow ? 12 : 13 } },
+      grid: { color: 'rgba(148,163,184,.10)' },
+      border: { color: 'rgba(148,163,184,.22)' }
+    };
     return { type: 'candlestick', data: { datasets: datasets }, options: { responsive: false, animation: false,
-      plugins: { title: { display: true, text: data.name + ' • ' + data.ticker + ' • T-1 ' + data.dataDate }, legend: { display: true } },
-      scales: { x: { type: 'time', time: { unit: 'day' } } } } };
+      layout: { padding: { top: 10, right: 20, bottom: 10, left: 10 } },
+      plugins: {
+        title: { display: true, text: data.name + ' • ' + data.ticker + ' • T-1 ' + data.dataDate,
+          color: '#f8fafc', font: { size: narrow ? 17 : 22, weight: 'bold' }, padding: { bottom: narrow ? 10 : 16 } },
+        legend: { display: true, position: 'top',
+          labels: { color: '#d7e0ec', boxWidth: narrow ? 14 : 20, boxHeight: 3, padding: narrow ? 8 : 12, font: { size: narrow ? 11 : 13 } } }
+      },
+      scales: {
+        x: Object.assign({ type: 'time', time: { unit: 'day' } }, axis, {
+          ticks: Object.assign({}, axis.ticks, { maxRotation: 0, autoSkip: true, maxTicksLimit: narrow ? 5 : 10 })
+        }),
+        y: axis
+      } } };
   }
 
-  function cacheKey(candidate) { return [candidate.ticker, candidate.dataDate, candidate.id, candidate.ruleVersion].map(String).join('|'); }
+  function cacheKey(candidate, spec) {
+    var size = spec ? [spec.width, spec.height, spec.devicePixelRatio].join('x') : 'default';
+    return [candidate.ticker, candidate.dataDate, candidate.id, candidate.ruleVersion, size].map(String).join('|');
+  }
   function RequestManager(fetchImpl) { this.fetchImpl = fetchImpl; this.cache = new Map(); this.active = null; }
   RequestManager.prototype.cancel = function() { if (this.active) this.active.controller.abort(); this.active = null; };
-  RequestManager.prototype.render = async function(candidate, context) {
-    var config = buildQuickChartConfig(candidate, context);
+  RequestManager.prototype.render = async function(candidate, context, options) {
+    var spec = patternImageSpec((options && options.viewportWidth) || viewportWidth(options && options.window));
+    var config = buildQuickChartConfig(candidate, context, spec);
     if (!config) return { empty: true, message: EMPTY_MESSAGE };
-    var key = cacheKey(candidate);
+    var key = cacheKey(candidate, spec);
     if (this.cache.has(key)) return this.cache.get(key);
     if (this.active && this.active.key === key) return this.active.promise;
     this.cancel();
@@ -148,14 +200,14 @@
     var self = this;
     token.promise = this.fetchImpl('https://quickchart.io/chart', { method: 'POST', signal: controller.signal,
       headers: { 'Content-Type': 'application/json', 'Accept': 'image/png' },
-      body: JSON.stringify({ version: '4', width: 1200, height: 700, devicePixelRatio: 1,
+      body: JSON.stringify({ version: '4', width: spec.width, height: spec.height, devicePixelRatio: spec.devicePixelRatio,
         format: 'png', backgroundColor: '#111827', chart: config })
     }).then(function(response) {
       if (!response.ok) throw new Error('QuickChart HTTP ' + response.status);
       return response.blob();
     }).then(function(blob) {
       if (self.active !== token) return { obsolete: true };
-      var result = { blob: blob, key: key };
+      var result = { blob: blob, key: key, spec: spec };
       self.cache.set(key, result); self.active = null; return result;
     }).catch(function(error) {
       if (self.active === token) self.active = null;
@@ -167,7 +219,8 @@
   };
 
   return { EMPTY_MESSAGE: EMPTY_MESSAGE, validateCandidate: validateCandidate, publicPatternData: publicPatternData,
-    buildQuickChartConfig: buildQuickChartConfig, cacheKey: cacheKey, RequestManager: RequestManager };
+    buildQuickChartConfig: buildQuickChartConfig, cacheKey: cacheKey, RequestManager: RequestManager,
+    patternImageSpec: patternImageSpec, levelLabel: levelLabel };
 });
 
 // Browser-only authorization gate. The legacy query/window preview switches in

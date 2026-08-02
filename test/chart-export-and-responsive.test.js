@@ -170,6 +170,39 @@ test('no hardcoded 350px container / 280px chart mismatch; height is a single re
 });
 
 // ---- 13. Mobile chart dimensions fit a 320px-wide container ----
+test('chartDims gains a fullscreen variant without disturbing existing callers', () => {
+  // Two-argument calls must behave exactly as before this variant existed.
+  assert.equal(typeof H.chartDims('page', 390).main, 'number');
+  assert.equal(typeof H.chartDims('inline', 390).main, 'number');
+
+  const tall = H.chartDims('fullscreen', 390, 844);
+  const short = H.chartDims('fullscreen', 390, 500);
+  assert.ok(tall.main > short.main, 'fullscreen height follows the viewport');
+  assert.ok(tall.main > H.chartDims('page', 390).main, 'fullscreen must beat the inline panel');
+  assert.ok(short.main >= 220, 'never collapses on a short viewport');
+  assert.ok(H.chartDims('fullscreen', 390, 0).main > 0, 'missing viewport height still yields a usable size');
+  assert.ok(H.chartDims('fullscreen', 1440, 900).rsi > H.chartDims('fullscreen', 390, 900).rsi);
+});
+
+test('the Chart page opens the shared viewer instead of a second implementation', () => {
+  assert.match(loadChartPageSrc, /Layar Penuh/);
+  assert.match(loadChartPageSrc, /openChartPageFullscreen\(\)/);
+  assert.match(html, /function openChartPageFullscreen\(\)/);
+  // The renderer accepts caller overlays so Pattern can draw its geometry on the
+  // very same engine.
+  assert.match(renderSrc, /options\.priceLines/);
+  assert.match(renderSrc, /options\.markers/);
+  assert.match(renderSrc, /candleSeries\.createPriceLine\(\{/);
+});
+
+test('the mobile Chart panel is roomier but never taller than it is wide', () => {
+  [320, 360, 390, 430].forEach(width => {
+    const dims = H.chartDims('page', width);
+    assert.ok(dims.main <= width, 'chart must not swallow a ' + width + 'px screen');
+  });
+  assert.ok(H.chartDims('page', 390).main > 270, 'mobile panel grew past the old static height');
+});
+
 test('chartDims keeps the chart within a 320px container and stays positive', () => {
   const page320 = H.chartDims('page', 320);
   const inline320 = H.chartDims('inline', 320);

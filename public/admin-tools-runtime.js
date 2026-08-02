@@ -6,7 +6,7 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
 
-  var VERSION = '20260731-admin-tools-v1';
+  var VERSION = '20260803-admin-tools-v2';
 
   function securityMissingSteps(text) {
     var value = String(text == null ? '' : text).toUpperCase();
@@ -45,6 +45,23 @@
     button.textContent = '🌐 Foreign Data';
     button.addEventListener('click', function () {
       root.location.assign('/admin-foreign.html');
+    });
+    var security = row.querySelector('[data-security-center-button]');
+    security ? row.insertBefore(button, security) : row.appendChild(button);
+    return true;
+  }
+
+  function makeAiEvalButton(root, doc) {
+    if (doc.querySelector('[data-admin-ai-eval-button]')) return true;
+    var row = buttonRow(doc);
+    if (!row) return false;
+    var button = doc.createElement('button');
+    button.type = 'button';
+    button.setAttribute('data-admin-ai-eval-button', 'true');
+    button.className = 'px-4 py-2 rounded-lg text-sm font-medium text-violet-300 border border-violet-500/30 hover:bg-violet-500/10 transition-all';
+    button.textContent = '🧪 AI Data Lab';
+    button.addEventListener('click', function () {
+      root.location.assign('/admin-ai-eval.html');
     });
     var security = row.querySelector('[data-security-center-button]');
     security ? row.insertBefore(button, security) : row.appendChild(button);
@@ -96,6 +113,7 @@
 
     function sync() {
       makeForeignButton(root, doc);
+      makeAiEvalButton(root, doc);
       enhanceSecurityGuide(doc);
     }
 

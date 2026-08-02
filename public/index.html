@@ -723,6 +723,9 @@
             button:active:not(:disabled) { transform: none !important; }
         }
     </style>
+    <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
+         win over the inline rules above without needing !important. -->
+    <link rel="stylesheet" href="/ui-theme.css?v=20260802-ui-theme-v2">
 </head>
 <body class="min-h-screen text-gray-100">
 <a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
@@ -983,7 +986,12 @@
         </div>
 
         <!-- Action Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <section class="ac-section" aria-labelledby="dashQuickAccessTitle">
+        <div class="ac-section-head">
+            <h3 id="dashQuickAccessTitle" class="ac-section-title">Akses Cepat</h3>
+            <p class="ac-section-hint">Fitur utama dalam satu ketukan</p>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <button onclick="navigateTo('analisis')" class="action-card group">
                 <div class="action-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -1020,11 +1028,16 @@
                 <p class="text-[10px] text-gray-500 mt-0.5">Posisi manual</p>
             </button>
         </div>
-
-        <div class="dash-section-note">Safety display: Hindari / AVOID / SELL / LOW_TP / Very High Risk dipisahkan dari daftar utama dan tidak ditampilkan sebagai kandidat actionable.</div>
+        <div class="dash-section-note mt-3">Safety display: Hindari / AVOID / SELL / LOW_TP / Very High Risk dipisahkan dari daftar utama dan tidak ditampilkan sebagai kandidat actionable.</div>
+        </section>
 
         <!-- Compact Top 5 + Monitor -->
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-2 items-start">
+        <section class="ac-section" aria-labelledby="dashRadarTitle">
+        <div class="ac-section-head">
+            <h3 id="dashRadarTitle" class="ac-section-title">Radar Hari Ini</h3>
+            <p class="ac-section-hint">Watchlist bukan sinyal BUY</p>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
             <section class="lg:col-span-3 panel">
                 <div class="panel-header">
                     <div>
@@ -1049,7 +1062,13 @@
                 </div>
             </aside>
         </div>
+        </section>
 
+        <section class="ac-section" aria-labelledby="dashHistoryTitle">
+        <div class="ac-section-head">
+            <h3 id="dashHistoryTitle" class="ac-section-title">Riwayat</h3>
+            <p class="ac-section-hint">Hasil Top 5 yang sudah dikunci</p>
+        </div>
         <section class="panel">
             <div class="panel-header flex-col sm:flex-row sm:items-start">
                 <div>
@@ -1066,11 +1085,12 @@
                 <div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Memuat Top 5 History...</p></div>
             </div>
         </section>
+        </section>
     </div>
 </div>
 
 <!-- ===== PAGE: ANALISIS SAHAM ===== -->
-<div id="page-analisis" class="page-content hidden flex-1 flex flex-col max-w-[1100px] w-full mx-auto px-3 sm:px-5" style="min-height:calc(100vh - 120px);">
+<div id="page-analisis" class="page-content hidden flex-1 flex flex-col max-w-[1100px] w-full mx-auto px-3 sm:px-5">
     <!-- Analisis Input -->
     <div class="py-3 border-b border-dark-600/30 flex-shrink-0">
         <div class="flex items-center gap-2">
@@ -1589,7 +1609,7 @@
 </div>
 
 <!-- ===== HIDDEN: ORIGINAL CHAT SECTION (preserved for JS compatibility) ===== -->
-<section id="aiSection" class="hidden flex-1 flex flex-col max-w-[1100px] w-full mx-auto px-3 sm:px-5" style="min-height:calc(100vh - 64px);">
+<section id="aiSection" class="hidden flex-1 flex flex-col max-w-[1100px] w-full mx-auto px-3 sm:px-5">
     <div class="flex-1 flex flex-col my-3 overflow-hidden chat-container">
 
         <!-- Chat messages area -->
@@ -3369,7 +3389,7 @@ async function renderPatternTab() {
       '<div class="flex flex-wrap gap-2"><input id="patternQuestion" disabled aria-disabled="true" class="min-w-0 flex-1 px-3 py-2 rounded-lg bg-dark-700 text-sm text-gray-500 opacity-70" placeholder="Q&A belum tersedia"><button disabled aria-disabled="true" class="px-4 py-2 rounded-lg bg-dark-600 text-gray-500 text-sm cursor-not-allowed">AI segera hadir</button></div>' +
       '<div class="text-[11px] text-gray-500">Tidak ada AI atau permintaan jaringan dari bagian ini.</div></div></div>';
     if (!_patternMapManager) _patternMapManager = new PatternMap.RequestManager(fetch.bind(window));
-    var result = await _patternMapManager.render(candidate, renderContext);
+    var result = await _patternMapManager.render(candidate, renderContext, { viewportWidth: window.innerWidth });
     var imageBox = document.getElementById('patternMapImage');
     if (!imageBox || data !== _chartPageData || result.obsolete) return;
     if (result.empty) imageBox.textContent = result.message;
@@ -3377,7 +3397,10 @@ async function renderPatternTab() {
     else {
         if (_patternImageUrl) URL.revokeObjectURL(_patternImageUrl);
         _patternImageUrl = URL.createObjectURL(result.blob);
-        imageBox.innerHTML = '<img src="' + _patternImageUrl + '" width="1200" height="700" class="w-full h-auto max-h-[700px] object-contain" alt="Pattern Map ' + escapeHtml(data.ticker) + ' tanggal T-1 ' + escapeHtml(data.actual_data_date || '') + '">';
+        // Intrinsic size comes from the render spec so the box reserves the right
+        // aspect ratio before the blob decodes (no layout shift on mobile).
+        var spec = result.spec || { width: 1200, height: 700 };
+        imageBox.innerHTML = '<img src="' + _patternImageUrl + '" width="' + spec.width + '" height="' + spec.height + '" class="w-full h-auto object-contain" alt="Pattern Map ' + escapeHtml(data.ticker) + ' tanggal T-1 ' + escapeHtml(data.actual_data_date || '') + '">';
     }
 }
 
@@ -3398,8 +3421,11 @@ async function loadChartPage() {
     var chartId = 'pagechart_' + Date.now();
     var _pd = (typeof chartDims === 'function') ? chartDims('page') : { main: 350, rsi: 60 };
     var _dlIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>';
+    var _fsIcon = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9V5a1 1 0 011-1h4M20 9V5a1 1 0 00-1-1h-4M4 15v4a1 1 0 001 1h4m11-5v4a1 1 0 01-1 1h-4"/></svg>';
     container.innerHTML = '<div class="px-4 py-3 border-b border-dark-600/30 flex flex-wrap items-center justify-between gap-2"><div class="flex items-center gap-2 min-w-0"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span><h2 class="text-sm font-semibold text-gray-200 truncate">Chart ' + ticker + '</h2><span class="text-xs text-gray-500 shrink-0">Data Historis T-1</span></div>' +
-        '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button></div>' +
+        '<div class="flex items-center gap-2 shrink-0">' +
+        '<button id="' + chartId + '_fs" onclick="openChartPageFullscreen()" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-sky-300 border border-sky-500/30 hover:bg-sky-500/10 transition" aria-label="Buka chart ' + ticker + ' layar penuh">' + _fsIcon + 'Layar Penuh</button>' +
+        '<button id="' + chartId + '_dl" onclick="downloadChartPng(\'' + chartId + '\',\'' + ticker + '\',this)" class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition" aria-label="Download chart ' + ticker + ' sebagai PNG">' + _dlIcon + 'Download PNG</button></div></div>' +
         '<div id="' + chartId + '_container" style="height:' + _pd.main + 'px;width:100%"><div class="h-full p-4 space-y-3"><div class="skeleton-card h-full flex flex-col justify-end gap-3"><div class="skeleton-line w-2/3"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-5/6"></div><p class="text-xs text-gray-500 pt-2"><span class="spinner-sm"></span>Memuat chart...</p></div></div></div>' +
         '<div id="' + chartId + '_rsi" class="border-t border-dark-600/20" style="height:' + _pd.rsi + 'px;width:100%"></div>' +
         '<div id="' + chartId + '_metrics" class="px-3 py-2 border-t border-dark-600/20 grid grid-cols-4 sm:grid-cols-8 gap-1 text-[10px]"></div>' +
@@ -3420,6 +3446,27 @@ async function loadChartPage() {
         var cont = document.getElementById(chartId + '_container');
         if (cont) cont.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 text-xs p-4 text-center">Chart gagal dimuat. Coba lagi nanti.</div>';
     }
+}
+
+// Opens the already-loaded Chart page data in the shared fullscreen viewer. Reads only
+// from _chartPageData — no refetch, so the chart data flow is untouched.
+function openChartPageFullscreen() {
+    var data = _chartPageData;
+    if (!data || !Array.isArray(data.candles) || !data.candles.length) {
+        if (typeof showToast === 'function') showToast('Muat chart terlebih dahulu sebelum membuka layar penuh.', 'warning');
+        return;
+    }
+    if (typeof openChartViewer !== 'function') {
+        if (typeof showToast === 'function') showToast('Tampilan layar penuh belum siap. Coba lagi sesaat lagi.', 'warning');
+        return;
+    }
+    openChartViewer({
+        title: 'Chart ' + (data.ticker || ''),
+        subtitle: 'Data historis T-1' + (data.actual_data_date ? ' · ' + data.actual_data_date : ''),
+        ticker: data.ticker || '',
+        candles: data.candles,
+        metrics: data.metrics || null
+    });
 }
 
 // ===== MODE SYSTEM (simplified - always Chat, intent auto-detected from message) =====
@@ -10107,13 +10154,26 @@ var _chartRegistry = (typeof window !== 'undefined' && window.__chartRegistry) ?
 if (typeof window !== 'undefined') window.__chartRegistry = _chartRegistry;
 
 // Single source of truth for chart heights (CSS px). Responsive by viewport width.
-function chartDims(variant, viewportWidth) {
+// viewportHeight is only consulted by the 'fullscreen' variant; existing two-argument
+// callers are unaffected.
+function chartDims(variant, viewportWidth, viewportHeight) {
     var w = (typeof viewportWidth === 'number' && viewportWidth > 0) ? viewportWidth
           : (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1024;
     var mobile = w < 640;
     if (variant === 'inline') return { main: mobile ? 240 : 280, rsi: 60 };
-    // Chart page (default): taller on desktop, compact on mobile portrait.
-    return { main: mobile ? 270 : 350, rsi: mobile ? 56 : 60 };
+    if (variant === 'fullscreen') {
+        // Fill the overlay: viewport minus its chrome (header ~58, metrics/legend ~86,
+        // safe-area allowance ~24), with the RSI strip taking a fixed slice.
+        var h = (typeof viewportHeight === 'number' && viewportHeight > 0) ? viewportHeight
+              : (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 768;
+        var rsi = mobile ? 72 : 90;
+        var main = Math.max(220, Math.round(h - 168 - rsi));
+        return { main: main, rsi: rsi };
+    }
+    // Chart page (default): taller on desktop, roomier on mobile than the old
+    // 270px panel — but never taller than the container is wide, so it cannot
+    // swallow a small phone screen. Fullscreen covers serious inspection.
+    return { main: mobile ? Math.min(320, Math.round(w * 0.92)) : 420, rsi: mobile ? 60 : 64 };
 }
 
 // Dispose a chart + its observers and drop it from the registry.
@@ -10187,7 +10247,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
     }
     try {
     var variant = (options && options.variant) || 'inline';
-    var dims = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0));
+    var dims = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0));
     var _observers = [];
     // Clean up any prior chart bound to this id + orphaned charts (prevents duplicate
     // observers, stale references, and exporting an older hidden chart).
@@ -10285,9 +10345,33 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
         } // end if (fibTicker)
     } catch (fibErr) { /* Fibonacci overlay is optional — fail silently */ }
 
+    // Caller-supplied overlays. Pattern uses these to draw its deterministic geometry
+    // (Konfirmasi / Invalidasi / TP1 / TP2 / PRZ) and its X-A-B-C-D pivots on the same
+    // chart engine the Chart page uses, so both views read identically.
+    var extraLines = (options && Array.isArray(options.priceLines)) ? options.priceLines : [];
+    for (var eli = 0; eli < extraLines.length; eli++) {
+        var el = extraLines[eli];
+        var elPrice = Number(el && el.price);
+        if (!Number.isFinite(elPrice)) continue;
+        try {
+            candleSeries.createPriceLine({
+                price: elPrice,
+                color: el.color || '#94a3b8',
+                lineWidth: el.lineWidth || 1,
+                lineStyle: el.lineStyle == null ? 2 : el.lineStyle,
+                axisLabelVisible: true,
+                title: String(el.title || '')
+            });
+        } catch (elErr) { /* an overlay must never break the chart */ }
+    }
+    var extraMarkers = (options && Array.isArray(options.markers)) ? options.markers : [];
+    if (extraMarkers.length && typeof candleSeries.setMarkers === 'function') {
+        try { candleSeries.setMarkers(extraMarkers); } catch (mkErr) { /* optional */ }
+    }
+
     chart.timeScale().fitContent();
     var _mainRO = observeChartResize(container, function(w) {
-        var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0));
+        var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0));
         container.style.height = d.main + 'px';
         chart.applyOptions({ width: w, height: d.main });
     });
@@ -10337,7 +10421,7 @@ async function renderLightweightChart(chartId, candles, metrics, ticker, options
 
         rsiChart.timeScale().fitContent();
         var _rsiRO = observeChartResize(rsiContainer, function(w) {
-            var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0));
+            var d = chartDims(variant, (typeof window !== 'undefined' ? window.innerWidth : 0), (typeof window !== 'undefined' ? window.innerHeight : 0));
             rsiContainer.style.height = d.rsi + 'px';
             rsiChart.applyOptions({ width: w, height: d.rsi });
         });
@@ -11548,6 +11632,6 @@ function exportDayTradePDF() {
 <script src="/admin-user-delete-enhancement.js?v=20260726-src1"></script>
 <script src="/ai-chat-renderer.js?v=20260726-src1"></script>
 <script src="/stock-analysis-ai.js?v=20260726-src1"></script>
-<script src="/pattern-map.js?v=20260727-audit2"></script>
+<script src="/pattern-map.js?v=20260802-pattern-map-v3"></script>
 </body>
 </html>
