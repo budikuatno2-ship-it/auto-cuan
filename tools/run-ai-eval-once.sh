@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT_DIR="${AUTO_CUAN_ROOT:-/home/ubuntu/auto-cuan}"
 NODE_BIN="${NODE_BIN:-/home/ubuntu/.local/node-v22/bin/node}"
 WORK_DIR="${AI_EVAL_WORK_DIR:-/home/ubuntu/auto-cuan-ai-eval}"
-DATASET_GZ="${AI_EVAL_DATASET_GZ:-$WORK_DIR/dataset-quality.jsonl.gz}"
+SOURCE_JSONL="${AI_EVAL_SOURCE_JSONL:-$WORK_DIR/context-snapshots-budi.jsonl}"
+DATASET_GZ="${AI_EVAL_DATASET_GZ:-$WORK_DIR/dataset-complete-v2.jsonl.gz}"
 OUTPUT_DIR="${AI_EVAL_OUTPUT_DIR:-$WORK_DIR/output}"
 ENV_FILE="${AI_EVAL_ENV_FILE:-/home/ubuntu/auto-cuan/.env.ai-eval-once}"
 RUN_ID="${AI_EVAL_RUN_ID:-}"
@@ -46,12 +47,19 @@ rm -f "$DONE_FILE"
 cd "$ROOT_DIR"
 
 if [ ! -f "$DATASET_GZ" ]; then
-  echo "Generating up to ${AI_EVAL_CASE_TARGET} unique quality-first cases..."
-  "$NODE_BIN" tools/generate-ai-eval-quality-dataset.js \
+  echo "Building private admin-budi snapshot source from Supabase..."
+  "$NODE_BIN" tools/build-ai-eval-snapshot-source.js \
+    --output="$SOURCE_JSONL" \
+    --limit=5000
+
+  echo "Generating up to ${AI_EVAL_CASE_TARGET} complete quality-first cases..."
+  "$NODE_BIN" tools/generate-ai-eval-complete-dataset.js \
     --count="$AI_EVAL_CASE_TARGET" \
     --stock-ratio=60 \
     --seed=20260803 \
     --max-duplicate-streak="$AI_EVAL_MAX_DUPLICATE_STREAK" \
+    --source="$SOURCE_JSONL" \
+    --require-real-stock \
     --output="$DATASET_GZ"
 fi
 
