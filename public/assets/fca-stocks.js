@@ -38,7 +38,11 @@ window.FCA_STOCKS = {
     // Real-device stabilization: fixes Android tap-vs-drag, replaces the oversized
     // mobile menu card with separate floating actions, follows the visual viewport
     // for fullscreen charts, and prevents desktop header status overlap.
-    append('/mobile-ui-runtime-v3.js?v=20260802-mobile-ui-runtime-v3', 'data-mobile-ui-runtime-v3-loader');
+    append('/mobile-ui-runtime-v3.js?v=20260802-mobile-ui-runtime-v3', 'data-mobile-ui-runtime-v3-loader', function () {
+      // Final follow-up keeps the replacement launcher synchronized with
+      // login/logout, viewport changes, and compact fullscreen sizing.
+      append('/mobile-ui-runtime-v4.js?v=20260803-mobile-ui-runtime-v4', 'data-mobile-ui-runtime-v4-loader');
+    });
     append('/ui-stability-fix.js?v=20260802-ui-stability-v2', 'data-ui-stability-loader', function () {
       append('/pattern-tab-resume-guard.js?v=20260802-pattern-tab-resume-v2', 'data-pattern-tab-resume-loader', function () {
         append('/pattern-stable-runtime.js?v=20260802-pattern-stable-v5', 'data-pattern-stable-loader', function () {
