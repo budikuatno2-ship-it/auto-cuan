@@ -20,6 +20,20 @@ function buildPatchedSource() {
 
   source = replaceOnce(
     source,
+    "    maxOutputTokens: boundedInt(arg('max-output-tokens', '380'), 380, 80, 2000),",
+    "    maxOutputTokens: boundedInt(arg('max-output-tokens', '8192'), 8192, 80, 8192),",
+    'answer output cap'
+  );
+
+  source = replaceOnce(
+    source,
+    "    judgeMaxTokens: boundedInt(arg('judge-max-tokens', '220'), 220, 80, 1000),",
+    "    judgeMaxTokens: boundedInt(arg('judge-max-tokens', '2048'), 2048, 80, 2048),",
+    'judge output cap'
+  );
+
+  source = replaceOnce(
+    source,
     "  while (config.budget.remaining() > config.maxOutputTokens + 100) {",
     "  let lastFailure = null;\n  while (config.budget.remaining() > config.maxOutputTokens + 100 && attempts < config.maxAttemptsPerCase) {",
     'bounded answer loop'
@@ -62,8 +76,8 @@ function buildPatchedSource() {
 
   source = replaceOnce(
     source,
-    "    maxOutputTokens: boundedInt(arg('max-output-tokens', '380'), 380, 80, 2000),",
-    "    maxOutputTokens: boundedInt(arg('max-output-tokens', '380'), 380, 80, 2000),\n    maxAttemptsPerCase: boundedInt(arg('max-attempts-per-case', '3'), 3, 1, 10),",
+    "    maxOutputTokens: boundedInt(arg('max-output-tokens', '8192'), 8192, 80, 8192),",
+    "    maxOutputTokens: boundedInt(arg('max-output-tokens', '8192'), 8192, 80, 8192),\n    maxAttemptsPerCase: boundedInt(arg('max-attempts-per-case', '3'), 3, 1, 10),",
     'max attempts config'
   );
 
