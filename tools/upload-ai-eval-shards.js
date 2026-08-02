@@ -52,6 +52,14 @@ async function runStatus(runId) {
   return Array.isArray(rows) && rows[0] || null;
 }
 
+async function uploadObject(config, objectPath, body) {
+  return request('/storage/v1/object/' + encodeURIComponent(config.bucket) + '/' + objectPath.split('/').map(encodeURIComponent).join('/'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/gzip', 'x-upsert': 'true' },
+    body
+  });
+}
+
 async function uploadOne(config, manifest) {
   const file = path.join(config.outputDir, manifest.file);
   if (!fs.existsSync(file)) return false;
@@ -60,11 +68,7 @@ async function uploadOne(config, manifest) {
   if (digest !== manifest.sha256) throw new Error('SHA256 shard tidak cocok: ' + manifest.file);
 
   const objectPath = config.runId + '/' + manifest.file;
-  await request('/storage/v1/object/' + encodeURIComponent(config.bucket) + '/' + objectPath.split('/').map(encodeURIComponent).join('/'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/gzip', 'x-upsert': 'true' },
-    body
-  });
+  await uploadObject(config, objectPath, body);
 
   await request('/rest/v1/ai_eval_chunks', {
     method: 'POST',
@@ -86,23 +90,26 @@ async function uploadOne(config, manifest) {
   });
 
   const rows = readShardRows(file);
-  const indexRows = rows.filter((row, index) => !row.eval_pass || index % config.sampleEvery === 0).map((row, index) => ({
-    run_id: config.runId,
-    case_id: row.id,
-    task: row.task,
-    intent: row.intent,
-    question_hash: row.question_hash,
-    object_path: objectPath,
-    row_number: index,
-    provider_attempts: row.attempts,
-    prompt_tokens: row.prompt_tokens,
-    completion_tokens: row.completion_tokens,
-    eval_pass: Boolean(row.eval_pass),
-    eval_score: Number(row.eval_score) || 0,
-    error_codes: Array.isArray(row.errors) ? row.errors.slice(0, 12) : [],
-    model: row.model,
-    completed_at: row.completed_at
-  }));
+  const indexRows = rows
+    .map((row, rowNumber) => ({ row, rowNumber }))
+    .filter((item) => !item.row.eval_pass || item.rowNumber % config.sampleEvery === 0)
+    .map((item) => ({
+      run_id: config.runId,
+      case_id: item.row.id,
+      task: item.row.task,
+      intent: item.row.intent,
+      question_hash: item.row.question_hash,
+      object_path: objectPath,
+      row_number: item.rowNumber,
+      provider_attempts: item.row.attempts,
+      prompt_tokens: item.row.prompt_tokens,
+      completion_tokens: item.row.completion_tokens,
+      eval_pass: Boolean(item.row.eval_pass),
+      eval_score: Number(item.row.eval_score) || 0,
+      error_codes: Array.isArray(item.row.errors) ? item.row.errors.slice(0, 12) : [],
+      model: item.row.model,
+      completed_at: item.row.completed_at
+    }));
   if (indexRows.length) {
     await request('/rest/v1/ai_eval_case_index', {
       method: 'POST',
@@ -111,6 +118,14 @@ async function uploadOne(config, manifest) {
     });
   }
   return true;
+}
+
+async function uploadFinalArtifacts(config) {
+  for (const name of ['summary.md.gz']) {
+    const file = path.join(config.outputDir, name);
+    if (!fs.existsSync(file)) continue;
+    await uploadObject(config, config.runId + '/' + name, fs.readFileSync(file));
+  }
 }
 
 async function main() {
@@ -147,6 +162,7 @@ async function main() {
     if ((workerDone || terminal) && idleRounds >= 2) break;
     await sleep(5000);
   }
+  await uploadFinalArtifacts(config);
   process.stdout.write(JSON.stringify({ success: true, run_id: config.runId }) + '\n');
 }
 
@@ -154,4 +170,4 @@ if (require.main === module) {
   main().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });
 }
 
-module.exports = { readJsonl, readShardRows, uploadOne };
+module.exports = { readJsonl, readShardRows, uploadOne, uploadFinalArtifacts };
