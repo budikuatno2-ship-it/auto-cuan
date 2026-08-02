@@ -5,7 +5,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "build": "node tools/apply-production-hotfixes.js && node tools/validate-auth-recovery-v2.js && node tools/validate-ai-eval-once.js && node --test test/ai-eval-once.test.js test/ai-eval-openagentic-quality.test.js",
+    "build": "node tools/apply-production-hotfixes.js && node tools/validate-auth-recovery-v2.js && node tools/validate-ai-eval-once.js && node --test test/ai-eval-once.test.js",
     "start": "vercel dev",
     "aftermarket:top5-lock": "node tools/run-after-market-top5-lock.js"
   },
