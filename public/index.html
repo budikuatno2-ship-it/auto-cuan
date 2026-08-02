@@ -723,6 +723,9 @@
             button:active:not(:disabled) { transform: none !important; }
         }
     </style>
+    <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
+         win over the inline rules above without needing !important. -->
+    <link rel="stylesheet" href="/ui-theme.css?v=20260802-ui-theme-v1">
 </head>
 <body class="min-h-screen text-gray-100">
 <a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
@@ -983,7 +986,12 @@
         </div>
 
         <!-- Action Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <section class="ac-section" aria-labelledby="dashQuickAccessTitle">
+        <div class="ac-section-head">
+            <h3 id="dashQuickAccessTitle" class="ac-section-title">Akses Cepat</h3>
+            <p class="ac-section-hint">Fitur utama dalam satu ketukan</p>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <button onclick="navigateTo('analisis')" class="action-card group">
                 <div class="action-icon">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
@@ -1020,11 +1028,16 @@
                 <p class="text-[10px] text-gray-500 mt-0.5">Posisi manual</p>
             </button>
         </div>
-
-        <div class="dash-section-note">Safety display: Hindari / AVOID / SELL / LOW_TP / Very High Risk dipisahkan dari daftar utama dan tidak ditampilkan sebagai kandidat actionable.</div>
+        <div class="dash-section-note mt-3">Safety display: Hindari / AVOID / SELL / LOW_TP / Very High Risk dipisahkan dari daftar utama dan tidak ditampilkan sebagai kandidat actionable.</div>
+        </section>
 
         <!-- Compact Top 5 + Monitor -->
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-2 items-start">
+        <section class="ac-section" aria-labelledby="dashRadarTitle">
+        <div class="ac-section-head">
+            <h3 id="dashRadarTitle" class="ac-section-title">Radar Hari Ini</h3>
+            <p class="ac-section-hint">Watchlist bukan sinyal BUY</p>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
             <section class="lg:col-span-3 panel">
                 <div class="panel-header">
                     <div>
@@ -1049,7 +1062,13 @@
                 </div>
             </aside>
         </div>
+        </section>
 
+        <section class="ac-section" aria-labelledby="dashHistoryTitle">
+        <div class="ac-section-head">
+            <h3 id="dashHistoryTitle" class="ac-section-title">Riwayat</h3>
+            <p class="ac-section-hint">Hasil Top 5 yang sudah dikunci</p>
+        </div>
         <section class="panel">
             <div class="panel-header flex-col sm:flex-row sm:items-start">
                 <div>
@@ -1065,6 +1084,7 @@
             <div id="top5HistoryList" class="space-y-2 max-h-[420px] overflow-y-auto pr-1">
                 <div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Memuat Top 5 History...</p></div>
             </div>
+        </section>
         </section>
     </div>
 </div>
@@ -3369,7 +3389,7 @@ async function renderPatternTab() {
       '<div class="flex flex-wrap gap-2"><input id="patternQuestion" disabled aria-disabled="true" class="min-w-0 flex-1 px-3 py-2 rounded-lg bg-dark-700 text-sm text-gray-500 opacity-70" placeholder="Q&A belum tersedia"><button disabled aria-disabled="true" class="px-4 py-2 rounded-lg bg-dark-600 text-gray-500 text-sm cursor-not-allowed">AI segera hadir</button></div>' +
       '<div class="text-[11px] text-gray-500">Tidak ada AI atau permintaan jaringan dari bagian ini.</div></div></div>';
     if (!_patternMapManager) _patternMapManager = new PatternMap.RequestManager(fetch.bind(window));
-    var result = await _patternMapManager.render(candidate, renderContext);
+    var result = await _patternMapManager.render(candidate, renderContext, { viewportWidth: window.innerWidth });
     var imageBox = document.getElementById('patternMapImage');
     if (!imageBox || data !== _chartPageData || result.obsolete) return;
     if (result.empty) imageBox.textContent = result.message;
@@ -3377,7 +3397,10 @@ async function renderPatternTab() {
     else {
         if (_patternImageUrl) URL.revokeObjectURL(_patternImageUrl);
         _patternImageUrl = URL.createObjectURL(result.blob);
-        imageBox.innerHTML = '<img src="' + _patternImageUrl + '" width="1200" height="700" class="w-full h-auto max-h-[700px] object-contain" alt="Pattern Map ' + escapeHtml(data.ticker) + ' tanggal T-1 ' + escapeHtml(data.actual_data_date || '') + '">';
+        // Intrinsic size comes from the render spec so the box reserves the right
+        // aspect ratio before the blob decodes (no layout shift on mobile).
+        var spec = result.spec || { width: 1200, height: 700 };
+        imageBox.innerHTML = '<img src="' + _patternImageUrl + '" width="' + spec.width + '" height="' + spec.height + '" class="w-full h-auto object-contain" alt="Pattern Map ' + escapeHtml(data.ticker) + ' tanggal T-1 ' + escapeHtml(data.actual_data_date || '') + '">';
     }
 }
 
@@ -11548,6 +11571,6 @@ function exportDayTradePDF() {
 <script src="/admin-user-delete-enhancement.js?v=20260726-src1"></script>
 <script src="/ai-chat-renderer.js?v=20260726-src1"></script>
 <script src="/stock-analysis-ai.js?v=20260726-src1"></script>
-<script src="/pattern-map.js?v=20260727-audit2"></script>
+<script src="/pattern-map.js?v=20260802-pattern-map-v3"></script>
 </body>
 </html>

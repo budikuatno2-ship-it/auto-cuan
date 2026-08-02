@@ -9,7 +9,7 @@
 
   var TICKER_RE = /^[A-Z]{3,5}$/;
   var SCAN_CONCURRENCY = 4;
-  var SCRIPT_VERSION = '20260728-ui-stability-v1';
+  var SCRIPT_VERSION = '20260802-ui-stability-v2';
 
   function normalizeTicker(value) {
     var ticker = String(value == null ? '' : value).trim().toUpperCase().replace(/\.JK$/, '');
@@ -53,11 +53,41 @@
     return Array.from({ length: count }, function () { return value; });
   }
 
-  function buildReliableChartConfig(candidate, context) {
+  function formatPrice(value) {
+    if (value == null || value === '') return null;
+    var number = Number(value);
+    return Number.isFinite(number) ? number.toLocaleString('id-ID', { maximumFractionDigits: 2 }) : null;
+  }
+
+  // Levels are only useful if the reader can tell which price each dashed line
+  // marks. Printing the value into the legend label removes that guesswork.
+  function levelLabel(name, value) {
+    var price = formatPrice(value);
+    return price == null ? name : name + '  ' + price;
+  }
+
+  // Font and stroke sizes for the generated PNG. `narrow` is the phone-sized
+  // logical canvas from PatternMap.patternImageSpec: fewer x ticks and slightly
+  // smaller type, so nothing collides once the image is scaled down.
+  function chartPresentation(presentation) {
+    var narrow = Boolean(presentation && presentation.narrow);
+    return {
+      narrow: narrow,
+      title: narrow ? 17 : 22,
+      subtitle: narrow ? 11 : 13,
+      legend: narrow ? 11 : 13,
+      tick: narrow ? 12 : 13,
+      maxTicks: narrow ? 5 : 10,
+      point: narrow ? 5 : 6
+    };
+  }
+
+  function buildReliableChartConfig(candidate, context, presentation) {
     if (!candidate || !context || !Array.isArray(context.candles) || context.candles.length < 5) return null;
     var labels = context.candles.map(function (candle) { return candle.time; });
     var close = context.candles.map(function (candle) { return Number(candle.close); });
     if (close.some(function (value) { return !Number.isFinite(value); })) return null;
+    var look = chartPresentation(presentation);
 
     var legs = repeat(null, labels.length);
     ['X', 'A', 'B', 'C', 'D'].forEach(function (name) {
@@ -70,9 +100,9 @@
       {
         label: 'Harga penutupan',
         data: close,
-        borderColor: '#94a3b8',
-        backgroundColor: 'rgba(148,163,184,.08)',
-        borderWidth: 2,
+        borderColor: '#b6c2d3',
+        backgroundColor: 'rgba(148,163,184,.10)',
+        borderWidth: 2.4,
         pointRadius: 0,
         pointHoverRadius: 3,
         tension: 0.12,
@@ -83,9 +113,9 @@
         data: legs,
         borderColor: '#38bdf8',
         backgroundColor: '#38bdf8',
-        borderWidth: 3,
-        pointRadius: 5,
-        pointHoverRadius: 7,
+        borderWidth: 3.2,
+        pointRadius: look.point,
+        pointHoverRadius: look.point + 2,
         pointBorderWidth: 2,
         pointBorderColor: '#082f49',
         spanGaps: true,
@@ -103,11 +133,11 @@
       var number = Number(level[1]);
       if (!Number.isFinite(number)) return;
       datasets.push({
-        label: level[0],
+        label: levelLabel(level[0], number),
         data: repeat(number, labels.length),
         borderColor: level[2],
         backgroundColor: level[2],
-        borderWidth: 1.5,
+        borderWidth: 2,
         borderDash: [7, 5],
         pointRadius: 0,
         fill: false
@@ -118,20 +148,20 @@
     var przLow = Number(candidate.prz && candidate.prz.low);
     if (Number.isFinite(przHigh) && Number.isFinite(przLow)) {
       datasets.push({
-        label: 'PRZ atas',
+        label: 'PRZ ' + formatPrice(przLow) + '–' + formatPrice(przHigh),
         data: repeat(przHigh, labels.length),
-        borderColor: 'rgba(168,85,247,.9)',
-        backgroundColor: 'rgba(168,85,247,.08)',
-        borderWidth: 1.4,
+        borderColor: 'rgba(192,132,252,.95)',
+        backgroundColor: 'rgba(168,85,247,.10)',
+        borderWidth: 1.8,
         pointRadius: 0,
         fill: false
       });
       datasets.push({
         label: 'PRZ bawah',
         data: repeat(przLow, labels.length),
-        borderColor: 'rgba(168,85,247,.9)',
-        backgroundColor: 'rgba(168,85,247,.18)',
-        borderWidth: 1.4,
+        borderColor: 'rgba(192,132,252,.95)',
+        backgroundColor: 'rgba(168,85,247,.26)',
+        borderWidth: 1.8,
         pointRadius: 0,
         fill: '-1'
       });
@@ -144,32 +174,32 @@
         responsive: false,
         animation: false,
         interaction: { mode: 'index', intersect: false },
-        layout: { padding: { top: 8, right: 18, bottom: 8, left: 8 } },
+        layout: { padding: { top: 10, right: 20, bottom: 10, left: 10 } },
         plugins: {
           title: {
             display: true,
             text: String(candidate.name || 'ABCD') + ' · ' + String(context.ticker || '') + ' · T-1 ' + String(context.dataDate || ''),
             color: '#f8fafc',
-            font: { size: 18, weight: 'bold' },
-            padding: { bottom: 14 }
+            font: { size: look.title, weight: 'bold' },
+            padding: { bottom: look.narrow ? 10 : 16 }
           },
           legend: {
             display: true,
             position: 'top',
-            labels: { color: '#cbd5e1', boxWidth: 18, boxHeight: 3, padding: 12, font: { size: 11 } }
+            labels: { color: '#d7e0ec', boxWidth: look.narrow ? 14 : 20, boxHeight: 3, padding: look.narrow ? 8 : 12, font: { size: look.legend } }
           }
         },
         scales: {
           x: {
             type: 'category',
-            ticks: { color: '#8190a5', maxTicksLimit: 12, maxRotation: 0, autoSkip: true, font: { size: 10 } },
-            grid: { color: 'rgba(148,163,184,.08)' },
-            border: { color: 'rgba(148,163,184,.18)' }
+            ticks: { color: '#a3b1c6', maxTicksLimit: look.maxTicks, maxRotation: 0, autoSkip: true, font: { size: look.tick } },
+            grid: { color: 'rgba(148,163,184,.10)' },
+            border: { color: 'rgba(148,163,184,.22)' }
           },
           y: {
-            ticks: { color: '#8190a5', font: { size: 10 } },
-            grid: { color: 'rgba(148,163,184,.08)' },
-            border: { color: 'rgba(148,163,184,.18)' }
+            ticks: { color: '#a3b1c6', font: { size: look.tick } },
+            grid: { color: 'rgba(148,163,184,.10)' },
+            border: { color: 'rgba(148,163,184,.22)' }
           }
         }
       }
@@ -321,6 +351,9 @@
     rowsFromPayload: rowsFromPayload,
     collectTickers: collectTickers,
     cleanVisibleArtifacts: cleanVisibleArtifacts,
+    formatPrice: formatPrice,
+    levelLabel: levelLabel,
+    chartPresentation: chartPresentation,
     buildReliableChartConfig: buildReliableChartConfig,
     mapBounded: mapBounded,
     install: install,

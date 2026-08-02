@@ -21,18 +21,54 @@ function fixture() {
   return { candidate, context: { ticker: 'BBCA', timeframe: '1D', dataDate: '2026-07-26', candles: JSON.parse(JSON.stringify(candles)) } };
 }
 
-test('QuickChart request fixes devicePixelRatio at one for an exact 1200x700 PNG', async () => {
-  const value = fixture();
+function capture() {
   let body;
   const manager = new PatternMap.RequestManager(async (url, options) => {
     assert.equal(url, 'https://quickchart.io/chart');
     body = JSON.parse(options.body);
     return { ok: true, blob: async () => ({}) };
   });
-  await manager.render(value.candidate, value.context);
+  return { manager, read: () => body };
+}
+
+test('QuickChart request renders a desktop PNG at retina scale', async () => {
+  const value = fixture();
+  const { manager, read } = capture();
+  await manager.render(value.candidate, value.context, { viewportWidth: 1440 });
+  const body = read();
   assert.equal(body.version, '4');
   assert.equal(body.width, 1200);
   assert.equal(body.height, 700);
-  assert.equal(body.devicePixelRatio, 1);
+  assert.equal(body.devicePixelRatio, 2);
   assert.equal(body.format, 'png');
+});
+
+// A phone downscales a 1200px canvas by ~3.4x, which turns 13px axis labels into
+// unreadable smudges. The narrow spec keeps the same labels legible.
+test('QuickChart request narrows the logical canvas for phone viewports', async () => {
+  const value = fixture();
+  const { manager, read } = capture();
+  await manager.render(value.candidate, value.context, { viewportWidth: 390 });
+  const body = read();
+  assert.equal(body.width, 600);
+  assert.equal(body.height, 480);
+  assert.equal(body.devicePixelRatio, 2);
+  assert.ok(body.chart.options.plugins.title.font.size >= 16);
+  assert.equal(body.chart.options.scales.x.ticks.maxTicksLimit, 5);
+});
+
+test('a cached render is not reused across viewport classes', async () => {
+  const value = fixture();
+  let calls = 0;
+  const manager = new PatternMap.RequestManager(async () => {
+    calls += 1;
+    return { ok: true, blob: async () => ({}) };
+  });
+  await manager.render(value.candidate, value.context, { viewportWidth: 1440 });
+  await manager.render(value.candidate, value.context, { viewportWidth: 390 });
+  assert.equal(calls, 2);
+  assert.notEqual(
+    PatternMap.cacheKey(value.candidate, PatternMap.patternImageSpec(1440)),
+    PatternMap.cacheKey(value.candidate, PatternMap.patternImageSpec(390))
+  );
 });

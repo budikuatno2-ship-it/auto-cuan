@@ -30,9 +30,12 @@ window.FCA_STOCKS = {
     append('/security-admin-runtime.js?v=20260729-security-admin-v1', 'data-security-admin-loader', function () {
       append('/admin-tools-runtime.js?v=20260731-admin-tools-v1', 'data-admin-tools-loader');
     });
-    append('/ui-stability-fix.js?v=20260728-ui-stability-v1', 'data-ui-stability-loader', function () {
-      append('/pattern-tab-resume-guard.js?v=20260729-pattern-tab-resume-v1', 'data-pattern-tab-resume-loader', function () {
-        append('/pattern-stable-runtime.js?v=20260728-pattern-stable-v3', 'data-pattern-stable-loader', function () {
+    // Mobile bottom navigation. Independent of Pattern: it mirrors whatever
+    // #mainNav currently exposes, so it never gates or unlocks a destination.
+    append('/mobile-nav.js?v=20260802-mobile-nav-v1', 'data-mobile-nav-loader');
+    append('/ui-stability-fix.js?v=20260802-ui-stability-v2', 'data-ui-stability-loader', function () {
+      append('/pattern-tab-resume-guard.js?v=20260802-pattern-tab-resume-v2', 'data-pattern-tab-resume-loader', function () {
+        append('/pattern-stable-runtime.js?v=20260802-pattern-stable-v4', 'data-pattern-stable-loader', function () {
           append('/pattern-screener-extension.js?v=20260728-pattern-screener-v5&rev=20260729-pattern-screener-v6', 'data-pattern-screener-extension-loader', function () {
             append('/pattern-direction-safety.js?v=20260731-pattern-direction-safety-v1', 'data-pattern-direction-safety-loader');
           });

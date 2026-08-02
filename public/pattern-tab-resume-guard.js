@@ -6,7 +6,7 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
 
-  var VERSION = '20260729-pattern-tab-resume-v1';
+  var VERSION = '20260802-pattern-tab-resume-v2';
 
   function patternPath(root) {
     var pathname = root && root.location ? String(root.location.pathname || '') : '';
@@ -61,6 +61,18 @@
     return changed;
   }
 
+  // A page can be hidden three ways at once (`hidden`, `aria-hidden`, `inert`).
+  // Clearing only the class restores a page that looks right but ignores every
+  // tap, which is exactly how Pattern failed after a mobile tab resume.
+  function revealPatternPage(page) {
+    if (!page) return false;
+    page.classList.remove('hidden');
+    page.removeAttribute('aria-hidden');
+    if ('inert' in page) page.inert = false;
+    else page.removeAttribute('inert');
+    return true;
+  }
+
   function restorePatternPage(root) {
     if (!root || !root.document || !patternPath(root)) return false;
     var gate = root.PatternMapAdminAccess;
@@ -74,7 +86,7 @@
     Array.prototype.forEach.call(doc.querySelectorAll('.page-content'), function (node) {
       node.classList.toggle('hidden', node !== page);
     });
-    page.classList.remove('hidden');
+    revealPatternPage(page);
     Array.prototype.forEach.call(doc.querySelectorAll('.nav-btn[data-page]'), function (button) {
       button.classList.toggle('active', button.getAttribute('data-page') === 'pattern');
     });
@@ -135,6 +147,7 @@
     createStableGate: createStableGate,
     normalizeLevelLabel: normalizeLevelLabel,
     normalizePatternLevels: normalizePatternLevels,
+    revealPatternPage: revealPatternPage,
     restorePatternPage: restorePatternPage,
     install: install
   };

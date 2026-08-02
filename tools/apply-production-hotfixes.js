@@ -41,6 +41,9 @@ const SYNTAX_CHECKED = [
   'public/stock-analysis-ai.js',
   'public/ui-stability-fix.js',
   'public/pattern-stable-runtime.js',
+  'public/pattern-tab-resume-guard.js',
+  'public/pattern-map.js',
+  'public/mobile-nav.js',
   'public/pattern-screener-extension.js',
   'public/assets/fca-stocks.js',
   'lib/security-guard.js',
@@ -191,8 +194,8 @@ const classicPatterns = read('lib/classic-chart-patterns.js');
 const smartSetups = read('lib/smart-setup-labels.js');
 const candlesApi = read('api/candles.js');
 assertOk(fcaLoader.includes('/security-admin-runtime.js?v=20260729-security-admin-v1'), 'Security Center runtime loader is missing.');
-assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260728-ui-stability-v1'), 'Shared UI stability runtime loader is missing.');
-assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260728-pattern-stable-v3'), 'Stable Pattern v3 runtime loader is missing.');
+assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260802-ui-stability-v2'), 'Shared UI stability runtime loader is missing.');
+assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260802-pattern-stable-v4'), 'Stable Pattern v4 runtime loader is missing.');
 assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260728-pattern-screener-v5'), 'Screener Pattern v5 extension loader is missing.');
 assertOk(fcaLoader.indexOf('/pattern-stable-runtime.js') < fcaLoader.indexOf('/pattern-screener-extension.js'), 'Screener Pattern extension must load after the stable runtime.');
 assertOk(!fcaLoader.includes('/pattern-radar.js'), 'The duplicate Pattern Radar runtime is still loaded.');
@@ -214,6 +217,34 @@ assertOk(patternExtension.includes("querySelectorAll('[data-screener-only=\"1\"]
 assertOk(patternExtension.includes("return String(value == null ? '' : value).trim() === 'Technical Chart';"), 'The dead Technical Chart control is not removed unconditionally.');
 assertOk(patternExtension.includes('isRedundantChartControl') && patternExtension.includes('isStandaloneArtifact'), 'Chart duplicate or global artifact cleanup is missing.');
 assertOk(!/sendTelegram|telegramNotifier|supabase\.from|createOrder|DAYTRADE_INTRADAY_SCORE_ENABLED/i.test(patternExtension), 'Screener Pattern extension touched a protected runtime.');
+
+// --- 10b. Pattern mobile visibility, resolution, and mobile navigation ----
+const patternMap = read('public/pattern-map.js');
+const resumeGuard = read('public/pattern-tab-resume-guard.js');
+const mobileNav = read('public/mobile-nav.js');
+const uiTheme = read('public/ui-theme.css');
+// The runtime Pattern page must never carry data-premium-page again: the
+// approval gate hid AND inerted it during its loading/unavailable states, which
+// is what made Pattern vanish or go dead to touch on mobile.
+assertOk(!/setAttribute\(\s*'data-premium-page'/.test(patternStable), 'Pattern page is premium-gated again; the mobile hide/inert race returns.');
+assertOk(patternStable.includes('function setPageVisible'), 'Pattern visibility no longer moves hidden, inert, and aria-hidden together.');
+assertOk(resumeGuard.includes('function revealPatternPage') && resumeGuard.includes('page.removeAttribute(\'aria-hidden\')'), 'Pattern resume no longer clears inert/aria-hidden.');
+assertOk(patternMap.includes('function patternImageSpec'), 'Pattern render resolution helper is missing.');
+assertOk(/devicePixelRatio:\s*2/.test(patternMap), 'Pattern PNG dropped its retina render scale.');
+assertOk(patternStable.includes('PatternMap.patternImageSpec(root.innerWidth)'), 'Pattern Radar no longer picks a viewport-aware render size.');
+assertOk(patternStable.includes('devicePixelRatio:spec.devicePixelRatio') && !patternStable.includes('devicePixelRatio:1'), 'Pattern Radar pinned its PNG back to devicePixelRatio 1.');
+assertOk(patternStable.includes('ps-map-save'), 'Pattern PNG download of the full-resolution blob is missing.');
+assertOk(fcaLoader.includes('/mobile-nav.js?v='), 'Mobile bottom navigation runtime is not loaded.');
+assertOk(mobileNav.includes('function buildNavModel') && mobileNav.includes("querySelectorAll('.nav-btn[data-page]')"), 'Mobile navigation no longer mirrors #mainNav.');
+assertOk(!/navigateTo\s*=|function navigateTo/.test(mobileNav), 'Mobile navigation must delegate to the existing buttons, never redefine navigateTo.');
+assertOk(mobileNav.includes("doc.getElementById('dashboardScreen')") && mobileNav.includes('function shellVisible'), 'Mobile navigation can leak onto the landing, blocked, or maintenance screen.');
+assertOk(!/sendTelegram|telegramNotifier|supabase|fetch\(/i.test(mobileNav), 'Mobile navigation crossed a protected boundary.');
+assertOk(index.includes('<link rel="stylesheet" href="/ui-theme.css?v='), 'Theme layer stylesheet is not linked.');
+assertOk(index.indexOf('/ui-theme.css') > index.indexOf('</style>'), 'Theme layer must load after the inline styles it overrides.');
+assertOk(uiTheme.includes('.ac-mobilenav') && uiTheme.includes('env(safe-area-inset-bottom)'), 'Mobile navigation styles or safe-area handling are missing.');
+const themeHeader = (JSON.parse(read('vercel.json')).headers || []).find(function (row) { return row.source === '/ui-theme.css'; });
+const navHeader = (JSON.parse(read('vercel.json')).headers || []).find(function (row) { return row.source === '/mobile-nav.js'; });
+assertOk(themeHeader && navHeader, 'New frontend assets lost their no-store headers.');
 
 [
   'ASCENDING_TRIANGLE','DESCENDING_TRIANGLE','SYMMETRICAL_TRIANGLE',

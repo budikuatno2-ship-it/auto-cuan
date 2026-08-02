@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const PatternMap = require('../public/pattern-map');
 
 const enabled = process.env.RUN_QUICKCHART_INTEGRATION === '1';
-test('real QuickChart v4 response is a non-empty 1200x700 PNG', { skip: !enabled }, async () => {
+test('real QuickChart v4 response is a non-empty retina-scale PNG', { skip: !enabled }, async () => {
   const candles = [20, 21, 22, 23, 24, 25, 26].map((day, index) => ({
     time: `2026-07-${day}`, open: 9000 + index * 25, high: 9150 + index * 25,
     low: 8900 + index * 25, close: 9050 + index * 25
@@ -24,12 +24,14 @@ test('real QuickChart v4 response is a non-empty 1200x700 PNG', { skip: !enabled
   const manager = new PatternMap.RequestManager(async (url, options) => {
     const response = await fetch(url, options); contentType = response.headers.get('content-type'); return response;
   });
-  const result = await manager.render(candidate, context);
+  const spec = PatternMap.patternImageSpec(1440);
+  const result = await manager.render(candidate, context, { viewportWidth: 1440 });
   assert.equal(result.error, undefined);
   assert.match(contentType || '', /^image\/png(?:;|$)/i);
   const bytes = Buffer.from(await result.blob.arrayBuffer());
   assert.ok(bytes.length > 1000);
   assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
-  assert.equal(bytes.readUInt32BE(16), 1200);
-  assert.equal(bytes.readUInt32BE(20), 700);
+  // devicePixelRatio multiplies the output bitmap: the PNG is 2x the logical size.
+  assert.equal(bytes.readUInt32BE(16), spec.width * spec.devicePixelRatio);
+  assert.equal(bytes.readUInt32BE(20), spec.height * spec.devicePixelRatio);
 });
