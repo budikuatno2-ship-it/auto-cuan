@@ -38,6 +38,7 @@ AI_EVAL_STORAGE_BUCKET="${AI_EVAL_STORAGE_BUCKET:-ai-eval-private}"
 AI_EVAL_CASE_TARGET="${AI_EVAL_CASE_TARGET:-1000000}"
 AI_EVAL_TOKEN_BUDGET="${AI_EVAL_TOKEN_BUDGET:-50000000}"
 AI_EVAL_MAX_DUPLICATE_STREAK="${AI_EVAL_MAX_DUPLICATE_STREAK:-50000}"
+AI_EVAL_MAX_ATTEMPTS_PER_CASE="${AI_EVAL_MAX_ATTEMPTS_PER_CASE:-3}"
 # Stable validation markers for the agreed defaults: --count=1000000 --max-total-tokens=50000000
 RUN_OUTPUT="$OUTPUT_DIR/$RUN_ID"
 DONE_FILE="$RUN_OUTPUT/WORKER_DONE"
@@ -91,7 +92,7 @@ export AI_EVAL_BASE_URL AI_EVAL_MODEL AI_EVAL_RUN_ID="$RUN_ID" AI_EVAL_STORAGE_B
   --index-sample-every=100 &
 UPLOADER_PID=$!
 
-"$NODE_BIN" --require "$ROOT_DIR/tools/openagentic-response-normalizer.js" tools/run-ai-eval-cloud.js \
+"$NODE_BIN" tools/run-ai-eval-cloud-bounded.js \
   --execute \
   --dataset="$FIFO" \
   --output-dir="$RUN_OUTPUT" \
@@ -103,6 +104,7 @@ UPLOADER_PID=$!
   --rpm=30 \
   --concurrency=4 \
   --max-total-tokens="$AI_EVAL_TOKEN_BUDGET" \
+  --max-attempts-per-case="$AI_EVAL_MAX_ATTEMPTS_PER_CASE" \
   --max-output-tokens=380 \
   --judge-mode=all \
   --judge-max-tokens=220 \
