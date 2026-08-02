@@ -12,24 +12,24 @@ A boundary timestamp is not proof of observation. The caller supplies a versione
 
 * `UNFILLED`: complete coverage contains no bar spanning the snapped entry. It terminates as `EXPIRED`, but return, R, costs, MFE, and MAE are null. It is never a loss.
 * `FILLED`: the first complete bar spanning the snapped entry. Fill time is that bar's end timestamp, fill price is the snapped entry, and `source_as_of` is copied from that actual bar—not the final evidence boundary.
-* `TP1_FIRST` / `SL_FIRST`: the first post-fill bar touches the snapped target or stop. If both occur in one bar, `PESSIMISTIC_SL_FIRST` applies.
-* A fill bar whose high also reaches TP1 cannot prove that TP occurred after entry and is `UNRESOLVED` with `FILL_BAR_ORDER_UNPROVEN`. A fill bar containing SL is conservatively `SL_FIRST`. No fill-bar extrema are included in excursions.
+* `TP1_FIRST` / `SL_FIRST`: the first post-fill bar touches the snapped target or stop. If both occur in one later bar, `PESSIMISTIC_SL_FIRST` applies, `ambiguity_kind` is `POST_FILL_TP_SL_SAME_BAR`, and both known bar-level TP/SL timestamps and snapped prices are preserved.
+* A fill bar whose high also reaches TP1 cannot prove that TP occurred after entry and is `UNRESOLVED` with `FILL_BAR_ENTRY_TP_ORDER_UNPROVEN`; its TP fields remain null. A fill bar containing SL is conservatively `SL_FIRST` with `FILL_BAR_ENTRY_SL`, distinct from a later both-hit bar. No fill-bar extrema are included in excursions.
 * `EXPIRED`: proved complete coverage reaches the horizon without a TP/SL touch. A filled expiration exits at the final close; an unfilled expiration has no synthetic return.
 
-MFE/MAE use only complete bars strictly after the fill bar and strictly before a TP/SL exit bar. Exit-bar extrema are excluded because they may occur after the first touch. If no such bars exist, excursions are explicitly `UNRESOLVED` with null values and `EXCURSION_ORDER_UNPROVEN` rather than invented from ambiguous OHLC ordering.
+MFE/MAE use only complete bars strictly after the fill bar and strictly before a TP/SL exit bar. Exit-bar extrema are excluded because they may occur after the first touch. The known fill price supplies a zero baseline: MFE is never negative and MAE is never positive. If zero remains an extremum, its timestamp is the fill timestamp. If no unambiguous post-fill/pre-exit bar exists, excursions are explicitly `UNRESOLVED` with null values and `EXCURSION_ORDER_UNPROVEN` rather than invented from ambiguous OHLC ordering.
 
 ## Explicit execution policy and arithmetic
 
 There are no remembered BEI defaults. The caller supplies one canonical versioned policy containing:
 
 * a versioned `ENTRY_LOW` or `ENTRY_HIGH` reference rule and provenance;
-* a versioned contiguous tier table with price bounds, tick sizes, and provenance; entry snaps up, stop down, and target up using the tier resolved at each raw level;
+* a versioned contiguous tier table with price bounds, tick sizes, and provenance; every finite boundary must lie on both adjacent tick grids, and every final snapped price is revalidated on its destination tier. Entry snaps up, stop down, and target up;
 * positive quantity, price unit, and currency, defining entry and exit notionals;
 * every fee, tax, spread, and slippage item with component, version, unit (`RETURN_FRACTION` or `CURRENCY`), side (`BUY` or `SELL`), basis (`ENTRY_NOTIONAL` or `EXIT_NOTIONAL`), value, and provenance.
 
 Currency-fixed costs are divided by declared entry notional, never price alone. Fractional buy costs apply to entry notional and fractional sell costs to exit notional. The record retains each currency amount and normalized return fraction. Gross return is `(exit - fill) / fill`; gross R divides by snapped entry-to-stop risk; total cost is the exact component sum; net return is gross less cost; and net R uses the same risk. Validation recomputes every relationship.
 
-The outcome identity binds initial digest, evaluator version, canonical full-policy hash, complete versioned horizon semantics (including evidence boundary), the coverage model version plus interval, and exact terminal evidence. For complete coverage, terminal evidence independently stores the horizon-final close, bar end, source-as-of, and bounded provenance. A materially changed policy, entry rule, tick tier, cost, execution size, horizon, bar-coverage resolution, or final close cannot collide merely by reusing a version string. `market_date` is derived with the repository's Asia/Jakarta market-date function and is cross-checked against the verified initial manifest directory.
+The outcome identity binds initial digest, evaluator version, canonical full-policy hash, complete versioned horizon semantics (including evidence boundary), the coverage model version plus interval, exact terminal evidence, and exact touch/ambiguity evidence. For complete coverage, terminal evidence independently stores the horizon-final close, bar end, source-as-of, and bounded provenance. A materially changed policy, entry rule, tick tier, cost, execution size, horizon, bar-coverage resolution, final close, or ambiguity kind cannot collide merely by reusing a version string. `market_date` is derived with the repository's Asia/Jakarta market-date function and is cross-checked against the verified initial manifest directory.
 
 ## Validation and storage safety
 
