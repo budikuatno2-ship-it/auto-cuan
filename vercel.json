@@ -150,6 +150,24 @@
       ]
     },
     {
+      "source": "/pattern-map.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/chart-viewer.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "private, no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    },
+    {
       "source": "/pattern-stable-runtime.js",
       "headers": [
         {

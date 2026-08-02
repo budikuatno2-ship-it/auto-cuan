@@ -81,24 +81,23 @@ test('the Pattern page picks up the same tokens with safe fallbacks', () => {
 // ---------------------------------------------------------------------------
 // 3. Mobile usability
 // ---------------------------------------------------------------------------
-test('the bottom nav respects the safe area and stays under the modals', () => {
-  assert.match(theme, /env\(safe-area-inset-bottom\)/);
-  assert.match(theme, /\.ac-mobilenav \{[\s\S]*?z-index: 40;/);
-  // The app's dialogs sit at 60 / 9998 / 9999; the nav and its sheet stay below.
-  assert.match(theme, /\.ac-sheet \{ position: fixed; inset: 0; z-index: 41;/);
+test('the floating launcher and its popover stay under the app modals', () => {
+  assert.match(theme, /\.ac-launcher \{[\s\S]*?z-index: 40;/);
+  assert.match(theme, /\.ac-navpanel \{ position: fixed; inset: 0; z-index: 41;/);
+  // The app's dialogs sit at 60 / 9998 / 9999; the launcher and menu stay below.
   assert.ok(html.includes('z-[9999]'), 'login modal keeps its stacking context');
 });
 
-test('fixed navigation never covers page content', () => {
-  assert.match(theme, /body\.has-mobile-nav \{ padding-bottom: calc\(var\(--ac-nav-height\)/);
-  assert.match(theme, /--ac-nav-height:/);
+test('the fullscreen viewer sits above the launcher but below nothing it should cover', () => {
+  assert.match(theme, /\.ac-viewer \{[\s\S]*?z-index: 120;/);
 });
 
-test('bar and sheet targets stay finger-sized', () => {
-  const barItem = /\.ac-mobilenav-item \{[\s\S]*?\}/.exec(theme);
-  assert.ok(barItem && /min-height: 50px/.test(barItem[0]), 'bar items need a comfortable target');
-  const sheetItem = /\.ac-sheet-item \{[\s\S]*?\}/.exec(theme);
-  assert.ok(sheetItem && /min-height: 52px/.test(sheetItem[0]), 'sheet items need a comfortable target');
+test('launcher and menu targets stay finger-sized', () => {
+  const launcher = /\.ac-launcher \{[\s\S]*?\}/.exec(theme);
+  assert.ok(launcher && /width: var\(--ac-fab-size\)/.test(launcher[0]), 'launcher needs a comfortable target');
+  assert.match(theme, /--ac-fab-size: 56px;/);
+  const item = /\.ac-navpanel-item \{[\s\S]*?\}/.exec(theme);
+  assert.ok(item && /min-height: 48px/.test(item[0]), 'menu items need a comfortable target');
 });
 
 test('reduced motion is honoured by the new components', () => {

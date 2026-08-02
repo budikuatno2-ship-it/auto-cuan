@@ -10,7 +10,7 @@
       return;
     }
     if (root.__AUTOCUAN_PATTERN_STABLE__) return;
-    root.__AUTOCUAN_PATTERN_STABLE__ = '20260802-pattern-stable-v4';
+    root.__AUTOCUAN_PATTERN_STABLE__ = '20260802-pattern-stable-v5';
 
     var originalNavigate = root.navigateTo;
     var originalLogout = typeof root.logout === 'function' ? root.logout : null;
@@ -103,7 +103,9 @@
         // on a phone instead of being cut off by the frame.
         '.ps-map{position:relative;display:none;margin-top:12px;padding:10px;overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(148,163,184,.12);border-radius:14px;background:rgba(2,6,23,.44);color:#94a3b8;font-size:12px;text-align:center}.ps-map.open{display:block}',
         '.ps-map img{display:block;width:100%;height:auto;border-radius:10px;background:#111827}',
-        '.ps-map-save{display:inline-flex;align-items:center;min-height:36px;margin-top:10px;padding:8px 12px;border:1px solid rgba(148,163,184,.18);border-radius:10px;background:rgba(15,23,42,.66);color:#cbd5e1;font-size:11.5px;font-weight:700;text-decoration:none}.ps-map-save:hover{border-color:rgba(52,211,153,.40);color:#6ee7b7}',
+        '.ps-map-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}',
+        '.ps-map-tool{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 13px;border:1px solid rgba(148,163,184,.18);border-radius:11px;background:rgba(15,23,42,.66);color:#cbd5e1;font-size:11.5px;font-weight:700;text-decoration:none;cursor:pointer}.ps-map-tool:hover{border-color:rgba(52,211,153,.40);color:#6ee7b7}',
+        '@media(max-width:520px){.ps-map-tools .ps-map-tool{flex:1 1 0}}',
         '.ps-empty{margin-top:18px;padding:36px 18px;border:1px dashed rgba(148,163,184,.18);border-radius:16px;background:rgba(2,6,23,.30);color:#94a3b8;font-size:12.5px;line-height:1.6;text-align:center}',
         '@media(max-width:760px){.ps-grid{grid-template-columns:1fr;gap:12px}.ps-shell{padding:16px;border-radius:18px}.ps-title{font-size:21px}.ps-actions{width:100%}.ps-actions .ps-btn{flex:1 1 0}.ps-card-actions .ps-btn{flex:1 1 0}}',
         // Below 420px a 2-up level grid squeezes prices onto two lines. One row
@@ -159,6 +161,8 @@
         node.addEventListener('click', function (event) {
           var mapButton = event.target.closest('[data-ps-map]');
           if (mapButton) draw(mapButton.getAttribute('data-ps-map'), mapButton);
+          var zoomButton = event.target.closest('[data-ps-zoom]');
+          if (zoomButton) expand(zoomButton.getAttribute('data-ps-zoom'));
           var chartButton = event.target.closest('[data-ps-chart]');
           if (chartButton) openChart(chartButton.getAttribute('data-ps-chart'));
         });
@@ -384,8 +388,11 @@
     }
     // Downloads the exact blob already rendered, so the saved file keeps the full
     // devicePixelRatio-2 bitmap instead of the downscaled on-screen copy.
-    function saveLink(ticker, url) {
-      return '<a class="ps-map-save" download="' + esc(saveName(ticker)) + '" href="' + url + '">Simpan PNG</a>';
+    function mapTools(ticker, url) {
+      return '<div class="ps-map-tools">' +
+        '<button type="button" class="ps-map-tool" data-ps-zoom="' + esc(ticker) + '">Perbesar</button>' +
+        '<a class="ps-map-tool ps-map-save" download="' + esc(saveName(ticker)) + '" href="' + url + '">Simpan PNG</a>' +
+        '</div>';
     }
     async function draw(ticker, button) {
       var row = state.rows.find(function (item) { return item.ticker === ticker; });
@@ -400,7 +407,7 @@
         ? root.PatternMap.patternImageSpec(root.innerWidth)
         : { width:1200, height:700, devicePixelRatio:2, narrow:false };
       var cached = state.urls[ticker];
-      if (cached && cached.spec.width === spec.width) { box.innerHTML = imageHtml(ticker, row.dataDate, cached.url, cached.spec) + saveLink(ticker, cached.url); return; }
+      if (cached && cached.spec.width === spec.width) { box.innerHTML = imageHtml(ticker, row.dataDate, cached.url, cached.spec) + mapTools(ticker, cached.url); return; }
       if (cached) { try { root.URL.revokeObjectURL(cached.url); } catch (_) {} delete state.urls[ticker]; }
       box.textContent = 'Menyusun visual pattern…';
       if (button) button.disabled = true;
@@ -415,13 +422,64 @@
         var blob = await response.blob();
         if (!blob || blob.size < 500) throw new Error('empty_chart_image');
         state.urls[ticker] = { url:root.URL.createObjectURL(blob), spec:spec };
-        box.innerHTML = imageHtml(ticker, row.dataDate, state.urls[ticker].url, spec) + saveLink(ticker, state.urls[ticker].url);
+        box.innerHTML = imageHtml(ticker, row.dataDate, state.urls[ticker].url, spec) + mapTools(ticker, state.urls[ticker].url);
       } catch (error) {
         if (!error || error.name !== 'AbortError') box.textContent = 'Visual pattern belum dapat dimuat. Buka Chart tetap tersedia.';
       } finally {
         if (state.controllers[ticker] === controller) delete state.controllers[ticker];
         if (button) button.disabled = false;
       }
+    }
+    // Pattern geometry expressed as chart overlays, so the fullscreen viewer draws the
+    // same levels the card lists — on the real chart engine the Chart page uses.
+    function viewerPriceLines(candidate) {
+      if (!candidate) return [];
+      var lines = [
+        ['Konfirmasi', candidate.confirmation, '#22c55e'],
+        ['Invalidasi', candidate.invalidation, '#ef4444'],
+        ['TP1', candidate.tp1, '#f59e0b'],
+        ['TP2', candidate.tp2, '#fbbf24'],
+        ['PRZ atas', candidate.prz && candidate.prz.high, '#c084fc'],
+        ['PRZ bawah', candidate.prz && candidate.prz.low, '#c084fc']
+      ];
+      return lines.map(function (line) {
+        return { title:line[0], price:Number(line[1]), color:line[2], lineWidth:1, lineStyle:2 };
+      }).filter(function (line) { return Number.isFinite(line.price); });
+    }
+    function viewerMarkers(candidate) {
+      if (!candidate || !candidate.points) return [];
+      return ['X', 'A', 'B', 'C', 'D'].map(function (name) {
+        var point = candidate.points[name];
+        if (!point || !point.time) return null;
+        var below = point.priceField === 'low';
+        return {
+          time:point.time,
+          position:below ? 'belowBar' : 'aboveBar',
+          color:'#38bdf8',
+          shape:below ? 'arrowUp' : 'arrowDown',
+          text:name
+        };
+      }).filter(Boolean);
+    }
+    function expand(ticker) {
+      var row = state.rows.find(function (item) { return item.ticker === ticker; });
+      if (!row || typeof root.openChartViewer !== 'function') return;
+      var cached = state.urls[ticker];
+      var primary = (row.classicPatterns && row.classicPatterns[0]) || {};
+      var name = (row.candidate && row.candidate.name) || primary.label || 'Chart Pattern';
+      root.openChartViewer({
+        title:row.ticker + ' · ' + name,
+        subtitle:'T-1 ' + (row.dataDate || '') + ' · konfirmasi manual tetap diperlukan',
+        ticker:row.ticker,
+        candles:(row.context && Array.isArray(row.context.candles)) ? row.context.candles : [],
+        priceLines:viewerPriceLines(row.candidate),
+        markers:viewerMarkers(row.candidate),
+        // Always supplied, so the viewer still has something to show if the chart
+        // engine cannot load.
+        image:cached ? { src:cached.url, width:cached.spec.width, height:cached.spec.height,
+          alt:'Visual pattern ' + row.ticker } : null,
+        download:cached ? { href:cached.url, name:saveName(row.ticker) } : null
+      });
     }
     function openChart(ticker) {
       root.navigateTo('chart');

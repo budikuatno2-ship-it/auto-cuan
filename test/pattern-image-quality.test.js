@@ -142,7 +142,7 @@ test('the rendered image reserves its aspect ratio and can be saved at full reso
   assert.match(source, /decoding="async"/);
   // The download href is the already-fetched blob URL, so the saved PNG keeps
   // the full 2x bitmap rather than the downscaled on-screen copy.
-  assert.match(source, /function saveLink\(ticker, url\)/);
+  assert.match(source, /function mapTools\(ticker, url\)/);
   assert.match(source, /download="' \+ esc\(saveName\(ticker\)\) \+ '"/);
   assert.match(source, /-WIB\.png/);
 });

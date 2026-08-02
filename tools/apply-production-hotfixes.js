@@ -44,6 +44,7 @@ const SYNTAX_CHECKED = [
   'public/pattern-tab-resume-guard.js',
   'public/pattern-map.js',
   'public/mobile-nav.js',
+  'public/chart-viewer.js',
   'public/pattern-screener-extension.js',
   'public/assets/fca-stocks.js',
   'lib/security-guard.js',
@@ -195,7 +196,7 @@ const smartSetups = read('lib/smart-setup-labels.js');
 const candlesApi = read('api/candles.js');
 assertOk(fcaLoader.includes('/security-admin-runtime.js?v=20260729-security-admin-v1'), 'Security Center runtime loader is missing.');
 assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260802-ui-stability-v2'), 'Shared UI stability runtime loader is missing.');
-assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260802-pattern-stable-v4'), 'Stable Pattern v4 runtime loader is missing.');
+assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260802-pattern-stable-v5'), 'Stable Pattern v5 runtime loader is missing.');
 assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260728-pattern-screener-v5'), 'Screener Pattern v5 extension loader is missing.');
 assertOk(fcaLoader.indexOf('/pattern-stable-runtime.js') < fcaLoader.indexOf('/pattern-screener-extension.js'), 'Screener Pattern extension must load after the stable runtime.');
 assertOk(!fcaLoader.includes('/pattern-radar.js'), 'The duplicate Pattern Radar runtime is still loaded.');
@@ -238,10 +239,34 @@ assertOk(fcaLoader.includes('/mobile-nav.js?v='), 'Mobile bottom navigation runt
 assertOk(mobileNav.includes('function buildNavModel') && mobileNav.includes("querySelectorAll('.nav-btn[data-page]')"), 'Mobile navigation no longer mirrors #mainNav.');
 assertOk(!/navigateTo\s*=|function navigateTo/.test(mobileNav), 'Mobile navigation must delegate to the existing buttons, never redefine navigateTo.');
 assertOk(mobileNav.includes("doc.getElementById('dashboardScreen')") && mobileNav.includes('function shellVisible'), 'Mobile navigation can leak onto the landing, blocked, or maintenance screen.');
+
+// --- 10c. Floating launcher, shared chart viewer, and mobile viewport -----
+const chartViewer = read('public/chart-viewer.js');
+// A floating control reserves no layout space. Padding <body> for a fixed bar is
+// what shrank the 100vh body content box below the 100vh shell and left a dead
+// band containing the footer at the foot of every page.
+assertOk(!/body\.has-mobile-nav/.test(uiTheme) && !/has-mobile-nav/.test(mobileNav), 'The body padding-bottom nav hack returned; the mobile dead band comes back with it.');
+assertOk(uiTheme.includes('@supports (height: 100dvh)') && uiTheme.includes('min-height: 100vh'), 'Dynamic viewport height is missing or lost its vh fallback.');
+assertOk(mobileNav.includes('function snapPosition') && mobileNav.includes('function panelPlacement'), 'Launcher edge-snapping or popover placement is missing.');
+assertOk(mobileNav.includes('DRAG_THRESHOLD') && mobileNav.includes('pointerdown'), 'Launcher drag handling is missing.');
+assertOk(uiTheme.includes('.ac-launcher') && uiTheme.includes('.ac-navpanel'), 'Floating launcher styles are missing.');
+assertOk(!uiTheme.includes('.ac-mobilenav-item'), 'The replaced bottom-bar styles are still shipped.');
+assertOk(fcaLoader.includes('/chart-viewer.js?v='), 'Shared chart viewer is not loaded.');
+// The viewer must reuse the Chart page renderer rather than fork a second engine.
+assertOk(chartViewer.includes('root.renderLightweightChart(') && chartViewer.includes("variant: 'fullscreen'"), 'Chart viewer no longer reuses the Chart page renderer.');
+assertOk(chartViewer.includes('function lockScroll') && chartViewer.includes('data-ac-scroll-locked'), 'Chart viewer scroll lock is missing.');
+assertOk(chartViewer.includes('clampPan') && chartViewer.includes('pointermove'), 'Chart viewer pinch/pan fallback is missing.');
+assertOk(!/fetch\(|supabase|telegram|navigateTo\s*=/i.test(chartViewer), 'Chart viewer crossed a protected boundary.');
+assertOk(index.includes('function openChartPageFullscreen()') && index.includes('openChartPageFullscreen()'), 'Chart page fullscreen entry point is missing.');
+assertOk(index.includes("if (variant === 'fullscreen')"), 'chartDims lost its fullscreen variant.');
+assertOk(patternStable.includes('data-ps-zoom') && patternStable.includes('root.openChartViewer'), 'Pattern cards can no longer open the shared viewer.');
+assertOk(patternStable.includes('function viewerPriceLines') && patternStable.includes('function viewerMarkers'), 'Pattern geometry is no longer passed to the viewer.');
+const patternHeaders = (JSON.parse(read('vercel.json')).headers || []).map(function (row) { return row.source; });
+assertOk(patternHeaders.indexOf('/chart-viewer.js') >= 0, 'Chart viewer lost its no-store header.');
 assertOk(!/sendTelegram|telegramNotifier|supabase|fetch\(/i.test(mobileNav), 'Mobile navigation crossed a protected boundary.');
 assertOk(index.includes('<link rel="stylesheet" href="/ui-theme.css?v='), 'Theme layer stylesheet is not linked.');
 assertOk(index.indexOf('/ui-theme.css') > index.indexOf('</style>'), 'Theme layer must load after the inline styles it overrides.');
-assertOk(uiTheme.includes('.ac-mobilenav') && uiTheme.includes('env(safe-area-inset-bottom)'), 'Mobile navigation styles or safe-area handling are missing.');
+assertOk(uiTheme.includes('env(safe-area-inset-bottom'), 'Safe-area handling is missing from the theme layer.');
 const themeHeader = (JSON.parse(read('vercel.json')).headers || []).find(function (row) { return row.source === '/ui-theme.css'; });
 const navHeader = (JSON.parse(read('vercel.json')).headers || []).find(function (row) { return row.source === '/mobile-nav.js'; });
 assertOk(themeHeader && navHeader, 'New frontend assets lost their no-store headers.');
