@@ -2,29 +2,41 @@
 
 ## Boundary and architecture audit
 
-The B0.2/B0.3 `classification_initial` gzip records are finalized calculation-point evidence. The existing adapter captures the engine's initial status, gates, raw levels, code SHA, and configuration hash; the existing logger finalizes those records under `raw/` with companion manifests. Retention treats those finalized files as immutable. Production monitor and report outcome helpers operate on mutable delivery/monitor state and therefore are not safe evidence sources for this phase.
+B0.2/B0.3 `classification_initial` gzip records are finalized calculation-point evidence. The adapter captures the initial status, gates, raw levels, code SHA, and configuration hash; the existing logger finalizes them under `raw/` with manifests. Production monitor/report helpers rely on mutable delivery state and are not admissible evidence here.
 
-The safest design is a **separate append-only companion tree**, `outcomes/` plus `outcome-manifests/`. An outcome links to the SHA-256 digest of one canonical, validated initial record. It never opens, appends to, renames, or rewrites a B0.2/B0.3 gzip or manifest. This phase provides pure library plumbing only: no CLI, live sample, schedule, workflow, network call, database write, notification, or production wiring exists.
+B0.4 therefore uses a **separate append-only companion tree**, `outcomes/` plus `outcome-manifests/`. Each outcome links to the canonical SHA-256 digest of exactly one validated initial record. It never opens, appends to, renames, or rewrites initial evidence. This phase adds pure libraries only: no CLI, live sample, scheduler, workflow, network, database, notification, or production wiring.
 
-## Labels and deterministic rules
+## Coverage, fill, and labels
 
-* `UNFILLED`: no ordered observation spans the snapped entry before the horizon. Its terminal touch label may be `EXPIRED`, but all return, R, cost, MFE, and MAE fields remain null. It is never a loss.
-* `FILLED`: the first ordered OHLC observation whose low/high range spans the snapped entry. Fill time is that observation timestamp and fill price is the snapped entry.
-* `UNRESOLVED`: evidence ends before the declared horizon and cannot establish the bounded entry state. `EVIDENCE_HORIZON_INCOMPLETE` records why.
-* `TP1_FIRST` / `SL_FIRST`: after fill, the earliest ordered bar touches the snapped target or stop. If both occur in one bar and no finer ordering exists, the mandatory convention is `PESSIMISTIC_SL_FIRST`; both touches are retained at that bar timestamp.
-* `EXPIRED`: the evidence boundary reaches the horizon without a TP1/SL touch. A filled expiration exits at the last supplied close at or before the horizon; an unfilled expiration has no synthetic exit or return.
-* `UNRESOLVED`: the touch result is not final because the caller's evidence boundary is short of the horizon.
+A boundary timestamp is not proof of observation. The caller supplies a versioned coverage declaration with exact interval duration, horizon start/end, completeness assertion, and provenance. The evaluator independently proves that non-overlapping bars are contiguous, each has the declared duration, the first begins at initial observation, and the last ends at the horizon. Zero bars, sparse evidence, internal gaps, a short final bar set, or a false declaration produce `UNRESOLVED` with `EVIDENCE_COVERAGE_INCOMPLETE`; they can never finalize `UNFILLED` or `EXPIRED`.
 
-Bars must be strictly time-ordered, unique, for one ticker, no earlier than initial observation, and no later than the declared evidence boundary. Each bar carries bounded provenance and a source-as-of timestamp. The evaluator makes no request and reads no mutable production state.
+* `UNFILLED`: complete coverage contains no bar spanning the snapped entry. It terminates as `EXPIRED`, but return, R, costs, MFE, and MAE are null. It is never a loss.
+* `FILLED`: the first complete bar spanning the snapped entry. Fill time is that bar's end timestamp, fill price is the snapped entry, and `source_as_of` is copied from that actual bar—not the final evidence boundary.
+* `TP1_FIRST` / `SL_FIRST`: the first post-fill bar touches the snapped target or stop. If both occur in one bar, `PESSIMISTIC_SL_FIRST` applies.
+* A fill bar whose high also reaches TP1 cannot prove that TP occurred after entry and is `UNRESOLVED` with `FILL_BAR_ORDER_UNPROVEN`. A fill bar containing SL is conservatively `SL_FIRST`. No fill-bar extrema are included in excursions.
+* `EXPIRED`: proved complete coverage reaches the horizon without a TP/SL touch. A filled expiration exits at the final close; an unfilled expiration has no synthetic return.
 
-MFE and MAE are the greatest post-fill bar high and least post-fill bar low relative to fill price, with the observation timestamps. Gross return uses the deterministic target, stop, or expiration close. Gross R divides gross return by snapped entry-to-stop risk. Caller-supplied fee, tax, spread, and slippage components are summed; net return is gross return minus that sum, and net R uses the same risk denominator.
+MFE/MAE use only complete bars strictly after the fill bar and strictly before a TP/SL exit bar. Exit-bar extrema are excluded because they may occur after the first touch. If no such bars exist, excursions are explicitly `UNRESOLVED` with null values and `EXCURSION_ORDER_UNPROVEN` rather than invented from ambiguous OHLC ordering.
 
-## Explicit policy and provenance
+## Explicit execution policy and arithmetic
 
-The caller must supply a versioned policy containing currency; positive tick size; entry, stop, and target snap directions; and version, rate, fixed amount, and provenance for fees, taxes, spread, and slippage. There are deliberately no remembered BEI rules or defaults. Policy identity participates in the outcome identity, so changing any declared policy version creates a distinct evaluation contract rather than silently changing old evidence.
+There are no remembered BEI defaults. The caller supplies one canonical versioned policy containing:
 
-OHLC bars cannot prove within-bar event order. They also cannot prove a fill within the spread, queue priority, partial fill, capacity, or exchange rejection. Those facts require finer authoritative point-in-time evidence. This contract records the conservative ambiguity rather than inventing it.
+* a versioned `ENTRY_LOW` or `ENTRY_HIGH` reference rule and provenance;
+* a versioned contiguous tier table with price bounds, tick sizes, and provenance; entry snaps up, stop down, and target up using the tier resolved at each raw level;
+* positive quantity, price unit, and currency, defining entry and exit notionals;
+* every fee, tax, spread, and slippage item with component, version, unit (`RETURN_FRACTION` or `CURRENCY`), side (`BUY` or `SELL`), basis (`ENTRY_NOTIONAL` or `EXIT_NOTIONAL`), value, and provenance.
 
-## Storage safety
+Currency-fixed costs are divided by declared entry notional, never price alone. Fractional buy costs apply to entry notional and fractional sell costs to exit notional. The record retains each currency amount and normalized return fraction. Gross return is `(exit - fill) / fill`; gross R divides by snapped entry-to-stop risk; total cost is the exact component sum; net return is gross less cost; and net R uses the same risk. Validation recomputes every relationship.
 
-Every record is exact-key validated, cross-field checked, secret-scanned, byte-bounded, canonically serialized, and self-hashed before logger creation. Whole-tree preflight rejects symlinks, special or unexpected files, `.open`/temporary files, either quarantine tree, orphan gzip or manifest artifacts, checksum/count mismatches, path escape, missing initial linkage, non-one-to-one mappings, and duplicate outcome identity. A successful writer creates one gzip record atomically paired with a strict checksum manifest. Collection remains manual-only and unwired in B0.4.
+The outcome identity binds initial digest, evaluator version, canonical full-policy hash, and complete versioned horizon semantics (including evidence boundary). A materially changed policy, entry rule, tick tier, cost, execution size, or horizon cannot collide merely by reusing a version string. `market_date` is derived with the repository's Asia/Jakarta market-date function and is cross-checked against the verified initial manifest directory.
+
+## Validation and storage safety
+
+The v2 record uses exact keys, bounded arrays/strings/bytes, the existing canonical initial-record normalization, recursive secret/account/path rejection, canonical hashing, and cross-field checks for snapping, fill, touch labels/prices, conventions, coverage, all evidence timestamps, completion, excursion ordering, cost dimensions and arithmetic, return/R arithmetic, and required unresolved codes.
+
+Whole-tree preflight rejects symlinks at every level, special/unexpected files, `.open` and temporary files, either quarantine tree, orphan raw or manifest artifacts, checksum/count failures, path escape, missing linkage, duplicate mappings, and duplicate outcome identities. It cross-validates every outcome-manifest identity field against its normalized record and applies run/date/timestamp consistency checks to initial manifests.
+
+Outcome gzip bytes are first written to an exclusive `.open.jsonl.gz` file and atomically renamed to the final data path. The manifest is independently written through an exclusive temporary file and atomic rename. This guarantees atomic finalization of each artifact; it does **not** claim a transaction across both files. A crash between data and manifest leaves an orphan, which the next preflight rejects. Collection remains manual-only and unwired.
+
+OHLC alone still cannot prove queue priority, partial fills, exchange rejection, or ordering within an ambiguous fill/exit bar. Those require finer authoritative point-in-time evidence; this contract records the limitation instead of manufacturing certainty.
