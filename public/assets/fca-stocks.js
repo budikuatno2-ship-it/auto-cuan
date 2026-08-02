@@ -41,6 +41,10 @@ window.FCA_STOCKS = {
       });
     });
 
+    // Dashboard presentation now exposes only the already-computed final Top 5.
+    // It does not recalculate candidates or read individual screener outputs.
+    append('/dashboard-top5-only-ui.js?v=20260803-top5-only-ui-v1', 'data-dashboard-top5-only-ui-loader');
+
     append('/ui-stability-fix.js?v=20260802-ui-stability-v2', 'data-ui-stability-loader', function () {
       append('/pattern-tab-resume-guard.js?v=20260802-pattern-tab-resume-v2', 'data-pattern-tab-resume-loader', function () {
         append('/pattern-stable-runtime.js?v=20260802-pattern-stable-v5', 'data-pattern-stable-loader', function () {
