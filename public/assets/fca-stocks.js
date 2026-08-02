@@ -28,7 +28,7 @@ window.FCA_STOCKS = {
     // Independent admin-only enhancement. Loading it never gates Pattern or the
     // rest of the website; its API remains protected by the signed admin session.
     append('/security-admin-runtime.js?v=20260729-security-admin-v1', 'data-security-admin-loader', function () {
-      append('/admin-tools-runtime.js?v=20260731-admin-tools-v1', 'data-admin-tools-loader');
+      append('/admin-tools-runtime.js?v=20260803-admin-tools-v2', 'data-admin-tools-loader');
     });
 
     // Load the original navigation and shared chart viewer first, then one
