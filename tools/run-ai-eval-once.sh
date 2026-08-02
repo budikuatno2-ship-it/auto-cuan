@@ -6,6 +6,7 @@ NODE_BIN="${NODE_BIN:-/home/ubuntu/.local/node-v22/bin/node}"
 WORK_DIR="${AI_EVAL_WORK_DIR:-/home/ubuntu/auto-cuan-ai-eval}"
 DATASET_GZ="${AI_EVAL_DATASET_GZ:-$WORK_DIR/dataset-1m.jsonl.gz}"
 OUTPUT_DIR="${AI_EVAL_OUTPUT_DIR:-$WORK_DIR/output}"
+ENV_FILE="${AI_EVAL_ENV_FILE:-/home/ubuntu/auto-cuan/.env.ai-eval-once}"
 RUN_ID="${AI_EVAL_RUN_ID:-}"
 
 for arg in "$@"; do
@@ -14,6 +15,16 @@ for arg in "$@"; do
     *) echo "Unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
+
+if [ ! -f "$ENV_FILE" ]; then
+  echo "AI_EVAL_ENV_NOT_FOUND=$ENV_FILE" >&2
+  exit 1
+fi
+
+set -a
+# shellcheck disable=SC1090
+source "$ENV_FILE"
+set +a
 
 : "${AI_EVAL_API_KEY:?AI_EVAL_API_KEY wajib ada di env VPS}"
 : "${SUPABASE_URL:?SUPABASE_URL wajib ada di env VPS}"
