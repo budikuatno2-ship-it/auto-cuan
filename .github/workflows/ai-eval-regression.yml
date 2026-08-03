@@ -1,0 +1,52 @@
+name: AI Eval Regression
+
+on:
+  pull_request:
+    paths:
+      - 'lib/ai-answer-contract.js'
+      - 'lib/ai-eval-*.js'
+      - 'tools/*ai-eval*.js'
+      - 'tools/*ai-eval*.sh'
+      - 'test/ai-eval-*.test.js'
+      - 'test/openagentic-*.test.js'
+      - 'package.json'
+      - '.github/workflows/ai-eval-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ai-eval-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax checks
+        run: |
+          node --check lib/ai-eval-derived-facts.js
+          node --check tools/build-ai-eval-failed-retry-dataset.js
+          node --check tools/run-ai-eval-cloud-bounded.js
+          node --check test/ai-eval-derived-grounding.test.js
+
+      - name: Targeted AI eval tests
+        run: |
+          node --test \
+            test/ai-eval-once.test.js \
+            test/ai-eval-final-contract-output.test.js \
+            test/openagentic-stream-reassembly.test.js \
+            test/ai-eval-live-progress.test.js \
+            test/ai-eval-derived-grounding.test.js
+
+      - name: Full project build
+        run: npm run build
