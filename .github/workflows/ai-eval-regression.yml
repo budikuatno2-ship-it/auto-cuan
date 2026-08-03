@@ -36,8 +36,13 @@ jobs:
         run: |
           node --check lib/ai-eval-derived-facts.js
           node --check tools/build-ai-eval-failed-retry-dataset.js
+          node --check tools/prepare-ai-eval-failed-retry.js
+          node --check tools/control-ai-eval-run.js
+          node --check tools/ai-eval-once-supervisor.js
           node --check tools/run-ai-eval-cloud-bounded.js
+          bash -n tools/run-ai-eval-once.sh
           node --check test/ai-eval-derived-grounding.test.js
+          node --check test/ai-eval-failed-retry-control.test.js
 
       - name: Targeted AI eval tests
         run: |
@@ -46,7 +51,8 @@ jobs:
             test/ai-eval-final-contract-output.test.js \
             test/openagentic-stream-reassembly.test.js \
             test/ai-eval-live-progress.test.js \
-            test/ai-eval-derived-grounding.test.js
+            test/ai-eval-derived-grounding.test.js \
+            test/ai-eval-failed-retry-control.test.js
 
       - name: Full project build
         run: npm run build
