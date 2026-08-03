@@ -59,6 +59,7 @@ test('portfolio enrichment exposes bounded arithmetic facts and rounding variant
   assert.equal(facts.simulation.total_risk_idr, 271800);
   assert.ok(enriched.expected.allowed_numbers.includes(8.26));
   assert.ok(enriched.expected.allowed_numbers.includes(8.3));
+  assert.equal(enriched.expected.allowed_numbers.includes(8), false);
   assert.ok(enriched.expected.allowed_numbers.includes(302));
   assert.ok(enriched.expected.allowed_numbers.includes(21800));
   assert.equal(enriched.expected.allowed_numbers.includes(123456), false);
