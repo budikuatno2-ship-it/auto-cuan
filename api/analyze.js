@@ -3,6 +3,7 @@
 const handleContextAI = require('../lib/context-ai-router-v6');
 const legacyAnalyze = require('../lib/analyze-legacy');
 const { hydrateContext } = require('../lib/ai-context-snapshot-store');
+const { prepareRuntimeGrounding } = require('../lib/ai-runtime-grounding');
 
 function styleInstruction(source) {
   const focus = source === 'stock_analysis_followup'
@@ -32,10 +33,36 @@ function styleInstruction(source) {
   ].join(' ');
 }
 
+function finite(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function transientSimulation(raw) {
+  const input = raw && typeof raw === 'object' ? raw : {};
+  const availableFunds = finite(input.available_funds_idr != null ? input.available_funds_idr : input.availableFundsIdr);
+  const addLots = finite(input.add_lots != null ? input.add_lots : input.addLots);
+  const output = {
+    label: String(input.label || 'SIMULASI').slice(0, 40),
+    available_funds_idr: availableFunds != null && availableFunds > 0 ? availableFunds : null,
+    add_lots: addLots != null && addLots > 0 ? addLots : null,
+    setup_still_valid: typeof input.setup_still_valid === 'boolean'
+      ? input.setup_still_valid
+      : (typeof input.setupStillValid === 'boolean' ? input.setupStillValid : null)
+  };
+  return Object.values(output).some((value) => value !== null && value !== '') ? output : null;
+}
+
 async function prepareContextRequest(req) {
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
   const source = body.source;
-  const context = await hydrateContext(req, source, body.context);
+  let context = await hydrateContext(req, source, body.context);
+  if (source === 'portfolio_chat') {
+    const simulation = transientSimulation(body.context && body.context.simulation);
+    if (simulation) context = Object.assign({}, context, { simulation });
+  }
+  context = prepareRuntimeGrounding(source, body.chatMessage, context);
   const history = Array.isArray(body.history) ? body.history.slice(-3) : [];
   history.push({ role: 'user', content: styleInstruction(source) });
   req.body = Object.assign({}, body, { context, history });
