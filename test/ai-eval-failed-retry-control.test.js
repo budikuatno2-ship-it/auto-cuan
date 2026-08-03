@@ -15,7 +15,8 @@ const {
 } = require('../tools/control-ai-eval-run');
 const {
   safeDatasetPath,
-  runtimeEnvForRun
+  runtimeEnvForRun,
+  desiredStateStopsWorker
 } = require('../tools/ai-eval-once-supervisor');
 
 const ROOT = path.join(__dirname, '..');
@@ -114,6 +115,13 @@ test('supervisor accepts only gzip datasets under the private work directory', (
   );
   assert.equal(safeDatasetPath('/tmp/retry.jsonl.gz'), null);
   assert.equal(safeDatasetPath('/home/ubuntu/auto-cuan-ai-eval/retry.json'), null);
+});
+
+test('paused and stopped desired states both terminate active workers', () => {
+  assert.equal(desiredStateStopsWorker('PAUSED'), true);
+  assert.equal(desiredStateStopsWorker('STOPPED'), true);
+  assert.equal(desiredStateStopsWorker('RUNNING'), false);
+  assert.equal(desiredStateStopsWorker('CREATED'), false);
 });
 
 test('supervisor emits run-specific override variables instead of generic env names', () => {
