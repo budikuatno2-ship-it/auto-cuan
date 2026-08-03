@@ -71,6 +71,58 @@ test('unsupported price percentage and lot numbers still fail grounding', () => 
   assert.match(result.errors.join(' | '), /8/);
 });
 
+test('Indonesian rupiah groups keep their leading digits', () => {
+  const values = contract.financialNumbersInText(
+    'Profit Rp2.280.000, risiko Rp1.800, sisa Rp9.978.200, batas Rp16.667, dan dana Rp2,5 juta.'
+  );
+  assert.deepEqual(values, [2280000, 1800, 9978200, 16667, 2500000]);
+});
+
+test('valid Indonesian currency values pass exact grounding', () => {
+  const result = contract.validateAnswer({
+    direct_answer: 'Profit kotor Rp2.280.000 dengan tambahan risiko Rp1.800.',
+    reasoning: 'Dana Rp2,5 juta menyisakan Rp2.478.200.',
+    action: 'Tetap gunakan stop 100.',
+    invalidation: 'Batal jika stop 100 ditembus.',
+    levels: { last: null, entry_low: 109, entry_high: 109, stop_loss: 100, tp1: 185, tp2: 210 },
+    source_scope: 'snapshot'
+  }, {
+    allowed_numbers: [100, 109, 185, 210, 1800, 2280000, 2478200, 2500000],
+    require_snapshot_scope: true
+  });
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
+test('technical lookback periods and parenthesized list counters are ignored', () => {
+  const result = contract.validateAnswer({
+    direct_answer: 'Volume 0,51x rata-rata 20 hari dan 0,73x rata-rata 7 hari.',
+    reasoning: 'Harga 114 berada di bawah MA20 114,6, sedangkan RSI14 tetap netral.',
+    action: 'Lengkapi (1) harga terkini, (2) budget, dan (3) journal.',
+    invalidation: 'Batal jika 112 ditembus.',
+    levels: { last: 114, entry_low: 112, entry_high: 114.6, stop_loss: 112, tp1: null, tp2: null },
+    source_scope: 'snapshot'
+  }, {
+    allowed_numbers: [0.51, 0.73, 112, 114, 114.6],
+    require_snapshot_scope: true
+  });
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
+test('unsupported Indonesian currency still fails grounding', () => {
+  const result = contract.validateAnswer({
+    direct_answer: 'Profit kotor Rp2.999.000.',
+    action: 'Tunggu.',
+    invalidation: 'Ikuti stop 100.',
+    levels: { stop_loss: 100 },
+    source_scope: 'snapshot'
+  }, {
+    allowed_numbers: [100, 2280000],
+    require_snapshot_scope: true
+  });
+  assert.equal(result.valid, false);
+  assert.match(result.errors.join(' | '), /2999000/);
+});
+
 test('one-time launcher uses high output caps and bounded retries', () => {
   const launcher = read('tools/run-ai-eval-once.sh');
   const bounded = read('tools/run-ai-eval-cloud-bounded.js');
