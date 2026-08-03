@@ -32,7 +32,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { requirePremiumEntitlement } = require('../lib/subscription-auth');
-const dtEngine = require('../lib/daytrade-screener-engine');
+const dtEngine = require('../lib/daytrade-screener-engine-v7');
 const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
 const fibConfluence = require('../lib/fibonacci-confluence');
