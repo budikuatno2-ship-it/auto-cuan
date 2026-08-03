@@ -5,7 +5,6 @@ ROOT_DIR="${AUTO_CUAN_ROOT:-/home/ubuntu/auto-cuan}"
 NODE_BIN="${NODE_BIN:-/home/ubuntu/.local/node-v22/bin/node}"
 WORK_DIR="${AI_EVAL_WORK_DIR:-/home/ubuntu/auto-cuan-ai-eval}"
 SOURCE_JSONL="${AI_EVAL_SOURCE_JSONL:-$WORK_DIR/context-snapshots-budi.jsonl}"
-DATASET_GZ="${AI_EVAL_DATASET_GZ:-$WORK_DIR/dataset-complete-v2.jsonl.gz}"
 OUTPUT_DIR="${AI_EVAL_OUTPUT_DIR:-$WORK_DIR/output}"
 ENV_FILE="${AI_EVAL_ENV_FILE:-/home/ubuntu/auto-cuan/.env.ai-eval-once}"
 RUN_ID="${AI_EVAL_RUN_ID:-}"
@@ -32,15 +31,16 @@ set +a
 : "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY wajib ada di env VPS}"
 : "${RUN_ID:?AI_EVAL_RUN_ID atau --run-id wajib diisi}"
 
+DATASET_GZ="${AI_EVAL_RUN_DATASET_GZ:-${AI_EVAL_DATASET_GZ:-$WORK_DIR/dataset-complete-v2.jsonl.gz}}"
 AI_EVAL_BASE_URL="${AI_EVAL_BASE_URL:-https://openagentic.id/api/v1}"
-AI_EVAL_MODEL="${AI_EVAL_MODEL:-claude-sonnet-4.6}"
+AI_EVAL_MODEL="${AI_EVAL_RUN_MODEL:-${AI_EVAL_MODEL:-claude-sonnet-4.6}}"
 AI_EVAL_STORAGE_BUCKET="${AI_EVAL_STORAGE_BUCKET:-ai-eval-private}"
-AI_EVAL_CASE_TARGET="${AI_EVAL_CASE_TARGET:-1000000}"
-AI_EVAL_TOKEN_BUDGET="${AI_EVAL_TOKEN_BUDGET:-50000000}"
-AI_EVAL_RPM="${AI_EVAL_RPM:-30}"
-AI_EVAL_CONCURRENCY="${AI_EVAL_CONCURRENCY:-4}"
+AI_EVAL_CASE_TARGET="${AI_EVAL_RUN_CASE_TARGET:-${AI_EVAL_CASE_TARGET:-1000000}}"
+AI_EVAL_TOKEN_BUDGET="${AI_EVAL_RUN_TOKEN_BUDGET:-${AI_EVAL_TOKEN_BUDGET:-50000000}}"
+AI_EVAL_RPM="${AI_EVAL_RUN_RPM:-${AI_EVAL_RPM:-30}}"
+AI_EVAL_CONCURRENCY="${AI_EVAL_RUN_CONCURRENCY:-${AI_EVAL_CONCURRENCY:-4}}"
 AI_EVAL_MAX_DUPLICATE_STREAK="${AI_EVAL_MAX_DUPLICATE_STREAK:-50000}"
-AI_EVAL_MAX_ATTEMPTS_PER_CASE="${AI_EVAL_MAX_ATTEMPTS_PER_CASE:-3}"
+AI_EVAL_MAX_ATTEMPTS_PER_CASE="${AI_EVAL_RUN_MAX_ATTEMPTS_PER_CASE:-${AI_EVAL_MAX_ATTEMPTS_PER_CASE:-3}}"
 # Stable validation markers for the agreed defaults: --count=1000000 --max-total-tokens=50000000
 RUN_OUTPUT="$OUTPUT_DIR/$RUN_ID"
 DONE_FILE="$RUN_OUTPUT/WORKER_DONE"
@@ -85,6 +85,10 @@ rm -f "$DONE_FILE"
 cd "$ROOT_DIR"
 
 if [ ! -f "$DATASET_GZ" ]; then
+  if [ -n "${AI_EVAL_RUN_DATASET_GZ:-}" ]; then
+    echo "AI_EVAL_RUN_DATASET_NOT_FOUND=$DATASET_GZ" >&2
+    exit 1
+  fi
   echo "Building private admin-budi snapshot source from Supabase..."
   "$NODE_BIN" tools/build-ai-eval-snapshot-source.js \
     --output="$SOURCE_JSONL" \
