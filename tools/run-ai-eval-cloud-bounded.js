@@ -20,6 +20,20 @@ function buildPatchedSource() {
 
   source = replaceOnce(
     source,
+    "const { validateAnswer } = require('../lib/ai-answer-contract');",
+    "const { validateAnswer } = require('../lib/ai-answer-contract');\nconst { enrichCase } = require('../lib/ai-eval-derived-facts');",
+    'derived facts import'
+  );
+
+  source = replaceOnce(
+    source,
+    "    'Jawab hanya dari snapshot/konteks yang diberikan. Jangan mengarang harga, indikator, berita, probabilitas, atau data real-time.',",
+    "    'Jawab hanya dari snapshot/konteks yang diberikan. Jangan mengarang harga, indikator, berita, probabilitas, atau data real-time.',\n    'Untuk angka hasil hitung, gunakan hanya context.calculation_facts dan jelaskan basis perhitungannya. Jangan hitung dari asumsi yang tidak tercantum.',\n    'Jangan membuat contoh angka baru seperti persentase, jumlah lot, harga, atau target yang tidak tersedia di context.',\n    'Sebelum final, proofread seluruh field. Jangan keluarkan kata terpotong, typo, kalimat rusak, atau JSON yang tidak valid.',",
+    'grounded calculation prompt'
+  );
+
+  source = replaceOnce(
+    source,
     "    maxOutputTokens: boundedInt(arg('max-output-tokens', '380'), 380, 80, 2000),",
     "    maxOutputTokens: boundedInt(arg('max-output-tokens', '8192'), 8192, 80, 8192),",
     'answer output cap'
@@ -63,21 +77,21 @@ function buildPatchedSource() {
   source = replaceOnce(
     source,
     "      feedback = 'Jawaban sebelumnya bukan JSON valid. Keluarkan hanya satu objek JSON sesuai kontrak.';",
-    "      lastFailure = { stage: 'answer_json', errors: ['jawaban bukan JSON valid'], feedback: String(response.reply || '').slice(0, 1200) };\n      feedback = 'Jawaban sebelumnya bukan JSON valid. Keluarkan hanya satu objek JSON sesuai kontrak.';",
+    "      lastFailure = { stage: 'answer_json', errors: ['jawaban bukan JSON valid'], feedback: String(response.reply || '').slice(0, 1200) };\n      feedback = 'Jawaban sebelumnya bukan JSON valid. Keluarkan hanya satu objek JSON sesuai kontrak dan proofread sebelum final.';",
     'JSON rejection capture'
   );
 
   source = replaceOnce(
     source,
     "      feedback = 'Evaluator menolak jawaban sebelumnya. Perbaiki tanpa mengarang data. Masalah: ' + deterministic.errors.join('; ');",
-    "      lastFailure = { stage: 'deterministic', errors: deterministic.errors.slice(0, 12), warnings: deterministic.warnings.slice(0, 12), answer: deterministic.normalized };\n      feedback = 'Evaluator menolak jawaban sebelumnya. Perbaiki tanpa mengarang data. Masalah: ' + deterministic.errors.join('; ');",
+    "      lastFailure = { stage: 'deterministic', errors: deterministic.errors.slice(0, 12), warnings: deterministic.warnings.slice(0, 12), answer: deterministic.normalized };\n      feedback = 'Evaluator menolak jawaban sebelumnya. Perbaiki tanpa mengarang data. Gunakan angka turunan hanya dari context.calculation_facts. Masalah: ' + deterministic.errors.join('; ');",
     'deterministic rejection capture'
   );
 
   source = replaceOnce(
     source,
     "        feedback = 'Judge menolak jawaban sebelumnya. Perbaiki isi dan gaya. Feedback: ' + (judge.feedback || judge.errors.join('; '));",
-    "        lastFailure = { stage: 'judge', errors: judge.errors.slice(0, 12), score: judge.score, style_score: judge.style_score, feedback: judge.feedback, answer: deterministic.normalized };\n        feedback = 'Judge menolak jawaban sebelumnya. Perbaiki isi dan gaya. Feedback: ' + (judge.feedback || judge.errors.join('; '));",
+    "        lastFailure = { stage: 'judge', errors: judge.errors.slice(0, 12), score: judge.score, style_score: judge.style_score, feedback: judge.feedback, answer: deterministic.normalized };\n        feedback = 'Judge menolak jawaban sebelumnya. Perbaiki isi, gaya, dan proofread semua field agar tidak ada typo atau teks terpotong. Feedback: ' + (judge.feedback || judge.errors.join('; '));",
     'judge rejection capture'
   );
 
@@ -98,8 +112,15 @@ function buildPatchedSource() {
   source = replaceOnce(
     source,
     "    retry_until_pass_or_budget_stop: true,",
-    "    retry_until_pass_or_budget_stop: false,\n    max_attempts_per_case: config.maxAttemptsPerCase,\n    rejected_cases_file: path.join(config.outputDir, 'rejections.jsonl'),",
+    "    retry_until_pass_or_budget_stop: false,\n    max_attempts_per_case: config.maxAttemptsPerCase,\n    rejected_cases_file: path.join(config.outputDir, 'rejections.jsonl'),\n    derived_facts_version: 'AI_EVAL_DERIVED_FACTS_V1',",
     'plan metadata'
+  );
+
+  source = replaceOnce(
+    source,
+    "      const testCase = safeJson(line);\n      if (!testCase || !testCase.id || completed.has(String(testCase.id))) continue;",
+    "      const parsedTestCase = safeJson(line);\n      const testCase = parsedTestCase ? enrichCase(parsedTestCase) : null;\n      if (!testCase || !testCase.id || completed.has(String(testCase.id))) continue;",
+    'case enrichment'
   );
 
   source = replaceOnce(
