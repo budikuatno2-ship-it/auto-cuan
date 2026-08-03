@@ -38,6 +38,7 @@ jobs:
         run: >-
           node --test
           test/fast-watcher-locked-setup-regression.test.js
+          test/fast-watcher-v6-structure-regression.test.js
           test/fast-watcher-guarded-live-v2.test.js
           test/fast-watcher-momentum-flow.test.js
           test/intraday-fast-watcher-live-state.test.js
