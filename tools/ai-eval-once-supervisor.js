@@ -14,6 +14,8 @@ const ENV_FILE = process.env.AI_EVAL_ENV_FILE || '/home/ubuntu/auto-cuan/.env.ai
 let child = null;
 let activeRunId = null;
 let stopping = false;
+let stopTimer = null;
+let stopDesiredState = null;
 
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 function safeJson(value) { try { return JSON.parse(value); } catch (_) { return null; } }
@@ -27,6 +29,9 @@ function safeDatasetPath(value) {
   if (!candidate.startsWith(WORK_DIR + path.sep)) return null;
   if (!candidate.endsWith('.jsonl.gz')) return null;
   return candidate;
+}
+function desiredStateStopsWorker(value) {
+  return ['PAUSED', 'STOPPED'].includes(String(value || '').toUpperCase());
 }
 
 function runtimeEnvForRun(run) {
@@ -83,26 +88,75 @@ async function patchRun(id, values) {
   });
 }
 
+function clearStopState() {
+  if (stopTimer) clearTimeout(stopTimer);
+  stopTimer = null;
+  stopping = false;
+  stopDesiredState = null;
+}
+
+function terminateChild(desiredState) {
+  if (!child || stopping) return false;
+  const target = child;
+  stopping = true;
+  stopDesiredState = String(desiredState || '').toUpperCase();
+  console.log('ai-eval child termination requested', JSON.stringify({
+    run_id: activeRunId,
+    desired_state: stopDesiredState
+  }));
+  target.kill('SIGTERM');
+  stopTimer = setTimeout(() => {
+    if (child === target) target.kill('SIGKILL');
+  }, 30000);
+  stopTimer.unref();
+  return true;
+}
+
 function startRun(run) {
   if (child) return;
   const runEnv = runtimeEnvForRun(run);
-  activeRunId = String(run.id);
+  const runId = String(run.id);
+  activeRunId = runId;
   const launcher = path.join(ROOT_DIR, 'tools/run-ai-eval-once.sh');
-  child = spawn('/usr/bin/env', ['bash', launcher, '--run-id=' + activeRunId], {
+  const launched = spawn('/usr/bin/env', ['bash', launcher, '--run-id=' + runId], {
     cwd: ROOT_DIR,
     env: { ...process.env, ...runEnv },
     stdio: 'inherit'
   });
-  child.once('exit', (code, signal) => {
-    console.log('ai-eval child exited', JSON.stringify({ run_id: activeRunId, code, signal }));
-    child = null;
-    activeRunId = null;
+  child = launched;
+
+  launched.once('exit', (code, signal) => {
+    const requestedState = stopDesiredState;
+    console.log('ai-eval child exited', JSON.stringify({ run_id: runId, code, signal, requested_state: requestedState }));
+    if (child === launched) {
+      child = null;
+      activeRunId = null;
+    }
+    clearStopState();
+
+    if (requestedState === 'PAUSED') {
+      patchRun(runId, {
+        status: 'PAUSED',
+        last_heartbeat_at: new Date().toISOString()
+      }).catch((error) => console.error('ai-eval pause finalization failed', error.message));
+    } else if (requestedState === 'STOPPED') {
+      patchRun(runId, {
+        desired_state: 'STOPPED',
+        status: 'STOPPED',
+        finished_at: new Date().toISOString(),
+        last_heartbeat_at: new Date().toISOString()
+      }).catch((error) => console.error('ai-eval stop finalization failed', error.message));
+    }
   });
-  child.once('error', (error) => {
+
+  launched.once('error', (error) => {
     console.error('ai-eval child spawn error', error.message);
-    patchRun(activeRunId, { status: 'FAILED', last_error: error.message, finished_at: new Date().toISOString() }).catch(() => {});
-    child = null;
-    activeRunId = null;
+    if (child === launched) {
+      child = null;
+      activeRunId = null;
+    }
+    clearStopState();
+    patchRun(runId, { status: 'FAILED', last_error: error.message, finished_at: new Date().toISOString() }).catch(() => {});
   });
 }
 
@@ -111,14 +165,7 @@ async function tick() {
   if (!run) return;
 
   if (child && activeRunId === String(run.id)) {
-    if (run.desired_state === 'STOPPED' && !stopping) {
-      stopping = true;
-      child.kill('SIGTERM');
-      setTimeout(() => {
-        if (child) child.kill('SIGKILL');
-        stopping = false;
-      }, 30000).unref();
-    }
+    if (desiredStateStopsWorker(run.desired_state)) terminateChild(run.desired_state);
     return;
   }
 
@@ -172,4 +219,11 @@ if (require.main === module) {
   main().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });
 }
 
-module.exports = { latestRun, patchRun, safeDatasetPath, runtimeEnvForRun };
+module.exports = {
+  latestRun,
+  patchRun,
+  safeDatasetPath,
+  runtimeEnvForRun,
+  desiredStateStopsWorker,
+  terminateChild
+};
