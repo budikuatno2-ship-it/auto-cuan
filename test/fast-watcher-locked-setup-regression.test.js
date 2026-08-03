@@ -20,6 +20,40 @@ function msky(time, overrides = {}) {
   };
 }
 
+function readyObservation(time, overrides = {}) {
+  return {
+    ticker: 'ZZZZ',
+    scheduled_time: time,
+    current_status: 'READY_BREAKOUT',
+    current_price: 100,
+    entry_low: 98,
+    entry_high: 103,
+    tp1: 112,
+    stop_loss: 95,
+    high: 103,
+    low: 98,
+    volume: 1000,
+    average_volume: 700,
+    relative_volume: 1.5,
+    momentum_component: 14,
+    liquidity_component: 16,
+    risk_reward: 1.7,
+    minimum_risk_reward: 1,
+    plan_lock_id: 'PLAN_A',
+    freshness: { is_stale: false },
+    ...overrides
+  };
+}
+
+function readyShortlist() {
+  return [{
+    ticker: 'ZZZZ',
+    source_rank: 1,
+    source_status: 'READY_BREAKOUT',
+    source_origin: 'regression'
+  }];
+}
+
 test('pool preserves source status and origin from raw payload', () => {
   const result = pool.mergePayload({ results: [{ ticker: 'BBRI', source_status: 'RADAR', source_origin: 'current_radar' }] }, null, '09:10', [], 20);
   assert.equal(result.results[0].source_status, 'RADAR');
@@ -73,5 +107,79 @@ test('locked setup blocks shifted target after original TP1 is reached', () => {
   assert.equal(second.state.tickers.MSKY.locked_tp1, 70);
   assert.ok(second.events.some(event => event.reasons.includes('tp1_already_reached')));
   assert.ok(second.events.some(event => event.reasons.includes('source_plan_changed_locked_setup_preserved')));
+  assert.equal(second.publishable.length, 0);
+});
+
+test('plan lock change resets confirmation streak before another pass', () => {
+  const first = pool.process({
+    sampleDate: '2099-01-01',
+    scheduledTime: '09:10',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:10')],
+    priorState: null
+  });
+  assert.equal(first.state.tickers.ZZZZ.status, 'READY_PENDING');
+  assert.equal(first.state.tickers.ZZZZ.ready_streak, 1);
+
+  const second = pool.process({
+    sampleDate: '2099-01-01',
+    scheduledTime: '09:13',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:13', {
+      current_price: 101,
+      volume: 1800,
+      relative_volume: 1.8,
+      entry_low: 99,
+      entry_high: 104,
+      tp1: 113,
+      stop_loss: 96,
+      plan_lock_id: 'PLAN_B'
+    })],
+    priorState: first.state
+  });
+
+  const state = second.state.tickers.ZZZZ;
+  assert.equal(state.locked_plan_lock_id, 'PLAN_A');
+  assert.equal(state.status, 'READY_PENDING');
+  assert.equal(state.ready_streak, 1);
+  assert.deepEqual(state.confirmation_window, [true]);
+  assert.ok(state.last_reasons.includes('source_plan_changed_locked_setup_preserved'));
+  assert.ok(state.last_reasons.includes('confirmation_reset_source_setup_changed'));
+  assert.equal(second.publishable.length, 0);
+});
+
+test('material source setup change resets confirmation even without plan lock ids', () => {
+  const first = pool.process({
+    sampleDate: '2099-01-02',
+    scheduledTime: '09:10',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:10', { plan_lock_id: null })],
+    priorState: null
+  });
+  assert.equal(first.state.tickers.ZZZZ.ready_streak, 1);
+
+  const second = pool.process({
+    sampleDate: '2099-01-02',
+    scheduledTime: '09:13',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:13', {
+      current_price: 101,
+      volume: 1800,
+      relative_volume: 1.8,
+      entry_low: 99,
+      entry_high: 104,
+      tp1: 113,
+      stop_loss: 96,
+      plan_lock_id: null
+    })],
+    priorState: first.state
+  });
+
+  const state = second.state.tickers.ZZZZ;
+  assert.equal(state.status, 'READY_PENDING');
+  assert.equal(state.ready_streak, 1);
+  assert.deepEqual(state.confirmation_window, [true]);
+  assert.ok(state.last_reasons.includes('source_setup_changed_locked_setup_preserved'));
+  assert.ok(state.last_reasons.includes('confirmation_reset_source_setup_changed'));
   assert.equal(second.publishable.length, 0);
 });
