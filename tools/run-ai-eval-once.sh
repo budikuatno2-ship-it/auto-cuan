@@ -37,11 +37,48 @@ AI_EVAL_MODEL="${AI_EVAL_MODEL:-claude-sonnet-4.6}"
 AI_EVAL_STORAGE_BUCKET="${AI_EVAL_STORAGE_BUCKET:-ai-eval-private}"
 AI_EVAL_CASE_TARGET="${AI_EVAL_CASE_TARGET:-1000000}"
 AI_EVAL_TOKEN_BUDGET="${AI_EVAL_TOKEN_BUDGET:-50000000}"
+AI_EVAL_RPM="${AI_EVAL_RPM:-30}"
+AI_EVAL_CONCURRENCY="${AI_EVAL_CONCURRENCY:-4}"
 AI_EVAL_MAX_DUPLICATE_STREAK="${AI_EVAL_MAX_DUPLICATE_STREAK:-50000}"
 AI_EVAL_MAX_ATTEMPTS_PER_CASE="${AI_EVAL_MAX_ATTEMPTS_PER_CASE:-3}"
 # Stable validation markers for the agreed defaults: --count=1000000 --max-total-tokens=50000000
 RUN_OUTPUT="$OUTPUT_DIR/$RUN_ID"
 DONE_FILE="$RUN_OUTPUT/WORKER_DONE"
+
+for numeric in \
+  AI_EVAL_CASE_TARGET \
+  AI_EVAL_TOKEN_BUDGET \
+  AI_EVAL_RPM \
+  AI_EVAL_CONCURRENCY \
+  AI_EVAL_MAX_ATTEMPTS_PER_CASE
+do
+  value="${!numeric}"
+  if ! [[ "$value" =~ ^[0-9]+$ ]]; then
+    echo "${numeric}_INVALID=$value" >&2
+    exit 2
+  fi
+done
+
+if (( AI_EVAL_CASE_TARGET < 1 || AI_EVAL_CASE_TARGET > 1000000 )); then
+  echo "AI_EVAL_CASE_TARGET_OUT_OF_RANGE=$AI_EVAL_CASE_TARGET" >&2
+  exit 2
+fi
+if (( AI_EVAL_TOKEN_BUDGET < 1000 || AI_EVAL_TOKEN_BUDGET > 1000000000 )); then
+  echo "AI_EVAL_TOKEN_BUDGET_OUT_OF_RANGE=$AI_EVAL_TOKEN_BUDGET" >&2
+  exit 2
+fi
+if (( AI_EVAL_RPM < 1 || AI_EVAL_RPM > 600 )); then
+  echo "AI_EVAL_RPM_OUT_OF_RANGE=$AI_EVAL_RPM" >&2
+  exit 2
+fi
+if (( AI_EVAL_CONCURRENCY < 1 || AI_EVAL_CONCURRENCY > 32 )); then
+  echo "AI_EVAL_CONCURRENCY_OUT_OF_RANGE=$AI_EVAL_CONCURRENCY" >&2
+  exit 2
+fi
+if (( AI_EVAL_MAX_ATTEMPTS_PER_CASE < 1 || AI_EVAL_MAX_ATTEMPTS_PER_CASE > 10 )); then
+  echo "AI_EVAL_MAX_ATTEMPTS_PER_CASE_OUT_OF_RANGE=$AI_EVAL_MAX_ATTEMPTS_PER_CASE" >&2
+  exit 2
+fi
 
 mkdir -p "$WORK_DIR" "$RUN_OUTPUT"
 rm -f "$DONE_FILE"
@@ -101,8 +138,8 @@ UPLOADER_PID=$!
   --run-id="$RUN_ID" \
   --base-url="$AI_EVAL_BASE_URL" \
   --model="$AI_EVAL_MODEL" \
-  --rpm=30 \
-  --concurrency=4 \
+  --rpm="$AI_EVAL_RPM" \
+  --concurrency="$AI_EVAL_CONCURRENCY" \
   --max-total-tokens="$AI_EVAL_TOKEN_BUDGET" \
   --max-attempts-per-case="$AI_EVAL_MAX_ATTEMPTS_PER_CASE" \
   --max-output-tokens=8192 \
