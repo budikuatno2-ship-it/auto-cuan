@@ -40,13 +40,14 @@ function runtimeEnvForRun(run) {
   const env = {
     AI_EVAL_ENV_FILE: ENV_FILE,
     AI_EVAL_RUN_ID: String(row.id || ''),
-    AI_EVAL_CASE_TARGET: String(boundedInt(row.cases_target, 1000000, 1, 1000000)),
-    AI_EVAL_TOKEN_BUDGET: String(boundedInt(row.token_budget, 50000000, 1000, 1000000000)),
-    AI_EVAL_RPM: String(boundedInt(row.max_rpm, 30, 1, 600)),
-    AI_EVAL_CONCURRENCY: String(boundedInt(row.concurrency, 4, 1, 32)),
-    AI_EVAL_MAX_ATTEMPTS_PER_CASE: String(boundedInt(config.max_attempts_per_case, 3, 1, 10))
+    AI_EVAL_RUN_MODEL: String(row.model || ''),
+    AI_EVAL_RUN_CASE_TARGET: String(boundedInt(row.cases_target, 1000000, 1, 1000000)),
+    AI_EVAL_RUN_TOKEN_BUDGET: String(boundedInt(row.token_budget, 50000000, 1000, 1000000000)),
+    AI_EVAL_RUN_RPM: String(boundedInt(row.max_rpm, 30, 1, 600)),
+    AI_EVAL_RUN_CONCURRENCY: String(boundedInt(row.concurrency, 4, 1, 32)),
+    AI_EVAL_RUN_MAX_ATTEMPTS_PER_CASE: String(boundedInt(config.max_attempts_per_case, 3, 1, 10))
   };
-  if (dataset) env.AI_EVAL_DATASET_GZ = dataset;
+  if (dataset) env.AI_EVAL_RUN_DATASET_GZ = dataset;
   return env;
 }
 
@@ -89,10 +90,7 @@ function startRun(run) {
   const launcher = path.join(ROOT_DIR, 'tools/run-ai-eval-once.sh');
   child = spawn('/usr/bin/env', ['bash', launcher, '--run-id=' + activeRunId], {
     cwd: ROOT_DIR,
-    env: {
-      ...process.env,
-      ...runEnv
-    },
+    env: { ...process.env, ...runEnv },
     stdio: 'inherit'
   });
   child.once('exit', (code, signal) => {
