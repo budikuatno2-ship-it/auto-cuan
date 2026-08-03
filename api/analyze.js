@@ -3,7 +3,7 @@
 const handleContextAI = require('../lib/context-ai-router-v6');
 const legacyAnalyze = require('../lib/analyze-legacy');
 const { hydrateContext } = require('../lib/ai-context-snapshot-store');
-const { prepareRuntimeGrounding } = require('../lib/ai-runtime-grounding');
+const { prepareRuntimeGrounding } = require('../lib/ai-runtime-grounding-v2');
 
 function styleInstruction(source) {
   const focus = source === 'stock_analysis_followup'
