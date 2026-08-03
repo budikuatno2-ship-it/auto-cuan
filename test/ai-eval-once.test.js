@@ -181,9 +181,11 @@ test('one-time launcher pins provider controls and database-backed dataset sourc
   const launcher = fs.readFileSync(path.join(ROOT, 'tools/run-ai-eval-once.sh'), 'utf8');
   assert.ok(launcher.includes('https://openagentic.id/api/v1'));
   assert.ok(launcher.includes('claude-sonnet-4.6'));
-  assert.ok(launcher.includes('--rpm=30'));
-  assert.ok(launcher.includes('--concurrency=4'));
-  assert.ok(launcher.includes('AI_EVAL_TOKEN_BUDGET'));
+  assert.ok(launcher.includes('AI_EVAL_RPM="${AI_EVAL_RUN_RPM:-${AI_EVAL_RPM:-30}}"'));
+  assert.ok(launcher.includes('AI_EVAL_CONCURRENCY="${AI_EVAL_RUN_CONCURRENCY:-${AI_EVAL_CONCURRENCY:-4}}"'));
+  assert.ok(launcher.includes('--rpm="$AI_EVAL_RPM"'));
+  assert.ok(launcher.includes('--concurrency="$AI_EVAL_CONCURRENCY"'));
+  assert.ok(launcher.includes('AI_EVAL_RUN_TOKEN_BUDGET'));
   assert.ok(launcher.includes('--judge-mode=all'));
   assert.ok(launcher.includes('build-ai-eval-snapshot-source.js'));
   assert.ok(launcher.includes('generate-ai-eval-complete-dataset.js'));
