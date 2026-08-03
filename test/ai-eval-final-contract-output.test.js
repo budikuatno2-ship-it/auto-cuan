@@ -78,7 +78,8 @@ test('one-time launcher uses high output caps and bounded retries', () => {
 
   assert.match(launcher, /--max-output-tokens=8192/);
   assert.match(launcher, /--judge-max-tokens=2048/);
-  assert.match(launcher, /AI_EVAL_MAX_ATTEMPTS_PER_CASE="\$\{AI_EVAL_MAX_ATTEMPTS_PER_CASE:-3\}"/);
+  assert.match(launcher, /AI_EVAL_MAX_ATTEMPTS_PER_CASE="\$\{AI_EVAL_RUN_MAX_ATTEMPTS_PER_CASE:-\$\{AI_EVAL_MAX_ATTEMPTS_PER_CASE:-3\}\}"/);
+  assert.match(launcher, /--max-attempts-per-case="\$AI_EVAL_MAX_ATTEMPTS_PER_CASE"/);
   assert.match(bounded, /max-attempts-per-case/);
   assert.match(bounded, /rejections\.jsonl/);
   assert.match(diagnostic, /ANSWER_MAX_TOKENS = 8192/);
