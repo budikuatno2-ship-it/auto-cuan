@@ -106,7 +106,7 @@ test('locked setup blocks shifted target after original TP1 is reached', () => {
   assert.equal(second.state.tickers.MSKY.locked_plan_lock_id, 'tplock_A');
   assert.equal(second.state.tickers.MSKY.locked_tp1, 70);
   assert.ok(second.events.some(event => event.reasons.includes('tp1_already_reached')));
-  assert.ok(second.events.some(event => event.reasons.includes('source_plan_changed_locked_setup_preserved')));
+  assert.ok(second.events.some(event => event.reasons.includes('source_plan_identity_changed_locked_setup_preserved')));
   assert.equal(second.publishable.length, 0);
 });
 
@@ -143,7 +143,7 @@ test('plan lock change resets confirmation streak before another pass', () => {
   assert.equal(state.status, 'READY_PENDING');
   assert.equal(state.ready_streak, 1);
   assert.deepEqual(state.confirmation_window, [true]);
-  assert.ok(state.last_reasons.includes('source_plan_changed_locked_setup_preserved'));
+  assert.ok(state.last_reasons.includes('source_plan_identity_changed_locked_setup_preserved'));
   assert.ok(state.last_reasons.includes('confirmation_reset_source_setup_changed'));
   assert.equal(second.publishable.length, 0);
 });
@@ -182,4 +182,145 @@ test('material source setup change resets confirmation even without plan lock id
   assert.ok(state.last_reasons.includes('source_setup_changed_locked_setup_preserved'));
   assert.ok(state.last_reasons.includes('confirmation_reset_source_setup_changed'));
   assert.equal(second.publishable.length, 0);
+});
+
+test('plan identity disappearance resets confirmation instead of inheriting PLAN_A streak', () => {
+  const first = pool.process({
+    sampleDate: '2099-01-03',
+    scheduledTime: '09:10',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:10')],
+    priorState: null
+  });
+  assert.equal(first.state.tickers.ZZZZ.ready_streak, 1);
+
+  const second = pool.process({
+    sampleDate: '2099-01-03',
+    scheduledTime: '09:13',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:13', {
+      current_price: 101,
+      volume: 1800,
+      relative_volume: 1.8,
+      plan_lock_id: null
+    })],
+    priorState: first.state
+  });
+
+  const state = second.state.tickers.ZZZZ;
+  assert.equal(state.status, 'READY_PENDING');
+  assert.equal(state.ready_streak, 1);
+  assert.deepEqual(state.confirmation_window, [true]);
+  assert.ok(state.last_reasons.includes('source_plan_identity_changed_locked_setup_preserved'));
+  assert.ok(state.last_reasons.includes('confirmation_reset_source_setup_changed'));
+  assert.equal(second.publishable.length, 0);
+});
+
+test('plan identity appearance resets confirmation instead of inheriting anonymous streak', () => {
+  const first = pool.process({
+    sampleDate: '2099-01-04',
+    scheduledTime: '09:10',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:10', { plan_lock_id: null })],
+    priorState: null
+  });
+  assert.equal(first.state.tickers.ZZZZ.ready_streak, 1);
+
+  const second = pool.process({
+    sampleDate: '2099-01-04',
+    scheduledTime: '09:13',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:13', {
+      current_price: 101,
+      volume: 1800,
+      relative_volume: 1.8,
+      plan_lock_id: 'PLAN_B'
+    })],
+    priorState: first.state
+  });
+
+  const state = second.state.tickers.ZZZZ;
+  assert.equal(state.status, 'READY_PENDING');
+  assert.equal(state.ready_streak, 1);
+  assert.deepEqual(state.confirmation_window, [true]);
+  assert.ok(state.last_reasons.includes('source_plan_identity_changed_locked_setup_preserved'));
+  assert.ok(state.last_reasons.includes('confirmation_reset_source_setup_changed'));
+  assert.equal(second.publishable.length, 0);
+});
+
+test('risk policy change is part of setup identity and resets confirmation', () => {
+  const first = pool.process({
+    sampleDate: '2099-01-05',
+    scheduledTime: '09:10',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:10', { plan_lock_id: null, minimum_risk_reward: 1 })],
+    priorState: null
+  });
+  assert.equal(first.state.tickers.ZZZZ.ready_streak, 1);
+
+  const second = pool.process({
+    sampleDate: '2099-01-05',
+    scheduledTime: '09:13',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:13', {
+      current_price: 101,
+      volume: 1800,
+      relative_volume: 1.8,
+      plan_lock_id: null,
+      minimum_risk_reward: 2
+    })],
+    priorState: first.state
+  });
+
+  const state = second.state.tickers.ZZZZ;
+  assert.equal(state.status, 'READY_PENDING');
+  assert.equal(state.ready_streak, 1);
+  assert.ok(state.last_reasons.includes('source_setup_changed_locked_setup_preserved'));
+  assert.ok(state.last_reasons.includes('confirmation_reset_source_setup_changed'));
+  assert.equal(second.publishable.length, 0);
+});
+
+test('active state pool is capped to selected shortlist and evicts overflow safely', () => {
+  const date = '2099-01-06';
+  const priorState = {
+    schema_version: 3,
+    date,
+    rule_version: pool.RULE_VERSION,
+    updated_at: null,
+    tickers: {}
+  };
+  for (let index = 0; index < 20; index += 1) {
+    priorState.tickers[`OLD${String(index).padStart(2, '0')}`] = {
+      active: true,
+      in_latest_shortlist: false,
+      status: 'WATCHING',
+      ready_streak: 0,
+      confirmation_window: [],
+      shortlist_rank: index + 1,
+      source_status: 'WAIT_PULLBACK',
+      source_origin: 'carried_pool',
+      max_expires_at_minute: 900,
+      expires_at_minute: 900,
+      stagnant_count: 0
+    };
+  }
+  const shortlistRows = Array.from({ length: 20 }, (_, index) => ({
+    ticker: `NEW${String(index).padStart(2, '0')}`,
+    source_rank: index + 1,
+    source_status: 'EARLY_RADAR',
+    source_origin: 'current_radar'
+  }));
+
+  const result = pool.process({
+    sampleDate: date,
+    scheduledTime: '09:10',
+    shortlistRows,
+    observations: [],
+    priorState
+  });
+
+  assert.equal(result.active_pool_count, 20);
+  assert.equal(Object.values(result.state.tickers).filter(item => item.active).length, 20);
+  assert.equal(result.events.filter(event => event.reasons.includes('pool_capacity_evicted')).length, 20);
+  assert.ok(Object.entries(result.state.tickers).filter(([ticker]) => ticker.startsWith('OLD')).every(([, item]) => item.active === false && item.status === 'DROPPED_FROM_WATCH_POOL'));
 });
