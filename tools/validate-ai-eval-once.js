@@ -13,6 +13,10 @@ const scripts = [
   'tools/run-ai-eval-cloud.js',
   'tools/upload-ai-eval-shards.js',
   'tools/ai-eval-once-supervisor.js',
+  'tools/build-ai-eval-failed-retry-dataset.js',
+  'tools/prepare-ai-eval-failed-retry.js',
+  'tools/control-ai-eval-run.js',
+  'lib/ai-eval-derived-facts.js',
   'api/admin-users.js',
   'public/admin-tools-runtime.js'
 ];
@@ -41,16 +45,36 @@ assertOk(adminApi.includes('requireBudiAdmin(req)'), 'signed budi-only admin pro
 assertOk(!adminApi.includes('AI_EVAL_API_KEY'), 'admin API must never read or expose provider API key');
 
 const launcher = read('tools/run-ai-eval-once.sh');
-[
-  '--count=1000000', '--stock-ratio=60', '--rpm=30', '--concurrency=4',
-  '--max-total-tokens=50000000', '--judge-mode=all', '--upload'
-].forEach((token) => {
-  if (token === '--upload') assertOk(!launcher.includes(token), 'workers must not upload shards concurrently');
-  else assertOk(launcher.includes(token), 'launcher missing ' + token);
-});
+assertOk(launcher.includes('--count=1000000'), 'default 1M generation marker is missing');
+assertOk(launcher.includes('--stock-ratio=60'), 'stock ratio 60 is missing');
+assertOk(launcher.includes('AI_EVAL_RPM="${AI_EVAL_RUN_RPM:-${AI_EVAL_RPM:-30}}"'), 'default/run RPM contract is missing');
+assertOk(launcher.includes('AI_EVAL_CONCURRENCY="${AI_EVAL_RUN_CONCURRENCY:-${AI_EVAL_CONCURRENCY:-4}}"'), 'default/run concurrency contract is missing');
+assertOk(launcher.includes('AI_EVAL_TOKEN_BUDGET="${AI_EVAL_RUN_TOKEN_BUDGET:-${AI_EVAL_TOKEN_BUDGET:-50000000}}"'), 'default/run token budget contract is missing');
+assertOk(launcher.includes('--rpm="$AI_EVAL_RPM"'), 'validated RPM is not passed to worker');
+assertOk(launcher.includes('--concurrency="$AI_EVAL_CONCURRENCY"'), 'validated concurrency is not passed to worker');
+assertOk(launcher.includes('--max-total-tokens="$AI_EVAL_TOKEN_BUDGET"'), 'validated token budget is not passed to worker');
+assertOk(launcher.includes('--judge-mode=all'), 'judge-all mode is missing');
+assertOk(!launcher.includes('--upload'), 'workers must not upload shards concurrently');
 assertOk(launcher.includes('tools/upload-ai-eval-shards.js'), 'serialized uploader is missing');
 assertOk(launcher.includes('source "$ENV_FILE"'), 'VPS-only env file is not loaded');
+assertOk(launcher.includes('AI_EVAL_RUN_DATASET_NOT_FOUND'), 'missing retry dataset must fail closed');
 assertOk(launcher.includes('WORKER_PID') && launcher.includes('kill "$WORKER_PID"'), 'Stop cannot terminate the worker safely');
+
+const supervisor = read('tools/ai-eval-once-supervisor.js');
+assertOk(supervisor.includes('AI_EVAL_RUN_DATASET_GZ'), 'supervisor does not pass retry dataset override');
+assertOk(supervisor.includes('AI_EVAL_RUN_TOKEN_BUDGET'), 'supervisor does not pass per-run token budget');
+assertOk(supervisor.includes("config.run_kind === 'failed_retry'"), 'failed retry guard is missing');
+assertOk(supervisor.includes("status: 'BLOCKED'"), 'invalid retry must become BLOCKED');
+
+const retryBuilder = read('tools/build-ai-eval-failed-retry-dataset.js');
+assertOk(retryBuilder.includes('missing_count: 0'), 'failed-only dataset missing-ID invariant is absent');
+assertOk(retryBuilder.includes('output_sha256'), 'retry dataset checksum is missing');
+const retryPrepare = read('tools/prepare-ai-eval-failed-retry.js');
+assertOk(retryPrepare.includes("desired_state: 'PAUSED'"), 'retry run must be prepared paused');
+assertOk(retryPrepare.includes("retry_scope: 'failed_cases_only'"), 'failed-only retry scope is missing');
+const retryControl = read('tools/control-ai-eval-run.js');
+assertOk(retryControl.includes("action === 'start'"), 'exact retry start control is missing');
+assertOk(retryControl.includes("status === 'COMPLETED'"), 'completed run restart guard is missing');
 
 const worker = read('tools/run-ai-eval-cloud.js');
 assertOk(worker.includes('retry_until_pass_or_budget_stop'), 'retry-until-pass plan marker is missing');
