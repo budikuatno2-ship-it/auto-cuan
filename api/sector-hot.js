@@ -6388,16 +6388,6 @@ function resolveMonitorSetupOrigin(pick) {
   return raw.setup_origin_at || raw.freshness_timestamp || raw.calculated_at || raw.run_at || raw.published_at || raw.registered_at || (pick && pick.created_at) || (pick && pick.first_sent_at) || raw.run_date || (pick && pick.date) || null;
 }
 
-function isMonitorTimestampStale(value) {
-  if (!value) return false;
-  var text = String(value).trim();
-  var parsed = /^d{4}-d{2}-d{2}$/.test(text) ? new Date(text + 'T23:59:59.999Z') : new Date(text);
-  if (isNaN(parsed.getTime())) return true;
-  var ageMs = Date.now() - parsed.getTime();
-  if (ageMs < -15 * 60 * 1000) return true;
-  return ageMs > 4 * 60 * 60 * 1000;
-}
-
 async function fetchLatestPriceForMonitor(supabase, ticker) {
   var dt = await supabase.from('daytrade_screener_latest').select('last_price,open_price,high_price,low_price,calculated_at').eq('ticker', ticker).maybeSingle();
   if (dt.data && dt.data.last_price != null) return { last: toNum(dt.data.last_price), open: toNum(dt.data.open_price), high: toNum(dt.data.high_price), low: toNum(dt.data.low_price), at: dt.data.calculated_at, bestEffort: false, source: 'daytrade_screener_latest' };
@@ -6871,10 +6861,28 @@ function isJakartaActiveMonitorSession() {
 function isMonitorTimestampStale(value, sourceLabel) {
   if (!value) return true;
   if (sourceLabel === 'daily lock fallback') return true;
-  var d = new Date(value);
+
+  var text = String(value).trim();
+
+  // Date-only observations are valid only for the current Jakarta
+  // trading date. They do not provide intraday time precision.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text !== getJakartaDateString();
+  }
+
+  var d = new Date(text);
   if (isNaN(d.getTime())) return true;
+
+  // Outside an active market-monitoring session, preserve the existing
+  // contract and do not invalidate an otherwise valid timestamp solely
+  // because more than 45 minutes have elapsed.
   if (!isJakartaActiveMonitorSession()) return false;
-  return (Date.now() - d.getTime()) > (45 * 60 * 1000);
+
+  var ageMs = Date.now() - d.getTime();
+
+  if (ageMs < -15 * 60 * 1000) return true;
+
+  return ageMs > (45 * 60 * 1000);
 }
 
 
@@ -12873,6 +12881,7 @@ module.exports.__test = {
   buildMonitorDedupKey: buildMonitorDedupKey,
   buildMonitorPlanIdentity: buildMonitorPlanIdentity,
   resolveMonitorSetupOrigin: resolveMonitorSetupOrigin,
+  isMonitorTimestampStale: isMonitorTimestampStale,
   dedupeActiveMonitorRows: dedupeActiveMonitorRows,
   compareMonitorRowRecency: compareMonitorRowRecency,
   evaluateMonitorStatus: evaluateMonitorStatus,

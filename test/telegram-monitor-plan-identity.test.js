@@ -19,7 +19,8 @@ const {
   buildMonitorDedupKey,
   dedupeActiveMonitorRows,
   registerCandidatesForMonitoring,
-  evaluateMonitorStatus
+  evaluateMonitorStatus,
+  isMonitorTimestampStale
 } = sectorHot.__test;
 
 function candidate(overrides) {
@@ -114,4 +115,31 @@ test('best-effort daily close cannot fabricate an entry/TP/SL touch', () => {
   const ev = evaluateMonitorStatus(pick, { last: 5600, high: null, low: null, at: '2026-08-04', bestEffort: true, source: 'foreign_watchlist_daily.close' });
   assert.equal(ev.status, 'NEEDS_REVALIDATION');
   assert.equal(ev.price_revalidation_required, true);
+});
+
+
+test('date-only monitor timestamps use the Jakarta trading date', () => {
+  const jakartaToday = new Date(
+    Date.now() + 7 * 60 * 60 * 1000
+  ).toISOString().slice(0, 10);
+
+  const jakartaYesterday = new Date(
+    Date.now() - 24 * 60 * 60 * 1000
+      + 7 * 60 * 60 * 1000
+  ).toISOString().slice(0, 10);
+
+  assert.equal(
+    isMonitorTimestampStale(jakartaToday),
+    false
+  );
+
+  assert.equal(
+    isMonitorTimestampStale(jakartaYesterday),
+    true
+  );
+
+  assert.equal(
+    isMonitorTimestampStale('not-a-date'),
+    true
+  );
 });
