@@ -7,6 +7,10 @@ on:
     paths:
       - '.patch/telegram-monitor-plan-identity/**'
       - '.github/workflows/apply-telegram-monitor-plan-identity.yml'
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
