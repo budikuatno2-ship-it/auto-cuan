@@ -6383,12 +6383,19 @@ async function handleTelegramDailyPicks(req, res, supabase) {
   }
 }
 
+function resolveMonitorSetupOrigin(pick) {
+  var raw = (pick && pick.raw_payload) || {};
+  return raw.setup_origin_at || raw.freshness_timestamp || raw.calculated_at || raw.run_at || raw.published_at || raw.registered_at || (pick && pick.created_at) || (pick && pick.first_sent_at) || raw.run_date || (pick && pick.date) || null;
+}
+
 async function fetchLatestPriceForMonitor(supabase, ticker) {
   var dt = await supabase.from('daytrade_screener_latest').select('last_price,open_price,high_price,low_price,calculated_at').eq('ticker', ticker).maybeSingle();
-  if (dt.data && dt.data.last_price != null) return { last: toNum(dt.data.last_price), open: toNum(dt.data.open_price), high: toNum(dt.data.high_price), low: toNum(dt.data.low_price), at: dt.data.calculated_at, bestEffort: false };
+  if (dt.data && dt.data.last_price != null) return { last: toNum(dt.data.last_price), open: toNum(dt.data.open_price), high: toNum(dt.data.high_price), low: toNum(dt.data.low_price), at: dt.data.calculated_at, bestEffort: false, source: 'daytrade_screener_latest' };
   var f = await supabase.from('foreign_watchlist_daily').select('close,trade_date').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(1);
-  if (f.data && f.data[0]) return { last: toNum(f.data[0].close), open: null, high: toNum(f.data[0].close), low: toNum(f.data[0].close), at: f.data[0].trade_date, bestEffort: true };
-  return { last: null, open: null, high: null, low: null, at: null, bestEffort: true };
+  // Daily close is a best-effort fallback only. Do not synthesize intraday high/low,
+  // because doing so can fabricate entry/TP/SL touches that never occurred.
+  if (f.data && f.data[0]) return { last: toNum(f.data[0].close), open: null, high: null, low: null, at: f.data[0].trade_date, bestEffort: true, source: 'foreign_watchlist_daily.close' };
+  return { last: null, open: null, high: null, low: null, at: null, bestEffort: true, source: 'unavailable' };
 }
 
 function isJakartaAtOrAfter(hour, minute) {
@@ -6402,40 +6409,70 @@ function evaluateMonitorStatus(pick, px) {
   var status = String(pick.status || 'WAITING').toUpperCase();
   var finalBefore = pick.is_final || ['TP1_HIT','TP2_HIT','SL_HIT'].indexOf(status) >= 0;
   var raw = pick.raw_payload || {};
+  var setupOriginAt = resolveMonitorSetupOrigin(pick);
+  var monitorSource = (pick && pick.monitor_source) || raw.monitor_source || pick.category || raw.category;
+  var priceTimestampStale = !!(px && px.at && isMonitorTimestampStale(px.at));
+  var priceObservationUsable = !!(px && px.last != null && !px.bestEffort && !priceTimestampStale);
   var fresh = idxTick.deriveSetupFreshness(Object.assign({}, raw, {
+    setup_origin_at: setupOriginAt,
     first_sent_at: pick.first_sent_at,
-    last_checked_at: pick.last_checked_at,
     created_at: pick.created_at,
     entry1: pick.entry1,
     entry2: pick.entry2,
     sl: pick.sl,
-    current_price: px && px.last,
-    monitor_source: (raw && raw.monitor_source) || pick.monitor_source || pick.category || raw.category
+    current_price: priceObservationUsable ? px.last : null,
+    monitor_source: monitorSource
   }));
-  if (!px || px.last == null) return { status: 'NEEDS_REVALIDATION', label: 'Needs Revalidation', isFinal: finalBefore, note: 'Data harga terbaru belum tersedia' };
+  function result(nextStatus, label, isFinal, note, extra) {
+    return Object.assign({
+      status: nextStatus,
+      label: label,
+      isFinal: isFinal,
+      note: note,
+      setup_origin_at: setupOriginAt,
+      setup_freshness_status: fresh.setup_freshness_status,
+      price_observation_at: px && px.at || null,
+      price_source: px && px.source || null,
+      price_best_effort: !!(px && px.bestEffort)
+    }, extra || {});
+  }
+  if (!px || px.last == null) {
+    if (fresh.setup_freshness_status === 'EXPIRED') return result('EXPIRED', 'Expired', false, fresh.setup_expiry_note);
+    return result('NEEDS_REVALIDATION', 'Needs Revalidation', finalBefore, 'Data harga terbaru belum tersedia', { price_revalidation_required: true });
+  }
+
+  var activeBefore = status === 'RUNNING' || status === 'ACTIVE' || status.indexOf('TP') >= 0 || !!pick.hit_entry_at;
+  var priceSourceLabel = px.bestEffort ? 'daily lock fallback' : 'intraday monitor';
+  if (px.bestEffort || priceTimestampStale) {
+    if (fresh.setup_freshness_status === 'EXPIRED') return result('EXPIRED', 'Expired', false, fresh.setup_expiry_note);
+    // Preserve an already-active lifecycle state, but never create a new transition
+    // from a stale or close-only observation.
+    if (activeBefore) return result(status, status.replace(/_/g, ' '), finalBefore, 'Harga monitor perlu revalidasi; status aktif dipertahankan tanpa hit baru.', { price_revalidation_required: true });
+    return result('NEEDS_REVALIDATION', 'Needs Revalidation', false, 'Timestamp harga monitor tidak cukup segar untuk membuat transisi baru.', { price_revalidation_required: true });
+  }
 
   var last = toNum(px.last);
-  var high = px.high != null ? toNum(px.high) : last;
-  var low = px.low != null ? toNum(px.low) : last;
+  var high = px.high != null ? toNum(px.high) : null;
+  var low = px.low != null ? toNum(px.low) : null;
   var entry1 = toNum(pick.entry1);
   var entry2 = toNum(pick.entry2);
   var tp1 = toNum(pick.tp1);
   var tp2 = toNum(pick.tp2);
   var sl = toNum(pick.sl);
   var entryTouched = entry1 != null && high != null && low != null && low <= entry1 && high >= entry1;
-  var active = status === 'RUNNING' || status === 'ACTIVE' || status.indexOf('TP') >= 0 || entryTouched || pick.hit_entry_at;
+  var active = activeBefore || entryTouched;
 
-  if (sl != null && low != null && low <= sl) return { status: active ? 'SL_HIT' : 'INVALID', label: active ? 'SL kena' : 'Invalid', isFinal: true, note: active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry' };
-  if (active && tp2 != null && high != null && high >= tp2) return { status: 'TP2_HIT', label: 'TP2 Hit', isFinal: true, note: pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh' };
-  if (active && tp1 != null && high != null && high >= tp1) return { status: 'TP1_HIT', label: 'TP1 Hit', isFinal: false, note: pick.hit_tp1_at ? 'TP1 sudah tercatat sebelumnya' : 'TP1 tersentuh' };
-  if (fresh.setup_freshness_status === 'EXPIRED') return { status: 'EXPIRED', label: 'Expired', isFinal: false, note: fresh.setup_expiry_note };
-  if (fresh.setup_freshness_status === 'NEEDS_REVALIDATION') return { status: 'NEEDS_REVALIDATION', label: 'Needs Revalidation', isFinal: false, note: fresh.setup_expiry_note };
-  if (entryTouched) return { status: 'RUNNING', label: 'Running', isFinal: false, note: 'Entry sudah tersentuh; monitor TP/SL' };
-  if (entry1 != null && entry2 != null && last <= entry1 && last >= entry2) return { status: 'IN_ENTRY_ZONE', label: 'In Entry Zone', isFinal: false, note: 'Harga berada di area Entry 1–Entry 2' };
-  if (entry2 != null && sl != null && last < entry2 && last > sl) return { status: 'WATCHLIST', label: 'Watchlist', isFinal: false, note: 'Harga di bawah Entry 2 namun masih di atas SL' };
-  if (entry1 != null && last > entry1) return { status: active ? 'RUNNING' : 'ENTRY_MISSED', label: active ? 'Running' : 'Entry Missed', isFinal: false, note: active ? 'Menuju TP1' : 'Harga di atas Entry 1 tanpa touch area; wait pullback' };
-  if (entry1 != null && last < entry1) return { status: 'ENTRY_READY', label: 'Entry Ready', isFinal: false, note: 'Mendekati area entry; tunggu harga masuk zone' };
-  return { status: 'WATCHLIST', label: 'Watchlist', isFinal: false, note: 'Belum masuk area entry' };
+  if (sl != null && low != null && low <= sl) return result(active ? 'SL_HIT' : 'INVALID', active ? 'SL kena' : 'Invalid', true, active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry');
+  if (active && tp2 != null && high != null && high >= tp2) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh');
+  if (active && tp1 != null && high != null && high >= tp1) return result('TP1_HIT', 'TP1 Hit', false, pick.hit_tp1_at ? 'TP1 sudah tercatat sebelumnya' : 'TP1 tersentuh');
+  if (fresh.setup_freshness_status === 'EXPIRED') return result('EXPIRED', 'Expired', false, fresh.setup_expiry_note);
+  if (fresh.setup_freshness_status === 'NEEDS_REVALIDATION') return result('NEEDS_REVALIDATION', 'Needs Revalidation', false, fresh.setup_expiry_note);
+  if (entryTouched) return result('RUNNING', 'Running', false, 'Entry sudah tersentuh; monitor TP/SL');
+  if (entry1 != null && entry2 != null && last <= Math.max(entry1, entry2) && last >= Math.min(entry1, entry2)) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2');
+  if (entry2 != null && sl != null && last < Math.min(entry1 != null ? entry1 : entry2, entry2) && last > sl) return result('WATCHLIST', 'Watchlist', false, 'Harga di bawah area entry namun masih di atas SL');
+  if (entry1 != null && last > Math.max(entry1, entry2 != null ? entry2 : entry1)) return result(active ? 'RUNNING' : 'ENTRY_MISSED', active ? 'Running' : 'Entry Missed', false, active ? 'Menuju TP1' : 'Harga di atas area entry tanpa touch; tunggu pullback');
+  if (entry1 != null && last < Math.min(entry1, entry2 != null ? entry2 : entry1)) return result('ENTRY_READY', 'Entry Ready', false, 'Mendekati area entry; tunggu harga masuk zone');
+  return result('WATCHLIST', 'Watchlist', false, 'Belum masuk area entry');
 }
 
 function webPickScore(raw) {
@@ -6675,45 +6712,122 @@ function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
   return { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: firstSentAt || null, raw_payload: candidate };
 }
 
+function normalizeMonitorSourceValue(source, candidate) {
+  return String(source || (candidate && candidate.monitor_source) || (candidate && candidate.category) || '').trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function buildMonitorPlanIdentity(candidate, date, source) {
+  candidate = candidate || {};
+  var ticker = normalizeForeignTicker(candidate.ticker || '');
+  var entryA = toNum(candidate.entry1 != null ? candidate.entry1 : (candidate.entry_low != null ? candidate.entry_low : candidate.entry));
+  var entryB = toNum(candidate.entry2 != null ? candidate.entry2 : (candidate.entry_high != null ? candidate.entry_high : candidate.entry));
+  var entryLow = entryA != null && entryB != null ? Math.min(entryA, entryB) : (entryA != null ? entryA : entryB);
+  var entryHigh = entryA != null && entryB != null ? Math.max(entryA, entryB) : (entryA != null ? entryA : entryB);
+  var sl = toNum(candidate.sl != null ? candidate.sl : candidate.stop_loss);
+  var tp1 = toNum(candidate.tp1n != null ? candidate.tp1n : (candidate.tp1 != null ? candidate.tp1 : candidate.target1));
+  var tp2 = toNum(candidate.tp2n != null ? candidate.tp2n : (candidate.tp2 != null ? candidate.tp2 : candidate.target2));
+  var monitorSource = normalizeMonitorSourceValue(source, candidate);
+  if (!ticker || !monitorSource || !(entryLow > 0) || !(entryHigh > 0) || !(sl > 0) || !(tp1 > 0) || sl >= entryLow || tp1 <= entryHigh) {
+    return { valid: false, reason: 'invalid_required_plan_fields', ticker: ticker || null, monitor_source: monitorSource || null };
+  }
+  var screenerType = tradePlanV2Integration.resolveScreenerType(candidate.category || monitorSource) || String(candidate.category || monitorSource).toUpperCase();
+  var planSource = candidate.trade_plan_source || (candidate.selected_trade_plan && candidate.selected_trade_plan.trade_plan_source) || (candidate.trade_plan_v2 ? 'trade_plan_v2' : 'legacy');
+  var planLockId = tradePlanV2Integration.computePlanLockId({
+    screener_type: screenerType,
+    ticker: ticker,
+    trading_date: date,
+    source: planSource,
+    entry_zone_low: entryLow,
+    entry_zone_high: entryHigh,
+    stop_loss: sl,
+    emergency_stop: toNum(candidate.emergency_stop),
+    tp1: tp1,
+    tp2: tp2
+  });
+  return {
+    valid: !!planLockId,
+    reason: planLockId ? null : 'missing_plan_identity',
+    ticker: ticker,
+    monitor_source: monitorSource,
+    plan_lock_id: planLockId || null,
+    trade_plan_source: planSource,
+    entry_low: entryLow,
+    entry_high: entryHigh,
+    sl: sl,
+    tp1: tp1,
+    tp2: tp2
+  };
+}
+
 /**
- * Register sent Telegram signal candidates for monitoring.
- * Inserts into telegram_daily_picks only if the ticker is not already tracked for today.
- * This enables the monitor to send TP/SL/entry hit updates with AI narration.
- *
- * @param {object} supabase
- * @param {object[]} candidates - Normalized candidates (must have ticker, category, entry1, entry2, tp1n, tp2n, sl)
- * @param {string} date - YYYY-MM-DD date string
- * @param {string} source - Source identifier for diagnostics (e.g., 'daytrade_signal', 'swing_konglo', 'swing_nk')
- * @returns {Promise<{ inserted_count: number, skipped_duplicate_count: number, error?: string }>}
+ * Register sent Telegram candidates using exact plan identity rather than ticker
+ * alone. Same ticker/source/date may coexist when the locked levels differ.
  */
 async function registerCandidatesForMonitoring(supabase, candidates, date, source) {
-  if (!candidates || candidates.length === 0) return { inserted_count: 0, skipped_duplicate_count: 0 };
+  var empty = { inserted_count: 0, skipped_duplicate_count: 0, invalid_candidate_count: 0, missing_identity_count: 0 };
+  if (!candidates || candidates.length === 0) return empty;
   try {
-    // Check existing tickers for today to prevent duplicates
-    var existingRes = await supabase.from('telegram_daily_picks').select('ticker').eq('date', date);
-    var existingTickers = {};
-    (existingRes.data || []).forEach(function(r) { if (r.ticker) existingTickers[r.ticker] = true; });
+    var existingRes = await supabase.from('telegram_daily_picks').select('ticker,monitor_source,plan_lock_id,raw_payload').eq('date', date);
+    if (existingRes.error) return Object.assign({}, empty, { error: existingRes.error.message, schema_error: true });
+    var existingKeys = {};
+    (existingRes.data || []).forEach(function(r) {
+      var raw = r.raw_payload || {};
+      var existingSource = normalizeMonitorSourceValue(r.monitor_source || raw.monitor_source, r);
+      var existingPlanId = r.plan_lock_id || raw.plan_lock_id || raw.locked_plan_lock_id || null;
+      if (r.ticker && existingSource && existingPlanId) existingKeys[String(r.ticker).toUpperCase() + '|' + existingSource + '|' + existingPlanId] = true;
+    });
 
     var nowIso = new Date().toISOString();
     var newRows = [];
     var skipped = 0;
+    var invalid = 0;
+    var missingIdentity = 0;
     for (var i = 0; i < candidates.length; i++) {
       var c = candidates[i];
-      if (!c || !c.ticker || !c.entry1 || !c.sl) continue;
-      if (existingTickers[c.ticker]) { skipped++; continue; }
-      existingTickers[c.ticker] = true; // prevent dups within same batch
-      var row = dailyPickInsertRowFromCandidate(c, date, nowIso);
-      row.raw_payload = Object.assign({}, row.raw_payload || {}, { monitor_source: source, registered_at: nowIso });
+      var identity = buildMonitorPlanIdentity(c, date, source);
+      if (!identity.valid) {
+        if (identity.reason === 'missing_plan_identity') missingIdentity++;
+        else invalid++;
+        continue;
+      }
+      var key = identity.ticker + '|' + identity.monitor_source + '|' + identity.plan_lock_id;
+      if (existingKeys[key]) { skipped++; continue; }
+      existingKeys[key] = true;
+      var lockedCandidate = Object.assign({}, c, {
+        ticker: identity.ticker,
+        entry1: identity.entry_high,
+        entry2: identity.entry_low,
+        sl: identity.sl,
+        tp1n: identity.tp1,
+        tp2n: identity.tp2,
+        monitor_source: identity.monitor_source,
+        plan_lock_id: identity.plan_lock_id,
+        trade_plan_source: identity.trade_plan_source
+      });
+      var row = dailyPickInsertRowFromCandidate(lockedCandidate, date, nowIso);
+      row.monitor_source = identity.monitor_source;
+      row.plan_lock_id = identity.plan_lock_id;
+      row.raw_payload = Object.assign({}, row.raw_payload || {}, {
+        monitor_source: identity.monitor_source,
+        plan_lock_id: identity.plan_lock_id,
+        trade_plan_source: identity.trade_plan_source,
+        locked_entry_low: identity.entry_low,
+        locked_entry_high: identity.entry_high,
+        locked_stop_loss: identity.sl,
+        locked_tp1: identity.tp1,
+        locked_tp2: identity.tp2,
+        setup_origin_at: c.setup_origin_at || c.freshness_timestamp || c.calculated_at || c.run_at || c.published_at || c.registered_at || c.run_date || date,
+        registered_at: nowIso
+      });
       newRows.push(row);
     }
 
-    if (newRows.length === 0) return { inserted_count: 0, skipped_duplicate_count: skipped };
-
+    if (newRows.length === 0) return { inserted_count: 0, skipped_duplicate_count: skipped, invalid_candidate_count: invalid, missing_identity_count: missingIdentity };
     var ins = await supabase.from('telegram_daily_picks').insert(newRows);
-    if (ins.error) return { inserted_count: 0, skipped_duplicate_count: skipped, error: ins.error.message };
-    return { inserted_count: newRows.length, skipped_duplicate_count: skipped };
+    if (ins.error) return { inserted_count: 0, skipped_duplicate_count: skipped, invalid_candidate_count: invalid, missing_identity_count: missingIdentity, error: ins.error.message };
+    return { inserted_count: newRows.length, skipped_duplicate_count: skipped, invalid_candidate_count: invalid, missing_identity_count: missingIdentity };
   } catch (e) {
-    return { inserted_count: 0, skipped_duplicate_count: 0, error: (e.message || '').substring(0, 80) };
+    return { inserted_count: 0, skipped_duplicate_count: 0, invalid_candidate_count: 0, missing_identity_count: 0, error: (e.message || '').substring(0, 160) };
   }
 }
 
@@ -6747,10 +6861,28 @@ function isJakartaActiveMonitorSession() {
 function isMonitorTimestampStale(value, sourceLabel) {
   if (!value) return true;
   if (sourceLabel === 'daily lock fallback') return true;
-  var d = new Date(value);
+
+  var text = String(value).trim();
+
+  // Date-only observations are valid only for the current Jakarta
+  // trading date. They do not provide intraday time precision.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text !== getJakartaDateString();
+  }
+
+  var d = new Date(text);
   if (isNaN(d.getTime())) return true;
+
+  // Outside an active market-monitoring session, preserve the existing
+  // contract and do not invalidate an otherwise valid timestamp solely
+  // because more than 45 minutes have elapsed.
   if (!isJakartaActiveMonitorSession()) return false;
-  return (Date.now() - d.getTime()) > (45 * 60 * 1000);
+
+  var ageMs = Date.now() - d.getTime();
+
+  if (ageMs < -15 * 60 * 1000) return true;
+
+  return ageMs > (45 * 60 * 1000);
 }
 
 
@@ -7372,11 +7504,26 @@ function isMonitorDryRunRequest(req) {
   return v === '1' || v === 'true' || v === 'yes';
 }
 
-// Resolves the human-readable monitor source for a pick row.
-// Same precedence used elsewhere: raw.monitor_source -> category -> raw.category.
+// Resolves the monitor source for a pick row. New top-level columns take
+// precedence, while raw_payload and category remain compatible with legacy rows.
 function resolveMonitorSource(pick) {
   var raw = (pick && pick.raw_payload) || {};
-  return raw.monitor_source || (pick && pick.category) || raw.category || null;
+  return (pick && pick.monitor_source) || raw.monitor_source || (pick && pick.category) || raw.category || null;
+}
+
+function resolveMonitorPlanIdentity(pick) {
+  var raw = (pick && pick.raw_payload) || {};
+  return (pick && pick.plan_lock_id) || raw.plan_lock_id || raw.locked_plan_lock_id || null;
+}
+
+function buildMonitorDedupKey(pick) {
+  var source = String(resolveMonitorSource(pick) || '').toLowerCase();
+  var ticker = String(pick && pick.ticker || '').toUpperCase();
+  var planLockId = resolveMonitorPlanIdentity(pick);
+  if (planLockId) return 'plan|' + source + '|' + ticker + '|' + String(planLockId);
+  // Unidentified historical rows retain the former latest-per-source+ticker rule,
+  // but can never collapse an identified plan because the namespace is separate.
+  return 'legacy|' + source + '|' + ticker;
 }
 
 // Deterministic recency comparator for monitor rows within a dedup group.
@@ -7393,20 +7540,21 @@ function compareMonitorRowRecency(a, b) {
   return ia < ib ? 1 : -1;
 }
 
-// Collapses multiple active rows for the same monitor_source + ticker down to a
-// single "latest" recommendation. Duplicates arise because registration dedup is
-// scoped to a single date, so re-recommending a ticker on a later date inserts a
-// fresh row while older rows stay non-terminal. Returns the kept winners plus
-// diagnostics about which rows were ignored. Rows from DIFFERENT monitor sources
-// are kept separate. This is a pure, in-memory operation — no row is mutated.
+// Deduplicate exact identified plans only. Distinct plan_lock_id values remain
+// independently monitored even when ticker and source are the same. Legacy rows
+// without identity keep the conservative latest-per-source+ticker fallback.
 function dedupeActiveMonitorRows(rows) {
   var groups = {};
   var order = [];
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
     var source = resolveMonitorSource(r);
-    var key = String(source == null ? '' : source) + '|' + String(r && r.ticker != null ? r.ticker : '');
-    if (!groups[key]) { groups[key] = { source: source, ticker: r ? r.ticker : null, members: [] }; order.push(key); }
+    var planLockId = resolveMonitorPlanIdentity(r);
+    var key = buildMonitorDedupKey(r);
+    if (!groups[key]) {
+      groups[key] = { key: key, source: source, ticker: r ? r.ticker : null, plan_lock_id: planLockId, identity_mode: planLockId ? 'plan' : 'legacy', members: [] };
+      order.push(key);
+    }
     groups[key].members.push(r);
   }
   var kept = [];
@@ -7423,17 +7571,23 @@ function dedupeActiveMonitorRows(rows) {
         ignored.push({
           ticker: losers[l] && losers[l].ticker != null ? losers[l].ticker : null,
           source: grp.source,
+          plan_lock_id: grp.plan_lock_id,
+          identity_mode: grp.identity_mode,
+          dedup_key: grp.key,
           recommendation_date: losers[l] && losers[l].date != null ? losers[l].date : null,
           row_id: losers[l] && losers[l].id != null ? losers[l].id : null,
           previous_status: losers[l] && losers[l].status != null ? losers[l].status : null,
-          reason: 'superseded_by_latest_recommendation'
+          reason: grp.identity_mode === 'plan' ? 'duplicate_exact_plan' : 'legacy_superseded_by_latest_recommendation'
         });
       }
       duplicateGroups.push({
         source: grp.source,
         ticker: grp.ticker,
+        plan_lock_id: grp.plan_lock_id,
+        identity_mode: grp.identity_mode,
+        dedup_key: grp.key,
         kept: { recommendation_date: winner && winner.date != null ? winner.date : null, row_id: winner && winner.id != null ? winner.id : null },
-        ignored: losers.map(function (x) { return { recommendation_date: x && x.date != null ? x.date : null, row_id: x && x.id != null ? x.id : null, previous_status: x && x.status != null ? x.status : null }; })
+        ignored: losers.map(function(x) { return { recommendation_date: x && x.date != null ? x.date : null, row_id: x && x.id != null ? x.id : null, previous_status: x && x.status != null ? x.status : null }; })
       });
     }
   }
@@ -12723,6 +12877,11 @@ module.exports.__test = {
   formatMonitorSourceLabel: formatMonitorSourceLabel,
   formatMonitorBatchRow: formatMonitorBatchRow,
   resolveMonitorSource: resolveMonitorSource,
+  resolveMonitorPlanIdentity: resolveMonitorPlanIdentity,
+  buildMonitorDedupKey: buildMonitorDedupKey,
+  buildMonitorPlanIdentity: buildMonitorPlanIdentity,
+  resolveMonitorSetupOrigin: resolveMonitorSetupOrigin,
+  isMonitorTimestampStale: isMonitorTimestampStale,
   dedupeActiveMonitorRows: dedupeActiveMonitorRows,
   compareMonitorRowRecency: compareMonitorRowRecency,
   evaluateMonitorStatus: evaluateMonitorStatus,
