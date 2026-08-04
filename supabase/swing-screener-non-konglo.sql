@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_latest (
   board TEXT,
   -- Price data
   last_price NUMERIC,
+  price_source TEXT,
+  price_asof TIMESTAMPTZ,
+  price_date DATE,
   change_pct NUMERIC,
   -- Liquidity & activity (required for audit)
   avg_volume_20d NUMERIC,
