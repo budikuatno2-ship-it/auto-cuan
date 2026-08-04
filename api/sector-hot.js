@@ -3325,26 +3325,6 @@ function attachPriceFreshness(candidate, context) {
   return candidate;
 }
 
-function isTrustedSwingLatestMetaStatus(status) {
-  var s = String(status || '').trim().toLowerCase();
-  return ['published', 'completed', 'complete', 'latest', 'success', 'succeeded', 'ok', 'ready'].indexOf(s) >= 0;
-}
-
-function applyTrustedSwingLatestPriceDateFallback(candidate, swingMeta, sourceLabel) {
-  candidate = candidate || {};
-  swingMeta = swingMeta || {};
-  if (candidate.price_date || candidate.price_asof) return candidate;
-  var runDate = dateOnlyFromAny(swingMeta.run_date);
-  if (!runDate) return candidate;
-  if (!isTrustedSwingLatestMetaStatus(swingMeta.status)) return candidate;
-  if (runDate !== getJakartaDateString()) return candidate;
-  candidate.price_date = runDate;
-  candidate.price_freshness_source = 'swing_meta_run_date_fallback';
-  candidate.price_date_fallback_used = true;
-  candidate.price_date_fallback_source_label = sourceLabel || null;
-  return candidate;
-}
-
 function buildTrustedSwingKongloTelegramMeta(swingMeta, rows, savedCount, precomputedResults) {
   var meta = Object.assign({}, swingMeta || {});
   var hasRunDate = !!dateOnlyFromAny(meta.run_date);
@@ -12495,7 +12475,7 @@ function buildSwingMonitorFallbackDiagnostics(rows, swingMeta, category) {
     normalizeCandidateTpAliases(c, category);
     normalizeCandidateUpside(c, category);
     c = attachFreshness(c, swingMeta || {});
-    c = attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(c, swingMeta || {}, category), { meta: swingMeta || {}, run_date: swingMeta && swingMeta.run_date });
+    c = attachPriceFreshness(c, { meta: swingMeta || {}, run_date: swingMeta && swingMeta.run_date });
     if (c.price_date_fallback_used) diagnostics.price_date_fallback_count++;
     var diag;
     if (!candidatePassesPriceFreshness(c)) {
@@ -12537,7 +12517,7 @@ function selectSafeSwingMonitorCandidates(rows, swingMeta, category, maxCount) {
       normalizeCandidateUpside(c, category);
       return attachFreshness(c, swingMeta || {});
     })
-    .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta || {}, category), { meta: swingMeta || {}, run_date: swingMeta && swingMeta.run_date }); })
+    .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta || {}, run_date: swingMeta && swingMeta.run_date }); })
     .filter(candidatePassesPriceFreshness)
     .filter(isSafeSwingMonitorCandidate)
     .filter(candidatePassesSwingPublicSignalSafetyFilter)
@@ -12607,7 +12587,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
     var strictCandidates = highConvictionRows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta); })
-      .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta, 'Swing Telegram'), { meta: swingMeta, run_date: swingMeta.run_date }); })
+      .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
       .filter(candidatePassesMinUpside)
       .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_konglo'); });
@@ -12615,7 +12595,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     // Digest fallback path: use digest gate (allows warnings)
     var digestCandidates = rows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta); })
-      .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta, 'Swing Telegram'), { meta: swingMeta, run_date: swingMeta.run_date }); })
+      .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
       .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_konglo_auto'); });
 
@@ -12702,7 +12682,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     result.strict_selected_count = strictCandidates.length;
     result.digest_candidate_count = digestCandidates.length;
     Object.assign(result, publicSafetyDiagnostics, swingMetaFallbackDiagnostics);
-    result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(normalizeCombinedCandidate(r, 'Swing Konglo'), swingMeta, 'Swing Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
+    result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (result.sent && finalList.length > 0) {
@@ -12762,7 +12742,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     var highConvictionRows = verifiedRows.map(function(r) { return verifyHighConvictionTelegramSignal(r, 'swing'); }).filter(Boolean);
     var strictCandidates = highConvictionRows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta); })
-      .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta, 'Swing Telegram'), { meta: swingMeta, run_date: swingMeta.run_date }); })
+      .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
       .filter(candidatePassesMinUpside)
       .filter(function(r) { return candidatePassesPublicTelegramSafetyGate(r, 'swing_non_konglo'); });
@@ -12770,7 +12750,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     // Digest fallback path: use digest gate (allows warnings)
     var digestCandidates = rows
       .map(function(r) { return attachFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta); })
-      .map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(r, swingMeta, 'Swing Telegram'), { meta: swingMeta, run_date: swingMeta.run_date }); })
+      .map(function(r) { return attachPriceFreshness(r, { meta: swingMeta, run_date: swingMeta.run_date }); })
       .filter(candidatePassesPriceFreshness)
       .filter(function(r) { return candidatePassesTelegramCandidateDigestGate(r, 'swing_non_konglo_auto'); });
 
@@ -12854,7 +12834,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     result.strict_selected_count = strictCandidates.length;
     result.digest_candidate_count = digestCandidates.length;
     Object.assign(result, publicSafetyDiagnostics);
-    result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(applyTrustedSwingLatestPriceDateFallback(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), swingMeta, 'Swing Non-Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
+    result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (result.sent && finalList.length > 0) {
@@ -12971,7 +12951,6 @@ module.exports.__test = {
   validateScreenerPriceFreshness: validateScreenerPriceFreshness,
   attachPriceFreshness: attachPriceFreshness,
   candidatePassesPriceFreshness: candidatePassesPriceFreshness,
-  applyTrustedSwingLatestPriceDateFallback: applyTrustedSwingLatestPriceDateFallback,
   buildTrustedSwingKongloTelegramMeta: buildTrustedSwingKongloTelegramMeta,
   buildPriceFreshnessDiagnostics: buildPriceFreshnessDiagnostics,
   buildTelegramTopMessage: buildTelegramTopMessage,
