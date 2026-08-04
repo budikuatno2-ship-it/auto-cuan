@@ -167,11 +167,29 @@ test(
 );
 
 test(
-  'Phase 2A preserves fallback until genuine dates are deployed',
+  'Phase 2B removes run_date-to-price_date fallback',
   function() {
-    assert.match(
+    assert.doesNotMatch(
       source,
       /function applyTrustedSwingLatestPriceDateFallback/
     );
+
+    assert.doesNotMatch(
+      source,
+      /function isTrustedSwingLatestMetaStatus/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /swing_meta_run_date_fallback/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /candidate\.price_date\s*=\s*runDate/
+    );
+
+    assert.match(source, /unknown_price_date/);
+    assert.match(source, /price_date_fallback_count/);
   }
 );
