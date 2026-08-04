@@ -39,9 +39,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .patch/telegram-monitor-plan-identity/part-* | base64 -d > /tmp/apply-monitor-patch.js
-          node --check /tmp/apply-monitor-patch.js
-          node /tmp/apply-monitor-patch.js
+          if grep -q 'function buildMonitorPlanIdentity' api/sector-hot.js; then
+            echo 'PATCH_ALREADY_APPLIED=TRUE'
+          else
+            mkdir -p .patch-runtime
+            cat .patch/telegram-monitor-plan-identity/part-* | base64 -d > .patch-runtime/apply-monitor-patch.js
+            node --check .patch-runtime/apply-monitor-patch.js
+            node .patch-runtime/apply-monitor-patch.js
+            rm -rf .patch-runtime
+          fi
 
       - name: Syntax checks
         run: |
@@ -80,6 +86,8 @@ jobs:
             test/idx-tick-setup-freshness.test.js \
             test/telegram-monitor-plan-identity.test.js \
             test/telegram-monitor-plan-identity-migration.test.js
+          git rm -r .patch/telegram-monitor-plan-identity
+          git rm .github/workflows/apply-telegram-monitor-plan-identity.yml
           if git diff --cached --quiet; then
             echo 'NO_PATCH_CHANGES=TRUE'
             exit 0
