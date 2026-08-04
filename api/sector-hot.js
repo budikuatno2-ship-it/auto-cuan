@@ -3815,6 +3815,106 @@ function deriveConfidenceTier(row, category) {
 }
 
 
+function getObservedHighForTp1(candidate) {
+  if (!candidate) return null;
+
+  var sources = [
+    candidate,
+    candidate.raw_payload,
+    candidate.rawPayload
+  ];
+
+  var aliases = [
+    'high_price',
+    'price_high',
+    'session_high',
+    'intraday_high',
+    'day_high',
+    'current_high',
+    'latest_high',
+    'highn',
+    'high'
+  ];
+
+  var observedHigh = null;
+
+  for (var si = 0; si < sources.length; si++) {
+    var source = sources[si];
+    if (!source || typeof source !== 'object') continue;
+
+    for (var ai = 0; ai < aliases.length; ai++) {
+      var value = toNum(source[aliases[ai]]);
+
+      if (
+        value != null &&
+        value > 0 &&
+        (observedHigh == null || value > observedHigh)
+      ) {
+        observedHigh = value;
+      }
+    }
+  }
+
+  return observedHigh;
+}
+
+function getCandidateTp1ForObservedHighGuard(candidate) {
+  if (!candidate) return null;
+
+  var aliases = ['tp1n', 'tp1', 'target_1', 'target1'];
+
+  for (var i = 0; i < aliases.length; i++) {
+    var value = toNum(candidate[aliases[i]]);
+    if (value != null && value > 0) return value;
+  }
+
+  return null;
+}
+
+function candidateHasTp1AlreadyReachedByObservedHigh(candidate) {
+  var tp1 = getCandidateTp1ForObservedHighGuard(candidate);
+  var observedHigh = getObservedHighForTp1(candidate);
+
+  return (
+    tp1 != null &&
+    observedHigh != null &&
+    observedHigh >= tp1
+  );
+}
+
+function applyObservedHighTp1Status(candidate) {
+  var r = candidate || {};
+
+  if (!candidateHasTp1AlreadyReachedByObservedHigh(r)) return r;
+
+  var tp1 = getCandidateTp1ForObservedHighGuard(r);
+  var observedHigh = getObservedHighForTp1(r);
+  var protectedStatus = {
+    INVALID_BELOW_SL: true,
+    TP2_HIT: true,
+    NEEDS_REVALIDATION: true
+  };
+  var currentStatus = String(r.entry_status || '').trim().toUpperCase();
+
+  r.tp1_observed_high_reached = true;
+  r.tp1_observed_high = observedHigh;
+
+  if (!protectedStatus[currentStatus]) {
+    r.entry_status = 'TP1_HIT';
+    r.entry_status_label = 'TP1 sudah tersentuh';
+    r.entry_status_note =
+      'High candle ' + observedHigh +
+      ' sudah menyentuh/melewati TP1 ' + tp1 + '.';
+
+    r.entry_quality_status = 'TP1_HIT';
+    r.entry_quality_label = 'TP1 sudah tersentuh';
+    r.entry_safety_note =
+      'Plan tidak boleh dipublikasikan sebagai entry baru karena TP1 sudah tersentuh.';
+  }
+
+  return r;
+}
+
 function attachEntryStatus(row) {
   var r = row || {};
   var es = idxTick.deriveEntryStatus({
@@ -3844,6 +3944,7 @@ function attachEntryStatus(row) {
   r.entry_safety_note = es.entry_safety_note;
   r.entry_distance_pct = es.entry_distance_pct;
   r.chase_risk_label = es.chase_risk_label;
+  applyObservedHighTp1Status(r);
   Object.assign(r, idxTick.deriveBreakoutConfirmation(r));
   Object.assign(r, idxTick.deriveInvalidationDistance(r));
   var sanity = idxTick.validateTradingPlanSanity(r);
@@ -4301,6 +4402,7 @@ function candidatePassesPublicTelegramSafetyGate(candidate, mode) {
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return false;
   normalizeEntryRangeAliases(candidate);
+  if (candidateHasTp1AlreadyReachedByObservedHigh(candidate)) return false;
   // Foreign-flow commentary such as "foreign net sell" is analytical context,
   // not an instruction. SELL is fatal only in explicit action/status fields.
   if (candidateHasStructuredSell(candidate)) return false;
@@ -4474,6 +4576,9 @@ function getSwingPublicSignalSafetyRejectionReason(candidate) {
   if (!candidate) return 'missing_candidate';
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return 'price_scale_mismatch';
+  if (candidateHasTp1AlreadyReachedByObservedHigh(candidate)) {
+    return 'tp1_already_reached_by_observed_high';
+  }
   var publicText = joinTelegramTexts([
     candidate.status,
     candidate.final_status,
@@ -4560,6 +4665,13 @@ function filterSwingPublicSignalSafetyList(finalList) {
  */
 function diagnosePublicSafetyGateRejection(candidate, mode) {
   if (!candidate) return { category: 'missing_candidate', detailed_reason: 'Candidate is null/undefined' };
+
+  if (candidateHasTp1AlreadyReachedByObservedHigh(candidate)) {
+    return {
+      category: 'tp1_already_reached_by_observed_high',
+      detailed_reason: 'Observed candle high already reached or exceeded TP1.'
+    };
+  }
 
   if (candidateHasStructuredSell(candidate)) {
     return { category: 'structured_sell', detailed_reason: 'Structured action/status field is SELL.' };
@@ -4868,6 +4980,7 @@ function candidatePassesTelegramCandidateDigestGate(candidate, mode) {
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return false;
   var r = normalizeEntryRangeAliases(candidate);
+  if (candidateHasTp1AlreadyReachedByObservedHigh(r)) return false;
   // Fatal blocks — always reject
   var ticker = safeTelegramText(r.ticker, 16, '');
   if (!ticker) return false;
@@ -11435,6 +11548,7 @@ function hasFatalDayTradeRadarBlock(candidate) {
   if (!candidate) return true;
   corporateActionGuard.applyCorporateActionPriceScaleGuard(candidate);
   if (candidate.corporate_action_guard === 'BLOCKED') return true;
+  if (candidateHasTp1AlreadyReachedByObservedHigh(candidate)) return true;
   var r = candidate;
   var statusText = joinTelegramTexts([
     r.status, r.final_status, r.breakout_confirmation_status, r.entry_status, r.entry_quality_status,
@@ -12418,6 +12532,9 @@ function diagnoseSwingMonitorCandidate(candidate) {
   else if (!entryLow || !entryHigh) reason = 'missing_entry';
   else if (!stopLoss) reason = 'missing_stop_loss';
   else if (!tp1) reason = 'missing_tp1';
+  else if (candidateHasTp1AlreadyReachedByObservedHigh(candidate)) {
+    reason = 'tp1_already_reached_by_observed_high';
+  }
   else if (upside == null || upside < 5) reason = 'below_min_tp1_upside';
   else if (/very\s+high\s+risk/i.test(riskText)) reason = 'very_high_risk';
   else if (/invalid|tidak\s+valid|setup\s+invalid/i.test(planText) || candidate.trading_plan_valid === false) reason = 'invalid_plan';
@@ -12460,6 +12577,7 @@ function buildSwingMonitorFallbackDiagnostics(rows, swingMeta, category) {
     missing_entry_count: 0,
     missing_stop_loss_count: 0,
     missing_tp1_count: 0,
+    tp1_already_reached_count: 0,
     below_min_tp1_upside_count: 0,
     stale_count: 0,
     price_freshness_rejected_count: 0,
@@ -12497,6 +12615,7 @@ function buildSwingMonitorFallbackDiagnostics(rows, swingMeta, category) {
     if (diag.reason === 'missing_entry') diagnostics.missing_entry_count++;
     if (diag.reason === 'missing_stop_loss') diagnostics.missing_stop_loss_count++;
     if (diag.reason === 'missing_tp1') diagnostics.missing_tp1_count++;
+    if (diag.reason === 'tp1_already_reached_by_observed_high') diagnostics.tp1_already_reached_count++;
     if (diag.reason === 'below_min_tp1_upside') diagnostics.below_min_tp1_upside_count++;
     if (diag.reason === 'stale_or_expired') diagnostics.stale_count++;
     if (diag.reason === 'price_freshness_rejected') diagnostics.price_freshness_rejected_count++;
@@ -12886,6 +13005,10 @@ module.exports.__test = {
   normalizeDayTradePublicReadRow: normalizeDayTradePublicReadRow,
   normalizeCandidateEntryAliases: normalizeCandidateEntryAliases,
   normalizeCandidateTpAliases: normalizeCandidateTpAliases,
+  getObservedHighForTp1: getObservedHighForTp1,
+  candidateHasTp1AlreadyReachedByObservedHigh: candidateHasTp1AlreadyReachedByObservedHigh,
+  applyObservedHighTp1Status: applyObservedHighTp1Status,
+  attachEntryStatus: attachEntryStatus,
   normalizeCandidateUpside: normalizeCandidateUpside,
   normalizeCombinedCandidate: normalizeCombinedCandidate,
   buildMinTp1UpsideDiagnostics: buildMinTp1UpsideDiagnostics,
