@@ -206,7 +206,10 @@ test('strong late entry becomes informational SPIKE_RADAR, never confirmation', 
   assert.equal(radarRows.length, 1);
   assert.equal(radarRows[0].internal_status, 'SPIKE_RADAR');
   const message = radar.buildRadarTelegramMessage(radarRows, '2026-08-03', '10:00');
-  assert.match(message, /Spike terdeteksi — bukan sinyal beli\. Jangan chase\./);
+  assert.match(
+    message,
+    /Momentum sudah bergerak\. Bukan sinyal entry baru; jangan mengejar harga\./
+  );
 });
 
 test('TP1 touched remains blocked and is never promoted to spike radar', () => {
