@@ -11179,17 +11179,33 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
 
   var publishedRows = allRows ? allRows.slice(0, 50) : [];
 
-  // Top count: READY + PRE_SPIKE
-  var topCount = publishedRows.filter(function(r) {
-    return r.status === 'READY_BREAKOUT' || r.status === 'PRE_SPIKE_WATCH';
+  // Separate confirmed signals from earlier Radar opportunities.
+  // top_count remains the backward-compatible priority-opportunity total.
+  var confirmedSignalCount = publishedRows.filter(function(r) {
+    return (
+      r.status === 'A_PLUS_SETUP' ||
+      r.status === 'TRADE_CANDIDATE' ||
+      r.status === 'READY_BREAKOUT'
+    );
   }).length;
+
+  var priorityRadarCount = publishedRows.filter(function(r) {
+    return r.status === 'PRE_SPIKE_WATCH';
+  }).length;
+
+  var topCount =
+    confirmedSignalCount +
+    priorityRadarCount;
 
   var statusDistribution = buildDtValueDistribution(publishedRows, 'status');
   // action_label is a runtime/display label and is not persisted in this table.
   var actionLabelDistribution = {};
-  var actionableDefinition = 'READY_BREAKOUT + PRE_SPIKE_WATCH';
+
+  var actionableDefinition =
+    'PRIORITY OPPORTUNITY = CONFIRMED SIGNAL + PRE-SPIKE RADAR';
+
   var topZeroReason = topCount === 0
-    ? 'No READY_BREAKOUT or PRE_SPIKE_WATCH candidates. Most candidates are WAIT_PULLBACK / EARLY_RADAR / AVOID, so they are radar/watchlist only.'
+    ? 'No confirmed signal or priority Pre-Spike Radar. Other candidates remain active Radar/Watchlist opportunities.'
     : null;
 
   var totalScanned = counters ? (counters.scanned_count || universeCount) : universeCount;
@@ -11207,7 +11223,14 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     passed_count: totalPassed,
     published_count: savedCount,
     top_count: topCount,
-    message: 'Scan complete. Published ' + savedCount + ' candidates. Top ' + topCount + ' actionable.'
+    message:
+      'Scan complete. Published ' +
+      savedCount +
+      ' candidates. Confirmed signals ' +
+      confirmedSignalCount +
+      ', priority radar ' +
+      priorityRadarCount +
+      '.'
   });
 
   // Save run history
@@ -11280,6 +11303,9 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     saved_count: savedCount,
     published_count: savedCount,
     top_count: topCount,
+    priority_opportunity_count: topCount,
+    confirmed_signal_count: confirmedSignalCount,
+    priority_radar_count: priorityRadarCount,
     actionable_count: topCount,
     actionable_definition: actionableDefinition,
     status_distribution: statusDistribution,
@@ -11288,7 +11314,17 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     diagnostics: {
       raw_batch_passed_count: rawBatchPassedCount,
       pre_publish_candidate_count: prePublishCandidateCount,
-      strict_signal_count: telegramResult && telegramResult.strict_signal_count !== undefined ? telegramResult.strict_signal_count : topCount,
+      strict_signal_count:
+        telegramResult &&
+        telegramResult.strict_signal_count !== undefined
+          ? telegramResult.strict_signal_count
+          : confirmedSignalCount,
+      confirmed_signal_count:
+        confirmedSignalCount,
+      priority_radar_count:
+        priorityRadarCount,
+      priority_opportunity_count:
+        topCount,
       radar_monitor_count: telegramResult && telegramResult.radar_count !== undefined ? telegramResult.radar_count : 0,
       hard_reject_count: telegramResult && telegramResult.diagnostics && telegramResult.diagnostics.hard_reject_count !== undefined ? telegramResult.diagnostics.hard_reject_count : 0,
       published_count: savedCount,
@@ -12196,16 +12232,16 @@ function getTelegramSetupMeaning(status) {
   if (!status) return null;
   var s = status.toUpperCase().replace(/[_\s]+/g, '_');
   var map = {
-    'A_PLUS_SETUP': 'Setup A+, konfirmasi lengkap.',
-    'TRADE_CANDIDATE': 'Kandidat trade kuat, butuh chart confirm.',
-    'READY_BREAKOUT': 'Siap pantau breakout, entry jika konfirmasi.',
-    'PRE_SPIKE_WATCH': 'Radar pre-spike, tunggu volume confirm.',
-    'EARLY_RADAR': 'Sinyal awal, belum entry.',
-    'MOMENTUM_CONTINUATION': 'Momentum berjalan, jangan chase.',
-    'RECLAIM_CANDIDATE': 'Kandidat reclaim, valid jika hold.',
-    'WAIT_PULLBACK': 'Tunggu pullback, jangan chase.',
-    'SPECULATIVE': 'Spekulatif, size kecil wajib.',
-    'AVOID': 'Hindari, risiko tinggi.'
+    'A_PLUS_SETUP': 'Signal terkonfirmasi: setup A+.',
+    'TRADE_CANDIDATE': 'Signal terkonfirmasi: kandidat trade kuat.',
+    'READY_BREAKOUT': 'Signal terkonfirmasi; cek harga masih dekat area entry.',
+    'PRE_SPIKE_WATCH': 'Radar prioritas pre-spike; berpotensi bergerak cepat, tetapi belum terkonfirmasi.',
+    'EARLY_RADAR': 'Radar awal; peluang sedang terbentuk dan belum terkonfirmasi.',
+    'MOMENTUM_CONTINUATION': 'Radar momentum; peluang berjalan tetapi jangan chase.',
+    'RECLAIM_CANDIDATE': 'Radar reclaim; peluang valid jika level berhasil dipertahankan.',
+    'WAIT_PULLBACK': 'Radar pullback; setup ada tetapi tunggu area harga lebih aman.',
+    'SPECULATIVE': 'Radar spekulatif; potensi ada dengan risiko lebih tinggi.',
+    'AVOID': 'Hindari; setup tidak layak entry.'
   };
   return map[s] || null;
 }

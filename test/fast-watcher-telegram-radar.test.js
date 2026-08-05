@@ -44,7 +44,10 @@ test('radar keeps only safe top three and prioritizes first confirmation', () =>
   const selected = radar.selectRadarCandidates(state);
   assert.equal(selected.length, 3);
   assert.equal(selected[0].ticker, 'PEND');
-  assert.equal(selected[0].status, 'KONFIRMASI 1/2');
+  assert.equal(
+    selected[0].status,
+    'RADAR PRIORITAS — 1/2 KONFIRMASI'
+  );
   assert.deepEqual(selected.slice(1).map(item => item.ticker), ['WATCH', 'FOUR']);
   assert.ok(!selected.some(item => item.ticker === 'LOW'));
   assert.ok(!selected.some(item => item.ticker === 'CHASE'));
@@ -57,9 +60,18 @@ test('Telegram radar copy is compact and keeps entry TP and SL', () => {
   assert.match(message, /Pantauan, belum sinyal beli/);
   assert.match(message, /Entry Rp105–Rp110/);
   assert.match(message, /TP Rp118 \/ Rp124 \| SL Rp102/);
-  assert.match(message, /Jangan beli kalau harganya sudah terlalu tinggi/);
-  assert.match(message, /Entry hanya setelah konfirmasi momentum/);
-  assert.doesNotMatch(message, /Fast Watcher|jangan chase|Technical Context|Pattern \/ Setup|Trading Plan/);
+  assert.match(
+    message,
+    /Setup masih menarik\. Tunggu pullback/
+  );
+  assert.match(
+    message,
+    /Radar dapat bergerak lebih dulu/
+  );
+  assert.doesNotMatch(
+    message,
+    /Fast Watcher|Technical Context|Pattern \/ Setup|Trading Plan/
+  );
   assert.ok(message.length < 700);
 });
 
