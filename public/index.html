@@ -1437,10 +1437,16 @@
             <!-- Filter tabs -->
             <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-1">
                 <button onclick="filterDtScreener('all')" class="dt-screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="all">Semua</button>
-                <button onclick="filterDtScreener('READY_BREAKOUT')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="READY_BREAKOUT">Ready</button>
-                <button onclick="filterDtScreener('PRE_SPIKE_WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="PRE_SPIKE_WATCH">Pre-Spike</button>
-                <button onclick="filterDtScreener('WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="WATCH">Watch</button>
-                <button onclick="filterDtScreener('AVOID')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="AVOID">Avoid</button>
+                <button onclick="filterDtScreener('READY_BREAKOUT')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="READY_BREAKOUT">Signal</button>
+                <button onclick="filterDtScreener('PRE_SPIKE_WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="PRE_SPIKE_WATCH">Radar Prioritas</button>
+                <button onclick="filterDtScreener('WATCH')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="WATCH">Radar Aktif</button>
+                <button onclick="filterDtScreener('AVOID')" class="dt-screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-filter="AVOID">Hindari</button>
+            </div>
+            <div class="mt-2 rounded-lg border border-dark-600/30 bg-dark-800/40 px-3 py-2 text-[10px] leading-relaxed text-gray-400">
+                <span class="text-emerald-400 font-semibold">Signal Terkonfirmasi</span> = konfirmasi lengkap.
+                <span class="text-blue-400 font-semibold">Radar Prioritas</span> = peluang dapat bergerak lebih dulu, tetapi belum confirmed.
+                <span class="text-yellow-400 font-semibold">Pullback</span> = tunggu area harga.
+                <span class="text-red-400 font-semibold">Spike/Hindari</span> = jangan chase atau jangan entry.
             </div>
             <!-- Day Trade Card Grid -->
             <div id="dtCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
@@ -2415,7 +2421,12 @@ function renderShareDt(d) {
         var gateScore = normalizeGateScoreDisplay(r);
         var scoreColor = gateScore.colorClass;
         var entryStr = (r.entry_low != null && r.entry_high != null) ? r.entry_low + '-' + r.entry_high : '—';
-        var statusLabel = gateScore.bucket === 'HARD_REJECT' ? 'Hard Reject / Hindari' : (gateScore.bucket === 'RADAR' ? 'Radar / Watchlist' : (r.status || '—').replace(/_/g, ' '));
+        var statusLabel =
+            gateScore.bucket === 'HARD_REJECT'
+                ? 'HINDARI'
+                : getDayTradeSemanticLabel(
+                    r.status
+                );
         var confLabel = r.confidence || '-';
         var timingLabel = r.entry_timing || '-';
         var dirLabel = r.direction || '-';
@@ -6750,6 +6761,117 @@ function getSignalQualityColor(grade) {
 function getSignalReason(r) { return r ? safeDisplayText(r.action_reason || r.signal_reason || r.risk_reason || r.notes || r.verdict || r.telegram_verdict || '', '') : ''; }
 function getStatusLabel(r, fallbackStatus) { return normalizeActionLabel((r && (r.final_status || r.status)) || fallbackStatus || '') || '-'; }
 
+function isDayTradeConfirmedSignalStatus(status) {
+    var s = safeDisplayText(
+        status,
+        ''
+    ).toUpperCase();
+
+    return (
+        s === 'A_PLUS_SETUP' ||
+        s === 'TRADE_CANDIDATE' ||
+        s === 'READY_BREAKOUT'
+    );
+}
+
+function getDayTradeSemanticLabel(status) {
+    var s = safeDisplayText(
+        status,
+        ''
+    ).toUpperCase();
+
+    var labels = {
+        'A_PLUS_SETUP':
+            'SIGNAL TERKONFIRMASI — A+',
+        'TRADE_CANDIDATE':
+            'SIGNAL TERKONFIRMASI',
+        'READY_BREAKOUT':
+            'SIGNAL TERKONFIRMASI',
+        'PRE_SPIKE_WATCH':
+            'RADAR PRIORITAS — PRE-SPIKE',
+        'EARLY_RADAR':
+            'RADAR AWAL — PELUANG BERKEMBANG',
+        'MOMENTUM_CONTINUATION':
+            'RADAR MOMENTUM — JANGAN CHASE',
+        'RECLAIM_CANDIDATE':
+            'RADAR RECLAIM — TUNGGU HOLD',
+        'WAIT_PULLBACK':
+            'RADAR PULLBACK — TUNGGU AREA',
+        'SPECULATIVE':
+            'RADAR SPEKULATIF — RISIKO TINGGI',
+        'AVOID':
+            'HINDARI'
+    };
+
+    return (
+        labels[s] ||
+        normalizeActionLabel(s) ||
+        '-'
+    );
+}
+
+function getDayTradeStatusColor(status) {
+    var s = safeDisplayText(
+        status,
+        ''
+    ).toUpperCase();
+
+    if (isDayTradeConfirmedSignalStatus(s)) {
+        return '#6ee7b7';
+    }
+
+    if (s === 'AVOID') {
+        return '#fca5a5';
+    }
+
+    if (
+        s === 'PRE_SPIKE_WATCH' ||
+        s === 'EARLY_RADAR' ||
+        s === 'RECLAIM_CANDIDATE'
+    ) {
+        return '#93c5fd';
+    }
+
+    if (
+        s === 'MOMENTUM_CONTINUATION'
+    ) {
+        return '#67e8f9';
+    }
+
+    return '#fde047';
+}
+
+function getDayTradeStatusBackground(status) {
+    var s = safeDisplayText(
+        status,
+        ''
+    ).toUpperCase();
+
+    if (isDayTradeConfirmedSignalStatus(s)) {
+        return 'rgba(16,185,129,0.12)';
+    }
+
+    if (s === 'AVOID') {
+        return 'rgba(239,68,68,0.1)';
+    }
+
+    if (
+        s === 'PRE_SPIKE_WATCH' ||
+        s === 'EARLY_RADAR' ||
+        s === 'RECLAIM_CANDIDATE'
+    ) {
+        return 'rgba(59,130,246,0.12)';
+    }
+
+    if (
+        s === 'MOMENTUM_CONTINUATION'
+    ) {
+        return 'rgba(6,182,212,0.12)';
+    }
+
+    return 'rgba(234,179,8,0.1)';
+}
+
 
 function normalizeFilterToken(value) {
     return safeDisplayText(value, '').toLowerCase().replace(/[^a-z0-9+]+/g, ' ').trim();
@@ -6901,8 +7023,11 @@ function renderDtCardGrid(results, data) {
         var r = filtered[i];
         _dtCardData[r.ticker] = r;
         var st = r.status || '';
-        var stCol = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION') ? '#6ee7b7' : (st === 'AVOID' ? '#fca5a5' : '#fde047');
-        var stBg = (st === 'READY_BREAKOUT' || st === 'PRE_SPIKE_WATCH' || st === 'MOMENTUM_CONTINUATION') ? 'rgba(16,185,129,0.12)' : (st === 'AVOID' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)');
+        var stCol =
+            getDayTradeStatusColor(st);
+
+        var stBg =
+            getDayTradeStatusBackground(st);
         var chg = r.change_pct || 0;
         var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
         var sc = r.daytrade_score || 0;
@@ -6912,7 +7037,9 @@ function renderDtCardGrid(results, data) {
         var volR = r.volume_ratio_20d ? r.volume_ratio_20d.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r); if (notes.length > 110) notes = notes.substring(0, 107) + '...';
         html += '<div class="dt-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(getStatusLabel(r, st)) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(
+            getDayTradeSemanticLabel(st)
+        ) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
         // V6: Risk / Grade / MTF compact badges
@@ -6961,14 +7088,14 @@ function getSetupMeaning(status, type) {
     var map = {
         'A_PLUS_SETUP': 'Setup A+ — semua konfirmasi terpenuhi. Potensi naik kuat.',
         'TRADE_CANDIDATE': 'Kandidat trade kuat — butuh konfirmasi chart/orderbook.',
-        'READY_BREAKOUT': 'Siap pantau breakout/reclaim. Entry hanya jika harga dan volume tetap konfirmasi.',
+        'READY_BREAKOUT': 'Signal terkonfirmasi. Entry hanya jika harga masih dekat area dan belum chase.',
         'READY': 'Siap pantau breakout/reclaim. Entry hanya jika harga dan volume tetap konfirmasi.',
-        'PRE_SPIKE_WATCH': 'Radar awal sebelum potensi spike. Butuh konfirmasi volume dan candle lanjutan.',
+        'PRE_SPIKE_WATCH': 'Radar prioritas sebelum potensi spike. Peluang dapat bergerak lebih dulu, tetapi risikonya lebih tinggi daripada Signal Terkonfirmasi.',
         'PRE_SPIKE': 'Radar awal sebelum potensi spike. Butuh konfirmasi volume dan candle lanjutan.',
-        'EARLY_RADAR': 'Sinyal awal sedang terbentuk. Belum cukup konfirmasi untuk entry.',
+        'EARLY_RADAR': 'Radar awal sedang terbentuk. Potensi ada, tetapi belum cukup stabil disebut Signal Terkonfirmasi.',
         'MOMENTUM_CONTINUATION': 'Momentum sedang berjalan. Jangan chase; entry hanya jika masih dekat area entry.',
         'RECLAIM_CANDIDATE': 'Kandidat reclaim level penting. Valid jika harga bertahan di atas level konfirmasi.',
-        'WAIT_PULLBACK': 'Tunggu harga turun ke area entry/pullback. Jangan beli terlalu jauh dari entry.',
+        'WAIT_PULLBACK': 'Setup masih berpotensi, tetapi tunggu harga kembali ke area entry. Jangan chase.',
         'WATCHLIST': 'Masih pantauan. Setup belum cukup kuat untuk agresif entry.',
         'WATCH': 'Masih pantauan. Setup belum cukup kuat untuk agresif entry.',
         'REBOUND_CANDIDATE': 'Spekulasi rebound. Butuh konfirmasi candle hijau dan volume beli.',
