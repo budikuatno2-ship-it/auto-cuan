@@ -37,6 +37,7 @@ const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
 const fibConfluence = require('../lib/fibonacci-confluence');
 const telegramNotifier = require('../lib/telegram-notifier');
+const telegramDelivery = require('../lib/telegram-delivery');
 const aiNarration = require('../lib/ai-narration');
 const telegramTemplates = require('../lib/telegram-templates');
 const atrHelpers = require('../lib/atr-report-helpers');
@@ -5732,8 +5733,7 @@ function getTelegramConfigStatus() {
 }
 
 function pickWasSentToTelegram(row) {
-  var raw = (row && row.raw_payload) || {};
-  return !!(raw.telegram_daily_sent_at || raw.telegram_sent_at || raw.sent_to_telegram_at);
+  return telegramDelivery.rowWasDelivered(row);
 }
 
 function markRawPayloadTelegramSent(raw, sentAt) {
@@ -5886,6 +5886,8 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
   var radarSource = Array.isArray(options.radar_candidates) ? options.radar_candidates : (Array.isArray(options.all_candidates) ? options.all_candidates : picks);
   var radarPicks = safePicks.length === 0 ? selectRadarDigestCandidates(radarSource, 'top5_radar_digest', 5) : [];
   var sendResult = safePicks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : (radarPicks.length > 0 ? await telegramNotifier.sendTelegramMessage(formatRadarDigestTelegramMessage(radarPicks, 'Top 5 Radar', 'swing')) : { sent: false, skipped: true, reason: 'no_final_quality_gate_candidates_silent', message: null });
+  var telegramResults = [sendResult];
+
   if (safePicks.length === 0 && radarPicks.length > 0) {
     sendResult.reason = sendResult.sent ? 'radar_digest_sent' : (sendResult.reason || 'telegram_send_failed');
     sendResult.radar_sent = !!sendResult.sent;
@@ -5938,6 +5940,7 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
     // Always use deterministic template; append AI note if available
     var finalDetailText = detailText + (candidateAiNote ? '\n\nCatatan AI:\n' + candidateAiNote : '');
     var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500 });
+    telegramResults.push(detailResult);
     var detailEntry = { ticker: safePicks[i].ticker, sent: !!detailResult.sent, skipped: !!detailResult.skipped, reason: detailResult.reason || null, status: detailResult.status || null, ai_note_appended: !!candidateAiNote };
     if (candidateNarrationDiag) detailEntry.ai_narration = candidateNarrationDiag;
     detailResults.push(detailEntry);
@@ -5946,10 +5949,11 @@ async function sendDailyTop5Telegram(supabase, picks, date, options) {
 
   // In watchlist mode, append footer disclaimer
   if (isWatchlistMode && safePicks.length > 0) {
-    await telegramNotifier.sendTelegramMessage('Bukan sinyal entry langsung. Entry hanya jika breakout/close confirmation dan volume valid.\nBukan rekomendasi beli/jual. DYOR.', { timeout_ms: 2500 });
+    var footerResult = await telegramNotifier.sendTelegramMessage('Bukan sinyal entry langsung. Entry hanya jika breakout/close confirmation dan volume valid.\nBukan rekomendasi beli/jual. DYOR.', { timeout_ms: 2500 });
+    telegramResults.push(footerResult);
   }
 
-  return { header: sendResult, detail_sent_count: detailSent, detail_results: detailResults, sent_count: (sendResult.sent ? 1 : 0) + detailSent, public_picks: safePicks, public_filtered_count: (picks || []).length - safePicks.length, watchlist_mode: isWatchlistMode };
+  return { telegram_results: telegramResults, header: sendResult, detail_sent_count: detailSent, detail_results: detailResults, sent_count: (sendResult.sent ? 1 : 0) + detailSent, public_picks: safePicks, public_filtered_count: (picks || []).length - safePicks.length, watchlist_mode: isWatchlistMode };
 }
 
 async function handleTelegramDailyPicks(req, res, supabase) {
@@ -6432,33 +6436,104 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       return res.status(200).json(Object.assign({ success: true, sent: false, skipped: true, reason: 'already_sent', source: source, readiness: readiness, sent_count: 0, picked_count: existingRows.length, candidate_count: existingRows.length, inserted_count: 0, existing_locked_count: existingRows.length, telegram: null }, diagnosticsBase));
     }
 
-    var notifier = await sendDailyTop5Telegram(supabase, picks, targetDate, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' || manualPreviousTradingDayActive || manualLatestSnapshotActive, radar_candidates: top5RadarCandidates, watchlist_mode: top5Mode === 'watchlist', watchlist_safe_count: top5Mode === 'watchlist' ? picks.length : undefined, debug_ai: debugAi });
-    var telegramSent = notifier.sent_count > 0;
-    var nowIso = new Date().toISOString();
-    if (telegramSent) {
-      if (existingRows.length > 0) {
-        var publicPickIds = {};
-        (notifier.public_picks || picks).forEach(function(p) { if (p && p._daily_pick_row_id) publicPickIds[p._daily_pick_row_id] = true; });
-        for (var u = 0; u < existingRows.length; u++) {
-          var rawPayload = markRawPayloadTelegramSent(existingRows[u].raw_payload, nowIso);
-          if (!publicPickIds[existingRows[u].id]) rawPayload.public_filtered_from_send = true;
-          await supabase.from('telegram_daily_picks').update({ first_sent_at: existingRows[u].first_sent_at || nowIso, raw_payload: rawPayload }).eq('id', existingRows[u].id);
-        }
-      } else if (picks.length > 0) {
-        var rows = picks.map(function(r) {
-          var row = dailyPickInsertRowFromCandidate(r, targetDate, nowIso);
-          row.raw_payload = markRawPayloadTelegramSent(row.raw_payload, nowIso);
-          return row;
+    var top5DeliveryCandidates =
+      top5Mode === 'watchlist'
+        ? picks.slice(0, 5)
+        : picks.filter(function(candidate) {
+            return candidatePassesTelegramCandidateDigestGate(
+              candidate,
+              'daily_top5_send'
+            );
+          });
+
+    var top5DeliveryPrep = null;
+
+    if (top5DeliveryCandidates.length > 0) {
+      top5DeliveryPrep =
+        await telegramDelivery.prepareCandidatesForDelivery({
+          supabase: supabase,
+          candidates: top5DeliveryCandidates,
+          date: targetDate,
+          source: 'daily_top5',
+          build_identity: buildMonitorPlanIdentity,
+          build_row: dailyPickInsertRowFromCandidate,
+          allow_existing_unsent: true
         });
-        var ins = await supabase.from('telegram_daily_picks').insert(rows);
-        if (ins.error) throw new Error('Simpan daily picks gagal: ' + ins.error.message);
-        insertedCount = rows.length;
+
+      if (!top5DeliveryPrep.ready) {
+        return res.status(200).json(
+          Object.assign({
+            success: false,
+            sent: false,
+            skipped: true,
+            reason:
+              top5DeliveryPrep.reason ||
+              'delivery_prepare_failed',
+            source: source,
+            readiness: readiness,
+            sent_count: 0,
+            picked_count:
+              top5DeliveryCandidates.length,
+            candidate_count: picks.length,
+            inserted_count:
+              top5DeliveryPrep.inserted_count || 0,
+            existing_locked_count:
+              existingRows.length,
+            telegram_delivery_state:
+              'delivery_blocked',
+            delivery_blocked_count:
+              top5DeliveryPrep.blocked_count || 0,
+            delivery_duplicate_count:
+              top5DeliveryPrep.duplicate_count || 0,
+            error:
+              top5DeliveryPrep.error || null
+          }, diagnosticsBase)
+        );
       }
     }
 
-    var reason = telegramSent ? null : ((notifier.header && notifier.header.reason) || (picks.length ? 'telegram_send_failed' : 'no_candidates'));
+    var top5SendPicks =
+      top5DeliveryPrep
+        ? top5DeliveryPrep.send_candidates
+        : picks;
+
+    var notifier = await sendDailyTop5Telegram(supabase, top5SendPicks, targetDate, { previous_close_snapshot: readiness.snapshot_mode === 'previous_close_snapshot' || manualPreviousTradingDayActive || manualLatestSnapshotActive, radar_candidates: top5RadarCandidates, watchlist_mode: top5Mode === 'watchlist', watchlist_safe_count: top5Mode === 'watchlist' ? picks.length : undefined, debug_ai: debugAi });
+    var telegramSent =
+      notifier.sent_count > 0;
+
+    var top5DeliveryFinal = null;
+
+    if (top5DeliveryPrep) {
+      top5DeliveryFinal =
+        await telegramDelivery.finalizePreparedDelivery({
+          supabase: supabase,
+          preparation: top5DeliveryPrep,
+          send_results:
+            notifier.telegram_results || []
+        });
+
+      telegramDelivery.attachDeliveryTelemetry(
+        notifier,
+        top5DeliveryPrep,
+        top5DeliveryFinal
+      );
+
+      insertedCount =
+        top5DeliveryPrep.inserted_count || 0;
+    }
+
+    var deliveryComplete =
+      top5DeliveryFinal
+        ? (
+            top5DeliveryFinal.delivery_state ===
+              'delivered' &&
+            top5DeliveryFinal.persistence_ok === true
+          )
+        : telegramSent;
+
+    var reason = deliveryComplete ? null : ((notifier.header && notifier.header.reason) || (picks.length ? 'telegram_send_failed' : 'no_candidates'));
     return res.status(200).json(Object.assign({
-      success: telegramSent,
+      success: deliveryComplete,
       sent: telegramSent,
       skipped: !telegramSent,
       reason: reason,
@@ -6470,9 +6545,32 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       inserted_count: insertedCount,
       existing_locked_count: existingRows.length,
       selected_tickers: picks.map(function(p) { return p.ticker; }),
+      delivery_complete:
+        deliveryComplete,
+      telegram_delivery_state:
+        top5DeliveryFinal
+          ? top5DeliveryFinal.delivery_state
+          : (
+              telegramSent
+                ? 'delivered'
+                : 'not_attempted'
+            ),
+      telegram_delivery_attempted_count:
+        notifier.telegram_delivery_attempted_count || 0,
+      telegram_delivery_sent_count:
+        notifier.telegram_delivery_sent_count || 0,
+      telegram_delivery_failed_count:
+        notifier.telegram_delivery_failed_count || 0,
+      telegram_delivery_uncertain_count:
+        notifier.telegram_delivery_uncertain_count || 0,
+      delivery_persistence_ok:
+        top5DeliveryFinal
+          ? top5DeliveryFinal.persistence_ok === true
+          : null,
       notifier: notifier,
       telegram: notifier.header || null,
-      error: telegramSent ? null : reason
+      error:
+        deliveryComplete ? null : reason
     }, diagnosticsBase));
   } catch (e) {
     return res.status(200).json({ success: false, build_marker: 'top5-daily-diagnostics-v1', sent: false, skipped: false, reason: 'exception', date: getJakartaDateString(), weekday: isJakartaWeekday(), sent_count: 0, picked_count: 0, candidate_count: 0, inserted_count: 0, telegram_config: getTelegramConfigStatus(), error: e.message || String(e) });
@@ -7472,7 +7570,12 @@ async function handleWebTop5History(req, res, supabase) {
     var showArchived = String(req.query.show_archived || '') === '1';
     var q = await supabase.from('telegram_daily_picks').select('*').order('date', { ascending: false }).order('id', { ascending: false }).limit(300);
     if (q.error) throw new Error(q.error.message);
-    var rows = (q.data || []).filter(function(r) { return showArchived || !((r.raw_payload || {}).history_archived_at); });
+    var rows = (q.data || []).filter(function(r) {
+      return (
+        (showArchived || !((r.raw_payload || {}).history_archived_at)) &&
+        telegramDelivery.monitorRowIsEligible(r)
+      );
+    });
     var activeRows = [];
     var tpRows = [];
     // Parallelize price fetches in bounded chunks (was sequential — caused ~1min load for many rows)
@@ -7825,7 +7928,10 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
 
     // Filter to only active rows (not terminal)
     var allRows = q.data || [];
-    var activeRows = allRows.filter(function(r) { return !isTerminalPick(r); });
+    var activeRows = allRows.filter(function(r) {
+      return !isTerminalPick(r) &&
+        telegramDelivery.monitorRowIsEligible(r);
+    });
 
     if (activeRows.length === 0) {
       if (dryRun) return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: true, forced: force, weekend_bypassed: weekendBypassed, reason: 'no_active_picks', dates_queried: dateRange, checked_count: 0, raw_row_count: 0, deduped_row_count: 0, duplicate_groups: [], ignored_duplicate_rows: [], events: [], individual_message_previews: [], jakarta_minute: jakartaMinute, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, preview_hourly_batch: previewHourlyBatch, batch_send_reason: (hourlyBatchDue ? ('Top-of-hour run (Jakarta minute ' + jakartaMinute + '): batch would be sent, but there are no active picks.') : ('Half-hour run (Jakarta minute ' + jakartaMinute + '): batch suppressed by cadence.')), individual_sendable_count: 0, batch_message_preview: null, error: null });
@@ -11956,6 +12062,37 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       };
     }
 
+    var dtDeliveryPrep =
+      await telegramDelivery.prepareCandidatesForDelivery({
+        supabase: supabase,
+        candidates: finalList,
+        date: runDate || getJakartaDateString(),
+        source: 'daytrade_signal',
+        build_identity: buildMonitorPlanIdentity,
+        build_row: dailyPickInsertRowFromCandidate,
+        allow_test_fallback: true
+      });
+
+    if (!dtDeliveryPrep.ready) {
+      return {
+        sent: false,
+        skipped: true,
+        reason:
+          dtDeliveryPrep.reason ||
+          'delivery_prepare_failed',
+        retry_safe_blocked: true,
+        delivery_blocked_count:
+          dtDeliveryPrep.blocked_count || 0,
+        delivery_duplicate_count:
+          dtDeliveryPrep.duplicate_count || 0,
+        error_message:
+          dtDeliveryPrep.error || null
+      };
+    }
+
+    finalList =
+      dtDeliveryPrep.send_candidates;
+
     // Format message (old deterministic template — remains fallback)
     var dtRunMode = (finalList[0] && finalList[0].run_mode) ? finalList[0].run_mode.toUpperCase() : null;
     var msg = formatDayTradeTelegramMessage(finalList, runDate, headerNote, { run_mode: dtRunMode, published_count: publishedCount });
@@ -11982,6 +12119,18 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     // Send
     var result = await telegramNotifier.sendTelegramMessage(finalMsg);
+    var dtDeliveryFinal =
+      await telegramDelivery.finalizePreparedDelivery({
+        supabase: supabase,
+        preparation: dtDeliveryPrep,
+        send_result: result
+      });
+
+    telegramDelivery.attachDeliveryTelemetry(
+      result,
+      dtDeliveryPrep,
+      dtDeliveryFinal
+    );
     result.ai_narration = dtNarrationResults.length > 0 ? dtNarrationResults : undefined;
     result.ai_note_appended = dtAiNotes.length > 0;
     _dtTelegramLastRunId = runId;
@@ -11999,7 +12148,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     result.public_safe_count = nonAvoid.length;
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
-    if (result.sent && finalList.length > 0) {
+    if (dtDeliveryPrep.legacy_fallback && result.sent && finalList.length > 0) {
       var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, runDate || getJakartaDateString(), 'daytrade_signal');
       result.monitor_registered = monitorReg.inserted_count;
       result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
@@ -12772,6 +12921,37 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
       return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics, swingMetaFallbackDiagnostics);
     }
 
+    var skDeliveryPrep =
+      await telegramDelivery.prepareCandidatesForDelivery({
+        supabase: supabase,
+        candidates: finalList,
+        date: getJakartaDateString(),
+        source: 'swing_konglo',
+        build_identity: buildMonitorPlanIdentity,
+        build_row: dailyPickInsertRowFromCandidate,
+        allow_test_fallback: true
+      });
+
+    if (!skDeliveryPrep.ready) {
+      return {
+        sent: false,
+        skipped: true,
+        reason:
+          skDeliveryPrep.reason ||
+          'delivery_prepare_failed',
+        retry_safe_blocked: true,
+        delivery_blocked_count:
+          skDeliveryPrep.blocked_count || 0,
+        delivery_duplicate_count:
+          skDeliveryPrep.duplicate_count || 0,
+        error_message:
+          skDeliveryPrep.error || null
+      };
+    }
+
+    finalList =
+      skDeliveryPrep.send_candidates;
+
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCC8 Swing Konglo Signal', '');
 
     // === AI NOTE: generate short contextual note to append ===
@@ -12792,6 +12972,18 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     var skFinalMsg = skAiNote ? msg + '\n\nCatatan AI:\n' + skAiNote : msg;
 
     var result = await telegramNotifier.sendTelegramMessage(skFinalMsg);
+    var skDeliveryFinal =
+      await telegramDelivery.finalizePreparedDelivery({
+        supabase: supabase,
+        preparation: skDeliveryPrep,
+        send_result: result
+      });
+
+    telegramDelivery.attachDeliveryTelemetry(
+      result,
+      skDeliveryPrep,
+      skDeliveryFinal
+    );
     result.ai_narration = skNarrationResults.length > 0 ? skNarrationResults : undefined;
     result.ai_note_appended = !!skAiNote;
     result.selected_count = finalList.length;
@@ -12804,7 +12996,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
     result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(normalizeCombinedCandidate(r, 'Swing Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
-    if (result.sent && finalList.length > 0) {
+    if (skDeliveryPrep.legacy_fallback && result.sent && finalList.length > 0) {
       var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, getJakartaDateString(), 'swing_konglo');
       result.monitor_registered = monitorReg.inserted_count;
       result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
@@ -12924,6 +13116,37 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
     }
 
+    var nkDeliveryPrep =
+      await telegramDelivery.prepareCandidatesForDelivery({
+        supabase: supabase,
+        candidates: finalList,
+        date: getJakartaDateString(),
+        source: 'swing_nk',
+        build_identity: buildMonitorPlanIdentity,
+        build_row: dailyPickInsertRowFromCandidate,
+        allow_test_fallback: true
+      });
+
+    if (!nkDeliveryPrep.ready) {
+      return {
+        sent: false,
+        skipped: true,
+        reason:
+          nkDeliveryPrep.reason ||
+          'delivery_prepare_failed',
+        retry_safe_blocked: true,
+        delivery_blocked_count:
+          nkDeliveryPrep.blocked_count || 0,
+        delivery_duplicate_count:
+          nkDeliveryPrep.duplicate_count || 0,
+        error_message:
+          nkDeliveryPrep.error || null
+      };
+    }
+
+    finalList =
+      nkDeliveryPrep.send_candidates;
+
     var msg = formatSwingTelegramMessage(finalList, '\uD83D\uDCCA Swing Non-Konglo Signal', '');
 
     // === AI NOTE: generate short contextual note to append ===
@@ -12944,6 +13167,18 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     var nkFinalMsg = nkAiNote ? msg + '\n\nCatatan AI:\n' + nkAiNote : msg;
 
     var result = await telegramNotifier.sendTelegramMessage(nkFinalMsg);
+    var nkDeliveryFinal =
+      await telegramDelivery.finalizePreparedDelivery({
+        supabase: supabase,
+        preparation: nkDeliveryPrep,
+        send_result: result
+      });
+
+    telegramDelivery.attachDeliveryTelemetry(
+      result,
+      nkDeliveryPrep,
+      nkDeliveryFinal
+    );
     result.ai_narration = nkNarrationResults.length > 0 ? nkNarrationResults : undefined;
     result.ai_note_appended = !!nkAiNote;
     result.selected_count = finalList.length;
@@ -12956,7 +13191,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
     result.price_freshness_diagnostics = buildPriceFreshnessDiagnostics(rows.map(function(r) { return attachPriceFreshness(normalizeCombinedCandidate(r, 'Swing Non-Konglo'), { meta: swingMeta, run_date: swingMeta.run_date }); }));
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
-    if (result.sent && finalList.length > 0) {
+    if (nkDeliveryPrep.legacy_fallback && result.sent && finalList.length > 0) {
       var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, getJakartaDateString(), 'swing_nk');
       result.monitor_registered = monitorReg.inserted_count;
       result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
