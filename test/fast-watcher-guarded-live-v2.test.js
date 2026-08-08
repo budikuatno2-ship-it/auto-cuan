@@ -16,3 +16,197 @@ test('hard guards still block stale stop and chase',()=>{assert.equal(momentum.e
 test('system publication survives notification failure',async()=>{const root=await fsp.mkdtemp(path.join(os.tmpdir(),'fw-v2-')); const calls=[]; const storeClient={from(table){assert.equal(table,'daytrade_screener_latest'); return {upsert(rows){calls.push(rows); return {select:async()=>({data:rows,error:null})};}};}}; const result=await publisher.publishConfirmed({sampleDate:'2026-07-31',scheduledTime:'09:13',publishedDir:root,storeClient,notifyFn:async()=>({sent:false,reason:'timeout'}),env:{FAST_WATCHER_LIVE_ENABLED:'1',FAST_WATCHER_PUBLISH_ENABLED:'1',FAST_WATCHER_TELEGRAM_ENABLED:'1',FAST_WATCHER_TELEGRAM_CHAT_ID:'-1001'},publishable:[{ticker:'PADA',setup_id:'setup-1',ready_streak:2,watch_score:82,publish_score:88,observation:obs('PADA','09:13',{current_price:101,volume:1700,relative_volume:1.5,metrics:{price_change_pct:1}})}]}); assert.equal(calls.length,1); assert.equal(result.system_published,1); assert.equal(result.telegram_sent,0);});
 test('guarded live kill switch defaults off',async()=>{const result=await guarded.run({sampleDate:'2026-07-31',scheduledTime:'09:10',env:{}}); assert.equal(result.status,'live_disabled');});
 test('guarded orchestrator publishes only after second check',async()=>{const root=await fsp.mkdtemp(path.join(os.tmpdir(),'fw-orchestrator-')); let run=0; const fakeEngine={runDayTradeBatch:async batch=>({results:batch.map(item=>{run+=1; return {ticker:item.ticker,last_price:run===1?100:101,entry_low:98,entry_high:103,tp1:119,stop_loss:95,status:'EARLY_RADAR',daytrade_score:75,volume_today:run===1?1000:1800,avg_volume_20d:700,volume_ratio_20d:run===1?1.5:1.8,momentum_score:14,liquidity_score:16,risk_reward:2,high_price:103,low_price:98};}),failed:[]})}; const fakeCollector={checkProductionWorkerActive:async()=>({active:false}),fetchWithFreshnessFallback:async()=>({candles:[],freshness:{is_stale:false}}),buildCandidateRecord:(r,t)=>obs(r.ticker,t,{current_price:r.last_price,volume:r.volume_today,relative_volume:r.volume_ratio_20d,score:r.daytrade_score}),deriveDistances:r=>r,sanitizeRecord:r=>r}; const common={sampleDate:'2026-07-31',shortlistFile:'ignored',stateDir:path.join(root,'state'),eventDir:path.join(root,'events'),observationRoot:path.join(root,'obs'),publishedDir:path.join(root,'published'),env:{FAST_WATCHER_LIVE_ENABLED:'1',FAST_WATCHER_PUBLISH_ENABLED:'1'},readPayload:async()=>({status:'published',radar_candidates:['PADA']}),loadSupplemental:async()=>[],engine:fakeEngine,collector:fakeCollector,checkProductionWorkerActive:async()=>({active:false}),publishConfirmed:async()=>({system_published:1,telegram_sent:0})}; const first=await guarded.run({...common,scheduledTime:'09:10'}); assert.equal(first.system_published,0); const second=await guarded.run({...common,scheduledTime:'09:13'}); assert.equal(second.confirmed.length,1); assert.equal(second.system_published,1);});
+test('data-quality-risk near-miss cannot enter confirmation even with strong momentum twice',()=>{
+  const riskyExtra={data_quality_status:'CORPORATE_ACTION_RISK'};
+
+  const first=pool.process({
+    sampleDate:'2026-07-31',
+    scheduledTime:'09:10',
+    shortlistRows:[{ticker:'RISK',source_rank:1}],
+    observations:[obs('RISK','09:10',riskyExtra)],
+    priorState:null
+  });
+
+  const second=pool.process({
+    sampleDate:'2026-07-31',
+    scheduledTime:'09:13',
+    shortlistRows:[{ticker:'RISK',source_rank:1}],
+    observations:[obs('RISK','09:13',{
+      ...riskyExtra,
+      current_price:101,
+      volume:1700,
+      relative_volume:1.5
+    })],
+    priorState:first.state
+  });
+
+  const third=pool.process({
+    sampleDate:'2026-07-31',
+    scheduledTime:'09:22',
+    shortlistRows:[{ticker:'RISK',source_rank:1}],
+    observations:[obs('RISK','09:22',{
+      ...riskyExtra,
+      current_price:102,
+      volume:3200,
+      relative_volume:2
+    })],
+    priorState:second.state
+  });
+
+  assert.notEqual(second.state.tickers.RISK.status,'READY_PENDING');
+  assert.notEqual(second.state.tickers.RISK.status,'READY_CONFIRMED');
+
+  assert.notEqual(third.state.tickers.RISK.status,'READY_PENDING');
+  assert.notEqual(third.state.tickers.RISK.status,'READY_CONFIRMED');
+
+  assert.equal(third.publishable.length,0);
+
+  const reasons=[
+    ...(second.state.tickers.RISK.last_reasons||[]),
+    ...(third.state.tickers.RISK.last_reasons||[])
+  ];
+
+  assert.ok(reasons.includes('production_eligibility_blocked'));
+  assert.ok(reasons.includes('data_quality_risk:CORPORATE_ACTION_RISK'));
+});
+
+test('confirmed publisher fail-closes production-risk observations before DB or Telegram',async()=>{
+  const riskCases=[
+    {name:'CORPORATE_ACTION_RISK',extra:{data_quality_status:'CORPORATE_ACTION_RISK'}},
+    {name:'INVALID_CANDLE',extra:{data_quality_status:'INVALID_CANDLE'}},
+    {name:'NEEDS_REVALIDATION',extra:{data_quality_status:'NEEDS_REVALIDATION'}},
+    {name:'data_quality_valid=false',extra:{data_quality_valid:false}},
+    {name:'needs_revalidation=true',extra:{data_quality_needs_revalidation:true}}
+  ];
+
+  for(const riskCase of riskCases){
+    const root=await fsp.mkdtemp(path.join(os.tmpdir(),'fw-eligibility-'));
+
+    let storeCalled=false;
+    let notifyCalled=false;
+
+    const storeClient={
+      from(){
+        storeCalled=true;
+        throw new Error('store must not be called for production-ineligible item');
+      }
+    };
+
+    const result=await publisher.publishConfirmed({
+      sampleDate:'2026-07-31',
+      scheduledTime:'09:13',
+      publishedDir:root,
+      storeClient,
+      notifyFn:async()=>{
+        notifyCalled=true;
+        throw new Error('telegram must not be called for production-ineligible item');
+      },
+      env:{
+        FAST_WATCHER_LIVE_ENABLED:'1',
+        FAST_WATCHER_PUBLISH_ENABLED:'1',
+        FAST_WATCHER_TELEGRAM_ENABLED:'1',
+        FAST_WATCHER_TELEGRAM_CHAT_ID:'-1001'
+      },
+      publishable:[{
+        ticker:'RISK',
+        setup_id:`setup-${riskCase.name}`,
+        ready_streak:2,
+        watch_score:90,
+        publish_score:95,
+        observation:obs('RISK','09:13',{
+          current_price:101,
+          volume:2000,
+          relative_volume:2,
+          ...riskCase.extra,
+          metrics:{price_change_pct:1}
+        })
+      }]
+    });
+
+    assert.equal(
+      result.reason,
+      'nothing_production_eligible',
+      riskCase.name
+    );
+
+    assert.equal(result.system_published,0,riskCase.name);
+    assert.equal(result.telegram_sent,0,riskCase.name);
+    assert.equal(storeCalled,false,riskCase.name);
+    assert.equal(notifyCalled,false,riskCase.name);
+
+    assert.equal(
+      result.production_eligibility_blocked.length,
+      1,
+      riskCase.name
+    );
+  }
+});
+
+test('confirmed publisher still publishes a clean item while dropping a risky sibling',async()=>{
+  const root=await fsp.mkdtemp(path.join(os.tmpdir(),'fw-eligibility-mixed-'));
+  const calls=[];
+
+  const storeClient={
+    from(table){
+      assert.equal(table,'daytrade_screener_latest');
+      return {
+        upsert(rows){
+          calls.push(rows);
+          return {
+            select:async()=>({data:rows,error:null})
+          };
+        }
+      };
+    }
+  };
+
+  const clean={
+    ticker:'CLEAN',
+    setup_id:'setup-clean',
+    ready_streak:2,
+    watch_score:82,
+    publish_score:88,
+    observation:obs('CLEAN','09:13',{
+      current_price:101,
+      volume:1700,
+      relative_volume:1.5,
+      data_quality_status:'OK',
+      metrics:{price_change_pct:1}
+    })
+  };
+
+  const risky={
+    ticker:'RISK',
+    setup_id:'setup-risk',
+    ready_streak:2,
+    watch_score:99,
+    publish_score:99,
+    observation:obs('RISK','09:13',{
+      current_price:101,
+      volume:1700,
+      relative_volume:1.5,
+      data_quality_status:'CORPORATE_ACTION_RISK',
+      metrics:{price_change_pct:1}
+    })
+  };
+
+  const result=await publisher.publishConfirmed({
+    sampleDate:'2026-07-31',
+    scheduledTime:'09:13',
+    publishedDir:root,
+    storeClient,
+    env:{
+      FAST_WATCHER_LIVE_ENABLED:'1',
+      FAST_WATCHER_PUBLISH_ENABLED:'1',
+      FAST_WATCHER_TELEGRAM_ENABLED:'0'
+    },
+    publishable:[risky,clean]
+  });
+
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].length,1);
+  assert.equal(calls[0][0].ticker,'CLEAN');
+  assert.equal(result.system_published,1);
+  assert.equal(result.production_eligibility_blocked.length,1);
+  assert.equal(result.production_eligibility_blocked[0].ticker,'RISK');
+});
