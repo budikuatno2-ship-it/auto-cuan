@@ -324,3 +324,431 @@ test('active state pool is capped to selected shortlist and evicts overflow safe
   assert.equal(result.events.filter(event => event.reasons.includes('pool_capacity_evicted')).length, 20);
   assert.ok(Object.entries(result.state.tickers).filter(([ticker]) => ticker.startsWith('OLD')).every(([, item]) => item.active === false && item.status === 'DROPPED_FROM_WATCH_POOL'));
 });
+
+test('stable changed source resets once then can confirm against locked setup', () => {
+  const first = pool.process({
+    sampleDate: '2099-01-06',
+    scheduledTime: '09:10',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:10')],
+    priorState: null
+  });
+
+  assert.equal(
+    first.state.tickers.ZZZZ.status,
+    'READY_PENDING'
+  );
+  assert.equal(
+    first.state.tickers.ZZZZ.ready_streak,
+    1
+  );
+  assert.deepEqual(
+    first.state.tickers.ZZZZ.confirmation_window,
+    [true]
+  );
+
+  const sourceB = {
+    current_price: 101,
+    volume: 1800,
+    relative_volume: 1.8,
+    entry_low: 99,
+    entry_high: 104,
+    tp1: 113,
+    stop_loss: 96,
+    plan_lock_id: 'PLAN_B'
+  };
+
+  // A -> B:
+  // source changes once, therefore confirmation resets safely.
+  const second = pool.process({
+    sampleDate: '2099-01-06',
+    scheduledTime: '09:13',
+    shortlistRows: readyShortlist(),
+    observations: [
+      readyObservation('09:13', sourceB)
+    ],
+    priorState: first.state
+  });
+
+  const secondState = second.state.tickers.ZZZZ;
+
+  assert.equal(
+    secondState.locked_plan_lock_id,
+    'PLAN_A'
+  );
+
+  assert.equal(
+    secondState.status,
+    'READY_PENDING'
+  );
+
+  assert.equal(
+    secondState.ready_streak,
+    1
+  );
+
+  assert.deepEqual(
+    secondState.confirmation_window,
+    [true]
+  );
+
+  assert.ok(
+    secondState.last_reasons.includes(
+      'source_plan_identity_changed_locked_setup_preserved'
+    )
+  );
+
+  assert.ok(
+    secondState.last_reasons.includes(
+      'confirmation_reset_source_setup_changed'
+    )
+  );
+
+  assert.equal(
+    second.publishable.length,
+    0
+  );
+
+  // B -> B:
+  // same new source identity should not reset again merely
+  // because locked trading plan remains PLAN_A.
+  const third = pool.process({
+    sampleDate: '2099-01-06',
+    scheduledTime: '09:22',
+    shortlistRows: readyShortlist(),
+    observations: [
+      readyObservation('09:22', {
+        ...sourceB,
+        current_price: 102,
+        volume: 2200,
+        relative_volume: 2
+      })
+    ],
+    priorState: second.state
+  });
+
+  const thirdState = third.state.tickers.ZZZZ;
+
+  assert.equal(
+    thirdState.locked_plan_lock_id,
+    'PLAN_A'
+  );
+
+  assert.equal(
+    thirdState.status,
+    'READY_CONFIRMED'
+  );
+
+  assert.equal(
+    thirdState.ready_streak,
+    2
+  );
+
+  assert.deepEqual(
+    thirdState.confirmation_window,
+    [true, true]
+  );
+
+  assert.ok(
+    !thirdState.last_reasons.includes(
+      'confirmation_reset_source_setup_changed'
+    )
+  );
+
+  assert.equal(
+    third.publishable.length,
+    1
+  );
+});
+
+function persistenceObservation(time, overrides = {}) {
+  return {
+    ticker: 'PERS',
+    scheduled_time: time,
+    current_status: 'EARLY_RADAR',
+    current_price: 100,
+    entry_low: 98,
+    entry_high: 103,
+    tp1: 119,
+    stop_loss: 95,
+    high: 103,
+    low: 98,
+    volume: 1000,
+    average_volume: 700,
+    relative_volume: 1.1,
+    momentum_component: 14,
+    liquidity_component: 16,
+    risk_reward: 2,
+    minimum_risk_reward: 1,
+    freshness: { is_stale: false },
+    ...overrides
+  };
+}
+
+function persistenceShortlist() {
+  return [{
+    ticker: 'PERS',
+    source_rank: 1,
+    source_status: 'EARLY_RADAR',
+    source_origin: 'persistence-regression'
+  }];
+}
+
+function persistencePendingState(sampleDate = '2099-02-01') {
+  /*
+   * Build exactly one legitimate first confirmation.
+   *
+   * At the first observation lastPrice is absent, so the
+   * existing near-miss bootstrap contract may provide the
+   * first TRUE when:
+   * - price is inside entry;
+   * - relative volume >= 1.25;
+   * - momentum component >= 12;
+   * - RR remains valid.
+   *
+   * This intentionally starts persistence testing from [true],
+   * matching the real READY_PENDING state we are studying.
+   */
+  const first = pool.process({
+    sampleDate,
+    scheduledTime: '09:10',
+    shortlistRows: persistenceShortlist(),
+    observations: [
+      persistenceObservation('09:10', {
+        current_price: 100,
+        volume: 1000,
+        relative_volume: 1.5
+      })
+    ],
+    priorState: null
+  });
+
+  assert.equal(
+    first.state.tickers.PERS.status,
+    'READY_PENDING'
+  );
+
+  assert.equal(
+    first.state.tickers.PERS.ready_streak,
+    1
+  );
+
+  assert.deepEqual(
+    first.state.tickers.PERS.confirmation_window,
+    [true]
+  );
+
+  return first;
+}
+
+test('persistence-70 confirms flat second observation after prior READY_PENDING', () => {
+  const pending =
+    persistencePendingState(
+      '2099-02-01'
+    );
+
+  const third = pool.process({
+    sampleDate: '2099-02-01',
+    scheduledTime: '09:22',
+    shortlistRows: persistenceShortlist(),
+    observations: [
+      persistenceObservation('09:22', {
+        /*
+         * Truly flat versus the prior READY_PENDING price.
+         * score=80 keeps publish >= frozen 70 without
+         * manufacturing temporal price momentum.
+         */
+        current_price: 100,
+        volume: 8000,
+        relative_volume: 2,
+        score: 80
+      })
+    ],
+    priorState: pending.state
+  });
+
+  const item =
+    third.state.tickers.PERS;
+
+  assert.equal(
+    item.status,
+    'READY_CONFIRMED'
+  );
+
+  assert.deepEqual(
+    item.confirmation_window,
+    [true, true]
+  );
+
+  assert.equal(
+    item.ready_streak,
+    2
+  );
+
+  assert.ok(
+    item.last_reasons.includes(
+      'second_confirmation_persistence_70'
+    )
+  );
+
+  assert.ok(
+    !item.last_reasons.includes(
+      'engine_not_ready'
+    )
+  );
+
+  assert.equal(
+    third.publishable.length,
+    1
+  );
+});
+
+test('persistence-70 does not confirm below frozen publish threshold', () => {
+  const pending =
+    persistencePendingState(
+      '2099-02-02'
+    );
+
+  const third = pool.process({
+    sampleDate: '2099-02-02',
+    scheduledTime: '09:22',
+    shortlistRows: persistenceShortlist(),
+    observations: [
+      persistenceObservation('09:22', {
+        current_price: 100,
+        volume: 1100,
+        relative_volume: 1.05
+      })
+    ],
+    priorState: pending.state
+  });
+
+  const item =
+    third.state.tickers.PERS;
+
+  assert.notEqual(
+    item.status,
+    'READY_CONFIRMED'
+  );
+
+  assert.deepEqual(
+    item.confirmation_window,
+    [true, false]
+  );
+
+  assert.ok(
+    !item.last_reasons.includes(
+      'second_confirmation_persistence_70'
+    )
+  );
+
+  assert.ok(
+    Number(item.last_publish_score) < 70
+  );
+
+  assert.equal(
+    third.publishable.length,
+    0
+  );
+});
+
+test('persistence-70 does not bypass source identity reset', () => {
+  const pending =
+    persistencePendingState(
+      '2099-02-03'
+    );
+
+  const third = pool.process({
+    sampleDate: '2099-02-03',
+    scheduledTime: '09:22',
+    shortlistRows: persistenceShortlist(),
+    observations: [
+      persistenceObservation('09:22', {
+        current_price: 101,
+        volume: 8000,
+        relative_volume: 2,
+        entry_low: 99,
+        entry_high: 104,
+        tp1: 120,
+        stop_loss: 96,
+        risk_reward: 2
+      })
+    ],
+    priorState: pending.state
+  });
+
+  const item =
+    third.state.tickers.PERS;
+
+  assert.notEqual(
+    item.status,
+    'READY_CONFIRMED'
+  );
+
+  assert.ok(
+    item.last_reasons.includes(
+      'confirmation_reset_source_setup_changed'
+    )
+  );
+
+  assert.ok(
+    !item.last_reasons.includes(
+      'second_confirmation_persistence_70'
+    )
+  );
+
+  assert.equal(
+    third.publishable.length,
+    0
+  );
+});
+
+test('persistence-70 does not rescue a watch at maximum age', () => {
+  const pending =
+    persistencePendingState(
+      '2099-02-04'
+    );
+
+  const late = pool.process({
+    sampleDate: '2099-02-04',
+    scheduledTime: '09:58',
+    shortlistRows: persistenceShortlist(),
+    observations: [
+      persistenceObservation('09:58', {
+        current_price: 101,
+        volume: 20000,
+        relative_volume: 2
+      })
+    ],
+    priorState: pending.state
+  });
+
+  const item =
+    late.state.tickers.PERS;
+
+  assert.equal(
+    item.status,
+    'DROPPED_FROM_WATCH_POOL'
+  );
+
+  assert.ok(
+    late.events.some(
+      event =>
+        Array.isArray(event.reasons) &&
+        event.reasons.includes(
+          'max_watch_age_reached'
+        )
+    )
+  );
+
+  assert.ok(
+    !item.last_reasons.includes(
+      'second_confirmation_persistence_70'
+    )
+  );
+
+  assert.equal(
+    late.publishable.length,
+    0
+  );
+});
