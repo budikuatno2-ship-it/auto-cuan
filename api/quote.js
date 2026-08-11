@@ -10,6 +10,7 @@
 var dtEngine = require('../lib/daytrade-screener-engine');
 var idxTick = require('../lib/idx-tick-normalization');
 var latestPriceResolver = require('../lib/latest-price-resolver');
+var dailyContextBuilder = require('../lib/daily-market-context-builder');
 
 var quoteCache = {};
 var QUOTE_CACHE_TTL = 5 * 60 * 1000;
@@ -62,7 +63,55 @@ async function fetchFreshScreenerLatestPrice(ticker) {
   return latestPriceResolver.resolveLatestPrice(rows, { now: new Date().toISOString() });
 }
 
+// ============================================================
+// DAILY MARKET CONTEXT ACTION — GET /api/quote?action=daily-market-context&ticker=BBCA
+// Additive read-only action folded into this endpoint (rather than a new
+// api/*.js file) to preserve the project's fixed Vercel function count.
+// Independent from the Yahoo quote path above; does not touch or reuse the
+// quoteCache/boardCache TTL state.
+// ============================================================
+function normalizeDailyContextTicker(raw) {
+  return String(raw || '').trim().toUpperCase().replace(/\.JK$/, '');
+}
+
+async function handleDailyMarketContextAction(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  var ticker = normalizeDailyContextTicker(req.query && req.query.ticker);
+  if (!ticker || !/^[A-Z]{1,6}$/.test(ticker)) {
+    return res.status(400).json({ success: false, error: 'Parameter ticker wajib diisi dan valid.' });
+  }
+
+  var SUPABASE_URL = process.env.SUPABASE_URL;
+  var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
+  }
+
+  try {
+    var { createClient } = require('@supabase/supabase-js');
+    var supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+
+    var context = await dailyContextBuilder.buildContextForTicker(supabase, ticker, {});
+    return res.status(200).json({ success: true, context: context });
+  } catch (error) {
+    return res.status(200).json({
+      success: false,
+      error: 'Gagal memuat konteks pasar harian.',
+      diagnostic: error && error.message
+    });
+  }
+}
+
 module.exports = async function handler(req, res) {
+  if (req.query && req.query.action === 'daily-market-context') {
+    return handleDailyMarketContextAction(req, res);
+  }
+
   var ticker = null;
   try {
     var allowAdvancedEntryAnalysis = hasLoggedInHeaders(req);
@@ -2528,3 +2577,5 @@ function interpretFibonacciPosition(close, trend, nearest, fibLevels, swingHigh,
     }
   }
 }
+
+module.exports.__test = { normalizeDailyContextTicker: normalizeDailyContextTicker };

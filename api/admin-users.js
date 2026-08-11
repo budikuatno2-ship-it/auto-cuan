@@ -7,6 +7,7 @@ const {
   isSameOrigin
 } = require('../lib/admin-session');
 const { handleAdminForeignUpload } = require('../lib/admin-foreign-upload');
+const { handleAdminFundamentalsUpload } = require('../lib/admin-fundamentals-upload');
 const originalHandler = require('../lib/admin-users-handler');
 
 const AI_EVAL_RUN_NAME = 'one-time-ai-data-20260803';
@@ -128,6 +129,30 @@ async function foreignUpload(req, res) {
   }
 
   return handleAdminForeignUpload(req, res, supabase);
+}
+
+async function fundamentalsUpload(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  const access = requireBudiAdmin(req);
+  if (!access.ok) {
+    return res.status(access.status || 403).json({ success: false, error: access.error });
+  }
+
+  const mode = String(req.body && req.body.mode || '').trim().toLowerCase();
+  let supabase = null;
+  if (mode === 'import') {
+    supabase = getSupabase();
+    if (!supabase) {
+      return res.status(503).json({ success: false, error: 'Database belum dikonfigurasi.' });
+    }
+  }
+
+  return handleAdminFundamentalsUpload(req, res, supabase);
 }
 
 async function deleteUser(req, res) {
@@ -380,6 +405,10 @@ module.exports = async function handler(req, res) {
 
   if (action === 'foreign_upload') {
     return foreignUpload(req, res);
+  }
+
+  if (action === 'fundamentals_upload') {
+    return fundamentalsUpload(req, res);
   }
 
   if (action === 'delete_user') {
