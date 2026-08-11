@@ -3253,7 +3253,8 @@ async function openMarketContextFromAnalisis(ticker) {
     var vol = ctx.volume || {};
     panelHtml += '<div class="mb-3"><p class="text-[11px] font-semibold text-gray-400 mb-1.5">Volume (7 Sesi Perdagangan)</p>';
     panelHtml += '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">';
-    panelHtml += '<div><span class="text-gray-500">Hari ini: </span><span class="text-gray-300">' + mktCtxNumOrNA(vol.volume_today, mktCtxFmtVol) + (vol.is_today_partial_session ? ' <span class="text-yellow-400">(intraday)</span>' : '') + '</span></div>';
+    var sessionStatusLabel = vol.today_session_status === 'INTRADAY_PARTIAL' ? ' <span class="text-yellow-400">(intraday, belum final)</span>' : (vol.today_session_status === 'FINAL_EOD' ? ' <span class="text-gray-600">(final EOD)</span>' : '');
+    panelHtml += '<div><span class="text-gray-500">Hari ini: </span><span class="text-gray-300">' + mktCtxNumOrNA(vol.volume_today, mktCtxFmtVol) + sessionStatusLabel + '</span></div>';
     panelHtml += '<div><span class="text-gray-500">Sesi sebelumnya: </span><span class="text-gray-300">' + mktCtxNumOrNA(vol.volume_previous_session, mktCtxFmtVol) + '</span></div>';
     panelHtml += '<div><span class="text-gray-500">Rata-rata 7D: </span><span class="text-gray-300">' + mktCtxNumOrNA(vol.volume_avg_7d, mktCtxFmtVol) + '</span></div>';
     panelHtml += '<div><span class="text-gray-500">vs 7D Avg: </span><span class="text-gray-300">' + mktCtxNumOrNA(vol.volume_ratio_vs_7d_avg, mktCtxFmtRatio) + '</span></div>';
@@ -3273,13 +3274,24 @@ async function openMarketContextFromAnalisis(ticker) {
     panelHtml += '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">';
     panelHtml += '<div><span class="text-gray-500">Net hari ini: </span><span class="' + (frn.foreign_net_today > 0 ? 'text-emerald-400' : frn.foreign_net_today < 0 ? 'text-red-400' : 'text-gray-300') + '">' + mktCtxNumOrNA(frn.foreign_net_today, mktCtxFmtIDR) + '</span></div>';
     panelHtml += '<div><span class="text-gray-500">Net 7D: </span><span class="' + (frn.foreign_net_7d > 0 ? 'text-emerald-400' : frn.foreign_net_7d < 0 ? 'text-red-400' : 'text-gray-300') + '">' + mktCtxNumOrNA(frn.foreign_net_7d, mktCtxFmtIDR) + '</span></div>';
-    panelHtml += '<div><span class="text-gray-500">Hari net beli: </span><span class="text-gray-300">' + (frn.positive_days_7d != null ? frn.positive_days_7d : '<span class="text-gray-600">N/A</span>') + '</span></div>';
-    panelHtml += '<div><span class="text-gray-500">Hari net jual: </span><span class="text-gray-300">' + (frn.negative_days_7d != null ? frn.negative_days_7d : '<span class="text-gray-600">N/A</span>') + '</span></div>';
+    panelHtml += '<div><span class="text-gray-500">Hari net beli: </span><span class="text-gray-300">' + (frn.foreign_positive_days_7d != null ? frn.foreign_positive_days_7d : '<span class="text-gray-600">N/A</span>') + '</span></div>';
+    panelHtml += '<div><span class="text-gray-500">Hari net jual: </span><span class="text-gray-300">' + (frn.foreign_negative_days_7d != null ? frn.foreign_negative_days_7d : '<span class="text-gray-600">N/A</span>') + '</span></div>';
     panelHtml += '</div>';
     if (frn.foreign_net_7d_data_quality === 'partial') {
         panelHtml += '<p class="text-[10px] text-yellow-400 mt-1">Sebagian data foreign flow tidak tersedia untuk 7 sesi ini (tidak dianggap nol).</p>';
     }
     panelHtml += '</div>';
+
+    // --- Upcoming exchange holiday / market status ---
+    var cal = ctx.calendar || null;
+    if (cal) {
+        if (cal.market_open_today === false) {
+            panelHtml += '<p class="text-[10px] text-yellow-400 mt-1">Bursa tutup hari ini (' + (cal.as_of || '') + ').</p>';
+        }
+        if (cal.next_holiday) {
+            panelHtml += '<p class="text-[10px] text-gray-500 mt-1">Libur bursa berikutnya: ' + cal.next_holiday.trade_date + ' — ' + (cal.next_holiday.name || '') + '</p>';
+        }
+    }
 
     panelHtml += '<p class="text-[10px] text-gray-600 mt-2">Per sesi: ' + (ctx.as_of || 'N/A') + '. Data harga/volume dan data foreign dapat memiliki tanggal freshness berbeda.</p>';
     panelHtml += '</div>';

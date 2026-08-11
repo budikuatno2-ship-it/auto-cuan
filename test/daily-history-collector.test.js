@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { makeFakeSupabase } = require('./helpers/fake-supabase');
-const { collectDailyHistoryForTickers, candlesToHistoryRows } = require('../lib/daily-history-collector');
+const { collectDailyHistoryForTickers, candlesToHistoryRows, isPartialSession } = require('../lib/daily-history-collector');
 
 function makeCandles(startClose, count) {
   const candles = [];
@@ -79,4 +79,39 @@ test('a single ticker fetch error does not abort the batch', async () => {
   assert.equal(result.failed.length, 1);
   assert.equal(result.failed[0].ticker, 'ERR');
   assert.equal(result.tickers_collected, 1);
+});
+
+// --- Intraday-partial vs final-EOD session classification ---
+
+test('isPartialSession: today before the settle cutoff is partial', () => {
+  const now = new Date('2026-08-11T05:00:00.000Z'); // 12:00 WIB — mid trading session
+  assert.equal(isPartialSession('2026-08-11', now), true);
+});
+
+test('isPartialSession: today after the settle cutoff (16:00 WIB) is final', () => {
+  const now = new Date('2026-08-11T10:00:00.000Z'); // 17:00 WIB — after close/settle
+  assert.equal(isPartialSession('2026-08-11', now), false);
+});
+
+test('isPartialSession: a prior session date is never partial, regardless of time', () => {
+  const now = new Date('2026-08-11T05:00:00.000Z'); // 12:00 WIB
+  assert.equal(isPartialSession('2026-08-10', now), false);
+});
+
+test('candlesToHistoryRows marks only the LAST candle partial when fetched mid-session', () => {
+  const candles = makeCandles(100, 3); // dates 2026-01-01, 01-02, 01-03
+  const rows = candlesToHistoryRows('BBCA', candles, {
+    now: new Date('2026-01-03T05:00:00.000Z') // 12:00 WIB on the last candle's date
+  });
+  assert.equal(rows[0].data_quality_status, 'ok');
+  assert.equal(rows[1].data_quality_status, 'ok');
+  assert.equal(rows[2].data_quality_status, 'partial');
+});
+
+test('candlesToHistoryRows marks all candles ok when the fetch happens after market close', () => {
+  const candles = makeCandles(100, 3);
+  const rows = candlesToHistoryRows('BBCA', candles, {
+    now: new Date('2026-01-03T10:00:00.000Z') // 17:00 WIB, after settle cutoff
+  });
+  rows.forEach((r) => assert.equal(r.data_quality_status, 'ok'));
 });
