@@ -25,9 +25,16 @@
 #   - prints no secrets — only counts and short status lines.
 #
 # Usage:
-#   ./run-daily-market-context-collector.sh                # real run
-#   ./run-daily-market-context-collector.sh --dry-run       # validate only
+#   ./run-daily-market-context-collector.sh                    # real run, full universe
+#   ./run-daily-market-context-collector.sh --dry-run           # validate only
+#   ./run-daily-market-context-collector.sh BBCA,BBRI,TLKM      # explicit ticker list (CLI wins)
 #   AUTO_CUAN_COLLECTOR_TICKERS=BBCA,TLKM ./run-daily-market-context-collector.sh
+#
+# Ticker-list precedence: explicit CLI positional argument >
+# AUTO_CUAN_COLLECTOR_TICKERS env var > full eligible universe (neither set).
+# Exactly one of these ever becomes the positional ticker-list argument
+# forwarded to the Node script — an empty value is NEVER forwarded, so it can
+# never shadow a real ticker list positioned after it.
 
 set -euo pipefail
 
@@ -55,6 +62,23 @@ mkdir -p "$RUNNER_DIR/state" "$RUNNER_DIR/logs"
 
 cd "$REPO"
 
+# Build the argument list without ever inserting an empty positional slot:
+#   - an explicit CLI positional (first arg, unless it's a flag like
+#     --dry-run) always wins and is used as-is;
+#   - otherwise, if AUTO_CUAN_COLLECTOR_TICKERS is non-empty, use that;
+#   - otherwise no ticker-list argument is forwarded at all, so the Node
+#     script falls back to the full eligible universe.
+# Remaining args (e.g. --dry-run) are always passed through untouched.
+COLLECTOR_ARGS=()
+if [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; then
+  # $1 exists and does not start with "--" -> treat as the ticker list.
+  COLLECTOR_ARGS+=("$1")
+  shift
+elif [ -n "$TICKERS" ]; then
+  COLLECTOR_ARGS+=("$TICKERS")
+fi
+COLLECTOR_ARGS+=("$@")
+
 exec /usr/bin/flock -n "$LOCK_FILE" \
   /usr/bin/timeout --signal=TERM --kill-after=30 "${TIMEOUT_SECONDS}s" \
-  "$NODE_BIN" "$RUNNER_JS" "$TICKERS" "$@"
+  "$NODE_BIN" "$RUNNER_JS" "${COLLECTOR_ARGS[@]}"

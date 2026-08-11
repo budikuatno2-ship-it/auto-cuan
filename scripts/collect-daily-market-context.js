@@ -45,16 +45,58 @@ const historyStore = require('../lib/stock-daily-history-store');
 const universe = require('../lib/daytrade-full-eligible-universe');
 
 async function resolveTickers(argTickers) {
-  if (argTickers && argTickers.length) return argTickers;
+  // Explicit CLI tickers are already normalized by parseArgs; re-normalizing
+  // here is a harmless no-op for that path and makes this function safe to
+  // call directly (as tests do) with either strings or row objects.
+  if (argTickers && argTickers.length) return normalizeTickerList(argTickers);
   const result = await universe.loadFullEligibleUniverseFromSupabase();
-  return result.tickers || [];
+  // result.tickers is an array of full eligibility ROW OBJECTS (each with a
+  // `.ticker` field), not plain ticker strings — that's
+  // daytrade-full-eligible-universe.js's existing, unchanged contract (other
+  // consumers rely on the row shape). Normalize only at this boundary.
+  return normalizeTickerList(result.tickers);
 }
 
 function parseArgs(argv) {
   const isDryRun = argv.includes('--dry-run');
-  const positional = argv.filter((a) => a !== '--dry-run')[0] || '';
-  const argTickers = positional.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean);
+  // Skip --dry-run AND any empty-string entries — an empty leading arg
+  // (e.g. a wrapper accidentally forwarding an unset env var as its own
+  // positional slot) must never shadow a real ticker list positioned after
+  // it. This is a defense-in-depth guard; the wrapper itself is also fixed
+  // to never emit an empty positional (deploy/vps/run-daily-market-context-collector.sh).
+  const positional = argv.filter((a) => a !== '--dry-run' && String(a || '').trim() !== '')[0] || '';
+  const argTickers = normalizeTickerList(positional.split(','));
   return { isDryRun, argTickers };
+}
+
+/**
+ * Normalize a mixed list of ticker entries into clean, deduplicated,
+ * uppercase ticker strings. Accepts either plain strings ("BBCA") or row
+ * objects with a `.ticker` string field (the shape
+ * lib/daytrade-full-eligible-universe.js's `tickers` array actually returns
+ * — full eligibility rows, not plain strings, per its existing contract,
+ * which this function does not change). Anything else (null, numbers,
+ * objects without a usable `.ticker`) is dropped rather than coerced via
+ * String(), which would otherwise silently produce garbage like
+ * "[OBJECT OBJECT]".
+ */
+function normalizeTickerList(items) {
+  const seen = new Set();
+  const result = [];
+  for (const item of (items || [])) {
+    let raw = null;
+    if (typeof item === 'string') {
+      raw = item;
+    } else if (item && typeof item === 'object' && typeof item.ticker === 'string') {
+      raw = item.ticker;
+    }
+    if (raw == null) continue;
+    const ticker = raw.trim().toUpperCase();
+    if (!ticker || seen.has(ticker)) continue;
+    seen.add(ticker);
+    result.push(ticker);
+  }
+  return result;
 }
 
 async function run(argv, options) {
@@ -96,13 +138,20 @@ async function run(argv, options) {
     skipped: collectResult.skipped.length
   }));
 
-  const featureRows = await contextBuilder.buildFeatureSnapshotsForTickers(supabase, tickers, {});
-  const upserted = await historyStore.upsertDailyFeatures(supabase, featureRows);
-  console.log('[collect-daily-market-context] Feature snapshots upserted: ' + upserted);
+  const featureResult = await contextBuilder.buildFeatureSnapshotsForTickers(supabase, tickers, {});
+  const upserted = await historyStore.upsertDailyFeatures(supabase, featureResult.rows);
+  console.log('[collect-daily-market-context] Feature snapshots upserted: ' + upserted +
+    ', skipped_no_history: ' + featureResult.skippedTickers.length);
 
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log('[collect-daily-market-context] Done in ' + elapsedSec + 's.');
-  return { exitCode: 0, guard, collectResult, featuresUpserted: upserted };
+  return {
+    exitCode: 0,
+    guard,
+    collectResult,
+    featuresUpserted: upserted,
+    featuresSkippedNoHistory: featureResult.skippedTickers
+  };
 }
 
 if (require.main === module) {
@@ -114,4 +163,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { run, parseArgs, resolveTickers };
+module.exports = { run, parseArgs, resolveTickers, normalizeTickerList };
