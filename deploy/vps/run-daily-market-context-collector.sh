@@ -25,16 +25,21 @@
 #   - prints no secrets — only counts and short status lines.
 #
 # Usage:
-#   ./run-daily-market-context-collector.sh                    # real run, full universe
-#   ./run-daily-market-context-collector.sh --dry-run           # validate only
-#   ./run-daily-market-context-collector.sh BBCA,BBRI,TLKM      # explicit ticker list (CLI wins)
+#   ./run-daily-market-context-collector.sh                          # real run, full universe
+#   ./run-daily-market-context-collector.sh --dry-run                 # validate only
+#   ./run-daily-market-context-collector.sh BBCA,BBRI,TLKM            # explicit ticker list (CLI wins)
+#   ./run-daily-market-context-collector.sh --dry-run BBCA,BBRI,TLKM  # ticker list found regardless of flag position
 #   AUTO_CUAN_COLLECTOR_TICKERS=BBCA,TLKM ./run-daily-market-context-collector.sh
 #
 # Ticker-list precedence: explicit CLI positional argument >
 # AUTO_CUAN_COLLECTOR_TICKERS env var > full eligible universe (neither set).
-# Exactly one of these ever becomes the positional ticker-list argument
-# forwarded to the Node script — an empty value is NEVER forwarded, so it can
-# never shadow a real ticker list positioned after it.
+# The CLI ticker list is found by scanning ALL of argv for the first
+# non-flag (does-not-start-with "--") token, not just $1 — so it is
+# detected no matter where it falls relative to flags like --dry-run. Every
+# other arg (flags) is preserved, in its original order, exactly once.
+# Exactly one of {found CLI token, env var} ever becomes the positional
+# ticker-list argument forwarded to the Node script — an empty value is
+# NEVER forwarded, so it can never shadow a real ticker list.
 
 set -euo pipefail
 
@@ -62,22 +67,33 @@ mkdir -p "$RUNNER_DIR/state" "$RUNNER_DIR/logs"
 
 cd "$REPO"
 
-# Build the argument list without ever inserting an empty positional slot:
-#   - an explicit CLI positional (first arg, unless it's a flag like
-#     --dry-run) always wins and is used as-is;
+# Scan ALL of argv (not just $1) for the first non-flag token and treat it
+# as the explicit CLI ticker list, wherever it falls. Every other token
+# (flags such as --dry-run) is collected, in original order, into
+# OTHER_ARGS untouched — never duplicated, never dropped.
+CLI_TICKERS=""
+OTHER_ARGS=()
+for arg in "$@"; do
+  if [ -z "$CLI_TICKERS" ] && [ "${arg#--}" = "$arg" ]; then
+    CLI_TICKERS="$arg"
+  else
+    OTHER_ARGS+=("$arg")
+  fi
+done
+
+# Build the final argument list without ever inserting an empty positional
+# slot:
+#   - an explicit CLI ticker list (found anywhere above) always wins;
 #   - otherwise, if AUTO_CUAN_COLLECTOR_TICKERS is non-empty, use that;
 #   - otherwise no ticker-list argument is forwarded at all, so the Node
 #     script falls back to the full eligible universe.
-# Remaining args (e.g. --dry-run) are always passed through untouched.
 COLLECTOR_ARGS=()
-if [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; then
-  # $1 exists and does not start with "--" -> treat as the ticker list.
-  COLLECTOR_ARGS+=("$1")
-  shift
+if [ -n "$CLI_TICKERS" ]; then
+  COLLECTOR_ARGS+=("$CLI_TICKERS")
 elif [ -n "$TICKERS" ]; then
   COLLECTOR_ARGS+=("$TICKERS")
 fi
-COLLECTOR_ARGS+=("$@")
+COLLECTOR_ARGS+=("${OTHER_ARGS[@]}")
 
 exec /usr/bin/flock -n "$LOCK_FILE" \
   /usr/bin/timeout --signal=TERM --kill-after=30 "${TIMEOUT_SECONDS}s" \

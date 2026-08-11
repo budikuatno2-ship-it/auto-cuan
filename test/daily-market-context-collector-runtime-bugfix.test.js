@@ -117,6 +117,40 @@ test('BUG1 (wrapper): --dry-run passes through cleanly with an explicit ticker l
 });
 
 // ------------------------------------------------------------
+// Follow-up review finding: the ticker positional must be found ANYWHERE
+// in argv, not just at $1 — a flag placed before the ticker list (e.g.
+// `--dry-run BBCA,BBRI,TLKM`) must not cause the env var (or nothing) to
+// win instead of the explicit CLI list.
+// ------------------------------------------------------------
+
+test('BUG1 (wrapper): `--dry-run BBCA,BBRI,TLKM` (flag BEFORE the ticker list) still resolves to the explicit tickers + dry-run', () => {
+  const argv = runWrapper(['--dry-run', 'BBCA,BBRI,TLKM']);
+  // The wrapper may reorder (ticker first, flags preserved after), but the
+  // resulting argv must still be exactly what parseArgs resolves to the
+  // explicit 3-ticker list with dry-run enabled.
+  const parsed = parseArgs(argv);
+  assert.equal(parsed.isDryRun, true);
+  assert.deepEqual(parsed.argTickers, ['BBCA', 'BBRI', 'TLKM']);
+  assert.equal(argv.filter((a) => a === '--dry-run').length, 1); // not duplicated
+  assert.equal(argv.filter((a) => a === 'BBCA,BBRI,TLKM').length, 1); // not dropped
+});
+
+test('BUG1 (wrapper): explicit CLI ticker list (flag before it) wins over AUTO_CUAN_COLLECTOR_TICKERS', () => {
+  const argv = runWrapper(['--dry-run', 'BBCA,BBRI,TLKM'], { AUTO_CUAN_COLLECTOR_TICKERS: 'ASII' });
+  const parsed = parseArgs(argv);
+  assert.equal(parsed.isDryRun, true);
+  assert.deepEqual(parsed.argTickers, ['BBCA', 'BBRI', 'TLKM']);
+  assert.ok(!argv.includes('ASII'));
+});
+
+test('BUG1 (wrapper): with only --dry-run and no explicit ticker, the env var is used and dry-run remains enabled', () => {
+  const argv = runWrapper(['--dry-run'], { AUTO_CUAN_COLLECTOR_TICKERS: 'ASII' });
+  const parsed = parseArgs(argv);
+  assert.equal(parsed.isDryRun, true);
+  assert.deepEqual(parsed.argTickers, ['ASII']);
+});
+
+// ------------------------------------------------------------
 // BUG 2 — universe normalization at the collector boundary
 // ------------------------------------------------------------
 
