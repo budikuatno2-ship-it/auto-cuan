@@ -58,8 +58,8 @@ test('real run collects and upserts through the batch collector/builder pipeline
     return candles;
   };
   await collector.collectDailyHistoryForTickers(supabase, ['BBCA'], { fetchFn });
-  const rows = await builder.buildFeatureSnapshotsForTickers(supabase, ['BBCA'], {});
-  await historyStore.upsertDailyFeatures(supabase, rows);
+  const featureResult = await builder.buildFeatureSnapshotsForTickers(supabase, ['BBCA'], {});
+  await historyStore.upsertDailyFeatures(supabase, featureResult.rows);
 
   assert.equal(supabase._tables.stock_daily_history.filter((r) => r.ticker === 'BBCA').length, 25);
   assert.equal(supabase._tables.stock_daily_features.filter((r) => r.ticker === 'BBCA').length, 1);

@@ -72,10 +72,45 @@ test('buildFeatureSnapshotsForTickers builds rows for a whole ticker batch from 
     stock_daily_history: [historyRow('BBCA', '2026-08-11', 9500, 1000), historyRow('TLKM', '2026-08-11', 3000, 500)]
   });
 
-  const rows = await builder.buildFeatureSnapshotsForTickers(supabase, ['BBCA', 'TLKM'], {});
-  assert.equal(rows.length, 2);
-  assert.ok(rows.find((r) => r.ticker === 'BBCA'));
-  assert.ok(rows.find((r) => r.ticker === 'TLKM'));
+  const result = await builder.buildFeatureSnapshotsForTickers(supabase, ['BBCA', 'TLKM'], {});
+  assert.equal(result.rows.length, 2);
+  assert.ok(result.rows.find((r) => r.ticker === 'BBCA'));
+  assert.ok(result.rows.find((r) => r.ticker === 'TLKM'));
+  assert.equal(result.skippedTickers.length, 0);
+});
+
+test('buildFeatureSnapshotsForTickers skips a ticker with no history entirely (never writes as_of_trade_date=null)', async () => {
+  const supabase = makeFakeSupabase({
+    stock_daily_history: [historyRow('BBCA', '2026-08-11', 9500, 1000)]
+    // TLKM has no rows in stock_daily_history at all.
+  });
+
+  const result = await builder.buildFeatureSnapshotsForTickers(supabase, ['BBCA', 'TLKM'], {});
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].ticker, 'BBCA');
+  assert.equal(result.skippedTickers.length, 1);
+  assert.equal(result.skippedTickers[0], 'TLKM');
+  result.rows.forEach((r) => assert.notEqual(r.as_of_trade_date, null));
+});
+
+test('buildFeatureSnapshotsForTickers: mixed batch — valid ticker still builds even when another ticker has no history', async () => {
+  const supabase = makeFakeSupabase({
+    stock_daily_history: [
+      historyRow('AAAA', '2026-08-11', 100, 1000)
+      // BBBB: no history rows (simulates a Yahoo fetch failure/insufficient data upstream).
+    ]
+  });
+
+  const result = await builder.buildFeatureSnapshotsForTickers(supabase, ['AAAA', 'BBBB'], {});
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].ticker, 'AAAA');
+  assert.deepEqual(result.skippedTickers, ['BBBB']);
+});
+
+test('buildFeatureSnapshotsForTickers returns empty rows/skipped for an empty ticker list', async () => {
+  const supabase = makeFakeSupabase();
+  const result = await builder.buildFeatureSnapshotsForTickers(supabase, [], {});
+  assert.deepEqual(result, { rows: [], skippedTickers: [] });
 });
 
 test('priceFreshness marks old as_of_trade_date as stale', () => {
