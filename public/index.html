@@ -3211,7 +3211,7 @@ async function openMarketContextFromAnalisis(ticker) {
     var ctx = null;
     var loadError = false;
     try {
-        var resp = await fetch('/api/daily-market-context?ticker=' + encodeURIComponent(ticker), { method: 'GET', headers: getAuthHeaders() });
+        var resp = await fetch('/api/quote?action=daily-market-context&ticker=' + encodeURIComponent(ticker), { method: 'GET', headers: getAuthHeaders() });
         var body = await resp.json();
         if (body && body.success && body.context) {
             ctx = body.context;
