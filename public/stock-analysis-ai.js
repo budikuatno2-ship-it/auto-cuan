@@ -151,25 +151,29 @@
       ];
     }
 
-    var outer = search.closest('.py-3');
+    // DOM shape in index.html is: section -> card -> header + rankingTableWrap.
+    // The previous hotfix used search.closest('.py-3'), but the header itself
+    // also has py-3, so it moved only the header and left the table above the
+    // analysis result. Select the whole section explicitly from tableWrap.
+    var card = tableWrap.parentElement;
+    var outer = card && card.parentElement;
+
     if (outer && outer.dataset.rankingPolished !== 'true') {
       outer.dataset.rankingPolished = 'true';
-      // Move below the analysis result + follow-up composer so BBCA analysis is
-      // never pushed below a 300px ranking table.
       var anchor = followUp || result;
       if (anchor && anchor.parentNode) {
         anchor.insertAdjacentElement('afterend', outer);
       }
 
-      outer.style.paddingTop = '16px';
+      outer.style.paddingTop = '18px';
+      outer.style.paddingBottom = '22px';
       outer.style.borderBottom = '0';
-      outer.style.marginTop = '4px';
-      var card = search.closest('.rounded-xl');
+      outer.style.marginTop = '8px';
       if (card) {
-        card.style.background = 'linear-gradient(180deg, rgba(18,24,34,.94), rgba(11,14,20,.98))';
-        card.style.border = '1px solid rgba(52,211,153,.14)';
+        card.style.background = 'linear-gradient(180deg, rgba(18,24,34,.96), rgba(11,14,20,.99))';
+        card.style.border = '1px solid rgba(52,211,153,.16)';
         card.style.borderRadius = '16px';
-        card.style.boxShadow = '0 16px 45px rgba(0,0,0,.22)';
+        card.style.boxShadow = '0 16px 45px rgba(0,0,0,.24)';
       }
       tableWrap.style.maxHeight = '460px';
       tableWrap.style.scrollbarGutter = 'stable';
