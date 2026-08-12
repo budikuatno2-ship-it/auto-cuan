@@ -163,7 +163,7 @@
     page.className = 'page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7';
     page.innerHTML =
       '<div class="mb-5 sm:mb-6">' +
-        '<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-emerald-500/15 bg-emerald-500/5 text-[10px] font-bold uppercase tracking-[.12em] text-emerald-300">Market Context T-1</div>' +
+        '<div id="marketContextSessionBadge" class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-emerald-500/15 bg-emerald-500/5 text-[10px] font-bold uppercase tracking-[.12em] text-emerald-300">Memuat sesi&hellip;</div>' +
         '<div class="mt-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">' +
           '<div>' +
             '<h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight">Ranking Pasar Harian</h2>' +
@@ -230,7 +230,7 @@
     var title = card.querySelector('h3');
     var desc = card.querySelector('h3 + p');
     if (title) {
-      title.textContent = 'Data Ranking T-1';
+      title.id = title.id || 'rankingCardTitle';
       title.style.fontSize = '15px';
       title.style.letterSpacing = '-0.01em';
     }
@@ -239,8 +239,98 @@
       desc.style.color = '#718096';
     }
 
+    wrapRenderRankingTableForSessionLabel();
     if (typeof window.renderRankingTable === 'function') window.renderRankingTable();
+    updateRankingSessionLabel();
     return true;
+  }
+
+  // ===== Session label: the ranking table and market-context badge must
+  // reflect the REAL as_of_trade_date already present in the fetched data,
+  // never a hardcoded "T-1" claim. Confirmed bug (12 Aug 2026 audit): both
+  // labels were static strings that stayed "T-1" even after the collector
+  // had already persisted a completed same-day EOD snapshot (BELL/TIRA
+  // prices matching the closed 12 Aug session at ~16:23 WIB, well past the
+  // 16:00 WIB settle cutoff in lib/daily-history-collector.js). The
+  // as_of_trade_date on every ranking row is authoritative — read it instead
+  // of asserting a fixed offset. See lib/daily-market-context-builder.js's
+  // buildRankingRowFromFeatureRow for the field's provenance.
+  var MONTHS_ID = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+  function formatSessionDateID(dateKey) {
+    if (!dateKey) return null;
+    var parts = String(dateKey).split('-');
+    if (parts.length !== 3) return dateKey;
+    var y = parts[0];
+    var m = parseInt(parts[1], 10);
+    var d = parseInt(parts[2], 10);
+    if (!m || m < 1 || m > 12 || !d) return dateKey;
+    return d + ' ' + MONTHS_ID[m - 1] + ' ' + y;
+  }
+
+  /**
+   * Determine the latest completed session date from the ranking rows
+   * actually loaded, and whether the batch is a coherent single-date
+   * snapshot or a mixed-date one (some tickers' features not yet refreshed
+   * to the latest session). Never blends dates into one silent average —
+   * mixed dates are surfaced as an explicit warning per the audit spec
+   * ("If ranking rows have mixed as_of_trade_date, detect it").
+   */
+  function computeRankingSessionInfo(rows) {
+    var dates = (rows || []).map(function (r) { return r && r.as_of_trade_date; }).filter(Boolean);
+    if (!dates.length) {
+      return { label: 'Sesi belum tersedia', mixed: false, latest: null, warning: null };
+    }
+    var counts = {};
+    dates.forEach(function (d) { counts[d] = (counts[d] || 0) + 1; });
+    var uniqueDates = Object.keys(counts).sort(); // ISO (YYYY-MM-DD) strings sort chronologically
+    var latest = uniqueDates[uniqueDates.length - 1];
+    var mixed = uniqueDates.length > 1;
+    var label = 'Sesi terakhir selesai: ' + formatSessionDateID(latest);
+    var warning = null;
+    if (mixed) {
+      var staleCount = dates.length - counts[latest];
+      var olderLabels = uniqueDates.slice(0, -1).map(formatSessionDateID).join(', ');
+      warning = 'Peringatan data campuran: ' + staleCount + ' dari ' + dates.length +
+        ' ticker masih memakai data tanggal ' + olderLabels + ' (belum tergabung ke sesi ' + formatSessionDateID(latest) + ').';
+    }
+    return { label: label, mixed: mixed, latest: latest, warning: warning };
+  }
+
+  function updateRankingSessionLabel() {
+    var rows = (window.rankingState && window.rankingState.rows) || [];
+    var info = computeRankingSessionInfo(rows);
+
+    var badge = byId('marketContextSessionBadge');
+    if (badge) badge.textContent = info.label;
+
+    var title = byId('rankingCardTitle');
+    if (title) title.textContent = info.latest ? ('Data Ranking — ' + formatSessionDateID(info.latest)) : 'Data Ranking';
+
+    var tableWrap = byId('rankingTableWrap');
+    var warnEl = byId('rankingSessionMixedWarning');
+    if (info.warning) {
+      if (!warnEl && tableWrap && tableWrap.parentElement) {
+        warnEl = document.createElement('div');
+        warnEl.id = 'rankingSessionMixedWarning';
+        warnEl.className = 'px-3.5 py-2 text-[11px] text-amber-300 bg-amber-500/10 border-b border-amber-500/20';
+        tableWrap.parentElement.insertBefore(warnEl, tableWrap);
+      }
+      if (warnEl) { warnEl.textContent = info.warning; warnEl.style.display = ''; }
+    } else if (warnEl) {
+      warnEl.style.display = 'none';
+    }
+  }
+
+  function wrapRenderRankingTableForSessionLabel() {
+    if (typeof window.renderRankingTable !== 'function' || window.renderRankingTable.__sessionLabelWrapped) return;
+    var original = window.renderRankingTable;
+    var wrapped = function () {
+      original();
+      updateRankingSessionLabel();
+    };
+    wrapped.__sessionLabelWrapped = true;
+    window.renderRankingTable = wrapped;
   }
 
   function setRankingNavActive() {

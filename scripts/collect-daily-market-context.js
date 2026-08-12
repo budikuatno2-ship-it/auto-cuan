@@ -139,7 +139,8 @@ async function run(argv, options) {
   }));
 
   const featureResult = await contextBuilder.buildFeatureSnapshotsForTickers(supabase, tickers, {
-    week52ByTicker: collectResult.week52 || {}
+    week52ByTicker: collectResult.week52 || {},
+    rsiByTicker: collectResult.rsi || {}
   });
   const upserted = await historyStore.upsertDailyFeatures(supabase, featureResult.rows);
   console.log('[collect-daily-market-context] Feature snapshots upserted: ' + upserted +

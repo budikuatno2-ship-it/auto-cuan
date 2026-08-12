@@ -11935,14 +11935,21 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       actionable = actionable.concat(watchlist);
     }
 
-    // Step 4: Sort by priority then score
-    actionable.sort(function(a, b) {
-      var pa = setupPriority[a.status] != null ? setupPriority[a.status] : 9;
-      var pb = setupPriority[b.status] != null ? setupPriority[b.status] : 9;
-      if (pa !== pb) return pa - pb;
-      return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.daytrade_score || 0) - (a.daytrade_score || 0);
-    });
-
+    // Step 4: Sort by rank potential (rankCandidatesByPotential is the
+    // canonical final-list ordering used by every other digest in this file
+    // — Top10, screener digests, daily Top5, tier1/tier2, etc.).
+    //
+    // A confirmed dead-code bug used to live here: an earlier "sort by
+    // priority tier then score" comparator ran first, but its result was
+    // immediately discarded by this rankCandidatesByPotential sort running
+    // right after it on the same array — Array.prototype.sort always
+    // reflects only the LAST sort applied, so the priority-tier ordering
+    // never had any effect on the actual published output. Removing it here
+    // changes zero live behavior (this rankCandidatesByPotential sort was
+    // already the one determining the real digest order) — it only removes
+    // the misleading, wastefully-computed dead sort so a future edit to the
+    // priority-tier comparator doesn't appear to change behavior when it
+    // silently wouldn't.
     actionable.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = actionable.slice(0, 5);
     var headerNote = '';
