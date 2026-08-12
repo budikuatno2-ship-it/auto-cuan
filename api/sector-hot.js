@@ -2611,7 +2611,7 @@ async function handlePublicScreenerShare(req, res, supabase) {
 
   // Day Trade Screener latest
   var { data: dtMeta } = await supabase.from('daytrade_screener_meta').select('*').eq('id', 'latest').maybeSingle();
-  var { data: dtRows } = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(50);
+  var { data: dtRows } = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).order('ticker', { ascending: true }).limit(50);
   // Derive labels for public share results
   var dtWithLabels = (dtRows || []).map(function(r) { var lbl = deriveDayTradeLabels(r); r.entry_timing = lbl.entry_timing; r.direction = lbl.direction; attachPriceFreshness(r, { price_source: r.price_source || 'daytrade_screener_latest' }); var output = attachFreshness(enrichSignalQuality(r, 'Day Trade'), dtMeta); smartSetupLabels.applySmartSetupLabels(output); return output; });
   result.daytrade = { meta: dtMeta || null, results: redactAdvancedScreenerRows(dtWithLabels) };
@@ -3432,7 +3432,7 @@ async function getScreenerReadiness(supabase, options) {
   options = options || {};
   var tradingDate = options.override_trading_date || getJakartaDateString();
   var dayMetaRes = await supabase.from('daytrade_screener_meta').select('run_date,calculated_at,updated_at,status,published_count,top_count').eq('id', 'latest').maybeSingle();
-  var dayRowsRes = await supabase.from('daytrade_screener_latest').select('ticker,calculated_at,run_id').order('daytrade_score', { ascending: false }).limit(1);
+  var dayRowsRes = await supabase.from('daytrade_screener_latest').select('ticker,calculated_at,run_id').order('daytrade_score', { ascending: false }).order('ticker', { ascending: true }).limit(1);
   var kongloMetaRes = await supabase.from('swing_screener_meta').select('calculated_at,updated_at,status,scanned_count').eq('id', 'latest').maybeSingle();
   var kongloRowsRes = await supabase.from('swing_screener_latest').select('ticker,calculated_at').order('score', { ascending: false }).limit(1);
   var nkMetaRes = await supabase.from('swing_screener_non_konglo_meta').select('run_date,calculated_at,updated_at,status,published_count').eq('id', 'latest').maybeSingle();
@@ -5147,7 +5147,7 @@ function normalizeCombinedCandidate(row, category) {
 
 async function fetchCombinedScreenerCandidates(supabase, includeExcluded) {
   var pools = [];
-  var dt = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).limit(40);
+  var dt = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).order('ticker', { ascending: true }).limit(40);
   (dt.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Day Trade')); });
   var kg = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false }).limit(40);
   (kg.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Swing Konglo')); });
@@ -7471,30 +7471,79 @@ function classifyWebTop5History(normalized, px) {
   var high = px && px.high != null ? toNum(px.high) : current;
   var low = px && px.low != null ? toNum(px.low) : current;
   var status = String(normalized.status || '').toUpperCase();
-  // Persisted hit timestamps stamped by the monitor when TP/SL was actually reached.
-  var hasPersistedTp1 = !!(normalized.hit_tp1_at);
-  var hasPersistedTp2 = !!(normalized.hit_tp2_at);
-  var hasPersistedSl = !!(normalized.hit_sl_at);
 
-  // Part C fix: A row that ever hit TP1/TP2 belongs in TP History permanently, even if price
-  // later fell below SL. Persisted TP timestamps (or explicit TP status) take PRECEDENCE over SL,
-  // so past TP winners never disappear from TP History due to a later pullback below SL.
-  if (hasPersistedTp2 || status === 'TP2_HIT') {
-    return { bucket: 'tp', status: 'TP2_HIT', status_label: 'TP2 tercapai', status_note: 'TP2 tercatat (persisted).', tp1_hit: true, tp2_hit: true, sl_hit: false };
-  }
-  if (hasPersistedTp1 || status === 'TP1_HIT') {
-    return { bucket: 'tp', status: 'TP1_HIT', status_label: 'TP1 tercapai', status_note: 'TP1 tercatat (persisted).', tp1_hit: true, tp2_hit: false, sl_hit: false };
+  function persistedHitMs(value) {
+    if (!value) return null;
+    var ms = Date.parse(value);
+    return Number.isFinite(ms) ? ms : null;
   }
 
-  // No persisted TP hit — fall back to persisted SL, then current-price based classification.
-  var slHit = !!((normalized.sl != null && low != null && low <= normalized.sl) || status === 'SL_HIT' || hasPersistedSl);
+  var tp2At = persistedHitMs(normalized.hit_tp2_at);
+  var tp1At = persistedHitMs(normalized.hit_tp1_at);
+  var slAt = persistedHitMs(normalized.hit_sl_at);
+
+  // Persisted chronology is authoritative and is shared with
+  // lib/report-helpers.js so the dashboard and win-rate report cannot
+  // disagree on the exact same recommendation.
+  if (tp2At != null && (slAt == null || tp2At <= slAt)) {
+    return {
+      bucket: 'tp',
+      status: 'TP2_HIT',
+      status_label: 'TP2 tercapai',
+      status_note: 'TP2 tercatat sebelum SL.',
+      tp1_hit: true,
+      tp2_hit: true,
+      sl_hit: false
+    };
+  }
+
+  if (tp1At != null && (slAt == null || tp1At <= slAt)) {
+    return {
+      bucket: 'tp',
+      status: 'TP1_HIT',
+      status_label: 'TP1 tercapai',
+      status_note: 'TP1 tercatat sebelum SL.',
+      tp1_hit: true,
+      tp2_hit: false,
+      sl_hit: false
+    };
+  }
+
+  if (slAt != null) {
+    return {
+      bucket: 'failed',
+      status: 'SL_HIT',
+      status_label: 'SL kena',
+      status_note: 'SL tercatat sebelum target.',
+      tp1_hit: false,
+      tp2_hit: false,
+      sl_hit: true
+    };
+  }
+
+  // Legacy status-only rows without persisted timestamps.
+  if (status === 'TP2_HIT') {
+    return { bucket: 'tp', status: 'TP2_HIT', status_label: 'TP2 tercapai', status_note: 'TP2 tercatat.', tp1_hit: true, tp2_hit: true, sl_hit: false };
+  }
+  if (status === 'TP1_HIT') {
+    return { bucket: 'tp', status: 'TP1_HIT', status_label: 'TP1 tercapai', status_note: 'TP1 tercatat.', tp1_hit: true, tp2_hit: false, sl_hit: false };
+  }
+  if (status === 'SL_HIT') {
+    return { bucket: 'failed', status: 'SL_HIT', status_label: 'SL kena', status_note: 'SL tercatat.', tp1_hit: false, tp2_hit: false, sl_hit: true };
+  }
+
+  // Without persisted chronology, simultaneous high/low ambiguity remains
+  // conservatively SL-first rather than inventing an optimistic winner.
+  var slHit = !!(normalized.sl != null && low != null && low <= normalized.sl);
   var tp2Hit = !slHit && !!(normalized.tp2 != null && high != null && high >= normalized.tp2);
   var tp1Hit = !slHit && !tp2Hit && !!(normalized.tp1 != null && high != null && high >= normalized.tp1);
   var hasPrice = !!(px && px.last != null);
+
   if (tp2Hit) return { bucket: 'tp', status: 'TP2_HIT', status_label: 'TP2 tercapai', status_note: 'TP2 tersentuh', tp1_hit: true, tp2_hit: true, sl_hit: false };
   if (tp1Hit) return { bucket: 'tp', status: 'TP1_HIT', status_label: 'TP1 tercapai', status_note: 'TP1 tersentuh', tp1_hit: true, tp2_hit: false, sl_hit: false };
   if (slHit) return { bucket: 'failed', status: 'SL_HIT', status_label: 'SL kena', status_note: 'SL tersentuh', tp1_hit: false, tp2_hit: false, sl_hit: true };
   if (!hasPrice) return { bucket: 'active', status: 'PRICE_LIMITED', status_label: 'Data harga terbatas', status_note: 'Data harga terbaru belum tersedia', tp1_hit: false, tp2_hit: false, sl_hit: false };
+
   return { bucket: 'active', status: 'ACTIVE_TRACKING', status_label: 'Aktif dipantau', status_note: 'Belum TP/SL', tp1_hit: false, tp2_hit: false, sl_hit: false };
 }
 
@@ -10690,7 +10739,7 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
     var { data: rows, error: rowErr } = await supabase
       .from('daytrade_screener_latest')
       .select('*')
-      .order('daytrade_score', { ascending: false })
+      .order('daytrade_score', { ascending: false }).order('ticker', { ascending: true })
       .limit(50);
 
     if (rowErr) {
@@ -11112,7 +11161,7 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   var { data: allRows, error: readErr } = await supabase
     .from('daytrade_screener_latest')
     .select('ticker, daytrade_score, status')
-    .order('daytrade_score', { ascending: false });
+    .order('daytrade_score', { ascending: false }).order('ticker', { ascending: true });
 
   var rawBatchPassedCount = counters ? (counters.passed_count || 0) : 0;
   if (readErr) {
@@ -11855,7 +11904,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
     var { data: candidates, error: readErr } = await supabase
       .from('daytrade_screener_latest')
       .select('*')
-      .order('daytrade_score', { ascending: false })
+      .order('daytrade_score', { ascending: false }).order('ticker', { ascending: true })
       .limit(50);
 
     if (readErr || !candidates || candidates.length === 0) {
@@ -11935,14 +11984,21 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       actionable = actionable.concat(watchlist);
     }
 
-    // Step 4: Sort by priority then score
-    actionable.sort(function(a, b) {
-      var pa = setupPriority[a.status] != null ? setupPriority[a.status] : 9;
-      var pb = setupPriority[b.status] != null ? setupPriority[b.status] : 9;
-      if (pa !== pb) return pa - pb;
-      return (b.telegram_conviction_score || 0) - (a.telegram_conviction_score || 0) || (b.daytrade_score || 0) - (a.daytrade_score || 0);
-    });
-
+    // Step 4: Sort by rank potential (rankCandidatesByPotential is the
+    // canonical final-list ordering used by every other digest in this file
+    // — Top10, screener digests, daily Top5, tier1/tier2, etc.).
+    //
+    // A confirmed dead-code bug used to live here: an earlier "sort by
+    // priority tier then score" comparator ran first, but its result was
+    // immediately discarded by this rankCandidatesByPotential sort running
+    // right after it on the same array — Array.prototype.sort always
+    // reflects only the LAST sort applied, so the priority-tier ordering
+    // never had any effect on the actual published output. Removing it here
+    // changes zero live behavior (this rankCandidatesByPotential sort was
+    // already the one determining the real digest order) — it only removes
+    // the misleading, wastefully-computed dead sort so a future edit to the
+    // priority-tier comparator doesn't appear to change behavior when it
+    // silently wouldn't.
     actionable.sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); });
     var finalList = actionable.slice(0, 5);
     var headerNote = '';
