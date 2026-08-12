@@ -1104,6 +1104,28 @@
             <button onclick="quickAnalisis('TLKM')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">TLKM</button>
         </div>
     </div>
+    <!-- Ranking Harian Card — fully independent of the ticker analysis input
+         above: its own fetch, its own search, its own sort state. Never
+         cleared/replaced when #analisisResult re-renders. -->
+    <div class="py-3 border-b border-dark-600/30 flex-shrink-0">
+        <div class="bg-dark-700/40 border border-dark-600/20 rounded-xl overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-3 border-b border-dark-600/20">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-200">Ranking Harian</h3>
+                    <p class="text-[11px] text-gray-500 mt-0.5">Konteks pasar seluruh ticker &mdash; terpisah dari analisis ticker di atas.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input id="rankingSearchInput" type="text" placeholder="Cari di tabel..." aria-label="Cari di tabel ranking" class="w-36 sm:w-52 px-3 py-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-100 placeholder-gray-500 text-xs focus:outline-none focus:border-emerald-500/50" oninput="onRankingSearchInput(this.value)">
+                    <button onclick="refreshRankingTable()" class="p-1.5 rounded-lg bg-dark-800/60 border border-dark-600/40 text-gray-400 hover:text-emerald-400 hover:border-emerald-500/30 transition flex-shrink-0" title="Muat ulang ranking" aria-label="Muat ulang ranking">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="rankingTableWrap" class="overflow-auto max-h-[360px]">
+                <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
+            </div>
+        </div>
+    </div>
     <!-- Analisis Result Area (replaces chat for analysis) -->
     <div id="analisisResult" class="flex-1 py-4 overflow-y-auto">
         <div class="text-center py-12 text-gray-500">
@@ -2961,6 +2983,9 @@ function navigateTo(page) {
     // Sektor Hot login gate
     if (page === 'dashboard') { loadDashboardTop5Monitor(true, { loadAdminPreview: false }); scheduleTop5HistoryLoad(); if (isLoggedInUser()) startDashboardMonitorAutoRefresh(); else stopDashboardMonitorAutoRefresh(); }
     else { clearTop5HistoryLoadTimer(); stopDashboardMonitorAutoRefresh(); }
+    // Ranking Harian table: fetched independently of the ticker analysis
+    // input, loaded once and cached client-side (refresh button reloads it).
+    if (page === 'analisis' && typeof ensureRankingTableLoaded === 'function') ensureRankingTableLoaded();
     if (page === 'sektor') {
         var isLoggedIn = isLoggedInUser();
         var loginGate = document.getElementById('sektorLoginGate');
@@ -3049,6 +3074,14 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
 
     var ticker = tickerOrQuery.replace(/[^A-Z0-9]/g, '');
     var isIndex = isIndexTicker(ticker);
+
+    // Highlight this ticker's row in the (separately fetched) Ranking Harian
+    // table below, if it's currently rendered. Purely visual — never touches
+    // rankingState.searchQuery/sortKey, and never re-fetches the table.
+    if (typeof rankingState !== 'undefined') {
+        rankingState.selectedTicker = ticker;
+        if (typeof renderRankingTable === 'function') renderRankingTable();
+    }
 
     // Update loading text stages
     var stageEl = resultArea.querySelector('.loading-stage-text');
@@ -3196,6 +3229,162 @@ function mktCtxFmtIDR(v) {
     if (abs >= 1e9) return sign + 'Rp' + (abs / 1e9).toFixed(2).replace('.', ',') + ' M';
     if (abs >= 1e6) return sign + 'Rp' + (abs / 1e6).toFixed(1).replace('.', ',') + ' Jt';
     return sign + 'Rp' + Math.round(abs).toLocaleString('id-ID');
+}
+
+// ===== RANKING HARIAN TABLE (independent of the ticker analysis input) =====
+// State lives entirely separate from the analisisInput/analysis flow above:
+// its own fetch (action=daily-market-context-list), its own search query,
+// its own sort key/direction. Typing a ticker in analisisInput never reads
+// or writes any of this. `selectedTicker` only drives a visual highlight
+// (set by runAnalisisFromDashboard) — it never filters or re-sorts rows.
+var rankingState = {
+    rows: [],
+    loaded: false,
+    loading: false,
+    error: null,
+    searchQuery: '',
+    sortKey: 'ticker',
+    sortDirection: 'asc',
+    selectedTicker: null
+};
+
+var RANKING_COLUMNS = [
+    { key: 'ticker', label: 'Ticker', align: 'left', sortable: true },
+    { key: 'last_price', label: 'Harga', align: 'right', fmt: mktCtxFmtPrice },
+    { key: 'change_pct', label: 'Perubahan', align: 'right', fmt: mktCtxFmtPct, colorize: true },
+    { key: 'rsi_14', label: 'RSI 14', align: 'right', fmt: function(v) { return v.toFixed(1); } },
+    { key: 'week52_high_dist_pct', label: 'Jarak 52W High', align: 'right', fmt: mktCtxFmtPct },
+    { key: 'volume_ratio_vs_7d_avg', label: 'Vol vs 7D', align: 'right', fmt: mktCtxFmtRatio },
+    { key: 'foreign_net_7d', label: 'Foreign 7D', align: 'right', fmt: mktCtxFmtIDR, colorize: true }
+];
+
+function rankingCellHtml(row, col) {
+    if (col.key === 'ticker') {
+        var isSelected = rankingState.selectedTicker && row.ticker === rankingState.selectedTicker;
+        return '<span class="font-semibold text-gray-200">' + row.ticker + '</span>' +
+            (isSelected ? ' <span class="text-emerald-400" title="Sedang dianalisis">&bull;</span>' : '');
+    }
+    var raw = row[col.key];
+    if (raw === null || raw === undefined || !Number.isFinite(Number(raw))) {
+        return '<span class="text-gray-600">N/A</span>';
+    }
+    var num = Number(raw);
+    var text = col.fmt(num);
+    if (col.colorize) {
+        var colorClass = num > 0 ? 'text-emerald-400' : (num < 0 ? 'text-red-400' : 'text-gray-300');
+        return '<span class="' + colorClass + '">' + text + '</span>';
+    }
+    return '<span class="text-gray-300">' + text + '</span>';
+}
+
+function renderRankingTable() {
+    var wrap = document.getElementById('rankingTableWrap');
+    if (!wrap) return;
+
+    if (rankingState.loading && !rankingState.rows.length) {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs"><span class="spinner-sm"></span> Memuat ranking harian...</div>';
+        return;
+    }
+    if (rankingState.error && !rankingState.rows.length) {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">' + rankingState.error + '</div>';
+        return;
+    }
+    if (!rankingState.rows.length) {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">Ranking harian belum tersedia.</div>';
+        return;
+    }
+
+    var query = (rankingState.searchQuery || '').trim().toUpperCase();
+    var filtered = query ? rankingState.rows.filter(function(r) { return String(r.ticker || '').indexOf(query) !== -1; }) : rankingState.rows.slice();
+
+    var key = rankingState.sortKey;
+    var dir = rankingState.sortDirection === 'asc' ? 1 : -1;
+    filtered.sort(function(a, b) {
+        if (key === 'ticker') return dir * String(a.ticker || '').localeCompare(String(b.ticker || ''));
+        var av = a[key], bv = b[key];
+        var aNull = av === null || av === undefined || !Number.isFinite(Number(av));
+        var bNull = bv === null || bv === undefined || !Number.isFinite(Number(bv));
+        if (aNull && bNull) return 0;
+        if (aNull) return 1; // N/A always sinks to the bottom, regardless of sort direction
+        if (bNull) return -1;
+        return dir * (Number(av) - Number(bv));
+    });
+
+    if (!filtered.length) {
+        wrap.innerHTML = '<div class="text-center py-8 text-gray-500 text-xs">Tidak ada ticker yang cocok dengan pencarian.</div>';
+        return;
+    }
+
+    var html = '<table class="w-full text-xs border-collapse">';
+    html += '<thead class="sticky top-0 z-10 bg-dark-800/95 backdrop-blur"><tr class="border-b border-dark-600/30">';
+    RANKING_COLUMNS.forEach(function(col) {
+        var active = rankingState.sortKey === col.key;
+        var arrow = active ? (rankingState.sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '';
+        html += '<th class="px-3 py-2 text-' + col.align + ' font-medium select-none cursor-pointer whitespace-nowrap transition ' +
+            (active ? 'text-emerald-400 bg-emerald-500/5' : 'text-gray-500 hover:text-gray-300') + '" ' +
+            'onclick="setRankingSort(\'' + col.key + '\')" title="Urutkan berdasarkan ' + col.label + '">' +
+            '<span class="inline-flex items-center gap-1' + (col.align === 'right' ? ' flex-row-reverse' : '') + '">' +
+            col.label + (arrow ? '<span class="text-[9px]">' + arrow + '</span>' : '') + '</span></th>';
+    });
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach(function(row) {
+        var isSelected = rankingState.selectedTicker && row.ticker === rankingState.selectedTicker;
+        html += '<tr class="border-b border-dark-600/10 hover:bg-dark-600/20 transition cursor-pointer ' +
+            (isSelected ? 'bg-emerald-500/10' : '') + '" onclick="quickAnalisis(\'' + row.ticker + '\')" title="Analisis ' + row.ticker + '">';
+        RANKING_COLUMNS.forEach(function(col) {
+            html += '<td class="px-3 py-1.5 text-' + col.align + ' whitespace-nowrap">' + rankingCellHtml(row, col) + '</td>';
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+}
+
+function onRankingSearchInput(value) {
+    // Filters ONLY the ranking table. Does not touch analisisInput/analysis state.
+    rankingState.searchQuery = value;
+    renderRankingTable();
+}
+
+function setRankingSort(key) {
+    if (rankingState.sortKey === key) {
+        rankingState.sortDirection = rankingState.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        rankingState.sortKey = key;
+        rankingState.sortDirection = key === 'ticker' ? 'asc' : 'desc';
+    }
+    renderRankingTable();
+}
+
+async function fetchRankingTable() {
+    if (rankingState.loading) return;
+    rankingState.loading = true;
+    rankingState.error = null;
+    renderRankingTable();
+    try {
+        var resp = await fetch('/api/quote?action=daily-market-context-list', { method: 'GET', headers: getAuthHeaders() });
+        var body = await resp.json();
+        if (body && body.success && Array.isArray(body.rows)) {
+            rankingState.rows = body.rows;
+            rankingState.loaded = true;
+        } else {
+            rankingState.error = (body && body.error) || 'Ranking harian belum tersedia saat ini.';
+        }
+    } catch (e) {
+        rankingState.error = 'Gagal memuat ranking harian.';
+    }
+    rankingState.loading = false;
+    renderRankingTable();
+}
+
+function ensureRankingTableLoaded() {
+    if (!rankingState.loaded && !rankingState.loading) fetchRankingTable();
+}
+
+function refreshRankingTable() {
+    rankingState.loaded = false;
+    fetchRankingTable();
 }
 
 async function openMarketContextFromAnalisis(ticker) {

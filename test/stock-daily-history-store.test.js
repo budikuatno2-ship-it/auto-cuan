@@ -65,3 +65,28 @@ test('upsertDailyFeatures is keyed on ticker (one row per ticker)', async () => 
   assert.equal(rows.length, 1);
   assert.equal(rows[0].last_price, 9200);
 });
+
+test('getAllDailyFeatures returns the whole snapshot cache in one query, ordered by ticker', async () => {
+  const supabase = makeFakeSupabase({
+    stock_daily_features: [
+      { ticker: 'TLKM', as_of_trade_date: '2026-08-11', last_price: 3000 },
+      { ticker: 'BBCA', as_of_trade_date: '2026-08-11', last_price: 9500 }
+    ]
+  });
+
+  const rows = await store.getAllDailyFeatures(supabase, {});
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((r) => r.ticker), ['BBCA', 'TLKM']);
+});
+
+test('getAllDailyFeatures respects an explicit limit', async () => {
+  const supabase = makeFakeSupabase({
+    stock_daily_features: [
+      { ticker: 'AAAA', as_of_trade_date: '2026-08-11', last_price: 100 },
+      { ticker: 'BBBB', as_of_trade_date: '2026-08-11', last_price: 200 }
+    ]
+  });
+
+  const rows = await store.getAllDailyFeatures(supabase, { limit: 1 });
+  assert.equal(rows.length, 1);
+});

@@ -61,6 +61,36 @@ test('action=daily-market-context returns a configuration error (HTTP 200 envelo
   if (originalKey) process.env.SUPABASE_SERVICE_ROLE_KEY = originalKey;
 });
 
+// --- action=daily-market-context-list (Ranking Harian table) ---
+
+test('action=daily-market-context-list rejects non-GET methods', async () => {
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
+  delete require.cache[require.resolve('../api/quote')];
+  const handler = require('../api/quote');
+  const res = makeRes();
+  await handler({ method: 'POST', query: { action: 'daily-market-context-list' } }, res);
+  assert.equal(res.getStatus(), 405);
+});
+
+test('action=daily-market-context-list returns a configuration error (HTTP 200 envelope) when Supabase env vars are missing', async () => {
+  const originalUrl = process.env.SUPABASE_URL;
+  const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  delete require.cache[require.resolve('../api/quote')];
+  const handler = require('../api/quote');
+  const res = makeRes();
+  await handler({ method: 'GET', query: { action: 'daily-market-context-list' } }, res);
+
+  assert.equal(res.getStatus(), 200);
+  assert.equal(res.getBody().success, false);
+
+  if (originalUrl) process.env.SUPABASE_URL = originalUrl;
+  if (originalKey) process.env.SUPABASE_SERVICE_ROLE_KEY = originalKey;
+});
+
 test('a request without action=daily-market-context still requires ticker (existing quote behavior untouched)', async () => {
   process.env.SUPABASE_URL = 'https://example.supabase.co';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
