@@ -107,9 +107,22 @@
       loadLocalState();
       $('sessionChip').innerHTML = '<span class="status-dot"></span>' + escapeHtml(state.username || 'Sesi aktif');
       hide('accessGate'); show('app'); bind();
-      await loadSectorHot();
+
+      // Render the user's own portfolio BEFORE anything that depends on a
+      // network call. This used to `await loadSectorHot()` first, and that fetch
+      // had no timeout, so a slow or hanging /api/sector-hot left the app shell
+      // visible showing nothing but its static HTML defaults: "Memuat…" under
+      // POSTUR PORTOFOLIO, and Rp 0 / 0 in every KPI — indistinguishable from a
+      // real, empty, fully-loaded portfolio. The positions and prices needed for
+      // this render are already in hand from loadLocalState(); nothing here
+      // needs the network.
       calculateBudget();
       renderAll();
+
+      // Sector Hot is supporting context for this page, not a precondition for
+      // it. Deliberately not awaited, and independently time-boxed.
+      loadSectorHot();
+
       loadScript('/portfolio-ai-runtime-v2.js?v=20260727-premium-v2').catch(function (error) { $('aiStatus').textContent = error.message; });
       setTimeout(function () { loadLocalState(); renderAll(); }, 600);
     } catch (error) {
@@ -201,8 +214,44 @@
     renderToday(); renderWatch(); renderRiskOptions(); renderAlerts(); renderJournal();
   }
 
+  // An empty portfolio has no statistics to report, so the KPI row must stop
+  // presenting Rp 0 / 0 as though it did. Those zeroes are also exactly what the
+  // page showed while it was still loading, which made "empty" and "not loaded
+  // yet" indistinguishable. Marking the shell lets the stylesheet demote the
+  // figures, and the page leads with the next useful action instead.
+  //
+  // Zero is still rendered — a real zero is a real reading — it just stops
+  // dominating a screen that has nothing to summarise.
+  function renderEmptyPortfolioState(isEmpty) {
+    var shell = document.querySelector('.app-shell') || document.body;
+    shell.classList.toggle('portfolio-empty', isEmpty);
+
+    var host = $('emptyPortfolioCta');
+    if (!isEmpty) { if (host) host.remove(); return; }
+    if (host) return;
+
+    var grid = document.querySelector('#page-today .metric-grid');
+    if (!grid || !grid.parentNode) return;
+    var node = document.createElement('div');
+    node.id = 'emptyPortfolioCta';
+    node.className = 'empty-portfolio-cta';
+    node.innerHTML = '<h3>Portofolio masih kosong</h3>'
+      + '<p>Belum ada posisi atau rencana tersimpan, jadi belum ada nilai, risiko, '
+      + 'atau P/L yang bisa dihitung. Mulai dari Budget-to-Stock Planner untuk '
+      + 'menghitung ukuran posisi, atau catat posisi yang sudah kamu miliki.</p>'
+      + '<div class="actions">'
+      + '<button type="button" class="btn primary" data-tab="planner">Buka Planner</button>'
+      + '<button type="button" class="btn" data-tab="watch">Catat posisi yang dimiliki</button>'
+      + '</div>';
+    grid.parentNode.insertBefore(node, grid.nextSibling);
+    node.querySelectorAll('[data-tab]').forEach(function (button) {
+      button.addEventListener('click', function () { openTab(button.getAttribute('data-tab')); });
+    });
+  }
+
   function renderToday() {
     var summary = Model.summarize(state.plans, state.prices);
+    renderEmptyPortfolioState(summary.planCount === 0);
     $('sumPlans').textContent = summary.planCount;
     $('sumPriced').textContent = summary.pricedCount + ' memiliki harga';
     $('sumAttention').textContent = summary.attentionCount;
@@ -252,7 +301,10 @@
 
   async function loadSectorHot() {
     try {
-      var response = await fetch('/api/sector-hot', { credentials: 'same-origin', cache: 'no-store' });
+      // Time-boxed like every other network call on this page. A bare fetch here
+      // could hang for as long as the server held the socket, and this function
+      // used to be awaited ahead of the portfolio's own render.
+      var response = await fetchWithTimeout('/api/sector-hot', { credentials: 'same-origin', cache: 'no-store' }, 9000);
       var data = await response.json().catch(function () { return {}; });
       var groups = Array.isArray(data.groups) ? data.groups.slice() : [];
       groups.sort(function (a, b) { return Number(b.avg_change_pct || -999) - Number(a.avg_change_pct || -999); });
@@ -272,7 +324,8 @@
   async function quote(symbol) {
     var t = ticker(symbol); if (!t) return null;
     try {
-      var response = await fetch('/api/quote?ticker=' + encodeURIComponent(t) + '&portfolio=1', { credentials: 'same-origin', cache: 'no-store', headers: authHeaders() });
+      // Time-boxed: an untimed quote fetch can hang the Refresh Harga action.
+      var response = await fetchWithTimeout('/api/quote?ticker=' + encodeURIComponent(t) + '&portfolio=1', { credentials: 'same-origin', cache: 'no-store', headers: authHeaders() }, 9000);
       var data = await response.json().catch(function () { return {}; });
       if (!response.ok || data.success === false) return null;
       return num(data.last != null ? data.last : (data.price != null ? data.price : data.close));

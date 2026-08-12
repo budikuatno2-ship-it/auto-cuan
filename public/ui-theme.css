@@ -1021,6 +1021,187 @@ button:disabled,
 }
 .landing-card { border-color: var(--ac-hairline); }
 
+/* ---- 8p. Dashboard information architecture ------------------------------
+   Second pass, from feedback on the real production page: the first viewport
+   was spent on a greeting, a full-width container holding one market number,
+   and five shortcut cards duplicating the primary navigation — while Radar Hari
+   Ini, the only genuinely decision-useful block, sat below the fold.
+
+   Nothing is removed and no markup changes. Priority is re-expressed through
+   size, weight and spacing: greeting and shortcuts recede, market status
+   compacts, radar rises.
+
+   Direction: Koyfin's habit of leading with market state at high density, and
+   its restraint with borders. */
+
+/* Greeting: context, not headline. It was set at text-3xl/font-black, making
+   "Halo, budi" the largest object on a financial dashboard. */
+#page-dashboard .dashboard-hero { padding: 13px 16px; }
+#page-dashboard #dashGreeting {
+  font-size: 17px;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+#page-dashboard .dashboard-hero > div > div > p {
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+#page-dashboard .dash-badge { padding: 3px 8px; font-size: 10px; }
+
+/* Market status: a strip sized to the amount of information it actually holds.
+   One metric does not need a full-height panel. */
+#page-dashboard #ihsgSummaryCard {
+  padding: 11px 14px;
+  border-radius: var(--ac-radius-md);
+}
+#page-dashboard #ihsgSummaryCard .text-2xl,
+#page-dashboard #ihsgSummaryCard .text-3xl {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+/* Quick access: the same five destinations already sit in the header nav, so
+   they are demoted from 96px feature cards to a compact shortcut row. They stay
+   reachable — thumb-sized on phones — without outranking market data. */
+#page-dashboard .action-card {
+  min-height: 0;
+  padding: 10px 12px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  box-shadow: none;
+  background: var(--ac-surface-3);
+}
+#page-dashboard .action-card .action-icon {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 0;
+  flex: 0 0 auto;
+  border-radius: 8px;
+}
+#page-dashboard .action-card .action-icon svg { width: 14px; height: 14px; }
+#page-dashboard .action-card > div,
+#page-dashboard .action-card > span { min-width: 0; }
+#page-dashboard .action-card p:first-of-type { font-size: 12.5px; }
+/* The one-line description is redundant next to a labelled nav destination. */
+#page-dashboard .action-card p + p { display: none; }
+
+@media (max-width: 640px) {
+  /* Phones keep a comfortable target even in the compact row. */
+  #page-dashboard .action-card { min-height: 44px; }
+}
+
+/* Safety notice: important, but it was the widest, brightest band on the page.
+   Same words, same colour family, proportionate weight. */
+#page-dashboard .dash-section-note {
+  padding: 7px 0 7px 11px;
+  border: 0;
+  border-left: 2px solid rgba(251, 191, 36, 0.42);
+  border-radius: 0;
+  background: none;
+  font-size: var(--ac-text-caption);
+}
+
+/* Radar: the block a user actually came for. Give it the emphasis the greeting
+   used to hold. */
+#page-dashboard .ac-section:has(#dashboardTop5List) .ac-section-title,
+#page-dashboard .ac-section:has(.dashboard-pick-card) .ac-section-title {
+  font-size: var(--ac-text-caption);
+  color: var(--ac-text-muted);
+}
+
+/* Tighter vertical rhythm throughout: the page breathed at a rate suited to a
+   marketing site, not a terminal. */
+#page-dashboard .space-y-4 > * + * { margin-top: 12px; }
+#page-dashboard .ac-section { margin-top: 18px; }
+
+/* A data product should not letterbox itself on a business laptop. */
+@media (min-width: 1280px) {
+  #page-dashboard.page-content { max-width: 1240px; }
+}
+
+/* ---- 8q. Admin ----------------------------------------------------------
+   The action row used six different accent hues — blue, purple, amber, cyan,
+   green, red — for six equally routine operations, so colour carried no
+   meaning and the row read as noise. Administrative tools should be quiet;
+   colour is reserved for the ones that matter.
+
+   Access control is untouched: this is presentation only. */
+#adminPanel button {
+  border-color: var(--ac-hairline);
+  color: var(--ac-text-muted);
+  background: var(--ac-surface-3);
+  font-weight: 700;
+  transition: border-color .14s ease, color .14s ease, background-color .14s ease;
+}
+#adminPanel button:hover {
+  color: var(--ac-text);
+  border-color: var(--ac-line-strong);
+  background: rgba(148, 163, 184, 0.07);
+}
+#adminPanel button svg { color: inherit; opacity: .75; }
+
+/* Security Center is the one elevated-consequence entry point, so it keeps a
+   distinguishing tone — now the only coloured control in the row. */
+#adminPanel button[onclick*="ecurity"] {
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(248, 113, 113, 0.07);
+}
+#adminPanel button[onclick*="ecurity"]:hover {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+/* Admin is an elevated context inside the same product, not a second website:
+   one hairline rule states it without a different visual language. */
+#adminPanel > div {
+  border-color: var(--ac-hairline);
+  border-top: 2px solid rgba(52, 211, 153, 0.28);
+}
+
+/* Long admin tables get the same treatment as the screener's. */
+#adminPanel table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #10151f;
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+  white-space: nowrap;
+}
+#adminPanel table tbody td {
+  height: var(--ac-row-h);
+  border-bottom: 1px solid var(--ac-hairline);
+  font-variant-numeric: tabular-nums;
+}
+#adminPanel table tbody tr:hover { background: rgba(52, 211, 153, 0.045); }
+
+/* ---- 8r. Locked and subscription states ---------------------------------
+   A locked feature must read as a boundary the product drew on purpose, not as
+   something that broke. The gates already exist in markup; this gives them a
+   deliberate surface instead of a bare container. */
+#screenerLoginGate, #sektorLoginGate, #portofolioLoginGate {
+  padding: 26px 22px;
+  border: 1px dashed var(--ac-line-strong);
+  border-radius: var(--ac-radius-lg);
+  background: var(--ac-surface-3);
+  text-align: center;
+}
+#screenerLoginGate p, #sektorLoginGate p, #portofolioLoginGate p {
+  max-width: 46ch;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: var(--ac-text-body);
+  line-height: var(--ac-lh-normal);
+  color: var(--ac-text-muted);
+}
+
 /* ---- 8l. Responsive composition ----------------------------------------- */
 @media (max-width: 640px) {
   /* Phones get the dense row height: the same information, less scrolling. */
