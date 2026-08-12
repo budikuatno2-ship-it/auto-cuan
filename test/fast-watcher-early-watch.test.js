@@ -169,7 +169,7 @@ test('next trading date creates a new Early Watch event for the same ticker', as
 });
 
 // ---------------------------------------------------------------------------
-// Feature flag: OFF / legacy-name backward compatibility
+// Feature flag: OFF / single authoritative flag (no legacy alias)
 // ---------------------------------------------------------------------------
 
 test('feature OFF causes zero Early Watch persistence or side effects', async () => {
@@ -189,10 +189,29 @@ test('feature OFF causes zero Early Watch persistence or side effects', async ()
   await assert.rejects(fsp.readFile(path.join(dirs.eventDir, '2026-08-12.jsonl'), 'utf8'));
 });
 
-test('legacy FAST_WATCHER_EARLY_WATCH_SHADOW_ENABLED flag still enables the feature', () => {
-  assert.equal(earlyWatch.isEnabled({ FAST_WATCHER_EARLY_WATCH_SHADOW_ENABLED: 'true' }), true);
+test('the legacy FAST_WATCHER_EARLY_WATCH_SHADOW_ENABLED flag can NOT enable the live feature', async () => {
+  // FAST_WATCHER_EARLY_WATCH_ENABLED is the single authoritative flag.
+  assert.equal(earlyWatch.isEnabled({ FAST_WATCHER_EARLY_WATCH_SHADOW_ENABLED: 'true' }), false);
   assert.equal(earlyWatch.isEnabled({ FAST_WATCHER_EARLY_WATCH_ENABLED: 'true' }), true);
   assert.equal(earlyWatch.isEnabled({}), false);
+  assert.equal('LEGACY_ENV_FLAG' in earlyWatch, false);
+
+  // End-to-end: with ONLY the legacy shadow flag set, runEarlyWatch must be
+  // a full no-op — no persistence, no state/event files.
+  const dirs = await tmpDirs();
+  const processed = pool.process({
+    sampleDate: '2026-08-12', scheduledTime: '09:10',
+    shortlistRows: [{ ticker: 'PADA', source_rank: 1 }], observations: [obs('PADA', '09:10')], priorState: null
+  });
+  const result = await earlyWatch.runEarlyWatch({
+    env: { FAST_WATCHER_EARLY_WATCH_SHADOW_ENABLED: 'true' },
+    sampleDate: '2026-08-12', scheduledTime: '09:10',
+    priorPoolState: null, processedPoolState: processed.state, observations: [obs('PADA', '09:10')],
+    stateDir: dirs.stateDir, eventDir: dirs.eventDir
+  });
+  assert.equal(result.enabled, false);
+  assert.equal(result.status, 'disabled');
+  await assert.rejects(fsp.readFile(path.join(dirs.stateDir, '2026-08-12.json'), 'utf8'));
 });
 
 // ---------------------------------------------------------------------------
@@ -294,7 +313,7 @@ test('Early Watch never creates READY_CONFIRMED (pool.js untouched)', () => {
 test('existing confirmed signal is emitted normally after an Early Watch alert, and its payload is unchanged', async () => {
   const sent = fakeSender();
   const { second } = await confirmationSequence(
-    { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_PUBLISH_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', FAST_WATCHER_EARLY_WATCH_ENABLED: 'true' },
+    { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_PUBLISH_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1', FAST_WATCHER_EARLY_WATCH_ENABLED: 'true' },
     { earlyWatchNotifyFn: sent.fn, publishConfirmed: async opts => ({ system_published: 1, telegram_sent: 1, publishable_ticker: opts.publishable[0].ticker }) }
   )();
   // Confirmed publication result is untouched by Early Watch running in the same orchestrator call.
@@ -432,7 +451,7 @@ test('first chase-blocked evaluation (after a genuine prior Early Watch send) se
   const state = { schema_version: 1, version: earlyWatch.VERSION, date: '2026-08-12', tickers: { TMPO: trackerWithEarlyWatchAlreadySent(record) } };
   const poolState = { tickers: { TMPO: { active: true, status: 'BLOCKED_CHASE', last_reasons: ['adaptive_advance_chase'], last_price: 168 } } };
   const sent = fakeSender();
-  const env = { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' };
+  const env = { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' };
 
   const run1 = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env, notifyFn: sent.fn });
   assert.equal(run1.anti_chase_sent, 1);
@@ -462,7 +481,7 @@ test('restart does not resend the anti-chase alert (dedup survives disk round-tr
   const reloaded = await earlyWatch.readState(stateFile);
   const poolState = { tickers: { TMPO: { active: true, status: 'BLOCKED_CHASE', last_reasons: ['adaptive_advance_chase'], last_price: 170 } } };
   const sent = fakeSender();
-  const result = await earlyWatchPublisher.sendPendingNotifications(reloaded, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
+  const result = await earlyWatchPublisher.sendPendingNotifications(reloaded, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
   assert.equal(result.anti_chase_sent, 0);
   assert.equal(sent.calls.length, 0);
 });
@@ -484,7 +503,7 @@ test('process restart: persisted early_watch_notification_sent prevents a duplic
   const reloaded = await earlyWatch.readState(stateFile);
   const poolState = { tickers: { PADA: { active: true, status: 'WATCHING', last_reasons: [] } } };
   const sent = fakeSender();
-  const result = await earlyWatchPublisher.sendPendingNotifications(reloaded, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
+  const result = await earlyWatchPublisher.sendPendingNotifications(reloaded, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
   assert.equal(result.early_watch_sent, 0);
   assert.equal(sent.calls.length, 0);
 });
@@ -512,7 +531,7 @@ test('a persisted attempted (but not yet sent) Early Watch reservation does NOT 
   const reloaded = await earlyWatch.readState(stateFile);
   const poolState = { tickers: { PADA: { active: true, status: 'WATCHING', last_reasons: [] } } };
   const sent = fakeSender();
-  const result = await earlyWatchPublisher.sendPendingNotifications(reloaded, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
+  const result = await earlyWatchPublisher.sendPendingNotifications(reloaded, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
   assert.equal(result.early_watch_sent, 0);
   assert.equal(sent.calls.length, 0, 'a reserved-but-unresolved attempt must never be retried, even though sent stayed false');
   assert.equal(result.state.tickers.PADA.early_watch_notification_sent, false);
@@ -533,7 +552,7 @@ test('a persisted attempted (but not yet sent) anti-chase reservation does NOT r
   const reloaded = await earlyWatch.readState(stateFile);
   const poolState = { tickers: { TMPO: { active: true, status: 'BLOCKED_CHASE', last_reasons: ['adaptive_advance_chase'], last_price: 168 } } };
   const sent = fakeSender();
-  const result = await earlyWatchPublisher.sendPendingNotifications(reloaded, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
+  const result = await earlyWatchPublisher.sendPendingNotifications(reloaded, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
   assert.equal(result.anti_chase_sent, 0);
   assert.equal(sent.calls.length, 0);
   assert.equal(result.state.tickers.TMPO.anti_chase_notification_sent, false);
@@ -556,7 +575,7 @@ test('the attempted reservation is durably persisted BEFORE the outbound Telegra
     return { sent: true };
   };
   await earlyWatchPublisher.sendPendingNotifications(state, poolState, {
-    env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' }, notifyFn, persist
+    env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' }, notifyFn, persist
   });
   assert.equal(persistedAttemptedAtSendTime, true);
   assert.ok(persistCalls.length >= 1);
@@ -570,7 +589,7 @@ test('sent state remains correct when the Telegram send genuinely succeeds', asy
   const state = { schema_version: 1, version: earlyWatch.VERSION, date: '2026-08-12', tickers: { PADA: earlyWatch.initTrackerState(record) } };
   const poolState = { tickers: { PADA: { active: true, status: 'WATCHING', last_reasons: [] } } };
   const sent = fakeSender({ sent: true });
-  const result = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
+  const result = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
   const tracker = result.state.tickers.PADA;
   assert.equal(tracker.early_watch_notification_attempted, true);
   assert.equal(tracker.early_watch_notification_sent, true);
@@ -585,7 +604,7 @@ test('failure state records the reason without retrying automatically', async ()
   });
   const state = { schema_version: 1, version: earlyWatch.VERSION, date: '2026-08-12', tickers: { PADA: earlyWatch.initTrackerState(record) } };
   const poolState = { tickers: { PADA: { active: true, status: 'WATCHING', last_reasons: [] } } };
-  const env = { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' };
+  const env = { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' };
   const sent = fakeSender({ sent: false, reason: 'missing_chat_id' });
 
   const run1 = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env, notifyFn: sent.fn });
@@ -616,7 +635,7 @@ test('Early Watch Telegram failure does not break main pool/confirmation persist
     env: ENABLED_ENV, sampleDate: '2026-08-12', scheduledTime: '09:10',
     priorPoolState: null, processedPoolState: processed.state, observations: [obs('PADA', '09:10')],
     stateDir: dirs.stateDir, eventDir: dirs.eventDir,
-    sendNotifications: async (state, poolState) => earlyWatchPublisher.sendPendingNotifications(state, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' }, notifyFn: throwingSend })
+    sendNotifications: async (state, poolState) => earlyWatchPublisher.sendPendingNotifications(state, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' }, notifyFn: throwingSend })
   });
   // Tracking/persistence still happened despite the notification failure.
   assert.equal(result.captured_count, 1);
@@ -685,6 +704,58 @@ test('TELEGRAM gate: sendPendingNotifications sends nothing when FAST_WATCHER_LI
   assert.equal(sent.calls.length, 0);
 });
 
+// ---------------------------------------------------------------------------
+// FIX 1: the GLOBAL TELEGRAM_ENABLED switch must gate BEFORE the durable
+// `_attempted` reservation is written — otherwise a globally-disabled run
+// would permanently consume the alert via telegram-notifier's own internal
+// "telegram_disabled" response, and it would never fire even once Telegram
+// is turned back on.
+// ---------------------------------------------------------------------------
+
+test('FIX1: global TELEGRAM_ENABLED=off blocks Early Watch AND anti-chase without reserving an attempt', async () => {
+  // Fresh capture (no prior Early Watch send yet) that is ALSO already
+  // chase-blocked, so with the gate open both notification types would be
+  // candidates this run (Early Watch would actually be skipped by FIX3.4,
+  // anti-chase by FIX3.6 — but neither reason should even be reached here:
+  // the closed global gate must short-circuit before either check runs).
+  const record = earlyWatch.buildFirstWatchRecord({
+    sampleDate: '2026-08-12', scheduledTime: '09:10', ticker: 'TMPO',
+    item: { first_price: 157, first_time: '09:10' }, now: '2026-08-12T02:10:00.000Z'
+  });
+  const state = { schema_version: 1, version: earlyWatch.VERSION, date: '2026-08-12', tickers: { TMPO: earlyWatch.initTrackerState(record) } };
+  const poolState = { tickers: { TMPO: { active: true, status: 'BLOCKED_CHASE', last_reasons: ['adaptive_advance_chase'], last_price: 168 } } };
+  const sent = fakeSender();
+  const env = { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '0' };
+  const result = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env, notifyFn: sent.fn });
+  assert.equal(result.telegram_gate_open, false);
+  assert.equal(sent.calls.length, 0);
+  assert.equal(result.state.tickers.TMPO.early_watch_notification_attempted, false);
+  assert.equal(result.state.tickers.TMPO.anti_chase_notification_attempted, false);
+});
+
+test('FIX1: TELEGRAM_ENABLED=off on a fresh capture reserves nothing, so a later run with it on still sends', async () => {
+  const record = earlyWatch.buildFirstWatchRecord({
+    sampleDate: '2026-08-12', scheduledTime: '09:10', ticker: 'PADA',
+    item: { first_price: 100, first_time: '09:10' }, now: '2026-08-12T02:10:00.000Z'
+  });
+  const state = { schema_version: 1, version: earlyWatch.VERSION, date: '2026-08-12', tickers: { PADA: earlyWatch.initTrackerState(record) } };
+  const poolState = { tickers: { PADA: { active: true, status: 'WATCHING', last_reasons: [] } } };
+  const sent = fakeSender();
+
+  const disabledRun = await earlyWatchPublisher.sendPendingNotifications(state, poolState, {
+    env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '0' }, notifyFn: sent.fn
+  });
+  assert.equal(disabledRun.early_watch_sent, 0);
+  assert.equal(sent.calls.length, 0);
+  assert.equal(disabledRun.state.tickers.PADA.early_watch_notification_attempted, false, 'a globally-disabled run must be a clean no-op, not a consumed attempt');
+
+  const enabledRun = await earlyWatchPublisher.sendPendingNotifications(disabledRun.state, poolState, {
+    env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn
+  });
+  assert.equal(enabledRun.early_watch_sent, 1);
+  assert.equal(sent.calls.length, 1);
+});
+
 test('default notifyFn is the canonical telegram-notifier sender, not a new client', () => {
   const source = require('node:fs').readFileSync(path.join(__dirname, '..', 'lib', 'intraday-fast-watcher-early-watch-publisher.js'), 'utf8');
   assert.ok(source.includes("require('./telegram-notifier')"));
@@ -736,7 +807,7 @@ test('production-eligibility-blocked ticker does not receive a misleading Early 
   // own eligibility.eligible check) — reused verbatim, not re-derived.
   const poolState = { tickers: { RISK: { active: true, status: 'WATCHING', last_reasons: ['production_eligibility_blocked', 'data_quality_risk_status'] } } };
   const sent = fakeSender();
-  const result = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
+  const result = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env: { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' }, notifyFn: sent.fn });
   assert.equal(result.early_watch_sent, 0);
   assert.equal(sent.calls.length, 0);
 });
@@ -747,7 +818,7 @@ test('eligibility becoming clear on a later run finally sends the (still-pending
     item: { first_price: 100, first_time: '09:10' }, now: '2026-08-12T02:10:00.000Z'
   });
   const state = { schema_version: 1, version: earlyWatch.VERSION, date: '2026-08-12', tickers: { RISK: earlyWatch.initTrackerState(record) } };
-  const env = { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' };
+  const env = { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' };
   const sent = fakeSender();
   const blocked = await earlyWatchPublisher.sendPendingNotifications(state, { tickers: { RISK: { active: true, status: 'WATCHING', last_reasons: ['production_eligibility_blocked'] } } }, { env, notifyFn: sent.fn });
   assert.equal(blocked.early_watch_sent, 0);
@@ -766,7 +837,7 @@ function freshState(ticker, item, sampleDate, scheduledTime, now) {
   return { schema_version: 1, version: earlyWatch.VERSION, date: sampleDate, tickers: { [ticker]: earlyWatch.initTrackerState(record) } };
 }
 
-const EW_ENV = { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1' };
+const EW_ENV = { FAST_WATCHER_LIVE_ENABLED: '1', FAST_WATCHER_TELEGRAM_ENABLED: '1', TELEGRAM_ENABLED: '1' };
 
 test('FIX3.1 missing poolItem -> no Early Watch send', async () => {
   const state = freshState('PADA', { first_price: 100, first_time: '09:10' }, '2026-08-12', '09:10', '2026-08-12T02:10:00.000Z');
@@ -806,6 +877,86 @@ test('FIX3.3b every canonical terminal status blocks Early Watch (INVALIDATED, S
     assert.equal(result.early_watch_sent, 0, `status ${status} must block Early Watch`);
     assert.equal(sent.calls.length, 0, `status ${status} must not send`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// FIX 2: Early Watch is a PRE-confirmation alert only. A delayed/pending
+// send must never fire once the CURRENT pool status has moved past
+// pre-confirmation (most importantly READY_CONFIRMED — the existing
+// confirmed publisher already owns that ticker's notification at that
+// point), and the message must reflect CURRENT status/confirmation
+// progress, never the frozen FIRST_WATCH snapshot.
+// ---------------------------------------------------------------------------
+
+test('FIX2.1 READY_CONFIRMED current status -> no Early Watch notification', async () => {
+  const state = freshState('PADA', { first_price: 100, first_time: '09:10' }, '2026-08-12', '09:10', '2026-08-12T02:10:00.000Z');
+  const poolState = { tickers: { PADA: { active: true, status: 'READY_CONFIRMED', ready_streak: 2, last_reasons: [] } } };
+  const sent = fakeSender();
+  const result = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env: EW_ENV, notifyFn: sent.fn });
+  assert.equal(result.early_watch_sent, 0);
+  assert.equal(sent.calls.length, 0);
+  assert.equal(result.state.tickers.PADA.early_watch_notification_attempted, false);
+});
+
+test('FIX2.2 WATCHING current status -> Early Watch allowed', async () => {
+  const state = freshState('PADA', { first_price: 100, first_time: '09:10', source_score: 60 }, '2026-08-12', '09:10', '2026-08-12T02:10:00.000Z');
+  const poolState = { tickers: { PADA: { active: true, status: 'WATCHING', ready_streak: 0, last_reasons: [] } } };
+  const sent = fakeSender();
+  const result = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env: EW_ENV, notifyFn: sent.fn });
+  assert.equal(result.early_watch_sent, 1);
+  assert.ok(sent.calls[0].text.includes('Status           : WATCHING'));
+  assert.ok(sent.calls[0].text.includes('0/2'));
+});
+
+test('FIX2.3 READY_PENDING current status -> Early Watch allowed, message shows CURRENT status + ready_streak', async () => {
+  const state = freshState('PADA', { first_price: 100, first_time: '09:10', ready_streak: 0 }, '2026-08-12', '09:10', '2026-08-12T02:10:00.000Z');
+  // The frozen tracker's own confirmation_count (from capture time) is 0,
+  // but the CURRENT pool item has since progressed to 1/2 — the message
+  // must show the current value, not the stale frozen one.
+  assert.equal(state.tickers.PADA.confirmation_count, 0);
+  const poolState = { tickers: { PADA: { active: true, status: 'READY_PENDING', ready_streak: 1, last_reasons: [] } } };
+  const sent = fakeSender();
+  const result = await earlyWatchPublisher.sendPendingNotifications(state, poolState, { env: EW_ENV, notifyFn: sent.fn });
+  assert.equal(result.early_watch_sent, 1);
+  assert.ok(sent.calls[0].text.includes('Status           : READY_PENDING'));
+  assert.ok(sent.calls[0].text.includes('Konfirmasi       : 1/2'));
+  assert.equal(sent.calls[0].text.includes('0/2'), false);
+});
+
+test('FIX2.4 a delayed alert cannot sneak out immediately before/after an already-confirmed signal', async () => {
+  // Simulates: capture happened (tracker exists, reference_price known,
+  // never yet notified — e.g. Telegram was globally disabled at capture
+  // time, see FIX1), but by the time a later run finally attempts to send
+  // it, the ticker's CURRENT pool status has already progressed all the
+  // way to READY_CONFIRMED via the genuine, unmodified momentum engine —
+  // the confirmed Telegram flow is the authoritative signal at that point,
+  // and Early Watch must defer to it rather than send a stale "WATCHING"
+  // alert alongside/around it.
+  const first = pool.process({
+    sampleDate: '2026-08-12', scheduledTime: '09:10',
+    shortlistRows: [{ ticker: 'PADA', source_rank: 1 }], observations: [obs('PADA', '09:10')], priorState: null
+  });
+  const second = pool.process({
+    sampleDate: '2026-08-12', scheduledTime: '09:13',
+    shortlistRows: [{ ticker: 'PADA', source_rank: 1 }],
+    observations: [obs('PADA', '09:13', { current_price: 101, volume: 1700, relative_volume: 1.5 })],
+    priorState: first.state
+  });
+  const third = pool.process({
+    sampleDate: '2026-08-12', scheduledTime: '09:22',
+    shortlistRows: [{ ticker: 'PADA', source_rank: 1 }],
+    observations: [obs('PADA', '09:22', { current_price: 102, volume: 3200, relative_volume: 2 })],
+    priorState: second.state
+  });
+  assert.equal(third.state.tickers.PADA.status, 'READY_CONFIRMED');
+
+  const state = freshState('PADA', first.state.tickers.PADA, '2026-08-12', '09:10', '2026-08-12T02:10:00.000Z');
+  assert.equal(state.tickers.PADA.early_watch_notification_attempted, false);
+  const sent = fakeSender();
+  const result = await earlyWatchPublisher.sendPendingNotifications(state, third.state, { env: EW_ENV, notifyFn: sent.fn });
+  assert.equal(result.early_watch_sent, 0);
+  assert.equal(sent.calls.length, 0);
+  assert.equal(result.state.tickers.PADA.early_watch_notification_attempted, false);
 });
 
 test('FIX3.4 chase-blocked on the very same run it was first captured -> no Early Watch alert at all', async () => {
