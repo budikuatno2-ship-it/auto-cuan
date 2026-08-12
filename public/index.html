@@ -1962,6 +1962,23 @@ function isBadUsername(name) {
     return badWords.some(function(word) { return clean.includes(normalizeNameForCheck(word)); });
 }
 
+// ===== PREMIUM ACCESS STATE =====
+// Declared HERE, above setTopLevelView, because startup reaches setTopLevelView()
+// long before the premium-access helpers further down this script are evaluated.
+// `var` hoists the binding but not the value, so initialising these next to their
+// helpers left `premiumAccessState` undefined during init: the very first
+// setTopLevelView('landing') threw "Cannot read properties of undefined (reading
+// 'premium')" inside resetPremiumAccess(), which took down handleAppRoute(), then
+// the catch-block fallback, then the finally-block fallback. Every logged-out
+// visit then sat on the loading spinner until the 4.5s watchdog rescued it and
+// showed a "features temporarily unavailable" notice on a perfectly healthy site.
+// Keep these assignments above their first caller.
+var premiumAccessState = { state:'loading', premium:false, accessLevel:'free', checkedAt:0 };
+var premiumAccessRequest = null;
+var premiumAccessController = null;
+var premiumAccessGeneration = 0;
+var premiumAccessRefreshTimer = null;
+
 // ===== TOP-LEVEL VIEW STATE =====
 // Exactly one of loading, block, maintenance, landing, or app is interactive at a time.
 function setTopLevelView(state) {
@@ -2833,11 +2850,9 @@ function clearTop5HistoryLoadTimer() {
 
 // ===== PREMIUM ACCESS CLIENT GATE (PHASE 6A.4) =====
 // Display state is fail-closed; API endpoints independently re-authorize.
-var premiumAccessState = { state:'loading', premium:false, accessLevel:'free', checkedAt:0 };
-var premiumAccessRequest = null;
-var premiumAccessController = null;
-var premiumAccessGeneration = 0;
-var premiumAccessRefreshTimer = null;
+// premiumAccessState and its companions are initialised above setTopLevelView —
+// see the "PREMIUM ACCESS STATE" block there. Re-initialising them here would
+// silently discard whatever startup already resolved.
 function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','screener','portofolio'].indexOf(String(page || '')) !== -1; }
 function hasConfirmedPremiumAccess() { return premiumAccessState.state === 'ready' && premiumAccessState.premium === true; }
 // Website access is approval-based: only a definitive server "no" locks features.
