@@ -46,3 +46,4 @@ jobs:
           test/intraday-fast-watcher-production-payload.test.js
           test/intraday-fast-watcher-recall.test.js
           test/intraday-fast-watcher.test.js
+          test/fast-watcher-early-watch.test.js
