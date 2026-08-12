@@ -97,6 +97,24 @@ async function handleDailyMarketContextAction(req, res) {
     });
 
     var context = await dailyContextBuilder.buildContextForTicker(supabase, ticker, {});
+
+    // Add cached 52W context when the additive columns are available.
+    // If migration has not been applied yet, keep the existing endpoint alive.
+    var cached52w = await supabase
+      .from('stock_daily_features')
+      .select('high_52w,distance_to_high_52w_pct')
+      .eq('ticker', ticker)
+      .limit(1);
+
+    if (!cached52w.error && cached52w.data && cached52w.data[0]) {
+      context.technical.high_52w = cached52w.data[0].high_52w;
+      context.technical.distance_to_high_52w_pct =
+        cached52w.data[0].distance_to_high_52w_pct;
+    } else {
+      context.technical.high_52w = null;
+      context.technical.distance_to_high_52w_pct = null;
+    }
+
     return res.status(200).json({ success: true, context: context });
   } catch (error) {
     return res.status(200).json({
@@ -107,7 +125,95 @@ async function handleDailyMarketContextAction(req, res) {
   }
 }
 
+
+async function handleDailyMarketContextListAction(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  var SUPABASE_URL = process.env.SUPABASE_URL;
+  var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return res.status(200).json({
+      success: false,
+      error: 'Database belum dikonfigurasi.'
+    });
+  }
+
+  try {
+    var { createClient } = require('@supabase/supabase-js');
+    var supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+
+    var selectWith52w =
+      'ticker,as_of_trade_date,last_price,rsi_14,rsi_state,' +
+      'high_52w,distance_to_high_52w_pct,' +
+      'volume_ratio_vs_7d_avg,foreign_net_today,foreign_net_7d,data_freshness';
+
+    var result = await supabase
+      .from('stock_daily_features')
+      .select(selectWith52w)
+      .order('ticker', { ascending: true })
+      .limit(1000);
+
+    // Safe rollout fallback: preview remains usable even before the additive
+    // migration is applied. 52W fields simply show N/A until then.
+    if (result.error) {
+      result = await supabase
+        .from('stock_daily_features')
+        .select(
+          'ticker,as_of_trade_date,last_price,rsi_14,rsi_state,' +
+          'volume_ratio_vs_7d_avg,foreign_net_today,foreign_net_7d,data_freshness'
+        )
+        .order('ticker', { ascending: true })
+        .limit(1000);
+
+      if (!result.error) {
+        result.data = (result.data || []).map(function(row) {
+          return Object.assign({}, row, {
+            high_52w: null,
+            distance_to_high_52w_pct: null
+          });
+        });
+      }
+    }
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    var rows = result.data || [];
+    var latestAsOf = null;
+
+    rows.forEach(function(row) {
+      if (row.as_of_trade_date &&
+          (!latestAsOf || row.as_of_trade_date > latestAsOf)) {
+        latestAsOf = row.as_of_trade_date;
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      as_of: latestAsOf,
+      count: rows.length,
+      rows: rows
+    });
+  } catch (error) {
+    return res.status(200).json({
+      success: false,
+      error: 'Gagal memuat ranking konteks pasar harian.',
+      diagnostic: error && error.message
+    });
+  }
+}
+
 module.exports = async function handler(req, res) {
+  if (req.query && req.query.action === 'daily-market-context-list') {
+    return handleDailyMarketContextListAction(req, res);
+  }
+
   if (req.query && req.query.action === 'daily-market-context') {
     return handleDailyMarketContextAction(req, res);
   }

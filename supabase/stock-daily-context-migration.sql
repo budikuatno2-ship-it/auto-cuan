@@ -122,6 +122,10 @@ CREATE TABLE IF NOT EXISTS stock_daily_features (
   rsi_14 NUMERIC,
   rsi_state TEXT,
 
+  -- Derived from the same Yahoo 1Y candle payload used by the collector.
+  high_52w NUMERIC,
+  distance_to_high_52w_pct NUMERIC,
+
   pbv NUMERIC,
   pbv_as_of_price NUMERIC,
   fundamental_period TEXT,

@@ -139,7 +139,34 @@ async function run(argv, options) {
   }));
 
   const featureResult = await contextBuilder.buildFeatureSnapshotsForTickers(supabase, tickers, {});
-  const upserted = await historyStore.upsertDailyFeatures(supabase, featureResult.rows);
+
+  // 52W metrics are derived from the SAME full one-year Yahoo payload used
+  // above. Keep rows without a fresh Yahoo metric separate so a transient
+  // Yahoo failure cannot overwrite a previously cached 52W value with null.
+  const metricRows = [];
+  const baseRows = [];
+  const tickerMetrics = collectResult.ticker_metrics || {};
+
+  for (const row of featureResult.rows) {
+    const metric = tickerMetrics[row.ticker];
+
+    if (metric) {
+      metricRows.push(Object.assign({}, row, {
+        high_52w: metric.high_52w,
+        distance_to_high_52w_pct: metric.distance_to_high_52w_pct
+      }));
+    } else {
+      baseRows.push(row);
+    }
+  }
+
+  let upserted = 0;
+  if (baseRows.length) {
+    upserted += await historyStore.upsertDailyFeatures(supabase, baseRows);
+  }
+  if (metricRows.length) {
+    upserted += await historyStore.upsertDailyFeatures(supabase, metricRows);
+  }
   console.log('[collect-daily-market-context] Feature snapshots upserted: ' + upserted +
     ', skipped_no_history: ' + featureResult.skippedTickers.length);
 
