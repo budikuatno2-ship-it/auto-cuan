@@ -146,7 +146,21 @@ function generateReport(picks, opts) {
 
     // Initialize outcomeBySource structure for this source
     if (!stats.outcomeBySource[source]) {
-      stats.outcomeBySource[source] = { total: 0, entry: 0, tp1: 0, tp2: 0, sl: 0, expired: 0, waiting: 0, running: 0, invalid: 0 };
+      stats.outcomeBySource[source] = {
+        total: 0,
+        entry: 0,
+        tp1: 0,
+        tp2: 0,
+        sl: 0,
+        expired: 0,
+        waiting: 0,
+        running: 0,
+        invalid: 0,
+        resolved: 0,
+        wins: 0,
+        losses: 0,
+        winRate: null
+      };
     }
     stats.outcomeBySource[source].total++;
 
@@ -210,7 +224,23 @@ function generateReport(picks, opts) {
     ageStats.averageAgeDays = ageStats.count > 0 ? Math.round((ageStats.totalAgeDays / ageStats.count) * 10) / 10 : null;
   }
 
-  // Calculate rates
+  // Terminal, resolved-only trade quality.
+  // TP1/TP2 are wins; SL is a loss. WAITING/RUNNING/ENTRY/EXPIRED/UNKNOWN
+  // are intentionally excluded from the denominator so open/unresolved
+  // recommendations cannot dilute the reported win rate.
+  stats.winCount = stats.tp1Count + stats.tp2Count;
+  stats.lossCount = stats.slCount;
+  stats.resolvedTradeCount = stats.winCount + stats.lossCount;
+  stats.resolvedWinRate = helpers.calculateRate(stats.winCount, stats.resolvedTradeCount);
+
+  for (const sourceStats of Object.values(stats.outcomeBySource)) {
+    sourceStats.wins = sourceStats.tp1 + sourceStats.tp2;
+    sourceStats.losses = sourceStats.sl;
+    sourceStats.resolved = sourceStats.wins + sourceStats.losses;
+    sourceStats.winRate = helpers.calculateRate(sourceStats.wins, sourceStats.resolved);
+  }
+
+  // Monitoring/event rates across ALL picks. These are not called win rate.
   stats.entryRate = helpers.calculateRate(stats.entryCount, total);
   stats.tp1Rate = helpers.calculateRate(stats.tp1Count, total);
   stats.tp2Rate = helpers.calculateRate(stats.tp2Count, total);
@@ -253,6 +283,10 @@ function formatConsoleReport(stats) {
   lines.push('## SUMMARY');
   lines.push(sub);
   lines.push('Total monitored picks: ' + stats.total);
+  lines.push('Resolved terminal trades: ' + (stats.resolvedTradeCount || 0));
+  lines.push('Wins (TP1/TP2): ' + (stats.winCount || 0));
+  lines.push('Losses (SL): ' + (stats.lossCount || 0));
+  lines.push('Resolved-only win rate: ' + (stats.resolvedWinRate || 'N/A'));
   lines.push('');
 
   // By Source
@@ -323,6 +357,35 @@ function formatConsoleReport(stats) {
   }
   if (!hasOutcomeBySource) {
     lines.push('  (data tidak tersedia)');
+  }
+  lines.push('');
+
+  lines.push('## RESOLVED WIN RATE BY SOURCE');
+  lines.push(sub);
+  lines.push('  Source          | Resolved | Wins | Losses | Win Rate');
+  lines.push('  ----------------|----------|------|--------|---------');
+  for (const src of sourceOrder) {
+    if (outcomeBySource[src]) {
+      const o = outcomeBySource[src];
+      lines.push(
+        '  ' + String(src).padEnd(15) + ' | ' +
+        String(o.resolved || 0).padStart(8) + ' | ' +
+        String(o.wins || 0).padStart(4) + ' | ' +
+        String(o.losses || 0).padStart(6) + ' | ' +
+        String(o.winRate || 'N/A').padStart(8)
+      );
+    }
+  }
+  for (const [src, o] of Object.entries(outcomeBySource)) {
+    if (!sourceOrder.includes(src)) {
+      lines.push(
+        '  ' + String(src).padEnd(15) + ' | ' +
+        String(o.resolved || 0).padStart(8) + ' | ' +
+        String(o.wins || 0).padStart(4) + ' | ' +
+        String(o.losses || 0).padStart(6) + ' | ' +
+        String(o.winRate || 'N/A').padStart(8)
+      );
+    }
   }
   lines.push('');
 
@@ -440,6 +503,10 @@ function formatMarkdownReport(stats) {
   lines.push('| Metric | Value |');
   lines.push('|--------|-------|');
   lines.push('| Total Picks | ' + stats.total + ' |');
+  lines.push('| Resolved Terminal Trades | ' + (stats.resolvedTradeCount || 0) + ' |');
+  lines.push('| Wins (TP1/TP2) | ' + (stats.winCount || 0) + ' |');
+  lines.push('| Losses (SL) | ' + (stats.lossCount || 0) + ' |');
+  lines.push('| Resolved-only Win Rate | ' + (stats.resolvedWinRate || 'N/A') + ' |');
   lines.push('');
 
   // By Source
@@ -493,6 +560,23 @@ function formatMarkdownReport(stats) {
   }
   if (!hasMdOutcomeBySource) {
     lines.push('| (data tidak tersedia) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |');
+  }
+  lines.push('');
+
+  lines.push('## Resolved Win Rate by Source');
+  lines.push('');
+  lines.push('| Source | Resolved | Wins | Losses | Win Rate |');
+  lines.push('|--------|----------|------|--------|----------|');
+  for (const src of mdSourceOrder) {
+    if (mdOutcomeBySource[src]) {
+      const o = mdOutcomeBySource[src];
+      lines.push('| ' + src + ' | ' + (o.resolved || 0) + ' | ' + (o.wins || 0) + ' | ' + (o.losses || 0) + ' | ' + (o.winRate || 'N/A') + ' |');
+    }
+  }
+  for (const [src, o] of Object.entries(mdOutcomeBySource)) {
+    if (!mdSourceOrder.includes(src)) {
+      lines.push('| ' + src + ' | ' + (o.resolved || 0) + ' | ' + (o.wins || 0) + ' | ' + (o.losses || 0) + ' | ' + (o.winRate || 'N/A') + ' |');
+    }
   }
   lines.push('');
 

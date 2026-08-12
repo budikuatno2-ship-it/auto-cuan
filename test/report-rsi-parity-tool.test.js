@@ -13,6 +13,7 @@ const assert = require('node:assert/strict');
 
 const tool = require('../tools/report-rsi-parity');
 const rsiLib = require('../lib/daily-rsi');
+const collector = require('../lib/daily-history-collector');
 
 function makeCloses(count, seed) {
   const closes = [];
@@ -54,11 +55,27 @@ test('rsiOverWindow reports insufficient_history rather than fabricating a value
   assert.equal(win.insufficient_history, true);
 });
 
-test('analyzeTicker never throws when Yahoo Finance is unreachable (this sandbox blocks it) — degrades to a warning, not a crash', async () => {
-  const row = await tool.analyzeTicker('BELL', { supabase: null, noDb: true, timeoutMs: 5000 });
-  assert.equal(row.ticker, 'BELL');
-  assert.ok(row.error, 'expected an error field to be set when the fetch fails');
-  assert.ok(Array.isArray(row.warnings) && row.warnings.length > 0);
+test('analyzeTicker degrades to a warning instead of throwing when Yahoo fetch fails', async () => {
+  const originalFetch = collector.fetchYahooDailyHistory;
+
+  collector.fetchYahooDailyHistory = async function () {
+    throw new Error('synthetic_yahoo_failure');
+  };
+
+  try {
+    const row = await tool.analyzeTicker('BELL', {
+      supabase: null,
+      noDb: true,
+      timeoutMs: 5000
+    });
+
+    assert.equal(row.ticker, 'BELL');
+    assert.ok(row.error, 'expected an error field when the injected Yahoo fetch fails');
+    assert.match(row.error, /synthetic_yahoo_failure|yahoo_fetch_failed/i);
+    assert.ok(Array.isArray(row.warnings) && row.warnings.length > 0);
+  } finally {
+    collector.fetchYahooDailyHistory = originalFetch;
+  }
 });
 
 test('DEFAULT_TICKERS includes both tickers named in the original bug report', () => {

@@ -97,7 +97,7 @@ test('computeRankingSessionInfo: before EOD collection has run, the label correc
   assert.equal(info.label, 'Sesi terakhir selesai: 11 Agu 2026');
 });
 
-test('computeRankingSessionInfo: mixed as_of_trade_date across rows is DETECTED and surfaced as an explicit warning, never silently blended', () => {
+test('computeRankingSessionInfo: stale mixed as_of_trade_date is detected and surfaced as an explicit stale-data warning', () => {
   var helpers = loadSessionLabelHelpers();
   var rows = [
     { ticker: 'BELL', as_of_trade_date: '2026-08-12' },
@@ -107,7 +107,7 @@ test('computeRankingSessionInfo: mixed as_of_trade_date across rows is DETECTED 
   var info = helpers.computeRankingSessionInfo(rows);
   assert.equal(info.mixed, true);
   assert.equal(info.latest, '2026-08-12');
-  assert.match(info.warning, /campuran/i);
+  assert.match(info.warning, /tertinggal/i);
   assert.match(info.warning, /1 dari 3/);
   assert.match(info.warning, /11 Agu 2026/);
 });

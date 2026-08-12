@@ -138,7 +138,29 @@ async function run(argv, options) {
     skipped: collectResult.skipped.length
   }));
 
-  const featureResult = await contextBuilder.buildFeatureSnapshotsForTickers(supabase, tickers, {
+  // Only refresh feature rows for tickers whose Yahoo history fetch
+  // succeeded in THIS collector run. A successful fetch may legitimately
+  // end on an older trade date when the ticker had no newer daily candle;
+  // that row is still a valid, freshly-verified snapshot.
+  //
+  // Failed/insufficient-history fetches must NOT get a fresh updated_at on
+  // an old DB history fallback, otherwise the Ranking UI cannot distinguish
+  // a legitimate no-new-candle ticker from a genuine collector miss.
+  const failedFeatureTickers = new Set(
+    (collectResult.failed || []).map((item) => String(item && item.ticker || '').toUpperCase())
+  );
+  const skippedFeatureTickers = new Set(
+    (collectResult.skipped || []).map((item) => String(item && item.ticker || '').toUpperCase())
+  );
+  const featureTickers = tickers.filter((ticker) => {
+    const t = String(ticker || '').toUpperCase();
+    return !failedFeatureTickers.has(t) && !skippedFeatureTickers.has(t);
+  });
+
+  console.log('[collect-daily-market-context] Feature-eligible tickers: ' +
+    featureTickers.length + '/' + tickers.length);
+
+  const featureResult = await contextBuilder.buildFeatureSnapshotsForTickers(supabase, featureTickers, {
     week52ByTicker: collectResult.week52 || {},
     rsiByTicker: collectResult.rsi || {}
   });

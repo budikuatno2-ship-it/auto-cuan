@@ -277,24 +277,112 @@
    * ("If ranking rows have mixed as_of_trade_date, detect it").
    */
   function computeRankingSessionInfo(rows) {
-    var dates = (rows || []).map(function (r) { return r && r.as_of_trade_date; }).filter(Boolean);
+    rows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+    var dates = rows.map(function (r) { return r && r.as_of_trade_date; }).filter(Boolean);
+
     if (!dates.length) {
-      return { label: 'Sesi belum tersedia', mixed: false, latest: null, warning: null };
+      return {
+        label: 'Sesi belum tersedia',
+        mixed: false,
+        latest: null,
+        warning: null,
+        notice: null,
+        older_count: 0,
+        stale_older_count: 0,
+        refreshed_older_count: 0
+      };
     }
+
     var counts = {};
     dates.forEach(function (d) { counts[d] = (counts[d] || 0) + 1; });
-    var uniqueDates = Object.keys(counts).sort(); // ISO (YYYY-MM-DD) strings sort chronologically
+
+    var uniqueDates = Object.keys(counts).sort();
     var latest = uniqueDates[uniqueDates.length - 1];
     var mixed = uniqueDates.length > 1;
     var label = 'Sesi terakhir selesai: ' + formatSessionDateID(latest);
+
+    var olderRows = rows.filter(function (r) {
+      return r && r.as_of_trade_date && r.as_of_trade_date !== latest;
+    });
+
+    var latestUpdateMs = null;
+    rows.forEach(function (r) {
+      var ms = Date.parse(r && r.updated_at ? r.updated_at : '');
+      if (Number.isFinite(ms) && (latestUpdateMs == null || ms > latestUpdateMs)) {
+        latestUpdateMs = ms;
+      }
+    });
+
+    // A feature row refreshed in the same collector batch may legitimately
+    // keep an older as_of date when Yahoo has no newer candle for that ticker
+    // (zero-trade / suspended / otherwise no published daily candle).
+    // Live VPS validation on 12 Aug 2026 proved exactly this for all 19
+    // mixed-date tickers: 19/19 Yahoo series also ended on 11 Aug.
+    //
+    // A materially older updated_at is different: that means the row itself
+    // did not participate in the newest feature refresh and should remain a
+    // real stale-data warning.
+    var REFRESH_BATCH_TOLERANCE_MS = 10 * 60 * 1000;
+    var refreshedOlder = [];
+    var staleOlder = [];
+
+    olderRows.forEach(function (r) {
+      var ms = Date.parse(r && r.updated_at ? r.updated_at : '');
+      if (
+        latestUpdateMs != null &&
+        Number.isFinite(ms) &&
+        Math.abs(latestUpdateMs - ms) <= REFRESH_BATCH_TOLERANCE_MS
+      ) {
+        refreshedOlder.push(r);
+      } else {
+        staleOlder.push(r);
+      }
+    });
+
     var warning = null;
-    if (mixed) {
-      var staleCount = dates.length - counts[latest];
-      var olderLabels = uniqueDates.slice(0, -1).map(formatSessionDateID).join(', ');
-      warning = 'Peringatan data campuran: ' + staleCount + ' dari ' + dates.length +
-        ' ticker masih memakai data tanggal ' + olderLabels + ' (belum tergabung ke sesi ' + formatSessionDateID(latest) + ').';
+    var notice = null;
+
+    if (mixed && staleOlder.length) {
+      var staleDates = {};
+      staleOlder.forEach(function (r) {
+        staleDates[r.as_of_trade_date] = true;
+      });
+      warning =
+        'Peringatan data tertinggal: ' +
+        staleOlder.length +
+        ' dari ' +
+        rows.length +
+        ' ticker belum ikut refresh terbaru (sesi terakhir: ' +
+        Object.keys(staleDates).sort().map(formatSessionDateID).join(', ') +
+        ').';
     }
-    return { label: label, mixed: mixed, latest: latest, warning: warning };
+
+    if (mixed && refreshedOlder.length) {
+      var refreshedDates = {};
+      refreshedOlder.forEach(function (r) {
+        refreshedDates[r.as_of_trade_date] = true;
+      });
+      notice =
+        'Catatan sesi: ' +
+        refreshedOlder.length +
+        ' dari ' +
+        rows.length +
+        ' ticker tidak memiliki candle lebih baru pada snapshot terbaru; ' +
+        'sesi terakhir ticker tersebut: ' +
+        Object.keys(refreshedDates).sort().map(formatSessionDateID).join(', ') +
+        '.';
+    }
+
+    return {
+      label: label,
+      mixed: mixed,
+      latest: latest,
+      warning: warning,
+      notice: notice,
+      older_count: olderRows.length,
+      stale_older_count: staleOlder.length,
+      refreshed_older_count: refreshedOlder.length
+    };
   }
 
   function updateRankingSessionLabel() {
@@ -305,20 +393,32 @@
     if (badge) badge.textContent = info.label;
 
     var title = byId('rankingCardTitle');
-    if (title) title.textContent = info.latest ? ('Data Ranking — ' + formatSessionDateID(info.latest)) : 'Data Ranking';
+    if (title) {
+      title.textContent = info.latest
+        ? ('Data Ranking — ' + formatSessionDateID(info.latest))
+        : 'Data Ranking';
+    }
 
     var tableWrap = byId('rankingTableWrap');
-    var warnEl = byId('rankingSessionMixedWarning');
-    if (info.warning) {
-      if (!warnEl && tableWrap && tableWrap.parentElement) {
-        warnEl = document.createElement('div');
-        warnEl.id = 'rankingSessionMixedWarning';
-        warnEl.className = 'px-3.5 py-2 text-[11px] text-amber-300 bg-amber-500/10 border-b border-amber-500/20';
-        tableWrap.parentElement.insertBefore(warnEl, tableWrap);
+    var messageEl = byId('rankingSessionMixedWarning');
+    var message = info.warning || info.notice;
+
+    if (message) {
+      if (!messageEl && tableWrap && tableWrap.parentElement) {
+        messageEl = document.createElement('div');
+        messageEl.id = 'rankingSessionMixedWarning';
+        tableWrap.parentElement.insertBefore(messageEl, tableWrap);
       }
-      if (warnEl) { warnEl.textContent = info.warning; warnEl.style.display = ''; }
-    } else if (warnEl) {
-      warnEl.style.display = 'none';
+
+      if (messageEl) {
+        messageEl.className = info.warning
+          ? 'px-3.5 py-2 text-[11px] text-amber-300 bg-amber-500/10 border-b border-amber-500/20'
+          : 'px-3.5 py-2 text-[11px] text-slate-300 bg-slate-500/10 border-b border-slate-500/20';
+        messageEl.textContent = message;
+        messageEl.style.display = '';
+      }
+    } else if (messageEl) {
+      messageEl.style.display = 'none';
     }
   }
 
