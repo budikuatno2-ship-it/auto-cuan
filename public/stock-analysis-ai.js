@@ -126,6 +126,76 @@
       removeLoading(); appendAssistant(friendly(String(error && error.message || 'AI-nya lagi gangguan. Coba lagi bentar ya.')));
     } finally { setBusy(false); }
   }
+
+  // Ranking Harian belongs AFTER the analysis/result composer, not between the
+  // ticker input and its result. Keep its state independent, surface all three
+  // foreign horizons requested by the user, and give the card a clearer visual
+  // hierarchy without changing the core index.html renderer.
+  function enhanceDailyRanking() {
+    var search = byId('rankingSearchInput');
+    var tableWrap = byId('rankingTableWrap');
+    var result = byId('analisisResult');
+    var followUp = byId('analisisFollowUp');
+    if (!search || !tableWrap) return false;
+
+    if (Array.isArray(window.RANKING_COLUMNS)) {
+      window.RANKING_COLUMNS = [
+        { key:'ticker', label:'Ticker', align:'left', sortable:true },
+        { key:'last_price', label:'Harga', align:'right', fmt:window.mktCtxFmtPrice },
+        { key:'rsi_14', label:'RSI 14', align:'right', fmt:function(v){ return Number(v).toFixed(1); } },
+        { key:'week52_high_dist_pct', label:'Jarak 52W High', align:'right', fmt:window.mktCtxFmtPct },
+        { key:'volume_ratio_vs_7d_avg', label:'Vol vs 7D', align:'right', fmt:window.mktCtxFmtRatio },
+        { key:'foreign_net_today', label:'Foreign Terakhir', align:'right', fmt:window.mktCtxFmtIDR, colorize:true },
+        { key:'foreign_net_3d', label:'Foreign 3D', align:'right', fmt:window.mktCtxFmtIDR, colorize:true },
+        { key:'foreign_net_7d', label:'Foreign 7D', align:'right', fmt:window.mktCtxFmtIDR, colorize:true }
+      ];
+    }
+
+    var outer = search.closest('.py-3');
+    if (outer && outer.dataset.rankingPolished !== 'true') {
+      outer.dataset.rankingPolished = 'true';
+      // Move below the analysis result + follow-up composer so BBCA analysis is
+      // never pushed below a 300px ranking table.
+      var anchor = followUp || result;
+      if (anchor && anchor.parentNode) {
+        anchor.insertAdjacentElement('afterend', outer);
+      }
+
+      outer.style.paddingTop = '16px';
+      outer.style.borderBottom = '0';
+      outer.style.marginTop = '4px';
+      var card = search.closest('.rounded-xl');
+      if (card) {
+        card.style.background = 'linear-gradient(180deg, rgba(18,24,34,.94), rgba(11,14,20,.98))';
+        card.style.border = '1px solid rgba(52,211,153,.14)';
+        card.style.borderRadius = '16px';
+        card.style.boxShadow = '0 16px 45px rgba(0,0,0,.22)';
+      }
+      tableWrap.style.maxHeight = '460px';
+      tableWrap.style.scrollbarGutter = 'stable';
+      search.placeholder = 'Cari ticker di ranking…';
+
+      if (card) {
+        var title = card.querySelector('h3');
+        var desc = card.querySelector('h3 + p');
+        if (title) {
+          title.textContent = 'Ranking Pasar Harian';
+          title.style.fontSize = '15px';
+          title.style.letterSpacing = '-0.01em';
+        }
+        if (desc) {
+          desc.textContent = 'Data T-1 seluruh ticker • urutkan RSI, volume, dan foreign sesuai kebutuhan.';
+          desc.style.color = '#718096';
+        }
+      }
+    }
+
+    if (typeof window.renderRankingTable === 'function') {
+      window.renderRankingTable();
+    }
+    return true;
+  }
+
   function bind() {
     var input = byId('analysisChatInput'); var button = byId('analysisSendBtn');
     if (!input || !button || button.dataset.stockAiBound === 'true') return;
@@ -139,8 +209,14 @@
   }
   function init() {
     bind();
+    enhanceDailyRanking();
     var attempts = 0;
-    var timer = setInterval(function () { bind(); attempts += 1; if (attempts >= 30) clearInterval(timer); }, 1000);
+    var timer = setInterval(function () {
+      bind();
+      enhanceDailyRanking();
+      attempts += 1;
+      if (attempts >= 30) clearInterval(timer);
+    }, 1000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
