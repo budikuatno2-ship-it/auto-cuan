@@ -138,7 +138,9 @@ async function run(argv, options) {
     skipped: collectResult.skipped.length
   }));
 
-  const featureResult = await contextBuilder.buildFeatureSnapshotsForTickers(supabase, tickers, {});
+  const featureResult = await contextBuilder.buildFeatureSnapshotsForTickers(supabase, tickers, {
+    week52ByTicker: collectResult.week52 || {}
+  });
   const upserted = await historyStore.upsertDailyFeatures(supabase, featureResult.rows);
   console.log('[collect-daily-market-context] Feature snapshots upserted: ' + upserted +
     ', skipped_no_history: ' + featureResult.skippedTickers.length);

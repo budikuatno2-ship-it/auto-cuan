@@ -11,6 +11,7 @@ var dtEngine = require('../lib/daytrade-screener-engine');
 var idxTick = require('../lib/idx-tick-normalization');
 var latestPriceResolver = require('../lib/latest-price-resolver');
 var dailyContextBuilder = require('../lib/daily-market-context-builder');
+var dailyHistoryStore = require('../lib/stock-daily-history-store');
 
 var quoteCache = {};
 var QUOTE_CACHE_TTL = 5 * 60 * 1000;
@@ -107,9 +108,50 @@ async function handleDailyMarketContextAction(req, res) {
   }
 }
 
+// ============================================================
+// DAILY MARKET CONTEXT LIST ACTION — GET /api/quote?action=daily-market-context-list
+// Backs the "Ranking Harian" table on the Analisis Saham page. Reads the
+// precomputed stock_daily_features snapshot cache (rebuilt in batch by
+// scripts/collect-daily-market-context.js) in ONE query for the whole
+// universe — independent of the single-ticker action above, and completely
+// independent of the ticker analysis input on the same page. Sorting and
+// searching happen client-side against this one payload.
+// ============================================================
+async function handleDailyMarketContextListAction(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  var SUPABASE_URL = process.env.SUPABASE_URL;
+  var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
+  }
+
+  try {
+    var { createClient } = require('@supabase/supabase-js');
+    var supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+
+    var featureRows = await dailyHistoryStore.getAllDailyFeatures(supabase, {});
+    var rows = dailyContextBuilder.buildRankingList(featureRows);
+    return res.status(200).json({ success: true, rows: rows, generated_at: new Date().toISOString() });
+  } catch (error) {
+    return res.status(200).json({
+      success: false,
+      error: 'Gagal memuat ranking konteks pasar harian.',
+      diagnostic: error && error.message
+    });
+  }
+}
+
 module.exports = async function handler(req, res) {
   if (req.query && req.query.action === 'daily-market-context') {
     return handleDailyMarketContextAction(req, res);
+  }
+  if (req.query && req.query.action === 'daily-market-context-list') {
+    return handleDailyMarketContextListAction(req, res);
   }
 
   var ticker = null;

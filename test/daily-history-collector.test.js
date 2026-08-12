@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const { makeFakeSupabase } = require('./helpers/fake-supabase');
-const { collectDailyHistoryForTickers, candlesToHistoryRows, isPartialSession } = require('../lib/daily-history-collector');
+const { collectDailyHistoryForTickers, candlesToHistoryRows, isPartialSession, computeWeek52FromCandles } = require('../lib/daily-history-collector');
 
 function makeCandles(startClose, count) {
   const candles = [];
@@ -114,4 +114,42 @@ test('candlesToHistoryRows marks all candles ok when the fetch happens after mar
     now: new Date('2026-01-03T10:00:00.000Z') // 17:00 WIB, after settle cutoff
   });
   rows.forEach((r) => assert.equal(r.data_quality_status, 'ok'));
+});
+
+// --- 52-week high/low derived from the full ~1y Yahoo fetch ---
+
+test('computeWeek52FromCandles finds the true high/low across the whole fetched series, not just the retention window', () => {
+  // 200 candles: retention only keeps the last 120, but the 52W high/low
+  // must come from ALL 200 (the early candles hold the real extremes here).
+  const candles = makeCandles(100, 200); // close/high/low climb from 100..299
+  const result = computeWeek52FromCandles(candles);
+  assert.equal(result.week52_low, candles[0].low); // 99
+  assert.equal(result.week52_low_date, candles[0].date);
+  assert.equal(result.week52_high, candles[199].high); // 300
+  assert.equal(result.week52_high_date, candles[199].date);
+  assert.equal(result.week52_basis_sessions, 200);
+});
+
+test('computeWeek52FromCandles returns nulls for an empty/missing candle series (never fabricated)', () => {
+  assert.deepEqual(computeWeek52FromCandles([]), {
+    week52_high: null, week52_high_date: null, week52_low: null, week52_low_date: null, week52_basis_sessions: 0
+  });
+  assert.deepEqual(computeWeek52FromCandles(null), {
+    week52_high: null, week52_high_date: null, week52_low: null, week52_low_date: null, week52_basis_sessions: 0
+  });
+});
+
+test('collectDailyHistoryForTickers returns a per-ticker week52 map derived from the full fetch, not the trimmed rows', async () => {
+  const supabase = makeFakeSupabase();
+  const fetchFn = async (ticker) => (ticker === 'BBCA' ? makeCandles(9000, 200) : null);
+
+  const result = await collectDailyHistoryForTickers(supabase, ['BBCA'], { fetchFn, retentionSessions: 120 });
+
+  assert.ok(result.week52.BBCA);
+  assert.equal(result.week52.BBCA.week52_low, 8999); // from candle index 0, outside the 120-row retention window
+  assert.equal(result.week52.BBCA.week52_high, 9200); // close+1 of the last (200th) candle
+
+  const bbcaRows = supabase._tables.stock_daily_history.filter((r) => r.ticker === 'BBCA');
+  assert.equal(bbcaRows.length, 120); // retention trimmed the persisted rows...
+  assert.equal(Math.min(...bbcaRows.map((r) => r.low)), 9079); // ...but week52 low above is NOT inside this trimmed set
 });
