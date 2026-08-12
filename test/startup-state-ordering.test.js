@@ -1,12 +1,15 @@
 'use strict';
 
 // ===========================================================================
-// Regression tests for the startup ordering bug that made every logged-out
-// visit sit on the loading spinner for ~4.5 seconds and then show a false
-// "features temporarily unavailable" notice on a perfectly healthy site.
+// Regression tests for a class of startup ordering bug in public/index.html:
+// module state initialised BELOW the startup code that reads it.
 //
-// Root cause
-// ----------
+// Two instances were found and fixed:
+//   1. premiumAccessState  — broke every logged-out visit (landing page)
+//   2. _dashboardTop5Cache — broke every logged-in visit (dashboard Top 5)
+//
+// Root cause (shared)
+// -------------------
 // public/index.html is one long classic script. `var` hoists the binding but
 // not the value, so the premium-access state was `undefined` for the whole
 // stretch of script above its initialiser. Startup runs inside that stretch:
@@ -93,6 +96,61 @@ test('the companion premium-access variables are initialised alongside the state
     assert.ok(
       Math.abs(at - init) < 600,
       name + ' must be initialised in the same block as premiumAccessState, above its first caller'
+    );
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Same bug class, second instance: the dashboard monitor caches.
+//
+//   init() -> handleAppRoute() -> enterApp() -> showDashboard()
+//          -> loadDashboardTop5Monitor()
+//          -> _dashboardTop5Cache.data          <-- TypeError
+//
+// The throw landed before the function issued its fetch, so the dashboard's
+// primary Top 5 / monitor panels never requested data and sat on the static
+// "Belum ada Top 5 final yang terkunci." placeholder for the whole session.
+//
+// Measured in Chromium on the logged-in entry path, /api/web-daily-picks
+// counted at the network layer:
+//   before  0 fetches on entry, 1 uncaught error
+//   after   2 fetches on entry (initial + the code's documented retry), 0 errors
+// ---------------------------------------------------------------------------
+
+const DASHBOARD_STATE = [
+  '_dashboardTop5Cache',
+  '_top5HistoryCache',
+  '_dashboardTop5InFlight',
+  '_top5HistoryInFlight'
+];
+
+test('dashboard monitor caches are initialised exactly once', () => {
+  for (const name of DASHBOARD_STATE) {
+    const matches = html.match(new RegExp('var ' + name + '\\s*=', 'g')) || [];
+    assert.equal(matches.length, 1, name + ' must have a single initialiser');
+  }
+});
+
+test('dashboard monitor caches are assigned before loadDashboardTop5Monitor reads them', () => {
+  const reader = html.indexOf('async function loadDashboardTop5Monitor(');
+  assert.ok(reader > 0, 'loadDashboardTop5Monitor must exist');
+  for (const name of DASHBOARD_STATE) {
+    const at = html.indexOf('var ' + name + ' =');
+    assert.ok(at > 0, name + ' must be initialised');
+    assert.ok(
+      at < reader,
+      name + ' is read on the logged-in startup path; initialising it after its '
+      + 'reader leaves it undefined and the dashboard never fetches its Top 5'
+    );
+  }
+});
+
+test('dashboard monitor caches are assigned before the startup entry point', () => {
+  const setter = html.indexOf('function setTopLevelView(');
+  for (const name of DASHBOARD_STATE) {
+    assert.ok(
+      html.indexOf('var ' + name + ' =') < setter,
+      name + ' must be initialised above the startup view switcher'
     );
   }
 });

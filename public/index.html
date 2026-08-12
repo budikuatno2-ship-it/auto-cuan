@@ -560,7 +560,11 @@
         .landing-nav { position: sticky; top: 0; z-index: 45; border-bottom: 1px solid rgba(148,163,184,.1); background: rgba(11,14,20,.74); backdrop-filter: blur(18px); }
         .landing-brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
         .landing-logo { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(135deg, #34d399, #059669); box-shadow: 0 18px 42px rgba(16,185,129,.2); }
-        .landing-menu a, .landing-link { color: #94a3b8; font-size: 13px; font-weight: 700; transition: color .15s ease; }
+        /* min-height keeps these at the WCAG 2.2 AA 2.5.8 target-size minimum
+           (24x24 CSS px). They measured 20px tall — the type size is unchanged,
+           only the hit area grows, and the parent flex row is already
+           items-center so nothing shifts. */
+        .landing-menu a, .landing-link { color: #94a3b8; font-size: 13px; font-weight: 700; transition: color .15s ease; display: inline-flex; align-items: center; min-height: 24px; }
         .landing-menu a:hover, .landing-link:hover { color: #6ee7b7; }
         .landing-btn { display:inline-flex; align-items:center; justify-content:center; min-height: 44px; padding: 11px 16px; border-radius: 14px; font-size: 13px; font-weight: 900; border: 1px solid rgba(148,163,184,.16); color: #d1d5db; background: rgba(15,23,42,.62); }
         .landing-btn-primary { color: #04130d; border-color: rgba(52,211,153,.28); background: linear-gradient(135deg, #6ee7b7, #10b981); box-shadow: 0 18px 44px rgba(16,185,129,.18); }
@@ -1978,6 +1982,20 @@ var premiumAccessRequest = null;
 var premiumAccessController = null;
 var premiumAccessGeneration = 0;
 var premiumAccessRefreshTimer = null;
+
+// ===== DASHBOARD MONITOR STATE =====
+// Same hoisting hazard as the premium-access block above. A logged-in visit runs
+// init() -> handleAppRoute() -> enterApp() -> showDashboard() ->
+// loadDashboardTop5Monitor(), which reads `_dashboardTop5Cache.data` on its
+// second line. Initialising these next to their renderers (thousands of lines
+// further down) left them undefined at that moment, so the dashboard's main
+// Top 5 / monitor panels threw before issuing their fetch and stayed on the
+// static "Belum ada Top 5 final yang terkunci." placeholder for the whole
+// session — even when the API had locked Top 5 rows ready to show.
+var _dashboardTop5Cache = { at: 0, data: null };
+var _top5HistoryCache = { at: 0, data: null };
+var _dashboardTop5InFlight = null;
+var _top5HistoryInFlight = null;
 
 // ===== TOP-LEVEL VIEW STATE =====
 // Exactly one of loading, block, maintenance, landing, or app is interactive at a time.
@@ -9154,12 +9172,12 @@ function formatNumber(n) {
 
 
 // ===== DASHBOARD TOP 5 + HOURLY MONITOR =====
+// The caches for this section are initialised near setTopLevelView, above their
+// first caller — see the "DASHBOARD MONITOR STATE" block there. Startup reaches
+// loadDashboardTop5Monitor() long before this point in the script, and `var`
+// hoists the binding without the value.
 var _dashboardPickData = {};
 var _dashboardMonitorRefreshTimer = null;
-var _dashboardTop5Cache = { at: 0, data: null };
-var _top5HistoryCache = { at: 0, data: null };
-var _dashboardTop5InFlight = null;
-var _top5HistoryInFlight = null;
 var _screenerInFlight = null;
 var _nkScreenerInFlight = null;
 var _dtScreenerInFlight = null;
