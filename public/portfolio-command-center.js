@@ -17,6 +17,18 @@
   function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   function num(value) { var n = Number(String(value == null ? '' : value).replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? n : null; }
   function money(value) { var n = Number(value); return Number.isFinite(n) ? 'Rp ' + Math.round(n).toLocaleString('id-ID') : '—'; }
+  // Profit and loss were rendered in the same neutral ink as every other figure,
+  // so a portfolio down Rp 249.000 looked identical at a glance to one up the
+  // same amount — the reader had to parse the minus sign to find out. This adds
+  // the gain/loss tone that a financial surface is expected to carry. The sign
+  // stays in the text, so colour is reinforcement rather than the only cue.
+  function pnlClass(value) {
+    var n = Number(value);
+    if (!Number.isFinite(n)) return 'pnl pnl-unknown';
+    if (n > 0) return 'pnl pnl-up';
+    if (n < 0) return 'pnl pnl-down';
+    return 'pnl pnl-flat';
+  }
   function pct(value) { var n = Number(value); return Number.isFinite(n) ? n.toFixed(2) + '%' : '—'; }
   function ticker(value) { return Model.tickerOf(value); }
   function safeJson(key, fallback) { try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; } }
@@ -197,6 +209,7 @@
     $('sumExposure').textContent = money(summary.totalExposureIdr);
     $('sumRisk').textContent = money(summary.totalRiskIdr);
     $('sumPnl').textContent = summary.totalPnlIdr == null ? 'P/L —' : 'P/L ' + money(summary.totalPnlIdr);
+    $('sumPnl').className = pnlClass(summary.totalPnlIdr);
     $('postureLabel').textContent = summary.posture.label;
     $('postureCard').className = 'posture ' + summary.posture.tone;
     $('decisionTitle').textContent = summary.planCount ? summary.posture.note : 'Bangun rencana yang jelas sebelum mengambil posisi.';
@@ -404,7 +417,7 @@
       return { plan:plan, current:current, status:status, pnl:pnl };
     });
     $('watchBody').innerHTML = rows.map(function (row) { var p=row.plan; return '<tr><td><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button></td><td><span class="pill '+row.status.tone+'">'+escapeHtml(row.status.label)+'</span></td><td>'+p.lots+' lot</td><td>'+money(p.entryPriceIdr)+'</td><td>'+money(row.current)+'</td><td>'+money(row.pnl)+'</td><td>'+money(p.stopLossIdr)+'</td><td>'+money(p.tp1Idr)+' / '+money(p.tp2Idr)+'</td><td><div class="row-actions"><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></td></tr>'; }).join('');
-    $('watchCards').innerHTML = rows.map(function (row) { var p=row.plan; return '<div class="position-card"><div class="position-card-head"><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button><span class="pill '+row.status.tone+'">'+escapeHtml(row.status.label)+'</span></div><div class="position-card-grid"><div><span>Harga</span><b>'+money(row.current)+'</b></div><div><span>P/L</span><b>'+money(row.pnl)+'</b></div><div><span>Entry</span><b>'+money(p.entryPriceIdr)+'</b></div><div><span>Stop</span><b>'+money(p.stopLossIdr)+'</b></div></div><div class="actions"><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></div>'; }).join('');
+    $('watchCards').innerHTML = rows.map(function (row) { var p=row.plan; return '<div class="position-card"><div class="position-card-head"><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button><span class="pill '+row.status.tone+'">'+escapeHtml(row.status.label)+'</span></div><div class="position-card-grid"><div><span>Harga</span><b>'+money(row.current)+'</b></div><div><span>P/L</span><b class="'+pnlClass(row.pnl)+'">'+money(row.pnl)+'</b></div><div><span>Entry</span><b>'+money(p.entryPriceIdr)+'</b></div><div><span>Stop</span><b>'+money(p.stopLossIdr)+'</b></div></div><div class="actions"><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></div>'; }).join('');
   }
 
   function deletePlan(id) { state.plans = state.plans.filter(function (plan) { return String(plan.id) !== String(id); }); persistPlans(); captureSnapshot(); }
@@ -449,7 +462,7 @@
     var current=num(state.prices[t]); var status=plan?Model.planStatus(plan,current):{label:'Belum direncanakan',tone:'neutral'};
     $('drawerTicker').textContent=t; $('drawerSubtitle').textContent=(current?'Harga tersimpan '+money(current):'Harga belum tersedia')+' · '+status.label;
     var pnl=plan&&current&&plan.entryPriceIdr?(current-plan.entryPriceIdr)*plan.lots*100:null;
-    $('drawerContent').innerHTML='<section class="drawer-section"><span class="pill '+status.tone+'">'+escapeHtml(status.label)+'</span><div class="drawer-metrics" style="margin-top:10px"><div class="drawer-metric"><span>Harga</span><b>'+money(current)+'</b></div><div class="drawer-metric"><span>P/L</span><b>'+money(pnl)+'</b></div><div class="drawer-metric"><span>Entry</span><b>'+money(plan&&plan.entryPriceIdr)+'</b></div><div class="drawer-metric"><span>Lot</span><b>'+(plan?plan.lots+' lot':'—')+'</b></div></div></section><section class="drawer-section"><h3>Level Rencana</h3><div class="data-rows"><div class="data-row"><span>Stop loss</span><strong>'+money(plan&&plan.stopLossIdr)+'</strong></div><div class="data-row"><span>TP1</span><strong>'+money(plan&&plan.tp1Idr)+'</strong></div><div class="data-row"><span>TP2</span><strong>'+money(plan&&plan.tp2Idr)+'</strong></div><div class="data-row"><span>Estimasi risiko</span><strong>'+money(plan&&plan.estimatedMaxLossIdr)+'</strong></div></div></section><section class="drawer-section"><div class="actions"><button class="btn primary" data-drawer-action="refresh">Refresh Harga</button><button class="btn" data-drawer-action="plan">Buat Rencana</button><button class="btn" data-drawer-action="journal">Catat Jurnal</button><button class="btn" data-drawer-action="ai">Tanya AI</button></div></section>';
+    $('drawerContent').innerHTML='<section class="drawer-section"><span class="pill '+status.tone+'">'+escapeHtml(status.label)+'</span><div class="drawer-metrics" style="margin-top:10px"><div class="drawer-metric"><span>Harga</span><b>'+money(current)+'</b></div><div class="drawer-metric"><span>P/L</span><b class="'+pnlClass(pnl)+'">'+money(pnl)+'</b></div><div class="drawer-metric"><span>Entry</span><b>'+money(plan&&plan.entryPriceIdr)+'</b></div><div class="drawer-metric"><span>Lot</span><b>'+(plan?plan.lots+' lot':'—')+'</b></div></div></section><section class="drawer-section"><h3>Level Rencana</h3><div class="data-rows"><div class="data-row"><span>Stop loss</span><strong>'+money(plan&&plan.stopLossIdr)+'</strong></div><div class="data-row"><span>TP1</span><strong>'+money(plan&&plan.tp1Idr)+'</strong></div><div class="data-row"><span>TP2</span><strong>'+money(plan&&plan.tp2Idr)+'</strong></div><div class="data-row"><span>Estimasi risiko</span><strong>'+money(plan&&plan.estimatedMaxLossIdr)+'</strong></div></div></section><section class="drawer-section"><div class="actions"><button class="btn primary" data-drawer-action="refresh">Refresh Harga</button><button class="btn" data-drawer-action="plan">Buat Rencana</button><button class="btn" data-drawer-action="journal">Catat Jurnal</button><button class="btn" data-drawer-action="ai">Tanya AI</button></div></section>';
     show('drawerBackdrop'); show('tickerDrawer'); $('closeDrawer').focus();
   }
 

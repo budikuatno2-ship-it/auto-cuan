@@ -88,32 +88,52 @@ test('a genuine zero is still shown as zero, in the gain colour', () => {
   // Flat is a real, known reading and must remain distinguishable from missing.
   const view = changeDisplay(0);
   assert.equal(view.known, true);
-  assert.equal(view.text, '+0.00%');
+  assert.equal(view.text, '+0,00%');
   assert.equal(view.cls, 'text-emerald-400');
 });
 
 test('a gain is signed and green', () => {
   const view = changeDisplay(1.234);
-  assert.equal(view.text, '+1.23%');
+  assert.equal(view.text, '+1,23%');
   assert.equal(view.cls, 'text-emerald-400');
   assert.equal(view.hex, '#6ee7b7');
 });
 
-test('a loss is signed and red', () => {
+test('a loss keeps its sign and is red', () => {
+  // The old sites rendered `sign + formatPct(value)`, and formatPct applies
+  // Math.abs() while the sign expression only ever produced '+' or ''. Sektor
+  // Hot showed a -0.85% group as "0,85%": identical in shape to a gain, with
+  // only the red colour to distinguish it.
   const view = changeDisplay(-2.5);
-  assert.equal(view.text, '-2.50%');
+  assert.match(view.text, /^[-−]/, 'a loss must carry a visible sign, not rely on colour');
+  assert.equal(view.text, '−2,50%');
   assert.equal(view.cls, 'text-red-400');
   assert.equal(view.hex, '#fca5a5');
 });
 
+test('a loss is never rendered as a bare positive-looking number', () => {
+  for (const v of [-0.85, -0.01, -12.5, '-3.2']) {
+    const text = changeDisplay(v).text;
+    assert.match(text, /^[-−]/, JSON.stringify(v) + ' rendered as ' + text + ' without a sign');
+  }
+});
+
+test('decimals use the Indonesian comma, matching prices and formatPct', () => {
+  // The page is lang="id" and formats prices with toLocaleString('id-ID').
+  // A row must not mix "1,24%" with "1.24%".
+  assert.ok(changeDisplay(1.24).text.includes(','));
+  assert.ok(!changeDisplay(1.24).text.includes('.'));
+  assert.ok(changeDisplay(-1.24).text.includes(','));
+});
+
 test('numeric strings from the API are accepted', () => {
-  assert.equal(changeDisplay('3.5').text, '+3.50%');
-  assert.equal(changeDisplay('-1.25').text, '-1.25%');
+  assert.equal(changeDisplay('3.5').text, '+3,50%');
+  assert.equal(changeDisplay('-1.25').text, '−1,25%');
 });
 
 test('the decimal precision is configurable for the compact Day Trade cards', () => {
-  assert.equal(changeDisplay(1.26, 1).text, '+1.3%');
-  assert.equal(changeDisplay(1.26).text, '+1.26%');
+  assert.equal(changeDisplay(1.26, 1).text, '+1,3%');
+  assert.equal(changeDisplay(1.26).text, '+1,26%');
 });
 
 test('infinities are treated as unknown rather than printed', () => {
@@ -143,9 +163,17 @@ test('no render site pairs a sign with formatPct', () => {
   );
 });
 
-test('the Sektor Hot convention this generalises is left intact', () => {
-  const hits = (html.match(/g\.avg_change_pct != null && g\.avg_change_pct >= 0/g) || []).length;
-  assert.equal(hits, 4, 'the already-correct Sektor Hot sites must not be disturbed');
+test('no site pairs a hand-rolled sign with an absolute-valued formatter', () => {
+  // formatPct() applies Math.abs(), so any `sign + formatPct(x)` construction
+  // silently drops the minus on a loss.
+  assert.doesNotMatch(html, /Sign \+ formatPct\(/);
+  assert.doesNotMatch(html, /chgSign/, 'the sign variables that dropped the minus are gone');
+  assert.doesNotMatch(html, /pctSign/);
+});
+
+test('formatPct itself is left alone for the non-signed callers', () => {
+  // It is still the right helper where the sign is not part of the reading.
+  assert.match(html, /function formatPct\(val\)/);
 });
 
 test('every change cell now goes through the helper', () => {

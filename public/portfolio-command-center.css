@@ -19,3 +19,17 @@
 @media(max-width:760px){.app-shell{padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) calc(90px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}.app-header{align-items:flex-start}.session-chip{display:none}.tab-strip{padding:10px 0 12px;margin-bottom:12px}.decision-hero{grid-template-columns:1fr;padding:18px}.posture{min-width:0}.grid.two,.grid.three,.form-grid,.form-grid.three{grid-template-columns:1fr}.field.full,.check-row.full{grid-column:auto}.sector-grid,.budget-band-grid{grid-template-columns:1fr}.candidate-item{grid-template-columns:1fr}.candidate-main{grid-template-columns:repeat(2,minmax(0,1fr))}.table-wrap{display:none}.mobile-position-list{display:grid}.card{padding:14px}.ai-chat{height:clamp(510px,70dvh,640px);min-height:510px;padding:13px}.ai-user{max-width:92%}.ai-assistant{max-width:98%}}
 @media(max-width:480px){.brand-copy p{display:none}.brand-mark{width:40px;height:40px}.metric-grid{grid-template-columns:1fr 1fr;gap:8px}.metric{padding:11px}.metric strong,.metric b{font-size:15px}.action-item{grid-template-columns:auto minmax(0,1fr)}.action-item>.btn{grid-column:1/-1;width:100%}.drawer{padding:14px}}
 @media (prefers-reduced-motion: reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+/* ---- Profit and loss tone -------------------------------------------------
+   P/L figures were rendered in the same neutral ink as every other number, so a
+   portfolio down Rp 249.000 looked identical at a glance to one up the same
+   amount and the reader had to parse the minus sign to tell. These give the
+   gain/loss tone a financial surface is expected to carry.
+
+   Colour is reinforcement, never the only cue: money() keeps the sign in the
+   text, so the reading survives greyscale and colour-blindness. Tabular figures
+   keep P/L columns aligned as values change. */
+.pnl { font-variant-numeric: tabular-nums; }
+.pnl-up { color: var(--accent); }
+.pnl-down { color: var(--danger); }
+.pnl-flat { color: var(--muted); }
+.pnl-unknown { color: var(--muted2); }

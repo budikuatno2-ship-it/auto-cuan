@@ -2455,6 +2455,18 @@ function showShareTab(tab) {
 // null). This helper is that convention, factored out so the seven render sites
 // that got it wrong share one implementation.
 //
+// It also fixes a second defect the older sites shared. They rendered a change
+// as `sign + formatPct(value)`, and formatPct applies Math.abs() before
+// formatting, while the sign expression only ever produced '+' or ''. A LOSS
+// therefore printed with no sign at all — Sektor Hot showed a -0.85% group as
+// "0,85%", identical in shape to a gain and distinguishable only by its red
+// colour. That is both wrong and unreadable to anyone who cannot rely on hue.
+// Here the sign always comes from the number itself.
+//
+// Decimals use the Indonesian comma, matching formatPct and the
+// toLocaleString('id-ID') used for prices, so a single row cannot mix "1,24%"
+// with "1.24%".
+//
 // Returns both a Tailwind class and a raw hex, because some of these rows are
 // built with utility classes and others with inline styles.
 function changeDisplay(value, digits) {
@@ -2463,9 +2475,10 @@ function changeDisplay(value, digits) {
         return { known: false, text: '—', cls: 'text-gray-500', hex: '#6b7280' };
     }
     var decimals = digits == null ? 2 : digits;
+    var body = Math.abs(number).toFixed(decimals).replace('.', ',');
     return {
         known: true,
-        text: (number >= 0 ? '+' : '') + number.toFixed(decimals) + '%',
+        text: (number < 0 ? '−' : '+') + body + '%',
         cls: number >= 0 ? 'text-emerald-400' : 'text-red-400',
         hex: number >= 0 ? '#6ee7b7' : '#fca5a5'
     };
@@ -8116,18 +8129,17 @@ async function loadSektorHot() {
         // Render cards
         var html = '';
         data.groups.forEach(function(g) {
-            var chgColor = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? 'text-emerald-400' : (g.avg_change_pct != null ? 'text-red-400' : 'text-gray-500');
-            var chgSign = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? '+' : '';
-            var topChgColor = (g.top_change_pct != null && g.top_change_pct >= 0) ? 'text-emerald-400' : (g.top_change_pct != null ? 'text-red-400' : 'text-gray-500');
-            var topChgSign = (g.top_change_pct != null && g.top_change_pct >= 0) ? '+' : '';
-            var avgChgDisplay = g.avg_change_pct != null ? (chgSign + formatPct(g.avg_change_pct)) : '-';
+            var chgView = changeDisplay(g.avg_change_pct);
+            var topChgView = changeDisplay(g.top_change_pct);
+            var chgColor = chgView.cls;
+            var avgChgDisplay = chgView.text;
             html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
             html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold text-gray-200 leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
             html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + avgChgDisplay + '</span></div>';
             html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
             html += '<span>' + (g.stock_count || 0) + ' saham</span>';
             if (g.top_ticker && g.top_change_pct != null) {
-                html += '<span class="' + topChgColor + '">Top: ' + g.top_ticker + ' ' + topChgSign + formatPct(g.top_change_pct) + '</span>';
+                html += '<span class="' + topChgView.cls + '">Top: ' + escapeHtml(g.top_ticker) + ' ' + topChgView.text + '</span>';
             } else if (g.valid_count === 0 || !g.top_ticker) {
                 html += '<span class="text-gray-600">Data belum tersedia</span>';
             }
@@ -8165,9 +8177,9 @@ async function showGroupDetail(groupCode) {
         }
 
         var g = data.group;
-        var chgColor = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? 'text-emerald-400' : (g.avg_change_pct != null ? 'text-red-400' : 'text-gray-500');
-        var chgSign = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? '+' : '';
-        var avgDisplay = g.avg_change_pct != null ? (chgSign + formatPct(g.avg_change_pct)) : '-';
+        var chgView = changeDisplay(g.avg_change_pct);
+        var chgColor = chgView.cls;
+        var avgDisplay = chgView.text;
         var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-';
         header.innerHTML = '<h2 class="text-base font-bold text-white">Grup ' + escapeHtml(groupCode) + '</h2>' +
             '<p class="text-xs text-gray-400 mt-0.5">' + escapeHtml(g.group_name || '') + ' \u00B7 ' + (g.stock_count || 0) + ' saham</p>' +
@@ -8191,9 +8203,9 @@ async function showGroupDetail(groupCode) {
 
         members.forEach(function(m) {
             var hasData = m.last_price != null;
-            var pctColor = hasData ? ((m.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
-            var pctSign = hasData ? ((m.change_pct || 0) >= 0 ? '+' : '') : '';
-            var pctDisplay = hasData ? (pctSign + formatPct(m.change_pct)) : '-';
+            var pctView = changeDisplay(hasData ? m.change_pct : null);
+            var pctColor = pctView.cls;
+            var pctDisplay = pctView.text;
             var priceDisplay = hasData ? formatPrice(m.last_price) : '<span class="text-gray-600">-</span>';
             var volDisplay = hasData ? formatVolume(m.volume_today) : '-';
             var ratioDisplay = hasData ? formatRatio(m.volume_ratio_30d) : '-';

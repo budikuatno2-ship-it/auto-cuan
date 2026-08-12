@@ -559,7 +559,489 @@ th {
 .glow-emerald { box-shadow: 0 0 16px rgba(16, 185, 129, 0.18), 0 0 44px rgba(16, 185, 129, 0.06); }
 .glow-emerald:hover { box-shadow: 0 0 22px rgba(16, 185, 129, 0.30), 0 0 58px rgba(16, 185, 129, 0.12); }
 
+/* =========================================================================
+   8. Institutional pass
+   =========================================================================
+
+   Sections 1–7 established one card language and one radius scale. This section
+   takes the product from coherent to institutional: the refinements a desk-grade
+   financial tool needs, applied to the component classes and element selectors
+   that already exist rather than to new markup. Nothing here requires an HTML
+   change, so none of it can alter behaviour.
+
+   Specificity note
+   ----------------
+   The Tailwind Play CDN injects its sheet at runtime, and the injection point is
+   not guaranteed to precede this file. Rules below that must beat a utility on
+   the same element therefore carry two or more classes (or an element + class)
+   so they win on specificity, not on source order. No !important is used, so a
+   deliberate utility on an individual element can still opt out.
+
+   Contents
+     8a. Extended tokens
+     8b. Numerals and financial typography
+     8c. Surface hierarchy
+     8d. Section rhythm and headings
+     8e. Tables
+     8f. Metric and KPI blocks
+     8g. Controls: buttons, tabs, inputs, selects
+     8h. Badges, pills, status
+     8i. Empty, loading and error states
+     8j. Modal and drawer chrome
+     8k. Interaction feedback
+     8l. Responsive composition
+   ========================================================================= */
+
+/* ---- 8a. Extended tokens ------------------------------------------------ */
+:root {
+  /* A real type ramp. The product previously moved between 9px and 14px with no
+     stated steps, which is why label sizes drifted between panels. */
+  --ac-text-micro: 10.5px;   /* table labels, meta, timestamps */
+  --ac-text-caption: 11.5px; /* secondary copy, hints */
+  --ac-text-body: 13px;      /* default reading size */
+  --ac-text-lead: 15px;      /* card titles */
+  --ac-text-metric: 22px;    /* single KPI value */
+  --ac-text-display: 28px;   /* hero figure */
+
+  --ac-lh-tight: 1.2;
+  --ac-lh-normal: 1.55;
+
+  /* Financial semantics. Named by meaning, not hue, so the same token can be
+     read by anyone maintaining this and cannot drift between surfaces. */
+  --ac-bull: #34d399;
+  --ac-bull-dim: rgba(52, 211, 153, 0.12);
+  --ac-bear: #f87171;
+  --ac-bear-dim: rgba(248, 113, 113, 0.12);
+  --ac-flat: #94a3b8;
+  --ac-flat-dim: rgba(148, 163, 184, 0.10);
+  --ac-warn: #fbbf24;
+  --ac-warn-dim: rgba(251, 191, 36, 0.12);
+  --ac-info: #60a5fa;
+  --ac-info-dim: rgba(96, 165, 250, 0.12);
+
+  /* One focus treatment for the whole product. */
+  --ac-focus: 0 0 0 2px rgba(11, 14, 20, 1), 0 0 0 4px rgba(52, 211, 153, 0.62);
+
+  /* A hairline that reads as structure rather than as a drawn box. */
+  --ac-hairline: rgba(148, 163, 184, 0.09);
+
+  /* Table rhythm. Row height is a design decision, not an accident of padding. */
+  --ac-row-h: 38px;
+  --ac-row-h-dense: 32px;
+}
+
+/* ---- 8b. Numerals and financial typography ------------------------------ */
+/* Every figure in the product lines up column to column and does not reflow as
+   digits change. Section 2 applied this to a handful of classes; a financial
+   product needs it wherever a number can appear. */
+table td,
+table th,
+.panel td,
+.panel th,
+.metric-grid *,
+.dashboard-card b,
+.dashboard-pick-card b,
+[class*="text-right"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+/* Tickers are identifiers. Slight tracking and a fixed weight stop them reading
+   as prose and make a column of them scannable. */
+.panel td:first-child b,
+.dashboard-pick-card b:first-child {
+  letter-spacing: 0.01em;
+}
+
+/* ---- 8c. Surface hierarchy ---------------------------------------------- */
+/* Three levels, deliberately: the page ground, a panel, and content nested
+   inside a panel. Previously panels and their inner blocks shared a tone, so a
+   dense screen read as one undifferentiated field. */
+.panel {
+  border-color: var(--ac-hairline);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, var(--ac-shadow-1);
+}
+
+.panel .panel,
+.panel .bg-dark-700\/50,
+.panel .bg-dark-800\/50 {
+  background: var(--ac-surface-3);
+  border-color: var(--ac-hairline);
+  box-shadow: none;
+}
+
+/* The hero is the only surface allowed to carry a gradient, so it stays the
+   visual anchor of the dashboard instead of competing with the cards below. */
+.dashboard-hero {
+  border-color: rgba(52, 211, 153, 0.14);
+}
+
+/* Quick-access cards: equal optical weight, a real hover, no drift. */
+.action-card {
+  border-color: var(--ac-hairline);
+  transition: border-color .16s ease, background-color .16s ease, transform .16s ease;
+}
+.action-card:hover {
+  border-color: var(--ac-accent-line);
+  background: var(--ac-accent-soft);
+  transform: translateY(-1px);
+}
+.action-card:active { transform: translateY(0); }
+
+/* ---- 8d. Section rhythm and headings ------------------------------------ */
+/* Section labels are navigation, not content. Smaller, wider-tracked, dimmer —
+   so the eye lands on the data underneath them first. */
+.ac-section-title {
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+}
+.ac-section-hint {
+  font-size: var(--ac-text-caption);
+  color: var(--ac-text-dim);
+}
+.ac-section-head { border-bottom-color: var(--ac-hairline); }
+
+.panel-title {
+  font-size: var(--ac-text-lead);
+  letter-spacing: -0.012em;
+  line-height: var(--ac-lh-tight);
+}
+.panel-subtitle {
+  font-size: var(--ac-text-caption);
+  line-height: var(--ac-lh-normal);
+  color: var(--ac-text-muted);
+}
+
+/* ---- 8e. Tables --------------------------------------------------------- */
+/* The screener and ranking tables are the product's core reading surface.
+   Header rows become labels, body rows get a real rhythm and a hover, numeric
+   columns align on the decimal, and the header sticks so a long scan never
+   loses its column meanings. */
+.panel table,
+.overflow-x-auto > table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.panel table thead th,
+.overflow-x-auto > table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #10151f;
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--ac-line);
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
+.panel table tbody td,
+.overflow-x-auto > table tbody td {
+  height: var(--ac-row-h);
+  border-bottom: 1px solid var(--ac-hairline);
+  color: var(--ac-text-muted);
+}
+
+/* The identifier column carries the row. */
+.panel table tbody td:first-child,
+.overflow-x-auto > table tbody td:first-child {
+  color: var(--ac-text);
+  font-weight: 700;
+}
+
+.panel table tbody tr,
+.overflow-x-auto > table tbody tr {
+  transition: background-color .12s ease;
+}
+.panel table tbody tr:hover,
+.overflow-x-auto > table tbody tr:hover {
+  background: rgba(52, 211, 153, 0.045);
+}
+.panel table tbody tr:last-child td,
+.overflow-x-auto > table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* A horizontally scrolling table gets a visible edge so it is obvious there is
+   more to the right, without adding a scrollbar that eats a row of height. */
+.overflow-x-auto {
+  scrollbar-width: thin;
+}
+.overflow-x-auto::-webkit-scrollbar { height: 6px; }
+.overflow-x-auto::-webkit-scrollbar-thumb { background: var(--ac-line-strong); border-radius: 999px; }
+
+/* ---- 8f. Metric and KPI blocks ------------------------------------------ */
+/* A metric is a label and a figure, and the figure wins. These blocks are built
+   from utilities in generated markup, so target the shapes they actually take. */
+.metric-grid > div,
+.panel .grid > .rounded-xl {
+  border-color: var(--ac-hairline);
+}
+
+.dashboard-hero h1,
+.dashboard-hero .text-2xl,
+.dashboard-hero .text-3xl {
+  letter-spacing: -0.022em;
+  line-height: var(--ac-lh-tight);
+}
+
+/* ---- 8g. Controls -------------------------------------------------------- */
+/* One control height, one border tone, one focus ring, across buttons, tabs,
+   inputs and selects. Previously each surface set its own. */
+.panel input[type="text"],
+.panel input[type="search"],
+.panel input[type="number"],
+.panel select,
+.page-content input[type="text"],
+.page-content input[type="search"],
+.page-content input[type="number"],
+.page-content select {
+  min-height: 38px;
+  border-radius: var(--ac-radius-sm);
+  border: 1px solid var(--ac-line);
+  background: var(--ac-surface-3);
+  color: var(--ac-text);
+  font-size: var(--ac-text-body);
+  transition: border-color .14s ease, box-shadow .14s ease;
+}
+.panel input:hover,
+.panel select:hover,
+.page-content input:hover,
+.page-content select:hover {
+  border-color: var(--ac-line-strong);
+}
+.panel input:focus-visible,
+.panel select:focus-visible,
+.page-content input:focus-visible,
+.page-content select:focus-visible {
+  outline: none;
+  border-color: var(--ac-accent-line);
+  box-shadow: var(--ac-focus);
+}
+
+/* Placeholder copy must read as a prompt, not as a value. */
+.page-content input::placeholder { color: var(--ac-text-dim); }
+
+/* Tabs: the selected one is stated, the rest recede. */
+.screener-tab,
+.nk-screener-tab,
+.dt-screener-tab {
+  font-size: var(--ac-text-body);
+  font-weight: 700;
+  color: var(--ac-text-dim);
+  border-radius: var(--ac-radius-sm);
+  transition: color .14s ease, background-color .14s ease;
+}
+.screener-tab:hover,
+.nk-screener-tab:hover,
+.dt-screener-tab:hover { color: var(--ac-text-muted); }
+.screener-tab.active,
+.nk-screener-tab.active,
+.dt-screener-tab.active {
+  color: var(--ac-accent);
+  background: var(--ac-accent-soft);
+}
+
+/* ---- 8h. Badges, pills, status ------------------------------------------ */
+/* Status is carried by weight and tracking as well as hue, so it survives a
+   greyscale print, a colour-blind reader, and a dim phone in daylight. */
+.panel span[class*="rounded"][class*="text-["],
+.panel span[class*="rounded-full"],
+.dashboard-pick-card span[class*="rounded"] {
+  font-weight: 800;
+  letter-spacing: 0.045em;
+}
+
+/* ---- 8i. Empty, loading and error states -------------------------------- */
+/* The empty state was a tall box with a small icon marooned in the middle. It
+   now sits at a deliberate height with its copy measured for reading. */
+.empty-state {
+  padding: 26px 20px;
+  border: 1px dashed var(--ac-line);
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-surface-3);
+}
+.empty-state-icon {
+  width: 22px;
+  height: 22px;
+  color: var(--ac-text-dim);
+  opacity: 0.85;
+}
+.empty-state-text {
+  margin-top: 10px;
+  max-width: 42ch;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: var(--ac-text-caption);
+  line-height: var(--ac-lh-normal);
+  color: var(--ac-text-muted);
+}
+.empty-state-amber { border-color: rgba(251, 191, 36, 0.28); background: var(--ac-warn-dim); }
+.empty-state-amber .empty-state-icon,
+.empty-state-amber .empty-state-text { color: #fcd34d; }
+
+/* Skeletons match the surface they stand in for, so the swap does not flash. */
+.skeleton { border-radius: var(--ac-radius-sm); }
+
+/* ---- 8j. Modal and drawer chrome ---------------------------------------- */
+[role="dialog"] > div {
+  border-color: var(--ac-hairline);
+  box-shadow: var(--ac-shadow-2);
+}
+
+/* ---- 8k. Interaction feedback ------------------------------------------- */
+/* One focus ring product-wide, replacing the mix of outlines and box-shadows. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--ac-focus);
+  border-radius: var(--ac-radius-sm);
+}
+
+/* Disabled means unavailable, not merely faded. */
+button:disabled,
+.panel button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- 8m. Screener toolbar ------------------------------------------------
+   Two stacked full-width notice bars plus three oversized stat tiles were
+   spending roughly 150px of vertical space, above the fold, before a single
+   candidate appeared. They are reference material, not the reading surface, so
+   they are demoted rather than removed: nothing is hidden, it simply stops
+   outranking the data. */
+.page-content .scr-info-bar {
+  padding: 7px 0 7px 11px;
+  border: 0;
+  border-left: 2px solid var(--ac-line-strong);
+  border-radius: 0;
+  background: none;
+  font-size: var(--ac-text-caption);
+  line-height: 1.5;
+}
+/* The disclaimer keeps a warning accent; the legend is neutral reference. */
+.page-content .scr-info-bar.text-amber-400\/70 {
+  border-left-color: rgba(251, 191, 36, 0.42);
+}
+
+/* Stat tiles become a compact strip: label above figure, left aligned, one
+   shared rule between them instead of three separate boxes. */
+/* Flex rather than the markup's equal-width grid: three short figures stretched
+   across a 1100px row left most of each tile empty. Hugging the content turns
+   them into a scan-strip that reads in one pass. */
+#screenerStats, #nkScreenerStats, #dtScreenerStats {
+  display: flex;
+  flex-wrap: wrap;
+  width: max-content;
+  max-width: 100%;
+  gap: 0;
+  border: 1px solid var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-surface-3);
+  overflow: hidden;
+}
+#screenerStats > div,
+#nkScreenerStats > div,
+#dtScreenerStats > div {
+  border: 0;
+  border-left: 1px solid var(--ac-hairline);
+  border-radius: 0;
+  background: none;
+  padding: 8px 18px;
+  text-align: left;
+  min-width: 104px;
+}
+#screenerStats > div:first-child,
+#nkScreenerStats > div:first-child,
+#dtScreenerStats > div:first-child { border-left: 0; }
+
+#screenerStats p:first-child,
+#nkScreenerStats p:first-child,
+#dtScreenerStats p:first-child {
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  color: var(--ac-text-dim);
+}
+#screenerStats p:last-child,
+#nkScreenerStats p:last-child,
+#dtScreenerStats p:last-child {
+  margin-top: 2px;
+  font-size: var(--ac-text-lead);
+  font-weight: 700;
+  color: var(--ac-text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 8n. Screener result cards ------------------------------------------
+   The meta run under each ticker ("Score: 82  Exec: A  Vol: 1.8x  BCA") was a
+   single stream of text with no rhythm, so nothing in it could be found without
+   reading all of it. Separating the pairs and fixing the label weight makes the
+   row scannable at a glance. */
+.panel .grid > div > .text-\[11px\],
+.dashboard-pick-card .text-\[11px\] {
+  line-height: 1.7;
+}
+
+/* Level tiles (Entry 1 / Entry 2 / Stop Loss / TP1 / TP2 / R/R): the label is
+   reference, the figure is the reading. */
+.page-content .grid > div > .text-\[9px\],
+.page-content .grid > div > .text-\[10px\] {
+  font-size: var(--ac-text-micro);
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+}
+
+/* ---- 8o. Landing ---------------------------------------------------------
+   The marketing surface shares the product's type ramp so the first impression
+   and the app do not read as two different companies. */
+.landing-section .feature-card,
+.landing-section .faq-item {
+  border-color: var(--ac-hairline);
+  transition: border-color .16s ease, transform .16s ease;
+}
+.landing-section .feature-card:hover {
+  border-color: var(--ac-accent-line);
+  transform: translateY(-1px);
+}
+.landing-card { border-color: var(--ac-hairline); }
+
+/* ---- 8l. Responsive composition ----------------------------------------- */
+@media (max-width: 640px) {
+  /* Phones get the dense row height: the same information, less scrolling. */
+  .panel table tbody td,
+  .overflow-x-auto > table tbody td { height: var(--ac-row-h-dense); }
+
+  .panel-title { font-size: 14px; }
+  .empty-state { padding: 22px 16px; }
+}
+
+@media (min-width: 1536px) {
+  /* Very wide screens were letterboxing a data product into a 1100px column.
+     Widen the reading measure for the surfaces that benefit from it, and leave
+     prose-width sections alone. */
+  #page-screener.page-content,
+  #page-sektor.page-content { max-width: 1320px; }
+}
+
 /* ---- 7. Reduced motion -------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   .ac-launcher, .ac-navpanel-card, .action-card, .panel { transition: none !important; animation: none !important; }
+  .action-card:hover { transform: none; }
+  .panel table tbody tr { transition: none !important; }
 }
