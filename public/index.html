@@ -56,6 +56,25 @@
         }
     </script>
     <style>
+        /* ---- .hidden safety net -------------------------------------------
+           This one rule is the app's entire show/hide mechanism: 101 uses in the
+           markup and 169 classList.add/remove('hidden') calls drive which
+           top-level screen is up (loader / blocked / maintenance / landing /
+           app), which page is up, which nav items a non-approved account sees,
+           and every modal. Until now it was supplied ONLY by the Tailwind Play
+           CDN, so whenever that third party was blocked, filtered or slow, every
+           screen, page and modal rendered at once, stacked. Defining it here, in
+           the inline stylesheet, means the app can still hide things when the
+           CDN cannot be reached.
+
+           Deliberately NOT !important: Tailwind's own responsive display
+           utilities must keep winning over it. `class="hidden md:flex"` is used
+           for the desktop landing menu, and .md\:flex lives in a later media
+           query in Tailwind's sheet, so it overrides this by source order — the
+           same way it overrides Tailwind's own .hidden. Adding !important here
+           would pin that menu shut on desktop. */
+        .hidden { display: none; }
+
         /* Hide any previously saved broken Level Fokus cards from old chat history in localStorage */
         .chart-focus-card { display: none !important; }
         body { background-color: #0b0e14; overflow-x: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -578,6 +597,37 @@
            (24x24 CSS px). They measured 20px tall — the type size is unchanged,
            only the hit area grows, and the parent flex row is already
            items-center so nothing shifts. */
+        /* ---- Maintenance state -------------------------------------------
+           Styled here, in the inline <style>, on purpose. When this screen is
+           showing, the Tailwind CDN and the webfont may be exactly what is
+           unreachable, so it must not depend on either. Values follow the same
+           radius/spacing/colour ramp as ui-theme.css. */
+        /* Owns its own box-sizing and gutter. Tailwind's preflight supplies
+           border-box globally and the wrapper's px-4 supplies the gutter, but
+           both come from the CDN — the very thing that may be missing when this
+           screen is up. Relying on them overflowed a 390px viewport by 42px. */
+        #maintenanceScreen { box-sizing: border-box; padding-left: 16px; padding-right: 16px; }
+        .maintenance-card, .maintenance-card * { box-sizing: border-box; }
+        .maintenance-card { width: 100%; max-width: 480px; border: 1px solid rgba(148,163,184,.14); border-radius: 20px; background: linear-gradient(180deg, rgba(15,23,42,.78), rgba(15,23,42,.48)); box-shadow: 0 24px 70px rgba(0,0,0,.32); padding: 28px 24px; }
+        @media (min-width: 640px) { .maintenance-card { padding: 34px 32px; } }
+        .maintenance-brand { display: flex; align-items: center; gap: 11px; padding-bottom: 18px; border-bottom: 1px solid rgba(148,163,184,.12); }
+        .maintenance-mark { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 13px; display: grid; place-items: center; background: linear-gradient(135deg, #34d399, #059669); }
+        .maintenance-mark svg { width: 20px; height: 20px; }
+        .maintenance-brand strong { display: block; font-size: 15px; font-weight: 800; color: #f1f5f9; letter-spacing: -.01em; }
+        .maintenance-brand small { display: block; font-size: 11px; color: #6b7a90; margin-top: 1px; }
+        .maintenance-eyebrow { margin-top: 22px; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #fcd34d; }
+        .maintenance-title { margin-top: 8px; font-size: 21px; line-height: 1.25; font-weight: 800; color: #f1f5f9; letter-spacing: -.015em; }
+        .maintenance-message { margin-top: 10px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }
+        .maintenance-facts { margin-top: 18px; padding: 14px 16px; border: 1px solid rgba(148,163,184,.12); border-radius: 14px; background: rgba(2,6,23,.32); list-style: none; display: grid; gap: 9px; }
+        .maintenance-facts li { position: relative; padding-left: 18px; font-size: 12.5px; line-height: 1.55; color: #94a3b8; }
+        .maintenance-facts li::before { content: ""; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 999px; background: #34d399; }
+        .maintenance-actions { margin-top: 20px; display: flex; }
+        .maintenance-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 18px; border-radius: 13px; font-size: 13px; font-weight: 800; border: 1px solid rgba(148,163,184,.16); background: rgba(15,23,42,.62); color: #d1d5db; cursor: pointer; }
+        .maintenance-btn-primary { width: 100%; color: #04130d; border-color: rgba(52,211,153,.28); background: linear-gradient(135deg, #6ee7b7, #10b981); }
+        .maintenance-btn-primary:hover { filter: brightness(1.04); }
+        .maintenance-btn:focus-visible { outline: 2px solid rgba(52,211,153,.75); outline-offset: 3px; }
+        .maintenance-foot { margin-top: 16px; font-size: 11.5px; line-height: 1.6; color: #6b7a90; }
+
         .landing-menu a, .landing-link { color: #94a3b8; font-size: 13px; font-weight: 700; transition: color .15s ease; display: inline-flex; align-items: center; min-height: 24px; }
         .landing-menu a:hover, .landing-link:hover { color: #6ee7b7; }
         .landing-btn { display:inline-flex; align-items:center; justify-content:center; min-height: 44px; padding: 11px 16px; border-radius: 14px; font-size: 13px; font-weight: 900; border: 1px solid rgba(148,163,184,.16); color: #d1d5db; background: rgba(15,23,42,.62); }
@@ -768,12 +818,39 @@
 </div>
 
 <!-- ===== MAINTENANCE SCREEN ===== -->
-<div id="maintenanceScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
-    <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
-        <div class="text-5xl">&#x1F6E0;&#xFE0F;</div>
-        <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
-        <p id="maintenanceMessage" class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses sementara.</p>
-        <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
+<!-- Maintenance is a first-class state, not a fallback. It has to read as a
+     deliberate pause rather than a crash, so it carries the product's own mark
+     and type rather than an emoji, states what is and is not affected, and gives
+     the user something to do. It depends on nothing but this markup and the
+     inline styles above: no app JS, no API, no webfont, no Tailwind CDN — all of
+     which may be exactly what is unavailable when this screen is showing. -->
+<div id="maintenanceScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4 py-10" style="background-color:#0b0e14">
+    <div class="maintenance-card" role="status" aria-live="polite">
+        <div class="maintenance-brand">
+            <span class="maintenance-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#04130d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v6h-6"/></svg>
+            </span>
+            <span>
+                <strong>Auto-Cuan</strong>
+                <small>IDX Stock Radar</small>
+            </span>
+        </div>
+
+        <p class="maintenance-eyebrow">Pemeliharaan terjadwal</p>
+        <h1 class="maintenance-title">Auto-Cuan sedang dalam pemeliharaan</h1>
+        <p id="maintenanceMessage" class="maintenance-message">Auto-Cuan sedang tidak dapat diakses sementara.</p>
+
+        <ul class="maintenance-facts">
+            <li>Data dan catatan portofolio kamu tersimpan dan tidak terpengaruh.</li>
+            <li>Auto-Cuan tidak pernah mengeksekusi transaksi, jadi tidak ada order yang tertahan.</li>
+            <li>Posisi yang sedang berjalan tetap perlu kamu pantau lewat aplikasi sekuritas.</li>
+        </ul>
+
+        <div class="maintenance-actions">
+            <button type="button" onclick="window.location.reload()" class="maintenance-btn maintenance-btn-primary">Muat ulang halaman</button>
+        </div>
+
+        <p class="maintenance-foot">Halaman ini akan kembali normal begitu pemeliharaan selesai. Tidak perlu membuat akun baru atau mengulang pendaftaran.</p>
     </div>
 </div>
 
