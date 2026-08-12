@@ -2364,6 +2364,36 @@ function showShareTab(tab) {
     if (tab === 'dt') { document.getElementById('shareDtPane').classList.remove('hidden'); document.getElementById('shareTabDt').className = 'share-tab active px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'; }
 }
 
+// ===== DAILY CHANGE DISPLAY =====
+// A missing daily change is not a flat one.
+//
+// Every numeric cell in these rows already renders an em dash when its value is
+// absent — last_price, RSI, Vol/Avg, entry area all do. The change column was the
+// exception: it ran `(r.change_pct || 0)`, which collapses null to 0, then took
+// the `>= 0` branch for both the colour and the sign. A row with no change data
+// therefore printed "+0.00%" in the gain colour, which reads as "this stock is
+// unchanged today" when the truth is "we do not have today's move for it".
+//
+// Sektor Hot already gets this right (avg_change_pct renders '-' in grey when
+// null). This helper is that convention, factored out so the seven render sites
+// that got it wrong share one implementation.
+//
+// Returns both a Tailwind class and a raw hex, because some of these rows are
+// built with utility classes and others with inline styles.
+function changeDisplay(value, digits) {
+    var number = (value === null || value === undefined || value === '') ? null : Number(value);
+    if (number === null || !Number.isFinite(number)) {
+        return { known: false, text: '—', cls: 'text-gray-500', hex: '#6b7280' };
+    }
+    var decimals = digits == null ? 2 : digits;
+    return {
+        known: true,
+        text: (number >= 0 ? '+' : '') + number.toFixed(decimals) + '%',
+        cls: number >= 0 ? 'text-emerald-400' : 'text-red-400',
+        hex: number >= 0 ? '#6ee7b7' : '#fca5a5'
+    };
+}
+
 function renderShareKonglo(d) {
     var pane = document.getElementById('shareKongloPane');
     if (!d || !d.results || d.results.length === 0) { pane.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data Konglo Screener.</p>'; return; }
@@ -2373,7 +2403,7 @@ function renderShareKonglo(d) {
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5 text-left">Grup</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var chgView = changeDisplay(r.change_pct);
         var tierLabel = r.swing_tier ? shareTierShort(r.swing_tier) : (r.final_status === 'Swing Ready' ? 'READY' : (r.final_status === 'Watchlist' ? 'WATCH' : 'AVOID'));
         var tierClass = shareTierColor(r.swing_tier);
         var confLabel = r.confidence || '-';
@@ -2391,7 +2421,7 @@ function renderShareKonglo(d) {
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + '">' + (r.score || 0) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? Number(r.change_pct).toFixed(2) : '0') + '%</td>';
+        html += '<td class="px-2 py-1.5 text-right ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
@@ -2438,7 +2468,7 @@ function renderShareNk(d) {
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5">#</th><th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Board</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var chgView = changeDisplay(r.change_pct);
         var tierLabel = r.swing_tier ? shareTierShort(r.swing_tier) : (r.status || '-');
         var tierClass = shareTierColor(r.swing_tier);
         var confLabel = r.confidence || '-';
@@ -2460,7 +2490,7 @@ function renderShareNk(d) {
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price != null ? Number(r.last_price).toFixed(0) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? Number(r.change_pct).toFixed(2) : '0') + '%</td>';
+        html += '<td class="px-2 py-1.5 text-right ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
@@ -2487,7 +2517,7 @@ function renderShareDt(d) {
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Setup Score</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
     sorted.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var chgView = changeDisplay(r.change_pct);
         var stColor = r.status === 'A_PLUS_SETUP' ? 'bg-emerald-500/20 text-emerald-300' : (r.status === 'TRADE_CANDIDATE' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'READY_BREAKOUT' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'EARLY_RADAR' ? 'bg-violet-500/15 text-violet-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'bg-cyan-500/15 text-cyan-400' : (r.status === 'AVOID' ? 'bg-red-500/10 text-red-400' : (r.status === 'WAIT_PULLBACK' ? 'bg-orange-500/15 text-orange-400' : 'bg-gray-500/15 text-gray-400')))))));
         var gateScore = normalizeGateScoreDisplay(r);
         var scoreColor = gateScore.colorClass;
@@ -2509,7 +2539,7 @@ function renderShareDt(d) {
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + stColor + '">' + statusLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? r.change_pct.toFixed(2) : '0') + '%</td>';
+        html += '<td class="px-2 py-1.5 text-right ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_20d != null ? r.volume_ratio_20d.toFixed(2) + 'x' : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-300">' + (r.prespike_score != null ? r.prespike_score : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-300">' + (r.momentum_score != null ? r.momentum_score : '—') + '</td>';
@@ -7397,8 +7427,7 @@ function renderDtCardGrid(results, data) {
 
         var stBg =
             getDayTradeStatusBackground(st);
-        var chg = r.change_pct || 0;
-        var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+        var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.daytrade_score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
         var _l = normalizeDisplayLevels(r);
@@ -7408,7 +7437,7 @@ function renderDtCardGrid(results, data) {
         html += '<div class="dt-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(
             getDayTradeSemanticLabel(st)
-        ) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        ) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
         // V6: Risk / Grade / MTF compact badges
@@ -7489,8 +7518,7 @@ function buildRespectQualityLine(r) {
 function openScrDetail(r, type) {
     var modal = document.getElementById('scrDetailModal');
     if (!modal) return;
-    var chg = r.change_pct || 0;
-    var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+    var chgView = changeDisplay(r.change_pct, 2);
     var sc = r.daytrade_score || r.score || 0;
     var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
     var st = r.status || r.swing_tier || '';
@@ -7520,7 +7548,7 @@ function openScrDetail(r, type) {
     html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">';
     html += '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px">' + escapeHtml(r.ticker) + '</span><span style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;background:' + stBg + ';color:' + stCol + ';white-space:nowrap">' + escapeHtml(getStatusLabel(r, st)) + '</span></div>';
     html += '<span style="font-size:10px;color:#6b7280;background:#1a1f2b;padding:3px 8px;border-radius:6px;white-space:nowrap">' + _catLabel + '</span></div>';
-    html += '<div style="display:flex;align-items:center;gap:14px;font-size:13px;color:#9ca3af"><span style="font-weight:600;color:#e5e7eb">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + ';font-weight:500">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
+    html += '<div style="display:flex;align-items:center;gap:14px;font-size:13px;color:#9ca3af"><span style="font-weight:600;color:#e5e7eb">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgView.hex + ';font-weight:500">' + chgView.text + '</span><span>Score <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
     if (freshnessText(r)) html += '<div style="font-size:10px;color:' + freshnessColor(r) + ';margin-top:8px">' + freshnessChipHtml(r) + (r.freshness_reason ? '<span style="color:#6b7280;margin-left:6px">' + escapeHtml(r.freshness_reason) + '</span>' : '') + '</div>';
     html += '</div>';
     // --- METRICS BAR: Grade / Risk / RR / Action ---
@@ -7725,8 +7753,7 @@ function renderKgCardGrid(results) {
         var tier = r.swing_tier || '';
         var tierShort = swingTierShort(tier);
         var tierCls = swingTierColor(tier);
-        var chg = r.change_pct || 0;
-        var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+        var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
         var _l = normalizeDisplayLevels(r);
@@ -7734,7 +7761,7 @@ function renderKgCardGrid(results) {
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.group_code) html += '<span style="color:#6b7280">' + escapeHtml(r.group_code) + '</span>';
@@ -7802,8 +7829,7 @@ function renderNkCardGrid(results) {
         var tier = r.swing_tier || '';
         var tierShort = swingTierShort(tier);
         var tierCls = swingTierColor(tier);
-        var chg = r.change_pct || 0;
-        var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+        var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
         var _l = normalizeDisplayLevels(r);
@@ -7811,7 +7837,7 @@ function renderNkCardGrid(results) {
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
@@ -8357,8 +8383,7 @@ function renderScreenerTable(results) {
 
     var html = '';
     filtered.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-        var chgSign = (r.change_pct || 0) >= 0 ? '+' : '';
+        var chgView = changeDisplay(r.change_pct);
 
         // Tier badge color
         var tierLabel = swingTierShort(r.swing_tier);
@@ -8395,7 +8420,7 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
-        html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
+        html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high) + '</td>';
@@ -8761,8 +8786,7 @@ function renderNkScreenerTable(results) {
 
     var html = '';
     filtered.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-        var chgSign = (r.change_pct || 0) >= 0 ? '+' : '';
+        var chgView = changeDisplay(r.change_pct);
 
         var scoreColor = 'text-gray-400';
         if (r.score >= 80) scoreColor = 'text-emerald-400 font-bold';
@@ -8810,7 +8834,7 @@ function renderNkScreenerTable(results) {
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
+        html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + rsiStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + entryStr + '</td>';
