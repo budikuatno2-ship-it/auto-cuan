@@ -127,77 +127,153 @@
     } finally { setBusy(false); }
   }
 
-  // Ranking Harian belongs AFTER the analysis/result composer, not between the
-  // ticker input and its result. Keep its state independent, surface all three
-  // foreign horizons requested by the user, and give the card a clearer visual
-  // hierarchy without changing the core index.html renderer.
-  function enhanceDailyRanking() {
+  function rankingNavButtonHtml() {
+    return '<button type="button" onclick="openDailyRankingPage()" class="nav-btn" data-page="ranking" aria-label="Ranking Pasar Harian">' +
+      '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18M7 16l4-4 3 3 5-7"/>' +
+      '</svg><span>Ranking</span></button>';
+  }
+
+  function ensureRankingNavButtons() {
+    var desktop = document.querySelector('.desktop-nav');
+    var mobile = byId('mainNav');
+
+    if (desktop && !desktop.querySelector('[data-page="ranking"]')) {
+      var analisisDesktop = desktop.querySelector('[data-page="analisis"]');
+      if (analisisDesktop) analisisDesktop.insertAdjacentHTML('afterend', rankingNavButtonHtml());
+      else desktop.insertAdjacentHTML('beforeend', rankingNavButtonHtml());
+    }
+
+    if (mobile && !mobile.querySelector('[data-page="ranking"]')) {
+      var analisisMobile = mobile.querySelector('[data-page="analisis"]');
+      if (analisisMobile) analisisMobile.insertAdjacentHTML('afterend', rankingNavButtonHtml());
+      else mobile.insertAdjacentHTML('beforeend', rankingNavButtonHtml());
+    }
+  }
+
+  function ensureRankingPageShell() {
+    var page = byId('page-ranking');
+    if (page) return page;
+
+    var dashboard = byId('dashboardScreen');
+    if (!dashboard) return null;
+
+    page = document.createElement('div');
+    page.id = 'page-ranking';
+    page.className = 'page-content hidden flex-1 max-w-[1180px] w-full mx-auto px-3 sm:px-5 py-5 sm:py-7';
+    page.innerHTML =
+      '<div class="mb-5 sm:mb-6">' +
+        '<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-emerald-500/15 bg-emerald-500/5 text-[10px] font-bold uppercase tracking-[.12em] text-emerald-300">Market Context T-1</div>' +
+        '<div class="mt-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">' +
+          '<div>' +
+            '<h2 class="text-xl sm:text-2xl font-bold text-white tracking-tight">Ranking Pasar Harian</h2>' +
+            '<p class="mt-1 text-xs sm:text-sm text-gray-500">Bandingkan RSI 14, jarak 52W high, volume, dan aliran foreign seluruh saham dalam satu halaman khusus.</p>' +
+          '</div>' +
+          '<div class="text-[11px] text-gray-600">Terpisah dari Analisis Saham</div>' +
+        '</div>' +
+      '</div>' +
+      '<div id="dailyRankingMount"></div>';
+
+    var header = dashboard.querySelector('header');
+    if (header && header.nextSibling) dashboard.insertBefore(page, header.nextSibling);
+    else dashboard.appendChild(page);
+    return page;
+  }
+
+  function configureRankingColumns() {
+    if (!Array.isArray(window.RANKING_COLUMNS)) return;
+    window.RANKING_COLUMNS = [
+      { key:'ticker', label:'Ticker', align:'left', sortable:true },
+      { key:'last_price', label:'Harga', align:'right', fmt:window.mktCtxFmtPrice },
+      { key:'rsi_14', label:'RSI 14', align:'right', fmt:function(v){ return Number(v).toFixed(1); } },
+      { key:'week52_high_dist_pct', label:'Jarak 52W High', align:'right', fmt:window.mktCtxFmtPct },
+      { key:'volume_ratio_vs_7d_avg', label:'Vol vs 7D', align:'right', fmt:window.mktCtxFmtRatio },
+      { key:'foreign_net_today', label:'Foreign Terakhir', align:'right', fmt:window.mktCtxFmtIDR, colorize:true },
+      { key:'foreign_net_3d', label:'Foreign 3D', align:'right', fmt:window.mktCtxFmtIDR, colorize:true },
+      { key:'foreign_net_7d', label:'Foreign 7D', align:'right', fmt:window.mktCtxFmtIDR, colorize:true }
+    ];
+  }
+
+  function mountRankingCardOnOwnPage() {
     var search = byId('rankingSearchInput');
     var tableWrap = byId('rankingTableWrap');
-    var result = byId('analisisResult');
-    var followUp = byId('analisisFollowUp');
-    if (!search || !tableWrap) return false;
+    var page = ensureRankingPageShell();
+    var mount = byId('dailyRankingMount');
+    if (!search || !tableWrap || !page || !mount) return false;
 
-    if (Array.isArray(window.RANKING_COLUMNS)) {
-      window.RANKING_COLUMNS = [
-        { key:'ticker', label:'Ticker', align:'left', sortable:true },
-        { key:'last_price', label:'Harga', align:'right', fmt:window.mktCtxFmtPrice },
-        { key:'rsi_14', label:'RSI 14', align:'right', fmt:function(v){ return Number(v).toFixed(1); } },
-        { key:'week52_high_dist_pct', label:'Jarak 52W High', align:'right', fmt:window.mktCtxFmtPct },
-        { key:'volume_ratio_vs_7d_avg', label:'Vol vs 7D', align:'right', fmt:window.mktCtxFmtRatio },
-        { key:'foreign_net_today', label:'Foreign Terakhir', align:'right', fmt:window.mktCtxFmtIDR, colorize:true },
-        { key:'foreign_net_3d', label:'Foreign 3D', align:'right', fmt:window.mktCtxFmtIDR, colorize:true },
-        { key:'foreign_net_7d', label:'Foreign 7D', align:'right', fmt:window.mktCtxFmtIDR, colorize:true }
-      ];
-    }
+    configureRankingColumns();
 
-    // DOM shape in index.html is: section -> card -> header + rankingTableWrap.
-    // The previous hotfix used search.closest('.py-3'), but the header itself
-    // also has py-3, so it moved only the header and left the table above the
-    // analysis result. Select the whole section explicitly from tableWrap.
     var card = tableWrap.parentElement;
     var outer = card && card.parentElement;
+    if (!card || !outer) return false;
 
-    if (outer && outer.dataset.rankingPolished !== 'true') {
-      outer.dataset.rankingPolished = 'true';
-      var anchor = followUp || result;
-      if (anchor && anchor.parentNode) {
-        anchor.insertAdjacentElement('afterend', outer);
-      }
+    if (outer.parentElement !== mount) mount.appendChild(outer);
 
-      outer.style.paddingTop = '18px';
-      outer.style.paddingBottom = '22px';
-      outer.style.borderBottom = '0';
-      outer.style.marginTop = '8px';
-      if (card) {
-        card.style.background = 'linear-gradient(180deg, rgba(18,24,34,.96), rgba(11,14,20,.99))';
-        card.style.border = '1px solid rgba(52,211,153,.16)';
-        card.style.borderRadius = '16px';
-        card.style.boxShadow = '0 16px 45px rgba(0,0,0,.24)';
-      }
-      tableWrap.style.maxHeight = '460px';
-      tableWrap.style.scrollbarGutter = 'stable';
-      search.placeholder = 'Cari ticker di ranking…';
+    outer.dataset.rankingPolished = 'true';
+    outer.classList.remove('border-b', 'flex-shrink-0');
+    outer.style.paddingTop = '0';
+    outer.style.paddingBottom = '0';
+    outer.style.marginTop = '0';
+    outer.style.borderBottom = '0';
 
-      if (card) {
-        var title = card.querySelector('h3');
-        var desc = card.querySelector('h3 + p');
-        if (title) {
-          title.textContent = 'Ranking Pasar Harian';
-          title.style.fontSize = '15px';
-          title.style.letterSpacing = '-0.01em';
-        }
-        if (desc) {
-          desc.textContent = 'Data T-1 seluruh ticker • urutkan RSI, volume, dan foreign sesuai kebutuhan.';
-          desc.style.color = '#718096';
-        }
-      }
+    card.style.background = 'linear-gradient(180deg, rgba(18,24,34,.97), rgba(11,14,20,.995))';
+    card.style.border = '1px solid rgba(52,211,153,.16)';
+    card.style.borderRadius = '18px';
+    card.style.boxShadow = '0 20px 55px rgba(0,0,0,.26)';
+    tableWrap.style.maxHeight = 'calc(100vh - 310px)';
+    tableWrap.style.minHeight = '420px';
+    tableWrap.style.scrollbarGutter = 'stable';
+    search.placeholder = 'Cari ticker di ranking…';
+
+    var title = card.querySelector('h3');
+    var desc = card.querySelector('h3 + p');
+    if (title) {
+      title.textContent = 'Data Ranking T-1';
+      title.style.fontSize = '15px';
+      title.style.letterSpacing = '-0.01em';
+    }
+    if (desc) {
+      desc.textContent = 'Klik judul kolom untuk urut terbesar ↔ terkecil. Foreign Terakhir, 3D, dan 7D memakai data upload terbaru.';
+      desc.style.color = '#718096';
     }
 
-    if (typeof window.renderRankingTable === 'function') {
-      window.renderRankingTable();
-    }
+    if (typeof window.renderRankingTable === 'function') window.renderRankingTable();
     return true;
+  }
+
+  function setRankingNavActive() {
+    document.querySelectorAll('.nav-btn').forEach(function(button) {
+      button.classList.toggle('active', button.getAttribute('data-page') === 'ranking');
+    });
+  }
+
+  function openDailyRankingPage() {
+    ensureRankingNavButtons();
+    mountRankingCardOnOwnPage();
+
+    var page = byId('page-ranking');
+    if (!page) return;
+
+    document.querySelectorAll('.page-content').forEach(function(el) {
+      if (el !== page) el.classList.add('hidden');
+    });
+    page.classList.remove('hidden');
+    setRankingNavActive();
+
+    if (typeof window.ensureRankingTableLoaded === 'function') {
+      window.ensureRankingTableLoaded();
+    } else if (typeof window.fetchRankingTable === 'function') {
+      window.fetchRankingTable();
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  window.openDailyRankingPage = openDailyRankingPage;
+
+  function enhanceDailyRanking() {
+    ensureRankingNavButtons();
+    ensureRankingPageShell();
+    return mountRankingCardOnOwnPage();
   }
 
   function bind() {
