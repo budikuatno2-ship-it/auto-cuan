@@ -278,9 +278,9 @@
     // Refresh every plan ticker on each sync window, not only ones with no cached
     // price yet. A price that is merely *stale* (fetched an hour/day ago) would
     // otherwise keep grounding the AI forever, since it already passes the
-    // "has a price" check. Tickers with no price at all are sorted first so the
-    // batch cap below never starves a wholly unpriced position in favor of
-    // re-fetching one that already has a (possibly stale) number.
+    // "has a price" check. Tickers with no price at all are sorted first so a
+    // slow/interrupted sync still resolves genuinely-unpriced positions before
+    // merely-stale ones.
     var seen = {};
     var tickers = context.plans.map(function (plan) { return plan.ticker; }).filter(function (ticker) {
       if (!ticker || seen[ticker]) return false;
@@ -288,22 +288,34 @@
       return true;
     });
     tickers.sort(function (a, b) { return (positive(prices[a]) ? 1 : 0) - (positive(prices[b]) ? 1 : 0); });
-    var targets = tickers.slice(0, 12);
-    if (!targets.length) {
+    if (!tickers.length) {
       localStorage.setItem(syncKey, String(now));
       return 0;
     }
 
-    var results = await Promise.all(targets.map(async function (ticker) {
-      return { ticker: ticker, price: await fetchPrice(ticker) };
-    }));
+    // Bounded concurrency over EVERY distinct ticker, not a fixed batch. A
+    // manual portfolio has no hard ticker-count cap, and capping to e.g. the
+    // first 12 would silently starve any ticker outside that batch forever —
+    // the same ones sort first again on the next sync. A small fixed-size
+    // worker pool keeps concurrent /api/quote requests bounded without ever
+    // leaving a ticker permanently unrefreshed.
+    var queue = tickers.slice();
     var updated = 0;
-    results.forEach(function (row) {
-      if (row.price) {
-        prices[row.ticker] = Math.round(row.price);
-        updated += 1;
+    async function worker() {
+      while (queue.length) {
+        var ticker = queue.shift();
+        var price = await fetchPrice(ticker);
+        if (price) {
+          prices[ticker] = Math.round(price);
+          updated += 1;
+        }
       }
-    });
+    }
+    var workerCount = Math.min(8, tickers.length);
+    var workers = [];
+    for (var w = 0; w < workerCount; w++) workers.push(worker());
+    await Promise.all(workers);
+
     if (updated) writeJson(pricesKey, prices);
     localStorage.setItem(syncKey, String(now));
     renderSummary();
