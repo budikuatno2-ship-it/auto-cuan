@@ -28,7 +28,9 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    // SHA-256 hash of "Review12345_autocuan_salt_2024"
+    // Pre-computed SHA-256 hash for the fixed reviewer account. The plaintext
+    // password is intentionally not recorded here or anywhere else in source —
+    // it is out-of-band, shared only with app-store reviewers.
     const REVIEW_PASSWORD_HASH = '42f38b0fcf1e35d9d2f82c462376f33145d1f450aeb216900db3356338686f2b';
     const REVIEW_DEVICE_ID = 'REVIEW_ANY_DEVICE';
     const REVIEW_USERNAME = 'review';
@@ -75,13 +77,13 @@ module.exports = async function handler(req, res) {
 
     if (insertError) {
       console.error('review-access insert error:', insertError);
-      return res.status(500).json({ success: false, error: 'Gagal membuat user review: ' + insertError.message });
+      return res.status(500).json({ success: false, error: 'Gagal membuat user review.' });
     }
 
     return res.status(200).json({ success: true, username: REVIEW_USERNAME, isReview: true });
 
   } catch (e) {
     console.error('review-access exception:', e);
-    return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
+    return res.status(500).json({ success: false, error: 'Server error. Silakan coba lagi.' });
   }
 };

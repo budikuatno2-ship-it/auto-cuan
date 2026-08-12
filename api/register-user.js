@@ -123,7 +123,7 @@ module.exports = async function handler(req, res) {
     });
   } catch (e) {
     console.error('register-user exception:', e);
-    return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
+    return res.status(500).json({ success: false, error: 'Gagal membuat akun. Silakan coba lagi beberapa saat lagi.' });
   }
 };
 

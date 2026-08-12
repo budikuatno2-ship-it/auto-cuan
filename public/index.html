@@ -1121,7 +1121,7 @@
                     </button>
                 </div>
             </div>
-            <div id="rankingTableWrap" class="overflow-auto max-h-[360px]">
+            <div id="rankingTableWrap" class="overflow-x-auto">
                 <div class="text-center py-8 text-gray-500 text-xs">Memuat ranking harian...</div>
             </div>
         </div>
@@ -3261,7 +3261,7 @@ var RANKING_COLUMNS = [
 function rankingCellHtml(row, col) {
     if (col.key === 'ticker') {
         var isSelected = rankingState.selectedTicker && row.ticker === rankingState.selectedTicker;
-        return '<span class="font-semibold text-gray-200">' + row.ticker + '</span>' +
+        return '<span class="font-semibold text-gray-200">' + escapeHtml(row.ticker) + '</span>' +
             (isSelected ? ' <span class="text-emerald-400" title="Sedang dianalisis">&bull;</span>' : '');
     }
     var raw = row[col.key];
@@ -3331,7 +3331,7 @@ function renderRankingTable() {
     filtered.forEach(function(row) {
         var isSelected = rankingState.selectedTicker && row.ticker === rankingState.selectedTicker;
         html += '<tr class="border-b border-dark-600/10 hover:bg-dark-600/20 transition cursor-pointer ' +
-            (isSelected ? 'bg-emerald-500/10' : '') + '" onclick="quickAnalisis(\'' + row.ticker + '\')" title="Analisis ' + row.ticker + '">';
+            (isSelected ? 'bg-emerald-500/10' : '') + '" onclick="quickAnalisis(\'' + adminOnclickArg(row.ticker) + '\')" title="Analisis ' + escapeHtml(row.ticker) + '">';
         RANKING_COLUMNS.forEach(function(col) {
             html += '<td class="px-3 py-1.5 text-' + col.align + ' whitespace-nowrap">' + rankingCellHtml(row, col) + '</td>';
         });
@@ -3727,7 +3727,11 @@ async function renderPatternTab() {
 
 async function loadChartPage() {
     var input = document.getElementById('chartTickerInput');
-    var ticker = (input.value || '').trim().toUpperCase();
+    // Stripped to the same [A-Z0-9] charset every other ticker input in this file
+    // uses (see runAnalisisFromDashboard) — this value is later concatenated
+    // straight into innerHTML/onclick/aria-label without escaping below, so it
+    // must never contain HTML/JS-breaking characters in the first place.
+    var ticker = (input.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (!ticker) return;
     input.value = ticker;
 
@@ -5665,7 +5669,15 @@ function buildEvidenceBadges() {
     return html;
 }
 
-function escapeHtml(text) { var div = document.createElement('div'); div.appendChild(document.createTextNode(text)); return div.innerHTML; }
+// A DOM textContent round-trip escapes &/</> but NOT quotes, so any call site that
+// embeds the result inside a quoted HTML attribute (title="...", onclick="...")
+// stayed breakable. Match every other escaping helper in this codebase (e.g.
+// stock-analysis-ai.js, portfolio-command-center.js) and escape all five chars.
+function escapeHtml(text) {
+    return String(text == null ? '' : text).replace(/[&<>"']/g, function (char) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+    });
+}
 function clearInput() { var el = getActiveChatInput(); if (!el) return; el.value = ''; el.style.height = 'auto'; }
 function disableSend() { isSending = true; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); } }); }
 function enableSend() { isSending = false; ['analysisSendBtn', 'generalSendBtn'].forEach(function(id) { var btn = document.getElementById(id); if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); } }); }
@@ -9022,6 +9034,39 @@ function renderPortfolioTable(positions) {
     renderPortfolioView(positions);
 }
 
+// Bounded-concurrency batch price fetch. A manual portfolio has no hard size cap,
+// so a refresh must never fan out into one concurrent /api/quote call per ticker —
+// each call also queries several Supabase tables server-side (see
+// fetchFreshScreenerLatestPrice). A small fixed-size worker pool keeps a large
+// portfolio's refresh bounded instead of Promise.all(tickers.map(...)).
+var PORTFOLIO_PRICE_FETCH_CONCURRENCY = 8;
+async function fetchPortfolioQuotesBounded(tickers) {
+    var priceMap = {};
+    var failed = [];
+    var queue = tickers.slice();
+
+    async function worker() {
+        while (queue.length) {
+            var ticker = queue.shift();
+            try {
+                var r = await fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&portfolio=1', { headers: getAuthHeaders() });
+                var data = await r.json();
+                var accepted = acceptQuotePrice(data);
+                if (accepted) priceMap[ticker] = accepted;
+                else failed.push(ticker);
+            } catch (e) {
+                failed.push(ticker);
+            }
+        }
+    }
+
+    var workerCount = Math.min(PORTFOLIO_PRICE_FETCH_CONCURRENCY, tickers.length);
+    var workers = [];
+    for (var i = 0; i < workerCount; i++) workers.push(worker());
+    await Promise.all(workers);
+    return { priceMap: priceMap, failed: failed };
+}
+
 var _portRefreshInFlight = false;
 async function refreshPortfolioPrices() {
     var positions = loadPortfolio();
@@ -9044,17 +9089,11 @@ async function refreshPortfolioPrices() {
     var failed = [];
 
     try {
-        // Fetch each ticker independently — one failure never blocks the others.
-        await Promise.all(uniqueTickers.map(function(ticker) {
-            return fetch('/api/quote?ticker=' + encodeURIComponent(ticker) + '&portfolio=1', { headers: getAuthHeaders() })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    var accepted = acceptQuotePrice(data);
-                    if (accepted) priceMap[ticker] = accepted;
-                    else failed.push(ticker);
-                })
-                .catch(function() { failed.push(ticker); });
-        }));
+        // Fetch each ticker independently (bounded concurrency) — one failure never
+        // blocks the others, and a large portfolio never fans out unbounded.
+        var result = await fetchPortfolioQuotesBounded(uniqueTickers);
+        priceMap = result.priceMap;
+        failed = result.failed;
 
         // Update only priced positions; saved lot/avgBuy are never touched.
         for (var j = 0; j < positions.length; j++) {

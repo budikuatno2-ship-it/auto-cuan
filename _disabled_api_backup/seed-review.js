@@ -8,8 +8,9 @@ const { createClient } = require('@supabase/supabase-js');
  * If review user already exists → ensure is_blocked=false, device_id=REVIEW_ANY_DEVICE,
  *   and update password_hash only if needed.
  *
- * Password: Review12345
- * Hashed with SHA-256( "Review12345" + "_autocuan_salt_2024" )
+ * The plaintext password is intentionally not recorded here — it is out-of-band,
+ * shared only with app-store reviewers. This file is not deployed (it lives
+ * outside api/, so Vercel never registers it as a function).
  */
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -28,7 +29,7 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    // SHA-256 hash of "Review12345_autocuan_salt_2024"
+    // Pre-computed hash for the fixed reviewer account (see file header).
     const REVIEW_PASSWORD_HASH = '42f38b0fcf1e35d9d2f82c462376f33145d1f450aeb216900db3356338686f2b';
     const REVIEW_DEVICE_ID = 'REVIEW_ANY_DEVICE';
     const REVIEW_USERNAME = 'review';

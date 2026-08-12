@@ -32,6 +32,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { requirePremiumEntitlement } = require('../lib/subscription-auth');
+const { requireAuthenticatedSession } = require('../lib/admin-session');
 const dtEngine = require('../lib/daytrade-screener-engine-v7');
 const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
@@ -379,7 +380,7 @@ module.exports = async function handler(req, res) {
 
   } catch (e) {
     console.error('sector-hot exception:', e);
-    return res.status(200).json({ success: false, error: 'Terjadi kesalahan: ' + e.message });
+    return res.status(200).json({ success: false, error: 'Terjadi kesalahan. Coba lagi beberapa saat lagi.' });
   }
 };
 
@@ -7080,10 +7081,20 @@ function isMonitorTimestampStale(value, sourceLabel) {
 }
 
 
-function isDashboardScreenerLoggedIn(req) {
-  var rawUserId = String(req.headers['x-user-id'] || '').trim();
-  var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
-  return !!((rawUserId || rawUsername) && rawUsername !== 'guest');
+// SECURITY: this gates the Top 5 picks / Auto Monitor / pick-history dashboard
+// content behind "the caller is logged in". Identity comes ONLY from the
+// signed, HttpOnly ac_sess session cookie (lib/admin-session.js verifies its
+// HMAC + expiry) via lookupDashboardAdminAppUser() below — never from
+// X-User-Id/X-Username request headers, which have no cryptographic binding
+// to the request and can be set to any value by the caller. An unauthenticated
+// caller who supplies a real, existing user's UUID/username pair in headers
+// (with no session cookie at all) must still be rejected here.
+async function isDashboardScreenerLoggedIn(req, supabase) {
+  var userData = await lookupDashboardAdminAppUser(req, supabase);
+  if (!userData) return false;
+  if (userData.is_blocked) return false;
+  if (userData.is_approved === false) return false;
+  return true;
 }
 
 
@@ -7230,49 +7241,51 @@ function sanitizeTop5ResponseForAudience(payload, opts) {
   return clean;
 }
 
+// Resolves the caller's app_users row from the signed, HttpOnly ac_sess
+// session cookie ONLY (lib/admin-session.js HMAC-verifies it and rejects
+// tampered/expired tokens) — never from X-User-Id/X-Username request headers.
+// Those headers are attacker-controlled and have zero cryptographic binding
+// to who actually made the request; trusting them (even after checking the
+// pair exists in app_users) still lets anyone with a real user's UUID+
+// username impersonate that user without ever authenticating as them.
 async function lookupDashboardAdminAppUser(req, supabase) {
-  var rawUserId = String(req.headers['x-user-id'] || '').trim();
-  var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
-  if (!isLikelyUuid(rawUserId) || rawUsername === 'guest') return null;
+  var auth = requireAuthenticatedSession(req);
+  if (!auth.ok) return null;
 
   var r = await supabase
     .from('app_users')
     .select('*')
-    .eq('id', rawUserId)
+    .eq('id', auth.session.uid)
     .maybeSingle();
   if (r.error || !r.data) return null;
 
   var dbUsername = String(r.data.username || '').trim().toLowerCase();
-  if (rawUsername && rawUsername !== dbUsername) return null;
+  if (dbUsername !== String(auth.session.un || '').trim().toLowerCase()) return null;
   return r.data;
 }
 
+// Admin status is likewise derived only from the signed session's own DB row
+// — never from a client-claimed X-Username. There is no more "legacy budi
+// header" fallback: that fallback used to grant the admin-preview fields to
+// anyone who simply set X-Username: budi, whether or not app_users even had
+// a matching, real row. A genuine 'budi' session always resolves via the
+// normal lookup above once logged in, so no separate escape hatch is needed.
 async function isDashboardAdminUser(req, supabase) {
   try {
-    if (!isDashboardScreenerLoggedIn(req)) return false;
-
-    var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
-    if (!rawUsername || rawUsername === 'guest') return false;
-
     var userData = await lookupDashboardAdminAppUser(req, supabase);
-    if (userData) {
-      if (userData.is_blocked || userData.is_approved === false) return false;
-      if (userData.is_admin === true) return true;
-      var role = String(userData.role || userData.user_role || '').trim().toLowerCase();
-      if (role === 'admin' || role === 'owner' || role === 'superadmin') return true;
+    if (!userData) return false;
+    if (userData.is_blocked || userData.is_approved === false) return false;
+    if (userData.is_admin === true) return true;
+    var role = String(userData.role || userData.user_role || '').trim().toLowerCase();
+    if (role === 'admin' || role === 'owner' || role === 'superadmin') return true;
 
-      var username = String(userData.username || '').trim().toLowerCase();
-      var userId = String(userData.id || '').trim().toLowerCase();
-      var adminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
-      var adminUserIds = parseAdminAllowlist(process.env.ADMIN_USER_IDS);
-      if (username && adminUsernames.indexOf(username) >= 0) return true;
-      if (userId && adminUserIds.indexOf(userId) >= 0) return true;
-      return false;
-    }
-
-    if (rawUsername !== 'budi') return false;
-    var legacyAdminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
-    return legacyAdminUsernames.indexOf('budi') >= 0 || process.env.ADMIN_LEGACY_BUDI_PREVIEW === 'true';
+    var username = String(userData.username || '').trim().toLowerCase();
+    var userId = String(userData.id || '').trim().toLowerCase();
+    var adminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
+    var adminUserIds = parseAdminAllowlist(process.env.ADMIN_USER_IDS);
+    if (username && adminUsernames.indexOf(username) >= 0) return true;
+    if (userId && adminUserIds.indexOf(userId) >= 0) return true;
+    return false;
   } catch (e) {
     return false;
   }
@@ -7297,7 +7310,7 @@ function sendDashboardScreenerGate(res, extra) {
 }
 
 async function handleWebDailyPicks(req, res, supabase) {
-  if (!isDashboardScreenerLoggedIn(req)) {
+  if (!(await isDashboardScreenerLoggedIn(req, supabase))) {
     return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Session perlu refresh/login ulang untuk membaca Top 5 locked.', last_updated_at: null, monitor_last_updated_at: null, awaiting_reason: 'auth_session_required', locked_rows_today_before_filter: null, locked_rows_today_after_filter: null, latest_locked_fallback_checked_count: 0, latest_locked_fallback_date: null, latest_locked_fallback_rows_before_filter: null, latest_locked_fallback_rows_after_filter: null });
   }
   try {
@@ -7560,7 +7573,7 @@ function buildWebTop5HistoryRow(row, rank, px, ev) {
 }
 
 async function handleWebTop5History(req, res, supabase) {
-  if (!isDashboardScreenerLoggedIn(req)) {
+  if (!(await isDashboardScreenerLoggedIn(req, supabase))) {
     return sendDashboardScreenerGate(res, { limit: 0, show_archived: false, data_source: 'redacted_guest_dashboard' });
   }
   try {
@@ -10766,7 +10779,8 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       sample_computed_tp1_upside_pct: entryRangeNormalizationDiagnostics.sample_computed_tp1_upside_pct
     });
   } catch (e) {
-    return res.status(200).json({ success: false, error: 'Gagal memuat Day Trade Screener: ' + e.message, results: [] });
+    console.error('handleDayTradeScreenerRead exception:', e);
+    return res.status(200).json({ success: false, error: 'Gagal memuat Day Trade Screener.', results: [] });
   }
 }
 
@@ -13248,6 +13262,9 @@ function formatSwingTelegramMessage(results, title, headerNote) {
 }
 
 module.exports.__test = {
+  isDashboardScreenerLoggedIn: isDashboardScreenerLoggedIn,
+  isDashboardAdminUser: isDashboardAdminUser,
+  lookupDashboardAdminAppUser: lookupDashboardAdminAppUser,
   handleTelegramMonitorPicks: handleTelegramMonitorPicks,
   isMonitorDryRunRequest: isMonitorDryRunRequest,
   isPreviewHourlyBatchRequest: isPreviewHourlyBatchRequest,

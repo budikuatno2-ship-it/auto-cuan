@@ -267,7 +267,7 @@
     } catch (_) { return null; }
   }
 
-  async function syncMissingPrices(force) {
+  async function syncPortfolioPrices(force) {
     var now = Date.now();
     var lastSync = Number(localStorage.getItem(syncKey) || 0);
     if (!force && lastSync && now - lastSync < 5 * 60 * 1000) return 0;
@@ -275,22 +275,47 @@
     var context = contextNow();
     var prices = readJson(pricesKey, {});
     if (!prices || typeof prices !== 'object' || Array.isArray(prices)) prices = {};
-    var missing = context.plans.filter(function (plan) { return !positive(prices[plan.ticker]); }).slice(0, 12);
-    if (!missing.length) {
+    // Refresh every plan ticker on each sync window, not only ones with no cached
+    // price yet. A price that is merely *stale* (fetched an hour/day ago) would
+    // otherwise keep grounding the AI forever, since it already passes the
+    // "has a price" check. Tickers with no price at all are sorted first so a
+    // slow/interrupted sync still resolves genuinely-unpriced positions before
+    // merely-stale ones.
+    var seen = {};
+    var tickers = context.plans.map(function (plan) { return plan.ticker; }).filter(function (ticker) {
+      if (!ticker || seen[ticker]) return false;
+      seen[ticker] = true;
+      return true;
+    });
+    tickers.sort(function (a, b) { return (positive(prices[a]) ? 1 : 0) - (positive(prices[b]) ? 1 : 0); });
+    if (!tickers.length) {
       localStorage.setItem(syncKey, String(now));
       return 0;
     }
 
-    var results = await Promise.all(missing.map(async function (plan) {
-      return { ticker: plan.ticker, price: await fetchPrice(plan.ticker) };
-    }));
+    // Bounded concurrency over EVERY distinct ticker, not a fixed batch. A
+    // manual portfolio has no hard ticker-count cap, and capping to e.g. the
+    // first 12 would silently starve any ticker outside that batch forever —
+    // the same ones sort first again on the next sync. A small fixed-size
+    // worker pool keeps concurrent /api/quote requests bounded without ever
+    // leaving a ticker permanently unrefreshed.
+    var queue = tickers.slice();
     var updated = 0;
-    results.forEach(function (row) {
-      if (row.price) {
-        prices[row.ticker] = Math.round(row.price);
-        updated += 1;
+    async function worker() {
+      while (queue.length) {
+        var ticker = queue.shift();
+        var price = await fetchPrice(ticker);
+        if (price) {
+          prices[ticker] = Math.round(price);
+          updated += 1;
+        }
       }
-    });
+    }
+    var workerCount = Math.min(8, tickers.length);
+    var workers = [];
+    for (var w = 0; w < workerCount; w++) workers.push(worker());
+    await Promise.all(workers);
+
     if (updated) writeJson(pricesKey, prices);
     localStorage.setItem(syncKey, String(now));
     renderSummary();
@@ -340,7 +365,7 @@
     setSending(true);
 
     try {
-      await syncMissingPrices(false);
+      await syncPortfolioPrices(false);
       var context = contextNow();
       var history = state.messages.slice(0, -1).slice(-6);
       var response = await fetch('/api/analyze', {
@@ -485,7 +510,7 @@
     renderSummary();
     var status = byId('aiStatus');
     if (status) status.textContent = 'AI siap. Harga tersimpan akan diperbarui bila tersedia.';
-    var updated = await syncMissingPrices(false);
+    var updated = await syncPortfolioPrices(false);
     if (updated && status) status.textContent = updated + ' harga posisi berhasil diperbarui.';
   }
 
