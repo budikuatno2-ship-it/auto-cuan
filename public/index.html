@@ -9284,6 +9284,28 @@ function dashboardAwaitingLockedMessage(dataOrNote) {
     }
     return dataOrNote || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.';
 }
+// Pure: the heading that sits above the Top 5 panel.
+//
+// It takes `isAwaiting` — the same flag that decides which body the panel
+// renders — so the heading can never contradict the panel underneath it. It used
+// to be assigned before that flag was computed, so any source that was not a
+// locked final fell through to "Top 5 Radar tersedia." ("Top 5 Radar is
+// available") while the body simultaneously rendered "Belum ada Top 5 final yang
+// terkunci." ("No final locked Top 5 yet"). A user reading the dashboard saw the
+// product claim data it was, one line lower, reporting as absent.
+function dashboardTop5NoteText(data, isAwaiting, gateLabel) {
+    var payload = data && typeof data === 'object' ? data : {};
+    if (isAwaiting) {
+        return payload.web_provisional
+            ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.'
+            : 'Menunggu Top 5 final dikunci. Monitor aktif setelah penguncian.';
+    }
+    if (payload.top5_locked) {
+        return 'Top 5 Radar Final/Locked — ' + gateLabel + '. Monitor update tiap 30 menit saat jam bursa.';
+    }
+    return payload.update_note || 'Top 5 Radar tersedia.';
+}
+
 function dashboardAwaitingLockedHtml(note) {
     var msg = dashboardAwaitingLockedMessage(note);
     return '<div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">' + escapeHtml(msg) + '</p></div>';
@@ -9720,8 +9742,10 @@ async function loadDashboardTop5Monitor(silent, opts) {
         if (!(data.top5_source === 'awaiting_locked_rows' && isLoggedInUser())) {
             _dashboardTop5Cache = { at: Date.now(), data: data };
         }
-        var note = document.getElementById('dashboardTop5LockNote');
-        if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
+        // The note is owned by renderDashboardTop5MonitorData, which is the only
+        // place that knows whether the panel is about to render rows or an
+        // awaiting-lock state. Setting it here too just painted a contradictory
+        // heading for one frame before that function corrected it.
         renderDashboardTop5MonitorData(data);
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
@@ -9744,7 +9768,6 @@ function renderDashboardTop5MonitorData(data) {
     // Cap display between 0 and 5 for the "X/5" format
     pickedCount = Math.max(0, Math.min(5, Number(pickedCount) || 0));
     var gateLabel = 'lolos gate: ' + pickedCount + '/5';
-    if (note) note.textContent = data.top5_locked ? ('Top 5 Radar Final/Locked — ' + gateLabel + '. Monitor update tiap 30 menit saat jam bursa.') : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
     // Robust empty detection: treat as empty/awaiting if ANY of these are true
     var monitorRows = data.monitor || [];
     var isLockedFinalSource = data.top5_locked === true && (data.top5_source === 'locked_rows' || data.top5_source === 'locked_rows_fallback');
@@ -9753,6 +9776,9 @@ function renderDashboardTop5MonitorData(data) {
         || data.top5_source === 'awaiting_locked_rows'
         || data.web_provisional === true
         || (!hasTop5Data && monitorRows.length === 0);
+    // The note is written only now, once we know which body the panel is about to
+    // render — see dashboardTop5NoteText.
+    if (note) note.textContent = dashboardTop5NoteText(data, isAwaiting, gateLabel);
     if (isAwaiting) {
         var topEl = document.getElementById('dashboardTop5List');
         if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data);
