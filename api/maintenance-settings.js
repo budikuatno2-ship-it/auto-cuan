@@ -33,7 +33,7 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({ success: false, error: 'Table app_settings belum dibuat di Supabase.' });
         }
         console.error('maintenance-settings get error:', error);
-        return res.status(200).json({ success: false, error: 'Gagal memuat pengaturan: ' + error.message });
+        return res.status(200).json({ success: false, error: 'Gagal memuat pengaturan.' });
       }
 
       if (!data) {
@@ -104,7 +104,7 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({ success: false, error: 'Table app_settings belum dibuat di Supabase.' });
         }
         console.error('maintenance-settings save error:', error);
-        return res.status(500).json({ success: false, error: 'Gagal menyimpan pengaturan: ' + error.message });
+        return res.status(500).json({ success: false, error: 'Gagal menyimpan pengaturan.' });
       }
 
       return res.status(200).json({ success: true, config: configToSave });
@@ -114,6 +114,6 @@ module.exports = async function handler(req, res) {
 
   } catch (e) {
     console.error('maintenance-settings exception:', e);
-    return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
+    return res.status(500).json({ success: false, error: 'Server error. Silakan coba lagi.' });
   }
 };

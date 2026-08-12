@@ -81,12 +81,12 @@ module.exports = async function handler(req, res) {
 
     if (error) {
       console.error(`log [${action}] insert error:`, error);
-      return res.status(200).json({ success: false, error: error.message });
+      return res.status(200).json({ success: false, error: 'Gagal menyimpan log.' });
     }
 
     return res.status(200).json({ success: true, data });
   } catch (e) {
     console.error('log exception:', e);
-    return res.status(200).json({ success: false, error: e.message });
+    return res.status(200).json({ success: false, error: 'Gagal menyimpan log.' });
   }
 };

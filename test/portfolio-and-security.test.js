@@ -197,13 +197,23 @@ test('refreshPortfolioPrices guards concurrent runs, shows loading, and restores
   assert.match(src, /btn\.innerHTML = '<span class="spinner-sm"><\/span>Memuat\.\.\.';/);
   assert.match(src, /finally \{/);
   assert.match(src, /_portRefreshInFlight = false;/);
-  // per-ticker isolation in the network layer
-  assert.match(src, /failed\.push\(ticker\)/);
-  assert.match(src, /acceptQuotePrice\(data\)/);
+  // the network fetch itself runs through the bounded-concurrency helper (see below)
+  assert.match(src, /fetchPortfolioQuotesBounded\(uniqueTickers\)/);
   // saved lot/avgBuy untouched — only price fields updated
   assert.match(src, /_lastPrice = pm\.price/);
   assert.doesNotMatch(src, /\.lot\s*=/);
   assert.doesNotMatch(src, /\.avgBuy\s*=/);
+});
+
+// Network layer used by refreshPortfolioPrices: bounded concurrency (never one
+// unconditional fetch per ticker — an N+1 risk for a large portfolio) with
+// per-ticker isolation, so one failing ticker never blocks the others.
+test('fetchPortfolioQuotesBounded caps concurrency and isolates per-ticker failures', () => {
+  const src = extractFunction('async function fetchPortfolioQuotesBounded(');
+  assert.match(src, /failed\.push\(ticker\)/);
+  assert.match(src, /acceptQuotePrice\(data\)/);
+  assert.match(src, /Math\.min\(PORTFOLIO_PRICE_FETCH_CONCURRENCY, tickers\.length\)/);
+  assert.doesNotMatch(src, /Promise\.all\(tickers\.map/);
 });
 
 // 8/9. Persistence: positions survive re-render and logout (localStorage not wiped)
@@ -407,17 +417,26 @@ test('no wildcard CORS is configured for the API', () => {
   });
 });
 
-// 19. Documented gap: no server-side rate limiting on auth endpoints (see report)
-test('SECURITY GAP (documented): credential auth has no server-side rate limiting', () => {
+// 19. login-user.js DOES call the DB-backed login guard (lib/security-guard.js,
+// beginLogin/429/Retry-After) — this used to be a documented gap asserting the
+// opposite; that assertion went stale once the guard was wired in and started
+// failing on this branch, which is what surfaced this correction.
+// REMAINING GAP (documented, not fixed here — needs an infra/env decision, not
+// a code change): lib/security-guard.js defaults SECURITY_GUARD_MODE to 'off'
+// (lib/security-guard.js:13-16), so unless the deployment explicitly sets it to
+// 'shadow'/'enforce', beginLogin() is a no-op and login is effectively
+// unthrottled. register-user.js has no guard call at all in any mode.
+test('login-user.js wires the DB-backed login guard into the credential path', () => {
   const login = fs.readFileSync(path.join(ROOT, 'api', 'login-user.js'), 'utf8');
-  const register = fs.readFileSync(path.join(ROOT, 'api', 'register-user.js'), 'utf8');
-  // Confirm the gap exists (no limiter present) — remediation requires shared
-  // infra. The dormant subscription link-token limiter earlier in the file is
-  // not a credential limiter, so only the credential section is checked.
   const credentialSection = login.slice(login.indexOf("if (action === 'logout')"));
-  assert.ok(credentialSection.length > 0, 'credential section found');
-  assert.doesNotMatch(credentialSection, /rateLimit|rate_limit|tooManyRequests|429/i);
-  assert.doesNotMatch(register, /rateLimit|rate_limit|tooManyRequests|429/i);
+  assert.match(credentialSection, /securityGuard\.beginLogin\(/);
+  assert.match(credentialSection, /loginGuard\.deny/);
+  assert.match(credentialSection, /status\(loginGuard\.httpStatus \|\| 429\)/);
+});
+
+test('SECURITY GAP (documented): register-user.js has no rate/abuse limiter on account creation', () => {
+  const register = fs.readFileSync(path.join(ROOT, 'api', 'register-user.js'), 'utf8');
+  assert.doesNotMatch(register, /securityGuard|rateLimit|rate_limit|tooManyRequests|429/i);
 });
 
 // 30. API endpoint count remains exactly 12
@@ -442,4 +461,92 @@ test('valid registration still succeeds and passes the normalized device id to t
     assert.ok(!('password' in res.body));
     assert.ok(!('telegram_channel_url' in res.body), 'no channel URL in v2 response');
   });
+});
+
+// ============================================================
+// PART G — sector-hot.js dashboard Top 5 / history: X-User-Id / X-Username
+// headers are ordinary request headers with no cryptographic binding to a
+// session, so isDashboardScreenerLoggedIn() must verify the claimed identity
+// against app_users before granting access to the gated Top 5 picks / Auto
+// Monitor / pick-history dashboard content. Previously it returned true for
+// ANY non-empty, non-"guest" X-Username header with zero database check —
+// `curl -H "X-Username: x" '/api/sector-hot?action=web-daily-picks'` returned
+// the full locked Top 5 payload with no login at all.
+// ============================================================
+const REAL_UUID = '11111111-1111-4111-8111-111111111111';
+
+function requireSectorHotWithSupabaseStub(createClientImpl) {
+  return requireApiWithSupabaseStub('../api/sector-hot', createClientImpl);
+}
+
+test('web-daily-picks rejects a spoofed X-Username with no X-User-Id (the original bypass)', async () => {
+  await withEnv(async () => {
+    // The stub would happily return an approved user if the code ever queried
+    // it — proving the rejection below comes from the missing/invalid UUID
+    // short-circuit in lookupDashboardAdminAppUser, not from an empty DB.
+    const handler = requireSectorHotWithSupabaseStub(supabaseWithUser({ id: REAL_UUID, username: 'anyone', is_blocked: false, is_approved: true }));
+    const res = makeRes();
+    await handler({ method: 'GET', query: { action: 'web-daily-picks' }, headers: { 'x-username': 'anyone' } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.gated, true);
+    assert.equal(res.body.auth_required, true);
+  });
+});
+
+test('web-daily-picks rejects a UUID/username pair that does not resolve to a real, approved account', async () => {
+  await withEnv(async () => {
+    const handler = requireSectorHotWithSupabaseStub(supabaseWithUser(null)); // no matching app_users row
+    const res = makeRes();
+    await handler({ method: 'GET', query: { action: 'web-daily-picks' }, headers: { 'x-user-id': REAL_UUID, 'x-username': 'ghost' } }, res);
+    assert.equal(res.body.gated, true);
+    assert.equal(res.body.auth_required, true);
+  });
+});
+
+test('web-daily-picks rejects a real account that is blocked or not yet approved', async () => {
+  await withEnv(async () => {
+    const blocked = supabaseWithUser({ id: REAL_UUID, username: 'blockeduser', is_blocked: true, is_approved: true });
+    const res1 = makeRes();
+    await requireSectorHotWithSupabaseStub(blocked)({ method: 'GET', query: { action: 'web-daily-picks' }, headers: { 'x-user-id': REAL_UUID, 'x-username': 'blockeduser' } }, res1);
+    assert.equal(res1.body.gated, true);
+
+    const unapproved = supabaseWithUser({ id: REAL_UUID, username: 'pendinguser', is_blocked: false, is_approved: false });
+    const res2 = makeRes();
+    await requireSectorHotWithSupabaseStub(unapproved)({ method: 'GET', query: { action: 'web-daily-picks' }, headers: { 'x-user-id': REAL_UUID, 'x-username': 'pendinguser' } }, res2);
+    assert.equal(res2.body.gated, true);
+  });
+});
+
+test('web-daily-picks grants access to a real, approved, non-blocked account with matching id+username', async () => {
+  await withEnv(async () => {
+    // Only the auth gate is under test here, not the downstream Top 5 data
+    // fetch (which chains several more Supabase query methods this stub does
+    // not implement) — so the assertion is "the request was not gated",
+    // regardless of how the subsequent data query resolves against the stub.
+    const handler = requireSectorHotWithSupabaseStub(supabaseWithUser({ id: REAL_UUID, username: 'realuser', is_blocked: false, is_approved: true }));
+    const res = makeRes();
+    await handler({ method: 'GET', query: { action: 'web-daily-picks' }, headers: { 'x-user-id': REAL_UUID, 'x-username': 'realuser' } }, res);
+    assert.notEqual(res.body.gated, true);
+    assert.notEqual(res.body.auth_required, true);
+  });
+});
+
+test('web-top5-history has the same identity-verified gate as web-daily-picks', async () => {
+  await withEnv(async () => {
+    const handler = requireSectorHotWithSupabaseStub(supabaseWithUser({ id: REAL_UUID, username: 'anyone', is_blocked: false, is_approved: true }));
+    const res = makeRes();
+    await handler({ method: 'GET', query: { action: 'web-top5-history' }, headers: { 'x-username': 'anyone' } }, res);
+    assert.equal(res.body.gated, true);
+    assert.equal(res.body.auth_required, true);
+  });
+});
+
+test('isDashboardScreenerLoggedIn is async and verifies identity against app_users, not just a truthy header', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'api', 'sector-hot.js'), 'utf8');
+  const start = src.indexOf('async function isDashboardScreenerLoggedIn(');
+  assert.ok(start >= 0, 'isDashboardScreenerLoggedIn must verify identity server-side (async DB check)');
+  const end = src.indexOf('\n}', start);
+  const body = src.slice(start, end);
+  assert.match(body, /lookupDashboardAdminAppUser\(req, supabase\)/);
+  assert.doesNotMatch(body, /return !!\(\(rawUserId \|\| rawUsername\)/);
 });

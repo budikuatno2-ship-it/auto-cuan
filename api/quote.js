@@ -100,10 +100,10 @@ async function handleDailyMarketContextAction(req, res) {
     var context = await dailyContextBuilder.buildContextForTicker(supabase, ticker, {});
     return res.status(200).json({ success: true, context: context });
   } catch (error) {
+    console.error('daily-market-context exception:', error);
     return res.status(200).json({
       success: false,
-      error: 'Gagal memuat konteks pasar harian.',
-      diagnostic: error && error.message
+      error: 'Gagal memuat konteks pasar harian.'
     });
   }
 }
@@ -138,10 +138,10 @@ async function handleDailyMarketContextListAction(req, res) {
     var rows = dailyContextBuilder.buildRankingList(featureRows);
     return res.status(200).json({ success: true, rows: rows, generated_at: new Date().toISOString() });
   } catch (error) {
+    console.error('daily-market-context-list exception:', error);
     return res.status(200).json({
       success: false,
-      error: 'Gagal memuat ranking konteks pasar harian.',
-      diagnostic: error && error.message
+      error: 'Gagal memuat ranking konteks pasar harian.'
     });
   }
 }

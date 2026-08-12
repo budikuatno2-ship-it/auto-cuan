@@ -379,7 +379,7 @@ module.exports = async function handler(req, res) {
 
   } catch (e) {
     console.error('sector-hot exception:', e);
-    return res.status(200).json({ success: false, error: 'Terjadi kesalahan: ' + e.message });
+    return res.status(200).json({ success: false, error: 'Terjadi kesalahan. Coba lagi beberapa saat lagi.' });
   }
 };
 
@@ -7080,10 +7080,24 @@ function isMonitorTimestampStale(value, sourceLabel) {
 }
 
 
-function isDashboardScreenerLoggedIn(req) {
+// SECURITY: this gates the Top 5 picks / Auto Monitor / pick-history dashboard
+// content behind "the caller is logged in". X-User-Id/X-Username are ordinary
+// request headers with no cryptographic binding to a session — a caller can set
+// them to any value. This MUST verify the claimed identity against app_users
+// (lookupDashboardAdminAppUser cross-checks id -> username) before granting
+// access; previously it returned true for any non-empty, non-"guest"
+// X-Username with no database check at all, letting an unauthenticated caller
+// read gated content by sending a single spoofed header.
+async function isDashboardScreenerLoggedIn(req, supabase) {
   var rawUserId = String(req.headers['x-user-id'] || '').trim();
   var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
-  return !!((rawUserId || rawUsername) && rawUsername !== 'guest');
+  if (!rawUserId && !rawUsername) return false;
+  if (rawUsername === 'guest') return false;
+  var userData = await lookupDashboardAdminAppUser(req, supabase);
+  if (!userData) return false;
+  if (userData.is_blocked) return false;
+  if (userData.is_approved === false) return false;
+  return true;
 }
 
 
@@ -7249,7 +7263,7 @@ async function lookupDashboardAdminAppUser(req, supabase) {
 
 async function isDashboardAdminUser(req, supabase) {
   try {
-    if (!isDashboardScreenerLoggedIn(req)) return false;
+    if (!(await isDashboardScreenerLoggedIn(req, supabase))) return false;
 
     var rawUsername = String(req.headers['x-username'] || '').trim().toLowerCase();
     if (!rawUsername || rawUsername === 'guest') return false;
@@ -7297,7 +7311,7 @@ function sendDashboardScreenerGate(res, extra) {
 }
 
 async function handleWebDailyPicks(req, res, supabase) {
-  if (!isDashboardScreenerLoggedIn(req)) {
+  if (!(await isDashboardScreenerLoggedIn(req, supabase))) {
     return sendDashboardScreenerGate(res, { date: getJakartaDateString(), top5_source: 'awaiting_locked_rows', top5_locked: false, telegram_scheduled_only: true, telegram_note: 'Telegram tetap dikirim hanya sesuai jadwal otomatis melalui flow telegram-daily-picks.', web_provisional: false, update_note: 'Session perlu refresh/login ulang untuk membaca Top 5 locked.', last_updated_at: null, monitor_last_updated_at: null, awaiting_reason: 'auth_session_required', locked_rows_today_before_filter: null, locked_rows_today_after_filter: null, latest_locked_fallback_checked_count: 0, latest_locked_fallback_date: null, latest_locked_fallback_rows_before_filter: null, latest_locked_fallback_rows_after_filter: null });
   }
   try {
@@ -7560,7 +7574,7 @@ function buildWebTop5HistoryRow(row, rank, px, ev) {
 }
 
 async function handleWebTop5History(req, res, supabase) {
-  if (!isDashboardScreenerLoggedIn(req)) {
+  if (!(await isDashboardScreenerLoggedIn(req, supabase))) {
     return sendDashboardScreenerGate(res, { limit: 0, show_archived: false, data_source: 'redacted_guest_dashboard' });
   }
   try {
@@ -10766,7 +10780,8 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       sample_computed_tp1_upside_pct: entryRangeNormalizationDiagnostics.sample_computed_tp1_upside_pct
     });
   } catch (e) {
-    return res.status(200).json({ success: false, error: 'Gagal memuat Day Trade Screener: ' + e.message, results: [] });
+    console.error('handleDayTradeScreenerRead exception:', e);
+    return res.status(200).json({ success: false, error: 'Gagal memuat Day Trade Screener.', results: [] });
   }
 }
 

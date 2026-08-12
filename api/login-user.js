@@ -226,6 +226,15 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
+  // Same-origin gate for the credential/session-issuing path below (login,
+  // logout, and every subscription/voucher action dispatched from here).
+  // Mirrors api/reset-password.js's equivalent login/logout handler — without
+  // this, a cross-site page can silently POST credentials here and have the
+  // resulting Set-Cookie land in the victim's browser (login CSRF).
+  if (!isSameOrigin(req)) {
+    return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+  }
+
   try {
     const { username, passwordHash, deviceId, userAgent, action } = req.body || {};
 
@@ -534,6 +543,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (e) {
     console.error('login-user exception:', e);
-    return res.status(500).json({ success: false, error: 'Server error: ' + e.message });
+    return res.status(500).json({ success: false, error: 'Server error. Silakan coba lagi.' });
   }
 };
