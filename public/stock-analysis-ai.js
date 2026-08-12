@@ -220,9 +220,11 @@
     card.style.border = '1px solid rgba(52,211,153,.16)';
     card.style.borderRadius = '18px';
     card.style.boxShadow = '0 20px 55px rgba(0,0,0,.26)';
-    tableWrap.style.maxHeight = 'calc(100vh - 310px)';
+    // No vertical max-height here: the table must grow to its natural height so the
+    // document stays the single vertical scroll owner (mouse wheel/touchpad/swipe
+    // must not get trapped inside a small inner scrollport). Only horizontal
+    // overflow (for narrow viewports with many columns) is handled by the wrap.
     tableWrap.style.minHeight = '420px';
-    tableWrap.style.scrollbarGutter = 'stable';
     search.placeholder = 'Cari ticker di ranking…';
 
     var title = card.querySelector('h3');

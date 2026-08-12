@@ -267,7 +267,7 @@
     } catch (_) { return null; }
   }
 
-  async function syncMissingPrices(force) {
+  async function syncPortfolioPrices(force) {
     var now = Date.now();
     var lastSync = Number(localStorage.getItem(syncKey) || 0);
     if (!force && lastSync && now - lastSync < 5 * 60 * 1000) return 0;
@@ -275,14 +275,27 @@
     var context = contextNow();
     var prices = readJson(pricesKey, {});
     if (!prices || typeof prices !== 'object' || Array.isArray(prices)) prices = {};
-    var missing = context.plans.filter(function (plan) { return !positive(prices[plan.ticker]); }).slice(0, 12);
-    if (!missing.length) {
+    // Refresh every plan ticker on each sync window, not only ones with no cached
+    // price yet. A price that is merely *stale* (fetched an hour/day ago) would
+    // otherwise keep grounding the AI forever, since it already passes the
+    // "has a price" check. Tickers with no price at all are sorted first so the
+    // batch cap below never starves a wholly unpriced position in favor of
+    // re-fetching one that already has a (possibly stale) number.
+    var seen = {};
+    var tickers = context.plans.map(function (plan) { return plan.ticker; }).filter(function (ticker) {
+      if (!ticker || seen[ticker]) return false;
+      seen[ticker] = true;
+      return true;
+    });
+    tickers.sort(function (a, b) { return (positive(prices[a]) ? 1 : 0) - (positive(prices[b]) ? 1 : 0); });
+    var targets = tickers.slice(0, 12);
+    if (!targets.length) {
       localStorage.setItem(syncKey, String(now));
       return 0;
     }
 
-    var results = await Promise.all(missing.map(async function (plan) {
-      return { ticker: plan.ticker, price: await fetchPrice(plan.ticker) };
+    var results = await Promise.all(targets.map(async function (ticker) {
+      return { ticker: ticker, price: await fetchPrice(ticker) };
     }));
     var updated = 0;
     results.forEach(function (row) {
@@ -340,7 +353,7 @@
     setSending(true);
 
     try {
-      await syncMissingPrices(false);
+      await syncPortfolioPrices(false);
       var context = contextNow();
       var history = state.messages.slice(0, -1).slice(-6);
       var response = await fetch('/api/analyze', {
@@ -485,7 +498,7 @@
     renderSummary();
     var status = byId('aiStatus');
     if (status) status.textContent = 'AI siap. Harga tersimpan akan diperbarui bila tersedia.';
-    var updated = await syncMissingPrices(false);
+    var updated = await syncPortfolioPrices(false);
     if (updated && status) status.textContent = updated + ' harga posisi berhasil diperbarui.';
   }
 
