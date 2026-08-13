@@ -284,7 +284,7 @@
     node.innerHTML = '<h3>Portofolio masih kosong</h3>'
       + '<p>Belum ada posisi atau rencana tersimpan, jadi belum ada nilai, risiko, '
       + 'atau P/L yang bisa dihitung. Mulai dari Budget-to-Stock Planner untuk '
-      + 'menghitung ukuran posisi, atau catat posisi yang sudah kamu miliki.</p>'
+      + 'menghitung ukuran posisi, atau mencatat posisi yang sudah Anda miliki.</p>'
       + '<div class="actions">'
       + '<button type="button" class="btn primary" data-tab="planner">Buka Planner</button>'
       + '<button type="button" class="btn" data-tab="watch">Catat posisi yang dimiliki</button>'
@@ -539,7 +539,7 @@
     if (!plan || !current) { $('riskResult').className='error'; $('riskResult').textContent='Pilih posisi dan isi harga saat ini.'; return; }
     var existing=Math.max(0,(Number(plan.entryPriceIdr)-Number(plan.stopLossIdr))*Number(plan.lots)*100), cost=current*addLots*100, added=Math.max(0,(current-Number(plan.stopLossIdr))*addLots*100), combined=existing+added;
     var allowed=valid && current>Number(plan.stopLossIdr) && cost<=funds && combined<=limit;
-    $('riskResult').className=allowed?'success':'note'; $('riskResult').innerHTML='<b>'+escapeHtml(plan.ticker)+'</b><br>Risiko sekarang: '+money(existing)+'<br>Biaya tambahan: '+money(cost)+'<br>Risiko gabungan: '+money(combined)+'<br><br><b>'+(allowed?'Masih di dalam guard matematis; review setup tetap wajib.':'Belum memenuhi seluruh guard yang diisi.')+'</b>';
+    $('riskResult').className=allowed?'success':'note'; $('riskResult').innerHTML='<b>'+escapeHtml(plan.ticker)+'</b><br>Risiko sekarang: '+money(existing)+'<br>Biaya tambahan: '+money(cost)+'<br>Risiko gabungan: '+money(combined)+'<br><br><b>'+(allowed?'Masih di dalam batas guard matematis. Review setup tetap wajib.':'Belum memenuhi seluruh guard yang diisi.')+'</b>';
   }
 
   function renderAlerts() {

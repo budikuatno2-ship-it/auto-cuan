@@ -84,12 +84,21 @@ test('a missing change never produces the "+-" string', () => {
 // Real values
 // ---------------------------------------------------------------------------
 
-test('a genuine zero is still shown as zero, in the gain colour', () => {
-  // Flat is a real, known reading and must remain distinguishable from missing.
+test('a genuine zero is a known reading, shown as flat rather than as a gain', () => {
+  // The original requirement stands: flat is real and must stay distinguishable
+  // from missing, so `known` is true and the text is a number rather than "—".
+  //
+  // What changed is the colour and the sign. Rendering 0 as "+0,00%" in gain
+  // green made a Screener grid of unmoved names read as a row of small winners.
+  // A flat close is neither a gain nor a loss.
   const view = changeDisplay(0);
   assert.equal(view.known, true);
-  assert.equal(view.text, '+0,00%');
-  assert.equal(view.cls, 'text-emerald-400');
+  assert.equal(view.flat, true);
+  assert.equal(view.text, '0,00%');
+  assert.notEqual(view.text, '—', 'flat must stay distinguishable from missing');
+  assert.notEqual(view.cls, 'text-emerald-400');
+  assert.notEqual(view.cls, 'text-red-400');
+  assert.equal(view.cls, 'text-gray-400');
 });
 
 test('a gain is signed and green', () => {

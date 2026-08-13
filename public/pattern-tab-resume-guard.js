@@ -41,25 +41,11 @@
     });
   }
 
-  function normalizeLevelLabel(value) {
-    var label = String(value == null ? '' : value).trim();
-    if (label === 'Konfirmasi') return 'Entry / Konfirmasi';
-    if (label === 'Invalidasi') return 'Stop Loss / Invalidasi';
-    return label;
-  }
-
-  function normalizePatternLevels(doc) {
-    if (!doc || typeof doc.querySelectorAll !== 'function') return 0;
-    var changed = 0;
-    Array.prototype.forEach.call(doc.querySelectorAll('#page-pattern .ps-level span'), function (node) {
-      var next = normalizeLevelLabel(node.textContent);
-      if (next && next !== String(node.textContent || '').trim()) {
-        node.textContent = next;
-        changed += 1;
-      }
-    });
-    return changed;
-  }
+  // Level labels used to be rewritten from here as well as from the safety
+  // layer, so two modules raced to own the same text. The Pattern renderer now
+  // emits direction-correct labels on first paint and nothing rewrites them
+  // afterwards. This guard is only responsible for making the page reachable
+  // again after a mobile tab resume.
 
   // A page can be hidden three ways at once (`hidden`, `aria-hidden`, `inert`).
   // Clearing only the class restores a page that looks right but ignores every
@@ -90,7 +76,6 @@
     Array.prototype.forEach.call(doc.querySelectorAll('.nav-btn[data-page]'), function (button) {
       button.classList.toggle('active', button.getAttribute('data-page') === 'pattern');
     });
-    normalizePatternLevels(doc);
     return true;
   }
 
@@ -125,7 +110,6 @@
       });
 
       var observer = new root.MutationObserver(function () {
-        normalizePatternLevels(root.document);
         if (patternPath(root)) scheduleResume(80);
       });
       observer.observe(root.document.body, { childList:true, subtree:true });
@@ -145,8 +129,6 @@
     version: VERSION,
     patternPath: patternPath,
     createStableGate: createStableGate,
-    normalizeLevelLabel: normalizeLevelLabel,
-    normalizePatternLevels: normalizePatternLevels,
     revealPatternPage: revealPatternPage,
     restorePatternPage: restorePatternPage,
     install: install

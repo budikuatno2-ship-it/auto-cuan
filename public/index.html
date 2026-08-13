@@ -36,25 +36,20 @@
             }
         })();
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // Guarded: if the Tailwind CDN is blocked, throttled, or filtered — which
-        // happens on some corporate and ISP networks — `tailwind` is undefined and
-        // the bare assignment threw an uncaught ReferenceError into the console on
-        // every load. The palette below is a theme extension, so skipping it when
-        // the CDN is absent costs nothing that is not already gone.
-        if (typeof tailwind !== 'undefined') {
-            tailwind.config = {
-                theme: {
-                    extend: {
-                        colors: {
-                            dark: { 900: '#0b0e14', 800: '#0f1319', 700: '#151a23', 600: '#1c2333', 500: '#242d3d' }
-                        }
-                    }
-                }
-            };
-        }
-    </script>
+    <!-- Tailwind is served as a pre-built stylesheet, not as the Play CDN.
+         The CDN ships ~400KB of JavaScript that compiles CSS in the browser on
+         every single load, and it is a hard single point of failure: when the
+         host is blocked — which happens on corporate and ISP-filtered networks,
+         and which this build reproduces — the entire app loses its layout while
+         still appearing to work. The generated sheet below is 42KB (8KB gzipped),
+         needs no JavaScript, and cannot fail open.
+
+         Regenerate after adding new utility classes:
+           npx tailwindcss@3 -c tailwind.config.js -i tailwind.src.css \
+             -o public/tailwind-build.css --minify
+         The palette extension that used to live in the inline tailwind.config
+         now lives in tailwind.config.js. -->
+    <link rel="stylesheet" href="/tailwind-build.css?v=20260813-tw-v1">
     <style>
         /* ---- .hidden safety net -------------------------------------------
            This one rule is the app's entire show/hide mechanism: 101 uses in the
@@ -490,7 +485,11 @@
         .session-item.active { background: #1c2333; border: 1px solid rgba(16,185,129,0.2); border-left: 3px solid #10b981; }
         .session-item .session-title { flex: 1; font-size: 0.8125rem; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
         .session-item.active .session-title { color: #6ee7b7; }
-        .session-item .session-delete { opacity: 0; flex-shrink: 0; padding: 4px; border-radius: 6px; color: #6b7280; transition: all 0.15s; }
+        /* An icon-only control still needs a thumb-sized hit area. The icon keeps
+           its size; the button grows around it. On a touch device the control is
+           always visible, since there is no hover to reveal it with. */
+        .session-item .session-delete { opacity: 0; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 4px; border-radius: 6px; color: #6b7280; transition: all 0.15s; }
+        @media (pointer: coarse) { .session-item .session-delete { opacity: 1; } }
         .session-item:hover .session-delete { opacity: 1; }
         .session-item .session-delete:hover { color: #f87171; background: rgba(239,68,68,0.1); }
         .new-chat-btn { width: 100%; padding: 10px 16px; border-radius: 10px; font-size: 0.8125rem; font-weight: 600; color: #e5e7eb; background: #151a23; border: 1px solid #242d3d; display: flex; align-items: center; gap: 8px; transition: all 0.15s; }
@@ -522,6 +521,49 @@
         .dashboard-pick-card { border: 1px solid rgba(148,163,184,0.12); background: linear-gradient(145deg, rgba(15,23,42,0.78), rgba(21,26,35,0.58)); border-radius: 16px; box-shadow: 0 12px 30px rgba(0,0,0,0.18); }
         .dashboard-pick-card:hover { border-color: rgba(16,185,129,0.36); background: linear-gradient(145deg, rgba(16,185,129,0.08), rgba(15,23,42,0.72)); }
         .dash-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; line-height: 1.2; border: 1px solid rgba(148,163,184,0.14); background: rgba(15,23,42,0.62); color: #cbd5e1; }
+        /* Risk/reward ladder: the trade's geometry, drawn on its own scale.
+           Colour is never the only cue — the stop, entry and target marks differ
+           in shape and the legend repeats every value as text. */
+        .dash-ladder { margin-top: 10px; }
+        .dash-ladder-track { position: relative; height: 8px; border-radius: 999px; background: rgba(148,163,184,0.10); overflow: hidden; }
+        .dash-ladder-risk, .dash-ladder-reward { position: absolute; top: 0; bottom: 0; }
+        .dash-ladder-risk { background: linear-gradient(90deg, rgba(248,113,113,0.34), rgba(248,113,113,0.14)); }
+        .dash-ladder-reward { background: linear-gradient(90deg, rgba(52,211,153,0.16), rgba(52,211,153,0.36)); }
+        .dash-ladder-mark { position: absolute; top: -2px; width: 2px; height: 12px; margin-left: -1px; border-radius: 1px; }
+        .dash-ladder-mark.is-stop { background: #f87171; }
+        .dash-ladder-mark.is-target { background: #fbbf24; }
+        .dash-ladder-mark.is-entry { background: #60a5fa; height: 8px; top: 0; }
+        .dash-ladder-price { position: absolute; top: -3px; width: 10px; height: 14px; margin-left: -5px; border-radius: 3px; background: #e2e8f0; box-shadow: 0 0 0 2px rgba(2,6,23,0.85); }
+        .dash-ladder-legend { display: flex; justify-content: space-between; gap: 8px; margin-top: 5px; font-size: 10px; font-variant-numeric: tabular-nums; }
+        .dash-ladder-legend .is-stop { color: #fca5a5; }
+        .dash-ladder-legend .is-now { color: #e2e8f0; font-weight: 700; }
+        .dash-ladder-legend .is-target { color: #fcd34d; }
+        @media (max-width: 420px) { .dash-ladder-legend { font-size: 9.5px; } }
+        /* Market state band. Three tiles, equal weight, each answering a
+           question the user would otherwise have to go looking for. */
+        .market-band-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .market-tile { display: flex; flex-direction: column; gap: 6px; padding: 13px 14px; border: 1px solid rgba(28,35,51,0.5); border-radius: 12px; background: rgba(21,26,35,0.5); min-width: 0; }
+        .market-tile-head { display: flex; align-items: center; gap: 7px; }
+        .market-tile-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #7c8ba1; }
+        .market-tile-body { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; min-width: 0; }
+        .market-tile-value { font-size: 22px; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; color: #f8fafc; font-variant-numeric: tabular-nums; }
+        .market-tile-value.is-text { font-size: 15px; font-weight: 700; letter-spacing: 0; overflow-wrap: anywhere; }
+        .market-tile-delta { font-size: 12px; font-weight: 600; color: #9ca3af; font-variant-numeric: tabular-nums; }
+        .market-tile-unit { font-size: 11px; color: #7c8ba1; }
+        .market-tile-note { font-size: 10.5px; line-height: 1.5; color: #7c8ba1; margin-top: auto; }
+        /* A text link is still a tap target: at 11px type this was 17px tall,
+           well under a comfortable thumb. Padding gives it height without
+           changing where the text sits, and the negative inline margin keeps it
+           optically aligned with the tile's left edge. */
+        .market-tile-link { margin-top: auto; align-self: flex-start; min-height: 32px; display: inline-flex; align-items: center; padding: 6px 8px; margin-left: -8px; font-size: 11px; color: #6ee7b7; background: none; border: 0; border-radius: 8px; cursor: pointer; }
+        .market-tile-link:hover { color: #a7f3d0; background: rgba(16,185,129,0.07); }
+        @media (max-width: 760px) { .market-band-grid { grid-template-columns: 1fr; } .market-tile-value { font-size: 20px; } }
+        /* Controls inside panel headers were 27px tall on a phone. On a pointer
+           device that is fine; under a thumb it is not, and these three sit
+           close together. Height only grows where touch is the primary input. */
+        @media (pointer: coarse) {
+            .panel-header button, .panel .flex.gap-1 > button { min-height: 34px; }
+        }
         .dash-level-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
         .dash-level { min-width: 0; border: 1px solid rgba(148,163,184,0.10); border-radius: 10px; padding: 7px 8px; background: rgba(2,6,23,0.25); }
         .dash-level span { display: block; font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
@@ -841,9 +883,9 @@
         <p id="maintenanceMessage" class="maintenance-message">Auto-Cuan sedang tidak dapat diakses sementara.</p>
 
         <ul class="maintenance-facts">
-            <li>Data dan catatan portofolio kamu tersimpan dan tidak terpengaruh.</li>
+            <li>Data dan catatan portofolio Anda tersimpan dan tidak terpengaruh.</li>
             <li>Auto-Cuan tidak pernah mengeksekusi transaksi, jadi tidak ada order yang tertahan.</li>
-            <li>Posisi yang sedang berjalan tetap perlu kamu pantau lewat aplikasi sekuritas.</li>
+            <li>Posisi yang sedang berjalan tetap perlu Anda pantau lewat aplikasi sekuritas.</li>
         </ul>
 
         <div class="maintenance-actions">
@@ -1063,67 +1105,50 @@
             </div>
         </div>
 
-        <!-- IHSG Live Market Indicator -->
-        <div id="ihsgSummaryCard" class="panel">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <h3 class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">IDX &middot; IHSG</h3>
-                </div>
-                <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="text-[11px] text-emerald-400 hover:text-emerald-300 transition">Analisis &rarr;</button>
-            </div>
-            <div id="ihsgSummaryContent" class="mt-1.5">
-                <div class="flex items-baseline gap-3">
-                    <span id="ihsgLast" class="text-lg font-bold text-white">—</span>
-                    <span id="ihsgChange" class="text-xs font-medium text-gray-500">—</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Cards -->
-        <section class="ac-section" aria-labelledby="dashQuickAccessTitle">
+        <!-- Market state band.
+             This position used to hold "Akses Cepat": a five-button grid that
+             navigated to Analisis / Sektor Hot / Screener / Chart / Portofolio —
+             the same five destinations already sitting in the header nav and in
+             the mobile nav, three copies of one control on the most valuable
+             strip of the dashboard. The space now carries state the user cannot
+             get anywhere else: where the index is, how fresh the radar data is,
+             and how many candidates cleared the safety gate today. -->
+        <section class="ac-section market-band" aria-labelledby="dashMarketTitle">
         <div class="ac-section-head">
-            <h3 id="dashQuickAccessTitle" class="ac-section-title">Akses Cepat</h3>
-            <p class="ac-section-hint">Fitur utama dalam satu ketukan</p>
+            <h3 id="dashMarketTitle" class="ac-section-title">Kondisi Pasar</h3>
+            <p class="ac-section-hint">Ringkasan sebelum membaca radar</p>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <button onclick="navigateTo('analisis')" class="action-card group">
-                <div class="action-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        <div id="ihsgSummaryCard" class="market-band-grid">
+            <div class="market-tile">
+                <div class="market-tile-head">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span class="market-tile-label">IDX &middot; IHSG</span>
                 </div>
-                <p class="text-sm font-semibold text-gray-200">Analisis</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">BBCA, IHSG, dll</p>
-            </button>
-            <button onclick="navigateTo('sektor')" class="action-card group hidden" data-premium-nav="true">
-                <div class="action-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <div id="ihsgSummaryContent" class="market-tile-body">
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <span id="ihsgLast" class="market-tile-value">—</span>
+                        <span id="ihsgChange" class="market-tile-delta">—</span>
+                    </div>
                 </div>
-                <p class="text-sm font-semibold text-gray-200">Sektor Hot</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">Grup konglomerat</p>
-            </button>
-            <button onclick="navigateTo('screener')" class="action-card group hidden" data-premium-nav="true">
-                <div class="action-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <button onclick="navigateTo('analisis');setTimeout(function(){var el=document.getElementById('analisisInput');if(el){el.value='IHSG';handleAnalisisSubmit();}},200)" class="market-tile-link">Buka analisis IHSG &rarr;</button>
+            </div>
+            <div class="market-tile">
+                <div class="market-tile-head"><span class="market-tile-label">Radar hari ini</span></div>
+                <div class="market-tile-body">
+                    <span id="dashMarketGate" class="market-tile-value">—</span>
+                    <span class="market-tile-unit">lolos gate</span>
                 </div>
-                <p class="text-sm font-semibold text-gray-200">Screener</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">Swing 3–7D</p>
-            </button>
-            <button onclick="navigateTo('chart')" class="action-card group">
-                <div class="action-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                <p id="dashMarketGateNote" class="market-tile-note">Menunggu Top 5 final dikunci.</p>
+            </div>
+            <div class="market-tile">
+                <div class="market-tile-head"><span class="market-tile-label">Data terakhir</span></div>
+                <div class="market-tile-body">
+                    <span id="dashMarketFreshness" class="market-tile-value is-text">—</span>
                 </div>
-                <p class="text-sm font-semibold text-gray-200">Chart</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">Grafik saham</p>
-            </button>
-            <button onclick="navigateTo('portofolio')" class="action-card group hidden" data-premium-nav="true">
-                <div class="action-icon">
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                </div>
-                <p class="text-sm font-semibold text-gray-200">Portofolio</p>
-                <p class="text-[10px] text-gray-500 mt-0.5">Posisi manual</p>
-            </button>
+                <p class="market-tile-note">Semua angka radar memakai candle harian yang sudah selesai (T-1).</p>
+            </div>
         </div>
-        <div class="dash-section-note mt-3">Safety display: Hindari / AVOID / SELL / LOW_TP / Very High Risk dipisahkan dari daftar utama dan tidak ditampilkan sebagai kandidat actionable.</div>
+        <div class="dash-section-note mt-3">Hindari, AVOID, SELL, LOW_TP dan Very High Risk selalu dipisahkan dari daftar utama, jadi tidak pernah muncul sebagai kandidat yang bisa langsung dieksekusi.</div>
         </section>
 
         <!-- Compact Top 5 + Monitor -->
@@ -1835,7 +1860,7 @@
     <div class="w-full max-w-sm rounded-3xl border border-gray-800 bg-[#111827] p-6 shadow-2xl text-center space-y-4">
         <div class="text-4xl">&#x2615;</div>
         <h3 class="text-base font-bold text-white">Sudah cukup banyak nih</h3>
-        <p class="text-sm text-gray-400">Kamu sudah chat/analisis sekitar <span id="reminderCount">10</span> kali di sesi ini. Mau istirahat dulu sebentar atau lanjut?</p>
+        <p class="text-sm text-gray-400">Anda sudah melakukan sekitar <span id="reminderCount">10</span> analisis di sesi ini. Istirahat sebentar, atau lanjutkan?</p>
         <div class="flex gap-3 justify-center pt-2">
             <button onclick="window.location.reload()" class="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-700/50 transition-all">Istirahat dulu</button>
             <button onclick="closeUsageReminder()" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-black bg-emerald-500 hover:bg-emerald-400 transition-all">Lanjut</button>
@@ -1977,7 +2002,13 @@
 <script src="/assets/idx-tickers.js"></script>
 <script src="/assets/fca-stocks.js"></script>
 <script>
-// ===== PDF LIBRARY LOADER (multi-CDN fallback) =====
+// ===== PDF LIBRARY LOADER (multi-CDN fallback, on demand) =====
+// jsPDF + autoTable are ~350KB and are only needed when someone actually
+// exports a PDF, which most sessions never do. This used to run at parse time
+// on every page load: three sequential CDN attempts, and on a network that
+// blocks all three it produced four console errors and a warning before the
+// dashboard had finished its first fetch. Nothing is requested until
+// loadPdfLibrary() is called from an export handler.
 (function() {
     var jspdfUrls = [
         'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js',
@@ -1991,6 +2022,7 @@
     ];
     window._pdfLibReady = false;
     window._pdfLibError = false;
+    var pending = null;
 
     function loadScript(urls, idx, onDone) {
         if (idx >= urls.length) { onDone(false); return; }
@@ -2001,15 +2033,25 @@
         document.head.appendChild(s);
     }
 
-    // Load jsPDF first, then autoTable (autoTable depends on jsPDF)
-    loadScript(jspdfUrls, 0, function(ok1) {
-        if (!ok1) { window._pdfLibError = true; console.warn('[PDF] jsPDF failed to load from all CDNs'); return; }
-        loadScript(autoTableUrls, 0, function(ok2) {
-            if (!ok2) { window._pdfLibError = true; console.warn('[PDF] autoTable failed to load from all CDNs'); return; }
-            window._pdfLibReady = true;
-            console.log('[PDF] jsPDF + autoTable loaded successfully');
+    // Resolves true once both scripts are present, false if every CDN failed.
+    // Repeat calls share one in-flight attempt.
+    window.loadPdfLibrary = function() {
+        if (window._pdfLibReady) return Promise.resolve(true);
+        if (window._pdfLibError) return Promise.resolve(false);
+        if (pending) return pending;
+        pending = new Promise(function(resolve) {
+            loadScript(jspdfUrls, 0, function(ok1) {
+                if (!ok1) { window._pdfLibError = true; pending = null; resolve(false); return; }
+                loadScript(autoTableUrls, 0, function(ok2) {
+                    if (!ok2) { window._pdfLibError = true; pending = null; resolve(false); return; }
+                    window._pdfLibReady = true;
+                    pending = null;
+                    resolve(true);
+                });
+            });
         });
-    });
+        return pending;
+    };
 })();
 </script>
 <script>
@@ -2476,11 +2518,21 @@ function changeDisplay(value, digits) {
     }
     var decimals = digits == null ? 2 : digits;
     var body = Math.abs(number).toFixed(decimals).replace('.', ',');
+    // A flat close is neither a gain nor a loss. It used to be printed as
+    // "+0,00%" in gain green, so a scan of the Screener grid read as a row of
+    // small winners when several of those names had not moved at all. Zero — and
+    // anything that rounds to zero at the requested precision — is now neutral
+    // and unsigned.
+    var flat = Math.abs(number) < 0.5 / Math.pow(10, decimals);
+    if (flat) {
+        return { known: true, flat: true, text: body + '%', cls: 'text-gray-400', hex: '#9ca3af' };
+    }
     return {
         known: true,
+        flat: false,
         text: (number < 0 ? '−' : '+') + body + '%',
-        cls: number >= 0 ? 'text-emerald-400' : 'text-red-400',
-        hex: number >= 0 ? '#6ee7b7' : '#fca5a5'
+        cls: number > 0 ? 'text-emerald-400' : 'text-red-400',
+        hex: number > 0 ? '#6ee7b7' : '#fca5a5'
     };
 }
 
@@ -3252,7 +3304,7 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
 
     // Update loading text stages
     var stageEl = resultArea.querySelector('.loading-stage-text');
-    var stages = isIndex ? ['Membaca trend market dan level kunci...', 'Menyusun laporan IHSG...'] : ['Membaca struktur trend, MA, RSI, volume...', 'Menyusun analisis...'];
+    var stages = isIndex ? ['Membaca trend market dan level kunci…', 'Menyusun laporan IHSG…'] : ['Membaca struktur trend, MA, RSI, volume…', 'Menyusun analisis…'];
     var stageIdx = 0;
     var stageTimer = setInterval(function() { if (stageIdx < stages.length && stageEl) { stageEl.textContent = stages[stageIdx]; stageIdx++; } else { clearInterval(stageTimer); } }, 2500);
 
@@ -3786,8 +3838,6 @@ async function handleAnalisisFollowUp(msg) {
 
 // ===== CHART PAGE =====
 var _chartPageData = null;
-var _patternMapManager = null;
-var _patternImageUrl = null;
 var _chartPageLoadVersion = 0;
 
 function patternMapPreviewEnabled() {
@@ -3825,14 +3875,12 @@ function applyPatternMapPreviewPolicy() {
     return enabled;
 }
 
-function revokePatternImageUrl() {
-    if (_patternImageUrl) URL.revokeObjectURL(_patternImageUrl);
-    _patternImageUrl = null;
-}
-
+// The preview renders inline SVG, so there is no in-flight image request to
+// cancel and no object URL to revoke. The function is kept because navigateTo()
+// and the preview policy both call it on every page change.
 function resetPatternMap() {
-    if (_patternMapManager) _patternMapManager.cancel();
-    revokePatternImageUrl();
+    var box = document.getElementById('patternMapImage');
+    if (box) box.textContent = '';
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPatternMapPreview);
@@ -3876,20 +3924,20 @@ async function renderPatternTab() {
       '<div class="border-t border-dark-600/30 pt-4 space-y-2"><span class="inline-flex rounded-full bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-300">Preview nonaktif — AI segera hadir</span><label for="patternQuestion" class="block text-sm font-semibold text-gray-200">Tanya tentang pattern yang ditampilkan</label>' +
       '<div class="flex flex-wrap gap-2"><input id="patternQuestion" disabled aria-disabled="true" class="min-w-0 flex-1 px-3 py-2 rounded-lg bg-dark-700 text-sm text-gray-500 opacity-70" placeholder="Q&A belum tersedia"><button disabled aria-disabled="true" class="px-4 py-2 rounded-lg bg-dark-600 text-gray-500 text-sm cursor-not-allowed">AI segera hadir</button></div>' +
       '<div class="text-[11px] text-gray-500">Tidak ada AI atau permintaan jaringan dari bagian ini.</div></div></div>';
-    if (!_patternMapManager) _patternMapManager = new PatternMap.RequestManager(fetch.bind(window));
-    var result = await _patternMapManager.render(candidate, renderContext, { viewportWidth: window.innerWidth });
+    // The preview draws the same local SVG the Pattern page uses. It previously
+    // POSTed the ticker, its close series and the deterministic geometry to
+    // quickchart.io and displayed the returned PNG; nothing in Auto-Cuan sends
+    // chart data to a third party any more.
     var imageBox = document.getElementById('patternMapImage');
-    if (!imageBox || data !== _chartPageData || result.obsolete) return;
-    if (result.empty) imageBox.textContent = result.message;
-    else if (result.error) imageBox.textContent = result.message;
-    else {
-        if (_patternImageUrl) URL.revokeObjectURL(_patternImageUrl);
-        _patternImageUrl = URL.createObjectURL(result.blob);
-        // Intrinsic size comes from the render spec so the box reserves the right
-        // aspect ratio before the blob decodes (no layout shift on mobile).
-        var spec = result.spec || { width: 1200, height: 700 };
-        imageBox.innerHTML = '<img src="' + _patternImageUrl + '" width="' + spec.width + '" height="' + spec.height + '" class="w-full h-auto object-contain" alt="Pattern Map ' + escapeHtml(data.ticker) + ' tanggal T-1 ' + escapeHtml(data.actual_data_date || '') + '">';
-    }
+    if (!imageBox || data !== _chartPageData) return;
+    var svg = '';
+    try {
+        svg = (window.AutoCuanPatternVisual && candidate)
+            ? window.AutoCuanPatternVisual.buildPatternSvg({ ticker: data.ticker, candidate: candidate, classicPatterns: [], context: renderContext, dataDate: data.actual_data_date, currentPrice: candidate.currentPrice }, { width: 900, height: 380 })
+            : '';
+    } catch (_) { svg = ''; }
+    if (svg) { imageBox.classList.remove('p-5'); imageBox.innerHTML = svg; }
+    else imageBox.textContent = PatternMap.EMPTY_MESSAGE;
 }
 
 async function loadChartPage() {
@@ -4006,7 +4054,7 @@ var _onboardingStep = 0;
 var _onboardingSteps = [
     {
         title: 'Halo! Selamat datang \uD83D\uDC4B',
-        content: '<p class="text-sm text-gray-300">Auto-Cuan bantu kamu membaca arah market dan saham berbasis data teknikal, ringkas, dan mudah dipahami.</p><p class="text-sm text-gray-400 mt-2">Kamu bisa cek IHSG, analisis saham, lihat chart, dan pantau portofolio manual dalam satu dashboard.</p><p class="text-[11px] text-gray-500 mt-3">Analisis bersifat probabilistik — bukan rekomendasi beli/jual.</p><p class="text-xs text-gray-500 mt-2">Klik <strong class="text-emerald-400">Next</strong> untuk lihat caranya.</p>',
+        content: '<p class="text-sm text-gray-300">Auto-Cuan membantu Anda membaca arah pasar dan pergerakan saham dari data teknikal, secara ringkas dan mudah dibaca.</p><p class="text-sm text-gray-400 mt-2">Di satu dashboard Anda bisa memeriksa IHSG, menganalisis saham, membuka chart, dan memantau portofolio manual.</p><p class="text-[11px] text-gray-500 mt-3">Analisis bersifat probabilistik — bukan rekomendasi beli/jual.</p><p class="text-xs text-gray-500 mt-2">Klik <strong class="text-emerald-400">Next</strong> untuk lihat caranya.</p>',
         showClose: false
     },
     {
@@ -4145,7 +4193,7 @@ function addFilesToSelection(files, source) {
     renderFilePreview();
     if (selectedFiles.length > 0 && (currentMode === 'chat' || currentMode === 'analisis_maksimal' || currentMode === 'analisis_lengkap')) {
         var activeInput = getActiveChatInput();
-        if (activeInput) activeInput.placeholder = 'Tulis keterangan (opsional)...';
+        if (activeInput) activeInput.placeholder = 'Tulis keterangan (opsional)…';
     }
 }
 
@@ -4196,7 +4244,7 @@ function removeFile(fileId) {
     renderFilePreview();
     if (selectedFiles.length === 0) {
         var activeInput = getActiveChatInput();
-        if (activeInput) activeInput.placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan...';
+        if (activeInput) activeInput.placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan…';
     }
 }
 
@@ -4208,7 +4256,7 @@ function clearAllFiles() {
     ['analysisFileInput', 'generalFileInput'].forEach(function(id) { var fileEl = document.getElementById(id); if (fileEl) fileEl.value = ''; });
     renderFilePreview();
     var activeInput = getActiveChatInput();
-    if (activeInput) activeInput.placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan...';
+    if (activeInput) activeInput.placeholder = 'Ketik BBCA, IHSG, atau tanya lanjutan…';
 }
 
 function removeAttachment() {
@@ -4759,11 +4807,13 @@ async function fetchQuoteContext(ticker, forceFresh) {
         if (quoteResp && quoteResp.ok) {
             var q = await quoteResp.json();
             if (q.success) {
-                lines.push('Last: ' + q.last);
-                lines.push('Open: ' + q.open);
-                lines.push('High: ' + q.high);
-                lines.push('Low: ' + q.low);
-                lines.push('Volume: ' + (q.volume || 0));
+                // Same rule as every other grounding line: absent stays absent.
+                // "Volume: 0" told the model the stock did not trade, and a
+                // missing OHLC field was written as the literal "undefined".
+                [['Last', q.last], ['Open', q.open], ['High', q.high], ['Low', q.low], ['Volume', q.volume]]
+                    .forEach(function(entry) {
+                        if (entry[1] != null && entry[1] !== '') lines.push(entry[0] + ': ' + entry[1]);
+                    });
                 if (q.volumeAvg20 != null) lines.push('Avg Volume 20: ' + q.volumeAvg20);
                 if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg 20: ' + q.volumeVsAvg20 + 'x');
                 if (q.volumeAvg3 != null) lines.push('Avg Volume 3D: ' + q.volumeAvg3);
@@ -4781,14 +4831,15 @@ async function fetchQuoteContext(ticker, forceFresh) {
                 if (q.rsi14 != null) lines.push('RSI14: ' + q.rsi14);
                 // Pivot data from same response
                 if (q.pivot) {
-                    lines.push('Pivot Point: ' + q.pivot.pivotPoint);
-                    lines.push('OHLC Pivot: ' + q.pivot.ohlcPivot);
-                    lines.push('Support 1: ' + q.pivot.support1);
-                    lines.push('Support 2: ' + q.pivot.support2);
-                    lines.push('Resistance 1: ' + q.pivot.resistance1);
-                    lines.push('Resistance 2: ' + q.pivot.resistance2);
-                    lines.push('Pivot Method: ' + q.pivot.pivotMethod);
-                    lines.push('Pivot Source Date: ' + q.pivot.pivotSourceDate);
+                    // A missing pivot used to be written into the prompt as the
+                    // literal string "undefined" ("Support 1: undefined").
+                    [['Pivot Point', q.pivot.pivotPoint], ['OHLC Pivot', q.pivot.ohlcPivot],
+                     ['Support 1', q.pivot.support1], ['Support 2', q.pivot.support2],
+                     ['Resistance 1', q.pivot.resistance1], ['Resistance 2', q.pivot.resistance2],
+                     ['Pivot Method', q.pivot.pivotMethod], ['Pivot Source Date', q.pivot.pivotSourceDate]
+                    ].forEach(function(entry) {
+                        if (entry[1] != null && entry[1] !== '') lines.push(entry[0] + ': ' + entry[1]);
+                    });
                     if (q.pivot.flatRange) lines.push('Note: Range T-1 flat/sempit, level pivot kurang informatif.');
                 }
 
@@ -4796,16 +4847,24 @@ async function fetchQuoteContext(ticker, forceFresh) {
                 if (q.volumeAvg3 != null && q.volumeAvg7 != null && !q.isIndex) {
                     lines.push('');
                     lines.push('[Auto-Cuan Volume Intelligence]');
-                    lines.push('Volume Terakhir: ' + formatIndonesianVolume(q.volume || 0));
+                    // Every line here is grounding the model reads as fact, so a
+                    // missing field is omitted rather than defaulted. The `|| 0`
+                    // fallbacks this replaces turned an absent 20-day average
+                    // into "Volume vs Avg 20D: 0x" and an absent daily move into
+                    // "Price Change 1D: 0%" — readings the model would then
+                    // reason from as a volume collapse and a flat session. The
+                    // block immediately above already guards the same fields
+                    // with `!= null`; this one did not.
+                    if (q.volume != null) lines.push('Volume Terakhir: ' + formatIndonesianVolume(q.volume));
                     lines.push('Rata-rata 3 Hari: ' + formatCompactVolume(q.volumeAvg3));
                     lines.push('Rata-rata 7 Hari: ' + formatCompactVolume(q.volumeAvg7));
-                    lines.push('Rata-rata 20 Hari: ' + formatCompactVolume(q.volumeAvg20 || 0));
-                    lines.push('Volume vs Avg 3D: ' + String(q.volumeVsAvg3 || 0).replace('.', ',') + 'x');
-                    lines.push('Volume vs Avg 7D: ' + String(q.volumeVsAvg7 || 0).replace('.', ',') + 'x');
-                    lines.push('Volume vs Avg 20D: ' + String(q.volumeVsAvg20 || 0).replace('.', ',') + 'x');
-                    lines.push('Price Change 1D: ' + (q.priceChange1D || 0) + '%');
-                    lines.push('Volume Trend: ' + (q.volumeTrend || 'normal'));
-                    lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup.'));
+                    if (q.volumeAvg20 != null) lines.push('Rata-rata 20 Hari: ' + formatCompactVolume(q.volumeAvg20));
+                    if (q.volumeVsAvg3 != null) lines.push('Volume vs Avg 3D: ' + String(q.volumeVsAvg3).replace('.', ',') + 'x');
+                    if (q.volumeVsAvg7 != null) lines.push('Volume vs Avg 7D: ' + String(q.volumeVsAvg7).replace('.', ',') + 'x');
+                    if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg 20D: ' + String(q.volumeVsAvg20).replace('.', ',') + 'x');
+                    if (q.priceChange1D != null) lines.push('Price Change 1D: ' + q.priceChange1D + '%');
+                    if (q.volumeTrend) lines.push('Volume Trend: ' + q.volumeTrend);
+                    lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup untuk pembacaan volume.'));
                     // Estimated transaction value (optional)
                     if (q.last && q.volume && q.volume > 0) {
                         var estTxnValue = q.last * q.volume;
@@ -5897,20 +5956,20 @@ function addLoadingBubble(loadingContext) {
     var div = document.createElement('div');
     div.className = 'flex gap-3 fade-in-up'; div.id = 'loadingBubble';
     // Context-aware initial text and stages
-    var initialText = 'Mengambil data harga dan teknikal...';
-    var stages = ['Membaca struktur trend, MA, RSI, dan volume...', 'Menyusun skenario dan rencana trading...'];
+    var initialText = 'Mengambil data harga dan teknikal…';
+    var stages = ['Membaca struktur trend, MA, RSI, dan volume…', 'Menyusun skenario dan rencana trading…'];
     if (loadingContext === 'ihsg') {
-        initialText = 'Mengambil data IHSG...';
-        stages = ['Membaca trend market dan level kunci...', 'Menyusun sikap market...'];
+        initialText = 'Mengambil data IHSG…';
+        stages = ['Membaca trend market dan level kunci…', 'Menyusun sikap market…'];
     } else if (loadingContext === 'chart') {
-        initialText = 'Membaca chart yang kamu kirim...';
-        stages = ['Mencari area support, resistance, dan momentum...', 'Menggabungkan chart dengan data teknikal...'];
+        initialText = 'Membaca chart yang Anda kirim…';
+        stages = ['Mencari area support, resistance, dan momentum…', 'Menggabungkan chart dengan data teknikal…'];
     } else if (loadingContext === 'broker') {
-        initialText = 'Membaca Broker Summary manual...';
-        stages = ['Memperbarui kesimpulan dengan data broker...', 'Menyiapkan analisis terintegrasi...'];
+        initialText = 'Membaca Broker Summary manual…';
+        stages = ['Memperbarui kesimpulan dengan data broker…', 'Menyiapkan analisis terintegrasi…'];
     } else if (loadingContext === 'chat') {
-        initialText = 'Membaca pesan kamu...';
-        stages = ['Menyiapkan jawaban...', 'Merapikan respons...'];
+        initialText = 'Membaca pesan Anda…';
+        stages = ['Menyiapkan jawaban…', 'Merapikan respons…'];
     }
     div.innerHTML = '<div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0 mt-0.5"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="bg-dark-700/50 rounded-2xl rounded-tl-sm px-4 py-3"><p class="text-sm text-emerald-400 animate-pulse-glow loading-stage-text">' + initialText + '</p></div>';
     container.appendChild(div);
@@ -7327,6 +7386,10 @@ function getDayTradeStatusColor(status) {
         return '#67e8f9';
     }
 
+    // An empty or unrecognised status is unknown, not a caution. Returning the
+    // amber caution colour here painted rows the server had simply not labelled
+    // as if the system had judged them risky.
+    if (!s) return '#9ca3af';
     return '#fde047';
 }
 
@@ -7357,6 +7420,8 @@ function getDayTradeStatusBackground(status) {
     ) {
         return 'rgba(6,182,212,0.12)';
     }
+
+    if (!s) return 'rgba(148,163,184,0.10)';
 
     return 'rgba(234,179,8,0.1)';
 }
@@ -7402,6 +7467,14 @@ function getRiskReasonLine(r) {
     var risk = getRiskLabel(r) || '-';
     var reason = safeDisplayText(r && r.risk_reason, '') || getRiskReasonFactors(r).slice(0, 2).join(' + ');
     return 'Risk: ' + risk + (reason ? ' — ' + reason : '');
+}
+// The grid cards already print the risk label as a coloured badge on the line
+// above, so repeating it here made every card read "Low Risk" twice in two
+// different treatments. Inside a card only the reason is new information; the
+// full labelled line is still used in the detail view, which has no badge.
+function getRiskReasonOnly(r) {
+    var reason = safeDisplayText(r && r.risk_reason, '') || getRiskReasonFactors(r).slice(0, 2).join(' + ');
+    return reason || '';
 }
 function screenerStatusMatches(r, filter) {
     if (!filter || filter === 'all') return true;
@@ -7553,7 +7626,8 @@ function renderDtCardGrid(results, data) {
         html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 2</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t2 + '</div></div>';
         html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#a78bfa;margin-bottom:1px">R/R</div><div style="font-size:11px;font-weight:600;color:#c4b5fd">' + rrVal + '</div></div>';
         html += '</div>';
-        html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(getRiskReasonLine(r)) + '</span></div>';
+        var _riskReason = getRiskReasonOnly(r);
+        if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
         if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
         html += '<div style="font-size:9px;color:#4b5563;margin-top:6px;text-align:right">Klik untuk detail</div>';
         html += '</div>';
@@ -7581,7 +7655,7 @@ function getSetupMeaning(status, type) {
         'PRE_SPIKE_WATCH': 'Radar prioritas sebelum potensi spike. Peluang dapat bergerak lebih dulu, tetapi risikonya lebih tinggi daripada Signal Terkonfirmasi.',
         'PRE_SPIKE': 'Radar awal sebelum potensi spike. Butuh konfirmasi volume dan candle lanjutan.',
         'EARLY_RADAR': 'Radar awal sedang terbentuk. Potensi ada, tetapi belum cukup stabil disebut Signal Terkonfirmasi.',
-        'MOMENTUM_CONTINUATION': 'Momentum sedang berjalan. Jangan chase; entry hanya jika masih dekat area entry.',
+        'MOMENTUM_CONTINUATION': 'Momentum sedang berjalan. Jangan mengejar harga — masuk hanya jika masih dekat area entry.',
         'RECLAIM_CANDIDATE': 'Kandidat reclaim level penting. Valid jika harga bertahan di atas level konfirmasi.',
         'WAIT_PULLBACK': 'Setup masih berpotensi, tetapi tunggu harga kembali ke area entry. Jangan chase.',
         'WATCHLIST': 'Masih pantauan. Setup belum cukup kuat untuk agresif entry.',
@@ -7851,7 +7925,7 @@ function renderKgCardGrid(results) {
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(swingTierTitle(tier)) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.group_code) html += '<span style="color:#6b7280">' + escapeHtml(r.group_code) + '</span>';
@@ -7884,7 +7958,8 @@ function renderKgCardGrid(results) {
         html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 2</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t2 + '</div></div>';
         html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#a78bfa;margin-bottom:1px">R/R</div><div style="font-size:11px;font-weight:600;color:#c4b5fd">' + rrVal + '</div></div>';
         html += '</div>';
-        html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(getRiskReasonLine(r)) + '</span></div>';
+        var _riskReason = getRiskReasonOnly(r);
+        if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
         if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
         html += '<div style="font-size:9px;color:#4b5563;margin-top:6px;text-align:right">Klik untuk detail</div>';
         html += '</div>';
@@ -7927,7 +8002,7 @@ function renderNkCardGrid(results) {
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(swingTierTitle(tier)) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
@@ -7953,7 +8028,8 @@ function renderNkCardGrid(results) {
         html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 2</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t2 + '</div></div>';
         html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#a78bfa;margin-bottom:1px">R/R</div><div style="font-size:11px;font-weight:600;color:#c4b5fd">' + rrVal + '</div></div>';
         html += '</div>';
-        html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(getRiskReasonLine(r)) + '</span></div>';
+        var _riskReason = getRiskReasonOnly(r);
+        if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
         if (notes) html += '<div style="font-size:10px;color:#9ca3af;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">' + escapeHtml(notes) + '</div>';
         html += '<div style="font-size:9px;color:#4b5563;margin-top:6px;text-align:right">Klik untuk detail</div>';
         html += '</div>';
@@ -8526,27 +8602,45 @@ function renderScreenerTable(results) {
 }
 
 // Swing tier display helpers
+// An unrecognised or absent tier is unknown, not AVOID. Both helpers used to
+// fall through to the INVALID/AVOID treatment, so a row whose swing_tier the
+// server simply did not send was painted with a red danger badge reading "-" —
+// a scan of the grid showed danger where there was only missing data.
+var SWING_TIER_LABELS = {
+    A_PLUS_SWING: 'A+ SWING',
+    TRADE_CANDIDATE: 'TRADE',
+    SWING_READY: 'READY',
+    WATCHLIST: 'WATCH',
+    REBOUND_CANDIDATE: 'REBOUND',
+    WAIT_PULLBACK: 'WAIT PB',
+    SPECULATIVE: 'SPEC',
+    INVALID: 'AVOID',
+    AVOID: 'AVOID'
+};
+var SWING_TIER_COLORS = {
+    A_PLUS_SWING: 'bg-emerald-500/20 text-emerald-300',
+    TRADE_CANDIDATE: 'bg-emerald-500/15 text-emerald-400',
+    SWING_READY: 'bg-emerald-500/10 text-emerald-400',
+    WATCHLIST: 'bg-blue-500/15 text-blue-400',
+    REBOUND_CANDIDATE: 'bg-purple-500/15 text-purple-400',
+    WAIT_PULLBACK: 'bg-orange-500/15 text-orange-400',
+    SPECULATIVE: 'bg-amber-500/15 text-amber-400',
+    INVALID: 'bg-red-500/10 text-red-400',
+    AVOID: 'bg-red-500/10 text-red-400'
+};
+var SWING_TIER_UNKNOWN_LABEL = 'TIER —';
+var SWING_TIER_UNKNOWN_COLOR = 'bg-gray-500/10 text-gray-400';
+
 function swingTierShort(tier) {
-    if (tier === 'A_PLUS_SWING') return 'A+ SWING';
-    if (tier === 'TRADE_CANDIDATE') return 'TRADE';
-    if (tier === 'SWING_READY') return 'READY';
-    if (tier === 'WATCHLIST') return 'WATCH';
-    if (tier === 'REBOUND_CANDIDATE') return 'REBOUND';
-    if (tier === 'WAIT_PULLBACK') return 'WAIT PB';
-    if (tier === 'SPECULATIVE') return 'SPEC';
-    if (tier === 'INVALID' || tier === 'AVOID') return 'AVOID';
-    return tier || '-';
+    return SWING_TIER_LABELS[tier] || SWING_TIER_UNKNOWN_LABEL;
 }
 
 function swingTierColor(tier) {
-    if (tier === 'A_PLUS_SWING') return 'bg-emerald-500/20 text-emerald-300';
-    if (tier === 'TRADE_CANDIDATE') return 'bg-emerald-500/15 text-emerald-400';
-    if (tier === 'SWING_READY') return 'bg-emerald-500/10 text-emerald-400';
-    if (tier === 'WATCHLIST') return 'bg-blue-500/15 text-blue-400';
-    if (tier === 'REBOUND_CANDIDATE') return 'bg-purple-500/15 text-purple-400';
-    if (tier === 'WAIT_PULLBACK') return 'bg-orange-500/15 text-orange-400';
-    if (tier === 'SPECULATIVE') return 'bg-amber-500/15 text-amber-400';
-    return 'bg-red-500/10 text-red-400';
+    return SWING_TIER_COLORS[tier] || SWING_TIER_UNKNOWN_COLOR;
+}
+
+function swingTierTitle(tier) {
+    return SWING_TIER_LABELS[tier] ? '' : 'Tier setup tidak tersedia untuk saham ini.';
 }
 
 function screenerStatusShort(status) {
@@ -9308,7 +9402,7 @@ var _dashboardMonitorRefreshTimer = null;
 var _screenerInFlight = null;
 var _nkScreenerInFlight = null;
 var _dtScreenerInFlight = null;
-var DASHBOARD_LOADING_TEXT = 'Memuat data terbaru...';
+var DASHBOARD_LOADING_TEXT = 'Memuat data terbaru…';
 var STRICT_EMPTY_TEXT = 'Belum ada kandidat yang lolos filter ketat saat ini. Ini normal saat market belum mendukung.';
 var DAYTRADE_EMPTY_TEXT = 'Belum ada Radar Day Trade yang layak dipantau. Tunggu setup baru atau close confirmation.';
 var MONITOR_EMPTY_TEXT = 'Monitor aktif setelah Top 5 dikunci.';
@@ -9393,6 +9487,37 @@ function dashboardTop5NoteText(data, isAwaiting, gateLabel) {
         return 'Top 5 Radar Final/Locked — ' + gateLabel + '. Monitor update tiap 30 menit saat jam bursa.';
     }
     return payload.update_note || 'Top 5 Radar tersedia.';
+}
+
+// The market band shows only what the payload actually establishes. An
+// awaiting-lock response has no gate count and no freshness timestamp, and both
+// tiles say so rather than showing 0/5 and a fabricated time.
+function renderMarketBand(data, isAwaiting, pickedCount) {
+    var payload = data && typeof data === 'object' ? data : {};
+    var gate = document.getElementById('dashMarketGate');
+    var gateNote = document.getElementById('dashMarketGateNote');
+    var freshness = document.getElementById('dashMarketFreshness');
+
+    if (gate) gate.textContent = isAwaiting ? '—' : (pickedCount + '/5');
+    if (gateNote) {
+        gateNote.textContent = isAwaiting
+            ? 'Menunggu Top 5 final dikunci.'
+            : (pickedCount === 0
+                ? 'Tidak ada kandidat yang lolos aturan keamanan hari ini.'
+                : 'Kandidat yang lolos aturan keamanan dan layak dipantau.');
+    }
+    if (freshness) {
+        var stamp = payload.last_updated_at || payload.monitor_last_updated_at || null;
+        var parsed = stamp ? new Date(stamp) : null;
+        if (parsed && !isNaN(parsed.getTime())) {
+            freshness.textContent = parsed.toLocaleString('id-ID', {
+                timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short',
+                hour: '2-digit', minute: '2-digit', hour12: false
+            }) + ' WIB';
+        } else {
+            freshness.textContent = 'Belum tersedia';
+        }
+    }
 }
 
 function dashboardAwaitingLockedHtml(note) {
@@ -9544,6 +9669,71 @@ function dashLevelHtml(label, value, tone) {
     return '<div class="dash-level"><span>' + escapeHtml(label) + '</span><b class="' + cls + '">' + dashFmtPrice(value) + '</b></div>';
 }
 
+// Where price actually sits between the stop and the targets.
+//
+// Five equal boxes reading Entry 1 / Entry 2 / Stop Loss / TP1 / TP2 give a
+// trader five numbers and none of the geometry those numbers describe: whether
+// price is already past entry, how much room is left to the first target, and
+// how that distance compares to the distance to the stop. The ladder below is
+// the same values placed on their own scale, so the shape of the trade is
+// readable before any number is.
+//
+// It draws nothing unless the stop, the first target and the current price are
+// all present and ordered sensibly — a partial ladder would imply a geometry
+// the data does not support.
+function dashRiskLadderHtml(r) {
+    var price = Number(r.last_price);
+    var stop = Number(r.stop_loss);
+    var tp1 = Number(r.tp1);
+    var tp2 = Number(r.tp2);
+    var entry = Number(r.entry1);
+    if (![price, stop, tp1].every(function(v) { return isFinite(v) && v > 0; })) return '';
+    if (!(stop < tp1)) return '';
+
+    var top = Math.max(tp1, isFinite(tp2) && tp2 > 0 ? tp2 : tp1, price);
+    var bottom = Math.min(stop, price);
+    var span = top - bottom;
+    if (!(span > 0)) return '';
+    var at = function(value) {
+        var n = Number(value);
+        if (!isFinite(n)) return null;
+        return Math.max(0, Math.min(100, ((n - bottom) / span) * 100));
+    };
+
+    var stopAt = at(stop);
+    var tp1At = at(tp1);
+    var tp2At = isFinite(tp2) && tp2 > 0 ? at(tp2) : null;
+    var entryAt = isFinite(entry) && entry > 0 ? at(entry) : null;
+    var priceAt = at(price);
+
+    // Risk and reward measured from where price is now, which is the only
+    // distance that is still available to take.
+    var risk = price - stop;
+    var reward = tp1 - price;
+    var rrNow = risk > 0 && reward > 0 ? (reward / risk) : null;
+
+    var marks = '';
+    marks += '<span class="dash-ladder-mark is-stop" style="left:' + stopAt.toFixed(2) + '%" aria-hidden="true"></span>';
+    if (entryAt != null) marks += '<span class="dash-ladder-mark is-entry" style="left:' + entryAt.toFixed(2) + '%" aria-hidden="true"></span>';
+    marks += '<span class="dash-ladder-mark is-target" style="left:' + tp1At.toFixed(2) + '%" aria-hidden="true"></span>';
+    if (tp2At != null) marks += '<span class="dash-ladder-mark is-target" style="left:' + tp2At.toFixed(2) + '%" aria-hidden="true"></span>';
+    marks += '<span class="dash-ladder-price" style="left:' + priceAt.toFixed(2) + '%" aria-hidden="true"></span>';
+
+    var summary = 'Stop ' + dashFmtPrice(stop) + ', harga ' + dashFmtPrice(price) + ', target pertama ' + dashFmtPrice(tp1) + '.';
+    if (rrNow) summary += ' Sisa imbalan berbanding risiko dari harga sekarang ' + rrNow.toFixed(1) + ' banding 1.';
+
+    return '<div class="dash-ladder" role="img" aria-label="' + escapeHtml(summary) + '">' +
+        '<div class="dash-ladder-track">' +
+        '<span class="dash-ladder-risk" style="left:' + stopAt.toFixed(2) + '%;width:' + Math.max(0, priceAt - stopAt).toFixed(2) + '%" aria-hidden="true"></span>' +
+        '<span class="dash-ladder-reward" style="left:' + priceAt.toFixed(2) + '%;width:' + Math.max(0, tp1At - priceAt).toFixed(2) + '%" aria-hidden="true"></span>' +
+        marks +
+        '</div>' +
+        '<div class="dash-ladder-legend"><span class="is-stop">SL ' + dashFmtPrice(stop) + '</span>' +
+        '<span class="is-now">Kini ' + dashFmtPrice(price) + (rrNow ? ' · sisa RR ' + rrNow.toFixed(1) : '') + '</span>' +
+        '<span class="is-target">TP1 ' + dashFmtPrice(tp1) + '</span></div>' +
+        '</div>';
+}
+
 function dashQualityChipsHtml(chips) {
     if (!Array.isArray(chips) || chips.length === 0) return '';
     return '<div class="mt-1 flex flex-wrap gap-1">' + chips.slice(0, 6).map(function(c) {
@@ -9609,6 +9799,7 @@ function renderDashboardTop5(picks) {
         html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>EntryQ <b class="text-blue-300">' + escapeHtml(r.entry_quality_label || r.entry_status_label || '—') + '</b></span><span>PlanQ <b class="text-purple-300">' + escapeHtml(r.plan_quality_label || '—') + '</b></span><span>Invalidation <b class="text-amber-300">' + escapeHtml(r.invalidation_distance_label || '—') + '</b></span></div>';
         html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Breakout <b class="text-cyan-300">' + escapeHtml(r.breakout_confirmation_label || 'Watch') + '</b></span><span>Setup Age <b class="text-amber-300">' + escapeHtml(r.setup_freshness_label || 'Needs Revalidation') + '</b></span></div>';
         if (r.entry_safety_note || r.invalidation_note || r.trading_plan_note) html += '<div class="mt-1 text-[10px] text-gray-500 truncate">' + escapeHtml(r.entry_safety_note || r.invalidation_note || r.trading_plan_note || '') + '</div>';
+        html += dashRiskLadderHtml(r);
         html += '<div class="mt-2 dash-level-grid">' + dashLevelHtml('Entry 1', r.entry1) + dashLevelHtml('Entry 2', r.entry2) + dashLevelHtml('Stop Loss', r.stop_loss, 'danger') + dashLevelHtml('TP1', r.tp1, 'target') + dashLevelHtml('TP2', r.tp2, 'target') + '</div>';
         var planWarn = getPlanWarningLine(r);
         var execLine = dashExecutionRealityLine(r);
@@ -9868,6 +10059,7 @@ function renderDashboardTop5MonitorData(data) {
     // The note is written only now, once we know which body the panel is about to
     // render — see dashboardTop5NoteText.
     if (note) note.textContent = dashboardTop5NoteText(data, isAwaiting, gateLabel);
+    renderMarketBand(data, isAwaiting, pickedCount);
     if (isAwaiting) {
         var topEl = document.getElementById('dashboardTop5List');
         if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data);
@@ -10219,11 +10411,34 @@ function sanitizeAIHtml(html) {
     // Remove event handlers
     output = output.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
     output = output.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
-    // Remove javascript: URLs
-    output = output.replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"');
+    // Dangerous URL schemes, resistant to entity encoding.
+    //
+    // The old rule was a literal match on `href="javascript:..."`, so
+    // `href="javas&#99;ript:alert(1)"` went straight through — the browser
+    // decodes the entity, the regex does not. Every URL-bearing attribute is now
+    // checked against a decoded copy of its value.
+    output = output.replace(/\s(href|src|xlink:href|action|formaction|data|poster)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+        function(match, attr, _raw, dq, sq, bare) {
+            var value = dq != null ? dq : (sq != null ? sq : (bare || ''));
+            var decoded = String(value)
+                .replace(/&#x([0-9a-f]+);?/gi, function(_, hex) { return String.fromCharCode(parseInt(hex, 16)); })
+                .replace(/&#(\d+);?/g, function(_, dec) { return String.fromCharCode(parseInt(dec, 10)); })
+                .replace(/[\s\u0000-\u001F]/g, '')
+                .toLowerCase();
+            if (/^(javascript|vbscript|data):/.test(decoded)) return ' ' + attr + '="#"';
+            return match;
+        });
     // Remove iframe/embed/object
     output = output.replace(/<(iframe|embed|object|form|input|button)[\s\S]*?<\/\1>/gi, '');
     output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, '');
+    // Elements that change how the whole document behaves have no place in
+    // narrative output and were not being removed at all. A surviving
+    // `<base href="https://evil.example/">` re-points every relative URL on the
+    // page — including the app's own /api/* calls — and a surviving
+    // `<meta http-equiv="refresh">` navigates the page away entirely. <style>
+    // and <link> can restyle or hide the real interface.
+    output = output.replace(/<(style|template|noscript|svg|math)[\s\S]*?<\/\1>/gi, '');
+    output = output.replace(/<(base|meta|link|style|template|noscript|svg|math)[^>]*\/?>/gi, '');
     // Collapse excessive whitespace/empty elements for compact layout
     output = output.replace(/<p[^>]*>\s*<\/p>/gi, ''); // remove empty <p></p>
     output = output.replace(/(<br\s*\/?>){3,}/gi, '<br>'); // max 1 consecutive br (only 3+)
@@ -10604,89 +10819,12 @@ function forceNormalizeTechnicalDOM(root) {
     }
 }
 
-// ===== SELF-TEST: Universal Spacing Fix (Latest + BUVA + IHSG + PTRO + DSSA samples) =====
-(function selfTestSpacing() {
-    // Only run self-tests in development/localhost — skip in production to avoid DOM overhead
-    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
-    // Latest live failure sample (Phase 11Q regression)
-    var latestInput = 'MA20: 316.30MA50: 313.40MA100: 356.01MA200: 298.52Posisi: di bawah semua MA\nRSI14: 32.09Volume: 0,55x avgLast: 260High: 298Low: 250\nR1: 288R2: 317\nS1: 240S2: 221\nTP1: 288TP2: 317';
-    // BUVA sample (live failure case — this is what Phase 11O missed)
-    var buvaInput = 'MA20: 820.75MA50: 1008.5MA100: 1196MA200: 997.79Posisi: belowMA20\nRSI14: 26.74Volume: 0,79x avgLast: 610High: 675Low: 575\nR1: 665R2: 720\nS1: 565S2: 520\nTP1: N/ATP2: N/A\nInvalidasi: Recovery di atas 620 dengan volume di atas rata-rata 7D danRSI >50.';
-    // IHSG sample (live failure case)
-    var ihsgInput = 'MA20: 6466,67MA50: 6947,55MA100: 7676,27MA200: 7916,73Posisi: di bawahMA20\nRSI14: 10,75Volume: 0,74x avg20Last: 5594,77High: 5860,67Low: 5594,11\nR1: 5772R2: 5950\nS1: 5505S2: 5416';
-    // PTRO sample
-    var ptroInput = 'MA20: 4340MA50: 4966.7MA100: 6426.75MA200: 6772.48Posisi: belowMA20\nRSI14: 34.36Volume: 0,76x avgLast: 3650High: 4180Low: 3650\nR1: 4004R2: 4357\nS1: 3474S2: 3297\nTP1: 4004TP2: 4357';
-    // DSSA sample (Phase 11T live failure — exact output from browser)
-    var dssaInput = 'MA20: 753.15MA50: 1795.24MA100: 2718.13MA200: 3369.34Posisi: Di bawah semua MA\nRSI14: 27.42Volume: 1,29x avg 20DLast: 610High: 740Low: 610\nR1: 696R2: 783\nS1: 566S2: 523\nTP1: 696TP2: 783';
-    // DSSA with HTML tags (simulates real AI output with <b> tags across boundaries)
-    var dssaHtmlInput = '<div class="metric-grid"><div><strong>Moving Average</strong><br>MA20: <b>753.15</b><b>MA50: 1795.24</b><b>MA100: 2718.13</b><b>MA200: 3369.34</b><b>Posisi: Di bawah semua MA</b></div><div><strong>Momentum</strong><br>RSI14: <b>27.42</b><b>Volume: 1,29x avg 20D</b><b>Last: 610</b><b>High: 740</b><b>Low: 610</b></div></div>';
-
-    function testNormalize(input, label) {
-        var result = normalizeFinalStockHtml(sanitizeAIHtml(input));
-        var failures = [];
-        // Check digit+label merges
-        var mergedDigit = /\d(MA20|MA50|MA100|MA200|RSI14|Volume|Last|High|Low|R[1-3]|S[1-3]|TP[1-3]|Posisi)[^a-z]/g;
-        var m;
-        while (m = mergedDigit.exec(result)) { failures.push('digit+label: ' + m[0]); }
-        // Check letter+label merges
-        var mergedLetter = /avg\d*(Last|High|Low|Volume|Open|MA\d|RSI|R[1-3]|S[1-3]|TP[1-3])/gi;
-        while (m = mergedLetter.exec(result)) { failures.push('avg+label: ' + m[0]); }
-        // Check word boundaries (should have space)
-        var wordMerge = /(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi;
-        while (m = wordMerge.exec(result)) { failures.push('word+label: ' + m[0]); }
-        // Check N/A boundary
-        var naMerge = /N\/A(TP\d|R[1-3]|S[1-3])/gi;
-        while (m = naMerge.exec(result)) { failures.push('N/A+label: ' + m[0]); }
-        // Check D-suffix merges (20DLast, avg20DVolume)
-        var dMerge = /\dD(Last|High|Low|Open|Volume|MA\d|RSI|R[1-3]|S[1-3]|TP[1-3]|Posisi)/gi;
-        while (m = dMerge.exec(result)) { failures.push('D+label: ' + m[0]); }
-        if (failures.length > 0) {
-            console.warn('[Auto-Cuan Self-Test FAIL] ' + label + ':', failures);
-        }
-        return failures.length === 0;
-    }
-
-    // DOM render path test: simulates real addAIBubble flow through actual DOM
-    function testDOMRender(htmlInput, label) {
-        var testDiv = document.createElement('div');
-        testDiv.style.display = 'none';
-        testDiv.className = 'ai-content';
-        document.body.appendChild(testDiv);
-        var sanitized = normalizeFinalStockHtml(sanitizeAIHtml(htmlInput));
-        testDiv.innerHTML = sanitized;
-        forceNormalizeTechnicalDOM(testDiv);
-        normalizeRenderedTechnicalText(testDiv);
-        var visibleText = testDiv.textContent || testDiv.innerText || '';
-        document.body.removeChild(testDiv);
-        var failures = [];
-        // Check for merged patterns in final visible text
-        var mergedDigit = /\d(MA20|MA50|MA100|MA200|RSI14|Volume|Last|High|Low|R[1-3]|S[1-3]|TP[1-3]|Posisi)/g;
-        var m;
-        while (m = mergedDigit.exec(visibleText)) { failures.push('DOM digit+label: ' + m[0]); }
-        var dMerge = /\dD(Last|High|Low|Open|Volume|MA\d|RSI)/gi;
-        while (m = dMerge.exec(visibleText)) { failures.push('DOM D+label: ' + m[0]); }
-        var wordMerge = /(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi;
-        while (m = wordMerge.exec(visibleText)) { failures.push('DOM word+label: ' + m[0]); }
-        if (failures.length > 0) {
-            console.warn('[Auto-Cuan DOM-Test FAIL] ' + label + ':', failures);
-        }
-        return failures.length === 0;
-    }
-
-    var p0 = testNormalize(latestInput, 'Latest');
-    var p1 = testNormalize(buvaInput, 'BUVA');
-    var p2 = testNormalize(ihsgInput, 'IHSG');
-    var p3 = testNormalize(ptroInput, 'PTRO');
-    var p4 = testNormalize(dssaInput, 'DSSA');
-    // DOM render path tests (real DOM)
-    var d0 = testDOMRender(dssaInput, 'DSSA-plain');
-    var d1 = testDOMRender(dssaHtmlInput, 'DSSA-html-tags');
-    var d2 = testDOMRender(latestInput, 'Latest-DOM');
-    var d3 = testDOMRender(buvaInput, 'BUVA-DOM');
-    if (p0 && p1 && p2 && p3 && p4 && d0 && d1 && d2 && d3) {
-        console.log('[Auto-Cuan] Phase 12 spacing self-test: ALL PASS (string + DOM)');
-    }
-})();
+// The technical-metric spacing self-test that used to live here has moved to
+// test/ai-technical-spacing.test.js. It shipped ~4KB of sample strings to every
+// visitor to run only on localhost, and its assertion read testDiv.textContent
+// — which drops the <br> elements the normalizer inserts — so it reported a
+// failure on every load while the normalizer was in fact working. The node test
+// asserts on the produced HTML instead, and runs in CI.
 
 </script>
 <script>
@@ -11220,7 +11358,7 @@ async function exportChartPng(chartId, ticker, btn) {
     if (!entry || !entry.mainChart || typeof entry.mainChart.takeScreenshot !== 'function') {
         return fail('Chart belum siap untuk di-download. Tunggu chart selesai dimuat lalu coba lagi.');
     }
-    if (btn) { btn.disabled = true; btn.innerHTML = 'Menyiapkan...'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = 'Menyiapkan…'; }
     try {
         // Let any pending resize/render work settle before screenshotting (two frames).
         await new Promise(function(res) {
@@ -11363,30 +11501,16 @@ function downloadChartPng(chartId, ticker, btn) {
 var _pdfDisclaimer = 'Ini bukan rekomendasi beli/jual. Gunakan sebagai bahan analisis mandiri dan kelola risiko.';
 
 function _ensureJsPdf(cb) {
-    // Check if already loaded
     if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') { cb(); return; }
-    // If we know it errored out
-    if (window._pdfLibError) {
-        console.error('[PDF] Library load failed. jspdf:', typeof window.jspdf, 'autoTable:', typeof (window.jspdf && window.jspdf.jsPDF && new (window.jspdf.jsPDF)().autoTable));
-        showToast('PDF library belum siap. Refresh halaman lalu coba lagi.', 'warning');
+    if (typeof window.loadPdfLibrary !== 'function') {
+        showToast('Ekspor PDF belum tersedia. Muat ulang halaman lalu coba lagi.', 'warning');
         return;
     }
-    // Wait for async loader to finish (retry every 200ms, max 3s)
-    var attempts = 0;
-    var maxAttempts = 15;
-    var timer = setInterval(function() {
-        attempts++;
-        if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') {
-            clearInterval(timer);
-            cb();
-            return;
-        }
-        if (attempts >= maxAttempts || window._pdfLibError) {
-            clearInterval(timer);
-            console.error('[PDF] Library not available after wait. jspdf:', typeof window.jspdf, '_pdfLibReady:', window._pdfLibReady, '_pdfLibError:', window._pdfLibError);
-            showToast('PDF library belum siap. Refresh halaman lalu coba lagi.', 'warning');
-        }
-    }, 200);
+    showToast('Menyiapkan ekspor PDF…', 'info');
+    window.loadPdfLibrary().then(function(ready) {
+        if (ready && typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') { cb(); return; }
+        showToast('Ekspor PDF gagal disiapkan. Periksa koneksi lalu coba lagi.', 'warning');
+    });
 }
 
 function _pdfAddHeader(doc, title, orientation) {
@@ -11911,7 +12035,7 @@ function showDtProgress(meta) {
 
     if (bar) bar.style.width = pct + '%';
     if (label) label.textContent = scanned + ' / ' + universe + ' (' + pct + '%)';
-    if (msg) msg.textContent = meta.message || 'Scanning...';
+    if (msg) msg.textContent = meta.message || 'Scanning…';
     if (batch) batch.textContent = '';
     if (passed) passed.textContent = meta.passed_count || 0;
     if (failed) failed.textContent = meta.failed_count || 0;
@@ -12295,5 +12419,6 @@ function exportDayTradePDF() {
 <script src="/ai-chat-renderer.js?v=20260726-src1"></script>
 <script src="/stock-analysis-ai.js?v=20260726-src1"></script>
 <script src="/pattern-map.js?v=20260802-pattern-map-v3"></script>
+<script src="/ui-bugfix-pack-v1.js?v=20260803-v1"></script>
 </body>
 </html>

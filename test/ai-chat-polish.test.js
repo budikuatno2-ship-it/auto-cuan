@@ -53,7 +53,11 @@ test('AI renderer normalizes forced slang without exposing unsafe HTML', () => {
   const renderer = loadRenderer();
   const html = renderer.renderMarkdown('Masih belum aman juga, bestie. Lo sedang nangkap pisau. <script>alert(1)</script>');
   assert.doesNotMatch(html, /bestie|\bLo\b|nangkap pisau/i);
-  assert.match(html, /kamu/i);
+  // The product settled on "Anda" throughout; the normaliser used to rewrite
+  // slang to the informal "kamu", which was the only place chat disagreed with
+  // the rest of the interface.
+  assert.match(html, /\bAnda\b/);
+  assert.doesNotMatch(html, /\bkamu\b/i);
   assert.match(html, /&lt;script&gt;/);
   assert.doesNotMatch(html, /<script>/);
 });

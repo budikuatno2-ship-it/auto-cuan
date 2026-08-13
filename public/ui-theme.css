@@ -1226,3 +1226,30 @@ button:disabled,
   .action-card:hover { transform: none; }
   .panel table tbody tr { transition: none !important; }
 }
+
+/* AUTO_CUAN_DESKTOP_HEADER_CENTER_V1 */
+/* Keep the navigation centered on the viewport instead of centering it only
+   inside the space left between unequal brand and account groups. */
+@media (min-width: 1280px) {
+  .app-header > .header-shell > .flex {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 16px;
+  }
+
+  .app-header > .header-shell > .flex > :first-child {
+    justify-self: start;
+  }
+
+  .app-header > .header-shell > .flex > .desktop-nav {
+    justify-self: center;
+    width: max-content;
+    max-width: none;
+    flex: none;
+  }
+
+  .app-header > .header-shell > .flex > :last-child {
+    justify-self: end;
+  }
+}

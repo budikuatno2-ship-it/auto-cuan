@@ -2,11 +2,35 @@
   'use strict';
   var api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
-  if (root && root.document) api.install(root);
+  if (root) root.AutoCuanPatternSafety = api;
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
 
-  var VERSION = '20260731-pattern-direction-safety-v1';
+  // This module is the Pattern safety *model*. It used to also be a DOM patcher:
+  // install() registered a MutationObserver on document.body, re-read every
+  // rendered level by scraping `.ps-level b` text, parsed those Indonesian
+  // number strings back into floats, and then wrote labels, badges and warning
+  // text back into the cards.
+  //
+  // Two measured defects came out of that:
+  //   1. Every write it performed (textContent on each level label, on the
+  //      badge, on the warning) was itself a mutation, so the observer refired
+  //      and rescheduled a full-document rescan 30 ms later, forever. Measured
+  //      on a scanned Pattern page: 7014 DOM mutations in 4 idle seconds versus
+  //      44 on the same build before Pattern was opened — and because the
+  //      observer watched document.body, the loop kept running at ~5500/4s
+  //      after navigating back to the Dashboard, for the rest of the session.
+  //   2. Actionability was decided from re-parsed display strings. `num()`
+  //      formats with maximumFractionDigits:2, so a level of 1015.8437 became
+  //      "1.015,84" and came back as 1015.84. Safety comparisons such as
+  //      `current >= tp1` were therefore evaluated on rounded copies of numbers
+  //      the renderer already held exactly.
+  //
+  // The renderer now calls evaluateRow() with the authoritative candidate object
+  // and renders a card that is correct on first paint. No observer, no scraping,
+  // no re-parsing. The pure functions below are unchanged and remain the single
+  // definition of direction and actionability.
+  var VERSION = '20260813-pattern-direction-safety-v2';
   var BULLISH_LABEL = /\b(?:bull(?:ish)?|uptrend|ascending|double bottom|inverse head|cup and handle|vcp|before rally|reclaim)\b/i;
   var BEARISH_LABEL = /\b(?:bear(?:ish)?|downtrend|descending|double top|head and shoulders|rising wedge|inverted cup|distribution)\b/i;
 
@@ -134,164 +158,152 @@
     return { actionable:reasons.length === 0, reason:reasons[0] || null, reasons:reasons };
   }
 
-  function textOf(node) {
-    return String(node && node.textContent || '').trim();
-  }
+  // ---------------------------------------------------------------------------
+  // Model entry point used by the renderer.
+  //
+  // `row` is the object the Pattern scan already holds: { ticker, candidate,
+  // classicPatterns, context, dataDate, currentPrice }. `plan` is the Screener
+  // trade plan for the same ticker, or null. Every number read below comes from
+  // those objects directly — never from rendered text.
+  // ---------------------------------------------------------------------------
 
-  function levelsFromCard(card) {
-    var result = {};
-    Array.prototype.forEach.call(card.querySelectorAll('.ps-level'), function (level) {
-      var label = textOf(level.querySelector('span')).toLowerCase();
-      var value = parseLocalizedNumber(textOf(level.querySelector('b')));
-      if (label.indexOf('harga terakhir') >= 0) result.current = value;
-      else if (label.indexOf('konfirmasi') >= 0) result.confirmation = value;
-      else if (label.indexOf('invalidasi') >= 0) result.invalidation = value;
-      else if (label === 'tp1' || label.indexOf('target') >= 0 && /1\b/.test(label)) result.tp1 = value;
-      else if (label === 'tp2' || label.indexOf('target') >= 0 && /2\b/.test(label)) result.tp2 = value;
-    });
-    return result;
-  }
+  var STATUS = {
+    ACTIONABLE: 'actionable',
+    AWAITING: 'awaiting_confirmation',
+    TARGET_REACHED: 'target_already_reached',
+    INVALIDATED: 'invalidation_reached',
+    INCONSISTENT: 'inconsistent_level_order',
+    INCOMPLETE: 'incomplete_levels',
+    CONTEXT_ONLY: 'context_only'
+  };
 
-  function planFromBox(box) {
-    var result = {};
-    Array.prototype.forEach.call(box.querySelectorAll('.ps-screener-level'), function (level) {
-      var label = textOf(level.querySelector('span')).toLowerCase();
-      var raw = textOf(level.querySelector('b'));
-      if (label === 'entry') {
-        var range = parseRange(raw);
-        result.entry_low = range.low;
-        result.entry_high = range.high;
-      } else if (label.indexOf('stop') >= 0) result.stop_loss = parseLocalizedNumber(raw);
-      else if (label === 'tp1') result.tp1 = parseLocalizedNumber(raw);
-      else if (label === 'tp2') result.tp2 = parseLocalizedNumber(raw);
-    });
-    return result;
-  }
-
-  function ensureWarning(card, kind, message) {
-    var warning = card.querySelector('.ps-direction-warning[data-warning-kind="' + kind + '"]');
-    if (!warning) {
-      warning = card.ownerDocument.createElement('div');
-      warning.className = 'ps-direction-warning';
-      warning.setAttribute('data-warning-kind', kind);
-      var actions = card.querySelector('.ps-card-actions');
-      actions ? card.insertBefore(warning, actions) : card.appendChild(warning);
+  var STATUS_TEXT = {
+    actionable: {
+      badge: 'Siap dipantau',
+      tone: 'ok',
+      note: 'Harga masih berada di antara invalidasi dan target pertama. Konfirmasi manual tetap diperlukan sebelum entry.'
+    },
+    awaiting_confirmation: {
+      badge: 'Menunggu konfirmasi',
+      tone: 'wait',
+      note: 'Pola sudah terbentuk, tetapi harga belum menembus level konfirmasi.'
+    },
+    target_already_reached: {
+      badge: 'Target terlewati',
+      tone: 'muted',
+      note: 'Harga sudah melewati target pertama. Kartu ini menjadi catatan pola, bukan area entry baru.'
+    },
+    invalidation_reached: {
+      badge: 'Sudah invalid',
+      tone: 'danger',
+      note: 'Harga sudah menembus batas invalidasi, jadi rencana pola ini tidak berlaku lagi.'
+    },
+    inconsistent_level_order: {
+      badge: 'Level tidak konsisten',
+      tone: 'danger',
+      note: 'Urutan konfirmasi, invalidasi, dan target tidak masuk akal untuk arah pola ini. Periksa ulang di Chart.'
+    },
+    incomplete_levels: {
+      badge: 'Level tidak lengkap',
+      tone: 'muted',
+      note: 'Sebagian level pola tidak tersedia, jadi kelayakan entry tidak dapat dinilai.'
+    },
+    context_only: {
+      badge: 'Konteks pola',
+      tone: 'muted',
+      note: 'Pola klasik tidak membawa level entry. Gunakan sebagai konteks arah, bukan rencana masuk.'
     }
-    warning.textContent = message;
-    return warning;
+  };
+
+  function patternDirection(row) {
+    var candidate = row && row.candidate;
+    if (candidate && candidate.name) return labelDirection(candidate.name) === 'bearish' ? 'bearish' : 'bullish';
+    var primary = (row && row.classicPatterns && row.classicPatterns[0]) || null;
+    if (!primary) return 'unknown';
+    var bias = labelDirection(primary.bias || primary.label || primary.type);
+    return bias === 'neutral' ? 'bilateral' : bias;
   }
 
-  function normalizeAbcdCard(card, direction) {
-    var name = textOf(card.querySelector('.ps-name'));
-    if (!/\bABCD\b/i.test(name)) return;
-    Array.prototype.forEach.call(card.querySelectorAll('.ps-level span'), function (node) {
-      node.textContent = normalizeLevelLabel(node.textContent, direction);
-    });
-    var safety = evaluateAbcdLevels(levelsFromCard(card), direction);
-    if (safety.actionable) {
-      card.removeAttribute('data-pattern-safety');
-      var old = card.querySelector('.ps-direction-warning[data-warning-kind="pattern-levels"]');
-      if (old) old.remove();
-      return;
+  // Confirmation is a *state*, not just a level: the engine already reports
+  // whether a close confirmed the pattern. A pattern whose price sits between
+  // invalidation and TP1 but has not confirmed is "awaiting", not "actionable".
+  function evaluateRow(row, plan) {
+    var direction = patternDirection(row);
+    var candidate = row && row.candidate;
+    var labels = filterLabelsForDirection((plan && plan.labels) || [], direction);
+    var planDirection = plan ? tradePlanDirection(plan) : 'unknown';
+    var planCompatible = plan ? directionsCompatible(direction, planDirection) : false;
+
+    if (!candidate) {
+      return {
+        direction: direction,
+        status: STATUS.CONTEXT_ONLY,
+        actionable: false,
+        reasons: [],
+        levels: null,
+        plan: plan || null,
+        planDirection: planDirection,
+        planCompatible: planCompatible,
+        labels: labels
+      };
     }
-    card.setAttribute('data-pattern-safety', safety.reason || 'not_actionable');
-    var badge = card.querySelector('.ps-badge');
-    if (badge) badge.textContent = 'Tidak actionable';
-    ensureWarning(card, 'pattern-levels', safety.reason === 'target_already_reached'
-      ? 'Target pattern sudah terlewati. Kartu ini hanya menjadi catatan pola, bukan area entry baru.'
-      : 'Urutan atau status level pattern tidak lagi aman untuk entry. Verifikasi ulang di Chart sebelum mengambil keputusan.');
-  }
 
-  function filterSetupChips(card, direction) {
-    var rejected = 0;
-    var accepted = 0;
-    Array.prototype.forEach.call(card.querySelectorAll('.ps-setup-chip'), function (chip) {
-      var bias = labelDirection(chip.textContent);
-      var conflict = (direction === 'bullish' && bias === 'bearish') || (direction === 'bearish' && bias === 'bullish');
-      chip.hidden = conflict;
-      chip.setAttribute('data-label-direction', bias);
-      if (conflict) rejected += 1; else accepted += 1;
-    });
-    var source = card.querySelector('.ps-setup-source');
-    if (source && rejected > 0) {
-      source.textContent = accepted > 0
-        ? 'Hanya label Screener yang searah ditampilkan; ' + rejected + ' label berlawanan arah disembunyikan.'
-        : 'Konteks Screener berlawanan arah dengan Pattern; ' + rejected + ' label disembunyikan agar tidak terlihat sebagai konfirmasi.';
+    var values = {
+      current: finite(candidate.currentPrice != null ? candidate.currentPrice : row.currentPrice),
+      confirmation: finite(candidate.confirmation),
+      invalidation: finite(candidate.invalidation),
+      tp1: finite(candidate.tp1),
+      tp2: finite(candidate.tp2)
+    };
+    var evaluated = evaluateAbcdLevels(values, direction);
+    var status;
+    if (evaluated.actionable) {
+      status = candidate.status === 'confirmed' ? STATUS.ACTIONABLE : STATUS.AWAITING;
+    } else if (evaluated.reasons && evaluated.reasons.indexOf('invalidation_reached') >= 0) {
+      status = STATUS.INVALIDATED;
+    } else if (evaluated.reasons && evaluated.reasons.indexOf('inconsistent_level_order') >= 0) {
+      status = STATUS.INCONSISTENT;
+    } else if (evaluated.reason === 'incomplete_levels') {
+      status = STATUS.INCOMPLETE;
+    } else {
+      status = STATUS.TARGET_REACHED;
     }
+
+    return {
+      direction: direction,
+      status: status,
+      actionable: status === STATUS.ACTIONABLE,
+      reasons: evaluated.reasons || (evaluated.reason ? [evaluated.reason] : []),
+      levels: values,
+      plan: plan || null,
+      planDirection: planDirection,
+      planCompatible: planCompatible,
+      labels: labels
+    };
   }
 
-  function guardScreenerPlan(card, direction) {
-    var box = card.querySelector('.ps-screener-plan');
-    if (!box || box.getAttribute('data-direction-checked') === '1') return;
-    var planDirection = tradePlanDirection(planFromBox(box));
-    box.setAttribute('data-direction-checked', '1');
-    box.setAttribute('data-plan-direction', planDirection);
-    if (directionsCompatible(direction, planDirection)) {
-      var title = box.querySelector('.ps-screener-plan-title');
-      if (title && planDirection !== 'unknown' && title.textContent.indexOf('· ' + planDirection) < 0) {
-        title.textContent += ' · ' + (planDirection === 'bullish' ? 'Bullish/Long' : 'Bearish/Short');
-      }
-      return;
-    }
-    var source = textOf(box.querySelector('.ps-screener-plan-title')).replace(/^Level Screener\s*·\s*/i, '') || 'Screener';
-    box.classList.add('direction-conflict');
-    box.setAttribute('data-direction-conflict', '1');
-    box.innerHTML = '<div class="ps-screener-plan-title">Konflik arah · level Screener disembunyikan</div>' +
-      '<p class="ps-screener-conflict-text">Pattern ' + direction + ', sedangkan rencana ' + source + ' bersifat ' +
-      (planDirection === 'bullish' ? 'bullish/long' : (planDirection === 'bearish' ? 'bearish/short' : 'tidak konsisten')) +
-      '. Keduanya tidak digabung sebagai setup masuk.</p>';
+  function statusText(status) {
+    return STATUS_TEXT[status] || STATUS_TEXT.context_only;
   }
 
-  function processCard(card) {
-    if (!card || !card.querySelector) return;
-    var direction = cardDirection(card);
-    normalizeAbcdCard(card, direction);
-    filterSetupChips(card, direction);
-    guardScreenerPlan(card, direction);
-    card.setAttribute('data-direction-safety-version', VERSION);
-  }
-
-  function processScope(scope) {
-    if (!scope || !scope.querySelectorAll) return;
-    if (scope.matches && scope.matches('#page-pattern .ps-card')) processCard(scope);
-    Array.prototype.forEach.call(scope.querySelectorAll('#page-pattern .ps-card'), processCard);
-  }
-
-  function install(root) {
-    if (!root || !root.document || root.__AUTOCUAN_PATTERN_DIRECTION_SAFETY__) return false;
-    root.__AUTOCUAN_PATTERN_DIRECTION_SAFETY__ = VERSION;
-    var doc = root.document;
-    var style = doc.createElement('style');
-    style.id = 'patternDirectionSafetyStyles';
-    style.textContent = [
-      '.ps-direction-warning{margin-top:10px;padding:9px 10px;border:1px solid rgba(251,191,36,.28);border-radius:10px;background:rgba(245,158,11,.08);color:#fcd34d;font-size:10px;line-height:1.5}',
-      '.ps-screener-plan.direction-conflict{border-color:rgba(248,113,113,.28);background:rgba(239,68,68,.07)}',
-      '.ps-screener-plan.direction-conflict .ps-screener-plan-title{color:#fca5a5}',
-      '.ps-screener-conflict-text{margin:0;color:#fecaca;font-size:10px;line-height:1.55}',
-      '.ps-setup-chip[data-label-direction="bearish"]{border-color:rgba(248,113,113,.24);background:rgba(239,68,68,.07);color:#fecaca}'
-    ].join('');
-    doc.head.appendChild(style);
-
-    var scheduled = false;
-    function schedule(scope) {
-      if (scheduled) return;
-      scheduled = true;
-      root.setTimeout(function () {
-        scheduled = false;
-        processScope(scope && scope.querySelectorAll ? scope : doc);
-      }, 30);
-    }
-    processScope(doc);
-    new root.MutationObserver(function () {
-      // Pattern render uses innerHTML and may add many cards in one mutation.
-      // Always rescan the bounded Pattern page so no sibling card is skipped.
-      schedule(doc);
-    }).observe(doc.body, { childList:true, subtree:true });
-    return true;
+  // Ordering the grid by decision value: what a user can act on comes first,
+  // then what is still forming, then what is only a record of something past.
+  var RANK = {
+    actionable: 0,
+    awaiting_confirmation: 1,
+    context_only: 2,
+    target_already_reached: 3,
+    incomplete_levels: 4,
+    inconsistent_level_order: 5,
+    invalidation_reached: 6
+  };
+  function statusRank(status) {
+    return RANK[status] == null ? 9 : RANK[status];
   }
 
   return {
     version:VERSION,
+    STATUS:STATUS,
     finite:finite,
     parseLocalizedNumber:parseLocalizedNumber,
     parseRange:parseRange,
@@ -302,6 +314,9 @@
     directionsCompatible:directionsCompatible,
     normalizeLevelLabel:normalizeLevelLabel,
     evaluateAbcdLevels:evaluateAbcdLevels,
-    install:install
+    patternDirection:patternDirection,
+    evaluateRow:evaluateRow,
+    statusText:statusText,
+    statusRank:statusRank
   };
 });

@@ -395,7 +395,7 @@ test('existing valid login and register still succeed', async () => {
     const capture = {};
     const reg = requireApiWithSupabaseStub('../api/register-user', supabaseWithUser(null, capture));
     res = makeRes();
-    await reg({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'newuser', passwordHash: 'h', deviceId: 'dev_x', userAgent: 'ua' } }, res);
+    await reg({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua' } }, res);
     assert.equal(res.body.success, true);
     assert.ok(!('password' in res.body));
   });

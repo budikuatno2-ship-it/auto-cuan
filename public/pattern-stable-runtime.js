@@ -5,12 +5,15 @@
   function boot(attempt) {
     var Ui = root.AutoCuanUiStability;
     var doc = root.document;
-    if (!Ui || !doc.getElementById('dashboardScreen') || !root.PatternMap || !root.PatternMapAdminAccess || typeof root.navigateTo !== 'function') {
+    var Safety = root.AutoCuanPatternSafety;
+    var Visual = root.AutoCuanPatternVisual;
+    if (!Ui || !doc.getElementById('dashboardScreen') || !root.PatternMap || !root.PatternMapAdminAccess ||
+        !Safety || !Visual || typeof root.navigateTo !== 'function') {
       if (attempt < 240) root.setTimeout(function () { boot(attempt + 1); }, 50);
       return;
     }
     if (root.__AUTOCUAN_PATTERN_STABLE__) return;
-    root.__AUTOCUAN_PATTERN_STABLE__ = '20260802-pattern-stable-v5';
+    root.__AUTOCUAN_PATTERN_STABLE__ = '20260813-pattern-stable-v6';
 
     var originalNavigate = root.navigateTo;
     var originalLogout = typeof root.logout === 'function' ? root.logout : null;
@@ -24,9 +27,12 @@
         return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
       });
     }
+    // One price format for the whole feature. Levels the engine derives from ATR
+    // and Fibonacci projections are genuinely fractional, so they are not rounded
+    // to integers — but a level that *is* whole is never padded with ",00", which
+    // is what made one card read "1.060" next to "933,21".
     function num(value) {
-      var n = Number(value);
-      return Number.isFinite(n) ? n.toLocaleString('id-ID', { maximumFractionDigits:2 }) : '—';
+      return Visual.priceText(value);
     }
     function headers() {
       var result = {};
@@ -94,29 +100,70 @@
         '.ps-title{margin-top:6px;font-size:24px;line-height:1.15;font-weight:800;letter-spacing:-.02em;color:#f8fafc}.ps-sub{margin-top:6px;max-width:62ch;font-size:12.5px;line-height:1.6;color:#94a3b8}.ps-actions,.ps-card-actions{display:flex;gap:8px;flex-wrap:wrap}',
         '.ps-btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:10px 14px;border:1px solid rgba(52,211,153,.30);border-radius:12px;background:rgba(16,185,129,.10);color:#6ee7b7;font-size:12.5px;font-weight:700;cursor:pointer;transition:background .15s ease,border-color .15s ease}.ps-btn:hover:not(:disabled){background:rgba(16,185,129,.16);border-color:rgba(52,211,153,.45)}.ps-btn.alt{border-color:rgba(148,163,184,.18);background:rgba(15,23,42,.58);color:#cbd5e1}.ps-btn.alt:hover:not(:disabled){background:rgba(30,41,59,.72)}.ps-btn:disabled{opacity:.5;cursor:not-allowed}',
         '.ps-progress{margin-top:18px;padding:13px 15px;border:1px solid rgba(148,163,184,.12);border-radius:14px;background:rgba(2,6,23,.38)}.ps-progress-row{display:flex;justify-content:space-between;gap:12px;font-size:11.5px;color:#94a3b8}.ps-track{height:6px;margin-top:9px;overflow:hidden;border-radius:999px;background:#151a23}.ps-fill{height:100%;width:0;background:linear-gradient(90deg,#10b981,#22d3ee);transition:width .18s}',
-        '.ps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;margin-top:18px}',
+        '.ps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:14px;margin-top:18px}',
         '.ps-card{display:flex;flex-direction:column;min-width:0;padding:16px;border:1px solid rgba(148,163,184,.13);border-radius:var(--ac-radius-lg,16px);background:var(--ac-surface-2,rgba(15,23,42,.52));box-shadow:var(--ac-shadow-1,0 10px 28px rgba(0,0,0,.18));transition:border-color .15s ease,transform .15s ease}.ps-card:hover{transform:translateY(-1px)}.ps-card.bullish{border-color:rgba(52,211,153,.26)}.ps-card.bearish{border-color:rgba(248,113,113,.24)}.ps-card.bilateral{border-color:rgba(96,165,250,.24)}',
-        '.ps-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.ps-ticker{font-size:21px;line-height:1.1;font-weight:800;letter-spacing:-.01em;color:#f8fafc}.ps-name{margin-top:3px;font-size:12px;line-height:1.5;color:#94a3b8}.ps-badge{flex:0 0 auto;padding:5px 9px;border:1px solid rgba(96,165,250,.25);border-radius:999px;background:rgba(59,130,246,.08);color:#93c5fd;font-size:10px;font-weight:700;white-space:nowrap}',
-        '.ps-pattern-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}.ps-pattern-chip{display:inline-flex;align-items:center;min-height:26px;padding:4px 10px;border:1px solid rgba(96,165,250,.20);border-radius:999px;background:rgba(59,130,246,.075);color:#bfdbfe;font-size:10.5px;font-weight:700}.ps-pattern-chip.bullish{border-color:rgba(52,211,153,.24);background:rgba(16,185,129,.08);color:#a7f3d0}.ps-pattern-chip.bearish{border-color:rgba(248,113,113,.24);background:rgba(239,68,68,.07);color:#fecaca}.ps-pattern-note{margin-top:10px;color:#8395ab;font-size:11px;line-height:1.6}',
-        '.ps-levels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}.ps-level{padding:9px 10px;border:1px solid rgba(148,163,184,.10);border-radius:12px;background:rgba(2,6,23,.34)}.ps-level span{display:block;color:#7c8ba1;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.ps-level b{display:block;margin-top:3px;color:#e8edf5;font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ps-card-actions{margin-top:auto;padding-top:14px}',
-        // Scroll rather than clip: a tall generated image must stay fully reachable
-        // on a phone instead of being cut off by the frame.
-        '.ps-map{position:relative;display:none;margin-top:12px;padding:10px;overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid rgba(148,163,184,.12);border-radius:14px;background:rgba(2,6,23,.44);color:#94a3b8;font-size:12px;text-align:center}.ps-map.open{display:block}',
-        '.ps-map img{display:block;width:100%;height:auto;border-radius:10px;background:#111827}',
+        '.ps-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.ps-ticker{font-size:21px;line-height:1.1;font-weight:800;letter-spacing:-.01em;color:#f8fafc}.ps-name{margin-top:3px;font-size:12px;line-height:1.5;color:#94a3b8}',
+        // The verdict pill carries meaning, so each state gets its own colour
+        // rather than the single blue treatment every state used to share.
+        '.ps-badge{flex:0 0 auto;padding:5px 10px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.02em;white-space:nowrap;border:1px solid}',
+        '.ps-badge[data-tone="ok"]{border-color:rgba(52,211,153,.32);background:rgba(16,185,129,.12);color:#6ee7b7}',
+        '.ps-badge[data-tone="wait"]{border-color:rgba(96,165,250,.30);background:rgba(59,130,246,.10);color:#93c5fd}',
+        '.ps-badge[data-tone="muted"]{border-color:rgba(148,163,184,.22);background:rgba(148,163,184,.08);color:#94a3b8}',
+        '.ps-badge[data-tone="danger"]{border-color:rgba(248,113,113,.30);background:rgba(239,68,68,.10);color:#fca5a5}',
+        '.ps-card[data-tone="muted"],.ps-card[data-tone="danger"]{opacity:.86}',
+        '.ps-verdict{margin-top:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(148,163,184,.14);background:rgba(2,6,23,.34);color:#a9b6c9;font-size:11.5px;line-height:1.6}',
+        '.ps-verdict[data-tone="ok"]{border-color:rgba(52,211,153,.22);background:rgba(16,185,129,.06);color:#b7ead4}',
+        '.ps-verdict[data-tone="danger"]{border-color:rgba(248,113,113,.22);background:rgba(239,68,68,.06);color:#fecaca}',
+        '.ps-pattern-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.ps-pattern-chip{display:inline-flex;align-items:center;min-height:26px;padding:4px 10px;border:1px solid rgba(96,165,250,.20);border-radius:999px;background:rgba(59,130,246,.075);color:#bfdbfe;font-size:10.5px;font-weight:700}.ps-pattern-chip.bullish{border-color:rgba(52,211,153,.24);background:rgba(16,185,129,.08);color:#a7f3d0}.ps-pattern-chip.bearish{border-color:rgba(248,113,113,.24);background:rgba(239,68,68,.07);color:#fecaca}.ps-pattern-note{margin-top:10px;color:#8395ab;font-size:11px;line-height:1.6}',
+        // The pattern picture is the reason this page exists, so it is part of the
+        // card rather than something hidden behind a button.
+        '.ps-figure{margin-top:12px;border:1px solid rgba(148,163,184,.12);border-radius:14px;background:rgba(2,6,23,.44);overflow:hidden}',
+        '.ps-figure svg{display:block;width:100%;height:auto}',
+        '.ps-figure-empty{padding:26px 14px;color:#7c8ba1;font-size:11.5px;text-align:center}',
+        '.ps-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:12px}',
+        // A price must never be hyphen-free-wrapped mid-number: "1.090" split
+        // across two lines reads as "1.09" followed by a stray "0". The value
+        // is nowrap and the label is what gives way when space runs out.
+        '.ps-level{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:8px 11px;border:1px solid rgba(148,163,184,.10);border-radius:11px;background:rgba(2,6,23,.34)}',
+        '.ps-level span{min-width:0;color:#7c8ba1;font-size:9.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;overflow-wrap:break-word}',
+        '.ps-level b{flex:0 0 auto;white-space:nowrap;color:#e8edf5;font-size:13px;font-variant-numeric:tabular-nums;text-align:right}',
+        '.ps-level[data-role="confirmation"] b{color:#6ee7b7}.ps-level[data-role="invalidation"] b{color:#fca5a5}.ps-level[data-role="tp1"] b,.ps-level[data-role="tp2"] b{color:#fcd34d}.ps-level[data-role="prz"] b{color:#d8b4fe}',
+        '.ps-level.wide{grid-column:1 / -1}',
+        '.ps-card-actions{margin-top:auto;padding-top:14px}',
         '.ps-map-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}',
         '.ps-map-tool{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 13px;border:1px solid rgba(148,163,184,.18);border-radius:11px;background:rgba(15,23,42,.66);color:#cbd5e1;font-size:11.5px;font-weight:700;text-decoration:none;cursor:pointer}.ps-map-tool:hover{border-color:rgba(52,211,153,.40);color:#6ee7b7}',
         '@media(max-width:520px){.ps-map-tools .ps-map-tool{flex:1 1 0}}',
         '.ps-empty{margin-top:18px;padding:36px 18px;border:1px dashed rgba(148,163,184,.18);border-radius:16px;background:rgba(2,6,23,.30);color:#94a3b8;font-size:12.5px;line-height:1.6;text-align:center}',
+        '.ps-legend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:14px;color:#7c8ba1;font-size:10.5px}',
+        '.ps-legend i{display:inline-block;width:16px;height:0;margin-right:6px;vertical-align:middle;border-top:2px dashed currentColor}',
+        '.ps-legend b{font-weight:700;color:#94a3b8}',
         '@media(max-width:760px){.ps-grid{grid-template-columns:1fr;gap:12px}.ps-shell{padding:16px;border-radius:18px}.ps-title{font-size:21px}.ps-actions{width:100%}.ps-actions .ps-btn{flex:1 1 0}.ps-card-actions .ps-btn{flex:1 1 0}}',
-        // Below 420px a 2-up level grid squeezes prices onto two lines. One row
-        // per level keeps every number readable on the smallest common phones.
-        '@media(max-width:420px){.ps-levels{grid-template-columns:1fr;gap:6px}.ps-level{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:8px 11px}.ps-level span{font-size:10px}.ps-level b{margin-top:0;text-align:right}}'
+        '@media(max-width:420px){.ps-levels{grid-template-columns:1fr;gap:6px}.ps-level span{font-size:10px}}',
+        '@media(prefers-reduced-motion:reduce){.ps-card{transition:none}.ps-card:hover{transform:none}.ps-fill{transition:none}}'
       ].join('');
       doc.head.appendChild(style);
     }
 
     function pageHtml() {
-      return '<section class="ps-shell"><div class="ps-head"><div><p class="ps-eyebrow">Analisis Teknikal</p><h2 class="ps-title">Pattern Radar</h2><p class="ps-sub">Hanya menampilkan saham yang benar-benar memiliki ABCD atau pola chart konservatif T-1. Label setup Screener hanya menjadi informasi tambahan, bukan kartu pattern tersendiri.</p></div><div class="ps-actions"><button id="psRefresh" class="ps-btn">Scan Ulang</button><button id="psTechnical" class="ps-btn alt">Buka Chart</button></div></div><div class="ps-progress"><div class="ps-progress-row"><span id="psStatus">Siap memindai.</span><span id="psCount">0 saham pattern</span></div><div class="ps-track"><div id="psFill" class="ps-fill"></div></div></div><div id="psGrid" class="ps-grid"></div><div id="psEmpty" class="ps-empty">Belum ada hasil scan Pattern hari ini.</div></section>';
+      return '<section class="ps-shell">' +
+        '<div class="ps-head"><div>' +
+        '<p class="ps-eyebrow">Analisis Teknikal</p>' +
+        '<h2 class="ps-title">Pattern Radar</h2>' +
+        '<p class="ps-sub">Memindai saham di hasil Screener terbaru dan menampilkan yang membentuk pola ABCD atau pola chart klasik pada data harian T-1. Kartu diurutkan mulai dari yang masih relevan untuk dipantau. Pola adalah konfirmasi teknikal, bukan sinyal beli.</p>' +
+        '</div><div class="ps-actions">' +
+        '<button type="button" id="psRefresh" class="ps-btn">Scan ulang</button>' +
+        '<button type="button" id="psTechnical" class="ps-btn alt">Buka Chart</button>' +
+        '</div></div>' +
+        '<div class="ps-progress"><div class="ps-progress-row"><span id="psStatus">Siap memindai.</span><span id="psCount" aria-live="polite">0 saham berpola</span></div>' +
+        '<div class="ps-track" role="progressbar" aria-labelledby="psStatus" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="psTrack"><div id="psFill" class="ps-fill"></div></div></div>' +
+        '<div id="psGrid" class="ps-grid"></div>' +
+        '<div id="psEmpty" class="ps-empty">Belum ada hasil scan Pattern hari ini.</div>' +
+        '<div id="psLegend" class="ps-legend" hidden>' +
+        '<span style="color:#6ee7b7"><i></i><b>Konfirmasi</b> — level yang harus ditembus close harian</span>' +
+        '<span style="color:#fca5a5"><i></i><b>Invalidasi</b> — pola batal bila tersentuh</span>' +
+        '<span style="color:#fcd34d"><i></i><b>Target 1 & 2</b> — proyeksi dari panjang kaki C–D</span>' +
+        '<span style="color:#d8b4fe"><i></i><b>PRZ</b> — zona tempat titik D diperkirakan terbentuk</span>' +
+        '</div></section>';
     }
     function place(node) {
       var screen = doc.getElementById('dashboardScreen');
@@ -159,8 +206,6 @@
         doc.getElementById('psRefresh').onclick = function () { clearCache(); state.cacheHydrated = true; scan(true); };
         doc.getElementById('psTechnical').onclick = function () { root.navigateTo('chart'); };
         node.addEventListener('click', function (event) {
-          var mapButton = event.target.closest('[data-ps-map]');
-          if (mapButton) draw(mapButton.getAttribute('data-ps-map'), mapButton);
           var zoomButton = event.target.closest('[data-ps-zoom]');
           if (zoomButton) expand(zoomButton.getAttribute('data-ps-zoom'));
           var chartButton = event.target.closest('[data-ps-chart]');
@@ -210,19 +255,24 @@
       root.scrollTo({ top:0, behavior:'smooth' });
     }
 
-    function clearImages() {
-      Object.keys(state.controllers).forEach(function (key) { try { state.controllers[key].abort(); } catch (_) {} });
-      Object.keys(state.urls).forEach(function (key) { try { root.URL.revokeObjectURL(state.urls[key].url); } catch (_) {} });
-      state.controllers = {}; state.urls = {};
-    }
     function progress(done, total, overrideText) {
       state.total = total;
       var status = doc.getElementById('psStatus');
-      if (status) status.textContent = overrideText || (state.loading ? 'Memindai ' + done + ' dari ' + total + ' saham Screener…' : (total ? 'Selesai memindai ' + total + ' saham Screener.' : 'Screener belum memiliki ticker untuk dipindai.'));
+      if (status) status.textContent = overrideText || (state.loading ? 'Memindai ' + done + ' dari ' + total + ' saham Screener…' : (total ? 'Selesai memindai ' + total + ' saham Screener.' : 'Screener belum punya ticker untuk dipindai.'));
       var count = doc.getElementById('psCount');
-      if (count) count.textContent = state.rows.length + ' saham pattern';
+      if (count) {
+        var actionable = state.rows.filter(function (row) { return row.safety && row.safety.actionable; }).length;
+        count.textContent = state.rows.length + ' saham berpola' + (state.rows.length ? ' · ' + actionable + ' siap dipantau' : '');
+      }
+      var percent = total ? Math.round(done / total * 100) : 0;
       var fill = doc.getElementById('psFill');
-      if (fill) fill.style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+      if (fill) fill.style.width = percent + '%';
+      var track = doc.getElementById('psTrack');
+      if (track) {
+        track.setAttribute('aria-valuenow', String(percent));
+        // A permanently full bar communicates nothing once the scan has ended.
+        track.hidden = !state.loading && percent >= 100;
+      }
     }
     function patternChips(row) {
       var patterns = Array.isArray(row.classicPatterns) ? row.classicPatterns : [];
@@ -235,21 +285,77 @@
       var primary = patterns[0] || {};
       return '<div class="ps-pattern-chips">' + chips + '</div>' + (primary.reason ? '<p class="ps-pattern-note">' + esc(primary.reason) + ' Pattern adalah konfirmasi teknikal, bukan sinyal BUY otomatis.</p>' : '');
     }
+    // Levels are labelled by what they mean for the pattern's own direction, and
+    // the same six slots appear in the same order on every card so two cards can
+    // be compared at a glance.
+    function levelsHtml(c, direction) {
+      var up = direction !== 'bearish';
+      var rows = [
+        ['current', 'Harga terakhir', num(c.currentPrice), false],
+        ['confirmation', up ? 'Konfirmasi naik' : 'Konfirmasi turun', num(c.confirmation), false],
+        ['tp1', 'Target 1', num(c.tp1), false],
+        ['tp2', 'Target 2', num(c.tp2), false],
+        ['invalidation', up ? 'Invalidasi — di bawah' : 'Invalidasi — di atas', num(c.invalidation), true]
+      ];
+      var html = rows.map(function (row) {
+        return '<div class="ps-level' + (row[3] ? ' wide' : '') + '" data-role="' + row[0] + '"><span>' + esc(row[1]) + '</span><b>' + row[2] + '</b></div>';
+      }).join('');
+      var low = c.prz && c.prz.low, high = c.prz && c.prz.high;
+      if (Number.isFinite(Number(low)) && Number.isFinite(Number(high))) {
+        html += '<div class="ps-level wide" data-role="prz"><span>Zona pembentukan D (PRZ)</span><b>' + num(low) + ' – ' + num(high) + '</b></div>';
+      }
+      return '<div class="ps-levels">' + html + '</div>';
+    }
+
+    function figureHtml(row) {
+      var svg = '';
+      try { svg = Visual.buildPatternSvg(row, { width: 420, height: 208 }); } catch (_) { svg = ''; }
+      if (!svg) return '<div class="ps-figure"><div class="ps-figure-empty">Bentuk pola belum bisa digambar dari data harian yang tersedia.</div></div>';
+      return '<div class="ps-figure">' + svg + '</div>';
+    }
+
+    // "Keyakinan" used to be a bare percentage. On a chart pattern that reads as
+    // a probability of profit, which it is not — it is how cleanly the formation
+    // matches its rule. The label now says so.
+    function confidenceText(primary) {
+      var value = Number(primary && primary.confidence);
+      if (!Number.isFinite(value)) return '—';
+      return Math.round(value * 100) + '%';
+    }
+
     function card(row) {
       var c = row.candidate;
       var patterns = Array.isArray(row.classicPatterns) ? row.classicPatterns : [];
       var primary = patterns[0] || {};
-      var directionText = c && c.name ? c.name : primary.bias;
-      var direction = String(directionText || '').toLowerCase().indexOf('bull') >= 0 ? 'bullish' : (String(directionText || '').toLowerCase().indexOf('bear') >= 0 ? 'bearish' : 'bilateral');
+      var verdict = row.safety || Safety.evaluateRow(row, row.plan || null);
+      var direction = verdict.direction === 'bearish' ? 'bearish' : (verdict.direction === 'bullish' ? 'bullish' : 'bilateral');
+      var text = Safety.statusText(verdict.status);
+      var head = '<div class="ps-card-head"><div><div class="ps-ticker">' + esc(row.ticker) + '</div>' +
+        '<div class="ps-name">' + esc((c && c.name) || primary.label || 'Pola chart klasik') + ' · data T-1 ' + esc(row.dataDate || '—') + '</div></div>' +
+        '<span class="ps-badge" data-tone="' + esc(text.tone) + '">' + esc(text.badge) + '</span></div>';
+      var verdictBox = '<p class="ps-verdict" data-tone="' + esc(text.tone) + '">' + esc(text.note) + '</p>';
+      var actions = '<div class="ps-card-actions"><button type="button" class="ps-btn" data-ps-zoom="' + esc(row.ticker) + '">Perbesar</button>' +
+        '<button type="button" class="ps-btn alt" data-ps-chart="' + esc(row.ticker) + '">Buka Chart</button></div>';
+
       if (!c) {
-        return '<article class="ps-card ' + direction + '" data-classic-only="1"><div class="ps-card-head"><div><div class="ps-ticker">' + esc(row.ticker) + '</div><div class="ps-name">' + esc(primary.label || 'Classic Chart Pattern') + ' · T-1 ' + esc(row.dataDate) + '</div></div><span class="ps-badge">Pattern Terdeteksi</span></div>' + patternChips(row) + '<div class="ps-levels"><div class="ps-level"><span>Harga terakhir</span><b>' + num(row.currentPrice) + '</b></div><div class="ps-level"><span>Bias</span><b>' + esc(primary.bias || 'Bilateral') + '</b></div><div class="ps-level"><span>Keyakinan</span><b>' + (Number.isFinite(Number(primary.confidence)) ? Math.round(Number(primary.confidence) * 100) + '%' : '—') + '</b></div></div><div class="ps-card-actions"><button class="ps-btn" data-ps-map="' + esc(row.ticker) + '">Lihat Pola</button><button class="ps-btn alt" data-ps-chart="' + esc(row.ticker) + '">Buka Chart</button></div><div id="psMap-' + esc(row.ticker) + '" class="ps-map"></div></article>';
+        return '<article class="ps-card ' + direction + '" data-classic-only="1" data-tone="' + esc(text.tone) + '" data-pattern-status="' + esc(verdict.status) + '">' +
+          head + verdictBox + patternChips(row) + figureHtml(row) +
+          '<div class="ps-levels">' +
+          '<div class="ps-level" data-role="current"><span>Harga terakhir</span><b>' + num(row.currentPrice) + '</b></div>' +
+          '<div class="ps-level"><span>Arah pola</span><b>' + esc(primary.bias || 'Bilateral') + '</b></div>' +
+          '<div class="ps-level wide"><span>Kecocokan bentuk pola</span><b>' + confidenceText(primary) + '</b></div>' +
+          '</div>' + actions + '</article>';
       }
-      return '<article class="ps-card ' + direction + '"><div class="ps-card-head"><div><div class="ps-ticker">' + esc(row.ticker) + '</div><div class="ps-name">' + esc(c.name) + ' · T-1 ' + esc(row.dataDate) + '</div></div><span class="ps-badge">' + (c.status === 'confirmed' ? 'Terkonfirmasi' : 'Kandidat') + '</span></div>' + patternChips(row) + '<div class="ps-levels"><div class="ps-level"><span>Harga terakhir</span><b>' + num(c.currentPrice) + '</b></div><div class="ps-level"><span>Konfirmasi</span><b>' + num(c.confirmation) + '</b></div><div class="ps-level"><span>Invalidasi</span><b>' + num(c.invalidation) + '</b></div><div class="ps-level"><span>TP1</span><b>' + num(c.tp1) + '</b></div><div class="ps-level"><span>TP2</span><b>' + num(c.tp2) + '</b></div><div class="ps-level"><span>PRZ</span><b>' + num(c.prz && c.prz.low) + '–' + num(c.prz && c.prz.high) + '</b></div></div><div class="ps-card-actions"><button class="ps-btn" data-ps-map="' + esc(row.ticker) + '">Lihat Peta</button><button class="ps-btn alt" data-ps-chart="' + esc(row.ticker) + '">Buka Chart</button></div><div id="psMap-' + esc(row.ticker) + '" class="ps-map"></div></article>';
+      return '<article class="ps-card ' + direction + '" data-tone="' + esc(text.tone) + '" data-pattern-status="' + esc(verdict.status) + '">' +
+        head + verdictBox + patternChips(row) + figureHtml(row) + levelsHtml(c, direction) + actions + '</article>';
     }
+
     function render() {
+      state.rows.forEach(function (row) { row.safety = Safety.evaluateRow(row, row.plan || null); });
       state.rows.sort(function (a, b) {
-        var ac = a.candidate && a.candidate.status === 'confirmed' ? 1 : 0, bc = b.candidate && b.candidate.status === 'confirmed' ? 1 : 0;
-        if (ac !== bc) return bc - ac;
+        var ar = Safety.statusRank(a.safety && a.safety.status);
+        var br = Safety.statusRank(b.safety && b.safety.status);
+        if (ar !== br) return ar - br;
         var ag = a.candidate ? 1 : 0, bg = b.candidate ? 1 : 0;
         if (ag !== bg) return bg - ag;
         var af = a.classicPatterns && a.classicPatterns[0] ? Number(a.classicPatterns[0].confidence) || 0 : 0;
@@ -261,8 +367,10 @@
       var empty = doc.getElementById('psEmpty');
       if (empty) {
         empty.classList.toggle('hidden', state.rows.length > 0);
-        if (!state.rows.length) empty.textContent = state.loading ? 'Sedang memindai seluruh saham dari Screener terbaru…' : (state.total ? 'Tidak ada pattern konservatif yang valid pada hasil Screener saat ini.' : 'Belum ada ticker dari Screener yang dapat dipindai.');
+        if (!state.rows.length) empty.textContent = state.loading ? 'Sedang memindai saham dari hasil Screener terbaru…' : (state.total ? 'Tidak ada pola yang lolos aturan konservatif pada hasil Screener saat ini.' : 'Belum ada ticker dari Screener yang bisa dipindai.');
       }
+      var legend = doc.getElementById('psLegend');
+      if (legend) legend.hidden = state.rows.length === 0;
     }
     async function universe() {
       var stamp = Date.now();
@@ -301,7 +409,7 @@
         state.rows = results.filter(Boolean);
         state.total = tickers.length;
         state.loaded = true;
-        clearImages(); render(); persistCache();
+        render(); persistCache();
       } catch (_) {
         state.rows = previousRows;
         state.loaded = previousRows.length > 0;
@@ -315,120 +423,17 @@
       }
     }
 
-    function sparse(length, points) {
-      var data = Array.from({ length:length }, function () { return null; });
-      points.forEach(function (point) { if (point && point.index >= 0 && point.index < length && Number.isFinite(Number(point.value))) data[point.index] = Number(point.value); });
-      return data;
-    }
-    function extrema(candles, useHigh) {
-      var result = [];
-      for (var i = 2; i < candles.length - 2; i += 1) {
-        var value = Number(useHigh ? candles[i].high : candles[i].low);
-        var good = true;
-        for (var j = 1; j <= 2; j += 1) {
-          var left = Number(useHigh ? candles[i-j].high : candles[i-j].low);
-          var right = Number(useHigh ? candles[i+j].high : candles[i+j].low);
-          if (useHigh ? (value < left || value < right) : (value > left || value > right)) good = false;
-        }
-        if (good) result.push({ index:i, value:value });
-      }
-      return result;
-    }
-    function buildClassicConfig(row, presentation) {
-      var look = Ui.chartPresentation(presentation);
-      var candles = row.context && Array.isArray(row.context.candles) ? row.context.candles.slice(-90) : [];
-      if (candles.length < 5) return null;
-      var labels = candles.map(function (c) { return c.time || c.date || ''; });
-      var close = candles.map(function (c) { return Number(c.close); });
-      if (close.some(function (v) { return !Number.isFinite(v); })) return null;
-      var primary = row.classicPatterns && row.classicPatterns[0] || {};
-      var type = String(primary.type || '').toUpperCase();
-      var points = [];
-      var highs = extrema(candles, true), lows = extrema(candles, false);
-      if (type.indexOf('DOUBLE_TOP') >= 0) points = highs.slice(-2);
-      else if (type.indexOf('DOUBLE_BOTTOM') >= 0) points = lows.slice(-2);
-      else if (type.indexOf('HEAD_AND_SHOULDERS') >= 0 && type.indexOf('INVERSE') < 0) points = highs.slice(-3);
-      else if (type.indexOf('INVERSE_HEAD') >= 0) points = lows.slice(-3);
-      else if (type.indexOf('CUP') >= 0 && type.indexOf('INVERTED') < 0) {
-        var left = candles.slice(0, Math.floor(candles.length*.35)).reduce(function (best,c,i) { return !best || c.high > best.value ? {index:i,value:Number(c.high)} : best; }, null);
-        var bottomStart = Math.floor(candles.length*.2), bottomEnd = Math.floor(candles.length*.7);
-        var bottom = candles.slice(bottomStart,bottomEnd).reduce(function (best,c,i) { return !best || c.low < best.value ? {index:bottomStart+i,value:Number(c.low)} : best; }, null);
-        var rightStart = Math.floor(candles.length*.55);
-        var right = candles.slice(rightStart).reduce(function (best,c,i) { return !best || c.high > best.value ? {index:rightStart+i,value:Number(c.high)} : best; }, null);
-        points = [left,bottom,right].filter(Boolean);
-      } else if (type.indexOf('INVERTED_CUP') >= 0) {
-        var l = candles.slice(0, Math.floor(candles.length*.35)).reduce(function (best,c,i) { return !best || c.low < best.value ? {index:i,value:Number(c.low)} : best; }, null);
-        var topStart = Math.floor(candles.length*.2), topEnd = Math.floor(candles.length*.7);
-        var top = candles.slice(topStart,topEnd).reduce(function (best,c,i) { return !best || c.high > best.value ? {index:topStart+i,value:Number(c.high)} : best; }, null);
-        var rStart = Math.floor(candles.length*.55);
-        var r = candles.slice(rStart).reduce(function (best,c,i) { return !best || c.low < best.value ? {index:rStart+i,value:Number(c.low)} : best; }, null);
-        points = [l,top,r].filter(Boolean);
-      } else if (type.indexOf('GAP') >= 0) {
-        points = [{ index:candles.length-2, value:Number(candles[candles.length-2].close) }, { index:candles.length-1, value:Number(candles[candles.length-1].close) }];
-      } else {
-        points = highs.slice(-2).concat(lows.slice(-2)).sort(function (a,b) { return a.index-b.index; });
-      }
-      var guide = sparse(candles.length, points);
-      return {
-        type:'line',
-        data:{ labels:labels, datasets:[
-          { label:'Harga penutupan', data:close, borderColor:'#b6c2d3', backgroundColor:'rgba(148,163,184,.10)', borderWidth:2.4, pointRadius:0, tension:.12, fill:true },
-          { label:'Titik pembentuk pola', data:guide, borderColor:'#38bdf8', backgroundColor:'#38bdf8', borderWidth:3.2, pointRadius:look.point, pointBorderWidth:2, pointBorderColor:'#082f49', spanGaps:true, tension:0 }
-        ]},
-        options:{ responsive:false, animation:false, interaction:{mode:'index',intersect:false}, layout:{padding:{top:10,right:20,bottom:10,left:10}}, plugins:{ title:{display:true,text:String(primary.label || 'Chart Pattern')+' · '+row.ticker+' · T-1 '+row.dataDate,color:'#f8fafc',font:{size:look.title,weight:'bold'},padding:{bottom:look.narrow?10:16}}, subtitle:{display:!!primary.reason,text:String(primary.reason || ''),color:'#a3b1c6',font:{size:look.subtitle}}, legend:{display:true,position:'top',labels:{color:'#d7e0ec',boxWidth:look.narrow?14:20,boxHeight:3,padding:look.narrow?8:12,font:{size:look.legend}}}}, scales:{x:{type:'category',ticks:{color:'#a3b1c6',maxTicksLimit:look.maxTicks,maxRotation:0,autoSkip:true,font:{size:look.tick}},grid:{color:'rgba(148,163,184,.10)'},border:{color:'rgba(148,163,184,.22)'}},y:{ticks:{color:'#a3b1c6',font:{size:look.tick}},grid:{color:'rgba(148,163,184,.10)'},border:{color:'rgba(148,163,184,.22)'}}}}
-      };
-    }
-    function imageHtml(ticker, dataDate, url, spec) {
-      return '<img src="' + url + '" width="' + spec.width + '" height="' + spec.height + '" decoding="async" ' +
-        'alt="Visual pattern ' + esc(ticker) + ' data T-1 ' + esc(dataDate || '') + '">';
-    }
-    function saveName(ticker) {
-      var stamp = jakartaDateKey().replace(/-/g, '');
-      return 'auto-cuan-' + String(ticker || 'PATTERN').toUpperCase() + '-pattern-' + stamp + '-WIB.png';
-    }
-    // Downloads the exact blob already rendered, so the saved file keeps the full
-    // devicePixelRatio-2 bitmap instead of the downscaled on-screen copy.
-    function mapTools(ticker, url) {
-      return '<div class="ps-map-tools">' +
-        '<button type="button" class="ps-map-tool" data-ps-zoom="' + esc(ticker) + '">Perbesar</button>' +
-        '<a class="ps-map-tool ps-map-save" download="' + esc(saveName(ticker)) + '" href="' + url + '">Simpan PNG</a>' +
-        '</div>';
-    }
-    async function draw(ticker, button) {
-      var row = state.rows.find(function (item) { return item.ticker === ticker; });
-      var box = doc.getElementById('psMap-' + ticker);
-      if (!row || !box) return;
-      box.classList.add('open');
-      // Resolution is chosen from the viewport: a phone gets a narrower logical
-      // canvas so labels stay readable after downscaling, and every device gets
-      // devicePixelRatio 2 so the PNG is crisp rather than soft. A cached image
-      // rendered for a different viewport class (rotation, resize) is discarded.
-      var spec = typeof root.PatternMap.patternImageSpec === 'function'
-        ? root.PatternMap.patternImageSpec(root.innerWidth)
-        : { width:1200, height:700, devicePixelRatio:2, narrow:false };
-      var cached = state.urls[ticker];
-      if (cached && cached.spec.width === spec.width) { box.innerHTML = imageHtml(ticker, row.dataDate, cached.url, cached.spec) + mapTools(ticker, cached.url); return; }
-      if (cached) { try { root.URL.revokeObjectURL(cached.url); } catch (_) {} delete state.urls[ticker]; }
-      box.textContent = 'Menyusun visual pattern…';
-      if (button) button.disabled = true;
-      var controller = new AbortController();
-      if (state.controllers[ticker]) state.controllers[ticker].abort();
-      state.controllers[ticker] = controller;
+    // The fullscreen viewer prefers the interactive chart engine, which is itself
+    // lazily fetched from a CDN. Handing it the same SVG as a data: URI means the
+    // fallback path still shows the real pattern when that fetch cannot complete,
+    // instead of "Visual chart belum tersedia untuk ditampilkan."
+    function svgDataUri(row) {
+      var svg = '';
+      try { svg = Visual.buildPatternSvg(row, { width: 1100, height: 520 }); } catch (_) { return null; }
+      if (!svg) return null;
       try {
-        var config = row.candidate ? Ui.buildReliableChartConfig(row.candidate, row.context, spec) : buildClassicConfig(row, spec);
-        if (!config) throw new Error('invalid_chart_config');
-        var response = await root.fetch('https://quickchart.io/chart', { method:'POST', signal:controller.signal, headers:{'Content-Type':'application/json','Accept':'image/png'}, body:JSON.stringify({ version:'4', width:spec.width, height:spec.height, devicePixelRatio:spec.devicePixelRatio, format:'png', backgroundColor:'#111827', chart:config }) });
-        if (!response.ok) throw new Error('QuickChart HTTP ' + response.status);
-        var blob = await response.blob();
-        if (!blob || blob.size < 500) throw new Error('empty_chart_image');
-        state.urls[ticker] = { url:root.URL.createObjectURL(blob), spec:spec };
-        box.innerHTML = imageHtml(ticker, row.dataDate, state.urls[ticker].url, spec) + mapTools(ticker, state.urls[ticker].url);
-      } catch (error) {
-        if (!error || error.name !== 'AbortError') box.textContent = 'Visual pattern belum dapat dimuat. Buka Chart tetap tersedia.';
-      } finally {
-        if (state.controllers[ticker] === controller) delete state.controllers[ticker];
-        if (button) button.disabled = false;
-      }
+        return { src: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), width: 1100, height: 520 };
+      } catch (_) { return null; }
     }
     // Pattern geometry expressed as chart overlays, so the fullscreen viewer draws the
     // same levels the card lists — on the real chart engine the Chart page uses.
@@ -464,21 +469,18 @@
     function expand(ticker) {
       var row = state.rows.find(function (item) { return item.ticker === ticker; });
       if (!row || typeof root.openChartViewer !== 'function') return;
-      var cached = state.urls[ticker];
       var primary = (row.classicPatterns && row.classicPatterns[0]) || {};
-      var name = (row.candidate && row.candidate.name) || primary.label || 'Chart Pattern';
+      var name = (row.candidate && row.candidate.name) || primary.label || 'Pola chart';
+      var image = svgDataUri(row);
+      if (image) image.alt = 'Bentuk pola ' + row.ticker + ' dari data harian T-1';
       root.openChartViewer({
         title:row.ticker + ' · ' + name,
-        subtitle:'T-1 ' + (row.dataDate || '') + ' · konfirmasi manual tetap diperlukan',
+        subtitle:'Data T-1 ' + (row.dataDate || '') + ' · konfirmasi manual tetap diperlukan',
         ticker:row.ticker,
         candles:(row.context && Array.isArray(row.context.candles)) ? row.context.candles : [],
         priceLines:viewerPriceLines(row.candidate),
         markers:viewerMarkers(row.candidate),
-        // Always supplied, so the viewer still has something to show if the chart
-        // engine cannot load.
-        image:cached ? { src:cached.url, width:cached.spec.width, height:cached.spec.height,
-          alt:'Visual pattern ' + row.ticker } : null,
-        download:cached ? { href:cached.url, name:saveName(row.ticker) } : null
+        image:image
       });
     }
     function openChart(ticker) {
@@ -501,7 +503,7 @@
       if (root.location && root.location.pathname === '/pattern') { try { root.history.replaceState({}, '', '/dashboard'); } catch (_) {} }
       return originalNavigate.apply(root, arguments);
     };
-    if (originalLogout) root.logout = function () { state.allowed=false; state.checked=true; state.version+=1; clearImages(); clearCache(); hide(); removeNav(); return originalLogout.apply(root, arguments); };
+    if (originalLogout) root.logout = function () { state.allowed=false; state.checked=true; state.version+=1; clearCache(); hide(); removeNav(); return originalLogout.apply(root, arguments); };
     access(false).then(function (allowed) { if (allowed && root.location && root.location.pathname === '/pattern') open(); });
     root.setInterval(function () {
       if (!state.checked || root.PatternMapAdminAccess.isAllowed()) return;

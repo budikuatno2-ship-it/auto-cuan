@@ -5,6 +5,25 @@ const {
   maskUsername
 } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
+const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+
+// Registration is far more expensive than a read: it writes an app_users row
+// and mints a one-time Telegram verification challenge. It had no limit at all,
+// so a script could create pending accounts and walk the username namespace as
+// fast as the database would accept writes.
+//
+// Keyed on the address the platform edge observed, never on anything in the
+// body — a body-keyed bucket is minted fresh on every request and bounds
+// nothing. Per-instance, with the same honest caveat as api/log.js: this blunts
+// floods, it is not a hard global guarantee (see lib/request-rate-limit.js).
+const registrationLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8 });
+
+// Bounds on values that are stored. passwordHash arrives from the client and
+// went straight into the database with no length or format check, so a caller
+// could push an arbitrarily large string into the row. The client always sends
+// a hex SHA-256 digest.
+const PASSWORD_HASH_RE = /^[a-f0-9]{64}$/i;
+const MAX_USER_AGENT = 256;
 
 // Normalize a client-provided device ID and generate a secure server-side
 // fallback when an older client omits it. Keeps the NOT NULL `device_id`
@@ -22,6 +41,12 @@ function normalizeDeviceId(rawDeviceId) {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
+  }
+
+  if (!registrationLimiter.check(clientAddress(req))) {
+    // Deliberately identical to no other branch: it says nothing about whether
+    // any username exists.
+    return res.status(429).json({ success: false, error: 'Terlalu banyak percobaan pendaftaran. Coba lagi dalam beberapa menit.' });
   }
 
   try {
@@ -44,6 +69,10 @@ module.exports = async function handler(req, res) {
     }
     if (usernameLower.length > 30) {
       return res.status(400).json({ success: false, error: 'Username maksimal 30 karakter.' });
+    }
+
+    if (typeof passwordHash !== 'string' || !PASSWORD_HASH_RE.test(passwordHash)) {
+      return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
     }
 
     // Reject reserved usernames
@@ -92,7 +121,7 @@ module.exports = async function handler(req, res) {
         username: usernameLower,
         passwordHash: passwordHash,
         deviceId: normalizedDeviceId,
-        userAgent: userAgent || ''
+        userAgent: String(userAgent || '').replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, MAX_USER_AGENT)
       });
     } catch (rpcError) {
       // Never surface raw database constraint text. A username/device duplicate
@@ -128,4 +157,8 @@ module.exports = async function handler(req, res) {
 };
 
 // Exposed for focused unit tests only.
-module.exports.__test = { normalizeDeviceId: normalizeDeviceId };
+module.exports.__test = {
+  normalizeDeviceId: normalizeDeviceId,
+  registrationLimiter: registrationLimiter,
+  PASSWORD_HASH_RE: PASSWORD_HASH_RE
+};

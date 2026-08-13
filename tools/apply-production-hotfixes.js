@@ -189,6 +189,44 @@ const portfolioRuntime = read('public/portfolio-ai-runtime-v2.js');
 assertOk(portfolioRuntime.includes('previous.role !== row.role'), 'Portfolio chat duplicate cleanup is missing.');
 assertOk(portfolioRuntime.includes('if (!text || state.sending) return;'), 'Portfolio AI send lock is missing.');
 
+// --- 9b. Front-end delivery: no render-blocking third-party compiler -------
+// The Tailwind Play CDN shipped ~400KB of JavaScript that compiled CSS in the
+// browser on every load, and blocking that host cost the app its entire layout.
+// The generated sheet must stay in place, and every utility class the rendered
+// DOM uses must exist in it.
+const indexHtml = read('public/index.html');
+const tailwindCss = read('public/tailwind-build.css');
+assertOk(!/cdn\.tailwindcss\.com/.test(indexHtml), 'The Tailwind Play CDN is loaded again.');
+assertOk(/<link[^>]+href="\/tailwind-build\.css/.test(indexHtml), 'The generated Tailwind stylesheet is not linked.');
+assertOk(tailwindCss.length > 20000, 'public/tailwind-build.css looks truncated; regenerate it.');
+// Every class literal in the shipped markup and scripts must resolve to a rule.
+// Escapes are dropped first so ".bg-emerald-500\/10" can be matched literally.
+const flatCss = tailwindCss.replace(/\\(.)/g, '$1');
+function cssDefines(name) {
+  let idx = flatCss.indexOf('.' + name);
+  while (idx >= 0) {
+    const next = flatCss[idx + name.length + 1];
+    if (!next || !/[\w-]/.test(next)) return true;
+    idx = flatCss.indexOf('.' + name, idx + 1);
+  }
+  return false;
+}
+['flex', 'grid', 'hidden', 'border', 'rounded-xl', 'text-left', 'text-right', 'text-center',
+ 'bg-dark-800/60', 'border-dark-600/30', 'text-emerald-400', 'sm:grid-cols-2', 'lg:grid-cols-3']
+  .forEach(function (name) {
+    assertOk(cssDefines(name), 'Tailwind utility "' + name + '" is missing from public/tailwind-build.css; regenerate it.');
+  });
+
+// jsPDF is ~350KB for an export most sessions never use. It must stay behind an
+// explicit call rather than running three CDN attempts at parse time.
+assertOk(indexHtml.includes('window.loadPdfLibrary'), 'On-demand PDF loader is missing.');
+assertOk(!/loadScript\(jspdfUrls, 0, function\(ok1\) \{\s*\n\s*if \(!ok1\)/.test(indexHtml) || indexHtml.indexOf('window.loadPdfLibrary') < indexHtml.indexOf('jspdfUrls, 0'), 'PDF libraries are fetched at page load again.');
+assertOk(indexHtml.includes('_ensureJsPdf') && indexHtml.includes('window.loadPdfLibrary().then'), 'PDF export no longer triggers its own library load.');
+
+// The in-page spacing self-test shipped ~4KB of fixtures to every visitor and
+// asserted on textContent, which drops the <br> separators it was checking for.
+assertOk(!/selfTestSpacing|Auto-Cuan DOM-Test FAIL/.test(indexHtml), 'The in-page spacing self-test returned; it belongs in test/ai-technical-spacing.test.js.');
+
 // --- 10. Stable Pattern runtime, classic detector, and Swing ranking ------
 const fcaLoader = read('public/assets/fca-stocks.js');
 const classicPatterns = read('lib/classic-chart-patterns.js');
@@ -196,17 +234,38 @@ const smartSetups = read('lib/smart-setup-labels.js');
 const candlesApi = read('api/candles.js');
 assertOk(fcaLoader.includes('/security-admin-runtime.js?v=20260729-security-admin-v1'), 'Security Center runtime loader is missing.');
 assertOk(fcaLoader.includes('/ui-stability-fix.js?v=20260802-ui-stability-v2'), 'Shared UI stability runtime loader is missing.');
-assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260802-pattern-stable-v5'), 'Stable Pattern v5 runtime loader is missing.');
-assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260728-pattern-screener-v5'), 'Screener Pattern v5 extension loader is missing.');
-assertOk(fcaLoader.indexOf('/pattern-stable-runtime.js') < fcaLoader.indexOf('/pattern-screener-extension.js'), 'Screener Pattern extension must load after the stable runtime.');
+assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260813-pattern-stable-v6'), 'Stable Pattern v6 runtime loader is missing.');
+assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260813-pattern-screener-v7'), 'Screener Pattern v7 extension loader is missing.');
+assertOk(fcaLoader.includes('/pattern-visual.js?v=20260813-pattern-visual-v1'), 'Local Pattern SVG renderer loader is missing.');
+assertOk(fcaLoader.includes('/pattern-direction-safety.js?v=20260813-pattern-direction-safety-v2'), 'Pattern safety model loader is missing.');
+// Pattern's modules are libraries with a boot loop, not sequential patches, so
+// they must stay parallel: chaining them again puts four serial round trips back
+// in front of Pattern's first render.
+assertOk(!/pattern-stable-runtime\.js[^]*?function \(\) \{\s*\n\s*append\('\/pattern-screener-extension/.test(fcaLoader), 'Pattern runtimes are chained serially again.');
 assertOk(!fcaLoader.includes('/pattern-radar.js'), 'The duplicate Pattern Radar runtime is still loaded.');
 assertOk(patternStable.includes('action=screener') && patternStable.includes('action=nk-screener-results') && patternStable.includes('action=daytrade-screener'), 'Pattern Radar no longer reads all three latest screener sources.');
-assertOk(stability.includes("type: 'line'"), 'ABCD map reliable line-chart renderer is missing.');
+const patternVisual = read('public/pattern-visual.js');
+const patternSafety = read('public/pattern-direction-safety.js');
+// The Pattern figure must stay local. Sending the ticker, its close series and
+// the admin-only geometry to a third-party image service is both a data-egress
+// and an availability problem: on a network that blocks it, the one visual the
+// feature exists for silently fails.
+const stripComments = text => text.replace(/^\s*\/\/.*$/gm, '');
+assertOk(['public/pattern-stable-runtime.js', 'public/pattern-visual.js', 'public/pattern-map.js', 'public/ui-stability-fix.js', 'public/index.html']
+  .every(function (file) { return !/quickchart/i.test(stripComments(read(file))); }),
+  'Pattern figures are fetched from a third-party image service again.');
+assertOk(patternVisual.includes('function buildPatternSvg'), 'Local Pattern SVG builder is missing.');
+assertOk(!/fetch\(|XMLHttpRequest/.test(stripComments(patternVisual)), 'The Pattern SVG builder must stay pure.');
+// The safety model must never go back to reading rendered text: that is what
+// produced both the idle MutationObserver loop and the rounded-string verdicts.
+assertOk(!/MutationObserver|querySelectorAll/.test(stripComments(patternSafety)), 'Pattern safety scrapes the DOM again.');
+assertOk(patternSafety.includes('function evaluateRow'), 'Pattern safety model entry point is missing.');
+assertOk(patternStable.includes('Safety.evaluateRow') && patternStable.includes('Safety.statusRank'), 'Pattern cards no longer render their verdict from the safety model.');
 assertOk(!patternStable.includes('MAX_SCAN') && !patternStable.includes('FALLBACK_TICKERS'), 'Pattern fixed cap or fallback universe returned.');
 assertOk(patternStable.includes("root.location.pathname === '/pattern'"), 'Direct Pattern route bootstrap is missing.');
 assertOk(patternStable.includes('PatternMap.validateCandidate'), 'ABCD renderer no longer validates server geometry.');
 assertOk(patternStable.includes('classicPatterns') && patternStable.includes('data-classic-only'), 'Classic Pattern Radar rendering is missing.');
-assertOk(patternStable.includes('function buildClassicConfig') && patternStable.includes('Titik pembentuk pola'), 'Classic Pattern inline visual is missing.');
+assertOk(patternStable.includes('function figureHtml') && patternStable.includes('Visual.buildPatternSvg'), 'Classic Pattern inline visual is missing.');
 assertOk(patternStable.includes('sessionStorage.setItem(cacheKey()') && patternStable.includes('sessionStorage.getItem(cacheKey()'), 'Pattern session cache is missing.');
 assertOk(patternStable.includes('if (!hydrateCache()) scan(false)'), 'Pattern re-entry no longer restores the cached result before scanning.');
 assertOk(patternStable.includes('state.rows = results.filter(Boolean)') && !/state\.rows\.push\(row\);\s*render\(\)/.test(patternStable), 'Pattern scanning redraws the grid for every ticker again.');
@@ -230,11 +289,13 @@ const uiTheme = read('public/ui-theme.css');
 assertOk(!/setAttribute\(\s*'data-premium-page'/.test(patternStable), 'Pattern page is premium-gated again; the mobile hide/inert race returns.');
 assertOk(patternStable.includes('function setPageVisible'), 'Pattern visibility no longer moves hidden, inert, and aria-hidden together.');
 assertOk(resumeGuard.includes('function revealPatternPage') && resumeGuard.includes('page.removeAttribute(\'aria-hidden\')'), 'Pattern resume no longer clears inert/aria-hidden.');
-assertOk(patternMap.includes('function patternImageSpec'), 'Pattern render resolution helper is missing.');
-assertOk(/devicePixelRatio:\s*2/.test(patternMap), 'Pattern PNG dropped its retina render scale.');
-assertOk(patternStable.includes('PatternMap.patternImageSpec(root.innerWidth)'), 'Pattern Radar no longer picks a viewport-aware render size.');
-assertOk(patternStable.includes('devicePixelRatio:spec.devicePixelRatio') && !patternStable.includes('devicePixelRatio:1'), 'Pattern Radar pinned its PNG back to devicePixelRatio 1.');
-assertOk(patternStable.includes('ps-map-save'), 'Pattern PNG download of the full-resolution blob is missing.');
+// Resolution no longer matters for the card figure: an SVG is resolution
+// independent, so there is no raster spec to pick per viewport.
+assertOk(patternStable.includes('function svgDataUri'), 'Pattern fullscreen fallback image is missing.');
+// The figure is inline SVG, so there is no bitmap to pin a pixel ratio to and
+// no PNG blob to keep alive for a download link.
+assertOk(!/devicePixelRatio/.test(patternStable), 'Pattern Radar is rendering a raster image again.');
+assertOk(!/createObjectURL|revokeObjectURL/.test(patternStable), 'Pattern Radar is holding image blob URLs again.');
 assertOk(fcaLoader.includes('/mobile-nav.js?v='), 'Mobile bottom navigation runtime is not loaded.');
 assertOk(mobileNav.includes('function buildNavModel') && mobileNav.includes("querySelectorAll('.nav-btn[data-page]')"), 'Mobile navigation no longer mirrors #mainNav.');
 assertOk(!/navigateTo\s*=|function navigateTo/.test(mobileNav), 'Mobile navigation must delegate to the existing buttons, never redefine navigateTo.');

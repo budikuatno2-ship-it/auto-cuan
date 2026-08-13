@@ -182,6 +182,9 @@
         '.ps-screener-level{min-width:0;padding:7px;border:1px solid rgba(148,163,184,.09);border-radius:9px;background:rgba(2,6,23,.32)}',
         '.ps-screener-level span{display:block;color:#64748b;font-size:8px;text-transform:uppercase}.ps-screener-level b{display:block;margin-top:2px;color:#e5e7eb;font-size:11px;overflow-wrap:anywhere}',
         '@media(max-width:760px){.ps-screener-levels{grid-template-columns:repeat(2,minmax(0,1fr))}}',
+        '.ps-screener-plan.direction-conflict{border-color:rgba(248,113,113,.28);background:rgba(239,68,68,.07)}',
+        '.ps-screener-plan.direction-conflict .ps-screener-plan-title{color:#fca5a5}',
+        '.ps-screener-conflict-text{margin:0;color:#fecaca;font-size:10px;line-height:1.55}',
         '[data-ui-artifact="1"],[data-screener-only="1"]{display:none!important}'
       ].join('');
       doc.head.appendChild(style);
@@ -211,6 +214,30 @@
         return state.setups;
       } finally { state.loading = false; }
     }
+    // The Pattern card owns one direction. A Screener plan pointing the other way
+    // must never sit inside it looking like confluence.
+    //
+    // This check used to live in pattern-direction-safety.js, which recovered the
+    // plan by reading the rendered "1.302–1.329" / "1.263" strings back out of the
+    // DOM and re-parsing them. The numbers are right here, unformatted, so the
+    // guard now runs on them directly — same rule, no string round trip.
+    function planConflict(card, plan) {
+      var safety = root.AutoCuanPatternSafety;
+      if (!safety || !plan) return null;
+      var direction = safety.cardDirection(card);
+      var planDirection = safety.tradePlanDirection(plan);
+      if (safety.directionsCompatible(direction, planDirection)) {
+        return { conflict:false, planDirection:planDirection };
+      }
+      return { conflict:true, direction:direction, planDirection:planDirection };
+    }
+
+    function directionWord(value) {
+      if (value === 'bullish') return 'naik/long';
+      if (value === 'bearish') return 'turun/short';
+      return 'tidak konsisten';
+    }
+
     function syncTradePlan(card, plan) {
       var box = card.querySelector('.ps-screener-plan');
       if (!plan) { if (box) box.remove(); return; }
@@ -220,7 +247,24 @@
         var actions = card.querySelector('.ps-card-actions');
         actions ? card.insertBefore(box, actions) : card.appendChild(box);
       }
-      box.innerHTML = '<div class="ps-screener-plan-title">Level Screener · ' + esc(plan.source) + '</div>' +
+      var verdict = planConflict(card, plan);
+      if (verdict && verdict.conflict) {
+        box.classList.add('direction-conflict');
+        box.setAttribute('data-direction-conflict', '1');
+        box.setAttribute('data-plan-direction', verdict.planDirection);
+        box.innerHTML = '<div class="ps-screener-plan-title">Konflik arah · level Screener disembunyikan</div>' +
+          '<p class="ps-screener-conflict-text">Pola ini ' + esc(directionWord(verdict.direction)) + ', sedangkan rencana ' +
+          esc(plan.source) + ' bersifat ' + esc(directionWord(verdict.planDirection)) +
+          '. Keduanya tidak digabung menjadi satu setup masuk.</p>';
+        return;
+      }
+      box.classList.remove('direction-conflict');
+      box.removeAttribute('data-direction-conflict');
+      if (verdict) box.setAttribute('data-plan-direction', verdict.planDirection);
+      var suffix = verdict && verdict.planDirection !== 'unknown'
+        ? ' · ' + (verdict.planDirection === 'bullish' ? 'Naik/Long' : 'Turun/Short')
+        : '';
+      box.innerHTML = '<div class="ps-screener-plan-title">Level Screener · ' + esc(plan.source) + esc(suffix) + '</div>' +
         '<div class="ps-screener-levels">' +
         '<div class="ps-screener-level"><span>Entry</span><b>' + entryText(plan) + '</b></div>' +
         '<div class="ps-screener-level"><span>Stop Loss</span><b>' + number(plan.stop_loss) + '</b></div>' +
@@ -242,12 +286,21 @@
           var actions = card.querySelector('.ps-card-actions');
           actions ? card.insertBefore(chips, actions) : card.appendChild(chips);
         }
-        chips.innerHTML = setup.labels.map(function (label) { return '<span class="ps-setup-chip">' + esc(label) + '</span>'; }).join('');
+        var safety = root.AutoCuanPatternSafety;
+        var direction = safety ? safety.cardDirection(card) : 'unknown';
+        var split = safety ? safety.filterLabelsForDirection(setup.labels, direction) : { accepted:setup.labels, rejected:[] };
+        chips.innerHTML = split.accepted.map(function (label) { return '<span class="ps-setup-chip">' + esc(label) + '</span>'; }).join('');
         if (!source) {
           source = doc.createElement('p'); source.className = 'ps-setup-source';
           chips.parentNode.insertBefore(source, chips.nextSibling);
         }
-        source.textContent = 'Juga terdeteksi oleh: ' + setup.sources.join(', ') + '. Label ini hanya memperkuat konteks.';
+        if (split.rejected.length && !split.accepted.length) {
+          source.textContent = 'Label Screener untuk ' + setup.ticker + ' berlawanan arah dengan pola ini, jadi tidak ditampilkan sebagai penguat.';
+        } else if (split.rejected.length) {
+          source.textContent = 'Juga terdeteksi oleh: ' + setup.sources.join(', ') + '. ' + split.rejected.length + ' label berlawanan arah disembunyikan.';
+        } else {
+          source.textContent = 'Juga terdeteksi oleh: ' + setup.sources.join(', ') + '. Label ini hanya memperkuat konteks.';
+        }
       } else {
         if (chips) chips.remove();
         if (source) source.remove();

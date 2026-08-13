@@ -8,6 +8,7 @@
   'use strict';
 
   var STYLE_ID = 'autocuanUiBugfixPackV1';
+  var SANITIZER_HARDENING_VERSION = '20260813-ai-url-sanitizer-v1';
   var STYLE_TEXT = [
     '/* AUTO_CUAN_UI_BUGFIX_PACK_V1 */',
     '/* Desktop Analisis Saham uses the document as its only vertical scroll owner.',
@@ -30,10 +31,95 @@
     '}'
   ].join('\n');
 
+  function decodeNumericEntities(value) {
+    return String(value == null ? '' : value)
+      .replace(/&#x([0-9a-f]+);?/gi, function (_, hex) {
+        var code = parseInt(hex, 16);
+        return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+      })
+      .replace(/&#(\d+);?/g, function (_, dec) {
+        var code = parseInt(dec, 10);
+        return Number.isFinite(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+      });
+  }
+
+  // Runtime uses the browser's own HTML parser to obtain the same attribute value
+  // that innerHTML would expose after named-entity decoding. The explicit fallback
+  // handles the security-relevant named references in non-DOM unit tests too.
+  function decodeHtmlEntities(value, doc) {
+    var decoded = decodeNumericEntities(value);
+    if (doc && typeof doc.createElement === 'function') {
+      try {
+        var textarea = doc.createElement('textarea');
+        textarea.innerHTML = decoded;
+        decoded = typeof textarea.value === 'string' ? textarea.value : String(textarea.textContent || '');
+      } catch (_) {}
+    }
+    return String(decoded)
+      .replace(/&colon;?/gi, ':')
+      .replace(/&tab;?/gi, '\t')
+      .replace(/&newline;?/gi, '\n')
+      .replace(/&amp;?/gi, '&');
+  }
+
+  function normalizedUrl(value, doc) {
+    return decodeHtmlEntities(value, doc)
+      .replace(/[\s\u0000-\u001f\u007f]+/g, '')
+      .toLowerCase();
+  }
+
+  function dangerousUrl(value, doc) {
+    return /^(?:javascript|vbscript|data):/.test(normalizedUrl(value, doc));
+  }
+
+  function dangerousSrcset(value, doc) {
+    var decoded = decodeHtmlEntities(value, doc);
+    // Check each candidate before interpreting its density/width descriptor.
+    // dangerousUrl removes embedded whitespace/control characters, so
+    // "java<TAB>script:" cannot be split into the harmless token "java" first.
+    return decoded.split(',').some(function (candidate) {
+      return dangerousUrl(candidate, doc);
+    });
+  }
+
+  function hardenUrlAttributes(html, doc) {
+    return String(html == null ? '' : html).replace(
+      /\s(href|src|xlink:href|action|formaction|data|poster|srcset)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+      function (match, attr, _raw, dq, sq, bare) {
+        var value = dq != null ? dq : (sq != null ? sq : (bare || ''));
+        var unsafe = String(attr).toLowerCase() === 'srcset'
+          ? dangerousSrcset(value, doc)
+          : dangerousUrl(value, doc);
+        if (!unsafe) return match;
+        return String(attr).toLowerCase() === 'srcset' ? ' ' + attr + '=""' : ' ' + attr + '="#"';
+      }
+    );
+  }
+
+  function installSanitizerHardening(targetRoot) {
+    if (!targetRoot || typeof targetRoot.sanitizeAIHtml !== 'function') return false;
+    var base = targetRoot.sanitizeAIHtml;
+    if (base.__autocuanUrlHardening === SANITIZER_HARDENING_VERSION) return true;
+
+    function hardenedSanitizeAIHtml(html) {
+      return hardenUrlAttributes(base(html), targetRoot.document);
+    }
+    hardenedSanitizeAIHtml.__autocuanUrlHardening = SANITIZER_HARDENING_VERSION;
+    hardenedSanitizeAIHtml.__baseSanitizer = base;
+    targetRoot.sanitizeAIHtml = hardenedSanitizeAIHtml;
+    return true;
+  }
+
   function install(targetRoot) {
     var doc = targetRoot && targetRoot.document;
     if (!doc || !doc.head) return false;
-    if (doc.getElementById(STYLE_ID)) return false;
+
+    // This script is loaded at the end of index.html, after sanitizeAIHtml is
+    // declared and before a user can submit an AI request. Patch the actual global
+    // sink synchronously; do not rely on a later MutationObserver cleanup.
+    installSanitizerHardening(targetRoot);
+
+    if (doc.getElementById(STYLE_ID)) return true;
     var style = doc.createElement('style');
     style.id = STYLE_ID;
     style.textContent = STYLE_TEXT;
@@ -44,6 +130,13 @@
   return {
     STYLE_ID: STYLE_ID,
     STYLE_TEXT: STYLE_TEXT,
+    SANITIZER_HARDENING_VERSION: SANITIZER_HARDENING_VERSION,
+    decodeHtmlEntities: decodeHtmlEntities,
+    normalizedUrl: normalizedUrl,
+    dangerousUrl: dangerousUrl,
+    dangerousSrcset: dangerousSrcset,
+    hardenUrlAttributes: hardenUrlAttributes,
+    installSanitizerHardening: installSanitizerHardening,
     install: install
   };
 });

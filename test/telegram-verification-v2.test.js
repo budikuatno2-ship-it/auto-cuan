@@ -918,7 +918,7 @@ test('endpoint register: v2 response has verification code and NO channel URL', 
   process.env.SUPABASE_URL = 'http://local';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc';
   const { handler } = requireApiWithSupabaseStub('../api/register-user', makeModelDb);
-  const req = makeReq({ body: { username: 'quinn', passwordHash: 'ph', deviceId: 'dev', userAgent: 'UA' } });
+  const req = makeReq({ body: { username: 'quinn', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev', userAgent: 'UA' } });
   const res = makeRes();
   await handler(req, res);
   assert.equal(res.statusCode, 200);
@@ -936,7 +936,7 @@ test('endpoint register: fails closed without the code secret', async function (
   try {
     const { handler } = requireApiWithSupabaseStub('../api/register-user', makeModelDb);
     const res = makeRes();
-    await handler(makeReq({ body: { username: 'rick', passwordHash: 'ph', deviceId: 'dev' } }), res);
+    await handler(makeReq({ body: { username: 'rick', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev' } }), res);
     assert.equal(res.statusCode, 500);
     assert.equal(res.body.success, false);
   } finally { process.env.TELEGRAM_VERIFY_CODE_SECRET = saved; }

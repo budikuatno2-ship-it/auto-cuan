@@ -45,14 +45,18 @@ window.FCA_STOCKS = {
     // It does not recalculate candidates or read individual screener outputs.
     append('/dashboard-top5-only-ui.js?v=20260803-top5-only-ui-v1', 'data-dashboard-top5-only-ui-loader');
 
-    append('/ui-stability-fix.js?v=20260802-ui-stability-v2', 'data-ui-stability-loader', function () {
-      append('/pattern-tab-resume-guard.js?v=20260802-pattern-tab-resume-v2', 'data-pattern-tab-resume-loader', function () {
-        append('/pattern-stable-runtime.js?v=20260802-pattern-stable-v5', 'data-pattern-stable-loader', function () {
-          append('/pattern-screener-extension.js?v=20260728-pattern-screener-v5&rev=20260729-pattern-screener-v6', 'data-pattern-screener-extension-loader', function () {
-            append('/pattern-direction-safety.js?v=20260731-pattern-direction-safety-v1', 'data-pattern-direction-safety-loader');
-          });
-        });
-      });
+    // UI, resume and SVG rendering remain parallel. Pattern's safety hardening is
+    // the only prerequisite: it installs a setter before the safety model is
+    // assigned, so null/blank/boolean values can never be coerced into a numeric
+    // zero during trade-plan or pattern-level decisions. Once that tiny local
+    // module is ready, safety/runtime/extension still load in parallel.
+    append('/ui-stability-fix.js?v=20260802-ui-stability-v2', 'data-ui-stability-loader');
+    append('/pattern-tab-resume-guard.js?v=20260802-pattern-tab-resume-v2', 'data-pattern-tab-resume-loader');
+    append('/pattern-visual.js?v=20260813-pattern-visual-v1', 'data-pattern-visual-loader');
+    append('/pattern-safety-hardening-v1.js?v=20260813-v1', 'data-pattern-safety-hardening-loader', function () {
+      append('/pattern-direction-safety.js?v=20260813-pattern-direction-safety-v2', 'data-pattern-direction-safety-loader');
+      append('/pattern-stable-runtime.js?v=20260813-pattern-stable-v6', 'data-pattern-stable-loader');
+      append('/pattern-screener-extension.js?v=20260813-pattern-screener-v7', 'data-pattern-screener-extension-loader');
     });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, { once: true });

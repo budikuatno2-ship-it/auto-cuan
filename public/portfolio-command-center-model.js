@@ -134,7 +134,7 @@
       totalLots: plan.lots + addLots
     };
     if (current <= plan.stopLossIdr) return Object.assign(base, { code: 'CUT_LOSS', action: 'CUT LOSS / JANGAN AVG DOWN', tone: 'danger', message: 'Harga sudah menyentuh atau melewati stop loss.' });
-    if (current >= plan.entryPriceIdr) return Object.assign(base, { code: 'NOT_BELOW_ENTRY', action: 'HOLD', tone: 'info', message: 'Harga belum berada di bawah rata-rata entry; average down tidak relevan.' });
+    if (current >= plan.entryPriceIdr) return Object.assign(base, { code: 'NOT_BELOW_ENTRY', action: 'HOLD', tone: 'info', message: 'Harga belum berada di bawah rata-rata entry, jadi average down belum relevan.' });
     if (!setupValid) return Object.assign(base, { code: 'SETUP_INVALID', action: 'HOLD', tone: 'warn', message: 'Setup terbaru belum dikonfirmasi masih valid.' });
     if (addLots < 1) return Object.assign(base, { code: 'NO_ADD_LOTS', action: 'HOLD', tone: 'warn', message: 'Masukkan minimal 1 lot tambahan untuk simulasi.' });
     if (cost > availableFunds) return Object.assign(base, { code: 'INSUFFICIENT_FUNDS', action: 'HOLD', tone: 'warn', message: 'Dana tersedia tidak cukup untuk lot tambahan.' });

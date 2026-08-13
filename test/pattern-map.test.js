@@ -5,8 +5,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const PatternMap = require('../public/pattern-map');
+const visual = require('../public/pattern-visual');
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 const candlesApi = fs.readFileSync(path.join(__dirname, '..', 'api', 'candles.js'), 'utf8');
+const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 
 function fixture() {
   const candles = [20, 21, 22, 23, 24, 25, 26].map((day, index) => ({
@@ -102,12 +104,22 @@ test('live candles contract exposes only deterministic geometry while preview st
   assert.match(html, /deterministic server geometry; preview stays default-off/);
 });
 
-test('labels or absent geometry return required empty state without QuickChart', async () => {
-  let calls = 0;
-  const manager = new PatternMap.RequestManager(async () => { calls++; return response({}); });
-  const result = await manager.render({ name: 'Gartley' }, fixture().context);
-  assert.deepEqual(result, { empty: true, message: PatternMap.EMPTY_MESSAGE });
-  assert.equal(calls, 0);
+test('a label without bound geometry produces the empty state, never invented levels', () => {
+  const value = fixture();
+  assert.equal(PatternMap.validateCandidate({ name: 'Gartley' }, value.context).valid, false);
+
+  // With no validated candidate the preview shows the empty message instead of
+  // drawing; the renderer is only reached once geometry exists.
+  const preview = html.slice(html.indexOf('async function renderPatternTab('), html.indexOf('async function loadChartPage('));
+  assert.match(preview, /window\.AutoCuanPatternVisual && candidate/);
+  assert.match(preview, /PatternMap\.EMPTY_MESSAGE/);
+
+  // And a figure drawn without a candidate carries no level, target or PRZ line.
+  const svg = visual.buildPatternSvg({ ticker: value.context.ticker, candidate: null, classicPatterns: [],
+    context: value.context, dataDate: value.context.dataDate }, {});
+  for (const label of ['Konfirmasi', 'Invalidasi', 'Target 1', 'Target 2', 'PRZ']) {
+    assert.ok(!svg.includes('>' + label + '</text>'), 'invented ' + label);
+  }
 });
 
 test('strict validation accepts only the complete bound deterministic fixture', () => {
@@ -155,8 +167,6 @@ test('sanitized pivots preserve only allowlisted priceField and renderer does no
   assert.deepEqual(data.points.X, { time: value.candidate.points.X.time, value: value.candidate.points.X.value,
     candleIndex: 0, priceField: 'low' });
   assert.equal(data.points.X.privateNote, undefined);
-  const legs = PatternMap.buildQuickChartConfig(value.candidate, value.context).data.datasets.find(d => d.label === 'X-A-B-C-D');
-  assert.equal(legs.data[0].y, value.candidate.points.X.value);
 });
 
 test('reversed PRZ, invalid levels, and unproven confirmed status are rejected', () => {
@@ -165,63 +175,51 @@ test('reversed PRZ, invalid levels, and unproven confirmed status are rejected',
   assert.equal(invalid(v => { delete v.candidate.confirmationEvidence; }).reason, 'missing_confirmation_evidence');
 });
 
-test('config supports financial/mixed overlays and a bounded PRZ fill', () => {
+test('the pattern figure is drawn from the same bound geometry, in the page', () => {
   const value = fixture();
-  const config = PatternMap.buildQuickChartConfig(value.candidate, value.context);
-  assert.equal(config.data.datasets[0].type, 'candlestick');
-  const labels = config.data.datasets.map(d => String(d.label));
-  // Level datasets print their price into the label, so match by name prefix.
-  for (const name of ['X-A-B-C-D', 'Konfirmasi', 'Invalidasi', 'TP1', 'TP2', 'Harga terakhir', 'PRZ ', 'PRZ bawah']) {
-    assert.ok(labels.some(label => label.startsWith(name)), name);
+  const svg = visual.buildPatternSvg({ ticker: value.context.ticker, candidate: value.candidate, classicPatterns: [],
+    context: value.context, dataDate: value.context.dataDate, currentPrice: value.candidate.currentPrice }, { width: 420, height: 208 });
+  assert.match(svg, /^<svg /);
+  for (const label of ['Konfirmasi', 'Invalidasi', 'Target 1', 'Target 2', 'PRZ', 'Kini']) {
+    assert.ok(svg.includes('>' + label + '</text>'), label);
   }
-  const upperIndex = labels.findIndex(label => label.startsWith('PRZ ') && label !== 'PRZ bawah');
-  const lowerIndex = labels.indexOf('PRZ bawah');
-  assert.equal(lowerIndex, upperIndex + 1);
-  assert.equal(config.data.datasets[upperIndex].data[0].y, value.candidate.prz.high);
-  assert.equal(config.data.datasets[lowerIndex].data[0].y, value.candidate.prz.low);
-  assert.ok(config.data.datasets[lowerIndex].data[0].y <= config.data.datasets[upperIndex].data[0].y);
-  assert.deepEqual(config.data.datasets[lowerIndex].fill, { target: '-1', above: 'rgba(168,85,247,.26)', below: 'rgba(168,85,247,.26)' });
+  for (const name of ['X', 'A', 'B', 'C', 'D']) {
+    assert.ok(svg.includes('>' + name + '</text>'), name);
+  }
 });
 
-test('QuickChart POST selects v4, is bounded, and allowlists public fields', async () => {
-  let captured; const value = fixture();
-  value.candidate.authToken = 'secret'; value.candidate.portfolio = 'private';
-  const manager = new PatternMap.RequestManager(async (url, options) => { captured = JSON.parse(options.body); return response({}); });
-  await manager.render(value.candidate, value.context);
-  assert.equal(captured.version, '4'); assert.equal(captured.width, 1200); assert.equal(captured.height, 700);
-  assert.doesNotMatch(JSON.stringify(captured), /secret|private|authToken|portfolio/);
+test('no private candidate field can reach the drawn figure', () => {
+  const value = fixture();
+  value.candidate.authToken = 'secret';
+  value.candidate.portfolio = 'private';
+  const svg = visual.buildPatternSvg({ ticker: value.context.ticker, candidate: value.candidate, classicPatterns: [],
+    context: value.context, dataDate: value.context.dataDate, currentPrice: value.candidate.currentPrice }, { width: 420, height: 208 });
+  assert.doesNotMatch(svg, /secret|private|authToken|portfolio/);
 });
 
-test('same candidate deduplicates and caches one active image request', async () => {
-  let calls = 0, release; const value = fixture();
-  const manager = new PatternMap.RequestManager(() => { calls++; return new Promise(resolve => { release = () => resolve(response({ png: true })); }); });
-  const first = manager.render(value.candidate, value.context); const second = manager.render(value.candidate, value.context);
-  assert.equal(calls, 1); release(); await Promise.all([first, second]);
-  await manager.render(value.candidate, value.context); assert.equal(calls, 1);
+test('nothing in the Pattern surfaces contacts a third-party image service', () => {
+  const strip = text => text.replace(/^\s*\/\/.*$/gm, '');
+  for (const file of ['public/pattern-map.js', 'public/pattern-visual.js', 'public/pattern-stable-runtime.js', 'public/ui-stability-fix.js']) {
+    assert.doesNotMatch(strip(read(file)), /quickchart/i, file);
+  }
+  assert.doesNotMatch(strip(html), /quickchart/i, 'public/index.html');
 });
 
-test('ticker change aborts and ignores obsolete work without a renderer failure', async () => {
-  const requests = [], one = fixture(), two = fixture(); two.candidate.ticker = two.context.ticker = 'TLKM'; two.candidate.id = 'det-2';
-  const manager = new PatternMap.RequestManager((url, options) => new Promise((resolve, reject) => {
-    requests.push({ options, resolve }); options.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
-  }));
-  const old = manager.render(one.candidate, one.context); const current = manager.render(two.candidate, two.context);
-  assert.equal(requests[0].options.signal.aborted, true); requests[1].resolve(response({}));
-  assert.deepEqual(await old, { obsolete: true }); assert.equal((await current).key, PatternMap.cacheKey(two.candidate, PatternMap.patternImageSpec()));
-});
-
-test('object URLs are revoked on replacement, ticker reset, and Chart-page exit', () => {
-  assert.match(html, /function revokePatternImageUrl\(\)[\s\S]*URL\.revokeObjectURL/);
-  assert.match(html, /function resetPatternMap\(\)[\s\S]*revokePatternImageUrl\(\)/);
+test('the Chart-page preview renders inline SVG and holds no object URL to leak', () => {
+  assert.match(html, /AutoCuanPatternVisual\.buildPatternSvg/);
+  // The preview used to hold a PNG blob URL alive between renders.
+  assert.doesNotMatch(html, /_patternImageUrl/);
+  assert.doesNotMatch(html, /revokePatternImageUrl/);
+  const preview = html.slice(html.indexOf('async function renderPatternTab('), html.indexOf('async function loadChartPage('));
+  assert.doesNotMatch(preview, /createObjectURL|fetch\(/);
   assert.match(html, /page !== 'chart'[\s\S]*resetPatternMap\(\)/);
-  assert.match(html, /async function loadChartPage\([\s\S]*resetPatternMap\(\)/);
-  assert.match(html, /if \(_patternImageUrl\) URL\.revokeObjectURL\(_patternImageUrl\)/);
 });
 
-test('QuickChart failure is isolated from unchanged Technical Chart rendering', async () => {
-  const value = fixture(), manager = new PatternMap.RequestManager(async () => ({ ok: false, status: 503 }));
-  const result = await manager.render(value.candidate, value.context);
-  assert.equal(result.error, true); assert.match(result.message, /Technical Chart tetap dapat digunakan/);
+test('a failed figure never takes the Technical Chart down with it', () => {
+  const value = fixture();
+  const broken = { ticker: value.context.ticker, candidate: value.candidate, classicPatterns: [],
+    context: { ...value.context, candles: [] }, dataDate: value.context.dataDate };
+  assert.equal(visual.buildPatternSvg(broken, {}), '');
   assert.match(html, /renderLightweightChart\(chartId, data\.candles/);
 });
 

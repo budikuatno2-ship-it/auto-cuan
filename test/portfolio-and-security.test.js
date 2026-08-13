@@ -440,9 +440,16 @@ test('login-user.js wires the DB-backed login guard into the credential path', (
   assert.match(credentialSection, /status\(loginGuard\.httpStatus \|\| 429\)/);
 });
 
-test('SECURITY GAP (documented): register-user.js has no rate/abuse limiter on account creation', () => {
+// This test used to assert the gap: register-user.js had no limiter at all, on
+// the most expensive unauthenticated write in the product. The gap is closed,
+// so the test now asserts the limiter instead of its absence.
+test('register-user.js rate limits account creation, keyed on the observed address', () => {
   const register = fs.readFileSync(path.join(ROOT, 'api', 'register-user.js'), 'utf8');
-  assert.doesNotMatch(register, /securityGuard|rateLimit|rate_limit|tooManyRequests|429/i);
+  assert.match(register, /createRateLimiter/);
+  assert.match(register, /registrationLimiter\.check\(clientAddress\(req\)\)/);
+  assert.match(register, /status\(429\)/);
+  // A bucket keyed on request-body content is minted fresh per request.
+  assert.doesNotMatch(register, /limiter\.check\([^)]*(body|username|deviceId)/);
 });
 
 // 30. API endpoint count remains exactly 12
@@ -459,7 +466,7 @@ test('valid registration still succeeds and passes the normalized device id to t
     const capture = {};
     const handler = requireApiWithSupabaseStub('../api/register-user', supabaseWithUser(null, capture));
     const res = makeRes();
-    await handler({ method: 'POST', body: { username: 'newuser', passwordHash: 'h', deviceId: 'dev_x', userAgent: 'ua' } }, res);
+    await handler({ method: 'POST', body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua' } }, res);
     assert.equal(res.body.success, true);
     const call = (capture.rpc || []).find(function (c) { return c.name === 'register_pending_user_with_telegram_challenge'; });
     assert.ok(call, 'registration uses the atomic RPC');
