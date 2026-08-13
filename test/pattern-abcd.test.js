@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const detector = require('../lib/pattern-abcd');
 const PatternMap = require('../public/pattern-map');
+const visual = require('../public/pattern-visual');
 
 function fixture(direction, tail) {
   const candles = [];
@@ -28,7 +29,11 @@ for (const direction of ['bullish', 'bearish']) {
     const candles = fixture(direction); const output = detect(candles); const candidate = output.candidate;
     assert.equal(output.reason, 'found'); assert.equal(candidate.name, `${direction[0].toUpperCase()}${direction.slice(1)} ABCD`);
     assert.equal(PatternMap.validateCandidate(candidate, context(candles)).valid, true);
-    assert.ok(PatternMap.buildQuickChartConfig(candidate, context(candles)));
+    // The same validated geometry is what the local figure draws.
+    const svg = visual.buildPatternSvg({ ticker: 'BBCA', candidate, classicPatterns: [],
+      context: context(candles), dataDate: candles.at(-1).time, currentPrice: candidate.currentPrice }, {});
+    assert.match(svg, /^<svg /);
+    for (const name of ['X', 'A', 'B', 'C', 'D']) assert.ok(svg.includes('>' + name + '</text>'), name);
     assert.deepEqual(Object.values(candidate.points).map(p => p.candleIndex), [4, 8, 12, 16, 20]);
     for (const point of Object.values(candidate.points)) assert.equal(point.value, candles[point.candleIndex][point.priceField]);
     const points = Object.values(candidate.points);

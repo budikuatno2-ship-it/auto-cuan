@@ -47,14 +47,55 @@ test('ABCD labels and stale-level checks are direction aware', () => {
   assert.ok(stale.reasons.includes('target_already_reached'));
 });
 
-test('runtime loads after Pattern Screener context and remains UI-only', () => {
+test('a candidate that has not confirmed is awaiting, not actionable', () => {
+  const base = { currentPrice:1000, confirmation:1010, invalidation:950, tp1:1080, tp2:1140 };
+  const awaiting = safety.evaluateRow({ ticker:'BBCA', candidate:Object.assign({ name:'Bullish ABCD', status:'candidate' }, base) }, null);
+  assert.equal(awaiting.status, safety.STATUS.AWAITING);
+  assert.equal(awaiting.actionable, false);
+
+  const ready = safety.evaluateRow({ ticker:'BBCA', candidate:Object.assign({ name:'Bullish ABCD', status:'confirmed' }, base) }, null);
+  assert.equal(ready.status, safety.STATUS.ACTIONABLE);
+  assert.equal(ready.actionable, true);
+});
+
+test('a played-out or invalidated candidate is separated from a merely unconfirmed one', () => {
+  const past = safety.evaluateRow({ ticker:'BBCA', candidate:{ name:'Bullish ABCD', status:'confirmed', currentPrice:1200, confirmation:1010, invalidation:950, tp1:1080, tp2:1140 } }, null);
+  assert.equal(past.status, safety.STATUS.TARGET_REACHED);
+
+  const dead = safety.evaluateRow({ ticker:'BBCA', candidate:{ name:'Bullish ABCD', status:'confirmed', currentPrice:900, confirmation:1010, invalidation:950, tp1:1080, tp2:1140 } }, null);
+  assert.equal(dead.status, safety.STATUS.INVALIDATED);
+
+  // Decision value drives the grid order: actionable first, dead last.
+  assert.ok(safety.statusRank(safety.STATUS.ACTIONABLE) < safety.statusRank(safety.STATUS.AWAITING));
+  assert.ok(safety.statusRank(safety.STATUS.AWAITING) < safety.statusRank(safety.STATUS.TARGET_REACHED));
+  assert.ok(safety.statusRank(safety.STATUS.TARGET_REACHED) < safety.statusRank(safety.STATUS.INVALIDATED));
+});
+
+test('a classic-only row is context, never an entry plan', () => {
+  const row = safety.evaluateRow({ ticker:'ASII', candidate:null, classicPatterns:[{ type:'DOUBLE_TOP', bias:'Bearish', confidence:0.92 }] }, null);
+  assert.equal(row.status, safety.STATUS.CONTEXT_ONLY);
+  assert.equal(row.actionable, false);
+  assert.equal(row.direction, 'bearish');
+});
+
+test('the safety model evaluates numbers and never re-reads rendered text', () => {
   const source = read('public/pattern-direction-safety.js');
   const loader = read('public/assets/fca-stocks.js');
   new vm.Script(source, { filename:'pattern-direction-safety.js' });
-  assert.ok(loader.indexOf('/pattern-screener-extension.js') < loader.indexOf('/pattern-direction-safety.js'));
-  assert.match(loader, /20260731-pattern-direction-safety-v1/);
-  assert.match(source, /Konflik arah · level Screener disembunyikan/);
-  assert.match(source, /data-direction-conflict/);
-  assert.match(source, /Tidak actionable/);
+  assert.match(loader, /20260813-pattern-direction-safety-v2/);
+  // The MutationObserver + DOM-scraping install path is what produced the
+  // measured idle-mutation loop; it must not come back. Comments are stripped
+  // first so the explanation of the old behaviour does not trip its own guard.
+  const code = source.replace(/^\s*\/\/.*$/gm, '');
+  assert.doesNotMatch(code, /MutationObserver|querySelectorAll|textContent\s*=|innerHTML/);
   assert.doesNotMatch(source, /fetch\(|sendTelegram|telegramNotifier|supabase\.from|createOrder|scan\(|\/api\//i);
+});
+
+test('the Screener extension owns the direction-conflict guard and reads plan numbers directly', () => {
+  const extension = read('public/pattern-screener-extension.js');
+  assert.match(extension, /Konflik arah · level Screener disembunyikan/);
+  assert.match(extension, /data-direction-conflict/);
+  assert.match(extension, /tradePlanDirection\(plan\)/);
+  // The old guard rebuilt the plan by parsing rendered level strings.
+  assert.doesNotMatch(extension, /parseLocalizedNumber|planFromBox/);
 });

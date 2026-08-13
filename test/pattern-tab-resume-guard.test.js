@@ -46,11 +46,13 @@ test('missing access reuses one non-forced server verification instead of cancel
   assert.deepEqual(await Promise.all([first, second]), [true, true]);
 });
 
-test('Pattern level labels expose Entry and Stop Loss while preserving TP1 and TP2', () => {
-  assert.equal(guard.normalizeLevelLabel('Konfirmasi'), 'Entry / Konfirmasi');
-  assert.equal(guard.normalizeLevelLabel('Invalidasi'), 'Stop Loss / Invalidasi');
-  assert.equal(guard.normalizeLevelLabel('TP1'), 'TP1');
-  assert.equal(guard.normalizeLevelLabel('TP2'), 'TP2');
+test('the resume guard no longer competes for ownership of level labels', () => {
+  // Level text is emitted, direction-correct, by the Pattern renderer. Two
+  // modules rewriting the same nodes is what produced the label drift this
+  // guard used to paper over, so the rewrite lives in exactly one place now.
+  assert.equal(typeof guard.normalizeLevelLabel, 'undefined');
+  assert.equal(typeof guard.normalizePatternLevels, 'undefined');
+  assert.doesNotMatch(read('public/pattern-tab-resume-guard.js'), /Entry \/ Konfirmasi|Stop Loss \/ Invalidasi/);
 });
 
 test('resume guard restores /pattern without scanning, Telegram, DB, or production mutations', () => {
@@ -60,7 +62,5 @@ test('resume guard restores /pattern without scanning, Telegram, DB, or producti
   assert.match(source, /visibilitychange/);
   assert.match(source, /restorePatternPage/);
   assert.match(source, /page\.classList\.remove\('hidden'\)/);
-  assert.match(source, /Entry \/ Konfirmasi/);
-  assert.match(source, /Stop Loss \/ Invalidasi/);
   assert.doesNotMatch(source, /scan\(|\/api\/candles|sendTelegram|telegramNotifier|supabase\.from|createOrder|production_state/i);
 });

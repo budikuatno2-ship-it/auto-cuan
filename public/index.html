@@ -3786,8 +3786,6 @@ async function handleAnalisisFollowUp(msg) {
 
 // ===== CHART PAGE =====
 var _chartPageData = null;
-var _patternMapManager = null;
-var _patternImageUrl = null;
 var _chartPageLoadVersion = 0;
 
 function patternMapPreviewEnabled() {
@@ -3825,14 +3823,12 @@ function applyPatternMapPreviewPolicy() {
     return enabled;
 }
 
-function revokePatternImageUrl() {
-    if (_patternImageUrl) URL.revokeObjectURL(_patternImageUrl);
-    _patternImageUrl = null;
-}
-
+// The preview renders inline SVG, so there is no in-flight image request to
+// cancel and no object URL to revoke. The function is kept because navigateTo()
+// and the preview policy both call it on every page change.
 function resetPatternMap() {
-    if (_patternMapManager) _patternMapManager.cancel();
-    revokePatternImageUrl();
+    var box = document.getElementById('patternMapImage');
+    if (box) box.textContent = '';
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPatternMapPreview);
@@ -3876,20 +3872,20 @@ async function renderPatternTab() {
       '<div class="border-t border-dark-600/30 pt-4 space-y-2"><span class="inline-flex rounded-full bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-300">Preview nonaktif — AI segera hadir</span><label for="patternQuestion" class="block text-sm font-semibold text-gray-200">Tanya tentang pattern yang ditampilkan</label>' +
       '<div class="flex flex-wrap gap-2"><input id="patternQuestion" disabled aria-disabled="true" class="min-w-0 flex-1 px-3 py-2 rounded-lg bg-dark-700 text-sm text-gray-500 opacity-70" placeholder="Q&A belum tersedia"><button disabled aria-disabled="true" class="px-4 py-2 rounded-lg bg-dark-600 text-gray-500 text-sm cursor-not-allowed">AI segera hadir</button></div>' +
       '<div class="text-[11px] text-gray-500">Tidak ada AI atau permintaan jaringan dari bagian ini.</div></div></div>';
-    if (!_patternMapManager) _patternMapManager = new PatternMap.RequestManager(fetch.bind(window));
-    var result = await _patternMapManager.render(candidate, renderContext, { viewportWidth: window.innerWidth });
+    // The preview draws the same local SVG the Pattern page uses. It previously
+    // POSTed the ticker, its close series and the deterministic geometry to
+    // quickchart.io and displayed the returned PNG; nothing in Auto-Cuan sends
+    // chart data to a third party any more.
     var imageBox = document.getElementById('patternMapImage');
-    if (!imageBox || data !== _chartPageData || result.obsolete) return;
-    if (result.empty) imageBox.textContent = result.message;
-    else if (result.error) imageBox.textContent = result.message;
-    else {
-        if (_patternImageUrl) URL.revokeObjectURL(_patternImageUrl);
-        _patternImageUrl = URL.createObjectURL(result.blob);
-        // Intrinsic size comes from the render spec so the box reserves the right
-        // aspect ratio before the blob decodes (no layout shift on mobile).
-        var spec = result.spec || { width: 1200, height: 700 };
-        imageBox.innerHTML = '<img src="' + _patternImageUrl + '" width="' + spec.width + '" height="' + spec.height + '" class="w-full h-auto object-contain" alt="Pattern Map ' + escapeHtml(data.ticker) + ' tanggal T-1 ' + escapeHtml(data.actual_data_date || '') + '">';
-    }
+    if (!imageBox || data !== _chartPageData) return;
+    var svg = '';
+    try {
+        svg = (window.AutoCuanPatternVisual && candidate)
+            ? window.AutoCuanPatternVisual.buildPatternSvg({ ticker: data.ticker, candidate: candidate, classicPatterns: [], context: renderContext, dataDate: data.actual_data_date, currentPrice: candidate.currentPrice }, { width: 900, height: 380 })
+            : '';
+    } catch (_) { svg = ''; }
+    if (svg) { imageBox.classList.remove('p-5'); imageBox.innerHTML = svg; }
+    else imageBox.textContent = PatternMap.EMPTY_MESSAGE;
 }
 
 async function loadChartPage() {
@@ -12295,5 +12291,6 @@ function exportDayTradePDF() {
 <script src="/ai-chat-renderer.js?v=20260726-src1"></script>
 <script src="/stock-analysis-ai.js?v=20260726-src1"></script>
 <script src="/pattern-map.js?v=20260802-pattern-map-v3"></script>
+<script src="/ui-bugfix-pack-v1.js?v=20260803-v1"></script>
 </body>
 </html>

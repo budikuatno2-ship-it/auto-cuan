@@ -106,8 +106,8 @@ test('runtime loads after stable Pattern and preserves protected systems', () =>
   new vm.Script(source, { filename:'pattern-screener-extension.js' });
   assert.ok(loader.indexOf('/pattern-stable-runtime.js') < loader.indexOf('/pattern-screener-extension.js'));
   assert.match(loader, /pattern-tab-resume-v2/);
-  assert.match(loader, /pattern-stable-v5/);
-  assert.match(loader, /pattern-screener-v5&rev=20260729-pattern-screener-v6/);
+  assert.match(loader, /pattern-stable-v6/);
+  assert.match(loader, /pattern-screener-v7/);
   assert.match(source, /smart_setup_labels/);
   assert.match(source, /classic_chart_patterns/);
   assert.match(source, /primary_classic_pattern/);
