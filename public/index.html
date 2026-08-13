@@ -485,7 +485,11 @@
         .session-item.active { background: #1c2333; border: 1px solid rgba(16,185,129,0.2); border-left: 3px solid #10b981; }
         .session-item .session-title { flex: 1; font-size: 0.8125rem; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
         .session-item.active .session-title { color: #6ee7b7; }
-        .session-item .session-delete { opacity: 0; flex-shrink: 0; padding: 4px; border-radius: 6px; color: #6b7280; transition: all 0.15s; }
+        /* An icon-only control still needs a thumb-sized hit area. The icon keeps
+           its size; the button grows around it. On a touch device the control is
+           always visible, since there is no hover to reveal it with. */
+        .session-item .session-delete { opacity: 0; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; padding: 4px; border-radius: 6px; color: #6b7280; transition: all 0.15s; }
+        @media (pointer: coarse) { .session-item .session-delete { opacity: 1; } }
         .session-item:hover .session-delete { opacity: 1; }
         .session-item .session-delete:hover { color: #f87171; background: rgba(239,68,68,0.1); }
         .new-chat-btn { width: 100%; padding: 10px 16px; border-radius: 10px; font-size: 0.8125rem; font-weight: 600; color: #e5e7eb; background: #151a23; border: 1px solid #242d3d; display: flex; align-items: center; gap: 8px; transition: all 0.15s; }
@@ -547,9 +551,19 @@
         .market-tile-delta { font-size: 12px; font-weight: 600; color: #9ca3af; font-variant-numeric: tabular-nums; }
         .market-tile-unit { font-size: 11px; color: #7c8ba1; }
         .market-tile-note { font-size: 10.5px; line-height: 1.5; color: #7c8ba1; margin-top: auto; }
-        .market-tile-link { margin-top: auto; align-self: flex-start; font-size: 11px; color: #6ee7b7; background: none; border: 0; padding: 0; cursor: pointer; }
-        .market-tile-link:hover { color: #a7f3d0; text-decoration: underline; }
+        /* A text link is still a tap target: at 11px type this was 17px tall,
+           well under a comfortable thumb. Padding gives it height without
+           changing where the text sits, and the negative inline margin keeps it
+           optically aligned with the tile's left edge. */
+        .market-tile-link { margin-top: auto; align-self: flex-start; min-height: 32px; display: inline-flex; align-items: center; padding: 6px 8px; margin-left: -8px; font-size: 11px; color: #6ee7b7; background: none; border: 0; border-radius: 8px; cursor: pointer; }
+        .market-tile-link:hover { color: #a7f3d0; background: rgba(16,185,129,0.07); }
         @media (max-width: 760px) { .market-band-grid { grid-template-columns: 1fr; } .market-tile-value { font-size: 20px; } }
+        /* Controls inside panel headers were 27px tall on a phone. On a pointer
+           device that is fine; under a thumb it is not, and these three sit
+           close together. Height only grows where touch is the primary input. */
+        @media (pointer: coarse) {
+            .panel-header button, .panel .flex.gap-1 > button { min-height: 34px; }
+        }
         .dash-level-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
         .dash-level { min-width: 0; border: 1px solid rgba(148,163,184,0.10); border-radius: 10px; padding: 7px 8px; background: rgba(2,6,23,0.25); }
         .dash-level span { display: block; font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
