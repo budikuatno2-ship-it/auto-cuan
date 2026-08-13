@@ -248,7 +248,9 @@ test('debug diagnostics require the existing server secret and public shares ret
 
 test('client hides premium navigation, cancels stale checks, and restores accessibility only after confirmation', () => {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-  assert.ok((html.match(/data-premium-nav="true"/g) || []).length >= 9);
+  // See ui-theme-layer.test.js: the duplicate dashboard launcher is gone, so
+  // the gated surface is the six nav buttons and the three pages themselves.
+  assert.ok((html.match(/data-premium-nav="true"/g) || []).length >= 6);
   assert.ok((html.match(/data-premium-page="true"/g) || []).length >= 3);
   assert.match(html, /premiumAccessGeneration/);
   assert.match(html, /premiumAccessController\.abort\(\)/);

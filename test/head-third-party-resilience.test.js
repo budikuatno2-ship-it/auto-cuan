@@ -14,7 +14,11 @@
 //
 //   Tailwind CDN aborted entirely
 //     before: uncaught ReferenceError "tailwind is not defined" on every load
-//     after:  0 page errors, landing page renders, loader hidden
+//     then:   0 page errors — but the app still rendered completely unstyled,
+//             because the CDN was not just configuring Tailwind, it *was* the
+//             stylesheet
+//     now:    the sheet is built ahead of time and served from this origin, so
+//             blocking the CDN changes nothing at all
 //
 // LOCAL / STATIC ONLY.
 // ===========================================================================
@@ -24,7 +28,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+const ROOT = path.join(__dirname, '..');
+const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const head = html.slice(0, html.indexOf('</head>'));
 
 test('the webfont stylesheet does not block first paint', () => {
@@ -50,26 +55,30 @@ test('preconnect hints for the font origins are kept', () => {
   assert.match(head, /<link rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin>/);
 });
 
-test('the Tailwind config does not throw when the CDN is unavailable', () => {
-  const idx = head.indexOf('tailwind.config');
-  assert.ok(idx > 0, 'the Tailwind theme extension must still be configured');
-  const guard = head.lastIndexOf("typeof tailwind !== 'undefined'", idx);
-  assert.ok(
-    guard > 0 && guard < idx,
-    'a bare `tailwind.config = ...` throws ReferenceError whenever the CDN is '
-    + 'blocked, throttled, or filtered'
-  );
+test('Tailwind cannot fail open, because it is no longer fetched at runtime', () => {
+  // This used to guard `tailwind.config = ...` against a ReferenceError when the
+  // Play CDN was blocked. That guard only stopped the console error; the page
+  // still lost its entire layout, because the CDN *is* the stylesheet.
+  // The sheet is now built ahead of time and served from this origin, so there
+  // is no runtime compiler to be absent.
+  assert.doesNotMatch(head, /cdn\.tailwindcss\.com/);
+  assert.doesNotMatch(head, /tailwind\.config\s*=/);
+  assert.match(head, /<link[^>]+href="\/tailwind-build\.css/);
 });
 
-test('the brand palette survives the guard', () => {
-  // The guard must not have quietly dropped the theme extension it wraps.
-  assert.match(head, /dark:\s*\{\s*900:\s*'#0b0e14'/);
+test('the brand palette survives the move to a built stylesheet', () => {
+  // The palette that used to live in the inline tailwind.config now lives in
+  // tailwind.config.js and must reach the generated sheet.
+  const config = fs.readFileSync(path.join(ROOT, 'tailwind.config.js'), 'utf8');
+  assert.match(config, /900:\s*'#0b0e14'/);
+  const css = fs.readFileSync(path.join(ROOT, 'public', 'tailwind-build.css'), 'utf8');
+  assert.match(css, /#0b0e14/);
 });
 
-test('the canonical-domain redirect still runs before app init', () => {
-  // Unrelated to the above, but it shares this head and is easy to break by
-  // reordering: it must stay ahead of the Tailwind and app scripts.
+test('the canonical-domain redirect still runs before anything else in the head', () => {
+  // It must stay ahead of the stylesheet and every app script: reordering the
+  // head is the easy way to break it.
   const redirect = head.indexOf("window.location.hostname === 'auto-cuan.vercel.app'");
-  const tailwind = head.indexOf('cdn.tailwindcss.com');
-  assert.ok(redirect > 0 && redirect < tailwind, 'the canonical redirect runs first');
+  const stylesheet = head.indexOf('/tailwind-build.css');
+  assert.ok(redirect > 0 && redirect < stylesheet, 'the canonical redirect runs first');
 });

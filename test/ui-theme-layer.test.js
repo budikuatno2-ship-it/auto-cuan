@@ -108,7 +108,9 @@ test('reduced motion is honoured by the new components', () => {
 // 4. Dashboard grouping (markup only — no behaviour touched)
 // ---------------------------------------------------------------------------
 test('the dashboard is grouped into labelled, scannable bands', () => {
-  ['dashQuickAccessTitle', 'dashRadarTitle', 'dashHistoryTitle'].forEach(id => {
+  // dashQuickAccessTitle labelled "Akses Cepat", a launcher duplicating the
+  // header nav. That band now carries market state instead.
+  ['dashMarketTitle', 'dashRadarTitle', 'dashHistoryTitle'].forEach(id => {
     assert.ok(html.includes('id="' + id + '"'), 'missing section heading ' + id);
     assert.ok(html.includes('aria-labelledby="' + id + '"'), id + ' must label its section');
   });
@@ -126,6 +128,14 @@ test('every dashboard destination and control survives the regrouping', () => {
 });
 
 test('approval-gated dashboard cards keep their premium markers', () => {
-  assert.ok((html.match(/data-premium-nav="true"/g) || []).length >= 9);
+  // Six gated nav buttons: three in the desktop nav, three in the mobile nav.
+  // The count used to be nine because the dashboard also carried a duplicate
+  // launcher for the same three destinations; removing that duplication removed
+  // gated controls, not gated capability.
+  assert.ok((html.match(/data-premium-nav="true"/g) || []).length >= 6);
   assert.ok((html.match(/data-premium-page="true"/g) || []).length >= 3);
+  ['sektor', 'screener', 'portofolio'].forEach(page => {
+    const nav = new RegExp('data-page="' + page + '"[^>]*data-premium-nav="true"|data-premium-nav="true"[^>]*data-page="' + page + '"', 'g');
+    assert.ok((html.match(nav) || []).length >= 2, page + ' must be gated in both navs');
+  });
 });
