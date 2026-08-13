@@ -253,16 +253,16 @@
     if (!capacity.ok) return;
     if (!screenerQuotes.length) {
       host.className = 'empty';
-      host.textContent = screenerLoading ? 'Memuat kandidat dari Screener terbaru…' : 'Kandidat Screener belum tersedia. Kamu tetap dapat mengecek ticker tertentu.';
+      host.textContent = screenerLoading ? 'Memuat kandidat dari Screener terbaru…' : 'Kandidat Screener belum tersedia. Anda tetap dapat mengecek ticker tertentu secara manual.';
       return;
     }
     var rows = screenerQuotes.map(function (row) { return Object.assign({}, row, { fit:Model.affordability(row.price, capacity) }); })
       .filter(function (row) { return row.fit && row.fit.lots >= 1; })
       .sort(function (a, b) { return b.fit.lots - a.fit.lots || a.ticker.localeCompare(b.ticker); })
       .slice(0, 12);
-    if (!rows.length) { host.className = 'empty'; host.textContent = 'Belum ada kandidat Screener yang masuk batas alokasi modal ini.'; return; }
+    if (!rows.length) { host.className = 'empty'; host.textContent = 'Belum ada kandidat Screener yang muat dalam alokasi modal ini.'; return; }
     host.className = 'candidate-list';
-    host.innerHTML = '<div class="note" style="margin:0 0 8px">Kandidat berasal dari ranking Screener terbaru; kecocokan di sini hanya berdasarkan harga dan budget.</div>' + rows.map(function (row) {
+    host.innerHTML = '<div class="note" style="margin:0 0 8px">Kandidat diambil dari ranking Screener terbaru. Daftar ini hanya mencocokkan harga dengan modal Anda, belum menilai kualitas setup.</div>' + rows.map(function (row) {
       return '<div class="candidate-item"><div class="candidate-main"><strong>' + escapeHtml(row.ticker) + '</strong>' +
         '<div class="candidate-stat"><span>Harga</span><b>' + money(row.price) + '</b></div>' +
         '<div class="candidate-stat"><span>Kapasitas</span><b>' + row.fit.lots + ' lot</b></div>' +

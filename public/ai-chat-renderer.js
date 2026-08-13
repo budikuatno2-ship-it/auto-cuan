@@ -12,7 +12,7 @@
   function normalizeTone(value) {
     return String(value == null ? '' : value)
       .replace(/\b(bestie|bro|sis)\b[,.!?]?/gi, '')
-      .replace(/\b(lo|lu)\b/gi, 'kamu')
+      .replace(/\b(lo|lu)\b/gi, 'Anda')
       .replace(/\bgue\b/gi, 'saya')
       .replace(/\bnggak\b/gi, 'tidak')
       .replace(/\bga(k)?\b/gi, 'tidak')

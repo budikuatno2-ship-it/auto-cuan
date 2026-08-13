@@ -279,7 +279,7 @@
     }
 
     button.disabled = true;
-    button.textContent = 'Mengirim...';
+    button.textContent = 'Mengirim…';
     try {
       var result = await authRequest('request-password-reset', { username: username });
       if (!result.response.ok || result.data.success !== true) {
@@ -337,7 +337,7 @@
     }
 
     button.disabled = true;
-    button.textContent = 'Menyimpan...';
+    button.textContent = 'Menyimpan…';
     try {
       if (typeof window.hashPassword !== 'function') throw new Error('hash_unavailable');
       var newPasswordHash = await window.hashPassword(password);
