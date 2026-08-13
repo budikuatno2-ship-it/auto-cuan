@@ -10272,11 +10272,34 @@ function sanitizeAIHtml(html) {
     // Remove event handlers
     output = output.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
     output = output.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
-    // Remove javascript: URLs
-    output = output.replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"');
+    // Dangerous URL schemes, resistant to entity encoding.
+    //
+    // The old rule was a literal match on `href="javascript:..."`, so
+    // `href="javas&#99;ript:alert(1)"` went straight through — the browser
+    // decodes the entity, the regex does not. Every URL-bearing attribute is now
+    // checked against a decoded copy of its value.
+    output = output.replace(/\s(href|src|xlink:href|action|formaction|data|poster)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+        function(match, attr, _raw, dq, sq, bare) {
+            var value = dq != null ? dq : (sq != null ? sq : (bare || ''));
+            var decoded = String(value)
+                .replace(/&#x([0-9a-f]+);?/gi, function(_, hex) { return String.fromCharCode(parseInt(hex, 16)); })
+                .replace(/&#(\d+);?/g, function(_, dec) { return String.fromCharCode(parseInt(dec, 10)); })
+                .replace(/[\s\u0000-\u001F]/g, '')
+                .toLowerCase();
+            if (/^(javascript|vbscript|data):/.test(decoded)) return ' ' + attr + '="#"';
+            return match;
+        });
     // Remove iframe/embed/object
     output = output.replace(/<(iframe|embed|object|form|input|button)[\s\S]*?<\/\1>/gi, '');
     output = output.replace(/<(iframe|embed|object|form|input|button)[^>]*\/?>/gi, '');
+    // Elements that change how the whole document behaves have no place in
+    // narrative output and were not being removed at all. A surviving
+    // `<base href="https://evil.example/">` re-points every relative URL on the
+    // page — including the app's own /api/* calls — and a surviving
+    // `<meta http-equiv="refresh">` navigates the page away entirely. <style>
+    // and <link> can restyle or hide the real interface.
+    output = output.replace(/<(style|template|noscript|svg|math)[\s\S]*?<\/\1>/gi, '');
+    output = output.replace(/<(base|meta|link|style|template|noscript|svg|math)[^>]*\/?>/gi, '');
     // Collapse excessive whitespace/empty elements for compact layout
     output = output.replace(/<p[^>]*>\s*<\/p>/gi, ''); // remove empty <p></p>
     output = output.replace(/(<br\s*\/?>){3,}/gi, '<br>'); // max 1 consecutive br (only 3+)

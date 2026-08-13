@@ -22,10 +22,26 @@ var BOARD_CACHE_TTL = 12 * 60 * 60 * 1000;
 var NEWS_CACHE_TTL_DAYS = 30;
 var NEWS_PERIOD = '6m';
 
-function hasLoggedInHeaders(req) {
-  var username = String((req.headers && req.headers['x-username']) || '').trim().toLowerCase();
-  var userId = String((req.headers && req.headers['x-user-id']) || '').trim();
-  return !!((username && username !== 'guest') || (userId && userId.length > 10));
+// Advanced entry analysis (respect zones, half-candle levels, refinement and
+// respect-quality notes) is gated on a real session.
+//
+// This used to be decided by hasLoggedInHeaders(), which only looked at whether
+// X-Username / X-User-Id were present and non-"guest". Those are request
+// headers the browser sets from localStorage, so anyone could ask for the gated
+// fields with a single curl:
+//
+//   curl -H 'X-Username: anyone' https://.../api/quote?ticker=BBCA
+//
+// The value was never verified against anything; any non-empty string that was
+// not the literal "guest" passed. The gate now uses the same HMAC-signed
+// HttpOnly session cookie that /api/admin-users already requires for website
+// access, so it cannot be forged from the client. It fails closed: no session,
+// no secret, or an expired token all redact.
+var adminSession = require('../lib/admin-session');
+
+function hasVerifiedSession(req) {
+  var auth = adminSession.requireAuthenticatedSession(req);
+  return auth.ok === true;
 }
 
 function redactAdvancedQuoteFields(result) {
@@ -156,7 +172,7 @@ module.exports = async function handler(req, res) {
 
   var ticker = null;
   try {
-    var allowAdvancedEntryAnalysis = hasLoggedInHeaders(req);
+    var allowAdvancedEntryAnalysis = hasVerifiedSession(req);
     var includeNews = false;
 
     if (req.method === 'GET') {
@@ -2620,4 +2636,8 @@ function interpretFibonacciPosition(close, trend, nearest, fibLevels, swingHigh,
   }
 }
 
-module.exports.__test = { normalizeDailyContextTicker: normalizeDailyContextTicker };
+module.exports.__test = {
+  normalizeDailyContextTicker: normalizeDailyContextTicker,
+  hasVerifiedSession: hasVerifiedSession,
+  redactAdvancedQuoteFields: redactAdvancedQuoteFields
+};
