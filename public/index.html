@@ -2488,11 +2488,21 @@ function changeDisplay(value, digits) {
     }
     var decimals = digits == null ? 2 : digits;
     var body = Math.abs(number).toFixed(decimals).replace('.', ',');
+    // A flat close is neither a gain nor a loss. It used to be printed as
+    // "+0,00%" in gain green, so a scan of the Screener grid read as a row of
+    // small winners when several of those names had not moved at all. Zero — and
+    // anything that rounds to zero at the requested precision — is now neutral
+    // and unsigned.
+    var flat = Math.abs(number) < 0.5 / Math.pow(10, decimals);
+    if (flat) {
+        return { known: true, flat: true, text: body + '%', cls: 'text-gray-400', hex: '#9ca3af' };
+    }
     return {
         known: true,
+        flat: false,
         text: (number < 0 ? '−' : '+') + body + '%',
-        cls: number >= 0 ? 'text-emerald-400' : 'text-red-400',
-        hex: number >= 0 ? '#6ee7b7' : '#fca5a5'
+        cls: number > 0 ? 'text-emerald-400' : 'text-red-400',
+        hex: number > 0 ? '#6ee7b7' : '#fca5a5'
     };
 }
 
@@ -4767,11 +4777,13 @@ async function fetchQuoteContext(ticker, forceFresh) {
         if (quoteResp && quoteResp.ok) {
             var q = await quoteResp.json();
             if (q.success) {
-                lines.push('Last: ' + q.last);
-                lines.push('Open: ' + q.open);
-                lines.push('High: ' + q.high);
-                lines.push('Low: ' + q.low);
-                lines.push('Volume: ' + (q.volume || 0));
+                // Same rule as every other grounding line: absent stays absent.
+                // "Volume: 0" told the model the stock did not trade, and a
+                // missing OHLC field was written as the literal "undefined".
+                [['Last', q.last], ['Open', q.open], ['High', q.high], ['Low', q.low], ['Volume', q.volume]]
+                    .forEach(function(entry) {
+                        if (entry[1] != null && entry[1] !== '') lines.push(entry[0] + ': ' + entry[1]);
+                    });
                 if (q.volumeAvg20 != null) lines.push('Avg Volume 20: ' + q.volumeAvg20);
                 if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg 20: ' + q.volumeVsAvg20 + 'x');
                 if (q.volumeAvg3 != null) lines.push('Avg Volume 3D: ' + q.volumeAvg3);
@@ -4789,14 +4801,15 @@ async function fetchQuoteContext(ticker, forceFresh) {
                 if (q.rsi14 != null) lines.push('RSI14: ' + q.rsi14);
                 // Pivot data from same response
                 if (q.pivot) {
-                    lines.push('Pivot Point: ' + q.pivot.pivotPoint);
-                    lines.push('OHLC Pivot: ' + q.pivot.ohlcPivot);
-                    lines.push('Support 1: ' + q.pivot.support1);
-                    lines.push('Support 2: ' + q.pivot.support2);
-                    lines.push('Resistance 1: ' + q.pivot.resistance1);
-                    lines.push('Resistance 2: ' + q.pivot.resistance2);
-                    lines.push('Pivot Method: ' + q.pivot.pivotMethod);
-                    lines.push('Pivot Source Date: ' + q.pivot.pivotSourceDate);
+                    // A missing pivot used to be written into the prompt as the
+                    // literal string "undefined" ("Support 1: undefined").
+                    [['Pivot Point', q.pivot.pivotPoint], ['OHLC Pivot', q.pivot.ohlcPivot],
+                     ['Support 1', q.pivot.support1], ['Support 2', q.pivot.support2],
+                     ['Resistance 1', q.pivot.resistance1], ['Resistance 2', q.pivot.resistance2],
+                     ['Pivot Method', q.pivot.pivotMethod], ['Pivot Source Date', q.pivot.pivotSourceDate]
+                    ].forEach(function(entry) {
+                        if (entry[1] != null && entry[1] !== '') lines.push(entry[0] + ': ' + entry[1]);
+                    });
                     if (q.pivot.flatRange) lines.push('Note: Range T-1 flat/sempit, level pivot kurang informatif.');
                 }
 
@@ -4804,16 +4817,24 @@ async function fetchQuoteContext(ticker, forceFresh) {
                 if (q.volumeAvg3 != null && q.volumeAvg7 != null && !q.isIndex) {
                     lines.push('');
                     lines.push('[Auto-Cuan Volume Intelligence]');
-                    lines.push('Volume Terakhir: ' + formatIndonesianVolume(q.volume || 0));
+                    // Every line here is grounding the model reads as fact, so a
+                    // missing field is omitted rather than defaulted. The `|| 0`
+                    // fallbacks this replaces turned an absent 20-day average
+                    // into "Volume vs Avg 20D: 0x" and an absent daily move into
+                    // "Price Change 1D: 0%" — readings the model would then
+                    // reason from as a volume collapse and a flat session. The
+                    // block immediately above already guards the same fields
+                    // with `!= null`; this one did not.
+                    if (q.volume != null) lines.push('Volume Terakhir: ' + formatIndonesianVolume(q.volume));
                     lines.push('Rata-rata 3 Hari: ' + formatCompactVolume(q.volumeAvg3));
                     lines.push('Rata-rata 7 Hari: ' + formatCompactVolume(q.volumeAvg7));
-                    lines.push('Rata-rata 20 Hari: ' + formatCompactVolume(q.volumeAvg20 || 0));
-                    lines.push('Volume vs Avg 3D: ' + String(q.volumeVsAvg3 || 0).replace('.', ',') + 'x');
-                    lines.push('Volume vs Avg 7D: ' + String(q.volumeVsAvg7 || 0).replace('.', ',') + 'x');
-                    lines.push('Volume vs Avg 20D: ' + String(q.volumeVsAvg20 || 0).replace('.', ',') + 'x');
-                    lines.push('Price Change 1D: ' + (q.priceChange1D || 0) + '%');
-                    lines.push('Volume Trend: ' + (q.volumeTrend || 'normal'));
-                    lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup.'));
+                    if (q.volumeAvg20 != null) lines.push('Rata-rata 20 Hari: ' + formatCompactVolume(q.volumeAvg20));
+                    if (q.volumeVsAvg3 != null) lines.push('Volume vs Avg 3D: ' + String(q.volumeVsAvg3).replace('.', ',') + 'x');
+                    if (q.volumeVsAvg7 != null) lines.push('Volume vs Avg 7D: ' + String(q.volumeVsAvg7).replace('.', ',') + 'x');
+                    if (q.volumeVsAvg20 != null) lines.push('Volume vs Avg 20D: ' + String(q.volumeVsAvg20).replace('.', ',') + 'x');
+                    if (q.priceChange1D != null) lines.push('Price Change 1D: ' + q.priceChange1D + '%');
+                    if (q.volumeTrend) lines.push('Volume Trend: ' + q.volumeTrend);
+                    lines.push('Pembacaan: ' + (q.priceVolumeReading || 'Data tidak cukup untuk pembacaan volume.'));
                     // Estimated transaction value (optional)
                     if (q.last && q.volume && q.volume > 0) {
                         var estTxnValue = q.last * q.volume;
@@ -7335,6 +7356,10 @@ function getDayTradeStatusColor(status) {
         return '#67e8f9';
     }
 
+    // An empty or unrecognised status is unknown, not a caution. Returning the
+    // amber caution colour here painted rows the server had simply not labelled
+    // as if the system had judged them risky.
+    if (!s) return '#9ca3af';
     return '#fde047';
 }
 
@@ -7365,6 +7390,8 @@ function getDayTradeStatusBackground(status) {
     ) {
         return 'rgba(6,182,212,0.12)';
     }
+
+    if (!s) return 'rgba(148,163,184,0.10)';
 
     return 'rgba(234,179,8,0.1)';
 }
@@ -7859,7 +7886,7 @@ function renderKgCardGrid(results) {
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(swingTierTitle(tier)) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.group_code) html += '<span style="color:#6b7280">' + escapeHtml(r.group_code) + '</span>';
@@ -7935,7 +7962,7 @@ function renderNkCardGrid(results) {
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '" title="' + escapeHtml(swingTierTitle(tier)) + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
@@ -8534,27 +8561,45 @@ function renderScreenerTable(results) {
 }
 
 // Swing tier display helpers
+// An unrecognised or absent tier is unknown, not AVOID. Both helpers used to
+// fall through to the INVALID/AVOID treatment, so a row whose swing_tier the
+// server simply did not send was painted with a red danger badge reading "-" —
+// a scan of the grid showed danger where there was only missing data.
+var SWING_TIER_LABELS = {
+    A_PLUS_SWING: 'A+ SWING',
+    TRADE_CANDIDATE: 'TRADE',
+    SWING_READY: 'READY',
+    WATCHLIST: 'WATCH',
+    REBOUND_CANDIDATE: 'REBOUND',
+    WAIT_PULLBACK: 'WAIT PB',
+    SPECULATIVE: 'SPEC',
+    INVALID: 'AVOID',
+    AVOID: 'AVOID'
+};
+var SWING_TIER_COLORS = {
+    A_PLUS_SWING: 'bg-emerald-500/20 text-emerald-300',
+    TRADE_CANDIDATE: 'bg-emerald-500/15 text-emerald-400',
+    SWING_READY: 'bg-emerald-500/10 text-emerald-400',
+    WATCHLIST: 'bg-blue-500/15 text-blue-400',
+    REBOUND_CANDIDATE: 'bg-purple-500/15 text-purple-400',
+    WAIT_PULLBACK: 'bg-orange-500/15 text-orange-400',
+    SPECULATIVE: 'bg-amber-500/15 text-amber-400',
+    INVALID: 'bg-red-500/10 text-red-400',
+    AVOID: 'bg-red-500/10 text-red-400'
+};
+var SWING_TIER_UNKNOWN_LABEL = 'TIER —';
+var SWING_TIER_UNKNOWN_COLOR = 'bg-gray-500/10 text-gray-400';
+
 function swingTierShort(tier) {
-    if (tier === 'A_PLUS_SWING') return 'A+ SWING';
-    if (tier === 'TRADE_CANDIDATE') return 'TRADE';
-    if (tier === 'SWING_READY') return 'READY';
-    if (tier === 'WATCHLIST') return 'WATCH';
-    if (tier === 'REBOUND_CANDIDATE') return 'REBOUND';
-    if (tier === 'WAIT_PULLBACK') return 'WAIT PB';
-    if (tier === 'SPECULATIVE') return 'SPEC';
-    if (tier === 'INVALID' || tier === 'AVOID') return 'AVOID';
-    return tier || '-';
+    return SWING_TIER_LABELS[tier] || SWING_TIER_UNKNOWN_LABEL;
 }
 
 function swingTierColor(tier) {
-    if (tier === 'A_PLUS_SWING') return 'bg-emerald-500/20 text-emerald-300';
-    if (tier === 'TRADE_CANDIDATE') return 'bg-emerald-500/15 text-emerald-400';
-    if (tier === 'SWING_READY') return 'bg-emerald-500/10 text-emerald-400';
-    if (tier === 'WATCHLIST') return 'bg-blue-500/15 text-blue-400';
-    if (tier === 'REBOUND_CANDIDATE') return 'bg-purple-500/15 text-purple-400';
-    if (tier === 'WAIT_PULLBACK') return 'bg-orange-500/15 text-orange-400';
-    if (tier === 'SPECULATIVE') return 'bg-amber-500/15 text-amber-400';
-    return 'bg-red-500/10 text-red-400';
+    return SWING_TIER_COLORS[tier] || SWING_TIER_UNKNOWN_COLOR;
+}
+
+function swingTierTitle(tier) {
+    return SWING_TIER_LABELS[tier] ? '' : 'Tier setup tidak tersedia untuk saham ini.';
 }
 
 function screenerStatusShort(status) {
