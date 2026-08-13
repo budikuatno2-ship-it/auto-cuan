@@ -385,72 +385,35 @@ module.exports = async function handler(req, res) {
 };
 
 // ============================================================
-// SCREENER READ — login-gated via X-User-Id header
+// SCREENER READ — gated by the signed session, upstream
 // ============================================================
 async function handleScreenerRead(req, res, supabase) {
-  // Server-side access control via X-User-Id (UUID) and X-Username headers
-  // Frontend sends both: UUID if available, username always
-  var rawUserId = (req.headers['x-user-id'] || '').trim();
-  var rawUsername = (req.headers['x-username'] || '').trim().toLowerCase();
-
-  // A CRON_SECRET bearer may read status for the VPS-only manual runner.
-  // Browser reads remain login-gated; no new endpoint is introduced.
-  var cronStatusReadAllowed = verifyCronSecret(req);
-  if (!cronStatusReadAllowed && !rawUserId && !rawUsername) {
-    return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
-  }
-  if (!cronStatusReadAllowed && rawUsername === 'guest') {
-    return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
-  }
-
-  var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req) || cronStatusReadAllowed;
-  var userData = null;
-
-  if (!legacyBudiReadAllowed) {
-    // 1. Try lookup by UUID if it looks valid
-    if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
-      var r1 = await supabase
-        .from('app_users')
-        .select('id, username, is_approved, is_blocked')
-        .eq('id', rawUserId)
-        .maybeSingle();
-      if (r1.data) userData = r1.data;
-    }
-
-    // 2. Fallback: lookup by username
-    if (!userData && rawUsername && rawUsername.length >= 2) {
-      var r2 = await supabase
-        .from('app_users')
-        .select('id, username, is_approved, is_blocked')
-        .eq('username', rawUsername)
-        .maybeSingle();
-      if (r2.data) userData = r2.data;
-    }
-
-    // 3. Fallback: try ilike match for username (case-insensitive safety)
-    if (!userData && rawUsername && rawUsername.length >= 2) {
-      var r3 = await supabase
-        .from('app_users')
-        .select('id, username, is_approved, is_blocked')
-        .ilike('username', rawUsername)
-        .maybeSingle();
-      if (r3.data) userData = r3.data;
-    }
-
-    if (!userData) {
-      return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
-    }
-
-    if (userData.is_blocked) {
-      return res.status(403).json({ success: false, error: 'Akun diblokir.' });
-    }
-
-    if (userData.is_approved === false) {
-      return res.status(403).json({ success: false, error: 'Akun belum di-approve.' });
-    }
+  // Access is already decided before this handler runs. The PREMIUM READ ACCESS
+  // GATE at the top of this module applies requirePremiumEntitlement() to
+  // action='screener', which resolves identity from the signed HttpOnly ac_sess
+  // cookie via requireAuthenticatedSession() and re-checks username match,
+  // is_blocked and is_approved against app_users. A CRON_SECRET bearer skips
+  // that gate for the VPS manual runner and is verified there instead.
+  //
+  // The X-User-Id / X-Username lookup that used to sit here was removed. It was
+  // redundant — it could only ever run for a caller who had already proven a
+  // session — and it was actively wrong in two ways:
+  //
+  //   * it rejected a correctly authenticated caller who sent only the session
+  //     cookie, answering "Login diperlukan untuk mengakses Screener." to
+  //     someone who was in fact logged in. The endpoint silently depended on the
+  //     browser ALSO sending legacy identity headers, so any client that stopped
+  //     sending them broke with a misleading message.
+  //   * it read like the real access gate while keying off attacker-controlled
+  //     headers, which invites a reviewer to conclude the endpoint is spoofable.
+  //
+  // What remains is a fail-closed assertion: if this handler is ever reached
+  // without the upstream gate having run, refuse rather than serve.
+  if (req._premiumAccessGranted !== true && !verifyCronSecret(req)) {
+    return res.status(401).json({ success: false, error: 'Autentikasi diperlukan.' });
   }
 
-  // User verified — return cached screener data
+  // Access verified upstream — return cached screener data
   const { data: meta } = await supabase
     .from('swing_screener_meta')
     .select('*')
@@ -7106,13 +7069,12 @@ function isLikelyUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
 }
 
-function isLegacyBudiReadAllowed(req) {
-  var rawUsername = String(req.headers['x-username'] || '').trim();
-  if (rawUsername !== 'budi') return false;
-  var adminUsernames = parseAdminAllowlist(process.env.ADMIN_USERNAMES);
-  return adminUsernames.indexOf('budi') >= 0 || process.env.ADMIN_LEGACY_BUDI_PREVIEW === 'true';
-}
-
+// isLegacyBudiReadAllowed() lived here. It returned true for any request whose
+// X-Username header simply read "budi", and it was the escape hatch that let the
+// two screener handlers skip their account lookup. Both handlers now defer to the
+// signed-session gate at the top of this module, so nothing called it. Deleted
+// rather than left dormant: a header-only admin predicate sitting unused in a
+// 13k-line file is an invitation to wire it back up.
 
 var TOP5_INTERNAL_RESPONSE_FIELDS = [
   'raw_payload', 'detail', 'sample_rejected', 'top_rejection_reasons', 'stageByTicker',
@@ -9439,68 +9401,17 @@ async function handleNkScreenerFinalize(req, res, supabase) {
 
 // --- READ: cached results (login-gated) ---
 async function handleNkScreenerResults(req, res, supabase) {
-  // Replicate same auth check as handleScreenerRead
-  var rawUserId = (req.headers['x-user-id'] || '').trim();
-  var rawUsername = (req.headers['x-username'] || '').trim().toLowerCase();
-
-  // A CRON_SECRET bearer may read status for the VPS-only manual runner.
-  // Browser reads remain login-gated; no new endpoint is introduced.
-  var cronStatusReadAllowed = verifyCronSecret(req);
-  if (!cronStatusReadAllowed && !rawUserId && !rawUsername) {
-    return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
-  }
-  if (!cronStatusReadAllowed && rawUsername === 'guest') {
-    return res.status(403).json({ success: false, error: 'Login diperlukan untuk mengakses Screener.' });
+  // Same story as handleScreenerRead: action='nk-screener-results' is covered by
+  // the PREMIUM READ ACCESS GATE at the top of this module, which resolves
+  // identity from the signed ac_sess cookie and re-checks the app_users row.
+  // The duplicated X-User-Id / X-Username lookup that used to sit here was
+  // redundant and rejected valid cookie-only callers; see the note on
+  // handleScreenerRead. This is the fail-closed backstop.
+  if (req._premiumAccessGranted !== true && !verifyCronSecret(req)) {
+    return res.status(401).json({ success: false, error: 'Autentikasi diperlukan.' });
   }
 
-  var legacyBudiReadAllowed = isLegacyBudiReadAllowed(req) || cronStatusReadAllowed;
-  var userData = null;
-
-  if (!legacyBudiReadAllowed) {
-    // 1. Try lookup by UUID if it looks valid
-    if (rawUserId && rawUserId.includes('-') && rawUserId.length > 30) {
-      var r1 = await supabase
-        .from('app_users')
-        .select('id, username, is_approved, is_blocked')
-        .eq('id', rawUserId)
-        .maybeSingle();
-      if (r1.data) userData = r1.data;
-    }
-
-    // 2. Fallback: lookup by username
-    if (!userData && rawUsername && rawUsername.length >= 2) {
-      var r2 = await supabase
-        .from('app_users')
-        .select('id, username, is_approved, is_blocked')
-        .eq('username', rawUsername)
-        .maybeSingle();
-      if (r2.data) userData = r2.data;
-    }
-
-    // 3. Fallback: try ilike match for username (case-insensitive safety)
-    if (!userData && rawUsername && rawUsername.length >= 2) {
-      var r3 = await supabase
-        .from('app_users')
-        .select('id, username, is_approved, is_blocked')
-        .ilike('username', rawUsername)
-        .maybeSingle();
-      if (r3.data) userData = r3.data;
-    }
-
-    if (!userData) {
-      return res.status(403).json({ success: false, error: 'User tidak ditemukan. Pastikan akun terdaftar.' });
-    }
-
-    if (userData.is_blocked) {
-      return res.status(403).json({ success: false, error: 'Akun diblokir.' });
-    }
-
-    if (userData.is_approved === false) {
-      return res.status(403).json({ success: false, error: 'Akun belum di-approve.' });
-    }
-  }
-
-  // User verified — return cached NK screener data
+  // Access verified upstream — return cached NK screener data
   const { data: meta } = await supabase
     .from('swing_screener_non_konglo_meta')
     .select('*')

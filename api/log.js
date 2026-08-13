@@ -1,4 +1,87 @@
 const { createClient } = require('@supabase/supabase-js');
+const { getSession, isSameOrigin } = require('../lib/admin-session');
+
+// Telemetry endpoint. It is deliberately fail-soft: a logging problem must never
+// surface as a broken UI, so every failure path still answers 200 with
+// success:false and the browser ignores it.
+//
+// It is NOT, however, an open write port. Before hardening, any host on the
+// internet could POST an arbitrary `username` plus `isAdmin:true` into
+// login_logs, and an unbounded `fullResultHtml` into ai_analysis_logs. That let
+// anyone forge admin login entries in the audit trail an operator reads to
+// decide whether an account was compromised, and let anyone write rows of
+// arbitrary size at the project's storage expense.
+//
+// The rules now are:
+//   - identity comes from the signed ac_sess cookie whenever one is present;
+//     a request body can never upgrade who you are
+//   - is_admin is derived from that signed session and from nothing else
+//   - anonymous callers may still log (guest analytics is the point of this
+//     endpoint) but are always recorded as guests
+//   - every persisted string is length-capped
+//   - cross-origin callers are refused, and a best-effort per-instance rate
+//     limit blunts floods
+
+// Column budgets. Generous enough for real telemetry, small enough that a
+// hostile caller cannot use this endpoint as free storage.
+const LIMITS = {
+  username: 30,
+  ticker: 12,
+  source: 40,
+  mode: 40,
+  userAgent: 400,
+  resultSummary: 2000,
+  fullResultHtml: 20000
+};
+
+function text(value, max) {
+  if (value === null || value === undefined) return '';
+  // Strip control characters so a log row can never smuggle terminal escapes or
+  // NUL into whatever an operator views the audit trail with.
+  return String(value).replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, max);
+}
+
+// Best-effort sliding window, per serverless instance. Vercel may run several
+// instances, so this is a flood blunter rather than a hard global guarantee —
+// a durable limit would need shared state (documented, not silently implied).
+const WINDOW_MS = 60 * 1000;
+const MAX_PER_WINDOW = 60;
+const buckets = new Map();
+
+function withinRateLimit(key) {
+  const now = Date.now();
+  if (buckets.size > 5000) buckets.clear(); // bound memory on a long-lived instance
+  const recent = (buckets.get(key) || []).filter((stamp) => now - stamp < WINDOW_MS);
+  if (recent.length >= MAX_PER_WINDOW) return false;
+  recent.push(now);
+  buckets.set(key, recent);
+  return true;
+}
+
+function clientKey(req) {
+  const headers = (req && req.headers) || {};
+  const forwarded = text(headers['x-forwarded-for'], 100).split(',')[0].trim();
+  return forwarded || text(headers['x-real-ip'], 100) || 'unknown';
+}
+
+// The limiter's identity must come only from things the server observed.
+//
+// This previously keyed on the resolved `username`, which for an anonymous
+// caller is `body.username` — attacker-controlled. Rotating it minted a fresh
+// bucket on every request, so a single IP could pass MAX_PER_WINDOW without
+// limit simply by counting: username=a1, a2, a3, ... The limit existed but
+// bounded nothing.
+//
+// Now an anonymous caller is bucketed by IP alone, so rotating the body changes
+// nothing. An authenticated caller is bucketed by the uid carried in the signed
+// ac_sess cookie, which the client cannot forge, plus the IP — so one account's
+// flood cannot exhaust the budget of everyone behind a shared NAT, and a single
+// account cannot multiply its budget by hopping addresses.
+function rateLimitKey(req, session) {
+  const ip = clientKey(req);
+  if (session && session.uid) return 'uid:' + String(session.uid) + '|' + ip;
+  return 'anon|' + ip;
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -11,6 +94,26 @@ module.exports = async function handler(req, res) {
 
     if (!action) {
       return res.status(400).json({ success: false, error: 'Missing action parameter' });
+    }
+
+    // State-changing endpoint: refuse a cross-origin caller. isSameOrigin is
+    // permissive when neither Host nor Origin/Referer is present, which keeps
+    // server-side unit tests and non-browser callers working.
+    if (!isSameOrigin(req)) {
+      return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+    }
+
+    // Identity is resolved server-side. A valid signed session wins outright;
+    // without one the caller is a guest no matter what the body claims.
+    const session = getSession(req);
+    const username = session
+      ? text(session.un, LIMITS.username) || 'unknown'
+      : text(body.username, LIMITS.username) || 'unknown';
+    const isGuest = !session;
+    const isAdmin = Boolean(session && session.adm === true);
+
+    if (!withinRateLimit(rateLimitKey(req, session))) {
+      return res.status(429).json({ success: false, error: 'Terlalu banyak permintaan.' });
     }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -28,45 +131,41 @@ module.exports = async function handler(req, res) {
 
     switch (action) {
       case 'login': {
-        const { username, isGuest, isAdmin, userAgent } = body;
         table = 'login_logs';
         insertData = {
-          username: username || 'unknown',
-          is_guest: Boolean(isGuest),
-          is_admin: Boolean(isAdmin),
-          user_agent: userAgent || ''
+          username: username,
+          is_guest: isGuest,
+          is_admin: isAdmin,
+          user_agent: text(body.userAgent, LIMITS.userAgent)
         };
         break;
       }
       case 'search': {
-        const { username, ticker, source } = body;
         table = 'search_logs';
         insertData = {
-          username: username || 'unknown',
-          ticker: (ticker || '').toUpperCase(),
-          source: source || ''
+          username: username,
+          ticker: text(body.ticker, LIMITS.ticker).toUpperCase(),
+          source: text(body.source, LIMITS.source)
         };
         break;
       }
       case 'analysis': {
-        const { username, ticker, mode, resultSummary, fullResultHtml } = body;
         table = 'ai_analysis_logs';
         insertData = {
-          username: username || 'unknown',
-          ticker: (ticker || '').toUpperCase(),
-          mode: mode || '',
-          result_summary: resultSummary || '',
-          full_result_html: fullResultHtml || ''
+          username: username,
+          ticker: text(body.ticker, LIMITS.ticker).toUpperCase(),
+          mode: text(body.mode, LIMITS.mode),
+          result_summary: text(body.resultSummary, LIMITS.resultSummary),
+          full_result_html: text(body.fullResultHtml, LIMITS.fullResultHtml)
         };
         break;
       }
       case 'usage': {
-        const { username, ticker, usageAction } = body;
         table = 'ai_usage_logs';
         insertData = {
-          username: username || 'unknown',
-          ticker: (ticker || '').toUpperCase(),
-          action: usageAction || ''
+          username: username,
+          ticker: text(body.ticker, LIMITS.ticker).toUpperCase(),
+          action: text(body.usageAction, LIMITS.mode)
         };
         break;
       }
@@ -90,3 +189,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ success: false, error: 'Gagal menyimpan log.' });
   }
 };
+
+// Exposed for focused unit tests only.
+module.exports.__test = { text, LIMITS, MAX_PER_WINDOW, rateLimitKey, clientKey };

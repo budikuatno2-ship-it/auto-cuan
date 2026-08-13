@@ -15,9 +15,67 @@
   function show(id) { var el = $(id); if (el) el.classList.remove('hidden'); }
   function hide(id) { var el = $(id); if (el) el.classList.add('hidden'); }
   function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
-  function num(value) { var n = Number(String(value == null ? '' : value).replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? n : null; }
-  function money(value) { var n = Number(value); return Number.isFinite(n) ? 'Rp ' + Math.round(n).toLocaleString('id-ID') : '—'; }
-  function pct(value) { var n = Number(value); return Number.isFinite(n) ? n.toFixed(2) + '%' : '—'; }
+  // ===== MISSING DATA IS NOT ZERO =====
+  //
+  // JavaScript coerces Number(null), Number(''), Number('   ') and Number([])
+  // all to 0, and 0 is finite. Every helper below used to accept that, so an
+  // absent current price, an unset optional TP, a P/L that could not be
+  // computed, and a blank journal field each rendered as a confident "Rp 0" —
+  // visually identical to a real, measured zero. On a financial surface that is
+  // not a formatting nit: it is the product asserting a number it does not have.
+  //
+  // `finite()` is the single gate. It treats null, undefined, empty and
+  // whitespace-only strings, booleans, and unparseable text as MISSING, while
+  // preserving 0, '0' and 0.0 as the genuine readings they are.
+  //
+  // No formula changes. Lot, risk, TP and SL mathematics are untouched; only
+  // the boundary between "we have this value" and "we do not" moved.
+  function finite(value) {
+    // Only a number or a numeric string is a reading. Everything else is
+    // missing — including the shapes JavaScript quietly coerces to 0:
+    // null, '', '   ', [], and false all become 0 under Number().
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (typeof value !== 'string') return null;
+    var raw = value.trim();
+    if (raw === '') return null;
+    var n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // Parses user-typed input. The stripping character class is deliberately
+  // IDENTICAL to the original: how a typed string maps to a number is input
+  // semantics, and changing it here would silently alter what gets stored.
+  // Only the empty case moved — a blank optional field now yields null instead
+  // of a fabricated 0.
+  function num(value) {
+    if (value === null || value === undefined) return null;
+    return finite(String(value).replace(/[^0-9.-]/g, ''));
+  }
+
+  function money(value) {
+    var n = finite(value);
+    return n === null ? '—' : 'Rp ' + Math.round(n).toLocaleString('id-ID');
+  }
+  // Profit and loss were rendered in the same neutral ink as every other figure,
+  // so a portfolio down Rp 249.000 looked identical at a glance to one up the
+  // same amount — the reader had to parse the minus sign to find out. This adds
+  // the gain/loss tone that a financial surface is expected to carry. The sign
+  // stays in the text, so colour is reinforcement rather than the only cue.
+  function pnlClass(value) {
+    var n = finite(value);
+    // A P/L that could not be computed is unknown, not flat. Number(null) === 0
+    // used to paint it in the flat tone, asserting "this position is exactly
+    // break-even" about a position whose price we never had.
+    if (n === null) return 'pnl pnl-unknown';
+    if (n > 0) return 'pnl pnl-up';
+    if (n < 0) return 'pnl pnl-down';
+    return 'pnl pnl-flat';
+  }
+
+  function pct(value) {
+    var n = finite(value);
+    return n === null ? '—' : n.toFixed(2) + '%';
+  }
   function ticker(value) { return Model.tickerOf(value); }
   function safeJson(key, fallback) { try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; } }
   function saveJson(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_) { return false; } }
@@ -95,9 +153,22 @@
       loadLocalState();
       $('sessionChip').innerHTML = '<span class="status-dot"></span>' + escapeHtml(state.username || 'Sesi aktif');
       hide('accessGate'); show('app'); bind();
-      await loadSectorHot();
+
+      // Render the user's own portfolio BEFORE anything that depends on a
+      // network call. This used to `await loadSectorHot()` first, and that fetch
+      // had no timeout, so a slow or hanging /api/sector-hot left the app shell
+      // visible showing nothing but its static HTML defaults: "Memuat…" under
+      // POSTUR PORTOFOLIO, and Rp 0 / 0 in every KPI — indistinguishable from a
+      // real, empty, fully-loaded portfolio. The positions and prices needed for
+      // this render are already in hand from loadLocalState(); nothing here
+      // needs the network.
       calculateBudget();
       renderAll();
+
+      // Sector Hot is supporting context for this page, not a precondition for
+      // it. Deliberately not awaited, and independently time-boxed.
+      loadSectorHot();
+
       loadScript('/portfolio-ai-runtime-v2.js?v=20260727-premium-v2').catch(function (error) { $('aiStatus').textContent = error.message; });
       setTimeout(function () { loadLocalState(); renderAll(); }, 600);
     } catch (error) {
@@ -189,14 +260,51 @@
     renderToday(); renderWatch(); renderRiskOptions(); renderAlerts(); renderJournal();
   }
 
+  // An empty portfolio has no statistics to report, so the KPI row must stop
+  // presenting Rp 0 / 0 as though it did. Those zeroes are also exactly what the
+  // page showed while it was still loading, which made "empty" and "not loaded
+  // yet" indistinguishable. Marking the shell lets the stylesheet demote the
+  // figures, and the page leads with the next useful action instead.
+  //
+  // Zero is still rendered — a real zero is a real reading — it just stops
+  // dominating a screen that has nothing to summarise.
+  function renderEmptyPortfolioState(isEmpty) {
+    var shell = document.querySelector('.app-shell') || document.body;
+    shell.classList.toggle('portfolio-empty', isEmpty);
+
+    var host = $('emptyPortfolioCta');
+    if (!isEmpty) { if (host) host.remove(); return; }
+    if (host) return;
+
+    var grid = document.querySelector('#page-today .metric-grid');
+    if (!grid || !grid.parentNode) return;
+    var node = document.createElement('div');
+    node.id = 'emptyPortfolioCta';
+    node.className = 'empty-portfolio-cta';
+    node.innerHTML = '<h3>Portofolio masih kosong</h3>'
+      + '<p>Belum ada posisi atau rencana tersimpan, jadi belum ada nilai, risiko, '
+      + 'atau P/L yang bisa dihitung. Mulai dari Budget-to-Stock Planner untuk '
+      + 'menghitung ukuran posisi, atau catat posisi yang sudah kamu miliki.</p>'
+      + '<div class="actions">'
+      + '<button type="button" class="btn primary" data-tab="planner">Buka Planner</button>'
+      + '<button type="button" class="btn" data-tab="watch">Catat posisi yang dimiliki</button>'
+      + '</div>';
+    grid.parentNode.insertBefore(node, grid.nextSibling);
+    node.querySelectorAll('[data-tab]').forEach(function (button) {
+      button.addEventListener('click', function () { openTab(button.getAttribute('data-tab')); });
+    });
+  }
+
   function renderToday() {
     var summary = Model.summarize(state.plans, state.prices);
+    renderEmptyPortfolioState(summary.planCount === 0);
     $('sumPlans').textContent = summary.planCount;
     $('sumPriced').textContent = summary.pricedCount + ' memiliki harga';
     $('sumAttention').textContent = summary.attentionCount;
     $('sumExposure').textContent = money(summary.totalExposureIdr);
     $('sumRisk').textContent = money(summary.totalRiskIdr);
     $('sumPnl').textContent = summary.totalPnlIdr == null ? 'P/L —' : 'P/L ' + money(summary.totalPnlIdr);
+    $('sumPnl').className = pnlClass(summary.totalPnlIdr);
     $('postureLabel').textContent = summary.posture.label;
     $('postureCard').className = 'posture ' + summary.posture.tone;
     $('decisionTitle').textContent = summary.planCount ? summary.posture.note : 'Bangun rencana yang jelas sebelum mengambil posisi.';
@@ -239,7 +347,10 @@
 
   async function loadSectorHot() {
     try {
-      var response = await fetch('/api/sector-hot', { credentials: 'same-origin', cache: 'no-store' });
+      // Time-boxed like every other network call on this page. A bare fetch here
+      // could hang for as long as the server held the socket, and this function
+      // used to be awaited ahead of the portfolio's own render.
+      var response = await fetchWithTimeout('/api/sector-hot', { credentials: 'same-origin', cache: 'no-store' }, 9000);
       var data = await response.json().catch(function () { return {}; });
       var groups = Array.isArray(data.groups) ? data.groups.slice() : [];
       groups.sort(function (a, b) { return Number(b.avg_change_pct || -999) - Number(a.avg_change_pct || -999); });
@@ -259,7 +370,8 @@
   async function quote(symbol) {
     var t = ticker(symbol); if (!t) return null;
     try {
-      var response = await fetch('/api/quote?ticker=' + encodeURIComponent(t) + '&portfolio=1', { credentials: 'same-origin', cache: 'no-store', headers: authHeaders() });
+      // Time-boxed: an untimed quote fetch can hang the Refresh Harga action.
+      var response = await fetchWithTimeout('/api/quote?ticker=' + encodeURIComponent(t) + '&portfolio=1', { credentials: 'same-origin', cache: 'no-store', headers: authHeaders() }, 9000);
       var data = await response.json().catch(function () { return {}; });
       if (!response.ok || data.success === false) return null;
       return num(data.last != null ? data.last : (data.price != null ? data.price : data.close));
@@ -404,7 +516,7 @@
       return { plan:plan, current:current, status:status, pnl:pnl };
     });
     $('watchBody').innerHTML = rows.map(function (row) { var p=row.plan; return '<tr><td><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button></td><td><span class="pill '+row.status.tone+'">'+escapeHtml(row.status.label)+'</span></td><td>'+p.lots+' lot</td><td>'+money(p.entryPriceIdr)+'</td><td>'+money(row.current)+'</td><td>'+money(row.pnl)+'</td><td>'+money(p.stopLossIdr)+'</td><td>'+money(p.tp1Idr)+' / '+money(p.tp2Idr)+'</td><td><div class="row-actions"><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></td></tr>'; }).join('');
-    $('watchCards').innerHTML = rows.map(function (row) { var p=row.plan; return '<div class="position-card"><div class="position-card-head"><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button><span class="pill '+row.status.tone+'">'+escapeHtml(row.status.label)+'</span></div><div class="position-card-grid"><div><span>Harga</span><b>'+money(row.current)+'</b></div><div><span>P/L</span><b>'+money(row.pnl)+'</b></div><div><span>Entry</span><b>'+money(p.entryPriceIdr)+'</b></div><div><span>Stop</span><b>'+money(p.stopLossIdr)+'</b></div></div><div class="actions"><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></div>'; }).join('');
+    $('watchCards').innerHTML = rows.map(function (row) { var p=row.plan; return '<div class="position-card"><div class="position-card-head"><button class="ticker-link" data-open-ticker="'+p.ticker+'">'+p.ticker+'</button><span class="pill '+row.status.tone+'">'+escapeHtml(row.status.label)+'</span></div><div class="position-card-grid"><div><span>Harga</span><b>'+money(row.current)+'</b></div><div><span>P/L</span><b class="'+pnlClass(row.pnl)+'">'+money(row.pnl)+'</b></div><div><span>Entry</span><b>'+money(p.entryPriceIdr)+'</b></div><div><span>Stop</span><b>'+money(p.stopLossIdr)+'</b></div></div><div class="actions"><button class="btn small" data-journal-ticker="'+p.ticker+'">Jurnal</button><button class="btn small danger" data-delete-plan="'+escapeHtml(p.id)+'">Hapus</button></div></div>'; }).join('');
   }
 
   function deletePlan(id) { state.plans = state.plans.filter(function (plan) { return String(plan.id) !== String(id); }); persistPlans(); captureSnapshot(); }
@@ -449,7 +561,7 @@
     var current=num(state.prices[t]); var status=plan?Model.planStatus(plan,current):{label:'Belum direncanakan',tone:'neutral'};
     $('drawerTicker').textContent=t; $('drawerSubtitle').textContent=(current?'Harga tersimpan '+money(current):'Harga belum tersedia')+' · '+status.label;
     var pnl=plan&&current&&plan.entryPriceIdr?(current-plan.entryPriceIdr)*plan.lots*100:null;
-    $('drawerContent').innerHTML='<section class="drawer-section"><span class="pill '+status.tone+'">'+escapeHtml(status.label)+'</span><div class="drawer-metrics" style="margin-top:10px"><div class="drawer-metric"><span>Harga</span><b>'+money(current)+'</b></div><div class="drawer-metric"><span>P/L</span><b>'+money(pnl)+'</b></div><div class="drawer-metric"><span>Entry</span><b>'+money(plan&&plan.entryPriceIdr)+'</b></div><div class="drawer-metric"><span>Lot</span><b>'+(plan?plan.lots+' lot':'—')+'</b></div></div></section><section class="drawer-section"><h3>Level Rencana</h3><div class="data-rows"><div class="data-row"><span>Stop loss</span><strong>'+money(plan&&plan.stopLossIdr)+'</strong></div><div class="data-row"><span>TP1</span><strong>'+money(plan&&plan.tp1Idr)+'</strong></div><div class="data-row"><span>TP2</span><strong>'+money(plan&&plan.tp2Idr)+'</strong></div><div class="data-row"><span>Estimasi risiko</span><strong>'+money(plan&&plan.estimatedMaxLossIdr)+'</strong></div></div></section><section class="drawer-section"><div class="actions"><button class="btn primary" data-drawer-action="refresh">Refresh Harga</button><button class="btn" data-drawer-action="plan">Buat Rencana</button><button class="btn" data-drawer-action="journal">Catat Jurnal</button><button class="btn" data-drawer-action="ai">Tanya AI</button></div></section>';
+    $('drawerContent').innerHTML='<section class="drawer-section"><span class="pill '+status.tone+'">'+escapeHtml(status.label)+'</span><div class="drawer-metrics" style="margin-top:10px"><div class="drawer-metric"><span>Harga</span><b>'+money(current)+'</b></div><div class="drawer-metric"><span>P/L</span><b class="'+pnlClass(pnl)+'">'+money(pnl)+'</b></div><div class="drawer-metric"><span>Entry</span><b>'+money(plan&&plan.entryPriceIdr)+'</b></div><div class="drawer-metric"><span>Lot</span><b>'+(plan?plan.lots+' lot':'—')+'</b></div></div></section><section class="drawer-section"><h3>Level Rencana</h3><div class="data-rows"><div class="data-row"><span>Stop loss</span><strong>'+money(plan&&plan.stopLossIdr)+'</strong></div><div class="data-row"><span>TP1</span><strong>'+money(plan&&plan.tp1Idr)+'</strong></div><div class="data-row"><span>TP2</span><strong>'+money(plan&&plan.tp2Idr)+'</strong></div><div class="data-row"><span>Estimasi risiko</span><strong>'+money(plan&&plan.estimatedMaxLossIdr)+'</strong></div></div></section><section class="drawer-section"><div class="actions"><button class="btn primary" data-drawer-action="refresh">Refresh Harga</button><button class="btn" data-drawer-action="plan">Buat Rencana</button><button class="btn" data-drawer-action="journal">Catat Jurnal</button><button class="btn" data-drawer-action="ai">Tanya AI</button></div></section>';
     show('drawerBackdrop'); show('tickerDrawer'); $('closeDrawer').focus();
   }
 

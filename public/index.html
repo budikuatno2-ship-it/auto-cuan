@@ -11,7 +11,14 @@
          Non-critical; the system font stack remains a graceful fallback offline. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+    <!-- Loaded non-render-blocking. As a plain stylesheet this handed the whole
+         font-CDN round trip straight to first paint: with a 1200ms font response,
+         measured FCP was ~1420ms blocking vs ~280ms with media="print" + onload.
+         The face is already display=swap, so text was never waiting on the font
+         to become readable — only the paint was. The system stack in the CSS
+         below remains the fallback if the sheet never arrives. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all';this.onload=null">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"></noscript>
     <script>
         // ===== CANONICAL PRODUCTION DOMAIN REDIRECT =====
         // Browser-page-only redirect: runs before any auth/app-init code below.
@@ -31,17 +38,43 @@
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        dark: { 900: '#0b0e14', 800: '#0f1319', 700: '#151a23', 600: '#1c2333', 500: '#242d3d' }
+        // Guarded: if the Tailwind CDN is blocked, throttled, or filtered — which
+        // happens on some corporate and ISP networks — `tailwind` is undefined and
+        // the bare assignment threw an uncaught ReferenceError into the console on
+        // every load. The palette below is a theme extension, so skipping it when
+        // the CDN is absent costs nothing that is not already gone.
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            dark: { 900: '#0b0e14', 800: '#0f1319', 700: '#151a23', 600: '#1c2333', 500: '#242d3d' }
+                        }
                     }
                 }
-            }
+            };
         }
     </script>
     <style>
+        /* ---- .hidden safety net -------------------------------------------
+           This one rule is the app's entire show/hide mechanism: 101 uses in the
+           markup and 169 classList.add/remove('hidden') calls drive which
+           top-level screen is up (loader / blocked / maintenance / landing /
+           app), which page is up, which nav items a non-approved account sees,
+           and every modal. Until now it was supplied ONLY by the Tailwind Play
+           CDN, so whenever that third party was blocked, filtered or slow, every
+           screen, page and modal rendered at once, stacked. Defining it here, in
+           the inline stylesheet, means the app can still hide things when the
+           CDN cannot be reached.
+
+           Deliberately NOT !important: Tailwind's own responsive display
+           utilities must keep winning over it. `class="hidden md:flex"` is used
+           for the desktop landing menu, and .md\:flex lives in a later media
+           query in Tailwind's sheet, so it overrides this by source order — the
+           same way it overrides Tailwind's own .hidden. Adding !important here
+           would pin that menu shut on desktop. */
+        .hidden { display: none; }
+
         /* Hide any previously saved broken Level Fokus cards from old chat history in localStorage */
         .chart-focus-card { display: none !important; }
         body { background-color: #0b0e14; overflow-x: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -560,7 +593,42 @@
         .landing-nav { position: sticky; top: 0; z-index: 45; border-bottom: 1px solid rgba(148,163,184,.1); background: rgba(11,14,20,.74); backdrop-filter: blur(18px); }
         .landing-brand { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
         .landing-logo { width: 40px; height: 40px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(135deg, #34d399, #059669); box-shadow: 0 18px 42px rgba(16,185,129,.2); }
-        .landing-menu a, .landing-link { color: #94a3b8; font-size: 13px; font-weight: 700; transition: color .15s ease; }
+        /* min-height keeps these at the WCAG 2.2 AA 2.5.8 target-size minimum
+           (24x24 CSS px). They measured 20px tall — the type size is unchanged,
+           only the hit area grows, and the parent flex row is already
+           items-center so nothing shifts. */
+        /* ---- Maintenance state -------------------------------------------
+           Styled here, in the inline <style>, on purpose. When this screen is
+           showing, the Tailwind CDN and the webfont may be exactly what is
+           unreachable, so it must not depend on either. Values follow the same
+           radius/spacing/colour ramp as ui-theme.css. */
+        /* Owns its own box-sizing and gutter. Tailwind's preflight supplies
+           border-box globally and the wrapper's px-4 supplies the gutter, but
+           both come from the CDN — the very thing that may be missing when this
+           screen is up. Relying on them overflowed a 390px viewport by 42px. */
+        #maintenanceScreen { box-sizing: border-box; padding-left: 16px; padding-right: 16px; }
+        .maintenance-card, .maintenance-card * { box-sizing: border-box; }
+        .maintenance-card { width: 100%; max-width: 480px; border: 1px solid rgba(148,163,184,.14); border-radius: 20px; background: linear-gradient(180deg, rgba(15,23,42,.78), rgba(15,23,42,.48)); box-shadow: 0 24px 70px rgba(0,0,0,.32); padding: 28px 24px; }
+        @media (min-width: 640px) { .maintenance-card { padding: 34px 32px; } }
+        .maintenance-brand { display: flex; align-items: center; gap: 11px; padding-bottom: 18px; border-bottom: 1px solid rgba(148,163,184,.12); }
+        .maintenance-mark { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 13px; display: grid; place-items: center; background: linear-gradient(135deg, #34d399, #059669); }
+        .maintenance-mark svg { width: 20px; height: 20px; }
+        .maintenance-brand strong { display: block; font-size: 15px; font-weight: 800; color: #f1f5f9; letter-spacing: -.01em; }
+        .maintenance-brand small { display: block; font-size: 11px; color: #6b7a90; margin-top: 1px; }
+        .maintenance-eyebrow { margin-top: 22px; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #fcd34d; }
+        .maintenance-title { margin-top: 8px; font-size: 21px; line-height: 1.25; font-weight: 800; color: #f1f5f9; letter-spacing: -.015em; }
+        .maintenance-message { margin-top: 10px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }
+        .maintenance-facts { margin-top: 18px; padding: 14px 16px; border: 1px solid rgba(148,163,184,.12); border-radius: 14px; background: rgba(2,6,23,.32); list-style: none; display: grid; gap: 9px; }
+        .maintenance-facts li { position: relative; padding-left: 18px; font-size: 12.5px; line-height: 1.55; color: #94a3b8; }
+        .maintenance-facts li::before { content: ""; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 999px; background: #34d399; }
+        .maintenance-actions { margin-top: 20px; display: flex; }
+        .maintenance-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 18px; border-radius: 13px; font-size: 13px; font-weight: 800; border: 1px solid rgba(148,163,184,.16); background: rgba(15,23,42,.62); color: #d1d5db; cursor: pointer; }
+        .maintenance-btn-primary { width: 100%; color: #04130d; border-color: rgba(52,211,153,.28); background: linear-gradient(135deg, #6ee7b7, #10b981); }
+        .maintenance-btn-primary:hover { filter: brightness(1.04); }
+        .maintenance-btn:focus-visible { outline: 2px solid rgba(52,211,153,.75); outline-offset: 3px; }
+        .maintenance-foot { margin-top: 16px; font-size: 11.5px; line-height: 1.6; color: #6b7a90; }
+
+        .landing-menu a, .landing-link { color: #94a3b8; font-size: 13px; font-weight: 700; transition: color .15s ease; display: inline-flex; align-items: center; min-height: 24px; }
         .landing-menu a:hover, .landing-link:hover { color: #6ee7b7; }
         .landing-btn { display:inline-flex; align-items:center; justify-content:center; min-height: 44px; padding: 11px 16px; border-radius: 14px; font-size: 13px; font-weight: 900; border: 1px solid rgba(148,163,184,.16); color: #d1d5db; background: rgba(15,23,42,.62); }
         .landing-btn-primary { color: #04130d; border-color: rgba(52,211,153,.28); background: linear-gradient(135deg, #6ee7b7, #10b981); box-shadow: 0 18px 44px rgba(16,185,129,.18); }
@@ -750,12 +818,39 @@
 </div>
 
 <!-- ===== MAINTENANCE SCREEN ===== -->
-<div id="maintenanceScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4" style="background-color:#0b0e14">
-    <div class="w-full max-w-md rounded-3xl border border-yellow-500/30 bg-[#111827]/95 p-6 sm:p-8 shadow-2xl text-center space-y-5">
-        <div class="text-5xl">&#x1F6E0;&#xFE0F;</div>
-        <h2 class="text-xl font-bold text-white">Website sedang maintenance</h2>
-        <p id="maintenanceMessage" class="text-sm text-yellow-300">Auto-Cuan sedang tidak dapat diakses sementara.</p>
-        <p class="text-sm text-gray-300">Silakan kembali lagi nanti.</p>
+<!-- Maintenance is a first-class state, not a fallback. It has to read as a
+     deliberate pause rather than a crash, so it carries the product's own mark
+     and type rather than an emoji, states what is and is not affected, and gives
+     the user something to do. It depends on nothing but this markup and the
+     inline styles above: no app JS, no API, no webfont, no Tailwind CDN — all of
+     which may be exactly what is unavailable when this screen is showing. -->
+<div id="maintenanceScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4 py-10" style="background-color:#0b0e14">
+    <div class="maintenance-card" role="status" aria-live="polite">
+        <div class="maintenance-brand">
+            <span class="maintenance-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#04130d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v6h-6"/></svg>
+            </span>
+            <span>
+                <strong>Auto-Cuan</strong>
+                <small>IDX Stock Radar</small>
+            </span>
+        </div>
+
+        <p class="maintenance-eyebrow">Pemeliharaan terjadwal</p>
+        <h1 class="maintenance-title">Auto-Cuan sedang dalam pemeliharaan</h1>
+        <p id="maintenanceMessage" class="maintenance-message">Auto-Cuan sedang tidak dapat diakses sementara.</p>
+
+        <ul class="maintenance-facts">
+            <li>Data dan catatan portofolio kamu tersimpan dan tidak terpengaruh.</li>
+            <li>Auto-Cuan tidak pernah mengeksekusi transaksi, jadi tidak ada order yang tertahan.</li>
+            <li>Posisi yang sedang berjalan tetap perlu kamu pantau lewat aplikasi sekuritas.</li>
+        </ul>
+
+        <div class="maintenance-actions">
+            <button type="button" onclick="window.location.reload()" class="maintenance-btn maintenance-btn-primary">Muat ulang halaman</button>
+        </div>
+
+        <p class="maintenance-foot">Halaman ini akan kembali normal begitu pemeliharaan selesai. Tidak perlu membuat akun baru atau mengulang pendaftaran.</p>
     </div>
 </div>
 
@@ -1962,6 +2057,37 @@ function isBadUsername(name) {
     return badWords.some(function(word) { return clean.includes(normalizeNameForCheck(word)); });
 }
 
+// ===== PREMIUM ACCESS STATE =====
+// Declared HERE, above setTopLevelView, because startup reaches setTopLevelView()
+// long before the premium-access helpers further down this script are evaluated.
+// `var` hoists the binding but not the value, so initialising these next to their
+// helpers left `premiumAccessState` undefined during init: the very first
+// setTopLevelView('landing') threw "Cannot read properties of undefined (reading
+// 'premium')" inside resetPremiumAccess(), which took down handleAppRoute(), then
+// the catch-block fallback, then the finally-block fallback. Every logged-out
+// visit then sat on the loading spinner until the 4.5s watchdog rescued it and
+// showed a "features temporarily unavailable" notice on a perfectly healthy site.
+// Keep these assignments above their first caller.
+var premiumAccessState = { state:'loading', premium:false, accessLevel:'free', checkedAt:0 };
+var premiumAccessRequest = null;
+var premiumAccessController = null;
+var premiumAccessGeneration = 0;
+var premiumAccessRefreshTimer = null;
+
+// ===== DASHBOARD MONITOR STATE =====
+// Same hoisting hazard as the premium-access block above. A logged-in visit runs
+// init() -> handleAppRoute() -> enterApp() -> showDashboard() ->
+// loadDashboardTop5Monitor(), which reads `_dashboardTop5Cache.data` on its
+// second line. Initialising these next to their renderers (thousands of lines
+// further down) left them undefined at that moment, so the dashboard's main
+// Top 5 / monitor panels threw before issuing their fetch and stayed on the
+// static "Belum ada Top 5 final yang terkunci." placeholder for the whole
+// session — even when the API had locked Top 5 rows ready to show.
+var _dashboardTop5Cache = { at: 0, data: null };
+var _top5HistoryCache = { at: 0, data: null };
+var _dashboardTop5InFlight = null;
+var _top5HistoryInFlight = null;
+
 // ===== TOP-LEVEL VIEW STATE =====
 // Exactly one of loading, block, maintenance, landing, or app is interactive at a time.
 function setTopLevelView(state) {
@@ -2315,6 +2441,49 @@ function showShareTab(tab) {
     if (tab === 'dt') { document.getElementById('shareDtPane').classList.remove('hidden'); document.getElementById('shareTabDt').className = 'share-tab active px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'; }
 }
 
+// ===== DAILY CHANGE DISPLAY =====
+// A missing daily change is not a flat one.
+//
+// Every numeric cell in these rows already renders an em dash when its value is
+// absent — last_price, RSI, Vol/Avg, entry area all do. The change column was the
+// exception: it ran `(r.change_pct || 0)`, which collapses null to 0, then took
+// the `>= 0` branch for both the colour and the sign. A row with no change data
+// therefore printed "+0.00%" in the gain colour, which reads as "this stock is
+// unchanged today" when the truth is "we do not have today's move for it".
+//
+// Sektor Hot already gets this right (avg_change_pct renders '-' in grey when
+// null). This helper is that convention, factored out so the seven render sites
+// that got it wrong share one implementation.
+//
+// It also fixes a second defect the older sites shared. They rendered a change
+// as `sign + formatPct(value)`, and formatPct applies Math.abs() before
+// formatting, while the sign expression only ever produced '+' or ''. A LOSS
+// therefore printed with no sign at all — Sektor Hot showed a -0.85% group as
+// "0,85%", identical in shape to a gain and distinguishable only by its red
+// colour. That is both wrong and unreadable to anyone who cannot rely on hue.
+// Here the sign always comes from the number itself.
+//
+// Decimals use the Indonesian comma, matching formatPct and the
+// toLocaleString('id-ID') used for prices, so a single row cannot mix "1,24%"
+// with "1.24%".
+//
+// Returns both a Tailwind class and a raw hex, because some of these rows are
+// built with utility classes and others with inline styles.
+function changeDisplay(value, digits) {
+    var number = (value === null || value === undefined || value === '') ? null : Number(value);
+    if (number === null || !Number.isFinite(number)) {
+        return { known: false, text: '—', cls: 'text-gray-500', hex: '#6b7280' };
+    }
+    var decimals = digits == null ? 2 : digits;
+    var body = Math.abs(number).toFixed(decimals).replace('.', ',');
+    return {
+        known: true,
+        text: (number < 0 ? '−' : '+') + body + '%',
+        cls: number >= 0 ? 'text-emerald-400' : 'text-red-400',
+        hex: number >= 0 ? '#6ee7b7' : '#fca5a5'
+    };
+}
+
 function renderShareKonglo(d) {
     var pane = document.getElementById('shareKongloPane');
     if (!d || !d.results || d.results.length === 0) { pane.innerHTML = '<p class="text-sm text-gray-500 py-4">Belum ada data Konglo Screener.</p>'; return; }
@@ -2324,7 +2493,7 @@ function renderShareKonglo(d) {
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5 text-left">Grup</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var chgView = changeDisplay(r.change_pct);
         var tierLabel = r.swing_tier ? shareTierShort(r.swing_tier) : (r.final_status === 'Swing Ready' ? 'READY' : (r.final_status === 'Watchlist' ? 'WATCH' : 'AVOID'));
         var tierClass = shareTierColor(r.swing_tier);
         var confLabel = r.confidence || '-';
@@ -2342,7 +2511,7 @@ function renderShareKonglo(d) {
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + '">' + (r.score || 0) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? Number(r.change_pct).toFixed(2) : '0') + '%</td>';
+        html += '<td class="px-2 py-1.5 text-right ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
@@ -2389,7 +2558,7 @@ function renderShareNk(d) {
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5">#</th><th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Board</th><th class="px-2 py-1.5">Tier</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Setup</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">RSI</th><th class="px-2 py-1.5 text-right">Vol/Avg</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th></tr></thead><tbody>';
     d.results.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var chgView = changeDisplay(r.change_pct);
         var tierLabel = r.swing_tier ? shareTierShort(r.swing_tier) : (r.status || '-');
         var tierClass = shareTierColor(r.swing_tier);
         var confLabel = r.confidence || '-';
@@ -2411,7 +2580,7 @@ function renderShareNk(d) {
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price != null ? Number(r.last_price).toFixed(0) : '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? Number(r.change_pct).toFixed(2) : '0') + '%</td>';
+        html += '<td class="px-2 py-1.5 text-right ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_avg20 != null ? Number(r.volume_ratio_avg20).toFixed(2) + 'x' : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 text-[10px] whitespace-nowrap">' + entryStr + '</td>';
@@ -2438,7 +2607,7 @@ function renderShareDt(d) {
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Setup Score</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';
     sorted.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
+        var chgView = changeDisplay(r.change_pct);
         var stColor = r.status === 'A_PLUS_SETUP' ? 'bg-emerald-500/20 text-emerald-300' : (r.status === 'TRADE_CANDIDATE' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'READY_BREAKOUT' ? 'bg-emerald-500/15 text-emerald-400' : (r.status === 'EARLY_RADAR' ? 'bg-violet-500/15 text-violet-400' : (r.status === 'PRE_SPIKE_WATCH' ? 'bg-blue-500/15 text-blue-400' : (r.status === 'MOMENTUM_CONTINUATION' ? 'bg-cyan-500/15 text-cyan-400' : (r.status === 'AVOID' ? 'bg-red-500/10 text-red-400' : (r.status === 'WAIT_PULLBACK' ? 'bg-orange-500/15 text-orange-400' : 'bg-gray-500/15 text-gray-400')))))));
         var gateScore = normalizeGateScoreDisplay(r);
         var scoreColor = gateScore.colorClass;
@@ -2460,7 +2629,7 @@ function renderShareDt(d) {
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' text-[10px]">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + stColor + '">' + statusLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200">' + (r.last_price || '—') + '</td>';
-        html += '<td class="px-2 py-1.5 text-right ' + chgColor + '">' + ((r.change_pct || 0) >= 0 ? '+' : '') + (r.change_pct != null ? r.change_pct.toFixed(2) : '0') + '%</td>';
+        html += '<td class="px-2 py-1.5 text-right ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300">' + (r.volume_ratio_20d != null ? r.volume_ratio_20d.toFixed(2) + 'x' : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-300">' + (r.prespike_score != null ? r.prespike_score : '—') + '</td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-300">' + (r.momentum_score != null ? r.momentum_score : '—') + '</td>';
@@ -2833,11 +3002,9 @@ function clearTop5HistoryLoadTimer() {
 
 // ===== PREMIUM ACCESS CLIENT GATE (PHASE 6A.4) =====
 // Display state is fail-closed; API endpoints independently re-authorize.
-var premiumAccessState = { state:'loading', premium:false, accessLevel:'free', checkedAt:0 };
-var premiumAccessRequest = null;
-var premiumAccessController = null;
-var premiumAccessGeneration = 0;
-var premiumAccessRefreshTimer = null;
+// premiumAccessState and its companions are initialised above setTopLevelView —
+// see the "PREMIUM ACCESS STATE" block there. Re-initialising them here would
+// silently discard whatever startup already resolved.
 function isPremiumFeaturePage(page) { return ['sektor','sector','sector-hot','screener','portofolio'].indexOf(String(page || '')) !== -1; }
 function hasConfirmedPremiumAccess() { return premiumAccessState.state === 'ready' && premiumAccessState.premium === true; }
 // Website access is approval-based: only a definitive server "no" locks features.
@@ -7350,8 +7517,7 @@ function renderDtCardGrid(results, data) {
 
         var stBg =
             getDayTradeStatusBackground(st);
-        var chg = r.change_pct || 0;
-        var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+        var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.daytrade_score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
         var _l = normalizeDisplayLevels(r);
@@ -7361,7 +7527,7 @@ function renderDtCardGrid(results, data) {
         html += '<div class="dt-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span style="font-size:9px;padding:2px 7px;border-radius:5px;font-weight:600;background:' + stBg + ';color:' + stCol + '">' + escapeHtml(
             getDayTradeSemanticLabel(st)
-        ) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        ) + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span></div>';
         // V6: Risk / Grade / MTF compact badges
@@ -7442,8 +7608,7 @@ function buildRespectQualityLine(r) {
 function openScrDetail(r, type) {
     var modal = document.getElementById('scrDetailModal');
     if (!modal) return;
-    var chg = r.change_pct || 0;
-    var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+    var chgView = changeDisplay(r.change_pct, 2);
     var sc = r.daytrade_score || r.score || 0;
     var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
     var st = r.status || r.swing_tier || '';
@@ -7473,7 +7638,7 @@ function openScrDetail(r, type) {
     html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">';
     html += '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px">' + escapeHtml(r.ticker) + '</span><span style="font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;background:' + stBg + ';color:' + stCol + ';white-space:nowrap">' + escapeHtml(getStatusLabel(r, st)) + '</span></div>';
     html += '<span style="font-size:10px;color:#6b7280;background:#1a1f2b;padding:3px 8px;border-radius:6px;white-space:nowrap">' + _catLabel + '</span></div>';
-    html += '<div style="display:flex;align-items:center;gap:14px;font-size:13px;color:#9ca3af"><span style="font-weight:600;color:#e5e7eb">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgCol + ';font-weight:500">' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%</span><span>Score <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
+    html += '<div style="display:flex;align-items:center;gap:14px;font-size:13px;color:#9ca3af"><span style="font-weight:600;color:#e5e7eb">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span><span style="color:' + chgView.hex + ';font-weight:500">' + chgView.text + '</span><span>Score <strong style="color:' + scCol + '">' + sc + '</strong></span></div>';
     if (freshnessText(r)) html += '<div style="font-size:10px;color:' + freshnessColor(r) + ';margin-top:8px">' + freshnessChipHtml(r) + (r.freshness_reason ? '<span style="color:#6b7280;margin-left:6px">' + escapeHtml(r.freshness_reason) + '</span>' : '') + '</div>';
     html += '</div>';
     // --- METRICS BAR: Grade / Risk / RR / Action ---
@@ -7678,8 +7843,7 @@ function renderKgCardGrid(results) {
         var tier = r.swing_tier || '';
         var tierShort = swingTierShort(tier);
         var tierCls = swingTierColor(tier);
-        var chg = r.change_pct || 0;
-        var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+        var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
         var _l = normalizeDisplayLevels(r);
@@ -7687,7 +7851,7 @@ function renderKgCardGrid(results) {
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="kg-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.group_code) html += '<span style="color:#6b7280">' + escapeHtml(r.group_code) + '</span>';
@@ -7755,8 +7919,7 @@ function renderNkCardGrid(results) {
         var tier = r.swing_tier || '';
         var tierShort = swingTierShort(tier);
         var tierCls = swingTierColor(tier);
-        var chg = r.change_pct || 0;
-        var chgCol = chg >= 0 ? '#6ee7b7' : '#fca5a5';
+        var chgView = changeDisplay(r.change_pct, 1);
         var sc = r.score || 0;
         var scCol = sc >= 80 ? '#6ee7b7' : (sc >= 65 ? '#60a5fa' : (sc >= 50 ? '#fbbf24' : '#fca5a5'));
         var _l = normalizeDisplayLevels(r);
@@ -7764,7 +7927,7 @@ function renderNkCardGrid(results) {
         var volR = r.volume_ratio ? r.volume_ratio.toFixed(1) + 'x' : '-';
         var notes = getSignalReason(r) || r.status_reason || ''; if (notes.length > 80) notes = notes.substring(0, 77) + '...';
         html += '<div class="nk-card-item" data-ticker="' + escapeHtml(r.ticker) + '" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .2s,box-shadow .2s">';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgCol + '">' + (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%</span></div></div>';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#fff">' + escapeHtml(r.ticker) + '</span><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierCls + '">' + tierShort + '</span></div><div style="text-align:right"><span style="font-size:13px;color:#e5e7eb;font-weight:600">' + (r.last_price ? r.last_price.toLocaleString('id-ID') : '-') + '</span> <span style="font-size:11px;color:' + chgView.hex + '">' + chgView.text + '</span></div></div>';
         html += '<div style="margin:-2px 0 8px 0">' + freshnessChipHtml(r) + '</div>';
         html += '<div style="display:flex;gap:10px;align-items:center;font-size:11px;margin-bottom:10px;color:#9ca3af"><span>Score: <strong style="color:' + scCol + '">' + sc + '</strong></span><span>Exec: <strong style="color:#e5e7eb">' + escapeHtml(r.confidence || '-') + '</strong></span><span>Vol: ' + volR + '</span>';
         if (r.board) html += '<span style="color:#6b7280">' + escapeHtml(r.board) + '</span>';
@@ -7966,18 +8129,17 @@ async function loadSektorHot() {
         // Render cards
         var html = '';
         data.groups.forEach(function(g) {
-            var chgColor = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? 'text-emerald-400' : (g.avg_change_pct != null ? 'text-red-400' : 'text-gray-500');
-            var chgSign = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? '+' : '';
-            var topChgColor = (g.top_change_pct != null && g.top_change_pct >= 0) ? 'text-emerald-400' : (g.top_change_pct != null ? 'text-red-400' : 'text-gray-500');
-            var topChgSign = (g.top_change_pct != null && g.top_change_pct >= 0) ? '+' : '';
-            var avgChgDisplay = g.avg_change_pct != null ? (chgSign + formatPct(g.avg_change_pct)) : '-';
+            var chgView = changeDisplay(g.avg_change_pct);
+            var topChgView = changeDisplay(g.top_change_pct);
+            var chgColor = chgView.cls;
+            var avgChgDisplay = chgView.text;
             html += '<div onclick="showGroupDetail(\'' + g.group_code + '\')" class="bg-dark-700/50 border border-dark-600/30 rounded-xl p-4 cursor-pointer hover:border-emerald-500/30 hover:bg-dark-700/80 transition-all">';
             html += '<div class="flex items-start justify-between mb-2"><h3 class="text-sm font-semibold text-gray-200 leading-tight">' + escapeHtml(g.group_name || g.group_code) + '</h3>';
             html += '<span class="text-lg font-bold ' + chgColor + ' flex-shrink-0 ml-2">' + avgChgDisplay + '</span></div>';
             html += '<div class="flex items-center gap-3 text-xs text-gray-500">';
             html += '<span>' + (g.stock_count || 0) + ' saham</span>';
             if (g.top_ticker && g.top_change_pct != null) {
-                html += '<span class="' + topChgColor + '">Top: ' + g.top_ticker + ' ' + topChgSign + formatPct(g.top_change_pct) + '</span>';
+                html += '<span class="' + topChgView.cls + '">Top: ' + escapeHtml(g.top_ticker) + ' ' + topChgView.text + '</span>';
             } else if (g.valid_count === 0 || !g.top_ticker) {
                 html += '<span class="text-gray-600">Data belum tersedia</span>';
             }
@@ -8015,9 +8177,9 @@ async function showGroupDetail(groupCode) {
         }
 
         var g = data.group;
-        var chgColor = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? 'text-emerald-400' : (g.avg_change_pct != null ? 'text-red-400' : 'text-gray-500');
-        var chgSign = (g.avg_change_pct != null && g.avg_change_pct >= 0) ? '+' : '';
-        var avgDisplay = g.avg_change_pct != null ? (chgSign + formatPct(g.avg_change_pct)) : '-';
+        var chgView = changeDisplay(g.avg_change_pct);
+        var chgColor = chgView.cls;
+        var avgDisplay = chgView.text;
         var volDisplay = g.avg_volume_ratio ? formatRatio(g.avg_volume_ratio) : '-';
         header.innerHTML = '<h2 class="text-base font-bold text-white">Grup ' + escapeHtml(groupCode) + '</h2>' +
             '<p class="text-xs text-gray-400 mt-0.5">' + escapeHtml(g.group_name || '') + ' \u00B7 ' + (g.stock_count || 0) + ' saham</p>' +
@@ -8041,9 +8203,9 @@ async function showGroupDetail(groupCode) {
 
         members.forEach(function(m) {
             var hasData = m.last_price != null;
-            var pctColor = hasData ? ((m.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600';
-            var pctSign = hasData ? ((m.change_pct || 0) >= 0 ? '+' : '') : '';
-            var pctDisplay = hasData ? (pctSign + formatPct(m.change_pct)) : '-';
+            var pctView = changeDisplay(hasData ? m.change_pct : null);
+            var pctColor = pctView.cls;
+            var pctDisplay = pctView.text;
             var priceDisplay = hasData ? formatPrice(m.last_price) : '<span class="text-gray-600">-</span>';
             var volDisplay = hasData ? formatVolume(m.volume_today) : '-';
             var ratioDisplay = hasData ? formatRatio(m.volume_ratio_30d) : '-';
@@ -8310,8 +8472,7 @@ function renderScreenerTable(results) {
 
     var html = '';
     filtered.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-        var chgSign = (r.change_pct || 0) >= 0 ? '+' : '';
+        var chgView = changeDisplay(r.change_pct);
 
         // Tier badge color
         var tierLabel = swingTierShort(r.swing_tier);
@@ -8348,7 +8509,7 @@ function renderScreenerTable(results) {
         html += '<td class="px-2 py-2 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-2 text-center ' + scoreColor + ' whitespace-nowrap">' + (r.score || 0) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
-        html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
+        html += '<td class="px-2 py-2 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + (r.rsi14 != null ? Number(r.rsi14).toFixed(1) : '-') + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
         html += '<td class="px-2 py-2 text-right text-gray-300 whitespace-nowrap text-[10px]">' + formatPrice(r.entry_low) + '-' + formatPrice(r.entry_high) + '</td>';
@@ -8714,8 +8875,7 @@ function renderNkScreenerTable(results) {
 
     var html = '';
     filtered.forEach(function(r) {
-        var chgColor = (r.change_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400';
-        var chgSign = (r.change_pct || 0) >= 0 ? '+' : '';
+        var chgView = changeDisplay(r.change_pct);
 
         var scoreColor = 'text-gray-400';
         if (r.score >= 80) scoreColor = 'text-emerald-400 font-bold';
@@ -8763,7 +8923,7 @@ function renderNkScreenerTable(results) {
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-center ' + scoreColor + ' whitespace-nowrap">' + scoreLabel + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-200 whitespace-nowrap">' + formatPrice(r.last_price) + '</td>';
-        html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgColor + '">' + chgSign + formatPct(r.change_pct) + '</td>';
+        html += '<td class="px-2 py-1.5 text-right whitespace-nowrap ' + chgView.cls + '">' + chgView.text + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + rsiStr + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap">' + formatRatio(r.volume_ratio_avg20) + '</td>';
         html += '<td class="px-2 py-1.5 text-right text-gray-300 whitespace-nowrap text-[10px]">' + entryStr + '</td>';
@@ -9139,12 +9299,12 @@ function formatNumber(n) {
 
 
 // ===== DASHBOARD TOP 5 + HOURLY MONITOR =====
+// The caches for this section are initialised near setTopLevelView, above their
+// first caller — see the "DASHBOARD MONITOR STATE" block there. Startup reaches
+// loadDashboardTop5Monitor() long before this point in the script, and `var`
+// hoists the binding without the value.
 var _dashboardPickData = {};
 var _dashboardMonitorRefreshTimer = null;
-var _dashboardTop5Cache = { at: 0, data: null };
-var _top5HistoryCache = { at: 0, data: null };
-var _dashboardTop5InFlight = null;
-var _top5HistoryInFlight = null;
 var _screenerInFlight = null;
 var _nkScreenerInFlight = null;
 var _dtScreenerInFlight = null;
@@ -9213,6 +9373,28 @@ function dashboardAwaitingLockedMessage(dataOrNote) {
     }
     return dataOrNote || 'Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.';
 }
+// Pure: the heading that sits above the Top 5 panel.
+//
+// It takes `isAwaiting` — the same flag that decides which body the panel
+// renders — so the heading can never contradict the panel underneath it. It used
+// to be assigned before that flag was computed, so any source that was not a
+// locked final fell through to "Top 5 Radar tersedia." ("Top 5 Radar is
+// available") while the body simultaneously rendered "Belum ada Top 5 final yang
+// terkunci." ("No final locked Top 5 yet"). A user reading the dashboard saw the
+// product claim data it was, one line lower, reporting as absent.
+function dashboardTop5NoteText(data, isAwaiting, gateLabel) {
+    var payload = data && typeof data === 'object' ? data : {};
+    if (isAwaiting) {
+        return payload.web_provisional
+            ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.'
+            : 'Menunggu Top 5 final dikunci. Monitor aktif setelah penguncian.';
+    }
+    if (payload.top5_locked) {
+        return 'Top 5 Radar Final/Locked — ' + gateLabel + '. Monitor update tiap 30 menit saat jam bursa.';
+    }
+    return payload.update_note || 'Top 5 Radar tersedia.';
+}
+
 function dashboardAwaitingLockedHtml(note) {
     var msg = dashboardAwaitingLockedMessage(note);
     return '<div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">' + escapeHtml(msg) + '</p></div>';
@@ -9649,8 +9831,10 @@ async function loadDashboardTop5Monitor(silent, opts) {
         if (!(data.top5_source === 'awaiting_locked_rows' && isLoggedInUser())) {
             _dashboardTop5Cache = { at: Date.now(), data: data };
         }
-        var note = document.getElementById('dashboardTop5LockNote');
-        if (note) note.textContent = data.top5_locked ? 'Top 5 Radar Final/Locked. Monitor update tiap 30 menit saat jam bursa.' : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
+        // The note is owned by renderDashboardTop5MonitorData, which is the only
+        // place that knows whether the panel is about to render rows or an
+        // awaiting-lock state. Setting it here too just painted a contradictory
+        // heading for one frame before that function corrected it.
         renderDashboardTop5MonitorData(data);
     } catch (e) {
         var top = document.getElementById('dashboardTop5List');
@@ -9673,7 +9857,6 @@ function renderDashboardTop5MonitorData(data) {
     // Cap display between 0 and 5 for the "X/5" format
     pickedCount = Math.max(0, Math.min(5, Number(pickedCount) || 0));
     var gateLabel = 'lolos gate: ' + pickedCount + '/5';
-    if (note) note.textContent = data.top5_locked ? ('Top 5 Radar Final/Locked — ' + gateLabel + '. Monitor update tiap 30 menit saat jam bursa.') : (data.web_provisional ? 'Top 5 Radar Preview/Provisional khusus admin. Telegram tetap dikirim sesuai jadwal otomatis.' : (data.update_note || 'Top 5 Radar tersedia.'));
     // Robust empty detection: treat as empty/awaiting if ANY of these are true
     var monitorRows = data.monitor || [];
     var isLockedFinalSource = data.top5_locked === true && (data.top5_source === 'locked_rows' || data.top5_source === 'locked_rows_fallback');
@@ -9682,6 +9865,9 @@ function renderDashboardTop5MonitorData(data) {
         || data.top5_source === 'awaiting_locked_rows'
         || data.web_provisional === true
         || (!hasTop5Data && monitorRows.length === 0);
+    // The note is written only now, once we know which body the panel is about to
+    // render — see dashboardTop5NoteText.
+    if (note) note.textContent = dashboardTop5NoteText(data, isAwaiting, gateLabel);
     if (isAwaiting) {
         var topEl = document.getElementById('dashboardTop5List');
         if (topEl) topEl.innerHTML = dashboardAwaitingLockedHtml(data);
