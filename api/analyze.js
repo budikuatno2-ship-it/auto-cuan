@@ -63,9 +63,13 @@ async function prepareContextRequest(req) {
     if (simulation) context = Object.assign({}, context, { simulation });
   }
   context = prepareRuntimeGrounding(source, body.chatMessage, context);
-  const history = Array.isArray(body.history) ? body.history.slice(-3) : [];
-  history.push({ role: 'user', content: styleInstruction(source) });
-  req.body = Object.assign({}, body, { context, history });
+  // The style contract travels as `styleRules` and is folded into the system
+  // turn by the router. It used to be pushed onto `history` as a synthetic user
+  // turn, which put two consecutive user messages on the wire — a shape some
+  // OpenAI-compatible upstreams reject outright — and the router's 700-char
+  // history clamp then truncated the rules mid-sentence anyway.
+  const history = Array.isArray(body.history) ? body.history.slice(-4) : [];
+  req.body = Object.assign({}, body, { context, history, styleRules: styleInstruction(source) });
   return req;
 }
 

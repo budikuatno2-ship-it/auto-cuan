@@ -86,15 +86,29 @@ test('Portfolio composer keeps duplicate-send and IME protections', () => {
   assert.match(source, /compositionstart/);
   assert.match(source, /!state\.composing && !event\.isComposing/);
   assert.match(source, /event\.key === 'Enter' && !event\.shiftKey/);
-  assert.match(source, /finally \{\s*setSending\(false\);/);
+  // The lock must be released from a finally block. Asserting the exact next
+  // statement pinned an implementation detail — the block also clears the
+  // abort timer now — so the assertion checks the block's contents instead.
+  const block = source.match(/finally \{[\s\S]*?\n {4}\}/);
+  assert.ok(block, 'sendMessage() must release its lock from a finally block');
+  assert.match(block[0], /setSending\(false\);/);
 });
 
+// This test previously asserted four phrases that were never in the file
+// (straight quotes around "kamu", "Jangan gunakan bestie, lo, lu, gue",
+// "80-180 kata", "Bedakan snapshot/data tersimpan dari harga real-time") and so
+// had been failing on the base branch. It now asserts the style contract that
+// the file actually carries, and the transport that carries it.
 test('context AI receives concise style rules without changing the classified user question', () => {
   const source = read('api/analyze.js');
-  assert.match(source, /gunakan kata "kamu"/i);
-  assert.match(source, /Jangan gunakan bestie, lo, lu, gue/);
-  assert.match(source, /80-180 kata/);
-  assert.match(source, /Bedakan snapshot\/data tersimpan dari harga real-time/);
-  assert.match(source, /history\.push\(\{ role: 'user', content: styleInstruction/);
+  assert.match(source, /gunakan kata “kamu”/);
+  assert.match(source, /Jangan memakai bestie, bro, cuy, lo, lu, gue/);
+  assert.match(source, /80–180 kata/);
+  assert.match(source, /sumber terbaru belum tersedia/);
+  // The rules belong in the system turn. Pushing them onto `history` as a
+  // synthetic user turn put two consecutive user messages on the wire and got
+  // the text clipped by the router's 700-character history clamp.
+  assert.match(source, /styleRules: styleInstruction\(source\)/);
+  assert.doesNotMatch(source, /history\.push\(\{ role: 'user', content: styleInstruction/);
   assert.doesNotMatch(source, /chatMessage:\s*original/);
 });

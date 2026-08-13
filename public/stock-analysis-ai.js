@@ -6,6 +6,11 @@
 
   var sending = false;
   var timers = [];
+  var lastQuestion = '';
+  var controller = null;
+  // Above the router's own ceiling so a request the server is still about to
+  // answer is never thrown away client-side.
+  var REQUEST_TIMEOUT_MS = 70000;
 
   function byId(id) { return document.getElementById(id); }
   function escapeHtml(value) {
@@ -76,16 +81,67 @@
   function removeLoading() {
     clearTimers(); var el = byId('stockAiLoading'); if (el) el.remove();
   }
-  function appendAssistant(text) {
+  function appendAssistant(text, options) {
     var root = byId('analisisResult'); if (!root) return;
-    root.insertAdjacentHTML('beforeend', '<div class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="ai-content ai-followup ai-rich-text bg-dark-700/60 border border-dark-600/30 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%]">' + renderAnswer(friendly(text)) + '</div></div>');
+    var local = Boolean(options && options.local);
+    // A deterministic snapshot summary is labelled as such. Presenting it as a
+    // model answer would make the fallback indistinguishable from the real one.
+    var badge = local
+      ? '<div class="mb-2 inline-block px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-[10px] font-bold text-amber-300">Ringkasan lokal — bukan jawaban AI</div>'
+      : '';
+    var shell = local
+      ? 'ai-content ai-followup ai-rich-text bg-amber-500/5 border border-amber-500/20 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%]'
+      : 'ai-content ai-followup ai-rich-text bg-dark-700/60 border border-dark-600/30 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%]';
+    root.insertAdjacentHTML('beforeend', '<div class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div class="' + shell + '">' + badge + renderAnswer(friendly(text)) + '</div></div>');
     scrollBottom();
+  }
+  function appendNotice(text, retryable) {
+    var root = byId('analisisResult'); if (!root) return;
+    removeRetry();
+    var retryHtml = retryable
+      ? '<button type="button" id="stockAiRetry" class="mt-2 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-[11px] font-bold text-emerald-300">Coba lagi</button>'
+      : '';
+    root.insertAdjacentHTML('beforeend', '<div id="stockAiNotice" class="mt-3 stock-ai-followup"><div class="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3.5 py-2.5"><p class="text-xs text-amber-200">' + escapeHtml(text) + '</p>' + retryHtml + '</div></div>');
+    var button = byId('stockAiRetry');
+    if (button) button.addEventListener('click', function (event) {
+      event.preventDefault();
+      if (sending || !lastQuestion) return;
+      var question = lastQuestion;
+      removeRetry();
+      send(question, { retry: true });
+    });
+    scrollBottom();
+  }
+  function removeRetry() {
+    var notice = byId('stockAiNotice');
+    if (notice) notice.remove();
   }
   function setBusy(active) {
     sending = active;
     var input = byId('analysisChatInput'); var button = byId('analysisSendBtn');
     if (input) input.disabled = active;
-    if (button) button.disabled = active;
+    if (button) {
+      button.disabled = active;
+      button.setAttribute('aria-busy', active ? 'true' : 'false');
+    }
+  }
+  // Only a genuine provider/transport failure may be answered with a fallback.
+  // Session, quota and server-configuration problems are reported as themselves
+  // so the user is told what to actually do about them.
+  function describeFailure(response, data, error) {
+    var code = data && data.code;
+    var status = response ? response.status : 0;
+    if (error && error.name === 'AbortError') return { retryable: true, text: 'Permintaan dihentikan karena terlalu lama. Coba lagi ya.' };
+    if (!response) return { retryable: true, text: 'Koneksi ke server AI gagal. Cek jaringan lalu coba lagi.' };
+    if (status === 401) return { retryable: false, text: 'Sesi kamu sudah berakhir. Muat ulang halaman dan login lagi.' };
+    if (status === 403) return { retryable: false, text: (data && data.error) || 'Akses AI ditolak untuk akun ini.' };
+    if (status === 429 || code === 'AI_RATE_LIMITED') {
+      var wait = Number(data && data.retry_after_seconds);
+      return { retryable: false, text: 'Terlalu banyak pertanyaan dalam waktu singkat.' + (Number.isFinite(wait) && wait > 0 ? ' Coba lagi sekitar ' + wait + ' detik lagi.' : ' Tunggu sebentar lalu coba lagi.') };
+    }
+    if (code === 'AI_NOT_CONFIGURED') return { retryable: false, text: 'Asisten AI belum diaktifkan di server. Hubungi admin.' };
+    if (code === 'AI_STOCK_SNAPSHOT_MISSING') return { retryable: false, text: 'Jalankan analisis tickernya dulu, baru lanjut tanya di sini.' };
+    return { retryable: true, text: (data && data.error) || 'Jawaban AI belum bisa diambil. Coba lagi sebentar.' };
   }
   function addScopeNote() {
     var wrap = byId('analisisFollowUp');
@@ -96,35 +152,72 @@
     note.textContent = 'Tanya lanjutan khusus ticker dan hasil analisis yang sedang tampil. Buat bahas semua posisi sekaligus, pakai Asisten AI Portofolio ya.';
     wrap.insertBefore(note, wrap.firstChild);
   }
-  async function send() {
+  async function send(retryMessage, options) {
     if (sending) return;
     var input = byId('analysisChatInput');
-    var message = input ? String(input.value || '').trim() : '';
+    var message = retryMessage != null
+      ? String(retryMessage || '').trim()
+      : (input ? String(input.value || '').trim() : '');
     if (!message) return;
     var ticker = currentTicker(); var snapshot = analysisSnapshot();
     if (!ticker || !snapshot) {
-      appendAssistant('Analisis tickernya dulu ya. Setelah hasilnya muncul, baru lanjut tanya di sini.');
+      appendNotice('Analisis tickernya dulu ya. Setelah hasilnya muncul, baru lanjut tanya di sini.', false);
       return;
     }
+    var isRetry = Boolean(options && options.retry);
     var history = readHistory(ticker);
-    appendUser(message); if (input) input.value = ''; setBusy(true); appendLoading();
+    lastQuestion = message;
+    removeRetry();
+    if (!isRetry) appendUser(message);
+    if (input && retryMessage == null) input.value = '';
+    setBusy(true); appendLoading();
+
+    var abortController = typeof AbortController === 'function' ? new AbortController() : null;
+    controller = abortController;
+    var abortTimer = abortController ? setTimeout(function () { abortController.abort(); }, REQUEST_TIMEOUT_MS) : null;
+    var response = null;
+    var data = {};
+
     try {
-      var response = await fetch('/api/analyze', {
+      response = await fetch('/api/analyze', {
         method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
+        signal: abortController ? abortController.signal : undefined,
         body:JSON.stringify({
           source:'stock_analysis_followup',
           chatMessage:message,
           context:{ ticker:ticker, analysis_text:snapshot, captured_at:new Date().toISOString() },
-          history:history
+          history:history,
+          retry:isRetry
         })
       });
-      var data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || 'AI Analisis Saham belum tersedia.');
-      removeLoading(); appendAssistant(data.reply);
-      history.push({ role:'user', content:message }, { role:'assistant', content:data.reply }); writeHistory(ticker, history);
+      // An HTML error page from the platform used to reach the user as a raw
+      // "Unexpected token '<'" SyntaxError rendered in the assistant bubble.
+      data = await response.json().catch(function () { return {}; });
+      // Clear the placeholder before anything is appended, so the answer never
+      // renders underneath a spinner. The finally block repeats it as a safety
+      // net for any path that throws; removeLoading() is idempotent.
+      removeLoading();
+      if (!response.ok || !data.success || !data.reply) {
+        var failure = describeFailure(response, data, null);
+        appendNotice(failure.text, failure.retryable);
+        return;
+      }
+      appendAssistant(data.reply, { local: data.local_fallback === true });
+      // Only a real model answer becomes conversation history; a deterministic
+      // local summary must not be replayed back to the model as its own turn.
+      if (data.local_fallback !== true) {
+        history.push({ role:'user', content:message }, { role:'assistant', content:data.reply });
+        writeHistory(ticker, history);
+      }
     } catch (error) {
-      removeLoading(); appendAssistant(friendly(String(error && error.message || 'AI-nya lagi gangguan. Coba lagi bentar ya.')));
-    } finally { setBusy(false); }
+      var transport = describeFailure(response, data, error);
+      appendNotice(transport.text, transport.retryable);
+    } finally {
+      if (abortTimer) clearTimeout(abortTimer);
+      controller = null;
+      removeLoading();
+      setBusy(false);
+    }
   }
 
   function rankingNavButtonHtml() {
@@ -475,7 +568,9 @@
     button.removeAttribute('onclick'); input.removeAttribute('onkeydown');
     button.addEventListener('click', function (event) { event.preventDefault(); send(); });
     input.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); }
+      // isComposing guards IME input: Enter while a candidate list is open must
+      // commit the candidate, not send a half-typed question.
+      if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); send(); }
     });
     addScopeNote();
   }
