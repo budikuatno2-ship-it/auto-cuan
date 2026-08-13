@@ -20,12 +20,12 @@ permissions:
 jobs:
   build-and-focused-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Setup Node 22
         uses: actions/setup-node@v4
@@ -41,6 +41,41 @@ jobs:
 
       - name: Production build contract
         run: npm run build
+
+      - name: Full-suite failure parity with production base
+        shell: bash
+        run: |
+          set +e
+          node --test test/*.test.js > /tmp/head.tap 2>&1
+          HEAD_RC=$?
+          set -e
+
+          BASE_SHA='${{ github.event.pull_request.base.sha }}'
+          git worktree add --detach /tmp/autocuan-base "$BASE_SHA"
+          set +e
+          (
+            cd /tmp/autocuan-base
+            npm ci > /tmp/base-npm.log 2>&1 && node --test test/*.test.js > /tmp/base.tap 2>&1
+          )
+          BASE_RC=$?
+          set -e
+
+          grep -E '^not ok [0-9]+ - ' /tmp/head.tap | sed -E 's/^not ok [0-9]+ - //' | sort > /tmp/head.fail || true
+          grep -E '^not ok [0-9]+ - ' /tmp/base.tap | sed -E 's/^not ok [0-9]+ - //' | sort > /tmp/base.fail || true
+
+          echo '=== HEAD SUMMARY ==='
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' /tmp/head.tap | tail -n 6 || true
+          echo '=== BASE SUMMARY ==='
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' /tmp/base.tap | tail -n 6 || true
+          echo "HEAD_RC=$HEAD_RC"
+          echo "BASE_RC=$BASE_RC"
+
+          echo '=== FAILURE SET DIFF ==='
+          if ! diff -u /tmp/base.fail /tmp/head.fail; then
+            echo 'FULL_SUITE_FAILURE_PARITY=FAILED'
+            exit 1
+          fi
+          echo 'FULL_SUITE_FAILURE_PARITY=PASS'
 
       - name: Diff whitespace check
         run: git diff --check HEAD^ HEAD
