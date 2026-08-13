@@ -189,6 +189,44 @@ const portfolioRuntime = read('public/portfolio-ai-runtime-v2.js');
 assertOk(portfolioRuntime.includes('previous.role !== row.role'), 'Portfolio chat duplicate cleanup is missing.');
 assertOk(portfolioRuntime.includes('if (!text || state.sending) return;'), 'Portfolio AI send lock is missing.');
 
+// --- 9b. Front-end delivery: no render-blocking third-party compiler -------
+// The Tailwind Play CDN shipped ~400KB of JavaScript that compiled CSS in the
+// browser on every load, and blocking that host cost the app its entire layout.
+// The generated sheet must stay in place, and every utility class the rendered
+// DOM uses must exist in it.
+const indexHtml = read('public/index.html');
+const tailwindCss = read('public/tailwind-build.css');
+assertOk(!/cdn\.tailwindcss\.com/.test(indexHtml), 'The Tailwind Play CDN is loaded again.');
+assertOk(/<link[^>]+href="\/tailwind-build\.css/.test(indexHtml), 'The generated Tailwind stylesheet is not linked.');
+assertOk(tailwindCss.length > 20000, 'public/tailwind-build.css looks truncated; regenerate it.');
+// Every class literal in the shipped markup and scripts must resolve to a rule.
+// Escapes are dropped first so ".bg-emerald-500\/10" can be matched literally.
+const flatCss = tailwindCss.replace(/\\(.)/g, '$1');
+function cssDefines(name) {
+  let idx = flatCss.indexOf('.' + name);
+  while (idx >= 0) {
+    const next = flatCss[idx + name.length + 1];
+    if (!next || !/[\w-]/.test(next)) return true;
+    idx = flatCss.indexOf('.' + name, idx + 1);
+  }
+  return false;
+}
+['flex', 'grid', 'hidden', 'border', 'rounded-xl', 'text-left', 'text-right', 'text-center',
+ 'bg-dark-800/60', 'border-dark-600/30', 'text-emerald-400', 'sm:grid-cols-2', 'lg:grid-cols-3']
+  .forEach(function (name) {
+    assertOk(cssDefines(name), 'Tailwind utility "' + name + '" is missing from public/tailwind-build.css; regenerate it.');
+  });
+
+// jsPDF is ~350KB for an export most sessions never use. It must stay behind an
+// explicit call rather than running three CDN attempts at parse time.
+assertOk(indexHtml.includes('window.loadPdfLibrary'), 'On-demand PDF loader is missing.');
+assertOk(!/loadScript\(jspdfUrls, 0, function\(ok1\) \{\s*\n\s*if \(!ok1\)/.test(indexHtml) || indexHtml.indexOf('window.loadPdfLibrary') < indexHtml.indexOf('jspdfUrls, 0'), 'PDF libraries are fetched at page load again.');
+assertOk(indexHtml.includes('_ensureJsPdf') && indexHtml.includes('window.loadPdfLibrary().then'), 'PDF export no longer triggers its own library load.');
+
+// The in-page spacing self-test shipped ~4KB of fixtures to every visitor and
+// asserted on textContent, which drops the <br> separators it was checking for.
+assertOk(!/selfTestSpacing|Auto-Cuan DOM-Test FAIL/.test(indexHtml), 'The in-page spacing self-test returned; it belongs in test/ai-technical-spacing.test.js.');
+
 // --- 10. Stable Pattern runtime, classic detector, and Swing ranking ------
 const fcaLoader = read('public/assets/fca-stocks.js');
 const classicPatterns = read('lib/classic-chart-patterns.js');

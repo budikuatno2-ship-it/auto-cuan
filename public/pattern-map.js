@@ -216,7 +216,21 @@
     return true;
   }
 
+  // A browser-local hint, used only to skip a request that is guaranteed to be
+  // refused. It can never grant access: any session that claims admin still has
+  // to be verified by the server below, and a claim of "not admin" can only
+  // ever cost the claimant the feature. Without this, every ordinary visitor
+  // POSTed /api/admin-users on each page load purely to receive a 403.
+  function mayBeAdmin() {
+    try {
+      return String(root.localStorage.getItem('autocuan_is_admin') || '') === 'true';
+    } catch (_) {
+      return true;
+    }
+  }
+
   function refreshAccess(force) {
+    if (!mayBeAdmin()) return Promise.resolve(denyAccess());
     if (force !== true && hasFreshAccess()) return Promise.resolve(true);
     if (state.request) {
       if (force !== true) return state.request.promise;

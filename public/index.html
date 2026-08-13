@@ -36,25 +36,20 @@
             }
         })();
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // Guarded: if the Tailwind CDN is blocked, throttled, or filtered — which
-        // happens on some corporate and ISP networks — `tailwind` is undefined and
-        // the bare assignment threw an uncaught ReferenceError into the console on
-        // every load. The palette below is a theme extension, so skipping it when
-        // the CDN is absent costs nothing that is not already gone.
-        if (typeof tailwind !== 'undefined') {
-            tailwind.config = {
-                theme: {
-                    extend: {
-                        colors: {
-                            dark: { 900: '#0b0e14', 800: '#0f1319', 700: '#151a23', 600: '#1c2333', 500: '#242d3d' }
-                        }
-                    }
-                }
-            };
-        }
-    </script>
+    <!-- Tailwind is served as a pre-built stylesheet, not as the Play CDN.
+         The CDN ships ~400KB of JavaScript that compiles CSS in the browser on
+         every single load, and it is a hard single point of failure: when the
+         host is blocked — which happens on corporate and ISP-filtered networks,
+         and which this build reproduces — the entire app loses its layout while
+         still appearing to work. The generated sheet below is 42KB (8KB gzipped),
+         needs no JavaScript, and cannot fail open.
+
+         Regenerate after adding new utility classes:
+           npx tailwindcss@3 -c tailwind.config.js -i tailwind.src.css \
+             -o public/tailwind-build.css --minify
+         The palette extension that used to live in the inline tailwind.config
+         now lives in tailwind.config.js. -->
+    <link rel="stylesheet" href="/tailwind-build.css?v=20260813-tw-v1">
     <style>
         /* ---- .hidden safety net -------------------------------------------
            This one rule is the app's entire show/hide mechanism: 101 uses in the
@@ -1977,7 +1972,13 @@
 <script src="/assets/idx-tickers.js"></script>
 <script src="/assets/fca-stocks.js"></script>
 <script>
-// ===== PDF LIBRARY LOADER (multi-CDN fallback) =====
+// ===== PDF LIBRARY LOADER (multi-CDN fallback, on demand) =====
+// jsPDF + autoTable are ~350KB and are only needed when someone actually
+// exports a PDF, which most sessions never do. This used to run at parse time
+// on every page load: three sequential CDN attempts, and on a network that
+// blocks all three it produced four console errors and a warning before the
+// dashboard had finished its first fetch. Nothing is requested until
+// loadPdfLibrary() is called from an export handler.
 (function() {
     var jspdfUrls = [
         'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js',
@@ -1991,6 +1992,7 @@
     ];
     window._pdfLibReady = false;
     window._pdfLibError = false;
+    var pending = null;
 
     function loadScript(urls, idx, onDone) {
         if (idx >= urls.length) { onDone(false); return; }
@@ -2001,15 +2003,25 @@
         document.head.appendChild(s);
     }
 
-    // Load jsPDF first, then autoTable (autoTable depends on jsPDF)
-    loadScript(jspdfUrls, 0, function(ok1) {
-        if (!ok1) { window._pdfLibError = true; console.warn('[PDF] jsPDF failed to load from all CDNs'); return; }
-        loadScript(autoTableUrls, 0, function(ok2) {
-            if (!ok2) { window._pdfLibError = true; console.warn('[PDF] autoTable failed to load from all CDNs'); return; }
-            window._pdfLibReady = true;
-            console.log('[PDF] jsPDF + autoTable loaded successfully');
+    // Resolves true once both scripts are present, false if every CDN failed.
+    // Repeat calls share one in-flight attempt.
+    window.loadPdfLibrary = function() {
+        if (window._pdfLibReady) return Promise.resolve(true);
+        if (window._pdfLibError) return Promise.resolve(false);
+        if (pending) return pending;
+        pending = new Promise(function(resolve) {
+            loadScript(jspdfUrls, 0, function(ok1) {
+                if (!ok1) { window._pdfLibError = true; pending = null; resolve(false); return; }
+                loadScript(autoTableUrls, 0, function(ok2) {
+                    if (!ok2) { window._pdfLibError = true; pending = null; resolve(false); return; }
+                    window._pdfLibReady = true;
+                    pending = null;
+                    resolve(true);
+                });
+            });
         });
-    });
+        return pending;
+    };
 })();
 </script>
 <script>
@@ -10600,89 +10612,12 @@ function forceNormalizeTechnicalDOM(root) {
     }
 }
 
-// ===== SELF-TEST: Universal Spacing Fix (Latest + BUVA + IHSG + PTRO + DSSA samples) =====
-(function selfTestSpacing() {
-    // Only run self-tests in development/localhost — skip in production to avoid DOM overhead
-    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
-    // Latest live failure sample (Phase 11Q regression)
-    var latestInput = 'MA20: 316.30MA50: 313.40MA100: 356.01MA200: 298.52Posisi: di bawah semua MA\nRSI14: 32.09Volume: 0,55x avgLast: 260High: 298Low: 250\nR1: 288R2: 317\nS1: 240S2: 221\nTP1: 288TP2: 317';
-    // BUVA sample (live failure case — this is what Phase 11O missed)
-    var buvaInput = 'MA20: 820.75MA50: 1008.5MA100: 1196MA200: 997.79Posisi: belowMA20\nRSI14: 26.74Volume: 0,79x avgLast: 610High: 675Low: 575\nR1: 665R2: 720\nS1: 565S2: 520\nTP1: N/ATP2: N/A\nInvalidasi: Recovery di atas 620 dengan volume di atas rata-rata 7D danRSI >50.';
-    // IHSG sample (live failure case)
-    var ihsgInput = 'MA20: 6466,67MA50: 6947,55MA100: 7676,27MA200: 7916,73Posisi: di bawahMA20\nRSI14: 10,75Volume: 0,74x avg20Last: 5594,77High: 5860,67Low: 5594,11\nR1: 5772R2: 5950\nS1: 5505S2: 5416';
-    // PTRO sample
-    var ptroInput = 'MA20: 4340MA50: 4966.7MA100: 6426.75MA200: 6772.48Posisi: belowMA20\nRSI14: 34.36Volume: 0,76x avgLast: 3650High: 4180Low: 3650\nR1: 4004R2: 4357\nS1: 3474S2: 3297\nTP1: 4004TP2: 4357';
-    // DSSA sample (Phase 11T live failure — exact output from browser)
-    var dssaInput = 'MA20: 753.15MA50: 1795.24MA100: 2718.13MA200: 3369.34Posisi: Di bawah semua MA\nRSI14: 27.42Volume: 1,29x avg 20DLast: 610High: 740Low: 610\nR1: 696R2: 783\nS1: 566S2: 523\nTP1: 696TP2: 783';
-    // DSSA with HTML tags (simulates real AI output with <b> tags across boundaries)
-    var dssaHtmlInput = '<div class="metric-grid"><div><strong>Moving Average</strong><br>MA20: <b>753.15</b><b>MA50: 1795.24</b><b>MA100: 2718.13</b><b>MA200: 3369.34</b><b>Posisi: Di bawah semua MA</b></div><div><strong>Momentum</strong><br>RSI14: <b>27.42</b><b>Volume: 1,29x avg 20D</b><b>Last: 610</b><b>High: 740</b><b>Low: 610</b></div></div>';
-
-    function testNormalize(input, label) {
-        var result = normalizeFinalStockHtml(sanitizeAIHtml(input));
-        var failures = [];
-        // Check digit+label merges
-        var mergedDigit = /\d(MA20|MA50|MA100|MA200|RSI14|Volume|Last|High|Low|R[1-3]|S[1-3]|TP[1-3]|Posisi)[^a-z]/g;
-        var m;
-        while (m = mergedDigit.exec(result)) { failures.push('digit+label: ' + m[0]); }
-        // Check letter+label merges
-        var mergedLetter = /avg\d*(Last|High|Low|Volume|Open|MA\d|RSI|R[1-3]|S[1-3]|TP[1-3])/gi;
-        while (m = mergedLetter.exec(result)) { failures.push('avg+label: ' + m[0]); }
-        // Check word boundaries (should have space)
-        var wordMerge = /(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi;
-        while (m = wordMerge.exec(result)) { failures.push('word+label: ' + m[0]); }
-        // Check N/A boundary
-        var naMerge = /N\/A(TP\d|R[1-3]|S[1-3])/gi;
-        while (m = naMerge.exec(result)) { failures.push('N/A+label: ' + m[0]); }
-        // Check D-suffix merges (20DLast, avg20DVolume)
-        var dMerge = /\dD(Last|High|Low|Open|Volume|MA\d|RSI|R[1-3]|S[1-3]|TP[1-3]|Posisi)/gi;
-        while (m = dMerge.exec(result)) { failures.push('D+label: ' + m[0]); }
-        if (failures.length > 0) {
-            console.warn('[Auto-Cuan Self-Test FAIL] ' + label + ':', failures);
-        }
-        return failures.length === 0;
-    }
-
-    // DOM render path test: simulates real addAIBubble flow through actual DOM
-    function testDOMRender(htmlInput, label) {
-        var testDiv = document.createElement('div');
-        testDiv.style.display = 'none';
-        testDiv.className = 'ai-content';
-        document.body.appendChild(testDiv);
-        var sanitized = normalizeFinalStockHtml(sanitizeAIHtml(htmlInput));
-        testDiv.innerHTML = sanitized;
-        forceNormalizeTechnicalDOM(testDiv);
-        normalizeRenderedTechnicalText(testDiv);
-        var visibleText = testDiv.textContent || testDiv.innerText || '';
-        document.body.removeChild(testDiv);
-        var failures = [];
-        // Check for merged patterns in final visible text
-        var mergedDigit = /\d(MA20|MA50|MA100|MA200|RSI14|Volume|Last|High|Low|R[1-3]|S[1-3]|TP[1-3]|Posisi)/g;
-        var m;
-        while (m = mergedDigit.exec(visibleText)) { failures.push('DOM digit+label: ' + m[0]); }
-        var dMerge = /\dD(Last|High|Low|Open|Volume|MA\d|RSI)/gi;
-        while (m = dMerge.exec(visibleText)) { failures.push('DOM D+label: ' + m[0]); }
-        var wordMerge = /(below|above|dan|bawah|atas)(MA\d{2,3}|RSI\d*|Volume|Price)/gi;
-        while (m = wordMerge.exec(visibleText)) { failures.push('DOM word+label: ' + m[0]); }
-        if (failures.length > 0) {
-            console.warn('[Auto-Cuan DOM-Test FAIL] ' + label + ':', failures);
-        }
-        return failures.length === 0;
-    }
-
-    var p0 = testNormalize(latestInput, 'Latest');
-    var p1 = testNormalize(buvaInput, 'BUVA');
-    var p2 = testNormalize(ihsgInput, 'IHSG');
-    var p3 = testNormalize(ptroInput, 'PTRO');
-    var p4 = testNormalize(dssaInput, 'DSSA');
-    // DOM render path tests (real DOM)
-    var d0 = testDOMRender(dssaInput, 'DSSA-plain');
-    var d1 = testDOMRender(dssaHtmlInput, 'DSSA-html-tags');
-    var d2 = testDOMRender(latestInput, 'Latest-DOM');
-    var d3 = testDOMRender(buvaInput, 'BUVA-DOM');
-    if (p0 && p1 && p2 && p3 && p4 && d0 && d1 && d2 && d3) {
-        console.log('[Auto-Cuan] Phase 12 spacing self-test: ALL PASS (string + DOM)');
-    }
-})();
+// The technical-metric spacing self-test that used to live here has moved to
+// test/ai-technical-spacing.test.js. It shipped ~4KB of sample strings to every
+// visitor to run only on localhost, and its assertion read testDiv.textContent
+// — which drops the <br> elements the normalizer inserts — so it reported a
+// failure on every load while the normalizer was in fact working. The node test
+// asserts on the produced HTML instead, and runs in CI.
 
 </script>
 <script>
@@ -11359,30 +11294,16 @@ function downloadChartPng(chartId, ticker, btn) {
 var _pdfDisclaimer = 'Ini bukan rekomendasi beli/jual. Gunakan sebagai bahan analisis mandiri dan kelola risiko.';
 
 function _ensureJsPdf(cb) {
-    // Check if already loaded
     if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') { cb(); return; }
-    // If we know it errored out
-    if (window._pdfLibError) {
-        console.error('[PDF] Library load failed. jspdf:', typeof window.jspdf, 'autoTable:', typeof (window.jspdf && window.jspdf.jsPDF && new (window.jspdf.jsPDF)().autoTable));
-        showToast('PDF library belum siap. Refresh halaman lalu coba lagi.', 'warning');
+    if (typeof window.loadPdfLibrary !== 'function') {
+        showToast('Ekspor PDF belum tersedia. Muat ulang halaman lalu coba lagi.', 'warning');
         return;
     }
-    // Wait for async loader to finish (retry every 200ms, max 3s)
-    var attempts = 0;
-    var maxAttempts = 15;
-    var timer = setInterval(function() {
-        attempts++;
-        if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') {
-            clearInterval(timer);
-            cb();
-            return;
-        }
-        if (attempts >= maxAttempts || window._pdfLibError) {
-            clearInterval(timer);
-            console.error('[PDF] Library not available after wait. jspdf:', typeof window.jspdf, '_pdfLibReady:', window._pdfLibReady, '_pdfLibError:', window._pdfLibError);
-            showToast('PDF library belum siap. Refresh halaman lalu coba lagi.', 'warning');
-        }
-    }, 200);
+    showToast('Menyiapkan ekspor PDF…', 'info');
+    window.loadPdfLibrary().then(function(ready) {
+        if (ready && typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') { cb(); return; }
+        showToast('Ekspor PDF gagal disiapkan. Periksa koneksi lalu coba lagi.', 'warning');
+    });
 }
 
 function _pdfAddHeader(doc, title, orientation) {
