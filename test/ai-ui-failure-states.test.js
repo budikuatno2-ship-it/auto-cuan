@@ -111,6 +111,42 @@ test('a server missing its API key points at the admin, not at a busy provider',
   assert.match(stock.text, /admin/i);
 });
 
+// A rejected key / exhausted balance is a configuration problem on the server.
+// Both surfaces must name it: the router drops it from FALLBACK_CODES, the
+// portfolio must not bury it under a local summary, and neither may offer a
+// retry that cannot possibly clear it.
+test('an invalid key or exhausted balance is never masked as an outage on either surface', () => {
+  const payload = { code: 'AI_KEY_OR_BALANCE_ERROR', provider_failed: true, error: 'API key tidak valid.' };
+
+  const portfolio = portfolioFailure(respond(503), payload, null);
+  assert.equal(portfolio.fallback, false, 'a config error must not be answered with a local summary');
+  assert.match(portfolio.status, /admin/i);
+  assert.doesNotMatch(portfolio.status, /Ringkasan lokal/);
+
+  const stock = stockFailure(respond(503), payload, null);
+  assert.equal(stock.retryable, false, 'retrying cannot fix a rejected key');
+  assert.match(stock.text, /admin/i);
+
+  const router = require('../lib/context-ai-router-v6');
+  const req = {
+    body: {
+      source: 'stock_analysis_followup',
+      chatMessage: 'entry aman di mana?',
+      context: { ticker: 'BBCA', analysis_text: 'Harga terakhir: 1000\nEntry: 980\nStop Loss: 950' }
+    }
+  };
+  assert.equal(
+    router._test.shouldUseLocalFallback(req, 503, { code: 'AI_KEY_OR_BALANCE_ERROR' }),
+    false,
+    'the router must not answer a config error with a snapshot summary either'
+  );
+  assert.equal(
+    router._test.shouldUseLocalFallback(req, 503, { code: 'AI_MODELS_FAILED_SAFE_STOP' }),
+    true,
+    'a genuine provider exhaustion still earns the snapshot summary'
+  );
+});
+
 test('asking a follow-up before an analysis exists is an instruction, not an outage', () => {
   const stock = stockFailure(respond(400), { code: 'AI_STOCK_SNAPSHOT_MISSING' }, null);
   assert.equal(stock.retryable, false);

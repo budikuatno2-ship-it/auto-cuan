@@ -140,6 +140,9 @@
       return { retryable: false, text: 'Terlalu banyak pertanyaan dalam waktu singkat.' + (Number.isFinite(wait) && wait > 0 ? ' Coba lagi sekitar ' + wait + ' detik lagi.' : ' Tunggu sebentar lalu coba lagi.') };
     }
     if (code === 'AI_NOT_CONFIGURED') return { retryable: false, text: 'Asisten AI belum diaktifkan di server. Hubungi admin.' };
+    // Same class as AI_NOT_CONFIGURED: a server-side configuration problem that
+    // retrying cannot clear, so no retry button is offered.
+    if (code === 'AI_KEY_OR_BALANCE_ERROR') return { retryable: false, text: 'Konfigurasi akses AI di server bermasalah (API key atau saldo). Hubungi admin.' };
     if (code === 'AI_STOCK_SNAPSHOT_MISSING') return { retryable: false, text: 'Jalankan analisis tickernya dulu, baru lanjut tanya di sini.' };
     return { retryable: true, text: (data && data.error) || 'Jawaban AI belum bisa diambil. Coba lagi sebentar.' };
   }

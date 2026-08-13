@@ -29,7 +29,7 @@ below is sized to finish inside that.
 | Every model times out | 503 | `AI_ALL_MODELS_TIMED_OUT` | Same, with a timeout wording |
 | Same question repeated automatically within the negative-cache window | 503 | `AI_RECENT_FAILURE` | Labelled local summary; no provider spend |
 | User presses **Coba lagi** | — | — | Bypasses the negative cache and calls the provider again |
-| Invalid key / no balance / model access denied | 503 | `AI_KEY_OR_BALANCE_ERROR` | "Akses ke penyedia AI bermasalah di sisi server" |
+| Invalid key / no balance / model access denied | 503 | `AI_KEY_OR_BALANCE_ERROR` | "Konfigurasi akses AI di server bermasalah — hubungi admin" — **no fallback and no retry on either surface** |
 | `PORTFOLIO_AI_API_KEY` unset | 503 | `AI_NOT_CONFIGURED` | "Hubungi admin" — no fallback |
 | Session expired / account blocked / not approved | 401/403 | `AI_ACCESS_DENIED` | "Login lagi" / the account reason — no fallback |
 | Per-user quota exhausted | 429 | `AI_RATE_LIMITED` | "Coba lagi sekitar N detik lagi" — no fallback |
@@ -37,7 +37,16 @@ below is sized to finish inside that.
 
 Only a genuine provider or transport failure produces a local summary, and the
 summary is always badged **"Ringkasan lokal — bukan jawaban AI"**. An actionable
-failure is reported as itself; dressing it up as an outage hides the fix.
+failure is reported as itself; dressing it up as an outage hides the fix. That is
+why `AI_KEY_OR_BALANCE_ERROR` and `AI_NOT_CONFIGURED` are absent from the
+router's `FALLBACK_CODES` *and* from the clients' fallback branches: a rejected
+key is fixed in the server's configuration, never by retrying.
+
+One deliberate asymmetry: `AI_UNEXPECTED_ERROR` (an unhandled 500) is treated as
+an unknown, likely-transient failure. The portfolio shows its labelled local
+summary because it holds the data to build one honestly; the stock surface shows
+the error text. Both offer a retry, and neither presents anything as a model
+answer.
 
 ## Failover rules
 

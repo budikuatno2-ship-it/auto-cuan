@@ -504,8 +504,12 @@
     if (code === 'AI_NOT_CONFIGURED') {
       return { fallback: false, status: 'Asisten AI belum diaktifkan di server. Hubungi admin.' };
     }
+    // A rejected key, an exhausted balance or a denied model is a server
+    // configuration problem, not an outage. Answering it with a local summary
+    // buries the one thing that would fix it, and no amount of retrying helps.
+    // lib/context-ai-router-v6.js drops the same code from its fallback set.
     if (code === 'AI_KEY_OR_BALANCE_ERROR') {
-      return { fallback: true, status: 'Akses ke penyedia AI bermasalah di sisi server. Ringkasan lokal ditampilkan.' };
+      return { fallback: false, status: 'Konfigurasi akses AI di server bermasalah (API key atau saldo). Hubungi admin.' };
     }
     if (data && data.provider_failed) {
       return { fallback: true, status: 'Semua jalur AI gagal dihubungi. Ringkasan lokal ditampilkan.' };
