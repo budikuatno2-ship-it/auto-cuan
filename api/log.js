@@ -64,6 +64,25 @@ function clientKey(req) {
   return forwarded || text(headers['x-real-ip'], 100) || 'unknown';
 }
 
+// The limiter's identity must come only from things the server observed.
+//
+// This previously keyed on the resolved `username`, which for an anonymous
+// caller is `body.username` — attacker-controlled. Rotating it minted a fresh
+// bucket on every request, so a single IP could pass MAX_PER_WINDOW without
+// limit simply by counting: username=a1, a2, a3, ... The limit existed but
+// bounded nothing.
+//
+// Now an anonymous caller is bucketed by IP alone, so rotating the body changes
+// nothing. An authenticated caller is bucketed by the uid carried in the signed
+// ac_sess cookie, which the client cannot forge, plus the IP — so one account's
+// flood cannot exhaust the budget of everyone behind a shared NAT, and a single
+// account cannot multiply its budget by hopping addresses.
+function rateLimitKey(req, session) {
+  const ip = clientKey(req);
+  if (session && session.uid) return 'uid:' + String(session.uid) + '|' + ip;
+  return 'anon|' + ip;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -93,7 +112,7 @@ module.exports = async function handler(req, res) {
     const isGuest = !session;
     const isAdmin = Boolean(session && session.adm === true);
 
-    if (!withinRateLimit(username + '|' + clientKey(req))) {
+    if (!withinRateLimit(rateLimitKey(req, session))) {
       return res.status(429).json({ success: false, error: 'Terlalu banyak permintaan.' });
     }
 
@@ -172,4 +191,4 @@ module.exports = async function handler(req, res) {
 };
 
 // Exposed for focused unit tests only.
-module.exports.__test = { text, LIMITS, MAX_PER_WINDOW };
+module.exports.__test = { text, LIMITS, MAX_PER_WINDOW, rateLimitKey, clientKey };

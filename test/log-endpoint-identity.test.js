@@ -268,6 +268,93 @@ test('a same-origin caller is accepted', () => withEnv(async () => {
   assert.ok(capture.inserted);
 }));
 
+test('rotating body.username does NOT mint a fresh rate-limit bucket', () => withEnv(async () => {
+  // The limiter used to key on the resolved `username`, which for an anonymous
+  // caller comes straight from the request body. Rotating it gave every request
+  // its own bucket, so one IP could exceed MAX_PER_WINDOW without bound just by
+  // counting upwards. The same-username test below could never catch this,
+  // because it reuses one name.
+  const capture = {};
+  const handler = loadHandler(capture);
+  const headers = { 'x-forwarded-for': '198.51.100.42' };
+  const max = handler.__test.MAX_PER_WINDOW;
+
+  let limited = 0;
+  for (let i = 0; i < max + 10; i++) {
+    const res = makeRes();
+    await handler({
+      method: 'POST',
+      // A different identity on every single request.
+      body: { action: 'search', username: 'rotate-' + i, ticker: 'BBCA' },
+      headers
+    }, res);
+    if (res.statusCode === 429) limited += 1;
+  }
+
+  assert.ok(
+    limited >= 10,
+    'a single IP rotating body.username must still be limited; only ' + limited
+    + ' of ' + (max + 10) + ' requests were refused'
+  );
+}));
+
+test('the rate-limit key is derived only from server-observed values', () => withEnv(async () => {
+  const handler = loadHandler({});
+  const { rateLimitKey } = handler.__test;
+  const req = (ip) => ({ headers: { 'x-forwarded-for': ip } });
+
+  // Anonymous: the body cannot influence the key at all, so it is not passed in.
+  assert.equal(rateLimitKey(req('1.2.3.4'), null), 'anon|1.2.3.4');
+  assert.equal(
+    rateLimitKey(req('1.2.3.4'), null),
+    rateLimitKey(req('1.2.3.4'), null),
+    'two anonymous requests from one IP share a bucket'
+  );
+  assert.notEqual(
+    rateLimitKey(req('1.2.3.4'), null),
+    rateLimitKey(req('5.6.7.8'), null),
+    'different IPs get different buckets'
+  );
+
+  // Authenticated: uid comes from the signed cookie, which cannot be forged.
+  assert.equal(rateLimitKey(req('1.2.3.4'), { uid: 'u-1' }), 'uid:u-1|1.2.3.4');
+  assert.notEqual(
+    rateLimitKey(req('1.2.3.4'), { uid: 'u-1' }),
+    rateLimitKey(req('1.2.3.4'), { uid: 'u-2' }),
+    'one account cannot exhaust another account behind the same NAT'
+  );
+  assert.notEqual(
+    rateLimitKey(req('1.2.3.4'), { uid: 'u-1' }),
+    rateLimitKey(req('9.9.9.9'), { uid: 'u-1' }),
+    'one account cannot multiply its budget by hopping addresses'
+  );
+}));
+
+test('the rate-limit key never contains a body-supplied value', () => withEnv(async () => {
+  const handler = loadHandler({});
+  const { rateLimitKey } = handler.__test;
+  const key = rateLimitKey({ headers: { 'x-forwarded-for': '203.0.113.9' } }, null);
+  assert.doesNotMatch(key, /rotate|attacker|budi/, 'the key is IP-derived only');
+  assert.equal(rateLimitKey.length, 2, 'it takes (req, session) — no body parameter to trust');
+}));
+
+test('an authenticated flood is limited on its own session bucket', () => withEnv(async () => {
+  const capture = {};
+  const handler = loadHandler(capture);
+  const cookie = sessionCookie({ userId: 'u-flood', username: 'alice', isAdmin: false });
+  const headers = { 'x-forwarded-for': '198.51.100.77', cookie };
+  const max = handler.__test.MAX_PER_WINDOW;
+
+  let limited = 0;
+  for (let i = 0; i < max + 5; i++) {
+    const res = makeRes();
+    // Rotate the body identity here too; the session must decide the bucket.
+    await handler({ method: 'POST', body: { action: 'search', username: 'x' + i, ticker: 'BBCA' }, headers }, res);
+    if (res.statusCode === 429) limited += 1;
+  }
+  assert.ok(limited >= 5, 'a signed-in flood must be refused past the budget, got ' + limited);
+}));
+
 test('a flood from one caller is rate limited', () => withEnv(async () => {
   const capture = {};
   const handler = loadHandler(capture);

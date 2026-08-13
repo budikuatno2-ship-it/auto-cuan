@@ -15,21 +15,67 @@
   function show(id) { var el = $(id); if (el) el.classList.remove('hidden'); }
   function hide(id) { var el = $(id); if (el) el.classList.add('hidden'); }
   function escapeHtml(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
-  function num(value) { var n = Number(String(value == null ? '' : value).replace(/[^0-9.-]/g, '')); return Number.isFinite(n) ? n : null; }
-  function money(value) { var n = Number(value); return Number.isFinite(n) ? 'Rp ' + Math.round(n).toLocaleString('id-ID') : '—'; }
+  // ===== MISSING DATA IS NOT ZERO =====
+  //
+  // JavaScript coerces Number(null), Number(''), Number('   ') and Number([])
+  // all to 0, and 0 is finite. Every helper below used to accept that, so an
+  // absent current price, an unset optional TP, a P/L that could not be
+  // computed, and a blank journal field each rendered as a confident "Rp 0" —
+  // visually identical to a real, measured zero. On a financial surface that is
+  // not a formatting nit: it is the product asserting a number it does not have.
+  //
+  // `finite()` is the single gate. It treats null, undefined, empty and
+  // whitespace-only strings, booleans, and unparseable text as MISSING, while
+  // preserving 0, '0' and 0.0 as the genuine readings they are.
+  //
+  // No formula changes. Lot, risk, TP and SL mathematics are untouched; only
+  // the boundary between "we have this value" and "we do not" moved.
+  function finite(value) {
+    // Only a number or a numeric string is a reading. Everything else is
+    // missing — including the shapes JavaScript quietly coerces to 0:
+    // null, '', '   ', [], and false all become 0 under Number().
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (typeof value !== 'string') return null;
+    var raw = value.trim();
+    if (raw === '') return null;
+    var n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // Parses user-typed input. The stripping character class is deliberately
+  // IDENTICAL to the original: how a typed string maps to a number is input
+  // semantics, and changing it here would silently alter what gets stored.
+  // Only the empty case moved — a blank optional field now yields null instead
+  // of a fabricated 0.
+  function num(value) {
+    if (value === null || value === undefined) return null;
+    return finite(String(value).replace(/[^0-9.-]/g, ''));
+  }
+
+  function money(value) {
+    var n = finite(value);
+    return n === null ? '—' : 'Rp ' + Math.round(n).toLocaleString('id-ID');
+  }
   // Profit and loss were rendered in the same neutral ink as every other figure,
   // so a portfolio down Rp 249.000 looked identical at a glance to one up the
   // same amount — the reader had to parse the minus sign to find out. This adds
   // the gain/loss tone that a financial surface is expected to carry. The sign
   // stays in the text, so colour is reinforcement rather than the only cue.
   function pnlClass(value) {
-    var n = Number(value);
-    if (!Number.isFinite(n)) return 'pnl pnl-unknown';
+    var n = finite(value);
+    // A P/L that could not be computed is unknown, not flat. Number(null) === 0
+    // used to paint it in the flat tone, asserting "this position is exactly
+    // break-even" about a position whose price we never had.
+    if (n === null) return 'pnl pnl-unknown';
     if (n > 0) return 'pnl pnl-up';
     if (n < 0) return 'pnl pnl-down';
     return 'pnl pnl-flat';
   }
-  function pct(value) { var n = Number(value); return Number.isFinite(n) ? n.toFixed(2) + '%' : '—'; }
+
+  function pct(value) {
+    var n = finite(value);
+    return n === null ? '—' : n.toFixed(2) + '%';
+  }
   function ticker(value) { return Model.tickerOf(value); }
   function safeJson(key, fallback) { try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; } }
   function saveJson(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_) { return false; } }
