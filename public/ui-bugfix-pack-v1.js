@@ -9,6 +9,7 @@
 
   var STYLE_ID = 'autocuanUiBugfixPackV1';
   var SANITIZER_HARDENING_VERSION = '20260813-ai-url-sanitizer-v1';
+  var WHEEL_HANDOFF_VERSION = '20260813-site-wheel-handoff-v1';
   var STYLE_TEXT = [
     '/* AUTO_CUAN_UI_BUGFIX_PACK_V1 */',
     '/* Desktop Analisis Saham uses the document as its only vertical scroll owner.',
@@ -19,6 +20,13 @@
     '  #page-analisis #analisisResult{height:auto!important;max-height:none!important;min-height:0!important;overflow-y:visible!important;flex:0 0 auto!important;}',
     '}',
     '',
+    '/* Let a finished inner scroller hand wheel/touchpad motion back to the page.',
+    '   The JS fallback below covers browsers/layouts where CSS scroll chaining is',
+    '   still blocked by a nested overflow owner. Horizontal table/tab scrolling',
+    '   remains untouched. */',
+    'html,body{overscroll-behavior-y:auto!important;}',
+    '#analisisResult,#aiMessages,.chat-messages,.ai-messages,.table-wrap{overscroll-behavior-y:auto!important;}',
+    '',
     '/* Portfolio tabs share equal tracks on wide screens. The compact layout keeps',
     '   horizontal scrolling below the breakpoint, so long labels never collide. */',
     '@media (min-width:1181px){',
@@ -28,7 +36,14 @@
     '@media (max-width:1180px){',
     '  #tabStrip.tab-strip{display:flex!important;overflow-x:auto!important;}',
     '  #tabStrip.tab-strip>.tab{width:auto!important;min-width:max-content!important;flex:0 0 auto!important;white-space:nowrap!important;}',
-    '}'
+    '}',
+    '',
+    '/* Keep one active-tab accent. Older portfolio polish could leave a cyan',
+    '   underline under the green selected state, producing the double-accent seen',
+    '   on the Asisten AI tab. */',
+    '#tabStrip.tab-strip>.tab{position:relative!important;}',
+    '#tabStrip.tab-strip>.tab::after{content:none!important;}',
+    '#tabStrip.tab-strip>.tab.active::after,#tabStrip.tab-strip>.tab[aria-selected="true"]::after{content:""!important;position:absolute!important;left:25%!important;right:25%!important;bottom:6px!important;height:2px!important;border:0!important;border-radius:999px!important;background:#34d399!important;box-shadow:none!important;transform:none!important;opacity:1!important;}'
   ].join('\n');
 
   function decodeNumericEntities(value) {
@@ -110,6 +125,90 @@
     return true;
   }
 
+  function scrollRoot(doc) {
+    return doc && (doc.scrollingElement || doc.documentElement || doc.body);
+  }
+
+  function overflowCanScroll(value) {
+    return /^(?:auto|scroll|overlay)$/.test(String(value || '').toLowerCase());
+  }
+
+  function canScrollY(node, deltaY) {
+    if (!node || !deltaY) return false;
+    var max = Math.max(0, Number(node.scrollHeight || 0) - Number(node.clientHeight || 0));
+    var top = Number(node.scrollTop || 0);
+    if (max <= 1) return false;
+    return deltaY < 0 ? top > 1 : top < max - 1;
+  }
+
+  function nearestScrollableY(target, targetRoot) {
+    var doc = targetRoot && targetRoot.document;
+    var rootNode = scrollRoot(doc);
+    var node = target && target.nodeType === 1 ? target : (target && target.parentElement);
+    while (node && node !== doc && node !== doc.body && node !== doc.documentElement) {
+      var style = null;
+      try { style = targetRoot.getComputedStyle(node); } catch (_) {}
+      if (style && overflowCanScroll(style.overflowY) && Number(node.scrollHeight || 0) > Number(node.clientHeight || 0) + 1) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return rootNode;
+  }
+
+  function normalizedWheelDelta(event, viewportHeight) {
+    var delta = Number(event && event.deltaY) || 0;
+    if (!delta) return 0;
+    if (event.deltaMode === 1) return delta * 16;
+    if (event.deltaMode === 2) return delta * Math.max(240, Number(viewportHeight || 0));
+    return delta;
+  }
+
+  function pageScrollLocked(doc, targetRoot) {
+    if (!doc || !targetRoot) return false;
+    var body = doc.body;
+    var html = doc.documentElement;
+    try {
+      var bodyStyle = body ? targetRoot.getComputedStyle(body) : null;
+      var htmlStyle = html ? targetRoot.getComputedStyle(html) : null;
+      return Boolean(
+        (bodyStyle && bodyStyle.overflowY === 'hidden') ||
+        (htmlStyle && htmlStyle.overflowY === 'hidden')
+      );
+    } catch (_) { return false; }
+  }
+
+  function installWheelHandoff(targetRoot) {
+    var doc = targetRoot && targetRoot.document;
+    if (!doc || typeof targetRoot.addEventListener !== 'function') return false;
+    if (targetRoot.__autocuanWheelHandoff === WHEEL_HANDOFF_VERSION) return true;
+
+    function onWheel(event) {
+      if (!event || event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (Math.abs(Number(event.deltaX) || 0) > Math.abs(Number(event.deltaY) || 0)) return;
+      if (pageScrollLocked(doc, targetRoot)) return;
+
+      var delta = normalizedWheelDelta(event, targetRoot.innerHeight || (doc.documentElement && doc.documentElement.clientHeight));
+      if (!delta) return;
+
+      var rootNode = scrollRoot(doc);
+      var owner = nearestScrollableY(event.target, targetRoot);
+      if (!rootNode || !owner || owner === rootNode || owner === doc.body || owner === doc.documentElement) return;
+
+      // Native scrolling is correct while the inner region still has room. Only
+      // at its top/bottom boundary do we hand the same motion back to the page.
+      if (canScrollY(owner, delta)) return;
+      if (!canScrollY(rootNode, delta)) return;
+
+      event.preventDefault();
+      rootNode.scrollTop = Number(rootNode.scrollTop || 0) + delta;
+    }
+
+    targetRoot.addEventListener('wheel', onWheel, { capture: true, passive: false });
+    targetRoot.__autocuanWheelHandoff = WHEEL_HANDOFF_VERSION;
+    return true;
+  }
+
   function install(targetRoot) {
     var doc = targetRoot && targetRoot.document;
     if (!doc || !doc.head) return false;
@@ -118,6 +217,7 @@
     // declared and before a user can submit an AI request. Patch the actual global
     // sink synchronously; do not rely on a later MutationObserver cleanup.
     installSanitizerHardening(targetRoot);
+    installWheelHandoff(targetRoot);
 
     if (doc.getElementById(STYLE_ID)) return true;
     var style = doc.createElement('style');
@@ -131,12 +231,20 @@
     STYLE_ID: STYLE_ID,
     STYLE_TEXT: STYLE_TEXT,
     SANITIZER_HARDENING_VERSION: SANITIZER_HARDENING_VERSION,
+    WHEEL_HANDOFF_VERSION: WHEEL_HANDOFF_VERSION,
     decodeHtmlEntities: decodeHtmlEntities,
     normalizedUrl: normalizedUrl,
     dangerousUrl: dangerousUrl,
     dangerousSrcset: dangerousSrcset,
     hardenUrlAttributes: hardenUrlAttributes,
     installSanitizerHardening: installSanitizerHardening,
+    scrollRoot: scrollRoot,
+    overflowCanScroll: overflowCanScroll,
+    canScrollY: canScrollY,
+    nearestScrollableY: nearestScrollableY,
+    normalizedWheelDelta: normalizedWheelDelta,
+    pageScrollLocked: pageScrollLocked,
+    installWheelHandoff: installWheelHandoff,
     install: install
   };
 });

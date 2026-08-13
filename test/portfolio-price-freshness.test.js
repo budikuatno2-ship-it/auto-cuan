@@ -139,6 +139,9 @@ function loadAiRuntimeHelpers(fetchImpl) {
     extractFunction(aiRuntime, 'function readJson('),
     extractFunction(aiRuntime, 'function writeJson('),
     extractFunction(aiRuntime, 'function positive('),
+    // Fields where 0 is a real reading (risk budget, capital) go through
+    // finiteNumber() rather than positive(), so contextNow() needs it too.
+    extractFunction(aiRuntime, 'function finiteNumber('),
     extractFunction(aiRuntime, 'function tickerOf('),
     extractFunction(aiRuntime, 'function contextNow('),
     extractFunction(aiRuntime, 'async function fetchPrice('),

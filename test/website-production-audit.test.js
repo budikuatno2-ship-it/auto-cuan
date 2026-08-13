@@ -220,8 +220,12 @@ test('D: one click or Enter sends exactly one portfolio AI request', () => {
   assert.match(runtime, /event\.key === 'Enter' && !event\.shiftKey/);
   // Controls are re-cloned before binding so listeners can never stack.
   assert.match(runtime, /old\.parentNode\.replaceChild\(clone, old\)/);
-  // Send is re-enabled on success, failure, and timeout alike.
-  assert.match(runtime, /finally \{\s*setSending\(false\);/);
+  // Send is re-enabled on success, failure, and timeout alike. The unlock must
+  // live in a finally block; asserting it was the block's FIRST statement pinned
+  // an implementation detail, since the block also clears the abort timer now.
+  const block = runtime.match(/finally \{[\s\S]*?\n {4}\}/);
+  assert.ok(block, 'sendMessage() must release its lock from a finally block');
+  assert.match(block[0], /setSending\(false\);/);
 });
 
 test('D: stored duplicate consecutive chat rows are cleaned on load', () => {
