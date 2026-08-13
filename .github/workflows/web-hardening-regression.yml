@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          node --test test/*.test.js > /tmp/head.tap 2>&1
+          node --test --test-force-exit test/*.test.js > /tmp/head.tap 2>&1
           HEAD_RC=$?
           set -e
 
@@ -55,7 +55,7 @@ jobs:
           set +e
           (
             cd /tmp/autocuan-base
-            npm ci > /tmp/base-npm.log 2>&1 && node --test test/*.test.js > /tmp/base.tap 2>&1
+            npm ci > /tmp/base-npm.log 2>&1 && node --test --test-force-exit test/*.test.js > /tmp/base.tap 2>&1
           )
           BASE_RC=$?
           set -e
