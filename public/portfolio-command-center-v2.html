@@ -11,12 +11,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="/portfolio-command-center.css?v=20260728-ui2">
-  <style>#portfolioV2Loader{min-height:100dvh;display:grid;place-items:center;background:#080c12;color:#94a3b8;font:600 13px Inter,system-ui,sans-serif}#portfolioV2Loader span{width:34px;height:34px;border:3px solid #1f2937;border-top-color:#34d399;border-radius:50%;animation:v2spin .8s linear infinite}@keyframes v2spin{to{transform:rotate(360deg)}}</style>
+  <style>
+    #portfolioV2Loader{position:fixed;inset:0;z-index:2147483000;min-height:100dvh;display:grid;place-items:center;background:#080c12;color:#94a3b8;font:600 13px Inter,system-ui,sans-serif}
+    #portfolioV2Loader span{width:34px;height:34px;border:3px solid #1f2937;border-top-color:#34d399;border-radius:50%;animation:v2spin .8s linear infinite}
+    @keyframes v2spin{to{transform:rotate(360deg)}}
+  </style>
 </head>
 <body><div id="portfolioV2Loader"><div><span style="display:block;margin:0 auto 12px"></span>Menyiapkan Portfolio Command Center…</div></div>
 <script>
 (function () {
   'use strict';
+  var LOADER_HTML = '<div id="portfolioV2Loader"><div><span style="display:block;margin:0 auto 12px"></span>Menyiapkan Portfolio Command Center…</div></div>';
   var assets = [
     '/portfolio-planner-v1.js?v=20260726-src1',
     '/ai-chat-renderer.js?v=20260728-premium-v3',
@@ -36,14 +41,26 @@
       document.body.appendChild(script);
     });
   }
+  function revealStableUi() {
+    // Give runtime polish one full layout/paint opportunity before removing the
+    // boot curtain. This prevents the legacy/plain tab strip from flashing for
+    // a frame while the sequential enhancement scripts are still applying.
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        var loader = document.getElementById('portfolioV2Loader');
+        if (loader) loader.remove();
+      });
+    });
+  }
   fetch('/portfolio-command-center.html?v=20260727-v1', { credentials:'same-origin', cache:'no-store' })
     .then(function (response) { if (!response.ok) throw new Error('HTTP ' + response.status); return response.text(); })
     .then(function (html) {
       var parsed = new DOMParser().parseFromString(html, 'text/html');
       Array.prototype.forEach.call(parsed.body.querySelectorAll('script'), function (node) { node.remove(); });
-      document.body.innerHTML = parsed.body.innerHTML;
+      document.body.innerHTML = parsed.body.innerHTML + LOADER_HTML;
       return assets.reduce(function (promise, src) { return promise.then(function () { return loadScript(src); }); }, Promise.resolve());
     })
+    .then(revealStableUi)
     .catch(function (error) {
       document.body.innerHTML = '<main id="portfolioV2Loader"><div><strong style="display:block;color:#f8fafc;margin-bottom:8px">Portfolio belum berhasil dibuka</strong><span style="display:none"></span>' + String(error.message || error) + '<br><a href="/portfolio-planner" style="display:inline-block;margin-top:14px;color:#6ee7b7">Coba lagi</a></div></main>';
     });
