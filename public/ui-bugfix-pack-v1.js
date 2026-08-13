@@ -74,9 +74,11 @@
 
   function dangerousSrcset(value, doc) {
     var decoded = decodeHtmlEntities(value, doc);
+    // Check each candidate before interpreting its density/width descriptor.
+    // dangerousUrl removes embedded whitespace/control characters, so
+    // "java<TAB>script:" cannot be split into the harmless token "java" first.
     return decoded.split(',').some(function (candidate) {
-      var first = String(candidate || '').trim().split(/\s+/)[0] || '';
-      return dangerousUrl(first, doc);
+      return dangerousUrl(candidate, doc);
     });
   }
 
