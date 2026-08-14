@@ -27,6 +27,7 @@ below is sized to finish inside that.
 | Provider rejects an optional parameter | 200 | — | Same model retried once without `max_tokens`/`temperature` |
 | Every model fails | 503 | `AI_MODELS_FAILED_SAFE_STOP` | Labelled local summary (portfolio) / labelled snapshot summary (stock) |
 | Every model times out | 503 | `AI_ALL_MODELS_TIMED_OUT` | Same, with a timeout wording |
+| The gateway itself is down (see below) | 503 | `AI_PROVIDER_TEMPORARILY_UNAVAILABLE` | "Provider AI sedang mengalami gangguan sementara" + labelled local summary |
 | Same question repeated automatically within the negative-cache window | 503 | `AI_RECENT_FAILURE` | Labelled local summary; no provider spend |
 | User presses **Coba lagi** | — | — | Bypasses the negative cache and calls the provider again |
 | Invalid key / no balance / model access denied | 503 | `AI_KEY_OR_BALANCE_ERROR` | "Konfigurasi akses AI di server bermasalah — hubungi admin" — **no fallback and no retry on either surface** |
@@ -47,6 +48,47 @@ an unknown, likely-transient failure. The portfolio shows its labelled local
 summary because it holds the data to build one honestly; the stock surface shows
 the error text. Both offer a retry, and neither presents anything as a model
 answer.
+
+## Provider-wide outage
+
+`AI_MODELS_FAILED_SAFE_STOP` says *"every model refused the request or is full"*.
+When the gateway itself is unavailable that is the wrong description, so a
+provider-wide outage is classified and reported as itself.
+
+**Classification.** Every one of these must hold, or the request falls back to
+the ordinary failover path:
+
+- the model directory state for this request is `CATALOG_WITH_OVERLAP` — without
+  a healthy catalog a gateway outage cannot be told apart from model ids the
+  provider no longer serves, so the router refuses to guess;
+- every attempted route is present in that live catalog;
+- at least **3** attempts;
+- the attempts span at least **2** distinct model families (`gemini`, `claude`,
+  `gpt`, `deepseek`, … derived from the id, not a hard-coded list);
+- **every** attempt carried the provider's own explicit
+  `wz_model_temporarily_unavailable` code, tested against the full response body.
+
+A timeout, a 429, a generic 400, an arbitrary 5xx or a 401/402/403 anywhere in
+the request disqualifies it. Mixed evidence is not proof of a gateway-wide
+condition, and one surviving vendor disproves it outright.
+
+**Latch.** Once proven, an instance-local latch holds for 45 s. During it a
+request returns `AI_PROVIDER_TEMPORARILY_UNAVAILABLE` immediately with
+`attempted_count: 0` and **no** chat completion issued — previously one question
+cost nine upstream calls and the next question cost nine more. The latch is
+checked after the positive response cache (cache hits are still served) and
+*before* the negative failure cache, so a repeated question reports the gateway
+outage rather than `AI_RECENT_FAILURE`, which would describe the wrong problem.
+
+**Retry.** An explicit user retry bypasses the latch for that request only. The
+latch is instance-wide, so one person pressing **Coba lagi** must not remove
+protection for everyone else on the same instance. It is cleared only by a real
+model answer, re-armed by fresh proof, and left untouched by an unrelated
+failure.
+
+`attempted_count` counts chat completions actually issued — including emergency
+spillover attempts, which used to be omitted so nine calls reported as three. The
+`/models` probe is not a chat attempt and is never counted.
 
 ## Failover rules
 

@@ -511,6 +511,12 @@
     if (code === 'AI_KEY_OR_BALANCE_ERROR') {
       return { fallback: false, status: 'Konfigurasi akses AI di server bermasalah (API key atau saldo). Hubungi admin.' };
     }
+    // The gateway itself is down, not one busy model. Saying so is more useful
+    // than "all AI routes failed", and the summary underneath stays labelled as
+    // a local calculation rather than an AI answer.
+    if (code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE') {
+      return { fallback: true, status: 'Provider AI sedang mengalami gangguan sementara. Ringkasan di bawah dihitung secara lokal dan bukan jawaban AI.' };
+    }
     if (data && data.provider_failed) {
       return { fallback: true, status: 'Semua jalur AI gagal dihubungi. Ringkasan lokal ditampilkan.' };
     }
