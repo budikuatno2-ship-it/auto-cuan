@@ -511,7 +511,7 @@
     if (code === 'AI_KEY_OR_BALANCE_ERROR') {
       return { fallback: false, status: 'Konfigurasi akses AI di server bermasalah (API key atau saldo). Hubungi admin.' };
     }
-    // The gateway itself is down, not one busy model. Saying so is more useful
+    // Inference is unavailable across vendors, not one busy model. Saying so is more useful
     // than "all AI routes failed", and the summary underneath stays labelled as
     // a local calculation rather than an AI answer.
     if (code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE') {

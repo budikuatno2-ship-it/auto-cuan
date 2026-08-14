@@ -209,7 +209,7 @@
         appendNotice(failure.text, failure.retryable);
         return;
       }
-      // A gateway-wide outage is named before the local summary is shown, so the
+      // The provider outage is named before the local summary is shown, so the
       // user knows why the answer is deterministic rather than from a model. The
       // summary itself still carries its own "bukan jawaban AI" badge.
       if (data.local_fallback === true && data.provider_code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE') {

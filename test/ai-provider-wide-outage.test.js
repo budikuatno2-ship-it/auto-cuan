@@ -1,17 +1,22 @@
 'use strict';
 
-// E3 + E4 — provider-wide outage classification and the request-waste latch.
+// E3 + E4 — provider inference-unavailable classification and the request-waste
+// latch.
 //
 // The E1 probe settled this in production: directory_state CATALOG_WITH_OVERLAP,
 // catalog_size 73, overlap_count 42 of 44 candidate routes — and then every one
 // of those catalog-valid routes answered HTTP 400 wz_model_temporarily_unavailable.
-// The model ids are fine. The gateway is not.
+// The model ids are fine; inference is not being served.
+//
+// Scope matters and the naming reflects it: this proves inference is unavailable
+// to THIS account/key across several catalog-valid families. It does NOT prove
+// every WeizeRouter customer is affected.
 //
 // Before this change one question cost nine upstream chat calls and came back as
 // AI_MODELS_FAILED_SAFE_STOP ("every model refused the request or is full"),
 // which is not what happened. These tests lock down the opposite: strong evidence
-// is required to call the gateway down, and once it is proven the router says so
-// truthfully and stops spending.
+// is required before the router draws that conclusion, and once it is proven the
+// router says so truthfully and stops spending.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -217,19 +222,19 @@ test('a model-specific outage that another vendor survives must NOT trip the cir
   assert.equal(out.status, 200);
   assert.equal(out.payload.success, true);
   assert.equal(out.calls.length, 3);
-  assert.equal(LATCH.until, 0, 'a surviving vendor disproves a gateway-wide outage');
+  assert.equal(LATCH.until, 0, 'a surviving vendor disproves the unavailability verdict');
 });
 
 // ============================================ E3 provider-wide classification
 
-test('three catalog-valid cross-vendor temporary outages are classified as a provider-wide outage', async () => {
+test('three catalog-valid cross-vendor temporary outages are classified as unavailable inference', async () => {
   provider.script = allTemporary;
 
   const out = await call();
 
   assert.equal(out.status, 503);
   assert.equal(out.payload.code, 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE');
-  assert.equal(out.payload.provider_wide_outage, true);
+  assert.equal(out.payload.provider_inference_unavailable, true);
   assert.equal(out.payload.provider_failed, true);
   assert.equal(out.payload.token_protection, true);
   assert.equal(out.payload.model_directory_state, 'CATALOG_WITH_OVERLAP');
@@ -260,12 +265,12 @@ test('classification requires a healthy catalog: an unproven directory keeps the
 
   assert.equal(out.payload.code, 'AI_MODELS_FAILED_SAFE_STOP');
   assert.notEqual(out.payload.code, 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE');
-  assert.equal(out.calls.length, 9, 'without a catalog we cannot prove gateway-wide, so more routes are still tried');
+  assert.equal(out.calls.length, 9, 'without a catalog the verdict is unprovable, so more routes are still tried');
   assert.equal(LATCH.until, 0);
   provider.directoryOk = true;
 });
 
-test('mixed evidence does not qualify: two temporary plus one timeout is not a gateway-wide outage', async () => {
+test('mixed evidence does not qualify: two temporary plus one timeout is not enough', async () => {
   provider.script = async (model, index) => (index < 2 ? temporary() : timeout());
 
   const out = await call();
@@ -284,7 +289,7 @@ test('a single-family outage does not qualify even when every attempt is tempora
     new Set(['wz/gemini-2.5-flash', 'wz/gemini-3.5-flash-low', 'wz/gemini-2.5-flash-lite']),
     'CATALOG_WITH_OVERLAP'
   );
-  assert.equal(evidence.qualifies, false, 'one vendor being down is not the gateway being down');
+  assert.equal(evidence.qualifies, false, 'one vendor being down is not inference being unavailable');
 });
 
 test('two attempts do not qualify even across two families', () => {
@@ -422,7 +427,7 @@ test('an active latch outranks the negative failure cache for a repeated questio
   assert.equal(proof.payload.code, 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE');
 
   // 3. The original question repeats. AI_RECENT_FAILURE would describe the wrong
-  //    problem and hide the fact that the gateway itself is unavailable.
+  //    problem and hide the fact that inference is unavailable.
   const repeat = await call({ cold: false, question: QUESTION });
   assert.equal(repeat.payload.code, 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE');
   assert.notEqual(repeat.payload.code, 'AI_RECENT_FAILURE');
@@ -450,13 +455,13 @@ test('a positive cache hit is still served during an active latch', async () => 
 
 // ========================================== other failure classes unchanged
 
-test('a generic HTTP 400 is not a provider-wide outage', async () => {
+test('a generic HTTP 400 is not classified as unavailable inference', async () => {
   provider.script = always(genericBadRequest);
 
   const out = await call();
 
   assert.equal(out.payload.code, 'AI_MODELS_FAILED_SAFE_STOP');
-  assert.equal(out.payload.provider_wide_outage, undefined);
+  assert.equal(out.payload.provider_inference_unavailable, undefined);
   assert.equal(LATCH.until, 0);
   assert.equal(out.calls.length, 3);
 });
@@ -469,7 +474,7 @@ test('401 remains a terminal credential failure after a single attempt', async (
   assert.equal(out.status, 503);
   assert.equal(out.payload.code, 'AI_KEY_OR_BALANCE_ERROR');
   assert.equal(out.calls.length, 1);
-  assert.equal(LATCH.until, 0, 'a rejected key is not a gateway outage');
+  assert.equal(LATCH.until, 0, 'a rejected key is not a provider outage');
 });
 
 test('429 and 5xx keep their existing retry classification', async () => {

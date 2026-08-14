@@ -9,15 +9,15 @@
 //
 // E3/E4 narrowed when this spillover is the right answer. When the model
 // directory is healthy AND three catalog-valid cross-vendor routes all return
-// the provider's explicit temporary-unavailable code, that is proof of a
-// gateway-wide outage and the router stops instead of issuing six more identical
-// requests — covered in test/ai-provider-wide-outage.test.js.
+// the provider's explicit temporary-unavailable code, that is proof the provider
+// is not serving inference to us, and the router stops instead of issuing six
+// more identical requests — covered in test/ai-provider-wide-outage.test.js.
 //
 // This suite therefore holds the directory probe DOWN, which is the honest
-// "cannot prove a gateway-wide outage" state: temporary failures still warrant
-// trying more routes, because without a healthy catalog we cannot tell a gateway
-// outage from routes that are individually unavailable. That is the branch where
-// spillover remains correct, and it must keep working.
+// "cannot prove it" state: temporary failures still warrant trying more routes,
+// because without a healthy catalog we cannot tell unavailable inference from
+// routes that are individually unavailable. That is the branch where spillover
+// remains correct, and it must keep working.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -101,9 +101,9 @@ function makeTextResponse(status, text) {
 const providerFetch = async function (url, options) {
   const target = String(url);
   if (target.endsWith('/models')) {
-    // Directory unavailable => DIRECTORY_STATE.PROBE_FAILED => the provider-wide
-    // outage classifier refuses to fire, because it will not call a gateway dead
-    // without a healthy catalog to prove the routes it rejected are real ones.
+    // Directory unavailable => DIRECTORY_STATE.PROBE_FAILED => the classifier
+    // refuses to fire, because it will not declare inference unavailable without
+    // a healthy catalog to prove the routes it rejected are real ones.
     if (!provider.directoryOk) return { ok: false, status: 503, async json() { return {}; } };
     return {
       ok: true,
