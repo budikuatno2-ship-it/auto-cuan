@@ -1,10 +1,11 @@
 'use strict';
 
-// Regression coverage for the production outage observed on 2026-08-14:
-// WeizeRouter returned HTTP 400 + wz_model_temporarily_unavailable for the first
-// three otherwise-valid routes. The normal bounded failover then stopped even
-// though additional vendor-diverse routes were available. These tests exercise
-// the real /api/analyze handler with scripted Supabase + Weize responses.
+// Regression coverage for the production outages observed on 2026-08-14/15:
+// WeizeRouter returned HTTP 400 + wz_model_temporarily_unavailable across the
+// normal three routes and then across the first emergency routes too. These
+// tests exercise the real /api/analyze handler with scripted Supabase + Weize
+// responses and verify that emergency-only aliases are tried before recycling
+// the balanced pool.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,7 +47,7 @@ process.env.PORTFOLIO_AI_MODEL_TIMEOUT_MS = '1000';
 process.env.PORTFOLIO_AI_TOTAL_TIMEOUT_MS = '10000';
 process.env.PORTFOLIO_AI_OUTAGE_MODEL_TIMEOUT_MS = '1500';
 process.env.PORTFOLIO_AI_OUTAGE_TOTAL_TIMEOUT_MS = '5000';
-process.env.PORTFOLIO_AI_OUTAGE_SPILLOVER_ATTEMPTS = '3';
+process.env.PORTFOLIO_AI_OUTAGE_SPILLOVER_ATTEMPTS = '6';
 delete process.env.PORTFOLIO_AI_MAX_ATTEMPTS;
 
 const { createSessionToken } = require(path.join(ROOT, 'lib/admin-session.js'));
@@ -63,10 +64,13 @@ const provider = {
     'wz/gemini-2.5-flash',
     'wz/claude-sonnet-4.6',
     'wz/gpt-5.6-luna',
+    'wz/gemini-3.5-flash-low',
+    'wz/gpt-5.6-sol',
+    'wz/gpt-5.4-mini',
+    'wz/claude-haiku-4.5',
     'wz/deepseek-v4-pro',
     'wz/claude-fable-5',
-    'wz/gpt-5.6-terra',
-    'wz/gpt-5.6-sol'
+    'wz/gpt-5.6-terra'
   ]
 };
 
@@ -175,7 +179,7 @@ function firstThreeOutThenRecover(reply) {
   return async (model, body, index) => index < 3 ? outage() : answer(reply);
 }
 
-test('portfolio: three explicit Weize model outages spill over to a fourth route', async () => {
+test('portfolio: three explicit Weize model outages spill over to an emergency-only route first', async () => {
   provider.script = firstThreeOutThenRecover('Jawaban dari jalur darurat keempat.');
   const out = await call(portfolioAsk());
 
@@ -192,8 +196,8 @@ test('portfolio: three explicit Weize model outages spill over to a fourth route
     'wz/claude-sonnet-4.6',
     'wz/gpt-5.6-luna'
   ]);
-  assert.equal(out.calls[3].model, 'wz/deepseek-v4-pro');
-  assert.equal(out.payload.model_used, 'wz/deepseek-v4-pro');
+  assert.equal(out.calls[3].model, 'wz/gemini-3.5-flash-low');
+  assert.equal(out.payload.model_used, 'wz/gemini-3.5-flash-low');
 });
 
 test('stock analysis: the same outage spillover runs before deterministic local fallback', async () => {
@@ -205,8 +209,30 @@ test('stock analysis: the same outage spillover runs before deterministic local 
   assert.equal(out.payload.local_fallback, undefined);
   assert.equal(out.payload.emergency_failover, true);
   assert.equal(out.payload.stock_analysis_used, true);
-  assert.equal(out.payload.model_used, 'wz/deepseek-v4-pro');
+  assert.equal(out.payload.model_used, 'wz/gemini-3.5-flash-low');
   assert.equal(out.calls.length, 4);
+});
+
+test('six consecutive temporary outages can recover on the seventh provider route', async () => {
+  provider.script = async (model, body, index) => index < 6
+    ? outage()
+    : answer('Pulih setelah enam jalur model sedang outage.');
+
+  const out = await call(portfolioAsk());
+
+  assert.equal(out.status, 200);
+  assert.equal(out.payload.success, true);
+  assert.equal(out.payload.reply, 'Pulih setelah enam jalur model sedang outage.');
+  assert.equal(out.payload.emergency_failover, true);
+  assert.equal(out.payload.attempted_count, 7);
+  assert.equal(out.calls.length, 7);
+  assert.deepEqual(out.calls.slice(3, 7).map((row) => row.model), [
+    'wz/gemini-3.5-flash-low',
+    'wz/gpt-5.6-sol',
+    'wz/gpt-5.4-mini',
+    'wz/claude-haiku-4.5'
+  ]);
+  assert.equal(out.payload.model_used, 'wz/claude-haiku-4.5');
 });
 
 test('generic HTTP 400 failures do not unlock extra outage attempts', async () => {
