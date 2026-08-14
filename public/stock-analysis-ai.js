@@ -144,6 +144,10 @@
     // retrying cannot clear, so no retry button is offered.
     if (code === 'AI_KEY_OR_BALANCE_ERROR') return { retryable: false, text: 'Konfigurasi akses AI di server bermasalah (API key atau saldo). Hubungi admin.' };
     if (code === 'AI_STOCK_SNAPSHOT_MISSING') return { retryable: false, text: 'Jalankan analisis tickernya dulu, baru lanjut tanya di sini.' };
+    // Reached only when no deterministic local summary could be built, so it must
+    // not claim one is on screen. The wording that does promise a local analysis
+    // belongs to the branch below that actually renders one.
+    if (code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE') return { retryable: true, text: 'Provider AI sedang mengalami gangguan sementara. Coba lagi sebentar.' };
     return { retryable: true, text: (data && data.error) || 'Jawaban AI belum bisa diambil. Coba lagi sebentar.' };
   }
   function addScopeNote() {
@@ -204,6 +208,12 @@
         var failure = describeFailure(response, data, null);
         appendNotice(failure.text, failure.retryable);
         return;
+      }
+      // The provider outage is named before the local summary is shown, so the
+      // user knows why the answer is deterministic rather than from a model. The
+      // summary itself still carries its own "bukan jawaban AI" badge.
+      if (data.local_fallback === true && data.provider_code === 'AI_PROVIDER_TEMPORARILY_UNAVAILABLE') {
+        appendNotice('Provider AI sedang mengalami gangguan sementara. Analisis lokal ditampilkan sementara.', true);
       }
       appendAssistant(data.reply, { local: data.local_fallback === true });
       // Only a real model answer becomes conversation history; a deterministic

@@ -6,6 +6,18 @@
 // tests exercise the real /api/analyze handler with scripted Supabase + Weize
 // responses and verify that emergency-only aliases are tried before recycling
 // the balanced pool.
+//
+// E3/E4 narrowed when this spillover is the right answer. When the model
+// directory is healthy AND three catalog-valid cross-vendor routes all return
+// the provider's explicit temporary-unavailable code, that is proof the provider
+// is not serving inference to us, and the router stops instead of issuing six
+// more identical requests — covered in test/ai-provider-wide-outage.test.js.
+//
+// This suite therefore holds the directory probe DOWN, which is the honest
+// "cannot prove it" state: temporary failures still warrant trying more routes,
+// because without a healthy catalog we cannot tell unavailable inference from
+// routes that are individually unavailable. That is the branch where spillover
+// remains correct, and it must keep working.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -60,6 +72,7 @@ const SESSION = createSessionToken({ userId: account.id, username: account.usern
 const provider = {
   calls: [],
   script: null,
+  directoryOk: false,
   directory: [
     'wz/gemini-2.5-flash',
     'wz/claude-sonnet-4.6',
@@ -88,6 +101,10 @@ function makeTextResponse(status, text) {
 const providerFetch = async function (url, options) {
   const target = String(url);
   if (target.endsWith('/models')) {
+    // Directory unavailable => DIRECTORY_STATE.PROBE_FAILED => the classifier
+    // refuses to fire, because it will not declare inference unavailable without
+    // a healthy catalog to prove the routes it rejected are real ones.
+    if (!provider.directoryOk) return { ok: false, status: 503, async json() { return {}; } };
     return {
       ok: true,
       status: 200,

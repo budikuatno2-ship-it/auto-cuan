@@ -232,7 +232,7 @@ test('a catalog sharing NO id with our routes is reported as CATALOG_ZERO_OVERLA
   assert.equal(out.directory.filter_applied, false);
   assert.ok(out.directory.candidate_count > 0);
   // The provider's real ids are visible, which is the whole point of E1: this is
-  // what distinguishes stale model ids from a gateway-wide outage.
+  // what distinguishes stale model ids from a provider not serving inference.
   assert.deepEqual(out.directory.sample_ids, FOREIGN_CATALOG);
   // Behaviour parity: an empty intersection still falls back to the unfiltered
   // pool, exactly as the old `if (filtered.length)` guard did.
