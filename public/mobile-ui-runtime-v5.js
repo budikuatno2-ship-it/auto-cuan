@@ -346,15 +346,25 @@
     style.id = 'acMobileUiRuntimeV5Css';
     style.textContent = [
       '@media (min-width:1024px){',
+      // .header-shell>.flex keeps !important deliberately: the build-time
+      // AUTO_CUAN_DESKTOP_HEADER_CENTER_V1 patch appended to ui-theme.css sets
+      // column-gap on `.app-header > .header-shell > .flex`, which outranks this
+      // selector on specificity at >=1280px. Dropping it would silently hand the
+      // desktop header a different gap.
       '  .header-shell>.flex{gap:10px!important;min-width:0!important}',
-      '  .desktop-nav{justify-content:flex-start!important;gap:2px!important;overflow:hidden!important;min-width:0!important}',
-      '  .desktop-nav .nav-btn{flex:0 1 auto!important;min-width:0!important;padding-left:8px!important;padding-right:8px!important;white-space:nowrap!important}',
+      // The three nav rules below no longer need !important. They existed to beat
+      // the .nav-btn padding/font-size that the inline sheet of index.html and
+      // ui-theme.css were both declaring; that duplication is resolved, and
+      // `.desktop-nav .nav-btn` already outranks the remaining single-class rule
+      // on specificity while this sheet is appended to <head> after both.
+      '  .desktop-nav{justify-content:flex-start;gap:2px;overflow:hidden;min-width:0}',
+      '  .desktop-nav .nav-btn{flex:0 1 auto;min-width:0;padding-left:8px;padding-right:8px;white-space:nowrap}',
       '  .desktop-header-chips{display:none!important}',
       '  .header-account{margin-left:auto!important}',
       '}',
       '@media (min-width:1024px) and (max-width:1320px){',
       '  .header-shell .brand-mark+div p{display:none!important}',
-      '  .desktop-nav .nav-btn{font-size:11px!important;padding-left:6px!important;padding-right:6px!important}',
+      '  .desktop-nav .nav-btn{font-size:11px;padding-left:6px;padding-right:6px}',
       '}',
       '#acNavPanel{display:none!important}',
       '@media (max-width:1023px){',

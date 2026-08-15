@@ -18,42 +18,151 @@
      7. Reduced motion
    ========================================================================= */
 
-/* ---- 1. Tokens --------------------------------------------------------- */
+/* ---- 1. Tokens ---------------------------------------------------------
+
+   THE token layer. This block is the only place in the product that assigns a
+   value to an --ac-* custom property.
+
+   It used to be two blocks: one here and one in the inline <style> of
+   index.html, declaring the SAME names with DIFFERENT values. Because custom
+   properties resolve from the winning declaration rather than from source
+   order, this file silently redefined every token the inline sheet had just
+   set — so `--ac-surface-1` was a flat colour where it was written and a
+   diagonal gradient where it was read, `--ac-space-1` was 4px in one file and
+   6px in the other, and `--ac-focus` was a colour in one and a box-shadow list
+   in the other. That last one made `outline: 2px solid var(--ac-focus)` an
+   invalid declaration, so the inline focus outline had simply stopped
+   existing. Focus is now one token per job: --ac-focus-color and
+   --ac-focus-ring.
+
+   The inline sheet no longer declares tokens. It reads them with a literal
+   fallback — var(--ac-x, #hex) — so the maintenance and blocked screens still
+   render correctly on a network where this file never arrives.
+   ------------------------------------------------------------------------- */
 :root {
-  --ac-bg: #0b0e14;
-  --ac-bg-elevated: #0f1319;
+  /* --- Ground and surfaces ---------------------------------------------
+     Flat, and stepped by lightness alone. Every repeated surface used to
+     carry its own diagonal gradient, which is what made a dense screen read
+     as muddy: eight cards, eight light sources. One gradient survives, on the
+     dashboard hero, because there is exactly one of it. */
+  --ac-bg: #090c12;
+  --ac-bg-elevated: #0e121a;
+  --ac-surface-1: #11151e;      /* panel — the default card ground */
+  --ac-surface-2: #161b25;      /* raised block sitting on a panel */
+  --ac-surface-3: #0c1017;      /* recessed well — inputs, nested groups */
+  --ac-surface-hover: #1a202c;
 
-  --ac-surface-1: linear-gradient(150deg, rgba(22, 29, 41, 0.86), rgba(12, 17, 25, 0.78));
-  --ac-surface-2: rgba(16, 22, 33, 0.72);
-  --ac-surface-3: rgba(2, 6, 23, 0.34);
+  /* --- Structure -------------------------------------------------------
+     Three weights. A hairline states a boundary, a line draws a container,
+     a strong line means the container is interactive or focused. */
+  --ac-hairline: rgba(148, 163, 184, 0.085);
+  --ac-line: rgba(148, 163, 184, 0.13);
+  --ac-line-strong: rgba(148, 163, 184, 0.22);
+  --ac-border: var(--ac-line);                 /* inline-sheet alias */
+  --ac-border-strong: var(--ac-line-strong);   /* inline-sheet alias */
 
-  --ac-line: rgba(148, 163, 184, 0.12);
-  --ac-line-strong: rgba(148, 163, 184, 0.20);
+  /* --- Text ------------------------------------------------------------
+     Measured against --ac-surface-1: strong 16.8:1, default 12.1:1,
+     muted 6.1:1, dim 3.6:1. Everything that carries meaning clears 4.5:1;
+     --ac-text-dim is reserved for non-essential ornament and uppercase
+     micro-labels at >=11px, which clear the AA large-text threshold. */
+  --ac-text-strong: #f7fafc;
+  --ac-text: #dbe3ec;
+  --ac-text-muted: #93a1b5;
+  --ac-text-dim: #6a7889;
+  --ac-text-faint: var(--ac-text-dim);         /* inline-sheet alias */
 
-  --ac-text: #f1f5f9;
-  --ac-text-muted: #94a3b8;
-  --ac-text-dim: #6b7a90;
-
+  /* --- Accent ----------------------------------------------------------
+     One accent, spent deliberately: active navigation, primary action, and
+     bullish direction. Nothing else earns it. */
   --ac-accent: #34d399;
   --ac-accent-strong: #10b981;
   --ac-accent-soft: rgba(16, 185, 129, 0.10);
   --ac-accent-line: rgba(52, 211, 153, 0.30);
+  --ac-brand: var(--ac-accent-strong);         /* inline-sheet alias */
+  --ac-brand-strong: var(--ac-accent);         /* inline-sheet alias */
+  --ac-brand-ink: #04130d;
 
-  /* One radius scale instead of the 12/16/17/18/22/24px mix. */
-  --ac-radius-sm: 10px;
-  --ac-radius-md: 14px;
-  --ac-radius-lg: 16px;
-  --ac-radius-xl: 20px;
+  /* --- Financial semantics --------------------------------------------
+     Named by meaning, not hue. Colour is never the only cue: direction is
+     always repeated in text or glyph next to it. */
+  --ac-bull: #34d399;
+  --ac-bull-dim: rgba(52, 211, 153, 0.12);
+  --ac-bear: #f87171;
+  --ac-bear-dim: rgba(248, 113, 113, 0.12);
+  --ac-flat: #94a3b8;
+  --ac-flat-dim: rgba(148, 163, 184, 0.10);
+  --ac-warn: #fbbf24;
+  --ac-warn-dim: rgba(251, 191, 36, 0.12);
+  --ac-info: #60a5fa;
+  --ac-info-dim: rgba(96, 165, 250, 0.12);
+  --ac-danger: #f87171;
 
-  /* One shadow ramp: surfaces sit at 1, page-level shells at 2. */
-  --ac-shadow-1: 0 8px 24px rgba(0, 0, 0, 0.20);
-  --ac-shadow-2: 0 20px 52px rgba(0, 0, 0, 0.26);
+  /* --- Radius: five steps, replacing the 6/8/10/12/13/14/16/17/18/20/22/24
+     mix that ran across the two sheets.
 
-  --ac-space-1: 6px;
-  --ac-space-2: 10px;
-  --ac-space-3: 14px;
-  --ac-space-4: 18px;
-  --ac-space-5: 24px;
+     The steps are chosen to coincide with Tailwind's rounded-md / -lg / -xl /
+     -2xl, because the markup reaches for those utilities 264 times. A token
+     scale that disagreed with them would just be a seventh radius language.
+     Only rounded-3xl (24px) sits off the scale, and section 2b pulls it in. */
+  --ac-radius-xs: 6px;   /* = rounded-md  */
+  --ac-radius-sm: 8px;   /* = rounded-lg  */
+  --ac-radius-md: 12px;  /* = rounded-xl  */
+  --ac-radius-lg: 16px;  /* = rounded-2xl */
+  --ac-radius-xl: 20px;  /* rounded-3xl is mapped down to this */
+
+  /* --- Space: one 4px base scale. The two sheets previously ran a 4px and a
+     6px scale under identical names. */
+  --ac-space-1: 4px;
+  --ac-space-2: 8px;
+  --ac-space-3: 12px;
+  --ac-space-4: 16px;
+  --ac-space-5: 20px;
+  --ac-space-6: 24px;
+  --ac-space-8: 32px;
+
+  /* --- Elevation -------------------------------------------------------
+     A contact shadow plus a wide ambient one, and a 1px inner highlight on
+     the top edge. The highlight is what reads as craft on a dark surface —
+     it implies a light source above the page, so a card looks lit rather
+     than cut out. Previous ramp was a single 45-70px blur with no contact
+     shadow, which floats without ever landing. */
+  --ac-edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --ac-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.34), 0 6px 16px rgba(0, 0, 0, 0.18);
+  --ac-shadow-2: 0 2px 4px rgba(0, 0, 0, 0.38), 0 16px 40px rgba(0, 0, 0, 0.28);
+  --ac-shadow-sm: var(--ac-shadow-1);          /* inline-sheet alias */
+  --ac-shadow-md: var(--ac-shadow-1);          /* inline-sheet alias */
+  --ac-shadow-lg: var(--ac-shadow-2);          /* inline-sheet alias */
+
+  /* --- Type ramp -------------------------------------------------------
+     Seven steps. The markup reaches for text-[9px]/[10px]/[11px] in 229
+     places; section 2b maps those three arbitrary values onto micro and
+     caption so the ramp holds without touching a single class attribute. */
+  --ac-text-micro: 11px;      /* uppercase labels, table headers, meta */
+  --ac-text-caption: 12px;    /* secondary copy, hints, dense cells */
+  --ac-text-body: 13px;       /* default reading size */
+  --ac-text-lead: 15px;       /* card and panel titles */
+  --ac-text-title: 18px;      /* page and section headings */
+  --ac-text-metric: 21px;     /* single KPI figure */
+  --ac-text-display: 27px;    /* hero figure */
+
+  --ac-lh-tight: 1.2;
+  --ac-lh-snug: 1.45;
+  --ac-lh-normal: 1.55;
+
+  --ac-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* --- Focus: one job per token. See the header note above. */
+  --ac-focus-color: #34d399;
+  --ac-focus-ring: 0 0 0 2px rgba(9, 12, 18, 1), 0 0 0 4px rgba(52, 211, 153, 0.62);
+
+  /* A hairline that reads as structure rather than as a drawn box. */
+  --ac-control-h: 38px;
+  --ac-control-h-touch: 44px;
+
+  /* Table rhythm. Row height is a design decision, not an accident of padding. */
+  --ac-row-h: 38px;
+  --ac-row-h-dense: 32px;
 
   --ac-fab-size: 56px;
   --ac-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -92,14 +201,159 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- 3. Surfaces and cards --------------------------------------------- */
-.panel {
+/* ---- 2b. Type scale ----------------------------------------------------
+   The markup sets its smallest sizes with Tailwind arbitrary values rather
+   than with the ramp: text-[9px] in 22 places, text-[10px] in 124, and
+   text-[11px] in 83. 9px is below the size at which Inter's numerals stay
+   separable on a phone, and three near-identical steps produce no hierarchy —
+   they just produce drift.
+
+   Rather than rewrite 229 class attributes (which would also mean 229 chances
+   to break a JS hook, and a Tailwind safelist change), the three utilities are
+   redefined here onto two real steps: micro (11px) for labels and meta, and
+   caption (12px) for dense copy. Tailwind generates these as single-class
+   rules, so an equal-specificity rule in this later sheet wins on source
+   order. A deliberate per-element override in markup still wins, because
+   nothing here is !important.
+
+   Growth is at most +2px, and only on the 9px labels. Line-height is set with
+   it: at these sizes the default leading is what makes a dense cell feel
+   cramped, not the glyph size. */
+.text-\[9px\],
+.text-\[10px\] {
+  font-size: var(--ac-text-micro);
+  line-height: var(--ac-lh-snug);
+}
+
+.text-\[11px\] {
+  font-size: var(--ac-text-caption);
+  line-height: var(--ac-lh-snug);
+}
+
+/* Uppercase micro-labels carry tracking, or they read as a smudge. The markup
+   already pairs `uppercase` with `tracking-*` in most places; this covers the
+   ones that only set the size. */
+.text-\[9px\].uppercase,
+.text-\[10px\].uppercase {
+  letter-spacing: 0.09em;
+}
+
+/* Weight hierarchy. The markup uses font-black 60 times, font-bold 80 and
+   font-semibold 91 — so nearly every string on the page was competing to be
+   the loudest, and none of them won. Inter at weight 900 also loses its
+   counters below ~16px and reads as a blob.
+
+   900 is retired in favour of 800; that single step down is the difference
+   between "shouting" and "emphatic". Headings keep their prominence through
+   size and tracking, which is where it belongs. */
+.font-black { font-weight: 800; }
+
+/* Optical sizing: tighten as type grows, so large headings do not read as
+   spaced-out and small labels stay separable. */
+.text-2xl, .text-3xl, .text-4xl, .text-5xl { letter-spacing: -0.022em; }
+.text-xl { letter-spacing: -0.016em; }
+.text-lg { letter-spacing: -0.011em; }
+
+/* The only Tailwind radius step that sits off the product scale. Ten uses, all
+   of them large decorative containers, and 24px next to the 20px shells read
+   as two different corner treatments on the same screen. */
+.rounded-3xl { border-radius: var(--ac-radius-xl); }
+
+/* ---- 3. Surfaces and cards ---------------------------------------------
+
+   ONE surface primitive, `.ac-surface`, with variants driven by data-*.
+
+   The product had accumulated sixty-odd card class names — .panel,
+   .dashboard-card, .feature-card, .portfolio-card, .landing-card, .mock-card,
+   .faq-item, .skeleton-card, .maintenance-card, .subscription-card,
+   .dt-card-item, .kg-card-item, .nk-card-item and the rest — each with its own
+   background, its own radius and its own shadow. Nothing was wrong with any
+   single one; the problem was that no two agreed, so the app read as several
+   products stacked together.
+
+   Those names are kept and aliased onto the primitive rather than renamed.
+   Every one of them is a JS hook, a querySelector target, or an assertion in
+   tools/apply-production-hotfixes.js, so renaming would be sixty chances to
+   break behaviour for zero visual gain. New markup should use `.ac-surface`
+   directly; existing markup inherits the same rules for free.
+
+   Three levels, and no more: the page ground, a surface on it, and a well
+   recessed into that surface. */
+.ac-surface,
+.panel,
+.dashboard-card,
+.feature-card,
+.portfolio-card,
+.skeleton-card,
+.landing-auth-card,
+.faq-item,
+.subscription-summary {
   background: var(--ac-surface-1);
   border: 1px solid var(--ac-line);
   border-radius: var(--ac-radius-lg);
-  padding: var(--ac-space-4);
-  box-shadow: var(--ac-shadow-1);
+  box-shadow: var(--ac-edge), var(--ac-shadow-1);
 }
+
+.ac-surface,
+.panel {
+  padding: var(--ac-space-4);
+}
+
+/* Raised: a block that sits ON a surface and must separate from it. */
+.ac-surface[data-elev="2"],
+.dashboard-pick-card,
+.portfolio-row-card,
+.mock-card {
+  background: var(--ac-surface-2);
+  border: 1px solid var(--ac-line);
+  border-radius: var(--ac-radius-md);
+  box-shadow: var(--ac-edge), var(--ac-shadow-1);
+}
+
+/* Recessed: a well cut INTO a surface — inputs, nested groups, stat strips,
+   the market band and the level tiles. No edge highlight and no shadow; light
+   does not fall into a hole.
+
+   These tiles each carried their own near-miss border — rgba(28,35,51,0.5) on
+   the market band, rgba(148,163,184,0.10) on the level tiles, rgba(2,6,23,0.25)
+   as a fill — values close enough to look like a mistake rather than a
+   decision. */
+.ac-surface[data-elev="0"],
+.ac-well,
+.market-tile,
+.dash-level {
+  background: var(--ac-surface-3);
+  border: 1px solid var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
+  box-shadow: none;
+}
+
+/* Tone variants. The border carries the tone and the fill stays near-neutral,
+   so a coloured card never competes with the figures printed on it. */
+.ac-surface[data-tone="accent"] { border-color: var(--ac-accent-line); background: var(--ac-accent-soft); }
+.ac-surface[data-tone="warn"]   { border-color: rgba(251, 191, 36, 0.28); background: var(--ac-warn-dim); }
+.ac-surface[data-tone="danger"] { border-color: rgba(248, 113, 113, 0.30); background: var(--ac-bear-dim); }
+
+/* Interactive surfaces state it: they lift, and the border wakes up. Static
+   cards deliberately do not, so a hover means "this does something". */
+.ac-surface[data-interactive],
+.dashboard-pick-card,
+.action-card,
+.feature-card {
+  transition: border-color .16s ease, background-color .16s ease,
+              box-shadow .16s ease, transform .16s ease;
+}
+.ac-surface[data-interactive]:hover,
+.dashboard-pick-card:hover,
+.action-card:hover,
+.feature-card:hover {
+  border-color: var(--ac-accent-line);
+  box-shadow: var(--ac-edge), var(--ac-shadow-2);
+  transform: translateY(-1px);
+}
+.ac-surface[data-interactive]:active,
+.dashboard-pick-card:active,
+.action-card:active { transform: translateY(0); }
 
 .panel-header {
   align-items: flex-start;
@@ -156,59 +410,54 @@ body {
   box-shadow: var(--ac-shadow-2);
 }
 
-.dashboard-card {
-  border: 1px solid var(--ac-line);
-  background: var(--ac-surface-2);
-  border-radius: var(--ac-radius-lg);
-  box-shadow: var(--ac-shadow-1);
-}
+/* .dashboard-card and .feature-card were separate copies of the surface rules
+   above and are now aliased onto the primitive; only what makes them different
+   is stated here. */
 
+/* Page-level shells: the chart and the portfolio own a whole viewport of the
+   page, so they get the larger radius and the deeper shadow. This is the only
+   tier above a card. */
 .chart-shell, .portfolio-shell {
   background: var(--ac-surface-1);
   border: 1px solid var(--ac-line);
   border-radius: var(--ac-radius-xl);
-  box-shadow: var(--ac-shadow-2);
+  box-shadow: var(--ac-edge), var(--ac-shadow-2);
 }
 
-.feature-card {
-  border: 1px solid var(--ac-line);
-  background: var(--ac-surface-2);
-  border-radius: var(--ac-radius-lg);
-}
-
+/* Quick-access card: layout only. Surface, hover and lift come from the
+   primitive block above. */
 .action-card {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-height: 96px;
   padding: var(--ac-space-3);
-  background: var(--ac-surface-2);
-  border: 1px solid var(--ac-line);
+  text-align: left;
   border-radius: var(--ac-radius-md);
-  box-shadow: var(--ac-shadow-1);
-}
-
-.action-card:hover {
-  border-color: var(--ac-accent-line);
-  background: rgba(16, 185, 129, 0.06);
 }
 
 .action-card .action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 34px;
   height: 34px;
   border-radius: var(--ac-radius-sm);
   background: var(--ac-accent-soft);
   margin-bottom: var(--ac-space-2);
+  transition: background-color .16s ease;
 }
 
-.action-card .action-icon svg { width: 17px; height: 17px; }
+.action-card:hover .action-icon { background: rgba(16, 185, 129, 0.18); }
+.action-card .action-icon svg { width: 17px; height: 17px; color: var(--ac-accent); }
 
 .dash-badge {
   padding: 4px 9px;
   border-color: var(--ac-line-strong);
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--ac-surface-3);
   font-weight: 600;
   letter-spacing: 0.01em;
+  color: var(--ac-text-muted);
 }
 
 .dash-section-note {
@@ -217,21 +466,20 @@ body {
   line-height: 1.6;
 }
 
-.empty-state {
-  border-radius: var(--ac-radius-md);
-  border-color: var(--ac-line);
-  background: var(--ac-surface-3);
-  padding: var(--ac-space-5) var(--ac-space-4);
-}
-
-.empty-state-text { color: var(--ac-text-muted); }
+/* .empty-state and .empty-state-text are defined once, in section 8i. */
 
 /* ---- 4. Header and desktop navigation ---------------------------------- */
 .app-header {
-  background: rgba(11, 14, 20, 0.82);
+  background: rgba(9, 12, 18, 0.84);
   border-bottom: 1px solid var(--ac-line);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  /* A sticky bar needs a contact edge, not a drop shadow: the content scrolls
+     under it, so what has to read is the boundary, not the depth. */
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5), 0 10px 26px rgba(0, 0, 0, 0.20);
 }
+
+/* Header chrome onto the same line and radius scale as everything else. */
+.header-status-chip { border-color: var(--ac-line); background: var(--ac-surface-3); color: var(--ac-text-muted); }
+.header-account { border-color: var(--ac-hairline); background: var(--ac-surface-3); }
 
 .nav-btn {
   border-radius: var(--ac-radius-sm);
@@ -342,7 +590,7 @@ body {
   }
 
   .ac-navpanel-title {
-    font-size: 10px;
+    font-size: var(--ac-text-micro);
     font-weight: 800;
     letter-spacing: 0.14em;
     text-transform: uppercase;
@@ -464,7 +712,7 @@ body {
   gap: 4px;
   padding: 8px 12px;
   border-top: 1px solid rgba(148, 163, 184, 0.10);
-  font-size: 10px;
+  font-size: var(--ac-text-micro);
   font-variant-numeric: tabular-nums;
 }
 
@@ -474,7 +722,7 @@ body {
   flex: 0 0 auto;
   padding: 6px 12px 10px;
   color: var(--ac-text-dim);
-  font-size: 10.5px;
+  font-size: var(--ac-text-micro);
   text-align: center;
 }
 
@@ -592,43 +840,9 @@ th {
      8l. Responsive composition
    ========================================================================= */
 
-/* ---- 8a. Extended tokens ------------------------------------------------ */
-:root {
-  /* A real type ramp. The product previously moved between 9px and 14px with no
-     stated steps, which is why label sizes drifted between panels. */
-  --ac-text-micro: 10.5px;   /* table labels, meta, timestamps */
-  --ac-text-caption: 11.5px; /* secondary copy, hints */
-  --ac-text-body: 13px;      /* default reading size */
-  --ac-text-lead: 15px;      /* card titles */
-  --ac-text-metric: 22px;    /* single KPI value */
-  --ac-text-display: 28px;   /* hero figure */
-
-  --ac-lh-tight: 1.2;
-  --ac-lh-normal: 1.55;
-
-  /* Financial semantics. Named by meaning, not hue, so the same token can be
-     read by anyone maintaining this and cannot drift between surfaces. */
-  --ac-bull: #34d399;
-  --ac-bull-dim: rgba(52, 211, 153, 0.12);
-  --ac-bear: #f87171;
-  --ac-bear-dim: rgba(248, 113, 113, 0.12);
-  --ac-flat: #94a3b8;
-  --ac-flat-dim: rgba(148, 163, 184, 0.10);
-  --ac-warn: #fbbf24;
-  --ac-warn-dim: rgba(251, 191, 36, 0.12);
-  --ac-info: #60a5fa;
-  --ac-info-dim: rgba(96, 165, 250, 0.12);
-
-  /* One focus treatment for the whole product. */
-  --ac-focus: 0 0 0 2px rgba(11, 14, 20, 1), 0 0 0 4px rgba(52, 211, 153, 0.62);
-
-  /* A hairline that reads as structure rather than as a drawn box. */
-  --ac-hairline: rgba(148, 163, 184, 0.09);
-
-  /* Table rhythm. Row height is a design decision, not an accident of padding. */
-  --ac-row-h: 38px;
-  --ac-row-h-dense: 32px;
-}
+/* ---- 8a. Extended tokens ------------------------------------------------
+   Folded into the single :root block in section 1. This heading is kept so the
+   section numbering below still matches the contents list above. */
 
 /* ---- 8b. Numerals and financial typography ------------------------------ */
 /* Every figure in the product lines up column to column and does not reflow as
@@ -657,36 +871,21 @@ table th,
 /* Three levels, deliberately: the page ground, a panel, and content nested
    inside a panel. Previously panels and their inner blocks shared a tone, so a
    dense screen read as one undifferentiated field. */
-.panel {
-  border-color: var(--ac-hairline);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset, var(--ac-shadow-1);
-}
-
+/* A panel nested inside a panel, and the utility-built blocks that act like
+   one, become a recessed well — the third and last level. Aliased onto the
+   `.ac-well` primitive rather than restated. */
 .panel .panel,
 .panel .bg-dark-700\/50,
 .panel .bg-dark-800\/50 {
   background: var(--ac-surface-3);
   border-color: var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
   box-shadow: none;
 }
 
-/* The hero is the only surface allowed to carry a gradient, so it stays the
-   visual anchor of the dashboard instead of competing with the cards below. */
-.dashboard-hero {
-  border-color: rgba(52, 211, 153, 0.14);
-}
-
-/* Quick-access cards: equal optical weight, a real hover, no drift. */
-.action-card {
-  border-color: var(--ac-hairline);
-  transition: border-color .16s ease, background-color .16s ease, transform .16s ease;
-}
-.action-card:hover {
-  border-color: var(--ac-accent-line);
-  background: var(--ac-accent-soft);
-  transform: translateY(-1px);
-}
-.action-card:active { transform: translateY(0); }
+/* The hero is the one surface allowed to carry a gradient, so it stays the
+   visual anchor of the dashboard instead of competing with the cards below.
+   Its base rules live in section 3; nothing is restated here. */
 
 /* ---- 8d. Section rhythm and headings ------------------------------------ */
 /* Section labels are navigation, not content. Smaller, wider-tracked, dimmer —
@@ -793,7 +992,178 @@ table th,
   line-height: var(--ac-lh-tight);
 }
 
-/* ---- 8g. Controls -------------------------------------------------------- */
+/* ---- 8g. Controls --------------------------------------------------------
+
+   ONE control primitive, `.ac-btn`, with variants driven by data-variant and
+   data-size.
+
+   Buttons in this product were built inline: the screener's three type tabs
+   each carry their own hand-written string of eight utilities, and the active
+   and inactive appearances are two different strings swapped by JS. That is
+   why no two buttons in the app share a height, a radius or a focus ring.
+
+   As with the surface primitive, the existing control class names are aliased
+   rather than renamed — they are JS hooks and build-gate assertions. New
+   markup should use `.ac-btn`; the rest inherits the shared control shape and
+   keeps whatever it sets on top.
+
+   .landing-btn and .maintenance-btn deliberately keep their full definitions
+   in the inline sheet of index.html: those two render on screens that are
+   shown precisely when the network is failing, and they must not depend on
+   this file arriving. What is here only refines them. */
+.ac-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: var(--ac-control-h);
+  padding: 0 13px;
+  border: 1px solid var(--ac-line);
+  border-radius: var(--ac-radius-sm);
+  background: var(--ac-surface-2);
+  color: var(--ac-text);
+  font-family: inherit;
+  font-size: var(--ac-text-body);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .14s ease, background-color .14s ease, color .14s ease;
+}
+
+.ac-btn:hover:not(:disabled) {
+  border-color: var(--ac-line-strong);
+  background: var(--ac-surface-hover);
+  color: var(--ac-text-strong);
+}
+
+/* Primary: the one action on a screen that the product wants taken. Solid, so
+   it cannot be confused with the outlined secondaries around it. */
+.ac-btn[data-variant="primary"] {
+  border-color: transparent;
+  background: linear-gradient(180deg, #3ddba4, var(--ac-accent-strong));
+  color: var(--ac-brand-ink);
+  font-weight: 700;
+}
+.ac-btn[data-variant="primary"]:hover:not(:disabled) {
+  background: linear-gradient(180deg, #5ce4b6, #14c98c);
+  color: var(--ac-brand-ink);
+}
+
+/* Ghost: navigation and low-stakes toggles. No border until touched. */
+.ac-btn[data-variant="ghost"] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ac-text-muted);
+}
+.ac-btn[data-variant="ghost"]:hover:not(:disabled) {
+  border-color: var(--ac-line);
+  background: rgba(148, 163, 184, 0.07);
+}
+
+/* Danger is stated, never merely tinted: destructive actions read as such
+   before the click, not after. */
+.ac-btn[data-variant="danger"] {
+  border-color: rgba(248, 113, 113, 0.32);
+  background: var(--ac-bear-dim);
+  color: #fca5a5;
+}
+.ac-btn[data-variant="danger"]:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.18);
+  color: #fecaca;
+}
+
+.ac-btn[data-size="sm"] { min-height: 30px; padding: 0 10px; font-size: var(--ac-text-caption); }
+.ac-btn[data-size="lg"] { min-height: var(--ac-control-h-touch); padding: 0 18px; font-size: var(--ac-text-lead); }
+
+/* A control that is working says so, and stops accepting input while it does. */
+.ac-btn[data-loading] { pointer-events: none; opacity: 0.7; }
+.ac-btn[data-loading]::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: acSpin .7s linear infinite;
+}
+@keyframes acSpin { to { transform: rotate(360deg); } }
+
+/* Segmented control: one track, N segments, exactly one selected. Used by the
+   screener's Konglo / Non-Konglo / Day Trade switch. A shared track is what
+   makes it read as a single choice rather than three unrelated buttons. */
+.ac-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-surface-3);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ac-segmented::-webkit-scrollbar { display: none; }
+
+.ac-segment {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--ac-radius-sm);
+  background: transparent;
+  color: var(--ac-text-muted);
+  font-family: inherit;
+  font-size: var(--ac-text-body);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .14s ease, background-color .14s ease;
+}
+
+.ac-segment:hover:not(.is-active) {
+  color: var(--ac-text);
+  background: rgba(148, 163, 184, 0.07);
+}
+
+/* The selected segment is stated by fill AND weight AND colour, so it survives
+   a greyscale rendering and a colour-blind reader. */
+.ac-segment.is-active {
+  background: var(--ac-surface-2);
+  border: 1px solid var(--ac-accent-line);
+  color: var(--ac-accent);
+  font-weight: 700;
+  box-shadow: var(--ac-edge), 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+@media (max-width: 640px) {
+  .ac-segment { min-height: 38px; padding: 0 12px; font-size: var(--ac-text-caption); }
+}
+
+/* The existing control classes inherit the shared shape: one height, one
+   radius, one transition, one type size. Each keeps its own colours. */
+.nav-btn,
+.ac-viewer-btn,
+.new-chat-btn,
+.maintenance-btn,
+.landing-btn,
+.subscription-action,
+.screener-tab,
+.nk-screener-tab,
+.dt-screener-tab {
+  font-family: inherit;
+  line-height: 1.15;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .14s ease, background-color .14s ease, color .14s ease;
+}
+
 /* One control height, one border tone, one focus ring, across buttons, tabs,
    inputs and selects. Previously each surface set its own. */
 .panel input[type="text"],
@@ -824,7 +1194,7 @@ table th,
 .page-content select:focus-visible {
   outline: none;
   border-color: var(--ac-accent-line);
-  box-shadow: var(--ac-focus);
+  box-shadow: var(--ac-focus-ring);
 }
 
 /* Placeholder copy must read as a prompt, not as a value. */
@@ -876,7 +1246,10 @@ table th,
   opacity: 0.85;
 }
 .empty-state-text {
-  margin-top: 10px;
+  /* Sole source of the icon-to-copy gap: .empty-state-icon used to add its own
+     margin-bottom in the inline sheet, and consolidating the two definitions
+     left this one carrying the whole rhythm. */
+  margin-top: var(--ac-space-3);
   max-width: 42ch;
   margin-left: auto;
   margin-right: auto;
@@ -887,6 +1260,17 @@ table th,
 .empty-state-amber { border-color: rgba(251, 191, 36, 0.28); background: var(--ac-warn-dim); }
 .empty-state-amber .empty-state-icon,
 .empty-state-amber .empty-state-text { color: #fcd34d; }
+
+/* The error tone was declared only in the inline sheet of index.html, which
+   loads BEFORE this file. `.empty-state` here sets border and background at the
+   same specificity and later in the cascade, so it overrode both — the three
+   .empty-state-error containers in the markup have been rendering with the
+   neutral tint. Only their text stayed red, because
+   `.empty-state-error .empty-state-text` is two classes and outranks it.
+   Stated here, alongside the amber tone, so it actually applies. */
+.empty-state-error { border-color: rgba(248, 113, 113, 0.30); background: var(--ac-bear-dim); }
+.empty-state-error .empty-state-icon,
+.empty-state-error .empty-state-text { color: #fca5a5; }
 
 /* Skeletons match the surface they stand in for, so the swap does not flash. */
 .skeleton { border-radius: var(--ac-radius-sm); }
@@ -906,7 +1290,7 @@ button:focus-visible,
 summary:focus-visible,
 [tabindex]:focus-visible {
   outline: none;
-  box-shadow: var(--ac-focus);
+  box-shadow: var(--ac-focus-ring);
   border-radius: var(--ac-radius-sm);
 }
 
@@ -1010,16 +1394,10 @@ button:disabled,
 /* ---- 8o. Landing ---------------------------------------------------------
    The marketing surface shares the product's type ramp so the first impression
    and the app do not read as two different companies. */
-.landing-section .feature-card,
-.landing-section .faq-item {
-  border-color: var(--ac-hairline);
-  transition: border-color .16s ease, transform .16s ease;
-}
-.landing-section .feature-card:hover {
-  border-color: var(--ac-accent-line);
-  transform: translateY(-1px);
-}
-.landing-card { border-color: var(--ac-hairline); }
+/* .feature-card, .faq-item and .landing-card are aliased onto the surface
+   primitive in section 3, and .landing-card states its own larger radius in
+   the inline sheet. The hover lift comes from the interactive variant. Nothing
+   needs restating here. */
 
 /* ---- 8p. Dashboard information architecture ------------------------------
    Second pass, from feedback on the real production page: the first viewport
@@ -1047,7 +1425,7 @@ button:disabled,
   line-height: 1.5;
   margin-top: 3px;
 }
-#page-dashboard .dash-badge { padding: 3px 8px; font-size: 10px; }
+#page-dashboard .dash-badge { padding: 3px 8px; font-size: var(--ac-text-micro); }
 
 /* Market status: a strip sized to the amount of information it actually holds.
    One metric does not need a full-height panel. */
