@@ -122,3 +122,51 @@ test('runtime sanitizer wrapper hardens the actual sanitizeAIHtml sink', () => {
   assert.match(root.sanitizeAIHtml('<script>x</script><a href="javascript&colon;alert(1)">x</a>'), /href="#"/i);
   assert.doesNotMatch(root.sanitizeAIHtml('<script>x</script><a href="javascript&colon;alert(1)">x</a>'), /<script/i);
 });
+
+// ---------------------------------------------------------------------------
+// Dashboard pick card: attribute-context escaping
+// ---------------------------------------------------------------------------
+// dashJsString() escapes a backslash and a single quote, which is correct for
+// the JS string literal it builds. But the result is embedded in a DOUBLE-quoted
+// HTML attribute:
+//
+//   onclick="openDashboardPickDetail('<TICKER>')"
+//
+// so a ticker containing a double quote closed the attribute and let the rest
+// of the value become new attributes. Verified in Chromium before the fix: the
+// parsed element carried an injected `onmouseover` handler. The fix layers the
+// escapes in the correct order — JS-escape, then HTML-escape.
+test('ticker cannot break out of the pick card onclick attribute', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+
+  // Both cards must HTML-escape after JS-escaping.
+  const decls = html.match(/var tickerJs = [^;]+;/g) || [];
+  assert.ok(decls.length >= 2, 'expected the Top 5 and monitor card declarations');
+  decls.forEach(decl => {
+    assert.match(decl, /escapeHtml\(\s*dashJsString\(/,
+      'tickerJs must be HTML-escaped after JS-escaping: ' + decl);
+  });
+
+  // The server-supplied rank is interpolated into markup and must be escaped.
+  assert.match(html, /"dash-rank">' \+ escapeHtml\(rank\)/);
+
+  // Reproduce both forms. dashJsString only needs to be modelled to the extent
+  // that it leaves a double quote untouched, which is the whole defect.
+  const escapeHtml = t => String(t == null ? '' : t).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const QUOTE = String.fromCharCode(34);
+  const hostile = 'AB' + QUOTE + ' onmouseover=' + QUOTE + 'steal()' + QUOTE + ' x=' + QUOTE;
+
+  // Unescaped: the payload's double quote closes onclick and starts new attributes.
+  const unsafeAttr = 'onclick=' + QUOTE + "f('" + hostile + "')" + QUOTE;
+  assert.ok(unsafeAttr.indexOf('onmouseover=') > -1,
+    'sanity: the unescaped form really does break out of the attribute');
+  const unsafeInner = unsafeAttr.slice(('onclick=' + QUOTE).length, -1);
+  assert.ok(unsafeInner.indexOf(QUOTE) > -1, 'sanity: raw quote survives unescaped');
+
+  // Escaped: no raw double quote can remain inside the attribute value.
+  const safeAttr = 'onclick=' + QUOTE + "f('" + escapeHtml(hostile) + "')" + QUOTE;
+  const safeInner = safeAttr.slice(('onclick=' + QUOTE).length, -1);
+  assert.equal(safeInner.indexOf(QUOTE), -1, 'escaped payload must contain no raw double quote');
+  assert.ok(safeInner.indexOf('&quot;') > -1, 'the quote must survive as an entity');
+});

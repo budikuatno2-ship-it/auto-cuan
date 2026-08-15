@@ -1598,6 +1598,422 @@ button:disabled,
   #page-sektor.page-content { max-width: 1320px; }
 }
 
+/* =========================================================================
+   8s. Landing rhythm
+   =========================================================================
+
+   Measured on the Phase 1 build at 1440x900: the page ran 4367px — 4.9 screens
+   — to deliver 627 words. Eight sections, every one of them a 36px heading
+   over one sentence over a grid of cards, every one padded 72px top and
+   bottom. So the type ramp was 60px for the hero and then 36px eight times
+   running, which is not a hierarchy, it is a plateau; and roughly 7px of page
+   height was being spent per word of content.
+
+   Nothing is deleted here. The fix is rhythm, not subtraction:
+
+     - The section heading drops to 26px. That restores a real interval below
+       the 60px hero and puts card titles (15px) a legible step below it, so
+       the ramp becomes 60 / 26 / 15 / 13 instead of 60 / 36 / 36 / 36.
+     - Section padding drops from 72px to 44px, and the first section after the
+       hero gets less still, because the hero already supplies separation.
+     - Section intro copy is given a reading measure. A 60-word paragraph set
+       across 1180px is what made these sections read as empty: the eye has no
+       column to follow, so the whitespace reads as absence rather than as
+       breathing room.
+     - Card interiors tighten, which is what makes a grid of six read as one
+       object instead of six.
+   ========================================================================= */
+
+.landing-section { padding: 44px 0; }
+.landing-hero + .landing-section { padding-top: 32px; }
+
+.landing-section h2 {
+  font-size: 26px;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+}
+
+/* The one-line section intro is a deck, not body copy: it sits directly under
+   the heading and should read as one breath. */
+.landing-section h2 + p,
+.landing-section > div > p:first-of-type {
+  max-width: 62ch;
+  font-size: var(--ac-text-body);
+  line-height: var(--ac-lh-normal);
+  color: var(--ac-text-muted);
+}
+
+.landing-section .feature-card { padding: 16px; }
+.landing-section .faq-item { padding: 14px 16px; }
+
+/* Eight consecutive card grids is the monotony. A hairline rule under each
+   section heading gives the page a spine to scan down, so the sections read as
+   chapters of one document rather than as eight repetitions of one block. */
+.landing-section > .landing-container > div:first-child,
+.landing-section > .landing-container > header {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ac-hairline);
+  margin-bottom: 22px;
+}
+
+@media (max-width: 640px) {
+  .landing-section { padding: 32px 0; }
+  .landing-section h2 { font-size: 21px; }
+}
+
+/* =========================================================================
+   8t. Screener tables: semantic column groups and a pinned identity
+   =========================================================================
+
+   The three screener tables run 17, 18 and 22 columns. Their headers describe
+   five distinct things —
+
+     identity   who is this
+     verdict    what does the model think
+     market     what is price doing
+     plan       what would the trade be
+     context    timing, direction, notes
+
+   — but every column was drawn identically, so a reader scanning left to right
+   got no signal about where one kind of information ended and the next began,
+   and lost the ticker entirely once the table scrolled sideways.
+
+   Two changes, both functional:
+
+     1. A hairline at each group boundary. Not a border on every column, which
+        would add noise; one rule exactly where the meaning changes.
+     2. The identity columns are pinned, so the row keeps its name during the
+        horizontal scroll these widths make inevitable.
+
+   Boundaries are per-table because the column sets differ. They are keyed off
+   the tbody id, and stated as the FIRST column of each new group. Empty-state
+   rows use a single colspan cell, which no :nth-child(4+) selector matches, so
+   they are unaffected.
+   ========================================================================= */
+
+/* Swing Konglo — 17 cols: Ticker Group Tier | Exec Setup | Last Chg% RSI
+   Vol/Avg20 | Entry Area SL TP1 TP2 RR | Timing Arah Catatan */
+#screenerTableBody tr > :nth-child(4),
+#screenerTableBody tr > :nth-child(6),
+#screenerTableBody tr > :nth-child(10),
+#screenerTableBody tr > :nth-child(15),
+/* Swing Non-Konglo — 18 cols, same set with a leading rank column. */
+#nkScreenerTableBody tr > :nth-child(5),
+#nkScreenerTableBody tr > :nth-child(7),
+#nkScreenerTableBody tr > :nth-child(11),
+#nkScreenerTableBody tr > :nth-child(16),
+/* Day Trade — 22 cols: # Ticker Board | Status Setup-Score Exec Setup | Last
+   Chg% Vol/Avg20 Tx-Today Pre-Spike Momentum | Entry Area SL TP1 TP2 RR |
+   Timing Arah Time-Plan Catatan */
+#dtScreenerTableBody tr > :nth-child(4),
+#dtScreenerTableBody tr > :nth-child(8),
+#dtScreenerTableBody tr > :nth-child(14),
+#dtScreenerTableBody tr > :nth-child(19) {
+  border-left: 1px solid var(--ac-line);
+}
+
+/* The same boundaries in the header, so the grouping is stated before the data
+   rather than inferred from it. The tbody id cannot reach its own thead, so the
+   header rows carry a column-count class instead. */
+.scr-cols-17 > :nth-child(4),
+.scr-cols-17 > :nth-child(6),
+.scr-cols-17 > :nth-child(10),
+.scr-cols-17 > :nth-child(15),
+.scr-cols-18 > :nth-child(5),
+.scr-cols-18 > :nth-child(7),
+.scr-cols-18 > :nth-child(11),
+.scr-cols-18 > :nth-child(16),
+.scr-cols-22 > :nth-child(4),
+.scr-cols-22 > :nth-child(8),
+.scr-cols-22 > :nth-child(14),
+.scr-cols-22 > :nth-child(19) {
+  border-left: 1px solid var(--ac-line);
+}
+
+/* ---- Pinned identity ----------------------------------------------------
+   An opaque background is mandatory on a sticky cell or the scrolling columns
+   read straight through it. The header's own sticky rule from section 8e wins
+   at the intersection via a higher z-index. */
+#screenerTableBody tr > :nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--ac-surface-1);
+  box-shadow: 1px 0 0 var(--ac-line);
+}
+
+/* Where a rank column leads, both it and the ticker pin, and the rank is given
+   a fixed width so the ticker's offset is not a guess. */
+#nkScreenerTableBody tr > :nth-child(1),
+#dtScreenerTableBody tr > :nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  background: var(--ac-surface-1);
+}
+#nkScreenerTableBody tr > :nth-child(2),
+#dtScreenerTableBody tr > :nth-child(2) {
+  position: sticky;
+  left: 34px;
+  z-index: 1;
+  background: var(--ac-surface-1);
+  box-shadow: 1px 0 0 var(--ac-line);
+}
+
+/* Hover has to repaint the pinned cells too, or the row appears to break in
+   half as the cursor crosses it. */
+.panel table tbody tr:hover > :nth-child(1),
+.overflow-x-auto > table tbody tr:hover > :nth-child(1),
+.panel table tbody tr:hover > :nth-child(2),
+.overflow-x-auto > table tbody tr:hover > :nth-child(2) {
+  background: #16202b;
+}
+
+/* Deliberately NO blanket right-align rule here. The row builders already set
+   alignment per cell — text-right on figures, text-center on status columns,
+   left by default — and an id-scoped nth-child range would outrank all of it,
+   silently right-aligning the centred columns it happened to span. Section 8b
+   supplies the tabular figures; the existing per-cell classes stay in charge of
+   alignment. */
+
+@media (max-width: 640px) {
+  /* Pinning costs horizontal room that a phone does not have, and every
+     screener already renders a card grid at this width. */
+  #screenerTableBody tr > :nth-child(1),
+  #nkScreenerTableBody tr > :nth-child(1),
+  #nkScreenerTableBody tr > :nth-child(2),
+  #dtScreenerTableBody tr > :nth-child(1),
+  #dtScreenerTableBody tr > :nth-child(2) {
+    position: static;
+    box-shadow: none;
+  }
+}
+
+/* =========================================================================
+   9. The pick card
+   =========================================================================
+
+   The Top 5 card is the object a trader reads to make a decision, and it had
+   become twelve consecutive `mt-1` rows of label/value pairs at 10–11px, every
+   row the same weight and the same 4px gap. Three consequences:
+
+     - Nothing was grouped, so the eye had no landing point.
+     - Six accent hues were in play — emerald, blue, purple, cyan, amber, grey,
+       plus the dynamic grade/risk colours — which means colour carried no
+       information. Everything coloured is the same as nothing coloured.
+     - The trade itself (ladder, entry, stop, targets) sat BELOW six rows of
+       metadata, so the least decision-relevant content was read first.
+
+   The card is now three zones, separated by a hairline and a real spacing
+   step rather than by another 4px: what this is, what the trade is, and what
+   to be careful about. Every field that was rendered before is still rendered,
+   in the same order within its zone; only grouping, weight and colour change.
+
+   Colour is spent on direction and risk only. Targets are bull, stops are
+   bear, warnings are warn, and everything else — EntryQ, PlanQ, Breakout,
+   Setup Age, RR, action — is neutral. The grade and risk colours stay, because
+   those come from the scoring model and genuinely encode a scale.
+   ========================================================================= */
+
+.dashboard-pick-card { padding: 12px 13px; }
+
+/* Zones. The separator is what replaces eleven identical 4px gaps. */
+.dash-zone + .dash-zone {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--ac-hairline);
+}
+
+/* ---- Zone 1: what this is ---------------------------------------------- */
+.dash-ident { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
+.dash-ident-ticker {
+  font-size: var(--ac-text-lead);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ac-text-strong);
+}
+.dash-ident-price {
+  font-size: var(--ac-text-body);
+  font-weight: 600;
+  color: var(--ac-text);
+  font-variant-numeric: tabular-nums;
+}
+.dash-ident-tag {
+  padding: 2px 7px;
+  border: 1px solid var(--ac-hairline);
+  border-radius: 999px;
+  background: var(--ac-surface-3);
+  font-size: var(--ac-text-micro);
+  font-weight: 600;
+  color: var(--ac-text-dim);
+}
+/* The score is the one figure the ranking is built on, so it reads as a
+   figure rather than as another label/value pair. */
+.dash-ident-score { margin-left: auto; text-align: right; flex: 0 0 auto; }
+.dash-ident-score span {
+  display: block;
+  font-size: var(--ac-text-micro);
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+}
+.dash-ident-score b {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--ac-text-metric);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ac-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-verdict { display: flex; flex-wrap: wrap; gap: 3px 14px; margin-top: 6px; }
+.dash-verdict > span { font-size: var(--ac-text-caption); color: var(--ac-text-dim); }
+.dash-verdict > span > b { margin-left: 4px; font-weight: 700; color: var(--ac-text); }
+
+/* ---- Zone 2: the trade -------------------------------------------------- */
+/* Given the most room, because it is the reason the card exists. */
+.dash-trade .dash-ladder { margin-top: 0; }
+.dash-trade .dash-level-grid { margin-top: 8px; }
+
+.dash-level span {
+  font-size: var(--ac-text-micro);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ac-text-dim);
+}
+.dash-level b {
+  margin-top: 2px;
+  font-size: var(--ac-text-body);
+  font-weight: 700;
+  color: var(--ac-text);
+  font-variant-numeric: tabular-nums;
+}
+/* Direction, and only direction, is coloured. */
+.dash-level[data-tone="danger"] b { color: var(--ac-bear); }
+.dash-level[data-tone="target"] b { color: var(--ac-bull); }
+.dash-level[data-tone="danger"] { border-color: rgba(248, 113, 113, 0.18); }
+.dash-level[data-tone="target"] { border-color: rgba(52, 211, 153, 0.18); }
+
+/* ---- Zone 3: caveats and detail ---------------------------------------- */
+/* Reference material. Present, complete, and quieter than the trade. */
+/* Five reference fields stacked two-up cost three rows and made the caveat zone
+   taller than the trade above it — the least decision-relevant part of the card
+   dominating the most. Three columns on a desktop-width card puts them in two. */
+.dash-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 14px;
+}
+@media (min-width: 1024px) {
+  .dash-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.dash-meta > span {
+  min-width: 0;
+  font-size: var(--ac-text-micro);
+  line-height: 1.38;
+  color: var(--ac-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-meta > span > b { font-weight: 600; color: var(--ac-text-muted); }
+
+/* A flag is a caution, so it is shaped like one: a rule in the margin rather
+   than another coloured sentence in a stack of coloured sentences.
+
+   Bounded to two lines. The markup these replaced used `truncate`, which caps a
+   note at one line and hides the rest; dropping that made the caveat zone grow
+   without limit on a verbose row — it measured taller than the trade above it.
+   Two lines keeps more of the note than the original single line did while
+   still giving the card a predictable height. */
+.dash-flag {
+  margin-top: 3px;
+  padding-left: 9px;
+  border-left: 2px solid var(--ac-line-strong);
+  font-size: var(--ac-text-micro);
+  line-height: var(--ac-lh-snug);
+  color: var(--ac-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dash-flag[data-tone="warn"] { border-left-color: rgba(251, 191, 36, 0.5); color: #e8c877; }
+.dash-flag[data-tone="info"] { border-left-color: var(--ac-accent-line); }
+
+/* Same reasoning as the flags: was `truncate` at one line, now bounded at two. */
+.dash-reason {
+  margin-top: 5px;
+  font-size: var(--ac-text-micro);
+  line-height: var(--ac-lh-snug);
+  color: var(--ac-text-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dash-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.dash-chips > span {
+  padding: 2px 7px;
+  border: 1px solid var(--ac-hairline);
+  border-radius: 999px;
+  background: var(--ac-surface-3);
+  font-size: var(--ac-text-micro);
+  color: var(--ac-text-muted);
+}
+
+/* ---- Loading -----------------------------------------------------------
+   The skeleton mirrors the card's real footprint — identity row, ladder, level
+   grid — so the arriving data fills a shape that is already there instead of
+   pushing the list down. */
+.dash-skeleton {
+  padding: 12px 13px;
+  border: 1px solid var(--ac-hairline);
+  border-radius: var(--ac-radius-md);
+  background: var(--ac-surface-1);
+}
+.dash-skeleton + .dash-skeleton { margin-top: 8px; }
+.dash-skeleton-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dash-skeleton-bar { height: 8px; margin-top: 14px; }
+.dash-skeleton-levels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.dash-skeleton-levels .skeleton-line { height: 26px; border-radius: var(--ac-radius-xs); }
+.dash-skeleton-label {
+  margin-top: 10px;
+  text-align: center;
+  font-size: var(--ac-text-micro);
+  color: var(--ac-text-dim);
+}
+
+@media (max-width: 640px) {
+  .dash-skeleton-levels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* The rank badge stops being a coloured tile and becomes an ordinal. */
+.dash-rank {
+  flex: 0 0 auto;
+  width: 22px;
+  font-size: var(--ac-text-caption);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ac-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .dash-meta { grid-template-columns: minmax(0, 1fr); }
+  .dash-ident-score b { font-size: var(--ac-text-lead); }
+}
+
 /* ---- 7. Reduced motion -------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   .ac-launcher, .ac-navpanel-card, .action-card, .panel { transition: none !important; animation: none !important; }

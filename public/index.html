@@ -641,6 +641,15 @@
         .maintenance-btn-primary:hover { filter: brightness(1.04); }
         .maintenance-btn:focus-visible { outline: 2px solid rgba(52,211,153,.75); outline-offset: 3px; }
         .maintenance-foot { margin-top: 16px; font-size: 11.5px; line-height: 1.6; color: #6b7a90; }
+        /* Administrator entry: deliberately the quietest control on the screen.
+           This is a maintenance notice first — a staff door, not a call to
+           action. Literal values, like the rest of this block, because the
+           maintenance screen must render when ui-theme.css is unreachable.
+           min-height 44px keeps it thumb-sized on a phone. */
+        .maintenance-admin { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(148,163,184,.12); display: flex; justify-content: center; }
+        .maintenance-admin-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid transparent; border-radius: 12px; background: none; color: #6b7a90; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .maintenance-admin-btn:hover { color: #cbd5e1; border-color: rgba(148,163,184,.16); background: rgba(15,23,42,.5); }
+        .maintenance-admin-btn:focus-visible { outline: 2px solid rgba(52,211,153,.75); outline-offset: 3px; }
 
         .landing-menu a, .landing-link { color: #94a3b8; font-size: 13px; font-weight: 700; transition: color .15s ease; display: inline-flex; align-items: center; min-height: 24px; }
         .landing-menu a:hover, .landing-link:hover { color: #6ee7b7; }
@@ -835,6 +844,56 @@
         </div>
 
         <p class="maintenance-foot">Halaman ini akan kembali normal begitu pemeliharaan selesai. Tidak perlu membuat akun baru atau mengulang pendaftaran.</p>
+
+        <!-- Administrator entry. This opens the ordinary login modal — there is no
+             second authentication path, no token in the URL and no client secret.
+             Logging in here grants nothing by itself: the maintenance gate only
+             opens for a session the server confirms as admin via session-status,
+             and every admin endpoint separately enforces requireAdminSession().
+             A non-admin who signs in from this control stays on this screen. -->
+        <div class="maintenance-admin">
+            <button type="button" onclick="openMaintenanceAdminLogin()" class="maintenance-admin-btn">Akses admin</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ===== SERVICE STATUS UNVERIFIED SCREEN =====
+     Shown when the maintenance status could not be established: the request
+     timed out, failed, or returned something unusable. It is deliberately NOT
+     the maintenance screen — claiming maintenance is active when we do not know
+     that would be untrue. It says only what is true: the status could not be
+     verified, and nothing is being exposed until it can be.
+
+     Reuses the .maintenance-* classes so it carries the same visual system and,
+     like that screen, renders correctly when ui-theme.css is unreachable. -->
+<div id="serviceStatusScreen" class="hidden min-h-screen w-full flex items-center justify-center px-4 py-10" style="background-color:#0b0e14">
+    <div class="maintenance-card" role="status" aria-live="polite">
+        <div class="maintenance-brand">
+            <span class="maintenance-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#04130d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            </span>
+            <div>
+                <strong>Auto-Cuan</strong>
+                <small>IDX Stock Radar</small>
+            </div>
+        </div>
+
+        <p class="maintenance-eyebrow">Status layanan</p>
+        <h1 class="maintenance-title">Status layanan belum bisa diverifikasi</h1>
+        <p class="maintenance-message">Auto-Cuan belum dapat memastikan apakah layanan sedang dalam pemeliharaan. Halaman tidak dibuka dulu sampai statusnya jelas.</p>
+
+        <ul class="maintenance-facts">
+            <li>Ini bukan berarti akun atau data Anda bermasalah.</li>
+            <li>Biasanya disebabkan koneksi yang terputus atau lambat.</li>
+            <li>Coba lagi setelah koneksi Anda stabil.</li>
+        </ul>
+
+        <div class="maintenance-actions">
+            <button type="button" id="serviceStatusRetry" onclick="retryServiceStatus()" class="maintenance-btn maintenance-btn-primary">Coba periksa lagi</button>
+        </div>
+
+        <p id="serviceStatusNote" class="maintenance-foot">Jika ini terus terjadi, muat ulang halaman beberapa saat lagi.</p>
     </div>
 </div>
 
@@ -1137,7 +1196,7 @@
                     <h3 class="panel-title">Top 5 History</h3>
                     <p class="panel-subtitle">Pantau saham Top 5 aktif dan yang sudah kena TP.</p>
                 </div>
-                <button onclick="loadTop5History(true)" class="px-2.5 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition mt-1 sm:mt-0">Refresh</button>
+                <button onclick="loadTop5History(true)" class="ac-btn mt-1 sm:mt-0" data-size="sm">Refresh</button>
             </div>
             <div class="flex gap-1 mb-2">
                 <button id="top5HistoryTabActive" onclick="setTop5HistoryTab('active')" class="px-2.5 py-1 rounded-lg text-[11px] border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">Aktif Dipantau</button>
@@ -1342,7 +1401,7 @@
         <div class="overflow-x-auto rounded-xl border border-dark-600/30 hidden" id="screenerTableWrap">
             <table class="w-full text-xs border-collapse min-w-[1100px]">
                 <thead>
-                    <tr class="bg-dark-700/70">
+                    <tr class="scr-cols-17 bg-dark-700/70">
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
                         <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Group</th>
                         <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
@@ -1441,7 +1500,7 @@
             <div class="overflow-x-auto rounded-xl border border-dark-600/30 hidden" id="nkScreenerTableWrap">
                 <table class="w-full text-xs border-collapse min-w-[1200px]">
                     <thead>
-                        <tr class="bg-dark-700/70">
+                        <tr class="scr-cols-18 bg-dark-700/70">
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">#</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
@@ -1551,7 +1610,7 @@
             <div class="overflow-x-auto rounded-xl border border-dark-600/30 hidden" id="dtScreenerTableWrap">
                 <table class="w-full text-xs border-collapse min-w-[1100px]">
                     <thead>
-                        <tr class="bg-dark-700/70">
+                        <tr class="scr-cols-22 bg-dark-700/70">
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">#</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Ticker</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Board</th>
@@ -2085,14 +2144,85 @@ var _top5HistoryCache = { at: 0, data: null };
 var _dashboardTop5InFlight = null;
 var _top5HistoryInFlight = null;
 
+// ===== MAINTENANCE GATE =====
+// Maintenance used to be applied once, after the shell had already rendered, by
+// a single `setTopLevelView('maintenance')` call at the end of startup. Anything
+// that selected a view afterwards simply replaced it, so three ordinary paths
+// walked straight out of maintenance:
+//
+//   1. auth-v2.js validates the session on DOMContentLoaded. With no cookie the
+//      server answers 401, returnToGuest() runs, and it calls showLandingPage()
+//      — which ran after the gate and knew nothing about it. This is the
+//      "reachable after reload" report: deterministic, not a race.
+//   2. Back/forward fires popstate -> handleAppRoute() -> showLandingPage().
+//   3. isAdmin() is `getUsername() === 'budi' && localStorage.autocuan_is_admin`
+//      — two client-writable values — so setting two localStorage keys skipped
+//      the gate entirely.
+//
+// The gate is now evaluated inside setTopLevelView(), the one function every
+// view transition already funnels through, so no caller can route around it.
+//
+// SECURITY SCOPE: this is a client-side gate and cannot be a security boundary —
+// anyone with devtools can call these functions. It exists so that normal use
+// (reload, navigation, session restore) cannot escape maintenance. Actual
+// authorization stays server-side: every admin endpoint independently calls
+// requireAdminSession() against the signed HttpOnly ac_sess cookie.
+
+// Admin status for gating purposes comes ONLY from the server's answer to
+// `session-status`, which requires the signed cookie, re-reads the account from
+// the database, and confirms the signed `adm` claim. localStorage is never
+// consulted here: it is client-writable and survives logout.
+function isServerVerifiedAdmin() {
+    var session = window.__AUTOCUAN_AUTHENTICATED_SESSION__;
+    return !!(session && session.isAdmin === true && session.userId);
+}
+
+// Maintenance status is THREE states, not a boolean:
+//
+//   'unknown'  the status request has not yet produced a usable answer
+//   'on'       the server confirmed maintenance is active
+//   'off'      the server confirmed maintenance is not active
+//
+// It began as a boolean defaulting to false, which conflated "confirmed off"
+// with "we could not find out". A timeout or a 5xx therefore rendered the normal
+// public site — exactly the case where maintenance may well be active — so a
+// transient status error silently defeated the gate.
+//
+// 'unknown' is never treated as 'off'. It is also never presented as 'on',
+// because that would be a claim we cannot support; it gets its own screen that
+// says only what is true.
+var MAINTENANCE_UNKNOWN = 'unknown';
+var MAINTENANCE_ON = 'on';
+var MAINTENANCE_OFF = 'off';
+var maintenanceStatus = MAINTENANCE_UNKNOWN;
+
+function maintenanceLockActive() {
+    return maintenanceStatus === MAINTENANCE_ON && !isServerVerifiedAdmin();
+}
+
+// True while the status is still unresolved. A server-verified admin is not held
+// here: their authorization is established independently of maintenance status,
+// and holding them would lock administrators out during exactly the incident
+// they need to log in for.
+function serviceStatusUnverified() {
+    return maintenanceStatus === MAINTENANCE_UNKNOWN && !isServerVerifiedAdmin();
+}
+
 // ===== TOP-LEVEL VIEW STATE =====
 // Exactly one of loading, block, maintenance, landing, or app is interactive at a time.
 function setTopLevelView(state) {
+    // The gate wins over every requested view. Confirmed-on shows maintenance;
+    // unresolved shows the status screen. 'loading' is exempt from the unknown
+    // branch so the startup spinner is not replaced before the first check has
+    // had a chance to answer.
+    if (state !== 'maintenance' && maintenanceLockActive()) state = 'maintenance';
+    else if (state !== 'maintenance' && state !== 'serviceStatus' && state !== 'loading' && serviceStatusUnverified()) state = 'serviceStatus';
+
     /* premium-access-load-trigger */
     if (state === 'app') setTimeout(function(){ loadPremiumAccess(false); },0);
-    else if (state === 'landing' || state === 'blocked' || state === 'maintenance') resetPremiumAccess();
+    else if (state === 'landing' || state === 'blocked' || state === 'maintenance' || state === 'serviceStatus') resetPremiumAccess();
 
-    var ids = { loading:'initialLoader', blocked:'blockedScreen', maintenance:'maintenanceScreen', landing:'landingPage', app:'dashboardScreen' };
+    var ids = { loading:'initialLoader', blocked:'blockedScreen', maintenance:'maintenanceScreen', serviceStatus:'serviceStatusScreen', landing:'landingPage', app:'dashboardScreen' };
     Object.keys(ids).forEach(function(key) {
         var el = document.getElementById(ids[key]); if (!el) return;
         var active = key === state;
@@ -2272,6 +2402,11 @@ function setRoute(path, replace) {
     else window.history.pushState({}, '', path);
 }
 function openAuthChoiceModal(message) {
+    // The landing page prompts this when it wants a login/register choice. While
+    // maintenance is locked there is no landing page to act on, so the prompt is
+    // suppressed and the gate reasserted. Admins reach login through the
+    // dedicated control on the maintenance screen instead.
+    if (maintenanceLockActive()) { applyMaintenanceGate(); return; }
     var modal = document.getElementById('authChoiceModal');
     var msg = document.getElementById('authChoiceMessage');
     if (msg && message) msg.textContent = message;
@@ -2326,14 +2461,77 @@ function handleAppRoute(opts) {
 window.addEventListener('popstate', function() { handleAppRoute({ fromPopstate: true }); });
 
 // ===== MAINTENANCE CHECK =====
+// Carries the server's maintenance MESSAGE only. Whether maintenance is active
+// is held by maintenanceStatus above, which has a third state this object
+// cannot represent.
 var maintenanceConfig = { maintenanceMode: false, message: '' };
-async function checkMaintenanceStatus() {
+async function checkMaintenanceStatus(timeoutMs) {
+    // Bounded, and it may ONLY move maintenanceStatus on a confirmed answer.
+    //
+    // Every failure path — timeout, network error, non-2xx, unparseable body,
+    // success:false, missing config — leaves the previous status untouched. So:
+    //   unknown + failure  stays unknown  (the app is not exposed)
+    //   on      + failure  stays on       (a confirmed gate cannot be lifted)
+    //   off     + failure  stays off      (no spurious lockout after a good load)
+    var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, timeoutMs || 3000) : null;
     try {
-        var response = await fetch('/api/maintenance-settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'get' }) });
+        var response = await fetch('/api/maintenance-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get' }),
+            signal: controller ? controller.signal : undefined
+        });
+        // A 5xx still parses as JSON on some hosts; require an ok response.
+        if (!response.ok) return maintenanceStatus;
         var data = await response.json();
-        if (data.success && data.config) maintenanceConfig = data.config;
-    } catch(e) {}
-    return maintenanceConfig;
+        if (data && data.success === true && data.config && typeof data.config === 'object') {
+            maintenanceConfig = data.config;
+            maintenanceStatus = (data.config.maintenanceMode === true) ? MAINTENANCE_ON : MAINTENANCE_OFF;
+        }
+    } catch(e) {
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+    return maintenanceStatus;
+}
+
+// Applies the current status. Confirmed-on shows maintenance with the server's
+// message; unresolved shows the status screen; confirmed-off does nothing and
+// leaves routing alone.
+function applyMaintenanceGate() {
+    if (maintenanceStatus === MAINTENANCE_ON) {
+        var msgEl = document.getElementById('maintenanceMessage');
+        if (msgEl && maintenanceConfig && maintenanceConfig.message) msgEl.textContent = maintenanceConfig.message;
+        if (maintenanceLockActive()) setTopLevelView('maintenance');
+        return;
+    }
+    if (serviceStatusUnverified()) setTopLevelView('serviceStatus');
+}
+
+// Retry from the status screen. Re-runs the check and follows wherever it lands:
+// confirmed on -> maintenance, confirmed off -> normal routing, still unknown ->
+// stay put and say so.
+var _serviceStatusRetrying = false;
+async function retryServiceStatus() {
+    if (_serviceStatusRetrying) return;
+    _serviceStatusRetrying = true;
+    var btn = document.getElementById('serviceStatusRetry');
+    var note = document.getElementById('serviceStatusNote');
+    var previousLabel = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Memeriksa…'; }
+    try {
+        await checkMaintenanceStatus(6000);
+        if (maintenanceStatus === MAINTENANCE_UNKNOWN) {
+            if (note) note.textContent = 'Masih belum bisa diverifikasi. Periksa koneksi Anda, lalu coba lagi.';
+            return;
+        }
+        if (maintenanceStatus === MAINTENANCE_ON) { applyMaintenanceGate(); return; }
+        handleAppRoute({ duringInit: true });
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = previousLabel || 'Coba periksa lagi'; }
+        _serviceStatusRetrying = false;
+    }
 }
 
 // ===== REVIEW MODE =====
@@ -2660,7 +2858,7 @@ function renderStartupFallback() {
     // Never replace a view that startup has already selected. The loader stays
     // mounted but hidden, so checking only for its DOM existence caused the
     // watchdog to send signed-in users back to the public landing page.
-    var activeView = document.querySelector('#landingPage:not(.hidden), #dashboardScreen:not(.hidden), #blockedScreen:not(.hidden), #maintenanceScreen:not(.hidden)');
+    var activeView = document.querySelector('#landingPage:not(.hidden), #dashboardScreen:not(.hidden), #blockedScreen:not(.hidden), #maintenanceScreen:not(.hidden), #serviceStatusScreen:not(.hidden)');
     if (activeView) return;
     if (isAutocuanLoggedIn()) {
         try { handleAppRoute({ duringInit: true }); }
@@ -2676,37 +2874,76 @@ function renderStartupFallback() {
 // ===== INITIALIZATION =====
 (async function init() {
     try {
+    // Maintenance is resolved before ANY routing decision, including the share
+    // and review query-string entry points below. Those branches return early
+    // and enterReviewMode() clears #maintenanceScreen directly, so evaluating
+    // the gate after them would let a URL parameter walk past maintenance.
+    await checkMaintenanceStatus(3000);
+    // Anything other than a confirmed OFF withholds the app, so an unverified
+    // status cannot be walked past with a share or review URL either.
+    var _maintenanceLocked = maintenanceStatus !== MAINTENANCE_OFF;
+    if (_maintenanceLocked) applyMaintenanceGate();
+
     // === PUBLIC SHARE MODE ===
     var _shareParams = new URLSearchParams(window.location.search);
-    if (_shareParams.get('share') === 'screener' && _shareParams.get('token')) {
+    if (!_maintenanceLocked && _shareParams.get('share') === 'screener' && _shareParams.get('token')) {
         enterShareMode(_shareParams.get('token'));
         return;
     }
     // Compact share format: ?s=YYMMDD-signature
-    if (_shareParams.get('s')) {
+    if (!_maintenanceLocked && _shareParams.get('s')) {
         enterShareMode(_shareParams.get('s'));
         return;
     }
-    if (isValidReviewMode()) { await enterReviewMode(); return; }
+    if (!_maintenanceLocked && isValidReviewMode()) { await enterReviewMode(); return; }
     var params = new URLSearchParams(window.location.search);
     if (params.get('review_access') === '1') { localStorage.removeItem('autocuan_blocked_until'); window.history.replaceState({}, document.title, window.location.pathname); }
     if (isDeviceBlocked()) { showBlockedScreen(); return; }
-    // Show dashboard shell immediately, check maintenance in background
-    document.getElementById('maintenanceScreen').classList.add('hidden');
     if (!localStorage.getItem('autocuan_user')) {
         localStorage.setItem('autocuan_user', 'guest');
         localStorage.setItem('autocuan_is_admin', 'false');
         localStorage.removeItem('autocuan_is_review');
     }
+
+    // The maintenance check already ran at the top of init(), before the share
+    // and review branches, so the gate is known by this point. It was previously
+    // fired here as a non-blocking .then() AFTER the shell had been routed,
+    // which left the public landing, login and register flow fully interactive
+    // for the duration of the request — and permanently so whenever the request
+    // failed, because a failed check left maintenanceMode false.
+    //
+    // handleAppRoute routes through setTopLevelView, which enforces the gate, so
+    // this cannot re-expose the landing page while maintenance is locked.
     handleAppRoute({ duringInit: true });
-    // Non-blocking maintenance check — apply after shell is visible
-    checkMaintenanceStatus().then(function() {
-        if (maintenanceConfig.maintenanceMode && !isAdmin()) {
-            var msgEl = document.getElementById('maintenanceMessage');
-            if (msgEl && maintenanceConfig.message) msgEl.textContent = maintenanceConfig.message;
-            setTopLevelView('maintenance');
+
+    // auth-v2.js resolves window.autocuanAuthReady once it has validated the
+    // session against the server. An administrator reloading during maintenance
+    // is anonymous until that resolves, so the gate is re-evaluated afterwards:
+    // a server-verified admin is released, everyone else stays put.
+    //
+    // The promise cannot simply be read here. This init() runs while the body is
+    // still parsing, and auth-v2.js is fetched by website-approved-access.js from
+    // a <script src> near the end of the document — so window.autocuanAuthReady
+    // is still undefined at this point. Testing for it directly silently skipped
+    // the handler and left a verified admin stranded on the maintenance screen
+    // until they interacted with the page. Wait for it to appear, bounded.
+    (function waitForAuthGateRecheck() {
+        var attempts = 0;
+        function settle() {
+            if (isServerVerifiedAdmin()) handleAppRoute({ duringInit: true });
+            else applyMaintenanceGate();
         }
-    });
+        (function attempt() {
+            if (window.autocuanAuthReady && typeof window.autocuanAuthReady.then === 'function') {
+                window.autocuanAuthReady.then(settle, settle);
+                return;
+            }
+            // ~10s ceiling. If auth-v2 never loads there is no session to trust,
+            // so settle() simply re-asserts the gate.
+            if (++attempts > 100) { settle(); return; }
+            setTimeout(attempt, 100);
+        })();
+    })();
     // Auto-show onboarding on first visit
     if (localStorage.getItem('autocuan_entered_app') === 'true' && localStorage.getItem('auto_cuan_onboarding_seen') !== 'true') {
         setTimeout(function() { showOnboardingGuide(); }, 600);
@@ -2717,7 +2954,7 @@ function renderStartupFallback() {
     } finally {
         // A successful route selects a visible top-level view. Preserve the loading
         // shell if a future initialization path has not selected one yet.
-        if (document.getElementById('initialLoader') && !document.querySelector('#landingPage:not(.hidden), #dashboardScreen:not(.hidden), #blockedScreen:not(.hidden), #maintenanceScreen:not(.hidden)')) renderStartupFallback();
+        if (document.getElementById('initialLoader') && !document.querySelector('#landingPage:not(.hidden), #dashboardScreen:not(.hidden), #blockedScreen:not(.hidden), #maintenanceScreen:not(.hidden), #serviceStatusScreen:not(.hidden)')) renderStartupFallback();
     }
 })();
 // The watchdog also renders a usable public screen; merely removing the spinner
@@ -2750,6 +2987,17 @@ setTimeout(function() { var loader=document.getElementById('initialLoader'); if 
 // ===== MODAL FUNCTIONS =====
 function openLoginModal() { updateLandingCtas(); document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); }
 function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
+// Administrator entry from the maintenance screen. Deliberately just the normal
+// login modal: reusing one authentication path means there is no second set of
+// rules to keep in sync, and nothing here decides authorization. Signing in sets
+// the signed HttpOnly cookie server-side; the gate then re-evaluates through
+// setTopLevelView() and opens only when session-status reports a server-verified
+// admin. A normal user who signs in here lands back on the maintenance screen.
+function openMaintenanceAdminLogin() {
+    var err = document.getElementById('loginError');
+    if (err) { err.textContent = ''; err.classList.add('hidden'); }
+    openLoginModal();
+}
 function resetRegisterApprovalView() {
     document.getElementById('registerFormFields').classList.remove('hidden');
     document.getElementById('registerApprovalPanel').classList.add('hidden');
@@ -2760,7 +3008,12 @@ function resetRegisterApprovalView() {
     botLink.classList.add('hidden'); botLink.removeAttribute('href');
     document.getElementById('copyApprovalCodeBtn').textContent = 'Salin Kode Verifikasi';
 }
-function openRegisterModal() { resetRegisterApprovalView(); document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
+function openRegisterModal() {
+    // Registration is unavailable while maintenance is locked. Server-side
+    // account creation is unchanged; this only removes the entry point so the
+    // maintenance screen cannot be used to start a signup.
+    if (maintenanceLockActive()) { applyMaintenanceGate(); return; }
+    resetRegisterApprovalView(); document.getElementById('registerModal').classList.remove('hidden'); document.getElementById('registerError').classList.add('hidden'); document.getElementById('registerSuccess').classList.add('hidden'); }
 function closeRegisterModal() { document.getElementById('registerModal').classList.add('hidden'); }
 function openSelfResetModal() { document.getElementById('selfResetModal').classList.remove('hidden'); document.getElementById('selfResetError').classList.add('hidden'); document.getElementById('selfResetSuccess').classList.add('hidden'); }
 function closeSelfResetModal() { document.getElementById('selfResetModal').classList.add('hidden'); }
@@ -2956,6 +3209,11 @@ async function logout() {
     } catch (e) { /* ignore — proceed to clear local state regardless */ }
     localStorage.setItem('autocuan_user', 'guest'); localStorage.setItem('autocuan_is_admin', 'false');
     localStorage.removeItem('autocuan_logged_in'); localStorage.removeItem('autocuan_login_time'); localStorage.removeItem('autocuan_is_review'); localStorage.removeItem('autocuan_user_id');
+    // Drop the server-verified session that the maintenance gate reads, so an
+    // admin who logs out during maintenance is immediately gated again rather
+    // than keeping access until the next reload.
+    window.__AUTOCUAN_AUTHENTICATED_SESSION__ = null;
+    if (typeof window.clearAutocuanAuthState === 'function') { try { window.clearAutocuanAuthState(); } catch (_) {} }
     showLandingPage({ replaceHistory: true });
 }
 
@@ -9386,16 +9644,35 @@ function clearStuckDashboardLoadingPlaceholders() {
 // Fire global watchdog 8s after script loads — catches ALL stuck-loading edge cases.
 setTimeout(clearStuckDashboardLoadingPlaceholders, 8000);
 
+// A loading placeholder shaped like the thing that is loading. A centred line of
+// grey text gives no sense of what is coming and makes the list jump when it
+// arrives; these blocks occupy the pick card's real footprint, so the swap is
+// a fill rather than a reflow.
+//
+// The label text is kept in the markup deliberately. clearStuckDashboardLoadingPlaceholders()
+// detects a stuck load by searching textContent for 'Memuat Top 5' / 'Memuat monitor',
+// so removing that string would silently disable the 8-second watchdog.
+function dashboardSkeletonHtml(count, label) {
+    var block = '<div class="dash-skeleton" aria-hidden="true">' +
+        '<div class="dash-skeleton-row"><span class="skeleton-line" style="width:62px"></span><span class="skeleton-line" style="width:38px"></span></div>' +
+        '<div class="dash-skeleton-bar skeleton-line"></div>' +
+        '<div class="dash-skeleton-levels"><span class="skeleton-line"></span><span class="skeleton-line"></span><span class="skeleton-line"></span><span class="skeleton-line"></span><span class="skeleton-line"></span></div>' +
+        '</div>';
+    var out = '';
+    for (var i = 0; i < (count || 3); i++) out += block;
+    return out + '<p class="dash-skeleton-label"><span class="spinner-sm"></span>' + escapeHtml(label || DASHBOARD_LOADING_TEXT) + '</p>';
+}
+
 function dashboardEmptyHtml(message, tone) {
     var extraCls = tone === 'error' ? ' empty-state-error' : (tone === 'amber' ? ' empty-state-amber' : '');
-    var retryBtn = tone === 'error' ? '<button onclick="loadDashboardTop5Monitor(false, {loadAdminPreview:false})" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button>' : '';
+    var retryBtn = tone === 'error' ? '<button onclick="loadDashboardTop5Monitor(false, {loadAdminPreview:false})" class="ac-btn mt-2" data-size="sm">Coba Lagi</button>' : '';
     var iconPath = tone === 'error' ? 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' : 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
     return '<div class="empty-state' + extraCls + '"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="' + iconPath + '"/></svg><p class="empty-state-text">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p>' + retryBtn + '</div>';
 }
 function screenerEmptyRowHtml(colspan, message, tone, retryFn) {
     var color = tone === 'error' ? 'text-red-400' : 'text-gray-500';
     var retryAction = retryFn || 'loadSwingScreener()';
-    var retryBtn = tone === 'error' ? '<br><button onclick="' + retryAction + '" class="mt-2 px-3 py-1 rounded-lg text-[11px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10 transition">Coba Lagi</button>' : '';
+    var retryBtn = tone === 'error' ? '<br><button onclick="' + retryAction + '" class="ac-btn mt-2" data-size="sm">Coba Lagi</button>' : '';
     return '<tr><td colspan="' + Number(colspan || 1) + '" class="text-center py-8 ' + color + '">' + escapeHtml(message || STRICT_EMPTY_TEXT) + retryBtn + '</td></tr>';
 }
 function screenerEmptyCardHtml(message) {
@@ -9625,9 +9902,14 @@ function dashboardExcludedHtml(excluded) {
         return '<div class="flex flex-wrap gap-2"><b>' + escapeHtml(r.ticker || '-') + '</b><span>' + escapeHtml(action) + '</span><span>Risk: ' + escapeHtml(risk) + '</span>' + reasonHtml + '</div>';
     }).join('') + '</div></details>';
 }
+// The tone moves from a Tailwind colour class to a data attribute so the level
+// tiles are coloured by ui-theme.css from the semantic tokens. Entry levels are
+// deliberately neutral now: an entry is not a direction, and colouring it blue
+// alongside a red stop and a green target implied a third meaning that does not
+// exist. Same three tones, same call sites, same values.
 function dashLevelHtml(label, value, tone) {
-    var cls = tone === 'danger' ? 'text-red-300' : (tone === 'target' ? 'text-emerald-300' : 'text-blue-300');
-    return '<div class="dash-level"><span>' + escapeHtml(label) + '</span><b class="' + cls + '">' + dashFmtPrice(value) + '</b></div>';
+    var attr = (tone === 'danger' || tone === 'target') ? ' data-tone="' + tone + '"' : '';
+    return '<div class="dash-level"' + attr + '><span>' + escapeHtml(label) + '</span><b>' + dashFmtPrice(value) + '</b></div>';
 }
 
 // Where price actually sits between the stop and the targets.
@@ -9695,10 +9977,12 @@ function dashRiskLadderHtml(r) {
         '</div>';
 }
 
+// Quality chips are descriptive labels, not signals, so they no longer borrow
+// the accent colour. Same chips, same cap of six.
 function dashQualityChipsHtml(chips) {
     if (!Array.isArray(chips) || chips.length === 0) return '';
-    return '<div class="mt-1 flex flex-wrap gap-1">' + chips.slice(0, 6).map(function(c) {
-        return '<span class="text-[9px] px-1.5 py-0.5 rounded-full border border-emerald-500/15 bg-emerald-500/5 text-emerald-200">' + escapeHtml(c) + '</span>';
+    return '<div class="dash-chips">' + chips.slice(0, 6).map(function(c) {
+        return '<span>' + escapeHtml(c) + '</span>';
     }).join('') + '</div>';
 }
 function getPlanWarningLine(r) {
@@ -9751,26 +10035,55 @@ function renderDashboardTop5(picks) {
         var actionLine = buildDashboardActionLine(r);
         var reason = dashShortText(getSignalReason(r) || r.status_reason || r.grade_reason || r.notes, 96);
         var rank = p.rank || (idx + 1);
-        var tickerJs = dashJsString(r.ticker);
-        html += '<article role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')" class="dashboard-pick-card cursor-pointer px-3 py-3 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 transition">';
-        html += '<div class="flex items-start gap-2"><div class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-bold flex items-center justify-center flex-shrink-0">' + rank + '</div>';
-        html += '<div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-xs text-gray-300">' + dashFmtPrice(r.last_price) + '</span><span class="text-[11px] text-gray-400">Score <b class="text-emerald-400">' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
-        html += '<div class="mt-1">' + freshnessChipHtml(r) + '</div>';
-        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span><span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span><span>RR <b class="text-purple-300">' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '—') + '</b></span><span class="text-blue-300">' + escapeHtml(action) + '</span></div>';
-        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>EntryQ <b class="text-blue-300">' + escapeHtml(r.entry_quality_label || r.entry_status_label || '—') + '</b></span><span>PlanQ <b class="text-purple-300">' + escapeHtml(r.plan_quality_label || '—') + '</b></span><span>Invalidation <b class="text-amber-300">' + escapeHtml(r.invalidation_distance_label || '—') + '</b></span></div>';
-        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Breakout <b class="text-cyan-300">' + escapeHtml(r.breakout_confirmation_label || 'Watch') + '</b></span><span>Setup Age <b class="text-amber-300">' + escapeHtml(r.setup_freshness_label || 'Needs Revalidation') + '</b></span></div>';
-        if (r.entry_safety_note || r.invalidation_note || r.trading_plan_note) html += '<div class="mt-1 text-[10px] text-gray-500 truncate">' + escapeHtml(r.entry_safety_note || r.invalidation_note || r.trading_plan_note || '') + '</div>';
-        html += dashRiskLadderHtml(r);
-        html += '<div class="mt-2 dash-level-grid">' + dashLevelHtml('Entry 1', r.entry1) + dashLevelHtml('Entry 2', r.entry2) + dashLevelHtml('Stop Loss', r.stop_loss, 'danger') + dashLevelHtml('TP1', r.tp1, 'target') + dashLevelHtml('TP2', r.tp2, 'target') + '</div>';
+        var tickerJs = escapeHtml(dashJsString(r.ticker));
+        // Three zones, separated by a hairline instead of by an eleventh 4px gap:
+        // what this is, what the trade is, what to be careful about. Every field
+        // rendered before is still rendered; only grouping and order-between-zones
+        // change, so the trade is no longer the last thing on the card.
         var planWarn = getPlanWarningLine(r);
         var execLine = dashExecutionRealityLine(r);
         var realismLine = dashTpRealismLine(r);
-        if (execLine) html += '<div class="mt-1 text-[10px] text-emerald-200">' + escapeHtml(execLine) + '</div>';
-        if (realismLine) html += '<div class="mt-1 text-[10px] text-amber-300">TP Realism: ' + escapeHtml(realismLine) + '</div>';
-        if (planWarn) html += '<div class="mt-1 text-[10px] text-amber-300">' + escapeHtml(planWarn) + '</div>';
-        if (actionLine) html += '<div class="mt-1 text-[11px] text-blue-200 truncate">' + escapeHtml(actionLine) + '</div>';
-        html += '<p class="mt-1 text-[11px] text-gray-500 truncate">' + escapeHtml(reason) + '</p>';
+        var safetyNote = r.entry_safety_note || r.invalidation_note || r.trading_plan_note || '';
+
+        html += '<article role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')" class="dashboard-pick-card cursor-pointer focus:outline-none transition">';
+        html += '<div class="flex items-start gap-2"><div class="dash-rank">' + escapeHtml(rank) + '</div>';
+        html += '<div class="min-w-0 flex-1">';
+
+        // Zone 1 — identity and verdict.
+        html += '<div class="dash-zone">';
+        html += '<div class="dash-ident"><span class="dash-ident-ticker">' + escapeHtml(r.ticker || '-') + '</span>';
+        html += '<span class="dash-ident-tag">' + escapeHtml(r.category || '-') + '</span>';
+        html += '<span class="dash-ident-price">' + dashFmtPrice(r.last_price) + '</span>';
+        html += '<span class="dash-ident-score"><span>Score</span><b>' + (sc ? sc.toFixed(0) : '—') + '</b></span></div>';
+        html += '<div class="dash-verdict"><span>Grade <b style="color:' + getSignalQualityColor(grade) + '">' + escapeHtml(grade) + '</b></span>';
+        html += '<span>Risk <b style="color:' + getRiskColor(risk) + '">' + escapeHtml(risk) + '</b></span>';
+        html += '<span>RR <b>' + (isFinite(rr) && rr > 0 ? rr.toFixed(1) : '—') + '</b></span>';
+        html += '<span>Action <b>' + escapeHtml(action) + '</b></span></div>';
+        html += '<div class="mt-2">' + freshnessChipHtml(r) + '</div>';
+        html += '</div>';
+
+        // Zone 2 — the trade. Promoted above the metadata it used to sit under.
+        html += '<div class="dash-zone dash-trade">';
+        html += dashRiskLadderHtml(r);
+        html += '<div class="dash-level-grid">' + dashLevelHtml('Entry 1', r.entry1) + dashLevelHtml('Entry 2', r.entry2) + dashLevelHtml('Stop Loss', r.stop_loss, 'danger') + dashLevelHtml('TP1', r.tp1, 'target') + dashLevelHtml('TP2', r.tp2, 'target') + '</div>';
+        html += '</div>';
+
+        // Zone 3 — caveats and reference.
+        html += '<div class="dash-zone">';
+        html += '<div class="dash-meta"><span>Kualitas entry <b>' + escapeHtml(r.entry_quality_label || r.entry_status_label || '—') + '</b></span>';
+        html += '<span>Kualitas plan <b>' + escapeHtml(r.plan_quality_label || '—') + '</b></span>';
+        html += '<span>Jarak invalidasi <b>' + escapeHtml(r.invalidation_distance_label || '—') + '</b></span>';
+        html += '<span>Konfirmasi <b>' + escapeHtml(r.breakout_confirmation_label || 'Watch') + '</b></span>';
+        html += '<span>Umur setup <b>' + escapeHtml(r.setup_freshness_label || 'Needs Revalidation') + '</b></span></div>';
+        if (execLine) html += '<div class="dash-flag" data-tone="info">' + escapeHtml(execLine) + '</div>';
+        if (realismLine) html += '<div class="dash-flag" data-tone="warn">TP Realism: ' + escapeHtml(realismLine) + '</div>';
+        if (planWarn) html += '<div class="dash-flag" data-tone="warn">' + escapeHtml(planWarn) + '</div>';
+        if (safetyNote) html += '<div class="dash-flag">' + escapeHtml(safetyNote) + '</div>';
+        if (actionLine) html += '<div class="dash-flag">' + escapeHtml(actionLine) + '</div>';
+        html += '<p class="dash-reason">' + escapeHtml(reason) + '</p>';
         html += dashQualityChipsHtml(r.quality_chips);
+        html += '</div>';
+
         html += '</div></div></article>';
     });
     el.innerHTML = html + dashboardExcludedHtml(split.excluded);
@@ -9814,30 +10127,37 @@ function renderDashboardMonitor(picks, lastUpdatedAt, meta) {
         var r = normalizeDashboardPick(p);
         _dashboardPickData[r.ticker] = r;
         var hasDetailPayload = !!(p.raw_payload && Object.keys(p.raw_payload).length);
-        var tickerJs = dashJsString(r.ticker);
+        var tickerJs = escapeHtml(dashJsString(r.ticker));
         var cardAttrs = hasDetailPayload ? ' role="button" tabindex="0" onclick="openDashboardPickDetail(\'' + tickerJs + '\')" onkeydown="dashOpenKey(event, \'' + tickerJs + '\')"' : '';
-        var cardClass = 'dashboard-pick-card px-3 py-3 transition';
-        if (hasDetailPayload) cardClass += ' cursor-pointer hover:border-emerald-500/30 hover:bg-emerald-500/5 focus:outline-none focus:ring-1 focus:ring-emerald-500/40';
+        var cardClass = 'dashboard-pick-card transition';
+        if (hasDetailPayload) cardClass += ' cursor-pointer focus:outline-none';
         var statusText = p.status_label || (p.status || 'WAITING').replace(/_/g, ' ');
         var basisPct = p.active_entry_price != null ? Number(p.return_from_entry_pct) : Number(p.distance_to_entry1_pct);
         var basisPctTxt = dashSignedPct(basisPct);
         var basisClass = basisPct >= 0 ? 'text-emerald-300' : 'text-red-300';
         var monitorParts = [];
         if (p.current_price != null && isFinite(Number(p.current_price))) monitorParts.push('Last <b class="text-gray-200">' + dashFmtPrice(p.current_price) + '</b>');
-        if (p.monitor_final_label) monitorParts.push('<span class="text-blue-300">' + escapeHtml(p.monitor_final_label) + '</span>');
+        if (p.monitor_final_label) monitorParts.push('<span>' + escapeHtml(p.monitor_final_label) + '</span>');
         if (p.active_entry_price != null) monitorParts.push('<span class="' + basisClass + '">Dari ' + escapeHtml(p.active_entry_label || 'Entry') + ': ' + escapeHtml(basisPctTxt || '—') + '</span>');
         else { monitorParts.push('<span class="text-gray-400">Belum kena entry</span>'); if (basisPctTxt) monitorParts.push('<span class="' + basisClass + '">Jarak ke E1: ' + escapeHtml(basisPctTxt) + '</span>'); }
         var openTxt = (p.open_price != null && isFinite(Number(p.open_price))) ? 'Open ' + dashFmtPrice(p.open_price) : '';
-        html += '<article' + cardAttrs + ' class="' + cardClass + '"><div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><span class="text-sm font-bold text-white">' + escapeHtml(r.ticker || '-') + '</span><span class="text-[10px] px-1.5 py-0.5 rounded bg-dark-600/60 text-gray-400">' + escapeHtml(r.category || '-') + '</span><span class="text-[11px] text-blue-300">' + escapeHtml(statusText) + '</span>' + freshnessChipHtml(r) + '</div>';
-        if (monitorParts.length) html += '<div class="mt-1 text-[11px] text-gray-400">' + monitorParts.join(' · ') + '</div>';
-        html += '<div class="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-400"><span>Breakout <b class="text-cyan-300">' + escapeHtml(r.breakout_confirmation_label || 'Watch') + '</b></span><span>Setup Age <b class="text-amber-300">' + escapeHtml(r.setup_freshness_label || 'Needs Revalidation') + '</b></span></div>';
+        // Same two-zone treatment as the Top 5 card, so the two lists on the
+        // dashboard read as one component family. Fields and order unchanged.
+        html += '<article' + cardAttrs + ' class="' + cardClass + '"><div class="flex items-start justify-between gap-2"><div class="min-w-0 flex-1">';
+        html += '<div class="dash-zone"><div class="dash-ident"><span class="dash-ident-ticker">' + escapeHtml(r.ticker || '-') + '</span>';
+        html += '<span class="dash-ident-tag">' + escapeHtml(r.category || '-') + '</span>';
+        html += '<span class="dash-ident-tag">' + escapeHtml(statusText) + '</span>' + freshnessChipHtml(r) + '</div>';
+        if (monitorParts.length) html += '<div class="dash-verdict"><span>' + monitorParts.join('</span><span>') + '</span></div>';
+        html += '</div>';
+        html += '<div class="dash-zone dash-trade"><div class="dash-level-grid">' + dashLevelHtml('Entry 1', p.entry1) + dashLevelHtml('Entry 2', p.entry2) + dashLevelHtml('Stop Loss', p.sl, 'danger') + dashLevelHtml('TP1', p.tp1, 'target') + dashLevelHtml('TP2', p.tp2, 'target') + '</div></div>';
+        html += '<div class="dash-zone">';
+        html += '<div class="dash-meta"><span>Konfirmasi <b>' + escapeHtml(r.breakout_confirmation_label || 'Watch') + '</b></span><span>Umur setup <b>' + escapeHtml(r.setup_freshness_label || 'Needs Revalidation') + '</b></span></div>';
         var execLine = dashExecutionRealityLine(r);
         var realismLine = dashTpRealismLine(r);
-        if (execLine) html += '<div class="mt-0.5 text-[10px] text-emerald-200">' + escapeHtml(execLine) + '</div>';
-        if (realismLine) html += '<div class="mt-0.5 text-[10px] text-amber-300">TP Realism: ' + escapeHtml(realismLine) + '</div>';
-        if (openTxt) html += '<div class="mt-0.5 text-[10px] text-gray-600">' + escapeHtml(openTxt) + '</div>';
-        html += '<div class="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px] text-gray-400"><span>Entry <b class="text-blue-300">' + dashFmtPrice(p.entry1) + '</b></span><span>E2 <b class="text-blue-300">' + dashFmtPrice(p.entry2) + '</b></span><span>SL <b class="text-red-300">' + dashFmtPrice(p.sl) + '</b></span><span>TP1/TP2 <b class="text-emerald-300">' + dashFmtPrice(p.tp1) + '/' + dashFmtPrice(p.tp2) + '</b></span></div>';
-        html += '<div class="mt-1 text-[10px] text-gray-500">' + escapeHtml(p.status_note || p.progress || '-') + ' · ' + escapeHtml(p.progress || '-') + ' · ' + dashWibTime(p.last_updated_at) + ' WIB</div></div></div></article>';
+        if (execLine) html += '<div class="dash-flag" data-tone="info">' + escapeHtml(execLine) + '</div>';
+        if (realismLine) html += '<div class="dash-flag" data-tone="warn">TP Realism: ' + escapeHtml(realismLine) + '</div>';
+        html += '<p class="dash-reason">' + escapeHtml(p.status_note || p.progress || '-') + ' · ' + escapeHtml(p.progress || '-') + (openTxt ? ' · ' + escapeHtml(openTxt) : '') + ' · ' + dashWibTime(p.last_updated_at) + ' WIB</p>';
+        html += '</div></div></div></article>';
     });
     el.innerHTML = html + dashboardExcludedHtml(split.excluded);
 }
@@ -9948,8 +10268,8 @@ async function loadDashboardTop5Monitor(silent, opts) {
     // Always clear placeholders to prevent stuck static HTML state
     var _topEl = document.getElementById('dashboardTop5List');
     var _monEl = document.getElementById('dashboardMonitorList');
-    if (_topEl && !silent) _topEl.innerHTML = '<div class="py-4 text-center text-xs text-gray-500">Memuat Top 5...</div>';
-    if (_monEl && !silent) _monEl.innerHTML = '<div class="py-3 text-center text-xs text-gray-500">Memuat monitor...</div>';
+    if (_topEl && !silent) _topEl.innerHTML = dashboardSkeletonHtml(3, 'Memuat Top 5...');
+    if (_monEl && !silent) _monEl.innerHTML = dashboardSkeletonHtml(2, 'Memuat monitor...');
     // Neutral fallback before the 15s fetch timeout: keep loading state instead of showing empty results early.
     var _fallbackTimer = setTimeout(function() {
         var topCheck = document.getElementById('dashboardTop5List');
