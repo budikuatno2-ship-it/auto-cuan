@@ -3,18 +3,28 @@
 --
 -- Purpose:
 --   Replaces the maintenance-page username/password admin entry with a
---   Telegram-approved, browser-bound, one-time challenge. It reuses the
---   existing `budi` admin account and its existing verified Telegram binding
+--   Telegram-INITIATED, browser-bound, one-time challenge. Creating a
+--   challenge from the public maintenance page (create_admin_access_request)
+--   is always dormant and NEVER sends a Telegram message — it only writes a
+--   row and returns an opaque requestRef for a deep link
+--   (t.me/<bot>?start=<requestRef>). A message is sent to the admin's
+--   Telegram ONLY when that admin's own already-verified Telegram account
+--   opens the deep link and activate_admin_access_request confirms the
+--   sender's telegram_user_id against the existing verified binding
 --   (public.app_user_telegram_verifications, set up by the auth-recovery-v1
---   enrollment flow) as the identity check. Authorization is still only ever
---   granted by the existing signed HttpOnly ac_sess cookie issued server-side
---   after this challenge is consumed — this table never grants access itself.
+--   enrollment flow) — the ONLY identity check used anywhere in this flow.
+--   Authorization is still only ever granted by the existing signed HttpOnly
+--   ac_sess cookie issued server-side after this challenge is consumed —
+--   this table never grants access itself.
 --
 -- Security:
 --   - New table only. No existing table, column, or constraint is altered.
 --   - Every RPC is SECURITY DEFINER, fixed-search-path, and service-role only.
 --   - No raw challenge/browser-binding value is stored, only its SHA-256 hash.
 --   - At most one active (pending/approved) request per admin user at a time.
+--   - Activation (and therefore the one Telegram send it may cause) is
+--     claimed under a row lock so two near-simultaneous /start updates for
+--     the same requestRef can send at most one approval message.
 -- =========================================================================
 
 CREATE TABLE IF NOT EXISTS public.admin_access_requests (
@@ -27,6 +37,7 @@ CREATE TABLE IF NOT EXISTS public.admin_access_requests (
   telegram_user_id      bigint,
   telegram_chat_id      bigint,
   telegram_message_id   bigint,
+  activation_claimed_at timestamptz,
   request_context       text,
   requester_ip_hash     text,
   created_at            timestamptz NOT NULL DEFAULT now(),
@@ -54,13 +65,18 @@ CREATE INDEX IF NOT EXISTS idx_admin_access_ip_window
 
 ALTER TABLE public.admin_access_requests ENABLE ROW LEVEL SECURITY;
 
--- Create a new admin-access challenge for the given (always 'budi') account.
--- Fails closed with a distinct result_code when: the account is not the
--- eligible admin, it has no verified Telegram binding, the caller's IP has
--- made too many requests recently, or a challenge is already live for this
--- admin.
+-- Create a new DORMANT admin-access challenge for the given (always 'budi')
+-- account. This function NEVER sends or triggers a Telegram message — it
+-- only ever writes a row. Fails closed with a distinct result_code when:
+-- the account is not the eligible admin, it has no verified Telegram
+-- binding, the caller's IP has made too many requests recently (database
+-- hygiene only, see below), or a challenge is already live for this admin.
 --
--- Layered anti-abuse (public, unauthenticated endpoint by design):
+-- Layered anti-abuse (public, unauthenticated endpoint by design). Neither
+-- layer exists to bound Telegram traffic — creation never causes Telegram
+-- traffic at all — they exist to keep this publicly-writable table from
+-- growing unbounded and to stop an anonymous caller from griefing a
+-- legitimate in-flight admin approval:
 --   1. per-IP window: at most MAX_PER_IP requests per IP-hash per 5 minutes,
 --      checked BEFORE anything else so a rate-limited caller never touches
 --      an existing live row.
@@ -71,9 +87,6 @@ ALTER TABLE public.admin_access_requests ENABLE ROW LEVEL SECURITY;
 --      admin's own browser keeps polling its own request_ref regardless;
 --      anyone else (this endpoint has no caller identity) is simply told to
 --      wait, bounded by the ~2 minute TTL — never a permanent lockout.
--- Together these cap Telegram notification volume to roughly one message
--- per live-challenge lifetime per admin, well below the previous ~360/hour
--- worst case from the flat 10-second cooldown alone.
 CREATE OR REPLACE FUNCTION public.create_admin_access_request(
   p_username text,
   p_request_ref text,
@@ -171,15 +184,29 @@ BEGIN
 END
 $$;
 
--- Telegram-initiated activation. Called when the admin's own Telegram deep
--- links into the bot with /start <requestRef>. This is the ONLY path that
--- may result in a Telegram message being sent for this challenge — the
+-- Telegram-initiated activation CLAIM. Called when the admin's own Telegram
+-- deep links into the bot with /start <requestRef>. This is the ONLY path
+-- that may result in a Telegram message being sent for this challenge — the
 -- public website (create_admin_access_request) never sends one. Only
 -- succeeds when p_telegram_user_id is already the challenge admin's
--- verified Telegram binding; every other case leaves the row untouched so
--- the caller (lib/admin-access.js) sends nothing to the admin and only a
--- generic reply to whoever actually sent /start. Idempotent: re-running
--- /start with the same ref after activation just re-confirms 'ok'.
+-- verified Telegram binding.
+--
+-- True idempotency, not just replay-safety: a claim is a distinct state from
+-- "sent" (telegram_message_id IS NOT NULL) so a second /start — the same
+-- Telegram update replayed, a brand-new update re-typing the same ref, or
+-- two updates racing — can be told to send NOTHING rather than resending the
+-- approval message:
+--   telegram_message_id already set  -> 'already_activated' (send nothing)
+--   activation_claimed_at is recent  -> 'claim_in_progress'  (send nothing;
+--                                        another concurrent /start is
+--                                        already attempting delivery)
+--   otherwise                        -> 'claimed' (caller must now attempt
+--                                        exactly one bot.sendMessage)
+-- The claim_in_progress window (20s) is comfortably above the bot client's
+-- own HTTP timeout (5s, telegram-verify-bot.js), so a genuinely failed send
+-- is never blocked from retry for more than ~20s even if
+-- release_admin_access_activation is never reached (e.g. the process died
+-- mid-send) — never a permanent lock, bounded well inside the ~2 minute TTL.
 CREATE OR REPLACE FUNCTION public.activate_admin_access_request(
   p_request_ref text,
   p_telegram_user_id bigint,
@@ -228,14 +255,53 @@ BEGIN
     RETURN;
   END IF;
 
+  IF v_request.telegram_message_id IS NOT NULL THEN
+    RETURN QUERY SELECT 'already_activated'::text, NULL::text, v_request.expires_at;
+    RETURN;
+  END IF;
+
+  IF v_request.activation_claimed_at IS NOT NULL AND v_request.activation_claimed_at > now() - interval '20 seconds' THEN
+    RETURN QUERY SELECT 'claim_in_progress'::text, NULL::text, v_request.expires_at;
+    RETURN;
+  END IF;
+
   UPDATE public.admin_access_requests
      SET telegram_user_id = p_telegram_user_id,
          telegram_chat_id = p_telegram_chat_id,
+         activation_claimed_at = now(),
          updated_at = now()
    WHERE id = v_request.id;
 
-  RETURN QUERY SELECT 'ok'::text, v_request.request_context, v_request.expires_at;
+  RETURN QUERY SELECT 'claimed'::text, v_request.request_context, v_request.expires_at;
 END
+$$;
+
+-- Releases a failed activation claim so the SAME verified admin identity can
+-- retry within the original TTL, without waiting out the claim_in_progress
+-- window. Requires the caller to be the exact identity that made the claim
+-- (defense in depth — this RPC is service-role-only and only ever invoked
+-- internally right after that identity's own failed bot.sendMessage, but an
+-- anonymous/public caller could never reach it either way) and refuses once
+-- a message has actually been sent (telegram_message_id IS NOT NULL), so a
+-- stale/late release can never undo a successful send.
+CREATE OR REPLACE FUNCTION public.release_admin_access_activation(
+  p_request_ref text,
+  p_telegram_user_id bigint
+)
+RETURNS TABLE (result_code text)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+  WITH released AS (
+    UPDATE public.admin_access_requests
+       SET activation_claimed_at = NULL, updated_at = now()
+     WHERE request_ref = p_request_ref
+       AND telegram_user_id = p_telegram_user_id
+       AND telegram_message_id IS NULL
+    RETURNING 1
+  )
+  SELECT CASE WHEN EXISTS (SELECT 1 FROM released) THEN 'ok' ELSE 'not_found' END;
 $$;
 
 -- Records the Telegram message identity right after it is sent, so it can
@@ -478,6 +544,7 @@ REVOKE ALL ON public.admin_access_requests FROM anon, authenticated;
 
 REVOKE ALL ON FUNCTION public.create_admin_access_request(text,text,text,timestamptz,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.activate_admin_access_request(text,bigint,bigint) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.release_admin_access_activation(text,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.record_admin_access_message(text,bigint,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.approve_admin_access_request(text,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.deny_admin_access_request(text,bigint) FROM PUBLIC, anon, authenticated;
@@ -485,6 +552,7 @@ REVOKE ALL ON FUNCTION public.consume_admin_access_request(text,text) FROM PUBLI
 
 GRANT EXECUTE ON FUNCTION public.create_admin_access_request(text,text,text,timestamptz,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.activate_admin_access_request(text,bigint,bigint) TO service_role;
+GRANT EXECUTE ON FUNCTION public.release_admin_access_activation(text,bigint) TO service_role;
 GRANT EXECUTE ON FUNCTION public.record_admin_access_message(text,bigint,bigint) TO service_role;
 GRANT EXECUTE ON FUNCTION public.approve_admin_access_request(text,bigint) TO service_role;
 GRANT EXECUTE ON FUNCTION public.deny_admin_access_request(text,bigint) TO service_role;
