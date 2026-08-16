@@ -171,6 +171,73 @@ BEGIN
 END
 $$;
 
+-- Telegram-initiated activation. Called when the admin's own Telegram deep
+-- links into the bot with /start <requestRef>. This is the ONLY path that
+-- may result in a Telegram message being sent for this challenge — the
+-- public website (create_admin_access_request) never sends one. Only
+-- succeeds when p_telegram_user_id is already the challenge admin's
+-- verified Telegram binding; every other case leaves the row untouched so
+-- the caller (lib/admin-access.js) sends nothing to the admin and only a
+-- generic reply to whoever actually sent /start. Idempotent: re-running
+-- /start with the same ref after activation just re-confirms 'ok'.
+CREATE OR REPLACE FUNCTION public.activate_admin_access_request(
+  p_request_ref text,
+  p_telegram_user_id bigint,
+  p_telegram_chat_id bigint
+)
+RETURNS TABLE (
+  result_code text,
+  request_context text,
+  expires_at timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_request public.admin_access_requests%ROWTYPE;
+BEGIN
+  SELECT * INTO v_request
+    FROM public.admin_access_requests
+   WHERE request_ref = p_request_ref
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT 'not_found'::text, NULL::text, NULL::timestamptz;
+    RETURN;
+  END IF;
+
+  IF v_request.expires_at <= now() AND v_request.state IN ('pending','approved') THEN
+    UPDATE public.admin_access_requests SET state = 'expired', updated_at = now() WHERE id = v_request.id;
+    RETURN QUERY SELECT 'expired'::text, NULL::text, v_request.expires_at;
+    RETURN;
+  END IF;
+
+  IF v_request.state <> 'pending' THEN
+    RETURN QUERY SELECT ('already_' || v_request.state)::text, NULL::text, v_request.expires_at;
+    RETURN;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.app_user_telegram_verifications v
+     WHERE v.user_id = v_request.user_id
+       AND v.telegram_user_id = p_telegram_user_id
+       AND v.telegram_verified_at IS NOT NULL
+  ) THEN
+    RETURN QUERY SELECT 'identity_mismatch'::text, NULL::text, NULL::timestamptz;
+    RETURN;
+  END IF;
+
+  UPDATE public.admin_access_requests
+     SET telegram_user_id = p_telegram_user_id,
+         telegram_chat_id = p_telegram_chat_id,
+         updated_at = now()
+   WHERE id = v_request.id;
+
+  RETURN QUERY SELECT 'ok'::text, v_request.request_context, v_request.expires_at;
+END
+$$;
+
 -- Records the Telegram message identity right after it is sent, so it can
 -- later be edited/deleted without a second round trip through the browser.
 CREATE OR REPLACE FUNCTION public.record_admin_access_message(
@@ -410,12 +477,14 @@ $$;
 REVOKE ALL ON public.admin_access_requests FROM anon, authenticated;
 
 REVOKE ALL ON FUNCTION public.create_admin_access_request(text,text,text,timestamptz,text,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.activate_admin_access_request(text,bigint,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.record_admin_access_message(text,bigint,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.approve_admin_access_request(text,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.deny_admin_access_request(text,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.consume_admin_access_request(text,text) FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.create_admin_access_request(text,text,text,timestamptz,text,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.activate_admin_access_request(text,bigint,bigint) TO service_role;
 GRANT EXECUTE ON FUNCTION public.record_admin_access_message(text,bigint,bigint) TO service_role;
 GRANT EXECUTE ON FUNCTION public.approve_admin_access_request(text,bigint) TO service_role;
 GRANT EXECUTE ON FUNCTION public.deny_admin_access_request(text,bigint) TO service_role;

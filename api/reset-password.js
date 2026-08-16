@@ -375,22 +375,34 @@ async function completePasswordReset(req, res, db) {
   });
 }
 
+// Only trust Vercel's own forwarded-for header for this feature: it is
+// overwritten by the platform edge on every hop, so a client cannot choose
+// its own value. Any other header in getClientIp()'s wider fallback chain
+// (x-real-ip, a generic x-forwarded-for) is not demonstrably trustworthy
+// off Vercel, and this signal is rate-limiting/DB-hygiene input only — never
+// authorization — so when it is not available we simply omit the per-IP
+// layer rather than rate-limit against a spoofable value.
+function trustedRateLimitIp(req) {
+  const header = req && req.headers && req.headers['x-vercel-forwarded-for'];
+  const first = String(header || '').split(',')[0];
+  return securityGuard.normalizeIp(first);
+}
+
 // Public entry from the maintenance screen. Anyone can call this (there is no
-// account to authenticate yet) — the real gate is the Telegram approval from
-// the admin's own already-verified Telegram account. This function only ever
-// creates a short-lived, one-time, browser-bound challenge; it never grants
-// access by itself.
+// account to authenticate yet). It only ever creates a DORMANT, browser-bound
+// challenge and returns a Telegram deep link — it never sends a Telegram
+// message itself, so an anonymous caller cannot cause a notification. A
+// message is only ever sent once the admin's own verified Telegram account
+// opens that link (see lib/admin-access.js#activateFromDeepLink, driven by
+// the webhook). This function never grants access by itself.
 async function adminAccessRequest(req, res, db) {
   const context = String(req.body && req.body.context || '').slice(0, 200);
-  // Only used as a rate-limiting key (hashed before it ever reaches SQL, see
-  // lib/admin-access.js#hashIp) — getClientIp() already applies this
-  // deployment's trusted-proxy convention (Vercel's own forwarded-for header
-  // first), so an attacker cannot pick their own bucket via a spoofed
-  // X-Forwarded-For.
-  const ip = securityGuard.getClientIp(req);
+  // Rate-limiting/DB-hygiene key only, hashed before it ever reaches SQL
+  // (lib/admin-access.js#hashIp). See trustedRateLimitIp() above.
+  const ip = trustedRateLimitIp(req);
   let result;
   try {
-    result = await adminAccess.requestAccess(db, createVerifyBot(), { context: context, ip: ip });
+    result = await adminAccess.requestAccess(db, { context: context, ip: ip });
   } catch (_) {
     return res.status(200).json({ success: false, error: 'Permintaan akses sementara tidak tersedia.' });
   }
@@ -401,15 +413,13 @@ async function adminAccessRequest(req, res, db) {
     }
     return res.status(200).json({ success: false, error: 'Permintaan akses sementara tidak tersedia.' });
   }
-  if (!result.delivered) {
-    return res.status(200).json({ success: false, error: 'Permintaan akses gagal dikirim. Coba lagi.' });
-  }
 
   setCookies(res, [buildChalCookie(result.browserBinding)]);
   return res.status(200).json({
     success: true,
     requestRef: result.requestRef,
-    expiresAt: result.expiresAt
+    expiresAt: result.expiresAt,
+    deepLink: result.deepLink
   });
 }
 

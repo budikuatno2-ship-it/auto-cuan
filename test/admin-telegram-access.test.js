@@ -1,18 +1,33 @@
 'use strict';
 
 // ===========================================================================
-// Regression coverage for the Telegram-approved maintenance admin entry.
+// Regression coverage for the Telegram-INITIATED maintenance admin entry.
 //
-// Covers, per the migration plan:
-//   3. unapproved challenge cannot create an admin session
-//   4. approved challenge from the wrong browser cannot be consumed
-//   5. wrong Telegram user cannot approve
-//   6. expired challenge fails
-//   7. rejected challenge fails
-//   8. consumed challenge cannot replay
-//   9. simultaneous/double consumption yields at most one session
-//   10. repeated Telegram callback is harmless (idempotent)
-//   11. Telegram message deletion failure does not restore challenge validity
+// Architecture: creating a challenge from the public maintenance page is
+// dormant — it never sends a Telegram message. A message is only ever sent
+// once the admin's own verified Telegram account opens the deep link
+// (t.me/<bot>?start=<requestRef>) and the resulting /start is verified
+// server-side against their existing telegram binding (activation). Only
+// after activation can the existing approve/deny buttons and browser
+// consume/session-issuance flow proceed.
+//
+// Covers:
+//   1.  anonymous request creation sends ZERO Telegram messages
+//   2.  anonymous requestRef knowledge cannot approve
+//   3.  wrong Telegram user cannot activate a request
+//   4.  only the verified bound Telegram admin can activate/approve
+//   5.  wrong browser cannot consume
+//   6.  expired request cannot activate or consume
+//   7.  consumed request cannot replay
+//   8.  simultaneous consume yields one session maximum
+//   9.  requestRef in the Telegram deep link contains no privileged secret
+//   10. Telegram deletion failure does not restore validity
+//   11. repeated deep-link/start processing is harmless/idempotent
+//   12. anonymous challenge creation cannot grow persistent live rows without bound
+//   13. maintenance public users remain fail-closed (delegated to maintenance-gate.test.js)
+//   14. logout re-locks maintenance (delegated to maintenance-gate.test.js)
+//   15. existing password server-side break-glass remains functional
+//   16. no Telegram message is sent before a verified Telegram admin initiates the bot flow
 //
 // LOCAL / STATIC ONLY. No network, no real Supabase, no real Telegram API —
 // db.rpc and the bot client are stubbed.
@@ -67,12 +82,13 @@ function withEnv(fn) {
 // A minimal db.rpc stub that models the SQL RPCs' state machine so tests can
 // exercise the actual JS control flow in lib/admin-access.js and
 // api/reset-password.js against something that behaves like the real thing.
+// Only one admin (one live row) exists, matching production (only 'budi').
 function createFakeAdminAccessDb(options) {
   const opts = options || {};
   const calls = [];
   const claimedUpdateIds = new Set();
   const ipRequestTimestamps = new Map(); // ip_hash -> [Date.now(), ...] within the window
-  let row = null; // { state, browser_binding_hash, telegram_user_id, telegram_chat_id, telegram_message_id, expires_at }
+  let row = null; // { state, browser_binding_hash, telegram_user_id, telegram_chat_id, telegram_message_id, expires_at, request_context }
 
   function rowIsLive() {
     return row && (row.state === 'pending' || row.state === 'approved') && new Date(row.expires_at).getTime() > Date.now();
@@ -113,14 +129,32 @@ function createFakeAdminAccessDb(options) {
           state: 'pending',
           browser_binding_hash: args.p_browser_binding_hash,
           telegram_user_id: null,
-          telegram_chat_id: 555,
+          telegram_chat_id: null,
           telegram_message_id: null,
-          expires_at: args.p_expires_at
+          expires_at: args.p_expires_at,
+          request_context: args.p_context || ''
         };
         return Promise.resolve({
-          data: [{ result_code: 'ok', request_id: 'req-1', user_id: 'user-budi', telegram_user_id: 999, telegram_chat_id: 555, expires_at: args.p_expires_at }],
+          data: [{ result_code: 'ok', request_id: 'req-1', user_id: 'user-budi', telegram_user_id: 999, telegram_chat_id: null, expires_at: args.p_expires_at }],
           error: null
         });
+      }
+
+      if (name === 'activate_admin_access_request') {
+        if (!row) return Promise.resolve({ data: [{ result_code: 'not_found' }], error: null });
+        if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) {
+          if (row.state === 'pending' || row.state === 'approved') row.state = 'expired';
+          return Promise.resolve({ data: [{ result_code: 'expired', request_context: null, expires_at: row.expires_at }], error: null });
+        }
+        if (row.state !== 'pending') {
+          return Promise.resolve({ data: [{ result_code: 'already_' + row.state, request_context: null, expires_at: row.expires_at }], error: null });
+        }
+        if (args.p_telegram_user_id !== opts.adminTelegramUserId) {
+          return Promise.resolve({ data: [{ result_code: 'identity_mismatch', request_context: null, expires_at: null }], error: null });
+        }
+        row.telegram_user_id = args.p_telegram_user_id;
+        row.telegram_chat_id = args.p_telegram_chat_id;
+        return Promise.resolve({ data: [{ result_code: 'ok', request_context: row.request_context, expires_at: row.expires_at }], error: null });
       }
 
       if (name === 'record_admin_access_message') {
@@ -246,7 +280,35 @@ function sessCookieFrom(res) {
   return sess || null;
 }
 
-test('unapproved challenge cannot create an admin session (still pending)', async function () {
+function startUpdate(updateId, requestRef, telegramUserId, chatId) {
+  return {
+    update_id: updateId,
+    message: {
+      message_id: 1,
+      chat: { id: chatId, type: 'private' },
+      from: { id: telegramUserId },
+      text: '/start ' + requestRef
+    }
+  };
+}
+
+function approveUpdate(updateId, requestRef, telegramUserId, chatId, messageId) {
+  const adminAccess = require('../lib/admin-access');
+  return {
+    update_id: updateId,
+    callback_query: {
+      id: 'cb-' + updateId,
+      data: adminAccess.CALLBACK_APPROVE_PREFIX + requestRef,
+      from: { id: telegramUserId },
+      message: { message_id: messageId || 4242, chat: { id: chatId } }
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 1 / 16. Anonymous request creation never sends a Telegram message.
+// ---------------------------------------------------------------------------
+test('anonymous request creation sends ZERO Telegram messages', async function () {
   await withEnv(async function () {
     const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
     const bot = makeBot();
@@ -254,19 +316,18 @@ test('unapproved challenge cannot create an admin session (still pending)', asyn
 
     const reqRes = makeRes();
     await handler({ method: 'POST', headers: sameOriginHeaders(), body: { action: 'admin-access-request', context: 'ua' } }, reqRes);
-    assert.equal(reqRes.body.success, true);
-    const chal = chalCookieFrom(reqRes);
-    assert.ok(chal);
 
-    const pollRes = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders('ac_chal=' + chal), body: { action: 'admin-access-poll', requestRef: reqRes.body.requestRef } }, pollRes);
-    assert.equal(pollRes.body.state, 'pending');
-    assert.equal(sessCookieFrom(pollRes), null, 'no ac_sess may be issued before approval');
+    assert.equal(reqRes.body.success, true);
+    assert.ok(reqRes.body.deepLink, 'a deep link must be returned so the admin can self-initiate activation');
+    assert.equal(bot.sentMessages.length, 0, 'creating a challenge must never notify Telegram');
+    assert.equal(db.__row().state, 'pending');
+    assert.equal(db.__row().telegram_chat_id, null, 'no chat is bound until the admin activates it');
   });
 });
 
-test('approved challenge from the wrong browser cannot be consumed', async function () {
+test('no Telegram message is sent before a verified Telegram admin initiates the bot flow', async function () {
   await withEnv(async function () {
+    const adminAccess = require('../lib/admin-access');
     const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
     const bot = makeBot();
     const handler = requireApiWithFakes(db, bot);
@@ -275,10 +336,99 @@ test('approved challenge from the wrong browser cannot be consumed', async funct
     await handler({ method: 'POST', headers: sameOriginHeaders(), body: { action: 'admin-access-request' } }, reqRes);
     const requestRef = reqRes.body.requestRef;
 
-    // Approve out-of-band (simulating the Telegram callback).
+    // A random Telegram user (not the bound admin) opens the same deep link.
+    const result = await adminAccess.handleAdminAccessUpdate(startUpdate(1, requestRef, 424242, 5000), { db: db, bot: bot });
+
+    assert.equal(result.outcome, 'admin_access_activate_identity_mismatch');
+    assert.equal(bot.sentMessages.length, 1, 'a generic reply may go to the SENDER only');
+    assert.equal(bot.sentMessages[0].chatId, 5000, 'the reply must go to whoever actually sent /start, never to the admin');
+    assert.equal(db.__row().state, 'pending');
+    assert.equal(db.__row().telegram_chat_id, null, 'the admin is never contacted by an unverified /start');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3 / 4. Activation identity gate.
+// ---------------------------------------------------------------------------
+test('wrong Telegram user cannot activate a request', async function () {
+  await withEnv(async function () {
+    const adminAccess = require('../lib/admin-access');
+    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
+    const bot = makeBot();
+
+    const requestRef = 'wrong-activator-test-request-reference';
+    await db.rpc('create_admin_access_request', {
+      p_username: 'budi', p_request_ref: requestRef, p_browser_binding_hash: 'h', p_expires_at: new Date(Date.now() + 120000).toISOString(), p_context: 'ctx'
+    });
+
+    const result = await adminAccess.handleAdminAccessUpdate(startUpdate(2, requestRef, 111, 5001), { db: db, bot: bot });
+
+    assert.equal(result.outcome, 'admin_access_activate_identity_mismatch');
+    assert.equal(db.__row().telegram_chat_id, null);
+  });
+});
+
+test('only the verified bound Telegram admin can activate a request', async function () {
+  await withEnv(async function () {
+    const adminAccess = require('../lib/admin-access');
+    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
+    const bot = makeBot();
+
+    const requestRef = 'correct-activator-test-request-reference';
+    await db.rpc('create_admin_access_request', {
+      p_username: 'budi', p_request_ref: requestRef, p_browser_binding_hash: 'h', p_expires_at: new Date(Date.now() + 120000).toISOString(), p_context: 'Windows · Chrome'
+    });
+
+    const result = await adminAccess.handleAdminAccessUpdate(startUpdate(3, requestRef, 999, 5002), { db: db, bot: bot });
+
+    assert.equal(result.outcome, 'admin_access_activated');
+    assert.equal(bot.sentMessages.length, 1);
+    assert.equal(bot.sentMessages[0].chatId, 5002);
+    assert.match(bot.sentMessages[0].text, /Izinkan Akses/);
+    assert.match(bot.sentMessages[0].options.reply_markup.inline_keyboard[0][0].callback_data, new RegExp('^' + adminAccess.CALLBACK_APPROVE_PREFIX));
+    assert.equal(db.__row().telegram_chat_id, 5002);
+    assert.equal(db.__row().state, 'pending', 'activation alone must not approve — buttons still required');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. Anonymous requestRef knowledge cannot approve.
+// ---------------------------------------------------------------------------
+test('anonymous requestRef knowledge cannot approve without the bound Telegram identity', async function () {
+  await withEnv(async function () {
+    const adminAccess = require('../lib/admin-access');
+    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
+    const bot = makeBot();
+
+    const requestRef = 'anon-approve-attempt-test-request-ref';
+    await db.rpc('create_admin_access_request', {
+      p_username: 'budi', p_request_ref: requestRef, p_browser_binding_hash: 'h', p_expires_at: new Date(Date.now() + 120000).toISOString(), p_context: ''
+    });
+
+    // Attacker knows the requestRef (e.g. it leaked, or they created the
+    // challenge themselves) and presses approve directly without ever being
+    // the identity that activated it.
+    const result = await adminAccess.handleAdminAccessUpdate(approveUpdate(10, requestRef, 555, 6000), { db: db, bot: bot });
+
+    assert.equal(result.outcome, 'admin_access_identity_mismatch');
+    assert.equal(db.__row().state, 'pending');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Wrong browser cannot consume.
+// ---------------------------------------------------------------------------
+test('wrong browser cannot consume an approved request', async function () {
+  await withEnv(async function () {
+    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
+    const bot = makeBot();
+    const handler = requireApiWithFakes(db, bot);
+
+    const reqRes = makeRes();
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { action: 'admin-access-request' } }, reqRes);
+    const requestRef = reqRes.body.requestRef;
     await db.rpc('approve_admin_access_request', { p_request_ref: requestRef, p_telegram_user_id: 999 });
 
-    // Poll from a DIFFERENT browser (no matching ac_chal cookie at all).
     const pollRes = makeRes();
     await handler({ method: 'POST', headers: sameOriginHeaders('ac_chal=totally-different-binding-value'), body: { action: 'admin-access-poll', requestRef: requestRef } }, pollRes);
 
@@ -287,59 +437,12 @@ test('approved challenge from the wrong browser cannot be consumed', async funct
   });
 });
 
-test('wrong Telegram user cannot approve', async function () {
+// ---------------------------------------------------------------------------
+// 6. Expired request cannot activate or consume.
+// ---------------------------------------------------------------------------
+test('expired request cannot activate or consume', async function () {
   await withEnv(async function () {
     const adminAccess = require('../lib/admin-access');
-    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
-    const bot = makeBot();
-
-    const requestRef = 'wrong-user-test-request-reference-ref';
-    const created = await db.rpc('create_admin_access_request', {
-      p_username: 'budi', p_request_ref: requestRef, p_browser_binding_hash: 'h', p_expires_at: new Date(Date.now() + 120000).toISOString(), p_context: ''
-    });
-    void created;
-
-    const result = await adminAccess.handleAdminAccessUpdate({
-      update_id: 1,
-      callback_query: {
-        id: 'cb1',
-        data: adminAccess.CALLBACK_APPROVE_PREFIX + requestRef,
-        from: { id: 111 }, // NOT the configured admin telegram id (999)
-        message: { message_id: 4242, chat: { id: 555 } }
-      }
-    }, { db: db, bot: bot });
-
-    assert.equal(result.handled, true);
-    assert.equal(result.outcome, 'admin_access_identity_mismatch');
-    assert.equal(db.__row().state, 'pending', 'the request must remain pending, not become approved');
-    assert.equal(bot.edits.length, 0, 'controls must not be disabled for a rejected identity');
-    assert.equal(bot.answered.length, 1);
-  });
-});
-
-test('expired challenge fails', async function () {
-  await withEnv(async function () {
-    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999, createResult: null });
-    const bot = makeBot();
-    const handler = requireApiWithFakes(db, bot);
-
-    const reqRes = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { action: 'admin-access-request' } }, reqRes);
-    const chal = chalCookieFrom(reqRes);
-    db.__row().expires_at = new Date(Date.now() - 1000).toISOString();
-    db.__row().state = 'approved';
-
-    const pollRes = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders('ac_chal=' + chal), body: { action: 'admin-access-poll', requestRef: reqRes.body.requestRef } }, pollRes);
-
-    assert.equal(pollRes.body.success, false);
-    assert.equal(pollRes.body.state, 'expired');
-    assert.equal(sessCookieFrom(pollRes), null);
-  });
-});
-
-test('rejected challenge fails', async function () {
-  await withEnv(async function () {
     const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
     const bot = makeBot();
     const handler = requireApiWithFakes(db, bot);
@@ -348,19 +451,24 @@ test('rejected challenge fails', async function () {
     await handler({ method: 'POST', headers: sameOriginHeaders(), body: { action: 'admin-access-request' } }, reqRes);
     const chal = chalCookieFrom(reqRes);
     const requestRef = reqRes.body.requestRef;
+    db.__row().expires_at = new Date(Date.now() - 1000).toISOString();
 
-    await db.rpc('deny_admin_access_request', { p_request_ref: requestRef, p_telegram_user_id: 999 });
+    const activateResult = await adminAccess.handleAdminAccessUpdate(startUpdate(4, requestRef, 999, 5003), { db: db, bot: bot });
+    assert.equal(activateResult.outcome, 'admin_access_activate_expired');
+    assert.equal(bot.sentMessages.length, 1, 'only the generic denial reply, never the challenge/buttons message');
 
     const pollRes = makeRes();
     await handler({ method: 'POST', headers: sameOriginHeaders('ac_chal=' + chal), body: { action: 'admin-access-poll', requestRef: requestRef } }, pollRes);
-
     assert.equal(pollRes.body.success, false);
-    assert.equal(pollRes.body.state, 'denied');
+    assert.equal(pollRes.body.state, 'expired');
     assert.equal(sessCookieFrom(pollRes), null);
   });
 });
 
-test('consumed challenge cannot replay, and double consumption yields at most one session', async function () {
+// ---------------------------------------------------------------------------
+// 7 / 8. Consumed cannot replay; concurrent consume yields one session.
+// ---------------------------------------------------------------------------
+test('consumed request cannot replay, and simultaneous consume yields one session maximum', async function () {
   await withEnv(async function () {
     const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
     const bot = makeBot();
@@ -385,39 +493,34 @@ test('consumed challenge cannot replay, and double consumption yields at most on
   });
 });
 
-test('repeated Telegram callback (retry / double press) is harmless', async function () {
+// ---------------------------------------------------------------------------
+// 9. requestRef in the deep link carries no privileged secret.
+// ---------------------------------------------------------------------------
+test('the deep link carries only the opaque requestRef — no session, binding, or secret', async function () {
   await withEnv(async function () {
-    const adminAccess = require('../lib/admin-access');
     const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
     const bot = makeBot();
+    const handler = requireApiWithFakes(db, bot);
 
-    const requestRef = 'repeated-callback-test-request-reference';
-    await db.rpc('create_admin_access_request', {
-      p_username: 'budi', p_request_ref: requestRef, p_browser_binding_hash: 'h', p_expires_at: new Date(Date.now() + 120000).toISOString(), p_context: ''
-    });
+    const reqRes = makeRes();
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { action: 'admin-access-request' } }, reqRes);
 
-    const update = {
-      update_id: 55,
-      callback_query: {
-        id: 'cb1',
-        data: adminAccess.CALLBACK_APPROVE_PREFIX + requestRef,
-        from: { id: 999 },
-        message: { message_id: 4242, chat: { id: 555 } }
-      }
-    };
-
-    const first = await adminAccess.handleAdminAccessUpdate(update, { db: db, bot: bot });
-    const second = await adminAccess.handleAdminAccessUpdate(update, { db: db, bot: bot });
-
-    assert.equal(first.outcome, 'admin_access_approved');
-    assert.equal(second.outcome, 'duplicate');
-    // Telegram must still get an answered callback both times (no hanging spinner).
-    assert.equal(bot.answered.length, 2);
-    // But approval only actually happened once.
-    assert.equal(db.__calls.filter(function (c) { return c.name === 'approve_admin_access_request'; }).length, 1);
+    const deepLink = reqRes.body.deepLink;
+    const url = new URL(deepLink);
+    assert.equal(url.hostname, 't.me');
+    const startParam = url.searchParams.get('start');
+    assert.equal(startParam, reqRes.body.requestRef);
+    assert.doesNotMatch(deepLink, /ac_sess|ac_chal|SESSION_SECRET|bot-token-for-tests/i);
+    // The raw browser binding (needed to consume) is never in the URL.
+    const cookieValue = chalCookieFrom(reqRes);
+    assert.ok(cookieValue);
+    assert.doesNotMatch(deepLink, new RegExp(cookieValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   });
 });
 
+// ---------------------------------------------------------------------------
+// 10. Telegram deletion failure does not restore validity.
+// ---------------------------------------------------------------------------
 test('Telegram message deletion failure does not restore challenge validity', async function () {
   await withEnv(async function () {
     const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
@@ -434,12 +537,143 @@ test('Telegram message deletion failure does not restore challenge validity', as
     await handler({ method: 'POST', headers: sameOriginHeaders('ac_chal=' + chal), body: { action: 'admin-access-poll', requestRef: requestRef } }, pollRes);
     assert.equal(pollRes.body.success, true, 'deletion failure must not block session issuance');
 
-    // Give the fire-and-forget cleanup a tick to run and confirm it does not throw / crash the process.
     await new Promise(function (resolve) { setTimeout(resolve, 10); });
 
     const replay = makeRes();
     await handler({ method: 'POST', headers: sameOriginHeaders('ac_chal=' + chal), body: { action: 'admin-access-poll', requestRef: requestRef } }, replay);
     assert.equal(replay.body.success, false, 'the challenge must stay consumed even though the Telegram message could not be deleted');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 11. Repeated deep-link/start processing and repeated callback presses are
+// idempotent/harmless.
+// ---------------------------------------------------------------------------
+test('repeated deep-link/start delivery of the same webhook update is harmless', async function () {
+  await withEnv(async function () {
+    const adminAccess = require('../lib/admin-access');
+    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
+    const bot = makeBot();
+
+    const requestRef = 'repeated-start-update-test-request-ref';
+    await db.rpc('create_admin_access_request', {
+      p_username: 'budi', p_request_ref: requestRef, p_browser_binding_hash: 'h', p_expires_at: new Date(Date.now() + 120000).toISOString(), p_context: ''
+    });
+
+    const update = startUpdate(20, requestRef, 999, 7000);
+    const first = await adminAccess.handleAdminAccessUpdate(update, { db: db, bot: bot });
+    const second = await adminAccess.handleAdminAccessUpdate(update, { db: db, bot: bot });
+
+    assert.equal(first.outcome, 'admin_access_activated');
+    assert.equal(second.outcome, 'duplicate');
+    assert.equal(bot.sentMessages.length, 1, 'the challenge/buttons message is sent exactly once for one Telegram update');
+    assert.equal(db.__calls.filter(function (c) { return c.name === 'activate_admin_access_request'; }).length, 1);
+  });
+});
+
+test('re-typing /start with the same ref (a NEW update) is idempotent — activation stays ok, buttons resend harmlessly', async function () {
+  await withEnv(async function () {
+    const adminAccess = require('../lib/admin-access');
+    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
+    const bot = makeBot();
+
+    const requestRef = 'retype-start-test-request-reference-ref';
+    await db.rpc('create_admin_access_request', {
+      p_username: 'budi', p_request_ref: requestRef, p_browser_binding_hash: 'h', p_expires_at: new Date(Date.now() + 120000).toISOString(), p_context: ''
+    });
+
+    const first = await adminAccess.handleAdminAccessUpdate(startUpdate(21, requestRef, 999, 7001), { db: db, bot: bot });
+    const second = await adminAccess.handleAdminAccessUpdate(startUpdate(22, requestRef, 999, 7001), { db: db, bot: bot });
+
+    assert.equal(first.outcome, 'admin_access_activated');
+    assert.equal(second.outcome, 'admin_access_activated');
+    assert.equal(db.__row().state, 'pending', 'still just activated, not approved, no matter how many times /start is sent');
+  });
+});
+
+test('repeated Telegram approve callback (retry / double press) is harmless', async function () {
+  await withEnv(async function () {
+    const adminAccess = require('../lib/admin-access');
+    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
+    const bot = makeBot();
+
+    const requestRef = 'repeated-callback-test-request-reference';
+    await db.rpc('create_admin_access_request', {
+      p_username: 'budi', p_request_ref: requestRef, p_browser_binding_hash: 'h', p_expires_at: new Date(Date.now() + 120000).toISOString(), p_context: ''
+    });
+
+    const update = approveUpdate(55, requestRef, 999, 555, 4242);
+    const first = await adminAccess.handleAdminAccessUpdate(update, { db: db, bot: bot });
+    const second = await adminAccess.handleAdminAccessUpdate(update, { db: db, bot: bot });
+
+    assert.equal(first.outcome, 'admin_access_approved');
+    assert.equal(second.outcome, 'duplicate');
+    assert.equal(bot.answered.length, 2, 'Telegram must still get an answered callback both times (no hanging spinner)');
+    assert.equal(db.__calls.filter(function (c) { return c.name === 'approve_admin_access_request'; }).length, 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 12. Anonymous creation cannot grow persistent live rows without bound.
+// ---------------------------------------------------------------------------
+test('anonymous challenge creation cannot grow unbounded live rows', async function () {
+  await withEnv(async function () {
+    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
+    const bot = makeBot();
+    const handler = requireApiWithFakes(db, bot);
+
+    for (let i = 0; i < 20; i++) {
+      const res = makeRes();
+      await handler({ method: 'POST', headers: sameOriginHeaders('', '203.0.113.1' + (i % 4)), body: { action: 'admin-access-request' } }, res);
+    }
+
+    // No-preemption means at most ONE row is ever live at a time for the
+    // single admin, regardless of how many anonymous callers try.
+    const liveCount = [db.__row()].filter(function (r) {
+      return r && (r.state === 'pending' || r.state === 'approved') && new Date(r.expires_at).getTime() > Date.now();
+    }).length;
+    assert.equal(liveCount, 1);
+    assert.equal(bot.sentMessages.length, 0, 'none of this anonymous churn ever notified Telegram');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 15. Existing password break-glass remains functional.
+// ---------------------------------------------------------------------------
+test('existing password login action remains functional as server-side break-glass', async function () {
+  await withEnv(async function () {
+    const GOOD_HASH = 'a'.repeat(64);
+    const db = {
+      from(table) {
+        const query = {
+          select() { return query; },
+          eq() { return query; },
+          maybeSingle() {
+            return Promise.resolve({
+              data: table === 'app_users' ? {
+                id: 'user-budi', username: 'budi', password_hash: GOOD_HASH,
+                is_blocked: false, is_approved: true, created_at: new Date().toISOString()
+              } : null,
+              error: null
+            });
+          },
+          update() { return query; },
+          then(resolve) { return Promise.resolve({ data: null, error: null }).then(resolve); }
+        };
+        return query;
+      },
+      rpc() { return Promise.resolve({ data: null, error: null }); }
+    };
+    const bot = makeBot();
+    const handler = requireApiWithFakes(db, bot);
+
+    const res = makeRes();
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { action: 'login', username: 'budi', passwordHash: GOOD_HASH } }, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.isAdmin, true);
+    assert.match(sessCookieFrom(res), /^ac_sess=/);
   });
 });
 
@@ -454,32 +688,11 @@ test('binding cookie hash is never the raw browser-binding value', async functio
 });
 
 // ===========================================================================
-// Anti-spam hardening (pre-PR pass): the request endpoint is intentionally
-// public/unauthenticated. These tests cover the layered mitigations added
-// on top of the original 10-second cooldown:
-//   - rapid repeated requests cannot create Telegram notification spam
-//   - throttling never grants access
-//   - legitimate retry becomes possible after the bounded cooldown
-//   - attacker cannot invalidate/steal an already-approved legitimate request
-//   - throttling does not change Telegram identity verification or binding
+// Anti-spam / DB-hygiene layer kept from the prior hardening pass. No longer
+// a Telegram-notification concern (creation never notifies), but still
+// bounds row creation for database hygiene and keeps the no-preemption
+// griefing protection.
 // ===========================================================================
-
-test('rapid repeated requests cannot create Telegram notification spam', async function () {
-  await withEnv(async function () {
-    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
-    const bot = makeBot();
-    const handler = requireApiWithFakes(db, bot);
-
-    for (let i = 0; i < 8; i++) {
-      const res = makeRes();
-      await handler({ method: 'POST', headers: sameOriginHeaders('', '203.0.113.9'), body: { action: 'admin-access-request' } }, res);
-    }
-
-    // Exactly one live challenge exists, so exactly one Telegram message was sent —
-    // repeated public clicks (or a spamming attacker) cannot multiply notifications.
-    assert.equal(bot.sentMessages.length, 1);
-  });
-});
 
 test('throttling never grants access', async function () {
   await withEnv(async function () {
@@ -499,16 +712,12 @@ test('throttling never grants access', async function () {
   });
 });
 
-test('IP flood is throttled independently of the per-admin cooldown', async function () {
+test('IP flood is bounded independently of the per-admin cooldown, using only Vercel-trusted forwarded-for', async function () {
   await withEnv(async function () {
     const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
     const bot = makeBot();
     const handler = requireApiWithFakes(db, bot);
 
-    // Consume the existing-live-request throttle immediately by letting the
-    // first request through, then hammer from the SAME ip. The 6th+ call
-    // within the 5-request/5-minute window must be ip_throttled even if the
-    // live-request state had somehow cleared.
     const results = [];
     for (let i = 0; i < 6; i++) {
       const res = makeRes();
@@ -516,8 +725,26 @@ test('IP flood is throttled independently of the per-admin cooldown', async func
       results.push(res.body);
     }
     assert.equal(results[0].success, true);
-    assert.equal(bot.sentMessages.length, 1, 'only the first call from this IP is ever eligible to notify Telegram');
     results.slice(1).forEach(function (r) { assert.equal(r.success, false); });
+  });
+});
+
+test('a client-supplied X-Forwarded-For (without the trusted Vercel header) is never used for rate-limit bucketing', async function () {
+  await withEnv(async function () {
+    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
+    const bot = makeBot();
+    const handler = requireApiWithFakes(db, bot);
+
+    const res = makeRes();
+    await handler({
+      method: 'POST',
+      headers: Object.assign(sameOriginHeaders(), { 'x-forwarded-for': '1.2.3.4' }),
+      body: { action: 'admin-access-request' }
+    }, res);
+
+    assert.equal(res.body.success, true);
+    const call = db.__calls.find(function (c) { return c.name === 'create_admin_access_request'; });
+    assert.equal(call.args.p_ip_hash, null, 'a spoofable x-forwarded-for alone must not be trusted as the rate-limit key');
   });
 });
 
@@ -531,7 +758,6 @@ test('legitimate retry becomes possible after the bounded cooldown', async funct
     await handler({ method: 'POST', headers: sameOriginHeaders(), body: { action: 'admin-access-request' } }, first);
     assert.equal(first.body.success, true);
 
-    // Simulate the TTL elapsing.
     db.__row().expires_at = new Date(Date.now() - 1000).toISOString();
 
     const retry = makeRes();
@@ -552,21 +778,16 @@ test('an attacker spamming admin-access-request cannot invalidate or steal an al
     const legitChal = chalCookieFrom(legit);
     const legitRef = legit.body.requestRef;
 
-    // Approve it out-of-band (the real admin pressed the Telegram button).
     await db.rpc('approve_admin_access_request', { p_request_ref: legitRef, p_telegram_user_id: 999 });
     assert.equal(db.__row().state, 'approved');
 
-    // Attacker (different IP, no cookie) spams the same public endpoint while
-    // the legitimate approval is in flight, trying to force a fresh challenge.
     for (let i = 0; i < 3; i++) {
       const attackerRes = makeRes();
       await handler({ method: 'POST', headers: sameOriginHeaders('', '198.51.100.200'), body: { action: 'admin-access-request' } }, attackerRes);
       assert.equal(attackerRes.body.success, false, 'a live approved challenge must never be preempted by a new request');
     }
     assert.equal(db.__row().state, 'approved', 'the legitimate approval must survive the attacker\'s spam');
-    assert.equal(bot.sentMessages.length, 1, 'no extra Telegram messages were sent to the admin because of the attack');
 
-    // The legitimate browser can still consume its own original challenge.
     const consumeRes = makeRes();
     await handler({ method: 'POST', headers: sameOriginHeaders('ac_chal=' + legitChal), body: { action: 'admin-access-poll', requestRef: legitRef } }, consumeRes);
     assert.equal(consumeRes.body.success, true);
@@ -574,38 +795,9 @@ test('an attacker spamming admin-access-request cannot invalidate or steal an al
   });
 });
 
-test('throttling does not change Telegram identity verification or browser binding', async function () {
-  await withEnv(async function () {
-    const adminAccess = require('../lib/admin-access');
-    const db = createFakeAdminAccessDb({ adminTelegramUserId: 999 });
-    const bot = makeBot();
-    const handler = requireApiWithFakes(db, bot);
-
-    const legit = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders('', '203.0.113.77'), body: { action: 'admin-access-request' } }, legit);
-    const requestRef = legit.body.requestRef;
-    const bindingHashBefore = db.__row().browser_binding_hash;
-
-    // Throttled attacker call from another IP touches nothing on the live row.
-    const attackerRes = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders('', '203.0.113.78'), body: { action: 'admin-access-request' } }, attackerRes);
-    assert.equal(attackerRes.body.success, false);
-    assert.equal(db.__row().browser_binding_hash, bindingHashBefore, 'browser binding must be untouched by throttling');
-
-    // Wrong Telegram identity is still rejected exactly as before hardening.
-    const result = await adminAccess.handleAdminAccessUpdate({
-      update_id: 777,
-      callback_query: {
-        id: 'cb-throttle-identity',
-        data: adminAccess.CALLBACK_APPROVE_PREFIX + requestRef,
-        from: { id: 123456 }, // not the bound admin id (999)
-        message: { message_id: 1, chat: { id: 555 } }
-      }
-    }, { db: db, bot: bot });
-    assert.equal(result.outcome, 'admin_access_identity_mismatch');
-    assert.equal(db.__row().state, 'pending');
-  });
-});
+// ===========================================================================
+// Migration contract checks.
+// ===========================================================================
 
 test('migration is additive-only, RLS-enabled, service-role-only, and never stores a raw browser binding', function () {
   const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'admin-telegram-access-migration.sql'), 'utf8');
@@ -614,10 +806,12 @@ test('migration is additive-only, RLS-enabled, service-role-only, and never stor
   assert.doesNotMatch(sql, /DROP TABLE|DROP COLUMN|ALTER TABLE public\.app_users|ALTER TABLE public\.app_user_telegram_verifications/);
   assert.match(sql, /ALTER TABLE public\.admin_access_requests ENABLE ROW LEVEL SECURITY/);
   assert.match(sql, /REVOKE ALL ON public\.admin_access_requests FROM anon, authenticated/);
-  assert.match(sql, /REVOKE ALL ON FUNCTION public\.create_admin_access_request\([^)]*\) FROM PUBLIC, anon, authenticated/);
-  assert.match(sql, /REVOKE ALL ON FUNCTION public\.consume_admin_access_request\([^)]*\) FROM PUBLIC, anon, authenticated/);
-  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.create_admin_access_request\([^)]*\) TO service_role/);
-  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.consume_admin_access_request\([^)]*\) TO service_role/);
+  ['create_admin_access_request', 'activate_admin_access_request', 'record_admin_access_message', 'approve_admin_access_request', 'deny_admin_access_request', 'consume_admin_access_request'].forEach(function (fnName) {
+    const re = new RegExp('REVOKE ALL ON FUNCTION public\\.' + fnName + '\\([^)]*\\) FROM PUBLIC, anon, authenticated');
+    assert.match(sql, re, fnName + ' must be revoked from PUBLIC/anon/authenticated');
+    const grantRe = new RegExp('GRANT EXECUTE ON FUNCTION public\\.' + fnName + '\\([^)]*\\) TO service_role');
+    assert.match(sql, grantRe, fnName + ' must be granted to service_role only');
+  });
   // browser_binding_hash is the only browser-binding column — no raw/plaintext sibling column.
   assert.match(sql, /browser_binding_hash\s+text NOT NULL/);
   assert.doesNotMatch(sql, /browser_binding\s+text/);
@@ -627,14 +821,24 @@ test('migration is additive-only, RLS-enabled, service-role-only, and never stor
 
 test('a new admin-access request never preempts a live one, and a rate-limited IP is checked before touching any existing row', function () {
   const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'admin-telegram-access-migration.sql'), 'utf8');
-  const fn = sql.slice(sql.indexOf('FUNCTION public.create_admin_access_request'), sql.indexOf('FUNCTION public.record_admin_access_message'));
+  const fn = sql.slice(sql.indexOf('FUNCTION public.create_admin_access_request'), sql.indexOf('FUNCTION public.activate_admin_access_request'));
   assert.match(fn, /p_ip_hash/);
   assert.match(fn, /ip_throttled/);
   assert.match(fn, /state IN \('pending','approved'\)\s*\n\s*AND expires_at > now\(\)/);
-  // The IP-window check must appear before the live-row/no-preemption check.
   const ipCheckIdx = fn.indexOf('ip_throttled');
   const liveCheckIdx = fn.indexOf("state IN ('pending','approved')\n     AND expires_at > now()");
   assert.ok(ipCheckIdx !== -1 && liveCheckIdx !== -1 && ipCheckIdx < liveCheckIdx);
+  // create() must never send/record a Telegram message itself.
+  assert.doesNotMatch(fn, /sendMessage/);
+});
+
+test('activation only sends a Telegram message after verifying the sender is the bound admin identity', function () {
+  const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'admin-telegram-access-migration.sql'), 'utf8');
+  const fn = sql.slice(sql.indexOf('FUNCTION public.activate_admin_access_request'), sql.indexOf('FUNCTION public.record_admin_access_message'));
+  assert.match(fn, /v\.telegram_user_id = p_telegram_user_id/);
+  assert.match(fn, /v\.telegram_verified_at IS NOT NULL/);
+  assert.match(fn, /identity_mismatch/);
+  assert.match(fn, /FOR UPDATE/);
 });
 
 test('session issuance re-checks blocked/approved status and the Telegram binding immediately before consuming', function () {
@@ -643,4 +847,13 @@ test('session issuance re-checks blocked/approved status and the Telegram bindin
   assert.match(fn, /is_blocked IS DISTINCT FROM TRUE\s*\n\s*AND is_approved IS TRUE/);
   assert.match(fn, /v\.telegram_user_id = v_request\.telegram_user_id/);
   assert.match(fn, /v\.telegram_verified_at IS NOT NULL/);
+});
+
+test('the maintenance-page request handler never imports/calls the bot client directly (only activation, driven by the webhook, does)', function () {
+  const src = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
+  const fnStart = src.indexOf('async function adminAccessRequest');
+  const fnEnd = src.indexOf('\n}', fnStart);
+  const fn = src.slice(fnStart, fnEnd);
+  assert.doesNotMatch(fn, /createVerifyBot/);
+  assert.match(fn, /trustedRateLimitIp/);
 });

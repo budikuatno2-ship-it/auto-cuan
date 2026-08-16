@@ -3009,15 +3009,18 @@ function openLoginModal() { updateLandingCtas(); document.getElementById('loginM
 function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
 // ===== ADMIN TELEGRAM ACCESS (maintenance / serviceStatus admin entry) =====
 // Administrator entry from the maintenance and service-status screens.
-// Deliberately NOT the login modal: no username/password field is shown here
-// at all. Clicking the button asks the server to create a short-lived,
-// one-time, browser-bound challenge and notify the admin's own
-// already-verified Telegram account (AutoCuan Verification). Approval alone
-// grants nothing here either — this only polls the server, which issues the
-// real signed HttpOnly ac_sess cookie once the challenge is confirmed
-// consumed. The gate then re-evaluates through setTopLevelView() exactly as
-// it always has, via session-status / isServerVerifiedAdmin().
-var adminAccessState = { requestRef: null, expiresAt: null, pollTimer: null, scope: null };
+// Deliberately NOT the login modal: no username/password field here at all.
+// Telegram-INITIATED: clicking "Akses administrator" only creates a dormant,
+// browser-bound challenge and a deep link — the server never sends a
+// Telegram message at this point, so this public button cannot notify the
+// admin by itself. A message is only ever sent once the admin's own
+// Telegram opens that link and the bot verifies it against their existing
+// verified binding. This code only ever polls for the resulting approval;
+// the real signed HttpOnly ac_sess cookie is issued server-side once the
+// challenge is confirmed consumed. The gate then re-evaluates through
+// setTopLevelView() exactly as it always has, via session-status /
+// isServerVerifiedAdmin().
+var adminAccessState = { requestRef: null, expiresAt: null, deepLink: null, pollTimer: null, scope: null };
 
 function adminAccessEls(scope) {
     return {
@@ -3032,49 +3035,66 @@ function setAdminAccessStatus(scope, text, tone) {
     els.status.className = 'maintenance-admin-status' + (tone ? ' maintenance-admin-status-' + tone : '');
     els.status.classList.remove('hidden');
 }
+function setAdminAccessButton(scope, label, onClick) {
+    var els = adminAccessEls(scope);
+    if (!els.btn) return;
+    if (!label) { els.btn.classList.add('hidden'); return; }
+    els.btn.classList.remove('hidden');
+    els.btn.disabled = false;
+    els.btn.textContent = label;
+    els.btn.onclick = onClick;
+}
 function stopAdminAccessPolling() {
     if (adminAccessState.pollTimer) { clearTimeout(adminAccessState.pollTimer); adminAccessState.pollTimer = null; }
 }
 function resetAdminAccessUi(scope) {
     stopAdminAccessPolling();
-    adminAccessState = { requestRef: null, expiresAt: null, pollTimer: null, scope: null };
+    adminAccessState = { requestRef: null, expiresAt: null, deepLink: null, pollTimer: null, scope: null };
     var els = adminAccessEls(scope);
-    if (els.btn) { els.btn.disabled = false; els.btn.textContent = 'Akses administrator'; els.btn.classList.remove('hidden'); }
     if (els.status) { els.status.classList.add('hidden'); els.status.textContent = ''; }
+    setAdminAccessButton(scope, 'Akses administrator', function () { startAdminTelegramAccess(scope); });
 }
 async function startAdminTelegramAccess(scope) {
     stopAdminAccessPolling();
+    setAdminAccessButton(scope, 'Meminta...', null);
     var els = adminAccessEls(scope);
-    if (els.btn) { els.btn.disabled = true; els.btn.textContent = 'Mengirim permintaan...'; }
-    setAdminAccessStatus(scope, 'Mengirim permintaan akses...', 'info');
+    if (els.btn) els.btn.disabled = true;
+    setAdminAccessStatus(scope, 'Menyiapkan permintaan akses...', 'info');
     try {
         var response = await fetch('/api/reset-password', {
             method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'admin-access-request', context: (navigator.userAgent || '').slice(0, 120) })
         });
         var data = await response.json();
-        if (!data.success || !data.requestRef) {
-            setAdminAccessStatus(scope, data.error || 'Permintaan akses sementara tidak tersedia. Coba lagi.', 'error');
-            if (els.btn) { els.btn.disabled = false; els.btn.textContent = 'Akses administrator'; }
+        if (!data.success || !data.requestRef || !data.deepLink) {
+            setAdminAccessStatus(scope, data.error || 'Permintaan akses sementara tidak tersedia.', 'error');
+            setAdminAccessButton(scope, 'Coba lagi', function () { startAdminTelegramAccess(scope); });
             return;
         }
         adminAccessState.requestRef = data.requestRef;
         adminAccessState.expiresAt = data.expiresAt ? new Date(data.expiresAt).getTime() : (Date.now() + 120000);
+        adminAccessState.deepLink = data.deepLink;
         adminAccessState.scope = scope;
-        if (els.btn) els.btn.classList.add('hidden');
-        setAdminAccessStatus(scope, 'Permintaan akses telah dikirim ke AutoCuan Verification.', 'info');
-        pollAdminAccess(scope);
+        setAdminAccessStatus(scope, 'Verifikasi administrator melalui Telegram.', 'info');
+        setAdminAccessButton(scope, 'Buka AutoCuan Verification', function () { openAdminTelegramLink(scope); });
     } catch (e) {
-        setAdminAccessStatus(scope, 'Koneksi ke server sedang bermasalah. Coba lagi.', 'error');
-        if (els.btn) { els.btn.disabled = false; els.btn.textContent = 'Akses administrator'; }
+        setAdminAccessStatus(scope, 'Koneksi ke server sedang bermasalah.', 'error');
+        setAdminAccessButton(scope, 'Coba lagi', function () { startAdminTelegramAccess(scope); });
     }
+}
+function openAdminTelegramLink(scope) {
+    if (!adminAccessState.requestRef || adminAccessState.scope !== scope || !adminAccessState.deepLink) return;
+    try { window.open(adminAccessState.deepLink, '_blank', 'noopener,noreferrer'); } catch (e) {}
+    setAdminAccessButton(scope, null, null);
+    setAdminAccessStatus(scope, 'Menunggu persetujuan dari AutoCuan Verification…', 'info');
+    pollAdminAccess(scope);
 }
 async function pollAdminAccess(scope) {
     if (!adminAccessState.requestRef || adminAccessState.scope !== scope) return;
     var remainingMs = adminAccessState.expiresAt - Date.now();
     if (remainingMs <= 0) { adminAccessExpired(scope); return; }
     var mins = Math.floor(remainingMs / 60000), secs = Math.floor((remainingMs % 60000) / 1000);
-    setAdminAccessStatus(scope, 'Menunggu persetujuan di Telegram… (' + mins + ':' + String(secs).padStart(2, '0') + ')', 'info');
+    setAdminAccessStatus(scope, 'Menunggu persetujuan dari AutoCuan Verification… (' + mins + ':' + String(secs).padStart(2, '0') + ')', 'info');
     try {
         var response = await fetch('/api/reset-password', {
             method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
@@ -3082,7 +3102,7 @@ async function pollAdminAccess(scope) {
         });
         var data = await response.json();
         if (data.success && data.state === 'approved') {
-            setAdminAccessStatus(scope, 'Disetujui. Membuka dashboard…', 'success');
+            setAdminAccessStatus(scope, 'Identitas administrator terverifikasi. Membuka Auto-Cuan…', 'success');
             stopAdminAccessPolling();
             if (typeof window.validateAutocuanSession === 'function') { try { await window.validateAutocuanSession(); } catch (_) {} }
             applyMaintenanceGate();
@@ -3091,9 +3111,9 @@ async function pollAdminAccess(scope) {
             return;
         }
         if (data.state === 'denied') {
-            setAdminAccessStatus(scope, 'Permintaan ditolak dari Telegram.', 'error');
+            setAdminAccessStatus(scope, 'Permintaan ditolak.', 'error');
             stopAdminAccessPolling();
-            setTimeout(function () { resetAdminAccessUi(scope); }, 2500);
+            setAdminAccessButton(scope, 'Coba lagi', function () { startAdminTelegramAccess(scope); });
             return;
         }
         if (data.state === 'expired') { adminAccessExpired(scope); return; }
@@ -3104,8 +3124,8 @@ async function pollAdminAccess(scope) {
 }
 function adminAccessExpired(scope) {
     stopAdminAccessPolling();
-    setAdminAccessStatus(scope, 'Permintaan kedaluwarsa. Coba lagi.', 'error');
-    setTimeout(function () { resetAdminAccessUi(scope); }, 2500);
+    setAdminAccessStatus(scope, 'Permintaan telah berakhir.', 'error');
+    setAdminAccessButton(scope, 'Coba lagi', function () { startAdminTelegramAccess(scope); });
 }
 function resetRegisterApprovalView() {
     document.getElementById('registerFormFields').classList.remove('hidden');
