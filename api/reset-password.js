@@ -408,7 +408,7 @@ async function adminAccessRequest(req, res, db) {
   }
 
   if (!result || !result.eligible) {
-    if (result && (result.reason === 'throttled' || result.reason === 'ip_throttled')) {
+    if (result && (result.reason === 'throttled' || result.reason === 'ip_throttled' || result.reason === 'rate_limited')) {
       return res.status(200).json({ success: false, error: 'Tunggu beberapa saat sebelum mencoba lagi.' });
     }
     return res.status(200).json({ success: false, error: 'Permintaan akses sementara tidak tersedia.' });

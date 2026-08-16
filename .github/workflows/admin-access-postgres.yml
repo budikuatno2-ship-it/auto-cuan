@@ -1,0 +1,132 @@
+name: Admin-access PostgreSQL harness
+on:
+  pull_request:
+    paths:
+      - 'supabase/admin-telegram-access-migration.sql'
+      - 'lib/admin-access.js'
+      - 'api/reset-password.js'
+      - 'test/admin-telegram-access.test.js'
+      - 'test/sql/admin-access/**'
+      - '.github/workflows/admin-access-postgres.yml'
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: admin_access_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d admin_access_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: admin_access_test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Initialize diagnostic logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOG_DIR="$RUNNER_TEMP/admin-access-postgres-logs"
+          mkdir -p "$LOG_DIR"
+          {
+            echo "dependencies=not_run"
+            echo "node_admin_access=not_run"
+            echo "postgres_version=not_run"
+            echo "bootstrap=not_run"
+            echo "migration=not_run"
+            echo "runtime=not_run"
+            echo "reapply_migration=not_run"
+            echo "concurrent_race=not_run"
+          } >"$LOG_DIR/execution-summary.txt"
+          echo "LOG_DIR=$LOG_DIR" >>"$GITHUB_ENV"
+      - name: Install Node dependencies
+        run: |
+          set +e
+          npm ci --ignore-scripts --no-audit --no-fund >"$LOG_DIR/npm-ci.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/npm-ci.log"
+          sed -i "s/^dependencies=.*/dependencies=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Execute admin-access Node tests
+        run: |
+          set +e
+          node --test test/admin-telegram-access.test.js >"$LOG_DIR/node-admin-access.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/node-admin-access.log"
+          sed -i "s/^node_admin_access=.*/node_admin_access=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: PostgreSQL version
+        run: |
+          set +e
+          { psql --version; psql -v ON_ERROR_STOP=1 -c 'SELECT version();'; } >"$LOG_DIR/postgres-version.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/postgres-version.log"
+          sed -i "s/^postgres_version=.*/postgres_version=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Apply bootstrap
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/admin-access/bootstrap.sql >"$LOG_DIR/bootstrap.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/bootstrap.log"
+          sed -i "s/^bootstrap=.*/bootstrap=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          exit "$status"
+      - name: Apply admin-access migration
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-access-migration.sql >"$LOG_DIR/migration.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/migration.log"
+          sed -i "s/^migration=.*/migration=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## admin-access migration failure'; tail -n 60 "$LOG_DIR/migration.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Execute admin-access runtime regression
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f test/sql/admin-access/runtime.sql >"$LOG_DIR/runtime.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/runtime.log"
+          sed -i "s/^runtime=.*/runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## admin-access runtime regression failure'; tail -n 80 "$LOG_DIR/runtime.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Re-apply admin-access migration against non-empty state (production rerun safety)
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-access-migration.sql >"$LOG_DIR/reapply-migration.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/reapply-migration.log"
+          sed -i "s/^reapply_migration=.*/reapply_migration=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## admin-access migration reapply-safety failure'; tail -n 60 "$LOG_DIR/reapply-migration.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Execute concurrent cross-ref activation race regression
+        run: |
+          set +e
+          bash test/sql/admin-access/concurrent-activation-race.sh >"$LOG_DIR/concurrent-race.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/concurrent-race.log"
+          sed -i "s/^concurrent_race=.*/concurrent_race=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## admin-access concurrent activation race regression failure'; tail -n 80 "$LOG_DIR/concurrent-race.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Upload PostgreSQL diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-access-postgres-logs-${{ github.run_id }}
+          path: ${{ runner.temp }}/admin-access-postgres-logs/
+          if-no-files-found: error
+          retention-days: 7
+      - name: Print execution summary
+        if: always()
+        run: cat "$LOG_DIR/execution-summary.txt"

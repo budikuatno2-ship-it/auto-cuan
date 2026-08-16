@@ -797,6 +797,111 @@ test('binding cookie hash is never the raw browser-binding value', async functio
   });
 });
 
+// ---------------------------------------------------------------------------
+// Activation refuses a second live Telegram-activated challenge for the same
+// admin, and tells the admin's own chat rather than treating it as a
+// mismatch/error.
+// ---------------------------------------------------------------------------
+test('activation reports already_active (and notifies only the admin\'s own chat) when a sibling challenge is already live', async function () {
+  await withEnv(async function () {
+    const adminAccess = require('../lib/admin-access');
+    const bot = makeBot();
+    const db = {
+      rpc(name, args) {
+        if (name === 'activate_admin_access_request') {
+          return Promise.resolve({ data: [{ result_code: 'already_active', request_context: null, expires_at: null }], error: null });
+        }
+        return Promise.resolve({ data: null, error: null });
+      }
+    };
+
+    const result = await adminAccess.activateFromDeepLink(db, bot, 'a'.repeat(24), 999999001, 555000001);
+
+    assert.equal(result.outcome, 'admin_access_activate_already_active');
+    assert.equal(bot.sentMessages.length, 1);
+    assert.equal(bot.sentMessages[0].chatId, 555000001, 'the notice goes only to the sender, who is already the identity-checked admin');
+    assert.doesNotMatch(bot.sentMessages[0].text, /Izinkan Akses/, 'no approval-buttons message is sent for an already-active sibling');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Griefing: many dormant (never-activated) requests from an anonymous flood
+// must never block the real admin's own activation. Models multiple rows per
+// admin, unlike the single-row fake above, to match the real per-row schema.
+// ---------------------------------------------------------------------------
+function createMultiRowFakeAdminAccessDb(options) {
+  const opts = options || {};
+  const rows = new Map(); // request_ref -> row
+
+  function liveActivated(ref) {
+    const r = rows.get(ref);
+    return r && (r.state === 'pending' || r.state === 'approved') &&
+      r.telegram_message_id != null && new Date(r.expires_at).getTime() > Date.now();
+  }
+
+  function anyLiveActivatedForUser() {
+    for (const r of rows.values()) {
+      if ((r.state === 'pending' || r.state === 'approved') &&
+          r.telegram_message_id != null && new Date(r.expires_at).getTime() > Date.now()) {
+        return r;
+      }
+    }
+    return null;
+  }
+
+  return {
+    __rows: rows,
+    rpc(name, args) {
+      if (name === 'create_admin_access_request') {
+        const existing = anyLiveActivatedForUser();
+        if (existing) {
+          return Promise.resolve({ data: [{ result_code: 'throttled', user_id: 'user-budi', expires_at: existing.expires_at }], error: null });
+        }
+        rows.set(args.p_request_ref, {
+          state: 'pending',
+          browser_binding_hash: args.p_browser_binding_hash,
+          telegram_message_id: null,
+          expires_at: args.p_expires_at
+        });
+        return Promise.resolve({
+          data: [{ result_code: 'ok', request_id: args.p_request_ref, user_id: 'user-budi', telegram_user_id: 999, telegram_chat_id: null, expires_at: args.p_expires_at }],
+          error: null
+        });
+      }
+      return Promise.resolve({ data: null, error: null });
+    }
+  };
+}
+
+// Honest property: the real SQL has an intentional, bounded global
+// creation-rate cap (100 rows / 5 minutes — see create_admin_access_request
+// in the migration) that legitimately denies NEW creates once exhausted.
+// What must actually hold — and is proven at the real-Postgres level in
+// test/sql/admin-access/runtime.sql — is narrower than "never denies
+// anything": a flood of dormant creates occupies ZERO activation slots, and
+// can never block activating a request that already exists. This JS-level
+// test covers the slot-occupancy half against the multi-row fake; the
+// "an already-created request can still be activated after the flood"
+// half needs the real DB-level sibling/index semantics and is covered only
+// by the Postgres runtime test.
+test('a flood of anonymous dormant launch requests occupies zero activation slots (does not claim a Telegram delivery)', async function () {
+  await withEnv(async function () {
+    const adminAccess = require('../lib/admin-access');
+    const db = createMultiRowFakeAdminAccessDb();
+
+    for (let i = 0; i < 100; i++) {
+      const result = await adminAccess.requestAccess(db, { context: 'flood-' + i });
+      assert.equal(result.eligible, true, 'a dormant sibling must never block a new dormant create, request #' + i);
+    }
+
+    assert.equal(db.__rows.size, 100, 'every dormant request is still just a row');
+    for (const row of db.__rows.values()) {
+      assert.equal(row.telegram_message_id, null, 'a dormant row must never carry a delivered message');
+      assert.equal(row.activation_claimed_at, undefined, 'a dormant row must never carry an in-flight delivery claim either — only Telegram activation may set one');
+    }
+  });
+});
+
 // ===========================================================================
 // Anti-spam / DB-hygiene layer kept from the prior hardening pass. No longer
 // a Telegram-notification concern (creation never notifies), but still
@@ -935,12 +1040,103 @@ test('a new admin-access request never preempts a live one, and a rate-limited I
   const fn = sql.slice(fnStart, sql.indexOf('\n$$;\n', fnStart));
   assert.match(fn, /p_ip_hash/);
   assert.match(fn, /ip_throttled/);
-  assert.match(fn, /state IN \('pending','approved'\)\s*\n\s*AND expires_at > now\(\)/);
+  assert.match(fn, /aar\.state IN \('pending','approved'\)\s*\n\s*AND \(aar\.telegram_message_id IS NOT NULL OR aar\.activation_claimed_at IS NOT NULL\)\s*\n\s*AND aar\.expires_at > now\(\)/);
   const ipCheckIdx = fn.indexOf('ip_throttled');
-  const liveCheckIdx = fn.indexOf("state IN ('pending','approved')\n     AND expires_at > now()");
-  assert.ok(ipCheckIdx !== -1 && liveCheckIdx !== -1 && ipCheckIdx < liveCheckIdx);
+  const liveCheckMatch = /aar\.state IN \('pending','approved'\)\s*\n\s*AND \(aar\.telegram_message_id IS NOT NULL OR aar\.activation_claimed_at IS NOT NULL\)/.exec(fn);
+  assert.ok(ipCheckIdx !== -1 && liveCheckMatch && ipCheckIdx < liveCheckMatch.index);
   // create() must never send/record a Telegram message itself.
   assert.doesNotMatch(fn, /sendMessage/);
+});
+
+test('a dormant (never Telegram-activated, never claimed) request never blocks a new create call — the no-preemption check is gated on activation_claimed_at too, not telegram_message_id alone', function () {
+  const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'admin-telegram-access-migration.sql'), 'utf8');
+  const fnStart = sql.indexOf('CREATE OR REPLACE FUNCTION public.create_admin_access_request');
+  const fn = sql.slice(fnStart, sql.indexOf('\n$$;\n', fnStart));
+  assert.match(fn, /AND \(aar\.telegram_message_id IS NOT NULL OR aar\.activation_claimed_at IS NOT NULL\)\s*\n\s*AND aar\.expires_at > now\(\)/,
+    'the "throttled / live challenge exists" check must require telegram_message_id IS NOT NULL OR activation_claimed_at IS NOT NULL — ' +
+    'telegram_message_id alone is set too late (only by the separate record_admin_access_message call, after activate() already committed), ' +
+    'so a merely dormant row (neither) must never squat the one-active-admin slot');
+  // create() also reaps stale claims for this admin before relying on the
+  // above check, so a dead claim (process died mid-send) cannot permanently
+  // block this admin's own next dormant create. The reap MUST be scoped to
+  // state = 'pending' — an 'approved' row can legitimately have
+  // telegram_message_id still NULL (record_admin_access_message failed
+  // after a successful send) and must never have its activation_claimed_at
+  // cleared, or a sibling request could steal the slot while that row's
+  // real Telegram approve/deny buttons are still live.
+  const createReapMatch = /SET activation_claimed_at = NULL[\s\S]*?WHERE aar\.user_id = v_user\.id[\s\S]*?activation_claimed_at <= now\(\) - interval '20 seconds'/.exec(fn);
+  assert.ok(createReapMatch);
+  assert.match(createReapMatch[0], /aar\.state = 'pending'/,
+    'the create() reap must never clear activation_claimed_at on a non-pending (e.g. already-approved) row');
+
+  const indexStart = sql.indexOf('CREATE UNIQUE INDEX IF NOT EXISTS uq_admin_access_active_user');
+  const indexSql = sql.slice(indexStart, sql.indexOf(';', indexStart));
+  assert.match(indexSql, /telegram_message_id IS NOT NULL OR activation_claimed_at IS NOT NULL/,
+    'the DB-level active-slot uniqueness invariant must also exclude dormant, un-claimed rows, and must count an in-flight delivery claim');
+});
+
+test('activation refuses a sibling activation while ANOTHER challenge for the same admin is claimed-but-not-yet-delivered (the reported cross-ref race), not just after telegram_message_id is recorded', function () {
+  const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'admin-telegram-access-migration.sql'), 'utf8');
+  const fn = sql.slice(sql.indexOf('FUNCTION public.activate_admin_access_request'), sql.indexOf('FUNCTION public.release_admin_access_activation'));
+  assert.match(fn, /FROM public\.app_users AS au WHERE au\.id = v_request\.user_id FOR UPDATE/);
+  assert.match(fn, /already_active/);
+  assert.match(fn, /aar2\.telegram_message_id IS NOT NULL OR aar2\.activation_claimed_at IS NOT NULL/,
+    'the sibling check must count activation_claimed_at, not just telegram_message_id — otherwise a second ref can be claimed ' +
+    'during the real gap between activate() committing and the later record_admin_access_message call');
+  // Stale sibling claims (dead process, never delivered) must be reaped
+  // before the sibling check, or a genuinely dead claim would permanently
+  // lock out the admin's own future activations too. Same state = 'pending'
+  // restriction as create()'s reap, for the same reason.
+  const activateReapMatch = /SET activation_claimed_at = NULL[\s\S]*?WHERE aar\.user_id = v_request\.user_id[\s\S]*?activation_claimed_at <= now\(\) - interval '20 seconds'/.exec(fn);
+  assert.ok(activateReapMatch);
+  assert.match(activateReapMatch[0], /aar\.state = 'pending'/,
+    'the activate() sibling reap must never clear activation_claimed_at on a non-pending (e.g. already-approved) sibling row');
+});
+
+test('release_admin_access_activation never clears activation_claimed_at on a non-pending row', function () {
+  const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'admin-telegram-access-migration.sql'), 'utf8');
+  const releaseStart = sql.indexOf('FUNCTION public.release_admin_access_activation');
+  const releaseFn = sql.slice(releaseStart, sql.indexOf('FUNCTION public.record_admin_access_message'));
+  assert.match(releaseFn, /state = 'pending'/);
+});
+
+test('the one-time production migration cleanup expires stale rows, clears only STALE (>=20s) dangling claims, and fails closed on a genuine fresh conflict instead of silently destroying it', function () {
+  const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'admin-telegram-access-migration.sql'), 'utf8');
+  const cleanupStart = sql.indexOf('Production-safety one-time cleanup');
+  const indexStart = sql.indexOf('CREATE UNIQUE INDEX IF NOT EXISTS uq_admin_access_active_user');
+  const cleanupBlock = sql.slice(cleanupStart, indexStart);
+
+  // Step 1: expire anything past its TTL first, table-wide — otherwise a
+  // lazily-never-expired row could falsely collide with the new index.
+  const step1 = /UPDATE public\.admin_access_requests\s*\n\s*SET state = 'expired', updated_at = now\(\)\s*\n\s*WHERE state IN \('pending','approved'\)\s*\n\s*AND expires_at <= now\(\)/.exec(cleanupBlock);
+  assert.ok(step1, 'the cleanup must expire time-expired rows before the index rebuild, or a stale row could still satisfy the new partial index');
+
+  // Step 2: only genuinely STALE dangling claims (>=20s old) are cleared —
+  // a claim that might still be a real in-flight Telegram delivery must
+  // never be silently destroyed just to let the DDL succeed.
+  const step2 = /SET activation_claimed_at = NULL, updated_at = now\(\)\s*\n\s*WHERE state = 'pending'\s*\n\s*AND telegram_message_id IS NULL\s*\n\s*AND activation_claimed_at IS NOT NULL\s*\n\s*AND activation_claimed_at <= now\(\) - interval '20 seconds'/.exec(cleanupBlock);
+  assert.ok(step2, 'the migration cleanup must only clear claims older than the 20s claim window, never a fresh in-flight one');
+
+  // Step 3: fail closed with a descriptive exception if a real conflict
+  // (more than one live row for the same admin) remains, rather than
+  // silently picking one to delete.
+  assert.match(cleanupBlock, /RAISE EXCEPTION/);
+  assert.match(cleanupBlock, /HAVING count\(\*\) > 1/);
+});
+
+test('activate_admin_access_request expires this admin\'s other time-expired active rows before relying on the active-slot invariant, so a lazily-unexpired sibling cannot cause a real unique_violation', function () {
+  const sql = fs.readFileSync(path.join(ROOT, 'supabase', 'admin-telegram-access-migration.sql'), 'utf8');
+  const fn = sql.slice(sql.indexOf('FUNCTION public.activate_admin_access_request'), sql.indexOf('FUNCTION public.release_admin_access_activation'));
+
+  const lockIdx = fn.indexOf('FOR UPDATE;', fn.indexOf('FROM public.app_users AS au'));
+  const expireMatch = /UPDATE public\.admin_access_requests AS aar\s*\n\s*SET state = 'expired', updated_at = now\(\)\s*\n\s*WHERE aar\.user_id = v_request\.user_id\s*\n\s*AND aar\.state IN \('pending','approved'\)\s*\n\s*AND aar\.expires_at <= now\(\)/.exec(fn);
+  assert.ok(expireMatch, 'activate() must expire this admin\'s other time-expired pending/approved rows — the index predicate cannot check expires_at itself');
+  assert.ok(lockIdx !== -1 && expireMatch.index > lockIdx,
+    'the expiry sweep must run AFTER the app_users lock is acquired, so it is race-free against a concurrent create/activate for the same admin');
+
+  const reapMatch = /aar\.request_ref <> v_request\.request_ref\s*\n\s*AND aar\.state = 'pending'/.exec(fn);
+  assert.ok(reapMatch && reapMatch.index > expireMatch.index,
+    'the stale-claim reap and sibling check must run AFTER the expiry sweep, so an expired sibling is already reclassified before either relies on it');
 });
 
 test('activation only sends a Telegram message after verifying the sender is the bound admin identity', function () {
