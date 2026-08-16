@@ -1,0 +1,56 @@
+name: Portfolio persistence PostgreSQL harness
+on:
+  pull_request:
+    paths:
+      - 'supabase/portfolio-state-persistence-migration.sql'
+      - 'lib/portfolio-state-handler.js'
+      - 'api/reset-password.js'
+      - 'public/portfolio-supabase-sync.js'
+      - 'public/portfolio-command-center-v2.html'
+      - 'test/portfolio-supabase-persistence.test.js'
+      - 'test/sql/portfolio-persistence/**'
+      - '.github/workflows/portfolio-persistence-postgres.yml'
+      - 'package.json'
+
+jobs:
+  portfolio-persistence:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: portfolio_persistence_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portfolio_persistence_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: portfolio_persistence_test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run portfolio persistence Node tests
+        run: node --test test/portfolio-supabase-persistence.test.js
+      - name: Bootstrap isolated PostgreSQL schema
+        run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-access/bootstrap.sql
+      - name: Apply portfolio persistence migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/portfolio-state-persistence-migration.sql
+      - name: Execute portfolio persistence runtime regression
+        run: psql -v ON_ERROR_STOP=1 -f test/sql/portfolio-persistence/runtime.sql
+      - name: Re-apply migration against non-empty state
+        run: psql -v ON_ERROR_STOP=1 -f supabase/portfolio-state-persistence-migration.sql
+      - name: Verify non-empty data survives migration re-apply
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "SELECT au.username, jsonb_array_length(ps.state->'plans') AS plans FROM public.app_user_portfolio_state ps JOIN public.app_users au ON au.id=ps.user_id WHERE au.username='budi';"
+          psql -v ON_ERROR_STOP=1 -c "SELECT relrowsecurity FROM pg_class WHERE oid='public.app_user_portfolio_state'::regclass;"
