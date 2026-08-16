@@ -12,8 +12,9 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="/portfolio-command-center.css?v=20260728-ui2">
   <style>
-    #portfolioV2Loader{position:fixed;inset:0;z-index:2147483000;min-height:100dvh;display:grid;place-items:center;background:#080c12;color:#94a3b8;font:600 13px Inter,system-ui,sans-serif}
+    #portfolioV2Loader{position:fixed;inset:0;z-index:2147483000;min-height:100dvh;display:grid;place-items:center;background:#080c12;color:#94a3b8;font:600 13px Inter,system-ui,sans-serif;text-align:center;padding:24px}
     #portfolioV2Loader span{width:34px;height:34px;border:3px solid #1f2937;border-top-color:#34d399;border-radius:50%;animation:v2spin .8s linear infinite}
+    #portfolioV2Loader button,#portfolioV2Loader a{display:inline-block;margin-top:14px;padding:9px 13px;border-radius:9px;border:1px solid #2f3b4f;background:#111827;color:#6ee7b7;text-decoration:none;font:700 13px Inter,system-ui,sans-serif;cursor:pointer}
     @keyframes v2spin{to{transform:rotate(360deg)}}
   </style>
 </head>
@@ -22,47 +23,102 @@
 (function () {
   'use strict';
   var LOADER_HTML = '<div id="portfolioV2Loader"><div><span style="display:block;margin:0 auto 12px"></span>Menyiapkan Portfolio Command Center…</div></div>';
+  var BOOT_TIMEOUT_MS = 15000;
+  var FETCH_TIMEOUT_MS = 7000;
+  var ASSET_TIMEOUT_MS = 5000;
+  var bootSettled = false;
+  var bootTimer = null;
   var assets = [
     '/portfolio-planner-v1.js?v=20260726-src1',
     '/ai-chat-renderer.js?v=20260728-premium-v3',
     '/portfolio-command-center-model.js?v=20260727-v1',
+    '/portfolio-supabase-sync.js?v=20260816-v1',
     '/portfolio-command-center.js?v=20260727-v1',
     '/portfolio-position-scenarios.js?v=20260727-v1',
     '/ui-stability-fix.js?v=20260802-ui-stability-v2',
     '/portfolio-runtime-fix.js?v=20260728-portfolio-runtime-fix-v1',
     '/ui-bugfix-pack-v1.js?v=20260803-v1'
   ];
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function (ch) {
+      return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch];
+    });
+  }
+
+  function failBoot(error) {
+    if (bootSettled) return;
+    bootSettled = true;
+    if (bootTimer) clearTimeout(bootTimer);
+    var message = error && error.message ? error.message : String(error || 'Portfolio gagal dimuat.');
+    document.body.innerHTML = '<main id="portfolioV2Loader"><div><strong style="display:block;color:#f8fafc;margin-bottom:8px">Portfolio belum berhasil dibuka</strong><div style="max-width:520px;line-height:1.55">' + escapeHtml(message) + '</div><button type="button" id="portfolioRetry">Coba lagi</button><br><a href="/dashboard">Kembali ke Dashboard</a></div></main>';
+    var retry = document.getElementById('portfolioRetry');
+    if (retry) retry.onclick = function () { location.reload(); };
+  }
+
+  function fetchCommandCenterWithTimeout() {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, FETCH_TIMEOUT_MS);
+    // Keep the audited source path literal here; production build validation
+    // verifies that V2 still hydrates this exact reviewed Command Center shell.
+    return fetch('/portfolio-command-center.html?v=20260727-v1', { credentials:'same-origin', cache:'no-store', signal:controller.signal })
+      .then(function (response) {
+        if (!response.ok) throw new Error('Gagal memuat struktur Portfolio (HTTP ' + response.status + ').');
+        return response.text();
+      })
+      .catch(function (error) {
+        if (error && error.name === 'AbortError') throw new Error('Struktur Portfolio terlalu lama dimuat. Coba lagi.');
+        throw error;
+      })
+      .finally(function () { clearTimeout(timer); });
+  }
+
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
+      if (bootSettled) return reject(new Error('Boot dibatalkan.'));
       var script = document.createElement('script');
+      var timer = setTimeout(function () {
+        script.onload = script.onerror = null;
+        if (script.parentNode) script.remove();
+        reject(new Error('Asset Portfolio terlalu lama dimuat: ' + src.split('?')[0]));
+      }, ASSET_TIMEOUT_MS);
       script.src = src;
-      script.onload = resolve;
-      script.onerror = function () { reject(new Error('Gagal memuat ' + src)); };
+      script.onload = function () { clearTimeout(timer); resolve(); };
+      script.onerror = function () { clearTimeout(timer); reject(new Error('Gagal memuat ' + src.split('?')[0])); };
       document.body.appendChild(script);
     });
   }
+
   function revealStableUi() {
-    // Give runtime polish one full layout/paint opportunity before removing the
-    // boot curtain. This prevents the legacy/plain tab strip from flashing for
-    // a frame while the sequential enhancement scripts are still applying.
+    if (bootSettled) return;
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
+        if (bootSettled) return;
+        bootSettled = true;
+        if (bootTimer) clearTimeout(bootTimer);
         var loader = document.getElementById('portfolioV2Loader');
         if (loader) loader.remove();
       });
     });
   }
-  fetch('/portfolio-command-center.html?v=20260727-v1', { credentials:'same-origin', cache:'no-store' })
-    .then(function (response) { if (!response.ok) throw new Error('HTTP ' + response.status); return response.text(); })
+
+  bootTimer = setTimeout(function () {
+    failBoot(new Error('Portfolio membutuhkan waktu terlalu lama untuk disiapkan. Tidak ada proses yang dibiarkan loading tanpa batas.'));
+  }, BOOT_TIMEOUT_MS);
+
+  fetchCommandCenterWithTimeout()
     .then(function (html) {
+      if (bootSettled) throw new Error('Boot dibatalkan.');
       var parsed = new DOMParser().parseFromString(html, 'text/html');
       Array.prototype.forEach.call(parsed.body.querySelectorAll('script'), function (node) { node.remove(); });
       document.body.innerHTML = parsed.body.innerHTML + LOADER_HTML;
-      return assets.reduce(function (promise, src) { return promise.then(function () { return loadScript(src); }); }, Promise.resolve());
+      return assets.reduce(function (promise, src) {
+        return promise.then(function () { return loadScript(src); });
+      }, Promise.resolve());
     })
     .then(revealStableUi)
     .catch(function (error) {
-      document.body.innerHTML = '<main id="portfolioV2Loader"><div><strong style="display:block;color:#f8fafc;margin-bottom:8px">Portfolio belum berhasil dibuka</strong><span style="display:none"></span>' + String(error.message || error) + '<br><a href="/portfolio-planner" style="display:inline-block;margin-top:14px;color:#6ee7b7">Coba lagi</a></div></main>';
+      if (!bootSettled) failBoot(error);
     });
 })();
 </script>
