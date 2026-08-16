@@ -10,8 +10,13 @@
   var STYLE_ID = 'autocuanUiBugfixPackV1';
   var SANITIZER_HARDENING_VERSION = '20260813-ai-url-sanitizer-v1';
   var WHEEL_HANDOFF_VERSION = '20260813-site-wheel-handoff-v1';
+  var TELEGRAM_ADMIN_DEVICE_POLL_VERSION = '20260816-telegram-admin-device-poll-v1';
   var STYLE_TEXT = [
     '/* AUTO_CUAN_UI_BUGFIX_PACK_V1 */',
+    '/* Admin access is Telegram-command-first. Do not expose a public website',
+    '   trigger that can open Telegram or create admin challenges. */',
+    '.maintenance-admin{display:none!important;}',
+    '',
     '/* Desktop Analisis Saham uses the document as its only vertical scroll owner.',
     '   This prevents wheel/touchpad input from being trapped by an unconstrained',
     '   nested overflow container while preserving the mobile layout. */',
@@ -209,6 +214,60 @@
     return true;
   }
 
+  function maintenanceGateVisible(doc) {
+    if (!doc) return false;
+    var maintenance = doc.getElementById('maintenanceScreen');
+    var status = doc.getElementById('serviceStatusScreen');
+    function visible(el) {
+      if (!el || !el.classList) return false;
+      return !el.classList.contains('hidden');
+    }
+    return visible(maintenance) || visible(status);
+  }
+
+  function installTelegramAdminDevicePoll(targetRoot) {
+    var doc = targetRoot && targetRoot.document;
+    if (!doc || typeof targetRoot.fetch !== 'function' || typeof targetRoot.setTimeout !== 'function') return false;
+    if (targetRoot.__autocuanTelegramAdminDevicePoll === TELEGRAM_ADMIN_DEVICE_POLL_VERSION) return true;
+    targetRoot.__autocuanTelegramAdminDevicePoll = TELEGRAM_ADMIN_DEVICE_POLL_VERSION;
+
+    var stopped = false;
+    var inFlight = false;
+
+    async function tick() {
+      if (stopped) return;
+      if (!maintenanceGateVisible(doc) || inFlight) {
+        targetRoot.setTimeout(tick, 3000);
+        return;
+      }
+
+      inFlight = true;
+      try {
+        var response = await targetRoot.fetch('/api/admin-telegram-login', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'device-poll' })
+        });
+        var data = await response.json();
+        if (data && data.success === true && data.state === 'approved') {
+          stopped = true;
+          targetRoot.location.reload();
+          return;
+        }
+      } catch (_) {
+        // Maintenance must stay fail-closed; a failed poll changes nothing.
+      } finally {
+        inFlight = false;
+      }
+
+      if (!stopped) targetRoot.setTimeout(tick, 3000);
+    }
+
+    targetRoot.setTimeout(tick, 1200);
+    return true;
+  }
+
   function install(targetRoot) {
     var doc = targetRoot && targetRoot.document;
     if (!doc || !doc.head) return false;
@@ -218,6 +277,7 @@
     // sink synchronously; do not rely on a later MutationObserver cleanup.
     installSanitizerHardening(targetRoot);
     installWheelHandoff(targetRoot);
+    installTelegramAdminDevicePoll(targetRoot);
 
     if (doc.getElementById(STYLE_ID)) return true;
     var style = doc.createElement('style');
@@ -232,6 +292,7 @@
     STYLE_TEXT: STYLE_TEXT,
     SANITIZER_HARDENING_VERSION: SANITIZER_HARDENING_VERSION,
     WHEEL_HANDOFF_VERSION: WHEEL_HANDOFF_VERSION,
+    TELEGRAM_ADMIN_DEVICE_POLL_VERSION: TELEGRAM_ADMIN_DEVICE_POLL_VERSION,
     decodeHtmlEntities: decodeHtmlEntities,
     normalizedUrl: normalizedUrl,
     dangerousUrl: dangerousUrl,
@@ -245,6 +306,8 @@
     normalizedWheelDelta: normalizedWheelDelta,
     pageScrollLocked: pageScrollLocked,
     installWheelHandoff: installWheelHandoff,
+    maintenanceGateVisible: maintenanceGateVisible,
+    installTelegramAdminDevicePoll: installTelegramAdminDevicePoll,
     install: install
   };
 });
