@@ -1,0 +1,74 @@
+/* Portfolio AI workspace — desktop-first chat ergonomics.
+ * Loaded by the V2 shell so it does not depend on optional polish JavaScript.
+ */
+#page-ai.active {
+  scroll-margin-top: 82px;
+}
+
+#page-ai .ai-shell {
+  grid-template-columns: minmax(0, 2.35fr) minmax(260px, .62fr);
+  gap: 18px;
+  align-items: start;
+}
+
+#page-ai .ai-chat {
+  height: clamp(560px, calc(100dvh - 96px), 820px);
+  min-height: 560px;
+}
+
+#page-ai .ai-messages {
+  min-height: 300px;
+  padding-bottom: 22px;
+}
+
+#page-ai .ai-compose {
+  position: relative;
+  z-index: 3;
+  background: linear-gradient(180deg, rgba(8,15,24,.96), rgba(8,15,24,1));
+}
+
+#page-ai .ai-shell > aside {
+  position: sticky;
+  top: 82px;
+  max-height: calc(100dvh - 96px);
+  overflow: auto;
+}
+
+@media (min-width: 1081px) and (max-height: 760px) {
+  #page-ai .ai-chat {
+    height: calc(100dvh - 78px);
+    min-height: 500px;
+  }
+}
+
+@media (max-width: 1080px) {
+  #page-ai .ai-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #page-ai .ai-chat {
+    height: clamp(560px, 78dvh, 760px);
+    min-height: 560px;
+  }
+
+  #page-ai .ai-shell > aside {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 760px) {
+  #page-ai.active {
+    scroll-margin-top: 68px;
+  }
+
+  #page-ai .ai-chat {
+    height: clamp(540px, 76dvh, 700px);
+    min-height: 540px;
+  }
+
+  #page-ai .ai-messages {
+    min-height: 270px;
+  }
+}
