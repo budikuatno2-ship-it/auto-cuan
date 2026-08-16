@@ -25,6 +25,12 @@
   function init() {
     hideSubscriptionUi();
 
+    // Install the maintenance/auth guard before auth-v2 validates a missing or
+    // expired session. During maintenance the gate must remain the only visible
+    // top-level UX; an expired /dashboard session must not stack the login-choice
+    // modal over the maintenance card. This guard does not authorize anything.
+    loadScriptOnce('/maintenance-auth-guard.js?v=20260816-v1', 'data-autocuan-maintenance-auth-guard');
+
     // Cookie-first authentication runtime. It validates the signed server session
     // before rehydrating any local UI state, clears orphaned users such as deleted
     // accounts, removes device binding from login, and owns Telegram recovery UI.
