@@ -9,7 +9,8 @@ const ROOT = path.resolve(__dirname, '..');
 const commandLogin = require('../lib/admin-command-login');
 const adminAccess = require('../lib/admin-access');
 const uiPack = require('../public/ui-bugfix-pack-v1');
-const loginApi = require('../api/admin-telegram-login');
+const loginBrowser = require('../lib/admin-command-login-browser');
+const accountApi = require('../api/reset-password');
 
 function makeDb(options) {
   const opts = options || {};
@@ -146,7 +147,7 @@ test('verified /akses returns exactly the simple HP/Laptop menu', async function
   const keyboard = bot.sent[0].options.reply_markup.inline_keyboard;
   assert.equal(keyboard.length, 2);
   assert.equal(keyboard[0][0].text, '📱 Buka di HP');
-  assert.match(keyboard[0][0].url, /^https:\/\/autocuan\.web\.id\/api\/admin-telegram-login\?token=/);
+  assert.match(keyboard[0][0].url, /^https:\/\/autocuan\.web\.id\/api\/reset-password\?action=admin-command-login&token=/);
   assert.equal(keyboard[1][0].text, '💻 Buka di Laptop');
   assert.equal(keyboard[1][0].callback_data, commandLogin.LAPTOP_CALLBACK);
 
@@ -197,7 +198,7 @@ test('first Laptop choice uses one pairing button, never a typed code', async fu
   assert.equal(bot.edits.length, 1);
   const button = bot.edits[0].options.reply_markup.inline_keyboard[0][0];
   assert.equal(button.text, '💻 Hubungkan & Buka Auto-Cuan');
-  assert.match(button.url, /^https:\/\/autocuan\.web\.id\/api\/admin-telegram-login\?token=/);
+  assert.match(button.url, /^https:\/\/autocuan\.web\.id\/api\/reset-password\?action=admin-command-login&token=/);
   assert.doesNotMatch(bot.edits[0].text, /\b\d{6}\b/);
 });
 
@@ -208,26 +209,37 @@ test('admin-access dispatcher preserves legacy flow while routing /akses first',
   assert.equal(commandLogin.matchesUpdate(accessUpdate(6, 999, 5006)), true);
 });
 
-test('maintenance web admin entry is hidden and trusted-laptop polling is installed', function () {
+test('maintenance web admin entry is hidden and trusted-laptop polling reuses reset-password function', function () {
   assert.match(uiPack.STYLE_TEXT, /\.maintenance-admin\{display:none!important;\}/);
   assert.equal(typeof uiPack.installTelegramAdminDevicePoll, 'function');
   const src = fs.readFileSync(path.join(ROOT, 'public', 'ui-bugfix-pack-v1.js'), 'utf8');
-  assert.match(src, /\/api\/admin-telegram-login/);
-  assert.match(src, /action: 'device-poll'/);
+  assert.match(src, /\/api\/reset-password/);
+  assert.match(src, /action: 'admin-command-device-poll'/);
   assert.match(src, /location\.reload\(\)/);
 });
 
 test('device cookie is HttpOnly/Strict and pair-on-phone protection is present', function () {
-  const cookie = loginApi.__test.buildDeviceCookie('A'.repeat(43));
+  const cookie = loginBrowser.__test.buildDeviceCookie('A'.repeat(43));
   assert.match(cookie, /^ac_admin_dev=/);
   assert.match(cookie, /HttpOnly/);
   assert.match(cookie, /SameSite=Strict/);
-  assert.equal(loginApi.__test.isMobileUserAgent('Mozilla/5.0 (Linux; Android 15; Mobile)'), true);
-  assert.equal(loginApi.__test.isMobileUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)'), false);
+  assert.equal(loginBrowser.__test.isMobileUserAgent('Mozilla/5.0 (Linux; Android 15; Mobile)'), true);
+  assert.equal(loginBrowser.__test.isMobileUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)'), false);
 
-  const src = fs.readFileSync(path.join(ROOT, 'api', 'admin-telegram-login.js'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'lib', 'admin-command-login-browser.js'), 'utf8');
   assert.match(src, /p_new_device_hash: mobile \? null : deviceHash/);
   assert.match(src, /createSessionToken\(\{ userId: row\.user_id, username: row\.username, isAdmin: true \}\)/);
+  assert.equal(typeof accountApi.__test.adminCommandBrowser.buildDeviceCookie, 'function');
+});
+
+test('command login reuses an existing Vercel API slot instead of creating function #13', function () {
+  const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) { return name.endsWith('.js'); });
+  assert.equal(apiFiles.length, 12);
+  assert.equal(apiFiles.includes('admin-telegram-login.js'), false);
+  const wrapper = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
+  assert.match(wrapper, /admin-command-login/);
+  assert.match(wrapper, /admin-command-device-poll/);
+  assert.match(wrapper, /reset-password-legacy-handler/);
 });
 
 test('command-login migration stores hashes, keeps RLS, and grants RPC execution only to service_role', function () {
