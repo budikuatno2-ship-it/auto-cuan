@@ -38,6 +38,10 @@ function hashDeviceSecret(value) {
   return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
 }
 
+function isMobileUserAgent(value) {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(String(value || ''));
+}
+
 function deviceCookieFlags() {
   const flags = ['Path=/', 'HttpOnly', 'SameSite=Strict'];
   if (isProduction()) flags.push('Secure');
@@ -79,14 +83,18 @@ async function consumeLink(req, res, db) {
   const tokenHash = commandLogin.hashToken(rawToken);
   if (!tokenHash) return redirectHome(res, false);
 
-  // Generate a possible device secret up front. The RPC uses it only for a
-  // pair grant; direct HP login ignores it. Raw value never reaches Postgres.
+  // Generate a possible device secret up front. A direct HP grant ignores it.
+  // For a pair grant we deliberately pass no device hash from a mobile UA, so
+  // the RPC returns device_required WITHOUT consuming the token. The same link
+  // can then still be opened on the intended laptop within its short TTL.
+  const userAgent = req.headers && req.headers['user-agent'];
+  const mobile = isMobileUserAgent(userAgent);
   const deviceSecret = randomDeviceSecret();
   const deviceHash = hashDeviceSecret(deviceSecret);
   const result = await db.rpc('consume_admin_command_login_token', {
     p_token_hash: tokenHash,
-    p_new_device_hash: deviceHash,
-    p_device_label: coarseDeviceLabel(req.headers && req.headers['user-agent'])
+    p_new_device_hash: mobile ? null : deviceHash,
+    p_device_label: coarseDeviceLabel(userAgent)
   });
   if (result.error) return redirectHome(res, false);
 
@@ -160,6 +168,7 @@ module.exports.__test = {
   DEVICE_COOKIE_MAX_AGE_SECONDS,
   randomDeviceSecret,
   hashDeviceSecret,
+  isMobileUserAgent,
   coarseDeviceLabel,
   buildDeviceCookie
 };
