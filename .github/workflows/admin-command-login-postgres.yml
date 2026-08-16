@@ -1,0 +1,58 @@
+name: Admin command login PostgreSQL harness
+on:
+  pull_request:
+    paths:
+      - 'supabase/admin-telegram-command-login-migration.sql'
+      - 'lib/admin-command-login.js'
+      - 'lib/admin-command-login-browser.js'
+      - 'lib/admin-access.js'
+      - 'lib/admin-access-legacy.js'
+      - 'lib/reset-password-legacy-handler.js'
+      - 'api/reset-password.js'
+      - 'public/ui-bugfix-pack-v1.js'
+      - 'test/admin-command-login.test.js'
+      - 'test/sql/admin-command-login/**'
+      - '.github/workflows/admin-command-login-postgres.yml'
+
+jobs:
+  command-login:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: admin_command_login_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d admin_command_login_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: admin_command_login_test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run command-login Node tests
+        run: node --test test/admin-command-login.test.js test/admin-telegram-access.test.js
+      - name: Bootstrap isolated PostgreSQL schema
+        run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-access/bootstrap.sql
+      - name: Apply command-login migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
+      - name: Execute command-login runtime regression
+        run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/runtime.sql
+      - name: Re-apply migration against non-empty state
+        run: psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
+      - name: Verify migration remains runnable after re-apply
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "SELECT count(*) AS grants FROM public.admin_command_login_grants;"
+          psql -v ON_ERROR_STOP=1 -c "SELECT admin_device_label, admin_device_bound_at IS NOT NULL AS paired FROM public.app_user_telegram_verifications WHERE telegram_user_id=999999001;"
