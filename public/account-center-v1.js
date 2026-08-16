@@ -268,10 +268,14 @@
     if (!panel) return;
     var ent = currentProfile && currentProfile.subscription && currentProfile.subscription.entitlement;
     var planCards = subscriptionPlans.length ? subscriptionPlans.map(function (p) {
-      var price = p.current_price || {};
-      var effective = price.promo_enabled && price.promo_price_idr != null ? price.promo_price_idr : price.normal_price_idr;
+      // The user-facing catalog deliberately has a narrower response than the
+      // admin catalog: normal_price_idr/promotional_price_idr/promotion_active.
+      // Do not read the admin-only `current_price` shape here.
+      var normal = Number(p.normal_price_idr);
+      var promo = p.promotion_active === true && p.promotional_price_idr != null ? Number(p.promotional_price_idr) : null;
+      var effective = Number.isFinite(promo) ? promo : normal;
       var current = ent && ent.current_plan === p.code;
-      return '<article class="ac-plan ' + (current ? 'ac-plan-current' : '') + '"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><p class="ac-plan-name">' + esc(planName(p.code,p.display_name)) + '</p>' + (current ? '<span class="ac-chip ac-chip-ok">Aktif</span>' : '') + '</div><p class="ac-plan-price">' + esc(idr(effective)) + (price.promo_enabled && price.normal_price_idr != null ? '<span class="ac-plan-normal">' + esc(idr(price.normal_price_idr)) + '</span>' : '') + '</p><p class="ac-plan-meta">Masa aktif: ' + esc(durationLabel(p)) + '</p></article>';
+      return '<article class="ac-plan ' + (current ? 'ac-plan-current' : '') + '"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><p class="ac-plan-name">' + esc(planName(p.code,p.display_name)) + '</p>' + (current ? '<span class="ac-chip ac-chip-ok">Aktif</span>' : '') + '</div><p class="ac-plan-price">' + esc(idr(effective)) + (p.promotion_active === true && Number.isFinite(normal) ? '<span class="ac-plan-normal">' + esc(idr(normal)) + '</span>' : '') + '</p><p class="ac-plan-meta">Masa aktif: ' + esc(durationLabel(p)) + '</p></article>';
     }).join('') : '<div class="ac-empty">Katalog paket belum tersedia.</div>';
     panel.innerHTML = [
       '<div class="ac-center-grid">',
