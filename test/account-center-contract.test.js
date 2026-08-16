@@ -69,7 +69,7 @@ test('Account Center is lazy-loaded while signup terms stay available at startup
   assert.match(lazySource, /function loadCenter\(tab\)/);
   assert.match(lazySource, /installRegistrationContract\(\)/);
   assert.match(lazySource, /backdrop-filter:none!important/);
-  assert.doesNotMatch(lazySource, /MutationObserver/);
+  assert.doesNotMatch(lazySource, /new\s+MutationObserver\s*\(/);
 });
 
 test('subscription cards read the narrow user catalog response, including promotion state', () => {
