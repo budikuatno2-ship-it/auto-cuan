@@ -48,9 +48,19 @@ CREATE TABLE IF NOT EXISTS public.admin_access_requests (
   updated_at            timestamptz NOT NULL DEFAULT now()
 );
 
+-- Active-slot invariant applies ONLY to Telegram-ACTIVATED requests
+-- (telegram_message_id IS NOT NULL, i.e. the bound admin's own Telegram
+-- already confirmed and received the approval message). A dormant row
+-- created by the public, unauthenticated maintenance page has
+-- telegram_message_id NULL and therefore never occupies this slot and never
+-- blocks anyone else's create/activate — this is what stops an anonymous
+-- caller from griefing the real admin's login by permanently squatting the
+-- one-active-admin-challenge invariant with challenges nobody ever
+-- Telegram-activates.
+DROP INDEX IF EXISTS uq_admin_access_active_user;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_admin_access_active_user
   ON public.admin_access_requests (user_id)
-  WHERE state IN ('pending','approved');
+  WHERE state IN ('pending','approved') AND telegram_message_id IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_admin_access_expiry
   ON public.admin_access_requests (expires_at)
@@ -62,6 +72,12 @@ CREATE INDEX IF NOT EXISTS idx_admin_access_expiry
 CREATE INDEX IF NOT EXISTS idx_admin_access_ip_window
   ON public.admin_access_requests (requester_ip_hash, created_at)
   WHERE requester_ip_hash IS NOT NULL;
+
+-- Global creation-rate window (DB hygiene only, not identity/authorization).
+-- Bounds worst-case row growth from many distinct/rotating IPs, independent
+-- of the per-IP layer above.
+CREATE INDEX IF NOT EXISTS idx_admin_access_created_at
+  ON public.admin_access_requests (created_at);
 
 ALTER TABLE public.admin_access_requests ENABLE ROW LEVEL SECURITY;
 
@@ -113,10 +129,11 @@ DECLARE
   v_request public.admin_access_requests%ROWTYPE;
   v_existing public.admin_access_requests%ROWTYPE;
   v_ip_count integer;
+  v_global_count integer;
 BEGIN
-  SELECT * INTO v_user
-    FROM public.app_users
-   WHERE lower(username) = lower(trim(p_username))
+  SELECT au.* INTO v_user
+    FROM public.app_users AS au
+   WHERE lower(au.username) = lower(trim(p_username))
    FOR UPDATE;
 
   IF NOT FOUND OR lower(v_user.username) <> 'budi'
@@ -125,12 +142,20 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT * INTO v_ver
-    FROM public.app_user_telegram_verifications
-   WHERE user_id = v_user.id
-     AND telegram_user_id IS NOT NULL
-     AND telegram_private_chat_id IS NOT NULL
-     AND telegram_verified_at IS NOT NULL;
+  -- Column names here (user_id, telegram_user_id) collide with this
+  -- function's own RETURNS TABLE output columns. Inside PL/pgSQL, unqualified
+  -- references are resolved against BOTH the table and the function's own
+  -- output-parameter variables, which PostgreSQL can find genuinely
+  -- ambiguous at runtime ("column reference ... is ambiguous") even though
+  -- the query looks unambiguous by eye. Every reference below is qualified
+  -- with an explicit table alias for exactly this reason — never rely on
+  -- PL/pgSQL name-resolution coincidence.
+  SELECT v.* INTO v_ver
+    FROM public.app_user_telegram_verifications AS v
+   WHERE v.user_id = v_user.id
+     AND v.telegram_user_id IS NOT NULL
+     AND v.telegram_private_chat_id IS NOT NULL
+     AND v.telegram_verified_at IS NOT NULL;
 
   IF NOT FOUND THEN
     RETURN QUERY SELECT 'not_bound'::text, NULL::uuid, v_user.id, NULL::bigint, NULL::bigint, NULL::timestamptz;
@@ -139,9 +164,9 @@ BEGIN
 
   IF p_ip_hash IS NOT NULL THEN
     SELECT count(*) INTO v_ip_count
-      FROM public.admin_access_requests
-     WHERE requester_ip_hash = p_ip_hash
-       AND created_at > now() - interval '5 minutes';
+      FROM public.admin_access_requests AS aar
+     WHERE aar.requester_ip_hash = p_ip_hash
+       AND aar.created_at > now() - interval '5 minutes';
 
     IF v_ip_count >= 5 THEN
       RETURN QUERY SELECT 'ip_throttled'::text, NULL::uuid, v_user.id, NULL::bigint, NULL::bigint, NULL::timestamptz;
@@ -149,12 +174,34 @@ BEGIN
     END IF;
   END IF;
 
-  SELECT * INTO v_existing
-    FROM public.admin_access_requests
-   WHERE user_id = v_user.id
-     AND state IN ('pending','approved')
-     AND expires_at > now()
-   ORDER BY created_at DESC
+  -- Global creation-rate bound (DB hygiene only): caps worst-case row growth
+  -- from many distinct/rotating IPs even though each dormant row never
+  -- blocks anyone or sends a Telegram message on its own.
+  SELECT count(*) INTO v_global_count
+    FROM public.admin_access_requests AS aar
+   WHERE aar.created_at > now() - interval '5 minutes';
+
+  IF v_global_count >= 100 THEN
+    RETURN QUERY SELECT 'rate_limited'::text, NULL::uuid, v_user.id, NULL::bigint, NULL::bigint, NULL::timestamptz;
+    RETURN;
+  END IF;
+
+  -- No-preemption check applies ONLY to a request that has actually been
+  -- Telegram-ACTIVATED (telegram_message_id IS NOT NULL) — a dormant,
+  -- never-activated challenge (created by any anonymous caller, including a
+  -- flood of them) must NEVER be able to block the real admin's own next
+  -- launch. This is the fix for the admin-slot-griefing gap: previously any
+  -- dormant 'pending' row counted as "live" here, so an anonymous caller
+  -- could squat the one-active-admin-challenge slot indefinitely by
+  -- recreating a fresh dormant challenge every ~2 minutes without ever
+  -- opening the Telegram deep link.
+  SELECT aar.* INTO v_existing
+    FROM public.admin_access_requests AS aar
+   WHERE aar.user_id = v_user.id
+     AND aar.state IN ('pending','approved')
+     AND aar.telegram_message_id IS NOT NULL
+     AND aar.expires_at > now()
+   ORDER BY aar.created_at DESC
    LIMIT 1
    FOR UPDATE;
 
@@ -166,11 +213,20 @@ BEGIN
   -- Lazy cleanup only: rows already past their TTL never block a new
   -- request (they are not "live"), so marking them expired here is
   -- housekeeping, not a preemption of anything still valid.
-  UPDATE public.admin_access_requests
+  UPDATE public.admin_access_requests AS aar
      SET state = 'expired', updated_at = now()
-   WHERE user_id = v_user.id
-     AND state IN ('pending','approved')
-     AND expires_at <= now();
+   WHERE aar.user_id = v_user.id
+     AND aar.state IN ('pending','approved')
+     AND aar.expires_at <= now();
+
+  -- Bounded, opportunistic hygiene: drop this admin's own old terminal-state
+  -- rows (already denied/consumed/expired for over a day) so the table does
+  -- not grow without bound purely from routine day-to-day use. Scoped to
+  -- this user_id only so the cost stays tied to a single index lookup.
+  DELETE FROM public.admin_access_requests AS aar
+   WHERE aar.user_id = v_user.id
+     AND aar.state IN ('denied','consumed','expired')
+     AND aar.updated_at < now() - interval '1 day';
 
   INSERT INTO public.admin_access_requests (
     user_id, request_ref, browser_binding_hash, state, expires_at, request_context, requester_ip_hash
@@ -224,9 +280,9 @@ AS $$
 DECLARE
   v_request public.admin_access_requests%ROWTYPE;
 BEGIN
-  SELECT * INTO v_request
-    FROM public.admin_access_requests
-   WHERE request_ref = p_request_ref
+  SELECT aar.* INTO v_request
+    FROM public.admin_access_requests AS aar
+   WHERE aar.request_ref = p_request_ref
    FOR UPDATE;
 
   IF NOT FOUND THEN
@@ -262,6 +318,30 @@ BEGIN
 
   IF v_request.activation_claimed_at IS NOT NULL AND v_request.activation_claimed_at > now() - interval '20 seconds' THEN
     RETURN QUERY SELECT 'claim_in_progress'::text, NULL::text, v_request.expires_at;
+    RETURN;
+  END IF;
+
+  -- Serialize activation attempts per admin: locks out any concurrent
+  -- create/activate touching this same admin's rows for the rest of this
+  -- transaction, which is what makes the sibling-row check below race-free
+  -- (no other transaction can flip a sibling dormant row's
+  -- telegram_message_id from NULL to NOT NULL while this lock is held).
+  PERFORM 1 FROM public.app_users AS au WHERE au.id = v_request.user_id FOR UPDATE;
+
+  -- The verified admin may have multiple dormant challenges outstanding
+  -- (several browser tabs, retries, etc). Only ever let ONE of them become
+  -- truly Telegram-activated at a time — if a sibling challenge for the same
+  -- admin is already activated and still live, tell the caller to use that
+  -- one instead of sending a second approval message for a different ref.
+  IF EXISTS (
+    SELECT 1 FROM public.admin_access_requests AS aar2
+     WHERE aar2.user_id = v_request.user_id
+       AND aar2.request_ref <> v_request.request_ref
+       AND aar2.state IN ('pending','approved')
+       AND aar2.telegram_message_id IS NOT NULL
+       AND aar2.expires_at > now()
+  ) THEN
+    RETURN QUERY SELECT 'already_active'::text, NULL::text, v_request.expires_at;
     RETURN;
   END IF;
 
