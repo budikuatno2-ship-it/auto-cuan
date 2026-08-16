@@ -5,6 +5,9 @@
   window.__AUTOCUAN_APPROVED_WEBSITE_RUNTIME__ = true;
 
   function hideSubscriptionUi() {
+    // The old standalone subscription page remains parked so it cannot conflict
+    // with Account Center. Subscription status, plans, trial, and voucher actions
+    // are exposed through the new signed-session Account Center runtime instead.
     document.querySelectorAll('[data-page="subscription"],#page-subscription,#subscriptionIdentityCard,#subscriptionPlansAdminButton').forEach(function (el) {
       if (el && el.parentNode) el.parentNode.removeChild(el);
     });
@@ -35,6 +38,11 @@
     // before rehydrating any local UI state, clears orphaned users such as deleted
     // accounts, removes device binding from login, and owns Telegram recovery UI.
     loadScriptOnce('/auth-v2.js?v=20260801-v1', 'data-autocuan-auth-v2');
+
+    // Account Center is presentation + same-origin API orchestration only. Profile
+    // facts and admin voucher authority are resolved server-side from the signed
+    // session; this runtime cannot grant itself approval/admin/premium access.
+    loadScriptOnce('/account-center-v1.js?v=20260816-v1', 'data-autocuan-account-center');
 
     // First-time admin laptop pairing is initiated by the already-open maintenance
     // tab itself. Telegram only approves the exact short-lived browser request, so
