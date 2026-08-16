@@ -6,6 +6,8 @@ name: Monitor Locked Top 5 Picks (Manual Only)
 on:
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   monitor-picks:
     runs-on: ubuntu-latest
