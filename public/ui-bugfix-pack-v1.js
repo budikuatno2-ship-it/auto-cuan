@@ -243,11 +243,11 @@
 
       inFlight = true;
       try {
-        var response = await targetRoot.fetch('/api/admin-telegram-login', {
+        var response = await targetRoot.fetch('/api/reset-password', {
           method: 'POST',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'device-poll' })
+          body: JSON.stringify({ action: 'admin-command-device-poll' })
         });
         var data = await response.json();
         if (data && data.success === true && data.state === 'approved') {
