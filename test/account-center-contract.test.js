@@ -60,6 +60,13 @@ test('account center exposes profile subscription terms and a scrollable rules d
   assert.match(bootstrapSource, /account-center-v1\.js/);
 });
 
+test('subscription cards read the narrow user catalog response, including promotion state', () => {
+  assert.match(runtimeSource, /p\.normal_price_idr/);
+  assert.match(runtimeSource, /p\.promotional_price_idr/);
+  assert.match(runtimeSource, /p\.promotion_active === true/);
+  assert.match(runtimeSource, /durationLabel\(p\)/);
+});
+
 test('voucher creation remains protected by signed budi admin checks and plaintext is not stored', () => {
   assert.match(adminSource, /requireAdminSession\(req\)/);
   assert.match(adminSource, /voucher_admin_create/);
