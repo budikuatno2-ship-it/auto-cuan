@@ -1,9 +1,44 @@
 'use strict';
 
+const { createClient } = require('@supabase/supabase-js');
 const handleContextAI = require('../lib/context-ai-router-v6');
 const legacyAnalyze = require('../lib/analyze-legacy');
 const { hydrateContext } = require('../lib/ai-context-snapshot-store');
 const { prepareRuntimeGrounding } = require('../lib/ai-runtime-grounding-v2');
+const { requirePremiumEntitlement } = require('../lib/subscription-auth');
+
+function getSupabase() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+async function requireAnalyzeAccess(req, res) {
+  const db = getSupabase();
+  if (!db) {
+    res.status(503).json({ success:false, code:'PREMIUM_ACCESS_UNAVAILABLE', error:'Status subscription belum tersedia.' });
+    return false;
+  }
+
+  let access;
+  try { access = await requirePremiumEntitlement(req, db); }
+  catch (_) {
+    res.status(503).json({ success:false, code:'PREMIUM_ACCESS_UNAVAILABLE', error:'Status subscription belum tersedia.' });
+    return false;
+  }
+
+  if (!access.ok) {
+    res.status(access.status || 403).json({
+      success:false,
+      code:access.code || 'PREMIUM_ACCESS_DENIED',
+      error:access.error || 'Akses premium diperlukan.',
+      access_level:access.access_level || 'free'
+    });
+    return false;
+  }
+  return true;
+}
 
 function styleInstruction(source) {
   const focus = source === 'stock_analysis_followup'
@@ -74,9 +109,21 @@ async function prepareContextRequest(req) {
 }
 
 module.exports = async function handler(req, res) {
+  if (req && req.method === 'POST') {
+    const allowed = await requireAnalyzeAccess(req, res);
+    if (!allowed) return;
+  }
+
   const source = req && req.method === 'POST' && req.body && req.body.source;
   if (source === 'portfolio_chat' || source === 'stock_analysis_followup') {
     return handleContextAI(await prepareContextRequest(req), res);
   }
   return legacyAnalyze(req, res);
+};
+
+module.exports.__test = {
+  getSupabase,
+  requireAnalyzeAccess,
+  transientSimulation,
+  styleInstruction
 };
