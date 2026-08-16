@@ -4,9 +4,11 @@ on:
     paths:
       - 'supabase/admin-telegram-command-login-migration.sql'
       - 'lib/admin-command-login.js'
+      - 'lib/admin-command-login-browser.js'
       - 'lib/admin-access.js'
       - 'lib/admin-access-legacy.js'
-      - 'api/admin-telegram-login.js'
+      - 'lib/reset-password-legacy-handler.js'
+      - 'api/reset-password.js'
       - 'public/ui-bugfix-pack-v1.js'
       - 'test/admin-command-login.test.js'
       - 'test/sql/admin-command-login/**'
