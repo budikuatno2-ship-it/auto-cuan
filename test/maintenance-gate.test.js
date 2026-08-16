@@ -453,9 +453,18 @@ test('the gate never consults client-writable storage', () => {
   assert.doesNotMatch(gate, /\bisAdmin\(\)/);
 });
 
-test('the admin entry point reuses the existing login modal and adds no second auth path', () => {
-  const fn = extract('openMaintenanceAdminLogin');
-  assert.match(fn, /openLoginModal\(\)/);
-  // No token, no secret, no privileged flag written anywhere client-side.
-  assert.doesNotMatch(fn, /token|secret|admin\s*=\s*(true|1)|setItem/i);
+test('the admin entry point is a Telegram approval request, not a login form', () => {
+  const fn = extract('startAdminTelegramAccess');
+  assert.match(fn, /admin-access-request/);
+  // No username/password modal is opened from this control anymore.
+  assert.doesNotMatch(fn, /openLoginModal\(\)/);
+  // No privileged flag is written client-side; approval status only ever
+  // comes back through session-status via validateAutocuanSession().
+  assert.doesNotMatch(fn, /isAdmin\s*=\s*(true|1)|setItem\(['"]autocuan_is_admin/i);
+});
+
+test('a successful admin-access poll re-validates the server session before entering the app', () => {
+  const fn = extract('pollAdminAccess');
+  assert.match(fn, /validateAutocuanSession/);
+  assert.match(fn, /isServerVerifiedAdmin\(\)/);
 });
