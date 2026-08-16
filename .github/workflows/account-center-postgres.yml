@@ -1,0 +1,87 @@
+name: Account Center PostgreSQL harness
+
+on:
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
+    paths:
+      - 'supabase/account-profile-terms-migration.sql'
+      - 'api/register-user.js'
+      - 'api/reset-password.js'
+      - 'lib/account-profile-handler.js'
+      - 'lib/account-terms.js'
+      - 'public/account-center-v1.js'
+      - 'public/account-center-v1.css'
+      - 'public/website-approved-access.js'
+      - 'test/account-center-contract.test.js'
+      - 'test/sql/account-center/**'
+      - '.github/workflows/account-center-postgres.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  account-center:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: account_center_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -d account_center_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGDATABASE: account_center_test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Account Center contract tests
+        run: node --test test/account-center-contract.test.js
+
+      - name: Bootstrap account schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          DO $$ BEGIN CREATE ROLE service_role NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+          CREATE TABLE IF NOT EXISTS public.app_users (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            username text NOT NULL UNIQUE,
+            created_at timestamptz NOT NULL DEFAULT now()
+          );
+          SQL
+
+      - name: Apply terms migration
+        run: psql -v ON_ERROR_STOP=1 -f supabase/account-profile-terms-migration.sql
+
+      - name: Runtime security audit
+        run: psql -v ON_ERROR_STOP=1 -f test/sql/account-center/runtime.sql
+
+      - name: Reapply migration idempotently
+        run: psql -v ON_ERROR_STOP=1 -f supabase/account-profile-terms-migration.sql
+
+      - name: Diff whitespace check
+        run: git diff --check HEAD^ HEAD
