@@ -16,6 +16,7 @@ function assertOk(condition, message) {
 
 [
   'api/reset-password.js',
+  'lib/reset-password-legacy-handler.js',
   'lib/auth-recovery.js',
   'public/auth-v2.js',
   'public/website-approved-access.js',
@@ -24,7 +25,11 @@ function assertOk(condition, message) {
   new vm.Script(read(file), { filename: file });
 });
 
-const endpoint = read('api/reset-password.js');
+// reset-password remains one Vercel Function, but its established account and
+// recovery implementation is delegated to a same-process module so the new
+// Telegram-command handoff does not create function #13. Validate the combined
+// gateway + delegated implementation as one endpoint contract.
+const endpoint = read('api/reset-password.js') + '\n' + read('lib/reset-password-legacy-handler.js');
 const recovery = read('lib/auth-recovery.js');
 const frontend = read('public/auth-v2.js');
 const loader = read('public/website-approved-access.js');
