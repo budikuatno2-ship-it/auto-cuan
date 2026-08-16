@@ -7,12 +7,15 @@ const {
   buildSessionCookie,
   buildClearCookie,
   isSameOrigin,
-  requireAuthenticatedSession
+  requireAuthenticatedSession,
+  parseCookies,
+  isProduction
 } = require('../lib/admin-session');
 const securityGuard = require('../lib/security-guard');
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const recovery = require('../lib/auth-recovery');
+const adminAccess = require('../lib/admin-access');
 const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');
 
 const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah.';
@@ -67,6 +70,26 @@ function clearSession(res) {
   try { res.setHeader('Set-Cookie', buildClearCookie()); } catch (_) {}
 }
 
+// The admin-access browser-binding cookie is deliberately a distinct name,
+// shape, and purpose from ac_sess: it never carries any claim of identity or
+// admin status, only proves "this poll/consume request came from the same
+// browser that created the challenge". It cannot be used anywhere else.
+function chalCookieFlags() {
+  const flags = ['Path=/', 'HttpOnly', 'SameSite=Strict'];
+  if (isProduction()) flags.push('Secure');
+  return flags;
+}
+function buildChalCookie(value) {
+  return adminAccess.BINDING_COOKIE_NAME + '=' + value + '; ' + chalCookieFlags().join('; ') +
+    '; Max-Age=' + adminAccess.BINDING_COOKIE_MAX_AGE_SECONDS;
+}
+function buildClearChalCookie() {
+  return adminAccess.BINDING_COOKIE_NAME + '=; ' + chalCookieFlags().join('; ') + '; Max-Age=0';
+}
+function setCookies(res, cookies) {
+  try { res.setHeader('Set-Cookie', cookies); } catch (_) {}
+}
+
 async function handleVerifyWebhook(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
 
@@ -107,6 +130,11 @@ async function handleVerifyWebhook(req, res) {
 
     if (recoveryResult && recoveryResult.handled) {
       return res.status(200).json({ ok: true, outcome: recoveryResult.outcome });
+    }
+
+    const adminAccessResult = await adminAccess.handleAdminAccessUpdate(update, { db: db, bot: bot });
+    if (adminAccessResult && adminAccessResult.handled) {
+      return res.status(200).json({ ok: true, outcome: adminAccessResult.outcome });
     }
 
     const result = await telegramVerification.processWebhookUpdate(update, {
@@ -347,6 +375,95 @@ async function completePasswordReset(req, res, db) {
   });
 }
 
+// Only trust Vercel's own forwarded-for header for this feature: it is
+// overwritten by the platform edge on every hop, so a client cannot choose
+// its own value. Any other header in getClientIp()'s wider fallback chain
+// (x-real-ip, a generic x-forwarded-for) is not demonstrably trustworthy
+// off Vercel, and this signal is rate-limiting/DB-hygiene input only — never
+// authorization — so when it is not available we simply omit the per-IP
+// layer rather than rate-limit against a spoofable value.
+function trustedRateLimitIp(req) {
+  const header = req && req.headers && req.headers['x-vercel-forwarded-for'];
+  const first = String(header || '').split(',')[0];
+  return securityGuard.normalizeIp(first);
+}
+
+// Public entry from the maintenance screen. Anyone can call this (there is no
+// account to authenticate yet). It only ever creates a DORMANT, browser-bound
+// challenge and returns a Telegram deep link — it never sends a Telegram
+// message itself, so an anonymous caller cannot cause a notification. A
+// message is only ever sent once the admin's own verified Telegram account
+// opens that link (see lib/admin-access.js#activateFromDeepLink, driven by
+// the webhook). This function never grants access by itself.
+async function adminAccessRequest(req, res, db) {
+  const context = String(req.body && req.body.context || '').slice(0, 200);
+  // Rate-limiting/DB-hygiene key only, hashed before it ever reaches SQL
+  // (lib/admin-access.js#hashIp). See trustedRateLimitIp() above.
+  const ip = trustedRateLimitIp(req);
+  let result;
+  try {
+    result = await adminAccess.requestAccess(db, { context: context, ip: ip });
+  } catch (_) {
+    return res.status(200).json({ success: false, error: 'Permintaan akses sementara tidak tersedia.' });
+  }
+
+  if (!result || !result.eligible) {
+    if (result && (result.reason === 'throttled' || result.reason === 'ip_throttled')) {
+      return res.status(200).json({ success: false, error: 'Tunggu beberapa saat sebelum mencoba lagi.' });
+    }
+    return res.status(200).json({ success: false, error: 'Permintaan akses sementara tidak tersedia.' });
+  }
+
+  setCookies(res, [buildChalCookie(result.browserBinding)]);
+  return res.status(200).json({
+    success: true,
+    requestRef: result.requestRef,
+    expiresAt: result.expiresAt,
+    deepLink: result.deepLink
+  });
+}
+
+// Browser poll. Atomically consumes an approved challenge and issues the
+// real admin session in the same request — this is the only place ac_sess is
+// ever set from this flow, and only after the server-side RPC confirms the
+// challenge was approved by the bound admin's own Telegram account.
+async function adminAccessPoll(req, res, db) {
+  const requestRef = String(req.body && req.body.requestRef || '').trim();
+  const cookies = parseCookies(req);
+  const browserBinding = cookies[adminAccess.BINDING_COOKIE_NAME];
+
+  let row;
+  try {
+    row = await adminAccess.consumeAccess(db, requestRef, browserBinding);
+  } catch (_) {
+    return res.status(200).json({ success: false, state: 'expired', error: 'Permintaan tidak ditemukan.' });
+  }
+
+  const code = (row && row.result_code) || 'not_found';
+
+  if (code === 'pending') {
+    return res.status(200).json({ success: true, state: 'pending', expiresAt: row.expires_at });
+  }
+
+  if (code === 'ok') {
+    const token = createSessionToken({ userId: row.user_id, username: row.username, isAdmin: true });
+    if (!token) {
+      return res.status(200).json({ success: false, state: 'expired', error: 'Sesi belum tersedia.' });
+    }
+    setCookies(res, [buildSessionCookie(token), buildClearChalCookie()]);
+    // Best-effort only: the challenge is already 'consumed' server-side, so a
+    // failed or delayed deletion cannot revalidate it or enable a replay.
+    adminAccess.cleanupMessage(createVerifyBot(), row.telegram_chat_id, row.telegram_message_id).catch(function () {});
+    return res.status(200).json({ success: true, state: 'approved' });
+  }
+
+  if (code === 'denied') {
+    return res.status(200).json({ success: false, state: 'denied', error: 'Permintaan ditolak dari Telegram.' });
+  }
+
+  return res.status(200).json({ success: false, state: 'expired', error: 'Permintaan sudah tidak berlaku.' });
+}
+
 module.exports = async function handler(req, res) {
   const queryAction = req.query && req.query.action;
   if (queryAction === 'telegram-verify-webhook-v3') {
@@ -378,6 +495,8 @@ module.exports = async function handler(req, res) {
     if (action === 'session-status') return await sessionStatus(req, res, db);
     if (action === 'request-password-reset') return await requestPasswordReset(req, res, db);
     if (action === 'complete-password-reset') return await completePasswordReset(req, res, db);
+    if (action === 'admin-access-request') return await adminAccessRequest(req, res, db);
+    if (action === 'admin-access-poll') return await adminAccessPoll(req, res, db);
 
     return res.status(400).json({
       success: false,

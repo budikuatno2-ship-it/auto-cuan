@@ -650,6 +650,11 @@
         .maintenance-admin-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid transparent; border-radius: 12px; background: none; color: #6b7a90; font-size: 12px; font-weight: 600; cursor: pointer; }
         .maintenance-admin-btn:hover { color: #cbd5e1; border-color: rgba(148,163,184,.16); background: rgba(15,23,42,.5); }
         .maintenance-admin-btn:focus-visible { outline: 2px solid rgba(52,211,153,.75); outline-offset: 3px; }
+        .maintenance-admin-btn:disabled { opacity: .6; cursor: default; }
+        .maintenance-admin-panel { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 320px; }
+        .maintenance-admin-status { font-size: 11.5px; line-height: 1.6; color: #6b7a90; text-align: center; }
+        .maintenance-admin-status-error { color: #fca5a5; }
+        .maintenance-admin-status-success { color: #6ee7b7; }
 
         .landing-menu a, .landing-link { color: #94a3b8; font-size: 13px; font-weight: 700; transition: color .15s ease; display: inline-flex; align-items: center; min-height: 24px; }
         .landing-menu a:hover, .landing-link:hover { color: #6ee7b7; }
@@ -845,14 +850,19 @@
 
         <p class="maintenance-foot">Halaman ini akan kembali normal begitu pemeliharaan selesai. Tidak perlu membuat akun baru atau mengulang pendaftaran.</p>
 
-        <!-- Administrator entry. This opens the ordinary login modal — there is no
-             second authentication path, no token in the URL and no client secret.
-             Logging in here grants nothing by itself: the maintenance gate only
-             opens for a session the server confirms as admin via session-status,
-             and every admin endpoint separately enforces requireAdminSession().
-             A non-admin who signs in from this control stays on this screen. -->
+        <!-- Administrator entry. Creates a short-lived, one-time, browser-bound
+             challenge and asks the admin's own already-verified Telegram
+             account (AutoCuan Verification bot) to approve it. There is no
+             password field here, no token in the URL, and no client secret —
+             approval alone still grants nothing: the maintenance gate only
+             opens once the server has issued the real signed ac_sess session
+             and session-status confirms it, and every admin endpoint
+             separately enforces requireAdminSession(). -->
         <div class="maintenance-admin">
-            <button type="button" onclick="openMaintenanceAdminLogin()" class="maintenance-admin-btn">Akses admin</button>
+            <div class="maintenance-admin-panel">
+                <button type="button" id="maintenanceAdminBtn" onclick="startAdminTelegramAccess('maintenance')" class="maintenance-admin-btn">Akses administrator</button>
+                <p id="maintenanceAdminStatus" class="maintenance-admin-status hidden" role="status" aria-live="polite"></p>
+            </div>
         </div>
     </div>
 </div>
@@ -894,6 +904,16 @@
         </div>
 
         <p id="serviceStatusNote" class="maintenance-foot">Jika ini terus terjadi, muat ulang halaman beberapa saat lagi.</p>
+
+        <!-- Same Telegram-approved admin entry as the maintenance screen. An
+             expired admin session must not become an unrecoverable lockout
+             during an outage where status itself cannot be confirmed. -->
+        <div class="maintenance-admin">
+            <div class="maintenance-admin-panel">
+                <button type="button" id="serviceStatusAdminBtn" onclick="startAdminTelegramAccess('serviceStatus')" class="maintenance-admin-btn">Akses administrator</button>
+                <p id="serviceStatusAdminStatus" class="maintenance-admin-status hidden" role="status" aria-live="polite"></p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -2987,16 +3007,125 @@ setTimeout(function() { var loader=document.getElementById('initialLoader'); if 
 // ===== MODAL FUNCTIONS =====
 function openLoginModal() { updateLandingCtas(); document.getElementById('loginModal').classList.remove('hidden'); document.getElementById('loginError').classList.add('hidden'); }
 function closeLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
-// Administrator entry from the maintenance screen. Deliberately just the normal
-// login modal: reusing one authentication path means there is no second set of
-// rules to keep in sync, and nothing here decides authorization. Signing in sets
-// the signed HttpOnly cookie server-side; the gate then re-evaluates through
-// setTopLevelView() and opens only when session-status reports a server-verified
-// admin. A normal user who signs in here lands back on the maintenance screen.
-function openMaintenanceAdminLogin() {
-    var err = document.getElementById('loginError');
-    if (err) { err.textContent = ''; err.classList.add('hidden'); }
-    openLoginModal();
+// ===== ADMIN TELEGRAM ACCESS (maintenance / serviceStatus admin entry) =====
+// Administrator entry from the maintenance and service-status screens.
+// Deliberately NOT the login modal: no username/password field here at all.
+// Telegram-INITIATED: clicking "Akses administrator" only creates a dormant,
+// browser-bound challenge and a deep link — the server never sends a
+// Telegram message at this point, so this public button cannot notify the
+// admin by itself. A message is only ever sent once the admin's own
+// Telegram opens that link and the bot verifies it against their existing
+// verified binding. This code only ever polls for the resulting approval;
+// the real signed HttpOnly ac_sess cookie is issued server-side once the
+// challenge is confirmed consumed. The gate then re-evaluates through
+// setTopLevelView() exactly as it always has, via session-status /
+// isServerVerifiedAdmin().
+var adminAccessState = { requestRef: null, expiresAt: null, deepLink: null, pollTimer: null, scope: null };
+
+function adminAccessEls(scope) {
+    return {
+        btn: document.getElementById(scope + 'AdminBtn'),
+        status: document.getElementById(scope + 'AdminStatus')
+    };
+}
+function setAdminAccessStatus(scope, text, tone) {
+    var els = adminAccessEls(scope);
+    if (!els.status) return;
+    els.status.textContent = text;
+    els.status.className = 'maintenance-admin-status' + (tone ? ' maintenance-admin-status-' + tone : '');
+    els.status.classList.remove('hidden');
+}
+function setAdminAccessButton(scope, label, onClick) {
+    var els = adminAccessEls(scope);
+    if (!els.btn) return;
+    if (!label) { els.btn.classList.add('hidden'); return; }
+    els.btn.classList.remove('hidden');
+    els.btn.disabled = false;
+    els.btn.textContent = label;
+    els.btn.onclick = onClick;
+}
+function stopAdminAccessPolling() {
+    if (adminAccessState.pollTimer) { clearTimeout(adminAccessState.pollTimer); adminAccessState.pollTimer = null; }
+}
+function resetAdminAccessUi(scope) {
+    stopAdminAccessPolling();
+    adminAccessState = { requestRef: null, expiresAt: null, deepLink: null, pollTimer: null, scope: null };
+    var els = adminAccessEls(scope);
+    if (els.status) { els.status.classList.add('hidden'); els.status.textContent = ''; }
+    setAdminAccessButton(scope, 'Akses administrator', function () { startAdminTelegramAccess(scope); });
+}
+async function startAdminTelegramAccess(scope) {
+    stopAdminAccessPolling();
+    setAdminAccessButton(scope, 'Meminta...', null);
+    var els = adminAccessEls(scope);
+    if (els.btn) els.btn.disabled = true;
+    setAdminAccessStatus(scope, 'Menyiapkan permintaan akses...', 'info');
+    try {
+        var response = await fetch('/api/reset-password', {
+            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'admin-access-request', context: (navigator.userAgent || '').slice(0, 120) })
+        });
+        var data = await response.json();
+        if (!data.success || !data.requestRef || !data.deepLink) {
+            setAdminAccessStatus(scope, data.error || 'Permintaan akses sementara tidak tersedia.', 'error');
+            setAdminAccessButton(scope, 'Coba lagi', function () { startAdminTelegramAccess(scope); });
+            return;
+        }
+        adminAccessState.requestRef = data.requestRef;
+        adminAccessState.expiresAt = data.expiresAt ? new Date(data.expiresAt).getTime() : (Date.now() + 120000);
+        adminAccessState.deepLink = data.deepLink;
+        adminAccessState.scope = scope;
+        setAdminAccessStatus(scope, 'Verifikasi administrator melalui Telegram.', 'info');
+        setAdminAccessButton(scope, 'Buka AutoCuan Verification', function () { openAdminTelegramLink(scope); });
+    } catch (e) {
+        setAdminAccessStatus(scope, 'Koneksi ke server sedang bermasalah.', 'error');
+        setAdminAccessButton(scope, 'Coba lagi', function () { startAdminTelegramAccess(scope); });
+    }
+}
+function openAdminTelegramLink(scope) {
+    if (!adminAccessState.requestRef || adminAccessState.scope !== scope || !adminAccessState.deepLink) return;
+    try { window.open(adminAccessState.deepLink, '_blank', 'noopener,noreferrer'); } catch (e) {}
+    setAdminAccessButton(scope, null, null);
+    setAdminAccessStatus(scope, 'Menunggu persetujuan dari AutoCuan Verification…', 'info');
+    pollAdminAccess(scope);
+}
+async function pollAdminAccess(scope) {
+    if (!adminAccessState.requestRef || adminAccessState.scope !== scope) return;
+    var remainingMs = adminAccessState.expiresAt - Date.now();
+    if (remainingMs <= 0) { adminAccessExpired(scope); return; }
+    var mins = Math.floor(remainingMs / 60000), secs = Math.floor((remainingMs % 60000) / 1000);
+    setAdminAccessStatus(scope, 'Menunggu persetujuan dari AutoCuan Verification… (' + mins + ':' + String(secs).padStart(2, '0') + ')', 'info');
+    try {
+        var response = await fetch('/api/reset-password', {
+            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'admin-access-poll', requestRef: adminAccessState.requestRef })
+        });
+        var data = await response.json();
+        if (data.success && data.state === 'approved') {
+            setAdminAccessStatus(scope, 'Identitas administrator terverifikasi. Membuka Auto-Cuan…', 'success');
+            stopAdminAccessPolling();
+            if (typeof window.validateAutocuanSession === 'function') { try { await window.validateAutocuanSession(); } catch (_) {} }
+            applyMaintenanceGate();
+            if (isServerVerifiedAdmin()) { enterApp({ replaceHistory: true }); }
+            else { setAdminAccessStatus(scope, 'Sesi belum terverifikasi. Muat ulang halaman.', 'error'); }
+            return;
+        }
+        if (data.state === 'denied') {
+            setAdminAccessStatus(scope, 'Permintaan ditolak.', 'error');
+            stopAdminAccessPolling();
+            setAdminAccessButton(scope, 'Coba lagi', function () { startAdminTelegramAccess(scope); });
+            return;
+        }
+        if (data.state === 'expired') { adminAccessExpired(scope); return; }
+        adminAccessState.pollTimer = setTimeout(function () { pollAdminAccess(scope); }, 2500);
+    } catch (e) {
+        adminAccessState.pollTimer = setTimeout(function () { pollAdminAccess(scope); }, 4000);
+    }
+}
+function adminAccessExpired(scope) {
+    stopAdminAccessPolling();
+    setAdminAccessStatus(scope, 'Permintaan telah berakhir.', 'error');
+    setAdminAccessButton(scope, 'Coba lagi', function () { startAdminTelegramAccess(scope); });
 }
 function resetRegisterApprovalView() {
     document.getElementById('registerFormFields').classList.remove('hidden');
