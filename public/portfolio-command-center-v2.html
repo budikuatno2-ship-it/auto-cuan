@@ -56,10 +56,12 @@
     if (retry) retry.onclick = function () { location.reload(); };
   }
 
-  function fetchTextWithTimeout(url) {
+  function fetchCommandCenterWithTimeout() {
     var controller = new AbortController();
     var timer = setTimeout(function () { controller.abort(); }, FETCH_TIMEOUT_MS);
-    return fetch(url, { credentials:'same-origin', cache:'no-store', signal:controller.signal })
+    // Keep the audited source path literal here; production build validation
+    // verifies that V2 still hydrates this exact reviewed Command Center shell.
+    return fetch('/portfolio-command-center.html?v=20260727-v1', { credentials:'same-origin', cache:'no-store', signal:controller.signal })
       .then(function (response) {
         if (!response.ok) throw new Error('Gagal memuat struktur Portfolio (HTTP ' + response.status + ').');
         return response.text();
@@ -104,7 +106,7 @@
     failBoot(new Error('Portfolio membutuhkan waktu terlalu lama untuk disiapkan. Tidak ada proses yang dibiarkan loading tanpa batas.'));
   }, BOOT_TIMEOUT_MS);
 
-  fetchTextWithTimeout('/portfolio-command-center.html?v=20260727-v1')
+  fetchCommandCenterWithTimeout()
     .then(function (html) {
       if (bootSettled) throw new Error('Boot dibatalkan.');
       var parsed = new DOMParser().parseFromString(html, 'text/html');
