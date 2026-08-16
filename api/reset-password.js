@@ -382,16 +382,22 @@ async function completePasswordReset(req, res, db) {
 // access by itself.
 async function adminAccessRequest(req, res, db) {
   const context = String(req.body && req.body.context || '').slice(0, 200);
+  // Only used as a rate-limiting key (hashed before it ever reaches SQL, see
+  // lib/admin-access.js#hashIp) — getClientIp() already applies this
+  // deployment's trusted-proxy convention (Vercel's own forwarded-for header
+  // first), so an attacker cannot pick their own bucket via a spoofed
+  // X-Forwarded-For.
+  const ip = securityGuard.getClientIp(req);
   let result;
   try {
-    result = await adminAccess.requestAccess(db, createVerifyBot(), { context: context });
+    result = await adminAccess.requestAccess(db, createVerifyBot(), { context: context, ip: ip });
   } catch (_) {
     return res.status(200).json({ success: false, error: 'Permintaan akses sementara tidak tersedia.' });
   }
 
   if (!result || !result.eligible) {
-    if (result && result.reason === 'throttled') {
-      return res.status(200).json({ success: false, error: 'Tunggu beberapa detik sebelum mencoba lagi.' });
+    if (result && (result.reason === 'throttled' || result.reason === 'ip_throttled')) {
+      return res.status(200).json({ success: false, error: 'Tunggu beberapa saat sebelum mencoba lagi.' });
     }
     return res.status(200).json({ success: false, error: 'Permintaan akses sementara tidak tersedia.' });
   }

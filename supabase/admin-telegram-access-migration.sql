@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS public.admin_access_requests (
   telegram_chat_id      bigint,
   telegram_message_id   bigint,
   request_context       text,
+  requester_ip_hash     text,
   created_at            timestamptz NOT NULL DEFAULT now(),
   expires_at            timestamptz NOT NULL,
   approved_at           timestamptz,
@@ -44,19 +45,42 @@ CREATE INDEX IF NOT EXISTS idx_admin_access_expiry
   ON public.admin_access_requests (expires_at)
   WHERE state IN ('pending','approved');
 
+-- Per-IP anti-spam window. Only ever populated from a hash (never the raw
+-- IP as an identifier tied to the row's other purpose), and only used to
+-- COUNT recent rows in a short window, not to look anyone up.
+CREATE INDEX IF NOT EXISTS idx_admin_access_ip_window
+  ON public.admin_access_requests (requester_ip_hash, created_at)
+  WHERE requester_ip_hash IS NOT NULL;
+
 ALTER TABLE public.admin_access_requests ENABLE ROW LEVEL SECURITY;
 
 -- Create a new admin-access challenge for the given (always 'budi') account.
 -- Fails closed with a distinct result_code when: the account is not the
--- eligible admin, it has no verified Telegram binding, or a request was
--- created for it within the last 10 seconds (soft anti-spam throttle so a
--- repeatedly-clicked public button cannot flood the admin's Telegram).
+-- eligible admin, it has no verified Telegram binding, the caller's IP has
+-- made too many requests recently, or a challenge is already live for this
+-- admin.
+--
+-- Layered anti-abuse (public, unauthenticated endpoint by design):
+--   1. per-IP window: at most MAX_PER_IP requests per IP-hash per 5 minutes,
+--      checked BEFORE anything else so a rate-limited caller never touches
+--      an existing live row.
+--   2. no preemption: a live (pending/approved, unexpired) challenge for
+--      this admin is NEVER expired/replaced by a new create call — an
+--      unauthenticated caller must not be able to invalidate a legitimate
+--      in-flight admin approval that just hasn't been consumed yet. The
+--      admin's own browser keeps polling its own request_ref regardless;
+--      anyone else (this endpoint has no caller identity) is simply told to
+--      wait, bounded by the ~2 minute TTL — never a permanent lockout.
+-- Together these cap Telegram notification volume to roughly one message
+-- per live-challenge lifetime per admin, well below the previous ~360/hour
+-- worst case from the flat 10-second cooldown alone.
 CREATE OR REPLACE FUNCTION public.create_admin_access_request(
   p_username text,
   p_request_ref text,
   p_browser_binding_hash text,
   p_expires_at timestamptz,
-  p_context text
+  p_context text,
+  p_ip_hash text DEFAULT NULL
 )
 RETURNS TABLE (
   result_code text,
@@ -74,7 +98,8 @@ DECLARE
   v_user public.app_users%ROWTYPE;
   v_ver public.app_user_telegram_verifications%ROWTYPE;
   v_request public.admin_access_requests%ROWTYPE;
-  v_recent public.admin_access_requests%ROWTYPE;
+  v_existing public.admin_access_requests%ROWTYPE;
+  v_ip_count integer;
 BEGIN
   SELECT * INTO v_user
     FROM public.app_users
@@ -99,28 +124,45 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT * INTO v_recent
+  IF p_ip_hash IS NOT NULL THEN
+    SELECT count(*) INTO v_ip_count
+      FROM public.admin_access_requests
+     WHERE requester_ip_hash = p_ip_hash
+       AND created_at > now() - interval '5 minutes';
+
+    IF v_ip_count >= 5 THEN
+      RETURN QUERY SELECT 'ip_throttled'::text, NULL::uuid, v_user.id, NULL::bigint, NULL::bigint, NULL::timestamptz;
+      RETURN;
+    END IF;
+  END IF;
+
+  SELECT * INTO v_existing
     FROM public.admin_access_requests
    WHERE user_id = v_user.id
      AND state IN ('pending','approved')
-     AND created_at > now() - interval '10 seconds'
+     AND expires_at > now()
    ORDER BY created_at DESC
-   LIMIT 1;
+   LIMIT 1
+   FOR UPDATE;
 
   IF FOUND THEN
-    RETURN QUERY SELECT 'throttled'::text, NULL::uuid, v_user.id, NULL::bigint, NULL::bigint, NULL::timestamptz;
+    RETURN QUERY SELECT 'throttled'::text, NULL::uuid, v_user.id, NULL::bigint, NULL::bigint, v_existing.expires_at;
     RETURN;
   END IF;
 
+  -- Lazy cleanup only: rows already past their TTL never block a new
+  -- request (they are not "live"), so marking them expired here is
+  -- housekeeping, not a preemption of anything still valid.
   UPDATE public.admin_access_requests
      SET state = 'expired', updated_at = now()
    WHERE user_id = v_user.id
-     AND state IN ('pending','approved');
+     AND state IN ('pending','approved')
+     AND expires_at <= now();
 
   INSERT INTO public.admin_access_requests (
-    user_id, request_ref, browser_binding_hash, state, expires_at, request_context
+    user_id, request_ref, browser_binding_hash, state, expires_at, request_context, requester_ip_hash
   ) VALUES (
-    v_user.id, p_request_ref, p_browser_binding_hash, 'pending', p_expires_at, left(coalesce(p_context, ''), 200)
+    v_user.id, p_request_ref, p_browser_binding_hash, 'pending', p_expires_at, left(coalesce(p_context, ''), 200), p_ip_hash
   ) RETURNING * INTO v_request;
 
   RETURN QUERY SELECT 'ok'::text, v_request.id, v_user.id,
@@ -330,9 +372,29 @@ BEGIN
     RETURN;
   END IF;
 
-  -- state = 'approved'
-  SELECT * INTO v_user FROM public.app_users WHERE id = v_request.user_id AND is_blocked IS DISTINCT FROM TRUE;
+  -- state = 'approved'. Re-check the exact eligibility the rest of the
+  -- product requires before ever issuing ac_sess (mirrors login/
+  -- session-status: exists, not blocked, still approved) — the account can
+  -- have changed in the up-to-~2-minutes between approval and consumption.
+  SELECT * INTO v_user
+    FROM public.app_users
+   WHERE id = v_request.user_id
+     AND is_blocked IS DISTINCT FROM TRUE
+     AND is_approved IS TRUE;
   IF NOT FOUND THEN
+    RETURN QUERY SELECT 'not_found'::text, NULL::uuid, NULL::text, NULL::bigint, NULL::bigint, NULL::timestamptz;
+    RETURN;
+  END IF;
+
+  -- The Telegram identity that approved this challenge must still be the
+  -- verified binding for this account — it must not have been reassigned
+  -- or revoked since approval.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.app_user_telegram_verifications v
+     WHERE v.user_id = v_request.user_id
+       AND v.telegram_user_id = v_request.telegram_user_id
+       AND v.telegram_verified_at IS NOT NULL
+  ) THEN
     RETURN QUERY SELECT 'not_found'::text, NULL::uuid, NULL::text, NULL::bigint, NULL::bigint, NULL::timestamptz;
     RETURN;
   END IF;
@@ -347,13 +409,13 @@ $$;
 
 REVOKE ALL ON public.admin_access_requests FROM anon, authenticated;
 
-REVOKE ALL ON FUNCTION public.create_admin_access_request(text,text,text,timestamptz,text) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.create_admin_access_request(text,text,text,timestamptz,text,text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.record_admin_access_message(text,bigint,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.approve_admin_access_request(text,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.deny_admin_access_request(text,bigint) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.consume_admin_access_request(text,text) FROM PUBLIC, anon, authenticated;
 
-GRANT EXECUTE ON FUNCTION public.create_admin_access_request(text,text,text,timestamptz,text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.create_admin_access_request(text,text,text,timestamptz,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.record_admin_access_message(text,bigint,bigint) TO service_role;
 GRANT EXECUTE ON FUNCTION public.approve_admin_access_request(text,bigint) TO service_role;
 GRANT EXECUTE ON FUNCTION public.deny_admin_access_request(text,bigint) TO service_role;
