@@ -36,6 +36,11 @@
     // accounts, removes device binding from login, and owns Telegram recovery UI.
     loadScriptOnce('/auth-v2.js?v=20260801-v1', 'data-autocuan-auth-v2');
 
+    // First-time admin laptop pairing is initiated by the already-open maintenance
+    // tab itself. Telegram only approves the exact short-lived browser request, so
+    // no external pairing URL or typed code is required.
+    loadScriptOnce('/admin-zero-link-pairing.js?v=20260816-v1', 'data-autocuan-zero-link-pairing');
+
     // Existing live refresh remains independent from authentication recovery.
     loadScriptOnce('/fast-watcher-live-refresh.js?v=20260730-v1', 'data-autocuan-fast-watcher-refresh');
   }

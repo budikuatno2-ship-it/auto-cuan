@@ -3,14 +3,21 @@ on:
   pull_request:
     paths:
       - 'supabase/admin-telegram-command-login-migration.sql'
+      - 'supabase/admin-telegram-zero-link-pairing-migration.sql'
       - 'lib/admin-command-login.js'
       - 'lib/admin-command-login-browser.js'
+      - 'lib/admin-command-zero-link-pairing.js'
+      - 'lib/admin-command-zero-link-browser.js'
       - 'lib/admin-access.js'
       - 'lib/admin-access-legacy.js'
       - 'lib/reset-password-legacy-handler.js'
       - 'api/reset-password.js'
       - 'public/ui-bugfix-pack-v1.js'
+      - 'public/admin-zero-link-pairing.js'
+      - 'public/website-approved-access.js'
       - 'test/admin-command-login.test.js'
+      - 'test/admin-zero-link-pairing.test.js'
+      - 'test/admin-zero-link-rebind.test.js'
       - 'test/sql/admin-command-login/**'
       - '.github/workflows/admin-command-login-postgres.yml'
 
@@ -43,16 +50,23 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run command-login Node tests
-        run: node --test test/admin-command-login.test.js test/admin-telegram-access.test.js
+        run: node --test test/admin-command-login.test.js test/admin-zero-link-pairing.test.js test/admin-zero-link-rebind.test.js test/admin-telegram-access.test.js
       - name: Bootstrap isolated PostgreSQL schema
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-access/bootstrap.sql
-      - name: Apply command-login migration
-        run: psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
+      - name: Apply command-login migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-zero-link-pairing-migration.sql
       - name: Execute command-login runtime regression
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/runtime.sql
-      - name: Re-apply migration against non-empty state
-        run: psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
-      - name: Verify migration remains runnable after re-apply
+      - name: Execute zero-link pairing runtime regression
+        run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/zero-link-runtime.sql
+      - name: Re-apply migrations against non-empty state
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-zero-link-pairing-migration.sql
+      - name: Verify migrations remain runnable after re-apply
         run: |
           psql -v ON_ERROR_STOP=1 -c "SELECT count(*) AS grants FROM public.admin_command_login_grants;"
+          psql -v ON_ERROR_STOP=1 -c "SELECT count(*) AS pair_requests FROM public.admin_command_pair_requests;"
           psql -v ON_ERROR_STOP=1 -c "SELECT admin_device_label, admin_device_bound_at IS NOT NULL AS paired FROM public.app_user_telegram_verifications WHERE telegram_user_id=999999001;"
