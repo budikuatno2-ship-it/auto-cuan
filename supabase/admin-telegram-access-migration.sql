@@ -91,25 +91,45 @@ CREATE TABLE IF NOT EXISTS public.admin_access_requests (
 );
 
 -- Production-safety one-time cleanup, MUST run before the index rebuild
--- below: prior to this fix, activation_claimed_at could legitimately end up
--- set on more than one row for the same admin at once (that is exactly the
--- cross-ref activation race this migration closes), with telegram_message_id
--- still NULL because delivery never completed. Rerunning this migration
--- against a database that already has such dangling claims would otherwise
--- make the new unique index below fail to build (duplicate key) on ITS OWN
--- CREATE, not because of any bug in the index. Clearing every dangling claim
--- (never delivered, i.e. telegram_message_id still NULL) is safe for any
--- 'pending' row — a claim that old on a request nobody ever approved is
--- already abandoned by definition, and this is a one-time DDL-adjacent
--- cleanup, not the 20s runtime reap done inside the RPCs.
+-- below, in three steps: (1) expire anything past its TTL, (2) clear only
+-- genuinely STALE dangling claims, (3) fail closed with a clear diagnostic
+-- if a real conflict remains rather than silently destroying a legitimate
+-- claim just to make the DDL succeed.
 --
--- IMPORTANT: this is scoped to state = 'pending'. record_admin_access_message
--- runs as a separate RPC call AFTER bot.sendMessage() already succeeded, and
--- its own failure is swallowed by lib/admin-access.js (documented residual
--- limitation: sendMessage success and recording telegram_message_id cannot
--- be one atomic cross-system transaction) — so an 'approved' row can, in
--- that narrow window, legitimately have telegram_message_id still NULL. Such
--- a row must NEVER have its activation_claimed_at cleared: it is a real,
+-- Step 1: transition every already-time-expired pending/approved row to
+-- 'expired' first. The partial unique index predicate cannot itself
+-- reference now() (index predicates must be immutable), so a row whose TTL
+-- has already passed but is still sitting in state IN
+-- ('pending','approved') with telegram_message_id or activation_claimed_at
+-- set would otherwise still satisfy the new index and could collide with a
+-- genuinely live row for the same admin during CREATE UNIQUE INDEX below —
+-- a false conflict caused by lazy expiration never having run, not a real
+-- concurrent claim.
+UPDATE public.admin_access_requests
+   SET state = 'expired', updated_at = now()
+ WHERE state IN ('pending','approved')
+   AND expires_at <= now();
+
+-- Step 2: clear only STALE dangling claims — 'pending', never delivered
+-- (telegram_message_id NULL), and past the same 20s claim window the
+-- runtime reap inside the RPCs uses. Prior to this fix, activation_claimed_at
+-- could legitimately end up set on more than one row for the same admin at
+-- once (that is exactly the cross-ref activation race this migration
+-- closes); a claim that old on a request nobody ever approved is abandoned
+-- by definition, so clearing it here is safe. Deliberately NOT
+-- unconditional on age: applying this migration while a real Telegram send
+-- is still genuinely in flight (well under 20s old) must never silently
+-- release that live claim just to let the index build — see step 3 for
+-- what happens if a real conflict remains.
+--
+-- IMPORTANT: also scoped to state = 'pending' for the same reason as the
+-- runtime reap. record_admin_access_message runs as a separate RPC call
+-- AFTER bot.sendMessage() already succeeded, and its own failure is
+-- swallowed by lib/admin-access.js (documented residual limitation:
+-- sendMessage success and recording telegram_message_id cannot be one
+-- atomic cross-system transaction) — so an 'approved' row can, in that
+-- narrow window, legitimately have telegram_message_id still NULL. Such a
+-- row must NEVER have its activation_claimed_at cleared: it is a real,
 -- already-approved grant, not an abandoned claim, and clearing it would let
 -- a sibling request re-claim the slot while this row's Telegram
 -- approve/deny buttons are still live — reopening the same race this
@@ -119,7 +139,40 @@ UPDATE public.admin_access_requests
    SET activation_claimed_at = NULL, updated_at = now()
  WHERE state = 'pending'
    AND telegram_message_id IS NULL
-   AND activation_claimed_at IS NOT NULL;
+   AND activation_claimed_at IS NOT NULL
+   AND activation_claimed_at <= now() - interval '20 seconds';
+
+-- Step 3: fail closed with a clear diagnostic if a real conflict remains —
+-- i.e. more than one still-live row for the same admin genuinely satisfies
+-- the new active-slot predicate right now (fresh claims from concurrent
+-- in-flight deliveries under the OLD buggy implementation, still within the
+-- 20s window steps 1-2 deliberately left alone). Do not silently pick one
+-- to delete just to make the CREATE UNIQUE INDEX below succeed — that would
+-- destroy a legitimate in-flight admin approval. This is intentionally
+-- redundant with the unique_violation Postgres itself would raise on the
+-- CREATE UNIQUE INDEX in that case; it exists only to give the operator an
+-- actionable message ("wait ~20s and retry") instead of a bare constraint
+-- error.
+DO $$
+DECLARE
+  v_conflict record;
+BEGIN
+  SELECT aar.user_id, count(*) AS live_count
+    INTO v_conflict
+    FROM public.admin_access_requests AS aar
+   WHERE aar.state IN ('pending','approved')
+     AND (aar.telegram_message_id IS NOT NULL OR aar.activation_claimed_at IS NOT NULL)
+   GROUP BY aar.user_id
+  HAVING count(*) > 1
+   LIMIT 1;
+
+  IF FOUND THEN
+    RAISE EXCEPTION
+      'admin_access_requests still has % live active-slot rows for user_id % — a Telegram delivery is likely still genuinely in flight (within the 20s claim window). Wait ~20 seconds for it to either complete or go stale, then re-run this migration.',
+      v_conflict.live_count, v_conflict.user_id;
+  END IF;
+END
+$$;
 
 -- Active-slot invariant applies ONLY to a request that is at least an
 -- IN-FLIGHT Telegram delivery claim (activation_claimed_at IS NOT NULL) or
@@ -450,6 +503,25 @@ BEGIN
   -- other is even allowed to evaluate the sibling check below).
   PERFORM 1 FROM public.app_users AS au WHERE au.id = v_request.user_id FOR UPDATE;
 
+  -- Transition this admin's other time-expired pending/approved rows to
+  -- 'expired' BEFORE relying on the active-slot invariant below. The
+  -- partial unique index predicate cannot itself reference now() (index
+  -- predicates must be immutable), so a sibling row whose TTL has passed
+  -- but is still sitting in state='pending'/'approved' with
+  -- telegram_message_id or activation_claimed_at set STILL satisfies the
+  -- index — even though the sibling-EXISTS check below correctly ignores it
+  -- via "expires_at > now()". Without this sweep, activating the current
+  -- request could hit a real unique_violation against that stale-but-still-
+  -- indexed sibling when the UPDATE at the end of this function sets this
+  -- request's own activation_claimed_at. This request's OWN expiry is
+  -- already handled above (returns 'expired' before reaching this point),
+  -- so this only ever needs to cover siblings.
+  UPDATE public.admin_access_requests AS aar
+     SET state = 'expired', updated_at = now()
+   WHERE aar.user_id = v_request.user_id
+     AND aar.state IN ('pending','approved')
+     AND aar.expires_at <= now();
+
   -- Reap stale sibling delivery claims before checking them (same reasoning
   -- and same state = 'pending' restriction as the reap in
   -- create_admin_access_request — see that comment for why an 'approved'
@@ -509,6 +581,34 @@ $$;
 -- anonymous/public caller could never reach it either way) and refuses once
 -- a message has actually been sent (telegram_message_id IS NOT NULL), so a
 -- stale/late release can never undo a successful send.
+--
+-- Reviewed for a stale-release-clobbers-a-newer-claim race: this RPC
+-- identifies the claim only by (request_ref, telegram_user_id), not a
+-- claim-generation token, so a DELAYED old release call (e.g. the original
+-- bot.sendMessage HTTP request was aborted client-side on the 5s timeout in
+-- telegram-verify-bot.js, but a retry already re-claimed the same ref) could
+-- in principle clear a NEWER claim instead of the one that actually failed.
+-- Deliberately NOT hardened with a generation token, for two reasons:
+--   1. It cannot cross an authorization boundary either way — the identity
+--      check above still requires the exact bound admin's telegram_user_id,
+--      and approve_admin_access_request/consume_admin_access_request remain
+--      idempotent regardless of which claim attempt's message a tap comes
+--      from, so the worst outcome is a duplicate live Telegram
+--      approve/deny message in the admin's OWN chat, never a second
+--      message to anyone else and never a bypassed identity check.
+--   2. It is the same class of gap as the documented residual limitation
+--      already accepted elsewhere in this design: a client-side network
+--      timeout on bot.sendMessage does not guarantee the request never
+--      reached Telegram's server, so "did this specific send actually fail"
+--      can never be known with certainty from this process alone without
+--      exactly-once cross-system machinery this migration deliberately does
+--      not add (see the sendMessage/record_admin_access_message note
+--      above). A generation token would only narrow, not close, the same
+--      fundamental gap, at the cost of a new column and threading a
+--      generation value through every JS call site.
+-- If this changes (e.g. release is ever exposed beyond its current
+-- single internal call site, or approve/consume ever stop being
+-- idempotent), revisit this reasoning.
 CREATE OR REPLACE FUNCTION public.release_admin_access_activation(
   p_request_ref text,
   p_telegram_user_id bigint

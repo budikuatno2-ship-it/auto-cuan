@@ -339,4 +339,201 @@ BEGIN
 END
 $$;
 
+\echo '--- runtime: a lazily time-expired ACTIVE sibling (state still pending, TTL already passed) must not cause a unique_violation when activating a different ref ---'
+-- A follow-up review found this: the sibling-EXISTS check in
+-- activate_admin_access_request correctly ignores an expired sibling
+-- (expires_at > now()), but the UNIQUE INDEX cannot check expires_at at all
+-- (index predicates must be immutable) — so a sibling that is time-expired
+-- but still sitting in state='pending'/'approved' with telegram_message_id
+-- or activation_claimed_at set would still satisfy the index and could
+-- collide with the row being activated. The fix expires such siblings
+-- BEFORE relying on the invariant. Proven here for a 'pending' sibling.
+DO $$
+DECLARE
+  v_activate_a record;
+  v_activate_b record;
+  v_active_count integer;
+BEGIN
+  PERFORM public.create_admin_access_request('budi', 'runtime-test-ref-0000000000000010', repeat('j', 64), now() + interval '2 minutes', '', NULL);
+  PERFORM public.create_admin_access_request('budi', 'runtime-test-ref-0000000000000011', repeat('k', 64), now() + interval '2 minutes', '', NULL);
+
+  SELECT * INTO v_activate_a FROM public.activate_admin_access_request('runtime-test-ref-0000000000000010', 999999001, 555000005);
+  IF v_activate_a.result_code IS DISTINCT FROM 'claimed' THEN
+    RAISE EXCEPTION 'expected claimed, got %', v_activate_a.result_code;
+  END IF;
+  PERFORM public.record_admin_access_message('runtime-test-ref-0000000000000010', 555000005, 777003);
+
+  -- Simulate lazy expiration not yet processed: TTL passed, state still
+  -- 'pending', but this row is still Telegram-activated
+  -- (telegram_message_id set) and therefore still satisfies the unique
+  -- index's predicate.
+  UPDATE public.admin_access_requests SET expires_at = now() - interval '1 second' WHERE request_ref = 'runtime-test-ref-0000000000000010';
+
+  SELECT * INTO v_activate_b FROM public.activate_admin_access_request('runtime-test-ref-0000000000000011', 999999001, 555000006);
+  IF v_activate_b.result_code IS DISTINCT FROM 'claimed' THEN
+    RAISE EXCEPTION 'REGRESSION: activating a sibling while an EXPIRED (but not-yet-reclassified) active row exists must still succeed, got %', v_activate_b.result_code;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.admin_access_requests WHERE request_ref = 'runtime-test-ref-0000000000000010' AND state = 'expired') THEN
+    RAISE EXCEPTION 'REGRESSION: the expired sibling must be transitioned to state=''expired'' by activate()';
+  END IF;
+
+  SELECT count(*) INTO v_active_count
+    FROM public.admin_access_requests aar
+   WHERE aar.user_id = (SELECT id FROM public.app_users WHERE username = 'budi')
+     AND aar.state IN ('pending','approved')
+     AND (aar.telegram_message_id IS NOT NULL OR aar.activation_claimed_at IS NOT NULL)
+     AND aar.expires_at > now();
+  IF v_active_count <> 1 THEN
+    RAISE EXCEPTION 'expected exactly 1 active-slot row for budi after the expired sibling is reclassified, got %', v_active_count;
+  END IF;
+
+  PERFORM public.record_admin_access_message('runtime-test-ref-0000000000000011', 555000006, 777004);
+  PERFORM public.approve_admin_access_request('runtime-test-ref-0000000000000011', 999999001);
+  PERFORM public.consume_admin_access_request('runtime-test-ref-0000000000000011', repeat('k', 64));
+END
+$$;
+
+\echo '--- runtime: same expired-sibling scenario, but the sibling is already state=''approved'' when it expires ---'
+DO $$
+DECLARE
+  v_activate_c record;
+  v_activate_d record;
+BEGIN
+  PERFORM public.create_admin_access_request('budi', 'runtime-test-ref-0000000000000012', repeat('l', 64), now() + interval '2 minutes', '', NULL);
+  PERFORM public.create_admin_access_request('budi', 'runtime-test-ref-0000000000000013', repeat('m', 64), now() + interval '2 minutes', '', NULL);
+
+  SELECT * INTO v_activate_c FROM public.activate_admin_access_request('runtime-test-ref-0000000000000012', 999999001, 555000007);
+  IF v_activate_c.result_code IS DISTINCT FROM 'claimed' THEN
+    RAISE EXCEPTION 'expected claimed, got %', v_activate_c.result_code;
+  END IF;
+  PERFORM public.record_admin_access_message('runtime-test-ref-0000000000000012', 555000007, 777005);
+  PERFORM public.approve_admin_access_request('runtime-test-ref-0000000000000012', 999999001);
+
+  UPDATE public.admin_access_requests SET expires_at = now() - interval '1 second' WHERE request_ref = 'runtime-test-ref-0000000000000012';
+
+  SELECT * INTO v_activate_d FROM public.activate_admin_access_request('runtime-test-ref-0000000000000013', 999999001, 555000008);
+  IF v_activate_d.result_code IS DISTINCT FROM 'claimed' THEN
+    RAISE EXCEPTION 'REGRESSION: activating a sibling while an EXPIRED but state=''approved'' row exists must still succeed, got %', v_activate_d.result_code;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM public.admin_access_requests WHERE request_ref = 'runtime-test-ref-0000000000000012' AND state = 'expired') THEN
+    RAISE EXCEPTION 'REGRESSION: the expired-but-approved sibling must also be transitioned to state=''expired'' by activate()';
+  END IF;
+
+  PERFORM public.record_admin_access_message('runtime-test-ref-0000000000000013', 555000008, 777006);
+  PERFORM public.approve_admin_access_request('runtime-test-ref-0000000000000013', 999999001);
+  PERFORM public.consume_admin_access_request('runtime-test-ref-0000000000000013', repeat('m', 64));
+END
+$$;
+
+\echo '--- runtime: production migration re-application safety — a FRESH claim survives, a STALE one is cleared, an APPROVED-but-undelivered row is never touched ---'
+DO $$
+DECLARE
+  v_create record;
+  v_activate record;
+BEGIN
+  SELECT * INTO v_create FROM public.create_admin_access_request(
+    'budi', 'runtime-test-ref-0000000000000014', repeat('n', 64), now() + interval '2 minutes', '', NULL
+  );
+  IF v_create.result_code IS DISTINCT FROM 'ok' THEN
+    RAISE EXCEPTION 'expected ok, got %', v_create.result_code;
+  END IF;
+
+  SELECT * INTO v_activate FROM public.activate_admin_access_request(
+    'runtime-test-ref-0000000000000014', 999999001, 555000009
+  );
+  IF v_activate.result_code IS DISTINCT FROM 'claimed' THEN
+    RAISE EXCEPTION 'expected claimed, got %', v_activate.result_code;
+  END IF;
+  -- Deliberately do NOT record_admin_access_message yet — this is the FRESH,
+  -- still-in-flight claim the migration cleanup must never destroy.
+END
+$$;
+
+-- 3A: reapplying the migration while the claim above is FRESH (<20s old)
+-- must succeed and must NOT clear it.
+\i supabase/admin-telegram-access-migration.sql
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_access_requests
+     WHERE request_ref = 'runtime-test-ref-0000000000000014' AND activation_claimed_at IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'REGRESSION: re-applying the migration destroyed a FRESH, genuinely in-flight delivery claim';
+  END IF;
+
+  -- 3B setup: age the claim well past the 20s window, simulating a genuinely
+  -- abandoned/dead claim.
+  UPDATE public.admin_access_requests
+     SET activation_claimed_at = now() - interval '5 minutes'
+   WHERE request_ref = 'runtime-test-ref-0000000000000014';
+END
+$$;
+
+-- 3B: reapplying the migration now that the claim is STALE must clear it.
+\i supabase/admin-telegram-access-migration.sql
+
+DO $$
+DECLARE
+  v_create record;
+  v_activate record;
+  v_approve record;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.admin_access_requests
+     WHERE request_ref = 'runtime-test-ref-0000000000000014' AND activation_claimed_at IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'REGRESSION: re-applying the migration failed to clear a genuinely STALE (>20s) claim';
+  END IF;
+
+  -- 3C: an APPROVED row with telegram_message_id still NULL must survive a
+  -- migration re-application untouched, exactly like it must survive the
+  -- runtime reap (tested earlier in this script).
+  SELECT * INTO v_create FROM public.create_admin_access_request(
+    'budi', 'runtime-test-ref-0000000000000015', repeat('o', 64), now() + interval '2 minutes', '', NULL
+  );
+  IF v_create.result_code IS DISTINCT FROM 'ok' THEN
+    RAISE EXCEPTION 'expected ok, got %', v_create.result_code;
+  END IF;
+
+  SELECT * INTO v_activate FROM public.activate_admin_access_request(
+    'runtime-test-ref-0000000000000015', 999999001, 555000010
+  );
+  IF v_activate.result_code IS DISTINCT FROM 'claimed' THEN
+    RAISE EXCEPTION 'expected claimed, got %', v_activate.result_code;
+  END IF;
+
+  SELECT * INTO v_approve FROM public.approve_admin_access_request('runtime-test-ref-0000000000000015', 999999001);
+  IF v_approve.result_code IS DISTINCT FROM 'ok' THEN
+    RAISE EXCEPTION 'expected ok, got %', v_approve.result_code;
+  END IF;
+
+  UPDATE public.admin_access_requests
+     SET activation_claimed_at = now() - interval '5 minutes'
+   WHERE request_ref = 'runtime-test-ref-0000000000000015';
+END
+$$;
+
+\i supabase/admin-telegram-access-migration.sql
+
+DO $$
+DECLARE
+  v_consume record;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.admin_access_requests
+     WHERE request_ref = 'runtime-test-ref-0000000000000015' AND activation_claimed_at IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'REGRESSION: re-applying the migration destroyed an APPROVED-but-undelivered-message row''s claim';
+  END IF;
+
+  SELECT * INTO v_consume FROM public.consume_admin_access_request('runtime-test-ref-0000000000000015', repeat('o', 64));
+  IF v_consume.result_code IS DISTINCT FROM 'ok' THEN
+    RAISE EXCEPTION 'expected ok, got %', v_consume.result_code;
+  END IF;
+END
+$$;
+
 \echo '--- admin-access runtime regression: ALL CHECKS PASSED ---'
