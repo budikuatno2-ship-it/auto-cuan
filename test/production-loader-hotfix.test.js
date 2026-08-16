@@ -24,10 +24,10 @@ test('startup always has a public landing fallback and a bounded watchdog', () =
   assert.match(html, /Beberapa fitur sementara tidak tersedia\./);
 });
 
-test('startup watchdog cannot replace an already active signed-in view', () => {
+test('startup watchdog cannot replace an already active signed-in or fail-closed view', () => {
   assert.doesNotMatch(html, /setTimeout\(function\(\) \{ if \(document\.getElementById\('initialLoader'\)\) renderStartupFallback\(\); \}, 4500\)/);
   assert.match(html, /loader && !loader\.classList\.contains\('hidden'\)/);
-  assert.match(html, /var activeView = document\.querySelector\('#landingPage:not\(\.hidden\), #dashboardScreen:not\(\.hidden\), #blockedScreen:not\(\.hidden\), #maintenanceScreen:not\(\.hidden\)'\);/);
+  assert.match(html, /var activeView = document\.querySelector\('#landingPage:not\(\.hidden\), #dashboardScreen:not\(\.hidden\), #blockedScreen:not\(\.hidden\), #maintenanceScreen:not\(\.hidden\), #serviceStatusScreen:not\(\.hidden\)'\);/);
   assert.match(html, /if \(activeView\) return;/);
   assert.match(html, /if \(isAutocuanLoggedIn\(\)\) \{[\s\S]{0,220}handleAppRoute/);
 });
@@ -49,7 +49,7 @@ test('unprovisioned subscription controls fail closed without startup requests',
 });
 
 test('critical DOM ids are unique and api endpoint boundary remains unchanged', () => {
-  for (const id of ['initialLoader', 'landingPage', 'dashboardScreen', 'blockedScreen', 'maintenanceScreen']) {
+  for (const id of ['initialLoader', 'landingPage', 'dashboardScreen', 'blockedScreen', 'maintenanceScreen', 'serviceStatusScreen']) {
     assert.equal((html.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1, `${id} must be unique`);
   }
   assert.equal(fs.readdirSync(path.join(root, 'api')).filter(name => name.endsWith('.js')).length, 12);

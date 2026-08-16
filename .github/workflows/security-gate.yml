@@ -1,0 +1,44 @@
+name: Repository Security Gate
+
+on:
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
+  push:
+    branches:
+      - feat/daytrade-screener-v1
+  schedule:
+    - cron: '43 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-fund
+
+      - name: Reject tracked credentials and high-confidence secret patterns
+        run: node tools/repo-security-audit.js
+
+      - name: Production dependency vulnerability gate
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Security boundary regression
+        run: node --test test/web-security-boundaries.test.js test/repo-security-hardening.test.js
