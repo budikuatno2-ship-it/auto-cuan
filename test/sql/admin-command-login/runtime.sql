@@ -21,28 +21,28 @@ $$;
 DO $$
 DECLARE
   r record;
-  token_hash constant text := repeat('a', 64);
+  v_token_hash constant text := repeat('a', 64);
 BEGIN
   SELECT * INTO r FROM public.create_admin_command_login_grant(
-    999999001, 'direct', token_hash, now() + interval '2 minutes'
+    999999001, 'direct', v_token_hash, now() + interval '2 minutes'
   );
   IF r.result_code <> 'ok' THEN
     RAISE EXCEPTION 'direct grant creation failed: %', row_to_json(r);
   END IF;
 
-  SELECT * INTO r FROM public.consume_admin_command_login_token(token_hash, repeat('1',64), 'Windows · Chrome');
+  SELECT * INTO r FROM public.consume_admin_command_login_token(v_token_hash, repeat('1',64), 'Windows · Chrome');
   IF r.result_code <> 'ok' OR r.target <> 'direct' OR r.username <> 'budi' THEN
     RAISE EXCEPTION 'direct consume failed: %', row_to_json(r);
   END IF;
 
-  SELECT * INTO r FROM public.consume_admin_command_login_token(token_hash, repeat('1',64), 'Windows · Chrome');
+  SELECT * INTO r FROM public.consume_admin_command_login_token(v_token_hash, repeat('1',64), 'Windows · Chrome');
   IF r.result_code <> 'already_consumed' THEN
     RAISE EXCEPTION 'direct token replay was not rejected: %', row_to_json(r);
   END IF;
 
   IF EXISTS (
-    SELECT 1 FROM public.app_user_telegram_verifications
-     WHERE telegram_user_id = 999999001 AND admin_device_hash IS NOT NULL
+    SELECT 1 FROM public.app_user_telegram_verifications AS v
+     WHERE v.telegram_user_id = 999999001 AND v.admin_device_hash IS NOT NULL
   ) THEN
     RAISE EXCEPTION 'direct HP login unexpectedly paired a device';
   END IF;
@@ -54,43 +54,43 @@ $$;
 DO $$
 DECLARE
   r record;
-  token_hash constant text := repeat('b', 64);
-  device_hash constant text := repeat('d', 64);
+  v_token_hash constant text := repeat('b', 64);
+  v_device_hash constant text := repeat('d', 64);
 BEGIN
   SELECT * INTO r FROM public.create_admin_command_login_grant(
-    999999001, 'pair', token_hash, now() + interval '2 minutes'
+    999999001, 'pair', v_token_hash, now() + interval '2 minutes'
   );
   IF r.result_code <> 'ok' THEN
     RAISE EXCEPTION 'pair grant creation failed: %', row_to_json(r);
   END IF;
 
-  SELECT * INTO r FROM public.consume_admin_command_login_token(token_hash, NULL, 'Perangkat mobile');
+  SELECT * INTO r FROM public.consume_admin_command_login_token(v_token_hash, NULL, 'Perangkat mobile');
   IF r.result_code <> 'device_required' THEN
     RAISE EXCEPTION 'pair grant without device was not refused safely: %', row_to_json(r);
   END IF;
 
   IF NOT EXISTS (
-    SELECT 1 FROM public.admin_command_login_grants
-     WHERE token_hash = repeat('b',64) AND state = 'pending'
+    SELECT 1 FROM public.admin_command_login_grants AS g
+     WHERE g.token_hash = v_token_hash AND g.state = 'pending'
   ) THEN
     RAISE EXCEPTION 'pair token was consumed even though no laptop device hash was supplied';
   END IF;
 
-  SELECT * INTO r FROM public.consume_admin_command_login_token(token_hash, device_hash, 'Windows · Chrome');
+  SELECT * INTO r FROM public.consume_admin_command_login_token(v_token_hash, v_device_hash, 'Windows · Chrome');
   IF r.result_code <> 'ok' OR r.target <> 'pair' THEN
     RAISE EXCEPTION 'pair consume failed: %', row_to_json(r);
   END IF;
 
   IF NOT EXISTS (
-    SELECT 1 FROM public.app_user_telegram_verifications
-     WHERE telegram_user_id = 999999001
-       AND admin_device_hash = device_hash
-       AND admin_device_bound_at IS NOT NULL
+    SELECT 1 FROM public.app_user_telegram_verifications AS v
+     WHERE v.telegram_user_id = 999999001
+       AND v.admin_device_hash = v_device_hash
+       AND v.admin_device_bound_at IS NOT NULL
   ) THEN
     RAISE EXCEPTION 'trusted laptop binding was not recorded';
   END IF;
 
-  SELECT * INTO r FROM public.consume_admin_command_login_token(token_hash, device_hash, 'Windows · Chrome');
+  SELECT * INTO r FROM public.consume_admin_command_login_token(v_token_hash, v_device_hash, 'Windows · Chrome');
   IF r.result_code <> 'already_consumed' THEN
     RAISE EXCEPTION 'pair token replay was not rejected: %', row_to_json(r);
   END IF;
@@ -102,7 +102,7 @@ $$;
 DO $$
 DECLARE
   r record;
-  device_hash constant text := repeat('d', 64);
+  v_device_hash constant text := repeat('d', 64);
 BEGIN
   SELECT * INTO r FROM public.create_admin_command_login_grant(
     999999001, 'device', NULL, now() + interval '2 minutes'
@@ -116,12 +116,12 @@ BEGIN
     RAISE EXCEPTION 'wrong device hash unexpectedly consumed grant: %', row_to_json(r);
   END IF;
 
-  SELECT * INTO r FROM public.consume_admin_command_device_grant(device_hash);
+  SELECT * INTO r FROM public.consume_admin_command_device_grant(v_device_hash);
   IF r.result_code <> 'ok' OR r.username <> 'budi' THEN
     RAISE EXCEPTION 'paired device failed to consume grant: %', row_to_json(r);
   END IF;
 
-  SELECT * INTO r FROM public.consume_admin_command_device_grant(device_hash);
+  SELECT * INTO r FROM public.consume_admin_command_device_grant(v_device_hash);
   IF r.result_code <> 'pending' THEN
     RAISE EXCEPTION 'device grant replay was not rejected: %', row_to_json(r);
   END IF;
@@ -132,19 +132,19 @@ $$;
 DO $$
 DECLARE
   r record;
-  token_hash constant text := repeat('c', 64);
+  v_token_hash constant text := repeat('c', 64);
 BEGIN
   SELECT * INTO r FROM public.create_admin_command_login_grant(
-    999999001, 'direct', token_hash, now() + interval '2 minutes'
+    999999001, 'direct', v_token_hash, now() + interval '2 minutes'
   );
   IF r.result_code <> 'ok' THEN RAISE EXCEPTION 'pre-block grant creation failed'; END IF;
 
-  UPDATE public.app_users SET is_blocked = true WHERE username = 'budi';
-  SELECT * INTO r FROM public.consume_admin_command_login_token(token_hash, NULL, NULL);
+  UPDATE public.app_users AS au SET is_blocked = true WHERE au.username = 'budi';
+  SELECT * INTO r FROM public.consume_admin_command_login_token(v_token_hash, NULL, NULL);
   IF r.result_code <> 'not_found' THEN
     RAISE EXCEPTION 'blocked admin unexpectedly consumed a login grant: %', row_to_json(r);
   END IF;
-  UPDATE public.app_users SET is_blocked = false WHERE username = 'budi';
+  UPDATE public.app_users AS au SET is_blocked = false WHERE au.username = 'budi';
 END
 $$;
 
@@ -152,25 +152,25 @@ $$;
 DO $$
 DECLARE
   r record;
-  token_hash constant text := repeat('f', 64);
+  v_token_hash constant text := repeat('f', 64);
 BEGIN
   SELECT * INTO r FROM public.create_admin_command_login_grant(
-    999999001, 'direct', token_hash, now() + interval '2 minutes'
+    999999001, 'direct', v_token_hash, now() + interval '2 minutes'
   );
   IF r.result_code <> 'ok' THEN RAISE EXCEPTION 'pre-revoke grant creation failed'; END IF;
 
-  UPDATE public.app_user_telegram_verifications
+  UPDATE public.app_user_telegram_verifications AS v
      SET telegram_verified_at = NULL
-   WHERE telegram_user_id = 999999001;
+   WHERE v.telegram_user_id = 999999001;
 
-  SELECT * INTO r FROM public.consume_admin_command_login_token(token_hash, NULL, NULL);
+  SELECT * INTO r FROM public.consume_admin_command_login_token(v_token_hash, NULL, NULL);
   IF r.result_code <> 'not_found' THEN
     RAISE EXCEPTION 'revoked Telegram binding unexpectedly consumed a grant: %', row_to_json(r);
   END IF;
 
-  UPDATE public.app_user_telegram_verifications
+  UPDATE public.app_user_telegram_verifications AS v
      SET telegram_verified_at = now()
-   WHERE telegram_user_id = 999999001;
+   WHERE v.telegram_user_id = 999999001;
 END
 $$;
 
@@ -178,18 +178,18 @@ $$;
 DO $$
 DECLARE
   r record;
-  token_hash constant text := repeat('9', 64);
+  v_token_hash constant text := repeat('9', 64);
 BEGIN
   SELECT * INTO r FROM public.create_admin_command_login_grant(
-    999999001, 'direct', token_hash, now() + interval '1 minute'
+    999999001, 'direct', v_token_hash, now() + interval '1 minute'
   );
   IF r.result_code <> 'ok' THEN RAISE EXCEPTION 'expiry test grant creation failed'; END IF;
 
-  UPDATE public.admin_command_login_grants
+  UPDATE public.admin_command_login_grants AS g
      SET expires_at = now() - interval '1 second'
-   WHERE token_hash = token_hash;
+   WHERE g.token_hash = v_token_hash;
 
-  SELECT * INTO r FROM public.consume_admin_command_login_token(token_hash, NULL, NULL);
+  SELECT * INTO r FROM public.consume_admin_command_login_token(v_token_hash, NULL, NULL);
   IF r.result_code <> 'expired' THEN
     RAISE EXCEPTION 'expired token unexpectedly remained usable: %', row_to_json(r);
   END IF;
@@ -201,7 +201,7 @@ DO $$
 DECLARE
   fn text;
 BEGIN
-  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid='public.admin_command_login_grants'::regclass) THEN
+  IF NOT (SELECT c.relrowsecurity FROM pg_class AS c WHERE c.oid='public.admin_command_login_grants'::regclass) THEN
     RAISE EXCEPTION 'RLS is not enabled on admin_command_login_grants';
   END IF;
 
@@ -210,17 +210,28 @@ BEGIN
     RAISE EXCEPTION 'browser role unexpectedly has table access';
   END IF;
 
+  IF EXISTS (
+    SELECT 1
+      FROM information_schema.routine_privileges AS rp
+     WHERE rp.routine_schema = 'public'
+       AND rp.routine_name IN (
+         'get_admin_command_login_context',
+         'create_admin_command_login_grant',
+         'consume_admin_command_login_token',
+         'consume_admin_command_device_grant'
+       )
+       AND lower(rp.grantee) IN ('public','anon','authenticated')
+       AND rp.privilege_type = 'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'PUBLIC/anon/authenticated execute privilege remains on a command-login RPC';
+  END IF;
+
   FOREACH fn IN ARRAY ARRAY[
     'public.get_admin_command_login_context(bigint)',
     'public.create_admin_command_login_grant(bigint,text,text,timestamptz)',
     'public.consume_admin_command_login_token(text,text,text)',
     'public.consume_admin_command_device_grant(text)'
   ] LOOP
-    IF has_function_privilege('anon', fn, 'EXECUTE')
-       OR has_function_privilege('authenticated', fn, 'EXECUTE')
-       OR has_function_privilege('public', fn, 'EXECUTE') THEN
-      RAISE EXCEPTION 'browser/PUBLIC execute privilege remains on %', fn;
-    END IF;
     IF NOT has_function_privilege('service_role', fn, 'EXECUTE') THEN
       RAISE EXCEPTION 'service_role lacks execute on %', fn;
     END IF;
