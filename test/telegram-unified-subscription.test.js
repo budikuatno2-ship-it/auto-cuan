@@ -7,6 +7,7 @@ const identity = require('../lib/subscription-identity');
 const capability = require('../lib/subscription-capability');
 const senderModule = require('../lib/voucher-admin-sender');
 const unified = require('../lib/telegram-unified-subscription');
+const general = require('../lib/telegram-unified-general');
 
 function privateUpdate(text, id, updateId) {
   const userId = id || 123456;
@@ -17,6 +18,61 @@ function privateUpdate(text, id, updateId) {
       text,
       from: { id: userId },
       chat: { id: userId, type: 'private' }
+    }
+  };
+}
+
+function accountDbFixture() {
+  return {
+    from(table) {
+      const filters = {};
+      const query = {
+        select() { return query; },
+        eq(column, value) { filters[column] = value; return query; },
+        async maybeSingle() {
+          if (table === 'app_user_telegram_verifications') {
+            if (filters.telegram_user_id !== 424242) return { data: null, error: null };
+            return {
+              data: {
+                user_id: 'user-1',
+                telegram_verified_at: '2026-08-01T00:00:00.000Z',
+                channel_joined_at: '2026-08-02T00:00:00.000Z'
+              },
+              error: null
+            };
+          }
+          if (table === 'app_users') {
+            return {
+              data: {
+                username: 'tester',
+                is_approved: true,
+                is_blocked: false,
+                created_at: '2026-07-01T00:00:00.000Z'
+              },
+              error: null
+            };
+          }
+          if (table === 'telegram_subscription_links') return { data: null, error: null };
+          return { data: null, error: null };
+        },
+        async order() {
+          if (table === 'user_entitlements') {
+            return {
+              data: [{
+                plan_code: 'PREMIUM_1_MONTH',
+                source: 'voucher',
+                status: 'active',
+                starts_at: '2026-08-01T00:00:00.000Z',
+                expires_at: '2026-09-01T00:00:00.000Z',
+                lifetime: false
+              }],
+              error: null
+            };
+          }
+          return { data: [], error: null };
+        }
+      };
+      return query;
     }
   };
 }
@@ -45,6 +101,54 @@ test('subscription deep link is routed before legacy admin /start handling', () 
   const token = 'sub_' + 'A'.repeat(43);
   const classified = unified.__test.classifyUpdate(privateUpdate('/start ' + token));
   assert.equal(classified.kind, 'subscription_link');
+});
+
+test('general bot commands recognize /akun and /help without swallowing /akses or /start', () => {
+  assert.equal(general.matchesUpdate(privateUpdate('/akun')), true);
+  assert.equal(general.matchesUpdate(privateUpdate('/help')), true);
+  assert.equal(general.matchesUpdate(privateUpdate('/akses')), false);
+  assert.equal(general.matchesUpdate(privateUpdate('/start')), false);
+  assert.equal(general.matchesUpdate(privateUpdate('/status')), false);
+});
+
+test('/help explains verification, account, subscription, reset and 30-day rating', async () => {
+  const sent = [];
+  const deleted = [];
+  const bot = {
+    sendMessage: async (chatId, text) => { sent.push({ chatId, text }); return { message_id: 88 }; },
+    deleteMessage: async (chatId, messageId) => { deleted.push({ chatId, messageId }); return true; }
+  };
+  const result = await general.handleUpdate(privateUpdate('/help', 424242, 2001), { db: {}, bot });
+  assert.equal(result.handled, true);
+  assert.equal(result.outcome, 'help');
+  assert.match(sent[0].text, /\/start/);
+  assert.match(sent[0].text, /\/akun/);
+  assert.match(sent[0].text, /\/langganan/);
+  assert.match(sent[0].text, /Reset password/);
+  assert.match(sent[0].text, /30 hari/);
+  assert.deepEqual(deleted, [{ chatId: 424242, messageId: 77 }]);
+});
+
+test('/akun resolves only the sender-bound account and does not expose Telegram numeric id', async () => {
+  const sent = [];
+  const deleted = [];
+  const bot = {
+    sendMessage: async (chatId, text) => { sent.push({ chatId, text }); return { message_id: 89 }; },
+    deleteMessage: async (chatId, messageId) => { deleted.push({ chatId, messageId }); return true; }
+  };
+  const result = await general.handleUpdate(privateUpdate('/akun', 424242, 2002), {
+    db: accountDbFixture(),
+    bot
+  });
+  assert.equal(result.handled, true);
+  assert.equal(result.outcome, 'account_info');
+  assert.match(sent[0].text, /Username: tester/);
+  assert.match(sent[0].text, /Status akun: Disetujui/);
+  assert.match(sent[0].text, /Telegram: Terverifikasi/);
+  assert.match(sent[0].text, /Akses channel: Aktif/);
+  assert.match(sent[0].text, /PREMIUM_1_MONTH/);
+  assert.doesNotMatch(sent[0].text, /424242/);
+  assert.deepEqual(deleted, [{ chatId: 424242, messageId: 77 }]);
 });
 
 test('voucher admin configuration shares verification bot token', () => {
