@@ -10,9 +10,17 @@ const shell = fs.readFileSync(path.join(root, 'public', 'portfolio-command-cente
 const workspaceCss = fs.readFileSync(path.join(root, 'public', 'portfolio-ai-workspace-v1.css'), 'utf8');
 const workspaceJs = fs.readFileSync(path.join(root, 'public', 'portfolio-ai-workspace-v1.js'), 'utf8');
 
+function arraySource(name) {
+  const start = shell.indexOf('var ' + name + ' = [');
+  assert.ok(start >= 0, name + ' declaration must exist');
+  const end = shell.indexOf('];', start);
+  assert.ok(end > start, name + ' declaration must close');
+  return shell.slice(start, end + 2);
+}
+
 test('portfolio core boot does not depend on optional polish assets', () => {
-  const critical = shell.slice(shell.indexOf('var criticalAssets'), shell.indexOf('var optionalAssets'));
-  const optional = shell.slice(shell.indexOf('var optionalAssets'), shell.indexOf('function escapeHtml'));
+  const critical = arraySource('criticalAssets');
+  const optional = arraySource('optionalAssets');
 
   assert.match(critical, /portfolio-supabase-sync\.js/);
   assert.match(critical, /portfolio-command-center\.js/);
