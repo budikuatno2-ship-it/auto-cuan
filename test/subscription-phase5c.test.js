@@ -58,11 +58,11 @@ test('canonical attempt, lifecycle, command, and redemption contracts are servic
   assert.match(foundationSql, /DROP INDEX IF EXISTS public\.subscription_voucher_chunk_item_idx/);
 });
 
-test('voucher admin capability requires configuration and the final complete schema marker', async () => {
+test('voucher admin capability requires unified verification bot configuration and final complete schema marker', async () => {
   const env = {
     SUBSCRIPTION_FEATURE_ENABLED: 'true',
     VOUCHER_ADMIN_BOT_ENABLED: 'true',
-    VOUCHER_ADMIN_TELEGRAM_BOT_TOKEN: '1234567890:valid-test-token',
+    TELEGRAM_VERIFY_BOT_TOKEN: '1234567890:valid-test-token',
     VOUCHER_CODE_PEPPER: 'phase5c-test-pepper-long-enough'
   };
   const ready = await capability.getVoucherAdminCapability({ rpc: async () => ({ data: 'phase5c-complete-v4' }) }, env);
@@ -74,6 +74,9 @@ test('voucher admin capability requires configuration and the final complete sch
   const missingConfig = await capability.getVoucherAdminCapability({ rpc: async () => ({ data: 'phase5c-complete-v4' }) }, { ...env, VOUCHER_CODE_PEPPER: '' });
   assert.equal(missingConfig.ready, false);
   assert.equal(missingConfig.reason, 'configuration');
+  const missingUnifiedBot = await capability.getVoucherAdminCapability({ rpc: async () => ({ data: 'phase5c-complete-v4' }) }, { ...env, TELEGRAM_VERIFY_BOT_TOKEN: '' });
+  assert.equal(missingUnifiedBot.ready, false);
+  assert.equal(missingUnifiedBot.reason, 'configuration');
 });
 
 test('voucher type labels do not concatenate the lifetime identifier', () => {
@@ -82,7 +85,7 @@ test('voucher type labels do not concatenate the lifetime identifier', () => {
 });
 
 test('malformed Telegram updates are ignored without claiming durable state', async () => {
-  const env = { SUBSCRIPTION_FEATURE_ENABLED: 'true', VOUCHER_ADMIN_BOT_ENABLED: 'true', TELEGRAM_VOUCHER_ADMIN_BOT_TOKEN: '1234567890:valid-test-token', VOUCHER_CODE_PEPPER: 'phase5c-test-pepper-long-enough' };
+  const env = { SUBSCRIPTION_FEATURE_ENABLED: 'true', VOUCHER_ADMIN_BOT_ENABLED: 'true', TELEGRAM_VERIFY_BOT_TOKEN: '1234567890:valid-test-token', VOUCHER_CODE_PEPPER: 'phase5c-test-pepper-long-enough' };
   const malformed = [
     { update_id: 1 },
     { update_id: 2, message: { from: { id: 6396446903 }, text: '/menu' } },
@@ -102,7 +105,7 @@ test('valid authorized private admin chat is still claimed and handled', async (
   let replies = 0;
   const result = await bot.processVoucherAdminUpdate(
     { update_id: 5, message: { chat: { id: 6396446903, type: 'private' }, from: { id: 6396446903 }, text: '/menu' } },
-    { db, env: { SUBSCRIPTION_FEATURE_ENABLED: 'true', VOUCHER_ADMIN_BOT_ENABLED: 'true', TELEGRAM_VOUCHER_ADMIN_BOT_TOKEN: '1234567890:valid-test-token', VOUCHER_CODE_PEPPER: 'phase5c-test-pepper-long-enough' }, capability: { ready: true }, sender: { sendMessage: async () => { replies++; return { message_id: 1 }; } } }
+    { db, env: { SUBSCRIPTION_FEATURE_ENABLED: 'true', VOUCHER_ADMIN_BOT_ENABLED: 'true', TELEGRAM_VERIFY_BOT_TOKEN: '1234567890:valid-test-token', VOUCHER_CODE_PEPPER: 'phase5c-test-pepper-long-enough' }, capability: { ready: true }, sender: { sendMessage: async () => { replies++; return { message_id: 1 }; } } }
   );
   assert.equal(result.outcome, 'menu');
   assert.equal(db.calls[0].name, 'claim_voucher_admin_webhook_update');
