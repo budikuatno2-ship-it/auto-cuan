@@ -1,25 +1,6 @@
 name: Admin command login PostgreSQL harness
 on:
   pull_request:
-    paths:
-      - 'supabase/admin-telegram-command-login-migration.sql'
-      - 'supabase/admin-telegram-zero-link-pairing-migration.sql'
-      - 'lib/admin-command-login.js'
-      - 'lib/admin-command-login-browser.js'
-      - 'lib/admin-command-zero-link-pairing.js'
-      - 'lib/admin-command-zero-link-browser.js'
-      - 'lib/admin-access.js'
-      - 'lib/admin-access-legacy.js'
-      - 'lib/reset-password-legacy-handler.js'
-      - 'api/reset-password.js'
-      - 'public/ui-bugfix-pack-v1.js'
-      - 'public/admin-zero-link-pairing.js'
-      - 'public/website-approved-access.js'
-      - 'test/admin-command-login.test.js'
-      - 'test/admin-zero-link-pairing.test.js'
-      - 'test/admin-zero-link-rebind.test.js'
-      - 'test/sql/admin-command-login/**'
-      - '.github/workflows/admin-command-login-postgres.yml'
 
 permissions:
   contents: read
