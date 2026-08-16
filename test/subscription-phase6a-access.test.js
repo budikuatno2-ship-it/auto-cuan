@@ -108,25 +108,30 @@ async function withApiHandler(moduleName, db, fn) {
   }
 }
 
-test('non-admin account with no active entitlement resolves to Free but keeps approved website access', async () => withSessionSecret(async () => {
+test('non-admin account with no active entitlement resolves to Free and premium website access is denied', async () => withSessionSecret(async () => {
   const db = database(account(), []);
-  // The dormant subscription resolver still reports Free…
   const access = await auth.resolvePremiumAccess(signedRequest('ujibot0720'), db);
   assert.equal(access.ok, true);
   assert.equal(access.premium, false);
   assert.equal(access.access_level, 'free');
-  // …but website access is approval-based and entitlement-independent.
-  const allowed = await auth.requirePremiumEntitlement(signedRequest('ujibot0720'), db);
-  assert.equal(allowed.ok, true);
-  assert.equal(allowed.premium, true);
-  assert.equal(allowed.access_level, 'approved');
-  // An unapproved account is still denied.
+
+  // Admin approval is only an account-login prerequisite. It is not a paid
+  // entitlement and must never unlock premium website features by itself.
+  const freeDenied = await auth.requirePremiumEntitlement(signedRequest('ujibot0720'), db);
+  assert.equal(freeDenied.ok, false);
+  assert.equal(freeDenied.status, 402);
+  assert.equal(freeDenied.code, 'SUBSCRIPTION_REQUIRED');
+  assert.equal(freeDenied.premium, false);
+  assert.equal(freeDenied.access_level, 'free');
+
+  // An unapproved account remains a separate authorization failure.
   const denied = await auth.requirePremiumEntitlement(
     signedRequest('ujibot0720'),
     database(account('ujibot0720', { is_approved: false }), [])
   );
   assert.equal(denied.ok, false);
   assert.equal(denied.status, 403);
+  assert.equal(denied.code, 'ACCOUNT_NOT_APPROVED');
 }));
 
 test('expired, revoked, malformed, and unavailable entitlement storage fail closed', async () => withSessionSecret(async () => {
@@ -169,7 +174,7 @@ test('active Trial, paid term, Lifetime, and protected budi receive premium acce
   );
   assert.equal(admin.ok, true);
   assert.equal(admin.premium, true);
-  assert.equal(admin.access_level, 'approved');
+  assert.equal(admin.access_level, 'admin');
 }));
 
 test('an arbitrary signed admin claim cannot turn a non-budi account into admin', async () => withSessionSecret(async () => {
@@ -246,8 +251,9 @@ test('debug diagnostics require the existing server secret and public shares ret
   assert.doesNotMatch(source, /x-premium|x-access-level|x-subscription-plan/i);
 });
 
-test('client hides premium navigation, cancels stale checks, and restores accessibility only after confirmation', () => {
+test('client hides premium navigation, cancels stale checks, and restores accessibility only after subscription confirmation', () => {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const accessGate = fs.readFileSync(path.join(ROOT, 'public', 'subscription-access-gate-v1.js'), 'utf8');
   // See ui-theme-layer.test.js: the duplicate dashboard launcher is gone, so
   // the gated surface is the six nav buttons and the three pages themselves.
   assert.ok((html.match(/data-premium-nav="true"/g) || []).length >= 6);
@@ -261,12 +267,16 @@ test('client hides premium navigation, cancels stale checks, and restores access
   assert.match(html, /page\.removeAttribute\('aria-hidden'\)/);
   assert.match(html, /page\.inert=false/);
   assert.match(html, /clearRenderedPremiumData/);
-  // Access is approval-based: only a definitive server "no" locks features,
-  // and the denial message names admin approval, not a paid tier.
   assert.match(html, /function isDeniedWebsiteAccess\(\)/);
-  assert.match(html, /Fitur ini terbuka setelah login dengan akun yang sudah di-approve admin/);
-  assert.doesNotMatch(html, /Fitur ini tersedia untuk pengguna Trial dan Premium/);
-  assert.match(html, /function openSubscriptionPage\(\)\{if\(isAutocuanLoggedIn\(\)\)enterApp/);
+
+  // The lightweight runtime replaces the legacy approval-only status resolver
+  // with signed account-profile entitlement state. The existing page lock then
+  // consumes premiumAccessState; localStorage never decides paid access.
+  assert.match(accessGate, /action:'account-profile'/);
+  assert.match(accessGate, /ent && ent\.premium === true/);
+  assert.match(accessGate, /window\.loadPremiumAccess = loadPremiumAccessFromSubscription/);
+  assert.match(accessGate, /subscriptionRequired: approved && !premium/);
+  assert.doesNotMatch(accessGate, /localStorage[^\n]{0,140}(premium|entitlement|access_level)/i);
   assert.doesNotMatch(html, /localStorage[^\n]{0,140}(premium|entitlement|access_level)/i);
 });
 
