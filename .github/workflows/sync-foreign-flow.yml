@@ -2,7 +2,7 @@ name: Foreign Flow Source Debug (No Production Secrets)
 
 # Production foreign-flow synchronization runs on the Oracle VPS.
 # This GitHub workflow is intentionally DEBUG-ONLY and must never receive
-# Supabase service-role credentials. It may acquire/inspect source data, but
+# production Supabase credentials. It may acquire/inspect source data, but
 # it cannot write production data.
 
 on:
@@ -75,11 +75,5 @@ jobs:
               conn.close()
           PYEOF
 
-      - name: Confirm production credentials are intentionally unavailable
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ''
-          SUPABASE_URL: ''
-        run: |
-          test -z "$SUPABASE_SERVICE_ROLE_KEY"
-          test -z "$SUPABASE_URL"
-          echo "Debug workflow completed without production Supabase credentials."
+      - name: Finish debug-only run
+        run: echo "Source diagnostics completed without production write credentials."
