@@ -6,6 +6,7 @@ const {
 } = require('../lib/free-user-approval');
 const telegramVerification = require('../lib/telegram-verification');
 const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+const accountTerms = require('../lib/account-terms');
 
 // Registration is far more expensive than a read: it writes an app_users row
 // and mints a one-time Telegram verification challenge. It had no limit at all,
@@ -38,6 +39,16 @@ function normalizeDeviceId(rawDeviceId) {
   return id;
 }
 
+async function rollbackIncompleteRegistration(supabase, userId) {
+  if (!userId) return;
+  try {
+    // Verification challenge rows cascade with app_users. If this cleanup ever
+    // fails, never expose database detail to the browser; the registration still
+    // returns a generic failure and the inconsistency is visible to operators.
+    await supabase.from('app_users').delete().eq('id', userId);
+  } catch (_) {}
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -56,6 +67,19 @@ module.exports = async function handler(req, res) {
     // backfilled server-side, so it is NOT a required user input.
     if (!username || !passwordHash) {
       return res.status(400).json({ success: false, error: 'Data tidak lengkap.' });
+    }
+
+    // The agreement is a server contract, not a cosmetic checkbox. An older or
+    // modified client cannot create an account unless it explicitly accepts the
+    // exact current terms version published by this deployment.
+    const termsAcceptance = accountTerms.registrationAcceptance(req.body);
+    if (!termsAcceptance.ok) {
+      return res.status(400).json({
+        success: false,
+        code: 'TERMS_ACCEPTANCE_REQUIRED',
+        error: 'Baca dan setujui Peraturan & Ketentuan sebelum mendaftar.',
+        terms: accountTerms.publicTermsMetadata()
+      });
     }
 
     // Ensure we always have a non-null device ID for the NOT NULL column.
@@ -138,6 +162,21 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Akun dibuat, tetapi kode verifikasi belum tersedia. Hubungi admin.' });
     }
 
+    // Persist the acceptance only after the account/challenge transaction has
+    // committed. This table is service-role-only. If the audit row cannot be
+    // stored (for example the migration was not applied), fail closed and remove
+    // the just-created account so there is no un-audited registration.
+    const accepted = await supabase.from('account_terms_acceptances').insert({
+      user_id: registration.id,
+      terms_version: accountTerms.CURRENT_TERMS_VERSION,
+      acceptance_source: 'registration'
+    });
+    if (accepted.error) {
+      console.error('register-user terms audit failed');
+      await rollbackIncompleteRegistration(supabase, registration.id);
+      return res.status(503).json({ success: false, error: 'Pendaftaran belum tersedia. Coba lagi beberapa saat.' });
+    }
+
     // The raw one-time code is returned to the client ONLY after the RPC committed.
     // The private channel invite link is NEVER exposed by the website.
     return res.status(200).json({
@@ -148,7 +187,8 @@ module.exports = async function handler(req, res) {
       approval_code: generateApprovalCode({ id: registration.id, username: registration.username, created_at: registration.createdAt }),
       telegram_verification_code: registration.displayCode,
       telegram_verification_expires_at: registration.expiresAt,
-      telegram_bot_url: telegramVerification.BOT_URL
+      telegram_bot_url: telegramVerification.BOT_URL,
+      terms_version: accountTerms.CURRENT_TERMS_VERSION
     });
   } catch (e) {
     console.error('register-user exception:', e);
@@ -159,6 +199,7 @@ module.exports = async function handler(req, res) {
 // Exposed for focused unit tests only.
 module.exports.__test = {
   normalizeDeviceId: normalizeDeviceId,
+  rollbackIncompleteRegistration: rollbackIncompleteRegistration,
   registrationLimiter: registrationLimiter,
   PASSWORD_HASH_RE: PASSWORD_HASH_RE
 };
