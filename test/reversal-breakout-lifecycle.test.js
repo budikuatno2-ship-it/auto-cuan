@@ -110,6 +110,23 @@ test('swing score is adjusted but status and trade plan are untouched', function
   assert.equal(row.tp2, 112);
 });
 
+test('metadata-only read path exposes lifecycle without double-counting persisted daytrade score', function () {
+  const row = base({
+    status: 'READY_BREAKOUT',
+    last_price: 104,
+    resistance: 103,
+    volume_ratio_20d: 1.65,
+    breakout_confirmation_status: 'BREAKOUT_CONFIRMED',
+    daytrade_score: 80
+  });
+  lifecycle.applyLifecycle(row, { mode: 'daytrade', applyScore: false });
+  assert.equal(row.setup_phase, 'BREAKOUT_CONFIRMED');
+  assert.equal(row.lifecycle_score_adjustment, 3);
+  assert.equal(row.lifecycle_score_applied, false);
+  assert.equal(row.daytrade_score, 80);
+  assert.equal(row.daytrade_score_before_lifecycle, undefined);
+});
+
 test('lifecycle application is idempotent and never double-counts score', function () {
   const row = base({ status: 'EARLY_RADAR', daytrade_score: 70 });
   lifecycle.applyLifecycle(row, { mode: 'daytrade' });
