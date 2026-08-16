@@ -20,6 +20,7 @@ function assertOk(condition, message) {
   'lib/auth-recovery.js',
   'public/auth-v2.js',
   'public/website-approved-access.js',
+  'public/maintenance-auth-guard.js',
   'scripts/create-budi-telegram-enrollment.js'
 ].forEach(function (file) {
   new vm.Script(read(file), { filename: file });
@@ -33,6 +34,7 @@ const endpoint = read('api/reset-password.js') + '\n' + read('lib/reset-password
 const recovery = read('lib/auth-recovery.js');
 const frontend = read('public/auth-v2.js');
 const loader = read('public/website-approved-access.js');
+const maintenanceGuard = read('public/maintenance-auth-guard.js');
 const migration = read('supabase/auth-telegram-recovery-v1-migration.sql');
 const hardening = read('supabase/auth-telegram-recovery-v1-device-retirement-hotfix.sql');
 const rollout = read('docs/auth-recovery-v2-rollout.md');
@@ -51,7 +53,15 @@ assertOk(frontend.includes("authRequest('session-status'"), 'frontend does not v
 assertOk(frontend.includes('clearLocalAuthState'), 'orphan local auth cleanup is missing');
 assertOk(!/deviceId\s*:/.test(frontend), 'frontend still submits a device ID for login/reset');
 assertOk(loader.includes('/auth-v2.js?v='), 'auth-v2 loader is missing');
+assertOk(loader.includes('/maintenance-auth-guard.js?v='), 'maintenance auth guard loader is missing');
+assertOk(
+  loader.indexOf('/maintenance-auth-guard.js?v=') < loader.indexOf('/auth-v2.js?v='),
+  'maintenance auth guard must load before auth-v2'
+);
 assertOk(!loader.includes("localStorage.setItem('autocuan_logged_in'"), 'loader still restores localStorage without server validation');
+assertOk(maintenanceGuard.includes("visible('maintenanceScreen')") && maintenanceGuard.includes("visible('serviceStatusScreen')"), 'maintenance auth guard does not cover both fail-closed gate screens');
+assertOk(maintenanceGuard.includes('window.openAuthChoiceModal = function'), 'maintenance auth guard does not intercept the login-choice modal');
+assertOk(maintenanceGuard.includes('originalOpenAuthChoiceModal.apply'), 'maintenance auth guard does not preserve normal non-maintenance login UX');
 
 assertOk(recovery.includes('auth-recovery-v1:'), 'domain-separated recovery HMAC is missing');
 assertOk(recovery.includes('Konfirmasi Reset') && recovery.includes('Tolak'), 'Telegram confirmation controls are missing');
