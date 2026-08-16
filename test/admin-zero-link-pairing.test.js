@@ -9,7 +9,8 @@ const ROOT = path.resolve(__dirname, '..');
 const zeroLink = require('../lib/admin-command-zero-link-pairing');
 const commandLogin = require('../lib/admin-command-login');
 const adminAccess = require('../lib/admin-access');
-const zeroLinkBrowser = require('../lib/admin-command-zero-link-browser');
+const zeroLinkBrowserHandler = require('../lib/admin-command-zero-link-browser');
+const zeroLinkBrowser = zeroLinkBrowserHandler.__test;
 
 function makeDb(options) {
   const opts = options || {};
