@@ -25,6 +25,48 @@
 --   - Activation (and therefore the one Telegram send it may cause) is
 --     claimed under a row lock so two near-simultaneous /start updates for
 --     the same requestRef can send at most one approval message.
+--
+-- Ambiguous-column audit (every RPC below, classified):
+--   create_admin_access_request   PL/pgSQL, ambiguity-sensitive — its
+--                                  RETURNS TABLE has user_id/telegram_user_id/
+--                                  telegram_chat_id/expires_at, which collide
+--                                  with real column names on the tables it
+--                                  queries. This is the function that hit the
+--                                  real production ambiguous-column error.
+--                                  Every table reference is aliased
+--                                  (au/v/aar) and every column reference is
+--                                  qualified.
+--   activate_admin_access_request PL/pgSQL, ambiguity-sensitive — RETURNS
+--                                  TABLE has expires_at, colliding with
+--                                  admin_access_requests.expires_at. All
+--                                  table references are aliased (aar/aar2/au)
+--                                  and qualified.
+--   approve_admin_access_request  PL/pgSQL, NOT ambiguity-sensitive — RETURNS
+--                                  TABLE (result_code, telegram_chat_id,
+--                                  telegram_message_id) never collides with
+--                                  an unqualified read in the body: the only
+--                                  unqualified references are UPDATE ... SET
+--                                  assignment targets (always resolve to the
+--                                  target table's column per Postgres UPDATE
+--                                  semantics, never to a PL/pgSQL variable)
+--                                  and WHERE id = v_request.id ("id" is not
+--                                  an output column). Left as-is.
+--   deny_admin_access_request     Same shape and same conclusion as approve
+--                                  above. Left as-is.
+--   consume_admin_access_request  PL/pgSQL, RETURNS TABLE has user_id/
+--                                  expires_at, but the body only ever reads
+--                                  those column names already qualified via
+--                                  v_request.*/v_user.*, or as "id" (app_users
+--                                  primary key, not an output column name).
+--                                  No unqualified ambiguous read exists. Left
+--                                  as-is.
+--   release_admin_access_activation, record_admin_access_message
+--                                  LANGUAGE sql, not plpgsql — SQL-language
+--                                  functions do not get PL/pgSQL's
+--                                  output-parameter variable scope, so this
+--                                  class of ambiguity does not apply. Both
+--                                  RETURNS TABLE (result_code) only, no
+--                                  collision either way.
 -- =========================================================================
 
 CREATE TABLE IF NOT EXISTS public.admin_access_requests (
@@ -48,19 +90,69 @@ CREATE TABLE IF NOT EXISTS public.admin_access_requests (
   updated_at            timestamptz NOT NULL DEFAULT now()
 );
 
--- Active-slot invariant applies ONLY to Telegram-ACTIVATED requests
--- (telegram_message_id IS NOT NULL, i.e. the bound admin's own Telegram
--- already confirmed and received the approval message). A dormant row
--- created by the public, unauthenticated maintenance page has
--- telegram_message_id NULL and therefore never occupies this slot and never
--- blocks anyone else's create/activate — this is what stops an anonymous
--- caller from griefing the real admin's login by permanently squatting the
--- one-active-admin-challenge invariant with challenges nobody ever
--- Telegram-activates.
+-- Production-safety one-time cleanup, MUST run before the index rebuild
+-- below: prior to this fix, activation_claimed_at could legitimately end up
+-- set on more than one row for the same admin at once (that is exactly the
+-- cross-ref activation race this migration closes), with telegram_message_id
+-- still NULL because delivery never completed. Rerunning this migration
+-- against a database that already has such dangling claims would otherwise
+-- make the new unique index below fail to build (duplicate key) on ITS OWN
+-- CREATE, not because of any bug in the index. Clearing every dangling claim
+-- (never delivered, i.e. telegram_message_id still NULL) is safe for any
+-- 'pending' row — a claim that old on a request nobody ever approved is
+-- already abandoned by definition, and this is a one-time DDL-adjacent
+-- cleanup, not the 20s runtime reap done inside the RPCs.
+--
+-- IMPORTANT: this is scoped to state = 'pending'. record_admin_access_message
+-- runs as a separate RPC call AFTER bot.sendMessage() already succeeded, and
+-- its own failure is swallowed by lib/admin-access.js (documented residual
+-- limitation: sendMessage success and recording telegram_message_id cannot
+-- be one atomic cross-system transaction) — so an 'approved' row can, in
+-- that narrow window, legitimately have telegram_message_id still NULL. Such
+-- a row must NEVER have its activation_claimed_at cleared: it is a real,
+-- already-approved grant, not an abandoned claim, and clearing it would let
+-- a sibling request re-claim the slot while this row's Telegram
+-- approve/deny buttons are still live — reopening the same race this
+-- migration closes. It never touches a row that was actually delivered
+-- (telegram_message_id IS NOT NULL) or any consumed/approved/denied row.
+UPDATE public.admin_access_requests
+   SET activation_claimed_at = NULL, updated_at = now()
+ WHERE state = 'pending'
+   AND telegram_message_id IS NULL
+   AND activation_claimed_at IS NOT NULL;
+
+-- Active-slot invariant applies ONLY to a request that is at least an
+-- IN-FLIGHT Telegram delivery claim (activation_claimed_at IS NOT NULL) or
+-- fully delivered (telegram_message_id IS NOT NULL) — NOT to a merely
+-- dormant row. A dormant row created by the public, unauthenticated
+-- maintenance page has both columns NULL and therefore never occupies this
+-- slot — this is what stops an anonymous caller from griefing the real
+-- admin's login by permanently squatting the one-active-admin-challenge
+-- invariant with challenges nobody ever Telegram-activates.
+--
+-- IMPORTANT: this must include activation_claimed_at, not just
+-- telegram_message_id. activate_admin_access_request() sets
+-- activation_claimed_at and COMMITS (each RPC call is its own
+-- single-statement transaction) *before* Node ever calls bot.sendMessage();
+-- telegram_message_id is only recorded by a LATER, separate RPC call
+-- (record_admin_access_message) after that external send succeeds. If the
+-- slot invariant only looked at telegram_message_id, a second dormant
+-- request for the same admin could slip through and also get "claimed"
+-- during that gap, causing two Telegram approval messages for two different
+-- requestRefs. See activate_admin_access_request for the matching
+-- sibling-claim check and stale-claim reap that keep this index predicate
+-- from leaking a slot forever if a claim is made but never delivered
+-- (failed send, or the process dies mid-send).
+--
+-- A partial index predicate must be IMMUTABLE, so it cannot itself reference
+-- now() to expire stale claims — that expiry is instead done transactionally
+-- in application code (see the reap step in create/activate below) before
+-- either function relies on this invariant.
 DROP INDEX IF EXISTS uq_admin_access_active_user;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_admin_access_active_user
   ON public.admin_access_requests (user_id)
-  WHERE state IN ('pending','approved') AND telegram_message_id IS NOT NULL;
+  WHERE state IN ('pending','approved')
+    AND (telegram_message_id IS NOT NULL OR activation_claimed_at IS NOT NULL);
 
 CREATE INDEX IF NOT EXISTS idx_admin_access_expiry
   ON public.admin_access_requests (expires_at)
@@ -186,20 +278,47 @@ BEGIN
     RETURN;
   END IF;
 
-  -- No-preemption check applies ONLY to a request that has actually been
-  -- Telegram-ACTIVATED (telegram_message_id IS NOT NULL) — a dormant,
-  -- never-activated challenge (created by any anonymous caller, including a
-  -- flood of them) must NEVER be able to block the real admin's own next
-  -- launch. This is the fix for the admin-slot-griefing gap: previously any
-  -- dormant 'pending' row counted as "live" here, so an anonymous caller
-  -- could squat the one-active-admin-challenge slot indefinitely by
-  -- recreating a fresh dormant challenge every ~2 minutes without ever
-  -- opening the Telegram deep link.
+  -- Reap stale delivery claims for THIS admin before evaluating the
+  -- no-preemption check below. A claim (activation_claimed_at set) that is
+  -- older than the 20s claim window, still 'pending' (never approved), and
+  -- never got a telegram_message_id is dead — either the send failed
+  -- without reaching release_admin_access_activation (e.g. the process died
+  -- mid-send) or is otherwise abandoned. Clearing it here means a dead
+  -- claim can never permanently block this admin's own next dormant create
+  -- call, matching the same reap done in activate_admin_access_request.
+  -- Locked under v_user FOR UPDATE above, so this is race-free against a
+  -- concurrent activation attempt for the same admin.
+  --
+  -- MUST stay scoped to state = 'pending': an 'approved' row can, in the
+  -- narrow window where record_admin_access_message failed after the
+  -- Telegram send otherwise succeeded, also have telegram_message_id NULL
+  -- — but it is a real, already-approved grant, not an abandoned claim, and
+  -- must never be reaped (doing so would let a sibling request steal the
+  -- active slot while this row's Telegram buttons are still live).
+  UPDATE public.admin_access_requests AS aar
+     SET activation_claimed_at = NULL, updated_at = now()
+   WHERE aar.user_id = v_user.id
+     AND aar.state = 'pending'
+     AND aar.telegram_message_id IS NULL
+     AND aar.activation_claimed_at IS NOT NULL
+     AND aar.activation_claimed_at <= now() - interval '20 seconds';
+
+  -- No-preemption check applies to a request that is at least an in-flight
+  -- delivery claim (activation_claimed_at IS NOT NULL, fresh — stale ones
+  -- were just reaped above) or fully Telegram-ACTIVATED
+  -- (telegram_message_id IS NOT NULL) — a merely dormant, never-claimed
+  -- challenge (created by any anonymous caller, including a flood of them)
+  -- must NEVER be able to block the real admin's own next launch. This is
+  -- the fix for the admin-slot-griefing gap: previously any dormant
+  -- 'pending' row counted as "live" here, so an anonymous caller could
+  -- squat the one-active-admin-challenge slot indefinitely by recreating a
+  -- fresh dormant challenge every ~2 minutes without ever opening the
+  -- Telegram deep link.
   SELECT aar.* INTO v_existing
     FROM public.admin_access_requests AS aar
    WHERE aar.user_id = v_user.id
      AND aar.state IN ('pending','approved')
-     AND aar.telegram_message_id IS NOT NULL
+     AND (aar.telegram_message_id IS NOT NULL OR aar.activation_claimed_at IS NOT NULL)
      AND aar.expires_at > now()
    ORDER BY aar.created_at DESC
    LIMIT 1
@@ -324,21 +443,47 @@ BEGIN
   -- Serialize activation attempts per admin: locks out any concurrent
   -- create/activate touching this same admin's rows for the rest of this
   -- transaction, which is what makes the sibling-row check below race-free
-  -- (no other transaction can flip a sibling dormant row's
-  -- telegram_message_id from NULL to NOT NULL while this lock is held).
+  -- (no other transaction can flip a sibling row's activation_claimed_at or
+  -- telegram_message_id from NULL to NOT NULL while this lock is held —
+  -- whichever of two concurrent activate() calls for different refs gets
+  -- this lock first fully commits, including its own claim, before the
+  -- other is even allowed to evaluate the sibling check below).
   PERFORM 1 FROM public.app_users AS au WHERE au.id = v_request.user_id FOR UPDATE;
 
+  -- Reap stale sibling delivery claims before checking them (same reasoning
+  -- and same state = 'pending' restriction as the reap in
+  -- create_admin_access_request — see that comment for why an 'approved'
+  -- row must never be reaped even if telegram_message_id is still NULL): a
+  -- 'pending' claim older than the 20s claim window that never got a
+  -- telegram_message_id is dead (failed send that never reached
+  -- release_admin_access_activation, or the process died mid-send) and must
+  -- not permanently occupy the slot.
+  UPDATE public.admin_access_requests AS aar
+     SET activation_claimed_at = NULL, updated_at = now()
+   WHERE aar.user_id = v_request.user_id
+     AND aar.request_ref <> v_request.request_ref
+     AND aar.state = 'pending'
+     AND aar.telegram_message_id IS NULL
+     AND aar.activation_claimed_at IS NOT NULL
+     AND aar.activation_claimed_at <= now() - interval '20 seconds';
+
   -- The verified admin may have multiple dormant challenges outstanding
-  -- (several browser tabs, retries, etc). Only ever let ONE of them become
-  -- truly Telegram-activated at a time — if a sibling challenge for the same
-  -- admin is already activated and still live, tell the caller to use that
-  -- one instead of sending a second approval message for a different ref.
+  -- (several browser tabs, retries, etc). Only ever let ONE of them be an
+  -- in-flight delivery claim or fully activated at a time — if a sibling
+  -- challenge for the same admin already has a live claim (delivery in
+  -- progress or delivered) tell the caller to use that one instead of
+  -- racing a second approval message for a different ref. This is the fix
+  -- for the cross-ref activation race: telegram_message_id alone is set too
+  -- late (only by the separate record_admin_access_message call, which runs
+  -- AFTER this function's transaction has already committed and Node's
+  -- external bot.sendMessage has succeeded), so activation_claimed_at must
+  -- also count here.
   IF EXISTS (
     SELECT 1 FROM public.admin_access_requests AS aar2
      WHERE aar2.user_id = v_request.user_id
        AND aar2.request_ref <> v_request.request_ref
        AND aar2.state IN ('pending','approved')
-       AND aar2.telegram_message_id IS NOT NULL
+       AND (aar2.telegram_message_id IS NOT NULL OR aar2.activation_claimed_at IS NOT NULL)
        AND aar2.expires_at > now()
   ) THEN
     RETURN QUERY SELECT 'already_active'::text, NULL::text, v_request.expires_at;
@@ -378,6 +523,7 @@ AS $$
        SET activation_claimed_at = NULL, updated_at = now()
      WHERE request_ref = p_request_ref
        AND telegram_user_id = p_telegram_user_id
+       AND state = 'pending'
        AND telegram_message_id IS NULL
     RETURNING 1
   )

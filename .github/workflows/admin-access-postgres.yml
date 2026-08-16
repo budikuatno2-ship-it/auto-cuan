@@ -47,6 +47,8 @@ jobs:
             echo "bootstrap=not_run"
             echo "migration=not_run"
             echo "runtime=not_run"
+            echo "reapply_migration=not_run"
+            echo "concurrent_race=not_run"
           } >"$LOG_DIR/execution-summary.txt"
           echo "LOG_DIR=$LOG_DIR" >>"$GITHUB_ENV"
       - name: Install Node dependencies
@@ -98,6 +100,24 @@ jobs:
           cat "$LOG_DIR/runtime.log"
           sed -i "s/^runtime=.*/runtime=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
           if [ "$status" -ne 0 ]; then { echo '## admin-access runtime regression failure'; tail -n 80 "$LOG_DIR/runtime.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Re-apply admin-access migration against non-empty state (production rerun safety)
+        run: |
+          set +e
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-access-migration.sql >"$LOG_DIR/reapply-migration.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/reapply-migration.log"
+          sed -i "s/^reapply_migration=.*/reapply_migration=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## admin-access migration reapply-safety failure'; tail -n 60 "$LOG_DIR/reapply-migration.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - name: Execute concurrent cross-ref activation race regression
+        run: |
+          set +e
+          bash test/sql/admin-access/concurrent-activation-race.sh >"$LOG_DIR/concurrent-race.log" 2>&1
+          status=$?
+          cat "$LOG_DIR/concurrent-race.log"
+          sed -i "s/^concurrent_race=.*/concurrent_race=$( [ "$status" -eq 0 ] && echo success || echo failure)/" "$LOG_DIR/execution-summary.txt"
+          if [ "$status" -ne 0 ]; then { echo '## admin-access concurrent activation race regression failure'; tail -n 80 "$LOG_DIR/concurrent-race.log"; } >>"$GITHUB_STEP_SUMMARY"; fi
           exit "$status"
       - name: Upload PostgreSQL diagnostics
         if: always()
