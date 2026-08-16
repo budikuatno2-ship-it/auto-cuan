@@ -38,7 +38,7 @@ jobs:
         run: npm ci
 
       - name: Focused hardening regressions
-        run: node --test test/runtime-hardening-regressions.test.js test/ai-deterministic-ui-fixtures.test.js test/ai-provider-failover.test.js test/ai-ui-failure-states.test.js test/ai-context-fixtures-stress.test.js test/pattern-direction-safety.test.js test/web-security-boundaries.test.js test/ui-bugfix-pack-v1.test.js
+        run: node --test test/runtime-hardening-regressions.test.js test/ai-deterministic-ui-fixtures.test.js test/ai-provider-failover.test.js test/ai-ui-failure-states.test.js test/ai-context-fixtures-stress.test.js test/account-center-contract.test.js test/telegram-unified-subscription.test.js test/pattern-direction-safety.test.js test/web-security-boundaries.test.js test/ui-bugfix-pack-v1.test.js
 
       - name: Production build contract
         run: npm run build
