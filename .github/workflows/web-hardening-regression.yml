@@ -37,8 +37,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Focused hardening regressions
-        run: node --test test/runtime-hardening-regressions.test.js test/ai-deterministic-ui-fixtures.test.js test/ai-provider-failover.test.js test/ai-ui-failure-states.test.js test/ai-context-fixtures-stress.test.js test/account-center-contract.test.js test/telegram-unified-subscription.test.js test/pattern-direction-safety.test.js test/reversal-breakout-lifecycle.test.js test/screener-lifecycle-ui.test.js test/web-security-boundaries.test.js test/ui-bugfix-pack-v1.test.js
+      - name: Account Center contract
+        run: node --test test/account-center-contract.test.js
+
+      - name: Subscription enforcement contract
+        run: node --test test/subscription-enforcement-v1.test.js
+
+      - name: Telegram command audit
+        run: node --test test/telegram-command-audit-v1.test.js
+
+      - name: Existing hardening regressions
+        run: node --test test/runtime-hardening-regressions.test.js test/ai-deterministic-ui-fixtures.test.js test/ai-provider-failover.test.js test/ai-ui-failure-states.test.js test/ai-context-fixtures-stress.test.js test/telegram-unified-subscription.test.js test/pattern-direction-safety.test.js test/reversal-breakout-lifecycle.test.js test/screener-lifecycle-ui.test.js test/web-security-boundaries.test.js test/ui-bugfix-pack-v1.test.js
 
       - name: Portfolio AI resilience regressions
         run: node --test test/context-ai-secondary-provider.test.js test/portfolio-ai-workspace-resilience.test.js

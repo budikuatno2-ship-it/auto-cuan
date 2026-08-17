@@ -6,6 +6,7 @@ const {
   requireAdminSession,
   isSameOrigin
 } = require('../lib/admin-session');
+const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const { handleAdminForeignUpload } = require('../lib/admin-foreign-upload');
 const { handleAdminFundamentalsUpload } = require('../lib/admin-fundamentals-upload');
 const originalHandler = require('../lib/admin-users-handler');
@@ -37,6 +38,8 @@ function requireBudiAdmin(req) {
   return { ok: true, auth };
 }
 
+// Approval-only access remains for legacy non-premium routes such as analytics.
+// Do not reuse this helper for paid feature authorization.
 async function resolveApprovedAccess(req, res) {
   if (!isSameOrigin(req)) {
     return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
@@ -83,6 +86,44 @@ async function resolveApprovedAccess(req, res) {
     access: 'approved',
     user_id: String(account.id),
     username: accountUsername
+  });
+}
+
+async function resolvePremiumPortfolioAccess(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
+  if (!isSameOrigin(req)) {
+    return res.status(403).json({ success:false, code:'ORIGIN_DENIED', error:'Permintaan ditolak.' });
+  }
+
+  const supabase = getSupabase();
+  if (!supabase) {
+    return res.status(503).json({ success:false, code:'PREMIUM_ACCESS_UNAVAILABLE', error:'Status subscription belum tersedia.' });
+  }
+
+  let access;
+  try { access = await requirePremiumEntitlement(req, supabase); }
+  catch (_) {
+    return res.status(503).json({ success:false, code:'PREMIUM_ACCESS_UNAVAILABLE', error:'Status subscription belum tersedia.' });
+  }
+
+  if (!access.ok) {
+    return res.status(access.status || 403).json({
+      success:false,
+      code:access.code || 'PREMIUM_ACCESS_DENIED',
+      error:access.error || 'Akses premium diperlukan.',
+      access_level:access.access_level || 'free'
+    });
+  }
+
+  return res.status(200).json({
+    success:true,
+    access:'premium',
+    premium:true,
+    access_level:access.access_level || 'premium',
+    user_id:String(access.account.id),
+    username:String(access.account.username || '').trim().toLowerCase(),
+    current_plan:access.entitlement && access.entitlement.current_plan || null,
+    expires_at:access.entitlement && access.entitlement.expires_at || null
   });
 }
 
@@ -396,7 +437,7 @@ module.exports = async function handler(req, res) {
   const action = req && req.body && req.body.action;
 
   if (action === 'portfolio_access') {
-    return resolveApprovedAccess(req, res);
+    return resolvePremiumPortfolioAccess(req, res);
   }
 
   if (action === 'pattern_map_access') {

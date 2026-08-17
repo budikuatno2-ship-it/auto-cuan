@@ -51,13 +51,19 @@ test('portfolio persistence database is RLS-protected and server-role only', fun
   assert.match(sql, /GRANT SELECT, INSERT, UPDATE, DELETE ON public\.app_user_portfolio_state TO service_role/);
 });
 
-test('portfolio API derives identity from signed session rather than browser-supplied user id', function () {
+test('portfolio API derives identity from signed session and requires server premium entitlement', function () {
   const source = read('lib/portfolio-state-handler.js');
-  assert.match(source, /requireAuthenticatedSession\(req\)/);
-  assert.match(source, /\.eq\('id', auth\.session\.uid\)/);
-  assert.match(source, /accountUsername !== signedUsername/);
-  assert.doesNotMatch(source, /req\.body\.user_id/);
+  const auth = read('lib/subscription-auth.js');
+  assert.match(source, /requirePremiumEntitlement\(req, supabase\)/);
   assert.match(source, /isSameOrigin\(req\)/);
+  assert.doesNotMatch(source, /req\.body\.user_id/);
+
+  // Signed-session identity and account matching now live in the shared premium
+  // authorization boundary rather than being duplicated by Portfolio.
+  assert.match(auth, /requireAuthenticatedSession\(req\)/);
+  assert.match(auth, /\.eq\('id', auth\.user\.id\)/);
+  assert.match(auth, /storedUsername !== signedUsername/);
+  assert.match(auth, /SUBSCRIPTION_REQUIRED/);
 });
 
 test('portfolio persistence reuses the existing reset-password Vercel function slot', function () {

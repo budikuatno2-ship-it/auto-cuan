@@ -11,6 +11,7 @@ const registerSource = fs.readFileSync(path.join(root, 'api', 'register-user.js'
 const profileSource = fs.readFileSync(path.join(root, 'lib', 'account-profile-handler.js'), 'utf8');
 const gatewaySource = fs.readFileSync(path.join(root, 'api', 'reset-password.js'), 'utf8');
 const runtimeSource = fs.readFileSync(path.join(root, 'public', 'account-center-v1.js'), 'utf8');
+const lazySource = fs.readFileSync(path.join(root, 'public', 'account-center-lazy-loader-v1.js'), 'utf8');
 const cssSource = fs.readFileSync(path.join(root, 'public', 'account-center-v1.css'), 'utf8');
 const bootstrapSource = fs.readFileSync(path.join(root, 'public', 'website-approved-access.js'), 'utf8');
 const adminSource = fs.readFileSync(path.join(root, 'lib', 'admin-users-handler.js'), 'utf8');
@@ -24,7 +25,9 @@ test('registration accepts only an explicit acceptance of the exact current term
 });
 
 test('browser and server ship the exact same versioned terms contract', () => {
-  assert.match(runtimeSource, new RegExp("TERMS_VERSION = '" + terms.CURRENT_TERMS_VERSION.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + "'"));
+  const versionPattern = new RegExp("TERMS_VERSION = '" + terms.CURRENT_TERMS_VERSION.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + "'");
+  assert.match(runtimeSource, versionPattern);
+  assert.match(lazySource, versionPattern);
   assert.match(registerSource, /accountTerms\.registrationAcceptance\(req\.body\)/);
   assert.match(registerSource, /TERMS_ACCEPTANCE_REQUIRED/);
   assert.match(registerSource, /account_terms_acceptances/);
@@ -32,11 +35,11 @@ test('browser and server ship the exact same versioned terms contract', () => {
 });
 
 test('registration UI requires a checkbox and sends acceptance only during register-user request', () => {
-  assert.match(runtimeSource, /id="acRegTermsAccepted"/);
-  assert.match(runtimeSource, /checkbox\.checked!==true/);
-  assert.match(runtimeSource, /body\.termsAccepted=true/);
-  assert.match(runtimeSource, /body\.termsVersion=TERMS_VERSION/);
-  assert.match(runtimeSource, /url\.indexOf\('\/api\/register-user'\)/);
+  assert.match(lazySource, /id=\\?"acRegTermsAccepted/);
+  assert.match(lazySource, /checkbox\.checked !== true/);
+  assert.match(lazySource, /body\.termsAccepted = true/);
+  assert.match(lazySource, /body\.termsVersion = TERMS_VERSION/);
+  assert.match(lazySource, /url\.indexOf\('\/api\/register-user'\)/);
 });
 
 test('profile is derived from signed server identity and omits sensitive account fields', () => {
@@ -57,7 +60,16 @@ test('account center exposes profile subscription terms and a scrollable rules d
   assert.match(cssSource, /\.ac-terms-scroll\s*\{/);
   assert.match(cssSource, /overflow:auto/);
   assert.match(cssSource, /max-height:52dvh/);
-  assert.match(bootstrapSource, /account-center-v1\.js/);
+});
+
+test('Account Center is lazy-loaded while signup terms stay available at startup', () => {
+  assert.match(bootstrapSource, /account-center-lazy-loader-v1\.js/);
+  assert.doesNotMatch(bootstrapSource, /loadScriptOnce\('\/account-center-v1\.js/);
+  assert.match(lazySource, /script\.src = '\/account-center-v1\.js\?v=20260816-v2'/);
+  assert.match(lazySource, /function loadCenter\(tab\)/);
+  assert.match(lazySource, /installRegistrationContract\(\)/);
+  assert.match(lazySource, /backdrop-filter:none!important/);
+  assert.doesNotMatch(lazySource, /new\s+MutationObserver\s*\(/);
 });
 
 test('subscription cards read the narrow user catalog response, including promotion state', () => {

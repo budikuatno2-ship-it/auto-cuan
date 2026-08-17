@@ -7,7 +7,7 @@
   function hideSubscriptionUi() {
     // The old standalone subscription page remains parked so it cannot conflict
     // with Account Center. Subscription status, plans, trial, and voucher actions
-    // are exposed through the new signed-session Account Center runtime instead.
+    // are exposed through the signed-session Account Center runtime instead.
     document.querySelectorAll('[data-page="subscription"],#page-subscription,#subscriptionIdentityCard,#subscriptionPlansAdminButton').forEach(function (el) {
       if (el && el.parentNode) el.parentNode.removeChild(el);
     });
@@ -39,10 +39,17 @@
     // accounts, removes device binding from login, and owns Telegram recovery UI.
     loadScriptOnce('/auth-v2.js?v=20260801-v1', 'data-autocuan-auth-v2');
 
-    // Account Center is presentation + same-origin API orchestration only. Profile
-    // facts and admin voucher authority are resolved server-side from the signed
-    // session; this runtime cannot grant itself approval/admin/premium access.
-    loadScriptOnce('/account-center-v1.js?v=20260816-v1', 'data-autocuan-account-center');
+    // Lightweight startup contracts only. The 35KB Account Center runtime and
+    // its large Terms DOM are no longer parsed/mounted during normal dashboard
+    // startup; account-center-lazy-loader-v1 loads them only when profile,
+    // subscription, or terms is actually opened. Registration still gets the
+    // mandatory Terms checkbox immediately.
+    loadScriptOnce('/account-center-lazy-loader-v1.js?v=20260816-v1', 'data-autocuan-account-center-lazy');
+
+    // Replace the legacy approval-only premium UI resolver with signed
+    // subscription entitlement state from account-profile. Server endpoints also
+    // enforce the entitlement independently, so browser state is UX only.
+    loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');
 
     // First-time admin laptop pairing is initiated by the already-open maintenance
     // tab itself. Telegram only approves the exact short-lived browser request, so
