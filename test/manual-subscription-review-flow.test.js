@@ -65,6 +65,17 @@ test('discount voucher requires payment while direct voucher has dedicated claim
   assert.match(voucherApi, /notifyClaim/);
 });
 
+test('direct voucher remains inside checkout modal instead of jumping to voucher panel', () => {
+  const manualUi = source('public/subscription-manual-payment-v1.js');
+  assert.match(manualUi, /renderDirectVoucher/);
+  assert.match(manualUi, /VOUCHER_API = '\/api\/subscription-voucher'/);
+  assert.match(manualUi, /Total<\/span><strong[^>]*>Rp0<\/strong>/);
+  assert.match(manualUi, /Tidak perlu transfer/);
+  assert.match(manualUi, /id="acPayDirectVoucher"/);
+  assert.doesNotMatch(manualUi, /acVoucherInput/);
+  assert.doesNotMatch(manualUi, /acVoucherQuote/);
+});
+
 test('approved payment and direct voucher refresh browser premium access', () => {
   const manualUi = source('public/subscription-manual-payment-v1.js');
   assert.match(manualUi, /autocuan:subscription-changed/);
