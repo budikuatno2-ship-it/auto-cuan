@@ -76,6 +76,26 @@ test('direct voucher remains inside checkout modal instead of jumping to voucher
   assert.doesNotMatch(manualUi, /acVoucherQuote/);
 });
 
+test('web direct voucher notifies admin and linked user with activation dates', () => {
+  const claim = source('lib/subscription-voucher-claim.js');
+  assert.match(claim, /async function userTelegramChat/);
+  assert.match(claim, /source === 'web'/);
+  assert.match(claim, /Mulai aktif:/);
+  assert.match(claim, /Berlaku sampai:/);
+  assert.match(claim, /Sumber:/);
+  assert.match(claim, /Voucher 100%/);
+  assert.match(claim, /Voucher Lifetime/);
+  assert.match(claim, /user_notified:userNotified/);
+
+  const voucherApi = source('lib/subscription-voucher-handler.js');
+  assert.match(voucherApi, /source:'web'/);
+  assert.match(voucherApi, /user_notified:notification\.user_notified === true/);
+
+  const telegram = source('lib/telegram-unified-subscription.js');
+  assert.match(telegram, /source:'telegram'/);
+  assert.match(telegram, /Voucher berhasil diaktifkan/);
+});
+
 test('approved payment and direct voucher refresh browser premium access', () => {
   const manualUi = source('public/subscription-manual-payment-v1.js');
   assert.match(manualUi, /autocuan:subscription-changed/);
