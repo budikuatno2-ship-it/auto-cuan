@@ -78,4 +78,10 @@ test('Vercel hardening prevents caching sensitive API responses and adds isolati
   const assetCache = assets.headers.find((h) => h.key.toLowerCase() === 'cache-control');
   assert.match(assetCache.value, /public/);
   assert.doesNotMatch(assetCache.value, /no-store/);
+
+  const shellCss = config.headers.find((entry) => entry.source === '/index-shell.css');
+  assert.ok(shellCss, 'extracted shell stylesheet cache policy missing');
+  const shellCache = shellCss.headers.find((h) => h.key.toLowerCase() === 'cache-control');
+  assert.match(shellCache.value, /public/);
+  assert.doesNotMatch(shellCache.value, /no-store/);
 });
