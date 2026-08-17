@@ -324,3 +324,83 @@ test('active state pool is capped to selected shortlist and evicts overflow safe
   assert.equal(result.events.filter(event => event.reasons.includes('pool_capacity_evicted')).length, 20);
   assert.ok(Object.entries(result.state.tickers).filter(([ticker]) => ticker.startsWith('OLD')).every(([, item]) => item.active === false && item.status === 'DROPPED_FROM_WATCH_POOL'));
 });
+
+test('stable changed source resets once then continues confirmation against locked setup', () => {
+  const first = pool.process({
+    sampleDate: '2099-01-07',
+    scheduledTime: '09:10',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:10')],
+    priorState: null
+  });
+
+  assert.equal(first.state.tickers.ZZZZ.locked_plan_lock_id, 'PLAN_A');
+  assert.equal(first.state.tickers.ZZZZ.last_source_plan_lock_id, 'PLAN_A');
+  assert.equal(first.state.tickers.ZZZZ.status, 'READY_PENDING');
+  assert.equal(first.state.tickers.ZZZZ.ready_streak, 1);
+  assert.deepEqual(first.state.tickers.ZZZZ.confirmation_window, [true]);
+  assert.equal(first.diagnostics.source_identity[0].reset, false);
+  assert.equal(first.diagnostics.source_identity[0].reason, 'SOURCE_IDENTITY_INITIALIZED');
+
+  const sourceB = {
+    current_price: 101,
+    volume: 1800,
+    relative_volume: 1.8,
+    entry_low: 99,
+    entry_high: 104,
+    tp1: 113,
+    stop_loss: 96,
+    plan_lock_id: 'PLAN_B'
+  };
+
+  const second = pool.process({
+    sampleDate: '2099-01-07',
+    scheduledTime: '09:13',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:13', sourceB)],
+    priorState: first.state
+  });
+
+  const secondState = second.state.tickers.ZZZZ;
+  const secondDiagnostic = second.diagnostics.source_identity[0];
+  assert.equal(secondState.locked_plan_lock_id, 'PLAN_A');
+  assert.equal(secondState.last_source_plan_lock_id, 'PLAN_B');
+  assert.equal(secondState.status, 'READY_PENDING');
+  assert.equal(secondState.ready_streak, 1);
+  assert.deepEqual(secondState.confirmation_window, [true]);
+  assert.ok(secondState.last_reasons.includes('confirmation_reset_source_setup_changed'));
+  assert.equal(secondDiagnostic.reset, true);
+  assert.equal(secondDiagnostic.reason, 'SOURCE_IDENTITY_CHANGED');
+  assert.equal(secondDiagnostic.previous_plan_lock_id, 'PLAN_A');
+  assert.equal(secondDiagnostic.current_plan_lock_id, 'PLAN_B');
+  assert.notEqual(secondDiagnostic.previous_setup_id, secondDiagnostic.current_setup_id);
+  assert.equal(second.publishable.length, 0);
+
+  const third = pool.process({
+    sampleDate: '2099-01-07',
+    scheduledTime: '09:16',
+    shortlistRows: readyShortlist(),
+    observations: [readyObservation('09:16', {
+      ...sourceB,
+      current_price: 102,
+      volume: 2200,
+      relative_volume: 2
+    })],
+    priorState: second.state
+  });
+
+  const thirdState = third.state.tickers.ZZZZ;
+  const thirdDiagnostic = third.diagnostics.source_identity[0];
+  assert.equal(thirdState.locked_plan_lock_id, 'PLAN_A');
+  assert.equal(thirdState.last_source_plan_lock_id, 'PLAN_B');
+  assert.equal(thirdState.status, 'READY_CONFIRMED');
+  assert.equal(thirdState.ready_streak, 2);
+  assert.deepEqual(thirdState.confirmation_window, [true, true]);
+  assert.ok(!thirdState.last_reasons.includes('confirmation_reset_source_setup_changed'));
+  assert.equal(thirdDiagnostic.reset, false);
+  assert.equal(thirdDiagnostic.reason, 'SOURCE_IDENTITY_STABLE');
+  assert.equal(thirdDiagnostic.previous_plan_lock_id, 'PLAN_B');
+  assert.equal(thirdDiagnostic.current_plan_lock_id, 'PLAN_B');
+  assert.equal(thirdDiagnostic.previous_setup_id, thirdDiagnostic.current_setup_id);
+  assert.equal(third.publishable.length, 1);
+});
