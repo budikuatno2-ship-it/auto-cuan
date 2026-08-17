@@ -76,6 +76,15 @@ test('Pattern access polling pauses while the document is hidden', () => {
   assert.ok(hiddenGuard > interval && hiddenGuard < runtime.indexOf('if (!state.checked', interval), 'hidden-tab guard must run before access work');
 });
 
+test('the shared application shell CSS is cacheable outside the HTML document', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
+  const css = fs.readFileSync(path.join(ROOT, 'public/index-shell.css'), 'utf8');
+  assert.match(html, /<link rel="stylesheet" href="\/index-shell\.css\?v=[^"]+">/);
+  assert.doesNotMatch(html.slice(0, html.indexOf('</head>')), /<style>/);
+  assert.match(css, /\.maintenance-card/);
+  assert.match(css, /prefers-reduced-motion/);
+});
+
 test('named HTML entities cannot hide an executable URL scheme', () => {
   const payloads = [
     '<a href="javascript&colon;alert(1)">x</a>',
