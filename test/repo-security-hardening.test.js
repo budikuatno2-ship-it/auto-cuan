@@ -72,4 +72,10 @@ test('Vercel hardening prevents caching sensitive API responses and adds isolati
   const cache = api.headers.find((h) => h.key.toLowerCase() === 'cache-control');
   assert.ok(cache);
   assert.match(cache.value, /no-store/);
+
+  const assets = config.headers.find((entry) => entry.source === '/assets/(.*)');
+  assert.ok(assets, 'static asset cache policy missing');
+  const assetCache = assets.headers.find((h) => h.key.toLowerCase() === 'cache-control');
+  assert.match(assetCache.value, /public/);
+  assert.doesNotMatch(assetCache.value, /no-store/);
 });
