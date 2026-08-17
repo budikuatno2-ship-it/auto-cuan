@@ -6,6 +6,7 @@
 
   var TERMS_VERSION = '2026-08-16-v1';
   var accountCenterLoad = null;
+  var manualPaymentLoad = null;
   var originalDoRegister = null;
   var originalOpenRegister = null;
 
@@ -15,6 +16,31 @@
     if (typeof window.showToast === 'function') {
       try { window.showToast(message, kind || 'info'); return; } catch (_) {}
     }
+  }
+
+  function loadManualPaymentRuntime() {
+    if (window.__AUTOCUAN_MANUAL_PAYMENT_V1__) return Promise.resolve();
+    if (manualPaymentLoad) return manualPaymentLoad;
+    manualPaymentLoad = new Promise(function (resolve, reject) {
+      var present = document.querySelector('script[data-autocuan-manual-payment]');
+      if (present) {
+        if (window.__AUTOCUAN_MANUAL_PAYMENT_V1__) { resolve(); return; }
+        present.addEventListener('load', resolve, { once:true });
+        present.addEventListener('error', reject, { once:true });
+        return;
+      }
+      var script = document.createElement('script');
+      script.src = '/subscription-manual-payment-v1.js?v=20260817-v1';
+      script.async = true;
+      script.setAttribute('data-autocuan-manual-payment', '1');
+      script.addEventListener('load', resolve, { once:true });
+      script.addEventListener('error', reject, { once:true });
+      document.head.appendChild(script);
+    }).catch(function () {
+      manualPaymentLoad = null;
+      return null;
+    });
+    return manualPaymentLoad;
   }
 
   function installPerformanceOverride() {
@@ -45,7 +71,11 @@
     var existing = realCenterFunction(tab);
     var stub = lazyStubFor(tab);
     if (window.__AUTOCUAN_ACCOUNT_CENTER_V1__ && typeof existing === 'function' && existing !== stub) {
-      return Promise.resolve(existing());
+      var immediate = Promise.resolve(existing());
+      immediate.then(function () {
+        try { window.dispatchEvent(new CustomEvent('autocuan:account-center-opened', { detail:{ tab:tab } })); } catch (_) {}
+      });
+      return immediate;
     }
 
     if (!accountCenterLoad) {
@@ -74,7 +104,11 @@
 
     return accountCenterLoad.then(function () {
       var fn = realCenterFunction(tab);
-      if (typeof fn === 'function' && fn !== stub) return fn();
+      if (typeof fn === 'function' && fn !== stub) {
+        var out = fn();
+        try { window.dispatchEvent(new CustomEvent('autocuan:account-center-opened', { detail:{ tab:tab } })); } catch (_) {}
+        return out;
+      }
       throw new Error('account_center_runtime_unavailable');
     }).catch(function () {});
   }
@@ -201,6 +235,7 @@
     installCenterStubs();
     installRegistrationContract();
     installHeaderTrigger();
+    loadManualPaymentRuntime();
 
     // Auth/login runtimes can re-render header and registration controls. Two
     // bounded idempotent retries are enough; no whole-document MutationObserver.
