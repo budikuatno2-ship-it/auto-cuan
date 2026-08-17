@@ -1,10 +1,20 @@
 const { createClient } = require('@supabase/supabase-js');
+const subscriptionManualHandler = require('../lib/subscription-manual-handler');
+const subscriptionVoucherHandler = require('../lib/subscription-voucher-handler');
 
 /**
  * POST /api/review-access
  * Validates review token, seeds review user if needed, checks blocked status.
+ *
+ * Vercel Hobby is capped at 12 bundled Serverless Functions. Subscription
+ * checkout/voucher routes are rewritten here and delegated immediately to
+ * isolated handlers that enforce their own same-origin and signed-session gates.
  */
 module.exports = async function handler(req, res) {
+  const surface = String(req.query && req.query.surface || '').trim();
+  if (surface === 'subscription-manual') return subscriptionManualHandler(req, res);
+  if (surface === 'subscription-voucher') return subscriptionVoucherHandler(req, res);
+
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
