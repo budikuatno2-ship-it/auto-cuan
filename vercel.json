@@ -6,6 +6,14 @@
   },
   "rewrites": [
     {
+      "source": "/api/subscription-manual",
+      "destination": "/api/review-access?surface=subscription-manual"
+    },
+    {
+      "source": "/api/subscription-voucher",
+      "destination": "/api/review-access?surface=subscription-voucher"
+    },
+    {
       "source": "/dashboard",
       "destination": "/index.html"
     },

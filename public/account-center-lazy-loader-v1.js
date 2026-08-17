@@ -6,6 +6,8 @@
 
   var TERMS_VERSION = '2026-08-16-v1';
   var accountCenterLoad = null;
+  var manualPaymentLoad = null;
+  var voucherClaimLoad = null;
   var originalDoRegister = null;
   var originalOpenRegister = null;
 
@@ -15,6 +17,42 @@
     if (typeof window.showToast === 'function') {
       try { window.showToast(message, kind || 'info'); return; } catch (_) {}
     }
+  }
+
+  function loadRuntime(options) {
+    if (window[options.flag]) return Promise.resolve();
+    var existing = document.querySelector('script[' + options.attribute + ']');
+    return new Promise(function (resolve, reject) {
+      if (existing) {
+        if (window[options.flag]) { resolve(); return; }
+        existing.addEventListener('load', resolve, { once:true });
+        existing.addEventListener('error', reject, { once:true });
+        return;
+      }
+      var script = document.createElement('script');
+      script.src = options.src;
+      script.async = true;
+      script.setAttribute(options.attribute, '1');
+      script.addEventListener('load', resolve, { once:true });
+      script.addEventListener('error', reject, { once:true });
+      document.head.appendChild(script);
+    });
+  }
+
+  function loadManualPaymentRuntime() {
+    if (window.__AUTOCUAN_MANUAL_PAYMENT_V1__) return Promise.resolve();
+    if (manualPaymentLoad) return manualPaymentLoad;
+    manualPaymentLoad = loadRuntime({ flag:'__AUTOCUAN_MANUAL_PAYMENT_V1__', attribute:'data-autocuan-manual-payment', src:'/subscription-manual-payment-v1.js?v=20260817-v1' })
+      .catch(function () { manualPaymentLoad = null; return null; });
+    return manualPaymentLoad;
+  }
+
+  function loadVoucherClaimRuntime() {
+    if (window.__AUTOCUAN_VOUCHER_CLAIM_V1__) return Promise.resolve();
+    if (voucherClaimLoad) return voucherClaimLoad;
+    voucherClaimLoad = loadRuntime({ flag:'__AUTOCUAN_VOUCHER_CLAIM_V1__', attribute:'data-autocuan-voucher-claim', src:'/subscription-voucher-claim-v1.js?v=20260817-v1' })
+      .catch(function () { voucherClaimLoad = null; return null; });
+    return voucherClaimLoad;
   }
 
   function installPerformanceOverride() {
@@ -45,7 +83,11 @@
     var existing = realCenterFunction(tab);
     var stub = lazyStubFor(tab);
     if (window.__AUTOCUAN_ACCOUNT_CENTER_V1__ && typeof existing === 'function' && existing !== stub) {
-      return Promise.resolve(existing());
+      var immediate = Promise.resolve(existing());
+      immediate.then(function () {
+        try { window.dispatchEvent(new CustomEvent('autocuan:account-center-opened', { detail:{ tab:tab } })); } catch (_) {}
+      });
+      return immediate;
     }
 
     if (!accountCenterLoad) {
@@ -74,7 +116,11 @@
 
     return accountCenterLoad.then(function () {
       var fn = realCenterFunction(tab);
-      if (typeof fn === 'function' && fn !== stub) return fn();
+      if (typeof fn === 'function' && fn !== stub) {
+        var out = fn();
+        try { window.dispatchEvent(new CustomEvent('autocuan:account-center-opened', { detail:{ tab:tab } })); } catch (_) {}
+        return out;
+      }
       throw new Error('account_center_runtime_unavailable');
     }).catch(function () {});
   }
@@ -182,8 +228,6 @@
     var label = byId('headerUserLabel');
     if (!label || label.getAttribute('data-ac-lazy-trigger') === '1') return;
     label.setAttribute('data-ac-lazy-trigger', '1');
-    // Account Center checks this class before adding another listener when its
-    // full runtime is eventually loaded.
     label.classList.add('ac-profile-trigger');
     label.setAttribute('role', 'button');
     label.setAttribute('tabindex', '0');
@@ -201,9 +245,8 @@
     installCenterStubs();
     installRegistrationContract();
     installHeaderTrigger();
-
-    // Auth/login runtimes can re-render header and registration controls. Two
-    // bounded idempotent retries are enough; no whole-document MutationObserver.
+    loadManualPaymentRuntime();
+    loadVoucherClaimRuntime();
     setTimeout(function () { installRegistrationContract(); installHeaderTrigger(); }, 700);
     setTimeout(function () { installRegistrationContract(); installHeaderTrigger(); }, 2200);
   }

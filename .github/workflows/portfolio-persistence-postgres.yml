@@ -1,16 +1,6 @@
 name: Portfolio persistence PostgreSQL harness
 on:
   pull_request:
-    paths:
-      - 'supabase/portfolio-state-persistence-migration.sql'
-      - 'lib/portfolio-state-handler.js'
-      - 'api/reset-password.js'
-      - 'public/portfolio-supabase-sync.js'
-      - 'public/portfolio-command-center-v2.html'
-      - 'test/portfolio-supabase-persistence.test.js'
-      - 'test/sql/portfolio-persistence/**'
-      - '.github/workflows/portfolio-persistence-postgres.yml'
-      - 'package.json'
 
 permissions:
   contents: read
