@@ -68,6 +68,14 @@ test('Pattern hardening is installed before the safety model/runtime loader', ()
   assert.ok(runtimeAt > hardeningAt, 'Pattern runtime is requested before hardening');
 });
 
+test('Pattern access polling pauses while the document is hidden', () => {
+  const runtime = fs.readFileSync(path.join(ROOT, 'public/pattern-stable-runtime.js'), 'utf8');
+  const interval = runtime.indexOf('root.setInterval(function () {');
+  const hiddenGuard = runtime.indexOf("doc.visibilityState === 'hidden'");
+  assert.ok(interval >= 0, 'pattern access interval missing');
+  assert.ok(hiddenGuard > interval && hiddenGuard < runtime.indexOf('if (!state.checked', interval), 'hidden-tab guard must run before access work');
+});
+
 test('named HTML entities cannot hide an executable URL scheme', () => {
   const payloads = [
     '<a href="javascript&colon;alert(1)">x</a>',
