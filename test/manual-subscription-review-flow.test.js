@@ -12,8 +12,9 @@ function parses(rel) {
 }
 
 test('manual subscription server and browser runtimes parse', () => {
-  parses('api/subscription-manual.js');
-  parses('api/subscription-voucher.js');
+  parses('lib/subscription-manual-handler.js');
+  parses('lib/subscription-voucher-handler.js');
+  parses('api/review-access.js');
   parses('lib/subscription-voucher-claim.js');
   parses('lib/telegram-transient-message.js');
   parses('lib/telegram-unified-subscription.js');
@@ -21,6 +22,19 @@ test('manual subscription server and browser runtimes parse', () => {
   parses('public/subscription-manual-payment-v1.js');
   parses('public/subscription-voucher-claim-v1.js');
   parses('public/account-center-lazy-loader-v1.js');
+});
+
+test('subscription routes preserve Vercel 12-function budget', () => {
+  const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(name => name.endsWith('.js'));
+  assert.equal(apiFiles.length, 12);
+  const config = source('vercel.json');
+  assert.match(config, /"source": "\/api\/subscription-manual"/);
+  assert.match(config, /"destination": "\/api\/review-access\?surface=subscription-manual"/);
+  assert.match(config, /"source": "\/api\/subscription-voucher"/);
+  assert.match(config, /"destination": "\/api\/review-access\?surface=subscription-voucher"/);
+  const dispatcher = source('api/review-access.js');
+  assert.match(dispatcher, /subscriptionManualHandler/);
+  assert.match(dispatcher, /subscriptionVoucherHandler/);
 });
 
 test('manual payment activation is admin reviewed and server owned', () => {
@@ -32,7 +46,7 @@ test('manual payment activation is admin reviewed and server owned', () => {
   assert.match(sql, /'payment','active'/);
   assert.match(sql, /UPDATE public\.app_users SET is_approved=true/);
 
-  const api = source('api/subscription-manual.js');
+  const api = source('lib/subscription-manual-handler.js');
   assert.match(api, /subscription_payment_settings/);
   assert.match(api, /SUBSCRIPTION_BANK_NAME/);
   assert.match(api, /admin-review/);
@@ -41,11 +55,11 @@ test('manual payment activation is admin reviewed and server owned', () => {
 });
 
 test('discount voucher requires payment while direct voucher has dedicated claim endpoint', () => {
-  const paymentApi = source('api/subscription-manual.js');
+  const paymentApi = source('lib/subscription-manual-handler.js');
   assert.match(paymentApi, /type !== 'PERCENT_30' && type !== 'PERCENT_50'/);
   assert.match(paymentApi, /DIRECT_VOUCHER/);
 
-  const voucherApi = source('api/subscription-voucher.js');
+  const voucherApi = source('lib/subscription-voucher-handler.js');
   assert.match(voucherApi, /type === 'PERCENT_30' \|\| type === 'PERCENT_50'/);
   assert.match(voucherApi, /PAYMENT_REQUIRED/);
   assert.match(voucherApi, /notifyClaim/);
