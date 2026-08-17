@@ -219,9 +219,12 @@ function cssDefines(name) {
 
 // jsPDF is ~350KB for an export most sessions never use. It must stay behind an
 // explicit call rather than running three CDN attempts at parse time.
+const marketFeatureRuntime = read('public/market-feature-runtime.js');
+const frontendRuntime = indexHtml + '\n' + marketFeatureRuntime;
+assertOk(indexHtml.includes('/market-feature-runtime.js'), 'Market feature runtime is missing from the entry page.');
 assertOk(indexHtml.includes('window.loadPdfLibrary'), 'On-demand PDF loader is missing.');
 assertOk(!/loadScript\(jspdfUrls, 0, function\(ok1\) \{\s*\n\s*if \(!ok1\)/.test(indexHtml) || indexHtml.indexOf('window.loadPdfLibrary') < indexHtml.indexOf('jspdfUrls, 0'), 'PDF libraries are fetched at page load again.');
-assertOk(indexHtml.includes('_ensureJsPdf') && indexHtml.includes('window.loadPdfLibrary().then'), 'PDF export no longer triggers its own library load.');
+assertOk(marketFeatureRuntime.includes('_ensureJsPdf') && marketFeatureRuntime.includes('window.loadPdfLibrary().then'), 'PDF export no longer triggers its own library load.');
 
 // The in-page spacing self-test shipped ~4KB of fixtures to every visitor and
 // asserted on textContent, which drops the <br> separators it was checking for.
@@ -318,8 +321,8 @@ assertOk(chartViewer.includes('root.renderLightweightChart(') && chartViewer.inc
 assertOk(chartViewer.includes('function lockScroll') && chartViewer.includes('data-ac-scroll-locked'), 'Chart viewer scroll lock is missing.');
 assertOk(chartViewer.includes('clampPan') && chartViewer.includes('pointermove'), 'Chart viewer pinch/pan fallback is missing.');
 assertOk(!/fetch\(|supabase|telegram|navigateTo\s*=/i.test(chartViewer), 'Chart viewer crossed a protected boundary.');
-assertOk(index.includes('function openChartPageFullscreen()') && index.includes('openChartPageFullscreen()'), 'Chart page fullscreen entry point is missing.');
-assertOk(index.includes("if (variant === 'fullscreen')"), 'chartDims lost its fullscreen variant.');
+assertOk(frontendRuntime.includes('function openChartPageFullscreen()') && frontendRuntime.includes('openChartPageFullscreen()'), 'Chart page fullscreen entry point is missing.');
+assertOk(frontendRuntime.includes("if (variant === 'fullscreen')"), 'chartDims lost its fullscreen variant.');
 assertOk(patternStable.includes('data-ps-zoom') && patternStable.includes('root.openChartViewer'), 'Pattern cards can no longer open the shared viewer.');
 assertOk(patternStable.includes('function viewerPriceLines') && patternStable.includes('function viewerMarkers'), 'Pattern geometry is no longer passed to the viewer.');
 const patternHeaders = (JSON.parse(read('vercel.json')).headers || []).map(function (row) { return row.source; });

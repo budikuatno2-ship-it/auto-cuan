@@ -85,6 +85,19 @@ test('the shared application shell CSS is cacheable outside the HTML document', 
   assert.match(css, /prefers-reduced-motion/);
 });
 
+test('market and export feature runtime is externalized without changing its global contracts', () => {
+  const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
+  const runtime = fs.readFileSync(path.join(ROOT, 'public/market-feature-runtime.js'), 'utf8');
+  const featureAt = html.indexOf('/market-feature-runtime.js?v=');
+  const accessibilityAt = html.indexOf('ACCESSIBILITY: SKIP-LINK');
+  assert.ok(featureAt >= 0, 'market feature runtime script missing');
+  assert.ok(accessibilityAt > featureAt, 'market feature runtime load order changed');
+  assert.match(runtime, /function loadLightweightCharts\(\)/);
+  assert.match(runtime, /function toggleNewsPanel\(/);
+  assert.match(runtime, /function exportDayTradePDF\(\)/);
+  assert.doesNotMatch(html, /function loadLightweightCharts\(\)/);
+});
+
 test('named HTML entities cannot hide an executable URL scheme', () => {
   const payloads = [
     '<a href="javascript&colon;alert(1)">x</a>',

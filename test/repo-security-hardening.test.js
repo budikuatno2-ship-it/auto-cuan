@@ -84,4 +84,10 @@ test('Vercel hardening prevents caching sensitive API responses and adds isolati
   const shellCache = shellCss.headers.find((h) => h.key.toLowerCase() === 'cache-control');
   assert.match(shellCache.value, /public/);
   assert.doesNotMatch(shellCache.value, /no-store/);
+
+  const marketRuntime = config.headers.find((entry) => entry.source === '/market-feature-runtime.js');
+  assert.ok(marketRuntime, 'market feature runtime cache policy missing');
+  const marketCache = marketRuntime.headers.find((h) => h.key.toLowerCase() === 'cache-control');
+  assert.match(marketCache.value, /public/);
+  assert.doesNotMatch(marketCache.value, /no-store/);
 });
