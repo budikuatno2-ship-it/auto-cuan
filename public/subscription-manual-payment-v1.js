@@ -5,6 +5,7 @@
   window.__AUTOCUAN_MANUAL_PAYMENT_V1__ = true;
 
   var API = '/api/subscription-manual';
+  var VOUCHER_API = '/api/subscription-voucher';
   var PENDING_KEY = 'autocuan_pending_manual_payment';
   var pollTimer = null;
   var installTimer = null;
@@ -53,6 +54,25 @@
     var timer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, timeoutMs || 9000) : null;
     try {
       var response = await fetch(API, {
+        method:'POST',
+        credentials:'same-origin',
+        cache:'no-store',
+        headers:{ 'Content-Type':'application/json', 'Cache-Control':'no-cache' },
+        body:JSON.stringify(body || {}),
+        signal:controller ? controller.signal : undefined
+      });
+      var data = await response.json().catch(function () { return {}; });
+      return { ok:response.ok, status:response.status, data:data };
+    } catch (_) {
+      return { ok:false, status:0, data:{ error:'Koneksi ke server sedang bermasalah.' } };
+    } finally { if (timer) clearTimeout(timer); }
+  }
+
+  async function requestVoucher(body, timeoutMs) {
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = controller ? setTimeout(function () { try { controller.abort(); } catch (_) {} }, timeoutMs || 9000) : null;
+    try {
+      var response = await fetch(VOUCHER_API, {
         method:'POST',
         credentials:'same-origin',
         cache:'no-store',
@@ -124,6 +144,43 @@
     return null;
   }
 
+  async function redeemDirectVoucher(planCode, voucherCode, button) {
+    var key = randomUuid();
+    if (!key) { notify('Browser tidak mendukung aktivasi voucher aman.','error'); return; }
+    if (button) button.disabled = true;
+    var result = await requestVoucher({ voucher_code:voucherCode, idempotency_key:key }, 10000);
+    if (button) button.disabled = false;
+    if (!result.ok || !result.data.success) {
+      notify(result.data.error || 'Voucher belum dapat diaktifkan.','error');
+      return;
+    }
+    await refreshAccess();
+    closeModal();
+    notify(result.data.admin_notified === false ? 'Voucher aktif. Notifikasi admin belum terkirim.' : 'Voucher berhasil diaktifkan. Akses Premium sudah diperbarui.','success');
+    if (typeof window.openAccountSubscription === 'function') {
+      try { setTimeout(function () { window.openAccountSubscription(); }, 250); } catch (_) {}
+    }
+  }
+
+  function renderDirectVoucher(planCode, voucherCode) {
+    var body = document.getElementById('acManualPaymentBody');
+    if (!body) return;
+    var hint = String(voucherCode || '').slice(-4);
+    body.innerHTML = [
+      '<div class="ac-pay-box">',
+      '<div class="ac-pay-row"><span>Paket</span><strong>' + esc(PLAN_LABEL[planCode] || planCode) + '</strong></div>',
+      '<div class="ac-pay-row"><span>Voucher</span><strong class="ac-pay-code">••••' + esc(hint) + '</strong></div>',
+      '<div class="ac-pay-row"><span>Total</span><strong style="color:#6ee7b7;font-size:18px">Rp0</strong></div>',
+      '</div>',
+      '<div class="ac-pay-status">✅ Voucher ini memberikan aktivasi langsung. <b>Tidak perlu transfer</b> dan tidak perlu konfirmasi pembayaran admin.</div>',
+      '<div class="ac-pay-actions"><button type="button" id="acPayDirectVoucher" class="ac-pay-btn primary">Aktifkan voucher</button></div>'
+    ].join('');
+    var activate = document.getElementById('acPayDirectVoucher');
+    if (activate) activate.addEventListener('click', function () {
+      redeemDirectVoucher(planCode, voucherCode, activate);
+    });
+  }
+
   async function createPayment(planCode, voucherCode, button) {
     var key = randomUuid();
     if (!key) { notify('Browser tidak mendukung checkout aman.','error'); return; }
@@ -132,15 +189,7 @@
     if (button) button.disabled = false;
     if (!result.ok || !result.data.success) {
       if (result.data && result.data.code === 'DIRECT_VOUCHER') {
-        closeModal();
-        var voucherInput = document.getElementById('acVoucherInput');
-        if (voucherInput) {
-          voucherInput.value = String(voucherCode || '').toUpperCase();
-          var quote = document.getElementById('acVoucherQuote');
-          if (quote) quote.click();
-          try { voucherInput.scrollIntoView({ behavior:'smooth', block:'center' }); } catch (_) {}
-        }
-        notify(result.data.error || 'Gunakan aktivasi voucher langsung.','info');
+        renderDirectVoucher(planCode, String(voucherCode || '').toUpperCase());
         return;
       }
       notify(result.data.error || 'Checkout belum dapat dibuat.','error');
@@ -155,8 +204,8 @@
       '<div class="ac-pay-box"><div class="ac-pay-row"><span>Paket</span><strong>' + esc(label) + '</strong></div></div>',
       '<label class="ac-pay-label" for="acPayVoucher">Voucher (opsional)</label>',
       '<input id="acPayVoucher" class="ac-pay-input" autocomplete="off" spellcheck="false" placeholder="AC-XXXXXXXXXXXX">',
-      '<div class="ac-pay-status">Voucher 30%/50% akan mengurangi nominal transfer. Voucher 100% atau Lifetime tetap diaktifkan langsung dari bagian Voucher.</div>',
-      '<div class="ac-pay-actions"><button type="button" id="acPayContinue" class="ac-pay-btn primary">Lanjut ke transfer</button></div>'
+      '<div class="ac-pay-status">Voucher 30%/50% akan mengurangi nominal transfer. Voucher 100% atau Lifetime akan berubah menjadi aktivasi Rp0 langsung di modal ini.</div>',
+      '<div class="ac-pay-actions"><button type="button" id="acPayContinue" class="ac-pay-btn primary">Lanjut</button></div>'
     ].join(''));
     var button = root.querySelector('#acPayContinue');
     button.addEventListener('click', function () {
