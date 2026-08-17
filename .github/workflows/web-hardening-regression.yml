@@ -10,6 +10,7 @@ on:
       - 'lib/**'
       - 'test/**'
       - 'tools/**'
+      - '.agents/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/web-hardening-regression.yml'
