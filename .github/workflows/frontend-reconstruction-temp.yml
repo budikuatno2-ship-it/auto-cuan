@@ -42,6 +42,20 @@ jobs:
       - name: Reconstruct audited frontend optimizations
         run: node tools/reconstruct-codex-frontend-audit.js
 
+      - name: Align build guards with extracted chart runtime
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const p = 'tools/apply-production-hotfixes.js';
+          let s = fs.readFileSync(p, 'utf8');
+          const oldLine = `assertOk(index.includes("if (variant === 'fullscreen')"), 'chartDims lost its fullscreen variant.');`;
+          const newLine = `assertOk(marketFeatureRuntime.includes("if (variant === 'fullscreen')"), 'chartDims lost its fullscreen variant.');`;
+          if (!s.includes(oldLine)) throw new Error('chartDims validator baseline not found');
+          s = s.replace(oldLine, newLine);
+          fs.writeFileSync(p, s);
+          NODE
+
       - name: Syntax-check extracted runtime
         run: node --check public/market-feature-runtime.js
 
