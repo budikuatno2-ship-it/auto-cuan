@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - chore/frontend-runtime-decomposition-v1
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
 
 permissions:
   contents: write
@@ -15,9 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout repository
+      - name: Checkout reconstruction branch
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: chore/frontend-runtime-decomposition-v1
           fetch-depth: 0
           persist-credentials: true
 
