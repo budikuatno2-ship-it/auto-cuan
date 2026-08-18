@@ -10,6 +10,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const readPremiumCss = () => [
   read('public/premium-workstation-core.css'),
   read('public/premium-workstation-v6.css'),
+  read('public/premium-workstation-v11.css'),
   read('public/premium-workstation.css'),
 ].join('\n');
 
@@ -22,15 +23,18 @@ test('premium workstation entrypoint is loaded after the base theme', () => {
   assert.equal((html.match(/premium-workstation\.css\?v=20260818-v4/g) || []).length, 1);
 });
 
-test('premium workstation entrypoint composes frozen core and structural v6', () => {
+test('premium workstation entrypoint composes frozen core plus structural and executive layers', () => {
   const entry = read('public/premium-workstation.css');
   const core = read('public/premium-workstation-core.css');
   const v6 = read('public/premium-workstation-v6.css');
+  const v11 = read('public/premium-workstation-v11.css');
   assert.match(entry, /premium-workstation-core\.css\?v=20260818-v4-core/);
   assert.match(entry, /premium-workstation-v6\.css\?v=20260818-v6/);
+  assert.match(entry, /premium-workstation-v11\.css\?v=20260818-v11/);
   assert.match(core, /Auto-Cuan — Premium Workstation V3/);
   assert.match(core, /AUTO-CUAN PREMIUM WORKSTATION V4/);
   assert.match(v6, /AUTO-CUAN PREMIUM WORKSTATION V6/);
+  assert.match(v11, /AUTO-CUAN PREMIUM WORKSTATION V11/);
 });
 
 test('premium workstation keeps a restrained trading UI contract', () => {
@@ -53,7 +57,7 @@ test('premium workstation CSS is presentation-only', () => {
   assert.doesNotMatch(css, /addEventListener|setInterval|setTimeout|onclick\s*=/i);
 });
 
-test('premium workstation assets are cacheable while API no-store remains intact', () => {
+test('premium workstation assets preserve API no-store and revalidating entrypoint', () => {
   const config = JSON.parse(read('vercel.json'));
   const api = (config.headers || []).find((row) => row.source === '/api/(.*)');
   const entry = (config.headers || []).find((row) => row.source === '/premium-workstation.css');
@@ -110,5 +114,19 @@ test('premium workstation v6 upgrades hierarchy without changing application sem
   assert.match(css, /content-visibility:\s*auto/);
   assert.match(css, /scroll-snap-type:\s*x proximity/);
   assert.match(css, /@media \(max-width: 767px\)/);
+  assert.match(css, /@media \(prefers-contrast: more\)/);
+});
+
+test('premium workstation v11 improves scanability and asynchronous-state polish', () => {
+  const css = read('public/premium-workstation-v11.css');
+  assert.match(css, /AUTO-CUAN PREMIUM WORKSTATION V11/);
+  assert.match(css, /@container \(min-width: 720px\)[\s\S]*#dashboardTop5List/);
+  assert.match(css, /#dashboardMonitorList[\s\S]*max-height:/);
+  assert.match(css, /tbody tr:nth-child\(even\)/);
+  assert.match(css, /tbody tr:hover/);
+  assert.match(css, /#analisisResult[\s\S]*--pw-v11-reading/);
+  assert.match(css, /\.empty-state[\s\S]*border:\s*1px dashed/);
+  assert.match(css, /@keyframes pw-v11-skeleton/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /@media \(prefers-contrast: more\)/);
 });
