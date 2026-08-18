@@ -3,36 +3,148 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="description" content="Trust Center Auto-Cuan: batas operasional, freshness data, engineering controls, dan prinsip penggunaan yang transparan.">
+  <meta name="description" content="Trust Center Auto-Cuan: operating boundaries, data freshness, engineering controls, dan responsible disclosure yang dapat diperiksa.">
   <meta name="theme-color" content="#06090e">
   <meta name="robots" content="index,follow">
   <link rel="canonical" href="https://autocuan.web.id/trust.html">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Auto-Cuan">
+  <meta property="og:title" content="Trust Center | Auto-Cuan">
+  <meta property="og:description" content="Operating boundaries, data freshness, engineering controls, dan responsible disclosure Auto-Cuan.">
+  <meta property="og:url" content="https://autocuan.web.id/trust.html">
   <title>Trust Center | Auto-Cuan</title>
   <style>
-    :root{color-scheme:dark;--bg:#06090e;--panel:#09111a;--panel2:#0c1620;--line:rgba(148,163,184,.11);--line2:rgba(148,163,184,.19);--text:#f5f8fb;--body:#c3cfdb;--muted:#8392a5;--dim:#617084;--accent:#2dd4a3;--soft:rgba(45,212,163,.075);--warn:#edc46c}
-    *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--bg)}body{margin:0;background-color:var(--bg);background-image:linear-gradient(rgba(148,163,184,.019) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.015) 1px,transparent 1px),radial-gradient(900px 360px at 50% -180px,rgba(45,212,163,.055),transparent 70%);background-size:44px 44px,44px 44px,auto;color:var(--body);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
-    a{color:inherit}.shell{width:min(1080px,calc(100% - 36px));margin:auto}.topbar{position:sticky;top:0;z-index:10;border-bottom:1px solid rgba(148,163,184,.08);background:rgba(6,9,14,.93);backdrop-filter:blur(18px)}.topbar .shell{display:flex;align-items:center;justify-content:space-between;min-height:64px;gap:18px}.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:13px;font-weight:780}.mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(45,212,163,.25);border-radius:8px;background:#0c2a21;color:#75e7c5;font-size:10px;font-weight:900}.back{min-height:36px;padding:8px 11px;border:1px solid var(--line);border-radius:7px;background:#080e15;color:#a8b5c4;text-decoration:none;font-size:10.5px;font-weight:700}.back:hover{border-color:var(--line2);background:#0d151f;color:#fff}.back:focus-visible,a:focus-visible{outline:2px solid rgba(45,212,163,.68);outline-offset:3px}
-    .hero{padding:86px 0 60px}.kicker{display:flex;align-items:center;gap:9px;margin:0;color:#6fdfbf;font:800 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase}.kicker:before{content:"";width:25px;height:1px;background:rgba(45,212,163,.58)}h1{max-width:850px;margin:15px 0 0;color:var(--text);font-size:clamp(42px,7vw,76px);line-height:.98;letter-spacing:-.055em;font-weight:780;text-wrap:balance}.lead{max-width:760px;margin:22px 0 0;color:#91a0b2;font-size:15px;line-height:1.78}.stamp{display:flex;flex-wrap:wrap;gap:7px;margin-top:26px}.pill{display:inline-flex;align-items:center;gap:7px;min-height:29px;padding:5px 9px;border:1px solid var(--line);border-radius:6px;background:rgba(7,13,19,.7);color:#8190a2;font-size:10px;font-weight:690}.pill:before{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--soft)}
-    .section{padding:34px 0;border-top:1px solid rgba(148,163,184,.06)}.section-head{display:grid;grid-template-columns:minmax(180px,.34fr) minmax(0,1fr);gap:34px;margin-bottom:18px}.section-label{color:#7b8a9d;font-size:9.5px;font-weight:820;letter-spacing:.14em;text-transform:uppercase}.section h2{margin:0;color:var(--text);font-size:clamp(25px,3vw,38px);line-height:1.08;letter-spacing:-.035em}.section-intro{max-width:700px;margin:10px 0 0;color:var(--muted);font-size:12.5px;line-height:1.7}
-    .matrix{overflow:hidden;border:1px solid var(--line);border-radius:11px;background:#070d13}.row{display:grid;grid-template-columns:minmax(150px,.32fr) minmax(0,1fr);gap:20px;padding:17px 18px;border-bottom:1px solid rgba(148,163,184,.07)}.row:last-child{border-bottom:0}.key{color:#718094;font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}.value{color:#c2ceda;font-size:12px;line-height:1.65}.value strong{color:#eaf0f6;font-weight:720}.value code{padding:2px 5px;border:1px solid rgba(148,163,184,.09);border-radius:4px;background:#050a10;color:#8fdcC5;font-size:10.5px}
-    .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.card{min-height:150px;padding:17px;border:1px solid var(--line);border-radius:9px;background:var(--panel);box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}.card .eyebrow{color:#6f7f92;font-size:9px;font-weight:820;letter-spacing:.12em;text-transform:uppercase}.card h3{margin:8px 0 0;color:#eef4f8;font-size:15px;letter-spacing:-.02em}.card p{margin:8px 0 0;color:#8291a4;font-size:11.5px;line-height:1.66}.card.warning{border-color:rgba(237,196,108,.13)}.card.warning .eyebrow{color:#bfa262}
-    .notice{margin-top:12px;padding:13px 15px;border:1px solid rgba(237,196,108,.12);border-radius:8px;background:rgba(237,196,108,.025);color:#928264;font-size:10.5px;line-height:1.6}.notice strong{color:#d7bb79}.footer{padding:38px 0 50px;border-top:1px solid rgba(148,163,184,.07);color:#647386;font-size:10.5px}.footer .shell{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.footer a{color:#8edfc7;text-decoration:none}
-    @media(max-width:720px){.shell{width:min(100% - 24px,1080px)}.hero{padding:58px 0 42px}.section-head{grid-template-columns:1fr;gap:8px}.row{grid-template-columns:1fr;gap:6px}.controls{grid-template-columns:1fr}.topbar .shell{min-height:58px}h1{font-size:43px}.lead{font-size:14px}}
-    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-    @media(prefers-contrast:more){:root{--line:rgba(203,213,225,.24);--line2:rgba(226,232,240,.38);--muted:#aab6c5;--dim:#93a0b1}}
+    :root{color-scheme:dark;--bg:#06090e;--bg2:#080d14;--panel:#09111a;--panel2:#0c1620;--panel3:#070d13;--line:rgba(148,163,184,.105);--line2:rgba(148,163,184,.19);--text:#f5f8fb;--body:#c5d0dc;--muted:#8796a8;--dim:#617084;--accent:#2dd4a3;--accent2:#10b981;--soft:rgba(45,212,163,.075);--warn:#edc46c;--info:#76adf8;--max:1160px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--bg);scroll-padding-top:88px}body{margin:0;background-color:var(--bg);background-image:linear-gradient(rgba(148,163,184,.019) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,.015) 1px,transparent 1px),radial-gradient(1000px 430px at 50% -210px,rgba(45,212,163,.07),transparent 72%);background-size:44px 44px,44px 44px,auto;color:var(--body);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}::selection{background:rgba(45,212,163,.24);color:#fff}a{color:inherit}.shell{width:min(var(--max),calc(100% - 38px));margin:auto}
+    .topbar{position:sticky;top:0;z-index:30;border-bottom:1px solid rgba(148,163,184,.075);background:rgba(6,9,14,.94);backdrop-filter:blur(18px) saturate(118%)}.topbar .shell{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:22px;min-height:66px}.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-size:13px;font-weight:780;white-space:nowrap}.mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(45,212,163,.25);border-radius:8px;background:#0c2a21;color:#75e7c5;font-size:10px;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.topnav{display:flex;align-items:center;justify-content:center;gap:3px;min-width:0}.topnav a{padding:7px 9px;border:1px solid transparent;border-radius:6px;color:#758497;text-decoration:none;font-size:10px;font-weight:690;white-space:nowrap}.topnav a:hover{border-color:var(--line);background:#0a1119;color:#d8e2eb}.back{min-height:36px;padding:8px 11px;border:1px solid var(--line);border-radius:7px;background:#080e15;color:#a8b5c4;text-decoration:none;font-size:10.5px;font-weight:700;white-space:nowrap}.back:hover{border-color:var(--line2);background:#0d151f;color:#fff}.back:focus-visible,.topnav a:focus-visible,a:focus-visible{outline:2px solid rgba(45,212,163,.68);outline-offset:3px}
+    .hero{padding:92px 0 54px}.kicker{display:flex;align-items:center;gap:9px;margin:0;color:#6fdfbf;font:800 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase}.kicker:before{content:"";width:25px;height:1px;background:rgba(45,212,163,.58)}h1{max-width:920px;margin:15px 0 0;color:var(--text);font-size:clamp(44px,7vw,82px);line-height:.96;letter-spacing:-.058em;font-weight:780;text-wrap:balance}.lead{max-width:790px;margin:23px 0 0;color:#94a3b5;font-size:15px;line-height:1.8}.hero-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:32px;overflow:hidden;border:1px solid var(--line);border-radius:10px;background:#070d13}.hero-stat{min-height:86px;padding:14px 15px;border-right:1px solid var(--line)}.hero-stat:last-child{border-right:0}.hero-stat .label{color:#627185;font-size:8.5px;font-weight:820;letter-spacing:.13em;text-transform:uppercase}.hero-stat .value{margin-top:9px;color:#dfe8f0;font-size:12px;font-weight:720}.hero-stat .note{margin-top:3px;color:#627185;font-size:9.5px;line-height:1.45}
+    .section{padding:44px 0;border-top:1px solid rgba(148,163,184,.06)}.section-grid{display:grid;grid-template-columns:minmax(190px,.31fr) minmax(0,1fr);gap:38px}.section-label{position:sticky;top:94px;align-self:start;color:#708095;font-size:9.5px;font-weight:820;letter-spacing:.14em;text-transform:uppercase}.section-label span{display:block;margin-top:7px;color:#4f5d70;font-weight:620;letter-spacing:.04em;text-transform:none}.section h2{max-width:790px;margin:0;color:var(--text);font-size:clamp(28px,3.4vw,44px);line-height:1.05;letter-spacing:-.04em}.section-intro{max-width:750px;margin:11px 0 0;color:var(--muted);font-size:12.5px;line-height:1.72}
+    .flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:21px}.flow-step{position:relative;min-height:150px;padding:16px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}.flow-step:not(:last-child):after{content:"→";position:absolute;right:-8px;top:50%;z-index:2;display:grid;place-items:center;width:16px;height:16px;border:1px solid var(--line);border-radius:50%;background:var(--bg);color:#667588;font-size:9px;transform:translateY(-50%)}.flow-num{color:#55dcb7;font:800 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em}.flow-step h3{margin:13px 0 0;color:#edf3f8;font-size:13px}.flow-step p{margin:7px 0 0;color:#758497;font-size:10.5px;line-height:1.6}
+    .matrix{overflow:hidden;margin-top:12px;border:1px solid var(--line);border-radius:10px;background:#070d13}.row{display:grid;grid-template-columns:minmax(160px,.29fr) minmax(0,1fr);gap:22px;padding:17px 18px;border-bottom:1px solid rgba(148,163,184,.067)}.row:last-child{border-bottom:0}.key{color:#718094;font-size:9.5px;font-weight:800;letter-spacing:.085em;text-transform:uppercase}.value{color:#c2ceda;font-size:12px;line-height:1.67}.value strong{color:#ecf2f7;font-weight:720}.value code{padding:2px 5px;border:1px solid rgba(148,163,184,.09);border-radius:4px;background:#050a10;color:#8fdcc5;font-size:10.5px}
+    .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:20px}.card{min-height:164px;padding:18px;border:1px solid var(--line);border-radius:9px;background:var(--panel);box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}.card .eyebrow{color:#68788b;font-size:9px;font-weight:820;letter-spacing:.12em;text-transform:uppercase}.card h3{margin:9px 0 0;color:#eef4f8;font-size:15px;letter-spacing:-.02em}.card p{margin:8px 0 0;color:#8291a4;font-size:11.5px;line-height:1.66}.card.accent{border-color:rgba(45,212,163,.15)}.card.warning{border-color:rgba(237,196,108,.14)}.card.warning .eyebrow{color:#bba063}.card.info{border-color:rgba(118,173,248,.14)}
+    .registry{margin-top:20px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#070d13}.registry table{width:100%;min-width:680px;border-collapse:collapse;font-variant-numeric:tabular-nums}.registry th,.registry td{padding:13px 14px;border-bottom:1px solid rgba(148,163,184,.065);text-align:left}.registry tr:last-child td{border-bottom:0}.registry th{color:#6e7d90;background:#080e15;font-size:8.5px;font-weight:820;letter-spacing:.12em;text-transform:uppercase}.registry td{color:#aebbc8;font-size:10.5px;line-height:1.5}.status{display:inline-flex;align-items:center;gap:6px;color:#85e8cc;font-size:9.5px;font-weight:720}.status:before{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--soft)}
+    .notice{margin-top:13px;padding:14px 15px;border:1px solid rgba(237,196,108,.13);border-radius:8px;background:rgba(237,196,108,.026);color:#928264;font-size:10.5px;line-height:1.62}.notice strong{color:#d9be7c}.nonclaims{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:19px}.nonclaim{padding:15px;border:1px solid rgba(251,125,141,.10);border-radius:8px;background:rgba(251,125,141,.018)}.nonclaim strong{display:block;color:#d9b0b6;font-size:10.5px}.nonclaim span{display:block;margin-top:5px;color:#796c72;font-size:9.8px;line-height:1.5}
+    .disclosure{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;margin-top:20px;padding:19px;border:1px solid rgba(45,212,163,.14);border-radius:10px;background:linear-gradient(90deg,rgba(45,212,163,.035),transparent 48%),#09111a}.disclosure h3{margin:0;color:#edf4f8;font-size:15px}.disclosure p{max-width:700px;margin:7px 0 0;color:#8190a3;font-size:11px;line-height:1.65}.action{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 12px;border:1px solid rgba(45,212,163,.24);border-radius:7px;background:#0c2a21;color:#8ceccf;text-decoration:none;font-size:10.5px;font-weight:720;white-space:nowrap}.action:hover{border-color:rgba(45,212,163,.38);background:#10362a;color:#c8fff0}
+    .footer{padding:40px 0 52px;border-top:1px solid rgba(148,163,184,.07);color:#647386;font-size:10.5px}.footer .shell{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}.footer a{color:#8edfc7;text-decoration:none}.footer a:hover{text-decoration:underline}
+    @media(max-width:900px){.topbar .shell{grid-template-columns:auto 1fr}.topnav{display:none}.back{justify-self:end}.hero-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-stat:nth-child(2){border-right:0}.hero-stat:nth-child(-n+2){border-bottom:1px solid var(--line)}.section-grid{grid-template-columns:1fr;gap:11px}.section-label{position:static}.flow{grid-template-columns:repeat(2,minmax(0,1fr))}.flow-step:nth-child(2):after{display:none}.nonclaims{grid-template-columns:1fr}.disclosure{grid-template-columns:1fr}}
+    @media(max-width:620px){.shell{width:min(100% - 24px,var(--max))}.topbar .shell{min-height:58px;gap:10px}.brand span:last-child{display:none}.hero{padding:62px 0 40px}h1{font-size:clamp(40px,13vw,58px)}.lead{font-size:14px}.hero-meta{grid-template-columns:1fr}.hero-stat{min-height:0;border-right:0!important;border-bottom:1px solid var(--line)!important}.hero-stat:last-child{border-bottom:0!important}.flow,.cards{grid-template-columns:1fr}.flow-step:not(:last-child):after{display:none}.row{grid-template-columns:1fr;gap:6px}.disclosure{padding:16px}.action{width:100%}.section{padding:36px 0}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media(prefers-contrast:more){:root{--line:rgba(203,213,225,.24);--line2:rgba(226,232,240,.38);--muted:#aab6c5;--dim:#93a0b1}}
   </style>
 </head>
 <body>
-  <header class="topbar"><div class="shell"><a class="brand" href="/"><span class="mark" aria-hidden="true">AC</span><span>Auto-Cuan Trust Center</span></a><a class="back" href="/">Kembali ke aplikasi</a></div></header>
+  <header class="topbar">
+    <div class="shell">
+      <a class="brand" href="/" aria-label="Auto-Cuan home"><span class="mark" aria-hidden="true">AC</span><span>Auto-Cuan Trust Center</span></a>
+      <nav class="topnav" aria-label="Trust Center sections">
+        <a href="#operating-boundaries">Boundaries</a><a href="#data-freshness">Data</a><a href="#engineering-controls">Controls</a><a href="#responsible-disclosure">Disclosure</a>
+      </nav>
+      <a class="back" href="/">Kembali ke aplikasi</a>
+    </div>
+  </header>
+
   <main>
-    <section class="hero"><div class="shell"><p class="kicker">TRUST / OPERATING BOUNDARIES</p><h1>Batas sistem harus lebih jelas daripada janji produknya.</h1><p class="lead">Halaman ini merangkum cara Auto-Cuan diposisikan dan dijaga: sebagai alat bantu analisis pasar IDX, bukan mesin eksekusi transaksi. Tujuannya bukan membuat klaim besar, melainkan membuat batas produk dapat diperiksa.</p><div class="stamp"><span class="pill">Fokus pasar IDX</span><span class="pill">Eksekusi manual</span><span class="pill">No custody</span><span class="pill">Freshness-aware</span></div></div></section>
+    <section class="hero">
+      <div class="shell">
+        <p class="kicker">TRUST / PRODUCT OPERATING MODEL</p>
+        <h1>Kepercayaan dimulai dari batas yang bisa diperiksa.</h1>
+        <p class="lead">Auto-Cuan diposisikan sebagai alat bantu analisis pasar IDX. Trust Center ini menjelaskan alur keputusan, batas data, kontrol delivery, dan jalur disclosure secara eksplisit—tanpa menyamakan kontrol internal dengan sertifikasi eksternal.</p>
+        <div class="hero-meta" role="list" aria-label="Trust Center summary">
+          <div class="hero-stat" role="listitem"><div class="label">Market scope</div><div class="value">IDX-focused</div><div class="note">Radar dan analisis untuk konteks pasar saham Indonesia.</div></div>
+          <div class="hero-stat" role="listitem"><div class="label">Execution model</div><div class="value">Manual</div><div class="note">Auto-Cuan tidak mengeksekusi transaksi.</div></div>
+          <div class="hero-stat" role="listitem"><div class="label">Custody model</div><div class="value">No custody</div><div class="note">Auto-Cuan tidak memegang dana pengguna.</div></div>
+          <div class="hero-stat" role="listitem"><div class="label">Data posture</div><div class="value">Freshness-aware</div><div class="note">Stale/freshness context harus dibaca sebelum keputusan.</div></div>
+        </div>
+      </div>
+    </section>
 
-    <section class="section"><div class="shell"><div class="section-head"><div class="section-label">01 / Operating boundary</div><div><h2>Apa yang sistem lakukan — dan apa yang tidak.</h2><p class="section-intro">Batas ini penting karena kualitas alat analisis tidak menghilangkan risiko keputusan investasi.</p></div></div><div class="matrix" role="list" aria-label="Batas operasional Auto-Cuan"><div class="row" role="listitem"><div class="key">Peran sistem</div><div class="value">Menyaring radar/watchlist dan menyajikan konteks analisis untuk dibaca pengguna.</div></div><div class="row" role="listitem"><div class="key">Eksekusi transaksi</div><div class="value"><strong>Tidak dilakukan oleh Auto-Cuan.</strong> Keputusan dan eksekusi tetap manual di sekuritas pilihan pengguna.</div></div><div class="row" role="listitem"><div class="key">Dana & kustodi</div><div class="value">Auto-Cuan tidak memegang dana pengguna. Portofolio di aplikasi merupakan pencatatan/alat bantu, bukan rekening kustodian.</div></div><div class="row" role="listitem"><div class="key">Freshness</div><div class="value">Data dapat terlambat atau stale. Status freshness dan warning harus dibaca sebelum keputusan dibuat.</div></div><div class="row" role="listitem"><div class="key">Risiko pasar</div><div class="value">False breakout, slippage, likuiditas, gap, dan risiko pasar lain tetap ada. Tidak ada tampilan UI yang menghapus risiko tersebut.</div></div></div></div></section>
+    <section class="section" id="operating-boundaries">
+      <div class="shell section-grid">
+        <div class="section-label">01 / Operating boundaries<span>Decision ownership stays with the user.</span></div>
+        <div>
+          <h2>Dari radar ke transaksi, ada batas yang sengaja tidak dilewati sistem.</h2>
+          <p class="section-intro">Alur produk dibuat untuk membantu membaca konteks, bukan menghapus tanggung jawab pengguna atas keputusan pasar.</p>
+          <div class="flow" aria-label="Alur keputusan Auto-Cuan">
+            <article class="flow-step"><div class="flow-num">01 / OBSERVE</div><h3>Radar & screening</h3><p>Sistem menyaring watchlist dan menampilkan kandidat/konteks yang relevan untuk diperiksa.</p></article>
+            <article class="flow-step"><div class="flow-num">02 / REVIEW</div><h3>Konfirmasi manusia</h3><p>Freshness, risiko, harga, status, dan konteks lain tetap harus dibaca sebelum tindakan.</p></article>
+            <article class="flow-step"><div class="flow-num">03 / EXECUTE</div><h3>Eksekusi manual</h3><p>Order tetap dilakukan pengguna di aplikasi sekuritas pilihannya. Auto-Cuan tidak mengeksekusi transaksi.</p></article>
+            <article class="flow-step"><div class="flow-num">04 / MONITOR</div><h3>Pantau risiko</h3><p>Posisi berjalan tetap perlu dipantau pengguna; tool tidak menggantikan pengawasan risiko pasar.</p></article>
+          </div>
+          <div class="matrix" role="list" aria-label="Batas operasional Auto-Cuan">
+            <div class="row" role="listitem"><div class="key">Peran sistem</div><div class="value">Menyaring radar/watchlist dan menyajikan konteks analisis untuk dibaca pengguna.</div></div>
+            <div class="row" role="listitem"><div class="key">Eksekusi transaksi</div><div class="value"><strong>Auto-Cuan tidak mengeksekusi transaksi.</strong> Keputusan dan eksekusi tetap manual di sekuritas pilihan pengguna.</div></div>
+            <div class="row" role="listitem"><div class="key">Dana & kustodi</div><div class="value">Auto-Cuan tidak memegang dana pengguna. Pencatatan portofolio di aplikasi bukan rekening kustodian.</div></div>
+            <div class="row" role="listitem"><div class="key">Risiko pasar</div><div class="value">False breakout, slippage, likuiditas, gap, dan risiko pasar lain tetap ada. Tampilan produk tidak menghapus risiko tersebut.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-    <section class="section"><div class="shell"><div class="section-head"><div class="section-label">02 / Engineering controls</div><div><h2>Kontrol engineering yang bisa diperiksa di repository.</h2><p class="section-intro">Kontrol ini membantu mengurangi regresi dan perubahan berisiko. Mereka tidak sama dengan audit atau sertifikasi keamanan pihak ketiga.</p></div></div><div class="controls"><article class="card"><div class="eyebrow">Protected delivery</div><h3>Perubahan production lewat pull request.</h3><p>Branch production diproteksi dan perubahan harus melewati jalur review/status checks repository sebelum merge.</p></article><article class="card"><div class="eyebrow">Static analysis</div><h3>CodeQL dan repository security gate.</h3><p>CI menjalankan pemeriksaan keamanan source dan repository guard sebagai bagian dari delivery gate.</p></article><article class="card"><div class="eyebrow">Regression gates</div><h3>Web hardening + focused tests.</h3><p>Build production dan regression contracts dijalankan untuk menangkap perubahan yang melanggar kontrak runtime/UI yang sudah dijaga.</p></article><article class="card"><div class="eyebrow">Cache boundaries</div><h3>API dan application HTML memakai no-store.</h3><p>Konfigurasi deployment membedakan asset statis cacheable dari route/API yang dikonfigurasi <code>no-store</code>.</p></article></div><div class="notice"><strong>Catatan:</strong> status CI yang hijau adalah kontrol engineering internal. Halaman ini tidak menyatakan Auto-Cuan memiliki sertifikasi eksternal, audit regulator, atau jaminan bebas kerentanan.</div></div></section>
+    <section class="section" id="data-freshness">
+      <div class="shell section-grid">
+        <div class="section-label">02 / Data & freshness<span>Context matters as much as the number.</span></div>
+        <div>
+          <h2>Angka tanpa konteks waktu bisa menyesatkan.</h2>
+          <p class="section-intro">Karena cadence data dapat berbeda antar-surface, pengguna harus membaca status freshness/stale dan konteks sumber yang ditampilkan sebelum membuat keputusan.</p>
+          <div class="cards">
+            <article class="card accent"><div class="eyebrow">Freshness awareness</div><h3>Stale warning bukan dekorasi.</h3><p>Data dapat terlambat atau stale. Freshness context harus dianggap bagian dari keputusan, bukan metadata yang boleh diabaikan.</p></article>
+            <article class="card"><div class="eyebrow">Surface context</div><h3>Cadence tidak diasumsikan sama.</h3><p>Radar, chart, screener, dan surface lain dapat memiliki konteks pembaruan berbeda. Produk tidak boleh menyamakan semuanya sebagai “live” tanpa bukti.</p></article>
+            <article class="card warning"><div class="eyebrow">Market risk</div><h3>Data terbaru pun tidak menjamin hasil.</h3><p>Perubahan harga, gap, likuiditas, slippage, dan kondisi pasar setelah observasi tetap dapat mengubah outcome.</p></article>
+            <article class="card info"><div class="eyebrow">User confirmation</div><h3>Konfirmasi akhir tetap manual.</h3><p>Price context, risk label, freshness, dan kondisi saat eksekusi perlu dibaca kembali di titik keputusan.</p></article>
+          </div>
+        </div>
+      </div>
+    </section>
 
-    <section class="section"><div class="shell"><div class="section-head"><div class="section-label">03 / Responsible disclosure</div><div><h2>Temuan keamanan seharusnya masuk ke jalur yang tepat.</h2><p class="section-intro">Untuk konteks source/repository, gunakan area Security repository. Hindari mempublikasikan kredensial, token, atau detail eksploit aktif di kanal publik.</p></div></div><div class="matrix"><div class="row"><div class="key">Security reference</div><div class="value"><a href="https://github.com/budikuatno2-ship-it/auto-cuan/security" rel="noopener noreferrer">Repository Security</a></div></div><div class="row"><div class="key">Machine-readable</div><div class="value"><a href="/.well-known/security.txt">/.well-known/security.txt</a></div></div><div class="row"><div class="key">Last updated</div><div class="value">18 Agustus 2026</div></div></div></div></section>
+    <section class="section" id="engineering-controls">
+      <div class="shell section-grid">
+        <div class="section-label">03 / Engineering controls<span>Internal delivery safeguards, not certification.</span></div>
+        <div>
+          <h2>Kontrol delivery dibuat terlihat dan dapat diuji.</h2>
+          <p class="section-intro">Kontrol berikut ada untuk mengurangi regresi dan perubahan berisiko di repository. Mereka adalah kontrol engineering internal, bukan audit atau sertifikasi keamanan pihak ketiga.</p>
+          <div class="registry" role="region" aria-label="Engineering control registry" tabindex="0">
+            <table>
+              <thead><tr><th>Control</th><th>Purpose</th><th>Evidence path</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td>Protected delivery</td><td>Menahan perubahan production sampai jalur PR/status checks terpenuhi.</td><td>Repository branch protection / PR checks</td><td><span class="status">Implemented</span></td></tr>
+                <tr><td>CodeQL</td><td>Static analysis untuk source JavaScript pada delivery path.</td><td>GitHub Actions · CodeQL Security</td><td><span class="status">Implemented</span></td></tr>
+                <tr><td>Repository Security Gate</td><td>Menjaga repository-level security contracts dan policy checks.</td><td>GitHub Actions · Repository Security Gate</td><td><span class="status">Implemented</span></td></tr>
+                <tr><td>Production build contract</td><td>Menangkap regressions pada build/hardening sebelum perubahan diterima.</td><td>Web hardening regression</td><td><span class="status">Implemented</span></td></tr>
+                <tr><td>Cache boundaries</td><td>Membedakan static assets cacheable dari API/private application surfaces.</td><td><code>vercel.json</code></td><td><span class="status">Implemented</span></td></tr>
+                <tr><td>Responsible disclosure</td><td>Menyediakan jalur disclosure dan policy reference yang machine-readable.</td><td><code>/.well-known/security.txt</code></td><td><span class="status">Implemented</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="notice"><strong>Penting:</strong> status kontrol di atas menjelaskan mekanisme engineering yang ada di repository. Halaman ini tidak menyatakan Auto-Cuan memiliki sertifikasi eksternal, audit regulator, penetration-test attestation, atau jaminan bebas kerentanan.</div>
+          <div class="nonclaims" aria-label="Hal yang tidak diklaim Auto-Cuan">
+            <div class="nonclaim"><strong>Tidak mengklaim regulator approval</strong><span>Tidak ada badge atau wording yang menyiratkan persetujuan regulator tanpa bukti.</span></div>
+            <div class="nonclaim"><strong>Tidak mengklaim guaranteed performance</strong><span>Radar/watchlist bukan jaminan profit dan bukan perintah transaksi otomatis.</span></div>
+            <div class="nonclaim"><strong>Tidak mengklaim perfect security</strong><span>CI/security checks membantu mengurangi risiko; mereka bukan bukti bahwa kerentanan mustahil terjadi.</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="responsible-disclosure">
+      <div class="shell section-grid">
+        <div class="section-label">04 / Responsible disclosure<span>Route findings to a reviewable channel.</span></div>
+        <div>
+          <h2>Temuan keamanan perlu jalur yang tepat, bukan exposure publik.</h2>
+          <p class="section-intro">Untuk konteks source/repository, gunakan area Security repository. Jangan menaruh kredensial, token, session material, atau detail eksploit aktif di issue/comment publik.</p>
+          <div class="disclosure">
+            <div><h3>Security reference</h3><p>Policy machine-readable tersedia di <code>/.well-known/security.txt</code>. Referensi repository Security digunakan sebagai jalur utama untuk konteks disclosure.</p></div>
+            <a class="action" href="https://github.com/budikuatno2-ship-it/auto-cuan/security" rel="noopener noreferrer">Buka Repository Security →</a>
+          </div>
+          <div class="matrix">
+            <div class="row"><div class="key">Machine-readable policy</div><div class="value"><a href="/.well-known/security.txt">/.well-known/security.txt</a></div></div>
+            <div class="row"><div class="key">Public policy</div><div class="value"><a href="/trust.html">/trust.html</a></div></div>
+            <div class="row"><div class="key">Last updated</div><div class="value">18 Agustus 2026</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
-  <footer class="footer"><div class="shell"><span>Auto-Cuan · IDX Stock Radar</span><span><a href="/">Aplikasi</a> · <a href="/robots.txt">robots.txt</a> · <a href="/sitemap.xml">sitemap.xml</a></span></div></footer>
+
+  <footer class="footer"><div class="shell"><span>Auto-Cuan · IDX Stock Radar</span><span><a href="/">Aplikasi</a> · <a href="/.well-known/security.txt">security.txt</a> · <a href="/robots.txt">robots.txt</a> · <a href="/sitemap.xml">sitemap.xml</a></span></div></footer>
 </body>
 </html>
