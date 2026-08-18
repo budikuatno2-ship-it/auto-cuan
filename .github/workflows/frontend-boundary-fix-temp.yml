@@ -1,5 +1,6 @@
 name: Temporary Frontend Boundary Fix
 
+# Branch-only validation pass; removed after the source commit lands.
 on:
   push:
     branches:
@@ -47,9 +48,6 @@ jobs:
 
           const must = (ok, msg) => { if (!ok) throw new Error(msg); };
 
-          // 1) Keep the .hidden safety net in HTML, before Tailwind, so Tailwind's
-          // responsive display utilities can override it when available while the
-          // fallback still works if external stylesheets fail.
           const hiddenStart = css.indexOf('/* ---- .hidden safety net');
           const hiddenEnd = css.indexOf('/* Hide any previously saved broken Level Fokus', hiddenStart);
           must(hiddenStart >= 0 && hiddenEnd > hiddenStart, 'external .hidden safety block not found');
@@ -79,9 +77,6 @@ jobs:
           must(html.includes(tailwindLink), 'Tailwind link anchor missing');
           html = html.replace(tailwindLink, critical + tailwindLink);
 
-          // 2) Do not put the active Day Trade UI/polling runtime in a one-day
-          // cacheable feature bundle. Keep it inline in the exact original order;
-          // only chart/export/presentation helpers remain externalized.
           const dtStartMarker = '// ============================================================\n// DAY TRADE SCREENER — JavaScript Functions\n// ============================================================';
           const dtStart = runtime.indexOf(dtStartMarker);
           must(dtStart > 0, 'Day Trade runtime marker not found in cached runtime');
@@ -104,16 +99,16 @@ jobs:
           fs.writeFileSync(cssPath, css);
           fs.writeFileSync(runtimePath, marketOnly);
 
-          // Strengthen regression coverage around the two safety boundaries.
           let test = fs.readFileSync(testPath, 'utf8');
-          test = test.replace(
-            "  const shellAt = html.indexOf('/index-shell.css?v=20260818-v1');\n  const themeAt = html.indexOf('/ui-theme.css');\n  assert.ok(shellAt > 0 && themeAt > shellAt);\n  const head = html.slice(0, html.indexOf('</head>'));\n  assert.doesNotMatch(head, /<style>/i);",
-            "  const criticalAt = html.indexOf('id=\"critical-shell-safety\"');\n  const tailwindAt = html.indexOf('/tailwind-build.css');\n  const shellAt = html.indexOf('/index-shell.css?v=20260818-v1');\n  const themeAt = html.indexOf('/ui-theme.css');\n  assert.ok(criticalAt > 0 && tailwindAt > criticalAt && shellAt > tailwindAt && themeAt > shellAt);\n  const head = html.slice(0, html.indexOf('</head>'));\n  assert.equal((head.match(/<style/gi) || []).length, 1);\n  assert.match(head, /\\.hidden \\{ display: none; \\}/);\n  assert.match(head, /\\.maintenance-card \\{/);\n  assert.doesNotMatch(css, /\\.hidden \\{ display: none; \\}/);"
-          );
-          test = test.replace(
-            "  assert.match(runtime, /window\\.loadPdfLibrary\\(\\)\\.then/);\n});",
-            "  assert.match(runtime, /window\\.loadPdfLibrary\\(\\)\\.then/);\n  assert.doesNotMatch(runtime, /DAY TRADE SCREENER — JavaScript Functions/);\n  assert.doesNotMatch(runtime, /function loadDayTradeScreener\\(\\)/);\n  const dayTradeAt = html.indexOf('DAY TRADE SCREENER — JavaScript Functions', refAt);\n  const accessibilityAt2 = html.indexOf('// ===== ACCESSIBILITY:', refAt);\n  assert.ok(dayTradeAt > refAt && accessibilityAt2 > dayTradeAt);\n  assert.match(html.slice(dayTradeAt, accessibilityAt2), /function loadDayTradeScreener\\(\\)/);\n  assert.match(html.slice(dayTradeAt, accessibilityAt2), /function startDtPolling\\(\\)/);\n});"
-          );
+          const oldShellAssertions = "  const shellAt = html.indexOf('/index-shell.css?v=20260818-v1');\n  const themeAt = html.indexOf('/ui-theme.css');\n  assert.ok(shellAt > 0 && themeAt > shellAt);\n  const head = html.slice(0, html.indexOf('</head>'));\n  assert.doesNotMatch(head, /<style>/i);";
+          const newShellAssertions = "  const criticalAt = html.indexOf('id=\\\"critical-shell-safety\\\"');\n  const tailwindAt = html.indexOf('/tailwind-build.css');\n  const shellAt = html.indexOf('/index-shell.css?v=20260818-v1');\n  const themeAt = html.indexOf('/ui-theme.css');\n  assert.ok(criticalAt > 0 && tailwindAt > criticalAt && shellAt > tailwindAt && themeAt > shellAt);\n  const head = html.slice(0, html.indexOf('</head>'));\n  assert.equal((head.match(/<style/gi) || []).length, 1);\n  assert.match(head, /\\.hidden \\{ display: none; \\}/);\n  assert.match(head, /\\.maintenance-card \\{/);\n  assert.doesNotMatch(css, /\\.hidden \\{ display: none; \\}/);";
+          must(test.includes(oldShellAssertions), 'shell regression assertion baseline not found');
+          test = test.replace(oldShellAssertions, newShellAssertions);
+
+          const oldMarketEnd = "  assert.match(runtime, /window\\.loadPdfLibrary\\(\\)\\.then/);\n});";
+          const newMarketEnd = "  assert.match(runtime, /window\\.loadPdfLibrary\\(\\)\\.then/);\n  assert.doesNotMatch(runtime, /DAY TRADE SCREENER — JavaScript Functions/);\n  assert.doesNotMatch(runtime, /function loadDayTradeScreener\\(\\)/);\n  const dayTradeAt = html.indexOf('DAY TRADE SCREENER — JavaScript Functions', refAt);\n  const accessibilityAt2 = html.indexOf('// ===== ACCESSIBILITY:', refAt);\n  assert.ok(dayTradeAt > refAt && accessibilityAt2 > dayTradeAt);\n  assert.match(html.slice(dayTradeAt, accessibilityAt2), /function loadDayTradeScreener\\(\\)/);\n  assert.match(html.slice(dayTradeAt, accessibilityAt2), /function startDtPolling\\(\\)/);\n});";
+          must(test.includes(oldMarketEnd), 'market regression assertion baseline not found');
+          test = test.replace(oldMarketEnd, newMarketEnd);
           fs.writeFileSync(testPath, test);
           NODE
 
