@@ -1,5 +1,6 @@
 name: Temporary Frontend Reconstruction
 
+# Temporary branch-only workflow used to reconstruct and validate the reviewed Codex changes.
 on:
   push:
     branches:
