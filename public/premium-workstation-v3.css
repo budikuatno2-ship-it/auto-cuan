@@ -1,0 +1,601 @@
+/* ==========================================================================
+   Auto-Cuan — Premium Workstation V3 finishing layer
+   Presentation-only refinement loaded after premium-workstation.css.
+   Goal: higher visual hierarchy, stronger financial data ergonomics, and
+   lighter rendering without touching application or trading behaviour.
+   ========================================================================== */
+
+:root {
+  --pw3-canvas-grid: rgba(148, 163, 184, .022);
+  --pw3-surface-edge: rgba(255, 255, 255, .024);
+  --pw3-accent-edge: rgba(45, 212, 163, .19);
+  --pw3-deep: #05090e;
+  --pw3-panel: #09111a;
+  --pw3-panel-hi: #0c1620;
+}
+
+/* --------------------------------------------------------------------------
+   Canvas: almost invisible terminal grid, no neon noise
+   -------------------------------------------------------------------------- */
+body {
+  background-color: var(--pw-bg);
+  background-image:
+    linear-gradient(var(--pw3-canvas-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pw3-canvas-grid) 1px, transparent 1px),
+    radial-gradient(980px 400px at 50% -250px, rgba(45, 212, 163, .05), transparent 72%);
+  background-size: 40px 40px, 40px 40px, auto;
+  background-attachment: fixed;
+}
+
+#dashboardScreen,
+.landing-shell {
+  isolation: isolate;
+}
+
+/* --------------------------------------------------------------------------
+   Header / command bar
+   -------------------------------------------------------------------------- */
+.app-header {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.018),
+    0 14px 34px rgba(0,0,0,.12);
+}
+
+.header-shell > .flex {
+  min-height: 40px;
+}
+
+.brand-mark {
+  position: relative;
+}
+
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid #060a0f;
+  border-radius: 999px;
+  background: #2dd4a3;
+}
+
+.desktop-nav {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.015);
+}
+
+.desktop-nav .nav-btn {
+  overflow: hidden;
+}
+
+.desktop-nav .nav-btn::after {
+  content: '';
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 1px;
+  height: 1px;
+  border-radius: 999px;
+  background: transparent;
+  transform: scaleX(.4);
+  transition: transform .14s ease, background-color .14s ease;
+}
+
+.desktop-nav .nav-btn.active::after {
+  background: rgba(45,212,163,.68);
+  transform: scaleX(1);
+}
+
+.header-account,
+.header-status-chip {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
+}
+
+/* --------------------------------------------------------------------------
+   Shared surfaces: precision edges instead of floating cards
+   -------------------------------------------------------------------------- */
+.panel,
+.ac-surface,
+.dashboard-card,
+.portfolio-card,
+.subscription-summary,
+.landing-card,
+.landing-auth-card,
+.faq-item,
+.maintenance-card {
+  box-shadow: inset 0 1px 0 var(--pw3-surface-edge);
+}
+
+.panel:hover,
+.ac-surface[data-interactive]:hover,
+.dashboard-card:hover,
+.portfolio-card:hover {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+.ac-section-head {
+  position: relative;
+}
+
+.ac-section-head::after {
+  content: '';
+  position: absolute;
+  width: 38px;
+  height: 1px;
+  left: 2px;
+  bottom: -1px;
+  background: rgba(45,212,163,.38);
+}
+
+/* --------------------------------------------------------------------------
+   Dashboard: stronger command/radar composition
+   -------------------------------------------------------------------------- */
+.dashboard-hero {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.02),
+    inset 0 -1px 0 rgba(0,0,0,.24);
+}
+
+.dashboard-hero .dash-badge:first-child {
+  border-color: rgba(45,212,163,.16);
+  background: rgba(45,212,163,.055);
+  color: #72dfc0;
+}
+
+#dashGreeting {
+  text-shadow: 0 1px 0 rgba(0,0,0,.3);
+}
+
+#page-dashboard .market-band-grid {
+  position: relative;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
+}
+
+#page-dashboard .market-band-grid::before {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(45,212,163,.28), rgba(148,163,184,.04) 38%, transparent 86%);
+  pointer-events: none;
+}
+
+#page-dashboard .market-tile {
+  position: relative;
+  transition: background-color .12s ease;
+}
+
+#page-dashboard .market-tile::after {
+  content: '';
+  position: absolute;
+  inset: auto 16px 0 16px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(148,163,184,.05), transparent);
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+
+#page-dashboard .market-tile:hover::after {
+  opacity: 1;
+}
+
+.market-tile-value,
+#ihsgLast,
+#dashMarketGate,
+#dashMarketFreshness {
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+#page-dashboard .lg\:col-span-3.panel,
+#page-dashboard .lg\:col-span-2.panel {
+  position: relative;
+  overflow: hidden;
+}
+
+#page-dashboard .lg\:col-span-3.panel::before,
+#page-dashboard .lg\:col-span-2.panel::before {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 42px;
+  top: 12px;
+  left: 0;
+  border-radius: 0 2px 2px 0;
+  background: rgba(45,212,163,.22);
+}
+
+#dashboardTop5List .dashboard-pick-card,
+#dashboardMonitorList > *:not(.empty-state),
+#top5HistoryList > *:not(.empty-state) {
+  position: relative;
+  overflow: hidden;
+  transition: border-color .12s ease, background-color .12s ease, transform .12s ease;
+}
+
+#dashboardTop5List .dashboard-pick-card:hover,
+#dashboardMonitorList > *:not(.empty-state):hover,
+#top5HistoryList > *:not(.empty-state):hover {
+  transform: translateX(2px);
+}
+
+#dashboardTop5List .dashboard-pick-card::after,
+#dashboardMonitorList > *:not(.empty-state)::after,
+#top5HistoryList > *:not(.empty-state)::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  right: 0;
+  width: 1px;
+  background: rgba(45,212,163,.09);
+}
+
+#dashboardMonitorUpdated {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .025em;
+}
+
+/* --------------------------------------------------------------------------
+   Financial tables: sticky ticker column + better scan rhythm
+   -------------------------------------------------------------------------- */
+#rankingTableWrap table,
+#dtScreenerTableWrap table,
+#kgScreenerTableWrap table,
+#nkScreenerTableWrap table,
+#sektorDetailTable table {
+  background: #070d13;
+}
+
+#rankingTableWrap th:first-child,
+#rankingTableWrap td:first-child,
+#dtScreenerTableWrap th:first-child,
+#dtScreenerTableWrap td:first-child,
+#kgScreenerTableWrap th:first-child,
+#kgScreenerTableWrap td:first-child,
+#nkScreenerTableWrap th:first-child,
+#nkScreenerTableWrap td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #080f16;
+  box-shadow: 1px 0 0 rgba(148,163,184,.075);
+}
+
+#rankingTableWrap thead th:first-child,
+#dtScreenerTableWrap thead th:first-child,
+#kgScreenerTableWrap thead th:first-child,
+#nkScreenerTableWrap thead th:first-child {
+  z-index: 5;
+  background: #080e15;
+}
+
+#rankingTableWrap tbody tr:nth-child(even),
+#dtScreenerTableWrap tbody tr:nth-child(even),
+#kgScreenerTableWrap tbody tr:nth-child(even),
+#nkScreenerTableWrap tbody tr:nth-child(even) {
+  background: rgba(148,163,184,.012);
+}
+
+td[class*="text-right"],
+th[class*="text-right"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Screener: clearer hierarchy and less generic-card feeling
+   -------------------------------------------------------------------------- */
+#screenerContent .ac-segmented {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.014);
+}
+
+#screenerContent .scr-filter-grid {
+  position: relative;
+}
+
+#screenerContent .scr-filter-grid::before {
+  content: 'FILTER';
+  position: absolute;
+  top: -7px;
+  left: 10px;
+  padding: 0 5px;
+  background: #060a0f;
+  color: #4f5d70;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.dt-card-item,
+.kg-card-item,
+.nk-card-item {
+  contain: paint;
+}
+
+.dt-card-item::after,
+.kg-card-item::after,
+.nk-card-item::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(45,212,163,.15), transparent 34%);
+  pointer-events: none;
+}
+
+.dt-card-item:hover,
+.kg-card-item:hover,
+.nk-card-item:hover {
+  transform: translateY(-1px);
+}
+
+#dtProgressWrap > div {
+  position: relative;
+  overflow: hidden;
+}
+
+#dtProgressWrap > div::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(118,173,248,.025), transparent);
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Analysis: command input gets workstation emphasis
+   -------------------------------------------------------------------------- */
+#page-analisis > div:first-child {
+  position: sticky;
+  top: var(--pw-header-h);
+  z-index: 18;
+  margin-left: -2px;
+  margin-right: -2px;
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+  backdrop-filter: blur(14px);
+}
+
+#analisisInput {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.018),
+    0 0 0 1px rgba(0,0,0,.12);
+}
+
+#analisisInput:focus {
+  background: #081119 !important;
+  box-shadow: 0 0 0 3px rgba(45,212,163,.065) !important;
+}
+
+#rankingTableWrap {
+  border: 1px solid rgba(148,163,184,.075);
+}
+
+#analisisFollowUp {
+  box-shadow: 0 -12px 30px rgba(0,0,0,.10);
+}
+
+#analysisSendBtn {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 7px 18px rgba(16,185,129,.08);
+}
+
+/* --------------------------------------------------------------------------
+   Landing: product mock feels like a real workstation
+   -------------------------------------------------------------------------- */
+.landing-hero {
+  border-bottom: 1px solid rgba(148,163,184,.05);
+}
+
+.landing-hero .landing-card {
+  position: relative;
+  overflow: hidden;
+  transform: perspective(1200px) rotateY(-1deg) rotateX(.35deg);
+  transform-origin: center center;
+}
+
+.landing-hero .landing-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(148,163,184,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+  pointer-events: none;
+}
+
+.landing-hero .landing-card::after {
+  content: '';
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -90px;
+  top: -90px;
+  border-radius: 50%;
+  background: rgba(45,212,163,.07);
+  filter: blur(46px);
+  pointer-events: none;
+}
+
+.landing-hero .mock-card {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 680px;
+}
+
+.landing-section .feature-card,
+.landing-section .faq-item {
+  contain: content;
+}
+
+.feature-card h3,
+.faq-item h3 {
+  letter-spacing: -.012em;
+}
+
+.feature-card p,
+.faq-item p {
+  color: #788799 !important;
+}
+
+footer {
+  background: #060a0f;
+}
+
+/* --------------------------------------------------------------------------
+   Status, loading, modal finishing
+   -------------------------------------------------------------------------- */
+.empty-state {
+  position: relative;
+  overflow: hidden;
+}
+
+.empty-state::before {
+  content: '';
+  position: absolute;
+  width: 90px;
+  height: 1px;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, rgba(148,163,184,.14), transparent);
+}
+
+.skeleton-card,
+[class*="skeleton"] {
+  background-image: linear-gradient(90deg, rgba(148,163,184,.02), rgba(148,163,184,.05), rgba(148,163,184,.02));
+  background-size: 220% 100%;
+}
+
+#authChoiceModal > div,
+.maintenance-card,
+#blockedScreen > div {
+  box-shadow:
+    0 30px 90px rgba(0,0,0,.52),
+    inset 0 1px 0 rgba(255,255,255,.03) !important;
+}
+
+#toastContainer {
+  pointer-events: none;
+}
+
+#toastContainer > * {
+  pointer-events: auto;
+  backdrop-filter: blur(12px);
+}
+
+/* --------------------------------------------------------------------------
+   Mobile: calmer, more native, more usable
+   -------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  body {
+    background-size: 28px 28px, 28px 28px, auto;
+    background-attachment: scroll;
+  }
+
+  .app-header {
+    box-shadow: 0 1px 0 rgba(255,255,255,.016);
+  }
+
+  .brand-mark::after {
+    width: 4px;
+    height: 4px;
+  }
+
+  #page-analisis > div:first-child {
+    top: var(--pw-header-h);
+  }
+
+  #page-dashboard .market-band-grid::before {
+    background: linear-gradient(90deg, rgba(45,212,163,.28), transparent 66%);
+  }
+
+  #page-dashboard .market-tile::after {
+    display: none;
+  }
+
+  #dashboardTop5List .dashboard-pick-card:hover,
+  #dashboardMonitorList > *:not(.empty-state):hover,
+  #top5HistoryList > *:not(.empty-state):hover {
+    transform: none;
+  }
+
+  #rankingTableWrap th:first-child,
+  #rankingTableWrap td:first-child {
+    max-width: 104px;
+  }
+
+  .landing-hero .landing-card {
+    transform: none;
+  }
+
+  .landing-section {
+    contain-intrinsic-size: auto 520px;
+  }
+
+  .ac-navpanel-card {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .ac-launcher {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 420px) {
+  .market-tile-label,
+  .ac-section-title {
+    letter-spacing: .12em;
+  }
+
+  #screenerContent .scr-filter-grid::before {
+    left: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .desktop-nav .nav-btn,
+  #page-dashboard .market-tile,
+  .dt-card-item,
+  .kg-card-item,
+  .nk-card-item {
+    transition-duration: .12s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero .landing-card,
+  .dt-card-item:hover,
+  .kg-card-item:hover,
+  .nk-card-item:hover {
+    transform: none !important;
+  }
+
+  .skeleton-card,
+  [class*="skeleton"] {
+    background-image: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --pw-line: rgba(203,213,225,.22);
+    --pw-line-strong: rgba(226,232,240,.34);
+  }
+
+  .panel,
+  .ac-surface,
+  .dashboard-card,
+  .landing-card,
+  .feature-card,
+  .faq-item {
+    border-color: var(--pw-line-strong);
+  }
+}
