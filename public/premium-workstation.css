@@ -322,9 +322,6 @@ table {
 }
 
 thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   background: #0a1018;
   color: #748397;
   border-bottom: 1px solid rgba(148,163,184,.12);
@@ -332,6 +329,15 @@ thead th {
   font-weight: 750;
   letter-spacing: .055em;
   text-transform: uppercase;
+}
+
+#rankingTableWrap thead th,
+#sektorDetailTable thead th,
+[id$="TableWrap"] thead th,
+.overflow-x-auto > table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 tbody td {
