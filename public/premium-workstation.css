@@ -1,0 +1,7 @@
+/* Auto-Cuan premium workstation stylesheet entrypoint.
+   The validated V3/V4 visual contract is frozen in premium-workstation-core.css.
+   Structural evolution lives in independently reviewable layers so a layout
+   pass can be rolled back without rewriting the trusted core stylesheet. */
+@import url('/premium-workstation-core.css?v=20260818-v4-core');
+@import url('/premium-workstation-v6.css?v=20260818-v6');
+@import url('/premium-workstation-v11.css?v=20260818-v11');

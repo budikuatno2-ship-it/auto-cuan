@@ -1,0 +1,5 @@
+Contact: https://github.com/budikuatno2-ship-it/auto-cuan/security
+Policy: https://autocuan.web.id/trust.html
+Canonical: https://autocuan.web.id/.well-known/security.txt
+Preferred-Languages: id, en
+Expires: 2027-08-18T00:00:00Z
