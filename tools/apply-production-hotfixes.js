@@ -40,6 +40,7 @@ const SYNTAX_CHECKED = [
   'public/portfolio-runtime-fix.js',
   'public/stock-analysis-ai.js',
   'public/market-feature-runtime.js',
+  'public/daytrade-runtime.js',
   'public/ui-stability-fix.js',
   'public/pattern-stable-runtime.js',
   'public/pattern-tab-resume-guard.js',

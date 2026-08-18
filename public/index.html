@@ -50,6 +50,18 @@
          The palette extension that used to live in the inline tailwind.config
          now lives in tailwind.config.js. -->
     <link rel="stylesheet" href="/tailwind-build.css?v=20260813-tw-v1">
+    <style id="critical-shell-fallback">
+        /* Same-document startup safety net: remains available even if external CSS fails. */
+        .hidden { display: none !important; }
+        #maintenanceScreen { box-sizing: border-box; padding-left: 16px; padding-right: 16px; }
+        .maintenance-card, .maintenance-card * { box-sizing: border-box; }
+        .maintenance-card { width: 100%; max-width: 480px; border: 1px solid rgba(148,163,184,.14); border-radius: 14px; background: #0f172a; box-shadow: 0 14px 36px rgba(0,0,0,.28); padding: 28px 24px; }
+        .maintenance-brand { display: flex; align-items: center; gap: 11px; padding-bottom: 18px; border-bottom: 1px solid rgba(148,163,184,.12); }
+        .maintenance-message { margin-top: 10px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }
+        .maintenance-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 18px; border-radius: 12px; }
+        .maintenance-btn-primary { width: 100%; color: #04130d; background: #10b981; }
+        @media (min-width: 640px) { .maintenance-card { padding: 34px 32px; } }
+    </style>
     <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
@@ -10500,6 +10512,7 @@ function forceNormalizeTechnicalDOM(root) {
 
 </script>
 <script src="/market-feature-runtime.js?v=20260818-v1"></script>
+<script src="/daytrade-runtime.js?v=20260818-v1"></script>
 
 <script>
 // ===== ACCESSIBILITY: SKIP-LINK + MODAL FOCUS MANAGEMENT =====

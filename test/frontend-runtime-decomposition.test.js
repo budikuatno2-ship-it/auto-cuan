@@ -15,7 +15,8 @@ test('application shell CSS is externalized before the theme layer', () => {
   const themeAt = html.indexOf('/ui-theme.css');
   assert.ok(shellAt > 0 && themeAt > shellAt);
   const head = html.slice(0, html.indexOf('</head>'));
-  assert.doesNotMatch(head, /<style>/i);
+  assert.match(head, /<style id=\"critical-shell-fallback\">/i);
+  assert.match(head, /\.hidden \{ display: none !important; \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /\.maintenance-card \{/);
   assert.match(css, /border-radius: 14px/);
@@ -58,4 +59,18 @@ test('public extracted assets are cacheable while APIs stay no-store', () => {
     assert.match(value, /public/);
     assert.doesNotMatch(value, /no-store/);
   }
+});
+
+
+test('Day Trade runtime is isolated from the cacheable market bundle', () => {
+  const html = read('public/index.html');
+  const market = read('public/market-feature-runtime.js');
+  const daytrade = read('public/daytrade-runtime.js');
+  assert.doesNotMatch(market, /DAY TRADE SCREENER — JavaScript Functions/);
+  assert.match(daytrade, /DAY TRADE SCREENER — JavaScript Functions/);
+  assert.ok(html.indexOf('/market-feature-runtime.js?v=20260818-v1') < html.indexOf('/daytrade-runtime.js?v=20260818-v1'));
+  const config = JSON.parse(read('vercel.json'));
+  const entry = config.headers.find((row) => row.source === '/daytrade-runtime.js');
+  assert.ok(entry);
+  assert.match(entry.headers.find((h) => h.key.toLowerCase() === 'cache-control').value, /no-store/);
 });
