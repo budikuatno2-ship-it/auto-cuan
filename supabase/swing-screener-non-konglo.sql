@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_latest (
   tp1 NUMERIC,
   tp2 NUMERIC,
   risk_reward NUMERIC,
+  -- Canonical Trade Plan V2 snapshot (computed while full runtime structure exists)
+  trade_plan_v2 JSONB,
+  trade_plan_v2_structural JSONB,
   -- Scoring & classification
   score INTEGER DEFAULT 0,
   grade TEXT DEFAULT 'D',             -- 'A', 'B', 'C', 'D'
@@ -117,6 +120,9 @@ CREATE TABLE IF NOT EXISTS swing_screener_non_konglo_staging (
   tp1 NUMERIC,
   tp2 NUMERIC,
   risk_reward NUMERIC,
+  -- Canonical Trade Plan V2 snapshot (survives batch -> staging -> finalize)
+  trade_plan_v2 JSONB,
+  trade_plan_v2_structural JSONB,
   -- Scoring
   score INTEGER DEFAULT 0,
   grade TEXT DEFAULT 'D',
