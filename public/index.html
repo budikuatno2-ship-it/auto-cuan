@@ -6,7 +6,19 @@
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#0b0e14">
     <meta name="description" content="Auto-Cuan IDX Stock Radar — dashboard watchlist, day trade & swing screener, chart, dan portofolio manual. Alat bantu analisis, bukan rekomendasi beli/jual.">
-    <title>Auto-Cuan | SMC Analysis Platform</title>
+    <meta name="application-name" content="Auto-Cuan">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="canonical" href="https://autocuan.web.id/">
+    <meta property="og:site_name" content="Auto-Cuan">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="id_ID">
+    <meta property="og:title" content="Auto-Cuan | IDX Stock Radar">
+    <meta property="og:description" content="Dashboard radar saham IDX untuk membantu analisis dan konfirmasi manual. Bukan rekomendasi beli/jual.">
+    <meta property="og:url" content="https://autocuan.web.id/">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Auto-Cuan | IDX Stock Radar">
+    <meta name="twitter:description" content="Radar saham IDX untuk membantu analisis dan konfirmasi manual.">
+    <title>Auto-Cuan | IDX Stock Radar</title>
     <!-- Premium typography: load Inter (the font-family already referenced below).
          Non-critical; the system font stack remains a graceful fallback offline. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -66,7 +78,7 @@
     <!-- Theme layer. Loaded last in <head> so its tokens and component restyles
          win over the inline rules above without needing !important. -->
     <link rel="stylesheet" href="/ui-theme.css?v=20260802-ui-theme-v2">
-    <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v1">
+    <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v4">
 </head>
 <body class="min-h-screen text-gray-100">
 <a href="#" class="skip-link" onclick="return skipToMainContent(event)">Lewati ke konten utama</a>
@@ -218,12 +230,17 @@
     <main>
         <section class="landing-hero">
             <div class="landing-container landing-hero-grid grid grid-cols-2 gap-8 items-center">
-                <div>
+                <div class="landing-hero-copy">
                     <div class="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-300 mb-5">Preview UI · data contoh statis</div>
                     <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.02] tracking-tight landing-gradient-text">Pantau saham IDX dengan radar yang lebih rapi.</h1>
                     <p class="mt-5 text-base sm:text-lg text-gray-400 max-w-2xl leading-relaxed">Auto-Cuan membantu merapikan proses analisis saham: Day Trade Radar, Swing Konglo, Swing Non-Konglo, Sector Hot, Chart, dan Portofolio Manual — tetap dengan konfirmasi manual.</p>
                     <p class="mt-4 text-sm text-amber-200/90 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3">Bukan rekomendasi beli/jual. Data bisa terlambat. Konfirmasi manual wajib.</p>
                     <div class="mt-7 flex landing-mobile-wrap gap-3"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span></button><a href="#landingPreview" class="landing-btn">Lihat Preview</a><button type="button" onclick="openLoginModal()" class="landing-btn">Login</button></div>
+                    <div class="landing-trust-rail" aria-label="Prinsip operasional Auto-Cuan">
+                        <span class="landing-trust-item">Fokus pasar IDX</span>
+                        <span class="landing-trust-item">Keputusan & eksekusi manual</span>
+                        <span class="landing-trust-item">Freshness / stale warning</span>
+                    </div>
                 </div>
                 <div class="landing-card p-4 sm:p-5" aria-label="Preview UI statis Auto-Cuan">
                     <div class="flex items-center justify-between mb-4"><div><p class="text-xs text-emerald-300 font-black uppercase tracking-wide">Preview UI</p><h2 class="text-lg font-black text-white">Auto-Cuan Radar</h2></div><span class="landing-chip">Data contoh</span></div>
@@ -389,12 +406,12 @@
         <!-- Greeting -->
         <div class="dashboard-hero p-4 sm:p-5">
             <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
+                <div class="dashboard-hero-main">
                     <div class="flex items-center gap-2 mb-2"><span class="dash-badge">Live Radar</span><span class="dash-badge text-amber-200 border-amber-500/20 bg-amber-500/10">Konfirmasi manual wajib</span></div>
                     <h2 class="text-2xl sm:text-3xl font-black text-white tracking-tight" id="dashGreeting">Halo, Trader</h2>
                     <p class="text-sm text-gray-400 mt-1 max-w-2xl">Dashboard ringkas untuk Day Trade, Swing Konglo, dan Swing Non-Konglo. Watchlist/pantau tidak sama dengan BUY agresif.</p>
                 </div>
-                <div class="flex flex-col sm:items-end gap-2">
+                <div class="dashboard-hero-meta flex flex-col sm:items-end gap-2">
                     <span id="approvedBadge" class="hidden px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">Approved</span>
                     <div class="text-[11px] text-gray-500">Bukan rekomendasi beli/jual.</div>
                 </div>
@@ -414,7 +431,7 @@
             <h3 id="dashMarketTitle" class="ac-section-title">Kondisi Pasar</h3>
             <p class="ac-section-hint">Ringkasan sebelum membaca radar</p>
         </div>
-        <div id="ihsgSummaryCard" class="market-band-grid">
+        <div id="ihsgSummaryCard" class="market-band-grid" role="group" aria-label="Ringkasan kondisi pasar">
             <div class="market-tile">
                 <div class="market-tile-head">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -453,8 +470,8 @@
             <h3 id="dashRadarTitle" class="ac-section-title">Radar Hari Ini</h3>
             <p class="ac-section-hint">Watchlist bukan sinyal BUY</p>
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
-            <section class="lg:col-span-3 panel">
+        <div class="dashboard-radar-grid grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">
+            <section class="radar-panel lg:col-span-3 panel" aria-label="Top 5 Radar">
                 <div class="panel-header">
                     <div>
                         <h3 class="panel-title">Top 5 Radar</h3>
@@ -465,13 +482,13 @@
                     <div class="empty-state empty-state-amber"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Belum ada Top 5 final yang terkunci. Cek lagi setelah data final tersedia.</p></div>
                 </div>
             </section>
-            <aside class="lg:col-span-2 panel">
+            <aside class="radar-panel lg:col-span-2 panel" aria-label="Auto Monitor">
                 <div class="panel-header">
                     <div>
                         <h3 class="panel-title">Auto Monitor</h3>
                         <p class="panel-subtitle">Update tiap 30 menit saat jam bursa</p>
                     </div>
-                    <span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap">— WIB</span>
+                    <span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap" aria-live="polite">— WIB</span>
                 </div>
                 <div id="dashboardMonitorList" class="space-y-2">
                     <div class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><p class="empty-state-text">Monitor aktif setelah Top 5 dikunci.</p></div>

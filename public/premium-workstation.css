@@ -2011,3 +2011,258 @@ footer {
     border-color: var(--pw-line-strong);
   }
 }
+
+
+/* ========================================================================
+   AUTO-CUAN PREMIUM WORKSTATION V4 — PRODUCT-GRADE FINISH
+   Presentation only. Structural selectors bind to semantic HTML classes added
+   in the same validated change; no trading or application behavior lives here.
+   ======================================================================== */
+
+/* Subtle product-grade depth without turning the terminal into a neon UI. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .28;
+  background-image:
+    linear-gradient(rgba(148,163,184,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,.014) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 72%);
+}
+
+/* Landing copy gets a stable editorial measure and a factual trust rail. */
+.landing-hero-copy {
+  position: relative;
+  min-width: 0;
+}
+
+.landing-trust-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(148,163,184,.075);
+}
+
+.landing-trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid rgba(148,163,184,.085);
+  border-radius: 6px;
+  background: rgba(7,13,19,.72);
+  color: #8291a4;
+  font-size: 10px;
+  font-weight: 680;
+  letter-spacing: .015em;
+}
+
+.landing-trust-item::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #48d5aa;
+  box-shadow: 0 0 0 3px rgba(45,212,163,.07);
+}
+
+/* Product preview should read as a real workstation frame, but remain clearly
+   labelled as static preview data. */
+.landing-card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.landing-card::before {
+  content: 'STATIC PRODUCT PREVIEW';
+  display: block;
+  margin: -2px -2px 14px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(148,163,184,.075);
+  background: #060c12;
+  color: #5f6e81;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-align: right;
+}
+
+.landing-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(45,212,163,.025), transparent 34%);
+}
+
+/* Dashboard command area: content and account/status metadata have distinct
+   roles so the greeting reads like a workspace header, not a marketing hero. */
+.dashboard-hero-main {
+  min-width: 0;
+}
+
+.dashboard-hero-meta {
+  flex: 0 0 auto;
+  min-width: 180px;
+  padding-left: 18px;
+  border-left: 1px solid rgba(148,163,184,.075);
+}
+
+.dashboard-hero-meta > div:last-child {
+  max-width: 210px;
+  line-height: 1.45;
+}
+
+.dashboard-radar-grid {
+  position: relative;
+}
+
+.radar-panel {
+  position: relative;
+  overflow: clip;
+}
+
+.radar-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(45,212,163,.32), rgba(45,212,163,.04) 34%, transparent 72%);
+  opacity: .62;
+}
+
+.radar-panel .panel-header {
+  position: relative;
+}
+
+.radar-panel .panel-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.radar-panel .panel-title::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #45d2a7;
+  box-shadow: 0 0 0 3px rgba(45,212,163,.055);
+}
+
+/* Data regions communicate horizontal scroll instead of clipping silently. */
+#rankingTableWrap,
+#sektorDetailTable,
+[id$='TableWrap'] {
+  overscroll-behavior-inline: contain;
+}
+
+#rankingTableWrap::after,
+#sektorDetailTable::after {
+  content: '';
+  position: sticky;
+  right: 0;
+  display: block;
+  width: 1px;
+  height: 1px;
+}
+
+/* More intentional empty/loading surfaces. */
+.empty-state {
+  position: relative;
+  overflow: hidden;
+}
+
+.empty-state::after {
+  content: '';
+  position: absolute;
+  inset: auto 14% 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(148,163,184,.10), transparent);
+}
+
+.skeleton-card {
+  overflow: hidden;
+  background: linear-gradient(90deg, #091018 0%, #0d1620 48%, #091018 100%);
+  background-size: 220% 100%;
+}
+
+/* Focus states remain visible even in dense terminal controls. */
+.nav-btn:focus-visible,
+.ac-segment:focus-visible,
+.landing-btn:focus-visible,
+.action-card:focus-visible,
+.landing-auth-card:focus-visible {
+  outline: 2px solid rgba(45,212,163,.64) !important;
+  outline-offset: 2px;
+}
+
+/* Lower marketing sections are expensive only when they become visible. */
+@supports (content-visibility: auto) {
+  .landing-section:not(:first-of-type) {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 560px;
+  }
+}
+
+/* Higher contrast users get stronger boundaries, not a different product. */
+@media (prefers-contrast: more) {
+  :root {
+    --pw-line: rgba(190,201,214,.22);
+    --pw-line-strong: rgba(210,220,232,.34);
+    --pw-muted: #a9b5c4;
+    --pw-dim: #8d9aac;
+  }
+
+  .landing-trust-item,
+  .radar-panel,
+  .market-tile,
+  .panel,
+  .ac-surface {
+    border-color: var(--pw-line-strong) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .landing-trust-rail {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin-top: 14px;
+    padding-top: 12px;
+  }
+
+  .landing-trust-item {
+    width: 100%;
+  }
+
+  .dashboard-hero-meta {
+    min-width: 0;
+    padding-top: 12px;
+    padding-left: 0;
+    border-top: 1px solid rgba(148,163,184,.075);
+    border-left: 0;
+  }
+
+  .landing-card::before {
+    margin-bottom: 10px;
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-card {
+    background-size: 100% 100%;
+  }
+}

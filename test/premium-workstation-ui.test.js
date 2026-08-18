@@ -11,7 +11,7 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 test('premium workstation stylesheet is loaded after the base theme', () => {
   const html = read('public/index.html');
   const themeAt = html.indexOf('/ui-theme.css?v=');
-  const premiumAt = html.indexOf('/premium-workstation.css?v=20260818-v1');
+  const premiumAt = html.indexOf('/premium-workstation.css?v=20260818-v4');
   assert.ok(themeAt > 0, 'base UI theme link missing');
   assert.ok(premiumAt > themeAt, 'premium workstation layer must load after ui-theme.css');
   assert.equal((html.match(/premium-workstation\.css\?v=20260818-v1/g) || []).length, 1);
@@ -59,4 +59,21 @@ test('premium workstation V3 locks workstation hierarchy and rendering ergonomic
   assert.match(css, /\.landing-section[\s\S]*content-visibility:\s*auto/);
   assert.match(css, /@media \(prefers-contrast: more\)/);
   assert.doesNotMatch(css, /onclick\s*=|addEventListener|setInterval|setTimeout/i);
+});
+
+
+test('premium workstation v4 adds product-grade semantics and trust without behavior', () => {
+  const html = read('public/index.html');
+  const css = read('public/premium-workstation.css');
+  assert.match(html, /rel="canonical" href="https:\/\/autocuan\.web\.id\/"/);
+  assert.match(html, /property="og:title" content="Auto-Cuan \| IDX Stock Radar"/);
+  assert.match(html, /class="landing-trust-rail"/);
+  assert.match(html, /Keputusan & eksekusi manual/);
+  assert.match(html, /id="ihsgSummaryCard" class="market-band-grid" role="group"/);
+  assert.match(html, /class="radar-panel lg:col-span-3 panel" aria-label="Top 5 Radar"/);
+  assert.match(html, /id="dashboardMonitorUpdated"[^>]*aria-live="polite"/);
+  assert.match(css, /AUTO-CUAN PREMIUM WORKSTATION V4/);
+  assert.match(css, /\.landing-trust-rail/);
+  assert.match(css, /@media \(prefers-contrast: more\)/);
+  assert.doesNotMatch(css, /fetch\s*\(|addEventListener|setInterval|setTimeout/i);
 });
