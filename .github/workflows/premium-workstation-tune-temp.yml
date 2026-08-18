@@ -1,0 +1,55 @@
+name: Temporary Premium Workstation Tune
+
+on:
+  push:
+    branches:
+      - redesign/premium-workstation-v1
+
+permissions:
+  contents: write
+
+jobs:
+  tune:
+    if: ${{ !contains(github.event.head_commit.message || '', '[premium-tune-worker]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: redesign/premium-workstation-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Narrow sticky table header scope
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('public/premium-workstation.css')
+          s = p.read_text()
+          old = '''thead th {\n  position: sticky;\n  top: 0;\n  z-index: 2;\n  background: #0a1018;\n  color: #748397;\n  border-bottom: 1px solid rgba(148,163,184,.12);\n  font-size: 10px;\n  font-weight: 750;\n  letter-spacing: .055em;\n  text-transform: uppercase;\n}\n'''
+          new = '''thead th {\n  background: #0a1018;\n  color: #748397;\n  border-bottom: 1px solid rgba(148,163,184,.12);\n  font-size: 10px;\n  font-weight: 750;\n  letter-spacing: .055em;\n  text-transform: uppercase;\n}\n\n#rankingTableWrap thead th,\n#sektorDetailTable thead th,\n[id$="TableWrap"] thead th,\n.overflow-x-auto > table thead th {\n  position: sticky;\n  top: 0;\n  z-index: 2;\n}\n'''
+          if old not in s:
+              raise SystemExit('table header block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Focused premium UI tests
+        run: node --test test/premium-workstation-ui.test.js test/repo-security-hardening.test.js
+      - name: Production build gate
+        run: npm run build
+      - name: Diff whitespace check
+        run: git diff --check
+      - name: Commit validated tune
+        shell: bash
+        run: |
+          if git diff --quiet -- public/premium-workstation.css; then
+            echo "No tune changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/premium-workstation.css
+          git commit -m "fix: scope sticky market table headers [premium-tune-worker]"
+          git push origin HEAD:redesign/premium-workstation-v1
