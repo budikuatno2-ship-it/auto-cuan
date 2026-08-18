@@ -19,7 +19,7 @@ test('premium workstation stylesheet is loaded after the base theme', () => {
 
 test('premium workstation keeps a restrained trading UI contract', () => {
   const css = read('public/premium-workstation.css');
-  assert.match(css, /--pw-bg:\s*#070a0f/);
+  assert.match(css, /--pw-bg:\s*#06090e/);
   assert.match(css, /--pw-accent:\s*#2dd4a3/);
   assert.match(css, /\.landing-gradient-text[\s\S]*background:\s*none\s*!important/);
   assert.match(css, /\.dashboard-hero::before/);
@@ -47,4 +47,16 @@ test('premium workstation asset is cacheable while API no-store remains intact',
   assert.match(apiCache, /no-store/);
   assert.match(premiumCache, /public/);
   assert.doesNotMatch(premiumCache, /no-store/);
+});
+
+test('premium workstation V3 locks workstation hierarchy and rendering ergonomics', () => {
+  const css = read('public/premium-workstation.css');
+  assert.match(css, /Auto-Cuan — Premium Workstation V3/);
+  assert.match(css, /#page-dashboard \.market-band-grid[\s\S]*grid-template-columns/);
+  assert.match(css, /#rankingTableWrap th:first-child[\s\S]*position:\s*sticky/);
+  assert.match(css, /#screenerContent \.scr-filter-grid::before/);
+  assert.match(css, /#page-analisis > div:first-child[\s\S]*position:\s*sticky/);
+  assert.match(css, /\.landing-section[\s\S]*content-visibility:\s*auto/);
+  assert.match(css, /@media \(prefers-contrast: more\)/);
+  assert.doesNotMatch(css, /onclick\s*=|addEventListener|setInterval|setTimeout/i);
 });
