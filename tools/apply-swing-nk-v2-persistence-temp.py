@@ -1,0 +1,125 @@
+from pathlib import Path
+
+
+def replace_once(text, old, new, label):
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f'{label}: expected exactly one match, found {count}')
+    return text.replace(old, new, 1)
+
+
+api_path = Path('api/sector-hot.js')
+api = api_path.read_text()
+api = replace_once(api,
+    "  'avg_tx_value_7d',\n  'setup_type'\n]);\nvar NK_STAGING_COLUMN_SET",
+    "  'avg_tx_value_7d',\n  'setup_type',\n  'trade_plan_v2',\n  'trade_plan_v2_structural'\n]);\nvar NK_STAGING_COLUMN_SET",
+    'NK staging columns')
+api = replace_once(api,
+    "  'volume_phase',\n  'risk_label',\n  'quality_grade'\n]);\nvar NK_LATEST_COLUMN_SET",
+    "  'volume_phase',\n  'risk_label',\n  'quality_grade',\n  'trade_plan_v2',\n  'trade_plan_v2_structural'\n]);\nvar NK_LATEST_COLUMN_SET",
+    'NK latest columns')
+api = replace_once(api,
+    "      quality_grade: c.quality_grade || null\n    })).map(sanitizeNkLatestPublishRow);",
+    "      quality_grade: c.quality_grade || null,\n      // Preserve the canonical V2 snapshot computed while full runtime structure\n      // (support/resistance/ATR/candles) is still available in the batch scorer.\n      trade_plan_v2: c.trade_plan_v2 || null,\n      trade_plan_v2_structural: c.trade_plan_v2_structural || null\n    })).map(sanitizeNkLatestPublishRow);",
+    'NK finalize publish mapper')
+api = replace_once(api,
+    "      // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/staged\n      // output is byte-identical (runtime-only field, never in sanitizeNkStagingRow).\n      // Attached HERE, BEFORE the ATR fields are stripped below, so the canonical",
+    "      // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/staged\n      // output is byte-identical. When enabled, the canonical snapshot is persisted\n      // through staging/latest so presentation does not have to rebuild from a\n      // thinner row after runtime ATR/candle structure has been stripped.\n      // Attached HERE, BEFORE the ATR fields are stripped below, so the canonical",
+    'NK shadow persistence comment')
+api_path.write_text(api)
+
+schema_path = Path('supabase/swing-screener-non-konglo.sql')
+schema = schema_path.read_text()
+schema = replace_once(schema,
+    "  tp2 NUMERIC,\n  risk_reward NUMERIC,\n  -- Scoring & classification",
+    "  tp2 NUMERIC,\n  risk_reward NUMERIC,\n  -- Canonical Trade Plan V2 snapshot (computed while full runtime structure exists)\n  trade_plan_v2 JSONB,\n  trade_plan_v2_structural JSONB,\n  -- Scoring & classification",
+    'baseline latest V2 columns')
+schema = replace_once(schema,
+    "  tp2 NUMERIC,\n  risk_reward NUMERIC,\n  -- Scoring\n",
+    "  tp2 NUMERIC,\n  risk_reward NUMERIC,\n  -- Canonical Trade Plan V2 snapshot (survives batch -> staging -> finalize)\n  trade_plan_v2 JSONB,\n  trade_plan_v2_structural JSONB,\n  -- Scoring\n",
+    'baseline staging V2 columns')
+schema_path.write_text(schema)
+
+Path('supabase/patch-swing-nk-trade-plan-v2-persistence.sql').write_text('''-- Preserve the already-computed Swing Non-Konglo Trade Plan V2 snapshot
+-- across staging and latest persistence.
+-- Apply this migration BEFORE deploying the matching application code.
+-- Safe to run repeatedly.
+
+BEGIN;
+
+ALTER TABLE swing_screener_non_konglo_staging
+  ADD COLUMN IF NOT EXISTS trade_plan_v2 JSONB,
+  ADD COLUMN IF NOT EXISTS trade_plan_v2_structural JSONB;
+
+ALTER TABLE swing_screener_non_konglo_latest
+  ADD COLUMN IF NOT EXISTS trade_plan_v2 JSONB,
+  ADD COLUMN IF NOT EXISTS trade_plan_v2_structural JSONB;
+
+COMMIT;
+''')
+
+Path('test/swing-nk-trade-plan-v2-persistence.test.js').write_text(r'''\'use strict\';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const sectorHot = require('../api/sector-hot');
+const integration = require('../lib/trade-plan-v2-integration');
+const hooks = sectorHot.__test;
+
+function usablePlan() {
+  return {
+    plan_version: 'trade-plan-v2', status: 'OK', ticker: 'TEST',
+    entry_zone_low: 100, entry_zone_high: 102, support: 95, resistance: 120,
+    stop_loss: 92, stop_anchor_price: 95, stop_anchor_type: 'MAJOR_SUPPORT',
+    stop_loss_reason: 'MAJOR_SUPPORT (95) minus volatility buffer',
+    tp1: 116, tp2: 130, tp1_anchor_type: 'MAJOR_RESISTANCE', rr_to_tp1: 1.5,
+    trailing_activation: 110, trailing_reference: 'ENTRY_PLUS_1R',
+    trailing_method: 'ATR_RATCHET', trailing_atr_multiplier: 1.5, emergency_stop: 90,
+    data_freshness: { is_stale: false }, profile: { min_rr_to_tp1: 1.2 }, warnings: []
+  };
+}
+
+function sourceRow() {
+  return {
+    ticker: 'TEST', board: 'UTAMA', run_date: '2026-08-18', last_price: 101,
+    entry_low: 100, entry_high: 102, stop_loss: 92, tp1: 116, tp2: 130,
+    support: 95, resistance: 120, risk_reward: 1.5, score: 80,
+    trade_plan_v2: usablePlan(),
+    trade_plan_v2_structural: {
+      screener_type: 'SWING_NON_KONGLO',
+      source_fields: ['support', 'resistance', 'atr14', 'observations'], available: true
+    }
+  };
+}
+
+test('Swing NK persistence schema allowlists canonical V2 snapshot fields', () => {
+  assert.ok(hooks.nkStagingColumns.includes('trade_plan_v2'));
+  assert.ok(hooks.nkStagingColumns.includes('trade_plan_v2_structural'));
+  assert.ok(hooks.nkLatestColumns.includes('trade_plan_v2'));
+  assert.ok(hooks.nkLatestColumns.includes('trade_plan_v2_structural'));
+});
+
+test('Swing NK staging/latest sanitizers preserve canonical V2 snapshot', () => {
+  const src = sourceRow();
+  const staged = hooks.sanitizeNkStagingRow(src);
+  assert.deepEqual(staged.trade_plan_v2, src.trade_plan_v2);
+  assert.deepEqual(staged.trade_plan_v2_structural, src.trade_plan_v2_structural);
+  const published = hooks.sanitizeNkLatestPublishRow({ ...staged, rank: 1 });
+  assert.deepEqual(published.trade_plan_v2, src.trade_plan_v2);
+  assert.deepEqual(published.trade_plan_v2_structural, src.trade_plan_v2_structural);
+});
+
+test('persisted Swing NK row resolves Telegram presentation as V2', () => {
+  const staged = hooks.sanitizeNkStagingRow(sourceRow());
+  const published = hooks.sanitizeNkLatestPublishRow({ ...staged, rank: 1 });
+  const resolved = integration.resolvePublicTradePlan(published, {
+    channel: 'telegram', mode: 'swing_non_konglo',
+    env: { TRADE_PLAN_V2_PUBLIC_ENABLED: 'true' }
+  });
+  assert.equal(resolved.source, 'trade_plan_v2');
+  assert.equal(resolved.fallback, false);
+  assert.equal(resolved.payload.canonical.plan_version, 'trade-plan-v2');
+  assert.equal(resolved.payload.canonical.support, 95);
+  assert.equal(resolved.payload.canonical.resistance, 120);
+});
+''')
