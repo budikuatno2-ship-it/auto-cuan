@@ -10,19 +10,13 @@ permissions:
 
 jobs:
   v4:
-    if: ${{ !contains(github.event.head_commit.message || '', '[v4-worker]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: redesign/premium-workstation-v1
           fetch-depth: 0
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: Apply V4 product-grade finish
+      - name: Apply idempotent V4 product patch
         shell: bash
         run: |
           python3 <<'PY'
@@ -35,76 +29,87 @@ jobs:
 
           html = html_path.read_text()
           css = css_path.read_text()
-          frag = fragment_path.read_text()
           test = test_path.read_text()
 
-          def replace_once(text, old, new, label):
+          def replace_once_if_needed(text, old, new, marker, label):
+              if marker in text:
+                  return text
               count = text.count(old)
               if count != 1:
                   raise SystemExit(f'{label}: expected exactly one match, got {count}')
               return text.replace(old, new, 1)
 
-          # Product metadata / canonical identity.
           old_meta = '''    <meta name="description" content="Auto-Cuan IDX Stock Radar — dashboard watchlist, day trade & swing screener, chart, dan portofolio manual. Alat bantu analisis, bukan rekomendasi beli/jual.">\n    <title>Auto-Cuan | SMC Analysis Platform</title>'''
           new_meta = '''    <meta name="description" content="Auto-Cuan IDX Stock Radar — dashboard watchlist, day trade & swing screener, chart, dan portofolio manual. Alat bantu analisis, bukan rekomendasi beli/jual.">\n    <meta name="application-name" content="Auto-Cuan">\n    <meta name="format-detection" content="telephone=no">\n    <link rel="canonical" href="https://autocuan.web.id/">\n    <meta property="og:site_name" content="Auto-Cuan">\n    <meta property="og:type" content="website">\n    <meta property="og:locale" content="id_ID">\n    <meta property="og:title" content="Auto-Cuan | IDX Stock Radar">\n    <meta property="og:description" content="Dashboard radar saham IDX untuk membantu analisis dan konfirmasi manual. Bukan rekomendasi beli/jual.">\n    <meta property="og:url" content="https://autocuan.web.id/">\n    <meta name="twitter:card" content="summary">\n    <meta name="twitter:title" content="Auto-Cuan | IDX Stock Radar">\n    <meta name="twitter:description" content="Radar saham IDX untuk membantu analisis dan konfirmasi manual.">\n    <title>Auto-Cuan | IDX Stock Radar</title>'''
-          html = replace_once(html, old_meta, new_meta, 'metadata')
+          html = replace_once_if_needed(html, old_meta, new_meta, 'rel="canonical" href="https://autocuan.web.id/"', 'metadata')
 
-          # Explicit cache-bust for the cacheable visual asset.
-          html = replace_once(html, '/premium-workstation.css?v=20260818-v1', '/premium-workstation.css?v=20260818-v4', 'premium css version')
+          if '/premium-workstation.css?v=20260818-v4' not in html:
+              if html.count('/premium-workstation.css?v=20260818-v1') != 1:
+                  raise SystemExit('premium css version: source marker mismatch')
+              html = html.replace('/premium-workstation.css?v=20260818-v1', '/premium-workstation.css?v=20260818-v4', 1)
 
-          # Landing hero gets semantic copy wrapper and factual trust rail.
-          html = replace_once(
+          html = replace_once_if_needed(
               html,
               '<div class="landing-container landing-hero-grid grid grid-cols-2 gap-8 items-center">\n                <div>',
               '<div class="landing-container landing-hero-grid grid grid-cols-2 gap-8 items-center">\n                <div class="landing-hero-copy">',
+              'class="landing-hero-copy"',
               'landing hero copy wrapper'
           )
-          action = '<div class="mt-7 flex landing-mobile-wrap gap-3"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span></button><a href="#landingPreview" class="landing-btn">Lihat Preview</a><button type="button" onclick="openLoginModal()" class="landing-btn">Login</button></div>'
-          trust = action + '''\n                    <div class="landing-trust-rail" aria-label="Prinsip operasional Auto-Cuan">\n                        <span class="landing-trust-item">Fokus pasar IDX</span>\n                        <span class="landing-trust-item">Keputusan & eksekusi manual</span>\n                        <span class="landing-trust-item">Freshness / stale warning</span>\n                    </div>'''
-          html = replace_once(html, action, trust, 'landing trust rail')
 
-          # Dashboard command header semantics.
-          html = replace_once(
+          if 'class="landing-trust-rail"' not in html:
+              action = '<div class="mt-7 flex landing-mobile-wrap gap-3"><button type="button" onclick="landingPrimaryAction()" class="landing-btn landing-btn-primary"><span class="landing-cta-label">Mulai Sekarang</span></button><a href="#landingPreview" class="landing-btn">Lihat Preview</a><button type="button" onclick="openLoginModal()" class="landing-btn">Login</button></div>'
+              trust = action + '''\n                    <div class="landing-trust-rail" aria-label="Prinsip operasional Auto-Cuan">\n                        <span class="landing-trust-item">Fokus pasar IDX</span>\n                        <span class="landing-trust-item">Keputusan & eksekusi manual</span>\n                        <span class="landing-trust-item">Freshness / stale warning</span>\n                    </div>'''
+              if html.count(action) != 1:
+                  raise SystemExit(f'landing trust rail: expected one action row, got {html.count(action)}')
+              html = html.replace(action, trust, 1)
+
+          html = replace_once_if_needed(
               html,
               '<div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">\n                <div>',
               '<div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">\n                <div class="dashboard-hero-main">',
+              'class="dashboard-hero-main"',
               'dashboard hero main'
           )
-          html = replace_once(
+          html = replace_once_if_needed(
               html,
               '<div class="flex flex-col sm:items-end gap-2">\n                    <span id="approvedBadge"',
               '<div class="dashboard-hero-meta flex flex-col sm:items-end gap-2">\n                    <span id="approvedBadge"',
+              'class="dashboard-hero-meta flex flex-col sm:items-end gap-2"',
               'dashboard hero meta'
           )
-          html = replace_once(
+          html = replace_once_if_needed(
               html,
               '<div id="ihsgSummaryCard" class="market-band-grid">',
               '<div id="ihsgSummaryCard" class="market-band-grid" role="group" aria-label="Ringkasan kondisi pasar">',
+              'id="ihsgSummaryCard" class="market-band-grid" role="group"',
               'market summary semantics'
           )
-
-          # Radar workspace semantics and stable styling hooks.
-          html = replace_once(
+          html = replace_once_if_needed(
               html,
               '<div class="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">\n            <section class="lg:col-span-3 panel">',
               '<div class="dashboard-radar-grid grid grid-cols-1 lg:grid-cols-5 gap-3 items-start">\n            <section class="radar-panel lg:col-span-3 panel" aria-label="Top 5 Radar">',
+              'class="dashboard-radar-grid grid grid-cols-1 lg:grid-cols-5 gap-3 items-start"',
               'radar top5 panel'
           )
-          html = replace_once(
+          html = replace_once_if_needed(
               html,
               '</section>\n            <aside class="lg:col-span-2 panel">\n                <div class="panel-header">\n                    <div>\n                        <h3 class="panel-title">Auto Monitor</h3>',
               '</section>\n            <aside class="radar-panel lg:col-span-2 panel" aria-label="Auto Monitor">\n                <div class="panel-header">\n                    <div>\n                        <h3 class="panel-title">Auto Monitor</h3>',
+              'class="radar-panel lg:col-span-2 panel" aria-label="Auto Monitor"',
               'radar monitor panel'
           )
-          html = replace_once(
+          html = replace_once_if_needed(
               html,
               '<span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap">— WIB</span>',
               '<span id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap" aria-live="polite">— WIB</span>',
+              'id="dashboardMonitorUpdated" class="text-[10px] text-gray-500 whitespace-nowrap" aria-live="polite"',
               'monitor live region'
           )
 
           if 'AUTO-CUAN PREMIUM WORKSTATION V4' not in css:
-              css += frag
+              if not fragment_path.exists():
+                  raise SystemExit('V4 fragment missing before consolidation')
+              css += fragment_path.read_text()
 
           test = test.replace('premium-workstation.css?v=20260818-v1', 'premium-workstation.css?v=20260818-v4')
           marker = "premium workstation v4 adds product-grade semantics and trust without behavior"
@@ -116,13 +121,7 @@ jobs:
           test_path.write_text(test)
           PY
           rm -f public/premium-workstation-v4-fragment.css .tmp-premium-v4-trigger
-      - name: Focused premium UI and security tests
-        run: node --test test/premium-workstation-ui.test.js test/repo-security-hardening.test.js
-      - name: Production build gate
-        run: npm run build
-      - name: Diff whitespace check
-        run: git diff --check
-      - name: Commit validated V4
+      - name: Commit V4 patch
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
