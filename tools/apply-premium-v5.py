@@ -1,0 +1,95 @@
+from pathlib import Path
+import re
+
+html_path = Path('public/index.html')
+css_path = Path('public/premium-workstation.css')
+fragment_path = Path('public/premium-workstation-v5-fragment.css')
+test_path = Path('test/premium-workstation-ui.test.js')
+
+html = html_path.read_text()
+css = css_path.read_text()
+test = test_path.read_text()
+
+# Align startup/no-CSS canvas with the workstation canvas.
+html = html.replace('#0b0e14', '#06090e')
+
+if '/premium-workstation.css?v=20260818-v5' not in html:
+    if html.count('/premium-workstation.css?v=20260818-v4') != 1:
+        raise SystemExit('V5 stylesheet cache-bust source not found exactly once')
+    html = html.replace('/premium-workstation.css?v=20260818-v4', '/premium-workstation.css?v=20260818-v5', 1)
+
+if '<nav class="landing-nav" aria-label="Navigasi landing Auto-Cuan">' not in html:
+    if html.count('<nav class="landing-nav">') != 1:
+        raise SystemExit('landing nav marker mismatch')
+    html = html.replace('<nav class="landing-nav">', '<nav class="landing-nav" aria-label="Navigasi landing Auto-Cuan">', 1)
+
+if 'aria-label="Navigasi utama Auto-Cuan"' not in html:
+    old = '<nav class="mobile-nav-row header-shell w-full mx-auto px-3 sm:px-5">'
+    if html.count(old) != 1:
+        raise SystemExit('main nav marker mismatch')
+    html = html.replace(old, '<nav class="mobile-nav-row header-shell w-full mx-auto px-3 sm:px-5" aria-label="Navigasi utama Auto-Cuan">', 1)
+
+html = html.replace('href="#landingSafety">Safety</a>', 'href="#landingSafety">Trust & Safety</a>', 1)
+html = html.replace('<span class="landing-chip">Sistem aktif</span>', '<span class="landing-chip">Fokus IDX</span>', 1)
+
+if 'class="landing-section landing-trust-center"' not in html:
+    safety_pattern = r'<section id="landingSafety" class="landing-section bg-slate-950/25">.*?</section>'
+    safety = '''<section id="landingSafety" class="landing-section landing-trust-center" aria-labelledby="landingSafetyTitle">
+            <div class="landing-container trust-center-grid">
+                <div class="trust-center-copy">
+                    <p class="trust-center-kicker">Trust & Operating Boundaries</p>
+                    <h2 id="landingSafetyTitle" class="trust-center-title">Batas sistem dibuat eksplisit, bukan disembunyikan di disclaimer.</h2>
+                    <p class="trust-center-lead">Auto-Cuan berfungsi sebagai alat bantu analisis. Sistem membantu menyaring dan merapikan konteks data, sementara keputusan serta eksekusi tetap berada di tangan pengguna.</p>
+                </div>
+                <div class="trust-matrix" role="list" aria-label="Batas operasional Auto-Cuan">
+                    <div class="trust-row" role="listitem"><div class="trust-row-key">Peran sistem</div><div class="trust-row-value">Menyaring watchlist / radar dan menyajikan konteks analisis untuk dibaca pengguna.</div></div>
+                    <div class="trust-row" role="listitem"><div class="trust-row-key">Eksekusi</div><div class="trust-row-value">Tetap dilakukan manual di sekuritas pilihan pengguna; Auto-Cuan tidak mengeksekusi transaksi.</div></div>
+                    <div class="trust-row" role="listitem"><div class="trust-row-key">Dana & kustodi</div><div class="trust-row-value">Auto-Cuan tidak memegang dana pengguna dan portofolio dicatat secara manual.</div></div>
+                    <div class="trust-row" role="listitem"><div class="trust-row-key">Freshness</div><div class="trust-row-value">Data dapat terlambat. Freshness / stale warning tetap harus dibaca sebelum mengambil keputusan.</div></div>
+                    <div class="trust-row" role="listitem"><div class="trust-row-key">Risiko pasar</div><div class="trust-row-value">False breakout, slippage, likuiditas, dan risiko pasar tetap ada; keputusan akhir tetap milik pengguna.</div></div>
+                </div>
+            </div>
+        </section>'''
+    html, n = re.subn(safety_pattern, safety, html, count=1, flags=re.S)
+    if n != 1:
+        raise SystemExit(f'safety section replacement count={n}')
+
+if 'class="landing-section landing-risk-section"' not in html:
+    risk_pattern = r'<section class="landing-section bg-slate-950/25"><div class="landing-container grid lg:grid-cols-2 gap-5 items-start"><div><p class="text-emerald-300 text-sm font-black uppercase tracking-wide">Aturan Pakai / Risk Notice</p>.*?</section>'
+    risk = '''<section class="landing-section landing-risk-section" aria-label="Ringkasan batas risiko">
+            <div class="landing-container">
+                <div class="risk-strip">
+                    <div class="risk-strip-item">Watchlist / radar bukan perintah BUY</div>
+                    <div class="risk-strip-item">Konfirmasi manual tetap wajib</div>
+                    <div class="risk-strip-item">Risk label dan freshness harus dibaca</div>
+                    <div class="risk-strip-item">Keputusan akhir berada pada pengguna</div>
+                </div>
+            </div>
+        </section>'''
+    html, n = re.subn(risk_pattern, risk, html, count=1, flags=re.S)
+    if n != 1:
+        raise SystemExit(f'risk notice replacement count={n}')
+
+if 'AUTO-CUAN PREMIUM WORKSTATION V5' not in css:
+    if not fragment_path.exists():
+        raise SystemExit('V5 fragment missing')
+    css += fragment_path.read_text()
+
+test = test.replace('premium-workstation.css?v=20260818-v4', 'premium-workstation.css?v=20260818-v5')
+marker = "premium workstation v5 presents explicit operating boundaries"
+if marker not in test:
+    test += '''\n\ntest('premium workstation v5 presents explicit operating boundaries', () => {\n  const html = read('public/index.html');\n  const css = read('public/premium-workstation.css');\n  assert.match(html, /id="landingSafety" class="landing-section landing-trust-center"/);\n  assert.match(html, /Batas sistem dibuat eksplisit/);\n  assert.match(html, /Auto-Cuan tidak mengeksekusi transaksi/);\n  assert.match(html, /Auto-Cuan tidak memegang dana pengguna/);\n  assert.match(html, /Freshness \\/ stale warning/);\n  assert.match(html, /class="risk-strip"/);\n  assert.match(html, /aria-label="Navigasi utama Auto-Cuan"/);\n  assert.match(html, /aria-label="Navigasi landing Auto-Cuan"/);\n  assert.doesNotMatch(html, /background-color:#0b0e14/);\n  assert.match(css, /AUTO-CUAN PREMIUM WORKSTATION V5/);\n  assert.match(css, /\\.trust-matrix/);\n  assert.match(css, /\\.risk-strip/);\n});\n'''
+
+html_path.write_text(html)
+css_path.write_text(css)
+test_path.write_text(test)
+
+# One-shot staging files must not survive the validated commit.
+for path in (
+    fragment_path,
+    Path('.tmp-premium-v5-trigger'),
+    Path('public/.v5-hardening-trigger.txt'),
+    Path('.github/workflows/premium-workstation-v5-temp.yml'),
+    Path('tools/apply-premium-v5.py'),
+):
+    path.unlink(missing_ok=True)
