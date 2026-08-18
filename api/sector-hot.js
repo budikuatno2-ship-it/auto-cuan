@@ -8692,7 +8692,9 @@ var NK_STAGING_COLUMNS = Object.freeze([
   'tx_value_1d',
   'avg_tx_value_3d',
   'avg_tx_value_7d',
-  'setup_type'
+  'setup_type',
+  'trade_plan_v2',
+  'trade_plan_v2_structural'
 ]);
 var NK_STAGING_COLUMN_SET = NK_STAGING_COLUMNS.reduce(function(acc, col) {
   acc[col] = true;
@@ -8753,7 +8755,9 @@ var NK_LATEST_COLUMNS = Object.freeze([
   'multi_timeframe_bias',
   'volume_phase',
   'risk_label',
-  'quality_grade'
+  'quality_grade',
+  'trade_plan_v2',
+  'trade_plan_v2_structural'
 ]);
 var NK_LATEST_COLUMN_SET = NK_LATEST_COLUMNS.reduce(function(acc, col) {
   acc[col] = true;
@@ -8920,7 +8924,9 @@ async function handleNkScreenerBatch(req, res, supabase) {
 
       // Trade Plan V2 SHADOW attach (Swing Non-Konglo). Gated by
       // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/staged
-      // output is byte-identical (runtime-only field, never in sanitizeNkStagingRow).
+      // output is byte-identical. When enabled, the canonical snapshot is persisted
+      // through staging/latest so presentation does not have to rebuild from a
+      // thinner row after runtime ATR/candle structure has been stripped.
       // Attached HERE, BEFORE the ATR fields are stripped below, so the canonical
       // engine receives the real support / resistance / ATR the NK scorer computed.
       // Scoring untouched.
@@ -9332,7 +9338,11 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       multi_timeframe_notes: c.multi_timeframe_notes || null,
       volume_phase: c.volume_phase || null,
       risk_label: c.risk_label || null,
-      quality_grade: c.quality_grade || null
+      quality_grade: c.quality_grade || null,
+      // Preserve the canonical V2 snapshot computed while full runtime structure
+      // (support/resistance/ATR/candles) is still available in the batch scorer.
+      trade_plan_v2: c.trade_plan_v2 || null,
+      trade_plan_v2_structural: c.trade_plan_v2_structural || null
     })).map(sanitizeNkLatestPublishRow);
 
     var { error: insErr } = await supabase.from('swing_screener_non_konglo_latest').insert(publishRows);
