@@ -39,6 +39,7 @@ const SYNTAX_CHECKED = [
   'public/portfolio-position-scenarios.js',
   'public/portfolio-runtime-fix.js',
   'public/stock-analysis-ai.js',
+  'public/market-feature-runtime.js',
   'public/ui-stability-fix.js',
   'public/pattern-stable-runtime.js',
   'public/pattern-tab-resume-guard.js',
@@ -195,6 +196,7 @@ assertOk(portfolioRuntime.includes('if (!text || state.sending) return;'), 'Port
 // The generated sheet must stay in place, and every utility class the rendered
 // DOM uses must exist in it.
 const indexHtml = read('public/index.html');
+const marketFeatureRuntime = read('public/market-feature-runtime.js');
 const tailwindCss = read('public/tailwind-build.css');
 assertOk(!/cdn\.tailwindcss\.com/.test(indexHtml), 'The Tailwind Play CDN is loaded again.');
 assertOk(/<link[^>]+href="\/tailwind-build\.css/.test(indexHtml), 'The generated Tailwind stylesheet is not linked.');
@@ -219,9 +221,9 @@ function cssDefines(name) {
 
 // jsPDF is ~350KB for an export most sessions never use. It must stay behind an
 // explicit call rather than running three CDN attempts at parse time.
-assertOk(indexHtml.includes('window.loadPdfLibrary'), 'On-demand PDF loader is missing.');
-assertOk(!/loadScript\(jspdfUrls, 0, function\(ok1\) \{\s*\n\s*if \(!ok1\)/.test(indexHtml) || indexHtml.indexOf('window.loadPdfLibrary') < indexHtml.indexOf('jspdfUrls, 0'), 'PDF libraries are fetched at page load again.');
-assertOk(indexHtml.includes('_ensureJsPdf') && indexHtml.includes('window.loadPdfLibrary().then'), 'PDF export no longer triggers its own library load.');
+assertOk(marketFeatureRuntime.includes('window.loadPdfLibrary'), 'On-demand PDF loader is missing.');
+assertOk(!/loadScript\(jspdfUrls, 0, function\(ok1\) \{\s*\n\s*if \(!ok1\)/.test(marketFeatureRuntime) || marketFeatureRuntime.indexOf('window.loadPdfLibrary') < marketFeatureRuntime.indexOf('jspdfUrls, 0'), 'PDF libraries are fetched at page load again.');
+assertOk(marketFeatureRuntime.includes('_ensureJsPdf') && marketFeatureRuntime.includes('window.loadPdfLibrary().then'), 'PDF export no longer triggers its own library load.');
 
 // The in-page spacing self-test shipped ~4KB of fixtures to every visitor and
 // asserted on textContent, which drops the <br> separators it was checking for.
@@ -319,7 +321,7 @@ assertOk(chartViewer.includes('function lockScroll') && chartViewer.includes('da
 assertOk(chartViewer.includes('clampPan') && chartViewer.includes('pointermove'), 'Chart viewer pinch/pan fallback is missing.');
 assertOk(!/fetch\(|supabase|telegram|navigateTo\s*=/i.test(chartViewer), 'Chart viewer crossed a protected boundary.');
 assertOk(index.includes('function openChartPageFullscreen()') && index.includes('openChartPageFullscreen()'), 'Chart page fullscreen entry point is missing.');
-assertOk(index.includes("if (variant === 'fullscreen')"), 'chartDims lost its fullscreen variant.');
+assertOk(marketFeatureRuntime.includes("if (variant === 'fullscreen')"), 'chartDims lost its fullscreen variant.');
 assertOk(patternStable.includes('data-ps-zoom') && patternStable.includes('root.openChartViewer'), 'Pattern cards can no longer open the shared viewer.');
 assertOk(patternStable.includes('function viewerPriceLines') && patternStable.includes('function viewerMarkers'), 'Pattern geometry is no longer passed to the viewer.');
 const patternHeaders = (JSON.parse(read('vercel.json')).headers || []).map(function (row) { return row.source; });
