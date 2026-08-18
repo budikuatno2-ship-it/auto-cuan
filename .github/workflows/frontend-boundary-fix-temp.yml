@@ -10,13 +10,14 @@ permissions:
 
 jobs:
   boundary-fix:
+    if: ${{ !contains(github.event.head_commit.message || '', '[boundary-fix-worker]') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: chore/frontend-runtime-decomposition-v1
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
@@ -40,12 +41,13 @@ jobs:
           market = market_path.read_text()
 
           marker = '// ============================================================\n// DAY TRADE SCREENER — JavaScript Functions\n// ============================================================'
-          if marker not in market:
-              raise SystemExit('daytrade marker missing from market runtime')
-          market_core, daytrade = market.split(marker, 1)
-          daytrade = marker + daytrade
-          market_path.write_text(market_core.rstrip() + '\n')
-          daytrade_path.write_text('// Auto-Cuan Day Trade UI/runtime kept separate from cacheable market/chart bundle.\n' + daytrade.lstrip())
+          if marker in market:
+              market_core, daytrade = market.split(marker, 1)
+              daytrade = marker + daytrade
+              market_path.write_text(market_core.rstrip() + '\n')
+              daytrade_path.write_text('// Auto-Cuan Day Trade UI/runtime kept separate from cacheable market/chart bundle.\n' + daytrade.lstrip())
+          elif not daytrade_path.exists():
+              raise SystemExit('daytrade marker missing from market runtime and daytrade runtime does not exist')
 
           market_tag = '<script src="/market-feature-runtime.js?v=20260818-v1"></script>'
           daytrade_tag = '<script src="/daytrade-runtime.js?v=20260818-v1"></script>'
@@ -54,7 +56,7 @@ jobs:
                   raise SystemExit('market runtime tag missing')
               index = index.replace(market_tag, market_tag + '\n' + daytrade_tag, 1)
 
-          critical = '''    <style id="critical-shell-fallback">\n        /* Same-document startup safety net: remains available even if external CSS fails. */\n        .hidden { display: none; }\n        #maintenanceScreen { box-sizing: border-box; padding-left: 16px; padding-right: 16px; }\n        .maintenance-card, .maintenance-card * { box-sizing: border-box; }\n        .maintenance-card { width: 100%; max-width: 480px; border: 1px solid rgba(148,163,184,.14); border-radius: 14px; background: #0f172a; box-shadow: 0 14px 36px rgba(0,0,0,.28); padding: 28px 24px; }\n        .maintenance-brand { display: flex; align-items: center; gap: 11px; padding-bottom: 18px; border-bottom: 1px solid rgba(148,163,184,.12); }\n        .maintenance-message { margin-top: 10px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }\n        .maintenance-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 18px; border-radius: 12px; }\n        .maintenance-btn-primary { width: 100%; color: #04130d; background: #10b981; }\n        @media (min-width: 640px) { .maintenance-card { padding: 34px 32px; } }\n    </style>\n'''
+          critical = '''    <style id="critical-shell-fallback">\n        /* Same-document startup safety net: remains available even if external CSS fails. */\n        .hidden { display: none !important; }\n        #maintenanceScreen { box-sizing: border-box; padding-left: 16px; padding-right: 16px; }\n        .maintenance-card, .maintenance-card * { box-sizing: border-box; }\n        .maintenance-card { width: 100%; max-width: 480px; border: 1px solid rgba(148,163,184,.14); border-radius: 14px; background: #0f172a; box-shadow: 0 14px 36px rgba(0,0,0,.28); padding: 28px 24px; }\n        .maintenance-brand { display: flex; align-items: center; gap: 11px; padding-bottom: 18px; border-bottom: 1px solid rgba(148,163,184,.12); }\n        .maintenance-message { margin-top: 10px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }\n        .maintenance-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 18px; border-radius: 12px; }\n        .maintenance-btn-primary { width: 100%; color: #04130d; background: #10b981; }\n        @media (min-width: 640px) { .maintenance-card { padding: 34px 32px; } }\n    </style>\n'''
           shell_link = '    <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">\n'
           if 'id="critical-shell-fallback"' not in index:
               if shell_link not in index:
@@ -73,19 +75,18 @@ jobs:
 
           config = json.loads(vercel_path.read_text())
           headers = config.get('headers', [])
-          if not any(row.get('source') == '/daytrade-runtime.js' for row in headers):
-              headers.append({
-                  'source': '/daytrade-runtime.js',
-                  'headers': [{'key': 'Cache-Control', 'value': 'private, no-store, no-cache, must-revalidate, max-age=0'}]
-              })
+          headers = [row for row in headers if row.get('source') != '/daytrade-runtime.js']
+          headers.append({
+              'source': '/daytrade-runtime.js',
+              'headers': [{'key': 'Cache-Control', 'value': 'private, no-store, no-cache, must-revalidate, max-age=0'}]
+          })
           config['headers'] = headers
           vercel_path.write_text(json.dumps(config, indent=2, ensure_ascii=False) + '\n')
 
           test = test_path.read_text()
-          test = test.replace("  const head = html.slice(0, html.indexOf('</head>'));\n  assert.doesNotMatch(head, /<style>/i);", "  const head = html.slice(0, html.indexOf('</head>'));\n  assert.match(head, /<style id=\\\"critical-shell-fallback\\\">/i);\n  assert.match(head, /\\.hidden \\{ display: none; \\}/);")
-          old_loop = "  for (const source of ['/assets/(.*)', '/index-shell.css', '/market-feature-runtime.js']) {"
-          if old_loop in test:
-              test = test.replace(old_loop, "  for (const source of ['/assets/(.*)', '/index-shell.css', '/market-feature-runtime.js']) {")
+          test = test.replace("  const head = html.slice(0, html.indexOf('</head>'));\n  assert.doesNotMatch(head, /<style>/i);", "  const head = html.slice(0, html.indexOf('</head>'));\n  assert.match(head, /<style id=\\\"critical-shell-fallback\\\">/i);\n  assert.match(head, /\\.hidden \\{ display: none !important; \\}/);")
+          if 'assert.match(head, /\\.hidden \\{ display: none; \\}/);' in test:
+              test = test.replace('assert.match(head, /\\.hidden \\{ display: none; \\}/);', 'assert.match(head, /\\.hidden \\{ display: none !important; \\}/);')
           extra = '''\n\ntest('Day Trade runtime is isolated from the cacheable market bundle', () => {\n  const html = read('public/index.html');\n  const market = read('public/market-feature-runtime.js');\n  const daytrade = read('public/daytrade-runtime.js');\n  assert.doesNotMatch(market, /DAY TRADE SCREENER — JavaScript Functions/);\n  assert.match(daytrade, /DAY TRADE SCREENER — JavaScript Functions/);\n  assert.ok(html.indexOf('/market-feature-runtime.js?v=20260818-v1') < html.indexOf('/daytrade-runtime.js?v=20260818-v1'));\n  const config = JSON.parse(read('vercel.json'));\n  const entry = config.headers.find((row) => row.source === '/daytrade-runtime.js');\n  assert.ok(entry);\n  assert.match(entry.headers.find((h) => h.key.toLowerCase() === 'cache-control').value, /no-store/);\n});\n'''
           if "test('Day Trade runtime is isolated" not in test:
               test += extra
@@ -103,5 +104,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/index.html public/index-shell.css public/market-feature-runtime.js public/daytrade-runtime.js public/pattern-stable-runtime.js test/frontend-runtime-decomposition.test.js tools/apply-production-hotfixes.js vercel.json
-          git commit -m "fix: tighten frontend runtime boundaries"
+          git commit -m "fix: tighten frontend runtime boundaries [boundary-fix-worker]"
           git push origin HEAD:chore/frontend-runtime-decomposition-v1
