@@ -1,0 +1,96 @@
+/* ========================================================================
+   AUTO-CUAN PREMIUM WORKSTATION V12 — PUBLIC SHELL / TRUST NAVIGATION
+   Presentation-only styling for public landing navigation and diligence links.
+   ======================================================================== */
+
+.landing-menu a[href='/trust.html'],
+.landing-menu a[href='/methodology.html'] {
+  position: relative;
+  color: #96a5b6;
+}
+
+.landing-menu a[href='/trust.html']::after,
+.landing-menu a[href='/methodology.html']::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  right: 50%;
+  bottom: -5px;
+  height: 1px;
+  background: rgba(45, 212, 163, .58);
+  transition: left .14s ease, right .14s ease;
+}
+
+.landing-menu a[href='/trust.html']:hover,
+.landing-menu a[href='/methodology.html']:hover {
+  color: #dff9f1;
+}
+
+.landing-menu a[href='/trust.html']:hover::after,
+.landing-menu a[href='/methodology.html']:hover::after {
+  left: 12%;
+  right: 12%;
+}
+
+.landing-trust-item[href] {
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color .14s ease, background-color .14s ease, color .14s ease;
+}
+
+.landing-trust-item[href]:hover {
+  border-color: rgba(45, 212, 163, .22);
+  background: rgba(45, 212, 163, .055);
+  color: #c8fbed;
+}
+
+.landing-trust-item[href]:focus-visible,
+.landing-footer-links a:focus-visible {
+  outline: 2px solid rgba(45, 212, 163, .62);
+  outline-offset: 3px;
+}
+
+.landing-footer-links a {
+  color: #8b9aab;
+  text-decoration: none;
+  transition: color .14s ease;
+}
+
+.landing-footer-links a:hover {
+  color: #bff7e7;
+}
+
+#landingMain {
+  min-width: 0;
+}
+
+#landingMain .landing-section[id] {
+  scroll-margin-top: 88px;
+}
+
+@media (min-width: 768px) and (max-width: 1180px) {
+  .landing-menu {
+    gap: 14px !important;
+  }
+
+  .landing-menu > a,
+  .landing-menu > button {
+    white-space: nowrap;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 767px) {
+  .landing-footer-links {
+    line-height: 1.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-menu a[href='/trust.html']::after,
+  .landing-menu a[href='/methodology.html']::after,
+  .landing-trust-item[href],
+  .landing-footer-links a {
+    transition: none !important;
+  }
+}
