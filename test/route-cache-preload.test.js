@@ -18,6 +18,8 @@ const header = (source, key) => {
 };
 
 const appRoutes = ['/', '/index.html', '/dashboard', '/pattern', '/review'];
+const privateAliases = ['/dashboard', '/pattern', '/review', '/portfolio-planner'];
+const publicMetadata = ['/trust.html', '/404.html', '/robots.txt', '/sitemap.xml', '/.well-known/security.txt', '/favicon.ico'];
 const preloadCore = '</premium-workstation-core.css?v=20260818-v4-core>; rel=preload; as=style';
 const preloadV6 = '</premium-workstation-v6.css?v=20260818-v6>; rel=preload; as=style';
 
@@ -34,12 +36,29 @@ test('application entry routes explicitly remain private no-store', () => {
   assert.match(portfolioAlias, /no-store/);
 });
 
+test('private route aliases stay out of crawler indexes', () => {
+  for (const source of privateAliases) {
+    assert.equal(header(source, 'X-Robots-Tag'), 'noindex, nofollow');
+  }
+  assert.equal((row('/').headers || []).some((entry) => entry.key.toLowerCase() === 'x-robots-tag'), false);
+});
+
 test('application entry routes preload versioned workstation layers', () => {
   for (const source of appRoutes) {
     const value = header(source, 'Link');
     assert.ok(value.includes(preloadCore), `${source} must preload workstation core`);
     assert.ok(value.includes(preloadV6), `${source} must preload workstation v6`);
   }
+});
+
+test('public identity surfaces have explicit public cache policy', () => {
+  for (const source of publicMetadata) {
+    const value = header(source, 'Cache-Control');
+    assert.match(value, /public/);
+    assert.doesNotMatch(value, /private|no-store/);
+  }
+  assert.match(header('/trust.html', 'Cache-Control'), /max-age=300/);
+  assert.match(header('/favicon.ico', 'Cache-Control'), /max-age=86400/);
 });
 
 test('preload optimization does not weaken runtime cache boundaries', () => {
