@@ -1,0 +1,225 @@
+
+
+/* ========================================================================
+   AUTO-CUAN PREMIUM WORKSTATION V5 — TRUST CENTER / OPERATING BOUNDARIES
+   ======================================================================== */
+
+.landing-trust-center {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(45,212,163,.018), transparent 54%),
+    rgba(7,12,18,.68) !important;
+}
+
+.landing-trust-center::before {
+  content: '';
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  right: -240px;
+  top: -220px;
+  border-radius: 50%;
+  background: rgba(45,212,163,.035);
+  filter: blur(76px);
+  pointer-events: none;
+}
+
+.trust-center-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0,.82fr) minmax(0,1.18fr);
+  gap: clamp(28px,5vw,72px);
+  align-items: start;
+}
+
+.trust-center-copy {
+  position: sticky;
+  top: 96px;
+}
+
+.trust-center-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6fdfbf;
+  font-size: 10px;
+  font-weight: 820;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.trust-center-kicker::before {
+  content: '';
+  width: 22px;
+  height: 1px;
+  background: rgba(45,212,163,.55);
+}
+
+.trust-center-title {
+  max-width: 620px;
+  margin-top: 12px;
+  color: #f5f8fb;
+  font-size: clamp(30px,3.7vw,50px);
+  font-weight: 760;
+  line-height: 1.03;
+  letter-spacing: -.046em;
+  text-wrap: balance;
+}
+
+.trust-center-lead {
+  max-width: 590px;
+  margin-top: 17px;
+  color: #8493a6;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.trust-matrix {
+  overflow: hidden;
+  border: 1px solid rgba(148,163,184,.10);
+  border-radius: 11px;
+  background: #070d13;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
+}
+
+.trust-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(120px,.38fr) minmax(0,1fr);
+  gap: 18px;
+  min-height: 76px;
+  padding: 17px 18px;
+  border-bottom: 1px solid rgba(148,163,184,.07);
+}
+
+.trust-row:last-child {
+  border-bottom: 0;
+}
+
+.trust-row::before {
+  content: '';
+  position: absolute;
+  width: 2px;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  border-radius: 999px;
+  background: rgba(45,212,163,.16);
+  transition: background-color .14s ease;
+}
+
+.trust-row:hover {
+  background: rgba(148,163,184,.022);
+}
+
+.trust-row:hover::before {
+  background: rgba(45,212,163,.64);
+}
+
+.trust-row-key {
+  color: #728196;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .095em;
+  text-transform: uppercase;
+}
+
+.trust-row-value {
+  color: #c5d0dc;
+  font-size: 12px;
+  line-height: 1.62;
+}
+
+.landing-risk-section {
+  padding-top: 30px !important;
+  padding-bottom: 30px !important;
+  border-top-color: rgba(148,163,184,.055) !important;
+  background: #060b11 !important;
+}
+
+.risk-strip {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  overflow: hidden;
+  border: 1px solid rgba(148,163,184,.08);
+  border-radius: 9px;
+  background: #070d13;
+}
+
+.risk-strip-item {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 12px 14px;
+  border-right: 1px solid rgba(148,163,184,.07);
+  color: #7f8ea1;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.risk-strip-item:last-child {
+  border-right: 0;
+}
+
+.risk-strip-item::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  margin-right: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #d5ac58;
+  box-shadow: 0 0 0 3px rgba(237,196,108,.055);
+}
+
+@media (max-width: 900px) {
+  .trust-center-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .trust-center-copy {
+    position: static;
+  }
+
+  .risk-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .risk-strip-item:nth-child(2) {
+    border-right: 0;
+  }
+
+  .risk-strip-item:nth-child(-n+2) {
+    border-bottom: 1px solid rgba(148,163,184,.07);
+  }
+}
+
+@media (max-width: 600px) {
+  .trust-center-title {
+    font-size: 32px;
+  }
+
+  .trust-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    min-height: 0;
+    padding: 14px 15px;
+  }
+
+  .risk-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .risk-strip-item,
+  .risk-strip-item:nth-child(2) {
+    border-right: 0;
+    border-bottom: 1px solid rgba(148,163,184,.07);
+  }
+
+  .risk-strip-item:last-child {
+    border-bottom: 0;
+  }
+}
