@@ -1,0 +1,401 @@
+/* ========================================================================
+   AUTO-CUAN PREMIUM WORKSTATION V11 — EXECUTIVE POLISH
+   Presentation only. Improves scanability, hierarchy, reading ergonomics,
+   dense-data behavior, empty/loading states, and responsive composition.
+   No trading, auth, API, persistence, Telegram, or scheduling semantics live
+   in this stylesheet.
+   ======================================================================== */
+
+:root {
+  --pw-v11-hairline: rgba(148, 163, 184, .065);
+  --pw-v11-hover: rgba(148, 163, 184, .035);
+  --pw-v11-focus: rgba(45, 212, 163, .12);
+  --pw-v11-glow: rgba(45, 212, 163, .07);
+  --pw-v11-reading: 1080px;
+}
+
+/* ------------------------------------------------------------------------
+   Page rhythm and section anchors
+   ------------------------------------------------------------------------ */
+.page-content > section,
+.page-content [id^='section-'],
+#page-dashboard .ac-section,
+#page-screener .ac-section,
+#page-analisis .ac-section {
+  scroll-margin-top: calc(var(--pw-header-h) + 18px);
+}
+
+#page-dashboard,
+#page-screener,
+#page-sektor,
+#page-analisis,
+#page-chart,
+#page-pattern {
+  padding-bottom: max(34px, env(safe-area-inset-bottom)) !important;
+}
+
+/* ------------------------------------------------------------------------
+   Dashboard radar — use the large left lane as a real decision surface.
+   ------------------------------------------------------------------------ */
+.radar-panel {
+  container-type: inline-size;
+}
+
+#dashboardTop5List,
+#dashboardMonitorList {
+  min-height: 0;
+}
+
+@container (min-width: 720px) {
+  #dashboardTop5List {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+#dashboardTop5List .dashboard-pick-card,
+#dashboardMonitorList > *:not(.empty-state) {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(148, 163, 184, .085) !important;
+}
+
+#dashboardTop5List .dashboard-pick-card::after,
+#dashboardMonitorList > *:not(.empty-state)::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1px;
+  background: transparent;
+  transition: background-color .14s ease;
+  pointer-events: none;
+}
+
+#dashboardTop5List .dashboard-pick-card:hover::after,
+#dashboardMonitorList > *:not(.empty-state):hover::after {
+  background: rgba(45, 212, 163, .62);
+}
+
+#dashboardMonitorList {
+  max-height: min(58vh, 620px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 2px;
+}
+
+#dashboardMonitorList:has(> :only-child.empty-state) {
+  overflow: visible;
+  max-height: none;
+}
+
+#dashboardMonitorUpdated {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .015em;
+}
+
+/* ------------------------------------------------------------------------
+   Market strip — numeric alignment and calm interaction.
+   ------------------------------------------------------------------------ */
+.market-band-grid,
+.market-tile,
+.dash-level,
+.dashboard-hero-meta {
+  font-variant-numeric: tabular-nums;
+}
+
+#page-dashboard .market-tile {
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  transition: background-color .14s ease, outline-color .14s ease;
+}
+
+#page-dashboard .market-tile:hover {
+  background: #0a131c !important;
+  outline-color: rgba(148, 163, 184, .075);
+}
+
+#page-dashboard .market-tile:focus-within {
+  outline-color: rgba(45, 212, 163, .24);
+  background: rgba(45, 212, 163, .025) !important;
+}
+
+/* ------------------------------------------------------------------------
+   Dense tables — improve row tracking without turning them into spreadsheets.
+   ------------------------------------------------------------------------ */
+#page-dashboard tbody tr,
+#page-screener tbody tr,
+#page-analisis tbody tr,
+#page-sektor tbody tr {
+  transition: background-color .1s ease, box-shadow .1s ease;
+}
+
+#page-dashboard tbody tr:nth-child(even),
+#page-screener tbody tr:nth-child(even),
+#page-analisis tbody tr:nth-child(even),
+#page-sektor tbody tr:nth-child(even) {
+  background: rgba(148, 163, 184, .012);
+}
+
+#page-dashboard tbody tr:hover,
+#page-screener tbody tr:hover,
+#page-analisis tbody tr:hover,
+#page-sektor tbody tr:hover {
+  background: rgba(45, 212, 163, .025);
+  box-shadow: inset 2px 0 0 rgba(45, 212, 163, .28);
+}
+
+#page-dashboard td,
+#page-screener td,
+#page-analisis td,
+#page-sektor td {
+  border-bottom-color: var(--pw-v11-hairline) !important;
+}
+
+#page-dashboard th,
+#page-screener th,
+#page-analisis th,
+#page-sektor th {
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  font-size: 9px !important;
+}
+
+#page-dashboard td,
+#page-screener td,
+#page-analisis td,
+#page-sektor td,
+#rankingTableWrap,
+#dtScreenerTableWrap,
+#kgScreenerTableWrap,
+#nkScreenerTableWrap {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------------
+   Screener — candidate surfaces should carry more visual weight than filters.
+   ------------------------------------------------------------------------ */
+#dtCardGrid,
+#kgCardGrid,
+#nkCardGrid {
+  align-items: stretch;
+}
+
+.dt-card-item,
+.kg-card-item,
+.nk-card-item {
+  position: relative;
+  border-color: rgba(148, 163, 184, .09) !important;
+  background-image: linear-gradient(180deg, rgba(255,255,255,.012), transparent 34%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.018);
+  transition: border-color .14s ease, background-color .14s ease, transform .14s ease;
+}
+
+.dt-card-item:hover,
+.kg-card-item:hover,
+.nk-card-item:hover {
+  border-color: rgba(45, 212, 163, .2) !important;
+  background-color: #0b151f !important;
+  transform: translateY(-1px);
+}
+
+.dt-card-item:focus-within,
+.kg-card-item:focus-within,
+.nk-card-item:focus-within {
+  border-color: rgba(45, 212, 163, .32) !important;
+  box-shadow: 0 0 0 1px rgba(45,212,163,.08), inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+#screenerContent .scr-filter-grid {
+  border-color: rgba(148, 163, 184, .085) !important;
+}
+
+#screenerContent .scr-filter-grid:focus-within {
+  border-color: rgba(45, 212, 163, .18) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,.17), 0 0 0 1px rgba(45,212,163,.03) !important;
+}
+
+/* ------------------------------------------------------------------------
+   Analysis — treat generated output as a reading surface, not a chat bubble.
+   ------------------------------------------------------------------------ */
+#analisisResult {
+  width: min(100%, var(--pw-v11-reading));
+  margin-inline: auto;
+}
+
+#analisisResult h1,
+#analisisResult h2,
+#analisisResult h3,
+#analisisResult h4 {
+  color: #eef4f8;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+
+#analisisResult h2,
+#analisisResult h3 {
+  margin-top: 1.45em;
+  padding-top: .2em;
+}
+
+#analisisResult p,
+#analisisResult li {
+  color: #a9b6c5;
+  line-height: 1.72;
+}
+
+#analisisResult strong {
+  color: #edf4f8;
+}
+
+#analisisResult blockquote {
+  margin: 16px 0;
+  padding: 11px 14px;
+  border-left: 2px solid rgba(45, 212, 163, .38);
+  background: rgba(45, 212, 163, .025);
+  color: #98a8b9;
+}
+
+#analisisResult pre {
+  overflow: auto;
+  padding: 13px 14px;
+  border: 1px solid rgba(148, 163, 184, .09);
+  border-radius: 8px;
+  background: #050a10;
+  scrollbar-gutter: stable;
+}
+
+#analisisResult code {
+  font-variant-numeric: tabular-nums;
+}
+
+#analisisResult table {
+  width: 100%;
+}
+
+/* ------------------------------------------------------------------------
+   Empty, loading, and asynchronous states — deliberate, not accidental gaps.
+   ------------------------------------------------------------------------ */
+.empty-state {
+  position: relative;
+  padding: 22px 18px !important;
+  border: 1px dashed rgba(148, 163, 184, .12) !important;
+  border-radius: 9px;
+  background: rgba(7, 13, 19, .55) !important;
+  color: #728195 !important;
+}
+
+.empty-state::before {
+  content: '';
+  width: 26px;
+  height: 1px;
+  margin: 0 auto 10px;
+  background: rgba(45, 212, 163, .34);
+}
+
+[aria-busy='true'] {
+  cursor: progress;
+}
+
+[aria-busy='true'] .panel-header,
+[aria-busy='true'] .ac-section-head {
+  opacity: .72;
+}
+
+.skeleton-card,
+.skeleton-row,
+[class*='skeleton'] {
+  background-image: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.025) 40%, transparent 60%);
+  background-size: 220% 100%;
+  animation: pw-v11-skeleton 1.5s ease-in-out infinite;
+}
+
+@keyframes pw-v11-skeleton {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+
+/* ------------------------------------------------------------------------
+   Desktop refinement
+   ------------------------------------------------------------------------ */
+@media (min-width: 1280px) {
+  .dashboard-radar-grid {
+    grid-template-columns: minmax(0, 2.05fr) minmax(320px, .85fr) !important;
+  }
+
+  .radar-panel:first-child {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.02), 0 16px 44px rgba(0,0,0,.12);
+  }
+
+  #page-screener .page-title,
+  #page-analisis .page-title,
+  #page-dashboard .page-title {
+    letter-spacing: -.03em;
+  }
+}
+
+/* ------------------------------------------------------------------------
+   Mobile — keep dense surfaces readable without fake desktop compression.
+   ------------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  #dashboardMonitorList {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  #dashboardTop5List {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #analisisResult {
+    width: 100%;
+  }
+
+  #analisisResult p,
+  #analisisResult li {
+    line-height: 1.68;
+  }
+
+  .dt-card-item:hover,
+  .kg-card-item:hover,
+  .nk-card-item:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-card,
+  .skeleton-row,
+  [class*='skeleton'] {
+    animation: none !important;
+  }
+
+  #dashboardTop5List .dashboard-pick-card::after,
+  #dashboardMonitorList > *:not(.empty-state)::after,
+  #page-dashboard tbody tr,
+  #page-screener tbody tr,
+  #page-analisis tbody tr,
+  #page-sektor tbody tr,
+  .dt-card-item,
+  .kg-card-item,
+  .nk-card-item {
+    transition: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .empty-state,
+  .dt-card-item,
+  .kg-card-item,
+  .nk-card-item,
+  #screenerContent .scr-filter-grid {
+    border-color: rgba(226, 232, 240, .24) !important;
+  }
+
+  #page-dashboard tbody tr:hover,
+  #page-screener tbody tr:hover,
+  #page-analisis tbody tr:hover,
+  #page-sektor tbody tr:hover {
+    box-shadow: inset 3px 0 0 var(--pw-accent);
+  }
+}
