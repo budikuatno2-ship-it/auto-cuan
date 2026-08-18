@@ -1,0 +1,65 @@
+name: Temporary Frontend Reconstruction
+
+on:
+  push:
+    branches:
+      - chore/frontend-runtime-decomposition-v1
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-fund
+
+      - name: Reconstruct audited frontend optimizations
+        run: node tools/reconstruct-codex-frontend-audit.js
+
+      - name: Syntax-check extracted runtime
+        run: node --check public/market-feature-runtime.js
+
+      - name: Run focused reconstruction tests
+        run: node --test test/frontend-runtime-decomposition.test.js
+
+      - name: Run full production build gate
+        run: npm run build
+
+      - name: Re-run focused tests after build transforms
+        run: node --test test/frontend-runtime-decomposition.test.js
+
+      - name: Validate diff
+        run: git diff --check
+
+      - name: Remove temporary reconstruction automation
+        run: rm -f tools/reconstruct-codex-frontend-audit.js .github/workflows/frontend-reconstruction-temp.yml
+
+      - name: Commit reconstructed source changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No reconstructed changes to commit"
+            exit 1
+          fi
+          git commit -m "Reconstruct audited frontend runtime optimizations"
+          git push origin HEAD:chore/frontend-runtime-decomposition-v1
