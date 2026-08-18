@@ -19,6 +19,7 @@ const header = (source, key) => {
 
 const appRoutes = ['/', '/index.html', '/dashboard', '/pattern', '/review'];
 const privateAliases = ['/dashboard', '/pattern', '/review', '/portfolio-planner'];
+const privateDocuments = ['/index.html', '/portfolio-planner.html', '/portfolio-command-center.html', '/portfolio-command-center-v2.html'];
 const publicMetadata = ['/trust.html', '/404.html', '/robots.txt', '/sitemap.xml', '/.well-known/security.txt', '/favicon.ico'];
 const preloadCore = '</premium-workstation-core.css?v=20260818-v4-core>; rel=preload; as=style';
 const preloadV6 = '</premium-workstation-v6.css?v=20260818-v6>; rel=preload; as=style';
@@ -36,8 +37,8 @@ test('application entry routes explicitly remain private no-store', () => {
   assert.match(portfolioAlias, /no-store/);
 });
 
-test('private route aliases stay out of crawler indexes', () => {
-  for (const source of privateAliases) {
+test('private route aliases and direct private documents stay out of crawler indexes', () => {
+  for (const source of [...privateAliases, ...privateDocuments]) {
     assert.equal(header(source, 'X-Robots-Tag'), 'noindex, nofollow');
   }
   assert.equal((row('/').headers || []).some((entry) => entry.key.toLowerCase() === 'x-robots-tag'), false);
@@ -59,6 +60,19 @@ test('public identity surfaces have explicit public cache policy', () => {
   }
   assert.match(header('/trust.html', 'Cache-Control'), /max-age=300/);
   assert.match(header('/favicon.ico', 'Cache-Control'), /max-age=86400/);
+});
+
+test('standalone public HTML is locked to a no-script no-connect CSP', () => {
+  for (const source of ['/trust.html', '/404.html']) {
+    const csp = header(source, 'Content-Security-Policy');
+    assert.match(csp, /default-src 'none'/);
+    assert.match(csp, /style-src 'unsafe-inline'/);
+    assert.match(csp, /script-src 'none'/);
+    assert.match(csp, /connect-src 'none'/);
+    assert.match(csp, /frame-ancestors 'none'/);
+    assert.match(csp, /form-action 'none'/);
+  }
+  assert.equal(header('/404.html', 'X-Robots-Tag'), 'noindex, nofollow');
 });
 
 test('preload optimization does not weaken runtime cache boundaries', () => {
