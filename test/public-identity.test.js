@@ -19,6 +19,7 @@ test('public identity assets expose a restrained crawl surface', () => {
 
   assert.match(sitemap, /<loc>https:\/\/autocuan\.web\.id\/<\/loc>/);
   assert.match(sitemap, /<loc>https:\/\/autocuan\.web\.id\/trust\.html<\/loc>/);
+  assert.match(sitemap, /<loc>https:\/\/autocuan\.web\.id\/methodology\.html<\/loc>/);
   assert.doesNotMatch(sitemap, /\/dashboard|\/pattern|\/review|\/portfolio-planner/);
 });
 
@@ -54,6 +55,21 @@ test('trust center exposes product operating model without inventing certificati
   assert.match(html, /Cache boundaries/);
   assert.doesNotMatch(html, /<script\b/i);
   assert.doesNotMatch(html, /guaranteed profit|jaminan profit|regulator approved|certified secure/i);
+});
+
+test('methodology explains interpretation boundaries instead of presenting scores as probabilities', () => {
+  const html = read('public/methodology.html');
+  assert.match(html, /Data & Methodology/);
+  assert.match(html, /Sistem berhenti sebelum order/);
+  assert.match(html, /Score 85 tidak berarti peluang berhasil 85%/);
+  assert.match(html, /Stale warning harus dianggap serius/);
+  assert.match(html, /AI dapat salah/);
+  assert.match(html, /Bukan rekening kustodian/);
+  assert.match(html, /Manual execution/);
+  assert.match(html, /Tidak menjanjikan return/);
+  assert.match(html, /Tidak menggantikan broker/);
+  assert.doesNotMatch(html, /<script\b/i);
+  assert.doesNotMatch(html, /guaranteed profit|jaminan profit|akurasi 100%|pasti naik/i);
 });
 
 test('trust center keeps disclosure and public policy references inspectable', () => {
