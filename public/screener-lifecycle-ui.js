@@ -7,13 +7,15 @@
 })(typeof window !== 'undefined' ? window : null, function () {
   'use strict';
 
-  var VERSION = '20260816-lifecycle-ui-v1';
+  var VERSION = '20260818-lifecycle-ui-v2';
   var PHASE_META = {
-    REVERSAL_EARLY: { short: 'Fase 1/4 · Reversal', tone: '#fbbf24', bg: 'rgba(245,158,11,.10)', border: 'rgba(245,158,11,.24)' },
-    PRE_BREAKOUT: { short: 'Fase 2/4 · Pre-Breakout', tone: '#7dd3fc', bg: 'rgba(56,189,248,.10)', border: 'rgba(56,189,248,.24)' },
-    BREAKOUT_CONFIRMED: { short: 'Fase 3/4 · Breakout', tone: '#6ee7b7', bg: 'rgba(16,185,129,.11)', border: 'rgba(16,185,129,.26)' },
-    POST_BREAKOUT_CONTINUATION: { short: 'Fase 4/4 · Continuation', tone: '#c4b5fd', bg: 'rgba(139,92,246,.10)', border: 'rgba(139,92,246,.24)' },
-    INVALIDATED: { short: 'Lifecycle · Diblokir', tone: '#fca5a5', bg: 'rgba(239,68,68,.09)', border: 'rgba(239,68,68,.22)' }
+    REVERSAL_EARLY: { short: 'Fase 1/4 · Reversal', tone: '#fbbf24', bg: 'rgba(245,158,11,.10)', border: 'rgba(245,158,11,.24)', showConfidence: true },
+    PRE_BREAKOUT: { short: 'Fase 2/4 · Pre-Breakout', tone: '#7dd3fc', bg: 'rgba(56,189,248,.10)', border: 'rgba(56,189,248,.24)', showConfidence: true },
+    BREAKOUT_CONFIRMED: { short: 'Fase 3/4 · Breakout', tone: '#6ee7b7', bg: 'rgba(16,185,129,.11)', border: 'rgba(16,185,129,.26)', showConfidence: true },
+    POST_BREAKOUT_CONTINUATION: { short: 'Fase 4/4 · Continuation', tone: '#c4b5fd', bg: 'rgba(139,92,246,.10)', border: 'rgba(139,92,246,.24)', showConfidence: true },
+    NONE: { short: 'Lifecycle · Belum masuk fase', tone: '#94a3b8', bg: 'rgba(148,163,184,.08)', border: 'rgba(148,163,184,.22)', showConfidence: false },
+    INVALIDATED: { short: 'Lifecycle · Diblokir safety', tone: '#fca5a5', bg: 'rgba(239,68,68,.09)', border: 'rgba(239,68,68,.22)', showConfidence: false },
+    UNKNOWN: { short: 'Lifecycle · Status belum tersedia', tone: '#94a3b8', bg: 'rgba(148,163,184,.06)', border: 'rgba(148,163,184,.16)', showConfidence: false }
   };
 
   function cleanTicker(value) {
@@ -21,15 +23,14 @@
   }
 
   function phaseMeta(row) {
-    var phase = String(row && row.setup_phase || '').toUpperCase();
-    return PHASE_META[phase] || null;
+    var phase = String(row && row.setup_phase || '').trim().toUpperCase();
+    return PHASE_META[phase] || PHASE_META.UNKNOWN;
   }
 
   function phaseSummary(row) {
     var meta = phaseMeta(row);
-    if (!meta) return null;
     var confidence = Number(row && row.phase_confidence);
-    var suffix = Number.isFinite(confidence) ? ' · ' + Math.round(confidence) + '%' : '';
+    var suffix = meta.showConfidence && Number.isFinite(confidence) ? ' · ' + Math.round(confidence) + '%' : '';
     return meta.short + suffix;
   }
 
@@ -59,10 +60,6 @@
     var row = rowForCard(root, card);
     var meta = phaseMeta(row);
     var current = card && card.querySelector('[data-lifecycle-chip="1"]');
-    if (!meta) {
-      if (current) current.remove();
-      return;
-    }
     if (!current) {
       current = root.document.createElement('div');
       current.setAttribute('data-lifecycle-chip', '1');
@@ -76,10 +73,10 @@
     var chip = root.document.createElement('span');
     chip.style.cssText = 'display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;font-weight:750;letter-spacing:.01em;border:1px solid ' + meta.border + ';background:' + meta.bg + ';color:' + meta.tone;
     chip.textContent = phaseSummary(row);
-    chip.title = String(row.setup_phase_label || meta.short) + (row.phase_reason ? ' — ' + row.phase_reason : '');
+    chip.title = String(row && row.setup_phase_label || meta.short) + (row && row.phase_reason ? ' — ' + row.phase_reason : '');
     current.appendChild(chip);
 
-    if (row.chase_risk === 'HIGH' || row.chase_risk === 'MEDIUM') {
+    if (row && (row.chase_risk === 'HIGH' || row.chase_risk === 'MEDIUM')) {
       var chase = root.document.createElement('span');
       chase.style.cssText = 'color:' + (row.chase_risk === 'HIGH' ? '#fca5a5' : '#fcd34d') + ';font-weight:650';
       chase.textContent = 'Chase ' + row.chase_risk;
@@ -102,7 +99,7 @@
   function appendDetail(root, row) {
     var content = root.document.getElementById('scrDetailContent');
     var meta = phaseMeta(row);
-    if (!content || !meta) return;
+    if (!content) return;
     var old = content.querySelector('[data-lifecycle-detail="1"]');
     if (old) old.remove();
 
@@ -112,15 +109,15 @@
 
     var title = root.document.createElement('div');
     title.style.cssText = 'font-size:12px;font-weight:800;color:' + meta.tone + ';margin-bottom:8px';
-    title.textContent = detailValue(row.setup_phase_label || meta.short) + (Number.isFinite(Number(row.phase_confidence)) ? ' · ' + Math.round(Number(row.phase_confidence)) + '%' : '');
+    title.textContent = phaseSummary(row);
     panel.appendChild(title);
 
     var metrics = root.document.createElement('div');
     metrics.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px;font-size:10px;color:#94a3b8';
     [
-      ['Volume', row.volume_quality],
-      ['Breakout', row.breakout_quality],
-      ['Chase', row.chase_risk]
+      ['Volume', row && row.volume_quality],
+      ['Breakout', row && row.breakout_quality],
+      ['Chase', row && row.chase_risk]
     ].forEach(function (item) {
       var cell = root.document.createElement('div');
       cell.style.cssText = 'padding:7px;border-radius:8px;background:rgba(2,6,23,.25);min-width:0';
@@ -134,7 +131,7 @@
     });
     panel.appendChild(metrics);
 
-    if (row.phase_reason) {
+    if (row && row.phase_reason) {
       var reason = root.document.createElement('p');
       reason.style.cssText = 'margin:0;color:#cbd5e1;font-size:10.5px;line-height:1.5';
       reason.textContent = row.phase_reason;
