@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - redesign/premium-workstation-v1
+  pull_request:
+    branches:
+      - redesign/premium-workstation-v1
 
 permissions:
   contents: write
@@ -32,7 +35,6 @@ jobs:
           css = css_path.read_text()
           test = test_path.read_text()
 
-          # Align the no-CSS / startup canvas with the workstation canvas.
           html = html.replace('#0b0e14', '#06090e')
 
           if '/premium-workstation.css?v=20260818-v5' not in html:
@@ -105,14 +107,21 @@ jobs:
           html_path.write_text(html)
           css_path.write_text(css)
           test_path.write_text(test)
+          Path('public/premium-workstation-v5-fragment.css').unlink(missing_ok=True)
+          Path('.tmp-premium-v5-trigger').unlink(missing_ok=True)
+          Path('public/.v5-hardening-trigger.txt').unlink(missing_ok=True)
           PY
-          rm -f public/premium-workstation-v5-fragment.css .tmp-premium-v5-trigger
+      - name: Validate V5 contract
+        run: |
+          node --test test/premium-workstation-ui.test.js test/repo-security-hardening.test.js
+          npm run build
+          git diff --check
       - name: Commit V5 patch
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A public/index.html public/premium-workstation.css public/premium-workstation-v5-fragment.css test/premium-workstation-ui.test.js .tmp-premium-v5-trigger
+          git add -A public/index.html public/premium-workstation.css public/premium-workstation-v5-fragment.css public/.v5-hardening-trigger.txt test/premium-workstation-ui.test.js .tmp-premium-v5-trigger
           if git diff --cached --quiet; then
             echo "No V5 changes to commit"
             exit 0
