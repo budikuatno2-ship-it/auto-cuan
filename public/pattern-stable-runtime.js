@@ -506,6 +506,7 @@
     if (originalLogout) root.logout = function () { state.allowed=false; state.checked=true; state.version+=1; clearCache(); hide(); removeNav(); return originalLogout.apply(root, arguments); };
     access(false).then(function (allowed) { if (allowed && root.location && root.location.pathname === '/pattern') open(); });
     root.setInterval(function () {
+      if (doc.visibilityState === 'hidden') return;
       if (!state.checked || root.PatternMapAdminAccess.isAllowed()) return;
       state.allowed=false; removeNav();
       var node=doc.getElementById('page-pattern');
