@@ -6,6 +6,11 @@ on:
       - fix/swing-nk-trade-plan-v2-persistence
     paths:
       - .github/workflows/swing-nk-trade-plan-v2-persistence-temp.yml
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
+    paths:
+      - .github/workflows/swing-nk-trade-plan-v2-persistence-temp.yml
 
 permissions:
   contents: write
