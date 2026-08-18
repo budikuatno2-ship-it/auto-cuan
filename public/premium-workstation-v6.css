@@ -1,0 +1,535 @@
+/* ========================================================================
+   AUTO-CUAN PREMIUM WORKSTATION V6 — STRUCTURAL WORKSPACE PASS
+   Presentation only. This layer changes information hierarchy, density,
+   scrolling ergonomics, and responsive composition without changing any
+   trading, auth, API, persistence, Telegram, or scheduling behavior.
+   ======================================================================== */
+
+:root {
+  --pw-page-wide: 1420px;
+  --pw-page-focus: 1240px;
+  --pw-command-top: calc(var(--pw-header-h) + 8px);
+  --pw-dock-bg: rgba(7, 13, 19, .965);
+  --pw-panel-quiet: #070d13;
+  --pw-divider: rgba(148, 163, 184, .075);
+}
+
+/* ------------------------------------------------------------------------
+   Data-heavy pages get more horizontal working room while reading-oriented
+   pages retain a tighter measure. This keeps the product feeling like a real
+   workstation instead of stretching every surface to the same width.
+   ------------------------------------------------------------------------ */
+#page-dashboard,
+#page-screener,
+#page-sektor,
+#page-chart,
+#page-pattern {
+  max-width: var(--pw-page-wide) !important;
+}
+
+#page-analisis,
+#page-subscription {
+  max-width: var(--pw-page-focus) !important;
+}
+
+#page-dashboard,
+#page-screener,
+#page-analisis {
+  isolation: isolate;
+}
+
+/* ------------------------------------------------------------------------
+   Header / primary navigation
+   ------------------------------------------------------------------------ */
+@media (min-width: 1024px) {
+  .header-shell {
+    max-width: 1500px !important;
+  }
+
+  .desktop-nav,
+  #mainNav {
+    scrollbar-gutter: stable both-edges;
+  }
+
+  .desktop-nav .nav-btn,
+  #mainNav .nav-btn {
+    white-space: nowrap;
+  }
+}
+
+#mainNav {
+  scroll-snap-type: x proximity;
+}
+
+#mainNav > .nav-btn {
+  scroll-snap-align: start;
+}
+
+/* ------------------------------------------------------------------------
+   Dashboard — command hierarchy
+   ------------------------------------------------------------------------ */
+#page-dashboard > .space-y-4 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px !important;
+}
+
+#page-dashboard > .space-y-4 > * {
+  min-width: 0;
+}
+
+.dashboard-hero {
+  min-height: 132px;
+}
+
+.dashboard-hero-main {
+  max-width: 860px;
+}
+
+.dashboard-hero-meta {
+  align-self: stretch;
+  justify-content: center;
+}
+
+.market-band .ac-section-head,
+#page-dashboard .ac-section-head {
+  align-items: end;
+}
+
+#page-dashboard .market-band-grid {
+  grid-template-columns: minmax(300px, 1.25fr) repeat(2, minmax(220px, .95fr));
+}
+
+#page-dashboard .market-tile {
+  display: flex;
+  flex-direction: column;
+}
+
+#page-dashboard .market-tile-body {
+  flex: 1 1 auto;
+}
+
+#page-dashboard .market-tile-link,
+#page-dashboard .market-tile-note {
+  margin-top: auto;
+  padding-top: 9px;
+}
+
+.dashboard-radar-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.9fr) minmax(300px, .9fr) !important;
+  gap: 12px !important;
+}
+
+.dashboard-radar-grid > * {
+  min-width: 0;
+}
+
+.radar-panel {
+  min-height: 304px !important;
+  padding: 15px !important;
+}
+
+.radar-panel:first-child {
+  border-color: rgba(45, 212, 163, .12) !important;
+}
+
+.radar-panel .panel-header {
+  min-height: 46px;
+}
+
+#dashboardTop5List,
+#dashboardMonitorList {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+#dashboardTop5List .dashboard-pick-card,
+#dashboardMonitorList > *:not(.empty-state) {
+  min-width: 0;
+}
+
+#dashboardMonitorUpdated {
+  align-self: flex-start;
+}
+
+#top5HistoryList {
+  display: grid;
+  gap: 7px;
+}
+
+/* ------------------------------------------------------------------------
+   Screener — the filters behave like a professional control dock, while the
+   candidates remain visually dominant. No filter behavior is changed.
+   ------------------------------------------------------------------------ */
+#page-screener {
+  padding-top: 16px !important;
+}
+
+#screenerContent {
+  position: relative;
+}
+
+#screenerContent .scr-filter-grid {
+  z-index: 14;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .16), inset 0 1px 0 rgba(255,255,255,.018);
+}
+
+@media (min-width: 1024px) {
+  #screenerContent .scr-filter-grid {
+    position: sticky;
+    top: var(--pw-command-top);
+    background: var(--pw-dock-bg) !important;
+    backdrop-filter: blur(14px) saturate(112%);
+  }
+}
+
+#screenerContent .scr-filter-grid::after {
+  content: '';
+  position: absolute;
+  inset: auto 8px -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(45,212,163,.19), transparent);
+  pointer-events: none;
+}
+
+#screenerContent .scr-filter-grid select,
+#screenerContent .scr-filter-grid input,
+#screenerContent .scr-filter-grid label {
+  min-width: 0;
+}
+
+#dtScreenerStats,
+[id$='ScreenerStats'] {
+  overflow: hidden;
+  gap: 0 !important;
+  border: 1px solid var(--pw-divider);
+  border-radius: 8px;
+  background: var(--pw-panel-quiet);
+}
+
+#dtScreenerStats > *,
+[id$='ScreenerStats'] > * {
+  border: 0 !important;
+  border-right: 1px solid var(--pw-divider) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+#dtScreenerStats > *:last-child,
+[id$='ScreenerStats'] > *:last-child {
+  border-right: 0 !important;
+}
+
+.kg-screener-tab,
+.nk-screener-tab,
+.dt-screener-tab,
+.screener-tab {
+  position: relative;
+}
+
+.kg-screener-tab.active::after,
+.nk-screener-tab.active::after,
+.dt-screener-tab.active::after,
+.screener-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 28%;
+  right: 28%;
+  bottom: -1px;
+  height: 1px;
+  background: rgba(45,212,163,.7);
+}
+
+#dtCardGrid,
+#kgCardGrid,
+#nkCardGrid {
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.dt-card-item,
+.kg-card-item,
+.nk-card-item {
+  min-width: 0;
+  min-height: 100%;
+}
+
+#dtScreenerTableWrap,
+#kgScreenerTableWrap,
+#nkScreenerTableWrap,
+#rankingTableWrap,
+#sektorDetailTable {
+  position: relative;
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+}
+
+#dtScreenerTableWrap::before,
+#kgScreenerTableWrap::before,
+#nkScreenerTableWrap::before,
+#rankingTableWrap::before,
+#sektorDetailTable::before {
+  content: '';
+  position: sticky;
+  z-index: 8;
+  left: 0;
+  top: 0;
+  display: block;
+  width: 1px;
+  height: 1px;
+  box-shadow: 12px 0 20px rgba(0,0,0,.16);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------------
+   Analysis — persistent command surface, calm result canvas, and readable
+   follow-up area. Existing submit/chat behavior is untouched.
+   ------------------------------------------------------------------------ */
+#page-analisis {
+  padding-top: 12px !important;
+}
+
+#page-analisis > div:first-child {
+  top: var(--pw-command-top) !important;
+  margin-bottom: 2px;
+  padding: 10px !important;
+  border: 1px solid rgba(148,163,184,.08) !important;
+  border-radius: 10px;
+  background: rgba(6,9,14,.975) !important;
+  box-shadow: 0 12px 30px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.018);
+}
+
+#analisisInput {
+  min-width: 0;
+  height: 46px !important;
+}
+
+#analisisResult {
+  min-height: 320px;
+  padding-top: 18px !important;
+}
+
+#analisisResult > * {
+  min-width: 0;
+}
+
+#rankingTableWrap {
+  max-height: min(66vh, 720px);
+}
+
+#analisisFollowUp {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+  margin-top: 14px;
+  padding-top: 10px !important;
+  padding-bottom: max(10px, env(safe-area-inset-bottom)) !important;
+  backdrop-filter: blur(14px) saturate(112%);
+}
+
+#analysisChatInput {
+  resize: vertical;
+  max-height: 180px;
+}
+
+/* ------------------------------------------------------------------------
+   Shared financial surfaces
+   ------------------------------------------------------------------------ */
+#page-dashboard .panel,
+#page-screener .panel,
+#page-analisis .panel,
+#page-sektor .panel {
+  min-width: 0;
+}
+
+#page-dashboard table,
+#page-screener table,
+#page-analisis table,
+#page-sektor table {
+  font-size: 11px;
+}
+
+#page-dashboard thead th,
+#page-screener thead th,
+#page-analisis thead th,
+#page-sektor thead th {
+  height: 34px;
+}
+
+#page-dashboard tbody td,
+#page-screener tbody td,
+#page-analisis tbody td,
+#page-sektor tbody td {
+  height: 35px;
+}
+
+.empty-state {
+  min-height: 118px;
+  display: grid;
+  place-content: center;
+}
+
+/* Reduce painting work for large result collections without changing content. */
+@supports (content-visibility: auto) {
+  .dt-card-item,
+  .kg-card-item,
+  .nk-card-item,
+  #top5HistoryList > *:not(.empty-state) {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 260px;
+  }
+}
+
+/* ------------------------------------------------------------------------
+   Desktop density / large displays
+   ------------------------------------------------------------------------ */
+@media (min-width: 1280px) {
+  .page-content {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+  #page-dashboard .market-tile {
+    min-height: 120px;
+  }
+
+  #dtCardGrid,
+  #kgCardGrid,
+  #nkCardGrid {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)) !important;
+  }
+}
+
+/* ------------------------------------------------------------------------
+   Tablet / mobile — preserve hierarchy, remove sticky collisions, maintain
+   44px controls and horizontal-navigation discoverability.
+   ------------------------------------------------------------------------ */
+@media (max-width: 1023px) {
+  .dashboard-radar-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .radar-panel {
+    min-height: 0 !important;
+  }
+
+  #page-dashboard .market-band-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  #page-dashboard,
+  #page-screener,
+  #page-analisis {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  #mainNav {
+    gap: 3px !important;
+    padding-inline: 2px;
+    scroll-padding-inline: 2px;
+  }
+
+  #mainNav .nav-btn {
+    flex: 0 0 auto;
+    min-height: 40px;
+  }
+
+  #page-dashboard > .space-y-4 {
+    gap: 14px !important;
+  }
+
+  .dashboard-hero {
+    min-height: 0;
+  }
+
+  #page-dashboard .market-band-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #page-dashboard .market-tile {
+    min-height: 104px;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--pw-divider) !important;
+  }
+
+  #page-dashboard .market-tile:last-child {
+    border-bottom: 0 !important;
+  }
+
+  #screenerContent .scr-filter-grid {
+    position: relative !important;
+    top: auto !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #dtScreenerStats,
+  [id$='ScreenerStats'] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #dtScreenerStats > *,
+  [id$='ScreenerStats'] > * {
+    border-right: 1px solid var(--pw-divider) !important;
+    border-bottom: 1px solid var(--pw-divider) !important;
+  }
+
+  #dtCardGrid,
+  #kgCardGrid,
+  #nkCardGrid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #page-analisis > div:first-child {
+    top: calc(var(--pw-header-h) + 3px) !important;
+    margin-inline: -3px;
+    padding: 8px !important;
+    border-radius: 8px;
+  }
+
+  #analisisFollowUp {
+    bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboard-hero-meta {
+    align-items: flex-start !important;
+  }
+
+  #dtScreenerStats,
+  [id$='ScreenerStats'] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #dtScreenerStats > *,
+  [id$='ScreenerStats'] > * {
+    border-right: 0 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #dashboardTop5List .dashboard-pick-card,
+  #dashboardMonitorList > *:not(.empty-state),
+  .dt-card-item,
+  .kg-card-item,
+  .nk-card-item {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  #screenerContent .scr-filter-grid,
+  #page-analisis > div:first-child,
+  .radar-panel,
+  #dtScreenerStats,
+  [id$='ScreenerStats'] {
+    border-color: var(--pw-line-strong) !important;
+  }
+}
