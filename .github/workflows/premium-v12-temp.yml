@@ -19,7 +19,7 @@ jobs:
           ref: redesign/premium-workstation-v1
           fetch-depth: 0
       - name: Setup Node 22
-        uses: actions/setup-node@1e60f620b9541d9d15b7a0188f93c91c2695a3f # v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
           cache: npm
@@ -44,5 +44,3 @@ jobs:
           git add public/index.html test/public-landing-diligence.test.js
           git commit -m 'feat: integrate public trust navigation v12'
           git push origin HEAD:redesign/premium-workstation-v1
-
-# trigger: 2026-08-18T16:55+07:00
