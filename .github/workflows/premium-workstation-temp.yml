@@ -1,0 +1,79 @@
+name: Temporary Premium Workstation Validation
+
+on:
+  push:
+    branches:
+      - redesign/premium-workstation-v1
+
+permissions:
+  contents: write
+
+jobs:
+  premium-ui:
+    if: ${{ !contains(github.event.head_commit.message || '', '[premium-ui-worker]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: redesign/premium-workstation-v1
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Wire premium workstation layer
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import json
+
+          index_path = Path('public/index.html')
+          vercel_path = Path('vercel.json')
+
+          html = index_path.read_text()
+          base = '    <link rel="stylesheet" href="/ui-theme.css?v=20260802-ui-theme-v2">'
+          premium = '    <link rel="stylesheet" href="/premium-workstation.css?v=20260818-v1">'
+          if premium not in html:
+              if base not in html:
+                  raise SystemExit('ui-theme link anchor missing')
+              html = html.replace(base, base + '\n' + premium, 1)
+          index_path.write_text(html)
+
+          config = json.loads(vercel_path.read_text())
+          headers = config.get('headers', [])
+          entry = next((row for row in headers if row.get('source') == '/premium-workstation.css'), None)
+          cache = 'public, max-age=86400, stale-while-revalidate=604800'
+          if entry is None:
+              headers.append({
+                  'source': '/premium-workstation.css',
+                  'headers': [{'key': 'Cache-Control', 'value': cache}]
+              })
+          else:
+              cc = next((h for h in entry.get('headers', []) if h.get('key', '').lower() == 'cache-control'), None)
+              if cc is None:
+                  entry.setdefault('headers', []).append({'key': 'Cache-Control', 'value': cache})
+              else:
+                  cc['value'] = cache
+          config['headers'] = headers
+          vercel_path.write_text(json.dumps(config, indent=2, ensure_ascii=False) + '\n')
+          PY
+      - name: Focused premium UI tests
+        run: node --test test/premium-workstation-ui.test.js test/repo-security-hardening.test.js
+      - name: Production build gate
+        run: npm run build
+      - name: Diff whitespace check
+        run: git diff --check
+      - name: Commit validated wiring
+        shell: bash
+        run: |
+          if git diff --quiet -- public/index.html vercel.json; then
+            echo "No wiring changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/index.html vercel.json
+          git commit -m "feat: enable premium workstation visual layer [premium-ui-worker]"
+          git push origin HEAD:redesign/premium-workstation-v1
