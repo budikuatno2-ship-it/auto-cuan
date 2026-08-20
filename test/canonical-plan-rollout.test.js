@@ -163,7 +163,12 @@ test('19. API JavaScript count remains exactly 12', () => {
   assert.equal(count, 12);
 });
 
-test('20. existing 177 Trade Plan V2 tests are not weakened or deleted', () => {
+// Baseline moved 177 -> 182 when trade-plan-v2-declared-guards.test.js added 5
+// tests covering emergency_max_structural_distance_pct. No pre-existing test was
+// changed: the seven original files still count 12/29/23/11/34/16/52 = 177,
+// exactly as at the commit that set this baseline. Raise this number only
+// alongside added tests, never to absorb a deletion.
+test('20. existing 182 Trade Plan V2 tests are not weakened or deleted', () => {
   const dir = __dirname;
   const files = fs.readdirSync(dir).filter((f) => /^trade-plan-v2.*\.test\.js$/.test(f));
   let total = 0;
@@ -172,5 +177,5 @@ test('20. existing 177 Trade Plan V2 tests are not weakened or deleted', () => {
     const matches = src.match(/^\s*test\(/gm);
     total += matches ? matches.length : 0;
   }
-  assert.equal(total, 177, 'the baseline Trade Plan V2 test count must remain exactly 177');
+  assert.equal(total, 182, 'the baseline Trade Plan V2 test count must remain exactly 182');
 });

@@ -2119,7 +2119,10 @@ function renderShareDt(d) {
     var meta = d.meta || {};
     var ts = meta.calculated_at ? new Date(meta.calculated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
     var statusPri = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8, 'AVOID': 9 };
-    var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] || 10) - (statusPri[b.status] || 10) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
+    // `|| 10` sent A_PLUS_SETUP (priority 0) to the unknown-status fallback,
+    // ranking the best setups below every AVOID row. Compare against null so a
+    // legitimate priority of 0 survives.
+    var sorted = d.results.sort(function(a, b) { return (statusPri[a.status] != null ? statusPri[a.status] : 10) - (statusPri[b.status] != null ? statusPri[b.status] : 10) || (b.daytrade_score || 0) - (a.daytrade_score || 0); });
     html = '<p class="text-xs text-gray-500 mb-2">Update: ' + ts + ' WIB · Mode: ' + (meta.run_mode || '—') + ' · ' + sorted.length + ' kandidat · Intraday Radar</p>';
     html += '<div class="overflow-x-auto"><table class="w-full text-xs border-collapse"><thead><tr class="text-gray-500 border-b border-dark-600/30 text-[10px]">';
     html += '<th class="px-2 py-1.5 text-left">Ticker</th><th class="px-2 py-1.5">Setup Score</th><th class="px-2 py-1.5">Exec</th><th class="px-2 py-1.5">Status</th><th class="px-2 py-1.5 text-right">Last</th><th class="px-2 py-1.5 text-right">Chg%</th><th class="px-2 py-1.5 text-right">Vol</th><th class="px-2 py-1.5">PreSpike</th><th class="px-2 py-1.5">Momentum</th><th class="px-2 py-1.5 text-right">Entry Area</th><th class="px-2 py-1.5 text-right">SL</th><th class="px-2 py-1.5 text-right">TP1</th><th class="px-2 py-1.5 text-right">TP2</th><th class="px-2 py-1.5 text-right">RR</th><th class="px-2 py-1.5 text-left">Timing</th><th class="px-2 py-1.5 text-left">Arah</th><th class="px-2 py-1.5 text-left">Setup</th><th class="px-2 py-1.5 text-left">Catatan</th></tr></thead><tbody>';

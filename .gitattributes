@@ -1,0 +1,22 @@
+# Every blob in this repository is stored with LF. Without this file, a Windows
+# clone with core.autocrlf=true checks the working tree out as CRLF, and the
+# repository's own tooling then fails on it: several build steps and tests match
+# multi-line string literals against source files, and those needles are written
+# with \n. tools/run-ai-eval-cloud-bounded.js is the clearest case — its patch
+# guard reports "ditemukan 0" and the CI gate's own test set goes red locally
+# while passing on the Linux runner.
+#
+# Pinning eol=lf keeps the working tree identical to the blobs on every platform,
+# so a local run is a valid signal about CI.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending normalised.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.xlsx binary
+*.gz binary
+*.zip binary
