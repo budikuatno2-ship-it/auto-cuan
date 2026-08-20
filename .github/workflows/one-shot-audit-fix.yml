@@ -6,6 +6,11 @@ on:
       - claude/repo-audit-skills-5c832e
     paths:
       - .github/workflows/one-shot-audit-fix.yml
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
+    paths:
+      - .github/workflows/one-shot-audit-fix.yml
 
 permissions:
   contents: write
