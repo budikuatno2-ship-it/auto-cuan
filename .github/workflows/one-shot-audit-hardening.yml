@@ -34,8 +34,23 @@ jobs:
 
       - run: npm ci --ignore-scripts
 
-      - name: Apply deterministic audit hardening patch
-        run: python3 tools/one-shot-audit-hardening.py
+      - name: Correct temporary patch anchor and apply hardening
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tools/one-shot-audit-hardening.py')
+          s = p.read_text()
+          start = s.index('needle = """      return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });')
+          end = s.index('p.write_text(s)', start)
+          replacement = '''anchor = "    // Database credentials are valid from here on. Clear account/pair failure\\n"
+          pos = s.find(anchor, s.find('const credentialCheck'))
+          if pos < 0:
+              raise SystemExit('login database-credentials anchor not found')
+          upgrade = """    // Transparent migration: legacy rows stored the client SHA-256 prehash itself,\n    // which made a DB read equivalent to a login credential. After successful\n    // verification, replace it with a salted server-side scrypt credential.\n    if (credentialCheck.needsUpgrade) {\n      try {\n        const protectedCredential = passwordCredential.protectClientHash(passwordHash);\n        const upgraded = await supabase\n          .from('app_users')\n          .update({ password_hash: protectedCredential })\n          .eq('id', user.id)\n          .eq('password_hash', user.password_hash);\n        if (upgraded.error) console.error('login-user credential migration failed');\n      } catch (_) {\n        console.error('login-user credential migration failed');\n      }\n    }\n\n"""\n          s = s[:pos] + upgrade + s[pos:]\n'''
+          p.write_text(s[:start] + replacement + s[end:])
+          PY
+          python3 tools/one-shot-audit-hardening.py
 
       - name: Run focused audit regressions
         run: >-
