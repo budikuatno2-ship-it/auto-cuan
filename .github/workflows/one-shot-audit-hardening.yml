@@ -1,6 +1,11 @@
 name: One-shot remaining audit hardening
 
 on:
+  push:
+    branches:
+      - claude/repo-audit-skills-5c832e
+    paths:
+      - .github/workflows/one-shot-audit-hardening.yml
   pull_request:
     branches:
       - feat/daytrade-screener-v1
