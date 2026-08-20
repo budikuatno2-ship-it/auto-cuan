@@ -6,10 +6,9 @@
 // a stop, or a target anywhere in that range and the note shipped to Telegram
 // as if it were grounded in the deterministic template printed above it.
 //
-// The band existed to tolerate clock references (HHMM). Those are still
-// tolerated: the extractor splits "09:30" and "09.30" into values that the
-// separate 0-31 rule already covers, so the blanket band was never what
-// protected them.
+// Clock references must be recognised syntactically instead of by exempting an
+// entire numeric band. This also protects valid times whose minute component is
+// above 31 (for example 09:45 or 13:59), which a numeric-only exception misses.
 
 const test = require('node:test');
 const assert = require('node:assert');
@@ -55,15 +54,34 @@ test('levels that really are in the source data still validate', () => {
   assert.equal(result.valid, true);
 });
 
-test('clock references stay allowed — they were never protected by the price band', () => {
+test('clock references stay allowed across the full valid minute range', () => {
   for (const note of [
     'Konfirmasi ditunggu sampai 09:30.',
+    'Konfirmasi ditunggu sampai 09:45.',
     'Sesi kedua dibuka 13.30.',
-    'Tutup di 15.00.'
+    'Sesi kedua dibuka 13.59.',
+    'Tutup di 15.00.',
+    'Batas terakhir 23:59.'
   ]) {
     const result = validator.validateNote(note, SOURCE);
     assert.equal(result.valid, true, note + ' should validate');
   }
+});
+
+test('a standalone invented minute-like number is still rejected', () => {
+  const result = validator.validateNote('Support kuat di 45.', SOURCE);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.reason, 'fabricated_numbers');
+  assert.deepEqual(result.fabricatedNumbers, ['45']);
+});
+
+test('an invalid clock token does not get clock exemption', () => {
+  const result = validator.validateNote('Konfirmasi 09:75.', SOURCE);
+
+  assert.equal(result.valid, false);
+  assert.equal(result.reason, 'fabricated_numbers');
+  assert.deepEqual(result.fabricatedNumbers, ['75']);
 });
 
 test('a year reference stays allowed', () => {
