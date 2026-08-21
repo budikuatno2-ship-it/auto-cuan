@@ -30,15 +30,15 @@
     loadScriptOnce('/account-center-lazy-loader-v1.js?v=20260816-v1', 'data-autocuan-account-center-lazy');
     loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');
 
-    // Maintenance code runtime v7: lower-latency live watch, lightweight watch
-    // snapshot, no polling contention during code submit, and immediate client
-    // dashboard transition after the server has issued the signed session.
-    loadScriptOnce('/admin-maintenance-code.js?v=20260821-v7', 'data-autocuan-maintenance-code');
+    // Maintenance code runtime v8: only watches while a maintenance/status gate
+    // is actually visible, bounds network stalls, and moves Telegram notification
+    // work off the browser login critical path.
+    loadScriptOnce('/admin-maintenance-code.js?v=20260822-v8', 'data-autocuan-maintenance-code');
 
     // Compatibility fallback only. Code mode suppresses pairing polling while
     // maintenance-code mode is active.
     loadScriptOnce('/admin-zero-link-pairing.js?v=20260821-v3', 'data-autocuan-zero-link-pairing');
-    loadScriptOnce('/fast-watcher-live-refresh.js?v=20260730-v1', 'data-autocuan-fast-watcher-refresh');
+    loadScriptOnce('/fast-watcher-live-refresh.js?v=20260822-v2', 'data-autocuan-fast-watcher-refresh');
   }
 
   if (document.readyState === 'loading') {
