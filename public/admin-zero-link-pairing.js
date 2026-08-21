@@ -103,6 +103,16 @@
   async function poll() {
     if (stopped) return;
 
+    // New preferred flow: once the maintenance-code runtime confirms that its
+    // backend schema is available, legacy device/pairing polling must go quiet.
+    // This avoids creating irrelevant pair requests while the user is typing the
+    // Telegram code, while preserving the old path as a pre-migration fallback.
+    if (window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ === true) {
+      hideHint();
+      window.setTimeout(poll, 2500);
+      return;
+    }
+
     if (!onDashboardPath() || !maintenanceVisible()) {
       hideHint();
       window.setTimeout(poll, 2500);
