@@ -5,10 +5,12 @@
   window.__AUTOCUAN_MAINTENANCE_CODE_RUNTIME__ = true;
 
   var API = '/api/reset-password';
-  var pollTimer = null;
-  var inFlight = false;
   var submitting = false;
   var expiresAt = 0;
+
+  // Prefer the maintenance-code system immediately so the legacy zero-link
+  // runtime cannot flash an administrator control while this feature probes.
+  window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
 
   function visible(id) {
     var el = document.getElementById(id);
@@ -43,9 +45,6 @@
     var btn = legacyButton(scope);
     if (btn && btn.parentNode) return btn.parentNode;
 
-    // Defensive fallback: maintenance UI must never become inaccessible merely
-    // because the legacy hidden admin button was removed/rearranged by another
-    // UI layer. Create a self-contained host directly inside the maintenance card.
     var screen = scopeScreen(scope);
     var card = screen && screen.querySelector('.maintenance-card');
     if (!card) return null;
@@ -63,6 +62,19 @@
     return host;
   }
 
+  function setLegacyVisible(scope, show) {
+    var btn = legacyButton(scope);
+    var status = legacyStatus(scope);
+    if (btn) btn.style.display = show ? '' : 'none';
+    if (status) status.style.display = show ? '' : 'none';
+
+    var panel = btn && btn.parentNode;
+    var outer = panel && panel.closest && panel.closest('.maintenance-admin');
+    if (outer && outer.style) {
+      outer.style.display = show ? '' : 'none';
+    }
+  }
+
   function forceHostVisible(scope) {
     var panel = legacyPanel(scope);
     if (!panel) return null;
@@ -74,8 +86,6 @@
     }
     var outer = panel.closest && panel.closest('.maintenance-admin');
     if (outer && outer.style) {
-      // Older production CSS intentionally hid the legacy admin entry. Code
-      // login lives in the same DOM area, so explicitly unhide the container.
       outer.style.display = 'flex';
       outer.style.visibility = 'visible';
       outer.style.opacity = '1';
@@ -83,20 +93,18 @@
     return panel;
   }
 
-  function setLegacyVisible(scope, show) {
-    var btn = legacyButton(scope);
-    var status = legacyStatus(scope);
-    if (btn) btn.style.display = show ? '' : 'none';
-    if (status) status.style.display = show ? '' : 'none';
+  function removeCodeUi(scope) {
+    var wrap = document.getElementById(scopeIds(scope).wrap);
+    if (wrap) wrap.remove();
+    var screen = scopeScreen(scope);
+    var fallback = screen && screen.querySelector('[data-admin-code-host]');
+    if (fallback && fallback.parentNode) fallback.parentNode.remove();
   }
 
   function ensureCodeUi(scope) {
     var ids = scopeIds(scope);
     var existing = document.getElementById(ids.wrap);
-    if (existing) {
-      forceHostVisible(scope);
-      return existing;
-    }
+    if (existing) return existing;
 
     var panel = forceHostVisible(scope);
     if (!panel) return null;
@@ -108,34 +116,30 @@
     wrap.style.textAlign = 'center';
     wrap.style.fontFamily = 'Inter, system-ui, sans-serif';
     wrap.innerHTML = [
-      '<div data-code-title style="font-size:12px;font-weight:800;color:#cbd5e1">Akses administrator</div>',
-      '<div data-code-status role="status" aria-live="polite" style="margin-top:5px;font-size:11.5px;line-height:1.55;color:#6b7a90">Kirim <strong style="color:#cbd5e1">/akses</strong> ke AutoCuan Verification.</div>',
-      '<form data-code-form style="margin-top:10px" autocomplete="off">',
+      '<div data-code-title style="font-size:12px;font-weight:800;color:#cbd5e1">Verifikasi administrator</div>',
+      '<div data-code-status role="status" aria-live="polite" style="margin-top:5px;font-size:11.5px;line-height:1.55;color:#6b7a90">Masukkan 6 digit dari AutoCuan Verification.</div>',
+      '<div style="margin-top:10px">',
       '  <input data-code-input inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" aria-label="Kode administrator 6 digit" placeholder="000000" style="box-sizing:border-box;width:100%;height:46px;border:1px solid rgba(148,163,184,.25);border-radius:12px;background:#020617;color:#fff;text-align:center;font-size:22px;font-weight:800;letter-spacing:.22em;outline:none" />',
-      '  <button data-code-submit type="submit" style="box-sizing:border-box;width:100%;min-height:44px;margin-top:9px;border:0;border-radius:12px;background:#10b981;color:#04130d;font-size:13px;font-weight:800;cursor:pointer">Masuk sebagai administrator</button>',
-      '</form>',
+      '</div>',
       '<div data-code-error class="hidden" role="alert" style="margin-top:8px;font-size:11.5px;line-height:1.5;color:#fca5a5"></div>'
     ].join('');
     panel.appendChild(wrap);
 
-    var form = wrap.querySelector('[data-code-form]');
     var input = wrap.querySelector('[data-code-input]');
     if (input) {
       input.addEventListener('input', function () {
         this.value = String(this.value || '').replace(/\D/g, '').slice(0, 6);
+        if (this.value.length === 6 && !submitting) submitCode(scope);
       });
-    }
-    if (form) {
-      form.addEventListener('submit', function (event) {
-        event.preventDefault();
-        submitCode(scope);
-      });
+      window.setTimeout(function () {
+        try { input.focus(); } catch (_) {}
+      }, 60);
     }
     return wrap;
   }
 
   function setStatus(scope, text, tone) {
-    var wrap = ensureCodeUi(scope);
+    var wrap = document.getElementById(scopeIds(scope).wrap);
     if (!wrap) return;
     var el = wrap.querySelector('[data-code-status]');
     if (!el) return;
@@ -146,7 +150,7 @@
   }
 
   function setError(scope, text) {
-    var wrap = ensureCodeUi(scope);
+    var wrap = document.getElementById(scopeIds(scope).wrap);
     if (!wrap) return;
     var el = wrap.querySelector('[data-code-error]');
     if (!el) return;
@@ -159,25 +163,13 @@
     el.classList.remove('hidden');
   }
 
-  function showForm(scope, show) {
-    var wrap = ensureCodeUi(scope);
-    if (!wrap) return;
-    var form = wrap.querySelector('[data-code-form]');
-    if (form) form.classList.toggle('hidden', !show);
-  }
-
   function setSubmitting(scope, value) {
     submitting = value;
-    var wrap = ensureCodeUi(scope);
+    var wrap = document.getElementById(scopeIds(scope).wrap);
     if (!wrap) return;
     var input = wrap.querySelector('[data-code-input]');
-    var button = wrap.querySelector('[data-code-submit]');
     if (input) input.disabled = value;
-    if (button) {
-      button.disabled = value;
-      button.style.opacity = value ? '.65' : '1';
-      button.textContent = value ? 'Memverifikasi…' : 'Masuk sebagai administrator';
-    }
+    setStatus(scope, value ? 'Memverifikasi kode…' : 'Masukkan 6 digit dari AutoCuan Verification.', value ? 'info' : 'info');
   }
 
   async function post(action, payload) {
@@ -200,41 +192,34 @@
     return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
   }
 
-  function renderCodeMode(scope, data) {
+  function renderActiveCode(scope, data) {
     window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
-    forceHostVisible(scope);
     setLegacyVisible(scope, false);
-    ensureCodeUi(scope);
+    var wrap = ensureCodeUi(scope);
+    if (!wrap) return;
 
-    var oldHint = document.getElementById('adminZeroLinkPairingHint');
-    if (oldHint) oldHint.classList.add('hidden');
+    expiresAt = Date.parse(data && data.expiresAt || '') || (Date.now() + 120000);
+    var remaining = secondsRemaining();
+    setStatus(scope,
+      'Kode Telegram aktif. Ketik 6 digit' +
+      (remaining ? ' · <strong style="color:#cbd5e1">' + remaining + ' dtk</strong>' : '') +
+      '. Setelah digit ke-6, verifikasi berjalan otomatis.',
+      'info');
+  }
 
-    // Keep the input visible whenever this feature exists. The active-status
-    // poll improves the copy/countdown, but a transient polling/cache/UI race
-    // must never leave an administrator with a valid Telegram code and nowhere
-    // to type it.
-    showForm(scope, true);
-
-    if (data && data.state === 'active') {
-      expiresAt = Date.parse(data.expiresAt || '') || (Date.now() + 120000);
-      var remaining = secondsRemaining();
-      setStatus(scope,
-        'Kode dari Telegram aktif. Masukkan 6 digit di bawah' +
-        (remaining ? ' · <strong style="color:#cbd5e1">' + remaining + ' dtk</strong>' : '') + '.',
-        'info');
-      return;
-    }
-
+  function renderIdleCode(scope) {
+    // Feature exists, but no /akses code is currently active. Keep maintenance
+    // visually clean; the admin sends /akses first and refreshes this page.
+    window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
     expiresAt = 0;
-    setError(scope, '');
-    setStatus(scope, 'Kirim <strong style="color:#cbd5e1">/akses</strong> ke AutoCuan Verification, lalu masukkan 6 digit di bawah.', 'info');
+    removeCodeUi(scope);
+    setLegacyVisible(scope, false);
   }
 
   function renderLegacyMode(scope) {
     window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = false;
+    removeCodeUi(scope);
     setLegacyVisible(scope, true);
-    var wrap = document.getElementById(scopeIds(scope).wrap);
-    if (wrap) wrap.remove();
   }
 
   async function cleanupTelegram(cleanupRef) {
@@ -271,14 +256,11 @@
 
   async function submitCode(scope) {
     if (submitting) return;
-    var wrap = ensureCodeUi(scope);
+    var wrap = document.getElementById(scopeIds(scope).wrap);
     if (!wrap) return;
     var input = wrap.querySelector('[data-code-input]');
     var code = String(input && input.value || '').replace(/\D/g, '').slice(0, 6);
-    if (!/^\d{6}$/.test(code)) {
-      setError(scope, 'Masukkan 6 digit kode dari Telegram.');
-      return;
-    }
+    if (!/^\d{6}$/.test(code)) return;
 
     setError(scope, '');
     setSubmitting(scope, true);
@@ -291,56 +273,53 @@
         return;
       }
 
+      if (input) input.value = '';
       if (data.state === 'invalid_code') {
         var remaining = Number(data.attemptsRemaining || 0);
         setError(scope, 'Kode salah.' + (remaining > 0 ? ' Sisa ' + remaining + ' percobaan.' : ''));
       } else {
-        setError(scope, data.error || 'Kode tidak dapat digunakan. Kirim /akses lagi.');
+        setError(scope, data.error || 'Kode tidak dapat digunakan. Kirim /akses lagi lalu refresh halaman.');
       }
     } catch (_) {
+      if (input) input.value = '';
       setError(scope, 'Koneksi ke server sedang bermasalah. Coba lagi.');
     } finally {
       setSubmitting(scope, false);
+      if (input) {
+        input.disabled = false;
+        try { input.focus(); } catch (_) {}
+      }
     }
   }
 
-  async function poll() {
+  async function checkOnLoad() {
     var scope = activeScope();
     if (!scope) {
-      window.setTimeout(poll, 2500);
+      window.setTimeout(checkOnLoad, 350);
       return;
     }
 
-    if (inFlight || submitting) {
-      window.setTimeout(poll, 1500);
-      return;
-    }
-
-    inFlight = true;
     try {
       var result = await post('admin-maintenance-code-status');
       var data = result.data || {};
-      if (data.featureAvailable === true) renderCodeMode(scope, data);
-      else renderLegacyMode(scope);
-    } catch (_) {
-      // If a previous successful status already enabled code mode, preserve the
-      // visible form through transient failures.
-      if (window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ === true) {
-        forceHostVisible(scope);
-        showForm(scope, true);
+      if (data.featureAvailable !== true) {
+        renderLegacyMode(scope);
+        return;
       }
-    } finally {
-      inFlight = false;
+      if (data.state === 'active') renderActiveCode(scope, data);
+      else renderIdleCode(scope);
+    } catch (_) {
+      // Fail closed and visually clean. A refresh can retry the status check.
+      renderIdleCode(scope);
     }
-
-    pollTimer = window.setTimeout(poll, 2500);
   }
 
-  window.setTimeout(poll, 450);
+  window.setTimeout(checkOnLoad, 250);
 
   window.__AUTOCUAN_MAINTENANCE_CODE_API__ = {
     activeScope: activeScope,
-    renderCodeMode: renderCodeMode,
+    renderActiveCode: renderActiveCode,
+    renderIdleCode: renderIdleCode,
     renderLegacyMode: renderLegacyMode,
     submitCode: submitCode,
     cleanupTelegram: cleanupTelegram,
