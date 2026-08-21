@@ -14,6 +14,8 @@ test('server protects client prehash with randomized fixed-width scrypt credenti
   assert.equal(second.length, 64, 'must fit historical varchar(64) schemas');
   assert.match(first, /^k1[a-f0-9]{62}$/);
   assert.match(second, /^k1[a-f0-9]{62}$/);
+  assert.equal(credential.isProtectedCredential(first), true);
+  assert.equal(credential.isProtectedCredential(second), true);
   assert.notEqual(first, second, 'random salt must change the stored credential');
   assert.equal(credential.verifyStoredCredential(first, CLIENT_HASH).ok, true);
   assert.equal(credential.verifyStoredCredential(first, OTHER_HASH).ok, false);
