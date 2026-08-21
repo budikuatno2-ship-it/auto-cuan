@@ -1,5 +1,29 @@
 const { createClient } = require('@supabase/supabase-js');
 const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
+const { parseMaintenanceValue } = require('../lib/maintenance-state');
+
+function firstRow(data) {
+  if (Array.isArray(data)) return data[0] || null;
+  return data || null;
+}
+
+async function readAdminCodeState(supabase, maintenanceEnabled) {
+  if (!maintenanceEnabled) {
+    return { available: true, active: false, expiresAt: null };
+  }
+  try {
+    const result = await supabase.rpc('get_admin_maintenance_code_status');
+    if (result.error) return { available: false, active: false, expiresAt: null };
+    const row = firstRow(result.data) || {};
+    return {
+      available: true,
+      active: row.active === true,
+      expiresAt: row.expires_at || null
+    };
+  } catch (_) {
+    return { available: false, active: false, expiresAt: null };
+  }
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -37,24 +61,24 @@ module.exports = async function handler(req, res) {
       }
 
       if (!data) {
-        // Return default config
+        const defaultConfig = {
+          maintenanceMode: false,
+          message: 'Auto-Cuan sedang tidak dapat diakses sementara.',
+          updatedBy: null,
+          updatedAt: null
+        };
         return res.status(200).json({
           success: true,
-          config: {
-            maintenanceMode: false,
-            message: 'Auto-Cuan sedang tidak dapat diakses sementara.',
-            updatedBy: null,
-            updatedAt: null
-          }
+          config: defaultConfig,
+          adminCode: { available: true, active: false, expiresAt: null }
         });
       }
 
-      let configValue = data.value;
-      if (typeof configValue === 'string') {
-        try { configValue = JSON.parse(configValue); } catch(e) { configValue = {}; }
-      }
+      const parsed = parseMaintenanceValue(data.value);
+      const configValue = parsed.config || {};
+      const adminCode = await readAdminCodeState(supabase, parsed.enabled);
 
-      return res.status(200).json({ success: true, config: configValue });
+      return res.status(200).json({ success: true, config: configValue, adminCode });
     }
 
     // === SAVE === (write op: server-signed admin session required; adminName ignored)
@@ -78,7 +102,6 @@ module.exports = async function handler(req, res) {
         updatedAt: new Date().toISOString()
       };
 
-      // Upsert: try update first, then insert if not exists
       const { data: existing } = await supabase
         .from('app_settings')
         .select('key')
@@ -117,3 +140,5 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Server error. Silakan coba lagi.' });
   }
 };
+
+module.exports.__test = { firstRow, readAdminCodeState };
