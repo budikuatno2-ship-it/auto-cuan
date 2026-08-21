@@ -9,12 +9,16 @@
   var IDLE_POLL_MS = 650;
   var ACTIVE_POLL_MS = 2500;
   var HIDDEN_POLL_MS = 5000;
+  var WATCH_TIMEOUT_MS = 2500;
+  var ACTION_TIMEOUT_MS = 8000;
   var submitting = false;
   var expiresAt = 0;
   var statusTimer = null;
   var statusInFlight = false;
   var lastScope = null;
   var runtimeStopped = false;
+  var gateObserver = null;
+  var fallbackVisibilityTimer = null;
 
   window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
 
@@ -166,23 +170,39 @@
     setStatus(scope, value ? 'Memverifikasi kode…' : 'Masukkan 6 digit dari AutoCuan Verification.', 'info');
   }
 
-  async function post(action, payload) {
-    var response = await window.fetch(API, {
+  async function fetchWithTimeout(url, options, timeoutMs) {
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = window.setTimeout(function () {
+      try { if (controller) controller.abort(); } catch (_) {}
+    }, Math.max(500, Number(timeoutMs) || ACTION_TIMEOUT_MS));
+    var requestOptions = Object.assign({}, options || {});
+    if (controller) requestOptions.signal = controller.signal;
+    try {
+      return await window.fetch(url, requestOptions);
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+
+  async function post(action, payload, options) {
+    var opts = options || {};
+    var response = await fetchWithTimeout(API, {
       method: 'POST',
       credentials: 'same-origin',
       cache: 'no-store',
+      keepalive: opts.keepalive === true,
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache'
       },
       body: JSON.stringify(Object.assign({ action: action }, payload || {}))
-    });
+    }, opts.timeoutMs || ACTION_TIMEOUT_MS);
     var data = await response.json().catch(function () { return {}; });
     return { response: response, data: data };
   }
 
   async function readMaintenanceStatus() {
-    var response = await window.fetch(MAINTENANCE_API, {
+    var response = await fetchWithTimeout(MAINTENANCE_API, {
       method: 'POST',
       credentials: 'same-origin',
       cache: 'no-store',
@@ -191,7 +211,7 @@
         'Cache-Control': 'no-cache'
       },
       body: JSON.stringify({ action: 'watch-admin-code' })
-    });
+    }, WATCH_TIMEOUT_MS);
     var data = await response.json().catch(function () { return {}; });
     if (!response.ok || data.success !== true) throw new Error('maintenance_status_unavailable');
     return data;
@@ -231,16 +251,28 @@
     setLegacyVisible(scope, true);
   }
 
-  async function cleanupTelegram(cleanupRef) {
+  async function notifyTelegram(cleanupRef) {
     if (!cleanupRef) return;
     try {
-      await post('admin-maintenance-code-cleanup', { cleanupRef: cleanupRef });
+      await post('admin-maintenance-code-notify', { cleanupRef: cleanupRef }, { keepalive: true, timeoutMs: 6000 });
     } catch (_) {}
   }
 
-  function scheduleCleanup(cleanupRef) {
+  async function cleanupTelegram(cleanupRef) {
     if (!cleanupRef) return;
-    window.setTimeout(function () { cleanupTelegram(cleanupRef); }, 10000);
+    try {
+      await post('admin-maintenance-code-cleanup', { cleanupRef: cleanupRef }, { keepalive: true, timeoutMs: 6000 });
+    } catch (_) {}
+  }
+
+  function scheduleTelegramLifecycle(cleanupRef) {
+    if (!cleanupRef) return;
+    Promise.resolve()
+      .then(function () { return notifyTelegram(cleanupRef); })
+      .catch(function () {})
+      .then(function () {
+        window.setTimeout(function () { cleanupTelegram(cleanupRef); }, 10000);
+      });
   }
 
   function hydrateApprovedClientState(data) {
@@ -259,17 +291,32 @@
     return false;
   }
 
+  function stopStatusChecks() {
+    if (statusTimer) {
+      window.clearTimeout(statusTimer);
+      statusTimer = null;
+    }
+  }
+
+  function stopRuntimeObservers() {
+    stopStatusChecks();
+    if (gateObserver) {
+      try { gateObserver.disconnect(); } catch (_) {}
+      gateObserver = null;
+    }
+    if (fallbackVisibilityTimer) {
+      window.clearInterval(fallbackVisibilityTimer);
+      fallbackVisibilityTimer = null;
+    }
+  }
+
   async function finishLogin(scope, data) {
     runtimeStopped = true;
-    if (statusTimer) window.clearTimeout(statusTimer);
+    stopRuntimeObservers();
     setError(scope, '');
     setStatus(scope, '✅ Kode benar. Membuka Auto-Cuan…', 'success');
-    scheduleCleanup(data && data.cleanupRef);
+    scheduleTelegramLifecycle(data && data.cleanupRef);
 
-    // The consume response is already server-authenticated and has already set
-    // the signed HttpOnly ac_sess cookie. Mirror that approved identity into the
-    // existing client UX state immediately instead of waiting for a second
-    // network round-trip before showing the dashboard.
     var hydrated = hydrateApprovedClientState(data);
     var entered = false;
     if (hydrated && typeof window.enterApp === 'function') {
@@ -279,8 +326,6 @@
       } catch (_) {}
     }
 
-    // Revalidate the signed session in the background so server truth remains
-    // authoritative. This is no longer on the visible login critical path.
     if (typeof window.validateAutocuanSession === 'function') {
       Promise.resolve()
         .then(function () { return window.validateAutocuanSession(); })
@@ -308,7 +353,7 @@
     setError(scope, '');
     setSubmitting(scope, true);
     try {
-      var result = await post('admin-maintenance-code-consume', { code: code });
+      var result = await post('admin-maintenance-code-consume', { code: code }, { timeoutMs: ACTION_TIMEOUT_MS });
       var data = result.data || {};
       if (result.response.ok && data.success === true && data.state === 'approved') {
         if (input) input.value = '';
@@ -323,9 +368,10 @@
       } else {
         setError(scope, data.error || 'Kode tidak dapat digunakan. Kirim /akses lagi di Telegram.');
       }
-    } catch (_) {
+    } catch (error) {
       if (input) input.value = '';
-      setError(scope, 'Koneksi ke server sedang bermasalah. Coba lagi.');
+      var timedOut = !!(error && error.name === 'AbortError');
+      setError(scope, timedOut ? 'Server terlalu lama merespons. Coba masukkan kode lagi.' : 'Koneksi ke server sedang bermasalah. Coba lagi.');
     } finally {
       setSubmitting(scope, false);
       if (!runtimeStopped && input) {
@@ -336,13 +382,20 @@
   }
 
   function scheduleStatusCheck(delay) {
-    if (runtimeStopped) return;
-    if (statusTimer) window.clearTimeout(statusTimer);
+    if (runtimeStopped || !activeScope()) return;
+    stopStatusChecks();
     statusTimer = window.setTimeout(checkLiveStatus, Math.max(0, Number(delay) || 0));
   }
 
   async function checkLiveStatus() {
     if (runtimeStopped) return;
+    var scope = activeScope();
+    if (!scope) {
+      if (lastScope) removeCodeUi(lastScope);
+      lastScope = null;
+      stopStatusChecks();
+      return;
+    }
     if (submitting) {
       scheduleStatusCheck(ACTIVE_POLL_MS);
       return;
@@ -352,20 +405,13 @@
       return;
     }
 
-    var scope = activeScope();
-    if (!scope) {
-      if (lastScope) removeCodeUi(lastScope);
-      lastScope = null;
-      scheduleStatusCheck(document.hidden ? HIDDEN_POLL_MS : IDLE_POLL_MS);
-      return;
-    }
-
     lastScope = scope;
     statusInFlight = true;
     var nextDelay = document.hidden ? HIDDEN_POLL_MS : IDLE_POLL_MS;
 
     try {
       var state = await readMaintenanceStatus();
+      if (activeScope() !== scope) return;
       var adminCode = state.adminCode || {};
       if (state.maintenanceMode === true && adminCode.active === true) {
         renderActiveCode(scope, { expiresAt: adminCode.expiresAt || null });
@@ -374,21 +420,50 @@
         renderIdleCode(scope);
       }
     } catch (_) {
-      if (!(expiresAt > Date.now())) renderIdleCode(scope);
+      if (activeScope() === scope && !(expiresAt > Date.now())) renderIdleCode(scope);
     } finally {
       statusInFlight = false;
-      scheduleStatusCheck(nextDelay);
+      if (activeScope()) scheduleStatusCheck(nextDelay);
+      else stopStatusChecks();
     }
   }
 
+  function syncWatchState() {
+    if (runtimeStopped) return;
+    var scope = activeScope();
+    if (!scope) {
+      stopStatusChecks();
+      if (lastScope) removeCodeUi(lastScope);
+      lastScope = null;
+      return;
+    }
+    if (lastScope && lastScope !== scope) removeCodeUi(lastScope);
+    lastScope = scope;
+    scheduleStatusCheck(0);
+  }
+
+  function observeGateVisibility() {
+    var targets = [document.getElementById('maintenanceScreen'), document.getElementById('serviceStatusScreen')].filter(Boolean);
+    if (typeof MutationObserver === 'function' && targets.length) {
+      gateObserver = new MutationObserver(function () { syncWatchState(); });
+      targets.forEach(function (target) {
+        gateObserver.observe(target, { attributes: true, attributeFilter: ['class', 'style'] });
+      });
+    } else if (!fallbackVisibilityTimer) {
+      fallbackVisibilityTimer = window.setInterval(syncWatchState, 500);
+    }
+    syncWatchState();
+  }
+
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) scheduleStatusCheck(0);
+    if (!document.hidden && activeScope()) scheduleStatusCheck(0);
   });
   window.addEventListener('focus', function () {
-    scheduleStatusCheck(0);
+    if (activeScope()) scheduleStatusCheck(0);
   });
+  window.addEventListener('beforeunload', stopRuntimeObservers, { once: true });
 
-  scheduleStatusCheck(50);
+  window.setTimeout(observeGateVisibility, 20);
 
   window.__AUTOCUAN_MAINTENANCE_CODE_API__ = {
     activeScope: activeScope,
@@ -396,10 +471,12 @@
     renderIdleCode: renderIdleCode,
     renderLegacyMode: renderLegacyMode,
     submitCode: submitCode,
+    notifyTelegram: notifyTelegram,
     cleanupTelegram: cleanupTelegram,
     post: post,
     readMaintenanceStatus: readMaintenanceStatus,
     checkLiveStatus: checkLiveStatus,
+    syncWatchState: syncWatchState,
     hydrateApprovedClientState: hydrateApprovedClientState
   };
 })();
