@@ -99,7 +99,7 @@ test('maintenance code is six digits and stored only as server-HMAC digest', fun
   }
 });
 
-test('/akses sends only a short one-time code when feature schema is available', async function () {
+test('/akses sends one-time code and deletes the command message best-effort', async function () {
   const previous = process.env.SESSION_SECRET;
   process.env.SESSION_SECRET = 'test-session-secret-at-least-32-characters-long';
   try {
@@ -111,8 +111,11 @@ test('/akses sends only a short one-time code when feature schema is available',
     assert.equal(result.outcome, 'admin_maintenance_code_sent');
     assert.equal(bot.sent.length, 1);
     assert.match(bot.sent[0].text, /Kode: \d{6}/);
+    assert.match(bot.sent[0].text, /Refresh autocuan\.web\.id/i);
+    assert.match(bot.sent[0].text, /digit ke-6/i);
     assert.match(bot.sent[0].text, /maksimal 5 percobaan/i);
     assert.doesNotMatch(bot.sent[0].text, /https?:\/\//);
+    assert.deepEqual(bot.deleted, [{ chatId: 777, messageId: 10 }]);
 
     const issue = db.calls.find(function (call) { return call.name === 'issue_admin_maintenance_code'; });
     assert.ok(issue);
@@ -143,7 +146,7 @@ test('missing maintenance-code schema falls back instead of stealing /akses', as
   assert.equal(result.outcome, 'admin_maintenance_code_schema_unavailable');
 });
 
-test('browser/runtime contracts keep code login visible and legacy pairing as rollout fallback', function () {
+test('browser flow stays clean until refresh sees active code, then auto-submits six digits', function () {
   const api = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
   const browser = fs.readFileSync(path.join(ROOT, 'lib', 'admin-maintenance-code-browser.js'), 'utf8');
   const ui = fs.readFileSync(path.join(ROOT, 'public', 'admin-maintenance-code.js'), 'utf8');
@@ -158,13 +161,20 @@ test('browser/runtime contracts keep code login visible and legacy pairing as ro
   assert.match(browser, /buildSessionCookie/);
   assert.match(browser, /deleteMessageSafely/);
   assert.match(browser, /telegram_success_message_id/);
-  assert.match(ui, /forceHostVisible/);
-  assert.match(ui, /showForm\(scope, true\)/);
-  assert.match(ui, /nowhere\n\s*\/\/ to type it|nowhere/);
+
+  assert.match(ui, /function renderIdleCode/);
+  assert.match(ui, /removeCodeUi\(scope\)/);
+  assert.match(ui, /setLegacyVisible\(scope, false\)/);
+  assert.match(ui, /function checkOnLoad/);
+  assert.doesNotMatch(ui, /setTimeout\(poll/);
+  assert.match(ui, /this\.value\.length === 6 && !submitting/);
+  assert.match(ui, /submitCode\(scope\)/);
+  assert.doesNotMatch(ui, /data-code-submit/);
   assert.match(ui, /admin-maintenance-code-cleanup/);
   assert.match(ui, /validateAutocuanSession/);
+
   assert.match(pairingUi, /__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__/);
-  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v2/);
+  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v3/);
   assert.match(access, /maintenanceCode\.handleUpdate/);
 });
 
