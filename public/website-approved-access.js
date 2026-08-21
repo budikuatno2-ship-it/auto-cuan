@@ -51,11 +51,17 @@
     // enforce the entitlement independently, so browser state is UX only.
     loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');
 
-    // First-time admin laptop pairing is initiated by the already-open maintenance
-    // tab itself. Telegram only approves the exact short-lived browser request, so
-    // no external pairing URL or typed code is required. Existing paired laptops
-    // also consume their /akses device grant here and auto-login without a click.
-    loadScriptOnce('/admin-zero-link-pairing.js?v=20260821-v2', 'data-autocuan-zero-link-pairing');
+    // Preferred maintenance access: /akses from the already-verified admin
+    // Telegram creates a short-lived six-digit code. The maintenance page
+    // detects that active code, shows the input automatically, and consumes it
+    // for the same signed ac_sess session used everywhere else.
+    loadScriptOnce('/admin-maintenance-code.js?v=20260821-v1', 'data-autocuan-maintenance-code');
+
+    // Rollout fallback only. Before the maintenance-code SQL migration exists,
+    // the code runtime reports featureAvailable=false and this established
+    // zero-link/device flow remains operational. Once code mode is available it
+    // suppresses its own pairing polls via the shared runtime flag.
+    loadScriptOnce('/admin-zero-link-pairing.js?v=20260821-v3', 'data-autocuan-zero-link-pairing');
 
     // Existing live refresh remains independent from authentication recovery.
     loadScriptOnce('/fast-watcher-live-refresh.js?v=20260730-v1', 'data-autocuan-fast-watcher-refresh');

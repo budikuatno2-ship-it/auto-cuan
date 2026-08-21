@@ -216,7 +216,7 @@ test('browser pairing runtime is dashboard-only and consumes grants for already-
   assert.doesNotMatch(ui, /state === 'already_paired'[\s\S]{0,180}stopped\s*=\s*true/);
   assert.match(ui, /ID perangkat/);
   assert.match(ui, /Tidak perlu buka link atau mengetik kode/);
-  assert.match(loader, /admin-zero-link-pairing\.js\?v=20260821-v2/);
+  assert.match(loader, /admin-zero-link-pairing\.js\?v=20260821-v3/);
   assert.doesNotMatch(ui, /action=admin-command-login&token=/);
 });
 
