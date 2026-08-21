@@ -14,6 +14,7 @@ delete require.cache[legacyPath];
 const legacy = require(legacyPath);
 const adminCommandBrowser = require('../lib/admin-command-login-browser');
 const zeroLinkPairingBrowser = require('../lib/admin-command-zero-link-browser');
+const adminPasskeyBrowser = require('../lib/admin-passkey-browser');
 const portfolioStateHandler = require('../lib/portfolio-state-handler');
 const accountProfileHandler = require('../lib/account-profile-handler');
 
@@ -39,6 +40,9 @@ module.exports = async function handler(req, res) {
   if (req.method === 'POST' && bodyAction === 'admin-command-pair-poll') {
     return zeroLinkPairingBrowser(req, res);
   }
+  if (req.method === 'POST' && bodyAction.startsWith('admin-passkey-')) {
+    return adminPasskeyBrowser(req, res);
+  }
   if (req.method === 'POST' && (bodyAction === 'portfolio-state-load' || bodyAction === 'portfolio-state-save')) {
     return portfolioStateHandler(req, res);
   }
@@ -52,6 +56,7 @@ module.exports = async function handler(req, res) {
 module.exports.__test = Object.assign({}, legacy.__test || {}, {
   adminCommandBrowser: adminCommandBrowser.__test || {},
   zeroLinkPairingBrowser: zeroLinkPairingBrowser.__test || {},
+  adminPasskeyBrowser: adminPasskeyBrowser.__test || {},
   portfolioStateHandler: portfolioStateHandler.__test || {},
   accountProfileHandler: accountProfileHandler.__test || {},
   adminAccessRequestSourceContract
