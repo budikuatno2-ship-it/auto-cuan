@@ -15,36 +15,43 @@ def regex_once(text, pattern, repl, label, flags=0):
         raise SystemExit(f'{label}: expected one regex match, got {count}')
     return out
 
+
 # ------------------------------------------------------------------
-# Active login path: route through the device-bound login handler.
+# Active browser login must use the hardened device-bound login route.
 # ------------------------------------------------------------------
 p = Path('api/reset-password.js')
 s = p.read_text()
-s = once(s,
+s = once(
+    s,
     "const accountProfileHandler = require('../lib/account-profile-handler');\n",
     "const accountProfileHandler = require('../lib/account-profile-handler');\nconst loginUserHandler = require('./login-user');\n",
-    'reset gateway login import')
-s = once(s,
+    'reset gateway login import'
+)
+s = once(
+    s,
     "  if (req.method === 'POST' && bodyAction === 'admin-command-device-poll') {\n",
     "  if (req.method === 'POST' && bodyAction === 'login') {\n    return loginUserHandler(req, res);\n  }\n  if (req.method === 'POST' && bodyAction === 'admin-command-device-poll') {\n",
-    'reset gateway login route')
+    'reset gateway login route'
+)
 p.write_text(s)
 
-# Browser keeps a stable random ID per browser profile and sends it on login.
 p = Path('public/auth-v2.js')
 s = p.read_text()
-s = once(s,
-    "  var retryTimer = null;\n" if "  var retryTimer = null;\n" in s else "  var authReadyResolve;\n",
-    ("  var retryTimer = null;\n" if "  var retryTimer = null;\n" in s else "  var authReadyResolve;\n") +
-    "\n  function loginDeviceId() {\n"
+s = once(
+    s,
+    "  var authReadyResolve;\n",
+    "  var authReadyResolve;\n\n"
+    "  function loginDeviceId() {\n"
     "    var key = 'autocuan_login_device_id_v1';\n"
     "    try {\n"
     "      var current = String(localStorage.getItem(key) || '').trim();\n"
     "      if (/^[A-Za-z0-9_-]{16,128}$/.test(current)) return current;\n"
     "      var id = '';\n"
-    "      if (window.crypto && typeof window.crypto.randomUUID === 'function') id = 'dev_' + window.crypto.randomUUID().replace(/-/g, '');\n"
-    "      else if (window.crypto && typeof window.crypto.getRandomValues === 'function') {\n"
-    "        var bytes = new Uint8Array(18); window.crypto.getRandomValues(bytes);\n"
+    "      if (window.crypto && typeof window.crypto.randomUUID === 'function') {\n"
+    "        id = 'dev_' + window.crypto.randomUUID().replace(/-/g, '');\n"
+    "      } else if (window.crypto && typeof window.crypto.getRandomValues === 'function') {\n"
+    "        var bytes = new Uint8Array(18);\n"
+    "        window.crypto.getRandomValues(bytes);\n"
     "        id = 'dev_' + Array.from(bytes).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');\n"
     "      }\n"
     "      if (!id) return '';\n"
@@ -52,37 +59,43 @@ s = once(s,
     "      return id;\n"
     "    } catch (_) { return ''; }\n"
     "  }\n",
-    'auth-v2 device helper')
-s = once(s,
+    'auth-v2 device helper'
+)
+s = once(
+    s,
     "        passwordHash: passwordHash,\n        userAgent: navigator.userAgent\n",
     "        passwordHash: passwordHash,\n        deviceId: loginDeviceId(),\n        userAgent: navigator.userAgent\n",
-    'auth-v2 login device payload')
+    'auth-v2 login device payload'
+)
 p.write_text(s)
 
+
 # ------------------------------------------------------------------
-# Server-side KDF: stored DB credential is no longer replayable client hash.
+# Protect the public SHA-256 client prehash with server-side scrypt.
+# Existing raw hashes remain login-compatible only long enough to migrate.
 # ------------------------------------------------------------------
 p = Path('api/login-user.js')
 s = p.read_text()
-s = once(s,
+s = once(
+    s,
     "const securityGuard = require('../lib/security-guard');\n",
     "const securityGuard = require('../lib/security-guard');\nconst passwordCredential = require('../lib/password-credential');\n",
-    'login credential import')
-s = once(s,
+    'login credential import'
+)
+s = once(
+    s,
     "    const databasePasswordMatches = user.password_hash === passwordHash;\n",
     "    const credentialCheck = passwordCredential.verifyStoredCredential(user.password_hash, passwordHash);\n    const databasePasswordMatches = credentialCheck.ok;\n",
-    'login credential verify')
-needle = """      return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
-    }
-
-"""
-pos = s.find(needle, s.find('const credentialCheck'))
+    'login credential verify'
+)
+anchor = "    // Database credentials are valid from here on. Clear account/pair failure\n"
+pos = s.find(anchor, s.find('const credentialCheck'))
 if pos < 0:
-    raise SystemExit('login post-password-failure anchor not found')
-pos += len(needle)
-upgrade = """    // Transparent migration: legacy rows stored the client SHA-256 prehash itself,
-    // which made a DB read equivalent to a login credential. After successful
-    // verification, replace it with a salted server-side scrypt credential.
+    raise SystemExit('login database-credentials anchor not found')
+upgrade = """    // Transparent migration from the historical raw client prehash. The update
+    // is compare-and-swap so concurrent successful logins cannot clobber a newer
+    // credential. Migration failure does not lock the user out; it can retry on
+    // the next successful login.
     if (credentialCheck.needsUpgrade) {
       try {
         const protectedCredential = passwordCredential.protectClientHash(passwordHash);
@@ -103,40 +116,56 @@ p.write_text(s)
 
 p = Path('api/register-user.js')
 s = p.read_text()
-s = once(s,
+s = once(
+    s,
     "const accountTerms = require('../lib/account-terms');\n",
     "const accountTerms = require('../lib/account-terms');\nconst passwordCredential = require('../lib/password-credential');\n",
-    'register credential import')
-s = once(s,
+    'register credential import'
+)
+s = once(
+    s,
     "        passwordHash: passwordHash,\n        deviceId: normalizedDeviceId,\n",
     "        passwordHash: passwordCredential.protectClientHash(passwordHash),\n        deviceId: normalizedDeviceId,\n",
-    'register protected credential')
+    'register protected credential'
+)
 p.write_text(s)
 
 p = Path('lib/reset-password-legacy-handler.js')
 s = p.read_text()
-s = once(s,
+s = once(
+    s,
     "const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');\n",
     "const { generateApprovalCode, maskUsername } = require('../lib/free-user-approval');\nconst passwordCredential = require('./password-credential');\n",
-    'reset credential import')
-s = once(s,
+    'reset credential import'
+)
+s = once(
+    s,
     "    p_new_password_hash: newPasswordHash\n",
     "    p_new_password_hash: passwordCredential.protectClientHash(newPasswordHash)\n",
-    'reset protected credential')
+    'reset protected credential'
+)
 p.write_text(s)
 
-# Security guard should enforce when its DB support is configured; explicit env
-# can still choose shadow/off for controlled diagnostics.
-p = Path('lib/security-guard.js')
-s = p.read_text()
-s = once(s,
-    "SECURITY_GUARD_MODE || 'off'",
-    "SECURITY_GUARD_MODE || 'enforce'",
-    'security guard default')
-p.write_text(s)
 
 # ------------------------------------------------------------------
-# Optimistic concurrency for portfolio cloud state.
+# The guard already degrades safely when pepper/schema is absent. Defaulting
+# to enforce closes the documented-but-disabled login rate-limit gap while
+# explicit SECURITY_GUARD_MODE=shadow/off still remains available.
+# ------------------------------------------------------------------
+p = Path('lib/security-guard.js')
+s = p.read_text()
+s = once(
+    s,
+    "SECURITY_GUARD_MODE || 'off'",
+    "SECURITY_GUARD_MODE || 'enforce'",
+    'security guard default'
+)
+p.write_text(s)
+
+
+# ------------------------------------------------------------------
+# Optimistic concurrency for cloud portfolio state. A stale device receives
+# 409 instead of overwriting a newer revision from another device.
 # ------------------------------------------------------------------
 p = Path('lib/portfolio-state-handler.js')
 s = p.read_text()
@@ -195,60 +224,80 @@ new_save = r'''async function saveState(req, res, supabase, account) {
 }
 
 async function portfolioStateHandler'''
-s = regex_once(s, r"async function saveState\(req, res, supabase, account\) \{.*?\n\}\n\nasync function portfolioStateHandler", new_save, 'portfolio save function', re.S)
+s = regex_once(
+    s,
+    r"async function saveState\(req, res, supabase, account\) \{.*?\n\}\n\nasync function portfolioStateHandler",
+    new_save,
+    'portfolio save function',
+    re.S
+)
 p.write_text(s)
 
 p = Path('public/portfolio-supabase-sync.js')
 s = p.read_text()
-s = once(s,
+s = once(
+    s,
     "  var retryTimer = null;\n",
     "  var retryTimer = null;\n  var cloudRevision = null;\n",
-    'portfolio revision var')
-s = once(s,
+    'portfolio revision var'
+)
+s = once(
+    s,
     "      applyRemoteState(uid, data.state || {});\n      hydrated = true;\n",
     "      applyRemoteState(uid, data.state || {});\n      cloudRevision = String(data.updated_at || '').trim() || null;\n      hydrated = true;\n",
-    'portfolio hydrate revision')
-s = once(s,
+    'portfolio hydrate revision'
+)
+s = once(
+    s,
     "      await post('portfolio-state-save', { portfolio_state: snapshot });\n",
     "      var saveData = await post('portfolio-state-save', { portfolio_state: snapshot, expected_updated_at: cloudRevision });\n      cloudRevision = String(saveData.updated_at || '').trim() || cloudRevision;\n",
-    'portfolio save revision')
-old_catch = """    } catch (error) {
+    'portfolio save revision'
+)
+s = once(
+    s,
+    """    } catch (error) {
       dirty = true;
       setStatus('local-fallback', error && error.message || 'Belum tersimpan ke cloud');
       setTimeout(scheduleSave, 2500);
       return false;
-"""
-new_catch = """    } catch (error) {
+""",
+    """    } catch (error) {
       dirty = true;
       if (error && error.status === 409) {
-        // Do not auto-overwrite a newer cloud revision. Keep the local edits in
-        // this browser and stop retrying until a deliberate reload/reconciliation.
+        // Keep this browser's local edits, but never retry them over a newer
+        // cloud revision until the user deliberately reloads/reconciles.
         setStatus('conflict', error.message || 'Portofolio berubah di perangkat lain. Muat ulang untuk rekonsiliasi.');
         return false;
       }
       setStatus('local-fallback', error && error.message || 'Belum tersimpan ke cloud');
       setTimeout(scheduleSave, 2500);
       return false;
-"""
-s = once(s, old_catch, new_catch, 'portfolio conflict catch')
-s = once(s,
+""",
+    'portfolio conflict catch'
+)
+s = once(
+    s,
     "      var remote = normalizeState(data.state || {});\n",
     "      cloudRevision = String(data.updated_at || '').trim() || cloudRevision;\n      var remote = normalizeState(data.state || {});\n",
-    'portfolio refresh revision')
-s = once(s,
+    'portfolio refresh revision'
+)
+s = once(
+    s,
     "        body: JSON.stringify({ action: 'portfolio-state-save', portfolio_state: readLocalState(uid) })\n",
     "        body: JSON.stringify({ action: 'portfolio-state-save', portfolio_state: readLocalState(uid), expected_updated_at: cloudRevision })\n",
-    'portfolio pagehide revision')
+    'portfolio pagehide revision'
+)
 p.write_text(s)
 
+
 # ------------------------------------------------------------------
-# CRON secret only in Authorization header; never request URL.
-# Also make daily-pick rows carry the plan identity whenever derivable so they
-# actually participate in the DB partial unique index.
+# Scheduler secret: header only, constant-time. Also populate Top5 plan identity
+# at the common insert-row boundary so the partial unique index is effective.
 # ------------------------------------------------------------------
 p = Path('api/sector-hot.js')
 s = p.read_text()
-s = once(s,
+s = once(
+    s,
     """  var querySecret = req && req.query ? String(req.query.secret || '').trim() : '';
   if (querySecret && querySecret === secret) return true;
   if (!token) return false;
@@ -260,17 +309,20 @@ s = once(s,
   if (tokenBuf.length !== secretBuf.length) return false;
   return crypto.timingSafeEqual(tokenBuf, secretBuf);
 """,
-    'cron query secret')
-old_row = """function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
+    'cron query secret'
+)
+s = once(
+    s,
+    """function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
   return { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: firstSentAt || null, raw_payload: candidate };
 }
-"""
-new_row = """function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
+""",
+    """function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
   candidate = candidate || {};
   var row = { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: firstSentAt || null, raw_payload: candidate };
-  // The DB uniqueness guarantee is intentionally partial and only applies when
-  // both identity fields are non-null. Populate them at the shared row-builder
-  // boundary so lock-only/fallback inserts cannot silently bypass that index.
+  // The DB uniqueness guarantee is partial and only applies when both identity
+  // fields are non-null. Populate them here so fallback/lock-only inserts cannot
+  // silently bypass the unique index.
   var identity = buildMonitorPlanIdentity(candidate, date, candidate.monitor_source || candidate.category || 'daily_top5');
   if (identity && identity.valid) {
     row.monitor_source = identity.monitor_source;
@@ -278,12 +330,14 @@ new_row = """function dailyPickInsertRowFromCandidate(candidate, date, firstSent
   }
   return row;
 }
-"""
-s = once(s, old_row, new_row, 'daily pick row identity')
+""",
+    'daily pick row identity'
+)
 p.write_text(s)
 
+
 # ------------------------------------------------------------------
-# Focused source-contract regressions.
+# Focused source-contract regressions for the newly closed gaps.
 # ------------------------------------------------------------------
 Path('test/audit-auth-device-route.test.js').write_text(r'''\
 'use strict';
@@ -299,7 +353,7 @@ test('active auth-v2 login sends stable device identity and gateway uses hardene
   assert.match(gateway, /return loginUserHandler\(req, res\)/);
 });
 
-test('new and reset passwords are protected server-side before DB storage', () => {
+test('register, login migration, and password reset use server-side credential protection', () => {
   const register = fs.readFileSync('api/register-user.js', 'utf8');
   const reset = fs.readFileSync('lib/reset-password-legacy-handler.js', 'utf8');
   const login = fs.readFileSync('api/login-user.js', 'utf8');
@@ -307,6 +361,7 @@ test('new and reset passwords are protected server-side before DB storage', () =
   assert.match(reset, /protectClientHash\(newPasswordHash\)/);
   assert.match(login, /verifyStoredCredential\(user\.password_hash, passwordHash\)/);
   assert.match(login, /credentialCheck\.needsUpgrade/);
+  assert.match(login, /\.eq\('password_hash', user\.password_hash\)/);
 });
 ''')
 
