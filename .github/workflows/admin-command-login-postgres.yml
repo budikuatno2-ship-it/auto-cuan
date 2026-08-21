@@ -36,23 +36,28 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run command-login Node tests
-        run: node --test test/admin-command-login.test.js test/admin-zero-link-pairing.test.js test/admin-zero-link-rebind.test.js test/admin-telegram-access.test.js
+        run: node --test test/admin-command-login.test.js test/admin-zero-link-pairing.test.js test/admin-zero-link-rebind.test.js test/admin-telegram-access.test.js test/admin-maintenance-code-login.test.js
       - name: Bootstrap isolated PostgreSQL schema
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-access/bootstrap.sql
       - name: Apply command-login migrations
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-zero-link-pairing-migration.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-maintenance-code-migration.sql
       - name: Execute command-login runtime regression
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/runtime.sql
       - name: Execute zero-link pairing runtime regression
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/zero-link-runtime.sql
+      - name: Execute maintenance-code runtime regression
+        run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/maintenance-code-runtime.sql
       - name: Re-apply migrations against non-empty state
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-zero-link-pairing-migration.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-maintenance-code-migration.sql
       - name: Verify migrations remain runnable after re-apply
         run: |
           psql -v ON_ERROR_STOP=1 -c "SELECT count(*) AS grants FROM public.admin_command_login_grants;"
+          psql -v ON_ERROR_STOP=1 -c "SELECT count(*) AS maintenance_codes FROM public.admin_command_login_grants WHERE grant_purpose='maintenance_code';"
           psql -v ON_ERROR_STOP=1 -c "SELECT count(*) AS pair_requests FROM public.admin_command_pair_requests;"
           psql -v ON_ERROR_STOP=1 -c "SELECT admin_device_label, admin_device_bound_at IS NOT NULL AS paired FROM public.app_user_telegram_verifications WHERE telegram_user_id=999999001;"
