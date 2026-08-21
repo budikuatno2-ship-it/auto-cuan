@@ -43,6 +43,17 @@ jobs:
           python3 tools/one-shot-audit-hardening.py
           python3 - <<'PY'
           from pathlib import Path
+
+          # Preserve the repository's intentional production contract: login
+          # security enforcement remains deployment-opt-in until its env/schema
+          # rollout is explicitly enabled. The other auth hardening is independent.
+          guard = Path('lib/security-guard.js')
+          guard_text = guard.read_text()
+          expected = "SECURITY_GUARD_MODE || 'enforce'"
+          if guard_text.count(expected) != 1:
+              raise SystemExit('security guard restore anchor not found exactly once')
+          guard.write_text(guard_text.replace(expected, "SECURITY_GUARD_MODE || 'off'", 1))
+
           for name in (
               'test/audit-auth-device-route.test.js',
               'test/audit-portfolio-concurrency.test.js',
