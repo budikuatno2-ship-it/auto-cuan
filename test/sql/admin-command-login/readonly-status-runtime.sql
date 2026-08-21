@@ -8,6 +8,7 @@ DECLARE
   r record;
   v_user_id uuid;
   v_grant_id uuid;
+  v_hash text := md5(random()::text) || md5(clock_timestamp()::text);
 BEGIN
   SELECT id INTO v_user_id
     FROM public.app_users
@@ -18,7 +19,7 @@ BEGIN
     user_id, telegram_user_id, target, token_hash, device_hash,
     state, expires_at, grant_purpose, code_attempts
   ) VALUES (
-    v_user_id, 999999001, 'direct', repeat('9', 64), NULL,
+    v_user_id, 999999001, 'direct', v_hash, NULL,
     'pending', now() - interval '1 minute', 'maintenance_code', 0
   ) RETURNING id INTO v_grant_id;
 
