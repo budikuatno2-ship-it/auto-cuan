@@ -199,19 +199,24 @@ test('zero-link browser secrets are high entropy, HttpOnly and SameSite Strict',
   assert.match(cookie, /SameSite=Strict/);
 });
 
-test('browser pairing runtime is dashboard-only and never contains a pairing URL', function () {
+test('browser pairing runtime is dashboard-only and consumes grants for already-paired laptops', function () {
   const api = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
   const server = fs.readFileSync(path.join(ROOT, 'lib', 'admin-command-zero-link-browser.js'), 'utf8');
   const ui = fs.readFileSync(path.join(ROOT, 'public', 'admin-zero-link-pairing.js'), 'utf8');
   const loader = fs.readFileSync(path.join(ROOT, 'public', 'website-approved-access.js'), 'utf8');
 
   assert.match(api, /admin-command-pair-poll/);
+  assert.match(api, /admin-command-device-poll/);
   assert.match(server, /pagePath !== '\/dashboard'/);
   assert.match(server, /poll_admin_command_pair_request/);
-  assert.match(ui, /action: 'admin-command-pair-poll'/);
+  assert.match(ui, /postAction\('admin-command-device-poll'\)/);
+  assert.match(ui, /action: 'admin-command-pair-poll'|postAction\('admin-command-pair-poll'/);
+  assert.match(ui, /Laptop utama dikenali/);
+  assert.match(ui, /state === 'already_paired'/);
+  assert.doesNotMatch(ui, /state === 'already_paired'[\s\S]{0,180}stopped\s*=\s*true/);
   assert.match(ui, /ID perangkat/);
   assert.match(ui, /Tidak perlu buka link atau mengetik kode/);
-  assert.match(loader, /admin-zero-link-pairing\.js\?v=/);
+  assert.match(loader, /admin-zero-link-pairing\.js\?v=20260821-v2/);
   assert.doesNotMatch(ui, /action=admin-command-login&token=/);
 });
 
