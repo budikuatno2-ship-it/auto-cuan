@@ -6867,7 +6867,17 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
 }
 
 function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
-  return { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: firstSentAt || null, raw_payload: candidate };
+  candidate = candidate || {};
+  var row = { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: firstSentAt || null, raw_payload: candidate };
+  // The DB uniqueness guarantee is partial and only applies when both identity
+  // fields are non-null. Populate them here so fallback/lock-only inserts cannot
+  // silently bypass the unique index.
+  var identity = buildMonitorPlanIdentity(candidate, date, candidate.monitor_source || candidate.category || 'daily_top5');
+  if (identity && identity.valid) {
+    row.monitor_source = identity.monitor_source;
+    row.plan_lock_id = identity.plan_lock_id;
+  }
+  return row;
 }
 
 function normalizeMonitorSourceValue(source, candidate) {
@@ -7978,6 +7988,8 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     var individualMessagePreviews = [];
     var individualSendableCount = 0;
     var individualSentCount = 0;
+    var individualFailedCount = 0;
+    var individualFailures = [];
     for (var i = 0; i < rows.length; i++) {
       var pck = rows[i];
       if (!isFinal && pck.is_final) continue;
@@ -8008,8 +8020,9 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) update.hit_tp1_at = update.last_checked_at;
       if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) update.hit_tp2_at = update.last_checked_at;
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) update.hit_sl_at = update.last_checked_at;
-      // WRITE SUPPRESSION: dry-run never touches telegram_daily_picks (status, hit_* timestamps, last_checked_at).
-      if (!dryRun) await supabase.from('telegram_daily_picks').update(update).eq('id', pck.id);
+      // Persistence is intentionally deferred until after an immediate significant-hit
+      // Telegram delivery attempt. A failed send must not consume hit_* idempotency
+      // markers or terminal state, otherwise the next monitor run can never retry.
 
       // Attempt AI note for significant status updates (note-only: appended to template)
       var monitorAiNote = null;
@@ -8041,6 +8054,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       // batch cadence. Idempotent: sent at most once per recommendation because it
       // is gated on the "new hit" check above. This must never be delayed to the
       // hourly batch.
+      var hitResult = null;
       if (significantHit) {
         individualSendableCount++;
         // Use premium short monitor hit format for significant events
@@ -8050,9 +8064,30 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
         if (dryRun) {
           individualMessagePreviews.push({ ticker: pck.ticker, source: resolveMonitorSource(pck), status: ev.status, message: hitMsg });
         } else {
-          var hitResult = await telegramNotifier.sendTelegramMessage(hitMsg, { timeout_ms: 3000 });
+          hitResult = await telegramNotifier.sendTelegramMessage(hitMsg, { timeout_ms: 3000 });
           if (hitResult.sent) individualSentCount++;
         }
+      }
+
+      // Commit the hit marker / terminal transition only after a successful
+      // immediate delivery. On failure persist only last_checked_at so the row
+      // remains eligible and the same significant event can be retried by the
+      // next monitor invocation instead of disappearing permanently.
+      if (!dryRun) {
+        var persistedUpdate = update;
+        if (significantHit && (!hitResult || !hitResult.sent)) {
+          individualFailedCount++;
+          individualFailures.push({
+            ticker: pck.ticker,
+            status: ev.status,
+            reason: hitResult && hitResult.reason ? hitResult.reason : 'delivery_failed',
+            http_status: hitResult && hitResult.status != null ? hitResult.status : null,
+            retry_after_seconds: hitResult && hitResult.retry_after_seconds != null ? hitResult.retry_after_seconds : null
+          });
+          persistedUpdate = { last_checked_at: update.last_checked_at };
+        }
+        var persistResult = await supabase.from('telegram_daily_picks').update(persistedUpdate).eq('id', pck.id);
+        if (persistResult && persistResult.error) throw new Error(persistResult.error.message || 'monitor state persistence failed');
       }
 
       // HOURLY BATCH DIGEST ROW — a compact status block for EVERY deduplicated
@@ -8137,7 +8172,8 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     if (hourlyBatchDue) {
       sendResult = await telegramNotifier.sendTelegramMessage(batchText);
     }
-    return res.status(200).json({ success: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, batch_send_reason: batchSendReason, sent_count: (hourlyBatchDue && sendResult.sent) ? 1 : 0, individual_sent_count: individualSentCount, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, error: null, telegram: sendResult });
+    var individualDeliveryOk = individualFailedCount === 0;
+    return res.status(200).json({ success: individualDeliveryOk, skipped: false, forced: force, weekend_bypassed: weekendBypassed, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, batch_send_reason: batchSendReason, sent_count: (hourlyBatchDue && sendResult.sent) ? 1 : 0, individual_sent_count: individualSentCount, individual_failed_count: individualFailedCount, individual_failures: individualFailures.length > 0 ? individualFailures : undefined, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, error: individualDeliveryOk ? null : 'individual_monitor_delivery_failed', telegram: sendResult });
   } catch (e) { return res.status(200).json({ success: false, sent_count: 0, checked_count: 0, error: e.message || String(e) }); }
 }
 
@@ -8212,10 +8248,14 @@ async function handleTelegramWebhook(req, res, supabase) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
   var secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (secret) {
-    var got = req.headers['x-telegram-bot-api-secret-token'];
-    if (got !== secret) return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
+  // Fail closed. A missing secret is a server misconfiguration, never permission
+  // to accept unauthenticated Telegram updates.
+  if (!secret) return res.status(503).json({ success: false, error: 'Telegram webhook secret is not configured.' });
+  var got = req.headers['x-telegram-bot-api-secret-token'];
+  if (typeof got !== 'string' || got.length !== secret.length) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  var gotBuf = Buffer.from(got, 'utf8');
+  var secretBuf = Buffer.from(secret, 'utf8');
+  if (!crypto.timingSafeEqual(gotBuf, secretBuf)) return res.status(401).json({ success: false, error: 'Unauthorized' });
 
   var body = req.body || {};
   var msg = body.message || body.edited_message || {};
@@ -8337,10 +8377,11 @@ function verifyCronSecret(req) {
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   const secret = process.env.CRON_SECRET || '';
   if (!secret) return false;
-  var querySecret = req && req.query ? String(req.query.secret || '').trim() : '';
-  if (querySecret && querySecret === secret) return true;
   if (!token) return false;
-  return token === secret;
+  const tokenBuf = Buffer.from(token, 'utf8');
+  const secretBuf = Buffer.from(secret, 'utf8');
+  if (tokenBuf.length !== secretBuf.length) return false;
+  return crypto.timingSafeEqual(tokenBuf, secretBuf);
 }
 
 function isWithinNkRunWindow() {

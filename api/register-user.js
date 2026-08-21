@@ -7,6 +7,7 @@ const {
 const telegramVerification = require('../lib/telegram-verification');
 const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 const accountTerms = require('../lib/account-terms');
+const passwordCredential = require('../lib/password-credential');
 
 // Registration is far more expensive than a read: it writes an app_users row
 // and mints a one-time Telegram verification challenge. It had no limit at all,
@@ -143,7 +144,7 @@ module.exports = async function handler(req, res) {
     try {
       registration = await telegramVerification.registerPendingUser(supabase, {
         username: usernameLower,
-        passwordHash: passwordHash,
+        passwordHash: passwordCredential.protectClientHash(passwordHash),
         deviceId: normalizedDeviceId,
         userAgent: String(userAgent || '').replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, MAX_USER_AGENT)
       });

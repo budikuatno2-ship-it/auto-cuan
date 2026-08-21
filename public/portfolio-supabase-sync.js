@@ -20,6 +20,7 @@
   var lastSerialized = '';
   var lastRemoteRefreshAt = 0;
   var retryTimer = null;
+  var cloudRevision = null;
 
   function accessNow() {
     var access = window.__AUTOCUAN_PORTFOLIO_ACCESS__ || {};
@@ -156,6 +157,7 @@
     try {
       var data = await post('portfolio-state-load', { bootstrap: bootstrap });
       applyRemoteState(uid, data.state || {});
+      cloudRevision = String(data.updated_at || '').trim() || null;
       hydrated = true;
       dirty = false;
       setStatus('synced', 'Portofolio tersimpan di Supabase');
@@ -208,7 +210,8 @@
     var serialized = JSON.stringify(snapshot);
     setStatus('saving', 'Menyimpan perubahan portofolio');
     try {
-      await post('portfolio-state-save', { portfolio_state: snapshot });
+      var saveData = await post('portfolio-state-save', { portfolio_state: snapshot, expected_updated_at: cloudRevision });
+      cloudRevision = String(saveData.updated_at || '').trim() || cloudRevision;
       // Only clear dirty if no newer local write happened while the request was
       // in flight. Otherwise the watcher will schedule the next save.
       var current = JSON.stringify(readLocalState(uid));
@@ -220,6 +223,12 @@
       return true;
     } catch (error) {
       dirty = true;
+      if (error && error.status === 409) {
+        // Keep this browser's local edits, but never retry them over a newer
+        // cloud revision until the user deliberately reloads/reconciles.
+        setStatus('conflict', error.message || 'Portofolio berubah di perangkat lain. Muat ulang untuk rekonsiliasi.');
+        return false;
+      }
       setStatus('local-fallback', error && error.message || 'Belum tersimpan ke cloud');
       setTimeout(scheduleSave, 2500);
       return false;
@@ -235,6 +244,7 @@
     lastRemoteRefreshAt = now;
     try {
       var data = await post('portfolio-state-load', { bootstrap: readLocalState(uid) });
+      cloudRevision = String(data.updated_at || '').trim() || cloudRevision;
       var remote = normalizeState(data.state || {});
       var remoteSerialized = JSON.stringify(remote);
       var localSerialized = JSON.stringify(readLocalState(uid));
@@ -254,7 +264,7 @@
         credentials: 'same-origin',
         keepalive: true,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'portfolio-state-save', portfolio_state: readLocalState(uid) })
+        body: JSON.stringify({ action: 'portfolio-state-save', portfolio_state: readLocalState(uid), expected_updated_at: cloudRevision })
       });
     } catch (_) {}
   }

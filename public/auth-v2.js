@@ -7,7 +7,6 @@
   var AUTH_API = '/api/reset-password';
   var RESET_MODAL_ID = 'authV2ResetModal';
   var authReadyResolve;
-  window.autocuanAuthReady = new Promise(function (resolve) { authReadyResolve = resolve; });
 
   function byId(id) { return document.getElementById(id); }
 
