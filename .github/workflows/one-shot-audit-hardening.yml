@@ -6,6 +6,9 @@ on:
       - claude/repo-audit-skills-5c832e
     paths:
       - .github/workflows/one-shot-audit-hardening.yml
+      - tools/one-shot-audit-hardening.py
+      - lib/password-credential.js
+      - test/password-credential.test.js
   pull_request:
     branches:
       - feat/daytrade-screener-v1
@@ -34,23 +37,8 @@ jobs:
 
       - run: npm ci --ignore-scripts
 
-      - name: Correct temporary patch anchor and apply hardening
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('tools/one-shot-audit-hardening.py')
-          s = p.read_text()
-          start = s.index('needle = """      return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });')
-          end = s.index('p.write_text(s)', start)
-          replacement = '''anchor = "    // Database credentials are valid from here on. Clear account/pair failure\\n"
-          pos = s.find(anchor, s.find('const credentialCheck'))
-          if pos < 0:
-              raise SystemExit('login database-credentials anchor not found')
-          upgrade = """    // Transparent migration: legacy rows stored the client SHA-256 prehash itself,\n    // which made a DB read equivalent to a login credential. After successful\n    // verification, replace it with a salted server-side scrypt credential.\n    if (credentialCheck.needsUpgrade) {\n      try {\n        const protectedCredential = passwordCredential.protectClientHash(passwordHash);\n        const upgraded = await supabase\n          .from('app_users')\n          .update({ password_hash: protectedCredential })\n          .eq('id', user.id)\n          .eq('password_hash', user.password_hash);\n        if (upgraded.error) console.error('login-user credential migration failed');\n      } catch (_) {\n        console.error('login-user credential migration failed');\n      }\n    }\n\n"""\n          s = s[:pos] + upgrade + s[pos:]\n'''
-          p.write_text(s[:start] + replacement + s[end:])
-          PY
-          python3 tools/one-shot-audit-hardening.py
+      - name: Apply deterministic audit hardening patch
+        run: python3 tools/one-shot-audit-hardening.py
 
       - name: Run focused audit regressions
         run: >-
@@ -84,6 +72,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm .github/workflows/one-shot-audit-hardening.yml tools/one-shot-audit-hardening.py
-          git add api/reset-password.js public/auth-v2.js api/login-user.js api/register-user.js lib/reset-password-legacy-handler.js lib/security-guard.js lib/portfolio-state-handler.js public/portfolio-supabase-sync.js api/sector-hot.js test/audit-auth-device-route.test.js test/audit-portfolio-concurrency.test.js test/audit-cron-and-top5-lock.test.js
+          git add api/reset-password.js public/auth-v2.js api/login-user.js api/register-user.js lib/reset-password-legacy-handler.js lib/security-guard.js lib/portfolio-state-handler.js public/portfolio-supabase-sync.js api/sector-hot.js test/audit-auth-device-route.test.js test/audit-portfolio-concurrency.test.js test/audit-cron-and-top5-lock.test.js lib/password-credential.js test/password-credential.test.js
           git commit -m "fix: close auth concurrency and scheduler audit gaps"
           git push origin HEAD:claude/repo-audit-skills-5c832e
