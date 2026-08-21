@@ -1,0 +1,101 @@
+name: Full repo audit 2026-08-21
+
+on:
+  push:
+    branches:
+      - fix/top5-history-full-audit-20260821
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exhaustive-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+
+      - name: Repository inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Tracked files: $(git ls-files | wc -l)"
+          echo "JS files: $(git ls-files '*.js' | wc -l)"
+          echo "HTML files: $(git ls-files '*.html' | wc -l)"
+          echo "Test files: $(git ls-files 'test/*.test.js' | wc -l)"
+          echo "Total tracked lines:"
+          git ls-files -z | xargs -0 wc -l 2>/dev/null | tail -n 1 || true
+
+      - name: Parse every tracked JavaScript file
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          while IFS= read -r f; do
+            if ! node --check "$f" >/tmp/node-check.out 2>&1; then
+              echo "::error file=$f::JavaScript parse failure"
+              cat /tmp/node-check.out
+              failed=1
+            fi
+          done < <(git ls-files '*.js')
+          exit "$failed"
+
+      - name: Run every Node test file
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t tests < <(git ls-files 'test/*.test.js')
+          printf 'Running %s test files\n' "${#tests[@]}"
+          node --test "${tests[@]}"
+
+      - name: Production build gate
+        run: npm run build
+
+      - name: Dependency vulnerability audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm audit --omit=dev --audit-level=high
+
+      - name: Static risk sweep
+        shell: bash
+        run: |
+          set -euo pipefail
+          report=/tmp/full-repo-audit-report.txt
+          : > "$report"
+          echo '=== RAW SERVER SECRET NAMES IN PUBLIC FILES ===' >> "$report"
+          grep -RInE 'SUPABASE_SERVICE_ROLE_KEY|CRON_SECRET|TELEGRAM_BOT_TOKEN|SCREENER_AI_API_KEY|SESSION_SECRET' public --include='*.js' --include='*.html' >> "$report" || true
+          echo >> "$report"
+          echo '=== QUERY-STRING SECRET ACCEPTANCE CANDIDATES ===' >> "$report"
+          grep -RInE 'query\.(secret|token|key)|query\[["'"'](secret|token|key)["'"']\]' api lib tools --include='*.js' >> "$report" || true
+          echo >> "$report"
+          echo '=== DIRECT SECRET STRING COMPARISONS ===' >> "$report"
+          grep -RInE '(secret|token|key)[A-Za-z0-9_ ]*(===|!==)|(===|!==)[A-Za-z0-9_ ]*(secret|token|key)' api lib tools --include='*.js' >> "$report" || true
+          echo >> "$report"
+          echo '=== UTC DATE-SLICE CANDIDATES (manual Jakarta review) ===' >> "$report"
+          grep -RInE 'toISOString\(\)\.slice\(0, *10\)|toISOString\(\)\.substring\(0, *10\)' api lib tools public --include='*.js' --include='*.html' >> "$report" || true
+          echo >> "$report"
+          echo '=== EMPTY/SILENT CATCH CANDIDATES ===' >> "$report"
+          grep -RInE 'catch *\([^)]*\) *\{ *\}|catch *\{ *\}' api lib tools public --include='*.js' --include='*.html' >> "$report" || true
+          echo >> "$report"
+          echo '=== TODO / FIXME / HACK / XXX ===' >> "$report"
+          grep -RInE 'TODO|FIXME|HACK|XXX' api lib tools public test --include='*.js' --include='*.html' >> "$report" || true
+          cat "$report"
+
+      - name: Ensure no build-time source mutation remains
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          if ! git diff --quiet; then
+            echo '::error::Production build mutated tracked source files.'
+            git status --short
+            git diff --stat
+            exit 1
+          fi
