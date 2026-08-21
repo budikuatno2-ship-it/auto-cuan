@@ -6,14 +6,15 @@
 
   var API = '/api/reset-password';
   var MAINTENANCE_API = '/api/maintenance-settings';
-  var IDLE_POLL_MS = 1200;
-  var ACTIVE_POLL_MS = 4000;
+  var IDLE_POLL_MS = 650;
+  var ACTIVE_POLL_MS = 2500;
   var HIDDEN_POLL_MS = 5000;
   var submitting = false;
   var expiresAt = 0;
   var statusTimer = null;
   var statusInFlight = false;
   var lastScope = null;
+  var runtimeStopped = false;
 
   window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
 
@@ -126,7 +127,7 @@
       });
       window.setTimeout(function () {
         try { input.focus(); } catch (_) {}
-      }, 60);
+      }, 20);
     }
     return wrap;
   }
@@ -189,7 +190,7 @@
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache'
       },
-      body: JSON.stringify({ action: 'get' })
+      body: JSON.stringify({ action: 'watch-admin-code' })
     });
     var data = await response.json().catch(function () { return {}; });
     if (!response.ok || data.success !== true) throw new Error('maintenance_status_unavailable');
@@ -242,24 +243,58 @@
     window.setTimeout(function () { cleanupTelegram(cleanupRef); }, 10000);
   }
 
+  function hydrateApprovedClientState(data) {
+    try {
+      var username = String(data && data.username || '').toLowerCase();
+      if (data && data.success === true && data.isAdmin === true && username === 'budi') {
+        localStorage.setItem('autocuan_user', 'budi');
+        localStorage.setItem('autocuan_is_admin', 'true');
+        localStorage.setItem('autocuan_logged_in', 'true');
+        localStorage.setItem('autocuan_login_time', Date.now().toString());
+        if (data.userId) localStorage.setItem('autocuan_user_id', String(data.userId));
+        localStorage.removeItem('autocuan_is_review');
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
   async function finishLogin(scope, data) {
+    runtimeStopped = true;
+    if (statusTimer) window.clearTimeout(statusTimer);
     setError(scope, '');
     setStatus(scope, '✅ Kode benar. Membuka Auto-Cuan…', 'success');
     scheduleCleanup(data && data.cleanupRef);
 
-    if (typeof window.validateAutocuanSession === 'function') {
-      try { await window.validateAutocuanSession(); } catch (_) {}
-    }
-    if (typeof window.applyMaintenanceGate === 'function') {
-      try { window.applyMaintenanceGate(); } catch (_) {}
-    }
-    if (typeof window.enterApp === 'function') {
+    // The consume response is already server-authenticated and has already set
+    // the signed HttpOnly ac_sess cookie. Mirror that approved identity into the
+    // existing client UX state immediately instead of waiting for a second
+    // network round-trip before showing the dashboard.
+    var hydrated = hydrateApprovedClientState(data);
+    var entered = false;
+    if (hydrated && typeof window.enterApp === 'function') {
       try {
         window.enterApp({ replaceHistory: true });
-        return;
+        entered = true;
       } catch (_) {}
     }
-    window.location.reload();
+
+    // Revalidate the signed session in the background so server truth remains
+    // authoritative. This is no longer on the visible login critical path.
+    if (typeof window.validateAutocuanSession === 'function') {
+      Promise.resolve()
+        .then(function () { return window.validateAutocuanSession(); })
+        .then(function () {
+          if (typeof window.applyMaintenanceGate === 'function') {
+            try { window.applyMaintenanceGate(); } catch (_) {}
+          }
+        })
+        .catch(function () {});
+    }
+
+    if (entered) return;
+    try { window.location.replace('/dashboard'); }
+    catch (_) { window.location.reload(); }
   }
 
   async function submitCode(scope) {
@@ -293,7 +328,7 @@
       setError(scope, 'Koneksi ke server sedang bermasalah. Coba lagi.');
     } finally {
       setSubmitting(scope, false);
-      if (input) {
+      if (!runtimeStopped && input) {
         input.disabled = false;
         try { input.focus(); } catch (_) {}
       }
@@ -301,11 +336,17 @@
   }
 
   function scheduleStatusCheck(delay) {
+    if (runtimeStopped) return;
     if (statusTimer) window.clearTimeout(statusTimer);
     statusTimer = window.setTimeout(checkLiveStatus, Math.max(0, Number(delay) || 0));
   }
 
   async function checkLiveStatus() {
+    if (runtimeStopped) return;
+    if (submitting) {
+      scheduleStatusCheck(ACTIVE_POLL_MS);
+      return;
+    }
     if (statusInFlight) {
       scheduleStatusCheck(IDLE_POLL_MS);
       return;
@@ -325,17 +366,14 @@
 
     try {
       var state = await readMaintenanceStatus();
-      var config = state.config || {};
       var adminCode = state.adminCode || {};
-      if (config.maintenanceMode === true && adminCode.active === true) {
+      if (state.maintenanceMode === true && adminCode.active === true) {
         renderActiveCode(scope, { expiresAt: adminCode.expiresAt || null });
         nextDelay = document.hidden ? HIDDEN_POLL_MS : ACTIVE_POLL_MS;
       } else {
         renderIdleCode(scope);
       }
     } catch (_) {
-      // A transient network failure must not make an already-visible valid code
-      // field disappear. Keep it until its known TTL ends, then fail closed.
       if (!(expiresAt > Date.now())) renderIdleCode(scope);
     } finally {
       statusInFlight = false;
@@ -350,9 +388,7 @@
     scheduleStatusCheck(0);
   });
 
-  // Start immediately and keep watching while maintenance is visible. The user
-  // never needs to refresh: /akses becoming active is detected on the next poll.
-  scheduleStatusCheck(100);
+  scheduleStatusCheck(50);
 
   window.__AUTOCUAN_MAINTENANCE_CODE_API__ = {
     activeScope: activeScope,
@@ -363,6 +399,7 @@
     cleanupTelegram: cleanupTelegram,
     post: post,
     readMaintenanceStatus: readMaintenanceStatus,
-    checkLiveStatus: checkLiveStatus
+    checkLiveStatus: checkLiveStatus,
+    hydrateApprovedClientState: hydrateApprovedClientState
   };
 })();
