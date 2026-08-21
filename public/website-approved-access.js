@@ -30,13 +30,13 @@
     loadScriptOnce('/account-center-lazy-loader-v1.js?v=20260816-v1', 'data-autocuan-account-center-lazy');
     loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');
 
-    // Maintenance code runtime v4: the active-code input mounts in a dedicated
-    // host directly inside the maintenance card, never inside the legacy admin
-    // container that other UI layers intentionally hide.
-    loadScriptOnce('/admin-maintenance-code.js?v=20260821-v4', 'data-autocuan-maintenance-code');
+    // Maintenance code runtime v5: reads code availability from the same
+    // maintenance-settings endpoint that drives the visible maintenance gate.
+    // This prevents the UI and Telegram-code state from taking separate paths.
+    loadScriptOnce('/admin-maintenance-code.js?v=20260821-v5', 'data-autocuan-maintenance-code');
 
-    // Compatibility fallback only. Code mode suppresses pairing polling once
-    // the maintenance-code schema is available.
+    // Compatibility fallback only. Code mode suppresses pairing polling while
+    // maintenance-code mode is active.
     loadScriptOnce('/admin-zero-link-pairing.js?v=20260821-v3', 'data-autocuan-zero-link-pairing');
     loadScriptOnce('/fast-watcher-live-refresh.js?v=20260730-v1', 'data-autocuan-fast-watcher-refresh');
   }

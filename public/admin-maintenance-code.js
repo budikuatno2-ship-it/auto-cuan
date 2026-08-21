@@ -5,16 +5,22 @@
   window.__AUTOCUAN_MAINTENANCE_CODE_RUNTIME__ = true;
 
   var API = '/api/reset-password';
+  var MAINTENANCE_API = '/api/maintenance-settings';
   var submitting = false;
   var expiresAt = 0;
 
-  // Prefer the maintenance-code system immediately so the legacy zero-link
-  // runtime cannot flash an administrator control while this feature probes.
   window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
 
   function visible(id) {
     var el = document.getElementById(id);
-    return !!(el && el.classList && !el.classList.contains('hidden'));
+    if (!el) return false;
+    if (el.classList && !el.classList.contains('hidden')) return true;
+    try {
+      var style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+      return !!(style && style.display !== 'none' && style.visibility !== 'hidden');
+    } catch (_) {
+      return false;
+    }
   }
 
   function activeScope() {
@@ -41,10 +47,6 @@
     return document.getElementById(scopeIds(scope).status);
   }
 
-  // IMPORTANT: code entry must never be mounted inside the legacy
-  // `.maintenance-admin` container. That container is intentionally hidden while
-  // code mode is active and can also be hidden by older presentation layers.
-  // Mount a dedicated sibling directly in the maintenance card instead.
   function codeHost(scope) {
     var screen = scopeScreen(scope);
     var card = screen && screen.querySelector('.maintenance-card');
@@ -172,6 +174,22 @@
     return { response: response, data: data };
   }
 
+  async function readMaintenanceStatus() {
+    var response = await window.fetch(MAINTENANCE_API, {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      body: JSON.stringify({ action: 'get' })
+    });
+    var data = await response.json().catch(function () { return {}; });
+    if (!response.ok || data.success !== true) throw new Error('maintenance_status_unavailable');
+    return data;
+  }
+
   function secondsRemaining() {
     if (!expiresAt) return 0;
     return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
@@ -194,8 +212,6 @@
   }
 
   function renderIdleCode(scope) {
-    // Feature exists, but no /akses code is currently active. Keep maintenance
-    // visually clean; the admin sends /akses first and refreshes this page.
     window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
     expiresAt = 0;
     removeCodeUi(scope);
@@ -281,26 +297,25 @@
   async function checkOnLoad() {
     var scope = activeScope();
     if (!scope) {
-      window.setTimeout(checkOnLoad, 350);
+      window.setTimeout(checkOnLoad, 250);
       return;
     }
 
     try {
-      var result = await post('admin-maintenance-code-status');
-      var data = result.data || {};
-      if (data.featureAvailable !== true) {
-        renderLegacyMode(scope);
-        return;
+      var state = await readMaintenanceStatus();
+      var config = state.config || {};
+      var adminCode = state.adminCode || {};
+      if (config.maintenanceMode === true && adminCode.active === true) {
+        renderActiveCode(scope, { expiresAt: adminCode.expiresAt || null });
+      } else {
+        renderIdleCode(scope);
       }
-      if (data.state === 'active') renderActiveCode(scope, data);
-      else renderIdleCode(scope);
     } catch (_) {
-      // Fail closed and visually clean. A refresh can retry the status check.
       renderIdleCode(scope);
     }
   }
 
-  window.setTimeout(checkOnLoad, 250);
+  window.setTimeout(checkOnLoad, 150);
 
   window.__AUTOCUAN_MAINTENANCE_CODE_API__ = {
     activeScope: activeScope,
@@ -309,6 +324,7 @@
     renderLegacyMode: renderLegacyMode,
     submitCode: submitCode,
     cleanupTelegram: cleanupTelegram,
-    post: post
+    post: post,
+    readMaintenanceStatus: readMaintenanceStatus
   };
 })();
