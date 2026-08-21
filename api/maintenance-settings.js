@@ -25,6 +25,58 @@ async function readAdminCodeState(supabase, maintenanceEnabled) {
   }
 }
 
+async function readMaintenanceConfig(supabase) {
+  const result = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'maintenance_config')
+    .maybeSingle();
+  if (result.error) return { error: result.error, parsed: null };
+  if (!result.data) {
+    return {
+      error: null,
+      parsed: {
+        enabled: false,
+        config: {
+          maintenanceMode: false,
+          message: 'Auto-Cuan sedang tidak dapat diakses sementara.',
+          updatedBy: null,
+          updatedAt: null
+        }
+      }
+    };
+  }
+  return { error: null, parsed: parseMaintenanceValue(result.data.value) };
+}
+
+async function readWatchSnapshot(supabase) {
+  // The maintenance flag and active-code state are independent reads, so run
+  // them in parallel. This removes one full database round-trip from the
+  // browser's live-watch critical path while still failing closed if maintenance
+  // is off or cannot be established.
+  const results = await Promise.all([
+    readMaintenanceConfig(supabase),
+    readAdminCodeState(supabase, true)
+  ]);
+  const settings = results[0];
+  const code = results[1];
+
+  if (settings.error || !settings.parsed) {
+    return { available: false, maintenanceMode: false, adminCode: { available: false, active: false, expiresAt: null } };
+  }
+
+  const maintenanceMode = settings.parsed.enabled === true;
+  return {
+    available: true,
+    maintenanceMode,
+    adminCode: {
+      available: code.available === true,
+      active: maintenanceMode && code.active === true,
+      expiresAt: maintenanceMode && code.active === true ? code.expiresAt : null
+    }
+  };
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
@@ -44,13 +96,30 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
+    // Lightweight live-watch path used only by the already-visible maintenance
+    // screen. It keeps the same endpoint as the canonical maintenance state but
+    // parallelizes the two DB reads to reduce visible /akses latency.
+    if (action === 'watch-admin-code') {
+      res.setHeader('Cache-Control', 'private, no-store');
+      const snapshot = await readWatchSnapshot(supabase);
+      if (!snapshot.available) {
+        return res.status(200).json({
+          success: false,
+          maintenanceMode: false,
+          adminCode: { available: false, active: false, expiresAt: null }
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        maintenanceMode: snapshot.maintenanceMode,
+        adminCode: snapshot.adminCode
+      });
+    }
+
     // === GET ===
     if (action === 'get') {
-      const { data, error } = await supabase
-        .from('app_settings')
-        .select('value')
-        .eq('key', 'maintenance_config')
-        .maybeSingle();
+      const state = await readMaintenanceConfig(supabase);
+      const error = state.error;
 
       if (error) {
         if (error.code === '42P01' || (error.message && error.message.includes('does not exist'))) {
@@ -60,21 +129,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ success: false, error: 'Gagal memuat pengaturan.' });
       }
 
-      if (!data) {
-        const defaultConfig = {
-          maintenanceMode: false,
-          message: 'Auto-Cuan sedang tidak dapat diakses sementara.',
-          updatedBy: null,
-          updatedAt: null
-        };
-        return res.status(200).json({
-          success: true,
-          config: defaultConfig,
-          adminCode: { available: true, active: false, expiresAt: null }
-        });
-      }
-
-      const parsed = parseMaintenanceValue(data.value);
+      const parsed = state.parsed;
       const configValue = parsed.config || {};
       const adminCode = await readAdminCodeState(supabase, parsed.enabled);
 
@@ -141,4 +196,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-module.exports.__test = { firstRow, readAdminCodeState };
+module.exports.__test = { firstRow, readAdminCodeState, readMaintenanceConfig, readWatchSnapshot };
