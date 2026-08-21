@@ -7,6 +7,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const maintenanceCode = require('../lib/admin-maintenance-code');
+const maintenanceState = require('../lib/maintenance-state');
 
 function makeBot() {
   const sent = [];
@@ -38,7 +39,23 @@ function emptyCleanupQuery() {
   return chain;
 }
 
-function makeDb() {
+function maintenanceSettingsQuery(enabled) {
+  const chain = {
+    select() { return chain; },
+    eq() { return chain; },
+    maybeSingle() {
+      return Promise.resolve({
+        data: { value: { maintenanceMode: enabled === true, message: 'test' } },
+        error: null
+      });
+    }
+  };
+  return chain;
+}
+
+function makeDb(options) {
+  const opts = options || {};
+  const maintenanceEnabled = opts.maintenanceEnabled !== false;
   const calls = [];
   return {
     calls,
@@ -67,7 +84,10 @@ function makeDb() {
       }
       return Promise.resolve({ data: null, error: null });
     },
-    from() { return emptyCleanupQuery(); }
+    from(table) {
+      if (table === 'app_settings') return maintenanceSettingsQuery(maintenanceEnabled);
+      return emptyCleanupQuery();
+    }
   };
 }
 
@@ -82,6 +102,13 @@ function accessUpdate() {
     }
   };
 }
+
+test('maintenance state parser only enables explicit maintenanceMode true', function () {
+  assert.equal(maintenanceState.parseMaintenanceValue({ maintenanceMode: true }).enabled, true);
+  assert.equal(maintenanceState.parseMaintenanceValue({ maintenanceMode: false }).enabled, false);
+  assert.equal(maintenanceState.parseMaintenanceValue('{"maintenanceMode":true}').enabled, true);
+  assert.equal(maintenanceState.parseMaintenanceValue('bad-json').enabled, false);
+});
 
 test('maintenance code is six digits and stored only as server-HMAC digest', function () {
   const previous = process.env.SESSION_SECRET;
@@ -99,11 +126,11 @@ test('maintenance code is six digits and stored only as server-HMAC digest', fun
   }
 });
 
-test('/akses sends one-time code and deletes the command message best-effort', async function () {
+test('/akses sends one-time code only while maintenance is enabled and deletes command best-effort', async function () {
   const previous = process.env.SESSION_SECRET;
   process.env.SESSION_SECRET = 'test-session-secret-at-least-32-characters-long';
   try {
-    const db = makeDb();
+    const db = makeDb({ maintenanceEnabled: true });
     const bot = makeBot();
     const result = await maintenanceCode.handleUpdate(accessUpdate(), { db, bot });
 
@@ -132,6 +159,26 @@ test('/akses sends one-time code and deletes the command message best-effort', a
   }
 });
 
+test('/akses is rejected and no code is issued while maintenance is off', async function () {
+  const previous = process.env.SESSION_SECRET;
+  process.env.SESSION_SECRET = 'test-session-secret-at-least-32-characters-long';
+  try {
+    const db = makeDb({ maintenanceEnabled: false });
+    const bot = makeBot();
+    const result = await maintenanceCode.handleUpdate(accessUpdate(), { db, bot });
+
+    assert.equal(result.handled, true);
+    assert.equal(result.outcome, 'admin_maintenance_code_not_in_maintenance');
+    assert.deepEqual(bot.deleted, [{ chatId: 777, messageId: 10 }]);
+    assert.equal(db.calls.some(function (call) { return call.name === 'issue_admin_maintenance_code'; }), false);
+    assert.equal(bot.sent.length, 1);
+    assert.match(bot.sent[0].text, /hanya tersedia saat Auto-Cuan sedang maintenance/i);
+  } finally {
+    if (previous == null) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = previous;
+  }
+});
+
 test('missing maintenance-code schema falls back instead of stealing /akses', async function () {
   const db = {
     rpc(name) {
@@ -146,38 +193,39 @@ test('missing maintenance-code schema falls back instead of stealing /akses', as
   assert.equal(result.outcome, 'admin_maintenance_code_schema_unavailable');
 });
 
-test('browser flow stays clean until refresh sees active code, then auto-submits from a dedicated card host', function () {
+test('browser flow reads code state from the same maintenance endpoint and auto-submits six digits', function () {
   const api = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
+  const maintenanceApi = fs.readFileSync(path.join(ROOT, 'api', 'maintenance-settings.js'), 'utf8');
   const browser = fs.readFileSync(path.join(ROOT, 'lib', 'admin-maintenance-code-browser.js'), 'utf8');
   const ui = fs.readFileSync(path.join(ROOT, 'public', 'admin-maintenance-code.js'), 'utf8');
   const pairingUi = fs.readFileSync(path.join(ROOT, 'public', 'admin-zero-link-pairing.js'), 'utf8');
   const loader = fs.readFileSync(path.join(ROOT, 'public', 'website-approved-access.js'), 'utf8');
   const access = fs.readFileSync(path.join(ROOT, 'lib', 'admin-access.js'), 'utf8');
 
-  assert.match(api, /admin-maintenance-code-status/);
   assert.match(api, /admin-maintenance-code-consume/);
   assert.match(api, /admin-maintenance-code-cleanup/);
+  assert.match(maintenanceApi, /get_admin_maintenance_code_status/);
+  assert.match(maintenanceApi, /adminCode/);
+  assert.match(browser, /readMaintenanceState/);
+  assert.match(browser, /not_maintenance/);
   assert.match(browser, /consume_admin_maintenance_code/);
   assert.match(browser, /buildSessionCookie/);
   assert.match(browser, /deleteMessageSafely/);
   assert.match(browser, /telegram_success_message_id/);
 
+  assert.match(ui, /MAINTENANCE_API = '\/api\/maintenance-settings'/);
+  assert.match(ui, /function readMaintenanceStatus/);
+  assert.match(ui, /window\.getComputedStyle/);
+  assert.match(ui, /data-admin-code-host-outer/);
   assert.match(ui, /function renderIdleCode/);
   assert.match(ui, /removeCodeUi\(scope\)/);
-  assert.match(ui, /setLegacyVisible\(scope, false\)/);
-  assert.match(ui, /function checkOnLoad/);
-  assert.doesNotMatch(ui, /setTimeout\(poll/);
   assert.match(ui, /this\.value\.length === 6 && !submitting/);
   assert.match(ui, /submitCode\(scope\)/);
   assert.doesNotMatch(ui, /data-code-submit/);
-  assert.match(ui, /data-admin-code-host-outer/);
-  assert.match(ui, /card\.appendChild\(outer\)/);
-  assert.doesNotMatch(ui, /btn && btn\.parentNode\) return btn\.parentNode/);
-  assert.match(ui, /admin-maintenance-code-cleanup/);
   assert.match(ui, /validateAutocuanSession/);
 
   assert.match(pairingUi, /__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__/);
-  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v4/);
+  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v5/);
   assert.match(access, /maintenanceCode\.handleUpdate/);
 });
 
