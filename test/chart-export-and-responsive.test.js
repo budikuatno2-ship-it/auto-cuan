@@ -15,16 +15,21 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..');
 const HTML_PATH = path.join(ROOT, 'public', 'index.html');
 const html = fs.readFileSync(HTML_PATH, 'utf8');
+// Most chart/export functions here were relocated out of index.html into this
+// externalized runtime file (see frontend-runtime-decomposition.test.js); only
+// loadChartPage remains inline. Search both sources.
+const runtimeSrc = fs.readFileSync(path.join(ROOT, 'public', 'market-feature-runtime.js'), 'utf8');
+const combinedSrc = html + '\n' + runtimeSrc;
 
 // Extract a top-level function body by brace matching (same approach as sibling tests).
 function extractFunction(signature) {
-  const start = html.indexOf(signature);
+  const start = combinedSrc.indexOf(signature);
   assert.ok(start >= 0, 'function must exist: ' + signature);
-  const i = html.indexOf('{', start);
+  const i = combinedSrc.indexOf('{', start);
   let depth = 0;
-  for (let j = i; j < html.length; j++) {
-    if (html[j] === '{') depth++;
-    else if (html[j] === '}') { depth--; if (depth === 0) return html.slice(start, j + 1); }
+  for (let j = i; j < combinedSrc.length; j++) {
+    if (combinedSrc[j] === '{') depth++;
+    else if (combinedSrc[j] === '}') { depth--; if (depth === 0) return combinedSrc.slice(start, j + 1); }
   }
   throw new Error('unbalanced braces for ' + signature);
 }
