@@ -51,6 +51,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/zero-link-runtime.sql
       - name: Execute maintenance-code runtime regression
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/maintenance-code-runtime.sql
+      - name: Verify maintenance status polling is read-only
+        run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/readonly-status-runtime.sql
       - name: Re-apply migrations against non-empty state
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
