@@ -27,6 +27,10 @@
       : { panel: 'maintenanceAdminBtn', status: 'maintenanceAdminStatus', wrap: 'maintenanceAdminCodeWrap' };
   }
 
+  function scopeScreen(scope) {
+    return document.getElementById(scope === 'serviceStatus' ? 'serviceStatusScreen' : 'maintenanceScreen');
+  }
+
   function legacyButton(scope) {
     return document.getElementById(scopeIds(scope).panel);
   }
@@ -37,7 +41,46 @@
 
   function legacyPanel(scope) {
     var btn = legacyButton(scope);
-    return btn && btn.parentNode ? btn.parentNode : null;
+    if (btn && btn.parentNode) return btn.parentNode;
+
+    // Defensive fallback: maintenance UI must never become inaccessible merely
+    // because the legacy hidden admin button was removed/rearranged by another
+    // UI layer. Create a self-contained host directly inside the maintenance card.
+    var screen = scopeScreen(scope);
+    var card = screen && screen.querySelector('.maintenance-card');
+    if (!card) return null;
+
+    var host = card.querySelector('[data-admin-code-host]');
+    if (!host) {
+      var outer = document.createElement('div');
+      outer.setAttribute('data-admin-code-host', '1');
+      outer.style.cssText = 'margin-top:18px;padding-top:14px;border-top:1px solid rgba(148,163,184,.12);display:flex;justify-content:center';
+      host = document.createElement('div');
+      host.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:320px';
+      outer.appendChild(host);
+      card.appendChild(outer);
+    }
+    return host;
+  }
+
+  function forceHostVisible(scope) {
+    var panel = legacyPanel(scope);
+    if (!panel) return null;
+    if (panel.style) {
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
+      panel.style.alignItems = 'center';
+      panel.style.width = '100%';
+    }
+    var outer = panel.closest && panel.closest('.maintenance-admin');
+    if (outer && outer.style) {
+      // Older production CSS intentionally hid the legacy admin entry. Code
+      // login lives in the same DOM area, so explicitly unhide the container.
+      outer.style.display = 'flex';
+      outer.style.visibility = 'visible';
+      outer.style.opacity = '1';
+    }
+    return panel;
   }
 
   function setLegacyVisible(scope, show) {
@@ -50,9 +93,12 @@
   function ensureCodeUi(scope) {
     var ids = scopeIds(scope);
     var existing = document.getElementById(ids.wrap);
-    if (existing) return existing;
+    if (existing) {
+      forceHostVisible(scope);
+      return existing;
+    }
 
-    var panel = legacyPanel(scope);
+    var panel = forceHostVisible(scope);
     if (!panel) return null;
 
     var wrap = document.createElement('div');
@@ -64,7 +110,7 @@
     wrap.innerHTML = [
       '<div data-code-title style="font-size:12px;font-weight:800;color:#cbd5e1">Akses administrator</div>',
       '<div data-code-status role="status" aria-live="polite" style="margin-top:5px;font-size:11.5px;line-height:1.55;color:#6b7a90">Kirim <strong style="color:#cbd5e1">/akses</strong> ke AutoCuan Verification.</div>',
-      '<form data-code-form class="hidden" style="margin-top:10px" autocomplete="off">',
+      '<form data-code-form style="margin-top:10px" autocomplete="off">',
       '  <input data-code-input inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" aria-label="Kode administrator 6 digit" placeholder="000000" style="box-sizing:border-box;width:100%;height:46px;border:1px solid rgba(148,163,184,.25);border-radius:12px;background:#020617;color:#fff;text-align:center;font-size:22px;font-weight:800;letter-spacing:.22em;outline:none" />',
       '  <button data-code-submit type="submit" style="box-sizing:border-box;width:100%;min-height:44px;margin-top:9px;border:0;border-radius:12px;background:#10b981;color:#04130d;font-size:13px;font-weight:800;cursor:pointer">Masuk sebagai administrator</button>',
       '</form>',
@@ -156,16 +202,22 @@
 
   function renderCodeMode(scope, data) {
     window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
+    forceHostVisible(scope);
     setLegacyVisible(scope, false);
     ensureCodeUi(scope);
 
     var oldHint = document.getElementById('adminZeroLinkPairingHint');
     if (oldHint) oldHint.classList.add('hidden');
 
+    // Keep the input visible whenever this feature exists. The active-status
+    // poll improves the copy/countdown, but a transient polling/cache/UI race
+    // must never leave an administrator with a valid Telegram code and nowhere
+    // to type it.
+    showForm(scope, true);
+
     if (data && data.state === 'active') {
       expiresAt = Date.parse(data.expiresAt || '') || (Date.now() + 120000);
       var remaining = secondsRemaining();
-      showForm(scope, true);
       setStatus(scope,
         'Kode dari Telegram aktif. Masukkan 6 digit di bawah' +
         (remaining ? ' · <strong style="color:#cbd5e1">' + remaining + ' dtk</strong>' : '') + '.',
@@ -174,9 +226,8 @@
     }
 
     expiresAt = 0;
-    showForm(scope, false);
     setError(scope, '');
-    setStatus(scope, 'Kirim <strong style="color:#cbd5e1">/akses</strong> ke AutoCuan Verification. Form kode akan muncul otomatis.', 'info');
+    setStatus(scope, 'Kirim <strong style="color:#cbd5e1">/akses</strong> ke AutoCuan Verification, lalu masukkan 6 digit di bawah.', 'info');
   }
 
   function renderLegacyMode(scope) {
@@ -272,8 +323,12 @@
       if (data.featureAvailable === true) renderCodeMode(scope, data);
       else renderLegacyMode(scope);
     } catch (_) {
-      // Keep whichever UI mode was last known. A transient status failure must
-      // never unlock maintenance or erase an in-progress code entry.
+      // If a previous successful status already enabled code mode, preserve the
+      // visible form through transient failures.
+      if (window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ === true) {
+        forceHostVisible(scope);
+        showForm(scope, true);
+      }
     } finally {
       inFlight = false;
     }
