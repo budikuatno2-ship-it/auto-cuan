@@ -43,6 +43,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'POST' && (
     bodyAction === 'admin-maintenance-code-status' ||
     bodyAction === 'admin-maintenance-code-consume' ||
+    bodyAction === 'admin-maintenance-code-notify' ||
     bodyAction === 'admin-maintenance-code-cleanup'
   )) {
     return maintenanceCodeBrowser(req, res);

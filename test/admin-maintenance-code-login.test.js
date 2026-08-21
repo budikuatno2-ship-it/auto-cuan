@@ -203,7 +203,7 @@ test('missing maintenance-code schema falls back instead of stealing /akses', as
   assert.equal(result.outcome, 'admin_maintenance_code_schema_unavailable');
 });
 
-test('browser live-watch uses low-latency snapshot and fast approved-session transition', function () {
+test('browser watcher only polls while maintenance gate is visible and bounds network stalls', function () {
   const api = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
   const maintenanceApi = fs.readFileSync(path.join(ROOT, 'api', 'maintenance-settings.js'), 'utf8');
   const browser = fs.readFileSync(path.join(ROOT, 'lib', 'admin-maintenance-code-browser.js'), 'utf8');
@@ -213,31 +213,38 @@ test('browser live-watch uses low-latency snapshot and fast approved-session tra
   const access = fs.readFileSync(path.join(ROOT, 'lib', 'admin-access.js'), 'utf8');
 
   assert.match(api, /admin-maintenance-code-consume/);
+  assert.match(api, /admin-maintenance-code-notify/);
   assert.match(api, /admin-maintenance-code-cleanup/);
   assert.match(maintenanceApi, /watch-admin-code/);
   assert.match(maintenanceApi, /Promise\.all/);
   assert.match(maintenanceApi, /readWatchSnapshot/);
-  assert.match(maintenanceApi, /maintenanceMode && code\.active === true/);
   assert.match(browser, /readMaintenanceState/);
-  assert.match(browser, /not_maintenance/);
   assert.match(browser, /consume_admin_maintenance_code/);
   assert.match(browser, /buildSessionCookie/);
-  assert.match(browser, /deleteMessageSafely/);
-  assert.match(browser, /telegram_success_message_id/);
+  assert.match(browser, /async function notify\(/);
+  assert.match(browser, /requireAdminSession/);
+  assert.match(browser, /already_notified/);
+
+  const consumeStart = browser.indexOf('async function consume(');
+  const notifyStart = browser.indexOf('async function notify(', consumeStart);
+  const consumeSource = browser.slice(consumeStart, notifyStart);
+  assert.doesNotMatch(consumeSource, /await notifySuccessfulLogin/);
 
   assert.match(ui, /MAINTENANCE_API = '\/api\/maintenance-settings'/);
   assert.match(ui, /IDLE_POLL_MS = 650/);
-  assert.match(ui, /ACTIVE_POLL_MS = 2500/);
+  assert.match(ui, /WATCH_TIMEOUT_MS = 2500/);
+  assert.match(ui, /ACTION_TIMEOUT_MS = 8000/);
+  assert.match(ui, /AbortController/);
   assert.match(ui, /watch-admin-code/);
   assert.match(ui, /function checkLiveStatus/);
-  assert.match(ui, /if \(submitting\)/);
-  assert.match(ui, /scheduleStatusCheck\(nextDelay\)/);
-  assert.match(ui, /visibilitychange/);
-  assert.match(ui, /window\.addEventListener\('focus'/);
-  assert.match(ui, /scheduleStatusCheck\(50\)/);
+  assert.match(ui, /function syncWatchState/);
+  assert.match(ui, /function observeGateVisibility/);
+  assert.match(ui, /MutationObserver/);
+  assert.match(ui, /if \(!scope\)[\s\S]*?stopStatusChecks\(\);[\s\S]*?return;/);
+  assert.match(ui, /if \(!document\.hidden && activeScope\(\)\) scheduleStatusCheck\(0\)/);
+  assert.match(ui, /admin-maintenance-code-notify/);
+  assert.match(ui, /keepalive: true/);
   assert.match(ui, /hydrateApprovedClientState/);
-  assert.match(ui, /localStorage\.setItem\('autocuan_logged_in', 'true'\)/);
-  assert.match(ui, /Promise\.resolve\(\)\s*\.then\(function \(\) \{ return window\.validateAutocuanSession\(\); \}\)/);
   assert.match(ui, /runtimeStopped = true/);
   assert.match(ui, /window\.getComputedStyle/);
   assert.match(ui, /data-admin-code-host-outer/);
@@ -246,7 +253,8 @@ test('browser live-watch uses low-latency snapshot and fast approved-session tra
   assert.doesNotMatch(ui, /data-code-submit/);
 
   assert.match(pairingUi, /__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__/);
-  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v7/);
+  assert.match(loader, /admin-maintenance-code\.js\?v=20260822-v8/);
+  assert.match(loader, /fast-watcher-live-refresh\.js\?v=20260822-v2/);
   assert.match(access, /maintenanceCode\.handleUpdate/);
 });
 

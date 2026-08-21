@@ -44,17 +44,21 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-zero-link-pairing-migration.sql
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-maintenance-code-migration.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-maintenance-code-readonly-status-migration.sql
       - name: Execute command-login runtime regression
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/runtime.sql
       - name: Execute zero-link pairing runtime regression
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/zero-link-runtime.sql
       - name: Execute maintenance-code runtime regression
         run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/maintenance-code-runtime.sql
+      - name: Verify maintenance status polling is read-only
+        run: psql -v ON_ERROR_STOP=1 -f test/sql/admin-command-login/readonly-status-runtime.sql
       - name: Re-apply migrations against non-empty state
         run: |
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-command-login-migration.sql
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-zero-link-pairing-migration.sql
           psql -v ON_ERROR_STOP=1 -f supabase/admin-telegram-maintenance-code-migration.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/admin-maintenance-code-readonly-status-migration.sql
       - name: Verify migrations remain runnable after re-apply
         run: |
           psql -v ON_ERROR_STOP=1 -c "SELECT count(*) AS grants FROM public.admin_command_login_grants;"
