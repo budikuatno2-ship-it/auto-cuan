@@ -6867,7 +6867,17 @@ function buildDashboardMonitorRow(row, rank, px, ev) {
 }
 
 function dailyPickInsertRowFromCandidate(candidate, date, firstSentAt) {
-  return { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: firstSentAt || null, raw_payload: candidate };
+  candidate = candidate || {};
+  var row = { date: date, ticker: candidate.ticker, category: candidate.category, entry1: candidate.entry1, entry2: candidate.entry2, tp1: candidate.tp1n, tp2: candidate.tp2n, sl: candidate.sl, status: 'WAITING', first_sent_at: firstSentAt || null, raw_payload: candidate };
+  // The DB uniqueness guarantee is partial and only applies when both identity
+  // fields are non-null. Populate them here so fallback/lock-only inserts cannot
+  // silently bypass the unique index.
+  var identity = buildMonitorPlanIdentity(candidate, date, candidate.monitor_source || candidate.category || 'daily_top5');
+  if (identity && identity.valid) {
+    row.monitor_source = identity.monitor_source;
+    row.plan_lock_id = identity.plan_lock_id;
+  }
+  return row;
 }
 
 function normalizeMonitorSourceValue(source, candidate) {
@@ -8367,10 +8377,11 @@ function verifyCronSecret(req) {
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
   const secret = process.env.CRON_SECRET || '';
   if (!secret) return false;
-  var querySecret = req && req.query ? String(req.query.secret || '').trim() : '';
-  if (querySecret && querySecret === secret) return true;
   if (!token) return false;
-  return token === secret;
+  const tokenBuf = Buffer.from(token, 'utf8');
+  const secretBuf = Buffer.from(secret, 'utf8');
+  if (tokenBuf.length !== secretBuf.length) return false;
+  return crypto.timingSafeEqual(tokenBuf, secretBuf);
 }
 
 function isWithinNkRunWindow() {

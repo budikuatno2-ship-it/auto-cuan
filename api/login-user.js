@@ -11,6 +11,7 @@ const { generateApprovalCode, maskUsername } = require('../lib/free-user-approva
 const telegramVerification = require('../lib/telegram-verification');
 const { createVerifyBot } = require('../lib/telegram-verify-bot');
 const securityGuard = require('../lib/security-guard');
+const passwordCredential = require('../lib/password-credential');
 
 const MAX_DEVICES = 3;
 
@@ -383,7 +384,8 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ success: false, error: GENERIC_CREDENTIAL_ERROR });
     }
 
-    const databasePasswordMatches = user.password_hash === passwordHash;
+    const credentialCheck = passwordCredential.verifyStoredCredential(user.password_hash, passwordHash);
+    const databasePasswordMatches = credentialCheck.ok;
 
     if (!databasePasswordMatches) {
       // Narrow compatibility for the historical budi + "." login. The browser
@@ -415,6 +417,24 @@ module.exports = async function handler(req, res) {
         userId: user.id,
         isAdmin: legacySession.isAdmin
       });
+    }
+
+    // Transparent migration from the historical raw client prehash. The update
+    // is compare-and-swap so concurrent successful logins cannot clobber a newer
+    // credential. Migration failure does not lock the user out; it can retry on
+    // the next successful login.
+    if (credentialCheck.needsUpgrade) {
+      try {
+        const protectedCredential = passwordCredential.protectClientHash(passwordHash);
+        const upgraded = await supabase
+          .from('app_users')
+          .update({ password_hash: protectedCredential })
+          .eq('id', user.id)
+          .eq('password_hash', user.password_hash);
+        if (upgraded.error) console.error('login-user credential migration failed');
+      } catch (_) {
+        console.error('login-user credential migration failed');
+      }
     }
 
     // Database credentials are valid from here on. Clear account/pair failure
