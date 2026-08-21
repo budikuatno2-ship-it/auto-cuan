@@ -127,8 +127,10 @@ async function runMonitorAtMinute(minute, extraQuery, scenario) {
   const supabase = makeSupabase(scenario);
   const req = {
     method: 'GET',
-    headers: {},
-    query: Object.assign({ secret: process.env.CRON_SECRET, force: '1' }, extraQuery || {})
+    // verifyCronSecret() only accepts the Bearer Authorization header (query-string
+    // secrets were removed as a hardening measure).
+    headers: { authorization: 'Bearer ' + process.env.CRON_SECRET },
+    query: Object.assign({ force: '1' }, extraQuery || {})
   };
   const res = makeRes();
   await handleTelegramMonitorPicks(req, res, supabase);

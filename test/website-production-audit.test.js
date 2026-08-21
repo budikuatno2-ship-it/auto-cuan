@@ -133,28 +133,34 @@ test('A: exactly 12 Vercel API functions', () => {
 
 test('B: portfolio_access approves only an approved, unblocked, signed account', async () => {
   await withEnv(async () => {
-    const account = { id: 'user-1', username: 'trader', is_approved: true, is_blocked: false };
+    const account = { id: SECTOR_HOT_PREMIUM_USER_ID, username: 'trader', is_approved: true, is_blocked: false };
     const handler = requireApiWithSupabaseStub('../api/admin-users',
-      chainableSupabase({ app_users: () => ({ data: account, error: null }) }));
+      chainableSupabase({
+        app_users: () => ({ data: account, error: null }),
+        user_entitlements: () => ({
+          data: [{ plan_code: 'monthly', source: 'purchase', status: 'active', starts_at: '2026-01-01T00:00:00Z', expires_at: '2099-01-01T00:00:00Z', lifetime: false }],
+          error: null
+        })
+      }));
 
     // approved
     let res = makeRes();
-    await handler({ method: 'POST', headers: { host: 'x', cookie: signedCookie() }, body: { action: 'portfolio_access' } }, res);
+    await handler({ method: 'POST', headers: { host: 'x', cookie: signedCookie({ userId: SECTOR_HOT_PREMIUM_USER_ID }) }, body: { action: 'portfolio_access' } }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.success, true);
-    assert.equal(res.body.user_id, 'user-1');
+    assert.equal(res.body.user_id, SECTOR_HOT_PREMIUM_USER_ID);
 
     // blocked
     account.is_blocked = true;
     res = makeRes();
-    await handler({ method: 'POST', headers: { host: 'x', cookie: signedCookie() }, body: { action: 'portfolio_access' } }, res);
+    await handler({ method: 'POST', headers: { host: 'x', cookie: signedCookie({ userId: SECTOR_HOT_PREMIUM_USER_ID }) }, body: { action: 'portfolio_access' } }, res);
     assert.equal(res.statusCode, 403);
 
     // unapproved
     account.is_blocked = false;
     account.is_approved = false;
     res = makeRes();
-    await handler({ method: 'POST', headers: { host: 'x', cookie: signedCookie() }, body: { action: 'portfolio_access' } }, res);
+    await handler({ method: 'POST', headers: { host: 'x', cookie: signedCookie({ userId: SECTOR_HOT_PREMIUM_USER_ID }) }, body: { action: 'portfolio_access' } }, res);
     assert.equal(res.statusCode, 403);
   });
 });
@@ -324,11 +330,23 @@ test('E: delete UI demands the exact username and never decorates budi/review ro
 
 // --- F. sector hot -------------------------------------------------------------------
 
+// A UUID account id with an active (non-lifetime) plan row in
+// `user_entitlements`, matching how api/sector-hot.js's default list route
+// is actually gated (lib/subscription-auth.js -> lib/entitlements.js):
+// resolveEntitlements() only reads user_entitlements for UUID account ids,
+// so a non-UUID fixture id like the legacy 'user-1' always falls back to the
+// free-only compatibility path regardless of approval/block state.
+const SECTOR_HOT_PREMIUM_USER_ID = '11111111-1111-4111-8111-111111111111';
+
 function sectorHotListStub(overrides, calls) {
   const groups = overrides.groups;
   const members = overrides.members;
   return chainableSupabase({
-    app_users: () => ({ data: { id: 'user-1', username: 'trader', is_approved: true, is_blocked: false }, error: null }),
+    app_users: () => ({ data: { id: SECTOR_HOT_PREMIUM_USER_ID, username: 'trader', is_approved: true, is_blocked: false }, error: null }),
+    user_entitlements: () => ({
+      data: [{ plan_code: 'monthly', source: 'purchase', status: 'active', starts_at: '2026-01-01T00:00:00Z', expires_at: '2099-01-01T00:00:00Z', lifetime: false }],
+      error: null
+    }),
     sector_hot_meta: () => ({ data: { calculated_at: '2026-07-25T09:00:00Z', status: 'done' }, error: null }),
     sector_hot_latest: () => ({ data: groups, error: null }),
     sector_hot_group_members: () => members
@@ -338,7 +356,7 @@ function sectorHotListStub(overrides, calls) {
 async function runSectorHotList(stub) {
   const handler = requireApiWithSupabaseStub('../api/sector-hot', stub);
   const res = makeRes();
-  await handler({ method: 'GET', query: {}, headers: { host: 'x', cookie: signedCookie() } }, res);
+  await handler({ method: 'GET', query: {}, headers: { host: 'x', cookie: signedCookie({ userId: SECTOR_HOT_PREMIUM_USER_ID }) } }, res);
   return res;
 }
 
