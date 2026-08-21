@@ -143,7 +143,7 @@ test('missing maintenance-code schema falls back instead of stealing /akses', as
   assert.equal(result.outcome, 'admin_maintenance_code_schema_unavailable');
 });
 
-test('browser/runtime contracts keep code login one-time and legacy pairing as rollout fallback', function () {
+test('browser/runtime contracts keep code login visible and legacy pairing as rollout fallback', function () {
   const api = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
   const browser = fs.readFileSync(path.join(ROOT, 'lib', 'admin-maintenance-code-browser.js'), 'utf8');
   const ui = fs.readFileSync(path.join(ROOT, 'public', 'admin-maintenance-code.js'), 'utf8');
@@ -158,11 +158,13 @@ test('browser/runtime contracts keep code login one-time and legacy pairing as r
   assert.match(browser, /buildSessionCookie/);
   assert.match(browser, /deleteMessageSafely/);
   assert.match(browser, /telegram_success_message_id/);
-  assert.match(ui, /Form kode akan muncul otomatis/);
+  assert.match(ui, /forceHostVisible/);
+  assert.match(ui, /showForm\(scope, true\)/);
+  assert.match(ui, /nowhere\n\s*\/\/ to type it|nowhere/);
   assert.match(ui, /admin-maintenance-code-cleanup/);
   assert.match(ui, /validateAutocuanSession/);
   assert.match(pairingUi, /__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__/);
-  assert.match(loader, /admin-maintenance-code\.js\?v=/);
+  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v2/);
   assert.match(access, /maintenanceCode\.handleUpdate/);
 });
 
