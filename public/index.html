@@ -63,15 +63,38 @@
          now lives in tailwind.config.js. -->
     <link rel="stylesheet" href="/tailwind-build.css?v=20260813-tw-v1">
     <style id="critical-shell-fallback">
-        /* Same-document startup safety net: remains available even if external CSS fails. */
-        .hidden { display: none !important; }
+        /* Same-document startup safety net: remains available even if external CSS fails.
+           Deliberately NOT !important, for the same reason as index-shell.css's own
+           .hidden rule: `class="hidden md:flex"` drives the desktop landing menu, and
+           Tailwind's .md\:flex must keep winning over this by source order. !important
+           here would permanently pin that menu shut, even once index-shell.css loads. */
+        .hidden { display: none; }
         #maintenanceScreen { box-sizing: border-box; padding-left: 16px; padding-right: 16px; }
         .maintenance-card, .maintenance-card * { box-sizing: border-box; }
         .maintenance-card { width: 100%; max-width: 480px; border: 1px solid rgba(148,163,184,.14); border-radius: 14px; background: #0f172a; box-shadow: 0 14px 36px rgba(0,0,0,.28); padding: 28px 24px; }
         .maintenance-brand { display: flex; align-items: center; gap: 11px; padding-bottom: 18px; border-bottom: 1px solid rgba(148,163,184,.12); }
+        .maintenance-mark { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 12px; display: grid; place-items: center; background: linear-gradient(135deg, #34d399, #059669); }
+        .maintenance-mark svg { width: 20px; height: 20px; }
+        .maintenance-eyebrow { margin-top: 22px; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #fcd34d; }
+        .maintenance-title { margin-top: 8px; font-size: 21px; line-height: 1.25; font-weight: 800; color: #f1f5f9; letter-spacing: -.015em; }
         .maintenance-message { margin-top: 10px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }
+        .maintenance-facts { margin-top: 18px; padding: 14px 16px; border: 1px solid rgba(148,163,184,.12); border-radius: 12px; background: rgba(2,6,23,.32); list-style: none; display: grid; gap: 9px; }
+        .maintenance-facts li { position: relative; padding-left: 18px; font-size: 12.5px; line-height: 1.55; color: #94a3b8; }
+        .maintenance-facts li::before { content: ""; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 999px; background: #34d399; }
+        .maintenance-actions { margin-top: 20px; display: flex; }
         .maintenance-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 18px; border-radius: 12px; }
+        .maintenance-btn:focus-visible { outline: 2px solid rgba(52,211,153,.75); outline-offset: 3px; }
         .maintenance-btn-primary { width: 100%; color: #04130d; background: #10b981; }
+        .maintenance-foot { margin-top: 16px; font-size: 11.5px; line-height: 1.6; color: #6b7a90; }
+        .maintenance-admin { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(148,163,184,.12); display: flex; justify-content: center; }
+        .maintenance-admin-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid transparent; border-radius: 12px; background: none; color: #6b7a90; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .maintenance-admin-btn:hover { color: #cbd5e1; border-color: rgba(148,163,184,.16); background: rgba(15,23,42,.5); }
+        .maintenance-admin-btn:focus-visible { outline: 2px solid rgba(52,211,153,.75); outline-offset: 3px; }
+        .maintenance-admin-btn:disabled { opacity: .6; cursor: default; }
+        .maintenance-admin-panel { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 320px; }
+        .maintenance-admin-status { font-size: 11.5px; line-height: 1.6; color: #6b7a90; text-align: center; }
+        .maintenance-admin-status-error { color: #fca5a5; }
+        .maintenance-admin-status-success { color: #6ee7b7; }
         @media (min-width: 640px) { .maintenance-card { padding: 34px 32px; } }
     </style>
     <link rel="stylesheet" href="/index-shell.css?v=20260818-v1">

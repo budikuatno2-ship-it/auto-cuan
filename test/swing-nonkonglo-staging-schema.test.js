@@ -146,10 +146,13 @@ test('sanitizeNkLatestPublishRow uses a latest publish column allowlist', functi
   const row = buildLatestRow();
   const sanitized = sectorHot.__test.sanitizeNkLatestPublishRow(row);
 
+  // price_source/price_asof/price_date were added to the real
+  // swing_screener_non_konglo_latest schema by supabase/patch-swing-price-provenance.sql
+  // and are now part of NK_LATEST_COLUMNS, so the sanitizer correctly keeps them.
   assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'close_price'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'price_source'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'price_asof'), false);
-  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'price_date'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'price_source'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'price_asof'), true);
+  assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'price_date'), true);
   assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'open_price'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'high_price'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(sanitized, 'low_price'), false);

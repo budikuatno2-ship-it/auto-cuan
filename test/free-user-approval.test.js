@@ -11,6 +11,7 @@ const HTML_PATH = path.join(ROOT, 'public', 'index.html');
 const SESSION_SECRET = 'free-user-approval-local-test-secret';
 const approval = require('../lib/free-user-approval');
 const notifier = require('../lib/telegram-notifier');
+const accountTerms = require('../lib/account-terms');
 
 function makeRes() {
   return {
@@ -178,7 +179,7 @@ async function registerWith(channelUrl) {
     const res = makeRes();
     await handler({
       method: 'POST',
-      body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'local-device', userAgent: 'local-test' }
+      body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'local-device', userAgent: 'local-test', termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION }
     }, res);
     return { res: res, captured: mock.captured };
   });
@@ -603,7 +604,7 @@ async function runLogin(user, body, env) {
 
 function pendingUser(overrides) {
   return Object.assign({
-    id: 'old-pending-id', username: 'olduser', password_hash: 'correct-hash',
+    id: 'old-pending-id', username: 'olduser', password_hash: '60a75c6a16b7cb6462acb3f5d0a5f94a59617d930a29799f606a9849bf80de5c',
     devices: ['dev1'], is_blocked: false, is_approved: false
   }, overrides || {});
 }
@@ -611,7 +612,7 @@ function pendingUser(overrides) {
 test('a pre-feature pending user with the correct password receives a fresh verification code and no session', async function() {
   const res = await runLogin(
     pendingUser(),
-    { username: 'olduser', passwordHash: 'correct-hash', deviceId: 'dev1', userAgent: 'ua' },
+    { username: 'olduser', passwordHash: '60a75c6a16b7cb6462acb3f5d0a5f94a59617d930a29799f606a9849bf80de5c', deviceId: 'dev1', userAgent: 'ua' },
     {}
   );
   assert.equal(res.statusCode, 403);
@@ -631,7 +632,7 @@ test('a pre-feature pending user with the correct password receives a fresh veri
 test('a pending login never returns a channel URL (v2)', async function() {
   const res = await runLogin(
     pendingUser(),
-    { username: 'olduser', passwordHash: 'correct-hash', deviceId: 'dev1', userAgent: 'ua' },
+    { username: 'olduser', passwordHash: '60a75c6a16b7cb6462acb3f5d0a5f94a59617d930a29799f606a9849bf80de5c', deviceId: 'dev1', userAgent: 'ua' },
     {}
   );
   assert.equal(res.body.approval_status, 'pending');

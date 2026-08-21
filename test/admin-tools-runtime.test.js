@@ -39,7 +39,10 @@ test('admin runtime adds a direct Foreign Data entry and stays UI-only', () => {
   assert.match(source, /data-admin-foreign-button/);
   assert.match(source, /Foreign Data/);
   assert.match(source, /location\.assign\('\/admin-foreign\.html'\)/);
-  assert.match(loader, /admin-tools-runtime\.js\?v=20260731-admin-tools-v1/);
+  assert.match(loader, /admin-tools-runtime\.js\?v=20260803-admin-tools-v2/);
   assert.ok(loader.indexOf('/security-admin-runtime.js') < loader.indexOf('/admin-tools-runtime.js'));
-  assert.doesNotMatch(source, /fetch\(|supabase|sendTelegram|createOrder|CRON_SECRET|service_role/i);
+  // "Supabase" is legitimately mentioned as prose in the Security Center setup
+  // guide text (e.g. "run supabase/security-phase-1-migration.sql"), so this
+  // guards actual client-SDK/API usage, not the bare word.
+  assert.doesNotMatch(source, /fetch\(|supabase\.from\(|createClient\(|sendTelegram|createOrder|CRON_SECRET|service_role/i);
 });

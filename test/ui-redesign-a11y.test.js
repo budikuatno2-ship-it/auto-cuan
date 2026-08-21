@@ -23,6 +23,11 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..');
 const HTML_PATH = path.join(ROOT, 'public', 'index.html');
 const html = fs.readFileSync(HTML_PATH, 'utf8');
+// The design-system tokens and most page-level CSS were extracted from an
+// inline <style>/:root block into cacheable external stylesheets (see the
+// <link> tags and the load-strategy comment near the top of index.html).
+const indexShellCss = fs.readFileSync(path.join(ROOT, 'public', 'index-shell.css'), 'utf8');
+const uiThemeCss = fs.readFileSync(path.join(ROOT, 'public', 'ui-theme.css'), 'utf8');
 
 // Brace-matched extraction of a top-level function (same approach as siblings).
 function extractFunction(signature) {
@@ -228,8 +233,8 @@ test('responsive/mobile classes and structures remain present', () => {
   assert.ok(html.indexOf('width=device-width') >= 0, 'responsive viewport meta present');
   assert.ok(html.indexOf('mobile-nav-row') >= 0, 'mobile nav row present');
   assert.ok(html.indexOf('overflow-x-auto') >= 0, 'horizontal scroll containers present');
-  assert.ok(html.indexOf('@media (max-width: 640px)') >= 0, 'mobile breakpoints present');
-  assert.ok(html.indexOf('overflow-x: hidden') >= 0, 'body horizontal-overflow guard present');
+  assert.ok(indexShellCss.indexOf('@media (max-width: 640px)') >= 0, 'mobile breakpoints present');
+  assert.ok(indexShellCss.indexOf('overflow-x: hidden') >= 0, 'body horizontal-overflow guard present');
   // Approved-users table stays inside a horizontal scroll wrapper on small screens.
   assert.match(extractFunction('function renderApprovedUsersTable'), /overflow-x-auto/);
 });
@@ -294,16 +299,19 @@ test('API JavaScript file count remains exactly 12', () => {
 // Redesign additions: design system, skip link, reduced motion, no dup IDs
 // ---------------------------------------------------------------------------
 test('coherent design-system tokens are defined in :root', () => {
-  assert.match(html, /:root\s*\{[\s\S]*--ac-brand:/);
-  ['--ac-surface-1', '--ac-border', '--ac-radius-md', '--ac-space-4', '--ac-shadow-md', '--ac-focus', '--ac-font-sans']
-    .forEach(function (tok) { assert.ok(html.indexOf(tok) !== -1, 'design token present: ' + tok); });
+  assert.match(uiThemeCss, /:root\s*\{[\s\S]*--ac-brand:/);
+  // --ac-focus was deliberately split into --ac-focus-color and --ac-focus-ring,
+  // one token per job (see the "one focus treatment" contract in
+  // design-system-institutional-pass.test.js).
+  ['--ac-surface-1', '--ac-border', '--ac-radius-md', '--ac-space-4', '--ac-shadow-md', '--ac-focus-color', '--ac-focus-ring', '--ac-font-sans']
+    .forEach(function (tok) { assert.ok(uiThemeCss.indexOf(tok) !== -1, 'design token present: ' + tok); });
 });
 
 test('accessibility primitives present: skip link, focus-visible, reduced motion', () => {
   assert.match(html, /class="skip-link"/);
   assert.match(html, /skipToMainContent/);
-  assert.match(html, /:focus-visible\s*\{/);
-  assert.match(html, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(indexShellCss, /:focus-visible\s*\{/);
+  assert.match(indexShellCss, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
 test('premium typography (Inter) and mobile theming metadata added', () => {

@@ -13,6 +13,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const Module = require('module');
 const AdminSession = require('../lib/admin-session');
+const accountTerms = require('../lib/account-terms');
+const TERMS_FIELDS = { termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION };
 
 const ROOT = path.resolve(__dirname, '..');
 const HTML_PATH = path.join(ROOT, 'public', 'index.html');
@@ -306,11 +308,12 @@ test('register-user normalizes/ backfills device id (never null)', () => {
 // 14 + 16 + 20 + 21. Login validates account+password; device id alone cannot auth.
 test('login-user requires the correct password; device id alone cannot authenticate', async () => {
   await withEnv(async function () {
-    const user = { id: 'u1', username: 'alice', password_hash: 'goodhash', devices: ['dev_known'], is_blocked: false, is_approved: true };
+    const ALICE_HASH = 'fac1753ec95710ec2ac1e0bcb784cc321ca8b62e3dbd7851d5b037bb4a6e3dd8';
+    const user = { id: 'u1', username: 'alice', password_hash: ALICE_HASH, devices: ['dev_known'], is_blocked: false, is_approved: true };
     // Correct password + known device -> success, and NO password in response
     let handler = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(user));
     let res = makeRes();
-    await handler({ method: 'POST', body: { username: 'alice', passwordHash: 'goodhash', deviceId: 'dev_known' } }, res);
+    await handler({ method: 'POST', body: { username: 'alice', passwordHash: ALICE_HASH, deviceId: 'dev_known' } }, res);
     assert.equal(res.body.success, true);
     assert.ok(!('password_hash' in res.body) && !('password' in res.body), 'response must not include password');
 
@@ -320,7 +323,7 @@ test('login-user requires the correct password; device id alone cannot authentic
     await handler({ method: 'POST', body: { username: 'alice', passwordHash: 'WRONG', deviceId: 'dev_known' } }, res);
     assert.equal(res.statusCode, 400);
     assert.equal(res.body.success, false);
-    assert.doesNotMatch(res.body.error || '', /goodhash/); // never leak the stored hash
+    assert.doesNotMatch(res.body.error || '', new RegExp(ALICE_HASH)); // never leak the stored hash
   });
 });
 
@@ -466,7 +469,7 @@ test('valid registration still succeeds and passes the normalized device id to t
     const capture = {};
     const handler = requireApiWithSupabaseStub('../api/register-user', supabaseWithUser(null, capture));
     const res = makeRes();
-    await handler({ method: 'POST', body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua' } }, res);
+    await handler({ method: 'POST', body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua', ...TERMS_FIELDS } }, res);
     assert.equal(res.body.success, true);
     const call = (capture.rpc || []).find(function (c) { return c.name === 'register_pending_user_with_telegram_challenge'; });
     assert.ok(call, 'registration uses the atomic RPC');

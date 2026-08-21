@@ -52,43 +52,67 @@ function assertRadarDigestPublicSafe(text) {
   assert.doesNotMatch(text, /raw_payload|sample_rejected|stageByTicker|debug|internal notes|\[object Object\]/i);
 }
 
-test('Swing Konglo empty final Signal sends candidate via digest gate (not radar)', async () => {
+// Product decision (see PR #416 discussion): a benign final_quality_pass:false
+// candidate (e.g. "needs close confirmation", watchlist-only, entry not
+// touched, MTF mixed, wait/tunggu confirmation) is never promoted to a public
+// "Signal" — it may only surface through the safe RADAR/MONITOR fallback path,
+// clearly labeled as monitoring rather than an actionable entry.
+test('Swing Konglo benign final_quality_pass:false candidate is Radar/Monitor only, never a Signal', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendSwingKongloTelegramNotification(makeSupabase({ swing_screener_latest: [row()] }), 1);
     assert.equal(result.sent, true);
-    assert.ok(result.selected_count > 0);
+    assert.equal(result.selected_count, 0, 'a final_quality_pass:false candidate must never be a selected public Signal');
+    assert.equal(result.monitor_fallback_sent, true);
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /Swing Konglo Signal/i);
+    assert.doesNotMatch(calls[0], /Swing Konglo Signal/i, 'must not be labeled/sent as an actionable Signal');
+    assert.match(calls[0], /RADAR\/MONITOR/, 'must be clearly labeled as monitoring, not an entry signal');
+    assert.match(calls[0], /bukan (BUY|sinyal entry)/i, 'must explicitly say this is not a buy/entry signal');
+    assert.match(calls[0], /RADR/, 'the benign candidate itself may still be shown for monitoring purposes');
   });
 });
 
-test('Swing Konglo sends candidate even with Hindari + Very High Risk (digest gate allows warnings)', async () => {
+// Hard-reject conditions (Hindari/Avoid, Very High Risk, invalid plan, invalid
+// candle, below SL, fatal data-quality) must never be promoted into a Signal
+// or a Radar/Monitor listing. Production stays on its existing safety
+// contract: no unsafe candidate ticker/detail reaches any public Telegram
+// message, whatever internal ops diagnostics (e.g. an empty-heartbeat notice)
+// the screener may still emit.
+test('Swing Konglo Hindari + Very High Risk candidate is excluded from Signal and Radar/Monitor', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendSwingKongloTelegramNotification(makeSupabase({ swing_screener_latest: [row({ ticker: 'HARD', action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 1);
-    // Digest gate allows Very High Risk + Hindari as warnings, candidate still sends
-    assert.equal(result.sent, true);
-    assert.ok(result.selected_count > 0);
-    assert.equal(calls.length, 1);
-    assert.match(calls[0], /HARD/);
+    assert.equal(result.selected_count, 0, 'a Hindari/Very High Risk candidate must never be a selected public Signal');
+    assert.equal(result.monitor_fallback_sent, false, 'must not be promoted into the Radar/Monitor fallback either');
+    calls.forEach((text) => {
+      assert.doesNotMatch(text, /HARD/, 'the rejected candidate ticker must never reach a public Telegram message');
+      assert.doesNotMatch(text, /Swing Konglo Signal/i, 'must not be sent as a Signal');
+      assert.doesNotMatch(text, /RADAR\/MONITOR/, 'must not be sent as a Radar/Monitor listing either');
+    });
   });
 });
 
-test('Swing Non-Konglo empty final Signal sends candidate via digest gate (not radar)', async () => {
+test('Swing Non-Konglo benign final_quality_pass:false candidate is Radar/Monitor only, never a Signal', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendSwingNkTelegramNotification(makeSupabase({ swing_screener_non_konglo_latest: [row({ ticker: 'NKRAD', rank: 1 })] }), 1);
     assert.equal(result.sent, true);
-    assert.ok(result.selected_count > 0);
+    assert.equal(result.selected_count, 0, 'a final_quality_pass:false candidate must never be a selected public Signal');
+    assert.equal(result.monitor_fallback_sent, true);
     assert.equal(calls.length, 1);
-    assert.match(calls[0], /Swing Non-Konglo Signal/i);
+    assert.doesNotMatch(calls[0], /Swing Non-Konglo Signal/i, 'must not be labeled/sent as an actionable Signal');
+    assert.match(calls[0], /RADAR\/MONITOR/, 'must be clearly labeled as monitoring, not an entry signal');
+    assert.match(calls[0], /NKRAD/, 'the benign candidate itself may still be shown for monitoring purposes');
   });
 });
 
-test('Swing Non-Konglo sends candidate even with Hindari + Very High Risk (digest gate allows warnings)', async () => {
+test('Swing Non-Konglo Hindari + Very High Risk candidate is excluded from Signal and Radar/Monitor', async () => {
   await withSendSpy(async (calls) => {
     const result = await sectorHot.__test.sendSwingNkTelegramNotification(makeSupabase({ swing_screener_non_konglo_latest: [row({ ticker: 'NKHARD', rank: 1, action_label: 'Hindari', risk_label: 'Very High Risk' })] }), 1);
-    assert.equal(result.sent, true);
-    assert.ok(result.selected_count > 0);
-    assert.match(calls[0], /NKHARD/);
+    assert.equal(result.selected_count, 0, 'a Hindari/Very High Risk candidate must never be a selected public Signal');
+    assert.equal(result.monitor_fallback_sent, false, 'must not be promoted into the Radar/Monitor fallback either');
+    calls.forEach((text) => {
+      assert.doesNotMatch(text, /NKHARD/, 'the rejected candidate ticker must never reach a public Telegram message');
+      assert.doesNotMatch(text, /Swing Non-Konglo Signal/i, 'must not be sent as a Signal');
+      assert.doesNotMatch(text, /RADAR\/MONITOR/, 'must not be sent as a Radar/Monitor listing either');
+    });
   });
 });
 

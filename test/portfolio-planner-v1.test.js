@@ -156,6 +156,9 @@ test('confirmed plan uses the existing per-user manual portfolio key', () => {
 });
 
 test('vercel route exposes only the isolated preview page', () => {
+  // Portfolio Planner v2 rollout: the clean URL now serves the v2 command-center
+  // file; portfolio-planner.html remains on disk (still cache-header-configured
+  // in vercel.json) but is no longer the routed destination.
   const route = vercel.rewrites.find((item) => item.source === '/portfolio-planner');
-  assert.deepEqual(route, { source: '/portfolio-planner', destination: '/portfolio-planner.html' });
+  assert.deepEqual(route, { source: '/portfolio-planner', destination: '/portfolio-command-center-v2.html' });
 });

@@ -257,8 +257,12 @@ test('approved Telegram callback stores only a reset-token HMAC and sends a one-
 
 test('frontend and SQL contracts remove device authority and keep browser access service-role only', function () {
   const frontend = fs.readFileSync(path.join(ROOT, 'public', 'auth-v2.js'), 'utf8');
-  const endpoint = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
+  // api/reset-password.js is now a thin routing gateway (shared Vercel Function
+  // slot); the actual reset logic lives in lib/reset-password-legacy-handler.js.
+  const endpoint = fs.readFileSync(path.join(ROOT, 'lib', 'reset-password-legacy-handler.js'), 'utf8');
   const migration = fs.readFileSync(path.join(ROOT, 'supabase', 'auth-telegram-recovery-v1-migration.sql'), 'utf8');
+  // website-approved-access.js is now a thin bootstrapper; it loads auth-v2.js
+  // (which owns session restore) rather than doing localStorage session writes itself.
   const loader = fs.readFileSync(path.join(ROOT, 'public', 'website-approved-access.js'), 'utf8');
 
   assert.match(frontend, /authRequest\('login'/);

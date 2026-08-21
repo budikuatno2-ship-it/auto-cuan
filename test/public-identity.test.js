@@ -8,6 +8,19 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
+// A dangerous-claim phrase is fine when it appears as part of an explicit
+// disclaimer (e.g. "Tidak mengklaim guaranteed performance ... bukan jaminan
+// profit"). Flag it only when it is NOT immediately preceded by a negation.
+function assertNoUnnegatedClaim(html, pattern) {
+  const global = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g');
+  const negation = /(?:bukan|tidak|no|not)\s+[\w\s%-]{0,40}$/i;
+  let match;
+  while ((match = global.exec(html))) {
+    const before = html.slice(Math.max(0, match.index - 60), match.index);
+    assert.match(before, negation, 'unnegated claim phrase found: "' + match[0] + '" near: ...' + before.slice(-60));
+  }
+}
+
 test('public identity assets expose a restrained crawl surface', () => {
   const robots = read('public/robots.txt');
   const sitemap = read('public/sitemap.xml');
@@ -46,7 +59,11 @@ test('trust center exposes product operating model without inventing certificati
   assert.match(html, /Auto-Cuan tidak mengeksekusi transaksi/);
   assert.match(html, /Auto-Cuan tidak memegang dana pengguna/);
   assert.match(html, /Data dapat terlambat atau stale/);
-  assert.match(html, /tidak sama dengan audit atau sertifikasi keamanan pihak ketiga/i);
+  // Copy reworded ("tidak sama dengan" -> "bukan"), same disclaimer meaning;
+  // the page also gained a second, stronger disclaimer explicitly naming
+  // external certification/regulator audit/pen-test attestation as absent.
+  assert.match(html, /bukan audit atau sertifikasi keamanan pihak ketiga/i);
+  assert.match(html, /tidak menyatakan Auto-Cuan memiliki sertifikasi eksternal, audit regulator, penetration-test attestation/i);
   assert.match(html, /tidak menyatakan Auto-Cuan memiliki sertifikasi eksternal/i);
   assert.match(html, /Repository Security/);
   assert.match(html, /CodeQL/);
@@ -54,7 +71,7 @@ test('trust center exposes product operating model without inventing certificati
   assert.match(html, /Production build contract/);
   assert.match(html, /Cache boundaries/);
   assert.doesNotMatch(html, /<script\b/i);
-  assert.doesNotMatch(html, /guaranteed profit|jaminan profit|regulator approved|certified secure/i);
+  assertNoUnnegatedClaim(html, /guaranteed profit|jaminan profit|regulator approved|certified secure/i);
 });
 
 test('methodology explains interpretation boundaries instead of presenting scores as probabilities', () => {
@@ -69,7 +86,7 @@ test('methodology explains interpretation boundaries instead of presenting score
   assert.match(html, /Tidak menjanjikan return/);
   assert.match(html, /Tidak menggantikan broker/);
   assert.doesNotMatch(html, /<script\b/i);
-  assert.doesNotMatch(html, /guaranteed profit|jaminan profit|akurasi 100%|pasti naik/i);
+  assertNoUnnegatedClaim(html, /guaranteed profit|jaminan profit|akurasi 100%|pasti naik/i);
 });
 
 test('trust center keeps disclosure and public policy references inspectable', () => {

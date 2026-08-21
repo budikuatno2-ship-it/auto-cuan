@@ -49,7 +49,10 @@ test('premium workstation keeps a restrained trading UI contract', () => {
 });
 
 test('premium workstation CSS is presentation-only', () => {
-  const css = readPremiumCss();
+  // Strip comments first: the file's own header prose lists "Telegram" among
+  // the concerns explicitly kept OUT of this CSS, which otherwise trips the
+  // /telegram/i check as a false positive.
+  const css = readPremiumCss().replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(css, /fetch\s*\(/i);
   assert.doesNotMatch(css, /supabase/i);
   assert.doesNotMatch(css, /telegram/i);

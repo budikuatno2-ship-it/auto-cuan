@@ -50,22 +50,35 @@ test('the pass extends the existing token layer', () => {
   assert.match(section8, /var\(--ac-text-/, 'new rules reuse the type ramp');
 });
 
+// These tokens are declared once, in section 1's base :root layer, and reused
+// via var() from section 8 (per the "one design system, not two" contract this
+// file's header and the sibling test above assert) — not re-declared inside
+// section 8 itself.
 test('the type ramp is declared as tokens rather than scattered literals', () => {
   for (const token of ['--ac-text-micro', '--ac-text-caption', '--ac-text-body', '--ac-text-lead', '--ac-text-metric']) {
-    assert.match(section8, new RegExp(token + ':'), token + ' must be defined');
+    assert.match(theme, new RegExp(token + ':'), token + ' must be defined');
+    assert.match(section8, new RegExp('var\\(' + token + '\\)'), token + ' must be reused, not redeclared, in section 8');
   }
 });
 
+// Financial semantic tokens live in section 1's :root, same "single design
+// system" relocation as the type ramp above.
 test('financial semantics are named by meaning, not by hue', () => {
   for (const token of ['--ac-bull', '--ac-bear', '--ac-flat', '--ac-warn', '--ac-info']) {
-    assert.match(section8, new RegExp('\\' + token + ':'), token + ' must be defined');
+    assert.match(theme, new RegExp('\\' + token + ':'), token + ' must be defined');
   }
 });
 
-test('there is one focus treatment for the whole product', () => {
-  assert.match(section8, /--ac-focus:/, 'a focus token must exist');
-  const usages = (section8.match(/var\(--ac-focus\)/g) || []).length;
-  assert.ok(usages >= 2, 'the focus token should drive both controls and interactive elements');
+// Focus was deliberately split into two tokens, one per job (a bug this file's
+// own header explains: "--ac-focus was a colour in one and a box-shadow list
+// in the other" — outline-style and box-shadow-style focus rings cannot share
+// a single token). "One focus treatment" now means one token per job, reused
+// everywhere, not one token doing both jobs.
+test('there is one focus treatment per job for the whole product', () => {
+  assert.match(theme, /--ac-focus-color:/, 'a focus color token must exist');
+  assert.match(theme, /--ac-focus-ring:/, 'a focus ring token must exist');
+  const usages = (theme.match(/var\(--ac-focus-ring\)/g) || []).length;
+  assert.ok(usages >= 2, 'the focus ring token should drive multiple interactive elements');
 });
 
 // ---------------------------------------------------------------------------

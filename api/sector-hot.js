@@ -7593,6 +7593,106 @@ function buildWebTop5HistoryRow(row, rank, px, ev) {
   return attachFreshness(out, { calculated_at: effectivePx.at || normalized.last_checked_at || normalized.first_sent_at || normalized.date });
 }
 
+function getPersistedWebTop5HistoryBucket(row) {
+  row = row || {};
+  var status = String(row.status || '').toUpperCase();
+  function hitMs(value) {
+    if (!value) return null;
+    var ms = Date.parse(value);
+    return Number.isFinite(ms) ? ms : null;
+  }
+  var tp2At = hitMs(row.hit_tp2_at);
+  var tp1At = hitMs(row.hit_tp1_at);
+  var slAt = hitMs(row.hit_sl_at);
+  if (tp2At != null && (slAt == null || tp2At <= slAt)) return 'tp';
+  if (tp1At != null && (slAt == null || tp1At <= slAt)) return 'tp';
+  if (slAt != null) return 'failed';
+  if (status === 'TP2_HIT' || status === 'TP1_HIT') return 'tp';
+  if (status === 'SL_HIT') return 'failed';
+  return null;
+}
+
+// Bounds Top5 History live-price hydration to what the response can actually
+// use: at most `limit` active rows and 10 TP rows. Rows already terminal via
+// persisted SL never need a live price, and price fetches are deduped per
+// ticker so N history rows for the same ticker cost one round trip.
+async function buildWebTop5HistoryCollections(rows, limit, priceFetcher) {
+  rows = Array.isArray(rows) ? rows : [];
+  limit = parseInt(limit, 10);
+  if (!isFinite(limit) || limit <= 0) limit = 100;
+  if (limit > 300) limit = 300;
+  if (typeof priceFetcher !== 'function') throw new Error('history_price_fetcher_required');
+
+  var activeHistory = [];
+  var tpRows = [];
+  var seenActiveTickers = Object.create(null);
+  var pricePromiseByTicker = Object.create(null);
+  var scannedCount = 0;
+  var CHUNK = 10;
+  var unavailable = { last: null, open: null, high: null, low: null, at: null, bestEffort: true, source: 'unavailable' };
+
+  function tickerKey(row) {
+    return String((row && row.ticker) || (row && row.raw_payload && row.raw_payload.ticker) || '').trim().toUpperCase();
+  }
+
+  function priceFor(row) {
+    var key = tickerKey(row);
+    if (!key) return Promise.resolve(unavailable);
+    if (!pricePromiseByTicker[key]) {
+      pricePromiseByTicker[key] = Promise.resolve().then(function() {
+        return priceFetcher(row);
+      });
+    }
+    return pricePromiseByTicker[key];
+  }
+
+  for (var ci = 0; ci < rows.length; ci += CHUNK) {
+    if (activeHistory.length >= limit && tpRows.length >= 10) break;
+    var chunk = rows.slice(ci, ci + CHUNK);
+    var jobs = chunk.map(function(row) {
+      var persistedBucket = getPersistedWebTop5HistoryBucket(row);
+      // Persisted SL is authoritative and the row is not returned in either
+      // public history bucket, so a live-price round trip cannot change the
+      // response and is pure wasted I/O.
+      if (persistedBucket === 'failed') return Promise.resolve(unavailable);
+      // Once TP History is full, persisted TP rows cannot displace newer TP
+      // rows because input is already ordered newest-first.
+      if (persistedBucket === 'tp' && tpRows.length >= 10) return Promise.resolve(unavailable);
+      return priceFor(row);
+    });
+    var prices = await Promise.allSettled(jobs);
+
+    for (var cj = 0; cj < chunk.length; cj++) {
+      scannedCount++;
+      var px = prices[cj].status === 'fulfilled' && prices[cj].value
+        ? prices[cj].value
+        : unavailable;
+      var built = buildWebTop5HistoryRow(chunk[cj], 0, px, null);
+      if (built.history_bucket === 'tp') {
+        if (tpRows.length < 10) {
+          built.rank = tpRows.length + 1;
+          tpRows.push(built);
+        }
+      } else if (built.history_bucket === 'active' && activeHistory.length < limit) {
+        var key = String(built.ticker || '').trim().toUpperCase();
+        if (!key) key = 'row-' + String(built.id || '');
+        if (!seenActiveTickers[key]) {
+          seenActiveTickers[key] = true;
+          built.rank = activeHistory.length + 1;
+          activeHistory.push(built);
+        }
+      }
+    }
+  }
+
+  return {
+    active_history: activeHistory,
+    tp_history: tpRows,
+    price_fetch_count: Object.keys(pricePromiseByTicker).length,
+    scanned_count: scannedCount
+  };
+}
+
 async function handleWebTop5History(req, res, supabase) {
   if (!(await isDashboardScreenerLoggedIn(req, supabase))) {
     return sendDashboardScreenerGate(res, { limit: 0, show_archived: false, data_source: 'redacted_guest_dashboard' });
@@ -7610,37 +7710,12 @@ async function handleWebTop5History(req, res, supabase) {
         telegramDelivery.monitorRowIsEligible(r)
       );
     });
-    var activeRows = [];
-    var tpRows = [];
-    // Parallelize price fetches in bounded chunks (was sequential — caused ~1min load for many rows)
     var _historyStartMs = Date.now();
-    var CHUNK = 10;
-    var builtRows = [];
-    for (var ci = 0; ci < rows.length; ci += CHUNK) {
-      var chunk = rows.slice(ci, ci + CHUNK);
-      var chunkPrices = await Promise.allSettled(chunk.map(function(r) { return fetchLatestPriceForMonitor(supabase, r.ticker); }));
-      for (var cj = 0; cj < chunk.length; cj++) {
-        var cpx = chunkPrices[cj].status === 'fulfilled' ? chunkPrices[cj].value : { last: null, open: null, high: null, low: null, at: null, bestEffort: true };
-        builtRows.push(buildWebTop5HistoryRow(chunk[cj], 0, cpx, null));
-      }
-    }
-    for (var bi = 0; bi < builtRows.length; bi++) {
-      var brow = builtRows[bi];
-      if (brow.history_bucket === 'tp') tpRows.push(brow);
-      else if (brow.history_bucket === 'active') activeRows.push(brow);
-    }
-    var seenTickers = {};
-    var activeHistory = [];
-    for (var a = 0; a < activeRows.length; a++) {
-      var tickerKey = String(activeRows[a].ticker || '').trim().toUpperCase();
-      if (!tickerKey) tickerKey = 'row-' + String(activeRows[a].id || '');
-      if (seenTickers[tickerKey]) continue;
-      seenTickers[tickerKey] = true;
-      activeRows[a].rank = activeHistory.length + 1;
-      activeHistory.push(activeRows[a]);
-      if (activeHistory.length >= limit) break;
-    }
-    tpRows = tpRows.slice(0, 10).map(function(r, idx) { r.rank = idx + 1; return r; });
+    var collections = await buildWebTop5HistoryCollections(rows, limit, function(r) {
+      return fetchLatestPriceForMonitor(supabase, r.ticker);
+    });
+    var activeHistory = collections.active_history;
+    var tpRows = collections.tp_history;
     // Part B: Admin-only diagnostics for TP History (safe counts only, no raw payload/debug)
     var adminHistoryDiagnostics = undefined;
     if (await isDashboardAdminUser(req, supabase)) {
@@ -13387,5 +13462,7 @@ module.exports.__test = {
   fmtTelegramSignalBlock: fmtTelegramSignalBlock,
   formatSwingTelegramMessage: formatSwingTelegramMessage,
   classifyWebTop5History: classifyWebTop5History,
-  buildWebTop5HistoryRow: buildWebTop5HistoryRow
+  buildWebTop5HistoryRow: buildWebTop5HistoryRow,
+  getPersistedWebTop5HistoryBucket: getPersistedWebTop5HistoryBucket,
+  buildWebTop5HistoryCollections: buildWebTop5HistoryCollections
 };

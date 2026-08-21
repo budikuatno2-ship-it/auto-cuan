@@ -29,6 +29,8 @@ process.env.TELEGRAM_VERIFY_ADMIN_CHAT_ID = '900900900';
 process.env.TELEGRAM_VERIFY_CHANNEL_INVITE_URL = 'https://t.me/+staticFallbackInvite';
 
 const tv = require('../lib/telegram-verification');
+const accountTerms = require('../lib/account-terms');
+const TERMS_FIELDS = { termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION };
 
 const now = () => Date.now();
 const iso = (ms) => new Date(ms).toISOString();
@@ -918,7 +920,7 @@ test('endpoint register: v2 response has verification code and NO channel URL', 
   process.env.SUPABASE_URL = 'http://local';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc';
   const { handler } = requireApiWithSupabaseStub('../api/register-user', makeModelDb);
-  const req = makeReq({ body: { username: 'quinn', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev', userAgent: 'UA' } });
+  const req = makeReq({ body: { username: 'quinn', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev', userAgent: 'UA', ...TERMS_FIELDS } });
   const res = makeRes();
   await handler(req, res);
   assert.equal(res.statusCode, 200);
@@ -936,7 +938,7 @@ test('endpoint register: fails closed without the code secret', async function (
   try {
     const { handler } = requireApiWithSupabaseStub('../api/register-user', makeModelDb);
     const res = makeRes();
-    await handler(makeReq({ body: { username: 'rick', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev' } }), res);
+    await handler(makeReq({ body: { username: 'rick', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev', ...TERMS_FIELDS } }), res);
     assert.equal(res.statusCode, 500);
     assert.equal(res.body.success, false);
   } finally { process.env.TELEGRAM_VERIFY_CODE_SECRET = saved; }
@@ -992,9 +994,9 @@ test('endpoint login pending: correct password rotates code, issues NO session',
   process.env.SUPABASE_URL = 'http://local';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc';
   const { handler, db } = requireApiWithSupabaseStub('../api/login-user', makeModelDb);
-  db.seedUser({ id: 'u-pending', username: 'sam', password_hash: 'HASH', devices: ['dev'], is_approved: false, is_blocked: false });
+  db.seedUser({ id: 'u-pending', username: 'sam', password_hash: '43bfeb61aba4442d5830ab30a284989609fd159edd2f716a8d7090f0bf9e6793', devices: ['dev'], is_approved: false, is_blocked: false });
   const res = makeRes();
-  await handler(makeReq({ body: { username: 'sam', passwordHash: 'HASH', deviceId: 'dev', userAgent: 'UA' } }), res);
+  await handler(makeReq({ body: { username: 'sam', passwordHash: '43bfeb61aba4442d5830ab30a284989609fd159edd2f716a8d7090f0bf9e6793', deviceId: 'dev', userAgent: 'UA' } }), res);
   assert.equal(res.statusCode, 403);
   assert.equal(res.body.approval_status, 'pending');
   assert.ok(res.body.telegram_verification_code, 'fresh one-time code issued');
@@ -1008,9 +1010,9 @@ test('endpoint login: approved budi authenticates normally (unchanged), gets a s
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'svc';
   process.env.SESSION_SECRET = 'unit-test-session-secret';
   const { handler, db } = requireApiWithSupabaseStub('../api/login-user', makeModelDb);
-  db.seedUser({ id: 'u-budi', username: 'budi', password_hash: 'BUDIHASH', devices: ['dev-budi'], is_approved: true, is_blocked: false });
+  db.seedUser({ id: 'u-budi', username: 'budi', password_hash: 'bcfcb3ccf14ec4486c5883b0c85f5988e558136b584be8e832702d283d466098', devices: ['dev-budi'], is_approved: true, is_blocked: false });
   const res = makeRes();
-  await handler(makeReq({ body: { username: 'budi', passwordHash: 'BUDIHASH', deviceId: 'dev-budi', userAgent: 'UA' } }), res);
+  await handler(makeReq({ body: { username: 'budi', passwordHash: 'bcfcb3ccf14ec4486c5883b0c85f5988e558136b584be8e832702d283d466098', deviceId: 'dev-budi', userAgent: 'UA' } }), res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.success, true);
   assert.equal(res.body.isAdmin, true);

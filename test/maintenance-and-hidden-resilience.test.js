@@ -38,7 +38,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-const inlineStyle = html.slice(html.indexOf('<style>'), html.indexOf('</style>'));
+// This block now carries an id (critical-shell-fallback); it is the
+// same-document startup safety net described in the header comment above.
+const inlineStyle = html.slice(html.indexOf('<style id="critical-shell-fallback">'), html.indexOf('</style>'));
 
 // ---------------------------------------------------------------------------
 // .hidden

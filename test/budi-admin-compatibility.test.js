@@ -42,8 +42,14 @@ function loadFrontendHashPassword() {
   throw new Error('frontend hashPassword function has unbalanced braces');
 }
 
-// Inert placeholder budi record (NOT real data).
-const BUDI_HASH = 'PLACEHOLDER_BUDI_HASH';
+// Inert placeholder budi record (NOT real data). BUDI_RAW is what the client
+// submits (its own SHA-256 prehash); BUDI_HASH is the server-stored credential
+// in the modern protected (scrypt, "k1..." prefixed) format produced by
+// lib/password-credential.js. A raw/legacy-format stored hash would make every
+// login trigger the one-time transparent-migration write in api/login-user.js,
+// which is not the steady state a "budi row is never mutated" test should model.
+const BUDI_RAW = '0ae6a3b34cdca74a4b203542c0bca8119e02ac1ce8daa6c8adc52ba48b3322fa'; // inert 64-hex test placeholder, not a real credential
+const BUDI_HASH = require('../lib/password-credential').protectClientHash(BUDI_RAW);
 function freshBudi(devices) {
   const registeredDevices = devices || ['budi_dev_1', 'budi_dev_2'];
   return {
@@ -148,7 +154,7 @@ async function loginBudi(devices, deviceId) {
   const sink = [];
   const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: freshBudi(devices) }, sink));
   const res = makeRes();
-  await handler({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_HASH, deviceId: deviceId || 'budi_dev_1', userAgent: 'ua' } }, res);
+  await handler({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_RAW, deviceId: deviceId || 'budi_dev_1', userAgent: 'ua' } }, res);
   return { res, sink };
 }
 
@@ -218,8 +224,19 @@ test('database-password match takes precedence even when the stored hash equals 
     } }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.success, true);
-    assert.equal(sink.length, 1, 'normal login path must retain its existing device update behavior');
-    assert.deepEqual(sink[0].payload.devices, ['registered-device', 'normal-path-new-device']);
+    // The stored hash is in the raw legacy format here (by construction, to test
+    // precedence), so the normal database-match path also triggers the one-time
+    // transparent credential-migration write (see the "needsUpgrade" compare-and-swap
+    // in api/login-user.js) in addition to the existing device-append write.
+    assert.equal(sink.length, 2, 'normal login path retains its device update AND migrates the legacy-format credential');
+    const migrationWrite = sink.find(m => m.payload && Object.prototype.hasOwnProperty.call(m.payload, 'password_hash'));
+    assert.ok(migrationWrite, 'legacy-format stored hash must be migrated to the protected format on successful login');
+    assert.notEqual(migrationWrite.payload.password_hash, LEGACY_DOT_HASH, 'migrated credential must not be the raw legacy hash');
+    assert.doesNotMatch(migrationWrite.payload.password_hash, /^[a-f0-9]{64}$/i, 'migrated credential must be in the protected (non-raw-hex) format');
+    assert.ok(!('devices' in migrationWrite.payload), 'credential migration write must not also touch devices');
+    const deviceWrite = sink.find(m => m.payload && Object.prototype.hasOwnProperty.call(m.payload, 'devices'));
+    assert.ok(deviceWrite, 'device-append write must still happen');
+    assert.deepEqual(deviceWrite.payload.devices, ['registered-device', 'normal-path-new-device']);
   });
 });
 
@@ -354,7 +371,7 @@ test('3: budi device binding unchanged (known device ok; device-limit still enfo
     const sink = [];
     const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: freshBudi(['d1', 'd2', 'd3']) }, sink));
     const res = makeRes();
-    await handler({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_HASH, deviceId: 'd4_new', userAgent: 'ua' } }, res);
+    await handler({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_RAW, deviceId: 'd4_new', userAgent: 'ua' } }, res);
     assert.equal(res.statusCode, 400);
     assert.match(res.body.error, /perangkat/i);
     assertNoBudiAccountMutation(sink);
@@ -448,7 +465,7 @@ test('10: missing SESSION_SECRET does not damage the budi account (fail-closed, 
     const sink = [];
     const handler = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: budi }, sink));
     const res = makeRes();
-    await handler({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_HASH, deviceId: 'budi_dev_1', userAgent: 'ua' } }, res);
+    await handler({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_RAW, deviceId: 'budi_dev_1', userAgent: 'ua' } }, res);
     // Login still succeeds at the account level, but NO session cookie is issued.
     assert.equal(res.body.success, true);
     const cookie = setCookie(res);
@@ -486,7 +503,7 @@ test('12: no password/device/approval/block mutation of budi across all flows', 
     let sink = [];
     let h = requireApiWithSupabaseStub('../api/login-user', trackingSupabase({ app_users: freshBudi() }, sink));
     let res = makeRes();
-    await h({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_HASH, deviceId: 'budi_dev_1' } }, res);
+    await h({ method: 'POST', headers: sameOrigin(), body: { username: 'budi', passwordHash: BUDI_RAW, deviceId: 'budi_dev_1' } }, res);
     aggregate.push.apply(aggregate, sink);
     // list via session
     const cookie = forwardCookie(res);
