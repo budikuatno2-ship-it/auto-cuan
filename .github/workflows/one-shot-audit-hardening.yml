@@ -38,7 +38,21 @@ jobs:
       - run: npm ci --ignore-scripts
 
       - name: Apply deterministic audit hardening patch
-        run: python3 tools/one-shot-audit-hardening.py
+        shell: bash
+        run: |
+          python3 tools/one-shot-audit-hardening.py
+          python3 - <<'PY'
+          from pathlib import Path
+          for name in (
+              'test/audit-auth-device-route.test.js',
+              'test/audit-portfolio-concurrency.test.js',
+              'test/audit-cron-and-top5-lock.test.js',
+          ):
+              p = Path(name)
+              s = p.read_text()
+              if s.startswith('\\\n'):
+                  p.write_text(s[2:])
+          PY
 
       - name: Run focused audit regressions
         run: >-
