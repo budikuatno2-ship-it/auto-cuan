@@ -5,8 +5,11 @@
   window.__AUTOCUAN_FAST_WATCHER_WEB_REFRESH__ = true;
 
   var POLL_INTERVAL_MS = 20000;
+  var REQUEST_TIMEOUT_MS = 8000;
   var timer = null;
+  var warmupTimer = null;
   var inFlight = false;
+  var activeController = null;
   var lastSignature = null;
 
   function currentScreenerType() {
@@ -61,6 +64,12 @@
   async function refreshNow() {
     if (inFlight || !canRefresh()) return { refreshed: false, reason: inFlight ? 'in_flight' : 'inactive' };
     inFlight = true;
+    var controller = typeof AbortController === 'function' ? new AbortController() : null;
+    activeController = controller;
+    var timeout = setTimeout(function () {
+      try { if (controller) controller.abort(); } catch (_) {}
+    }, REQUEST_TIMEOUT_MS);
+
     try {
       if (lastSignature == null && window._dtScreenerCache) {
         lastSignature = resultSignature(window._dtScreenerCache);
@@ -68,7 +77,8 @@
       var response = await fetch('/api/sector-hot?action=daytrade-screener&fw_live=' + Date.now(), {
         credentials: 'same-origin',
         cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
+        headers: { 'Cache-Control': 'no-cache' },
+        signal: controller ? controller.signal : undefined
       });
       if (!response.ok) return { refreshed: false, reason: 'http_' + response.status };
       var data = await response.json().catch(function () { return null; });
@@ -80,9 +90,11 @@
       lastSignature = signature;
       renderLatest(data);
       return { refreshed: true, reason: 'changed' };
-    } catch (_) {
-      return { refreshed: false, reason: 'request_failed' };
+    } catch (error) {
+      return { refreshed: false, reason: error && error.name === 'AbortError' ? 'request_timeout' : 'request_failed' };
     } finally {
+      clearTimeout(timeout);
+      if (activeController === controller) activeController = null;
       inFlight = false;
     }
   }
@@ -94,13 +106,26 @@
   function start() {
     if (timer) return;
     timer = setInterval(tick, POLL_INTERVAL_MS);
-    setTimeout(tick, 1500);
+    if (warmupTimer) clearTimeout(warmupTimer);
+    warmupTimer = setTimeout(function () {
+      warmupTimer = null;
+      tick();
+    }, 1500);
   }
 
   function stop() {
-    if (!timer) return;
-    clearInterval(timer);
-    timer = null;
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    if (warmupTimer) {
+      clearTimeout(warmupTimer);
+      warmupTimer = null;
+    }
+    if (activeController) {
+      try { activeController.abort(); } catch (_) {}
+      activeController = null;
+    }
   }
 
   document.addEventListener('visibilitychange', function () {
@@ -115,6 +140,7 @@
     getState: function () {
       return {
         poll_interval_ms: POLL_INTERVAL_MS,
+        request_timeout_ms: REQUEST_TIMEOUT_MS,
         in_flight: inFlight,
         active: Boolean(timer),
         last_signature_ready: lastSignature != null
