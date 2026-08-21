@@ -7,6 +7,13 @@
   var AUTH_API = '/api/reset-password';
   var RESET_MODAL_ID = 'authV2ResetModal';
   var authReadyResolve;
+  // Other scripts (subscription-access-gate-v1.js, subscription-manual-payment-v1.js,
+  // index.html) sequence their own startup fetches after this promise settles so they
+  // do not race the session-status check below. Without this assignment,
+  // authReadyResolve(status) at the end of init() throws (calling undefined), and
+  // every consumer's `window.autocuanAuthReady` check silently falls through to firing
+  // immediately instead of waiting.
+  window.autocuanAuthReady = new Promise(function (resolve) { authReadyResolve = resolve; });
 
   function byId(id) { return document.getElementById(id); }
 

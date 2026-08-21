@@ -101,7 +101,9 @@ test('SQL and endpoint contracts preserve device retirement and redact Telegram 
     path.join(ROOT, 'supabase', 'auth-recovery-v1-telegram-message-redaction-hotfix.sql'),
     'utf8'
   );
-  const endpoint = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
+  // api/reset-password.js is now a thin routing gateway (shared Vercel Function
+  // slot); the actual reset logic lives in lib/reset-password-legacy-handler.js.
+  const endpoint = fs.readFileSync(path.join(ROOT, 'lib', 'reset-password-legacy-handler.js'), 'utf8');
 
   assert.match(sql, /ADD COLUMN IF NOT EXISTS reset_message_chat_id bigint/);
   assert.match(sql, /ADD COLUMN IF NOT EXISTS reset_message_id bigint/);

@@ -21,8 +21,13 @@ test('OpenAgentic JSON plus DONE trailer is normalized without changing payload'
 
 test('normalizer accepts regular JSON and SSE data frames', () => {
   assert.equal(normalizer.normalizeProviderBody('{"ok":true}'), '{"ok":true}');
-  const sse = 'data: {"ok":true}\n\ndata: [DONE]\n';
-  assert.deepEqual(JSON.parse(normalizer.normalizeProviderBody(sse)), { ok: true });
+  // SSE reassembly requires a real OpenAI-style chat-completion chunk shape
+  // (choices[0].delta.content) — parseSseBody() rejects a stream that carries
+  // no assistant content as "Provider stream selesai tanpa isi jawaban."
+  // (guards against silently passing through an empty/garbage stream).
+  const sse = 'data: {"choices":[{"delta":{"content":"OK"}}]}\n\ndata: [DONE]\n';
+  const reassembled = JSON.parse(normalizer.normalizeProviderBody(sse));
+  assert.equal(reassembled.choices[0].message.content, 'OK');
 });
 
 test('quality generator fingerprint ignores case id but keeps meaningful context', () => {
@@ -43,9 +48,18 @@ test('Bloom filter rejects repeated semantic cases without storing one million h
 
 test('launcher treats one million as a quality-first upper bound and supports deliberate budget extension', () => {
   const launcher = fs.readFileSync(path.join(ROOT, 'tools/run-ai-eval-once.sh'), 'utf8');
-  assert.match(launcher, /generate-ai-eval-quality-dataset\.js/);
+  // The launcher was refactored into a sharded cloud pipeline: it invokes
+  // generate-ai-eval-complete-dataset.js, which requires generate-ai-eval-quality-dataset.js
+  // internally (Bloom-filter/fingerprint dedup logic), and run-ai-eval-cloud-bounded.js,
+  // which requires openagentic-response-normalizer.js. Neither dependency's filename is
+  // named directly in the shell script anymore, so verify the composition on disk instead.
+  assert.match(launcher, /generate-ai-eval-complete-dataset\.js/);
+  assert.match(launcher, /run-ai-eval-cloud-bounded\.js/);
   assert.match(launcher, /Generating up to/);
   assert.match(launcher, /AI_EVAL_CASE_TARGET:-1000000/);
   assert.match(launcher, /AI_EVAL_TOKEN_BUDGET:-50000000/);
-  assert.match(launcher, /openagentic-response-normalizer\.js/);
+  const completeDatasetSrc = fs.readFileSync(path.join(ROOT, 'tools/generate-ai-eval-complete-dataset.js'), 'utf8');
+  assert.match(completeDatasetSrc, /require\(['"]\.\/generate-ai-eval-quality-dataset['"]\)/);
+  const cloudBoundedSrc = fs.readFileSync(path.join(ROOT, 'tools/run-ai-eval-cloud-bounded.js'), 'utf8');
+  assert.match(cloudBoundedSrc, /openagentic-response-normalizer/);
 });

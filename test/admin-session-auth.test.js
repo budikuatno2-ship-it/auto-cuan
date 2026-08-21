@@ -102,8 +102,8 @@ function sameOriginHeaders(cookie) {
 }
 
 const S = loadSession();
-const knownUser = { id: 'u1', username: 'alice', password_hash: 'goodhash', devices: ['dev_known'], is_blocked: false, is_approved: true };
-const budiUser = { id: 'uadmin', username: 'budi', password_hash: 'goodhash', devices: ['dev_known'], is_blocked: false, is_approved: true };
+const knownUser = { id: 'u1', username: 'alice', password_hash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', devices: ['dev_known'], is_blocked: false, is_approved: true };
+const budiUser = { id: 'uadmin', username: 'budi', password_hash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', devices: ['dev_known'], is_blocked: false, is_approved: true };
 
 // ============ SESSION CREATION (login) ============
 
@@ -112,7 +112,7 @@ test('login success sets an HttpOnly, Path-scoped, Max-Age session cookie', asyn
   await withEnv({}, async () => {
     const handler = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(knownUser));
     const res = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: 'goodhash', deviceId: 'dev_known' } }, res);
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', deviceId: 'dev_known' } }, res);
     assert.equal(res.body.success, true);
     const cookie = cookieFromRes(res);
     assert.match(cookie, /ac_sess=/);
@@ -127,7 +127,7 @@ test('production login cookie includes Secure', async () => {
   await withEnv({ NODE_ENV: 'production' }, async () => {
     const handler = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(knownUser));
     const res = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: 'goodhash', deviceId: 'dev_known' } }, res);
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', deviceId: 'dev_known' } }, res);
     assert.match(cookieFromRes(res), /Secure/);
   });
 });
@@ -137,7 +137,7 @@ test('session cookie uses SameSite=Strict', async () => {
   await withEnv({}, async () => {
     const handler = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(knownUser));
     const res = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: 'goodhash', deviceId: 'dev_known' } }, res);
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', deviceId: 'dev_known' } }, res);
     assert.match(cookieFromRes(res), /SameSite=Strict/);
   });
 });
@@ -147,10 +147,10 @@ test('session token embeds neither the password hash nor the raw device id', asy
   await withEnv({}, async () => {
     const handler = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(knownUser));
     const res = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: 'goodhash', deviceId: 'dev_known' } }, res);
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', deviceId: 'dev_known' } }, res);
     const token = tokenFromCookie(cookieFromRes(res));
     assert.ok(token.length > 0);
-    assert.equal(token.indexOf('goodhash'), -1, 'no password hash in token');
+    assert.equal(token.indexOf('4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef'), -1, 'no password hash in token');
     assert.equal(token.indexOf('dev_known'), -1, 'no raw device id in token');
     const verified = S.verifySessionToken(token);
     assert.equal(verified.valid, true);
@@ -165,13 +165,13 @@ test('login as DB user budi yields a server-signed admin session; normal user do
   await withEnv({}, async () => {
     let handler = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(budiUser));
     let res = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'budi', passwordHash: 'goodhash', deviceId: 'dev_known', isAdmin: false, is_admin: false } }, res);
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'budi', passwordHash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', deviceId: 'dev_known', isAdmin: false, is_admin: false } }, res);
     assert.equal(S.verifySessionToken(tokenFromCookie(cookieFromRes(res))).payload.adm, true);
     assert.equal(res.body.isAdmin, true);
 
     handler = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(knownUser));
     res = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: 'goodhash', deviceId: 'dev_known', is_admin: true, isAdmin: true } }, res);
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', deviceId: 'dev_known', is_admin: true, isAdmin: true } }, res);
     assert.equal(S.verifySessionToken(tokenFromCookie(cookieFromRes(res))).payload.adm, false);
     assert.equal(res.body.isAdmin, false);
   });
@@ -341,7 +341,7 @@ test('SESSION_SECRET is never returned, embedded, or logged', async () => {
     try {
       const handler = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(knownUser));
       const res = makeRes();
-      await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: 'goodhash', deviceId: 'dev_known' } }, res);
+      await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', deviceId: 'dev_known' } }, res);
       const cookie = cookieFromRes(res);
       assert.equal(JSON.stringify(res.body).indexOf(SECRET), -1, 'secret not in response body');
       assert.equal(cookie.indexOf(SECRET), -1, 'secret not embedded in cookie/token');
@@ -354,7 +354,7 @@ test('SESSION_SECRET is never returned, embedded, or logged', async () => {
     }
     const all = captured.join('\n');
     assert.equal(all.indexOf(SECRET), -1, 'secret must never be logged');
-    assert.equal(all.indexOf('goodhash'), -1, 'password hash must never be logged');
+    assert.equal(all.indexOf('4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef'), -1, 'password hash must never be logged');
   });
   // the helper source performs no console logging at all
   const libSrc = fs.readFileSync(path.join(ROOT, 'lib', 'admin-session.js'), 'utf8');
@@ -388,14 +388,15 @@ test('existing valid login and register still succeed', async () => {
   await withEnv({}, async () => {
     const login = requireApiWithSupabaseStub('../api/login-user', supabaseWithUser(knownUser));
     let res = makeRes();
-    await login({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: 'goodhash', deviceId: 'dev_known' } }, res);
+    await login({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'alice', passwordHash: '4d3143e7a656840ab209a03c0f39fb57c25e94e8ee9da349da49ac70578296ef', deviceId: 'dev_known' } }, res);
     assert.equal(res.body.success, true);
     assert.equal(res.body.userId, 'u1');
 
     const capture = {};
+    const accountTerms = require('../lib/account-terms');
     const reg = requireApiWithSupabaseStub('../api/register-user', supabaseWithUser(null, capture));
     res = makeRes();
-    await reg({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua' } }, res);
+    await reg({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'newuser', passwordHash: 'a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4', deviceId: 'dev_x', userAgent: 'ua', termsAccepted: true, termsVersion: accountTerms.CURRENT_TERMS_VERSION } }, res);
     assert.equal(res.body.success, true);
     assert.ok(!('password' in res.body));
   });

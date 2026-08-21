@@ -2,8 +2,46 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const Module = require('node:module');
 
+// This suite exercises handleTelegramDailyPicks's manual_latest_snapshot /
+// manual_previous_trading_day logic purely through its response shape with an
+// empty backing store ("mock supabase, no real rows" — see the comments on
+// individual tests below). Without a stub, requiring api/sector-hot directly
+// makes it call the REAL @supabase/supabase-js against SUPABASE_URL, which
+// setTestEnv() below points at a deliberately unreachable host — turning every
+// one of getScreenerReadiness()'s 6 sequential queries into a ~7s failed fetch
+// (~42-49s per test). Stub the client so every query resolves immediately with
+// empty data, matching what these tests already assume.
+const origLoad = Module._load;
+Module._load = function (request) {
+  if (request === '@supabase/supabase-js') {
+    return {
+      createClient: function () {
+        return {
+          from() {
+            const chain = {
+              select() { return chain; },
+              eq() { return chain; },
+              order() { return chain; },
+              in() { return chain; },
+              limit() { return Promise.resolve({ data: [], error: null }); },
+              maybeSingle() { return Promise.resolve({ data: null, error: null }); },
+              insert() { return { select() { return Promise.resolve({ data: [], error: null }); } }; },
+              update() { return chain; },
+              then(resolve) { return Promise.resolve({ data: [], error: null }).then(resolve); }
+            };
+            return chain;
+          },
+          rpc() { return Promise.resolve({ data: null, error: null }); }
+        };
+      }
+    };
+  }
+  return origLoad.apply(this, arguments);
+};
 const handler = require('../api/sector-hot');
+Module._load = origLoad;
 
 // ============================================================
 // TEST HELPERS

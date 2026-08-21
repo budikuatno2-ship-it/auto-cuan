@@ -16,7 +16,11 @@ test('application shell CSS is externalized before the theme layer', () => {
   assert.ok(shellAt > 0 && themeAt > shellAt);
   const head = html.slice(0, html.indexOf('</head>'));
   assert.match(head, /<style id=\"critical-shell-fallback\">/i);
-  assert.match(head, /\.hidden \{ display: none !important; \}/);
+  // Deliberately NOT !important: Tailwind's .md\:flex responsive utility must
+  // keep winning over this by source order for the desktop landing menu
+  // (`class="hidden md:flex"`) — see maintenance-and-hidden-resilience.test.js
+  // and the matching comment in index-shell.css's own .hidden rule.
+  assert.match(head, /\.hidden \{ display: none; \}/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /\.maintenance-card \{/);
   assert.match(css, /border-radius: 14px/);
@@ -26,13 +30,16 @@ test('application shell CSS is externalized before the theme layer', () => {
 test('market chart and export runtime preserves classic global contracts', () => {
   const html = read('public/index.html');
   const runtime = read('public/market-feature-runtime.js');
+  // exportDayTradePDF was split out into its own day-trade-specific runtime file.
+  const daytradeRuntime = read('public/daytrade-runtime.js');
   const refAt = html.indexOf('/market-feature-runtime.js?v=20260818-v1');
   const accessibilityAt = html.indexOf('// ===== ACCESSIBILITY:');
   assert.ok(refAt > 0 && accessibilityAt > refAt);
   assert.equal((html.match(/market-feature-runtime\.js\?v=20260818-v1/g) || []).length, 1);
-  for (const name of ['loadLightweightCharts', 'toggleNewsPanel', 'exportAnalisisPDF', 'exportDayTradePDF']) {
+  for (const name of ['loadLightweightCharts', 'toggleNewsPanel', 'exportAnalisisPDF']) {
     assert.ok(runtime.includes('function ' + name + '('), name + ' contract missing');
   }
+  assert.ok(daytradeRuntime.includes('function exportDayTradePDF('), 'exportDayTradePDF contract missing');
   assert.match(runtime, /var _lwcLoadPromise = null/);
   assert.match(runtime, /if \(_lwcLoadPromise\) return _lwcLoadPromise/);
   assert.match(runtime, /window\.loadPdfLibrary\(\)\.then/);

@@ -23,7 +23,11 @@ test('login integration records failures without changing credential authority',
   assert.match(login, /loginGuard\.failure\('unknown_account'\)/);
   assert.match(login, /'bad_password'/);
   assert.match(login, /loginGuard\.credentialAccepted/);
-  assert.match(login, /const databasePasswordMatches = user\.password_hash === passwordHash/);
+  // Superseded by lib/password-credential.js: passwords are no longer compared
+  // via raw string equality, but through verifyStoredCredential (scrypt-derived
+  // protected format, with a one-time transparent migration path for legacy rows).
+  assert.match(login, /const credentialCheck = passwordCredential\.verifyStoredCredential\(user\.password_hash, passwordHash\)/);
+  assert.match(login, /const databasePasswordMatches = credentialCheck\.ok/);
   assert.match(login, /const GENERIC_CREDENTIAL_ERROR = 'Username atau password salah\.'/);
   assert.doesNotMatch(login, /securityGuard[^\n]*(?:passwordHash|deviceId)/);
 });
