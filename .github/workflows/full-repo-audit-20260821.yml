@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/top5-history-full-audit-20260821
+  pull_request:
+    branches:
+      - feat/daytrade-screener-v1
   workflow_dispatch:
 
 permissions:
