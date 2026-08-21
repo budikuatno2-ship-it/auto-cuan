@@ -30,10 +30,10 @@
     loadScriptOnce('/account-center-lazy-loader-v1.js?v=20260816-v1', 'data-autocuan-account-center-lazy');
     loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');
 
-    // Maintenance code runtime v6: continuously watches the same maintenance
-    // endpoint while the maintenance screen is open, so /akses appears without
-    // any manual page refresh. Sixth digit still auto-submits.
-    loadScriptOnce('/admin-maintenance-code.js?v=20260821-v6', 'data-autocuan-maintenance-code');
+    // Maintenance code runtime v7: lower-latency live watch, lightweight watch
+    // snapshot, no polling contention during code submit, and immediate client
+    // dashboard transition after the server has issued the signed session.
+    loadScriptOnce('/admin-maintenance-code.js?v=20260821-v7', 'data-autocuan-maintenance-code');
 
     // Compatibility fallback only. Code mode suppresses pairing polling while
     // maintenance-code mode is active.
