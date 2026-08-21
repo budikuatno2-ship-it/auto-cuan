@@ -138,7 +138,8 @@ test('/akses sends one-time code only while maintenance is enabled and deletes c
     assert.equal(result.outcome, 'admin_maintenance_code_sent');
     assert.equal(bot.sent.length, 1);
     assert.match(bot.sent[0].text, /Kode: \d{6}/);
-    assert.match(bot.sent[0].text, /Refresh autocuan\.web\.id/i);
+    assert.match(bot.sent[0].text, /menampilkan kolom kode otomatis/i);
+    assert.match(bot.sent[0].text, /Tidak perlu refresh/i);
     assert.match(bot.sent[0].text, /digit ke-6/i);
     assert.match(bot.sent[0].text, /maksimal 5 percobaan/i);
     assert.doesNotMatch(bot.sent[0].text, /https?:\/\//);
@@ -193,7 +194,7 @@ test('missing maintenance-code schema falls back instead of stealing /akses', as
   assert.equal(result.outcome, 'admin_maintenance_code_schema_unavailable');
 });
 
-test('browser flow reads code state from the same maintenance endpoint and auto-submits six digits', function () {
+test('browser live-polls maintenance state, reveals active code without refresh, and auto-submits six digits', function () {
   const api = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
   const maintenanceApi = fs.readFileSync(path.join(ROOT, 'api', 'maintenance-settings.js'), 'utf8');
   const browser = fs.readFileSync(path.join(ROOT, 'lib', 'admin-maintenance-code-browser.js'), 'utf8');
@@ -214,7 +215,14 @@ test('browser flow reads code state from the same maintenance endpoint and auto-
   assert.match(browser, /telegram_success_message_id/);
 
   assert.match(ui, /MAINTENANCE_API = '\/api\/maintenance-settings'/);
+  assert.match(ui, /IDLE_POLL_MS = 1200/);
   assert.match(ui, /function readMaintenanceStatus/);
+  assert.match(ui, /function checkLiveStatus/);
+  assert.match(ui, /scheduleStatusCheck\(nextDelay\)/);
+  assert.match(ui, /visibilitychange/);
+  assert.match(ui, /window\.addEventListener\('focus'/);
+  assert.match(ui, /scheduleStatusCheck\(100\)/);
+  assert.doesNotMatch(ui, /function checkOnLoad/);
   assert.match(ui, /window\.getComputedStyle/);
   assert.match(ui, /data-admin-code-host-outer/);
   assert.match(ui, /function renderIdleCode/);
@@ -225,7 +233,7 @@ test('browser flow reads code state from the same maintenance endpoint and auto-
   assert.match(ui, /validateAutocuanSession/);
 
   assert.match(pairingUi, /__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__/);
-  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v5/);
+  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v6/);
   assert.match(access, /maintenanceCode\.handleUpdate/);
 });
 

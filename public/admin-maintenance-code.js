@@ -6,8 +6,14 @@
 
   var API = '/api/reset-password';
   var MAINTENANCE_API = '/api/maintenance-settings';
+  var IDLE_POLL_MS = 1200;
+  var ACTIVE_POLL_MS = 4000;
+  var HIDDEN_POLL_MS = 5000;
   var submitting = false;
   var expiresAt = 0;
+  var statusTimer = null;
+  var statusInFlight = false;
+  var lastScope = null;
 
   window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
 
@@ -280,7 +286,7 @@
         var remaining = Number(data.attemptsRemaining || 0);
         setError(scope, 'Kode salah.' + (remaining > 0 ? ' Sisa ' + remaining + ' percobaan.' : ''));
       } else {
-        setError(scope, data.error || 'Kode tidak dapat digunakan. Kirim /akses lagi lalu refresh halaman.');
+        setError(scope, data.error || 'Kode tidak dapat digunakan. Kirim /akses lagi di Telegram.');
       }
     } catch (_) {
       if (input) input.value = '';
@@ -294,12 +300,28 @@
     }
   }
 
-  async function checkOnLoad() {
-    var scope = activeScope();
-    if (!scope) {
-      window.setTimeout(checkOnLoad, 250);
+  function scheduleStatusCheck(delay) {
+    if (statusTimer) window.clearTimeout(statusTimer);
+    statusTimer = window.setTimeout(checkLiveStatus, Math.max(0, Number(delay) || 0));
+  }
+
+  async function checkLiveStatus() {
+    if (statusInFlight) {
+      scheduleStatusCheck(IDLE_POLL_MS);
       return;
     }
+
+    var scope = activeScope();
+    if (!scope) {
+      if (lastScope) removeCodeUi(lastScope);
+      lastScope = null;
+      scheduleStatusCheck(document.hidden ? HIDDEN_POLL_MS : IDLE_POLL_MS);
+      return;
+    }
+
+    lastScope = scope;
+    statusInFlight = true;
+    var nextDelay = document.hidden ? HIDDEN_POLL_MS : IDLE_POLL_MS;
 
     try {
       var state = await readMaintenanceStatus();
@@ -307,15 +329,30 @@
       var adminCode = state.adminCode || {};
       if (config.maintenanceMode === true && adminCode.active === true) {
         renderActiveCode(scope, { expiresAt: adminCode.expiresAt || null });
+        nextDelay = document.hidden ? HIDDEN_POLL_MS : ACTIVE_POLL_MS;
       } else {
         renderIdleCode(scope);
       }
     } catch (_) {
-      renderIdleCode(scope);
+      // A transient network failure must not make an already-visible valid code
+      // field disappear. Keep it until its known TTL ends, then fail closed.
+      if (!(expiresAt > Date.now())) renderIdleCode(scope);
+    } finally {
+      statusInFlight = false;
+      scheduleStatusCheck(nextDelay);
     }
   }
 
-  window.setTimeout(checkOnLoad, 150);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) scheduleStatusCheck(0);
+  });
+  window.addEventListener('focus', function () {
+    scheduleStatusCheck(0);
+  });
+
+  // Start immediately and keep watching while maintenance is visible. The user
+  // never needs to refresh: /akses becoming active is detected on the next poll.
+  scheduleStatusCheck(100);
 
   window.__AUTOCUAN_MAINTENANCE_CODE_API__ = {
     activeScope: activeScope,
@@ -325,6 +362,7 @@
     submitCode: submitCode,
     cleanupTelegram: cleanupTelegram,
     post: post,
-    readMaintenanceStatus: readMaintenanceStatus
+    readMaintenanceStatus: readMaintenanceStatus,
+    checkLiveStatus: checkLiveStatus
   };
 })();
