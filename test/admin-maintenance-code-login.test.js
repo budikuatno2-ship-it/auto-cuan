@@ -146,7 +146,7 @@ test('missing maintenance-code schema falls back instead of stealing /akses', as
   assert.equal(result.outcome, 'admin_maintenance_code_schema_unavailable');
 });
 
-test('browser flow stays clean until refresh sees active code, then auto-submits six digits', function () {
+test('browser flow stays clean until refresh sees active code, then auto-submits from a dedicated card host', function () {
   const api = fs.readFileSync(path.join(ROOT, 'api', 'reset-password.js'), 'utf8');
   const browser = fs.readFileSync(path.join(ROOT, 'lib', 'admin-maintenance-code-browser.js'), 'utf8');
   const ui = fs.readFileSync(path.join(ROOT, 'public', 'admin-maintenance-code.js'), 'utf8');
@@ -170,11 +170,14 @@ test('browser flow stays clean until refresh sees active code, then auto-submits
   assert.match(ui, /this\.value\.length === 6 && !submitting/);
   assert.match(ui, /submitCode\(scope\)/);
   assert.doesNotMatch(ui, /data-code-submit/);
+  assert.match(ui, /data-admin-code-host-outer/);
+  assert.match(ui, /card\.appendChild\(outer\)/);
+  assert.doesNotMatch(ui, /btn && btn\.parentNode\) return btn\.parentNode/);
   assert.match(ui, /admin-maintenance-code-cleanup/);
   assert.match(ui, /validateAutocuanSession/);
 
   assert.match(pairingUi, /__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__/);
-  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v3/);
+  assert.match(loader, /admin-maintenance-code\.js\?v=20260821-v4/);
   assert.match(access, /maintenanceCode\.handleUpdate/);
 });
 

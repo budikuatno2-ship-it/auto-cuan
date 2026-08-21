@@ -41,20 +41,24 @@
     return document.getElementById(scopeIds(scope).status);
   }
 
-  function legacyPanel(scope) {
-    var btn = legacyButton(scope);
-    if (btn && btn.parentNode) return btn.parentNode;
-
+  // IMPORTANT: code entry must never be mounted inside the legacy
+  // `.maintenance-admin` container. That container is intentionally hidden while
+  // code mode is active and can also be hidden by older presentation layers.
+  // Mount a dedicated sibling directly in the maintenance card instead.
+  function codeHost(scope) {
     var screen = scopeScreen(scope);
     var card = screen && screen.querySelector('.maintenance-card');
     if (!card) return null;
 
-    var host = card.querySelector('[data-admin-code-host]');
+    var outer = card.querySelector('[data-admin-code-host-outer]');
+    var host = outer && outer.querySelector('[data-admin-code-host]');
     if (!host) {
-      var outer = document.createElement('div');
-      outer.setAttribute('data-admin-code-host', '1');
-      outer.style.cssText = 'margin-top:18px;padding-top:14px;border-top:1px solid rgba(148,163,184,.12);display:flex;justify-content:center';
+      outer = document.createElement('div');
+      outer.setAttribute('data-admin-code-host-outer', '1');
+      outer.style.cssText = 'margin-top:18px;padding-top:14px;border-top:1px solid rgba(148,163,184,.12);display:flex;justify-content:center;width:100%';
+
       host = document.createElement('div');
+      host.setAttribute('data-admin-code-host', '1');
       host.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:320px';
       outer.appendChild(host);
       card.appendChild(outer);
@@ -70,35 +74,16 @@
 
     var panel = btn && btn.parentNode;
     var outer = panel && panel.closest && panel.closest('.maintenance-admin');
-    if (outer && outer.style) {
-      outer.style.display = show ? '' : 'none';
-    }
-  }
-
-  function forceHostVisible(scope) {
-    var panel = legacyPanel(scope);
-    if (!panel) return null;
-    if (panel.style) {
-      panel.style.display = 'flex';
-      panel.style.flexDirection = 'column';
-      panel.style.alignItems = 'center';
-      panel.style.width = '100%';
-    }
-    var outer = panel.closest && panel.closest('.maintenance-admin');
-    if (outer && outer.style) {
-      outer.style.display = 'flex';
-      outer.style.visibility = 'visible';
-      outer.style.opacity = '1';
-    }
-    return panel;
+    if (outer && outer.style) outer.style.display = show ? '' : 'none';
   }
 
   function removeCodeUi(scope) {
     var wrap = document.getElementById(scopeIds(scope).wrap);
     if (wrap) wrap.remove();
+
     var screen = scopeScreen(scope);
-    var fallback = screen && screen.querySelector('[data-admin-code-host]');
-    if (fallback && fallback.parentNode) fallback.parentNode.remove();
+    var outer = screen && screen.querySelector('[data-admin-code-host-outer]');
+    if (outer) outer.remove();
   }
 
   function ensureCodeUi(scope) {
@@ -106,8 +91,8 @@
     var existing = document.getElementById(ids.wrap);
     if (existing) return existing;
 
-    var panel = forceHostVisible(scope);
-    if (!panel) return null;
+    var host = codeHost(scope);
+    if (!host) return null;
 
     var wrap = document.createElement('div');
     wrap.id = ids.wrap;
@@ -123,7 +108,7 @@
       '</div>',
       '<div data-code-error class="hidden" role="alert" style="margin-top:8px;font-size:11.5px;line-height:1.5;color:#fca5a5"></div>'
     ].join('');
-    panel.appendChild(wrap);
+    host.appendChild(wrap);
 
     var input = wrap.querySelector('[data-code-input]');
     if (input) {
@@ -169,7 +154,7 @@
     if (!wrap) return;
     var input = wrap.querySelector('[data-code-input]');
     if (input) input.disabled = value;
-    setStatus(scope, value ? 'Memverifikasi kode…' : 'Masukkan 6 digit dari AutoCuan Verification.', value ? 'info' : 'info');
+    setStatus(scope, value ? 'Memverifikasi kode…' : 'Masukkan 6 digit dari AutoCuan Verification.', 'info');
   }
 
   async function post(action, payload) {
@@ -195,6 +180,7 @@
   function renderActiveCode(scope, data) {
     window.__AUTOCUAN_MAINTENANCE_CODE_ACTIVE__ = true;
     setLegacyVisible(scope, false);
+
     var wrap = ensureCodeUi(scope);
     if (!wrap) return;
 

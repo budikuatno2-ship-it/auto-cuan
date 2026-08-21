@@ -30,10 +30,10 @@
     loadScriptOnce('/account-center-lazy-loader-v1.js?v=20260816-v1', 'data-autocuan-account-center-lazy');
     loadScriptOnce('/subscription-access-gate-v1.js?v=20260816-v1', 'data-autocuan-subscription-access-gate');
 
-    // Maintenance code runtime v3: maintenance stays visually clean until an
-    // active /akses code exists at page load. The admin refreshes after /akses;
-    // a six-digit field then appears and auto-submits on the sixth digit.
-    loadScriptOnce('/admin-maintenance-code.js?v=20260821-v3', 'data-autocuan-maintenance-code');
+    // Maintenance code runtime v4: the active-code input mounts in a dedicated
+    // host directly inside the maintenance card, never inside the legacy admin
+    // container that other UI layers intentionally hide.
+    loadScriptOnce('/admin-maintenance-code.js?v=20260821-v4', 'data-autocuan-maintenance-code');
 
     // Compatibility fallback only. Code mode suppresses pairing polling once
     // the maintenance-code schema is available.
