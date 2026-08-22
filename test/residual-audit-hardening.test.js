@@ -7,6 +7,7 @@ const path = require('node:path');
 const test = require('node:test');
 
 const securityGuard = require('../lib/security-guard');
+const authRecovery = require('../lib/auth-recovery');
 const uploader = require('../tools/upload-ai-eval-shards');
 const supervisor = require('../tools/ai-eval-once-supervisor');
 const top5Runner = require('../tools/run-top5-progress-monitor');
@@ -39,6 +40,29 @@ test('security guard preserves explicit maintenance overrides and configurable a
     { PRIMARY_ADMIN_USERNAME: 'owner' }
   );
   assert.equal(context.adminTarget, true);
+});
+
+test('auth recovery behavior rejects insecure reset origins and duplicate updates', async () => {
+  assert.equal(authRecovery.__test.safeBaseUrl('http://evil.example'), 'https://autocuan.web.id');
+  assert.equal(authRecovery.__test.safeBaseUrl('https://autocuan.web.id/path?q=1'), 'https://autocuan.web.id');
+  assert.equal(authRecovery.normalizeResetToken('short'), null);
+
+  const calls = [];
+  const db = {
+    async rpc(name, args) {
+      calls.push({ name, args });
+      if (name === 'claim_auth_recovery_webhook_update') return { data: { claimed: false }, error: null };
+      return { data: null, error: null };
+    }
+  };
+  const result = await authRecovery.handleRecoveryUpdate({
+    update_id: 123,
+    message: { text: 'AR-ABCD-EFGH', from: { id: 1 }, chat: { id: 1, type: 'private' } }
+  }, { db, bot: {} });
+  assert.equal(result.handled, true);
+  assert.equal(result.outcome, 'duplicate');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].name, 'claim_auth_recovery_webhook_update');
 });
 
 test('manifest reader self-heals duplicate shard indexes and keeps the latest row', () => {
