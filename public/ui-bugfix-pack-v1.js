@@ -8,7 +8,7 @@
   'use strict';
 
   var STYLE_ID = 'autocuanUiBugfixPackV1';
-  var SANITIZER_HARDENING_VERSION = '20260813-ai-url-sanitizer-v1';
+  var SANITIZER_HARDENING_VERSION = '20260822-ai-dom-allowlist-v2';
   var WHEEL_HANDOFF_VERSION = '20260813-site-wheel-handoff-v1';
   var TELEGRAM_ADMIN_DEVICE_POLL_VERSION = '20260816-telegram-admin-device-poll-v1';
   var STYLE_TEXT = [
@@ -63,9 +63,6 @@
       });
   }
 
-  // Runtime uses the browser's own HTML parser to obtain the same attribute value
-  // that innerHTML would expose after named-entity decoding. The explicit fallback
-  // handles the security-relevant named references in non-DOM unit tests too.
   function decodeHtmlEntities(value, doc) {
     var decoded = decodeNumericEntities(value);
     if (doc && typeof doc.createElement === 'function') {
@@ -94,9 +91,6 @@
 
   function dangerousSrcset(value, doc) {
     var decoded = decodeHtmlEntities(value, doc);
-    // Check each candidate before interpreting its density/width descriptor.
-    // dangerousUrl removes embedded whitespace/control characters, so
-    // "java<TAB>script:" cannot be split into the harmless token "java" first.
     return decoded.split(',').some(function (candidate) {
       return dangerousUrl(candidate, doc);
     });
@@ -116,13 +110,85 @@
     );
   }
 
+  var ALLOWED_AI_TAGS = Object.freeze({
+    A: true, B: true, BLOCKQUOTE: true, BR: true, CODE: true, DIV: true,
+    EM: true, H1: true, H2: true, H3: true, H4: true, H5: true, H6: true,
+    HR: true, I: true, LI: true, OL: true, P: true, PRE: true, S: true,
+    SPAN: true, STRONG: true, TABLE: true, TBODY: true, TD: true, TH: true,
+    THEAD: true, TR: true, U: true, UL: true
+  });
+  var DROP_AI_TAGS = Object.freeze({
+    BASE: true, BUTTON: true, EMBED: true, FORM: true, IFRAME: true, INPUT: true,
+    LINK: true, MATH: true, META: true, OBJECT: true, OPTION: true, SCRIPT: true,
+    SELECT: true, STYLE: true, SVG: true, TEMPLATE: true, TEXTAREA: true
+  });
+
+  function safeAnchorHref(value, doc) {
+    var decoded = decodeHtmlEntities(value, doc).trim();
+    var compact = normalizedUrl(decoded, doc);
+    if (!decoded || dangerousUrl(decoded, doc)) return '#';
+    if (/^(?:https?:|mailto:|tel:)/.test(compact)) return decoded;
+    if (/^(?:#|\/|\.\/|\.\.\/|\?)/.test(decoded)) return decoded;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(compact)) return '#';
+    return decoded;
+  }
+
+  function sanitizeAllowedHtml(html, doc) {
+    var hardened = hardenUrlAttributes(html, doc);
+    if (!doc || typeof doc.createElement !== 'function') return hardened;
+    var template;
+    try {
+      template = doc.createElement('template');
+      template.innerHTML = hardened;
+    } catch (_) {
+      return hardened;
+    }
+    var content = template.content || template;
+    if (!content || typeof content.querySelectorAll !== 'function') return hardened;
+    var nodes = Array.prototype.slice.call(content.querySelectorAll('*'));
+    nodes.forEach(function (node) {
+      if (!node || !node.tagName || !node.parentNode) return;
+      var tag = String(node.tagName).toUpperCase();
+      if (DROP_AI_TAGS[tag]) {
+        node.parentNode.removeChild(node);
+        return;
+      }
+      if (!ALLOWED_AI_TAGS[tag]) {
+        var parent = node.parentNode;
+        while (node.firstChild) parent.insertBefore(node.firstChild, node);
+        parent.removeChild(node);
+        return;
+      }
+      Array.prototype.slice.call(node.attributes || []).forEach(function (attr) {
+        var name = String(attr.name || '').toLowerCase();
+        var keep = name === 'title' || name === 'class' || name === 'aria-label' ||
+          (tag === 'A' && (name === 'href' || name === 'target' || name === 'rel')) ||
+          ((tag === 'TD' || tag === 'TH') && (name === 'colspan' || name === 'rowspan'));
+        if (/^on/i.test(name) || name === 'style' || name === 'id' || !keep) {
+          node.removeAttribute(attr.name);
+        }
+      });
+      if (tag === 'A') {
+        node.setAttribute('href', safeAnchorHref(node.getAttribute('href') || '', doc));
+        var target = String(node.getAttribute('target') || '').toLowerCase();
+        if (target && target !== '_blank' && target !== '_self') node.removeAttribute('target');
+        if (target === '_blank') node.setAttribute('rel', 'noopener noreferrer');
+      }
+      if (node.hasAttribute && node.hasAttribute('class')) {
+        var safeClass = String(node.getAttribute('class') || '').replace(/[^a-z0-9_\- ]/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+        if (safeClass) node.setAttribute('class', safeClass); else node.removeAttribute('class');
+      }
+    });
+    return typeof template.innerHTML === 'string' ? template.innerHTML : hardened;
+  }
+
   function installSanitizerHardening(targetRoot) {
     if (!targetRoot || typeof targetRoot.sanitizeAIHtml !== 'function') return false;
     var base = targetRoot.sanitizeAIHtml;
     if (base.__autocuanUrlHardening === SANITIZER_HARDENING_VERSION) return true;
 
     function hardenedSanitizeAIHtml(html) {
-      return hardenUrlAttributes(base(html), targetRoot.document);
+      return sanitizeAllowedHtml(base(html), targetRoot.document);
     }
     hardenedSanitizeAIHtml.__autocuanUrlHardening = SANITIZER_HARDENING_VERSION;
     hardenedSanitizeAIHtml.__baseSanitizer = base;
@@ -199,9 +265,6 @@
       var rootNode = scrollRoot(doc);
       var owner = nearestScrollableY(event.target, targetRoot);
       if (!rootNode || !owner || owner === rootNode || owner === doc.body || owner === doc.documentElement) return;
-
-      // Native scrolling is correct while the inner region still has room. Only
-      // at its top/bottom boundary do we hand the same motion back to the page.
       if (canScrollY(owner, delta)) return;
       if (!canScrollY(rootNode, delta)) return;
 
@@ -256,7 +319,6 @@
           return;
         }
       } catch (_) {
-        // Maintenance must stay fail-closed; a failed poll changes nothing.
       } finally {
         inFlight = false;
       }
@@ -272,9 +334,6 @@
     var doc = targetRoot && targetRoot.document;
     if (!doc || !doc.head) return false;
 
-    // This script is loaded at the end of index.html, after sanitizeAIHtml is
-    // declared and before a user can submit an AI request. Patch the actual global
-    // sink synchronously; do not rely on a later MutationObserver cleanup.
     installSanitizerHardening(targetRoot);
     installWheelHandoff(targetRoot);
     installTelegramAdminDevicePoll(targetRoot);
@@ -293,11 +352,14 @@
     SANITIZER_HARDENING_VERSION: SANITIZER_HARDENING_VERSION,
     WHEEL_HANDOFF_VERSION: WHEEL_HANDOFF_VERSION,
     TELEGRAM_ADMIN_DEVICE_POLL_VERSION: TELEGRAM_ADMIN_DEVICE_POLL_VERSION,
+    ALLOWED_AI_TAGS: ALLOWED_AI_TAGS,
     decodeHtmlEntities: decodeHtmlEntities,
     normalizedUrl: normalizedUrl,
     dangerousUrl: dangerousUrl,
     dangerousSrcset: dangerousSrcset,
     hardenUrlAttributes: hardenUrlAttributes,
+    safeAnchorHref: safeAnchorHref,
+    sanitizeAllowedHtml: sanitizeAllowedHtml,
     installSanitizerHardening: installSanitizerHardening,
     scrollRoot: scrollRoot,
     overflowCanScroll: overflowCanScroll,

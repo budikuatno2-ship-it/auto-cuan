@@ -10,8 +10,8 @@ const prices = require('../lib/latest-price-resolver');
 const telegram = require('../lib/telegram-notifier');
 
 const ENV_FILES = ['.env.local', '.env.intraday-runtime', '.env'];
+const PROGRESS_PAGE_SIZE = 1000;
 
-// Keep this intentionally small: the runner needs cron-friendly env loading, not dotenv.
 function loadEnvFiles(options) {
   const cwd = (options && options.cwd) || process.cwd();
   const env = (options && options.env) || process.env;
@@ -60,7 +60,7 @@ function validateHistoricalOptions(options, currentTime) {
 }
 
 function parseArgs(argv) {
-  const o = { dryRun: true, dryRunExplicit: false, send: false, sendRequested: false, asOfDatetime: null, json: false, limit: 50 };
+  const o = { dryRun: true, dryRunExplicit: false, send: false, sendRequested: false, asOfDatetime: null, json: false, limit: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--send') { o.send = true; o.sendRequested = true; o.dryRun = false; }
@@ -71,7 +71,7 @@ function parseArgs(argv) {
       if (!value || String(value).startsWith('--')) throw new Error('--as-of-datetime requires a value.');
       o.asOfDatetime = value;
     } else if (a === '--json') o.json = true;
-    else if (a === '--limit') o.limit = Math.max(1, Number(argv[++i]) || 50);
+    else if (a === '--limit') o.limit = Math.max(1, Number(argv[++i]) || 1);
   }
   validateHistoricalOptions(o);
   return o;
@@ -85,6 +85,25 @@ async function fetchSupabaseRows(fetchImpl, supabaseUrl, key, table, params) {
   const response = await fetchImpl(supabaseRestUrl(supabaseUrl, table, params), { method: 'GET', headers: { apikey: key, Authorization: 'Bearer ' + key } });
   if (!response.ok) throw new Error('Supabase read failed for ' + table + ': HTTP ' + response.status + ' ' + await response.text());
   return response.json();
+}
+async function fetchAllProgressRows(fetchImpl, supabaseUrl, key, limit) {
+  const requestedLimit = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Math.floor(Number(limit)) : null;
+  const rows = [];
+  let offset = 0;
+  while (requestedLimit == null || rows.length < requestedLimit) {
+    const remaining = requestedLimit == null ? PROGRESS_PAGE_SIZE : Math.min(PROGRESS_PAGE_SIZE, requestedLimit - rows.length);
+    if (remaining <= 0) break;
+    const page = await fetchSupabaseRows(fetchImpl, supabaseUrl, key, 'telegram_daily_picks', {
+      select: '*',
+      order: 'date.desc,id.desc',
+      limit: String(remaining),
+      offset: String(offset)
+    });
+    rows.push(...(page || []));
+    if (!Array.isArray(page) || page.length < remaining) break;
+    offset += page.length;
+  }
+  return rows;
 }
 async function readLatestRows(fetchImpl, supabaseUrl, key, tickers, options) {
   const uniqueTickers = [...new Set((tickers || []).filter(Boolean).map((ticker) => String(ticker).toUpperCase()))];
@@ -147,9 +166,7 @@ async function run(options, deps) {
   const state = historicalDryRun ? { events: {}, tracking: {} } : await readState(file);
   const now = historicalDryRun ? historicalEvaluationTime : (deps.now ? new Date(deps.now) : new Date());
   const currentWibDate = jakartaDate(now);
-  const query = await fetchSupabaseRows(fetchImpl, supabaseUrl, key, 'telegram_daily_picks', { select: '*', order: 'date.desc', limit: String(options.limit) });
-  // `is_final` marks locked/final publication in telegram_daily_picks; it is
-  // not a terminal monitor state and must remain eligible for progress checks.
+  const query = await fetchAllProgressRows(fetchImpl, supabaseUrl, key, options.limit);
   const rows = (query || []).filter(isActiveProgressRow);
   const latest = await readLatestRows(fetchImpl, supabaseUrl, key, rows.map((row) => row.ticker), historicalDryRun ? { requiredPriceDate: currentWibDate } : null);
   const report = [];
@@ -162,8 +179,6 @@ async function run(options, deps) {
     state.tracking[trackingKey] = Object.assign({}, state.tracking[trackingKey], { status: tracking.status, updated_at: now.toISOString() });
     let events = detected.events.slice();
     if (state.tracking[trackingKey].tp1_notified) events = events.filter((event) => event.type !== 'TP1_HIT');
-    // A prior terminal state and max-age expiry are state/log-only.  TP2 and
-    // SL are the one-time terminal transitions that may still notify.
     if (!tracking.should_track) {
       if (tracking.reason === 'SL_HIT') events = [{ type: 'SL_HIT', event_key: monitor.eventKey(row, 'SL_HIT'), actionable: true, notification_enabled: options.send }];
       else if (tracking.reason === 'TP2_HIT') events = events.filter((event) => event.type === 'TP2_HIT');
@@ -214,4 +229,4 @@ async function run(options, deps) {
   return result;
 }
 if (require.main === module) { const options = parseArgs(process.argv); run(options).then((result) => { if (options.json) console.log(JSON.stringify(result, null, 2)); else console.log('top5 progress: checked=' + result.checked + ' events=' + result.events.length + ' dry_run=' + result.dry_run + ' state=' + result.state_file); }).catch((error) => { console.error(error.message || error); process.exitCode = 1; }); }
-module.exports = { ENV_FILES, loadEnvFiles, validateAsOfDatetime, validateHistoricalOptions, parseArgs, readState, writeState, supabaseRestUrl, fetchSupabaseRows, readLatestRows, jakartaDate, dateOnlyInJakarta, pickDate, sendGuard, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };
+module.exports = { ENV_FILES, PROGRESS_PAGE_SIZE, loadEnvFiles, validateAsOfDatetime, validateHistoricalOptions, parseArgs, readState, writeState, supabaseRestUrl, fetchSupabaseRows, fetchAllProgressRows, readLatestRows, jakartaDate, dateOnlyInJakarta, pickDate, sendGuard, shouldSendEvent, isAfterJakartaMarketClose, isActiveProgressRow, run, statePath };

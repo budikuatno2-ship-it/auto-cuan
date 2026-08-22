@@ -88,6 +88,15 @@ async function patchRun(id, values) {
   });
 }
 
+async function claimRun(id) {
+  const result = await request('/rest/v1/rpc/claim_ai_eval_run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_run_id: id })
+  });
+  return result === true;
+}
+
 function clearStopState() {
   if (stopTimer) clearTimeout(stopTimer);
   stopTimer = null;
@@ -186,12 +195,12 @@ async function tick() {
     return;
   }
 
-  await patchRun(run.id, {
-    status: 'STARTING',
-    last_error: null,
-    started_at: run.started_at || new Date().toISOString(),
-    last_heartbeat_at: new Date().toISOString()
-  });
+  // The database transition is the distributed lock. Exactly one supervisor
+  // can move an eligible row to a fresh STARTING lease; concurrent supervisors
+  // receive false and must not spawn a duplicate worker. A stale STARTING/
+  // RUNNING lease can be reclaimed by the RPC after its safety window.
+  const claimed = await claimRun(run.id);
+  if (!claimed) return;
   startRun(run);
 }
 
@@ -222,6 +231,7 @@ if (require.main === module) {
 module.exports = {
   latestRun,
   patchRun,
+  claimRun,
   safeDatasetPath,
   runtimeEnvForRun,
   desiredStateStopsWorker,

@@ -83,13 +83,16 @@ assertOk(apiFiles.length === 12, 'Vercel API function count changed: expected 12
 const loginApi = read('api/login-user.js');
 const adminLogsApi = read('api/admin-logs.js');
 const securityGuard = read('lib/security-guard.js');
+const securityGuardRuntime = require('../lib/security-guard');
 const securityRuntime = read('public/security-admin-runtime.js');
 const securityMigration = read('supabase/security-phase-1-migration.sql');
 assertOk(loginApi.includes("require('../lib/security-guard')"), 'Login API no longer imports the security guard.');
 assertOk(loginApi.includes('securityGuard.beginLogin') && loginApi.includes('loginGuard.failure(') && loginApi.includes("'bad_password'"), 'Login failure protection is missing.');
 assertOk(loginApi.includes('loginGuard.credentialAccepted'), 'Successful credentials no longer clear pair/account failure state.');
 assertOk(adminLogsApi.includes('securityGuard.loadSecurityDashboard'), 'Admin logs no longer expose the protected Security Center data.');
-assertOk(securityGuard.includes("SECURITY_GUARD_MODE || 'off'"), 'Security guard is not disabled by default.');
+assertOk(securityGuardRuntime.getMode({ NODE_ENV: 'production' }) === 'enforce', 'Security guard must default to enforce in production.');
+assertOk(securityGuardRuntime.getMode({ NODE_ENV: 'test' }) === 'off', 'Security guard must stay opt-in outside production unless configured.');
+assertOk(securityGuardRuntime.shouldFailClosedAdmin({ NODE_ENV: 'production' }) === true, 'Primary admin guard must fail closed by default in production.');
 assertOk(securityGuard.includes('SECURITY_TELEGRAM_CHAT_ID'), 'Dedicated security alert chat is missing.');
 assertOk(!securityGuard.includes("source.SECURITY_TELEGRAM_CHAT_ID || source.TELEGRAM_CHAT_ID"), 'Security alerts can fall back to the recommendation chat.');
 assertOk(securityGuard.includes("headers['x-vercel-forwarded-for']"), 'Vercel client IP extraction is missing.');
@@ -192,18 +195,12 @@ assertOk(portfolioRuntime.includes('previous.role !== row.role'), 'Portfolio cha
 assertOk(portfolioRuntime.includes('if (!text || state.sending) return;'), 'Portfolio AI send lock is missing.');
 
 // --- 9b. Front-end delivery: no render-blocking third-party compiler -------
-// The Tailwind Play CDN shipped ~400KB of JavaScript that compiled CSS in the
-// browser on every load, and blocking that host cost the app its entire layout.
-// The generated sheet must stay in place, and every utility class the rendered
-// DOM uses must exist in it.
 const indexHtml = read('public/index.html');
 const marketFeatureRuntime = read('public/market-feature-runtime.js');
 const tailwindCss = read('public/tailwind-build.css');
 assertOk(!/cdn\.tailwindcss\.com/.test(indexHtml), 'The Tailwind Play CDN is loaded again.');
 assertOk(/<link[^>]+href="\/tailwind-build\.css/.test(indexHtml), 'The generated Tailwind stylesheet is not linked.');
 assertOk(tailwindCss.length > 20000, 'public/tailwind-build.css looks truncated; regenerate it.');
-// Every class literal in the shipped markup and scripts must resolve to a rule.
-// Escapes are dropped first so ".bg-emerald-500\/10" can be matched literally.
 const flatCss = tailwindCss.replace(/\\(.)/g, '$1');
 function cssDefines(name) {
   let idx = flatCss.indexOf('.' + name);
@@ -219,15 +216,9 @@ function cssDefines(name) {
   .forEach(function (name) {
     assertOk(cssDefines(name), 'Tailwind utility "' + name + '" is missing from public/tailwind-build.css; regenerate it.');
   });
-
-// jsPDF is ~350KB for an export most sessions never use. It must stay behind an
-// explicit call rather than running three CDN attempts at parse time.
 assertOk(marketFeatureRuntime.includes('window.loadPdfLibrary'), 'On-demand PDF loader is missing.');
 assertOk(!/loadScript\(jspdfUrls, 0, function\(ok1\) \{\s*\n\s*if \(!ok1\)/.test(marketFeatureRuntime) || marketFeatureRuntime.indexOf('window.loadPdfLibrary') < marketFeatureRuntime.indexOf('jspdfUrls, 0'), 'PDF libraries are fetched at page load again.');
 assertOk(marketFeatureRuntime.includes('_ensureJsPdf') && marketFeatureRuntime.includes('window.loadPdfLibrary().then'), 'PDF export no longer triggers its own library load.');
-
-// The in-page spacing self-test shipped ~4KB of fixtures to every visitor and
-// asserted on textContent, which drops the <br> separators it was checking for.
 assertOk(!/selfTestSpacing|Auto-Cuan DOM-Test FAIL/.test(indexHtml), 'The in-page spacing self-test returned; it belongs in test/ai-technical-spacing.test.js.');
 
 // --- 10. Stable Pattern runtime, classic detector, and Swing ranking ------
@@ -241,26 +232,17 @@ assertOk(fcaLoader.includes('/pattern-stable-runtime.js?v=20260813-pattern-stabl
 assertOk(fcaLoader.includes('/pattern-screener-extension.js?v=20260813-pattern-screener-v7'), 'Screener Pattern v7 extension loader is missing.');
 assertOk(fcaLoader.includes('/pattern-visual.js?v=20260813-pattern-visual-v1'), 'Local Pattern SVG renderer loader is missing.');
 assertOk(fcaLoader.includes('/pattern-direction-safety.js?v=20260813-pattern-direction-safety-v2'), 'Pattern safety model loader is missing.');
-// Pattern's modules are libraries with a boot loop, not sequential patches, so
-// they must stay parallel: chaining them again puts four serial round trips back
-// in front of Pattern's first render.
 assertOk(!/pattern-stable-runtime\.js[^]*?function \(\) \{\s*\n\s*append\('\/pattern-screener-extension/.test(fcaLoader), 'Pattern runtimes are chained serially again.');
 assertOk(!fcaLoader.includes('/pattern-radar.js'), 'The duplicate Pattern Radar runtime is still loaded.');
 assertOk(patternStable.includes('action=screener') && patternStable.includes('action=nk-screener-results') && patternStable.includes('action=daytrade-screener'), 'Pattern Radar no longer reads all three latest screener sources.');
 const patternVisual = read('public/pattern-visual.js');
 const patternSafety = read('public/pattern-direction-safety.js');
-// The Pattern figure must stay local. Sending the ticker, its close series and
-// the admin-only geometry to a third-party image service is both a data-egress
-// and an availability problem: on a network that blocks it, the one visual the
-// feature exists for silently fails.
 const stripComments = text => text.replace(/^\s*\/\/.*$/gm, '');
 assertOk(['public/pattern-stable-runtime.js', 'public/pattern-visual.js', 'public/pattern-map.js', 'public/ui-stability-fix.js', 'public/index.html']
   .every(function (file) { return !/quickchart/i.test(stripComments(read(file))); }),
   'Pattern figures are fetched from a third-party image service again.');
 assertOk(patternVisual.includes('function buildPatternSvg'), 'Local Pattern SVG builder is missing.');
 assertOk(!/fetch\(|XMLHttpRequest/.test(stripComments(patternVisual)), 'The Pattern SVG builder must stay pure.');
-// The safety model must never go back to reading rendered text: that is what
-// produced both the idle MutationObserver loop and the rounded-string verdicts.
 assertOk(!/MutationObserver|querySelectorAll/.test(stripComments(patternSafety)), 'Pattern safety scrapes the DOM again.');
 assertOk(patternSafety.includes('function evaluateRow'), 'Pattern safety model entry point is missing.');
 assertOk(patternStable.includes('Safety.evaluateRow') && patternStable.includes('Safety.statusRank'), 'Pattern cards no longer render their verdict from the safety model.');
@@ -286,17 +268,10 @@ const patternMap = read('public/pattern-map.js');
 const resumeGuard = read('public/pattern-tab-resume-guard.js');
 const mobileNav = read('public/mobile-nav.js');
 const uiTheme = read('public/ui-theme.css');
-// The runtime Pattern page must never carry data-premium-page again: the
-// approval gate hid AND inerted it during its loading/unavailable states, which
-// is what made Pattern vanish or go dead to touch on mobile.
 assertOk(!/setAttribute\(\s*'data-premium-page'/.test(patternStable), 'Pattern page is premium-gated again; the mobile hide/inert race returns.');
 assertOk(patternStable.includes('function setPageVisible'), 'Pattern visibility no longer moves hidden, inert, and aria-hidden together.');
 assertOk(resumeGuard.includes('function revealPatternPage') && resumeGuard.includes('page.removeAttribute(\'aria-hidden\')'), 'Pattern resume no longer clears inert/aria-hidden.');
-// Resolution no longer matters for the card figure: an SVG is resolution
-// independent, so there is no raster spec to pick per viewport.
 assertOk(patternStable.includes('function svgDataUri'), 'Pattern fullscreen fallback image is missing.');
-// The figure is inline SVG, so there is no bitmap to pin a pixel ratio to and
-// no PNG blob to keep alive for a download link.
 assertOk(!/devicePixelRatio/.test(patternStable), 'Pattern Radar is rendering a raster image again.');
 assertOk(!/createObjectURL|revokeObjectURL/.test(patternStable), 'Pattern Radar is holding image blob URLs again.');
 assertOk(fcaLoader.includes('/mobile-nav.js?v='), 'Mobile bottom navigation runtime is not loaded.');
@@ -306,9 +281,6 @@ assertOk(mobileNav.includes("doc.getElementById('dashboardScreen')") && mobileNa
 
 // --- 10c. Floating launcher, shared chart viewer, and mobile viewport -----
 const chartViewer = read('public/chart-viewer.js');
-// A floating control reserves no layout space. Padding <body> for a fixed bar is
-// what shrank the 100vh body content box below the 100vh shell and left a dead
-// band containing the footer at the foot of every page.
 assertOk(!/body\.has-mobile-nav/.test(uiTheme) && !/has-mobile-nav/.test(mobileNav), 'The body padding-bottom nav hack returned; the mobile dead band comes back with it.');
 assertOk(uiTheme.includes('@supports (height: 100dvh)') && uiTheme.includes('min-height: 100vh'), 'Dynamic viewport height is missing or lost its vh fallback.');
 assertOk(mobileNav.includes('function snapPosition') && mobileNav.includes('function panelPlacement'), 'Launcher edge-snapping or popover placement is missing.');
@@ -316,7 +288,6 @@ assertOk(mobileNav.includes('DRAG_THRESHOLD') && mobileNav.includes('pointerdown
 assertOk(uiTheme.includes('.ac-launcher') && uiTheme.includes('.ac-navpanel'), 'Floating launcher styles are missing.');
 assertOk(!uiTheme.includes('.ac-mobilenav-item'), 'The replaced bottom-bar styles are still shipped.');
 assertOk(fcaLoader.includes('/chart-viewer.js?v='), 'Shared chart viewer is not loaded.');
-// The viewer must reuse the Chart page renderer rather than fork a second engine.
 assertOk(chartViewer.includes('root.renderLightweightChart(') && chartViewer.includes("variant: 'fullscreen'"), 'Chart viewer no longer reuses the Chart page renderer.');
 assertOk(chartViewer.includes('function lockScroll') && chartViewer.includes('data-ac-scroll-locked'), 'Chart viewer scroll lock is missing.');
 assertOk(chartViewer.includes('clampPan') && chartViewer.includes('pointermove'), 'Chart viewer pinch/pan fallback is missing.');

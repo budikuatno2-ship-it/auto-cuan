@@ -32,9 +32,28 @@ async function request(pathname, options) {
   return text ? safeJson(text) || text : null;
 }
 
+function atomicWrite(file, content) {
+  const tmp = file + '.tmp-' + process.pid + '-' + Date.now();
+  fs.writeFileSync(tmp, content, 'utf8');
+  fs.renameSync(tmp, file);
+}
+
 function readJsonl(file) {
   if (!fs.existsSync(file)) return [];
-  return fs.readFileSync(file, 'utf8').split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map(safeJson).filter(Boolean);
+  const rawRows = fs.readFileSync(file, 'utf8').split(/\r?\n/).map((line) => line.trim()).filter(Boolean).map(safeJson).filter(Boolean);
+  if (!rawRows.length || !rawRows.every((row) => Number.isInteger(Number(row.shard_index)))) return rawRows;
+
+  // A worker crash can occur after appending a manifest row but before advancing
+  // state.json. The retry then writes the same shard_index again. Keep the last
+  // complete row for each shard and atomically compact the manifest so the
+  // duplicate does not persist or cause repeated upload work.
+  const byShard = new Map();
+  for (const row of rawRows) byShard.set(Number(row.shard_index), row);
+  const rows = Array.from(byShard.values()).sort((a, b) => Number(a.shard_index) - Number(b.shard_index));
+  if (rows.length !== rawRows.length) {
+    atomicWrite(file, rows.map((row) => JSON.stringify(row)).join('\n') + '\n');
+  }
+  return rows;
 }
 
 function readShardRows(file) {
@@ -170,4 +189,4 @@ if (require.main === module) {
   main().catch((error) => { console.error(error.stack || error.message); process.exitCode = 1; });
 }
 
-module.exports = { readJsonl, readShardRows, uploadOne, uploadFinalArtifacts };
+module.exports = { atomicWrite, readJsonl, readShardRows, uploadOne, uploadFinalArtifacts };
