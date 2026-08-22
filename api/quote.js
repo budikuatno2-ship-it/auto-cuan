@@ -12,6 +12,14 @@ var idxTick = require('../lib/idx-tick-normalization');
 var latestPriceResolver = require('../lib/latest-price-resolver');
 var dailyContextBuilder = require('../lib/daily-market-context-builder');
 var dailyHistoryStore = require('../lib/stock-daily-history-store');
+var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+
+// This endpoint is unauthenticated and, with includeNews=1, triggers a paid
+// upstream AI news lookup on a cache miss plus a live Yahoo Finance fetch. It
+// had no limit at all, so a scripted ticker sweep could drive unbounded
+// external-API spend. Keyed on the address the platform edge observed, same
+// pattern as api/register-user.js.
+var quoteLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60 });
 
 var quoteCache = {};
 var QUOTE_CACHE_TTL = 5 * 60 * 1000;
@@ -163,6 +171,9 @@ async function handleDailyMarketContextListAction(req, res) {
 }
 
 module.exports = async function handler(req, res) {
+  if (!quoteLimiter.check(clientAddress(req))) {
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+  }
   if (req.query && req.query.action === 'daily-market-context') {
     return handleDailyMarketContextAction(req, res);
   }

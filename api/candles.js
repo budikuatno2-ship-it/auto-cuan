@@ -10,7 +10,13 @@ var t1Policy = require('../lib/chart-t1-policy');
 var patternDetector = require('../lib/pattern-abcd').detectAbcdPattern;
 var classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns;
 var adminSession = require('../lib/admin-session');
+var { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
 var clock = { now: function() { return new Date(); } };
+
+// Unauthenticated, and each unique ticker triggers a live Yahoo Finance fetch
+// beyond the 5-minute cache. Same reasoning as api/quote.js's limiter: bound
+// scripted ticker sweeps that would otherwise hammer the upstream provider.
+var candlesLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 60 });
 
 function hasPatternMapAccess(req) {
   var auth = adminSession.requireAdminSession(req);
@@ -35,6 +41,9 @@ function setPrivateResponseHeaders(res) {
 
 module.exports = async function handler(req, res) {
   setPrivateResponseHeaders(res);
+  if (!candlesLimiter.check(clientAddress(req))) {
+    return res.status(429).json({ error: 'Too many requests. Please slow down.' });
+  }
   try {
     var ticker = null;
 
