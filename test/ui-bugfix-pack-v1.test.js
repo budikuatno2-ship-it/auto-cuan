@@ -31,6 +31,25 @@ test('portfolio selected tab uses a single green active indicator', () => {
   assert.match(runtime.STYLE_TEXT, /aria-selected="true"\]::after\{[^}]*background:#34d399!important/);
 });
 
+test('AI URL hardening rejects direct and entity-obfuscated active schemes', () => {
+  assert.equal(runtime.safeAnchorHref('javascript:alert(1)'), '#');
+  assert.equal(runtime.safeAnchorHref('java\tscript:alert(1)'), '#');
+  assert.equal(runtime.safeAnchorHref('javascript&colon;alert(1)'), '#');
+  assert.equal(runtime.safeAnchorHref('data:text/html,<script>alert(1)</script>'), '#');
+  assert.equal(runtime.safeAnchorHref('https://example.com/news'), 'https://example.com/news');
+  assert.equal(runtime.safeAnchorHref('/relative/news'), '/relative/news');
+});
+
+test('AI sanitizer exposes a DOM allowlist rather than only a URL blocklist', () => {
+  assert.equal(runtime.ALLOWED_AI_TAGS.A, true);
+  assert.equal(runtime.ALLOWED_AI_TAGS.P, true);
+  assert.equal(runtime.ALLOWED_AI_TAGS.SCRIPT, undefined);
+  assert.match(runtime.SANITIZER_HARDENING_VERSION, /dom-allowlist/);
+  const fallback = runtime.sanitizeAllowedHtml('<a href="javascript&colon;alert(1)">x</a>', null);
+  assert.match(fallback, /href="#"/);
+  assert.doesNotMatch(fallback, /javascript/i);
+});
+
 test('wheel helpers distinguish a scrollable inner region from its boundary', () => {
   const node = { scrollHeight: 500, clientHeight: 200, scrollTop: 100 };
   assert.equal(runtime.canScrollY(node, 40), true);
