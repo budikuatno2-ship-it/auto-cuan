@@ -16,6 +16,21 @@ function loadLightweightCharts() {
     return _lwcLoadPromise;
 }
 // ===== YAHOO OHLCV CHART (lazy-loaded, click-to-show) =====
+// News/katalis items come from a server/AI-summarized feed, not a fixed
+// constant. escapeHtml() only entity-encodes text — it does not stop a
+// javascript:/vbscript:/data: URL scheme from executing when the browser
+// parses the resulting href attribute. Unlike the sanitizeAIHtml() sink
+// (index.html), this one never routed through the URL-scheme hardening in
+// ui-bugfix-pack-v1.js, so it needs its own scheme check.
+function isSafeHttpUrl(value) {
+    try {
+        var parsed = new URL(String(value), window.location.href);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch (_) {
+        return false;
+    }
+}
+
 // ===== NEWS PANEL TOGGLE =====
 function toggleNewsPanel(ticker, panelId, btn) {
     var panel = document.getElementById(panelId);
@@ -36,7 +51,7 @@ function toggleNewsPanel(ticker, panelId, btn) {
             if (n.possibleImpact) { var ic = n.possibleImpact === 'positive' ? 'text-emerald-400 bg-emerald-500/10' : n.possibleImpact === 'negative' ? 'text-red-400 bg-red-500/10' : 'text-gray-400 bg-gray-500/10'; badges += '<span class="px-1.5 py-0.5 rounded text-[10px] ' + ic + '">' + n.possibleImpact + '</span>'; }
             if (n.source) badges += '<span class="text-[10px] text-gray-500">' + escapeHtml(n.source) + '</span>';
             if (badges) html += '<div class="flex items-center gap-2 mt-1.5">' + badges + '</div>';
-            if (n.url) html += '<a href="' + escapeHtml(n.url) + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:underline mt-1"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>Buka Sumber</a>';
+            if (n.url && isSafeHttpUrl(n.url)) html += '<a href="' + escapeHtml(n.url) + '" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:underline mt-1"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>Buka Sumber</a>';
             html += '</div>';
         }
         html += '</div>';

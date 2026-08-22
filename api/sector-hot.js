@@ -8161,8 +8161,22 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
           });
           persistedUpdate = { last_checked_at: update.last_checked_at };
         }
+        // A transient write failure on this row must not abort the batch: throwing
+        // here used to terminate the whole invocation, leaving every ticker after
+        // this one in `rows` unevaluated and un-notified until the next cron tick.
+        // Record the failure and continue so the rest of the batch is still
+        // evaluated, notified, and included in the digest this run.
         var persistResult = await supabase.from('telegram_daily_picks').update(persistedUpdate).eq('id', pck.id);
-        if (persistResult && persistResult.error) throw new Error(persistResult.error.message || 'monitor state persistence failed');
+        if (persistResult && persistResult.error) {
+          individualFailedCount++;
+          individualFailures.push({
+            ticker: pck.ticker,
+            status: ev.status,
+            reason: 'persist_failed',
+            http_status: null,
+            retry_after_seconds: null
+          });
+        }
       }
 
       // HOURLY BATCH DIGEST ROW — a compact status block for EVERY deduplicated

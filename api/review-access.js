@@ -1,6 +1,13 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
 const subscriptionManualHandler = require('../lib/subscription-manual-handler');
 const subscriptionVoucherHandler = require('../lib/subscription-voucher-handler');
+const { createRateLimiter, clientAddress } = require('../lib/request-rate-limit');
+
+// This endpoint's only gate is a static, source-visible token, so it needs a
+// timing-safe comparison and a floor on how often it can be probed — same
+// reasoning as the login/registration limiters (see lib/request-rate-limit.js).
+const reviewAccessLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8 });
 
 /**
  * POST /api/review-access
@@ -19,11 +26,22 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
+  if (!reviewAccessLimiter.check(clientAddress(req))) {
+    return res.status(403).json({ success: false, error: 'Token review tidak valid.' });
+  }
+
   try {
     const { token } = req.body || {};
 
-    // Validate token
-    if (!token || token !== 'autocuan-review-2026') {
+    // Validate token with a timing-safe comparison — a plain !== leaks
+    // early-mismatch timing, and every other secret compare in this codebase
+    // (login-user.js, sector-hot.js cron secret) already uses timingSafeEqual.
+    const EXPECTED_TOKEN = 'autocuan-review-2026';
+    const tokenBuf = Buffer.from(String(token || ''));
+    const expectedBuf = Buffer.from(EXPECTED_TOKEN);
+    const tokenValid = tokenBuf.length === expectedBuf.length &&
+      crypto.timingSafeEqual(tokenBuf, expectedBuf);
+    if (!tokenValid) {
       return res.status(403).json({ success: false, error: 'Token review tidak valid.' });
     }
 

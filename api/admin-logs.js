@@ -47,7 +47,7 @@ module.exports = async function handler(req, res) {
     if (loginRes.error || searchRes.error || analysisRes.error || usageRes.error) {
       const err = loginRes.error || searchRes.error || analysisRes.error || usageRes.error;
       console.error('admin-logs fetch error:', err);
-      return res.status(200).json({ success: false, error: 'Database query failed: ' + err.message });
+      return res.status(200).json({ success: false, error: 'Database query failed.' });
     }
 
     const loginLogs = loginRes.data || [];
@@ -101,6 +101,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (e) {
     console.error('admin-logs exception:', e);
-    return res.status(200).json({ success: false, error: 'Gagal memuat data log: ' + e.message });
+    return res.status(200).json({ success: false, error: 'Gagal memuat data log.' });
   }
 };
