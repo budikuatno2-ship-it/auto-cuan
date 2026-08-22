@@ -9,6 +9,7 @@ const test = require('node:test');
 const securityGuard = require('../lib/security-guard');
 const uploader = require('../tools/upload-ai-eval-shards');
 const supervisor = require('../tools/ai-eval-once-supervisor');
+const top5Runner = require('../tools/run-top5-progress-monitor');
 
 test('security guard defaults to enforce and admin fail-closed in production', async () => {
   const env = { NODE_ENV: 'production' };
@@ -73,4 +74,24 @@ test('AI eval supervisor claims a run through the atomic database RPC before spa
   } finally {
     global.fetch = previousFetch;
   }
+});
+
+test('Top5 progress runner has no implicit 50-row cap and paginates until exhausted', async () => {
+  assert.equal(top5Runner.parseArgs(['node', 'runner']).limit, null);
+  const calls = [];
+  const fetchImpl = async function (url) {
+    const parsed = new URL(url);
+    calls.push({ limit: Number(parsed.searchParams.get('limit')), offset: Number(parsed.searchParams.get('offset')) });
+    const offset = Number(parsed.searchParams.get('offset'));
+    const size = offset === 0 ? 1000 : 37;
+    return {
+      ok: true,
+      async json() { return Array.from({ length: size }, (_, i) => ({ id: offset + i + 1, ticker: 'T' + (offset + i + 1) })); },
+      async text() { return ''; }
+    };
+  };
+
+  const rows = await top5Runner.fetchAllProgressRows(fetchImpl, 'https://example.supabase.co', 'key', null);
+  assert.equal(rows.length, 1037);
+  assert.deepEqual(calls, [{ limit: 1000, offset: 0 }, { limit: 1000, offset: 1000 }]);
 });
