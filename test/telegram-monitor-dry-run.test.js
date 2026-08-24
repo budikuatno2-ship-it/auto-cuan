@@ -374,6 +374,98 @@ test('repeated dry-runs produce no writes/sends/narration and identical events',
 });
 
 // ==================================================================
+// EVENT ORDER REGRESSIONS
+// ==================================================================
+test('inactive pick: entry + SL in the same high/low observation is ambiguous, not SL_HIT', function () {
+  const pick = {
+    ticker: 'AMB1', status: 'WAITING', is_final: false,
+    entry1: 100, entry2: 98, tp1: 110, tp2: 120, sl: 95,
+    first_sent_at: NOW_ISO, hit_entry_at: null,
+    hit_tp1_at: null, hit_tp2_at: null, hit_sl_at: null,
+    raw_payload: { monitor_source: 'swing_nk' }
+  };
+  const ev = sectorHot.__test.evaluateMonitorStatus(pick, {
+    last: 103, open: 100, high: 104, low: 94,
+    at: NOW_ISO, bestEffort: false, source: 'daytrade_screener_latest'
+  });
+  assert.equal(ev.status, 'WAITING');
+  assert.equal(ev.event_order_ambiguous, true);
+  assert.deepEqual(ev.ambiguous_terminal_hits, { sl: true, tp1: false, tp2: false });
+});
+
+test('inactive pick: entry + TP + SL in the same observation remains unresolved', function () {
+  const pick = {
+    ticker: 'AMB2', status: 'WAITING', is_final: false,
+    entry1: 100, entry2: 98, tp1: 110, tp2: 120, sl: 95,
+    first_sent_at: NOW_ISO, hit_entry_at: null,
+    hit_tp1_at: null, hit_tp2_at: null, hit_sl_at: null,
+    raw_payload: { monitor_source: 'swing_konglo' }
+  };
+  const ev = sectorHot.__test.evaluateMonitorStatus(pick, {
+    last: 103, open: 100, high: 121, low: 94,
+    at: NOW_ISO, bestEffort: false, source: 'daytrade_screener_latest'
+  });
+  assert.equal(ev.status, 'WAITING');
+  assert.equal(ev.event_order_ambiguous, true);
+  assert.deepEqual(ev.ambiguous_terminal_hits, { sl: true, tp1: true, tp2: true });
+});
+
+test('known prior entry may still resolve a later SL from the current observation', function () {
+  const pick = {
+    ticker: 'KNOWN', status: 'RUNNING', is_final: false,
+    entry1: 100, entry2: 98, tp1: 110, tp2: 120, sl: 95,
+    first_sent_at: NOW_ISO, hit_entry_at: NOW_ISO,
+    hit_tp1_at: null, hit_tp2_at: null, hit_sl_at: null,
+    raw_payload: { monitor_source: 'swing_nk' }
+  };
+  const ev = sectorHot.__test.evaluateMonitorStatus(pick, {
+    last: 103, open: 100, high: 104, low: 94,
+    at: NOW_ISO, bestEffort: false, source: 'daytrade_screener_latest'
+  });
+  assert.equal(ev.status, 'SL_HIT');
+  assert.notEqual(ev.event_order_ambiguous, true);
+});
+
+test('entry range touch counts even when Entry 2 is touched but Entry 1 is not', function () {
+  const pick = {
+    ticker: 'RANGE', status: 'WAITING', is_final: false,
+    entry1: 100, entry2: 98, tp1: 110, tp2: 120, sl: 95,
+    first_sent_at: NOW_ISO, hit_entry_at: null,
+    hit_tp1_at: null, hit_tp2_at: null, hit_sl_at: null,
+    raw_payload: { monitor_source: 'swing_nk' }
+  };
+  const ev = sectorHot.__test.evaluateMonitorStatus(pick, {
+    last: 101, open: 102, high: 101, low: 98,
+    at: NOW_ISO, bestEffort: false, source: 'daytrade_screener_latest'
+  });
+  assert.equal(ev.status, 'RUNNING');
+});
+
+test('dry-run diagnostics surface event-order ambiguity without creating a sendable hit', async function () {
+  const scenario = {
+    rows: [{
+      id: 99, ticker: 'AMB3', date: '2026-07-17', status: 'WAITING', is_final: false,
+      entry1: 100, entry2: 98, tp1: 110, tp2: 120, sl: 95,
+      first_sent_at: NOW_ISO, hit_entry_at: null,
+      hit_tp1_at: null, hit_tp2_at: null, hit_sl_at: null,
+      category: 'Swing Non-Konglo', raw_payload: { monitor_source: 'swing_nk' }
+    }],
+    daytradePrices: {
+      AMB3: { last_price: 103, open_price: 100, high_price: 104, low_price: 94, calculated_at: NOW_ISO }
+    },
+    foreignPrices: {}
+  };
+  const dry = await runMonitor({ dry_run: '1' }, scenario);
+  const evt = dry.res.body.events[0];
+  assert.equal(evt.simulated_status, 'WAITING');
+  assert.equal(evt.event_order_ambiguous, true);
+  assert.deepEqual(evt.ambiguous_terminal_hits, { sl: true, tp1: false, tp2: false });
+  assert.equal(evt.is_new_hit, false);
+  assert.equal(evt.sendable, false);
+  assert.equal(dry.res.body.individual_sendable_count, 0);
+});
+
+// ==================================================================
 // TEST 10: API endpoint JS count remains exactly 12
 // ==================================================================
 test('api/ directory still contains exactly 12 endpoint JS files', function () {
