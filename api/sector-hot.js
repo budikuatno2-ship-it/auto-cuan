@@ -6617,16 +6617,51 @@ function evaluateMonitorStatus(pick, px) {
   var tp1 = toNum(pick.tp1);
   var tp2 = toNum(pick.tp2);
   var sl = toNum(pick.sl);
-  var entryTouched = entry1 != null && high != null && low != null && low <= entry1 && high >= entry1;
+  var entryLow = null;
+  var entryHigh = null;
+  if (entry1 != null || entry2 != null) {
+    entryLow = entry1 != null && entry2 != null ? Math.min(entry1, entry2) : (entry1 != null ? entry1 : entry2);
+    entryHigh = entry1 != null && entry2 != null ? Math.max(entry1, entry2) : (entry1 != null ? entry1 : entry2);
+  }
+  var entryTouched = entryLow != null && high != null && low != null && low <= entryHigh && high >= entryLow;
+  var lastInEntryZone = entryLow != null && last != null && last >= entryLow && last <= entryHigh;
+  var slTouched = sl != null && low != null && low <= sl;
+  var tp1Touched = tp1 != null && high != null && high >= tp1;
+  var tp2Touched = tp2 != null && high != null && high >= tp2;
+
+  // daytrade_screener_latest exposes a session high/low snapshot, not an
+  // ordered tick stream. If a previously inactive recommendation first shows
+  // both an entry-zone touch and a terminal level in the same observation,
+  // the monitor cannot know whether entry happened before TP/SL. Preserve the
+  // non-active lifecycle state and flag the observation as ambiguous rather
+  // than fabricating a win/loss (or a hit_entry_at marker that would make the
+  // same cumulative high/low look ordered on the next cron run).
+  if (!activeBefore && entryTouched && (slTouched || tp1Touched || tp2Touched)) {
+    return result(
+      status,
+      status.replace(/_/g, ' '),
+      false,
+      'Entry dan level TP/SL tersentuh pada observasi high/low yang sama; urutan intraday tidak dapat dipastikan, sehingga outcome tidak dicatat.',
+      {
+        event_order_ambiguous: true,
+        ambiguous_terminal_hits: {
+          sl: slTouched,
+          tp1: tp1Touched,
+          tp2: tp2Touched
+        }
+      }
+    );
+  }
+
   var active = activeBefore || entryTouched;
 
-  if (sl != null && low != null && low <= sl) return result(active ? 'SL_HIT' : 'INVALID', active ? 'SL kena' : 'Invalid', true, active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry');
-  if (active && tp2 != null && high != null && high >= tp2) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh');
-  if (active && tp1 != null && high != null && high >= tp1) return result('TP1_HIT', 'TP1 Hit', false, pick.hit_tp1_at ? 'TP1 sudah tercatat sebelumnya' : 'TP1 tersentuh');
+  if (slTouched) return result(active ? 'SL_HIT' : 'INVALID', active ? 'SL kena' : 'Invalid', true, active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry');
+  if (active && tp2Touched) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh');
+  if (active && tp1Touched) return result('TP1_HIT', 'TP1 Hit', false, pick.hit_tp1_at ? 'TP1 sudah tercatat sebelumnya' : 'TP1 tersentuh');
   if (fresh.setup_freshness_status === 'EXPIRED') return result('EXPIRED', 'Expired', false, fresh.setup_expiry_note);
   if (fresh.setup_freshness_status === 'NEEDS_REVALIDATION') return result('NEEDS_REVALIDATION', 'Needs Revalidation', false, fresh.setup_expiry_note);
-  if (entryTouched) return result('RUNNING', 'Running', false, 'Entry sudah tersentuh; monitor TP/SL');
-  if (entry1 != null && entry2 != null && last <= Math.max(entry1, entry2) && last >= Math.min(entry1, entry2)) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2');
+  if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2');
+  if (entryTouched) return result('RUNNING', 'Running', false, 'Area entry sudah tersentuh; monitor TP/SL');
   if (entry2 != null && sl != null && last < Math.min(entry1 != null ? entry1 : entry2, entry2) && last > sl) return result('WATCHLIST', 'Watchlist', false, 'Harga di bawah area entry namun masih di atas SL');
   if (entry1 != null && last > Math.max(entry1, entry2 != null ? entry2 : entry1)) return result(active ? 'RUNNING' : 'ENTRY_MISSED', active ? 'Running' : 'Entry Missed', false, active ? 'Menuju TP1' : 'Harga di atas area entry tanpa touch; tunggu pullback');
   if (entry1 != null && last < Math.min(entry1, entry2 != null ? entry2 : entry1)) return result('ENTRY_READY', 'Entry Ready', false, 'Mendekati area entry; tunggu harga masuk zone');
@@ -8219,6 +8254,8 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
           price_low: priceLow,
           price_high: priceHigh,
           best_effort: !!(px && px.bestEffort),
+          event_order_ambiguous: ev.event_order_ambiguous === true,
+          ambiguous_terminal_hits: ev.ambiguous_terminal_hits || null,
           entry_range: { entry1: toNum(pck.entry1), entry2: toNum(pck.entry2) },
           tp1: toNum(pck.tp1),
           tp2: toNum(pck.tp2),
