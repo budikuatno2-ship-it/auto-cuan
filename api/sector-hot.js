@@ -34,6 +34,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const { requireAuthenticatedSession } = require('../lib/admin-session');
 const dtEngine = require('../lib/daytrade-screener-engine-v7');
+const daytradeExecutionRanking = require('../lib/daytrade-execution-ranking');
 const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
 const fibConfluence = require('../lib/fibonacci-confluence');
@@ -5054,6 +5055,15 @@ function rankCandidatesByPotential(candidate) {
   if (upside == null) upside = pctFrom(toNum(candidate.entry1) || getEntry1(candidate), toNum(candidate.tp1n || candidate.tp1));
   var rr = toNum(candidate.risk_reward) || 0;
   var score = toNum(candidate.combined_score || candidate.telegram_conviction_score || candidate.score || candidate.daytrade_score) || 0;
+  var execution = String(candidate.category || '').toLowerCase() === 'day trade'
+    ? daytradeExecutionRanking.deriveDayTradeExecutionQuality(candidate)
+    : null;
+  var executionPriority = 0;
+  if (execution) {
+    if (execution.execution_quality_status === 'BLOCKED') executionPriority = -10000;
+    else if (execution.execution_quality_status === 'RADAR_ONLY') executionPriority = -120;
+    else executionPriority = (4 - execution.execution_rank_bucket) * 30 + (execution.execution_score_adjustment || 0);
+  }
   var volume = getTelegramValue(candidate) > 0 ? Math.min(20, Math.log10(getTelegramValue(candidate))) : 0;
   var volRatio = getTelegramVolumeRatio(candidate) || 0;
   var trend = classifyTrendAlignment(candidate).trend_label;
@@ -5067,7 +5077,7 @@ function rankCandidatesByPotential(candidate) {
   if (pattern === 'VCP-like Base' || pattern === 'Ascending Triangle' || pattern === 'Breakout Consolidation') confluence += 8;
   if (pattern === 'Failed Breakout') confluence -= 15;
   var gate = deriveFinalTopQualityGate(candidate, 'rank');
-  return ((upside || 0) * 100) + (rr * 25) + score + (volume * 3) + (volRatio * 5) + confluence + stalePenalty + (gate.quality_score_adjustment || 0);
+  return ((upside || 0) * 100) + (rr * 25) + score + (volume * 3) + (volRatio * 5) + confluence + stalePenalty + (gate.quality_score_adjustment || 0) + executionPriority;
 }
 
 function normalizeCombinedCandidate(row, category) {
@@ -5110,8 +5120,10 @@ function normalizeCombinedCandidate(row, category) {
 
 async function fetchCombinedScreenerCandidates(supabase, includeExcluded) {
   var pools = [];
-  var dt = await supabase.from('daytrade_screener_latest').select('*').order('daytrade_score', { ascending: false }).order('ticker', { ascending: true }).limit(40);
-  (dt.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Day Trade')); });
+  var dt = await supabase.from('daytrade_screener_latest').select('*').limit(50);
+  daytradeExecutionRanking.sortDayTradeByExecution(dt.data || []).forEach(function(r) {
+    pools.push(normalizeCombinedCandidate(daytradeExecutionRanking.decorateDayTradeExecution(r), 'Day Trade'));
+  });
   var kg = await supabase.from('swing_screener_latest').select('*').order('score', { ascending: false }).limit(40);
   (kg.data || []).forEach(function(r) { pools.push(normalizeCombinedCandidate(r, 'Swing Konglo')); });
   var nk = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
@@ -5354,8 +5366,11 @@ async function buildTelegramScreenerMessage(supabase, modeText) {
   else if (mode === 'swing konglo') { category = 'Swing Konglo'; table = 'swing_screener_latest'; orderCol = 'score'; }
   else if (mode === 'swing non konglo' || mode === 'swing non-konglo') { category = 'Swing Non-Konglo'; table = 'swing_screener_non_konglo_latest'; orderCol = 'rank'; asc = true; }
   else return 'Format:\n/screener day trade\n/screener swing konglo\n/screener swing non konglo';
-  var res = await supabase.from(table).select('*').order(orderCol, { ascending: asc }).limit(20);
-  var rows = (res.data || []).map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker && candidatePassesTelegramCandidateDigestGate(r, 'screener_' + mode.replace(/\s+/g, '_')); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
+  var res = await supabase.from(table).select('*').order(orderCol, { ascending: asc }).limit(category === 'Day Trade' ? 50 : 20);
+  var sourceRows = category === 'Day Trade'
+    ? daytradeExecutionRanking.sortDayTradeByExecution(res.data || []).map(daytradeExecutionRanking.decorateDayTradeExecution)
+    : (res.data || []);
+  var rows = sourceRows.map(function(r) { return normalizeCombinedCandidate(r, category); }).filter(function(r) { return r.ticker && candidatePassesTelegramCandidateDigestGate(r, 'screener_' + mode.replace(/\s+/g, '_')); }).sort(function(a, b) { return rankCandidatesByPotential(b) - rankCandidatesByPotential(a) || a.ticker.localeCompare(b.ticker); }).slice(0, 10);
   var lines = ['Screener ' + category + ' — ' + getWibDateString(), 'Kandidat berbasis screener deterministic.', 'Konfirmasi manual wajib.', 'Perhatikan warning entry/risk/volume.', ''];
   if (rows.length === 0) lines.push('Belum ada kandidat dengan plan Entry/SL/TP valid hari ini.');
   for (var i = 0; i < rows.length; i++) { lines.push(await formatCandidateBlock(supabase, rows[i], i + 1, category === 'Day Trade')); lines.push(''); }
@@ -10860,14 +10875,13 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
 
     var entryRangeNormalizationDiagnostics = buildEntryRangeNormalizationDiagnostics(rows || []);
 
-    // Sort by status priority (actionable first), then score desc
-    var statusPriority = { 'A_PLUS_SETUP': 0, 'TRADE_CANDIDATE': 1, 'READY_BREAKOUT': 2, 'PRE_SPIKE_WATCH': 3, 'EARLY_RADAR': 4, 'MOMENTUM_CONTINUATION': 5, 'RECLAIM_CANDIDATE': 6, 'WAIT_PULLBACK': 7, 'SPECULATIVE': 8, 'AVOID': 9 };
-    var sortedRows = (rows || []).map(normalizeDayTradePublicReadRow).sort(function(a, b) {
-      var pa = statusPriority[a.status] || 9;
-      var pb = statusPriority[b.status] || 9;
-      if (pa !== pb) return pa - pb;
-      return (b.daytrade_score || 0) - (a.daytrade_score || 0);
-    });
+    // Raw technical score remains intact, but executable trade-plan quality now
+    // determines ranking priority. This prevents a high-momentum RR<1 setup from
+    // outranking a lower-score setup that can actually be executed.
+    var sortedRows = (rows || [])
+      .map(normalizeDayTradePublicReadRow)
+      .map(daytradeExecutionRanking.decorateDayTradeExecution)
+      .sort(daytradeExecutionRanking.compareDayTradeExecution);
 
     // Derive computed labels (confidence, entry_timing, direction, timeframe) from stored fields
     sortedRows = sortedRows.map(function(r) {
@@ -11248,7 +11262,7 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   // Read all rows currently in daytrade_screener_latest, keep only top 50 by score
   var { data: allRows, error: readErr } = await supabase
     .from('daytrade_screener_latest')
-    .select('ticker, daytrade_score, status')
+    .select('ticker, daytrade_score, status, risk_reward')
     .order('daytrade_score', { ascending: false }).order('ticker', { ascending: true });
 
   var rawBatchPassedCount = counters ? (counters.passed_count || 0) : 0;
@@ -11285,7 +11299,7 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
       published_count: 0
     });
   }
-  allRows = allRows || [];
+  allRows = daytradeExecutionRanking.sortDayTradeByExecution(allRows || []);
   var prePublishCandidateCount = allRows.length;
   // Preserve batch progress diagnostics separately from rows that survive DB read/trim.
   // This prevents a production false-zero from hiding the fact that earlier batches had candidates.
