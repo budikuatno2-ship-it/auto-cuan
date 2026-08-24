@@ -5055,6 +5055,15 @@ function rankCandidatesByPotential(candidate) {
   if (upside == null) upside = pctFrom(toNum(candidate.entry1) || getEntry1(candidate), toNum(candidate.tp1n || candidate.tp1));
   var rr = toNum(candidate.risk_reward) || 0;
   var score = toNum(candidate.combined_score || candidate.telegram_conviction_score || candidate.score || candidate.daytrade_score) || 0;
+  var execution = String(candidate.category || '').toLowerCase() === 'day trade'
+    ? daytradeExecutionRanking.deriveDayTradeExecutionQuality(candidate)
+    : null;
+  var executionPriority = 0;
+  if (execution) {
+    if (execution.execution_quality_status === 'BLOCKED') executionPriority = -10000;
+    else if (execution.execution_quality_status === 'RADAR_ONLY') executionPriority = -120;
+    else executionPriority = (4 - execution.execution_rank_bucket) * 30 + (execution.execution_score_adjustment || 0);
+  }
   var volume = getTelegramValue(candidate) > 0 ? Math.min(20, Math.log10(getTelegramValue(candidate))) : 0;
   var volRatio = getTelegramVolumeRatio(candidate) || 0;
   var trend = classifyTrendAlignment(candidate).trend_label;
@@ -5068,7 +5077,7 @@ function rankCandidatesByPotential(candidate) {
   if (pattern === 'VCP-like Base' || pattern === 'Ascending Triangle' || pattern === 'Breakout Consolidation') confluence += 8;
   if (pattern === 'Failed Breakout') confluence -= 15;
   var gate = deriveFinalTopQualityGate(candidate, 'rank');
-  return ((upside || 0) * 100) + (rr * 25) + score + (volume * 3) + (volRatio * 5) + confluence + stalePenalty + (gate.quality_score_adjustment || 0);
+  return ((upside || 0) * 100) + (rr * 25) + score + (volume * 3) + (volRatio * 5) + confluence + stalePenalty + (gate.quality_score_adjustment || 0) + executionPriority;
 }
 
 function normalizeCombinedCandidate(row, category) {
