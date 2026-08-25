@@ -2841,6 +2841,7 @@ function navigateTo(page) {
     }
 
     currentPage = page;
+    if (page !== 'screener') stopAllScreenerPolling();
     // Hide all pages
     document.querySelectorAll('.page-content').forEach(function(el) { el.classList.add('hidden'); });
     // Show target page
@@ -8325,6 +8326,21 @@ function screenerTickerClick(ticker) {
 var _nkScreenerCache = null;
 var _currentScreenerType = 'konglo';
 var _nkPollInterval = null;
+
+// Ensures every screener-family poller (Konglo, Non-Konglo, Day Trade, and
+// the Fast Watcher live-refresh fallback) stops the instant the user
+// navigates away from the Screener page. Without this, the Fast Watcher
+// fallback (fast-watcher-live-refresh.js) keeps firing an API request every
+// 20s indefinitely on every other page, because its own guard only checks
+// `_currentScreenerType === 'daytrade' && !window._dtPollInterval` -- a
+// state that persists forever once the Day Trade tab has been opened once,
+// even after leaving the Screener page entirely.
+function stopAllScreenerPolling() {
+    if (typeof stopScreenerPolling === 'function') stopScreenerPolling();
+    if (typeof stopNkPolling === 'function') stopNkPolling();
+    if (typeof stopDtPolling === 'function') stopDtPolling();
+    _currentScreenerType = null;
+}
 
 function switchScreenerType(type) {
     _currentScreenerType = type;
