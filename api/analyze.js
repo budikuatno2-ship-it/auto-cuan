@@ -104,16 +104,21 @@ async function prepareContextRequest(req) {
 }
 
 module.exports = async function handler(req, res) {
-  if (req && req.method === 'POST') {
-    const allowed = await requireAnalyzeAccess(req, res);
-    if (!allowed) return;
-  }
+  try {
+    if (req && req.method === 'POST') {
+      const allowed = await requireAnalyzeAccess(req, res);
+      if (!allowed) return;
+    }
 
-  const source = req && req.method === 'POST' && req.body && req.body.source;
-  if (source === 'portfolio_chat' || source === 'stock_analysis_followup') {
-    return handleContextAI(await prepareContextRequest(req), res);
+    const source = req && req.method === 'POST' && req.body && req.body.source;
+    if (source === 'portfolio_chat' || source === 'stock_analysis_followup') {
+      return await handleContextAI(await prepareContextRequest(req), res);
+    }
+    return await legacyAnalyze(req, res);
+  } catch (err) {
+    console.error('analyze handler error:', err);
+    return res.status(500).json({ success: false, error: 'Terjadi kesalahan server saat memproses analisis.' });
   }
-  return legacyAnalyze(req, res);
 };
 
 module.exports.__test = {
