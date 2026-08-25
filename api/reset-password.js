@@ -39,7 +39,7 @@ module.exports = async function handler(req, res) {
     // Find user
     const { data: user, error: findError } = await supabase
       .from('app_users')
-      .select('id, username, device_id, is_blocked')
+      .select('id, username, device_id, devices, is_blocked')
       .eq('username', usernameLower)
       .maybeSingle();
 
@@ -57,8 +57,9 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ success: false, error: 'Akun sedang diblokir.' });
     }
 
-    // Check device binding
-    if (!user.device_id || user.device_id !== deviceId) {
+    // Check device binding (supports multi-device array with fallback to legacy device_id)
+    const isDeviceValid = (Array.isArray(user.devices) && user.devices.includes(deviceId)) || user.device_id === deviceId;
+    if (!isDeviceValid) {
       return res.status(400).json({ success: false, error: 'Reset password hanya bisa dilakukan dari perangkat yang terdaftar. Hubungi admin jika perangkat berubah.' });
     }
 
