@@ -6,6 +6,33 @@
 
 var cache = {};
 var CACHE_TTL = 5 * 60 * 1000;
+var MAX_CACHE_ENTRIES = 500;
+
+function setBoundedCache(key, data) {
+  var keys = Object.keys(cache);
+  if (keys.length >= MAX_CACHE_ENTRIES) {
+    var now = Date.now();
+    var oldestKey = keys[0];
+    var oldestTime = Infinity;
+    var evicted = false;
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var entry = cache[k];
+      if (entry && (now - entry.timestamp > CACHE_TTL)) {
+        delete cache[k];
+        evicted = true;
+      } else if (entry && entry.timestamp < oldestTime) {
+        oldestTime = entry.timestamp;
+        oldestKey = k;
+      }
+    }
+    if (!evicted && cache[oldestKey]) {
+      delete cache[oldestKey];
+    }
+  }
+  cache[key] = { data: data, timestamp: Date.now() };
+}
+
 var t1Policy = require('../lib/chart-t1-policy');
 var patternDetector = require('../lib/pattern-abcd').detectAbcdPattern;
 var classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns;
@@ -94,17 +121,17 @@ module.exports = async function handler(req, res) {
       });
     } catch (fetchErr) {
       clearTimeout(timeout);
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal mengambil data.' });
+      return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal mengambil data.' });
     }
     clearTimeout(timeout);
 
     if (!response.ok) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'HTTP ' + response.status });
+      return res.status(502).json({ success: false, ticker: ticker, error: 'HTTP ' + response.status });
     }
 
     var json;
     try { json = await response.json(); } catch (e) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal parsing.' });
+      return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal parsing.' });
     }
 
     var chartResult = json && json.chart && json.chart.result && json.chart.result[0];
@@ -215,12 +242,12 @@ module.exports = async function handler(req, res) {
     // Cache the complete deterministic result once, then apply the signed-session
     // response policy per request. This prevents a guest/non-admin cache hit from
     // receiving Pattern geometry while keeping Technical Chart caching unchanged.
-    cache[ticker] = { data: result, timestamp: Date.now() };
+    setBoundedCache(ticker, result);
     return res.status(200).json(responseForRequest(result, req));
 
   } catch (err) {
     console.error('candles error:', err);
-    return res.status(200).json({ success: false, ticker: 'unknown', error: 'Kesalahan internal.' });
+    return res.status(500).json({ success: false, ticker: 'unknown', error: 'Kesalahan internal.' });
   }
 };
 

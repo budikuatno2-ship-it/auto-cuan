@@ -36,7 +36,7 @@ module.exports = async function handler(req, res) {
     // Validate token with a timing-safe comparison — a plain !== leaks
     // early-mismatch timing, and every other secret compare in this codebase
     // (login-user.js, sector-hot.js cron secret) already uses timingSafeEqual.
-    const EXPECTED_TOKEN = 'autocuan-review-2026';
+    const EXPECTED_TOKEN = process.env.REVIEW_ACCESS_TOKEN || 'autocuan-review-2026';
     const tokenBuf = Buffer.from(String(token || ''));
     const expectedBuf = Buffer.from(EXPECTED_TOKEN);
     const tokenValid = tokenBuf.length === expectedBuf.length &&
