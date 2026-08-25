@@ -35,6 +35,7 @@ const { requirePremiumEntitlement } = require('../lib/subscription-auth');
 const { requireAuthenticatedSession } = require('../lib/admin-session');
 const dtEngine = require('../lib/daytrade-screener-engine-v7');
 const daytradeExecutionRanking = require('../lib/daytrade-execution-ranking');
+const { summarizeDayTradeEntryDiscipline } = require('../lib/daytrade-entry-discipline-observability');
 const candleEngine = require('../lib/candle-pattern-engine');
 const idxTick = require('../lib/idx-tick-normalization');
 const fibConfluence = require('../lib/fibonacci-confluence');
@@ -10907,6 +10908,8 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
     // TRADE_PLAN_V2_PUBLIC_ENABLED is true, so the web payload is byte-identical.
     tradePlanV2Integration.decorateRowsForWeb(sortedRows, { mode: 'daytrade', env: process.env });
 
+    var daytradeEntryDisciplineObservability = summarizeDayTradeEntryDiscipline(sortedRows);
+
     return res.status(200).json({
       success: true,
       meta: displayMeta || { calculated_at: null, status: 'pending', message: 'Awaiting first calculation.', universe_count: 0, scanned_count: 0, failed_count: 0, published_count: 0 },
@@ -10927,7 +10930,8 @@ async function handleDayTradeScreenerRead(req, res, supabase) {
       entry_range_normalization_diagnostics: entryRangeNormalizationDiagnostics,
       computed_tp1_upside_pct_count: entryRangeNormalizationDiagnostics.computed_tp1_upside_pct_count,
       tp1_upside_pct_null_after_normalization_count: entryRangeNormalizationDiagnostics.tp1_upside_pct_null_after_normalization_count,
-      sample_computed_tp1_upside_pct: entryRangeNormalizationDiagnostics.sample_computed_tp1_upside_pct
+      sample_computed_tp1_upside_pct: entryRangeNormalizationDiagnostics.sample_computed_tp1_upside_pct,
+      daytrade_entry_discipline_observability: daytradeEntryDisciplineObservability
     });
   } catch (e) {
     console.error('handleDayTradeScreenerRead exception:', e);
