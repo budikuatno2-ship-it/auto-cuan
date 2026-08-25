@@ -6,6 +6,33 @@
 
 var cache = {};
 var CACHE_TTL = 5 * 60 * 1000;
+var MAX_CACHE_ENTRIES = 500;
+
+function setBoundedCache(key, data) {
+  var keys = Object.keys(cache);
+  if (keys.length >= MAX_CACHE_ENTRIES) {
+    var now = Date.now();
+    var oldestKey = keys[0];
+    var oldestTime = Infinity;
+    var evicted = false;
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var entry = cache[k];
+      if (entry && (now - entry.timestamp > CACHE_TTL)) {
+        delete cache[k];
+        evicted = true;
+      } else if (entry && entry.timestamp < oldestTime) {
+        oldestTime = entry.timestamp;
+        oldestKey = k;
+      }
+    }
+    if (!evicted && cache[oldestKey]) {
+      delete cache[oldestKey];
+    }
+  }
+  cache[key] = { data: data, timestamp: Date.now() };
+}
+
 var t1Policy = require('../lib/chart-t1-policy');
 var patternDetector = require('../lib/pattern-abcd').detectAbcdPattern;
 var classicPatternDetector = require('../lib/classic-chart-patterns').detectClassicChartPatterns;
@@ -94,17 +121,17 @@ module.exports = async function handler(req, res) {
       });
     } catch (fetchErr) {
       clearTimeout(timeout);
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal mengambil data.' });
+      return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal mengambil data.' });
     }
     clearTimeout(timeout);
 
     if (!response.ok) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'HTTP ' + response.status });
+      return res.status(502).json({ success: false, ticker: ticker, error: 'HTTP ' + response.status });
     }
 
     var json;
     try { json = await response.json(); } catch (e) {
-      return res.status(200).json({ success: false, ticker: ticker, error: 'Gagal parsing.' });
+      return res.status(502).json({ success: false, ticker: ticker, error: 'Gagal parsing.' });
     }
 
     var chartResult = json && json.chart && json.chart.result && json.chart.result[0];
@@ -215,12 +242,12 @@ module.exports = async function handler(req, res) {
     // Cache the complete deterministic result once, then apply the signed-session
     // response policy per request. This prevents a guest/non-admin cache hit from
     // receiving Pattern geometry while keeping Technical Chart caching unchanged.
-    cache[ticker] = { data: result, timestamp: Date.now() };
+    setBoundedCache(ticker, result);
     return res.status(200).json(responseForRequest(result, req));
 
   } catch (err) {
     console.error('candles error:', err);
-    return res.status(200).json({ success: false, ticker: 'unknown', error: 'Kesalahan internal.' });
+    return res.status(500).json({ success: false, ticker: 'unknown', error: 'Kesalahan internal.' });
   }
 };
 
@@ -236,30 +263,44 @@ module.exports.__test = {
 };
 
 function calcMA(prices, period) {
-  if (!prices || prices.length < period) return null;
+  if (!prices || prices.length < period || !period || period <= 0) return null;
   var slice = prices.slice(prices.length - period);
   var sum = 0;
-  for (var i = 0; i < slice.length; i++) sum += slice[i];
-  return Math.round((sum / period) * 100) / 100;
+  for (var i = 0; i < slice.length; i++) {
+    var p = Number(slice[i]);
+    if (Number.isFinite(p)) sum += p;
+  }
+  var ma = sum / period;
+  return Number.isFinite(ma) ? Math.round(ma * 100) / 100 : null;
 }
 
 function calcRSI(closes, period) {
-  if (!closes || closes.length < period + 1) return null;
+  if (!closes || closes.length < period + 1 || !period || period <= 0) return null;
   var gains = 0, losses = 0;
   for (var i = closes.length - period; i < closes.length; i++) {
-    var diff = closes[i] - closes[i - 1];
-    if (diff > 0) gains += diff;
-    else losses -= diff;
+    var c1 = Number(closes[i]);
+    var c0 = Number(closes[i - 1]);
+    if (Number.isFinite(c1) && Number.isFinite(c0)) {
+      var diff = c1 - c0;
+      if (diff > 0) gains += diff;
+      else losses -= diff;
+    }
   }
   var avgGain = gains / period;
   var avgLoss = losses / period;
+  if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
   if (avgLoss === 0) return 100;
   var rs = avgGain / avgLoss;
-  return Math.round((100 - (100 / (1 + rs))) * 100) / 100;
+  if (!Number.isFinite(rs)) return 100;
+  var rsi = 100 - (100 / (1 + rs));
+  return Number.isFinite(rsi) ? Math.round(rsi * 100) / 100 : null;
 }
 
 function calcVolumeRatio(volumeArr, latestVol, period) {
   var avg = calcMA(volumeArr, period);
-  if (!avg || avg <= 0) return null;
-  return Math.round((latestVol / avg) * 100) / 100;
+  if (!avg || avg <= 0 || !Number.isFinite(avg)) return 0;
+  var vol = Number(latestVol);
+  if (!Number.isFinite(vol) || vol <= 0) return 0;
+  var ratio = vol / avg;
+  return Number.isFinite(ratio) ? Math.round(ratio * 100) / 100 : 0;
 }
