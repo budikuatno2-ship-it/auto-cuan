@@ -32,8 +32,7 @@ function requireBudiAdmin(req) {
   if (!isSameOrigin(req)) return { ok: false, status: 403, error: 'Permintaan ditolak.' };
   const auth = requireAdminSession(req);
   if (!auth.ok) return auth;
-  const username = String(auth.session.un || '').trim().toLowerCase();
-  if (username !== 'budi' && !auth.session.isSecretAuth) {
+  if (String(auth.session.un || '').trim().toLowerCase() !== 'budi') {
     return { ok: false, status: 403, error: 'Akses admin ditolak.' };
   }
   return { ok: true, auth };

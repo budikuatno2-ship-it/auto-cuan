@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,15 +25,24 @@ function makeRes() {
   };
 }
 
-test('requireAdminSession allows Authorization Bearer token matching ADMIN_SECRET', async (t) => {
+test('requireAdminSession REJECTS Authorization Bearer with ADMIN_SECRET (no cookie bypass)', async (t) => {
   const prevAdminSecret = process.env.ADMIN_SECRET;
+  const prevSessionSecret = process.env.SESSION_SECRET;
   process.env.ADMIN_SECRET = 'secret-test-token-12345';
+  // Ensure SESSION_SECRET is unset so no cookie session can be forged either
+  delete process.env.SESSION_SECRET;
   t.after(() => {
     if (prevAdminSecret === undefined) delete process.env.ADMIN_SECRET;
     else process.env.ADMIN_SECRET = prevAdminSecret;
+    if (prevSessionSecret === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = prevSessionSecret;
   });
 
+  // Clear module cache to pick up the reverted code
+  const absPath = require.resolve('../lib/admin-session');
+  delete require.cache[absPath];
   const { requireAdminSession } = require('../lib/admin-session');
+
   const req = {
     headers: {
       host: 'localhost',
@@ -42,23 +51,30 @@ test('requireAdminSession allows Authorization Bearer token matching ADMIN_SECRE
   };
 
   const auth = requireAdminSession(req);
-  assert.equal(auth.ok, true);
-  assert.equal(auth.session.adm, true);
-  assert.equal(auth.session.un, 'budi');
+  // Shared secret via header must NOT grant admin session
+  assert.equal(auth.ok, false, 'Bearer ADMIN_SECRET must not grant admin session');
+  assert.equal(auth.status, 401, 'Should return 401 when no valid cookie session exists');
 });
 
-test('requireAdminSession allows x-admin-key matching CRON_SECRET fallback', async (t) => {
+test('requireAdminSession REJECTS x-admin-key with CRON_SECRET (no cookie bypass)', async (t) => {
   const prevAdminSecret = process.env.ADMIN_SECRET;
   const prevCronSecret = process.env.CRON_SECRET;
+  const prevSessionSecret = process.env.SESSION_SECRET;
   delete process.env.ADMIN_SECRET;
   process.env.CRON_SECRET = 'cron-secret-test-999';
+  delete process.env.SESSION_SECRET;
   t.after(() => {
     if (prevAdminSecret !== undefined) process.env.ADMIN_SECRET = prevAdminSecret;
     if (prevCronSecret === undefined) delete process.env.CRON_SECRET;
     else process.env.CRON_SECRET = prevCronSecret;
+    if (prevSessionSecret === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = prevSessionSecret;
   });
 
+  const absPath = require.resolve('../lib/admin-session');
+  delete require.cache[absPath];
   const { requireAdminSession } = require('../lib/admin-session');
+
   const req = {
     headers: {
       host: 'localhost',
@@ -67,7 +83,38 @@ test('requireAdminSession allows x-admin-key matching CRON_SECRET fallback', asy
   };
 
   const auth = requireAdminSession(req);
-  assert.equal(auth.ok, true);
+  // Shared secret via x-admin-key must NOT grant admin session
+  assert.equal(auth.ok, false, 'x-admin-key with CRON_SECRET must not grant admin session');
+  assert.equal(auth.status, 401, 'Should return 401 when no valid cookie session exists');
+});
+
+test('requireAdminSession only accepts valid signed cookie session', async (t) => {
+  const prevSessionSecret = process.env.SESSION_SECRET;
+  process.env.SESSION_SECRET = 'test-session-secret-for-unit-test';
+  t.after(() => {
+    if (prevSessionSecret === undefined) delete process.env.SESSION_SECRET;
+    else process.env.SESSION_SECRET = prevSessionSecret;
+  });
+
+  const absPath = require.resolve('../lib/admin-session');
+  delete require.cache[absPath];
+  const { requireAdminSession, createSessionToken } = require('../lib/admin-session');
+
+  // Create a valid admin session token
+  const token = createSessionToken({ userId: 'test-uid', username: 'budi', isAdmin: true });
+  assert.ok(token, 'Should create a valid token');
+
+  // Simulate a request with the session cookie
+  const req = {
+    headers: {
+      host: 'localhost',
+      cookie: 'ac_sess=' + token
+    }
+  };
+
+  const auth = requireAdminSession(req);
+  assert.equal(auth.ok, true, 'Valid signed cookie session should be accepted');
+  assert.equal(auth.session.un, 'budi');
   assert.equal(auth.session.adm, true);
 });
 
