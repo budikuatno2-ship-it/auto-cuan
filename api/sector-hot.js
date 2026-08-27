@@ -51,6 +51,7 @@ const corporateActionGuard = require('../lib/corporate-action-price-scale-guard'
 const smartSetupLabels = require('../lib/smart-setup-labels');
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 const trackRecordService = require('../lib/track-record-service');
+const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -80,7 +81,7 @@ module.exports = async function handler(req, res) {
     // Unknown actions must never fall through to the default Sektor Hot list/detail
     // response, because that would bypass the premium read policy.
     const knownActions = new Set([
-      'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks',
+      'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
@@ -114,6 +115,10 @@ module.exports = async function handler(req, res) {
 
     if (action === 'telegram-monitor-picks') {
       return await handleTelegramMonitorPicks(req, res, supabase);
+    }
+
+    if (action === 'telegram-daily-recap') {
+      return await handleTelegramDailyRecap(req, res, supabase);
     }
 
     // === WEB DASHBOARD TOP 5 / MONITOR (read-only, uses existing daily picks data) ===
@@ -7863,6 +7868,24 @@ async function handleTrackRecord(req, res, supabase) {
   }
 }
 
+async function handleTelegramDailyRecap(req, res, supabase) {
+  if (!verifyCronSecret(req)) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: CRON_SECRET required.' });
+  }
+  try {
+    var isDryRun = req.query && (req.query.dry_run === '1' || req.query.dry_run === 'true');
+    var targetDate = (req.query && req.query.date) || null;
+    var result = await telegramDailyRecap.sendDailyAfternoonRecap(supabase, {
+      date: targetDate,
+      dryRun: isDryRun,
+      chat_id: (req.query && req.query.chat_id) || null
+    });
+    return res.status(200).json({ success: true, result: result });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+}
+
 function buildMonitorProgressLabel(pick, px) {
   if (!px || px.last == null) return '-';
   var last = toNum(px.last);
@@ -13585,5 +13608,6 @@ module.exports.__test = {
   buildWebTop5HistoryRow: buildWebTop5HistoryRow,
   getPersistedWebTop5HistoryBucket: getPersistedWebTop5HistoryBucket,
   buildWebTop5HistoryCollections: buildWebTop5HistoryCollections,
-  handleTrackRecord: handleTrackRecord
+  handleTrackRecord: handleTrackRecord,
+  handleTelegramDailyRecap: handleTelegramDailyRecap
 };
