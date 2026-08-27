@@ -164,35 +164,99 @@ async function handleDailyMarketContextAction(req, res) {
 // Backs the "Ranking Harian" table on the Analisis Saham page. Reads the
 // precomputed stock_daily_features snapshot cache (rebuilt in batch by
 // scripts/collect-daily-market-context.js) in ONE query for the whole
-// universe — independent of the single-ticker action above, and completely
-// independent of the ticker analysis input on the same page. Sorting and
-// searching happen client-side against this one payload.
+// universe. Sorting, ordering, and limiting are supported both server-side
+// and client-side.
 // ============================================================
-async function handleDailyMarketContextListAction(req, res) {
+function normalizeRankingSortKey(raw) {
+  if (!raw) return null;
+  var key = String(raw).trim().toLowerCase();
+  if (key === 'high_52w_pct_dist' || key === '52w_high' || key === 'week52_high_dist_pct' || key === 'distance_to_high_52w_pct') return 'week52_high_dist_pct';
+  if (key === 'week52_low_dist_pct' || key === '52w_low') return 'week52_low_dist_pct';
+  if (key === 'rsi14' || key === 'rsi' || key === 'rsi_14') return 'rsi_14';
+  if (key === 'vol_ratio' || key === 'volume_ratio' || key === 'volume_ratio_vs_7d_avg') return 'volume_ratio_vs_7d_avg';
+  if (key === 'foreign_net_val' || key === 'foreign_net_7d' || key === 'foreign_7d' || key === 'foreign') return 'foreign_net_7d';
+  if (key === 'foreign_net_today' || key === 'foreign_today') return 'foreign_net_today';
+  if (key === 'change_pct' || key === 'change') return 'change_pct';
+  if (key === 'last_price' || key === 'price') return 'last_price';
+  if (key === 'ticker' || key === 'symbol') return 'ticker';
+  return null;
+}
+
+async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
   if (req.method !== 'GET') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
-  var SUPABASE_URL = process.env.SUPABASE_URL;
-  var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
+  var supabase = injectedSupabase;
+  if (!supabase) {
+    var SUPABASE_URL = process.env.SUPABASE_URL;
+    var SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      return res.status(200).json({ success: false, error: 'Database belum dikonfigurasi.' });
+    }
+    var { createClient } = require('@supabase/supabase-js');
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
   }
 
   try {
-    var { createClient } = require('@supabase/supabase-js');
-    var supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false }
+    var query = req.query || {};
+    var sortBy = normalizeRankingSortKey(query.sort_by || query.sortBy);
+    var order = String(query.order || '').toLowerCase() === 'asc' ? 'asc' : (query.order ? 'desc' : (sortBy === 'ticker' ? 'asc' : 'desc'));
+
+    var rawLimit = query.limit;
+    var limit = 1000;
+    if (rawLimit && rawLimit !== 'all') {
+      var parsedLimit = parseInt(rawLimit, 10);
+      if (Number.isFinite(parsedLimit) && parsedLimit > 0) {
+        limit = Math.min(parsedLimit, 1000);
+      }
+    }
+
+    var featureRows = await dailyHistoryStore.getAllDailyFeatures(supabase, { limit: 1000 });
+    var rows = dailyContextBuilder.buildRankingList(featureRows);
+
+    if (sortBy) {
+      var dir = order === 'asc' ? 1 : -1;
+      rows.sort(function(a, b) {
+        if (sortBy === 'ticker') return dir * String(a.ticker || '').localeCompare(String(b.ticker || ''));
+        var av = a[sortBy], bv = b[sortBy];
+        var aNull = av === null || av === undefined || !Number.isFinite(Number(av));
+        var bNull = bv === null || bv === undefined || !Number.isFinite(Number(bv));
+        if (aNull && bNull) return 0;
+        if (aNull) return 1;
+        if (bNull) return -1;
+        return dir * (Number(av) - Number(bv));
+      });
+    }
+
+    var latestAsOf = null;
+    rows.forEach(function(r) {
+      if (r.as_of_trade_date && (!latestAsOf || r.as_of_trade_date > latestAsOf)) {
+        latestAsOf = r.as_of_trade_date;
+      }
     });
 
-    var featureRows = await dailyHistoryStore.getAllDailyFeatures(supabase, {});
-    var rows = dailyContextBuilder.buildRankingList(featureRows);
-    return res.status(200).json({ success: true, rows: rows, generated_at: new Date().toISOString() });
+    if (rawLimit && rawLimit !== 'all' && rows.length > limit) {
+      rows = rows.slice(0, limit);
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: rows.length,
+      data: rows,
+      rows: rows,
+      as_of: latestAsOf,
+      updated_at: latestAsOf || new Date().toISOString(),
+      generated_at: new Date().toISOString()
+    });
   } catch (error) {
     console.error('daily-market-context-list exception:', error);
     return res.status(200).json({
       success: false,
-      error: 'Gagal memuat ranking konteks pasar harian.'
+      error: 'Gagal memuat ranking konteks pasar harian.',
+      diagnostic: error && error.message
     });
   }
 }
@@ -2676,6 +2740,8 @@ function interpretFibonacciPosition(close, trend, nearest, fibLevels, swingHigh,
 
 module.exports.__test = {
   normalizeDailyContextTicker: normalizeDailyContextTicker,
+  normalizeRankingSortKey: normalizeRankingSortKey,
+  handleDailyMarketContextListAction: handleDailyMarketContextListAction,
   hasVerifiedSession: hasVerifiedSession,
   redactAdvancedQuoteFields: redactAdvancedQuoteFields
 };
