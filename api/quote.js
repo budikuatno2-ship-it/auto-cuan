@@ -27,6 +27,33 @@ var QUOTE_CACHE_TTL = 5 * 60 * 1000;
 var boardCache = {};
 var BOARD_CACHE_TTL = 12 * 60 * 60 * 1000;
 
+var MAX_CACHE_ENTRIES = 500;
+
+function setBoundedCache(cacheObj, key, data, ttl) {
+  var keys = Object.keys(cacheObj);
+  if (keys.length >= MAX_CACHE_ENTRIES) {
+    var now = Date.now();
+    var oldestKey = keys[0];
+    var oldestTime = Infinity;
+    var evicted = false;
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var entry = cacheObj[k];
+      if (entry && (now - entry.timestamp > ttl)) {
+        delete cacheObj[k];
+        evicted = true;
+      } else if (entry && entry.timestamp < oldestTime) {
+        oldestTime = entry.timestamp;
+        oldestKey = k;
+      }
+    }
+    if (!evicted && cacheObj[oldestKey]) {
+      delete cacheObj[oldestKey];
+    }
+  }
+  cacheObj[key] = { data: data, timestamp: Date.now() };
+}
+
 var NEWS_CACHE_TTL_DAYS = 30;
 var NEWS_PERIOD = '6m';
 
@@ -549,7 +576,7 @@ async function fetchYahooQuote(ticker) {
   // Store candles for respect zone analysis (will be deleted before response)
   result._candles = candles;
 
-  quoteCache[ticker] = { data: result, timestamp: Date.now() };
+  setBoundedCache(quoteCache, ticker, result, QUOTE_CACHE_TTL);
   return result;
 }
 
@@ -595,7 +622,7 @@ async function fetchBoardData(ticker) {
 
   if (!rows || rows.length === 0) {
     var notFound = makeBoardNotFound(ticker);
-    boardCache[ticker] = { data: notFound, timestamp: Date.now() };
+    setBoundedCache(boardCache, ticker, notFound, BOARD_CACHE_TTL);
     return notFound;
   }
 
@@ -609,7 +636,7 @@ async function fetchBoardData(ticker) {
     note: row.note || getBoardNote(row.board)
   };
 
-  boardCache[ticker] = { data: boardResult, timestamp: Date.now() };
+  setBoundedCache(boardCache, ticker, boardResult, BOARD_CACHE_TTL);
   return boardResult;
 }
 
