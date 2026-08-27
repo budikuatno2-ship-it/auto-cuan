@@ -7275,6 +7275,9 @@ function renderDtCardGrid(results, data) {
         var _badgeLine = [_grBadge, _rlBadge, _vpBadge, _mtfBadge].filter(function(b){return b;}).join(' · ');
         if (_badgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _badgeLine + '</div>';
         if (r.entry_status_label) html += '<div style="font-size:10px;margin-bottom:8px;color:#d1d5db"><span style="color:#94a3b8">Status Entry:</span> ' + escapeHtml(r.entry_status_label) + '</div>';
+        if (st === 'WAIT_PULLBACK' && r.entry_chase_pct != null && isFinite(r.entry_chase_pct) && r.entry_chase_pct > 0) {
+            html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Chase:</span> +' + Number(r.entry_chase_pct).toFixed(1) + '% dari entry</div>';
+        }
         var _planWarn = getPlanWarningLine(r);
         if (_planWarn) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Plan:</span> ' + escapeHtml(_planWarn.replace(/^Plan:\\s*/, '')) + '</div>';
         var _respectLine = buildRespectQualityLine(r);
@@ -7404,7 +7407,11 @@ function openScrDetail(r, type) {
     if (_signalReason) html += '<div style="font-size:11px;color:#d1d5db;line-height:1.5;margin-bottom:14px;padding:10px 12px;background:rgba(15,23,42,0.35);border:1px solid rgba(148,163,184,0.12);border-radius:10px"><span style="color:#94a3b8;font-weight:600">Alasan risk/action:</span> <span style="word-break:break-word">' + escapeHtml(_signalReason) + '</span></div>';
     if (r.entry_status_label) {
       var _ed = r.entry_distance_pct != null ? (Number(r.entry_distance_pct).toFixed(2) + '%') : '-';
-      html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:14px;padding:10px 12px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.12);border-radius:10px"><div style="color:#6ee7b7;font-weight:700;margin-bottom:4px;font-size:11px">Entry Status</div><div style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:10px"><span style="color:#6b7280">Status:</span><span>' + escapeHtml(r.entry_status_label) + '</span><span style="color:#6b7280">Distance:</span><span>' + escapeHtml(_ed) + '</span><span style="color:#6b7280">Note:</span><span style="word-break:break-word">' + escapeHtml(r.entry_status_note || '-') + '</span></div></div>';
+      var _ecpHtml = '';
+      if (r.entry_chase_pct != null && isFinite(r.entry_chase_pct) && r.entry_chase_pct > 0) {
+        _ecpHtml = '<span style="color:#6b7280">Chase dari entry:</span><span style="color:#fbbf24;font-weight:600">+' + Number(r.entry_chase_pct).toFixed(1) + '%</span>';
+      }
+      html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:14px;padding:10px 12px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.12);border-radius:10px"><div style="color:#6ee7b7;font-weight:700;margin-bottom:4px;font-size:11px">Entry Status</div><div style="display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:10px"><span style="color:#6b7280">Status:</span><span>' + escapeHtml(r.entry_status_label) + '</span><span style="color:#6b7280">Distance:</span><span>' + escapeHtml(_ed) + '</span>' + _ecpHtml + '<span style="color:#6b7280">Note:</span><span style="word-break:break-word">' + escapeHtml(r.entry_status_note || '-') + '</span></div></div>';
     }
     if (r.plan_label || r.plan_quality_label || r.sl_quality_label || r.tp_quality_label || r.rr_quality_label) {
       html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:14px;padding:10px 12px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.12);border-radius:10px">';
