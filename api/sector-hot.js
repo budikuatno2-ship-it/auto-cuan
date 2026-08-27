@@ -31,7 +31,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { requirePremiumEntitlement } = require('../lib/subscription-auth');
+const { requirePremiumEntitlement, requireNonBlockedUser } = require('../lib/subscription-auth');
 const { requireAuthenticatedSession } = require('../lib/admin-session');
 const dtEngine = require('../lib/daytrade-screener-engine-v7');
 const daytradeExecutionRanking = require('../lib/daytrade-execution-ranking');
@@ -52,6 +52,7 @@ const smartSetupLabels = require('../lib/smart-setup-labels');
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 const trackRecordService = require('../lib/track-record-service');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
+const userWatchlistService = require('../lib/user-watchlist-service');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -83,6 +84,7 @@ module.exports = async function handler(req, res) {
     const knownActions = new Set([
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks', 'telegram-daily-recap',
       'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
+      'watchlist', 'watchlist-alert',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members'
@@ -137,6 +139,15 @@ module.exports = async function handler(req, res) {
     // === TRACK RECORD (PUBLIC / AUTHED READ-ONLY) ===
     if (action === 'track-record') {
       return await handleTrackRecord(req, res, supabase);
+    }
+
+    // === WATCHLIST PRIBADI (LOGIN REQUIRED) ===
+    if (action === 'watchlist') {
+      return await handleUserWatchlist(req, res, supabase);
+    }
+
+    if (action === 'watchlist-alert') {
+      return await handleUserWatchlistAlert(req, res, supabase);
     }
 
     // === SCREENER READ MODE (login-gated) ===
@@ -7886,6 +7897,57 @@ async function handleTelegramDailyRecap(req, res, supabase) {
   }
 }
 
+async function handleUserWatchlist(req, res, supabase) {
+  var auth = await requireNonBlockedUser(req, supabase);
+  if (!auth.ok) {
+    return res.status(200).json({ success: false, error: auth.error || 'Login diperlukan.', watchlist: [] });
+  }
+  var userId = auth.user.id;
+
+  if (req.method === 'GET') {
+    var result = await userWatchlistService.getUserWatchlist(supabase, userId);
+    return res.status(200).json(result);
+  }
+
+  if (req.method === 'POST') {
+    var body = req.body || {};
+    var ticker = body.ticker || (req.query && req.query.ticker);
+    var notes = body.notes || (req.query && req.query.notes);
+    var addRes = await userWatchlistService.addToWatchlist(supabase, userId, ticker, notes);
+    return res.status(200).json(addRes);
+  }
+
+  if (req.method === 'DELETE') {
+    var delTicker = (req.query && req.query.ticker) || (req.body && req.body.ticker);
+    var delRes = await userWatchlistService.removeFromWatchlist(supabase, userId, delTicker);
+    return res.status(200).json(delRes);
+  }
+
+  return res.status(405).json({ success: false, error: 'Method not allowed' });
+}
+
+async function handleUserWatchlistAlert(req, res, supabase) {
+  var auth = await requireNonBlockedUser(req, supabase);
+  if (!auth.ok) {
+    return res.status(200).json({ success: false, error: auth.error || 'Login diperlukan.' });
+  }
+  var userId = auth.user.id;
+
+  if (req.method === 'POST') {
+    var payload = req.body || {};
+    var createRes = await userWatchlistService.createAlert(supabase, userId, payload);
+    return res.status(200).json(createRes);
+  }
+
+  if (req.method === 'DELETE') {
+    var alertId = (req.query && (req.query.id || req.query.alert_id)) || (req.body && (req.body.id || req.body.alert_id));
+    var delRes = await userWatchlistService.deleteAlert(supabase, userId, alertId);
+    return res.status(200).json(delRes);
+  }
+
+  return res.status(405).json({ success: false, error: 'Method not allowed' });
+}
+
 function buildMonitorProgressLabel(pick, px) {
   if (!px || px.last == null) return '-';
   var last = toNum(px.last);
@@ -13609,5 +13671,7 @@ module.exports.__test = {
   getPersistedWebTop5HistoryBucket: getPersistedWebTop5HistoryBucket,
   buildWebTop5HistoryCollections: buildWebTop5HistoryCollections,
   handleTrackRecord: handleTrackRecord,
-  handleTelegramDailyRecap: handleTelegramDailyRecap
+  handleTelegramDailyRecap: handleTelegramDailyRecap,
+  handleUserWatchlist: handleUserWatchlist,
+  handleUserWatchlistAlert: handleUserWatchlistAlert
 };
