@@ -401,7 +401,7 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     .header-shell { padding-left: 12px; padding-right: 12px; }
     .mobile-nav-row { padding-left: 14px; padding-right: 14px; }
     .nav-scroll-container { gap: 6px; padding-left: 2px; padding-right: 34px; }
-    .mobile-nav-row .nav-btn { min-height: 40px; padding: 8px 10px; border-radius: 12px; font-size: 11px; background: rgba(15,23,42,0.34); border-color: rgba(148,163,184,0.10); }
+    .mobile-nav-row .nav-btn { min-height: 44px; padding: 8px 10px; border-radius: 12px; font-size: 11px; background: rgba(15,23,42,0.34); border-color: rgba(148,163,184,0.10); }
     .mobile-nav-row .nav-btn.active { background: rgba(16,185,129,0.14); border-color: rgba(16,185,129,0.38); box-shadow: inset 0 0 0 1px rgba(16,185,129,0.08); }
     .mobile-nav-row .nav-btn svg { width: 15px; height: 15px; }
 }
