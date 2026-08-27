@@ -8436,12 +8436,20 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     else if (previewHourlyBatch) batchSendReason = 'Half-hour run (Jakarta minute ' + jakartaMinute + '): a real run would suppress the batch; preview generated via preview_hourly_batch (dry-run only).';
     else batchSendReason = 'Half-hour run (Jakarta minute ' + jakartaMinute + '): routine batch summary suppressed; only immediate individual events send.';
 
+    // === EVALUATE CUSTOM USER ALERTS (INTRADAY MONITOR) ===
+    var customAlertsResult = null;
+    try {
+      customAlertsResult = await userWatchlistService.evaluateActiveUserAlerts(supabase, { dryRun: dryRun });
+    } catch (alertErr) {
+      customAlertsResult = { success: false, error: alertErr.message || String(alertErr) };
+    }
+
     if (dryRun) {
       // preview_hourly_batch=1 (dry-run only) forces the batch preview regardless
       // of the current minute. Without it, the preview is produced only when the
       // real cadence would send. Nothing here mutates state, sends, or narrates.
       var batchPreview = (hourlyBatchDue || previewHourlyBatch) ? batchText : null;
-      return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, is_final: isFinal, dates_queried: dateRange, checked_count: rows.length, raw_row_count: rawActiveCount, deduped_row_count: rows.length, duplicate_groups: duplicateGroups, ignored_duplicate_rows: ignoredDuplicateRows, events: dryRunEvents, individual_message_previews: individualMessagePreviews, jakarta_minute: jakartaMinute, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, preview_hourly_batch: previewHourlyBatch, batch_send_reason: batchSendReason, individual_sendable_count: individualSendableCount, batch_message_preview: batchPreview, error: null });
+      return res.status(200).json({ success: true, dry_run: true, write_suppressed: true, telegram_suppressed: true, ai_suppressed: true, skipped: false, forced: force, weekend_bypassed: weekendBypassed, is_final: isFinal, dates_queried: dateRange, checked_count: rows.length, raw_row_count: rawActiveCount, deduped_row_count: rows.length, duplicate_groups: duplicateGroups, ignored_duplicate_rows: ignoredDuplicateRows, events: dryRunEvents, individual_message_previews: individualMessagePreviews, jakarta_minute: jakartaMinute, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, preview_hourly_batch: previewHourlyBatch, batch_send_reason: batchSendReason, individual_sendable_count: individualSendableCount, batch_message_preview: batchPreview, custom_alerts: customAlertsResult, error: null });
     }
 
     // NORMAL MODE: individual messages already sent in-loop. Only the routine batch
@@ -8451,7 +8459,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       sendResult = await telegramNotifier.sendTelegramMessage(batchText);
     }
     var individualDeliveryOk = individualFailedCount === 0;
-    return res.status(200).json({ success: individualDeliveryOk, skipped: false, forced: force, weekend_bypassed: weekendBypassed, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, batch_send_reason: batchSendReason, sent_count: (hourlyBatchDue && sendResult.sent) ? 1 : 0, individual_sent_count: individualSentCount, individual_failed_count: individualFailedCount, individual_failures: individualFailures.length > 0 ? individualFailures : undefined, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, error: individualDeliveryOk ? null : 'individual_monitor_delivery_failed', telegram: sendResult });
+    return res.status(200).json({ success: individualDeliveryOk, skipped: false, forced: force, weekend_bypassed: weekendBypassed, hourly_batch_due: hourlyBatchDue, batch_suppressed_by_cadence: !hourlyBatchDue, batch_send_reason: batchSendReason, sent_count: (hourlyBatchDue && sendResult.sent) ? 1 : 0, individual_sent_count: individualSentCount, individual_failed_count: individualFailedCount, individual_failures: individualFailures.length > 0 ? individualFailures : undefined, checked_count: rows.length, shown_count: shown, ai_narration: aiNarrationResults.length > 0 ? aiNarrationResults : undefined, custom_alerts: customAlertsResult, error: individualDeliveryOk ? null : 'individual_monitor_delivery_failed', telegram: sendResult });
   } catch (e) { return res.status(200).json({ success: false, sent_count: 0, checked_count: 0, error: e.message || String(e) }); }
 }
 
