@@ -50,6 +50,7 @@ const productionEligibility = require('../lib/intraday-production-eligibility');
 const corporateActionGuard = require('../lib/corporate-action-price-scale-guard');
 const smartSetupLabels = require('../lib/smart-setup-labels');
 const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
+const trackRecordService = require('../lib/track-record-service');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -80,7 +81,7 @@ module.exports = async function handler(req, res) {
     // response, because that would bypass the premium read policy.
     const knownActions = new Set([
       'telegram-webhook', 'telegram-daily-picks', 'telegram-monitor-picks',
-      'web-daily-picks', 'web-top5-history', 'web-top5-history-archive',
+      'web-daily-picks', 'web-top5-history', 'web-top5-history-archive', 'track-record',
       'screener', 'refresh-screener', 'nk-screener-run', 'nk-screener-results',
       'foreign-import-upload', 'daytrade-screener', 'daytrade-screener-run',
       'create-screener-share-link', 'public-screener-share', 'refresh', 'debug-members'
@@ -126,6 +127,11 @@ module.exports = async function handler(req, res) {
 
     if (action === 'web-top5-history-archive') {
       return await handleWebTop5HistoryArchive(req, res, supabase);
+    }
+
+    // === TRACK RECORD (PUBLIC / AUTHED READ-ONLY) ===
+    if (action === 'track-record') {
+      return await handleTrackRecord(req, res, supabase);
     }
 
     // === SCREENER READ MODE (login-gated) ===
@@ -7812,6 +7818,51 @@ async function handleWebTop5HistoryArchive(req, res, supabase) {
   return res.status(200).json({ success: true, id: id, archived_at: archivedAt });
 }
 
+async function handleTrackRecord(req, res, supabase) {
+  try {
+    var limit = parseInt((req.query && req.query.limit) || '500', 10);
+    if (!isFinite(limit) || limit <= 0) limit = 500;
+    if (limit > 1000) limit = 1000;
+    var categoryFilter = (req.query && (req.query.category || req.query.source)) || null;
+
+    var q = await supabase.from('telegram_daily_picks')
+      .select('*')
+      .order('date', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(limit);
+
+    if (q.error) {
+      return res.status(200).json({
+        success: false,
+        error: q.error.message,
+        summary: { total_signals: 0, tp1_hits: 0, tp2_hits: 0, sl_hits: 0, running_signals: 0, waiting_signals: 0, expired_signals: 0, total_resolved: 0, win_rate_tp1: '0.0%', win_rate_tp2: '0.0%', sl_rate: '0.0%', resolved_win_rate: '0.0%' },
+        by_category: {},
+        signals: []
+      });
+    }
+
+    var rows = q.data || [];
+    var result = trackRecordService.buildTrackRecordData(rows);
+
+    if (categoryFilter && categoryFilter !== 'all') {
+      var cf = String(categoryFilter).toLowerCase();
+      result.signals = result.signals.filter(function(s) {
+        return s.source === cf || String(s.category).toLowerCase().indexOf(cf) >= 0;
+      });
+    }
+
+    return res.status(200).json(result);
+  } catch (err) {
+    return res.status(200).json({
+      success: false,
+      error: err.message || String(err),
+      summary: { total_signals: 0, tp1_hits: 0, tp2_hits: 0, sl_hits: 0, running_signals: 0, waiting_signals: 0, expired_signals: 0, total_resolved: 0, win_rate_tp1: '0.0%', win_rate_tp2: '0.0%', sl_rate: '0.0%', resolved_win_rate: '0.0%' },
+      by_category: {},
+      signals: []
+    });
+  }
+}
+
 function buildMonitorProgressLabel(pick, px) {
   if (!px || px.last == null) return '-';
   var last = toNum(px.last);
@@ -13533,5 +13584,6 @@ module.exports.__test = {
   classifyWebTop5History: classifyWebTop5History,
   buildWebTop5HistoryRow: buildWebTop5HistoryRow,
   getPersistedWebTop5HistoryBucket: getPersistedWebTop5HistoryBucket,
-  buildWebTop5HistoryCollections: buildWebTop5HistoryCollections
+  buildWebTop5HistoryCollections: buildWebTop5HistoryCollections,
+  handleTrackRecord: handleTrackRecord
 };

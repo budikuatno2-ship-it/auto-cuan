@@ -370,7 +370,8 @@
                 <button onclick="navigateTo('screener')" class="nav-btn hidden" data-page="screener" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span>Screener</span></button>
                 <button onclick="navigateTo('chart')" class="nav-btn" data-page="chart"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg><span>Chart</span></button>
                 <button onclick="navigateTo('portofolio')" class="nav-btn hidden" data-page="portofolio" data-premium-nav="true"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg><span>Portofolio</span></button>
-                            </nav>
+                <button onclick="navigateTo('trackrecord')" class="nav-btn" data-page="trackrecord"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg><span>Track Record</span></button>
+            </nav>
             <div class="desktop-header-chips items-center gap-1.5 flex-shrink-0" aria-label="Status keamanan dashboard">
                 <span class="header-status-chip"><span class="header-status-dot"></span>Live Radar</span>
                 <span class="header-status-chip safe">Safety ON</span>
@@ -415,7 +416,11 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                 <span>Portofolio</span>
             </button>
-                        </div>
+            <button onclick="navigateTo('trackrecord')" class="nav-btn" data-page="trackrecord">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span>Track Record</span>
+            </button>
+        </div>
     </nav>
 </header>
 
@@ -1102,6 +1107,136 @@
         <p class="text-[10px] text-gray-600 text-center">Harga diperbarui dari data terakhir yang tersedia.</p>
         <!-- Price warning -->
         <div id="portPriceWarning" class="hidden text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2 text-center">Beberapa harga tidak tersedia. P/L ditampilkan "—" untuk posisi tersebut.</div>
+    </div>
+</div>
+
+<!-- ===== PAGE: TRACK RECORD ===== -->
+<div id="page-trackrecord" class="page-content hidden flex-1 max-w-[1100px] w-full mx-auto px-3 sm:px-5 py-4 space-y-4">
+    <!-- Header Hero -->
+    <div class="dashboard-hero p-4 sm:p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="dash-badge bg-emerald-500/15 text-emerald-300 border-emerald-500/25">Audit Sinyal Sistem</span>
+                    <span class="dash-badge bg-dark-700/60 text-gray-400 border-dark-600/30">Transparan &amp; Terukur</span>
+                </div>
+                <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">Track Record &amp; Rapor Sinyal</h2>
+                <p class="text-xs sm:text-sm text-gray-400 mt-1 max-w-2xl">Performa historis rekomendasi sinyal trading berbasis aturan (Day Trade, Swing Konglo, Swing Non-Konglo, dan Top 5 Radar).</p>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <button onclick="loadTrackRecord(true)" id="trackRecordRefreshBtn" class="px-3.5 py-1.5 rounded-lg text-xs font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 transition inline-flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Muat Ulang</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Metrics Cards Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="trackRecordSummaryGrid">
+        <!-- Total Signals -->
+        <div class="bg-dark-800/60 border border-dark-600/30 rounded-xl p-3 sm:p-4">
+            <div class="flex items-center justify-between text-gray-400 text-xs mb-1">
+                <span>Total Sinyal</span>
+                <span class="text-base">📊</span>
+            </div>
+            <div class="text-xl sm:text-2xl font-black text-white" id="trTotalSignals">—</div>
+            <p class="text-[11px] text-gray-500 mt-1" id="trTotalSignalsSub">Rekomendasi tercatat</p>
+        </div>
+
+        <!-- Win Rate TP1 -->
+        <div class="bg-dark-800/60 border border-emerald-500/25 rounded-xl p-3 sm:p-4 bg-gradient-to-b from-emerald-500/5 to-transparent">
+            <div class="flex items-center justify-between text-emerald-400 text-xs mb-1">
+                <span class="font-semibold">Win Rate (TP1)</span>
+                <span class="text-base">🎯</span>
+            </div>
+            <div class="text-xl sm:text-2xl font-black text-emerald-400" id="trWinRateTp1">—</div>
+            <p class="text-[11px] text-emerald-400/70 mt-1" id="trTp1HitsSub">— sinyal tercapai</p>
+        </div>
+
+        <!-- Win Rate TP2 -->
+        <div class="bg-dark-800/60 border border-emerald-500/20 rounded-xl p-3 sm:p-4">
+            <div class="flex items-center justify-between text-emerald-300 text-xs mb-1">
+                <span>Target Maks (TP2)</span>
+                <span class="text-base">🚀</span>
+            </div>
+            <div class="text-xl sm:text-2xl font-black text-emerald-300" id="trWinRateTp2">—</div>
+            <p class="text-[11px] text-gray-400 mt-1" id="trTp2HitsSub">— target maksimal</p>
+        </div>
+
+        <!-- SL Rate / Risk Control -->
+        <div class="bg-dark-800/60 border border-red-500/20 rounded-xl p-3 sm:p-4">
+            <div class="flex items-center justify-between text-red-400 text-xs mb-1">
+                <span>SL Hit Rate</span>
+                <span class="text-base">🛡️</span>
+            </div>
+            <div class="text-xl sm:text-2xl font-black text-red-400" id="trSlRate">—</div>
+            <p class="text-[11px] text-red-400/70 mt-1" id="trSlHitsSub">— kena Stop Loss</p>
+        </div>
+    </div>
+
+    <!-- Category Breakdown Cards -->
+    <div class="space-y-2">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">Performa Per Kategori</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5" id="trCategoryGrid">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="bg-dark-800/50 border border-dark-600/30 rounded-xl p-3 space-y-2">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+            <!-- Category Tab Pill Filters -->
+            <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-0.5" id="trCategoryTabs">
+                <button onclick="filterTrackRecordCategory('all')" class="screener-tab active px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="all">Semua</button>
+                <button onclick="filterTrackRecordCategory('daytrade')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="daytrade">⚡ Day Trade</button>
+                <button onclick="filterTrackRecordCategory('swing_konglo')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_konglo">🏢 Swing Konglo</button>
+                <button onclick="filterTrackRecordCategory('swing_nk')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="swing_nk">🚀 Swing Non-Konglo</button>
+                <button onclick="filterTrackRecordCategory('top5')" class="screener-tab px-3 py-1.5 rounded-lg text-xs font-medium transition" data-tr-cat="top5">🎯 Top 5</button>
+            </div>
+
+            <!-- Status & Search Inputs -->
+            <div class="flex items-center gap-2">
+                <select id="trStatusFilter" onchange="renderTrackRecordTable()" class="rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 outline-none focus:border-emerald-500/40">
+                    <option value="all">Status: Semua</option>
+                    <option value="TP2_HIT">TP2 Hit (Maksimal)</option>
+                    <option value="TP1_HIT">TP1 Hit (Target 1)</option>
+                    <option value="SL_HIT">SL Hit</option>
+                    <option value="RUNNING">Running</option>
+                    <option value="WAITING">Menunggu</option>
+                    <option value="EXPIRED">Expired</option>
+                </select>
+                <input id="trSearchInput" oninput="renderTrackRecordTable()" placeholder="Cari ticker..." class="w-28 sm:w-36 rounded-lg border border-dark-600/40 bg-dark-900/80 px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-500 outline-none focus:border-emerald-500/40">
+            </div>
+        </div>
+    </div>
+
+    <!-- Table of Signals -->
+    <div class="bg-dark-800/40 border border-dark-600/30 rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse min-w-[700px]">
+                <thead>
+                    <tr class="bg-dark-700/60 text-gray-400 font-medium border-b border-dark-600/40 text-left">
+                        <th class="px-3 py-2.5 sticky left-0 bg-dark-700/90 z-10">Ticker</th>
+                        <th class="px-3 py-2.5">Kategori</th>
+                        <th class="px-3 py-2.5">Tanggal</th>
+                        <th class="px-3 py-2.5 text-right">Entry</th>
+                        <th class="px-3 py-2.5 text-right">Target 1</th>
+                        <th class="px-3 py-2.5 text-right">Target 2</th>
+                        <th class="px-3 py-2.5 text-right">Stop Loss</th>
+                        <th class="px-3 py-2.5 text-center">Status</th>
+                        <th class="px-3 py-2.5 text-right">Gain / Loss</th>
+                        <th class="px-3 py-2.5 text-right">Durasi</th>
+                    </tr>
+                </thead>
+                <tbody id="trTableBody" class="divide-y divide-dark-600/20 text-gray-300">
+                    <!-- Dynamic rows or skeleton -->
+                </tbody>
+            </table>
+        </div>
+        <div id="trEmptyState" class="hidden py-12 text-center text-gray-500 text-xs">
+            Tidak ada sinyal yang sesuai dengan filter.
+        </div>
     </div>
 </div>
 
@@ -2894,6 +3029,10 @@ function navigateTo(page) {
             if (scrIsLoggedIn) { scrLoginGate.classList.add('hidden'); scrContent.classList.remove('hidden'); loadSwingScreener(); }
             else { scrLoginGate.classList.remove('hidden'); scrContent.classList.add('hidden'); }
         }
+    }
+    // Track Record loader
+    if (page === 'trackrecord') {
+        if (typeof loadTrackRecord === 'function') loadTrackRecord(false);
     }
 }
 
@@ -10717,5 +10856,6 @@ function forceNormalizeTechnicalDOM(root) {
 <script src="/pattern-map.js?v=20260802-pattern-map-v3"></script>
 <script src="/ui-bugfix-pack-v1.js?v=20260803-v1"></script>
 <script src="/screener-lifecycle-ui.js?v=20260816-v1"></script>
+<script src="/track-record-runtime.js"></script>
 </body>
 </html>
