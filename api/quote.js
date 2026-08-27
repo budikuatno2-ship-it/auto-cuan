@@ -204,7 +204,7 @@ async function handleDailyMarketContextListAction(req, res, injectedSupabase) {
     var query = req.query || {};
     var sortBy = normalizeRankingSortKey(query.sort_by || query.sortBy);
     var order = String(query.order || '').toLowerCase() === 'asc' ? 'asc' : (query.order ? 'desc' : (sortBy === 'ticker' ? 'asc' : 'desc'));
-    
+
     var rawLimit = query.limit;
     var limit = 1000;
     if (rawLimit && rawLimit !== 'all') {
