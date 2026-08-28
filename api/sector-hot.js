@@ -54,6 +54,7 @@ const trackRecordService = require('../lib/track-record-service');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
 const recentFailureCooldown = require('../lib/recent-failure-cooldown');
+const swingNkRrWarning = require('../lib/swing-nk-rr-warning');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -4074,6 +4075,9 @@ function enrichSignalQuality(row, category) {
   if (!r.rr_gate_pass && !r.confidence_notes) r.confidence_notes = 'Radar only — RR belum ideal.';
   attachEntryStatus(r);
   deriveRiskReasonDetails(r, category);
+  if (swingNkRrWarning.isSwingNonKongloCandidate(r, category)) {
+    swingNkRrWarning.annotateSwingNkHighRrWarning(r);
+  }
   return r;
 }
 
@@ -13747,5 +13751,8 @@ module.exports.__test = {
   handleTrackRecord: handleTrackRecord,
   handleTelegramDailyRecap: handleTelegramDailyRecap,
   handleUserWatchlist: handleUserWatchlist,
-  handleUserWatchlistAlert: handleUserWatchlistAlert
+  handleUserWatchlistAlert: handleUserWatchlistAlert,
+  handleNkScreenerResults: handleNkScreenerResults,
+  annotateSwingNkHighRrWarning: swingNkRrWarning.annotateSwingNkHighRrWarning,
+  SWING_NK_HIGH_RR_WARNING_THRESHOLD: swingNkRrWarning.SWING_NK_HIGH_RR_WARNING_THRESHOLD
 };
