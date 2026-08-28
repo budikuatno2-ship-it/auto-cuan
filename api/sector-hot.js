@@ -53,6 +53,7 @@ const tradePlanV2Integration = require('../lib/trade-plan-v2-integration');
 const trackRecordService = require('../lib/track-record-service');
 const telegramDailyRecap = require('../lib/telegram-daily-recap');
 const userWatchlistService = require('../lib/user-watchlist-service');
+const recentFailureCooldown = require('../lib/recent-failure-cooldown');
 const crypto = require('crypto');
 
 const DAYTRADE_FULL_SCAN_STALE_LOCK_MS = 30 * 60 * 1000;
@@ -7004,6 +7005,43 @@ function buildMonitorPlanIdentity(candidate, date, source) {
  * Register sent Telegram candidates using exact plan identity rather than ticker
  * alone. Same ticker/source/date may coexist when the locked levels differ.
  */
+/**
+ * Look back `cooldownDays` calendar days (before `date`) for SL_HIT rows,
+ * returned in the shape recentFailureCooldown.findSimilarRecentSlHit expects.
+ * Read-only; failures degrade to "no cooldown data" rather than blocking
+ * publish.
+ */
+async function fetchRecentSlHitRowsForCooldown(supabase, date, cooldownDays) {
+  if (!supabase || typeof supabase.from !== 'function') return [];
+  var end = new Date(date);
+  if (isNaN(end.getTime())) return [];
+  var start = new Date(end.getTime() - cooldownDays * 86400000);
+  var startStr = start.toISOString().slice(0, 10);
+  var res = await supabase
+    .from('telegram_daily_picks')
+    .select('ticker,date,entry1,entry2,sl,tp1')
+    .eq('status', 'SL_HIT')
+    .gte('date', startStr)
+    .lt('date', date);
+  if (res.error) return [];
+  return (res.data || []).map(function(r) {
+    return { ticker: r.ticker, date: r.date, entry_low: r.entry2, entry_high: r.entry1, sl: r.sl, tp1: r.tp1 };
+  });
+}
+
+/**
+ * Informational-only: flags candidates whose ticker recently hit SL with a
+ * near-identical entry/SL/TP setup. Never changes scoring, filtering, or
+ * publish decisions — see lib/recent-failure-cooldown.js.
+ */
+async function annotateRecentlyFailedSimilarSetups(supabase, candidates, date) {
+  return recentFailureCooldown.annotateRecentlyFailedSimilarSetups(
+    candidates,
+    date,
+    function(d, cooldownDays) { return fetchRecentSlHitRowsForCooldown(supabase, d, cooldownDays); }
+  );
+}
+
 async function registerCandidatesForMonitoring(supabase, candidates, date, source) {
   var empty = { inserted_count: 0, skipped_duplicate_count: 0, invalid_candidate_count: 0, missing_identity_count: 0 };
   if (!candidates || candidates.length === 0) return empty;
@@ -11410,7 +11448,7 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   // Read all rows currently in daytrade_screener_latest, keep only top 50 by score
   var { data: allRows, error: readErr } = await supabase
     .from('daytrade_screener_latest')
-    .select('ticker, daytrade_score, status, risk_reward')
+    .select('ticker, daytrade_score, status, risk_reward, entry_low, entry_high, stop_loss, tp1, tp2, calculated_at')
     .order('daytrade_score', { ascending: false }).order('ticker', { ascending: true });
 
   var rawBatchPassedCount = counters ? (counters.passed_count || 0) : 0;
@@ -11563,6 +11601,22 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     }]);
   } catch (e) { /* non-critical */ }
 
+  // Register every published Day Trade candidate for TP/SL outcome monitoring —
+  // not just the smaller subset that also gets sent as a Telegram signal
+  // (registered separately under monitor_source 'daytrade_signal'). Without
+  // this, the ~50 candidates shown on the screener were never checked against
+  // TP/SL and no win-rate data could ever be derived from them.
+  var dtScreenerMonitorReg = { inserted_count: 0, skipped_duplicate_count: 0 };
+  try {
+    var dtMonitorCandidates = publishedRows.map(function(r) {
+      return Object.assign({}, r, { category: r.category || 'Day Trade' });
+    });
+    await annotateRecentlyFailedSimilarSetups(supabase, dtMonitorCandidates, runDate);
+    dtScreenerMonitorReg = await registerCandidatesForMonitoring(supabase, dtMonitorCandidates, runDate, 'daytrade');
+  } catch (e) {
+    dtScreenerMonitorReg = { inserted_count: 0, skipped_duplicate_count: 0, error: (e.message || '').substring(0, 160) };
+  }
+
   var sendEmptyNoticeRequested = getDayTradeEmptyNoticeRequested(req);
   var radarRequested = getDayTradeRadarRequested(req);
   var forceRadarDebug = getDayTradeForceRadarDebugRequested(req);
@@ -11615,6 +11669,9 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     pre_publish_candidate_count: prePublishCandidateCount,
     saved_count: savedCount,
     published_count: savedCount,
+    screener_monitor_registered_count: dtScreenerMonitorReg.inserted_count || 0,
+    screener_monitor_skipped_duplicate_count: dtScreenerMonitorReg.skipped_duplicate_count || 0,
+    screener_monitor_registration_error: dtScreenerMonitorReg.error || null,
     top_count: topCount,
     priority_opportunity_count: topCount,
     confirmed_signal_count: confirmedSignalCount,
@@ -12418,6 +12475,8 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
       };
     }
 
+    await annotateRecentlyFailedSimilarSetups(supabase, finalList, runDate || getJakartaDateString());
+
     var dtDeliveryPrep =
       await telegramDelivery.prepareCandidatesForDelivery({
         supabase: supabase,
@@ -12505,6 +12564,7 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (dtDeliveryPrep.legacy_fallback && result.sent && finalList.length > 0) {
+      await annotateRecentlyFailedSimilarSetups(supabase, finalList, runDate || getJakartaDateString());
       var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, runDate || getJakartaDateString(), 'daytrade_signal');
       result.monitor_registered = monitorReg.inserted_count;
       result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
@@ -13277,6 +13337,8 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
       return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: savedCount, generated_count: rows.length, saved_count: savedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, entry_range_normalization: hbEntryRangeDiagnostics, entry_range_normalization_diagnostics: hbEntryRangeDiagnostics, min_tp1_upside_diagnostics: hbMinTp1Diagnostics, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics, swingMetaFallbackDiagnostics);
     }
 
+    await annotateRecentlyFailedSimilarSetups(supabase, finalList, getJakartaDateString());
+
     var skDeliveryPrep =
       await telegramDelivery.prepareCandidatesForDelivery({
         supabase: supabase,
@@ -13353,6 +13415,7 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (skDeliveryPrep.legacy_fallback && result.sent && finalList.length > 0) {
+      await annotateRecentlyFailedSimilarSetups(supabase, finalList, getJakartaDateString());
       var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, getJakartaDateString(), 'swing_konglo');
       result.monitor_registered = monitorReg.inserted_count;
       result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
@@ -13472,6 +13535,8 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
       return Object.assign({ sent: !!hbRes.sent, skipped: !hbRes.sent, reason: hbRes.sent ? 'swing_empty_heartbeat_sent' : 'no_final_quality_gate_candidates_silent', message: hb, latest_published_count: publishedCount, published_count: publishedCount, generated_count: rows.length, saved_count: publishedCount, verified_count: verifiedRows.length, high_conviction_count: highConvictionRows.length, strict_selected_count: strictCandidates.length, digest_candidate_count: digestCandidates.length, monitor_candidate_count: 0, monitor_fallback_sent: false, selected_count: 0, monitor_fallback_diagnostics: monitorDiagnostics, monitor_rejection_top_reason: monitorTopReject && monitorTopReject.reason, monitor_rejection_top_count: monitorTopReject && monitorTopReject.count }, publicSafetyDiagnostics);
     }
 
+    await annotateRecentlyFailedSimilarSetups(supabase, finalList, getJakartaDateString());
+
     var nkDeliveryPrep =
       await telegramDelivery.prepareCandidatesForDelivery({
         supabase: supabase,
@@ -13548,6 +13613,7 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (nkDeliveryPrep.legacy_fallback && result.sent && finalList.length > 0) {
+      await annotateRecentlyFailedSimilarSetups(supabase, finalList, getJakartaDateString());
       var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, getJakartaDateString(), 'swing_nk');
       result.monitor_registered = monitorReg.inserted_count;
       result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
@@ -13648,6 +13714,9 @@ module.exports.__test = {
   sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
   sendDayTradeTelegramNotification: sendDayTradeTelegramNotification,
   registerCandidatesForMonitoring: registerCandidatesForMonitoring,
+  fetchRecentSlHitRowsForCooldown: fetchRecentSlHitRowsForCooldown,
+  annotateRecentlyFailedSimilarSetups: annotateRecentlyFailedSimilarSetups,
+  finalizeDtScreener: finalizeDtScreener,
   getDayTradeRadarRequested: getDayTradeRadarRequested,
   candidateTelegramEligible: candidateTelegramEligible,
   candidatePassesMinUpside: candidatePassesMinUpside,
