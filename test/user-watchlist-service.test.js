@@ -23,6 +23,21 @@ test('addToWatchlist validates input and upserts ticker', async () => {
     from(table) {
       assert.equal(table, 'app_user_watchlists');
       return {
+        select() {
+          return {
+            eq() {
+              return {
+                eq() {
+                  return {
+                    maybeSingle() {
+                      return Promise.resolve({ data: null, error: null });
+                    }
+                  };
+                }
+              };
+            }
+          };
+        },
         upsert(payload) {
           upserted = payload;
           return {
@@ -49,6 +64,168 @@ test('addToWatchlist validates input and upserts ticker', async () => {
   const badRes = await watchlistService.addToWatchlist(mockSupabase, userId, 'invalid-ticker');
   assert.equal(badRes.success, false);
   assert.match(badRes.error, /Ticker tidak valid/);
+});
+
+test('addToWatchlist: re-add existing ticker without new notes preserves old notes (does not overwrite with null)', async () => {
+  const userId = '11111111-1111-1111-1111-111111111111';
+  let upsertPayload = null;
+
+  const existingRow = {
+    id: 'wl-existing-1',
+    user_id: userId,
+    ticker: 'BBCA',
+    notes: 'Catatan lama yang sangat berharga'
+  };
+
+  const mockSupabase = {
+    from(table) {
+      assert.equal(table, 'app_user_watchlists');
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                eq() {
+                  return {
+                    maybeSingle() {
+                      return Promise.resolve({ data: existingRow, error: null });
+                    }
+                  };
+                }
+              };
+            }
+          };
+        },
+        upsert(payload) {
+          upsertPayload = payload;
+          // In actual Postgres, omitted keys keep their existing DB values
+          const merged = { ...existingRow, ...payload };
+          return {
+            select() {
+              return {
+                maybeSingle() {
+                  return Promise.resolve({ data: merged, error: null });
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  // Re-add without notes (notes = null or not provided)
+  const res = await watchlistService.addToWatchlist(mockSupabase, userId, 'BBCA');
+  assert.equal(res.success, true);
+  // Payload must NOT contain notes key so DB row notes are untouched
+  assert.equal(Object.prototype.hasOwnProperty.call(upsertPayload, 'notes'), false);
+  assert.equal(upsertPayload.ticker, 'BBCA');
+  assert.equal(res.item.notes, 'Catatan lama yang sangat berharga');
+});
+
+test('addToWatchlist: re-add existing ticker with new notes updates notes', async () => {
+  const userId = '11111111-1111-1111-1111-111111111111';
+  let upsertPayload = null;
+
+  const existingRow = {
+    id: 'wl-existing-1',
+    user_id: userId,
+    ticker: 'TLKM',
+    notes: 'Catatan lama'
+  };
+
+  const mockSupabase = {
+    from(table) {
+      assert.equal(table, 'app_user_watchlists');
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                eq() {
+                  return {
+                    maybeSingle() {
+                      return Promise.resolve({ data: existingRow, error: null });
+                    }
+                  };
+                }
+              };
+            }
+          };
+        },
+        upsert(payload) {
+          upsertPayload = payload;
+          const merged = { ...existingRow, ...payload };
+          return {
+            select() {
+              return {
+                maybeSingle() {
+                  return Promise.resolve({ data: merged, error: null });
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  const res = await watchlistService.addToWatchlist(mockSupabase, userId, 'TLKM', 'Catatan baru diupdate');
+  assert.equal(res.success, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(upsertPayload, 'notes'), true);
+  assert.equal(upsertPayload.notes, 'Catatan baru diupdate');
+  assert.equal(res.item.notes, 'Catatan baru diupdate');
+});
+
+test('addToWatchlist: add completely new ticker stores notes normally (even when null)', async () => {
+  const userId = '11111111-1111-1111-1111-111111111111';
+  let upsertPayload = null;
+
+  const mockSupabase = {
+    from(table) {
+      assert.equal(table, 'app_user_watchlists');
+      return {
+        select() {
+          return {
+            eq() {
+              return {
+                eq() {
+                  return {
+                    maybeSingle() {
+                      return Promise.resolve({ data: null, error: null });
+                    }
+                  };
+                }
+              };
+            }
+          };
+        },
+        upsert(payload) {
+          upsertPayload = payload;
+          return {
+            select() {
+              return {
+                maybeSingle() {
+                  return Promise.resolve({ data: { id: 'wl-new-1', ...payload }, error: null });
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  // 1. New ticker with null notes
+  const res1 = await watchlistService.addToWatchlist(mockSupabase, userId, 'ASII');
+  assert.equal(res1.success, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(upsertPayload, 'notes'), true);
+  assert.equal(upsertPayload.notes, null);
+
+  // 2. New ticker with initial notes
+  const res2 = await watchlistService.addToWatchlist(mockSupabase, userId, 'UNTR', 'Catatan awal UNTR');
+  assert.equal(res2.success, true);
+  assert.equal(upsertPayload.notes, 'Catatan awal UNTR');
 });
 
 test('removeFromWatchlist deletes watchlist item and cascades alerts', async () => {
