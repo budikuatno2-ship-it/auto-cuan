@@ -1,4 +1,4 @@
-﻿// Auto-Cuan Track Record / Outcome Report UI Runtime
+// Auto-Cuan Track Record / Outcome Report UI Runtime
 var _trData = null;
 var _trCategoryFilter = 'all';
 var _trInFlight = false;
@@ -198,4 +198,111 @@ function renderTrackRecordTable() {
     });
 
     tbody.innerHTML = rowsHtml;
+}
+
+// ===== CSV EXPORT TOOL =====
+var TRACK_RECORD_CSV_HEADERS = [
+    'Tanggal',
+    'Ticker',
+    'Kategori',
+    'Status',
+    'Entry',
+    'TP1',
+    'TP2',
+    'Stop Loss',
+    'Max Gain %',
+    'Status Hit',
+    'Durasi (Hari)'
+];
+
+function escapeCsvCell(val) {
+    if (val == null) return '';
+    var str = String(val);
+    if (str.search(/([",\n\r])/g) !== -1) {
+        str = '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+}
+
+function getTrackRecordCsvFilename(d) {
+    var dt = d || new Date();
+    var yyyy = dt.getFullYear();
+    var mm = String(dt.getMonth() + 1).padStart(2, '0');
+    var dd = String(dt.getDate()).padStart(2, '0');
+    return 'autocuan-track-record-' + yyyy + '-' + mm + '-' + dd + '.csv';
+}
+
+function formatTrackRecordCsvRow(s) {
+    if (!s) return [];
+    var entryVal = '—';
+    if (s.entry1 != null) {
+        entryVal = (s.entry2 != null && s.entry2 !== s.entry1) ? (s.entry1 + '-' + s.entry2) : String(s.entry1);
+    }
+    var gainVal = '—';
+    if (s.gain_pct != null) {
+        gainVal = (s.gain_pct > 0 ? '+' : '') + Number(s.gain_pct).toFixed(1) + '%';
+    }
+    return [
+        s.date || '—',
+        s.ticker || '',
+        s.source_label || s.category || s.source_short || '—',
+        s.status_label || '—',
+        entryVal,
+        s.tp1 != null ? String(s.tp1) : '—',
+        s.tp2 != null ? String(s.tp2) : '—',
+        s.sl != null ? String(s.sl) : '—',
+        gainVal,
+        s.outcome || s.status_label || '—',
+        s.duration_text || '—'
+    ];
+}
+
+function generateTrackRecordCsv(signals) {
+    var rows = [TRACK_RECORD_CSV_HEADERS.map(escapeCsvCell).join(',')];
+    (signals || []).forEach(function(s) {
+        var rowData = formatTrackRecordCsvRow(s);
+        rows.push(rowData.map(escapeCsvCell).join(','));
+    });
+    return rows.join('\r\n');
+}
+
+function exportTrackRecordCsv() {
+    if (!_trData || !_trData.signals || !_trData.signals.length) {
+        if (typeof showToast === 'function') showToast('Belum ada data track record untuk diunduh.', 'warning');
+        return;
+    }
+    var csvContent = generateTrackRecordCsv(_trData.signals);
+    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var filename = getTrackRecordCsvFilename();
+
+    var link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    if (typeof showToast === 'function') showToast('📥 File ' + filename + ' berhasil diunduh!', 'success');
+}
+
+if (typeof window !== 'undefined') {
+    window.loadTrackRecord = loadTrackRecord;
+    window.filterTrackRecordCategory = filterTrackRecordCategory;
+    window.renderTrackRecordTable = renderTrackRecordTable;
+    window.exportTrackRecordCsv = exportTrackRecordCsv;
+    window.generateTrackRecordCsv = generateTrackRecordCsv;
+    window.formatTrackRecordCsvRow = formatTrackRecordCsvRow;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        TRACK_RECORD_CSV_HEADERS: TRACK_RECORD_CSV_HEADERS,
+        escapeCsvCell: escapeCsvCell,
+        getTrackRecordCsvFilename: getTrackRecordCsvFilename,
+        formatTrackRecordCsvRow: formatTrackRecordCsvRow,
+        generateTrackRecordCsv: generateTrackRecordCsv,
+        exportTrackRecordCsv: exportTrackRecordCsv
+    };
 }
