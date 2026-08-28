@@ -126,3 +126,110 @@ test('findSimilarRecentSlHit requires entry, sl, AND tp1 to all match within tol
   const allMatch = [{ ticker: 'X', date: '2026-08-10', entry_low: 100, entry_high: 102, sl: 95, tp1: 115 }];
   assert.ok(cooldown.findSimilarRecentSlHit(candidate, allMatch));
 });
+
+test('notification pipeline queries recent SL_HIT cooldown rows exactly once per execution (no duplicate query)', async () => {
+  let slHitQueryCount = 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const nowIso = new Date().toISOString();
+  const mockRows = [
+    {
+      ticker: 'GULA', status: 'A_PLUS_SETUP', final_status: 'A_PLUS_SETUP', action_label: 'BUY', quality_grade: 'A', score: 88, daytrade_score: 88, risk_reward: 1.8,
+      entry1: 100, entry_low: 100, entry2: 100, entry_high: 100, stop_loss: 95, sl: 95,
+      tp1: 115, tp1n: 115, tp2: 125, last_price: 100, volume_ratio_20d: 1.5,
+      value_today: 5000000000, risk_label: 'Low Risk', plan_quality_status: 'VALID', trading_plan_valid: true,
+      breakout_confirmation_status: 'CONFIRMED', breakout_confirmation_label: 'Breakout Confirmed', entry_timing: 'ENTRY_NOW',
+      resistance: 99, breakout_trigger: 99,
+      entry_status: 'IN_ENTRY_ZONE', entry_status_label: 'Area Entry',
+      respect_quality_label: 'Strong Respect', trend_label: 'Bullish Trend',
+      volume_label: 'Strong Volume', volume_confirmation_label: 'Strong Volume',
+      foreign_label: 'Foreign Accumulation', rr_quality_label: 'Healthy RR',
+      tp_quality_label: 'TP realistic', sl_quality_label: 'Safe SL',
+      pattern_label: 'Breakout Consolidation', notes: 'Siap Entry', status_reason: 'Siap Entry',
+      telegram_verdict: 'Siap entry.',
+      is_top5: true, is_verified: true, verified: true, final_quality_pass: true, final_quality_status: 'PASS',
+      final_gate_pass: true, final_gate_status: 'PASS', final_quality_reason: 'Siap entry terkonfirmasi',
+      entry_range_display: '100 - 100',
+      setup_origin_at: nowIso,
+      freshness_timestamp: nowIso,
+      calculated_at: nowIso,
+      price_date: today,
+      price_freshness_status: 'FRESH'
+    }
+  ];
+
+  function makeMockSupabaseWithCounter() {
+    return {
+      from(table) {
+        if (table === 'telegram_daily_picks') {
+          let isSlHitQuery = false;
+          const api = {
+            select() { return api; },
+            eq(col, val) {
+              if (col === 'status' && val === 'SL_HIT') {
+                isSlHitQuery = true;
+              }
+              return api;
+            },
+            gte() { return api; },
+            lt() { return api; },
+            order() { return api; },
+            limit() { return api; },
+            insert() { return Promise.resolve({ data: [], error: null }); },
+            then(resolve, reject) {
+              if (isSlHitQuery) {
+                slHitQueryCount++;
+              }
+              return Promise.resolve({ data: [], error: null }).then(resolve, reject);
+            }
+          };
+          return api;
+        }
+        if (table === 'swing_screener_latest' || table === 'swing_screener_non_konglo_latest' || table === 'daytrade_screener_latest') {
+          return {
+            select() { return this; },
+            order() { return this; },
+            limit() { return Promise.resolve({ data: mockRows, error: null }); },
+            eq() { return this; },
+            maybeSingle() { return Promise.resolve({ data: { calculated_at: nowIso, run_date: today, run_id: 'r1', status: 'published' }, error: null }); }
+          };
+        }
+        return {
+          select() { return this; },
+          eq() { return this; },
+          order() { return this; },
+          limit() { return Promise.resolve({ data: [], error: null }); },
+          maybeSingle() { return Promise.resolve({ data: { calculated_at: nowIso, run_date: today, status: 'published' }, error: null }); },
+          insert() { return Promise.resolve({ data: [], error: null }); }
+        };
+      }
+    };
+  }
+
+  const notifier = require('../lib/telegram-notifier');
+  const origSend = notifier.sendTelegramMessage;
+  notifier.sendTelegramMessage = async () => ({ sent: true });
+
+  try {
+    // 1. Swing Konglo
+    slHitQueryCount = 0;
+    const sup1 = makeMockSupabaseWithCounter();
+    await sectorHot.__test.sendSwingKongloTelegramNotification(sup1, 1);
+    assert.equal(slHitQueryCount, 1, 'Swing Konglo should query SL_HIT cooldown table exactly once');
+
+    // 2. Swing Non-Konglo
+    slHitQueryCount = 0;
+    const sup2 = makeMockSupabaseWithCounter();
+    await sectorHot.__test.sendSwingNkTelegramNotification(sup2, 1);
+    assert.equal(slHitQueryCount, 1, 'Swing Non-Konglo should query SL_HIT cooldown table exactly once');
+
+    // 3. Day Trade
+    slHitQueryCount = 0;
+    const sup3 = makeMockSupabaseWithCounter();
+    const dtRunId = 'dt-run-' + Date.now();
+    const dtRes = await sectorHot.__test.sendDayTradeTelegramNotification(sup3, dtRunId, today, 1, false, false, {});
+    assert.equal(dtRes.strict_signal_count, 1, 'dtRes: ' + JSON.stringify(dtRes));
+    assert.equal(slHitQueryCount, 1, 'Day Trade should query SL_HIT cooldown table exactly once');
+  } finally {
+    notifier.sendTelegramMessage = origSend;
+  }
+});
