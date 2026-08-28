@@ -99,6 +99,11 @@ test('classifyOutcome returns UNKNOWN for null/undefined', () => {
   assert.equal(helpers.classifyOutcome({}), 'UNKNOWN');
 });
 
+test('classifyOutcome returns NEVER_ENTERED for INVALID and ENTRY_MISSED statuses', () => {
+  assert.equal(helpers.classifyOutcome({ status: 'INVALID' }), 'NEVER_ENTERED');
+  assert.equal(helpers.classifyOutcome({ status: 'ENTRY_MISSED' }), 'NEVER_ENTERED');
+});
+
 // === getMonitorSource tests ===
 
 test('getMonitorSource extracts from raw_payload.monitor_source', () => {

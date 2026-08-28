@@ -149,3 +149,37 @@ test('buildTrackRecordData aggregates multiple signal types and categories', () 
   assert.equal(bbca.status_label, 'TP2 Hit');
   assert.equal(bbca.gain_pct, 8); // (10800 - 10000) / 10000 = 8%
 });
+
+test('buildTrackRecordData total_signals always equals sum of every breakdown bucket, including INVALID/ENTRY_MISSED (NEVER_ENTERED)', () => {
+  const fixtureRows = [
+    { id: 1, ticker: 'AAAA', monitor_source: 'daytrade_signal', status: 'TP2_HIT' },
+    { id: 2, ticker: 'BBBB', monitor_source: 'daytrade_signal', status: 'TP1_HIT' },
+    { id: 3, ticker: 'CCCC', monitor_source: 'swing_konglo', status: 'SL_HIT' },
+    { id: 4, ticker: 'DDDD', monitor_source: 'swing_nk', status: 'RUNNING' },
+    { id: 5, ticker: 'EEEE', monitor_source: 'top5', status: 'WAITING' },
+    { id: 6, ticker: 'FFFF', monitor_source: 'daytrade_signal', status: 'EXPIRED' },
+    { id: 7, ticker: 'GGGG', monitor_source: 'swing_konglo', status: 'NEEDS_REVALIDATION' },
+    { id: 8, ticker: 'HHHH', monitor_source: 'swing_nk', status: 'INVALID' },
+    { id: 9, ticker: 'IIII', monitor_source: 'top5', status: 'ENTRY_MISSED' }
+  ];
+
+  const res = buildTrackRecordData(fixtureRows);
+  const sum = res.summary;
+
+  // tp1_hits already includes TP2_HIT rows (TP2 implies TP1 was reached),
+  // so tp2_hits is not added again here — each row belongs to exactly one
+  // of these buckets.
+  const breakdownTotal = sum.tp1_hits + sum.sl_hits + sum.running_signals +
+    sum.waiting_signals + sum.expired_signals + sum.never_entered_signals;
+
+  assert.equal(sum.total_signals, fixtureRows.length);
+  assert.equal(sum.never_entered_signals, 2); // HHHH (INVALID) + IIII (ENTRY_MISSED)
+  assert.equal(breakdownTotal, sum.total_signals);
+
+  for (const key of Object.keys(res.by_category)) {
+    const stat = res.by_category[key];
+    const catBreakdownTotal = stat.tp1_hits + stat.sl_hits + stat.running +
+      stat.waiting + stat.expired + stat.never_entered;
+    assert.equal(catBreakdownTotal, stat.total, 'category ' + key + ' breakdown must sum to its total');
+  }
+});
