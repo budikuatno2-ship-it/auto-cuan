@@ -11410,7 +11410,7 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
   // Read all rows currently in daytrade_screener_latest, keep only top 50 by score
   var { data: allRows, error: readErr } = await supabase
     .from('daytrade_screener_latest')
-    .select('ticker, daytrade_score, status, risk_reward')
+    .select('ticker, daytrade_score, status, risk_reward, entry_low, entry_high, stop_loss, tp1, tp2, calculated_at')
     .order('daytrade_score', { ascending: false }).order('ticker', { ascending: true });
 
   var rawBatchPassedCount = counters ? (counters.passed_count || 0) : 0;
@@ -11563,6 +11563,21 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     }]);
   } catch (e) { /* non-critical */ }
 
+  // Register every published Day Trade candidate for TP/SL outcome monitoring —
+  // not just the smaller subset that also gets sent as a Telegram signal
+  // (registered separately under monitor_source 'daytrade_signal'). Without
+  // this, the ~50 candidates shown on the screener were never checked against
+  // TP/SL and no win-rate data could ever be derived from them.
+  var dtScreenerMonitorReg = { inserted_count: 0, skipped_duplicate_count: 0 };
+  try {
+    var dtMonitorCandidates = publishedRows.map(function(r) {
+      return Object.assign({}, r, { category: r.category || 'Day Trade' });
+    });
+    dtScreenerMonitorReg = await registerCandidatesForMonitoring(supabase, dtMonitorCandidates, runDate, 'daytrade');
+  } catch (e) {
+    dtScreenerMonitorReg = { inserted_count: 0, skipped_duplicate_count: 0, error: (e.message || '').substring(0, 160) };
+  }
+
   var sendEmptyNoticeRequested = getDayTradeEmptyNoticeRequested(req);
   var radarRequested = getDayTradeRadarRequested(req);
   var forceRadarDebug = getDayTradeForceRadarDebugRequested(req);
@@ -11615,6 +11630,9 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
     pre_publish_candidate_count: prePublishCandidateCount,
     saved_count: savedCount,
     published_count: savedCount,
+    screener_monitor_registered_count: dtScreenerMonitorReg.inserted_count || 0,
+    screener_monitor_skipped_duplicate_count: dtScreenerMonitorReg.skipped_duplicate_count || 0,
+    screener_monitor_registration_error: dtScreenerMonitorReg.error || null,
     top_count: topCount,
     priority_opportunity_count: topCount,
     confirmed_signal_count: confirmedSignalCount,
@@ -13648,6 +13666,7 @@ module.exports.__test = {
   sendSwingNkTelegramNotification: sendSwingNkTelegramNotification,
   sendDayTradeTelegramNotification: sendDayTradeTelegramNotification,
   registerCandidatesForMonitoring: registerCandidatesForMonitoring,
+  finalizeDtScreener: finalizeDtScreener,
   getDayTradeRadarRequested: getDayTradeRadarRequested,
   candidateTelegramEligible: candidateTelegramEligible,
   candidatePassesMinUpside: candidatePassesMinUpside,
