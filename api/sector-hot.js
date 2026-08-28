@@ -12564,7 +12564,6 @@ async function sendDayTradeTelegramNotification(supabase, runId, runDate, publis
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (dtDeliveryPrep.legacy_fallback && result.sent && finalList.length > 0) {
-      await annotateRecentlyFailedSimilarSetups(supabase, finalList, runDate || getJakartaDateString());
       var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, runDate || getJakartaDateString(), 'daytrade_signal');
       result.monitor_registered = monitorReg.inserted_count;
       result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
@@ -13415,7 +13414,6 @@ async function sendSwingKongloTelegramNotification(supabase, savedCount, precomp
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (skDeliveryPrep.legacy_fallback && result.sent && finalList.length > 0) {
-      await annotateRecentlyFailedSimilarSetups(supabase, finalList, getJakartaDateString());
       var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, getJakartaDateString(), 'swing_konglo');
       result.monitor_registered = monitorReg.inserted_count;
       result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
@@ -13613,7 +13611,6 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
 
     // Register sent candidates for monitoring (enables TP/SL/entry hit updates)
     if (nkDeliveryPrep.legacy_fallback && result.sent && finalList.length > 0) {
-      await annotateRecentlyFailedSimilarSetups(supabase, finalList, getJakartaDateString());
       var monitorReg = await registerCandidatesForMonitoring(supabase, finalList, getJakartaDateString(), 'swing_nk');
       result.monitor_registered = monitorReg.inserted_count;
       result.monitor_skipped_duplicate = monitorReg.skipped_duplicate_count;
