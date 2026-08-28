@@ -111,7 +111,7 @@ test('public run output exposes counters but not provider credentials', () => {
 test('supervisor accepts only gzip datasets under the private work directory', () => {
   assert.equal(
     safeDatasetPath('/home/ubuntu/auto-cuan-ai-eval/retry-datasets/retry.jsonl.gz'),
-    '/home/ubuntu/auto-cuan-ai-eval/retry-datasets/retry.jsonl.gz'
+    path.resolve('/home/ubuntu/auto-cuan-ai-eval/retry-datasets/retry.jsonl.gz')
   );
   assert.equal(safeDatasetPath('/tmp/retry.jsonl.gz'), null);
   assert.equal(safeDatasetPath('/home/ubuntu/auto-cuan-ai-eval/retry.json'), null);

@@ -4,6 +4,24 @@
   window.__AUTOCUAN_WATCHLIST_DATA__ = [];
   window.__AUTOCUAN_WATCHLIST_SET__ = new Set();
   var isLoading = false;
+  var _wlFilter = 'all';
+
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function escapeAttr(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   async function loadUserWatchlist(force) {
     var container = document.getElementById('watchlistContainer');
@@ -49,6 +67,19 @@
     }
   }
 
+  function filterWatchlist(filterName) {
+    _wlFilter = filterName || 'all';
+    var tabs = document.querySelectorAll('#watchlistFilterTabs button');
+    tabs.forEach(function (btn) {
+      if (btn.getAttribute('data-wl-filter') === _wlFilter) {
+        btn.className = 'wl-filter-btn active px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 transition';
+      } else {
+        btn.className = 'wl-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 border border-dark-600/40 hover:text-gray-200 transition';
+      }
+    });
+    renderWatchlistView(window.__AUTOCUAN_WATCHLIST_DATA__);
+  }
+
   function renderWatchlistView(items) {
     var container = document.getElementById('watchlistContainer');
     var emptyState = document.getElementById('watchlistEmpty');
@@ -56,22 +87,46 @@
 
     if (!items || !items.length) {
       container.innerHTML = '';
-      if (emptyState) emptyState.classList.remove('hidden');
+      if (emptyState) {
+        emptyState.classList.remove('hidden');
+        var emptyTitle = document.getElementById('watchlistEmptyTitle');
+        var emptyDesc = document.getElementById('watchlistEmptyDesc');
+        if (emptyTitle) emptyTitle.textContent = 'Watchlist Anda masih kosong.';
+        if (emptyDesc) emptyDesc.textContent = 'Gunakan ikon bintang pada kartu Screener atau Modal Detail untuk menambahkan saham ke pantauan.';
+      }
       return;
     }
 
     if (emptyState) emptyState.classList.add('hidden');
 
+    var filtered = items.filter(function (it) {
+      if (_wlFilter === 'alert') {
+        return it.alerts && it.alerts.some(function (a) { return a.is_active && !a.is_triggered; });
+      }
+      if (_wlFilter === 'gain') {
+        return it.change_pct != null && Number(it.change_pct) > 0;
+      }
+      if (_wlFilter === 'loss') {
+        return it.change_pct != null && Number(it.change_pct) < 0;
+      }
+      return true;
+    });
+
+    if (!filtered.length) {
+      container.innerHTML = '<div class="py-10 text-center text-gray-500 text-xs"><div class="text-2xl mb-1.5">🔍</div><p class="font-medium text-gray-400">Tidak ada saham yang sesuai dengan filter ini.</p><p class="mt-1 text-gray-500">Coba pilih tab filter [Semua] untuk melihat seluruh daftar pantauan.</p></div>';
+      return;
+    }
+
     var html = '<div class="overflow-x-auto"><table class="w-full text-left text-xs border-collapse">';
     html += '<thead><tr class="border-b border-dark-600/60 text-gray-400 uppercase tracking-wider">';
-    html += '<th class="py-3 px-3 font-semibold">Ticker</th>';
+    html += '<th class="py-3 px-3 font-semibold">Ticker &amp; Catatan</th>';
     html += '<th class="py-3 px-3 font-semibold text-right">Harga</th>';
     html += '<th class="py-3 px-3 font-semibold text-right">Perubahan</th>';
     html += '<th class="py-3 px-3 font-semibold">Alert Aktif</th>';
     html += '<th class="py-3 px-3 font-semibold text-right">Aksi</th>';
     html += '</tr></thead><tbody class="divide-y divide-dark-700/40">';
 
-    items.forEach(function (item) {
+    filtered.forEach(function (item) {
       var last = item.last_price ? Number(item.last_price).toLocaleString('id-ID') : '-';
       var chg = item.change_pct != null ? Number(item.change_pct) : null;
       var chgText = chg != null ? ((chg >= 0 ? '+' : '') + chg.toFixed(2) + '%') : '-';
@@ -94,18 +149,19 @@
         alertsHtml = '<span class="text-gray-500 italic">Belum ada alert</span>';
       }
 
+      var noteHtml = item.notes ?
+        '<span onclick="window.openEditNotesModal(\'' + escapeAttr(item.ticker) + '\', \'' + escapeAttr(item.notes) + '\')" class="cursor-pointer text-[10px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded truncate max-w-[160px] hover:border-amber-500/40 transition" title="Klik untuk edit catatan: ' + escapeAttr(item.notes) + '">📝 ' + escapeHtml(item.notes) + '</span>' :
+        '<button onclick="window.openEditNotesModal(\'' + escapeAttr(item.ticker) + '\', \'\')" class="text-[10px] text-gray-500 hover:text-amber-300 transition" title="Tambah catatan">+ Catatan</button>';
+
       html += '<tr class="hover:bg-dark-800/40 transition-colors">';
-      html += '<td class="py-3 px-3 font-bold text-white text-sm"><div class="flex items-center gap-1.5"><span>' + item.ticker + '</span>';
-      if (item.notes) {
-        html += '<span class="text-[10px] text-gray-400 font-normal truncate max-w-[120px]" title="' + item.notes + '">(' + item.notes + ')</span>';
-      }
-      html += '</div></td>';
+      html += '<td class="py-3 px-3 font-bold text-white text-sm"><div class="flex items-center gap-2 flex-wrap"><span>' + item.ticker + '</span>' + noteHtml + '</div></td>';
       html += '<td class="py-3 px-3 text-right font-medium text-gray-200">' + last + '</td>';
       html += '<td class="py-3 px-3 text-right font-semibold" style="color:' + chgColor + '">' + chgText + '</td>';
       html += '<td class="py-3 px-3">' + alertsHtml + '</td>';
       html += '<td class="py-3 px-3 text-right whitespace-nowrap">';
-      html += '<button onclick="window.openCreateAlertModal(\'' + item.ticker + '\')" class="px-2 py-1 bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 rounded text-xs mr-2 transition-all">+ Alert</button>';
-      html += '<button onclick="window.toggleWatchlistTicker(\'' + item.ticker + '\', null, event)" class="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 rounded text-xs transition-all">Hapus</button>';
+      html += '<button onclick="window.openEditNotesModal(\'' + escapeAttr(item.ticker) + '\', \'' + escapeAttr(item.notes || '') + '\')" class="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/25 rounded text-xs mr-1.5 transition-all" title="Edit Catatan">📝 Edit</button>';
+      html += '<button onclick="window.openCreateAlertModal(\'' + escapeAttr(item.ticker) + '\')" class="px-2 py-1 bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 rounded text-xs mr-1.5 transition-all">+ Alert</button>';
+      html += '<button onclick="window.toggleWatchlistTicker(\'' + escapeAttr(item.ticker) + '\', null, event)" class="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 rounded text-xs transition-all">Hapus</button>';
       html += '</td>';
       html += '</tr>';
     });
@@ -252,13 +308,78 @@
     }
   }
 
+  function openEditNotesModal(ticker, currentNotes) {
+    var modal = document.getElementById('wlNotesModal');
+    var tickerInput = document.getElementById('wlNotesTicker');
+    var tickerDisplay = document.getElementById('wlNotesTickerDisplay');
+    var notesText = document.getElementById('wlNotesText');
+    if (!modal) return;
+
+    if (tickerInput) tickerInput.value = ticker || '';
+    if (tickerDisplay) tickerDisplay.textContent = ticker || '';
+    if (notesText) notesText.value = currentNotes || '';
+    modal.classList.remove('hidden');
+    if (notesText) {
+      setTimeout(function () {
+        try { notesText.focus(); } catch (_) {}
+      }, 50);
+    }
+  }
+
+  function closeEditNotesModal() {
+    var modal = document.getElementById('wlNotesModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async function saveWatchlistNotes() {
+    var tickerInput = document.getElementById('wlNotesTicker');
+    var notesText = document.getElementById('wlNotesText');
+    var saveBtn = document.getElementById('wlNotesSaveBtn');
+    var ticker = tickerInput ? tickerInput.value.trim().toUpperCase() : '';
+    var notes = notesText ? notesText.value.trim() : '';
+
+    if (!ticker) return;
+
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Menyimpan...'; }
+
+    try {
+      var res = await fetch('/api/sector-hot?action=watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ ticker: ticker, notes: notes || null })
+      });
+      var json = await res.json();
+      if (json && json.success) {
+        if (window.__AUTOCUAN_WATCHLIST_DATA__) {
+          var found = window.__AUTOCUAN_WATCHLIST_DATA__.find(function (it) { return it.ticker === ticker; });
+          if (found) found.notes = notes || null;
+        }
+        closeEditNotesModal();
+        renderWatchlistView(window.__AUTOCUAN_WATCHLIST_DATA__);
+        if (typeof showToast === 'function') showToast('Catatan ' + ticker + ' berhasil disimpan!', 'success');
+      } else {
+        if (typeof showToast === 'function') showToast(json.error || 'Gagal menyimpan catatan.', 'error');
+      }
+    } catch (err) {
+      console.error('Error saving note:', err);
+      if (typeof showToast === 'function') showToast('Gagal menghubungi server.', 'error');
+    } finally {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Simpan'; }
+    }
+  }
+
   window.loadUserWatchlist = loadUserWatchlist;
+  window.filterWatchlist = filterWatchlist;
   window.toggleWatchlistTicker = toggleWatchlistTicker;
   window.updateAllWatchlistStars = updateAllWatchlistStars;
   window.openCreateAlertModal = openCreateAlertModal;
   window.closeCreateAlertModal = closeCreateAlertModal;
   window.submitCreateAlert = submitCreateAlert;
   window.deleteUserAlert = deleteUserAlert;
+  window.openEditNotesModal = openEditNotesModal;
+  window.closeEditNotesModal = closeEditNotesModal;
+  window.saveWatchlistNotes = saveWatchlistNotes;
 
   // Auto-init on DOM ready
   document.addEventListener('DOMContentLoaded', function () {

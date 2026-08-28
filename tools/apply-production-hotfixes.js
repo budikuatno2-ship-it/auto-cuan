@@ -49,6 +49,8 @@ const SYNTAX_CHECKED = [
   'public/chart-viewer.js',
   'public/pattern-screener-extension.js',
   'public/assets/fca-stocks.js',
+  'public/track-record-runtime.js',
+  'public/watchlist-runtime.js',
   'lib/security-guard.js',
   'lib/classic-chart-patterns.js',
   'lib/smart-setup-labels.js',
