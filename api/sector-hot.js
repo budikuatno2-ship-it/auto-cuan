@@ -544,14 +544,7 @@ async function handleScreenerRead(req, res, supabase) {
 // ============================================================
 async function handleScreenerRefresh(req, res, supabase, enableAI) {
   // Verify cron secret
-  const CRON_SECRET = process.env.CRON_SECRET;
-  if (!CRON_SECRET) {
-    return res.status(200).json({ success: false, error: 'Refresh not configured.' });
-  }
-
-  const authHeader = req.headers.authorization || '';
-  const providedSecret = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (providedSecret !== CRON_SECRET) {
+  if (!verifyCronSecret(req)) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
@@ -1261,15 +1254,7 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
 // SEKTOR HOT REFRESH HANDLER (existing — unchanged)
 // ============================================================
 async function handleRefresh(req, res, supabase) {
-  const CRON_SECRET = process.env.CRON_SECRET;
-  if (!CRON_SECRET) {
-    return res.status(200).json({ success: false, error: 'Refresh not configured.' });
-  }
-
-  const authHeader = req.headers.authorization || '';
-  const providedSecret = authHeader.replace(/^Bearer\s+/i, '').trim();
-
-  if (providedSecret !== CRON_SECRET) {
+  if (!verifyCronSecret(req)) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
@@ -2421,13 +2406,7 @@ function getShareSigningSecret() {
  */
 async function handleCreateScreenerShareLink(req, res) {
   // Auth: require CRON_SECRET
-  var CRON_SECRET = process.env.CRON_SECRET;
-  if (!CRON_SECRET) {
-    return res.status(200).json({ success: false, error: 'Not configured.' });
-  }
-  var authHeader = req.headers.authorization || '';
-  var providedSecret = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (providedSecret !== CRON_SECRET) {
+  if (!verifyCronSecret(req)) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
@@ -7856,10 +7835,7 @@ async function handleWebTop5History(req, res, supabase) {
 }
 
 async function handleWebTop5HistoryArchive(req, res, supabase) {
-  var CRON_SECRET = process.env.CRON_SECRET;
-  var authHeader = req.headers.authorization || '';
-  var providedSecret = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (!CRON_SECRET || providedSecret !== CRON_SECRET) return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  if (!verifyCronSecret(req)) return res.status(401).json({ success: false, error: 'Unauthorized.' });
   var id = parseInt((req.body && req.body.id) || req.query.id || '', 10);
   if (!isFinite(id) || id <= 0) return res.status(200).json({ success: false, error: 'id wajib diisi.' });
   var existing = await supabase.from('telegram_daily_picks').select('id,raw_payload').eq('id', id).maybeSingle();
@@ -11129,14 +11105,7 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
   var runDate = null;
 
   // 1. Verify CRON_SECRET
-  var CRON_SECRET = process.env.CRON_SECRET;
-  if (!CRON_SECRET) {
-    return res.status(200).json({ success: false, error: 'Day Trade run not configured (CRON_SECRET missing).' });
-  }
-
-  var authHeader = req.headers.authorization || '';
-  var providedSecret = authHeader.replace(/^Bearer\s+/i, '').trim();
-  if (providedSecret !== CRON_SECRET) {
+  if (!verifyCronSecret(req)) {
     return res.status(401).json({ success: false, error: 'Unauthorized.' });
   }
 
