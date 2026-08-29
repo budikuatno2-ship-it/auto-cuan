@@ -188,4 +188,3 @@ test('buildTrackRecordData total_signals always equals sum of every breakdown bu
     assert.equal(catBreakdownTotal, stat.total, 'category ' + key + ' breakdown must sum to its total');
   }
 });
-
