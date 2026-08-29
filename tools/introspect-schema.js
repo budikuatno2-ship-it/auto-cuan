@@ -3,10 +3,10 @@
 
 /**
  * tools/introspect-schema.js
- * 
+ *
  * Read-only introspection script for the 7 baseline tables:
  * - app_users, app_settings, stock_boards, login_logs, search_logs, ai_analysis_logs, ai_usage_logs
- * 
+ *
  * Runs standard queries against information_schema and pg_catalog to generate
  * exact DDL snapshot for documentation without guessing or leaking credentials.
  */
