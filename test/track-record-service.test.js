@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -150,7 +150,7 @@ test('buildTrackRecordData aggregates multiple signal types and categories', () 
   assert.equal(bbca.gain_pct, 8); // (10800 - 10000) / 10000 = 8%
 });
 
-test('buildTrackRecordData total_signals always equals sum of every breakdown bucket, including INVALID/ENTRY_MISSED (NEVER_ENTERED)', () => {
+test('buildTrackRecordData total_signals always equals sum of every breakdown bucket, including INVALID/ENTRY_MISSED (NEVER_ENTERED) and IN_ENTRY_ZONE/ENTRY_READY/WATCHLIST', () => {
   const fixtureRows = [
     { id: 1, ticker: 'AAAA', monitor_source: 'daytrade_signal', status: 'TP2_HIT' },
     { id: 2, ticker: 'BBBB', monitor_source: 'daytrade_signal', status: 'TP1_HIT' },
@@ -160,7 +160,10 @@ test('buildTrackRecordData total_signals always equals sum of every breakdown bu
     { id: 6, ticker: 'FFFF', monitor_source: 'daytrade_signal', status: 'EXPIRED' },
     { id: 7, ticker: 'GGGG', monitor_source: 'swing_konglo', status: 'NEEDS_REVALIDATION' },
     { id: 8, ticker: 'HHHH', monitor_source: 'swing_nk', status: 'INVALID' },
-    { id: 9, ticker: 'IIII', monitor_source: 'top5', status: 'ENTRY_MISSED' }
+    { id: 9, ticker: 'IIII', monitor_source: 'top5', status: 'ENTRY_MISSED' },
+    { id: 10, ticker: 'JJJJ', monitor_source: 'daytrade_signal', status: 'IN_ENTRY_ZONE' },
+    { id: 11, ticker: 'KKKK', monitor_source: 'swing_konglo', status: 'ENTRY_READY' },
+    { id: 12, ticker: 'LLLL', monitor_source: 'swing_nk', status: 'WATCHLIST' }
   ];
 
   const res = buildTrackRecordData(fixtureRows);
@@ -174,6 +177,8 @@ test('buildTrackRecordData total_signals always equals sum of every breakdown bu
 
   assert.equal(sum.total_signals, fixtureRows.length);
   assert.equal(sum.never_entered_signals, 2); // HHHH (INVALID) + IIII (ENTRY_MISSED)
+  assert.equal(sum.running_signals, 2); // DDDD (RUNNING) + JJJJ (IN_ENTRY_ZONE)
+  assert.equal(sum.waiting_signals, 3); // EEEE (WAITING) + KKKK (ENTRY_READY) + LLLL (WATCHLIST)
   assert.equal(breakdownTotal, sum.total_signals);
 
   for (const key of Object.keys(res.by_category)) {
@@ -183,3 +188,4 @@ test('buildTrackRecordData total_signals always equals sum of every breakdown bu
     assert.equal(catBreakdownTotal, stat.total, 'category ' + key + ' breakdown must sum to its total');
   }
 });
+
