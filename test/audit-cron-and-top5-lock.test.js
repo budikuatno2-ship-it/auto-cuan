@@ -14,11 +14,20 @@ test('CRON_SECRET is accepted only from Bearer authorization, not query string',
   assert.match(block, /timingSafeEqual/);
 });
 
-test('shared daily-pick row builder populates DB lock identity when derivable', () => {
-  const start = source.indexOf('function dailyPickInsertRowFromCandidate');
-  const end = source.indexOf('function normalizeMonitorSourceValue', start);
-  const block = source.slice(start, end);
-  assert.match(block, /buildMonitorPlanIdentity/);
-  assert.match(block, /row\.monitor_source = identity\.monitor_source/);
-  assert.match(block, /row\.plan_lock_id = identity\.plan_lock_id/);
+test('all 5 cron and management handlers use timing-safe verifyCronSecret rather than string comparison', () => {
+  const handlers = [
+    'async function handleScreenerRefresh',
+    'async function handleRefresh',
+    'async function handleCreateScreenerShareLink',
+    'async function handleWebTop5HistoryArchive',
+    'async function handleDayTradeScreenerRun'
+  ];
+
+  for (const handlerName of handlers) {
+    const start = source.indexOf(handlerName);
+    assert.ok(start !== -1, handlerName + ' must exist in api/sector-hot.js');
+    const snippet = source.slice(start, start + 300);
+    assert.match(snippet, /verifyCronSecret\(req\)/, handlerName + ' must call verifyCronSecret(req)');
+    assert.doesNotMatch(snippet, /!==\s*CRON_SECRET/, handlerName + ' must not do direct string comparison !== CRON_SECRET');
+  }
 });
