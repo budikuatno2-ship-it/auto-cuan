@@ -111,7 +111,30 @@
   start.addEventListener('click',function(){action('start')});
   pause.addEventListener('click',function(){action('pause')});
   stop.addEventListener('click',function(){action('stop')});
-  refresh();setInterval(refresh,5000);
+
+  var pollTimer=null;
+  function startPolling(){
+    if(pollTimer)return;
+    pollTimer=setInterval(function(){
+      if(document.visibilityState==='hidden')return;
+      refresh();
+    },5000);
+  }
+  function stopPolling(){
+    if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+  }
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible'){
+      refresh();
+      startPolling();
+    }else{
+      stopPolling();
+    }
+  });
+  window.addEventListener('beforeunload',stopPolling,{once:true});
+
+  refresh();
+  startPolling();
 })();
 </script>
 </body>

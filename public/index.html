@@ -7720,6 +7720,11 @@ function openScrDetail(r, type) {
       html += '<span style="color:#6b7280">Note:</span><span style="word-break:break-word">' + escapeHtml(r.plan_reason || r.plan_quality_note || '-') + '</span>';
       html += '</div></div>';
     }
+    if ((type === 'nonkonglo' || r.category === 'Swing Non-Konglo') && r.high_rr_warning && r.high_rr_warning_note) {
+      html += '<div style="font-size:11px;color:#d1d5db;line-height:1.6;margin-bottom:14px;padding:10px 12px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.22);border-radius:10px">';
+      html += '<div style="color:#fbbf24;font-weight:700;margin-bottom:4px;font-size:11px">⚠️ Warning: Target R:R Tinggi (>2.5:1)</div>';
+      html += '<div style="font-size:10px;color:#d1d5db">' + escapeHtml(r.high_rr_warning_note) + '</div></div>';
+    }
     if (_setupMeaning) html += '<div style="font-size:11px;color:#d1d5db;margin-bottom:14px;padding:10px 12px;background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.12);border-radius:10px"><span style="color:#818cf8;font-weight:600">Arti Setup:</span> <span style="word-break:break-word">' + escapeHtml(_setupMeaning) + '</span></div>';
     // Fibonacci confluence section (Swing Konglo soft signal)
     if ((type === 'konglo' || type === 'nonkonglo') && r.fib_confluence_label && r.fib_confluence_label !== 'Fib belum cukup data') {
@@ -7981,6 +7986,7 @@ function renderNkCardGrid(results) {
         var _nBadgeLine = [_ngrBadge, _nrlBadge, _nvpBadge, _nmtfBadge].filter(function(b){return b;}).join(' · ');
         if (r.pattern_label) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#60a5fa">' + escapeHtml(r.pattern_label.substring(0,18)) + '</span>';
         if (r.foreign_label && r.foreign_label !== 'Foreign Data Unavailable') _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#6ee7b7">' + escapeHtml(r.foreign_label.replace('Foreign ','')) + '</span>';
+        if (r.high_rr_warning) _nBadgeLine += (_nBadgeLine ? ' · ' : '') + '<span style="color:#fbbf24;font-weight:600" title="' + escapeHtml(r.high_rr_warning_note || 'Target R:R tinggi') + '">⚠️ R:R Tinggi</span>';
         if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _nBadgeLine + '</div>';
         var _nRespectLine = buildRespectQualityLine(r);
         if (_nRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_nRespectLine) + '</div>';
