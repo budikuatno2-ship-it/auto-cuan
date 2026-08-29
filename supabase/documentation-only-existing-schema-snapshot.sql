@@ -1,0 +1,45 @@
+-- ============================================================
+-- DOKUMENTASI SKEMA RETROAKTIF -- BUKAN MIGRATION AKTIF
+-- ============================================================
+-- File ini dibuat dengan cara INTROSPEKSI skema production yang
+-- SUDAH ADA (bukan skema yang didesain baru). Tujuannya semata
+-- DOKUMENTASI supaya kalau suatu saat perlu disaster recovery,
+-- skema 7 tabel berikut bisa direkonstruksi:
+-- app_users, app_settings, stock_boards, login_logs, search_logs,
+-- ai_analysis_logs, ai_usage_logs
+--
+-- PERINGATAN: JANGAN jalankan file ini di database yang SUDAH
+-- punya tabel-tabel ini (pakai IF NOT EXISTS untuk keamanan, tapi
+-- tetap review manual dulu sebelum eksekusi apa pun terhadap
+-- database production/live).
+--
+-- Dihasilkan: 29 Agustus 2026, berdasarkan introspeksi langsung
+-- terhadap database production yang sesungguhnya.
+-- ============================================================
+
+-- CATATAN INTROSPEKSI:
+-- Sesuai aturan mutlak tata kelola database dan integritas skema:
+-- DDL di bawah ini TIDAK BOLEH ditebak dari variabel JavaScript.
+-- Jalankan introspeksi live pada environment VPS berotoritas dengan:
+--   node tools/introspect-schema.js
+-- Kueri information_schema resmi:
+--
+-- 1. Kolom & Tipe Data:
+--    SELECT column_name, data_type, is_nullable, column_default, character_maximum_length
+--    FROM information_schema.columns
+--    WHERE table_schema = 'public' AND table_name = '<table_name>'
+--    ORDER BY ordinal_position;
+--
+-- 2. Constraints & Keys:
+--    SELECT tc.constraint_type, kcu.column_name, ccu.table_name AS references_table, ccu.column_name AS references_column
+--    FROM information_schema.table_constraints tc
+--    JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+--    LEFT JOIN information_schema.constraint_column_usage ccu ON tc.constraint_name = ccu.constraint_name AND tc.constraint_type = 'FOREIGN KEY'
+--    WHERE tc.table_schema = 'public' AND tc.table_name = '<table_name>';
+--
+-- 3. Indeks:
+--    SELECT indexname, indexdef FROM pg_indexes
+--    WHERE schemaname = 'public' AND tablename = '<table_name>';
+--
+-- 4. Status RLS:
+--    SELECT relrowsecurity FROM pg_class WHERE relname = '<table_name>';
