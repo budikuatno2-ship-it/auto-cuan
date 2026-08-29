@@ -31,4 +31,3 @@ test('all 5 cron and management handlers use timing-safe verifyCronSecret rather
     assert.doesNotMatch(snippet, /!==\s*CRON_SECRET/, handlerName + ' must not do direct string comparison !== CRON_SECRET');
   }
 });
-
