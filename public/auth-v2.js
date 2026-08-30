@@ -179,14 +179,44 @@
     try {
       if (typeof window.hashPassword !== 'function') throw new Error('hash_unavailable');
       var passwordHash = await window.hashPassword(password);
-      var result = await authRequest('login', {
-        username: username,
-        passwordHash: passwordHash,
-        userAgent: navigator.userAgent
-      });
-      var data = result.data || {};
+      var deviceId = typeof window.getOrCreateDeviceId === 'function'
+        ? window.getOrCreateDeviceId()
+        : (function () {
+            try {
+              var stored = localStorage.getItem('autocuan_device_id');
+              if (stored) return stored;
+            } catch (_) {}
+            return 'dev_' + Date.now().toString(16);
+          })();
 
-      if (result.response.ok && data.success === true) {
+      var controller = typeof AbortController === 'function' ? new AbortController() : null;
+      var timeout = setTimeout(function () {
+        try { if (controller) controller.abort(); } catch (_) {}
+      }, 10000);
+      var response, data;
+      try {
+        response = await fetch('/api/login-user', {
+          method: 'POST',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          body: JSON.stringify({
+            username: username,
+            passwordHash: passwordHash,
+            deviceId: deviceId,
+            userAgent: navigator.userAgent
+          }),
+          signal: controller ? controller.signal : undefined
+        });
+        data = await response.json().catch(function () { return {}; });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (response && response.ok && data.success === true) {
         storeSession(data);
         window.__AUTOCUAN_AUTHENTICATED_SESSION__ = data;
         passwordEl.value = '';
@@ -202,14 +232,14 @@
         return;
       }
 
-      if (data.approval_status === 'pending' && /^AC-[A-F0-9]{6}$/.test(String(data.approval_code || ''))) {
+      if (data && data.approval_status === 'pending' && /^AC-[A-F0-9]{6}$/.test(String(data.approval_code || ''))) {
         if (typeof window.showPendingLoginApproval === 'function') {
           window.showPendingLoginApproval(data);
           return;
         }
       }
 
-      errorEl.textContent = data.error || 'Login gagal.';
+      errorEl.textContent = (data && data.error) || 'Login gagal.';
       errorEl.classList.remove('hidden');
     } catch (_) {
       errorEl.textContent = 'Koneksi ke server sedang bermasalah. Coba beberapa saat lagi.';

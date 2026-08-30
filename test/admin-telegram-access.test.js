@@ -761,7 +761,7 @@ test('existing password login action remains functional as server-side break-gla
           maybeSingle() {
             return Promise.resolve({
               data: table === 'app_users' ? {
-                id: 'user-budi', username: 'budi', password_hash: GOOD_HASH,
+                id: 'user-budi', username: 'budi', password_hash: GOOD_HASH, devices: ['dev_budi'],
                 is_blocked: false, is_approved: true, created_at: new Date().toISOString()
               } : null,
               error: null
@@ -774,11 +774,25 @@ test('existing password login action remains functional as server-side break-gla
       },
       rpc() { return Promise.resolve({ data: null, error: null }); }
     };
-    const bot = makeBot();
-    const handler = requireApiWithFakes(db, bot);
+    const originalLoad = Module._load;
+    const loginPath = require.resolve('../api/login-user');
+    delete require.cache[loginPath];
+    let handler;
+    Module._load = function (request, parent) {
+      if (request === '@supabase/supabase-js') {
+        return { createClient: function () { return db; } };
+      }
+      return originalLoad.apply(this, arguments);
+    };
+    try {
+      handler = require('../api/login-user');
+    } finally {
+      Module._load = originalLoad;
+      delete require.cache[loginPath];
+    }
 
     const res = makeRes();
-    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { action: 'login', username: 'budi', passwordHash: GOOD_HASH } }, res);
+    await handler({ method: 'POST', headers: sameOriginHeaders(), body: { username: 'budi', passwordHash: GOOD_HASH, deviceId: 'dev_budi' } }, res);
 
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.success, true);
