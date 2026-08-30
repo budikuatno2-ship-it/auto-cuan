@@ -1695,8 +1695,12 @@ function generateDeviceUuid() {
     }) + '-' + Date.now().toString(16);
 }
 function getOrCreateDeviceId() {
-    var id = localStorage.getItem('autocuan_device_id');
-    if (!id) { id = 'dev_' + generateDeviceUuid(); localStorage.setItem('autocuan_device_id', id); }
+    var id = null;
+    try { id = localStorage.getItem('autocuan_device_id'); } catch (_) {}
+    if (!id) {
+        id = 'dev_' + generateDeviceUuid();
+        try { localStorage.setItem('autocuan_device_id', id); } catch (_) {}
+    }
     return id;
 }
 
@@ -1925,11 +1929,11 @@ function stripBase64FromHtml(html) {
 }
 
 // ===== DAILY USAGE LIMIT SYSTEM =====
-function getUsername() { return (localStorage.getItem('autocuan_user') || 'guest').toLowerCase(); }
-function isLoggedInUser() { return getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true'; }
-function getAuthHeaders() { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; }
+function getUsername() { try { return (localStorage.getItem('autocuan_user') || (window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.username) || 'guest').toLowerCase(); } catch (_) { return ((window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.username) || 'guest').toLowerCase(); } }
+function isLoggedInUser() { try { return getUsername() !== 'guest' && localStorage.getItem('autocuan_logged_in') === 'true'; } catch (_) { return getUsername() !== 'guest' && Boolean(window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.userId); } }
+function getAuthHeaders() { try { return isLoggedInUser() ? { 'X-User-Id': localStorage.getItem('autocuan_user_id') || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; } catch (_) { return isLoggedInUser() ? { 'X-User-Id': (window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.userId) || '', 'X-Username': getUsername() } : { 'X-Username': 'guest' }; } }
 function getDashboardAuthHeaders() { return getAuthHeaders(); }
-function isAdmin() { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; }
+function isAdmin() { try { return getUsername() === 'budi' && localStorage.getItem('autocuan_is_admin') === 'true'; } catch (_) { return getUsername() === 'budi' && Boolean(window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.isAdmin); } }
 // Subscription provisioning is intentionally unavailable until its schema and
 // configuration are deployed. It is not part of startup and cannot affect free/public UI.
 function safeRequestId() { return generateDeviceUuid(); }
@@ -1993,7 +1997,11 @@ function updateUsageCounter() {
 
 // ===== LANDING PAGE / APP ROUTING =====
 function isAutocuanLoggedIn() {
-    return localStorage.getItem('autocuan_logged_in') === 'true' && (localStorage.getItem('autocuan_user') || 'guest') !== 'guest';
+    try {
+        return localStorage.getItem('autocuan_logged_in') === 'true' && (localStorage.getItem('autocuan_user') || 'guest') !== 'guest';
+    } catch (_) {
+        return Boolean(window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.userId);
+    }
 }
 function updateLandingCtas() {
     var isLoggedIn = isAutocuanLoggedIn();
@@ -2023,7 +2031,7 @@ function showLandingPage(opts) {
     opts = opts || {};
     setTopLevelView('landing');
     var landing = document.getElementById('landingPage');
-    localStorage.removeItem('autocuan_entered_app');
+    try { localStorage.removeItem('autocuan_entered_app'); } catch (_) {}
     updateLandingCtas();
     if (!opts.skipHistory && !(opts.duringInit && window.location.pathname === '/')) setRoute('/', !!opts.replaceHistory);
     if (!opts.keepScroll) window.scrollTo({ top: 0, behavior: opts.duringInit ? 'auto' : 'smooth' });
@@ -2036,7 +2044,7 @@ function enterApp(opts) {
         openAuthChoiceModal('Silakan login atau daftar terlebih dahulu untuk masuk ke dashboard Auto-Cuan.');
         return;
     }
-    localStorage.setItem('autocuan_entered_app', 'true');
+    try { localStorage.setItem('autocuan_entered_app', 'true'); } catch (_) {}
     setRoute('/dashboard', !!opts.replaceHistory);
     var landing = document.getElementById('landingPage');
     if (landing) landing.classList.add('hidden');
@@ -2762,10 +2770,13 @@ async function doLogin() {
             // additionally gated on the server-identified username being budi. A forged
             // or client-supplied admin flag can never unlock admin here.
             var isAdminUser = (data.isAdmin === true && String(data.username || '').toLowerCase() === 'budi');
-            localStorage.setItem('autocuan_user', data.username); localStorage.setItem('autocuan_is_admin', isAdminUser ? 'true' : 'false');
-            localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString());
-            if (data.userId) { localStorage.setItem('autocuan_user_id', data.userId); }
-            if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
+            try {
+                localStorage.setItem('autocuan_user', data.username); localStorage.setItem('autocuan_is_admin', isAdminUser ? 'true' : 'false');
+                localStorage.setItem('autocuan_logged_in', 'true'); localStorage.setItem('autocuan_login_time', Date.now().toString());
+                if (data.userId) { localStorage.setItem('autocuan_user_id', data.userId); }
+                if (data.isReview) { localStorage.setItem('autocuan_is_review', 'true'); } else { localStorage.removeItem('autocuan_is_review'); }
+            } catch (_) {}
+            window.__AUTOCUAN_AUTHENTICATED_SESSION__ = data;
             refreshSubscriptionStatus();
             logLogin(data.username, false, isAdminUser); closeLoginModal(); closeAuthChoiceModal(); enterApp({ replaceHistory: true });
         } else if (data.approval_status === 'pending' && /^AC-[A-F0-9]{6}$/.test(String(data.approval_code || ''))) {
@@ -2941,10 +2952,13 @@ async function logUsage(ticker, usageAction) { try { var username = localStorage
 
 // ===== DASHBOARD =====
 function showDashboard() {
-    localStorage.setItem('autocuan_entered_app', 'true');
+    try { localStorage.setItem('autocuan_entered_app', 'true'); } catch (_) {}
     // Only flush pending save if there's actually a pending timer (avoids overwriting on initial load)
     if (_saveChatTimer) saveChatHistoryImmediate();
-    var username = getUsername(); var isReview = localStorage.getItem('autocuan_is_review') === 'true';
+    var username = getUsername(); var isReview = false;
+    try { isReview = localStorage.getItem('autocuan_is_review') === 'true'; } catch (_) {
+        isReview = Boolean(window.__AUTOCUAN_AUTHENTICATED_SESSION__ && window.__AUTOCUAN_AUTHENTICATED_SESSION__.isReview === true);
+    }
     clearLegacyDeviceBlock();
     setTopLevelView('app');
     var isGuest = (username === 'guest'); var isAdm = isAdmin();
