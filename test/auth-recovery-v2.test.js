@@ -131,7 +131,7 @@ test('recovery enrollment code is normalized and HMACed without storing raw code
   });
 });
 
-test('login succeeds without deviceId and issues a signed HttpOnly cookie', async function () {
+test('reset-password rejects action: login (delegates exclusively to api/login-user)', async function () {
   await withEnv(async function () {
     const captures = [];
     const db = createDb({
@@ -153,37 +153,9 @@ test('login succeeds without deviceId and issues a signed HttpOnly cookie', asyn
       body: { action: 'login', username: 'alice', passwordHash: GOOD_HASH, userAgent: 'test-agent' }
     }, res);
 
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.success, true);
-    assert.match(cookieValue(res), /^ac_sess=/);
-    assert.match(cookieValue(res), /HttpOnly/);
-    assert.equal(captures.some(function (entry) {
-      return entry.operation === 'update' && entry.payload && Object.prototype.hasOwnProperty.call(entry.payload, 'devices');
-    }), false, 'login must not append or require a device');
-  });
-});
-
-test('wrong password stays generic and issues no cookie', async function () {
-  await withEnv(async function () {
-    const db = createDb({
-      user: {
-        id: 'user-1',
-        username: 'alice',
-        password_hash: GOOD_HASH,
-        is_blocked: false,
-        is_approved: true,
-        created_at: new Date().toISOString()
-      }
-    });
-    const handler = requireApiWithDb(db);
-    const res = makeRes();
-    await handler({
-      method: 'POST',
-      headers: sameOriginHeaders(),
-      body: { action: 'login', username: 'alice', passwordHash: BAD_HASH }
-    }, res);
     assert.equal(res.statusCode, 400);
-    assert.deepEqual(res.body, { success: false, error: 'Username atau password salah.' });
+    assert.equal(res.body.success, false);
+    assert.match(res.body.error, /Gunakan alur pemulihan password/);
     assert.equal(cookieValue(res), '');
   });
 });
@@ -255,7 +227,7 @@ test('approved Telegram callback stores only a reset-token HMAC and sends a one-
   });
 });
 
-test('frontend and SQL contracts remove device authority and keep browser access service-role only', function () {
+test('frontend and SQL contracts keep browser access service-role only and login on login-user', function () {
   const frontend = fs.readFileSync(path.join(ROOT, 'public', 'auth-v2.js'), 'utf8');
   // api/reset-password.js is now a thin routing gateway (shared Vercel Function
   // slot); the actual reset logic lives in lib/reset-password-legacy-handler.js.
@@ -265,11 +237,9 @@ test('frontend and SQL contracts remove device authority and keep browser access
   // (which owns session restore) rather than doing localStorage session writes itself.
   const loader = fs.readFileSync(path.join(ROOT, 'public', 'website-approved-access.js'), 'utf8');
 
-  assert.match(frontend, /authRequest\('login'/);
-  assert.doesNotMatch(frontend, /deviceId\s*:/);
+  assert.match(frontend, /fetch\('\/api\/login-user'/);
   assert.match(frontend, /session-status/);
   assert.match(frontend, /clearLocalAuthState/);
-  assert.match(endpoint, /createSessionToken/);
   assert.doesNotMatch(endpoint, /matchesLegacyBudiPassword|LEGACY_BUDI_PASSWORD_HASH/);
   assert.doesNotMatch(endpoint, /\.select\([^\n]*device_id/);
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/);

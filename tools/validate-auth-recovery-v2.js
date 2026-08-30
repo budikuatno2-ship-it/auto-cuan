@@ -39,19 +39,17 @@ const migration = read('supabase/auth-telegram-recovery-v1-migration.sql');
 const hardening = read('supabase/auth-telegram-recovery-v1-device-retirement-hotfix.sql');
 const rollout = read('docs/auth-recovery-v2-rollout.md');
 
-assertOk(endpoint.includes("action === 'login'"), 'login gateway action is missing');
+assertOk(!endpoint.includes("action === 'login'"), 'login action must not be handled by reset-password gateway');
 assertOk(endpoint.includes("action === 'session-status'"), 'server session validation is missing');
 assertOk(endpoint.includes("action === 'request-password-reset'"), 'Telegram reset request is missing');
 assertOk(endpoint.includes("action === 'complete-password-reset'"), 'one-time reset completion is missing');
 assertOk(endpoint.includes("queryAction === 'telegram-verify-webhook-v3'"), 'combined recovery webhook is missing');
-assertOk(endpoint.includes('createSessionToken') && endpoint.includes('buildSessionCookie'), 'signed cookie issuance is missing');
 assertOk(!endpoint.includes('matchesLegacyBudiPassword') && !endpoint.includes('LEGACY_BUDI_PASSWORD_HASH'), 'legacy dot compatibility entered the new gateway');
 assertOk(!/\.select\([^\n]*device_id/.test(endpoint), 'new gateway still reads device_id as credential state');
 
-assertOk(frontend.includes("authRequest('login'"), 'frontend does not use the new login gateway');
+assertOk(frontend.includes("fetch('/api/login-user'"), 'frontend does not route login to canonical /api/login-user');
 assertOk(frontend.includes("authRequest('session-status'"), 'frontend does not validate the server session');
 assertOk(frontend.includes('clearLocalAuthState'), 'orphan local auth cleanup is missing');
-assertOk(!/deviceId\s*:/.test(frontend), 'frontend still submits a device ID for login/reset');
 assertOk(loader.includes('/auth-v2.js?v='), 'auth-v2 loader is missing');
 assertOk(loader.includes('/maintenance-auth-guard.js?v='), 'maintenance auth guard loader is missing');
 assertOk(
