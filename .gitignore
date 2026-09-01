@@ -96,3 +96,5 @@ tmp/intraday-shadow-scoring-live.lock
 data/intraday-fast-watcher-observations/
 data/intraday-fast-watcher-state/
 data/intraday-fast-watcher-events/
+.vercel
+.env*
