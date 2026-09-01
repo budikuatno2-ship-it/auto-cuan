@@ -7032,11 +7032,13 @@ async function registerCandidatesForMonitoring(supabase, candidates, date, sourc
     var existingRes = await supabase.from('telegram_daily_picks').select('ticker,monitor_source,plan_lock_id,raw_payload').eq('date', date);
     if (existingRes.error) return Object.assign({}, empty, { error: existingRes.error.message, schema_error: true });
     var existingKeys = {};
+    var existingSourceKeys = {};
     (existingRes.data || []).forEach(function(r) {
       var raw = r.raw_payload || {};
       var existingSource = normalizeMonitorSourceValue(r.monitor_source || raw.monitor_source, r);
       var existingPlanId = r.plan_lock_id || raw.plan_lock_id || raw.locked_plan_lock_id || null;
       if (r.ticker && existingSource && existingPlanId) existingKeys[String(r.ticker).toUpperCase() + '|' + existingSource + '|' + existingPlanId] = true;
+      if (r.ticker && existingSource) existingSourceKeys[String(r.ticker).toUpperCase() + '|' + existingSource] = true;
     });
 
     var nowIso = new Date().toISOString();
@@ -7053,8 +7055,13 @@ async function registerCandidatesForMonitoring(supabase, candidates, date, sourc
         continue;
       }
       var key = identity.ticker + '|' + identity.monitor_source + '|' + identity.plan_lock_id;
+      var sourceKey = identity.ticker + '|' + identity.monitor_source;
       if (existingKeys[key]) { skipped++; continue; }
+      // For silent screener tracking ('daytrade'), deduplicate by ticker+source alone
+      // so ~12min republishes with slightly shifted levels do not create duplicate rows.
+      if (source === 'daytrade' && existingSourceKeys[sourceKey]) { skipped++; continue; }
       existingKeys[key] = true;
+      existingSourceKeys[sourceKey] = true;
       var lockedCandidate = Object.assign({}, c, {
         ticker: identity.ticker,
         entry1: identity.entry_high,
@@ -7066,7 +7073,8 @@ async function registerCandidatesForMonitoring(supabase, candidates, date, sourc
         plan_lock_id: identity.plan_lock_id,
         trade_plan_source: identity.trade_plan_source
       });
-      var row = dailyPickInsertRowFromCandidate(lockedCandidate, date, nowIso);
+      // Silent background screener registers must NOT have first_sent_at populated
+      var row = dailyPickInsertRowFromCandidate(lockedCandidate, date, source === 'daytrade' ? null : nowIso);
       row.monitor_source = identity.monitor_source;
       row.plan_lock_id = identity.plan_lock_id;
       row.raw_payload = Object.assign({}, row.raw_payload || {}, {
