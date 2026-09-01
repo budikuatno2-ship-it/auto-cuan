@@ -11281,6 +11281,8 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
         trend_score: r.trend_score,
         penalty_score: r.penalty_score,
         last_price: r.last_price,
+        price_source: r.price_source || 'yahoo_chart_1d_close',
+        price_date: r.price_date || null,
         change_pct: r.change_pct,
         open_price: r.open_price,
         high_price: r.high_price,
