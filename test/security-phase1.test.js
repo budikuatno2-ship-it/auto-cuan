@@ -13,7 +13,11 @@ test('Security Phase 1 remains disabled by default and preserves API budget', ()
   const apiFiles = fs.readdirSync(path.join(ROOT, 'api')).filter(function (name) {
     return name.endsWith('.js');
   });
-  assert.match(security, /SECURITY_GUARD_MODE\s*\|\|\s*'off'/);
+  // safeDefault is 'off' outside production and 'enforce' in production
+  // (see fix(auth): enforce login guard safely in production), so the guard
+  // stays inert unless explicitly opted into or deployed to production.
+  assert.match(security, /isProductionEnv\(source\) \? 'enforce' : 'off'/);
+  assert.match(security, /const raw = source\.SECURITY_GUARD_MODE;/);
   assert.equal(apiFiles.length, 12);
 });
 

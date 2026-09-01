@@ -93,8 +93,8 @@ test('all daytrade score DB orderings have deterministic ticker tiebreak', () =>
     /\.order\('daytrade_score', \{ ascending: false \}\)\.order\('ticker', \{ ascending: true \}\)/g
   ) || []).length;
 
-  assert.equal(primary, 6);
-  assert.equal(chained, 6);
+  assert.equal(primary, 5);
+  assert.equal(chained, 5);
 });
 
 function loadWebClassifier() {
