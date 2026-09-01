@@ -20,6 +20,13 @@ function makeDb(options) {
     calls: calls,
     rpc(name, args) {
       calls.push({ name: name, args: args });
+      if (name === 'get_admin_maintenance_code_status') {
+        // This fixture models the pre-migration deployment stage: the
+        // admin-maintenance-code SQL migration is not yet applied, so its
+        // feature probe must report unavailable and the legacy
+        // admin-command-login flow stays in charge of /akses.
+        return Promise.resolve({ data: null, error: { message: 'function not found' } });
+      }
       if (name === 'claim_auth_recovery_webhook_update') {
         if (claimed.has(args.p_update_id)) return Promise.resolve({ data: [{ claimed: false }], error: null });
         claimed.add(args.p_update_id);
