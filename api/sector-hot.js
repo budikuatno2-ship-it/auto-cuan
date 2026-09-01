@@ -7809,7 +7809,7 @@ async function handleWebTop5History(req, res, supabase) {
     var rows = (q.data || []).filter(function(r) {
       return (
         (showArchived || !((r.raw_payload || {}).history_archived_at)) &&
-        telegramDelivery.monitorRowIsEligible(r)
+        telegramDelivery.monitorRowIsPublicNotificationEligible(r)
       );
     });
     var _historyStartMs = Date.now();
@@ -8252,7 +8252,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     var allRows = q.data || [];
     var activeRows = allRows.filter(function(r) {
       return !isTerminalPick(r) &&
-        telegramDelivery.monitorRowIsEligible(r);
+        telegramDelivery.monitorRowIsTrackable(r);
     });
 
     if (activeRows.length === 0) {
@@ -8329,13 +8329,16 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       }
 
       // Only notify if this is a NEW hit (idempotent per recommendation via the
-      // hit_entry_at / hit_tp1_at / hit_tp2_at / hit_sl_at markers).
+      // hit_entry_at / hit_tp1_at / hit_tp2_at / hit_sl_at markers) AND the row is
+      // eligible for public Telegram broadcast (silent 'daytrade' rows are tracked
+      // in DB only and never send public Telegram hit alerts).
+      var isPublicAlertEligible = telegramDelivery.monitorRowIsPublicNotificationEligible(pck);
       var isNewHit = false;
       if ((ev.status === 'RUNNING' || ev.status === 'IN_ENTRY_ZONE') && !pck.hit_entry_at) isNewHit = true;
       if (ev.status === 'TP1_HIT' && !pck.hit_tp1_at) isNewHit = true;
       if (ev.status === 'TP2_HIT' && !pck.hit_tp2_at) isNewHit = true;
       if (ev.status === 'SL_HIT' && !pck.hit_sl_at) isNewHit = true;
-      var significantHit = isNewHit && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
+      var significantHit = isPublicAlertEligible && isNewHit && ['TP1_HIT', 'TP2_HIT', 'SL_HIT', 'IN_ENTRY_ZONE'].indexOf(ev.status) >= 0;
 
       // IMMEDIATE INDIVIDUAL NOTIFICATION — fires on EVERY monitor invocation
       // (both the top-of-hour and the half-hour run), independent of the hourly
@@ -8393,14 +8396,17 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
       }
 
       // HOURLY BATCH DIGEST ROW — a compact status block for EVERY deduplicated
-      // active recommendation. Assembled on every run (pure string building), but
-      // only actually sent once per hour via the cadence gate after the loop.
-      var batchBlock = formatMonitorBatchRow(pck, ev, px);
-      if (ev.isFinal && !isFinal) batchBlock += '\nStatus: selesai, tidak akan dimonitor di update berikutnya.';
-      if (monitorAiNote) batchBlock += '\nCatatan AI: ' + monitorAiNote;
-      lines.push(batchBlock);
-      lines.push('');
-      shown++;
+      // active recommendation that is public-eligible. Assembled on every run (pure
+      // string building), but only actually sent once per hour via the cadence gate
+      // after the loop. Silent 'daytrade' rows are excluded from the public digest.
+      if (isPublicAlertEligible) {
+        var batchBlock = formatMonitorBatchRow(pck, ev, px);
+        if (ev.isFinal && !isFinal) batchBlock += '\nStatus: selesai, tidak akan dimonitor di update berikutnya.';
+        if (monitorAiNote) batchBlock += '\nCatatan AI: ' + monitorAiNote;
+        lines.push(batchBlock);
+        lines.push('');
+        shown++;
+      }
 
       // Diagnostic-only preview data (dry-run). Percentage change is reported for
       // observability only; it never triggers a Telegram notification in this patch.
