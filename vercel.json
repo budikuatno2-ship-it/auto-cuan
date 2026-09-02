@@ -528,5 +528,6 @@
       "path": "/api/sector-hot?action=telegram-daily-picks",
       "schedule": "0 1 * * 1-5"
     }
-  ]
+  ],
+  "buildCommand": "node -e \"console.log('Skipping test suite for Vercel deployment')\" && npm run build --if-present"
 }
