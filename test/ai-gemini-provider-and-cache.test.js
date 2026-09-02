@@ -48,6 +48,22 @@ test('PR 6: getGeminiApiKey prioritizes API_KEY_ANALISA_SAHAM_PORTOFOLIO over GE
 });
 
 test('PR 6: generateGeminiContent throws GEMINI_API_KEY_MISSING when no key is configured', async () => {
+  const origPrimary = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  const origFallback = process.env.GEMINI_API_KEY;
+  delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  delete process.env.GEMINI_API_KEY;
+  try {
+    await assert.rejects(
+      generateGeminiContent({ apiKey: null, prompt: 'halo' }),
+      (err) => err.code === 'GEMINI_API_KEY_MISSING'
+    );
+  } finally {
+    if (origPrimary !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origPrimary;
+    if (origFallback !== undefined) process.env.GEMINI_API_KEY = origFallback;
+  }
+});
+
+test('PR 6: generateGeminiContent throws GEMINI_API_KEY_MISSING when explicit empty apiKey is provided', async () => {
   await assert.rejects(
     generateGeminiContent({ apiKey: null, prompt: 'halo' }),
     (err) => err.code === 'GEMINI_API_KEY_MISSING'
