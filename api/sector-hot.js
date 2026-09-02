@@ -1138,25 +1138,40 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
     });
 
     if (upsertRows.length > 0) {
-      // Delete old data first
-      var { error: delError } = await supabase.from('swing_screener_latest').delete().neq('ticker', '');
-      if (delError) {
-        console.error('Screener delete error:', delError.message);
-        saveError = 'Delete failed: ' + delError.message;
+      // Upsert in batches of 50 to avoid payload limits (atomic per ticker, table is never left empty)
+      var batchSize = 50;
+      for (var b = 0; b < upsertRows.length; b += batchSize) {
+        var batch = upsertRows.slice(b, b + batchSize);
+        var { error: insError, data: insData } = await supabase
+          .from('swing_screener_latest')
+          .upsert(batch, { onConflict: 'ticker' })
+          .select('ticker');
+        if (insError) {
+          console.error('Screener upsert error (batch ' + b + '):', insError.message, insError.details, insError.hint);
+          saveError = 'Upsert failed: ' + insError.message + (insError.details ? ' | ' + insError.details : '') + (insError.hint ? ' | Hint: ' + insError.hint : '');
+          break;
+        }
+        savedCount += (insData ? insData.length : batch.length);
       }
 
       if (!saveError) {
-        // Insert in batches of 50 to avoid payload limits
-        var batchSize = 50;
-        for (var b = 0; b < upsertRows.length; b += batchSize) {
-          var batch = upsertRows.slice(b, b + batchSize);
-          var { error: insError, data: insData } = await supabase.from('swing_screener_latest').insert(batch).select('ticker');
-          if (insError) {
-            console.error('Screener insert error (batch ' + b + '):', insError.message, insError.details, insError.hint);
-            saveError = 'Insert failed: ' + insError.message + (insError.details ? ' | ' + insError.details : '') + (insError.hint ? ' | Hint: ' + insError.hint : '');
-            break;
-          }
-          savedCount += (insData ? insData.length : batch.length);
+        // Clean up any old tickers that are no longer in the new universe
+        var newTickers = upsertRows.map(function(r) { return r.ticker; }).filter(Boolean);
+        if (newTickers.length > 0) {
+          try {
+            var { data: existingRows } = await supabase
+              .from('swing_screener_latest')
+              .select('ticker');
+            var staleTickers = (existingRows || [])
+              .map(function(r) { return r.ticker; })
+              .filter(function(t) { return t && !newTickers.includes(t); });
+            if (staleTickers.length > 0) {
+              await supabase
+                .from('swing_screener_latest')
+                .delete()
+                .in('ticker', staleTickers);
+            }
+          } catch (_) {}
         }
       }
     }
@@ -11389,19 +11404,14 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
   var failedTickers = batchResult.failed;
 
   // 7. Save batch results to daytrade_screener_latest immediately (upsert per ticker)
-  //    Only keep candidates with score >= 50
+  // 7. Save batch results to daytrade_screener_latest immediately (upsert per ticker with run_id)
+  //    Only keep candidates with score >= 50. Old data is preserved until finalizeDtScreener trims it.
   var passedResults = results.filter(function(r) { return r.daytrade_score >= 50; });
   var now = new Date().toISOString();
   var batchSaveError = null;
 
-  // On first batch, clear old data
-  if (batchIndex === 0) {
-    var { error: delErr } = await supabase.from('daytrade_screener_latest').delete().neq('ticker', '');
-    if (delErr) batchSaveError = 'Delete failed: ' + delErr.message;
-  }
-
-  // Insert passed results for this batch
-  if (!batchSaveError && passedResults.length > 0) {
+  // Upsert passed results for this batch
+  if (passedResults.length > 0) {
     var batchRows = passedResults.map(function(r) {
       return {
         ticker: r.ticker,
@@ -11462,9 +11472,9 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
       };
     });
 
-    var { error: insErr } = await supabase.from('daytrade_screener_latest').insert(batchRows);
+    var { error: insErr } = await supabase.from('daytrade_screener_latest').upsert(batchRows, { onConflict: 'ticker' });
     if (insErr) {
-      batchSaveError = 'Insert failed: ' + insErr.message + (insErr.details ? ' | ' + insErr.details : '');
+      batchSaveError = 'Upsert failed: ' + insErr.message + (insErr.details ? ' | ' + insErr.details : '');
     }
   }
 
@@ -11556,10 +11566,10 @@ function buildDtValueDistribution(rows, fieldName) {
 }
 
 async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, universeCount, batchCount, counters) {
-  // Read all rows currently in daytrade_screener_latest, keep only top 50 by score
+  // Read all rows currently in daytrade_screener_latest, keep only top 50 by score for current run
   var { data: allRows, error: readErr } = await supabase
     .from('daytrade_screener_latest')
-    .select('ticker, daytrade_score, status, risk_reward, entry_low, entry_high, stop_loss, tp1, tp2, calculated_at')
+    .select('ticker, daytrade_score, status, risk_reward, entry_low, entry_high, stop_loss, tp1, tp2, calculated_at, run_id')
     .order('daytrade_score', { ascending: false }).order('ticker', { ascending: true });
 
   var rawBatchPassedCount = counters ? (counters.passed_count || 0) : 0;
@@ -11596,50 +11606,56 @@ async function finalizeDtScreener(req, res, supabase, runId, runDate, runMode, u
       published_count: 0
     });
   }
-  allRows = daytradeExecutionRanking.sortDayTradeByExecution(allRows || []);
-  var prePublishCandidateCount = allRows.length;
+
+  allRows = allRows || [];
+  // Prioritize candidates produced during the current run_id; fallback gracefully to allRows for backward compatibility
+  var currentRunRows = runId ? allRows.filter(function(r) { return r.run_id === runId; }) : allRows;
+  if (currentRunRows.length === 0 && allRows.length > 0) currentRunRows = allRows;
+
+  currentRunRows = daytradeExecutionRanking.sortDayTradeByExecution(currentRunRows);
+  var prePublishCandidateCount = currentRunRows.length;
   // Preserve batch progress diagnostics separately from rows that survive DB read/trim.
   // This prevents a production false-zero from hiding the fact that earlier batches had candidates.
   var totalPassed = Math.max(prePublishCandidateCount, rawBatchPassedCount);
-  var savedCount = Math.min(prePublishCandidateCount, 50);
+  var publishedRows = currentRunRows.slice(0, 50);
+  var savedCount = publishedRows.length;
 
-  // If more than 50 rows, delete extras (keep top 50)
-  if (allRows && allRows.length > 50) {
-    var tickersToRemove = allRows.slice(50).map(function(r) { return r.ticker; });
-    if (tickersToRemove.length > 0) {
-      var { error: trimErr } = await supabase.from('daytrade_screener_latest').delete().in('ticker', tickersToRemove);
-      if (trimErr) {
-        console.error('[daytrade-screener-finalize] top-50 trim failed:', trimErr.message || trimErr);
-        await updateDtMeta(supabase, {
-          status: 'failed',
-          run_date: runDate,
-          run_mode: runMode,
-          run_id: runId,
-          universe_count: universeCount,
-          scanned_count: counters ? (counters.scanned_count || universeCount) : universeCount,
-          failed_count: counters ? (counters.failed_count || 0) : 0,
-          passed_count: rawBatchPassedCount,
-          published_count: 0,
-          top_count: 0,
-          message: 'Day Trade finalization failed while trimming candidates.'
-        });
-        return res.status(500).json({
-          success: false,
-          status: 'failed',
-          error_code: 'daytrade_finalize_trim_failed',
-          error: 'Day Trade candidates were saved but the Top 50 trim failed.',
-          run_id: runId,
-          run_date: runDate,
-          raw_batch_passed_count: rawBatchPassedCount,
-          pre_publish_candidate_count: prePublishCandidateCount,
-          published_count: 0
-        });
-      }
+  // Prune rows that are not in the top 50 of the current run (cleans up both lower-ranked rows and stale rows from prior runs)
+  var top50Tickers = new Set(publishedRows.map(function(r) { return r.ticker; }));
+  var tickersToRemove = allRows
+    .filter(function(r) { return !top50Tickers.has(r.ticker); })
+    .map(function(r) { return r.ticker; });
+
+  if (tickersToRemove.length > 0) {
+    var { error: trimErr } = await supabase.from('daytrade_screener_latest').delete().in('ticker', tickersToRemove);
+    if (trimErr) {
+      console.error('[daytrade-screener-finalize] top-50 trim failed:', trimErr.message || trimErr);
+      await updateDtMeta(supabase, {
+        status: 'failed',
+        run_date: runDate,
+        run_mode: runMode,
+        run_id: runId,
+        universe_count: universeCount,
+        scanned_count: counters ? (counters.scanned_count || universeCount) : universeCount,
+        failed_count: counters ? (counters.failed_count || 0) : 0,
+        passed_count: rawBatchPassedCount,
+        published_count: 0,
+        top_count: 0,
+        message: 'Day Trade finalization failed while trimming candidates.'
+      });
+      return res.status(500).json({
+        success: false,
+        status: 'failed',
+        error_code: 'daytrade_finalize_trim_failed',
+        error: 'Day Trade candidates were saved but the Top 50 trim failed.',
+        run_id: runId,
+        run_date: runDate,
+        raw_batch_passed_count: rawBatchPassedCount,
+        pre_publish_candidate_count: prePublishCandidateCount,
+        published_count: 0
+      });
     }
-    savedCount = 50;
   }
-
-  var publishedRows = allRows ? allRows.slice(0, 50) : [];
 
   // Separate confirmed signals from earlier Radar opportunities.
   // top_count remains the backward-compatible priority-opportunity total.

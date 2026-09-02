@@ -10,7 +10,7 @@ const end = source.indexOf('function getDtRunningStartedAt', start);
 const finalizer = source.slice(start, end);
 
 test('Day Trade finalizer reads only persisted columns and surfaces database errors', () => {
-  assert.match(finalizer, /select\('ticker, daytrade_score, status, risk_reward, entry_low, entry_high, stop_loss, tp1, tp2, calculated_at'\)/);
+  assert.match(finalizer, /select\('ticker, daytrade_score, status, risk_reward, entry_low, entry_high, stop_loss, tp1, tp2, calculated_at(?:, run_id)?'\)/);
   assert.doesNotMatch(finalizer, /select\([^\n]*action_label/);
   assert.match(finalizer, /if \(readErr\)/);
   assert.match(finalizer, /daytrade_finalize_read_failed/);
