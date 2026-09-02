@@ -152,6 +152,7 @@ module.exports = async function handler(req, res) {
 
       const configToSave = {
         maintenanceMode: Boolean(config.maintenanceMode),
+        geminiAiEnabled: config.geminiAiEnabled !== false,
         message: String(config.message || 'Auto-Cuan sedang tidak dapat diakses sementara.').slice(0, 500),
         updatedBy: auth.session.un || 'admin',
         updatedAt: new Date().toISOString()

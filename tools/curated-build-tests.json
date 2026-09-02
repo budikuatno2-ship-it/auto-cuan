@@ -310,5 +310,6 @@
   "test/build-test-runner.test.js",
   "test/design-system-tokens-typography.test.js",
   "test/desktop-screener-dashboard-overhaul.test.js",
-  "test/mobile-ux-performance.test.js"
+  "test/mobile-ux-performance.test.js",
+  "test/ai-gemini-provider-and-cache.test.js"
 ]
