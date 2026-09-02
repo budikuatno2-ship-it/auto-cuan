@@ -141,7 +141,8 @@ test('PR 6: generateGeminiContent formats payload and returns candidate text on 
   assert.equal(result.text, 'Halo dari Gemini Flash 2.5!');
   assert.equal(result.model, 'gemini-2.5-flash');
   assert.equal(result.source, 'gemini_api');
-  assert.ok(calledUrl.includes('generativelanguage.googleapis.com'));
+  const parsedCalledUrl = new URL(calledUrl);
+  assert.equal(parsedCalledUrl.hostname, 'generativelanguage.googleapis.com');
   assert.ok(calledUrl.includes('gemini-2.5-flash:generateContent?key=test-gemini-key'));
   assert.equal(calledBody.contents[0].parts[0].text, 'Analisis BBCA');
   assert.equal(calledBody.systemInstruction.parts[0].text, 'Gunakan Bahasa Indonesia.');
