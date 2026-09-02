@@ -413,16 +413,15 @@ module.exports = async function handler(req, res) {
 // ============================================================
 // SCREENER READ — gated by the signed session, upstream
 // Derive Fibonacci confluence from persisted support/resistance (lightweight, no candle re-fetch)
+// Derive Fibonacci confluence from persisted support/resistance (lightweight, no candle re-fetch)
 function applyFallbackFibConfluence(r) {
   if (!r || typeof r !== 'object') return r;
   if (!r.fib_confluence_label && r.resistance > 0 && r.support > 0 && r.resistance > r.support) {
-    var _fibReadResult = fibConfluence.evaluateFibConfluence(null, null); // default insufficient
     var _fibRange = r.resistance - r.support;
     var _fibRangePct = r.support > 0 ? _fibRange / r.support : 0;
     if (_fibRangePct >= 0.03) {
       var _fibLevels = fibConfluence.calculateFibLevels(r.resistance, r.support);
       if (_fibLevels && _fibLevels.levels) {
-        _fibReadResult = fibConfluence.evaluateFibConfluence(null, null); // reset
         var _refPrice = r.last_price || 0;
         var _entryMid = (toNum(r.entry_low) + toNum(r.entry_high)) / 2 || _refPrice;
         var _nearHealthy = _entryMid <= _fibLevels.levels.fib_382 && _entryMid >= _fibLevels.levels.fib_618;
@@ -445,14 +444,14 @@ function applyFallbackFibConfluence(r) {
         r.fib_levels = { fib_382: _fibLevels.levels.fib_382, fib_500: _fibLevels.levels.fib_500, fib_618: _fibLevels.levels.fib_618 };
       }
     }
-    if (!r.fib_confluence_label) {
-      r.fib_confluence_status = 'insufficient_data';
-      r.fib_confluence_label = 'Fib belum cukup data';
-      r.fib_confluence_note = 'Data candle belum cukup untuk membaca Fib confluence.';
-      r.fib_nearest_label = null;
-      r.fib_nearest_level = null;
-      r.fib_levels = null;
-    }
+  }
+  if (!r.fib_confluence_label) {
+    r.fib_confluence_status = 'insufficient_data';
+    r.fib_confluence_label = 'Fib belum cukup data';
+    r.fib_confluence_note = 'Data candle belum cukup untuk membaca Fib confluence.';
+    r.fib_nearest_label = null;
+    r.fib_nearest_level = null;
+    r.fib_levels = null;
   }
   return r;
 }
@@ -8422,8 +8421,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
 
       // Override EXPIRED/NEEDS_REVALIDATION note based on source (for batch/digest message)
       if (ev.status === 'EXPIRED' || ev.status === 'NEEDS_REVALIDATION') {
-        var raw = pck.raw_payload || {};
-        var src = raw.monitor_source || pck.category || raw.category || '';
+        var src = resolveMonitorSource(pck) || '';
         var srcL = String(src).toLowerCase();
         var isSwing = srcL.indexOf('swing') >= 0 || srcL === 'top5';
         var isDaytrade = srcL.indexOf('daytrade') >= 0;
@@ -9785,16 +9783,6 @@ async function handleNkScreenerFinalize(req, res, supabase) {
     });
   }
 
-  // Clear latest table and insert top 30
-  // NOTE: This is not a true DB transaction (two separate calls).
-  // If insert fails after delete, meta stays in "finalizing" (not "published").
-  // User can retry nk-screener-run&force=1 to re-attempt finalize from staging.
-  var { error: delErr } = await supabase.from('swing_screener_non_konglo_latest').delete().neq('ticker', '');
-  if (delErr) {
-    await updateNkMeta(supabase, { status: 'failed', message: 'Gagal menghapus latest: ' + delErr.message });
-    return res.status(200).json({ success: false, error: 'Failed to clear latest table.' });
-  }
-
   var publishedCount = 0;
 
   if (topCandidates && topCandidates.length > 0) {
@@ -9856,14 +9844,24 @@ async function handleNkScreenerFinalize(req, res, supabase) {
       trade_plan_v2_structural: c.trade_plan_v2_structural || null
     })).map(sanitizeNkLatestPublishRow);
 
-    var { error: insErr } = await supabase.from('swing_screener_non_konglo_latest').insert(publishRows);
+    // Atomic upsert: write published rows first so existing data is never wiped if process fails
+    var { error: insErr } = await supabase.from('swing_screener_non_konglo_latest').upsert(publishRows, { onConflict: 'ticker' });
     if (insErr) {
-      // Insert failed — meta stays as "finalizing", NOT "published"
-      // User can retry and finalize will re-attempt from staging
       await updateNkMeta(supabase, { status: 'failed', message: 'Gagal publish Top 30: ' + insErr.message });
       return res.status(200).json(buildNkPublishFailureResponse(insErr, publishRows, stagingDiagnostics, totalStagingCount));
     }
     publishedCount = publishRows.length;
+
+    // Post-upsert cleanup: prune tickers from previous runs that are not in the new published list
+    var publishedTickerSet = new Set(publishRows.map(function(r) { return r.ticker; }));
+    var { data: existingRows } = await supabase.from('swing_screener_non_konglo_latest').select('ticker');
+    var staleTickers = (existingRows || [])
+      .filter(function(r) { return r && r.ticker && !publishedTickerSet.has(r.ticker); })
+      .map(function(r) { return r.ticker; });
+
+    if (staleTickers.length > 0) {
+      await supabase.from('swing_screener_non_konglo_latest').delete().in('ticker', staleTickers);
+    }
   }
 
   // Only mark as "published" if insert succeeded AND rows > 0
@@ -13898,6 +13896,7 @@ module.exports.__test = {
   handleUserWatchlist: handleUserWatchlist,
   handleUserWatchlistAlert: handleUserWatchlistAlert,
   handleNkScreenerResults: handleNkScreenerResults,
+  applyFallbackFibConfluence: applyFallbackFibConfluence,
   annotateSwingNkHighRrWarning: swingNkRrWarning.annotateSwingNkHighRrWarning,
   SWING_NK_HIGH_RR_WARNING_THRESHOLD: swingNkRrWarning.SWING_NK_HIGH_RR_WARNING_THRESHOLD
 };

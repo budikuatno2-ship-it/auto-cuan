@@ -208,9 +208,9 @@ test('Swing Non-Konglo finalize uses persisted meta run_date and exposes staging
           maybeSingle: function() {
             return Promise.resolve({ data: { run_date: runDate, status: 'scanning', scanned_count: 8 }, error: null });
           },
-          upsert: function() { return Promise.resolve({ data: [], error: null }); },
+          upsert: function(rows) { if (table === 'swing_screener_non_konglo_latest' && rows && Array.isArray(rows)) inserted.push.apply(inserted, rows); return Promise.resolve({ data: rows || [], error: null }); },
           update: function() { return { eq: function() { return Promise.resolve({ data: [], error: null }); } }; },
-          delete: function() { return { neq: function() { return Promise.resolve({ data: [], error: null }); } }; },
+          delete: function() { return { neq: function() { return Promise.resolve({ data: [], error: null }); }, in: function() { return Promise.resolve({ data: [], error: null }); } }; },
           insert: function(rows) { inserted.push.apply(inserted, rows); return Promise.resolve({ data: rows, error: null }); }
         };
         return chain;
