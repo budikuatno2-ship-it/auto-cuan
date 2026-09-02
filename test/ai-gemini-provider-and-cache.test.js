@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,10 +13,44 @@ const {
   computeCacheKey,
   getCachedAnalysis,
   setCachedAnalysis,
-  clearMemoryCache
+  clearMemoryCache,
+  setSupabaseClient,
+  DEFAULT_TTL_SECONDS
 } = require('../lib/ai-analysis-cache');
 
 const handleContextAIV7 = require('../lib/context-ai-router-v7');
+
+// Helper to create an in-memory mock Supabase client
+function createMockSupabase(initialRows = []) {
+  const store = new Map(initialRows.map(r => [r.cache_key, r]));
+  return {
+    from(table) {
+      if (table !== 'ai_analysis_cache') throw new Error('Unexpected table ' + table);
+      return {
+        select(cols) {
+          return {
+            eq(col, val) {
+              return {
+                async maybeSingle() {
+                  if (col === 'cache_key') {
+                    const row = store.get(val);
+                    return { data: row ? { payload_response: row.payload_response, expires_at: row.expires_at } : null, error: null };
+                  }
+                  return { data: null, error: null };
+                }
+              };
+            }
+          };
+        },
+        async upsert(row) {
+          store.set(row.cache_key, row);
+          return { data: row, error: null };
+        }
+      };
+    },
+    _store: store
+  };
+}
 
 function mockRes() {
   const state = { statusCode: 200, payload: null };
@@ -28,42 +62,52 @@ function mockRes() {
   return { state, res };
 }
 
+// Global isolation setup
+const origSupabaseUrl = process.env.SUPABASE_URL;
+const origSupabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const origGeminiKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+const origFallbackKey = process.env.GEMINI_API_KEY;
+
+test.beforeEach(() => {
+  clearMemoryCache();
+  setSupabaseClient(null);
+  delete process.env.SUPABASE_URL;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+});
+
+test.after(() => {
+  clearMemoryCache();
+  setSupabaseClient(null);
+  if (origSupabaseUrl !== undefined) process.env.SUPABASE_URL = origSupabaseUrl;
+  if (origSupabaseKey !== undefined) process.env.SUPABASE_SERVICE_ROLE_KEY = origSupabaseKey;
+  if (origGeminiKey !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origGeminiKey;
+  if (origFallbackKey !== undefined) process.env.GEMINI_API_KEY = origFallbackKey;
+});
+
+// ============================================================================
+// 1. Google Gemini Provider Tests
+// ============================================================================
+
 test('PR 6: getGeminiApiKey prioritizes API_KEY_ANALISA_SAHAM_PORTOFOLIO over GEMINI_API_KEY', () => {
-  const origPrimary = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
-  const origFallback = process.env.GEMINI_API_KEY;
   try {
     process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = '  primary-gemini-key-123  ';
     process.env.GEMINI_API_KEY = 'fallback-key-456';
     assert.equal(getGeminiApiKey(), 'primary-gemini-key-123');
+
     delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
     assert.equal(getGeminiApiKey(), 'fallback-key-456');
+
     delete process.env.GEMINI_API_KEY;
     assert.equal(getGeminiApiKey(), null);
   } finally {
-    if (origPrimary !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origPrimary;
-    else delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
-    if (origFallback !== undefined) process.env.GEMINI_API_KEY = origFallback;
-    else delete process.env.GEMINI_API_KEY;
+    delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+    delete process.env.GEMINI_API_KEY;
   }
 });
 
 test('PR 6: generateGeminiContent throws GEMINI_API_KEY_MISSING when no key is configured', async () => {
-  const origPrimary = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
-  const origFallback = process.env.GEMINI_API_KEY;
   delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   delete process.env.GEMINI_API_KEY;
-  try {
-    await assert.rejects(
-      generateGeminiContent({ apiKey: null, prompt: 'halo' }),
-      (err) => err.code === 'GEMINI_API_KEY_MISSING'
-    );
-  } finally {
-    if (origPrimary !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origPrimary;
-    if (origFallback !== undefined) process.env.GEMINI_API_KEY = origFallback;
-  }
-});
-
-test('PR 6: generateGeminiContent throws GEMINI_API_KEY_MISSING when explicit empty apiKey is provided', async () => {
   await assert.rejects(
     generateGeminiContent({ apiKey: null, prompt: 'halo' }),
     (err) => err.code === 'GEMINI_API_KEY_MISSING'
@@ -116,6 +160,10 @@ test('PR 6: generateGeminiContent classifies HTTP 429 and 500 correctly', async 
   );
 });
 
+// ============================================================================
+// 2. Database Response Cache Tests
+// ============================================================================
+
 test('PR 6: computeCacheKey produces deterministic SHA-256 hash', () => {
   const key1 = computeCacheKey({ ticker: 'bbca', analysisType: 'stock_analysis', prompt: 'gimana?', marketDate: '2026-09-02' });
   const key2 = computeCacheKey({ ticker: 'BBCA', analysisType: 'STOCK_ANALYSIS', prompt: 'gimana?', marketDate: '2026-09-02' });
@@ -125,8 +173,7 @@ test('PR 6: computeCacheKey produces deterministic SHA-256 hash', () => {
   assert.equal(key1.length, 64);
 });
 
-test('PR 6: cache hit returns payload with source=db_cache and cache_hit=true', async () => {
-  clearMemoryCache();
+test('PR 6: cache hit in memory returns payload with source=db_cache and cache_hit=true', async () => {
   const cacheKey = computeCacheKey({ ticker: 'TLKM', analysisType: 'stock_analysis', prompt: 'entry level?', marketDate: '2026-09-02' });
   await setCachedAnalysis({
     cacheKey,
@@ -142,8 +189,32 @@ test('PR 6: cache hit returns payload with source=db_cache and cache_hit=true', 
   assert.equal(cached.cache_hit, true);
 });
 
-test('PR 6: expired cache entry returns null (cache miss)', async () => {
+test('PR 6: getCachedAnalysis and setCachedAnalysis work with mock Supabase client without network', async () => {
+  const mockDb = createMockSupabase();
+  const cacheKey = computeCacheKey({ ticker: 'BBCA', analysisType: 'stock_analysis', prompt: 'level breakout?', marketDate: '2026-09-02' });
+
+  const stored = await setCachedAnalysis({
+    cacheKey,
+    ticker: 'BBCA',
+    analysisType: 'stock_analysis',
+    payloadResponse: { reply: 'BBCA breakout di 10200' },
+    ttlSeconds: 3600,
+    dbClient: mockDb
+  });
+  assert.equal(stored, true);
+  assert.ok(mockDb._store.has(cacheKey));
+
+  // Clear memory cache to force mock DB lookup
   clearMemoryCache();
+
+  const cached = await getCachedAnalysis({ cacheKey, dbClient: mockDb });
+  assert.ok(cached);
+  assert.equal(cached.reply, 'BBCA breakout di 10200');
+  assert.equal(cached.source, 'db_cache');
+  assert.equal(cached.cache_hit, true);
+});
+
+test('PR 6: expired cache entry returns null (cache miss)', async () => {
   const cacheKey = computeCacheKey({ ticker: 'ASII', analysisType: 'stock_analysis', prompt: 'target?', marketDate: '2026-09-02' });
   await setCachedAnalysis({
     cacheKey,
@@ -156,8 +227,11 @@ test('PR 6: expired cache entry returns null (cache miss)', async () => {
   assert.equal(cached, null);
 });
 
+// ============================================================================
+// 3. Context AI Router V7 Integration & Fallback Tests
+// ============================================================================
+
 test('PR 6: handleContextAIV7 uses cache hit when available and does not call external API', async () => {
-  clearMemoryCache();
   const ticker = 'GOTO';
   const prompt = 'Gimana posisi saya?';
   const cacheKey = computeCacheKey({ ticker, analysisType: 'portfolio_chat', prompt });
@@ -184,16 +258,52 @@ test('PR 6: handleContextAIV7 uses cache hit when available and does not call ex
   assert.equal(state.payload.reply, 'Posisi GOTO aman di area support.');
 });
 
+test('PR 6: handleContextAIV7 calls direct Gemini API and caches response on success (mocked fetch)', async () => {
+  const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = 'mock-valid-gemini-key';
+
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'Respon live Gemini untuk BBCA' }] } }]
+      })
+    };
+  };
+
+  try {
+    const req = {
+      body: {
+        source: 'stock_analysis_followup',
+        chatMessage: 'Prospek breakout?',
+        context: {
+          ticker: 'BBCA',
+          status: 'READY_BREAKOUT',
+          analysis_text: 'BBCA breakout 10200.'
+        }
+      }
+    };
+    const { state, res } = mockRes();
+    await handleContextAIV7(req, res);
+
+    assert.equal(state.statusCode, 200);
+    assert.equal(state.payload.success, true);
+    assert.equal(state.payload.source, 'gemini_api');
+    assert.equal(state.payload.reply, 'Respon live Gemini untuk BBCA');
+  } finally {
+    globalThis.fetch = origFetch;
+    delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+  }
+});
+
 test('PR 6: handleContextAIV7 degrades gracefully to local deterministic response when Gemini fails', async () => {
-  clearMemoryCache();
   const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = 'invalid-key-that-will-fail';
   const origFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
-    if (String(url).includes('generativelanguage.googleapis.com')) {
-      throw new Error('Network timeout');
-    }
-    return origFetch ? origFetch(url) : null;
+    throw new Error('Network timeout');
   };
   try {
     const req = {
@@ -217,15 +327,11 @@ test('PR 6: handleContextAIV7 degrades gracefully to local deterministic respons
     assert.ok(state.payload.reply.includes('BBCA'));
   } finally {
     globalThis.fetch = origFetch;
-    if (origKey !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origKey;
-    else delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+    delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   }
 });
 
 test('PR 6: handleContextAIV7 respects GEMINI_AI_DISABLED toggle', async () => {
-  clearMemoryCache();
-  const origDisabled = process.env.GEMINI_AI_DISABLED;
-  const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   process.env.GEMINI_AI_DISABLED = 'true';
   process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = 'valid-key';
   try {
@@ -246,9 +352,7 @@ test('PR 6: handleContextAIV7 respects GEMINI_AI_DISABLED toggle', async () => {
     assert.equal(state.payload.local_fallback, true);
     assert.ok(state.payload.reply.includes('Evaluasi Portofolio'));
   } finally {
-    if (origDisabled !== undefined) process.env.GEMINI_AI_DISABLED = origDisabled;
-    else delete process.env.GEMINI_AI_DISABLED;
-    if (origKey !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origKey;
-    else delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
+    delete process.env.GEMINI_AI_DISABLED;
+    delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   }
 });
