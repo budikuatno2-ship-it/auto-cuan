@@ -6573,9 +6573,51 @@ function resolveMonitorSetupOrigin(pick) {
   return raw.setup_origin_at || raw.freshness_timestamp || raw.calculated_at || raw.run_at || raw.published_at || raw.registered_at || (pick && pick.created_at) || (pick && pick.first_sent_at) || raw.run_date || (pick && pick.date) || null;
 }
 
-async function fetchLatestPriceForMonitor(supabase, ticker) {
+async function fetchLatestPriceForMonitor(supabase, ticker, pck) {
+  if (typeof ticker === 'object' && ticker !== null) {
+    pck = ticker;
+    ticker = pck.ticker;
+  }
+  // 1. First check daytrade_screener_latest (provides rich intraday OHLCV if present)
   var dt = await supabase.from('daytrade_screener_latest').select('last_price,open_price,high_price,low_price,calculated_at').eq('ticker', ticker).maybeSingle();
-  if (dt.data && dt.data.last_price != null) return { last: toNum(dt.data.last_price), open: toNum(dt.data.open_price), high: toNum(dt.data.high_price), low: toNum(dt.data.low_price), at: dt.data.calculated_at, bestEffort: false, source: 'daytrade_screener_latest' };
+  if (dt.data && dt.data.last_price != null) {
+    return { last: toNum(dt.data.last_price), open: toNum(dt.data.open_price), high: toNum(dt.data.high_price), low: toNum(dt.data.low_price), at: dt.data.calculated_at, bestEffort: false, source: 'daytrade_screener_latest' };
+  }
+
+  // 2. If not in daytrade_screener_latest, check source-appropriate swing screener tables
+  var monitorSource = String(
+    (pck && pck.monitor_source) ||
+    (pck && pck.raw_payload && pck.raw_payload.monitor_source) ||
+    (pck && pck.category) ||
+    ''
+  ).trim().toLowerCase().replace(/\s+/g, '_');
+
+  if (monitorSource === 'swing_konglo' || monitorSource === 'daily_top5' || monitorSource === 'top5' || monitorSource.indexOf('konglo') >= 0) {
+    var sk = await supabase.from('swing_screener_latest').select('last_price,calculated_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
+    if (sk.data && sk.data.last_price != null) {
+      return { last: toNum(sk.data.last_price), open: null, high: null, low: null, at: sk.data.price_asof || sk.data.calculated_at || sk.data.price_date, bestEffort: false, source: 'swing_screener_latest' };
+    }
+  }
+
+  if (monitorSource === 'swing_nk' || monitorSource === 'swing_non_konglo' || monitorSource.indexOf('non') >= 0) {
+    var snk = await supabase.from('swing_screener_non_konglo_latest').select('last_price,calculated_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
+    if (snk.data && snk.data.last_price != null) {
+      return { last: toNum(snk.data.last_price), open: null, high: null, low: null, at: snk.data.price_asof || snk.data.calculated_at || snk.data.price_date, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
+    }
+  }
+
+  // 3. Fallback search across all swing screener tables if source is unknown or not found in primary
+  var skFallback = await supabase.from('swing_screener_latest').select('last_price,calculated_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
+  if (skFallback.data && skFallback.data.last_price != null) {
+    return { last: toNum(skFallback.data.last_price), open: null, high: null, low: null, at: skFallback.data.price_asof || skFallback.data.calculated_at || skFallback.data.price_date, bestEffort: false, source: 'swing_screener_latest' };
+  }
+
+  var snkFallback = await supabase.from('swing_screener_non_konglo_latest').select('last_price,calculated_at,price_asof,price_date').eq('ticker', ticker).maybeSingle();
+  if (snkFallback.data && snkFallback.data.last_price != null) {
+    return { last: toNum(snkFallback.data.last_price), open: null, high: null, low: null, at: snkFallback.data.price_asof || snkFallback.data.calculated_at || snkFallback.data.price_date, bestEffort: false, source: 'swing_screener_non_konglo_latest' };
+  }
+
+  // 4. Final fallback to foreign_watchlist_daily
   var f = await supabase.from('foreign_watchlist_daily').select('close,trade_date').eq('ticker', ticker).order('trade_date', { ascending: false }).limit(1);
   // Daily close is a best-effort fallback only. Do not synthesize intraday high/low,
   // because doing so can fabricate entry/TP/SL touches that never occurred.
@@ -6639,6 +6681,8 @@ function evaluateMonitorStatus(pick, px) {
   var last = toNum(px.last);
   var high = px.high != null ? toNum(px.high) : null;
   var low = px.low != null ? toNum(px.low) : null;
+  var effectiveHigh = high != null ? high : last;
+  var effectiveLow = low != null ? low : last;
   var entry1 = toNum(pick.entry1);
   var entry2 = toNum(pick.entry2);
   var tp1 = toNum(pick.tp1);
@@ -6650,11 +6694,11 @@ function evaluateMonitorStatus(pick, px) {
     entryLow = entry1 != null && entry2 != null ? Math.min(entry1, entry2) : (entry1 != null ? entry1 : entry2);
     entryHigh = entry1 != null && entry2 != null ? Math.max(entry1, entry2) : (entry1 != null ? entry1 : entry2);
   }
-  var entryTouched = entryLow != null && high != null && low != null && low <= entryHigh && high >= entryLow;
+  var entryTouched = entryLow != null && effectiveHigh != null && effectiveLow != null && effectiveLow <= entryHigh && effectiveHigh >= entryLow;
   var lastInEntryZone = entryLow != null && last != null && last >= entryLow && last <= entryHigh;
-  var slTouched = sl != null && low != null && low <= sl;
-  var tp1Touched = tp1 != null && high != null && high >= tp1;
-  var tp2Touched = tp2 != null && high != null && high >= tp2;
+  var slTouched = sl != null && effectiveLow != null && effectiveLow <= sl;
+  var tp1Touched = tp1 != null && effectiveHigh != null && effectiveHigh >= tp1;
+  var tp2Touched = tp2 != null && effectiveHigh != null && effectiveHigh >= tp2;
 
   // daytrade_screener_latest exposes a session high/low snapshot, not an
   // ordered tick stream. If a previously inactive recommendation first shows
@@ -7508,7 +7552,7 @@ async function handleWebDailyPicks(req, res, supabase) {
     var dailyLockFallbackAt = null;
     if (locked) {
       // Parallelize price fetches for all Top 5 rows (bounded to max 5)
-      var priceFetches = rows.map(function(p) { return fetchLatestPriceForMonitor(supabase, p.ticker); });
+      var priceFetches = rows.map(function(p) { return fetchLatestPriceForMonitor(supabase, p.ticker, p); });
       var priceResults = await Promise.allSettled(priceFetches);
       for (var i = 0; i < rows.length; i++) {
         var p = rows[i];
@@ -7885,7 +7929,7 @@ async function handleWebTop5History(req, res, supabase) {
     });
     var _historyStartMs = Date.now();
     var collections = await buildWebTop5HistoryCollections(rows, limit, function(r) {
-      return fetchLatestPriceForMonitor(supabase, r.ticker);
+      return fetchLatestPriceForMonitor(supabase, r.ticker, r);
     });
     var activeHistory = collections.active_history;
     var tpRows = collections.tp_history;
@@ -8352,7 +8396,7 @@ async function handleTelegramMonitorPicks(req, res, supabase) {
     for (var i = 0; i < rows.length; i++) {
       var pck = rows[i];
       if (!isFinal && pck.is_final) continue;
-      var px = await fetchLatestPriceForMonitor(supabase, pck.ticker);
+      var px = await fetchLatestPriceForMonitor(supabase, pck.ticker, pck);
       var ev = evaluateMonitorStatus(pck, px);
 
       // Override EXPIRED/NEEDS_REVALIDATION note based on source (for batch/digest message)
