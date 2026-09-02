@@ -846,8 +846,8 @@
                 <table class="w-full text-xs border-collapse min-w-[1200px]">
                     <thead>
                         <tr class="scr-cols-18 bg-dark-700/70">
-                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">#</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">Ticker</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
+                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Board</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Tier</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Exec</th>
@@ -956,8 +956,8 @@
                 <table class="w-full text-xs border-collapse min-w-[1100px]">
                     <thead>
                         <tr class="scr-cols-22 bg-dark-700/70">
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky left-0 bg-dark-700/70 z-10">#</th>
-                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Ticker</th>
+                            <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap sticky-col-1 sticky left-0 bg-dark-700 z-20 w-[36px] min-w-[36px]">#</th>
+                            <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-700 z-20 min-w-[80px] border-r border-dark-600/30">Ticker</th>
                             <th class="px-2 py-2.5 text-left text-gray-400 font-medium whitespace-nowrap">Board</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Status</th>
                             <th class="px-2 py-2.5 text-center text-gray-400 font-medium whitespace-nowrap">Setup Score</th>
@@ -1003,10 +1003,15 @@
             <button id="patternChartTab" role="tab" aria-selected="false" onclick="showChartTab('pattern')" class="hidden px-4 py-2 rounded-lg bg-dark-700 text-gray-300 text-sm font-semibold">Pattern Preview</button>
         </div>
         <div id="chartPageContainer" role="tabpanel" class="bg-dark-800/40 border border-dark-600/30 rounded-2xl overflow-hidden min-w-0">
-            <div class="flex items-center justify-center py-16 text-gray-500 text-sm">
+            <div class="flex items-center justify-center py-16 text-gray-400 text-sm">
                 <div class="text-center">
-                    <svg class="w-10 h-10 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
-                    <p>Ketik ticker di atas untuk melihat chart.</p>
+                    <svg class="w-10 h-10 mx-auto mb-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                    <p class="font-medium text-gray-300 mb-1">Ketik ticker di atas untuk melihat candlestick chart interaktif.</p>
+                    <p class="text-xs text-gray-500 mb-4">Pilihan populer: BBCA, BBRI, BMRI, TLKM, ASII</p>
+                    <div class="flex justify-center gap-2">
+                        <button onclick="document.getElementById('chartTickerInput').value='BBCA';loadChartPage()" class="ac-btn" data-size="sm">Lihat BBCA</button>
+                        <button onclick="document.getElementById('chartTickerInput').value='BBRI';loadChartPage()" class="ac-btn" data-size="sm">Lihat BBRI</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -7588,13 +7593,13 @@ function renderDtCardGrid(results, data) {
         if (_planWarn) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Plan:</span> ' + escapeHtml(_planWarn.replace(/^Plan:\\s*/, '')) + '</div>';
         var _respectLine = buildRespectQualityLine(r);
         if (_respectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_respectLine) + '</div>';
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
-        html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
-        html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
-        html += '<div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#d87171;margin-bottom:1px">Stop Loss</div><div style="font-size:11px;font-weight:600;color:#fca5a5">' + slVal + '</div></div>';
-        html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 1</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t1 + '</div></div>';
-        html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 2</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t2 + '</div></div>';
-        html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#a78bfa;margin-bottom:1px">R/R</div><div style="font-size:11px;font-weight:600;color:#c4b5fd">' + rrVal + '</div></div>';
+        html += '<div class="trade-plan-grid">';
+        html += '<div class="trade-plan-tile" data-type="entry"><div class="trade-plan-label">Entry 1</div><div class="trade-plan-value">' + e1 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="entry"><div class="trade-plan-label">Entry 2</div><div class="trade-plan-value">' + e2 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="sl"><div class="trade-plan-label">Stop Loss</div><div class="trade-plan-value">' + slVal + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 1</div><div class="trade-plan-value">' + t1 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 2</div><div class="trade-plan-value">' + t2 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="rr"><div class="trade-plan-label">R/R</div><div class="trade-plan-value">' + rrVal + '</div></div>';
         html += '</div>';
         var _riskReason = getRiskReasonOnly(r);
         if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
@@ -7933,13 +7938,13 @@ function renderKgCardGrid(results) {
             if (r.fib_nearest_label && r.fib_nearest_level) _fibText += ' · nearest ' + escapeHtml(r.fib_nearest_label) + ' @ ' + (r.fib_nearest_level ? r.fib_nearest_level.toLocaleString('id-ID') : '-');
             html += '<div style="font-size:10px;margin-bottom:8px;color:' + _fibColor + '"><span style="color:#94a3b8">Fib:</span> ' + _fibText + '</div>';
         }
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
-        html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
-        html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
-        html += '<div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#d87171;margin-bottom:1px">Stop Loss</div><div style="font-size:11px;font-weight:600;color:#fca5a5">' + slVal + '</div></div>';
-        html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 1</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t1 + '</div></div>';
-        html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 2</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t2 + '</div></div>';
-        html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#a78bfa;margin-bottom:1px">R/R</div><div style="font-size:11px;font-weight:600;color:#c4b5fd">' + rrVal + '</div></div>';
+        html += '<div class="trade-plan-grid">';
+        html += '<div class="trade-plan-tile" data-type="entry"><div class="trade-plan-label">Entry 1</div><div class="trade-plan-value">' + e1 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="entry"><div class="trade-plan-label">Entry 2</div><div class="trade-plan-value">' + e2 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="sl"><div class="trade-plan-label">Stop Loss</div><div class="trade-plan-value">' + slVal + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 1</div><div class="trade-plan-value">' + t1 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 2</div><div class="trade-plan-value">' + t2 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="rr"><div class="trade-plan-label">R/R</div><div class="trade-plan-value">' + rrVal + '</div></div>';
         html += '</div>';
         var _riskReason = getRiskReasonOnly(r);
         if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
@@ -8004,13 +8009,13 @@ function renderNkCardGrid(results) {
         if (_nBadgeLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#9ca3af">' + _nBadgeLine + '</div>';
         var _nRespectLine = buildRespectQualityLine(r);
         if (_nRespectLine) html += '<div style="font-size:10px;margin-bottom:8px;color:#fbbf24"><span style="color:#94a3b8">Respect v2:</span> ' + escapeHtml(_nRespectLine) + '</div>';
-        html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">';
-        html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 1</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e1 + '</div></div>';
-        html += '<div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#6b9fd8;margin-bottom:1px">Entry 2</div><div style="font-size:11px;font-weight:600;color:#93c5fd">' + e2 + '</div></div>';
-        html += '<div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#d87171;margin-bottom:1px">Stop Loss</div><div style="font-size:11px;font-weight:600;color:#fca5a5">' + slVal + '</div></div>';
-        html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 1</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t1 + '</div></div>';
-        html += '<div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#4ead8a;margin-bottom:1px">Target 2</div><div style="font-size:11px;font-weight:600;color:#6ee7b7">' + t2 + '</div></div>';
-        html += '<div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.18);border-radius:7px;padding:5px 6px;text-align:center"><div style="font-size:8px;color:#a78bfa;margin-bottom:1px">R/R</div><div style="font-size:11px;font-weight:600;color:#c4b5fd">' + rrVal + '</div></div>';
+        html += '<div class="trade-plan-grid">';
+        html += '<div class="trade-plan-tile" data-type="entry"><div class="trade-plan-label">Entry 1</div><div class="trade-plan-value">' + e1 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="entry"><div class="trade-plan-label">Entry 2</div><div class="trade-plan-value">' + e2 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="sl"><div class="trade-plan-label">Stop Loss</div><div class="trade-plan-value">' + slVal + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 1</div><div class="trade-plan-value">' + t1 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="tp"><div class="trade-plan-label">Target 2</div><div class="trade-plan-value">' + t2 + '</div></div>';
+        html += '<div class="trade-plan-tile" data-type="rr"><div class="trade-plan-label">R/R</div><div class="trade-plan-value">' + rrVal + '</div></div>';
         html += '</div>';
         var _riskReason = getRiskReasonOnly(r);
         if (_riskReason) html += '<div style="font-size:10px;color:#d1d5db;line-height:1.35;margin-bottom:6px"><span style="color:' + getRiskColor(getRiskLabel(r)) + ';font-weight:600">' + escapeHtml(_riskReason) + '</span></div>';
@@ -8382,7 +8387,7 @@ async function loadSwingScreener(silent) {
     }
     // Table tbody loading stays as secondary/fallback (table view is hidden by default).
     if (!silent) {
-        tbody.innerHTML = '<tr><td colspan="17" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
+        tbody.innerHTML = screenerSkeletonTableRowsHtml(17, 5);
     }
 
     _screenerInFlight = (async function() {
@@ -8757,7 +8762,7 @@ async function loadNkScreenerResults(silent) {
     }
     // Table tbody loading stays as secondary/fallback (table view is hidden by default).
     if (!silent) {
-        tbody.innerHTML = '<tr><td colspan="18" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
+        tbody.innerHTML = screenerSkeletonTableRowsHtml(18, 5);
     }
 
     _nkScreenerInFlight = (async function() {
@@ -9015,8 +9020,8 @@ function renderNkScreenerTable(results) {
         var dirColor = (dirLabel.indexOf('swing kuat') >= 0) ? 'text-emerald-400' : ((dirLabel.indexOf('moderat') >= 0) ? 'text-blue-400' : ((dirLabel.indexOf('Watchlist') >= 0) ? 'text-violet-400' : ((dirLabel.indexOf('Rawan') >= 0) ? 'text-orange-400' : 'text-red-400')));
 
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 cursor-pointer" onclick="screenerTickerClick(\'' + r.ticker + '\')">';
-        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px]">' + (r.rank || '-') + '</td>';
-        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky left-0 bg-dark-800/90 z-10">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[11px] sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (r.rank || '-') + '</td>';
+        html += '<td class="px-2 py-1.5 text-gray-100 font-semibold whitespace-nowrap sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-1.5 text-center text-gray-500 text-[10px]">' + (r.board === 'UTAMA' ? 'Utama' : r.board === 'PENGEMBANGAN' ? 'Dev' : r.board || '-') + '</td>';
         html += '<td class="px-2 py-1.5 text-center whitespace-nowrap"><span class="px-1.5 py-0.5 rounded text-[9px] font-bold ' + tierClass + '">' + tierLabel + '</span></td>';
         html += '<td class="px-2 py-1.5 text-center ' + confColor + ' whitespace-nowrap text-[10px]" title="' + escapeHtml((r.confidence_label || '') + ' — ' + (r.confidence_notes || '')) + '">' + confLabel + '</td>';
@@ -9456,21 +9461,52 @@ function dashboardEmptyHtml(message, tone) {
     return '<div class="empty-state' + extraCls + '"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="' + iconPath + '"/></svg><p class="empty-state-text">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p>' + retryBtn + '</div>';
 }
 function screenerEmptyRowHtml(colspan, message, tone, retryFn) {
-    var color = tone === 'error' ? 'text-red-400' : 'text-gray-500';
+    var color = tone === 'error' ? 'text-red-400' : 'text-gray-400';
     var retryAction = retryFn || 'loadSwingScreener()';
-    var retryBtn = tone === 'error' ? '<br><button onclick="' + retryAction + '" class="ac-btn mt-2" data-size="sm">Coba Lagi</button>' : '';
-    return '<tr><td colspan="' + Number(colspan || 1) + '" class="text-center py-8 ' + color + '">' + escapeHtml(message || STRICT_EMPTY_TEXT) + retryBtn + '</td></tr>';
+    var actionBtn = tone === 'error' ? '<br><button onclick="' + retryAction + '" class="ac-btn mt-2" data-size="sm">Coba Lagi</button>' : '<br><button onclick="' + retryAction + '" class="ac-btn mt-2" data-size="sm">Segarkan Data</button>';
+    return '<tr><td colspan="' + Number(colspan || 1) + '" class="text-center py-8 ' + color + '">' + escapeHtml(message || STRICT_EMPTY_TEXT) + actionBtn + '</td></tr>';
 }
-function screenerEmptyCardHtml(message) {
-    return '<div style="grid-column:1/-1" class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><p class="empty-state-text">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p></div>';
+function screenerEmptyCardHtml(message, actionLabel, actionFn) {
+    var btn = actionLabel && actionFn ? '<div class="mt-3"><button onclick="' + actionFn + '" class="ac-btn" data-size="sm">' + escapeHtml(actionLabel) + '</button></div>' : '';
+    return '<div style="grid-column:1/-1" class="empty-state"><svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><p class="empty-state-text">' + escapeHtml(message || STRICT_EMPTY_TEXT) + '</p>' + btn + '</div>';
+}
+// Skeleton table rows shown while fetching table data
+function screenerSkeletonTableRowsHtml(colspan, count) {
+    var cols = colspan || 17;
+    var n = count || 5;
+    var row = '<tr class="animate-pulse border-b border-dark-600/20">';
+    for (var c = 0; c < cols; c++) {
+        var w = c === 0 ? 'w-6' : (c === 1 ? 'w-16' : (c % 2 === 0 ? 'w-12' : 'w-10'));
+        row += '<td class="px-2 py-3"><div class="skeleton h-3.5 ' + w + ' mx-auto rounded"></div></td>';
+    }
+    row += '</tr>';
+    var out = '';
+    for (var i = 0; i < n; i++) out += row;
+    return out;
 }
 // Skeleton placeholder cards shown in a card-grid while fetching (no cache yet).
 function screenerSkeletonCardHtml(count) {
     var n = count || 4;
-    var one = '<div style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px">' +
-        '<div class="skeleton" style="height:14px;width:40%;margin-bottom:10px"></div>' +
-        '<div class="skeleton" style="height:10px;width:70%;margin-bottom:8px"></div>' +
-        '<div class="skeleton" style="height:34px;width:100%"></div>' +
+    var one = '<div class="skeleton-card" style="background:#151a23;border:1px solid #1c2333;border-radius:12px;padding:14px 16px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+        '  <div class="skeleton" style="height:16px;width:70px;border-radius:4px"></div>' +
+        '  <div class="skeleton" style="height:16px;width:80px;border-radius:4px"></div>' +
+        '</div>' +
+        '<div class="skeleton" style="height:10px;width:100px;margin-bottom:10px;border-radius:3px"></div>' +
+        '<div style="display:flex;gap:10px;margin-bottom:12px">' +
+        '  <div class="skeleton" style="height:12px;width:55px;border-radius:3px"></div>' +
+        '  <div class="skeleton" style="height:12px;width:55px;border-radius:3px"></div>' +
+        '  <div class="skeleton" style="height:12px;width:55px;border-radius:3px"></div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">' +
+        '  <div class="skeleton" style="height:36px;border-radius:6px"></div>' +
+        '  <div class="skeleton" style="height:36px;border-radius:6px"></div>' +
+        '  <div class="skeleton" style="height:36px;border-radius:6px"></div>' +
+        '  <div class="skeleton" style="height:36px;border-radius:6px"></div>' +
+        '  <div class="skeleton" style="height:36px;border-radius:6px"></div>' +
+        '  <div class="skeleton" style="height:36px;border-radius:6px"></div>' +
+        '</div>' +
+        '<div class="skeleton" style="height:12px;width:75%;border-radius:3px"></div>' +
         '</div>';
     var html = '';
     for (var i = 0; i < n; i++) html += one;
