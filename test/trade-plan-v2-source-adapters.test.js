@@ -143,8 +143,9 @@ test('1. real Day Trade runtime analysis produces a non-null structural level', 
   }, {});
   assert.notEqual(built.plan.status, tpv2.STATUS.REJECTED, 'reject: ' + built.plan.reject_reason);
   assert.equal(built.plan.support, 9300, 'support hydrated from analysis');
-  assert.equal(built.plan.structural_invalidation, 9250, 'structural invalidation uses the confirmed swing low (swingLow5)');
-  assert.ok(built.plan.stop_loss !== null && built.plan.stop_loss < 9250, 'SL below the confirmed swing low');
+  assert.equal(built.plan.stop_anchor_type, tpv2.SUPPORT_ANCHOR_TYPE.LOCAL_SUPPORT, 'stop anchor uses intraday local support');
+  assert.equal(built.plan.structural_invalidation, 9375, 'structural invalidation uses today low (low_price 9380 -> tick floor 9375)');
+  assert.equal(built.plan.stop_loss, 9300, 'SL sits below today low by 0.5 ATR buffer');
   assert.ok(built.plan.resistance === 9900 && built.plan.tp1 !== null && built.plan.tp1 < 9900, 'TP1 before resistance');
   assert.equal(built.structural.available, true);
   assert.ok(built.structural.source_fields.indexOf('swingLow5') >= 0, 'swingLow5 recognised as swing low');
