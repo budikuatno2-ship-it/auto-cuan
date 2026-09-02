@@ -65,6 +65,16 @@ function makeStubNodeBin(dir) {
   return { stubPath, argsLogPath };
 }
 
+const hasBash = (() => {
+  try {
+    const { execSync } = require('node:child_process');
+    execSync('bash --version', { stdio: 'ignore' });
+    return true;
+  } catch (_) {
+    return false;
+  }
+})();
+
 function runWrapper(extraArgs, env) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wrapper-test-'));
   const { stubPath, argsLogPath } = makeStubNodeBin(dir);
@@ -89,29 +99,29 @@ function runWrapper(extraArgs, env) {
   return JSON.parse(fs.readFileSync(argsLogPath, 'utf8'));
 }
 
-test('BUG1 (wrapper): explicit CLI ticker list reaches Node as a single clean arg, no empty slot ahead of it', () => {
+test('BUG1 (wrapper): explicit CLI ticker list reaches Node as a single clean arg, no empty slot ahead of it', { skip: !hasBash }, () => {
   // The wrapper resolves RUNNER_JS as $REPO/scripts/collect-daily-market-context.js,
   // which exists in this repo, so no extra setup is needed beyond AUTO_CUAN_REPO.
   const argv = runWrapper(['BBCA,BBRI,TLKM']);
   assert.deepEqual(argv, ['BBCA,BBRI,TLKM']);
 });
 
-test('BUG1 (wrapper): AUTO_CUAN_COLLECTOR_TICKERS env var is forwarded when no CLI ticker arg is given', () => {
+test('BUG1 (wrapper): AUTO_CUAN_COLLECTOR_TICKERS env var is forwarded when no CLI ticker arg is given', { skip: !hasBash }, () => {
   const argv = runWrapper([], { AUTO_CUAN_COLLECTOR_TICKERS: 'BBCA,TLKM' });
   assert.deepEqual(argv, ['BBCA,TLKM']);
 });
 
-test('BUG1 (wrapper): explicit CLI ticker arg takes precedence over the env var', () => {
+test('BUG1 (wrapper): explicit CLI ticker arg takes precedence over the env var', { skip: !hasBash }, () => {
   const argv = runWrapper(['UNVR,ASII'], { AUTO_CUAN_COLLECTOR_TICKERS: 'BBCA,TLKM' });
   assert.deepEqual(argv, ['UNVR,ASII']);
 });
 
-test('BUG1 (wrapper): no CLI arg and no env var forwards no ticker-list positional at all', () => {
+test('BUG1 (wrapper): no CLI arg and no env var forwards no ticker-list positional at all', { skip: !hasBash }, () => {
   const argv = runWrapper([]);
   assert.deepEqual(argv, []);
 });
 
-test('BUG1 (wrapper): --dry-run passes through cleanly with an explicit ticker list', () => {
+test('BUG1 (wrapper): --dry-run passes through cleanly with an explicit ticker list', { skip: !hasBash }, () => {
   const argv = runWrapper(['BBCA,BBRI,TLKM', '--dry-run']);
   assert.deepEqual(argv, ['BBCA,BBRI,TLKM', '--dry-run']);
 });
@@ -123,7 +133,7 @@ test('BUG1 (wrapper): --dry-run passes through cleanly with an explicit ticker l
 // win instead of the explicit CLI list.
 // ------------------------------------------------------------
 
-test('BUG1 (wrapper): `--dry-run BBCA,BBRI,TLKM` (flag BEFORE the ticker list) still resolves to the explicit tickers + dry-run', () => {
+test('BUG1 (wrapper): `--dry-run BBCA,BBRI,TLKM` (flag BEFORE the ticker list) still resolves to the explicit tickers + dry-run', { skip: !hasBash }, () => {
   const argv = runWrapper(['--dry-run', 'BBCA,BBRI,TLKM']);
   // The wrapper may reorder (ticker first, flags preserved after), but the
   // resulting argv must still be exactly what parseArgs resolves to the
@@ -135,7 +145,7 @@ test('BUG1 (wrapper): `--dry-run BBCA,BBRI,TLKM` (flag BEFORE the ticker list) s
   assert.equal(argv.filter((a) => a === 'BBCA,BBRI,TLKM').length, 1); // not dropped
 });
 
-test('BUG1 (wrapper): explicit CLI ticker list (flag before it) wins over AUTO_CUAN_COLLECTOR_TICKERS', () => {
+test('BUG1 (wrapper): explicit CLI ticker list (flag before it) wins over AUTO_CUAN_COLLECTOR_TICKERS', { skip: !hasBash }, () => {
   const argv = runWrapper(['--dry-run', 'BBCA,BBRI,TLKM'], { AUTO_CUAN_COLLECTOR_TICKERS: 'ASII' });
   const parsed = parseArgs(argv);
   assert.equal(parsed.isDryRun, true);
@@ -143,7 +153,7 @@ test('BUG1 (wrapper): explicit CLI ticker list (flag before it) wins over AUTO_C
   assert.ok(!argv.includes('ASII'));
 });
 
-test('BUG1 (wrapper): with only --dry-run and no explicit ticker, the env var is used and dry-run remains enabled', () => {
+test('BUG1 (wrapper): with only --dry-run and no explicit ticker, the env var is used and dry-run remains enabled', { skip: !hasBash }, () => {
   const argv = runWrapper(['--dry-run'], { AUTO_CUAN_COLLECTOR_TICKERS: 'ASII' });
   const parsed = parseArgs(argv);
   assert.equal(parsed.isDryRun, true);

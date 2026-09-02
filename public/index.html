@@ -7610,13 +7610,7 @@ function renderDtCardGrid(results, data) {
     container.innerHTML = html;
 }
 
-// Delegated click for DT card detail
-document.addEventListener('click', function(e) {
-    var card = e.target.closest('.dt-card-item');
-    if (!card) return;
-    var ticker = card.getAttribute('data-ticker');
-    if (ticker && _dtCardData[ticker]) { openScrDetail(_dtCardData[ticker], 'daytrade'); }
-});
+// Delegated click for card detail handled centrally
 
 // Setup meaning helper (deterministic, all screeners)
 function getSetupMeaning(status, type) {
@@ -7955,13 +7949,7 @@ function renderKgCardGrid(results) {
     container.innerHTML = html;
 }
 
-// Delegated click for Konglo card detail
-document.addEventListener('click', function(e) {
-    var card = e.target.closest('.kg-card-item');
-    if (!card) return;
-    var ticker = card.getAttribute('data-ticker');
-    if (ticker && _kgCardData[ticker]) openScrDetail(_kgCardData[ticker], 'konglo');
-});
+
 
 // ===== NON-KONGLO CARD GRID =====
 var _nkCardData = {};
@@ -8026,11 +8014,32 @@ function renderNkCardGrid(results) {
     container.innerHTML = html;
 }
 
+// ===== CENTRALIZED EVENT DELEGATION MANAGER =====
 document.addEventListener('click', function(e) {
-    var card = e.target.closest('.nk-card-item');
-    if (!card) return;
-    var ticker = card.getAttribute('data-ticker');
-    if (ticker && _nkCardData[ticker]) openScrDetail(_nkCardData[ticker], 'nonkonglo');
+    // 1. Screener card click delegation (Day Trade, Swing Konglo, Swing Non-Konglo)
+    var dtCard = e.target.closest('.dt-card-item');
+    if (dtCard) {
+        var dtTicker = dtCard.getAttribute('data-ticker');
+        if (dtTicker && _dtCardData && _dtCardData[dtTicker]) { openScrDetail(_dtCardData[dtTicker], 'daytrade'); return; }
+    }
+    var kgCard = e.target.closest('.kg-card-item');
+    if (kgCard) {
+        var kgTicker = kgCard.getAttribute('data-ticker');
+        if (kgTicker && _kgCardData && _kgCardData[kgTicker]) { openScrDetail(_kgCardData[kgTicker], 'konglo'); return; }
+    }
+    var nkCard = e.target.closest('.nk-card-item');
+    if (nkCard) {
+        var nkTicker = nkCard.getAttribute('data-ticker');
+        if (nkTicker && _nkCardData && _nkCardData[nkTicker]) { openScrDetail(_nkCardData[nkTicker], 'nonkonglo'); return; }
+    }
+
+    // 2. Modal backdrop click delegation
+    if (e.target.classList && e.target.classList.contains('fixed') && (e.target.classList.contains('bg-black/70') || e.target.classList.contains('bg-black/60'))) {
+        // Block backdrop close for onboarding on step 0
+        if (e.target.id === 'onboardingModal' && _onboardingStep === 0) return;
+        if (e.target.id === 'onboardingModal') { hideOnboardingGuide(true); return; }
+        e.target.classList.add('hidden');
+    }
 });
 
 // ===== TOAST SYSTEM =====
@@ -8041,28 +8050,6 @@ function showToast(message, type) {
     container.appendChild(toast);
     setTimeout(function() { toast.classList.add('toast-exit'); setTimeout(function() { toast.remove(); }, 250); }, 3000);
 }
-
-// ===== MODAL UTILITIES =====
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        // Onboarding: block Escape on step 0, allow on step 1+
-        var obModal = document.getElementById('onboardingModal');
-        if (obModal && !obModal.classList.contains('hidden')) {
-            if (_onboardingStep >= 1) { hideOnboardingGuide(true); }
-            return;
-        }
-        var modals = ['loginModal', 'registerModal', 'selfResetModal', 'resetPasswordModal', 'maintenancePreviewModal', 'adminAiModal'];
-        for (var i = 0; i < modals.length; i++) { var el = document.getElementById(modals[i]); if (el && !el.classList.contains('hidden')) { el.classList.add('hidden'); return; } }
-    }
-});
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('fixed') && (e.target.classList.contains('bg-black/70') || e.target.classList.contains('bg-black/60'))) {
-        // Block backdrop close for onboarding on step 0
-        if (e.target.id === 'onboardingModal' && _onboardingStep === 0) return;
-        if (e.target.id === 'onboardingModal') { hideOnboardingGuide(true); return; }
-        e.target.classList.add('hidden');
-    }
-});
 
 window.alert = function(msg) {
     if (!msg) return;
@@ -8337,6 +8324,7 @@ var _screenerLastCalcAt = null;
 function startScreenerPolling() {
     stopScreenerPolling();
     _screenerPollInterval = setInterval(function() {
+        if (document.hidden) return;
         if (_currentScreenerType !== 'konglo') { stopScreenerPolling(); return; }
         // Lightweight check: re-fetch data and compare calculated_at
         loadSwingScreener(true); // silent mode
@@ -8722,9 +8710,10 @@ function switchScreenerType(type) {
 function startNkPolling() {
     stopNkPolling();
     _nkPollInterval = setInterval(function() {
+        if (document.hidden) return;
         if (_currentScreenerType !== 'nonkonglo') { stopNkPolling(); return; }
         loadNkScreenerResults(true); // silent mode — avoid skeleton/spinner flicker on each poll
-    }, 10000);
+    }, 15000);
 }
 
 function stopNkPolling() {

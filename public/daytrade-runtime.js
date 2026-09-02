@@ -139,6 +139,7 @@ function hideDtProgress() {
 function startDtPolling() {
     stopDtPolling();
     _dtPollInterval = setInterval(async function() {
+        if (document.hidden) return;
         if (_currentScreenerType !== 'daytrade') { stopDtPolling(); return; }
         try {
             var response = await fetch('/api/sector-hot?action=daytrade-screener');
