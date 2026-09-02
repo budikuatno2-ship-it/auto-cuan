@@ -6055,9 +6055,14 @@ async function handleTelegramDailyPicks(req, res, supabase) {
       readinessOptions.override_trading_date = targetDate;
     }
     var readiness = await getScreenerReadiness(supabase, readinessOptions);
-    var existingRes = await supabase.from('telegram_daily_picks').select('*').eq('date', targetDate).order('id', { ascending: true }).limit(5);
+    var existingRes = await supabase.from('telegram_daily_picks')
+      .select('*')
+      .eq('date', targetDate)
+      .or('monitor_source.in.(daily_top5,top5),monitor_source.is.null')
+      .order('id', { ascending: true })
+      .limit(5);
     if (existingRes.error) throw new Error(existingRes.error.message);
-    var existingRows = existingRes.data || [];
+    var existingRows = (existingRes.data || []).filter(isTop5PickRow).slice(0, 5);
     var alreadySent = existingRows.length > 0 && existingRows.every(pickWasSentToTelegram);
 
     if (!force && !readiness.ready && existingRows.length === 0) {
@@ -7253,8 +7258,57 @@ function hasDashboardLockedFinalIndicator(row) {
     !!payload.web_daily_locked_at || !!payload.telegram_daily_sent_at ||
     text.indexOf('locked') >= 0 || text.indexOf('final') >= 0;
 }
+function isTop5PickRow(row) {
+  if (!row || typeof row !== 'object') return false;
+  var raw = (row && row.raw_payload) || {};
+  var source = String(
+    row.monitor_source ||
+    raw.monitor_source ||
+    ''
+  ).trim().toLowerCase().replace(/\s+/g, '_');
+
+  if (source === 'daily_top5' || source === 'top5') return true;
+  if (
+    source === 'daytrade' ||
+    source === 'day_trade' ||
+    source === 'daytrade_signal' ||
+    source === 'swing_nk' ||
+    source === 'swing_non_konglo' ||
+    source === 'swing_konglo'
+  ) {
+    return false;
+  }
+
+  var cat = String(row.category || raw.category || '').trim().toLowerCase().replace(/\s+/g, '_');
+  if (
+    cat === 'daytrade' ||
+    cat === 'day_trade' ||
+    cat.indexOf('non_konglo') >= 0 ||
+    cat.indexOf('non-konglo') >= 0 ||
+    cat === 'swing_nk'
+  ) {
+    return false;
+  }
+
+  var lockSource = String(raw.lock_source || '').trim().toLowerCase();
+  if (
+    lockSource.indexOf('top5') >= 0 ||
+    lockSource.indexOf('telegram-daily-picks') >= 0 ||
+    raw.web_daily_locked_at ||
+    raw.telegram_daily_sent_at ||
+    row.is_locked ||
+    row.locked
+  ) {
+    return true;
+  }
+
+  if (!cat || cat.indexOf('swing') >= 0 || cat.indexOf('top5') >= 0) return true;
+  return false;
+}
+
 function isSafeDashboardLockedTop5Row(row) {
   if (!row || typeof row !== 'object') return false;
+  if (!isTop5PickRow(row)) return false;
   var payload = getDashboardLockedRowPayload(row);
   if (!hasDashboardLockedFinalIndicator(row) || isDashboardExplicitPreviewOrProvisionalRow(row) || isTop5PreviewOrProvisionalRow(payload)) return false;
   // A lock is a publication-state marker, not a waiver for safety.  In
@@ -7389,7 +7443,12 @@ async function handleWebDailyPicks(req, res, supabase) {
   }
   try {
     var date = getJakartaDateString();
-    var q = await supabase.from('telegram_daily_picks').select('*').eq('date', date).order('id', { ascending: true }).limit(5);
+    var q = await supabase.from('telegram_daily_picks')
+      .select('*')
+      .eq('date', date)
+      .or('monitor_source.in.(daily_top5,top5),monitor_source.is.null')
+      .order('id', { ascending: true })
+      .limit(5);
     if (q.error) throw new Error(q.error.message);
     var fallbackDatesChecked = [];
     var lockedRowsTodayBeforeFilter = Array.isArray(q.data) ? q.data.length : 0;
@@ -7404,6 +7463,7 @@ async function handleWebDailyPicks(req, res, supabase) {
         .from('telegram_daily_picks')
         .select('date')
         .lt('date', date)
+        .or('monitor_source.in.(daily_top5,top5),monitor_source.is.null')
         .order('date', { ascending: false })
         .limit(200);
       if (latestDateQ.error) throw new Error(latestDateQ.error.message);
@@ -7415,7 +7475,12 @@ async function handleWebDailyPicks(req, res, supabase) {
         seenLockedDates[latestLockedDate] = true;
         if (fallbackDatesChecked.length >= 20) break;
         fallbackDatesChecked.push(latestLockedDate);
-        var fallbackQ = await supabase.from('telegram_daily_picks').select('*').eq('date', latestLockedDate).order('id', { ascending: true }).limit(5);
+        var fallbackQ = await supabase.from('telegram_daily_picks')
+          .select('*')
+          .eq('date', latestLockedDate)
+          .or('monitor_source.in.(daily_top5,top5),monitor_source.is.null')
+          .order('id', { ascending: true })
+          .limit(5);
         if (fallbackQ.error) throw new Error(fallbackQ.error.message);
         fallbackRowsBeforeFilter = Array.isArray(fallbackQ.data) ? fallbackQ.data.length : 0;
         rows = filterSafeDashboardLockedTop5Rows(fallbackQ.data || []).slice(0, 5);
@@ -7804,12 +7869,18 @@ async function handleWebTop5History(req, res, supabase) {
     if (!isFinite(limit) || limit <= 0) limit = 100;
     if (limit > 300) limit = 300;
     var showArchived = String(req.query.show_archived || '') === '1';
-    var q = await supabase.from('telegram_daily_picks').select('*').order('date', { ascending: false }).order('id', { ascending: false }).limit(300);
+    var q = await supabase.from('telegram_daily_picks')
+      .select('*')
+      .or('monitor_source.in.(daily_top5,top5),monitor_source.is.null')
+      .order('date', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(300);
     if (q.error) throw new Error(q.error.message);
     var rows = (q.data || []).filter(function(r) {
       return (
         (showArchived || !((r.raw_payload || {}).history_archived_at)) &&
-        telegramDelivery.monitorRowIsPublicNotificationEligible(r)
+        telegramDelivery.monitorRowIsPublicNotificationEligible(r) &&
+        isTop5PickRow(r)
       );
     });
     var _historyStartMs = Date.now();
@@ -13714,6 +13785,7 @@ module.exports.__test = {
   normalizeCandidateScoreForGate: normalizeCandidateScoreForGate,
   buildDashboardPickRow: buildDashboardPickRow,
   isSafeDashboardLockedTop5Row: isSafeDashboardLockedTop5Row,
+  isTop5PickRow: isTop5PickRow,
   hasDashboardLockedFinalIndicator: hasDashboardLockedFinalIndicator,
   isDashboardExplicitPreviewOrProvisionalRow: isDashboardExplicitPreviewOrProvisionalRow,
   filterSafeDashboardLockedTop5Rows: filterSafeDashboardLockedTop5Rows,
