@@ -1133,7 +1133,10 @@ async function handleScreenerRefresh(req, res, supabase, enableAI) {
         multi_timeframe_notes: r.multi_timeframe_notes || null,
         volume_phase: r.volume_phase || null,
         risk_label: r.risk_label || null,
-        quality_grade: r.quality_grade || null
+        quality_grade: r.quality_grade || null,
+        // Canonical Trade Plan V2 snapshot (survives in DB for presentation)
+        trade_plan_v2: r.trade_plan_v2 || null,
+        trade_plan_v2_structural: r.trade_plan_v2_structural || null
       };
     });
 
@@ -11468,7 +11471,10 @@ async function handleDayTradeScreenerRun(req, res, supabase) {
         multi_timeframe_notes: r.multi_timeframe_notes || null,
         volume_phase: r.volume_phase || null,
         risk_label: r.risk_label || null,
-        quality_grade: r.quality_grade || null
+        quality_grade: r.quality_grade || null,
+        // Canonical Trade Plan V2 snapshot (survives in DB for presentation)
+        trade_plan_v2: r.trade_plan_v2 || null,
+        trade_plan_v2_structural: r.trade_plan_v2_structural || null
       };
     });
 
