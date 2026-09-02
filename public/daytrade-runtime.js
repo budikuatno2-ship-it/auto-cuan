@@ -29,7 +29,7 @@ async function loadDayTradeScreener() {
         }
     }
     // Table tbody loading stays as secondary/fallback (table view is hidden by default).
-    tbody.innerHTML = '<tr><td colspan="22" class="text-center py-8 text-gray-500"><div class="spinner mx-auto mb-2"></div>' + DASHBOARD_LOADING_TEXT + '</td></tr>';
+    tbody.innerHTML = typeof screenerSkeletonTableRowsHtml === 'function' ? screenerSkeletonTableRowsHtml(22, 5) : '<tr><td colspan="22" class="text-center py-8 text-gray-400">Memuat radar day trade...</td></tr>';
 
     _dtScreenerInFlight = (async function() {
     try {
@@ -139,6 +139,7 @@ function hideDtProgress() {
 function startDtPolling() {
     stopDtPolling();
     _dtPollInterval = setInterval(async function() {
+        if (document.hidden) return;
         if (_currentScreenerType !== 'daytrade') { stopDtPolling(); return; }
         try {
             var response = await fetch('/api/sector-hot?action=daytrade-screener');
@@ -224,8 +225,8 @@ function renderDtTable(results, data) {
         var dirColor = dirLabel.indexOf('naik kuat') >= 0 ? 'text-emerald-400' : (dirLabel.indexOf('naik moderat') >= 0 ? 'text-blue-400' : (dirLabel.indexOf('radar') >= 0 ? 'text-violet-400' : (dirLabel.indexOf('Rawan') >= 0 ? 'text-orange-400' : 'text-red-400')));
 
         html += '<tr class="border-b border-dark-600/20 hover:bg-dark-700/30 transition">';
-        html += '<td class="px-2 py-2 text-gray-500 sticky left-0 bg-dark-800/90 z-10">' + (i + 1) + '</td>';
-        html += '<td class="px-2 py-2 font-medium text-white">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
+        html += '<td class="px-2 py-2 text-center text-gray-500 sticky-col-1 sticky left-0 bg-dark-800/95 z-10 w-[36px] min-w-[36px]">' + (i + 1) + '</td>';
+        html += '<td class="px-2 py-2 font-medium text-white sticky-col-2 sticky left-[36px] bg-dark-800/95 z-10 min-w-[80px] border-r border-dark-600/30">' + r.ticker + '<div class="mt-0.5">' + freshnessChipHtml(r) + '</div></td>';
         html += '<td class="px-2 py-2 text-gray-400 text-[10px]">' + (r.board || '—') + '</td>';
         html += '<td class="px-2 py-2 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold ' + statusClass + '">' + escapeHtml(getStatusLabel(r, formatDtStatus(r.status))) + '</span></td>';
         html += '<td class="px-2 py-2 text-center font-bold ' + getDtScoreClass(r.daytrade_score) + '">' + r.daytrade_score + '</td>';

@@ -787,13 +787,23 @@ th {
   /* Comfortable targets everywhere, not just where a utility happened to set one. */
   .nav-btn, .screener-tab, .nk-screener-tab, .dt-screener-tab { min-height: 40px; }
 
+  /* Touch target standard >= 44px for all interactive controls on mobile */
+  .nav-btn, .screener-tab, .nk-screener-tab, .dt-screener-tab,
+  .ac-btn, .ac-segment, .ac-viewer-btn,
+  .action-card, .dashboard-pick-card,
+  .wl-star-btn, button, [role="button"], [role="tab"] {
+    min-height: var(--ac-control-h-touch, 44px);
+    touch-action: manipulation;
+  }
+
   /* The sticky header must clear the notch. */
   .app-header { padding-top: env(safe-area-inset-top, 0px); }
 
-  /* Side padding follows the safe area on notched landscape orientations. */
+  /* Side and bottom padding: clears floating launcher and safe areas on mobile */
   .page-content {
     padding-left: max(12px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: calc(var(--ac-fab-size, 56px) + var(--ac-safe-bottom, 16px) + 24px);
   }
 
   /* Bottom sheets and dialogs stay clear of the home indicator. */
@@ -1005,6 +1015,37 @@ table th.text-right,
 }
 .overflow-x-auto::-webkit-scrollbar { height: 6px; }
 .overflow-x-auto::-webkit-scrollbar-thumb { background: var(--ac-line-strong); border-radius: 999px; }
+
+/* 2-column sticky header support for screener tables (# and Ticker remain visible during horizontal scroll) */
+.panel table th.sticky-col-1,
+.panel table td.sticky-col-1,
+.overflow-x-auto > table th.sticky-col-1,
+.overflow-x-auto > table td.sticky-col-1 {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #11151e;
+}
+
+.panel table th.sticky-col-2,
+.panel table td.sticky-col-2,
+.overflow-x-auto > table th.sticky-col-2,
+.overflow-x-auto > table td.sticky-col-2 {
+  position: sticky;
+  left: 36px;
+  z-index: 4;
+  background: #11151e;
+  border-right: 1px solid var(--ac-line);
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.45);
+}
+
+.panel table thead th.sticky-col-1,
+.panel table thead th.sticky-col-2,
+.overflow-x-auto > table thead th.sticky-col-1,
+.overflow-x-auto > table thead th.sticky-col-2 {
+  z-index: 6;
+  background: #10151f;
+}
 
 /* ---- 8f. Metric and KPI blocks ------------------------------------------ */
 /* A metric is a label and a figure, and the figure wins. These blocks are built
@@ -1419,6 +1460,63 @@ button:disabled,
   text-transform: uppercase;
   color: var(--ac-text-dim);
 }
+
+/* Standardized Trade Plan Grid across Day Trade, Swing Konglo, Swing Non-Konglo cards */
+.trade-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.trade-plan-tile {
+  border-radius: var(--ac-radius-sm, 7px);
+  padding: 5px 6px;
+  text-align: center;
+}
+
+.trade-plan-tile .trade-plan-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 1px;
+}
+
+.trade-plan-tile .trade-plan-value {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.trade-plan-tile[data-type="entry"] {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.22);
+}
+.trade-plan-tile[data-type="entry"] .trade-plan-label { color: #60a5fa; }
+.trade-plan-tile[data-type="entry"] .trade-plan-value { color: #93c5fd; }
+
+.trade-plan-tile[data-type="sl"] {
+  background: var(--ac-bear-dim);
+  border: 1px solid rgba(248, 113, 113, 0.22);
+}
+.trade-plan-tile[data-type="sl"] .trade-plan-label { color: var(--ac-bear); }
+.trade-plan-tile[data-type="sl"] .trade-plan-value { color: #fca5a5; }
+
+.trade-plan-tile[data-type="tp"] {
+  background: var(--ac-bull-dim);
+  border: 1px solid rgba(52, 211, 153, 0.22);
+}
+.trade-plan-tile[data-type="tp"] .trade-plan-label { color: var(--ac-bull); }
+.trade-plan-tile[data-type="tp"] .trade-plan-value { color: #6ee7b7; }
+
+.trade-plan-tile[data-type="rr"] {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+}
+.trade-plan-tile[data-type="rr"] .trade-plan-label { color: #a78bfa; }
+.trade-plan-tile[data-type="rr"] .trade-plan-value { color: #c4b5fd; }
 
 /* ---- 8o. Landing ---------------------------------------------------------
    The marketing surface shares the product's type ramp so the first impression
