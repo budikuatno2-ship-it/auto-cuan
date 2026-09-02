@@ -24,3 +24,11 @@ test('tools/run-build-test-suite.js exists and contains all required pre-build v
   assert.ok(source.includes('tools/validate-auth-recovery-v2.js'));
   assert.ok(source.includes('tools/validate-ai-eval-once.js'));
 });
+
+test('tools/curated-build-tests.json exists and defines a non-empty list of curated tests', () => {
+  const jsonPath = path.join(ROOT_DIR, 'tools', 'curated-build-tests.json');
+  assert.equal(fs.existsSync(jsonPath), true, 'tools/curated-build-tests.json must exist');
+  const list = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+  assert.ok(Array.isArray(list));
+  assert.ok(list.length > 250, 'Curated list should contain at least 250 test files');
+});

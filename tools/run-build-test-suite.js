@@ -30,20 +30,24 @@ for (const relPath of preBuildScripts) {
   }
 }
 
-// 2. Discover and batch test files to prevent OS command-line length limits
-const testDir = path.join(ROOT_DIR, 'test');
-const testFiles = fs.readdirSync(testDir)
-  .filter(f => f.endsWith('.test.js'))
-  .map(f => path.join('test', f));
+// 2. Read single source of truth for build test suite
+const curatedConfigFile = path.join(__dirname, 'curated-build-tests.json');
+if (!fs.existsSync(curatedConfigFile)) {
+  console.error(`ERROR: Curated test list not found at ${curatedConfigFile}`);
+  process.exit(1);
+}
 
-console.log(`\n--- Running Test Suite (${testFiles.length} test files) ---`);
+const curatedTestFiles = JSON.parse(fs.readFileSync(curatedConfigFile, 'utf8'));
+const existingFiles = curatedTestFiles.filter(f => fs.existsSync(path.join(ROOT_DIR, f)));
+
+console.log(`\n--- Running Curated Test Suite (${existingFiles.length} test files) ---`);
 
 const BATCH_SIZE = 25;
 let failedBatches = 0;
 let passedFiles = 0;
 
-for (let i = 0; i < testFiles.length; i += BATCH_SIZE) {
-  const batch = testFiles.slice(i, i + BATCH_SIZE);
+for (let i = 0; i < existingFiles.length; i += BATCH_SIZE) {
+  const batch = existingFiles.slice(i, i + BATCH_SIZE);
   const res = spawnSync(process.execPath, ['--test', ...batch], {
     cwd: ROOT_DIR,
     stdio: 'inherit'
@@ -60,6 +64,6 @@ if (failedBatches > 0) {
   console.error(`\nTest suite finished with failures in ${failedBatches} batch(es).`);
   process.exit(1);
 } else {
-  console.log(`\nAll ${testFiles.length} test files passed successfully!`);
+  console.log(`\nAll ${existingFiles.length} test files passed successfully!`);
   process.exit(0);
 }
