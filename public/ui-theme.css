@@ -151,6 +151,7 @@
   --ac-lh-normal: 1.55;
 
   --ac-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ac-font-mono: 'JetBrains Mono', 'SF Mono', 'Roboto Mono', 'Cascadia Code', ui-monospace, monospace;
 
   /* --- Focus: one job per token. See the header note above. */
   --ac-focus-color: #34d399;
@@ -190,6 +191,7 @@ body, #dashboardScreen, .landing-shell { min-height: 100vh; }
 
 /* ---- 2. Base + typography ---------------------------------------------- */
 body {
+  font-family: var(--ac-font-sans);
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -197,7 +199,14 @@ body {
 
 /* Numbers in a trading dashboard must line up column to column. */
 .panel b, .panel-title, .ps-level b, .dashboard-card b,
-.tabular, [class*="tabular-nums"] {
+.tabular, [class*="tabular-nums"], .ac-num, [data-num],
+.dash-level b, .market-tile b, .price-value, .metric-value, .ticker-price {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+.ac-font-mono, .font-mono, .ac-num, [data-mono] {
+  font-family: var(--ac-font-mono);
   font-variant-numeric: tabular-nums;
 }
 
@@ -855,16 +864,36 @@ table th,
 .metric-grid *,
 .dashboard-card b,
 .dashboard-pick-card b,
-[class*="text-right"] {
+[class*="text-right"],
+.ac-num,
+[data-num] {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "cv11" 1;
 }
 
-/* Tickers are identifiers. Slight tracking and a fixed weight stop them reading
-   as prose and make a column of them scannable. */
+/* Numeric columns and financial metric figures use monospace for optimal alignment */
+table td.text-right,
+table th.text-right,
+.panel table tbody td.text-right,
+.ps-level b,
+.dash-level b,
+.dash-level .text-lg,
+.dash-level .text-xl,
+#screenerStats p:last-child,
+#nkScreenerStats p:last-child,
+#dtScreenerStats p:last-child {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tickers are identifiers. Monospace font and fixed weight stop them reading
+   as prose and make a column of them immediately scannable. */
 .panel td:first-child b,
-.dashboard-pick-card b:first-child {
-  letter-spacing: 0.01em;
+.dashboard-pick-card b:first-child,
+.ticker-badge,
+.ticker-symbol {
+  font-family: var(--ac-font-mono);
+  letter-spacing: 0.02em;
 }
 
 /* ---- 8c. Surface hierarchy ---------------------------------------------- */
@@ -2012,6 +2041,52 @@ button:disabled,
 @media (max-width: 640px) {
   .dash-meta { grid-template-columns: minmax(0, 1fr); }
   .dash-ident-score b { font-size: var(--ac-text-lead); }
+}
+
+/* ---- 8q. WCAG 2.1 AA accessible financial palette & text contrast overrides ---- */
+/* Low-contrast dark text classes are raised to clear the 4.5:1 AA contrast ratio on dark surfaces */
+.panel .text-slate-500,
+.panel .text-slate-600,
+.panel .text-gray-500,
+.panel .text-gray-600,
+.page-content .text-slate-500,
+.page-content .text-slate-600,
+.page-content .text-gray-500,
+.page-content .text-gray-600 {
+  color: var(--ac-text-muted);
+}
+
+/* Badge and indicator text contrast on dark badge background fills */
+.panel .text-emerald-500,
+.panel .text-green-500,
+.page-content .text-emerald-500,
+.page-content .text-green-500 {
+  color: var(--ac-bull);
+}
+
+.panel .text-rose-500,
+.panel .text-red-500,
+.page-content .text-rose-500,
+.page-content .text-red-500 {
+  color: var(--ac-bear);
+}
+
+.badge-bull {
+  background: var(--ac-bull-dim);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  color: var(--ac-bull);
+}
+
+.badge-bear {
+  background: var(--ac-bear-dim);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  color: var(--ac-bear);
+}
+
+.badge-neutral {
+  background: var(--ac-flat-dim);
+  border: 1px solid rgba(148, 163, 184, 0.20);
+  color: var(--ac-text-muted);
 }
 
 /* ---- 7. Reduced motion -------------------------------------------------- */

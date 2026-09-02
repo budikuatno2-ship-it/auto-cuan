@@ -307,5 +307,6 @@
   "test/telegram-unified-subscription.test.js",
   "test/daytrade-trade-plan-v2-intraday-anchor.test.js",
   "test/swing-non-konglo-atomic-upsert.test.js",
-  "test/build-test-runner.test.js"
+  "test/build-test-runner.test.js",
+  "test/design-system-tokens-typography.test.js"
 ]
