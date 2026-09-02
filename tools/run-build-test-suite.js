@@ -67,3 +67,4 @@ if (failedBatches > 0) {
   console.log(`\nAll ${existingFiles.length} test files passed successfully!`);
   process.exit(0);
 }
+// retrigger web-hardening-regression CI
