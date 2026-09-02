@@ -15,7 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_analysis_cache_ticker ON ai_analysis_cache (ti
 
 ALTER TABLE ai_analysis_cache ENABLE ROW LEVEL SECURITY;
 
-DO 
+DO
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies WHERE tablename = 'ai_analysis_cache' AND policyname = 'service_role_all_ai_analysis_cache'
