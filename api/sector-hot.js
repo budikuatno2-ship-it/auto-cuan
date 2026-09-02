@@ -412,6 +412,53 @@ module.exports = async function handler(req, res) {
 
 // ============================================================
 // SCREENER READ — gated by the signed session, upstream
+// Derive Fibonacci confluence from persisted support/resistance (lightweight, no candle re-fetch)
+function applyFallbackFibConfluence(r) {
+  if (!r || typeof r !== 'object') return r;
+  if (!r.fib_confluence_label && r.resistance > 0 && r.support > 0 && r.resistance > r.support) {
+    var _fibReadResult = fibConfluence.evaluateFibConfluence(null, null); // default insufficient
+    var _fibRange = r.resistance - r.support;
+    var _fibRangePct = r.support > 0 ? _fibRange / r.support : 0;
+    if (_fibRangePct >= 0.03) {
+      var _fibLevels = fibConfluence.calculateFibLevels(r.resistance, r.support);
+      if (_fibLevels && _fibLevels.levels) {
+        _fibReadResult = fibConfluence.evaluateFibConfluence(null, null); // reset
+        var _refPrice = r.last_price || 0;
+        var _entryMid = (toNum(r.entry_low) + toNum(r.entry_high)) / 2 || _refPrice;
+        var _nearHealthy = _entryMid <= _fibLevels.levels.fib_382 && _entryMid >= _fibLevels.levels.fib_618;
+        var _nearHealthyLoose = _entryMid >= _fibLevels.levels.fib_618 * 0.98 && _entryMid <= _fibLevels.levels.fib_382 * 1.02;
+        if (_nearHealthy || _nearHealthyLoose) {
+          r.fib_confluence_status = 'confluence_sehat';
+          r.fib_confluence_label = 'Fib confluence sehat';
+          r.fib_confluence_note = 'Entry/pullback dekat area Fib 38.2\u201361.8.';
+        } else if (_entryMid > _fibLevels.levels.fib_382) {
+          r.fib_confluence_status = 'di_atas_fib';
+          r.fib_confluence_label = 'Di atas area Fib';
+          r.fib_confluence_note = 'Harga sudah di atas area retracement ideal, tunggu pullback.';
+        } else {
+          r.fib_confluence_status = 'fib_structure_lemah';
+          r.fib_confluence_label = 'Fib structure lemah';
+          r.fib_confluence_note = 'Harga melemah di bawah area Fib sehat, perlu konfirmasi ulang.';
+        }
+        r.fib_nearest_label = null;
+        r.fib_nearest_level = null;
+        r.fib_levels = { fib_382: _fibLevels.levels.fib_382, fib_500: _fibLevels.levels.fib_500, fib_618: _fibLevels.levels.fib_618 };
+      }
+    }
+    if (!r.fib_confluence_label) {
+      r.fib_confluence_status = 'insufficient_data';
+      r.fib_confluence_label = 'Fib belum cukup data';
+      r.fib_confluence_note = 'Data candle belum cukup untuk membaca Fib confluence.';
+      r.fib_nearest_label = null;
+      r.fib_nearest_level = null;
+      r.fib_levels = null;
+    }
+  }
+  return r;
+}
+
+// ============================================================
+// 1. SCREENER HANDLER (SWING KONGLO)
 // ============================================================
 async function handleScreenerRead(req, res, supabase) {
   // Access is already decided before this handler runs. The PREMIUM READ ACCESS
@@ -420,18 +467,6 @@ async function handleScreenerRead(req, res, supabase) {
   // cookie via requireAuthenticatedSession() and re-checks username match,
   // is_blocked and is_approved against app_users. A CRON_SECRET bearer skips
   // that gate for the VPS manual runner and is verified there instead.
-  //
-  // The X-User-Id / X-Username lookup that used to sit here was removed. It was
-  // redundant — it could only ever run for a caller who had already proven a
-  // session — and it was actively wrong in two ways:
-  //
-  //   * it rejected a correctly authenticated caller who sent only the session
-  //     cookie, answering "Login diperlukan untuk mengakses Screener." to
-  //     someone who was in fact logged in. The endpoint silently depended on the
-  //     browser ALSO sending legacy identity headers, so any client that stopped
-  //     sending them broke with a misleading message.
-  //   * it read like the real access gate while keying off attacker-controlled
-  //     headers, which invites a reviewer to conclude the endpoint is spoofable.
   //
   // What remains is a fail-closed assertion: if this handler is ever reached
   // without the upstream gate having run, refuse rather than serve.
@@ -464,46 +499,7 @@ async function handleScreenerRead(req, res, supabase) {
     r.entry_timing = labels.entry_timing;
     r.tradeability = labels.tradeability;
     r.direction = labels.direction;
-    // Derive Fibonacci confluence from persisted support/resistance (lightweight, no candle re-fetch)
-    if (!r.fib_confluence_label && r.resistance > 0 && r.support > 0 && r.resistance > r.support) {
-      var _fibReadResult = fibConfluence.evaluateFibConfluence(null, null); // default insufficient
-      var _fibRange = r.resistance - r.support;
-      var _fibRangePct = r.support > 0 ? _fibRange / r.support : 0;
-      if (_fibRangePct >= 0.03) {
-        var _fibLevels = fibConfluence.calculateFibLevels(r.resistance, r.support);
-        if (_fibLevels && _fibLevels.levels) {
-          _fibReadResult = fibConfluence.evaluateFibConfluence(null, null); // reset
-          var _refPrice = r.last_price || 0;
-          var _entryMid = (toNum(r.entry_low) + toNum(r.entry_high)) / 2 || _refPrice;
-          var _nearHealthy = _entryMid <= _fibLevels.levels.fib_382 && _entryMid >= _fibLevels.levels.fib_618;
-          var _nearHealthyLoose = _entryMid >= _fibLevels.levels.fib_618 * 0.98 && _entryMid <= _fibLevels.levels.fib_382 * 1.02;
-          if (_nearHealthy || _nearHealthyLoose) {
-            r.fib_confluence_status = 'confluence_sehat';
-            r.fib_confluence_label = 'Fib confluence sehat';
-            r.fib_confluence_note = 'Entry/pullback dekat area Fib 38.2\u201361.8.';
-          } else if (_entryMid > _fibLevels.levels.fib_382) {
-            r.fib_confluence_status = 'di_atas_fib';
-            r.fib_confluence_label = 'Di atas area Fib';
-            r.fib_confluence_note = 'Harga sudah di atas area retracement ideal, tunggu pullback.';
-          } else {
-            r.fib_confluence_status = 'fib_structure_lemah';
-            r.fib_confluence_label = 'Fib structure lemah';
-            r.fib_confluence_note = 'Harga melemah di bawah area Fib sehat, perlu konfirmasi ulang.';
-          }
-          r.fib_nearest_label = null;
-          r.fib_nearest_level = null;
-          r.fib_levels = { fib_382: _fibLevels.levels.fib_382, fib_500: _fibLevels.levels.fib_500, fib_618: _fibLevels.levels.fib_618 };
-        }
-      }
-      if (!r.fib_confluence_label) {
-        r.fib_confluence_status = 'insufficient_data';
-        r.fib_confluence_label = 'Fib belum cukup data';
-        r.fib_confluence_note = 'Data candle belum cukup untuk membaca Fib confluence.';
-        r.fib_nearest_label = null;
-        r.fib_nearest_level = null;
-        r.fib_levels = null;
-      }
-    }
+    applyFallbackFibConfluence(r);
     var kongloReadRow = attachFreshness(enrichSignalQuality(r, 'Swing Konglo'), meta);
     smartSetupLabels.applySmartSetupLabels(kongloReadRow);
     return kongloReadRow;
@@ -9421,6 +9417,22 @@ async function handleNkScreenerBatch(req, res, supabase) {
         scored.quality_grade = _nkGrade.grade;
       }
 
+      // === FIBONACCI CONFLUENCE (soft signal, same as Swing Konglo) ===
+      if (quoteData && quoteData.candles && quoteData.candles.length >= 7) {
+        var _nkFibResult = fibConfluence.evaluateFibConfluence(quoteData.candles, {
+          last_price: scored.last_price,
+          entry_low: scored.entry_low,
+          entry_high: scored.entry_high,
+          support: scored.support
+        });
+        scored.fib_confluence_status = _nkFibResult.fib_confluence_status || null;
+        scored.fib_confluence_label = _nkFibResult.fib_confluence_label || null;
+        scored.fib_confluence_note = _nkFibResult.fib_confluence_note || null;
+        scored.fib_nearest_label = _nkFibResult.fib_nearest_label || null;
+        scored.fib_nearest_level = _nkFibResult.fib_nearest_level || null;
+        scored.fib_levels = _nkFibResult.fib_levels || null;
+      }
+
       // Trade Plan V2 SHADOW attach (Swing Non-Konglo). Gated by
       // TRADE_PLAN_V2_SHADOW_ENABLED — a pure no-op when off, so scored/staged
       // output is byte-identical. When enabled, the canonical snapshot is persisted
@@ -9972,6 +9984,7 @@ async function handleNkScreenerResults(req, res, supabase) {
 
   nkSorted = await enrichNonKongloHalfCandleDebt(nkSorted);
   nkSorted = await enrichConfluenceRows(supabase, nkSorted, true);
+  nkSorted = (nkSorted || []).map(applyFallbackFibConfluence);
 
   var activeRunDate = meta && meta.run_date ? meta.run_date : getWibDateString();
   var stagingCount = 0;
@@ -13594,6 +13607,8 @@ async function sendSwingNkTelegramNotification(supabase, publishedCount) {
   try {
     var { data: rows } = await supabase.from('swing_screener_non_konglo_latest').select('*').order('rank', { ascending: true }).limit(40);
     if (!rows || rows.length === 0) return { skipped: true, reason: 'no_data' };
+
+    rows = (rows || []).map(applyFallbackFibConfluence);
 
     var metaRes = await supabase.from('swing_screener_non_konglo_meta').select('calculated_at,updated_at,run_date,status').eq('id', 'latest').maybeSingle();
     var swingMeta = metaRes && metaRes.data ? metaRes.data : { calculated_at: null };
