@@ -25,6 +25,7 @@ Module._load = function (request) {
               eq() { return chain; },
               order() { return chain; },
               in() { return chain; },
+              or() { return chain; },
               limit() { return Promise.resolve({ data: [], error: null }); },
               maybeSingle() { return Promise.resolve({ data: null, error: null }); },
               insert() { return { select() { return Promise.resolve({ data: [], error: null }); } }; },
