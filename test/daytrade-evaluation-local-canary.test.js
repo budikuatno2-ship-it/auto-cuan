@@ -125,7 +125,15 @@ test('malformed, escaping, and symlinked finalized evidence fails closed before 
     const file = path.join(directory, 'bad.manifest.json');
     if (kind === 'malformed') fs.writeFileSync(file, '{');
     if (kind === 'escaping') fs.writeFileSync(file, JSON.stringify({ schema_version: 1, strategy: 'DAY_TRADE', relative_path: '../escape.jsonl.gz', record_count: 1, byte_size: 1, sha256: 'a'.repeat(64) }));
-    if (kind === 'symlink') { fs.rmSync(directory, { recursive: true, force: true }); fs.symlinkSync(os.tmpdir(), directory, 'dir'); }
+    if (kind === 'symlink') {
+      try {
+        fs.rmSync(directory, { recursive: true, force: true });
+        fs.symlinkSync(os.tmpdir(), directory, 'dir');
+      } catch (e) {
+        if (e.code === 'EPERM' || e.code === 'ENOTSUP') continue;
+        throw e;
+      }
+    }
     let providerCalls = 0; let loggerCalls = 0;
     await assert.rejects(canary.runCanary(options(root), dependencies({ fetchCandles: async () => { providerCalls++; }, createLogger: () => { loggerCalls++; } })), /EXISTING_EVIDENCE_UNVERIFIABLE/);
     assert.equal(providerCalls, 0); assert.equal(loggerCalls, 0);
@@ -135,7 +143,16 @@ test('malformed, escaping, and symlinked finalized evidence fails closed before 
 test('whole protocol tree rejects unsafe or unresolved evidence before provider and logger', async () => {
   for (const kind of ['raw-root-symlink', 'orphan-finalized', 'open', 'quarantine', 'intermediate-symlink']) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-protocol-tree-'));
-    if (kind === 'raw-root-symlink') fs.symlinkSync(os.tmpdir(), path.join(root, 'raw'), 'dir');
+    try {
+      if (kind === 'raw-root-symlink') fs.symlinkSync(os.tmpdir(), path.join(root, 'raw'), 'dir');
+      if (kind === 'intermediate-symlink') {
+        fs.mkdirSync(path.join(root, 'raw'));
+        fs.symlinkSync(os.tmpdir(), path.join(root, 'raw', '2026-08-03'), 'dir');
+      }
+    } catch (e) {
+      if (e.code === 'EPERM' || e.code === 'ENOTSUP') continue;
+      throw e;
+    }
     if (kind === 'orphan-finalized' || kind === 'open') {
       const raw = path.join(root, 'raw', '2026-08-03', 'day-trade'); fs.mkdirSync(raw, { recursive: true });
       fs.writeFileSync(path.join(raw, kind === 'open' ? 'run.open.jsonl.gz' : 'run.jsonl.gz'), zlib.gzipSync('{}\n'));
@@ -143,9 +160,6 @@ test('whole protocol tree rejects unsafe or unresolved evidence before provider 
     if (kind === 'quarantine') {
       const quarantine = path.join(root, 'quarantine', '2026-08-03'); fs.mkdirSync(quarantine, { recursive: true });
       fs.writeFileSync(path.join(quarantine, 'run.invalid.jsonl.gz'), zlib.gzipSync('{}\n'));
-    }
-    if (kind === 'intermediate-symlink') {
-      fs.mkdirSync(path.join(root, 'raw')); fs.symlinkSync(os.tmpdir(), path.join(root, 'raw', '2026-08-03'), 'dir');
     }
     let providerCalls = 0; let loggerCalls = 0;
     await assert.rejects(canary.runCanary(options(root), dependencies({ fetchCandles: async () => { providerCalls++; }, createLogger: () => { loggerCalls++; } })), /EXISTING_EVIDENCE_UNVERIFIABLE/);
@@ -207,10 +221,15 @@ test('evaluation root rejects filesystem/repository paths and symlinks but accep
   assert.throws(() => canary.assertSafeEvaluationRoot(path.join(canary.REPOSITORY_ROOT, 'logs', 'canary')), /UNSAFE_EVALUATION_ROOT/);
   assert.throws(() => canary.assertSafeEvaluationRoot(path.join(canary.REPOSITORY_ROOT, 'data', 'intraday-test')), /UNSAFE_EVALUATION_ROOT/);
   const external = fs.mkdtempSync(path.join(os.tmpdir(), 'dt-canary-root-'));
-  const link = path.join(external, 'repo-link'); fs.symlinkSync(canary.REPOSITORY_ROOT, link, 'dir');
-  assert.throws(() => canary.assertSafeEvaluationRoot(link), /UNSAFE_EVALUATION_ROOT/);
+  try {
+    const link = path.join(external, 'repo-link');
+    fs.symlinkSync(canary.REPOSITORY_ROOT, link, 'dir');
+    assert.throws(() => canary.assertSafeEvaluationRoot(link), /UNSAFE_EVALUATION_ROOT/);
+  } catch (e) {
+    if (e.code !== 'EPERM' && e.code !== 'ENOTSUP') throw e;
+  }
   assert.equal(canary.assertSafeEvaluationRoot(path.join(external, 'safe')), path.join(external, 'safe'));
-  assert.equal(canary.assertSafeEvaluationRoot('/home/ubuntu/auto-cuan-evaluation'), '/home/ubuntu/auto-cuan-evaluation');
+  assert.equal(canary.assertSafeEvaluationRoot(path.resolve('/home/ubuntu/auto-cuan-evaluation')), path.resolve('/home/ubuntu/auto-cuan-evaluation'));
 });
 
 test('CLI failures use stable messages and never include raw paths', () => {

@@ -328,14 +328,14 @@ test('--include-raw-candles includes full candle array', () => {
 
 test('output paths are under data/ai-research', () => {
   const dir = runner.getOutputDir('./data/ai-research');
-  assert.ok(dir.includes('data/ai-research'));
+  assert.ok(dir.replace(/\\/g, '/').includes('data/ai-research'));
   assert.ok(dir.includes(new Date().toISOString().slice(0, 10)));
 });
 
 test('output directory includes date', () => {
   const dir = runner.getOutputDir('/tmp/ai-research');
   const today = new Date().toISOString().slice(0, 10);
-  assert.ok(dir.endsWith(today));
+  assert.ok(dir.replace(/\\/g, '/').endsWith(today));
 });
 
 

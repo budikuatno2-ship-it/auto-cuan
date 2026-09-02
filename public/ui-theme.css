@@ -787,13 +787,23 @@ th {
   /* Comfortable targets everywhere, not just where a utility happened to set one. */
   .nav-btn, .screener-tab, .nk-screener-tab, .dt-screener-tab { min-height: 40px; }
 
+  /* Touch target standard >= 44px for all interactive controls on mobile */
+  .nav-btn, .screener-tab, .nk-screener-tab, .dt-screener-tab,
+  .ac-btn, .ac-segment, .ac-viewer-btn,
+  .action-card, .dashboard-pick-card,
+  .wl-star-btn, button, [role="button"], [role="tab"] {
+    min-height: var(--ac-control-h-touch, 44px);
+    touch-action: manipulation;
+  }
+
   /* The sticky header must clear the notch. */
   .app-header { padding-top: env(safe-area-inset-top, 0px); }
 
-  /* Side padding follows the safe area on notched landscape orientations. */
+  /* Side and bottom padding: clears floating launcher and safe areas on mobile */
   .page-content {
     padding-left: max(12px, env(safe-area-inset-left));
     padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: calc(var(--ac-fab-size, 56px) + var(--ac-safe-bottom, 16px) + 24px);
   }
 
   /* Bottom sheets and dialogs stay clear of the home indicator. */

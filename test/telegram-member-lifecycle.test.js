@@ -876,6 +876,16 @@ test('review: concurrent workers do not duplicate a request (lease serializes)',
 // ===========================================================================
 // 10. Secure VPS runner shell script
 // ===========================================================================
+const hasBash = (() => {
+  try {
+    const { execSync } = require('node:child_process');
+    execSync('bash --version', { stdio: 'ignore' });
+    return true;
+  } catch (_) {
+    return false;
+  }
+})();
+
 function runLifecycleShell(env) {
   const { execFileSync } = require('node:child_process');
   const script = path.join(ROOT, 'tools', 'run-telegram-lifecycle.sh');
@@ -892,7 +902,7 @@ function tmpDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'tglife-'));
 }
 
-test('runner: rejects a missing env file (non-zero exit)', function () {
+test('runner: rejects a missing env file (non-zero exit)', { skip: !hasBash }, function () {
   const dir = tmpDir();
   const envFile = path.join(dir, 'absent.env');
   const r = runLifecycleShell({ TELEGRAM_LIFECYCLE_ENV_FILE: envFile, TELEGRAM_LIFECYCLE_LOCK_FILE: path.join(dir, 'lock') });
@@ -900,7 +910,7 @@ test('runner: rejects a missing env file (non-zero exit)', function () {
   assert.ok(/env file not found/i.test(r.err), 'reports missing env file');
 });
 
-test('runner: rejects insecure env-file permissions (group/world access)', function () {
+test('runner: rejects insecure env-file permissions (group/world access)', { skip: !hasBash }, function () {
   const dir = tmpDir();
   const envFile = path.join(dir, 'insecure.env');
   fs.writeFileSync(envFile, 'SUPABASE_URL=x\n');
@@ -910,7 +920,7 @@ test('runner: rejects insecure env-file permissions (group/world access)', funct
   assert.ok(/insecure permissions/i.test(r.err), 'reports insecure permissions');
 });
 
-test('runner: never prints secret values from the env file', function () {
+test('runner: never prints secret values from the env file', { skip: !hasBash }, function () {
   const dir = tmpDir();
   const envFile = path.join(dir, 'secure.env');
   const SECRET = 'SUPERSECRETVALUE_do_not_leak_1234567890';
@@ -928,7 +938,7 @@ test('runner: never prints secret values from the env file', function () {
   assert.equal(combined.indexOf(SECRET), -1, 'secret value must never be printed');
 });
 
-test('runner: lock prevents overlapping executions (non-zero when held)', async function () {
+test('runner: lock prevents overlapping executions (non-zero when held)', { skip: !hasBash }, async function () {
   const { spawn } = require('node:child_process');
   const dir = tmpDir();
   const envFile = path.join(dir, 'secure.env');
