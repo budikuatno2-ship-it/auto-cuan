@@ -6729,6 +6729,13 @@ function evaluateMonitorStatus(pick, px) {
   if (slTouched) return result(active ? 'SL_HIT' : 'INVALID', active ? 'SL kena' : 'Invalid', true, active ? 'SL tersentuh' : 'Harga menyentuh invalidation sebelum entry');
   if (active && tp2Touched) return result('TP2_HIT', 'TP2 Hit', true, pick.hit_tp2_at ? 'TP2 sudah tercatat sebelumnya' : 'TP2 tersentuh');
   if (active && tp1Touched) return result('TP1_HIT', 'TP1 Hit', false, pick.hit_tp1_at ? 'TP1 sudah tercatat sebelumnya' : 'TP1 tersentuh');
+  // For already-active positions (entry was previously touched / hit_entry_at already set),
+  // the pre-entry "price too far from entry" freshness rule must NOT expire the position.
+  // The position remains active (IN_ENTRY_ZONE or RUNNING towards TP1) until TP or SL is reached.
+  if (activeBefore) {
+    if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2');
+    return result('RUNNING', 'Running', false, 'Posisi aktif; menuju TP1');
+  }
   if (fresh.setup_freshness_status === 'EXPIRED') return result('EXPIRED', 'Expired', false, fresh.setup_expiry_note);
   if (fresh.setup_freshness_status === 'NEEDS_REVALIDATION') return result('NEEDS_REVALIDATION', 'Needs Revalidation', false, fresh.setup_expiry_note);
   if (lastInEntryZone) return result('IN_ENTRY_ZONE', 'In Entry Zone', false, 'Harga berada di area Entry 1–Entry 2');
