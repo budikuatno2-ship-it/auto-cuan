@@ -73,16 +73,16 @@ test('PR 6: generateGeminiContent formats payload and returns candidate text on 
   };
   const result = await generateGeminiContent({
     apiKey: 'test-gemini-key',
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.6-flash',
     prompt: 'Analisis BBCA',
     systemInstruction: 'Gunakan Bahasa Indonesia.',
     fetchFn: mockFetch
   });
   assert.equal(result.text, 'Halo dari Gemini Flash 2.5!');
-  assert.equal(result.model, 'gemini-2.5-flash');
+  assert.equal(result.model, 'gemini-3.6-flash');
   assert.equal(result.source, 'gemini_api');
   assert.ok(calledUrl.includes('generativelanguage.googleapis.com'));
-  assert.ok(calledUrl.includes('gemini-2.5-flash:generateContent?key=test-gemini-key'));
+  assert.ok(calledUrl.includes('gemini-3.6-flash:generateContent?key=test-gemini-key'));
   assert.equal(calledBody.contents[0].parts[0].text, 'Analisis BBCA');
   assert.equal(calledBody.systemInstruction.parts[0].text, 'Gunakan Bahasa Indonesia.');
 });
