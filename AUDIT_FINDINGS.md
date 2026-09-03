@@ -593,3 +593,326 @@ Jadi menghapus v4/v5/v6 akan merusak runtime. Ini dicatat supaya tidak ada yang
 menyebut `public/portfolio-ai-recovery.js`, dan file itu **tidak ada** di repo. Build
 tetap hijau, jadi kemungkinan besar keduanya menanganinya sebagai opsional — tetapi
 saya belum membaca kedua file itu utuh, jadi belum bisa saya sebut aman maupun bug.
+
+---
+
+## BUG-016 — Rentang entry ditampilkan terbalik (tinggi→rendah) di Track Record & CSV
+
+- **Severity** : LOW (kosmetik / keterbacaan, tidak menyentuh logika trading)
+- **Area** : Track Record (frontend + kontrak data)
+- **Lokasi** : `public/track-record-runtime.js:172-173`, `public/track-record-runtime.js:239`
+
+**Gejala.** Kolom Entry di tabel Track Record dan di ekspor CSV menampilkan rentang
+yang menurun, mis. `Rp 1.250–Rp 1.200`, bukan `Rp 1.200–Rp 1.250`.
+
+**Kode asli.**
+
+```js
+// public/track-record-runtime.js:172-173
+var entryText = s.entry1 ? formatRp(s.entry1) : '—';
+if (s.entry2 && s.entry2 !== s.entry1) entryText += '–' + formatRp(s.entry2);
+```
+
+```js
+// public/track-record-runtime.js:239
+entryVal = (s.entry2 != null && s.entry2 !== s.entry1) ? (s.entry1 + '-' + s.entry2) : String(s.entry1);
+```
+
+**Root cause.** Di dalam tabel `telegram_daily_picks`, `entry1` adalah batas **atas**
+dan `entry2` adalah batas **bawah**. Ketiga penulis tabel itu konsisten:
+
+| penulis | baris | pemetaan |
+|---|---|---|
+| `api/sector-hot.js` (register plan terkunci) | `7136-7137` | `entry1: identity.entry_high, entry2: identity.entry_low` |
+| `api/sector-hot.js` (`dailyPickInsertRowFromCandidate` ← `normalizeCombinedCandidate`) | `6997`, `5108-5109` | `entry1 = getEntry1(r)` → `entry_high`; `entry2 = getEntry2(r)` → `entry_low` |
+| `lib/intraday-fast-watcher-publisher.js` | `211-212` | `entry1: entryHigh …, entry2: entryLow …` |
+
+Konvensi itu dinyatakan eksplisit di `api/sector-hot.js:3519-3520`:
+
+```js
+r.entry1 = high; // conservative representative for upside calculation
+r.entry2 = low;
+```
+
+dan di `api/sector-hot.js:3554`:
+
+```js
+if (high != null && high > 0) return high; // conservative entry reference for TP1 upside
+```
+
+Rantai datanya utuh dan sudah saya telusuri sampai ujung:
+`telegram_daily_picks` → `api/sector-hot.js:8005` (`select('*')`) →
+`lib/track-record-service.js:203-204` (diteruskan apa adanya:
+`entry1: normalizeNumber(row.entry1), entry2: normalizeNumber(row.entry2)`) →
+`public/track-record-runtime.js:172`. Tidak ada tahap yang menukar urutannya.
+
+Jadi sisi data benar; yang salah hanya sisi tampilan, yang merangkai `entry1` lalu
+`entry2` dengan tanda en-dash sehingga terbaca sebagai rentang naik padahal isinya
+turun.
+
+**Dampak.** Pengguna membaca "Entry 1.250–1.200" sebagai rentang yang keliru arah.
+Tidak ada gate, ranking, atau perhitungan yang memakai string ini — murni tampilan
+dan ekspor CSV.
+
+**Perbaikan yang diusulkan.** Urutkan pada saat render, jangan sentuh data:
+tampilkan `min(entry1, entry2)` lalu `max(entry1, entry2)`. Ini tidak mengubah
+formula bisnis apa pun (bukan perubahan strategi), jadi tidak masuk aturan No. 8.
+
+**Risiko.** Sangat rendah — hanya urutan dua angka pada satu string tampilan dan
+satu kolom CSV. Rollback = revert satu commit.
+
+**Verifikasi.** Test unit atas fungsi render/CSV dengan baris `entry1 > entry2`,
+memastikan keluarannya menaik.
+
+**Status** : DITEMUKAN — belum diperbaiki (menunggu giliran PR tersendiri)
+
+---
+
+## BUG-017 — `summary` Track Record tidak dihitung ulang setelah filter kategori
+
+- **Severity** : LOW (laten — jalur ini belum dipakai frontend)
+- **Area** : API Track Record
+- **Lokasi** : `api/sector-hot.js:8022-8030`
+
+**Kode asli.**
+
+```js
+var rows = q.data || [];
+var result = trackRecordService.buildTrackRecordData(rows);
+
+if (categoryFilter && categoryFilter !== 'all') {
+  var cf = String(categoryFilter).toLowerCase();
+  result.signals = result.signals.filter(function(s) {
+    return s.source === cf || String(s.category).toLowerCase().indexOf(cf) >= 0;
+  });
+}
+
+return res.status(200).json(result);
+```
+
+**Root cause.** `buildTrackRecordData(rows)` menghitung `result.summary`
+(`total_signals`, `win_rate_tp1`, `sl_rate`, `resolved_win_rate`, dst.) atas
+**seluruh** baris. Filter kategori lalu dipasang hanya pada `result.signals`.
+`result.summary` dikirim apa adanya, jadi respons untuk
+`?action=track-record&category=day-trade` berisi daftar sinyal satu kategori tetapi
+angka ringkasan seluruh kategori.
+
+**Dampak.** Pemanggil yang memakai parameter kategori akan menampilkan win-rate yang
+tidak sesuai daftar yang ditampilkan di sebelahnya.
+
+**Batas jangkauan — penting, jangan dilebihkan.** Frontend tidak pernah mengirim
+parameter itu. Satu-satunya pemanggil endpoint ini adalah
+`public/track-record-runtime.js:32`:
+
+```js
+var res = await fetch('/api/sector-hot?action=track-record');
+```
+
+tanpa `category` maupun `source`. UI **memang punya** filter kategori
+(`public/index.html:1203-1209`, tab `#trCategoryTabs`), tetapi filter itu dikerjakan
+sepenuhnya di sisi klien atas array `signals` yang sudah diterima
+(`public/track-record-runtime.js:140-152`) — bukan dengan memanggil ulang API.
+Jadi cabang filter di server itu **tidak pernah dieksekusi di produksi saat ini**:
+kode mati yang akan menjadi bug begitu ada pemanggil yang memakai parameternya.
+`result.by_category` sendiri sudah per kategori, jadi yang keliru hanya `summary`.
+
+**Perbaikan yang diusulkan.** Saring `rows` **sebelum** memanggil
+`buildTrackRecordData`, bukan menyaring hasilnya. Dengan begitu `summary` dan
+`by_category` otomatis konsisten dengan daftar sinyal.
+
+**Risiko.** Rendah. Karena jalurnya belum dipakai, perubahan tidak mengubah respons
+yang beredar sekarang (tanpa parameter kategori hasilnya identik).
+
+**Verifikasi.** Test yang memanggil handler dengan `category` terisi dan memeriksa
+`summary.total_signals === signals.length`.
+
+**Status** : DITEMUKAN — belum diperbaiki
+
+---
+
+## BUG-018 — Tiga `fetch` upstream tanpa timeout di `api/sector-hot.js`
+
+- **Severity** : MEDIUM
+- **Area** : Screener (AI confirmation + pengambilan candle/quote Yahoo)
+- **Lokasi** : `api/sector-hot.js:2088`, `api/sector-hot.js:2310`, `api/sector-hot.js:2348`
+
+Ini instance baru dari kelompok yang sama dengan BUG-005 (`lib/analyze-legacy.js`,
+sudah diperbaiki di PR #497) dan catatan tambahan di `api/quote.js`.
+
+**Kode asli.**
+
+```js
+// api/sector-hot.js:2088 — callAIConfirmation
+var response = await fetch(baseUrl + '/chat/completions', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+  body: JSON.stringify({ ... })
+});
+```
+
+```js
+// api/sector-hot.js:2310 — fetchScreenerCandles
+var response = await fetch(url, {
+  headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+});
+```
+
+```js
+// api/sector-hot.js:2348 — fetchYahooQuote
+var response = await fetch(url, {
+  headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+});
+```
+
+**Root cause.** Tidak ada `AbortController`, tidak ada `signal`, tidak ada
+`AbortSignal.timeout`. `fetch` Node/undici tidak punya batas waktu bawaan untuk
+respons yang menggantung; koneksi yang diterima lalu diam akan ditunggu sampai
+fungsi serverless-nya sendiri yang dimatikan platform.
+
+**Dampak.** `fetchScreenerCandles` dan `fetchYahooQuote` dipanggil per-ticker di
+dalam loop screener. Satu upstream yang menggantung menghabiskan sisa anggaran waktu
+fungsi, sehingga seluruh run screener gagal — bukan hanya ticker itu. Karena
+`callAIConfirmation` sudah menangkap semua error dan mengembalikan
+`{ data: [], diagnostic: ... }`, kegagalannya tenang: hasil AI kosong tanpa jejak
+penyebab yang jelas.
+
+**Perbaikan yang diusulkan.** Pakai pola yang sama dengan yang sudah dipasang di
+`lib/analyze-legacy.js` pada PR #497: pembungkus `fetchWithTimeout(url, options, ms)`
+berbasis `AbortController`, dengan batas yang cukup longgar (Yahoo ~10 detik, AI
+~20 detik) supaya tidak memotong panggilan yang sehat.
+
+**Risiko.** Rendah, tapi bukan nol: batas yang terlalu ketat akan menolak upstream
+yang lambat-tapi-normal. Karena itu batasnya diambil longgar dan kegagalan tetap
+jatuh ke jalur `return null` / `data: []` yang sudah ada — tidak ada perilaku baru.
+Rollback = revert satu commit.
+
+**Verifikasi.** Test yang menjalankan pembungkus terhadap server stub yang sengaja
+menggantung, memastikan ia menolak pada batas waktu dan bukan menggantung.
+
+**Status** : DITEMUKAN — belum diperbaiki (akan digabung ke satu PR "timeout upstream")
+
+---
+
+## Catatan laten pada `api/sector-hot.js:4024-4025` — fallback alias entry tertukar
+
+Bukan bug aktif, tapi saya catat karena mudah berubah jadi bug.
+
+```js
+// api/sector-hot.js:4024-4025
+var entryLow  = toNum(r.entry_low  || r.entry1 || r.entry_1);
+var entryHigh = toNum(r.entry_high || r.entry2 || r.entry_2 || entryLow);
+```
+
+Di file yang sama, `entry1` adalah batas **atas** dan `entry2` batas **bawah**
+(`api/sector-hot.js:3519-3520`). Jadi kedua fallback itu **tertukar**: kalau
+`entry_low`/`entry_high` tidak ada, `entryLow` akan menerima nilai tertinggi dan
+`entryHigh` nilai terendah.
+
+**Kenapa saya tidak menaikkannya jadi bug aktif.** Saya telusuri semua pemanggil
+`deriveRiskReasonDetails` — satu-satunya adalah `enrichSignalQuality`
+(`api/sector-hot.js:4074`), dan di sana `deriveConfidenceTier` → `getEntry1` →
+`normalizeCandidateEntryAliases` sudah mengisi `r.entry_low` dan `r.entry_high`
+lebih dulu (`api/sector-hot.js:3517-3518`) untuk setiap baris yang punya rentang.
+Semua sumber baris yang saya telusuri (`daytrade_screener_latest`,
+`swing_screener_latest`, `swing_screener_non_konglo_latest`) punya kolom
+`entry_low`/`entry_high`. Jadi cabang fallback itu tidak pernah dieksekusi pada
+jalur mana pun yang saya baca.
+
+**Rekomendasi** (bukan perbaikan yang saya jalankan sekarang): tukar kedua fallback
+agar sesuai konvensi file, atau — lebih tahan lama — pakai `Math.min`/`Math.max`
+seperti yang sudah dilakukan `api/sector-hot.js:6707-6708`.
+
+---
+
+## Catatan tambahan pada BUG-015 (RSI 0/0) — salinan di `api/sector-hot.js`
+
+```js
+// api/sector-hot.js:3358-3363 — calcScreenerRSI
+var avgGain = gains / period;
+var avgLoss = losses / period;
+if (avgLoss === 0) return 100;
+var rs = avgGain / avgLoss;
+return 100 - (100 / (1 + rs));
+```
+
+Pola yang sama dengan BUG-015: seri harga yang benar-benar datar (semua `diff === 0`,
+jadi `avgGain === 0 && avgLoss === 0`) dilaporkan sebagai RSI 100. Masuk ke keluarga
+BUG-015 dan menunggu keputusan yang sama, bukan temuan terpisah.
+
+
+---
+
+## Observasi (bukan bug) — hasil pemeriksaan `public/track-record-runtime.js`
+
+File ini saya baca utuh, baris 1 sampai 308. Tiga hal saya periksa khusus dan
+**tidak** saya naikkan menjadi bug, dengan alasannya masing-masing.
+
+### 1. Kartu ringkasan tidak ikut berubah saat tab kategori diklik — ini disengaja
+
+`filterTrackRecordCategory()` (`public/track-record-runtime.js:115-128`) hanya
+memanggil `renderTrackRecordTable()`, jadi keempat kartu ringkasan di atas
+(Total Sinyal / Win Rate TP1 / Target Maks TP2 / SL Hit Rate) tetap menampilkan
+angka seluruh kategori.
+
+Sempat saya curigai sebagai bug pelaporan. Setelah membaca markup-nya
+(`public/index.html:1148-1210`) saya batalkan: tata letaknya menempatkan kartu
+ringkasan global lebih dulu, lalu **bagian tersendiri berjudul "Performa Per
+Kategori"** yang memang sudah memecah angka per kategori
+(`public/track-record-runtime.js:102-105`), dan baru setelah itu Filter Bar berisi
+tab kategori, filter status, dan kotak pencarian. Tab itu berada di dalam filter bar
+milik tabel, sejajar dengan filter status dan pencarian yang juga hanya memengaruhi
+tabel. Jadi ringkasan global yang tetap global adalah perilaku yang konsisten dengan
+rancangannya, bukan cacat.
+
+### 2. Tombol "Unduh CSV" mengekspor seluruh data, bukan yang sedang difilter — belum pasti
+
+```js
+// public/track-record-runtime.js:274
+var csvContent = generateTrackRecordCsv(_trData.signals);
+```
+
+`_trData.signals` adalah himpunan penuh; tabel menampilkan `filtered`
+(`public/track-record-runtime.js:140-152`). Jadi setelah memfilter ke satu kategori
+atau satu status, CSV yang terunduh tetap berisi semua baris.
+
+**Saya belum bisa menyebut ini bug.** Tombolnya duduk di header seksi
+(`public/index.html:1137`), sebaris dengan "Muat Ulang", **di atas** kartu ringkasan
+dan di atas filter bar — bukan di dekat tabel. Judulnya "Export data track record ke
+CSV", bukan "ekspor tampilan ini". Penempatan dan labelnya sama-sama mendukung
+pembacaan "unduh seluruh track record". Ini keputusan produk, bukan bug yang bisa
+saya putuskan sendiri: kalau yang diinginkan adalah "ekspor sesuai filter", perbaikannya
+sepele (ekstrak logika filter dari `renderTrackRecordTable` lalu pakai di kedua
+tempat). Saya menunggu keputusan Anda dan tidak mengubah apa pun.
+
+### 3. `escapeCsvCell` tidak menetralkan formula — pengerasan, bukan kerentanan aktif
+
+```js
+// public/track-record-runtime.js:218-225
+function escapeCsvCell(val) {
+    if (val == null) return '';
+    var str = String(val);
+    if (str.search(/([",\n\r])/g) !== -1) {
+        str = '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+}
+```
+
+Pengutipan RFC-4180-nya benar (tanda kutip digandakan, sel yang mengandung
+`"` `,` CR/LF dikutip). Yang tidak ditangani adalah *CSV formula injection*: sel yang
+diawali `=`, `+`, `-`, `@`, TAB, atau CR akan dieksekusi sebagai rumus oleh
+Excel/Google Sheets.
+
+**Saya telusuri kesebelas kolomnya dan tidak menemukan sel yang bisa dikendalikan
+penyerang**: tanggal dan angka dibentuk oleh kode, `status_label`/`source_label`/
+`outcome` berasal dari himpunan konstanta di `lib/track-record-service.js`,
+`duration_text` dibangkitkan `formatDuration`. Satu-satunya yang berpotensi diawali
+tanda adalah `gainVal` (`+12.3%` / `-8.1%`), dan itu dibentuk dari angka hasil
+hitungan, bukan dari masukan.
+
+Yang **belum bisa saya pastikan** adalah `s.ticker`: nilainya berasal dari kolom DB.
+Sebagian besar penulis menormalkannya lewat `normalizeForeignTicker`
+(`api/sector-hot.js:3400`, pola `^[A-Z0-9]{2,12}$`), tetapi saya belum membaca
+seluruh penulis `telegram_daily_picks` sampai tuntas, jadi saya belum bisa menyatakan
+setiap baris ticker pasti tersaring. Karena itu ini saya catat sebagai rekomendasi
+pengerasan (awali sel yang dimulai `= + - @` dengan `'`), bukan temuan kerentanan.

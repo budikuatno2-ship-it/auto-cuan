@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 25 SELESAI, 4 SEDANG, 749 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 27 SELESAI, 5 SEDANG, 746 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -72,7 +72,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `api/register-user.js` | 206 | SELESAI | 0 | bersih; rate limit, validasi hash, terms acceptance, rollback registrasi |
 | `api/reset-password.js` | 68 | SELESAI | 0 | bersih; gateway routing saja |
 | `api/review-access.js` | 117 | SELESAI | 1 | BUG-013: token default + hash password akun review ada di sumber, repo publik |
-| `api/sector-hot.js` | 13902 | SEDANG | 0 | baris 1-2100 dari 13902 dibaca. Gate premium/cron per-action diverifikasi; allowlist aksi menutup fallthrough. Menguatkan pola BUG-014 (volume_ratio_avg20=0 saat tidak diketahui, dipakai sebagai HARD FILTER di :2016) |
+| `api/sector-hot.js` | 13902 | SEDANG | 3 | baris 1-4250 dari 13902 dibaca. Gate premium/cron per-action diverifikasi; allowlist aksi menutup fallthrough. Temuan: BUG-018 (3 fetch upstream tanpa timeout :2088/:2310/:2348), BUG-017 (summary track-record tidak dihitung ulang setelah filter kategori :8022-8030, laten), sumber data BUG-016. Catatan laten: fallback alias entry tertukar :4024-4025. Menguatkan BUG-014 (:1482/:2016) dan BUG-015 (calcScreenerRSI :3360). Verifikasi bersih: token share HMAC + expiry WIB (:2421-2560), parser CSV foreign (:3440-3560), helper WIB/Jakarta (:3320-3480) semuanya benar |
 | `deploy/ai-eval-once.env.example` | 23 | BELUM | 0 | |
 | `deploy/vps/run-daily-market-context-collector.sh` | 100 | BELUM | 0 | |
 | `deploy/vps/telegram-monitor-local.sh` | 27 | BELUM | 0 | |
@@ -167,7 +167,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/intraday-fast-watcher-live.js` | 307 | BELUM | 0 | |
 | `lib/intraday-fast-watcher-momentum.js` | 361 | BELUM | 0 | |
 | `lib/intraday-fast-watcher-pool.js` | 396 | BELUM | 0 | |
-| `lib/intraday-fast-watcher-publisher.js` | 464 | BELUM | 0 | |
+| `lib/intraday-fast-watcher-publisher.js` | 464 | SEDANG | 0 | baris 160-240 dibaca untuk menelusuri konvensi entry1/entry2 pada penulisan `telegram_daily_picks` (:211-212 konsisten entry1=high). Sisa file belum dibaca |
 | `lib/intraday-fast-watcher-radar-publisher.js` | 301 | BELUM | 0 | |
 | `lib/intraday-fast-watcher.js` | 509 | BELUM | 0 | |
 | `lib/intraday-production-eligibility.js` | 91 | BELUM | 0 | |
@@ -217,7 +217,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/telegram-verify-bot.js` | 186 | BELUM | 0 | |
 | `lib/telegram-voucher-admin-continuation.js` | 145 | BELUM | 0 | |
 | `lib/top5-progress-monitor.js` | 172 | BELUM | 0 | |
-| `lib/track-record-service.js` | 265 | BELUM | 0 | |
+| `lib/track-record-service.js` | 265 | SELESAI | 0 | Dibaca baris 1-265. Bersih. Diperiksa: `classifyOutcome` menghormati kronologi TP-sebelum-SL (`lib/report-helpers.js:68-80`), `resolved_win_rate` tidak menghitung ganda TP2 di dalam TP1, baris terarsip dilewati (:99), `calculateGainPct` memakai entry konservatif (entry1=batas atas). Meneruskan `entry1`/`entry2` apa adanya — benar; kekeliruan urutan ada di sisi render (BUG-016) |
 | `lib/trade-plan-v2-candle-structure.js` | 397 | BELUM | 0 | |
 | `lib/trade-plan-v2-daytrade-diagnostic.js` | 521 | BELUM | 0 | |
 | `lib/trade-plan-v2-flags.js` | 128 | BELUM | 0 | |
@@ -293,7 +293,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `public/subscription-manual-payment-v1.js` | 438 | BELUM | 0 | |
 | `public/subscription-voucher-claim-v1.js` | 61 | BELUM | 0 | |
 | `public/tailwind-build.css` | 0 | BELUM | 0 | |
-| `public/track-record-runtime.js` | 308 | BELUM | 0 | |
+| `public/track-record-runtime.js` | 308 | SELESAI | 1 | Dibaca baris 1-308. BUG-016 (rentang entry dirender tinggi->rendah, :172-173 dan :239). Tiga hal diperiksa dan sengaja TIDAK dinaikkan jadi bug: kartu ringkasan tetap global saat tab kategori diklik (disengaja menurut markup `public/index.html:1148-1210`), ekspor CSV memakai data penuh bukan yang difilter (:274 — keputusan produk, belum pasti), `escapeCsvCell` tidak menetralkan formula (:218 — pengerasan, tidak ditemukan sel yang dikendalikan penyerang) |
 | `public/trust.html` | 150 | BELUM | 0 | |
 | `public/ui-bugfix-pack-v1.js` | 375 | BELUM | 0 | |
 | `public/ui-stability-fix.js` | 222 | BELUM | 0 | |
