@@ -3265,3 +3265,59 @@ menghitungnya:
 ```sql
 select count(*) from app_users where password_hash !~ '^k1[a-f0-9]{62}$';
 ```
+
+---
+
+## REKOMENDASI-02 — `security-gate` merah kalau registry npm sedang gangguan
+
+- **Sifat** : kerapuhan CI, **bukan** bug aplikasi. Tidak saya perbaiki — mengubah kebijakan CI adalah keputusan Anda.
+- **Bukti** : PR #496, commit `3ea3403`, job `security-gate` gagal
+
+### Apa yang terjadi
+
+```
+Repository security audit passed: no tracked credential files or high-confidence secret patterns found.
+...
+npm warn audit 503 Service Unavailable - POST https://registry.npmjs.org/-/npm/v1/security/audits/quick - Service Unavailable
+{ error: 'Service Unavailable' }
+npm error audit endpoint returned an error
+##[error]Process completed with exit code 1.
+```
+
+Pemindai rahasia milik repo sendiri (`tools/repo-security-audit.js`) **lolos**.
+Yang menggagalkan job adalah langkah berikutnya, `npm audit --omit=dev
+--audit-level=high`, yang mendapat **503 dari registry.npmjs.org**.
+
+### Kenapa saya angkat
+
+Ini terjadi pada PR yang **hanya berisi dokumentasi** — `package.json` tidak
+disentuh sama sekali, dan satu-satunya dependensi runtime repo ini adalah
+`@supabase/supabase-js`. Artinya gangguan di npmjs.org membuat **setiap** PR
+merah, apa pun isinya, termasuk keenam status check wajib Anda.
+
+Kejadian ini sudah pulih sendiri: pada head #496 yang sekarang `security-gate`
+kembali hijau tanpa saya ubah apa pun. Jadi tidak ada yang perlu diperbaiki
+hari ini — tapi penyebabnya masih ada.
+
+### Pilihan kalau Anda mau ini ditutup
+
+Dua opsi, dengan trade-off berbeda:
+
+1. **Toleransi kegagalan jaringan saja.** Jalankan `npm audit --json`, dan
+   anggap gagal hanya kalau keluarannya benar-benar melaporkan kerentanan
+   `high`/`critical` — bukan kalau perintahnya sendiri error. Gerbangnya tetap
+   nyata, tapi tidak lagi bergantung pada ketersediaan registry.
+   Risikonya: kalau audit tidak pernah berhasil dijalankan, kerentanan baru
+   bisa lolos tanpa ada yang sadar, kecuali langkah itu juga mencetak peringatan
+   yang terlihat.
+
+2. **Biarkan seperti sekarang.** Merah palsu memang mengganggu, tapi tidak
+   pernah meloloskan apa pun yang berbahaya, dan pulih sendiri saat registry
+   normal.
+
+**Rekomendasi saya: opsi 1**, dengan syarat langkah itu tetap mencetak
+peringatan mencolok ketika audit tidak bisa dijalankan — supaya "tidak bisa
+diperiksa" tidak diam-diam terbaca sebagai "aman". Saya tidak mengerjakannya:
+ini menyentuh workflow CI dan keenam check wajib Anda, dan aturan 7 Anda
+menyuruh saya mencatat utang seperti ini sebagai rekomendasi, bukan
+menjalankannya.
