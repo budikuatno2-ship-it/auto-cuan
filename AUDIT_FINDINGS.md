@@ -497,6 +497,67 @@ Brief meminta ini diperiksa. Hasil sapuan seluruh repo dan riwayat git:
 
 ---
 
+## BUG-015
+
+- **Severity** : MEDIUM
+- **Area** : Indikator / Screener
+- **Lokasi** : `api/quote.js:1466`, `api/candles.js:292`, `lib/daytrade-screener-engine.js:2069`, `lib/analyze-legacy.js:1394`, `api/sector-hot.js:2872`, `api/sector-hot.js:10895` — enam salinan. Yang **benar** ada di `lib/daily-rsi.js:70-75`.
+- **Gejala** : Saham dengan 14 hari harga penutupan yang sama persis (disuspensi, atau counter sangat tidak likuid) dilaporkan **RSI = 100** — "sangat overbought" — padahal harganya tidak bergerak sama sekali.
+- **Root cause** : Enam implementasi hanya menjaga pembagian nol, tanpa membedakan "tidak ada pergerakan" dari "hanya naik":
+
+  ```js
+  if (avgLoss === 0) return 100;
+  ```
+
+  Ketika seri datar, `avgGain` **dan** `avgLoss` sama-sama 0. Rasionya `0/0` — tidak terdefinisi. Konvensinya (dan jawaban yang sudah dipakai repo ini sendiri) adalah 50.
+
+  `lib/daily-rsi.js:70-75` sudah melakukannya dengan benar:
+
+  ```js
+  function rsiFromAverages(avgGain, avgLoss) {
+    if (avgGain === 0 && avgLoss === 0) return 50;
+    if (avgLoss === 0) return 100;
+    ...
+  }
+  ```
+
+  Jadi ini bukan pendapat saya tentang RSI "seharusnya" berapa — repo ini sudah memuat jawaban yang benar di satu tempat, dan enam salinan lain kehilangan penjagaannya.
+
+- **Bukti reproduksi** (menjalankan fungsi aslinya, bukan membaca saja):
+
+  ```
+  seri                        quote.js  candles.js  screener-engine   lib/daily-rsi.js
+  datar (15 x 1000)           100       100         100               50
+  uptrend (1000..1140)        100       100         100               100
+  ```
+
+  Perhatikan barisnya: pada tiga implementasi itu, **seri datar tidak bisa dibedakan dari tren naik terkuat yang mungkin**.
+
+- **Dampak** : `rsi14` masuk ke `calculateRiskLabel()` (`api/quote.js:445`) dan ke mesin screener, jadi angka ini ikut menentukan label risiko dan penyaringan. Saham beku dilaporkan sebagai overbought ekstrem.
+- **Perbaikan yang diusulkan** : samakan keenam salinan dengan `lib/daily-rsi.js` — tambahkan `if (avgGain === 0 && avgLoss === 0) return 50;` sebelum penjagaan yang ada. Idealnya keenamnya memanggil satu implementasi bersama, tapi itu refactor; perbaikan minimalnya satu baris per lokasi.
+- **Risiko** : mengubah nilai indikator, sehingga mengubah keluaran gate/risk label untuk kasus datar. **Belum dieksekusi** — aturan Anda meminta saya bertanya dulu sebelum mengubah perilaku bisnis.
+- **Status** : DITEMUKAN — menunggu keputusan
+
+---
+
+## Catatan tambahan pada BUG-005 (fetch tanpa timeout) — instance baru di `api/quote.js`
+
+Saat membaca `api/quote.js` saya menemukan pola yang sama seperti BUG-005, di file yang berbeda:
+
+| fungsi | baris | timeout? |
+|---|---|---|
+| `fetchFreshScreenerLatestPrice` | `api/quote.js:109` | tidak ada |
+| `fetchBoardData` | `api/quote.js:666` | tidak ada |
+| `getCachedNews` | `api/quote.js:1067` | tidak ada |
+| `saveCachedNews` | `api/quote.js:1115` | tidak ada |
+| `fetchYahooQuote` | `api/quote.js:488` | ada, 8 detik |
+| `fetchNewsFromCodeCrafters` | `api/quote.js:1020` | ada, 20 detik |
+| `fetchNewsFromGemini` | `api/quote.js:1176` | ada, 20 detik |
+
+Keempat yang tanpa timeout semuanya menuju Supabase REST. `api/quote.js` tidak punya entri `maxDuration` di `vercel.json`, jadi ia memakai batas default platform. Belum saya perbaiki — bukan kelompok masalah yang sama dengan PR yang sedang terbuka, dan saya ingin menggabungkannya dengan sisa audit `api/quote.js` yang belum selesai dibaca.
+
+---
+
 ## Modul Bersih (sudah diperiksa, tidak ditemukan bug)
 
 ### Hipotesis "import yatim ke modul AI yang dihapus" — TIDAK TERBUKTI

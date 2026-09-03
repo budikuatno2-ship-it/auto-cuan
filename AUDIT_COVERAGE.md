@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 20 SELESAI, 3 SEDANG, 755 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 24 SELESAI, 4 SEDANG, 750 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -68,7 +68,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `api/log.js` | 194 | SELESAI | 0 | bersih; identitas dari sesi bertanda tangan, is_admin server-side, cap panjang, strip control char, rate limit dari nilai yang diamati server |
 | `api/login-user.js` | 568 | SELESAI | 0 | bersih; webhook secret constant-time, same-origin gate, anti-enumeration, device binding, migrasi kredensial CAS |
 | `api/maintenance-settings.js` | 229 | SELESAI | 0 | bersih; write op butuh admin session + same-origin |
-| `api/quote.js` | 2747 | BELUM | 0 | |
+| `api/quote.js` | 2747 | SEDANG | 2 | baris 1-1500 dari 2747 sudah dibaca; BUG-015 (RSI seri datar) + 4 fetch tanpa timeout |
 | `api/register-user.js` | 206 | SELESAI | 0 | bersih; rate limit, validasi hash, terms acceptance, rollback registrasi |
 | `api/reset-password.js` | 68 | SELESAI | 0 | bersih; gateway routing saja |
 | `api/review-access.js` | 117 | SELESAI | 1 | BUG-013: token default + hash password akun review ada di sumber, repo publik |
@@ -119,7 +119,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/daily-market-context-builder.js` | 355 | BELUM | 0 | |
 | `lib/daily-market-context-constants.js` | 34 | BELUM | 0 | |
 | `lib/daily-pbv.js` | 70 | BELUM | 0 | |
-| `lib/daily-rsi.js` | 117 | BELUM | 0 | |
+| `lib/daily-rsi.js` | 117 | SELESAI | 0 | bersih; satu-satunya implementasi RSI yang menangani seri datar dengan benar (return 50) |
 | `lib/daily-volume-context.js` | 110 | BELUM | 0 | |
 | `lib/daytrade-adjusted-vs-normal-report.js` | 140 | BELUM | 0 | |
 | `lib/daytrade-cache-audit.js` | 161 | BELUM | 0 | |
