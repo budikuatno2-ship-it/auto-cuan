@@ -244,19 +244,35 @@
         var replyText = '';
         var localFallback = false;
         var bubble = appendStreamingBubble();
-        while (true) {
-          var chunkResult = await reader.read();
-          if (chunkResult.done) break;
-          streamBuffer += decoder.decode(chunkResult.value, { stream: true });
-          streamBuffer = consumeSSELines(streamBuffer, function (parsed) {
-            if (parsed && typeof parsed.chunk === 'string') {
-              replyText += parsed.chunk;
-              if (bubble) bubble.textContent = replyText;
-            }
-            if (parsed && parsed.local_fallback === true) localFallback = true;
-          });
+        var streamError = null;
+        try {
+          while (true) {
+            var chunkResult = await reader.read();
+            if (chunkResult.done) break;
+            streamBuffer += decoder.decode(chunkResult.value, { stream: true });
+            streamBuffer = consumeSSELines(streamBuffer, function (parsed) {
+              if (parsed && typeof parsed.chunk === 'string') {
+                replyText += parsed.chunk;
+                if (bubble) bubble.textContent = replyText;
+              }
+              if (parsed && parsed.local_fallback === true) localFallback = true;
+            });
+          }
+        } catch (err) {
+          // A dropped connection or the client-side abort timeout rejects
+          // reader.read() mid-stream. The partial, unverified text already
+          // shown in the bubble must never be presented as the final answer,
+          // and the bubble itself must not be left stuck on screen — both are
+          // handled by the finally below and the early return here.
+          streamError = err;
+        } finally {
+          removeStreamingBubble();
         }
-        removeStreamingBubble();
+        if (streamError) {
+          var midStreamFailure = describeFailure(response, {}, streamError);
+          appendNotice(midStreamFailure.text, midStreamFailure.retryable);
+          return;
+        }
         if (!replyText) {
           var streamFailure = describeFailure(response, {}, null);
           appendNotice(streamFailure.text, streamFailure.retryable);

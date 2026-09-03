@@ -147,10 +147,16 @@ test('stock and portfolio UI always release their sending lock after provider fa
   // leave the composer disabled or the spinner running. The assertions allow
   // other cleanup in the same block (abort timers, loading removal) but require
   // the unlock to be present in it.
-  const stockFinally = stock.match(/finally \{[\s\S]*?\n {4}\}/);
-  assert.ok(stockFinally, 'stock send() must have a finally block');
-  assert.match(stockFinally[0], /setBusy\(false\);/);
-  assert.match(stockFinally[0], /removeLoading\(\);/, 'the loading bubble must never survive a failure');
+  // send() now has two finally blocks: an inner one that only cleans up the
+  // in-progress SSE streaming bubble on a mid-stream failure, and the outer
+  // one (asserted here) that always releases the sending lock. Match all of
+  // them and require the lock-release finally specifically, so this stays
+  // correct regardless of how many other finally blocks the function grows.
+  const stockFinallyBlocks = stock.match(/finally \{[\s\S]*?\n {4}\}/g) || [];
+  assert.ok(stockFinallyBlocks.length > 0, 'stock send() must have a finally block');
+  const stockLockFinally = stockFinallyBlocks.find((block) => /setBusy\(false\);/.test(block));
+  assert.ok(stockLockFinally, 'stock send() must release the sending lock from a finally block');
+  assert.match(stockLockFinally, /removeLoading\(\);/, 'the loading bubble must never survive a failure');
 
   const portfolioFinally = portfolio.match(/finally \{[\s\S]*?\n {4}\}/);
   assert.ok(portfolioFinally, 'portfolio sendMessage() must have a finally block');

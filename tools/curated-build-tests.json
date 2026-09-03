@@ -76,6 +76,7 @@
   "test/classic-chart-patterns.test.js",
   "test/context-ai-secondary-provider.test.js",
   "test/stock-analysis-ai-streaming-contract.test.js",
+  "test/stock-analysis-ai-stream-failure-handling.test.js",
   "test/corporate-action-price-scale-guard.test.js",
   "test/daily-foreign-context.test.js",
   "test/daily-history-collector.test.js",
