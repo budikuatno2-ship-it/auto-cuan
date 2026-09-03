@@ -10561,9 +10561,31 @@ function sanitizeAIHtml(html) {
     if (!html) return html;
     // Remove script tags (split closing tag to avoid HTML parser issue)
     var output = html.replace(new RegExp('<script[\\s\\S]*?<\\/script>', 'gi'), '');
-    // Remove event handlers
-    output = output.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
-    output = output.replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
+    // Remove event handlers.
+    //
+    // This replaces two earlier rules that both required WHITESPACE before the
+    // handler name:
+    //     /\s+on\w+\s*=\s*["'][^"']*["']/gi
+    //     /\s+on\w+\s*=\s*[^\s>]*/gi
+    // The HTML tokenizer is more permissive than that. It accepts `/` as an
+    // attribute separator, and it lets an attribute begin immediately after a
+    // quoted value, so all three of these survived and fired in Chromium:
+    //     <img/src=x/onerror=...>
+    //     <img src=x/onerror=...>
+    //     <img src="x"onerror=...>
+    //
+    // Those rules were also not scoped to the inside of a tag, so ordinary prose
+    // was damaged: "buy on weakness: onclick= bukan atribut" lost the words after
+    // "onclick=". Matching per tag fixes both problems at once — every separator
+    // the parser accepts is handled, and body text is never rewritten.
+    output = output.replace(/<([a-zA-Z][a-zA-Z0-9:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g,
+        function (whole, tagName, attrs) {
+            var cleaned = attrs.replace(
+                /(^|[\s\/"'])on[a-zA-Z0-9_:.-]*\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi,
+                '$1'
+            );
+            return '<' + tagName + cleaned + '>';
+        });
     // Dangerous URL schemes, resistant to entity encoding.
     //
     // The old rule was a literal match on `href="javascript:..."`, so
