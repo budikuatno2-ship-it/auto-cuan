@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 45 SELESAI, 4 SEDANG, 729 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 48 SELESAI, 6 SEDANG, 724 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -89,7 +89,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/admin-fundamentals-upload.js` | 240 | BELUM | 0 | |
 | `lib/admin-maintenance-code-browser.js` | 356 | BELUM | 0 | |
 | `lib/admin-maintenance-code.js` | 249 | BELUM | 0 | |
-| `lib/admin-session.js` | 247 | SELESAI | 0 | bersih; HMAC v1, fail-closed tanpa SESSION_SECRET, cookie HttpOnly+SameSite=Strict+Secure di prod |
+| `lib/admin-session.js` | 247 | SELESAI | 0 | **Bersih**. HMAC-SHA256, perbandingan timing-safe dengan penjaga panjang, fail-closed tanpa `SESSION_SECRET`, verifikasi tanda tangan SEBELUM `JSON.parse`, penjaga `iat`/`exp` (`Number.isSafeInteger`, umur maksimum, tidak boleh dari masa depan), cookie `HttpOnly`+`SameSite=Strict`+`Secure` di produksi. Token onboarding punya nama cookie, awalan versi (`ob1`) DAN domain HMAC (`ac-onboarding-v1.`) yang terpisah plus cek `typ` — tidak bisa saling diterima. Pencabutan sesi memang tidak ada di token; itu ditangani lapisan otorisasi yang mengecek `is_blocked`/`is_approved` ke DB tiap permintaan. |
 | `lib/admin-users-handler.js` | 580 | BELUM | 0 | |
 | `lib/ai-analysis-cache.js` | 220 | SELESAI | 1 | Ikut BUG-028: bentuk kunci `computeCacheKey` (`:24-32`) tidak memuat identitas/konteks — pemanggilnya yang harus mengisi `extra`. Sisanya bersih: TTL, purge kedaluwarsa, invalidasi per-ticker, dan fallback saat Supabase tidak dikonfigurasi. |
 | `lib/ai-answer-contract.js` | 253 | BELUM | 0 | |
@@ -105,7 +105,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/ai-telemetry.js` | 75 | BELUM | 0 | |
 | `lib/analyze-legacy.js` | 1769 | SELESAI | 4 | BUG-005 (5 fetch tanpa timeout) DIPERBAIKI; BUG-007 (tidak ada SSE) dicatat; **BUG-029 (HIGH) DIPERBAIKI PR #506** — angka apa pun di pesan dibaca sebagai harga; REKOMENDASI-01 (`sanitizeOutput` `:836` bukan sanitizer keamanan). Dibaca ulang: routeIntent, template IHSG/saham, urutan sumber quote, buildStockFixedTemplate. |
 | `lib/atr-report-helpers.js` | 339 | BELUM | 0 | |
-| `lib/auth-recovery.js` | 406 | BELUM | 0 | |
+| `lib/auth-recovery.js` | 406 | SELESAI | 0 | **Bersih**. Token reset 256 bit (`randomBytes(32)`), hanya hash yang disimpan, HMAC ber-domain (`auth-recovery-v1:<kind>:`), `safeBaseUrl` memaksa https + origin saja sehingga tidak ada open-redirect. Persetujuan reset diverifikasi di SQL terhadap `telegram_user_id` DAN `telegram_private_chat_id` DAN `telegram_verified_at` DAN `is_blocked` (`supabase/auth-recovery-v1-telegram-message-redaction-hotfix.sql:64-73`), gagal-tertutup `identity_mismatch`. Enrolment dikunci ke `username = 'budi'` saja. Catatan: enrolment tidak punya pembatas percobaan seperti alur verifikasi — tapi 40 bit entropi dengan TTL 15 menit membuatnya tidak praktis, jadi bukan temuan. |
 | `lib/candle-pattern-engine.js` | 379 | BELUM | 0 | |
 | `lib/chart-t1-policy.js` | 76 | BELUM | 0 | |
 | `lib/classic-chart-patterns.js` | 345 | BELUM | 0 | |
@@ -193,7 +193,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/screener-evaluation-logger.js` | 85 | BELUM | 0 | |
 | `lib/screener-evaluation-retention.js` | 64 | BELUM | 0 | |
 | `lib/second-chance-admin-pilot.js` | 292 | BELUM | 0 | |
-| `lib/security-guard.js` | 469 | BELUM | 0 | |
+| `lib/security-guard.js` | 469 | SELESAI | 0 | **Bersih**. `getMode` default `enforce` di produksi (fail-closed), pepper wajib ≥32 karakter, `getClientIp` mendahulukan `x-vercel-forwarded-for` (diset platform) di atas `x-forwarded-for` (bisa dipalsukan klien) — urutan yang benar. Alert Telegram dibatasi `AbortController` 3 detik. Catatan desain (bukan bug): fail-closed saat pepper/DB tidak tersedia HANYA berlaku untuk akun admin utama; untuk akun lain guard menjadi no-op — konsisten di ketiga tempat dan tampaknya disengaja. |
 | `lib/smart-setup-labels.js` | 238 | BELUM | 0 | |
 | `lib/stock-daily-history-store.js` | 248 | BELUM | 0 | |
 | `lib/subscription-auth.js` | 135 | SELESAI | 0 | bersih; batas identitas server-only |
@@ -317,9 +317,9 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `supabase/ai-analysis-cache-migration.sql` | 29 | BELUM | 0 | |
 | `supabase/ai-context-snapshots-migration.sql` | 49 | BELUM | 0 | |
 | `supabase/ai-eval-cloud-migration.sql` | 122 | BELUM | 0 | |
-| `supabase/auth-recovery-v1-telegram-message-redaction-hotfix.sql` | 187 | BELUM | 0 | |
+| `supabase/auth-recovery-v1-telegram-message-redaction-hotfix.sql` | 187 | SEDANG | 0 | Dibaca sebagian: `approve_auth_password_reset_request_v2` (`:21-90`) diperiksa penuh — pengikatan identitas ke telegram_user_id + private_chat_id + terverifikasi + tidak diblokir, dengan `FOR UPDATE` dan cek kedaluwarsa. Sisanya belum. |
 | `supabase/auth-telegram-recovery-v1-device-retirement-hotfix.sql` | 86 | BELUM | 0 | |
-| `supabase/auth-telegram-recovery-v1-migration.sql` | 527 | BELUM | 0 | |
+| `supabase/auth-telegram-recovery-v1-migration.sql` | 527 | SEDANG | 0 | Dibaca sebagian: `consume_auth_telegram_enrollment` (`:131-200`) diperiksa penuh — `FOR UPDATE`, cek kedaluwarsa, kunci ke username 'budi', tolak kalau Telegram id sudah milik akun lain. Sisanya belum. |
 | `supabase/centralize-primary-admin-identity.sql` | 112 | BELUM | 0 | |
 | `supabase/claim-ai-eval-run-atomically.sql` | 36 | BELUM | 0 | |
 | `supabase/daytrade-screener-migration.sql` | 119 | BELUM | 0 | |
