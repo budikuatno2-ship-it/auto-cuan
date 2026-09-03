@@ -14,6 +14,7 @@
   "test/ai-model-routing-health.test.js",
   "test/ai-ui-failure-states.test.js",
   "test/ai-chat-polish.test.js",
+  "test/portfolio-ai-context-completeness.test.js",
   "test/portfolio-price-freshness.test.js",
   "test/portfolio-supabase-persistence.test.js",
   "test/repo-security-hardening.test.js",
