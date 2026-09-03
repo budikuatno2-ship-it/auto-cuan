@@ -661,10 +661,16 @@ formula bisnis apa pun (bukan perubahan strategi), jadi tidak masuk aturan No. 8
 **Risiko.** Sangat rendah — hanya urutan dua angka pada satu string tampilan dan
 satu kolom CSV. Rollback = revert satu commit.
 
-**Verifikasi.** Test unit atas fungsi render/CSV dengan baris `entry1 > entry2`,
-memastikan keluarannya menaik.
+**Verifikasi.** `test/track-record-entry-range-order.test.js` — 12 test. 11 gagal
+terhadap file sebelum patch; yang ke-12 sengaja lolos di kedua sisi sebagai penjaga
+bahwa perbaikannya *mengurutkan*, bukan *menukar buta*. Suite penuh 320/320 lolos.
 
-**Status** : DITEMUKAN — belum diperbaiki (menunggu giliran PR tersendiri)
+Catatan kenapa ini lolos selama ini: fixture di `test/track-record-csv.test.js:62-63`
+memakai `entry1: 4500, entry2: 4550` — menaik, kebalikan dari bentuk yang sebenarnya
+ditulis produksi. Test itu tidak pernah melihat kasusnya. Suite tersebut tetap lolos
+tanpa saya ubah (13/13).
+
+**Status** : DIPERBAIKI — PR #503 (`fix/track-record-entry-range-order`), draft
 
 ---
 
@@ -786,10 +792,21 @@ yang lambat-tapi-normal. Karena itu batasnya diambil longgar dan kegagalan tetap
 jatuh ke jalur `return null` / `data: []` yang sudah ada — tidak ada perilaku baru.
 Rollback = revert satu commit.
 
-**Verifikasi.** Test yang menjalankan pembungkus terhadap server stub yang sengaja
-menggantung, memastikan ia menolak pada batas waktu dan bukan menggantung.
+**Verifikasi.** `test/sector-hot-upstream-timeout.test.js` — 9 test, dua lapis:
+perilaku (abort dibuktikan terhadap server HTTP lokal sungguhan yang menerima koneksi
+lalu tidak pernah membalas — tanpa mocking `fetch`) dan wiring (memindai sumber dan
+menolak setiap `await fetch(` yang tidak membawa `signal`, sehingga `fetch` telanjang
+tidak bisa diselundupkan kembali). 9/9 gagal sebelum patch, 9/9 lolos sesudahnya.
+Suite penuh 320/320 lolos.
 
-**Status** : DITEMUKAN — belum diperbaiki (akan digabung ke satu PR "timeout upstream")
+Batas yang dipakai: Yahoo 12 detik, AI 20 detik — keduanya **lebih longgar** dari
+yang sudah terbukti jalan di produksi pada host yang sama (`api/quote.js:488` = 8
+detik; `fetchLatestPriceForMonitor` = 10 detik; `fetchNkQuoteData` = 5 detik).
+
+**Status** : DIPERBAIKI — PR #502 (`fix/sector-hot-upstream-timeouts`), draft
+
+Sisa keluarga yang sama dan **belum** disentuh: empat `fetch` ke Supabase REST di
+`api/quote.js` (lihat catatan tambahan BUG-005 di atas).
 
 ---
 
