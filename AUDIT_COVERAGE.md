@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 34 SELESAI, 4 SEDANG, 740 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 37 SELESAI, 4 SEDANG, 737 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -91,7 +91,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/admin-maintenance-code.js` | 249 | BELUM | 0 | |
 | `lib/admin-session.js` | 247 | SELESAI | 0 | bersih; HMAC v1, fail-closed tanpa SESSION_SECRET, cookie HttpOnly+SameSite=Strict+Secure di prod |
 | `lib/admin-users-handler.js` | 580 | BELUM | 0 | |
-| `lib/ai-analysis-cache.js` | 220 | BELUM | 0 | |
+| `lib/ai-analysis-cache.js` | 220 | SELESAI | 1 | Ikut BUG-028: bentuk kunci `computeCacheKey` (`:24-32`) tidak memuat identitas/konteks — pemanggilnya yang harus mengisi `extra`. Sisanya bersih: TTL, purge kedaluwarsa, invalidasi per-ticker, dan fallback saat Supabase tidak dikonfigurasi. |
 | `lib/ai-answer-contract.js` | 253 | BELUM | 0 | |
 | `lib/ai-context-snapshot-store.js` | 230 | SELESAI | 1 | BUG-010 DIPERBAIKI; cap plans 50 sisi server dicatat |
 | `lib/ai-eval-derived-facts.js` | 257 | BELUM | 0 | |
@@ -112,7 +112,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/context-ai-router-v4.js` | 1161 | BELUM | 0 | |
 | `lib/context-ai-router-v5.js` | 551 | BELUM | 0 | |
 | `lib/context-ai-router-v6.js` | 226 | BELUM | 0 | |
-| `lib/context-ai-router-v7.js` | 535 | SELESAI | 1 | BUG-010 DIPERBAIKI |
+| `lib/context-ai-router-v7.js` | 535 | SELESAI | 2 | BUG-010 DIPERBAIKI; BUG-028 (CRITICAL) DIPERBAIKI PR #505. Dibaca ulang penuh: validasi sumber, guard SSRF `normalizeSecondaryBaseUrl` (tolak non-https, kredensial di URL, host privat/loopback), budget waktu failover sekunder, jalur SSE, fallback deterministik lokal — bersih. |
 | `lib/corporate-action-price-scale-guard.js` | 88 | BELUM | 0 | |
 | `lib/daily-foreign-context.js` | 101 | BELUM | 0 | |
 | `lib/daily-history-collector.js` | 372 | BELUM | 0 | |

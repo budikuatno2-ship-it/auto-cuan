@@ -2230,3 +2230,219 @@ hasil `generateTimePlan('PRE_SPIKE_WATCH', ...)` dan memastikan hasilnya tetap
 (`entry_status = 'CHASE_RISK'`) tetap diblokir.
 
 **Status** : DITEMUKAN — **menunggu keputusan Anda**
+
+---
+
+## BUG-028 — Jawaban Portofolio AI satu pengguna bisa tersaji ke pengguna lain
+
+- **Severity** : **CRITICAL** (kebocoran data antar-pengguna, jalur produksi aktif)
+- **Area** : Portofolio AI — cache jawaban (prioritas P2 Anda)
+- **Lokasi** : `lib/context-ai-router-v7.js:393-399` (baca) dan `:419-426`, `:466-473`
+  (tulis), memakai kunci dari `lib/ai-analysis-cache.js:24-32`
+- **Status** : **SUDAH DIPERBAIKI** — PR #505 (`fix/ai-cache-cross-user-leak`), draft
+
+### Gejala
+
+Dua pengguna berbeda yang bertanya hal yang sama pada hari yang sama di menu
+Portofolio AI bisa menerima jawaban yang identik — dan jawaban itu dihitung dari
+**portofolio pengguna yang pertama bertanya**.
+
+### Root cause
+
+Jawaban `portfolio_chat` dibangun dari isi portofolio penanya sendiri. Isinya
+lengkap — ticker, harga entry, stop loss, TP, **jumlah lot**, **modal**,
+**estimasi rugi maksimal**, jurnal:
+
+```js
+// lib/context-ai-router-v4.js:655-672 — portfolioContext
+const plans = (Array.isArray(input.plans) ? input.plans : []).slice(0, 25).map((p) => {
+  ...
+  return {
+    ticker,
+    entry: number(p.entryPriceIdr != null ? p.entryPriceIdr : p.entry),
+    stop_loss: number(p.stopLossIdr != null ? p.stopLossIdr : p.stop),
+    lots: number(p.lots),
+    estimated_max_loss: number(p.estimatedMaxLossIdr != null ? p.estimatedMaxLossIdr : p.riskBudgetIdr),
+    capital: number(p.capitalIdr),
+    ...
+```
+
+Jawaban itu lalu disimpan ke cache yang **dipakai bersama semua pengguna** —
+tabel Supabase `ai_analysis_cache` (diakses dengan service-role key, tanpa RLS
+per pengguna) plus satu `Map` tingkat proses yang hidup selama container Vercel
+hangat.
+
+Kuncinya tidak memuat portofolionya sama sekali:
+
+```js
+// lib/ai-analysis-cache.js:24-32 — computeCacheKey
+const ticker = String(params.ticker || '').toUpperCase().trim();
+const analysisType = String(params.analysisType || 'stock_analysis').trim().toLowerCase();
+const prompt = String(params.prompt || '').trim();
+const marketDate = String(params.marketDate || new Date().toISOString().slice(0, 10)).trim();
+const extra = params.extra ? JSON.stringify(params.extra) : '';
+
+const raw = analysisType + '|' + ticker + '|' + marketDate + '|' + prompt + '|' + extra;
+return crypto.createHash('sha256').update(raw).digest('hex');
+```
+
+Dan pemanggilnya tidak pernah mengisi `extra`:
+
+```js
+// lib/context-ai-router-v7.js:393-399 (sebelum perbaikan)
+const cached = await getCachedAnalysis({
+  ticker,
+  analysisType,
+  prompt: message,
+  marketDate
+});
+```
+
+Untuk `portfolio_chat`, `ticker` bernilai `null` (`context.ticker` tidak ada pada
+konteks portofolio), `extra` kosong. Yang tersisa sebagai pembeda hanyalah
+**tanggal** dan **kalimat pertanyaannya**.
+
+Pembacaan cache itu terjadi di **langkah 1** handler — sebelum identitas
+pemanggil pernah dilihat sama sekali. Penulisannya (`:419` jalur streaming,
+`:466` jalur JSON) memakai kunci yang sama.
+
+### Dampak
+
+Pertanyaan pada menu Portofolio AI sebagian besar berupa kalimat baku
+("evaluasi portofolio saya", "berapa risiko saya"), sehingga tabrakan bukan
+kasus langka — justru kasus yang biasa. Yang bocor bukan sekadar teks umum:
+jawaban model memuat angka yang diturunkan dari holding penanya pertama —
+ticker, jumlah lot, modal, dan estimasi rugi maksimal.
+
+TTL bawaannya 4 jam (`DEFAULT_TTL_SECONDS`), dan handler menulis dengan
+`ttlSeconds: 4 * 3600`, jadi satu jawaban bertahan sepanjang satu sesi
+perdagangan.
+
+### Bukti
+
+`test/ai-cache-cross-user-isolation.test.js` menjalankan handler sungguhan ujung
+ke ujung — provider Gemini di-stub di batas modul (`lib/ai-gemini-provider`),
+tanpa Supabase, memori cache dibersihkan per uji. Dua portofolio berbeda
+(BBCA 10 lot vs GOTO 4.000 lot), pertanyaan sama, tanggal sama.
+
+Sebelum perbaikan, 6 dari 10 uji isolasi gagal, sementara empat uji
+"cache masih bekerja" lolos:
+
+```
+ok     1 - the stub wiring works: a first ask reaches the model, not the cache
+ok     2 - the same user asking twice is served from the cache (the cache still works)
+not ok 3 - user B is NOT served the answer computed from user A portfolio
+not ok 4 - and the leaked answer is not merely relabelled: B must not be a cache hit on A
+ok     5 - the same portfolio content from a different object identity still hits the cache
+not ok 6 - adding a position invalidates the cached answer
+not ok 7 - changing only the lot size invalidates the cached answer
+not ok 8 - an empty portfolio does not collide with a populated one
+ok     9 - a different question on the same portfolio is still separated
+not ok 10 - the streaming path is isolated too
+```
+
+Uji 10 penting: jalur streaming (yang dipakai UI) bocor sama persis.
+
+### Perbaikan
+
+Satu fungsi `buildCacheParams` menjadi satu-satunya tempat identitas cache
+dibentuk — dipakai oleh pembacaan di atas dan **kedua** penulisan di bawah,
+supaya keduanya tidak bisa lagi bergeser sendiri-sendiri (pergeseran seperti itu
+sendiri adalah kelas bug: menulis dengan satu kunci, membaca dengan kunci lain).
+
+Untuk sumber yang membawa konteks privat, kunci ditambah `extra.ctx` — digest
+SHA-256 dari konteks yang sudah dinormalisasi plus `styleRules`. Serialisasinya
+stabil terhadap urutan properti, jadi portofolio yang isinya sama tetap berbagi
+satu entri; ini yang dijaga uji 2 dan 5, supaya perbaikannya bukan sekadar
+"matikan cache-nya".
+
+Konteks yang tidak bisa diserialisasi **gagal-tertutup** ke tag unik per
+permintaan, bukan kembali ke kunci bersama (uji 14).
+
+### Yang sengaja tidak diubah
+
+Jalur `stock_analysis_followup` tetap memakai bentuk kunci lama, dan itu
+dipastikan byte-identik oleh uji 11. Konteksnya data pasar publik untuk satu
+ticker pada satu tanggal, sudah diwakili `ticker + market_date + prompt`;
+melebarkannya hanya mengurangi cache-hit tanpa menutup kebocoran apa pun.
+
+**Catatan terpisah, belum saya kerjakan** — pada jalur itu snapshot analisis dan
+`styleRules` juga tidak ikut kunci, sehingga jawaban bisa berasal dari snapshot
+beberapa jam sebelumnya, atau memakai gaya bahasa pengguna lain. Itu soal
+**kesegaran dan gaya**, bukan kebocoran data. Memperbaikinya berarti cache-hit
+pada jalur inilah — sumber penghematan token terbesar — yang ikut turun. Saya
+menunggu keputusan Anda, dan tidak mengerjakannya di PR ini karena satu PR = satu
+kelompok masalah.
+
+### Risiko
+
+Cache-hit untuk `portfolio_chat` akan turun: sekarang hanya mengena kalau isi
+portofolio **dan** pertanyaannya sama persis. Itu memang harga yang benar —
+"hit" yang hilang itu sebelumnya adalah jawaban yang salah. Tambahan panggilan
+Gemini hanya pada jalur portofolio.
+
+**Rollback**: revert satu commit. Tidak ada migrasi, tidak ada perubahan skema,
+tidak ada perubahan `.env`. Baris cache lama tetap ada dan kedaluwarsa sendiri
+dalam 4 jam; saya tidak menyentuh data produksi.
+
+### Verifikasi
+
+`node tools/run-build-test-suite.js` → **320 berkas uji lolos**, sebelum dan
+sesudah. Delta: +1 berkas, +14 uji, 0 gagal. Tiga uji lama yang menyemai cache
+dengan kunci tanpa konteks (`test/ai-gemini-provider-and-cache.test.js`,
+`test/ai-cache-telemetry.test.js`, `test/ai-streaming-response.test.js`) kini
+menyemai memakai kunci yang benar-benar dibentuk router, sehingga maksud aslinya
+utuh.
+
+### Yang perlu saya tanyakan
+
+Saya **tidak** menghapus baris `ai_analysis_cache` bertipe `portfolio_chat` yang
+sudah tertulis sebelum perbaikan ini. Baris itu tidak akan pernah dibaca lagi
+oleh kode baru dan kedaluwarsa sendiri dalam ≤4 jam. Kalau Anda ingin
+membersihkannya lebih cepat, itu keputusan Anda — saya tidak menyentuh data
+produksi tanpa persetujuan.
+
+---
+
+## Catatan: hipotesis yang dibantah — chain `context-ai-router` v4/v5/v6 bukan orphan
+
+Anda menyebut versi lama router AI sudah **dihapus** di PR #434 dan meminta saya
+mencurigai sisa import yatim. Saya periksa, dan pada kondisi repo sekarang
+**tidak begitu**: v4, v5 dan v6 masih ada dan masih dipakai — bukan sisa, tapi
+rantai delegasi aktif.
+
+```js
+// lib/context-ai-router-v7.js:14-15
+const handleContextAIV6 = require('./context-ai-router-v6');
+const handleContextAIV4 = require('./context-ai-router-v4');
+```
+
+```js
+// lib/context-ai-router-v6.js:15
+const handleContextAIV5 = require('./context-ai-router-v5');
+```
+
+```js
+// lib/context-ai-router-v5.js:502
+const handleContextAIV4 = require('./context-ai-router-v4');
+```
+
+Dan v7 tidak hanya mengimpor v4 untuk berjaga-jaga — ia memanggil isinya di jalur
+utama, termasuk untuk membangun konteks dan prompt setiap permintaan:
+
+```js
+// lib/context-ai-router-v7.js:305-307
+const context = source === 'stock_analysis_followup'
+  ? handleContextAIV4._test.stockContext(body.context)
+  : handleContextAIV4._test.portfolioContext(body.context);
+```
+
+Satu-satunya pintu masuk produksi adalah `api/analyze.js:4`, dan itu menunjuk ke
+v7. Jadi: tidak ada import yatim di sini, tetapi juga **tidak benar** bahwa versi
+lama sudah dihapus — menghapus salah satu dari v4/v5/v6 sekarang akan
+mematikan Analisis Saham dan Portofolio AI. Saya catat ini supaya asumsi itu
+tidak dipakai sebagai dasar pembersihan.
+
+Satu-satunya rujukan yang memang tinggal nama ada di
+`tools/apply-production-hotfixes.js:57-58`, dan itu daftar berkas untuk sebuah
+alat hotfix, bukan `require`.
