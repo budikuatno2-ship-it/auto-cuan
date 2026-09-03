@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { requireAdminSession, isSameOrigin } = require('../lib/admin-session');
 const { parseMaintenanceValue } = require('../lib/maintenance-state');
+const { getAiTelemetryStats, resetAiTelemetryStats } = require('../lib/ai-telemetry');
 
 function firstRow(data) {
   if (Array.isArray(data)) return data[0] || null;
@@ -85,6 +86,29 @@ module.exports = async function handler(req, res) {
   try {
     const { action, config } = req.body || {};
 
+    // === AI TELEMETRY DIAGNOSTICS (In-memory, zero external dependency) ===
+    if (action === 'ai-telemetry') {
+      return res.status(200).json({
+        success: true,
+        aiTelemetry: getAiTelemetryStats()
+      });
+    }
+
+    if (action === 'reset-ai-telemetry') {
+      if (!isSameOrigin(req)) {
+        return res.status(403).json({ success: false, error: 'Permintaan ditolak.' });
+      }
+      const auth = requireAdminSession(req);
+      if (!auth.ok) {
+        return res.status(auth.status).json({ success: false, error: auth.error });
+      }
+      resetAiTelemetryStats();
+      return res.status(200).json({
+        success: true,
+        aiTelemetry: getAiTelemetryStats()
+      });
+    }
+
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -133,7 +157,12 @@ module.exports = async function handler(req, res) {
       const configValue = parsed.config || {};
       const adminCode = await readAdminCodeState(supabase, parsed.enabled);
 
-      return res.status(200).json({ success: true, config: configValue, adminCode });
+      return res.status(200).json({
+        success: true,
+        config: configValue,
+        adminCode,
+        aiTelemetry: getAiTelemetryStats()
+      });
     }
 
     // === SAVE === (write op: server-signed admin session required; adminName ignored)
