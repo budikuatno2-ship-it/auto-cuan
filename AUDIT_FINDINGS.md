@@ -2784,3 +2784,175 @@ sehingga tidak ada kartu template dan jalur AI yang menjawab. Sebelumnya selalu
 ada kartu, tapi kartu yang berbohong. Saya memilih tidak menebak. Kalau Anda
 lebih suka selalu ada kartu, saya bisa tambahkan pesan eksplisit "harga belum
 tersedia" alih-alih diam — bilang saja.
+
+---
+
+## BUG-030 — Satu pesan Telegram gagal meracuni seluruh batch Top 5
+
+- **Severity** : **HIGH** (jalur produksi aktif; sinyal terkirim berhenti dipantau)
+- **Area** : pengiriman Telegram → registrasi monitor entry/TP/SL
+- **Lokasi** : `lib/telegram-delivery.js:762-786` (`finalizePreparedDelivery`), dipicu dari `api/sector-hot.js:6512`
+- **Status** : **SUDAH DIPERBAIKI** — PR #507 (`fix/telegram-delivery-batch-poisoning`), draft
+
+### Gejala
+
+Sinyal Top 5 yang **sudah masuk** ke Telegram bisa berhenti dipantau untuk
+entry, TP1, TP2 dan SL — tanpa error apa pun yang terlihat. Sekaligus, pesan
+yang benar-benar gagal terkirim tidak pernah bisa dikirim ulang.
+
+### Root cause
+
+Jalur Top 5 malam mengirim **beberapa** pesan untuk satu batch: satu header,
+satu kartu per kandidat, dan (mode watchlist) satu footer.
+
+```js
+// api/sector-hot.js:5887 — header
+var sendResult = safePicks.length > 0 ? await telegramNotifier.sendTelegramMessage(header) : ...;
+var telegramResults = [sendResult];
+```
+
+```js
+// api/sector-hot.js:5941 — satu kartu per kandidat
+var detailResult = await telegramNotifier.sendTelegramMessage(finalDetailText, { timeout_ms: 2500 });
+telegramResults.push(detailResult);
+```
+
+Semuanya diserahkan ke `finalizePreparedDelivery`, yang meringkasnya menjadi
+**satu** state lalu menuliskannya ke **setiap** baris:
+
+```js
+// lib/telegram-delivery.js:762-786 (sebelum perbaikan)
+var status = 'DELIVERY_RETRYABLE';
+if (classified.delivered) status = 'WAITING';
+else if (classified.uncertain) status = 'DELIVERY_UNCERTAIN';
+...
+var saved = await supabase
+  .from('telegram_daily_picks')
+  .update(update)        // satu status untuk semua
+  .in('id', ids);
+```
+
+Dan agregatnya menghitung header serta footer seolah-olah keduanya baris
+kandidat:
+
+```js
+// lib/telegram-delivery.js:220-224
+if (summary.sent_count > 0 && summary.sent_count < classified.length) {
+  summary.delivery_state = 'delivery_uncertain';
+}
+```
+
+Untuk 5 kandidat ada 6 hasil (header + 5 kartu). Kalau **satu saja** gagal —
+termasuk header — `sent_count` menjadi 5 dan `classified.length` 6, sehingga
+seluruh 5 baris ditandai `DELIVERY_UNCERTAIN` dengan `first_sent_at` tetap
+`null`.
+
+### Dampak
+
+Ini bukan status kosmetik. Dua konsekuensi, keduanya diam:
+
+```js
+// lib/telegram-delivery.js:330-336 — monitorRowIsTrackable
+var status = normalizeDeliveryStatus(row);
+if (status.indexOf('DELIVERY_') === 0) {
+  return false;
+}
+```
+
+Sinyal yang **sudah terkirim** ke pengguna tidak lagi masuk pemantauan
+entry/TP1/TP2/SL.
+
+```js
+// lib/telegram-delivery.js:284-292 — rowBlocksRetry
+return (
+  status === 'DELIVERY_PENDING' ||
+  status === 'DELIVERY_IN_PROGRESS' ||
+  status === 'DELIVERY_UNCERTAIN' ||
+  status === 'DELIVERY_FAILED'
+);
+```
+
+Pesan yang **benar-benar gagal** juga terkunci: tidak pernah bisa dikirim ulang.
+
+Kasus yang paling mungkin terjadi justru yang paling bersih: **header gagal,
+kelima kartu kandidat sukses** — kelima baris ditandai tidak pasti, dan tidak
+satu pun dipantau. Header dikirim dengan `sendTelegramMessage(header)` tanpa
+`timeout_ms` eksplisit, sedangkan kartu kandidat memakai `timeout_ms: 2500`.
+
+### Jangkauan — hanya Top 5
+
+Saya periksa keempat pemanggil satu per satu. Hanya jalur Top 5
+(`api/sector-hot.js:6512`) yang meneruskan **banyak** hasil. Tiga lainnya —
+Day Trade (`:12682`), Swing Konglo (`:13537`), Swing Non-Konglo (`:13736`) —
+mengirim **satu** pesan untuk seluruh batch dan meneruskan satu `send_result`;
+di sana `classified.length === 1` dan agregatnya memang jawaban yang benar.
+Ketiganya tidak terkena, dan tidak saya ubah.
+
+### Perbaikan
+
+`finalizePreparedDelivery` menerima `row_results` opsional, sejajar dengan
+`preparation.row_ids`, berisi hasil pengiriman masing-masing baris. Status
+ditulis per kelompok status, bukan satu untuk semua. Baris tanpa hasil sendiri
+tidak pernah dicatat terkirim — ia tetap `DELIVERY_RETRYABLE`. Tanpa
+`row_results`, perilakunya persis seperti sebelumnya (dijaga uji 8 dan 13).
+
+`sendDailyTop5Telegram` mengembalikan `per_candidate_results`, sejajar indeksnya
+dengan array `picks` yang ia terima — yaitu `top5DeliveryPrep.send_candidates`,
+yang sejajar pula dengan `row_ids`.
+
+### Verifikasi
+
+`test/telegram-delivery-per-row-status.test.js`, **13 uji**. Sebelum perbaikan
+**7 gagal**. Uji 1, 8 dan 10 lolos di kedua sisi: uji 8 membuktikan perbaikannya
+bukan sekadar mengubah perilaku lama, dan uji 10 mengikat status ke akibat
+nyatanya lewat `monitorRowIsTrackable()` dan `rowBlocksRetry()`.
+
+Suite: **320 berkas uji lolos**, sebelum dan sesudah. Delta +1 berkas, +13 uji.
+
+### Yang perlu Anda putuskan
+
+Baris yang **terlanjur** ditandai `DELIVERY_UNCERTAIN` oleh bug ini tidak
+diperbaiki oleh PR #507 — saya tidak menyentuh data produksi. Kalau Anda mau,
+saya siapkan query **baca-saja** untuk menghitung berapa banyak baris seperti
+itu ada dan sejak kapan, lalu Anda yang memutuskan apakah perlu diperbaiki:
+
+```sql
+select date, monitor_source, count(*)
+from telegram_daily_picks
+where status = 'DELIVERY_UNCERTAIN' and first_sent_at is null
+group by date, monitor_source
+order by date desc;
+```
+
+---
+
+## Catatan (bukan bug) — pemasangan baris hasil INSERT berdasarkan indeks
+
+- **Sifat** : ketahanan, **tidak** terjangkau pada PostgreSQL
+- **Lokasi** : `lib/telegram-delivery.js:611-616`
+
+```js
+inserted.forEach(function(row, index) {
+  prepared.push({
+    row: row,
+    candidate: toInsert[index].candidate
+  });
+});
+```
+
+Baris hasil `INSERT ... RETURNING *` dipasangkan ke kandidatnya **berdasarkan
+posisi array**. Ada penjaga jumlah tepat di atasnya
+(`if (inserted.length !== toInsert.length)`), tapi tidak ada penjaga urutan.
+
+**Kenapa saya tidak menyebutnya bug.** PostgreSQL mengembalikan baris `RETURNING`
+untuk `INSERT ... VALUES (...), (...)` sederhana dalam urutan `VALUES`-nya, dan
+itulah bentuk yang dipakai PostgREST di sini. Saya tidak menemukan cara
+membuatnya berbeda. Jadi ini **tidak terjangkau**, bukan cacat aktif.
+
+**Kenapa tetap saya catat.** Kalau suatu saat urutannya berbeda, kandidat akan
+dipasangkan ke baris yang salah — dan konsekuensinya persis sekelas BUG-030:
+pesan ticker A dicatat pada baris ticker B, monitor melacak plan yang keliru.
+Perbaikannya gratis: cocokkan dengan kunci identitas (`ticker|monitor_source|plan_lock_id`)
+yang sudah dihitung tepat di atas, bukan dengan indeks. Saya tidak
+mengerjakannya karena tidak ada bug yang sedang berjalan, dan diff-nya menyentuh
+jalur publikasi. Bilang saja kalau Anda mau.
