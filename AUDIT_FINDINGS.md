@@ -219,6 +219,107 @@ Modul yang sudah dibaca penuh dan bersih dicatat di bagian "Modul Bersih".
 
 ---
 
+## BUG-008
+
+- **Severity** : HIGH
+- **Area** : AI-Portofolio (P2)
+- **Lokasi** : `public/portfolio-ai-runtime-v2.js` — `contextNow()`, sebelum perbaikan baris 91 (`var normalized = plans.slice(0, 30).map(...)`) dan blok `summary` di baris 139-149
+- **Gejala** : Untuk portofolio dengan lebih dari 30 posisi, AI Portofolio (dan angka di layar, dan ringkasan lokal) melaporkan **jumlah posisi lebih sedikit dan total risiko lebih kecil daripada kenyataan** — tanpa tanda apa pun bahwa datanya dipotong.
+- **Root cause** : Seluruh agregat dihitung dari daftar yang sudah dipotong:
+
+  ```js
+  var normalized = plans.slice(0, 30).map(function (plan) { ... }).filter(Boolean);
+  ...
+  summary: {
+    plan_count: normalized.length,          // = 30, bukan jumlah sebenarnya
+    total_estimated_risk: totalRisk,        // hanya menjumlah 30 posisi pertama
+    total_estimated_risk_is_partial: missingRisk > 0,   // false -> mengaku lengkap
+    ...
+  }
+  ```
+
+  `total_estimated_risk_is_partial` hanya menandai posisi yang **field risikonya kosong**, bukan posisi yang **dibuang seluruhnya** oleh `slice`. Jadi jumlah yang kurang justru dinyatakan lengkap.
+
+- **Bukti reproduksi** (45 posisi, masing-masing risiko Rp 100.000 dan modal Rp 10.000.000):
+
+  ```
+  posisi yang benar-benar dimiliki : 45
+  posisi yang dikirim ke AI        : 30
+  summary.plan_count dilaporkan    : 30
+  total risiko SEBENARNYA          : Rp 4.500.000
+  total_estimated_risk ke AI       : Rp 3.000.000     <-- 33% lebih kecil
+  ditandai partial?                : false            <-- diklaim lengkap
+  total nilai SEBENARNYA           : Rp 450.000.000
+  total_position_value ke AI       : Rp 300.000.000
+  ada field truncation?            : tidak ada
+  ```
+
+- **Dampak** : Untuk asisten manajemen risiko, ini angka terburuk yang bisa salah. Pengguna diberi tahu risiko totalnya lebih kecil dari kenyataan, dengan penanda yang secara eksplisit menyatakan angka itu lengkap. Angka yang sama juga dipakai `#aiPlanCount` di layar (`public/portfolio-ai-runtime-v2.js:188`) dan ringkasan lokal offline — jadi bukan hanya masalah prompt.
+
+  Ini melanggar dua invarian yang ditulis file itu sendiri:
+
+  ```js
+  // A missing number is not a zero. It is still excluded from the total, but
+  // the count of what was excluded travels with the total so neither the AI
+  // nor the local summary can present a partial sum as a complete one.
+  ```
+  ```js
+  // A partial sum is never presented as a complete one.
+  ```
+
+- **Perbaikan** : Semua posisi dinormalisasi dan dihitung. Yang tetap dibatasi hanya **daftar rincian per posisi** yang masuk ke prompt, dan pembatasan itu kini diumumkan lewat `positions_in_context`, `positions_omitted_from_context`, dan `position_list_is_partial`. `plan_count` menjadi jumlah sebenarnya. Ringkasan lokal juga berhenti menyajikan pilihan "risiko terbesar" seolah berlaku untuk seluruh portofolio ketika daftarnya hanya sebagian. **Batas 30 itu sendiri tidak diubah**, jadi ukuran prompt dan biaya token tidak bergerak.
+- **Risiko** : Ini mengubah angka yang dilihat pengguna — sengaja, karena angka lamanya salah. Rumusnya tidak diubah; hanya himpunan masukannya yang kini lengkap. Pengguna dengan ≤30 posisi tidak melihat perubahan apa pun. Rollback aman: tidak ada apa pun yang dipersistensi dalam bentuk baru.
+- **Verifikasi** : `test/portfolio-ai-context-completeness.test.js` — gagal pada kode sebelum perbaikan dengan `expected: 45, actual: 30`.
+- **Status** : DIPERBAIKI (PR #498)
+
+---
+
+## BUG-009
+
+- **Severity** : MEDIUM
+- **Area** : AI-Portofolio (P2)
+- **Lokasi** : `public/portfolio-ai-runtime-v2.js` — `classifyFailure()`, sebelum perbaikan baris 482-524
+- **Gejala** : Pengguna tanpa langganan aktif bertanya ke Asisten AI Portofolio, lalu mendapat ringkasan lokal, pesan "Jawaban AI belum bisa diambil. Ringkasan lokal ditampilkan.", dan tombol **Coba lagi yang tidak akan pernah berhasil**. Alasan sebenarnya tidak pernah muncul.
+- **Root cause** : Tidak ada cabang untuk `402` maupun `SUBSCRIPTION_REQUIRED`, padahal itulah yang dikembalikan `api/analyze.js` dari `requirePremiumEntitlement()` (`lib/subscription-auth.js:96-108`). Permintaan jatuh ke cabang default yang menganggapnya kegagalan provider.
+
+  Ini melanggar kontrak yang ditulis fungsi itu sendiri tepat di atasnya:
+
+  ```js
+  // A failure the user can act on (session, quota, server config) must never be
+  // dressed up as "the AI is busy" with a local summary underneath it — that
+  // hides the real problem and makes the fallback meaningless.
+  ```
+
+- **Catatan migrasi** : `public/stock-analysis-ai.js:164` sudah menangani 402 sejak PR #491. `portfolio-ai-runtime-v2.js` adalah satu-satunya permukaan AI yang tertinggal. Jadi memang ada celah migrasi seperti dugaan brief — hanya bukan berupa import yatim.
+- **Perbaikan** : Tambah cabang `402` / `SUBSCRIPTION_REQUIRED` dan `ACCOUNT_NOT_APPROVED`, keduanya `fallback: false`.
+- **Verifikasi** : test "a missing subscription is reported as itself, not as an AI outage" dan "session, quota and server-config failures never get a local summary".
+- **Status** : DIPERBAIKI (PR #498)
+
+---
+
+## BUG-010
+
+- **Severity** : LOW
+- **Area** : AI-Portofolio (P2)
+- **Lokasi** : `lib/context-ai-router-v7.js` — fallback lokal portofolio, sebelum perbaikan baris 259-260
+- **Gejala** : Saat provider AI gagal, jawaban cadangan dari server menyebut jumlah posisi yang salah.
+- **Root cause** : `` `Evaluasi Portofolio (${plans.length} posisi: ...)` `` memakai panjang daftar rincian yang sudah dipotong klien, bukan jumlah posisi sebenarnya.
+- **Perbaikan** : Memakai `summary.plan_count` bila tersedia, dan menyebutkan berapa yang dirinci.
+- **Status** : DIPERBAIKI (PR #498)
+
+---
+
+## Diperiksa dan bersih — otorisasi portofolio (tidak ada IDOR)
+
+Brief meminta pengecekan IDOR ("user A bisa akses portofolio user B"). Sudah saya baca utuh dan **tidak ditemukan**:
+
+- `lib/portfolio-state-handler.js:74-103` — `resolveAccount()` mengambil identitas hanya dari `requirePremiumEntitlement(req, supabase)`, lalu semua query memakai `.eq('user_id', account.id)` (baris 109, 141, 187, 201). Tidak ada satu pun id yang berasal dari body.
+- `lib/subscription-auth.js:9-45` — identitas berasal dari sesi bertanda tangan (`requireAuthenticatedSession`), lalu dicocokkan ulang dengan baris `app_users` dan ditolak bila username tidak cocok.
+- Penyimpanan memakai optimistic concurrency (`expected_updated_at`, baris 174-190), jadi dua perangkat tidak bisa saling menimpa diam-diam.
+- `public/portfolio-ai-runtime-v2.js:69-74` memang mengirim header `X-User-Id` / `X-Username`, tetapi server tidak pernah membacanya untuk otorisasi. Ini header sisa yang tidak berbahaya — saya catat sebagai kebersihan kode, bukan kerentanan.
+
+---
+
 ## Modul Bersih (sudah diperiksa, tidak ditemukan bug)
 
 ### Hipotesis "import yatim ke modul AI yang dihapus" — TIDAK TERBUKTI

@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 11 SELESAI, 3 SEDANG, 764 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 17 SELESAI, 3 SEDANG, 758 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -70,7 +70,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `api/maintenance-settings.js` | 229 | SELESAI | 0 | bersih; write op butuh admin session + same-origin |
 | `api/quote.js` | 2747 | BELUM | 0 | |
 | `api/register-user.js` | 206 | SELESAI | 0 | bersih; rate limit, validasi hash, terms acceptance, rollback registrasi |
-| `api/reset-password.js` | 68 | BELUM | 0 | |
+| `api/reset-password.js` | 68 | SELESAI | 0 | bersih; gateway routing saja |
 | `api/review-access.js` | 117 | BELUM | 0 | |
 | `api/sector-hot.js` | 13902 | BELUM | 0 | |
 | `deploy/ai-eval-once.env.example` | 23 | BELUM | 0 | |
@@ -93,7 +93,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/admin-users-handler.js` | 580 | BELUM | 0 | |
 | `lib/ai-analysis-cache.js` | 220 | BELUM | 0 | |
 | `lib/ai-answer-contract.js` | 253 | BELUM | 0 | |
-| `lib/ai-context-snapshot-store.js` | 230 | BELUM | 0 | |
+| `lib/ai-context-snapshot-store.js` | 230 | SELESAI | 1 | BUG-010 DIPERBAIKI; cap plans 50 sisi server dicatat |
 | `lib/ai-eval-derived-facts.js` | 257 | BELUM | 0 | |
 | `lib/ai-gemini-provider.js` | 309 | BELUM | 0 | |
 | `lib/ai-narration-cache.js` | 119 | BELUM | 0 | |
@@ -112,7 +112,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/context-ai-router-v4.js` | 1161 | BELUM | 0 | |
 | `lib/context-ai-router-v5.js` | 551 | BELUM | 0 | |
 | `lib/context-ai-router-v6.js` | 226 | BELUM | 0 | |
-| `lib/context-ai-router-v7.js` | 535 | BELUM | 0 | |
+| `lib/context-ai-router-v7.js` | 535 | SELESAI | 1 | BUG-010 DIPERBAIKI |
 | `lib/corporate-action-price-scale-guard.js` | 88 | BELUM | 0 | |
 | `lib/daily-foreign-context.js` | 101 | BELUM | 0 | |
 | `lib/daily-history-collector.js` | 372 | BELUM | 0 | |
@@ -183,7 +183,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/password-credential.js` | 83 | SELESAI | 0 | bersih; scrypt k1, timing-safe, migrasi legacy prehash konsisten register<->login |
 | `lib/pattern-abcd-validation.js` | 184 | BELUM | 0 | |
 | `lib/pattern-abcd.js` | 188 | BELUM | 0 | |
-| `lib/portfolio-state-handler.js` | 248 | BELUM | 0 | |
+| `lib/portfolio-state-handler.js` | 248 | SELESAI | 0 | bersih; identitas dari sesi bertanda tangan, optimistic concurrency, tidak ada IDOR |
 | `lib/recent-failure-cooldown.js` | 120 | BELUM | 0 | |
 | `lib/report-helpers.js` | 280 | BELUM | 0 | |
 | `lib/request-rate-limit.js` | 67 | BELUM | 0 | |
@@ -196,7 +196,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/security-guard.js` | 469 | BELUM | 0 | |
 | `lib/smart-setup-labels.js` | 238 | BELUM | 0 | |
 | `lib/stock-daily-history-store.js` | 248 | BELUM | 0 | |
-| `lib/subscription-auth.js` | 135 | BELUM | 0 | |
+| `lib/subscription-auth.js` | 135 | SELESAI | 0 | bersih; batas identitas server-only |
 | `lib/subscription-capability.js` | 57 | BELUM | 0 | |
 | `lib/subscription-catalog.js` | 45 | BELUM | 0 | |
 | `lib/subscription-identity.js` | 18 | BELUM | 0 | |
@@ -269,7 +269,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `public/pattern-stable-runtime.js` | 520 | BELUM | 0 | |
 | `public/pattern-tab-resume-guard.js` | 136 | BELUM | 0 | |
 | `public/pattern-visual.js` | 359 | BELUM | 0 | |
-| `public/portfolio-ai-runtime-v2.js` | 773 | BELUM | 0 | |
+| `public/portfolio-ai-runtime-v2.js` | 773 | SELESAI | 3 | BUG-008/009 DIPERBAIKI (PR 498) |
 | `public/portfolio-ai-workspace-v1.css` | 74 | BELUM | 0 | |
 | `public/portfolio-ai-workspace-v1.js` | 33 | BELUM | 0 | |
 | `public/portfolio-command-center-model.js` | 230 | BELUM | 0 | |
