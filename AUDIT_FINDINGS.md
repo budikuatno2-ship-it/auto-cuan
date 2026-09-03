@@ -2956,3 +2956,72 @@ Perbaikannya gratis: cocokkan dengan kunci identitas (`ticker|monitor_source|pla
 yang sudah dihitung tepat di atas, bukan dengan indeks. Saya tidak
 mengerjakannya karena tidak ada bug yang sedang berjalan, dan diff-nya menyentuh
 jalur publikasi. Bilang saja kalau Anda mau.
+
+---
+
+## Catatan (bukan bug) — rentang entry dirender tiga cara berbeda di satu modul
+
+- **Sifat** : ketidakkonsistenan tampilan; format utamanya **sengaja dikunci uji**, jadi saya tidak mengubahnya
+- **Lokasi** : `lib/telegram-templates.js:414`, `:281-283`, `:691`, `:724`
+
+Dalam satu berkas yang sama, zona entry yang sama dirender tiga cara:
+
+```js
+// :414 — formatSignalCard (kartu sinyal utama)
+lines.push('Entry: ' + fmtPrice(e1) + ' / ' + fmtPrice(e2));   // e1 = Math.max, e2 = Math.min  -> TINGGI dulu
+```
+
+```js
+// :281-283 — formatMonitorHitMessage (notifikasi entry tersentuh)
+var eLow = Math.min(entry1, entry2);
+var eHigh = Math.max(entry1, entry2);
+return 'harga masuk area entry ' + fmtPrice(eLow) + '-' + fmtPrice(eHigh);   // RENDAH dulu
+```
+
+```js
+// :691 — formatMonitorUpdateMessage (pantauan berkala)
+lines.push('Entry: ' + fmtPrice(p.entry1) + ' | Last: ' + fmtPrice(p.last));  // hanya batas ATAS
+```
+
+`formatRadarDigestMessage` (`:724`) mengikuti pola kartu sinyal (tinggi dulu).
+
+### Kenapa saya TIDAK menyebutnya bug dan TIDAK mengubahnya
+
+Format kartu sinyal **dikunci oleh uji repo ini sendiri**:
+
+```js
+// test/telegram-templates.test.js:162
+assert.match(msg, /Entry: Rp5\.050 \/ Rp5\.000/);
+```
+
+```js
+// test/telegram-templates.test.js:169
+assert.match(withAtr, /Entry: Rp2\.900 \/ Rp2\.870/);
+```
+
+Jadi ini keputusan yang disengaja, bukan kekhilafan. Dan pemisahnya `/`, yang
+terbaca sebagai "atau", bukan `–` yang secara tipografis berarti rentang. Urutan
+tinggi-dulu juga konsisten dengan konvensi `entry1` = batas atas
+(`api/sector-hot.js:3519`) dan masuk akal untuk zona limit-buy: "beli maksimal di
+5.050, idealnya 5.000".
+
+**Ini berbeda dari BUG-016 yang sudah saya perbaiki**, dan saya perlu menyatakan
+itu dengan jelas supaya tidak terlihat seperti standar ganda. Di BUG-016 tabel web
+mencetak `entry1–entry2` dengan **en-dash** — tanda yang secara tipografis berarti
+rentang — sehingga rentang menurun benar-benar terbaca salah, dan tidak ada uji
+yang menguncinya. Di sini pemisahnya `/` dan formatnya dikunci uji. Dua kasus yang
+berbeda, dan saya memperlakukannya berbeda.
+
+### Yang mungkin ingin Anda putuskan
+
+Yang tersisa adalah ketidakkonsistenannya, bukan formatnya: pengguna melihat
+kartu sinyal (`Rp5.050 / Rp5.000`, tinggi dulu) lalu — kalau harga masuk zona —
+notifikasi monitor (`Rp5.000-Rp5.050`, rendah dulu) untuk zona yang sama persis.
+Dan pantauan berkala hanya menampilkan batas atas dengan label "Entry" polos,
+yang bisa dibaca sebagai satu harga entry tunggal.
+
+Kalau Anda mau diseragamkan, saya sarankan menyeragamkan **notifikasi monitor**
+mengikuti kartu sinyal (bukan sebaliknya), karena kartu sinyal yang dikunci uji
+dan yang paling sering dilihat. Itu perubahan kecil di dua tempat, plus
+memperbarui satu uji. Saya tidak mengerjakannya tanpa kata Anda karena ini
+mengubah teks yang dikirim ke pengguna.
