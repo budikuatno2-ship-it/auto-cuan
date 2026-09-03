@@ -214,6 +214,7 @@
   "test/recent-failure-cooldown.test.js",
   "test/register-monitor.test.js",
   "test/register-user-device-id.test.js",
+  "test/auth-modals-outside-dashboard-screen.test.js",
   "test/register-terms-acceptance-contract.test.js",
   "test/report-daily-market-context-integrity-tool.test.js",
   "test/report-helpers.test.js",
