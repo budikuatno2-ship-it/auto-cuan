@@ -1002,6 +1002,51 @@ hanya string kategori pada keluaran dry-run.
 dan kandidat yang gagal `classifyProductionEligibility`, lalu memastikan gate menolak
 **dan** diagnostiknya tidak lagi mengembalikan `'unknown'`.
 
+### Instance kedua yang lebih menyesatkan — diagnostik gate yang SALAH, bukan sekadar kurang
+
+Ditemukan saat membaca `handleTelegramDailyPicks`. Pada jalur fallback watchlist,
+`api/sector-hot.js:6214-6218`:
+
+```js
+if (candidatePassesTop5WatchlistGate(poolCandidate)) {
+  watchlistSafeFromPool.push(poolCandidate);
+} else {
+  watchlistBlockedCount++;
+  var poolRejEntry = { ticker: poolCandidate.ticker };
+  var poolDiag = diagnosePublicSafetyGateRejection(poolCandidate, 'daily_top5');
+  poolRejEntry.reason = poolDiag.category || 'watchlist_gate_blocked';
+  poolRejEntry.detailed_reason = poolDiag.detailed_reason || 'Blocked by candidatePassesTop5WatchlistGate';
+```
+
+Kandidat ditolak oleh `candidatePassesTop5WatchlistGate` (`:4851`), tetapi alasannya
+diambil dari `diagnosePublicSafetyGateRejection` — diagnostik untuk **gate yang
+berbeda**. Kedua gate itu punya aturan yang tidak sama: gate watchlist menuntut grade
+A/B/A+ (atau C dengan RR >= 2.5), RR >= 1.5, dan `entry_status` dalam daftar tertentu
+— syarat-syarat yang **tidak ada sama sekali** di gate keselamatan publik.
+
+Akibatnya, kandidat yang diblokir gate watchlist karena (misalnya) grade C dengan
+RR 1.8 akan dilaporkan dengan kategori dari gate lain yang justru ia lolosi.
+
+**Dan cadangannya tidak pernah jalan.** `diagnosePublicSafetyGateRejection` selalu
+mengembalikan `category` yang truthy — jalur terakhirnya mengembalikan
+`{ category: 'unknown', ... }`, bukan string kosong. Jadi pada
+`poolDiag.category || 'watchlist_gate_blocked'`, sisi kanan **tidak pernah
+terpakai**: `'watchlist_gate_blocked'` dan `'Blocked by
+candidatePassesTop5WatchlistGate'` adalah kode mati. Yang benar-benar tampil di
+diagnostik adalah `'unknown'` — dengan `detailed_reason` berbunyi *"No specific
+rejection identified (possible logic mismatch)"*.
+
+**Perbaikan yang diusulkan.** Buat diagnostik tersendiri untuk gate watchlist, atau
+minimal jangan panggil diagnostik gate lain di sini — kembalikan
+`'watchlist_gate_blocked'` secara langsung, yang setidaknya jujur.
+
+### Catatan kecil di sekitarnya (bukan bug)
+
+`var rejectedByGate = []` dideklarasikan dua kali di fungsi yang sama
+(`api/sector-hot.js:6108` dan `:6122`). Karena `var`, deklarasi kedua menimpa yang
+pertama dengan array kosong baru. Tidak ada yang di-`push` di antara keduanya, jadi
+**tidak ada data yang hilang** — hanya duplikasi yang sebaiknya dibersihkan.
+
 **Status** : DITEMUKAN — belum diperbaiki. Saya sengaja belum membuat PR untuk ini:
 nilainya rendah dibanding melanjutkan pembacaan, dan sudah ada sembilan PR terbuka.
 Katakan saja kalau Anda mau ini dikerjakan sekarang.
