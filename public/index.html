@@ -1547,6 +1547,7 @@
             <div><label for="regUsername" class="block text-xs font-medium text-gray-400 mb-1">Username</label><input type="text" id="regUsername" placeholder="Pilih username" class="w-full px-4 py-3 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"></div>
             <div><label for="regPassword" class="block text-xs font-medium text-gray-400 mb-1">Password</label><div class="relative"><input type="password" id="regPassword" placeholder="Min 8 karakter (huruf besar+kecil+angka)" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm"><button type="button" id="regPasswordToggle" onclick="togglePasswordVisibility('regPassword', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
             <div><label for="regPasswordConfirm" class="block text-xs font-medium text-gray-400 mb-1">Konfirmasi Password</label><div class="relative"><input type="password" id="regPasswordConfirm" placeholder="Ulangi password" class="w-full px-4 py-3 pr-11 rounded-xl bg-[#0b0e14] border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')doRegister()"><button type="button" id="regPasswordConfirmToggle" onclick="togglePasswordVisibility('regPasswordConfirm', this)" aria-label="Show password" aria-pressed="false" class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-300 focus:outline-none">&#128065;</button></div></div>
+            <label class="flex items-start gap-2 text-xs text-gray-400"><input type="checkbox" id="regTermsAccepted" class="mt-0.5 h-4 w-4 rounded border-gray-700 bg-[#0b0e14] text-emerald-500 focus:ring-emerald-500/50"><span>Saya sudah membaca dan menyetujui Peraturan &amp; Ketentuan Penggunaan Auto-Cuan.</span></label>
             <div id="registerError" class="hidden text-sm text-red-400 text-center py-1" role="alert" aria-live="assertive"></div>
             <div id="registerSuccess" class="hidden text-sm text-emerald-400 text-center py-1" role="status" aria-live="polite"></div>
             <button onclick="doRegister()" id="registerBtn" class="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 glow-emerald hover:scale-[1.02] transition-all">Daftar</button>
@@ -2904,11 +2905,16 @@ async function copyRegistrationApprovalCode() {
     }
 }
 
+// Must match lib/account-terms.js CURRENT_TERMS_VERSION — the server rejects
+// registration unless this exact version string is echoed back.
+var REGISTRATION_TERMS_VERSION = '2026-08-16-v1';
+
 async function doRegister() {
     clearLegacyDeviceBlock();
     var usernameInput = document.getElementById('regUsername').value.trim();
     var password = document.getElementById('regPassword').value;
     var passwordConfirm = document.getElementById('regPasswordConfirm').value;
+    var termsEl = document.getElementById('regTermsAccepted');
     var errorEl = document.getElementById('registerError'); var successEl = document.getElementById('registerSuccess');
     var registerBtn = document.getElementById('registerBtn');
     errorEl.classList.add('hidden'); successEl.classList.add('hidden');
@@ -2918,13 +2924,14 @@ async function doRegister() {
     if (isBadUsername(usernameInput)) { errorEl.textContent = 'Nama yang digunakan tidak sesuai ketentuan.'; errorEl.classList.remove('hidden'); return; }
     if (!isValidPassword(password)) { errorEl.textContent = 'Password terlalu lemah. Gunakan kombinasi huruf besar, huruf kecil, dan angka (min 8 karakter).'; errorEl.classList.remove('hidden'); return; }
     if (password !== passwordConfirm) { errorEl.textContent = 'Konfirmasi password tidak sama.'; errorEl.classList.remove('hidden'); return; }
+    if (!termsEl || !termsEl.checked) { errorEl.textContent = 'Baca dan setujui Peraturan & Ketentuan sebelum mendaftar.'; errorEl.classList.remove('hidden'); return; }
     registerBtn.disabled = true; registerBtn.innerHTML = '<span class="spinner-sm"></span>Mendaftar...';
     try {
         var passwordHash = await hashPassword(password); var deviceId = getOrCreateDeviceId();
         var response = await fetch('/api/register-user', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent }) });
+            body: JSON.stringify({ username: usernameLower, passwordHash: passwordHash, deviceId: deviceId, userAgent: navigator.userAgent, termsAccepted: true, termsVersion: REGISTRATION_TERMS_VERSION }) });
         var data = await response.json();
-        if (data.success) { document.getElementById('regPassword').value = ''; document.getElementById('regPasswordConfirm').value = ''; }
+        if (data.success) { document.getElementById('regPassword').value = ''; document.getElementById('regPasswordConfirm').value = ''; if (termsEl) termsEl.checked = false; }
         if (data.success && data.approval_status === 'pending' && /^AC-[A-F0-9]{6}$/.test(String(data.approval_code || ''))) { showRegistrationApproval(data); }
         else if (data.success) { errorEl.textContent = 'Registrasi berhasil, tetapi kode approval belum tersedia. Hubungi admin.'; errorEl.classList.remove('hidden'); }
         else { errorEl.textContent = data.error || 'Registrasi gagal.'; errorEl.classList.remove('hidden'); }
