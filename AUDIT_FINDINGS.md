@@ -1406,3 +1406,149 @@ return r;
 Ia mengembalikan **klon utuh** dari baris masukan plus field tambahan. Jadi mengoper
 `verified` langsung setara dengan mengoper hasil merge-nya. Kedua pola sama benar;
 tidak ada bug, dan tidak ada yang perlu diubah.
+
+---
+
+## BUG-023 — `avg_volume_20d` yang dipublikasikan adalah taksiran, padahal angka sebenarnya sudah dihitung
+
+- **Severity** : LOW (tampilan; tidak saya temukan gate yang membacanya)
+- **Area** : Screener Swing Non-Konglo
+- **Lokasi** : `api/sector-hot.js:10905` (`calculateNkSetupScore`)
+
+**Kode asli.**
+
+```js
+// Compute avg_volume_20d
+var avgVolume20d = (q.lastPrice > 0) ? Math.round(q.avgTxValue20d / q.lastPrice) : 0;
+```
+
+Kolomnya bernama `avg_volume_20d` — rata-rata **volume** 20 hari — tetapi yang diisi
+adalah rata-rata **nilai transaksi** dibagi harga **terakhir**.
+
+**Root cause.** `avgTxValue20d` adalah Σ(close × volume)/20, yaitu rata-rata memakai
+harga **tiap hari**. Membaginya dengan `lastPrice` hanya benar kalau harga tidak
+bergerak selama 20 hari itu. Kalau saham naik dari 900 ke 1100 (rata-rata close
+~1000), hasilnya `avgVolume × 1000/1100` — meleset sekitar **9% ke bawah**. Semakin
+besar pergerakan 20 hari, semakin besar melesetnya.
+
+**Yang membuat ini layak dicatat:** angka yang benar **sudah dihitung** beberapa
+baris sebelumnya dan ikut dibawa di objek quote:
+
+```js
+// api/sector-hot.js:10111
+const avgVol20 = last20.map(d => d.volume).reduce((a, b) => a + b, 0) / 20;
+```
+
+```js
+// api/sector-hot.js:10427 — ikut dikembalikan
+avgVol20: avgVol20,
+```
+
+Jadi ini bukan keterbatasan data, hanya nilai yang benar diabaikan dan diganti
+taksiran. `q.avgVol20` bisa langsung dipakai.
+
+**Dampak.** Saya telusuri pembacanya: `avg_volume_20d` ada di `NK_STAGING_COLUMNS`
+dan `NK_LATEST_COLUMNS`, tetapi gate likuiditas (`deriveStaleLiquidityLabels`)
+memakai `traded_days_20d`, `value_today`, `avg_value_7d`, dan `freq`; sedangkan
+`classifyVolumeThrust` memakai `volume_ratio_20d`/`volume_ratio_avg20`. Kecocokan
+`avg_volume_20d` lain di `lib/` (`daytrade-screener-engine-v7.js`,
+`intraday-volume-pace.js`) berada di jalur Day Trade/intraday yang memakai sumber
+berbeda, bukan kolom NK ini. Jadi sejauh yang saya baca, dampaknya tampilan saja.
+
+**Perbaikan yang diusulkan.** `var avgVolume20d = Math.round(q.avgVol20 || 0);`
+
+**Kenapa belum saya kerjakan.** Ini mengubah nilai kolom yang dipublikasikan. Meski
+saya tidak menemukan gate yang membacanya, "tidak saya temukan" bukan "tidak ada" —
+saya belum membaca seluruh repo. Menunggu keputusan Anda, sekalian dengan
+BUG-014/015/020.
+
+**Status** : DITEMUKAN — menunggu keputusan
+
+---
+
+## Catatan tambahan pada BUG-014 (sentinel 0 vs tidak diketahui) — instance yang paling mudah terjadi
+
+- **Lokasi** : `api/sector-hot.js:11125` (`deriveDayTradeTimeframeContext`)
+
+```js
+var rp = r.range_position || 50; // 0=low, 100=high
+```
+
+`range_position` 0 berarti **close persis di low hari itu** — sinyal bearish yang
+nyata dan sering terjadi (hari ARB, tekanan jual sampai penutupan). Operator `||`
+mengubahnya jadi 50, yaitu "netral".
+
+Akibatnya dua cabang ini tidak pernah menyala untuk kasus yang justru paling ekstrem:
+
+```js
+else if (chg <= -2 && rp <= 30) tf1d = 'Bearish close near low';
+...
+else if (rp <= 20 && chg <= 0) tf1d = 'Close near low';
+```
+
+Berbeda dari BUG-014 yang aslinya (di mana `volume_ratio_avg20 = 0` menandakan saham
+tanpa volume — kasus yang argumentatif), di sini nilai 0 sepenuhnya wajar dan sering.
+Ini instance keluarga BUG-014 dengan jangkauan praktis paling besar.
+
+Dampaknya ke `tf_1d_context`, `tf_summary`, dan `derived_risk` — label tampilan Day
+Trade. Perbaikan: `var rp = r.range_position != null ? Number(r.range_position) : 50;`
+
+Masuk keluarga BUG-014 dan menunggu keputusan yang sama, bukan temuan terpisah.
+
+Catatan pembanding: `lib/daytrade-screener-engine.js:279-280` yang **memproduksi**
+nilai ini sudah benar — ia memakai `Number.isFinite` dan hanya jatuh ke 50 kalau
+hasilnya bukan angka, bukan kalau hasilnya 0. Jadi produsennya membedakan 0 dari
+"tidak diketahui"; konsumennya di `api/sector-hot.js` yang tidak.
+
+---
+
+## Catatan kebersihan (bukan bug) — `api/sector-hot.js`
+
+1. **`getWibDateString` dideklarasikan dua kali** (`:3313` dan `:8877`). Satu-satunya
+   nama fungsi yang duplikat di file ini. Karena deklarasi fungsi di-hoist, yang
+   kedua menang untuk semua pemanggil — dan **kedua badannya identik** secara
+   perilaku (`Date.now() + 7 jam` lalu `toISOString().slice(0,10)`), jadi tidak ada
+   perbedaan hasil. Duplikasi mati yang sebaiknya dihapus, bukan bug.
+
+2. **`var crypto = require('crypto')` lokal** di `:2464` dan `:2511` membayangi
+   `const crypto = require('crypto')` di `:58`. Sempat saya curigai bisa menabrak
+   global WebCrypto (yang tidak punya `createHmac`), tetapi impor modul-level di
+   `:58` ada dan kedua deklarasi lokal itu memuat modul yang sama. Aman; hanya
+   redundan.
+
+3. **Kueri yang hasilnya langsung dibuang** di `handleNkScreenerFinalize`: `:9741`
+   mengambil staging `limit(30)`, lalu `:9779` mengambil lagi `limit(200)` dan
+   `topCandidates` ditimpa dari hasil kedua. Kueri pertama praktis sia-sia (hanya
+   terpakai kalau kueri kedua mengembalikan null tanpa error). Satu round trip
+   Supabase yang bisa dihemat — efisiensi, bukan kebenaran.
+
+4. **Cabang mati** di `evaluateMonitorStatus:6781`:
+   `return result(active ? 'RUNNING' : 'ENTRY_MISSED', ...)`. Pada titik itu
+   `activeBefore` sudah pasti false (sudah `return` lebih awal) dan `entryTouched`
+   juga false (sudah `return` di cek sebelumnya), jadi `active` selalu false dan
+   cabang `'RUNNING'` tidak pernah terpilih. Tidak berbahaya, hanya menyesatkan
+   pembaca.
+
+---
+
+## Asimetri yang saya periksa dan biarkan — jarak entry Day Trade vs Swing
+
+```js
+// api/sector-hot.js:10946 — deriveSwingLabels
+var entryDistancePct = entryHigh > 0 && lastPrice > 0 ? ((lastPrice - entryHigh) / entryHigh) * 100 : 0;
+```
+
+```js
+// api/sector-hot.js:11091 — deriveDayTradeLabels
+var riskDist = (entryLow > 0 && lastPrice > 0) ? ((lastPrice - entryLow) / lastPrice) * 100 : 0;
+```
+
+Dua perbedaan sekaligus: batas acuannya (`entry_high` vs `entry_low`) dan
+penyebutnya (`entryHigh` vs `lastPrice`). Keduanya lalu dipakai untuk memilih label
+`entry_timing`.
+
+**Saya tidak menaikkannya jadi bug.** Namanya memang berbeda — `entryDistancePct`
+("jarak dari entry") vs `riskDist` ("jarak risiko") — dan pembacaan yang masuk akal
+adalah keduanya memang mengukur hal yang berbeda. Menyamakannya akan mengubah label
+Day Trade, yaitu perilaku bisnis (aturan No. 8). Saya catat supaya Anda tahu
+keduanya tidak sebanding kalau suatu saat dibandingkan berdampingan.
