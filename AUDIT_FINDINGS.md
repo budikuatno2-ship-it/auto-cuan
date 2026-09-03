@@ -814,7 +814,7 @@ Sisa keluarga yang sama dan **belum** disentuh: empat `fetch` ke Supabase REST d
 
 - **Severity** : LOW (laten — tidak terjangkau pada jalur mana pun yang saya baca)
 - **Area** : normalisasi level entry
-- **Lokasi** : `api/sector-hot.js:4024-4025`, `:6843-6844`, `:7789-7790`, `:13230`, `:13245-13246`, `:13341` — **enam tempat**
+- **Lokasi** : `api/sector-hot.js:4024-4025`, `:6843-6844`, `:7789-7790`, `:13230`, `:13245-13246`, `:13341`, dan `lib/idx-tick-normalization.js:965` — **tujuh tempat**
 
 Semula saya catat sebagai catatan tunggal. Setelah menyelesaikan pembacaan seluruh
 file (13.902 baris), jumlahnya menjadi **enam** — jelas sebuah pola, bukan
@@ -901,8 +901,43 @@ Ketiganya tetap tidak terjangkau pada jalur yang saya baca: `selectSafeSwingMoni
 (`swing_screener_latest`, `swing_screener_non_konglo_latest`) punya kolom
 `entry_low`/`entry_high`.
 
-**Perbaikan yang diusulkan.** Pakai `Math.min`/`Math.max`, seperti yang **sudah
-dilakukan file ini sendiri** di setidaknya tiga tempat lain:
+**Bukti terkuat: modul bersama sudah melakukannya dengan benar — di empat tempat.**
+
+`lib/idx-tick-normalization.js` adalah modul yang dipakai setiap gate. Di sana pola
+alias yang sama muncul lima kali, dan **empat di antaranya dijaga secara eksplisit**:
+
+```js
+// :86, :211, :370 — penjaga tukar-kalau-terbalik
+var entryLow  = firstNum(candidate, ['entry_low', 'entry1', 'entry_1']);
+var entryHigh = firstNum(candidate, ['entry_high', 'entry2', 'entry_2']);
+if (entryLow != null && entryHigh != null && entryLow > entryHigh) {
+  var tmp = entryLow; entryLow = entryHigh; entryHigh = tmp;
+}
+```
+
+```js
+// :244-250 — dikumpulkan lalu di-min/max
+var entryLow  = entries.length ? Math.min.apply(Math, entries) : null;
+var entryHigh = entries.length ? Math.max.apply(Math, entries) : null;
+```
+
+Yang **kelima** tidak dijaga:
+
+```js
+// :965 — deriveCandlePotentialRange
+var entryHigh = firstNum(input, ['entry_high', 'entry2', 'entry2n', 'entry']);
+```
+
+Konsekuensinya kalau cabang `entry2` sampai terpakai: `entryAraRoom` (`:969`) dihitung
+dari batas bawah, sehingga nilainya lebih besar — dan `entryNearAra` (`:975`,
+`entryAraRoom <= 3`) jadi **lebih sulit menyala**. Itu penjaga "entry terlalu dekat ARA";
+melemahkannya berarti gagal-terbuka.
+
+Jadi penulis modul ini jelas tahu masalahnya dan sudah menuliskan obatnya empat kali.
+Tujuh lokasi yang tersisa hanya belum ikut.
+
+**Perbaikan yang diusulkan.** Pakai `Math.min`/`Math.max` atau penjaga tukar di atas —
+persis seperti yang **sudah dilakukan repo ini sendiri** di:
 
 ```js
 // :6707-6708 — evaluateMonitorStatus
@@ -925,9 +960,12 @@ Jadi polanya sudah ada di rumah sendiri; tiga tempat itu saja yang belum ikut.
 **Risiko.** Rendah — karena tidak terjangkau, perbaikannya no-op pada data yang ada
 sekarang, dan menjadi benar kalau suatu saat ada produsen baris berbentuk lain.
 
-**Status** : DITEMUKAN — belum diperbaiki (laten; digabung saja ke PR pembersihan
-berikutnya kalau Anda setuju). Dengan enam kemunculan dan satu di antaranya
-terlihat di Telegram, saya condong menyarankan ini **dikerjakan**, bukan dibiarkan.
+**Status** : DITEMUKAN — belum diperbaiki. Dengan tujuh kemunculan, satu terlihat di
+Telegram (`:13341`), satu melemahkan penjaga ARA (`idx-tick-normalization.js:965`), dan
+obatnya sudah tertulis empat kali di modul bersama repo ini sendiri, **saya
+merekomendasikan ini dikerjakan**. Perbaikannya no-op pada data yang ada sekarang
+(sudah saya buktikan laten di setiap lokasi), jadi risikonya sangat rendah. Saya tetap
+menunggu kata Anda karena diff-nya menyentuh tiga file.
 
 ---
 
