@@ -391,8 +391,9 @@ Brief meminta pengecekan IDOR ("user A bisa akses portofolio user B"). Sudah say
   Perhatikan bahwa rumus ini hanya benar untuk peramban yang berjalan di UTC — yaitu justru bukan pengguna Indonesia.
 
 - **Dampak** : Terbatas. Nilai ini hanya membentuk kunci `localStorage` untuk kuota tamu 3/hari; bukan kontrol keamanan (gate premium ada di server). Efeknya tamu mendapat reset kuota gratis ~7 jam lebih awal setiap hari.
-- **Perbaikan** : Belum dieksekusi — akan digabung ke PR temuan minor berikutnya, karena bukan kelompok masalah yang sama dengan PR yang sedang terbuka.
-- **Status** : DITEMUKAN
+- **Perbaikan** : `getTime()` sudah berupa nilai epoch absolut yang tidak bergantung zona lokal, jadi cukup menggeser tepat +7 jam lalu membaca tanggal UTC-nya. Tanggal kini berganti tepat pukul 00:00 WIB (diverifikasi di 16:59:59Z dan 17:00:00Z).
+- **Catatan tentang test-nya** : `test/wib-date-string.test.js` mensimulasikan peramban WIB (`getTimezoneOffset() = -420`), bukan mengandalkan zona mesin runner. Ini penting: **CI berjalan di UTC, di mana rumus lama justru menghasilkan jawaban yang benar** — test yang tidak memalsukan zona akan lolos terhadap bug ini dan tidak membuktikan apa pun. 4 dari 6 kasusnya gagal pada kode sebelum perbaikan.
+- **Status** : DIPERBAIKI (PR #500)
 
 ---
 
