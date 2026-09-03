@@ -810,34 +810,92 @@ Sisa keluarga yang sama dan **belum** disentuh: empat `fetch` ke Supabase REST d
 
 ---
 
-## Catatan laten pada `api/sector-hot.js:4024-4025` — fallback alias entry tertukar
+## BUG-021 — Fallback alias entry tertukar di tiga tempat (laten)
 
-Bukan bug aktif, tapi saya catat karena mudah berubah jadi bug.
+- **Severity** : LOW (laten — tidak terjangkau pada jalur mana pun yang saya baca)
+- **Area** : normalisasi level entry
+- **Lokasi** : `api/sector-hot.js:4024-4025`, `api/sector-hot.js:6843-6844`, `api/sector-hot.js:7789-7790`
+
+Semula saya catat sebagai catatan tunggal. Setelah menemukan pola yang sama di dua
+tempat lain, saya naikkan jadi temuan bernomor — tiga kemunculan bukan lagi
+kekhilafan sekali, melainkan pola.
+
+**Konvensi yang berlaku di file ini** (dinyatakan di `api/sector-hot.js:3519-3520`):
 
 ```js
-// api/sector-hot.js:4024-4025
-var entryLow  = toNum(r.entry_low  || r.entry1 || r.entry_1);
-var entryHigh = toNum(r.entry_high || r.entry2 || r.entry_2 || entryLow);
+r.entry1 = high; // conservative representative for upside calculation
+r.entry2 = low;
 ```
 
-Di file yang sama, `entry1` adalah batas **atas** dan `entry2` batas **bawah**
-(`api/sector-hot.js:3519-3520`). Jadi kedua fallback itu **tertukar**: kalau
-`entry_low`/`entry_high` tidak ada, `entryLow` akan menerima nilai tertinggi dan
-`entryHigh` nilai terendah.
+`entry1` = batas **atas**, `entry2` = batas **bawah**.
 
-**Kenapa saya tidak menaikkannya jadi bug aktif.** Saya telusuri semua pemanggil
-`deriveRiskReasonDetails` — satu-satunya adalah `enrichSignalQuality`
-(`api/sector-hot.js:4074`), dan di sana `deriveConfidenceTier` → `getEntry1` →
-`normalizeCandidateEntryAliases` sudah mengisi `r.entry_low` dan `r.entry_high`
-lebih dulu (`api/sector-hot.js:3517-3518`) untuk setiap baris yang punya rentang.
-Semua sumber baris yang saya telusuri (`daytrade_screener_latest`,
-`swing_screener_latest`, `swing_screener_non_konglo_latest`) punya kolom
-`entry_low`/`entry_high`. Jadi cabang fallback itu tidak pernah dieksekusi pada
-jalur mana pun yang saya baca.
+**Ketiga tempat yang membalik konvensi itu di cabang fallback-nya:**
 
-**Rekomendasi** (bukan perbaikan yang saya jalankan sekarang): tukar kedua fallback
-agar sesuai konvensi file, atau — lebih tahan lama — pakai `Math.min`/`Math.max`
-seperti yang sudah dilakukan `api/sector-hot.js:6707-6708`.
+```js
+// :4024-4025 — deriveRiskReasonDetails
+var entryLow  = toNum(r.entry_low  || r.entry1 || r.entry_1);   // entry1 = HIGH
+var entryHigh = toNum(r.entry_high || r.entry2 || r.entry_2 || entryLow); // entry2 = LOW
+```
+
+```js
+// :6843-6844 — buildDashboardPickRow
+entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_low)),
+entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_high)),
+```
+
+```js
+// :7789-7790 — buildWebTop5HistoryRow
+entry1: toNum(row.entry1 != null ? row.entry1 : (raw.entry1 != null ? raw.entry1 : raw.entry_low)),
+entry2: toNum(row.entry2 != null ? row.entry2 : (raw.entry2 != null ? raw.entry2 : raw.entry_high)),
+```
+
+Pada ketiganya, kalau cabang terakhir yang terpakai, `entry1` menerima nilai
+**terendah** dan `entry2` nilai **tertinggi** — terbalik dari konvensinya.
+
+**Kenapa tetap LOW dan bukan lebih tinggi.** Saya telusuri jangkauannya satu per satu:
+
+- `:4024-4025` — satu-satunya pemanggil `deriveRiskReasonDetails` adalah
+  `enrichSignalQuality` (`:4074`), dan di sana `deriveConfidenceTier` → `getEntry1`
+  → `normalizeCandidateEntryAliases` sudah mengisi `r.entry_low`/`r.entry_high`
+  lebih dulu (`:3517-3518`). Cabang fallback-nya tidak pernah jalan.
+- `:6843-6844` dan `:7789-7790` — `row.entry1`/`row.entry2` adalah kolom
+  `telegram_daily_picks` yang selalu diisi ketiga penulisnya (lihat BUG-016), dan
+  `raw.entry1`/`raw.entry2` diperiksa sebelum `raw.entry_low`/`raw.entry_high`.
+  Jadi cabang terakhirnya butuh baris tanpa `entry1` di kolom **maupun** di
+  `raw_payload` — tidak saya temukan produsen yang menghasilkan bentuk itu.
+
+**Yang membuatnya layak dicatat.** Di `:7789-7790` konsekuensinya paling tidak
+sepele kalau cabang itu sampai jalan: `getHistoryEntryUsage` (`:7668`) menguji
+`low <= entry2` lebih dulu, jadi entry yang terbalik akan melaporkan "Entry 2"
+tersentuh padahal Entry 1 yang tersentuh, dan `return_from_entry_pct` dihitung dari
+batas yang salah.
+
+**Perbaikan yang diusulkan.** Pakai `Math.min`/`Math.max`, seperti yang **sudah
+dilakukan file ini sendiri** di setidaknya tiga tempat lain:
+
+```js
+// :6707-6708 — evaluateMonitorStatus
+entryLow  = entry1 != null && entry2 != null ? Math.min(entry1, entry2) : ...
+entryHigh = entry1 != null && entry2 != null ? Math.max(entry1, entry2) : ...
+```
+
+```js
+// :8319 — formatMonitorBatchRow
+entryRangeStr = fmtPrice(Math.min(entry1, entry2)) + '\u2013' + fmtPrice(Math.max(entry1, entry2));
+```
+
+```js
+// :7060 — buildMonitorPlanIdentity
+var entryLow = entryA != null && entryB != null ? Math.min(entryA, entryB) : ...
+```
+
+Jadi polanya sudah ada di rumah sendiri; tiga tempat itu saja yang belum ikut.
+
+**Risiko.** Rendah — karena tidak terjangkau, perbaikannya no-op pada data yang ada
+sekarang, dan menjadi benar kalau suatu saat ada produsen baris berbentuk lain.
+
+**Status** : DITEMUKAN — belum diperbaiki (laten; digabung saja ke PR pembersihan
+berikutnya kalau Anda setuju)
 
 ---
 
