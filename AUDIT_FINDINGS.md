@@ -2038,3 +2038,117 @@ yang kentara. Perbaikannya sepele: hitung pembaginya (`count`) dan bagi dengan i
 atau kembalikan `null` begitu ada nilai non-finite.
 
 **Status** : DITEMUKAN — laten, tidak diperbaiki
+
+---
+
+## BUG-027 — Peringatan "JANGAN chase" dibaca sistem sebagai bukti bahwa harga SEDANG di-chase
+
+- **Severity** : **HIGH**
+- **Area** : Day Trade — verdict sinyal, quality gate, alasan radar, label risiko
+- **Lokasi akar** : `lib/idx-tick-normalization.js:837` + `:881` (`deriveSignalVerdict`), berpasangan dengan `lib/daytrade-screener-engine.js:1180` (`generateTimePlan`)
+
+**Inti masalahnya.** `deriveSignalVerdict` mendeteksi "chase" dengan mencocokkan kata di
+teks bebas kandidat:
+
+```js
+// lib/idx-tick-normalization.js:837
+var noteText = [r.notes, r.status_reason, r.entry_timing, r.time_plan, r.telegram_verdict, ...].filter(Boolean).join(' ').toLowerCase();
+```
+
+```js
+// lib/idx-tick-normalization.js:881
+var chaseExtended = entry === 'CHASE_RISK' || entry === 'EXTENDED' || hasAny(noteText, ['chase', 'extended', 'long candle']);
+```
+
+`time_plan` ikut di dalamnya. Dan `time_plan` untuk `PRE_SPIKE_WATCH` **selalu** berisi
+kata itu — karena isinya justru nasihat untuk tidak chase:
+
+```js
+// lib/daytrade-screener-engine.js:1180
+if (status === 'PRE_SPIKE_WATCH') {
+  return base + 'Tunggu volume spike + break resistance. JANGAN chase. Sabar menunggu konfirmasi.';
+}
+```
+
+Jadi **peringatan sistem agar jangan chase dibaca oleh gate-nya sendiri sebagai bukti
+bahwa harga sedang di-chase.**
+
+**Dibuktikan.** Saya jalankan `generateTimePlan` yang diekspor untuk tiap status, lalu
+`deriveSignalVerdict` atas kandidat yang sehat (`IN_ENTRY_AREA`, plan valid, Low Risk,
+RR sehat, Liquid, respect valid, grade A):
+
+```
+A_PLUS_SETUP           clean
+READY_BREAKOUT         clean
+PRE_SPIKE_WATCH        time_plan CONTAINS trigger word
+EARLY_RADAR            clean
+MOMENTUM_CONTINUATION  clean
+
+tanpa time_plan        -> ENTRY_AREA      | Entry    | grade A
+dengan time_plan       -> WAIT_PULLBACK   | Hindari  | grade C
+```
+
+Kandidat yang sama, satu-satunya perbedaan adalah teks nasihatnya sendiri.
+
+**Rantainya nyata sampai produksi** — saya telusuri tiap sambungannya:
+
+1. `time_plan` **disimpan** ke `daytrade_screener_latest` (kolom di upsert batch,
+   `api/sector-hot.js:11492`).
+2. Dibaca kembali dengan `select('*')` di `handleDayTradeScreenerRead`.
+3. `enrichSignalQuality(r, 'Day Trade')` → `attachEntryStatus(r)` →
+   `idxTick.deriveSignalVerdict(r)` (`api/sector-hot.js:4005`) — **dengan baris utuh**,
+   termasuk `time_plan`.
+4. `noteText` di `lib/idx-tick-normalization.js:837` memungutnya.
+
+**Dampaknya lebih luas dari satu fungsi.** Teks yang sama juga dipungut tiga tempat lain
+di `api/sector-hot.js`, dan semuanya memakai daftar kata yang mengandung `'chase'`:
+
+| lokasi | akibatnya |
+|---|---|
+| `:4005` → `deriveSignalVerdict` | `signal_action` = `WAIT_PULLBACK`, `action_label` = **`Hindari`**, confidence dipaksa ke **C** |
+| `:4182` → `deriveFinalTopQualityGate` | `addChip('Chase risk / Extended', -12)` — **penalti skor −12** |
+| `:4031` → `deriveRiskReasonDetails` | alasan risiko keliru: "Chase risk after long candle" |
+| `:4182` → `getPotentialRadarReason` | alasan radar keliru: `CHASE_RISK_MONITOR` |
+
+Dan `action_label: 'Hindari'` lalu ditangkap `hasHindariAction()`
+(`api/sector-hot.js:4396`), yang **memblokir kandidat itu dari Telegram dan Top 5**.
+
+**Arah kegagalannya aman, tapi akibatnya tetap serius.** Ini gagal-**tertutup**: tidak
+ada sinyal berbahaya yang terbit. Yang terjadi adalah **kandidat `PRE_SPIKE_WATCH` yang
+sah ditekan secara sistematis** — diberi label "Hindari", dipotong skornya 12 poin, dan
+diblokir dari publikasi, semata karena nasihatnya sendiri memuat kata "chase".
+
+**Digabung dengan BUG-026, keluaran Day Trade tertekan dua kali:**
+
+- **BUG-026** membuat `PRE_SPIKE_WATCH` nyaris tidak pernah tercapai untuk skor 70–74
+  (kalah oleh cabang `EARLY_RADAR` yang ambangnya lebih rendah).
+- **BUG-027** membuat yang *berhasil* mencapainya langsung dilabeli "Hindari".
+
+Dua sebab yang berdiri sendiri, masing-masing sudah saya buktikan, dan keduanya menekan
+jalur "priority opportunity" yang sama. Kalau Anda merasa sinyal Day Trade lebih sedikit
+dari yang diharapkan, dua ini kandidat penjelasannya.
+
+**Perbaikan yang diusulkan.** Jangan menyimpulkan keadaan pasar dari teks nasihat.
+Urut dari yang paling saya rekomendasikan:
+
+- **(a)** Buang `r.time_plan` dari `noteText` di `lib/idx-tick-normalization.js:837`.
+  `time_plan` memang berisi instruksi, bukan pengamatan — sumber yang salah untuk
+  mendeteksi keadaan. Field terstruktur `entry_status` (`CHASE_RISK`/`EXTENDED`) sudah
+  memberi jawaban yang benar dan sudah diperiksa di baris yang sama.
+- **(b)** Andalkan `entry_status` saja untuk `chaseExtended`, buang pencocokan teksnya.
+  Paling bersih, tetapi menghapus lapis kedua yang mungkin diinginkan untuk sumber lain.
+- **(c)** Terapkan hal yang sama pada tiga lokasi di `api/sector-hot.js` (`:4031`,
+  `:4182` ×2) yang memungut `time_plan` untuk keperluan yang sama.
+
+**Kenapa belum saya kerjakan.** Perbaikannya membuat kandidat `PRE_SPIKE_WATCH` berhenti
+diblokir — artinya **lebih banyak sinyal terbit**. Itu perubahan perilaku bisnis yang
+langsung terasa, dan aturan No. 8 Anda meminta saya bertanya lebih dulu. Berbeda dari
+BUG-025 yang membuat gate lebih ketat, yang ini membuatnya lebih longgar — jadi justru
+lebih perlu persetujuan Anda, bukan kurang.
+
+**Verifikasi (kalau disetujui).** Test yang memberi kandidat sehat dengan `time_plan`
+hasil `generateTimePlan('PRE_SPIKE_WATCH', ...)` dan memastikan hasilnya tetap
+`ENTRY_AREA`/`Entry`; plus test bahwa kandidat yang benar-benar chase
+(`entry_status = 'CHASE_RISK'`) tetap diblokir.
+
+**Status** : DITEMUKAN — **menunggu keputusan Anda**

@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 29 SELESAI, 4 SEDANG, 745 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 30 SELESAI, 4 SEDANG, 744 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -158,7 +158,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/foreign-flow-store.js` | 73 | BELUM | 0 | |
 | `lib/free-user-approval.js` | 84 | BELUM | 0 | |
 | `lib/idx-holidays-2026-seed-data.js` | 69 | BELUM | 0 | |
-| `lib/idx-tick-normalization.js` | 1124 | BELUM | 0 | |
+| `lib/idx-tick-normalization.js` | 1124 | SELESAI | 1 | Dibaca utuh baris 1-1124. BUG-027 (HIGH - teks nasihat "JANGAN chase" di time_plan dibaca sebagai bukti chase, :837 + :881). Modul paling sentral dan paling rapi di repo: penjaga tukar entry low/high di :86, :211, :370 dan Math.min/max di :244-250 (obat BUG-021, ditulis 4x); :368-370 satu-satunya tempat dengan urutan alias yang BENAR (entryLow<-entry2, entryHigh<-entry1); normalizeTradingPlanLevels :430 memakai min/max sehingga kebal konvensi; deriveSetupFreshness :360 sengaja mengecualikan updated_at/last_checked_at agar rekomendasi lama tidak tampak baru. Satu-satunya alias tak terjaga: deriveCandlePotentialRange :965 (instance BUG-021 ke-7) |
 | `lib/idx-trading-calendar.js` | 214 | BELUM | 0 | |
 | `lib/intraday-collector-vps-audit.js` | 304 | BELUM | 0 | |
 | `lib/intraday-fast-watcher-early-watch-publisher.js` | 338 | BELUM | 0 | |
