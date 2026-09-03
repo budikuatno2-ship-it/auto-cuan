@@ -479,6 +479,8 @@ Brief meminta ini diperiksa. Hasil sapuan seluruh repo dan riwayat git:
 
   Klausa `p.volume_ratio_20d == null ||` jelas ditulis supaya kasus "tidak diketahui" **tidak** dihukum. Nilai `0` dari produsen tidak akan pernah memenuhi `>= 0.8`, jadi kandidat itu turun dari grade A dan diberi label "volume kurang".
 
+  Instance kedua yang saya temukan kemudian, di dalam **satu file yang sama**: `api/quote.js:406` menulis `quoteResult.volumeVsAvg20 || 0` (runtuh menjadi 0) sementara `api/quote.js:442` — 36 baris di bawahnya — meneruskan `quoteResult.volumeVsAvg20` apa adanya ke `calculateRiskLabel()` (mempertahankan `null`). Jadi dua pemanggil bersebelahan di file yang sama memperlakukan penanda ini secara berbeda.
+
   Modul saudaranya melakukan hal yang benar — `lib/analyze-legacy.js:1398` mengembalikan `null`:
 
   ```js

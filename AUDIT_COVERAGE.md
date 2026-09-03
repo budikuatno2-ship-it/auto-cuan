@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 24 SELESAI, 4 SEDANG, 750 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 25 SELESAI, 3 SEDANG, 750 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -68,7 +68,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `api/log.js` | 194 | SELESAI | 0 | bersih; identitas dari sesi bertanda tangan, is_admin server-side, cap panjang, strip control char, rate limit dari nilai yang diamati server |
 | `api/login-user.js` | 568 | SELESAI | 0 | bersih; webhook secret constant-time, same-origin gate, anti-enumeration, device binding, migrasi kredensial CAS |
 | `api/maintenance-settings.js` | 229 | SELESAI | 0 | bersih; write op butuh admin session + same-origin |
-| `api/quote.js` | 2747 | SEDANG | 2 | baris 1-1500 dari 2747 sudah dibaca; BUG-015 (RSI seri datar) + 4 fetch tanpa timeout |
+| `api/quote.js` | 2747 | SELESAI | 2 | DIBACA UTUH 2747/2747. BUG-015 (RSI datar) + 4 fetch tanpa timeout + instance BUG-014 di :406 vs :442. Bersih: ticker divalidasi sebelum URL, sesi bertanda tangan untuk field lanjutan, cache tidak terkontaminasi redaksi, guard fibonacci/flat-range/pembagian-nol lengkap |
 | `api/register-user.js` | 206 | SELESAI | 0 | bersih; rate limit, validasi hash, terms acceptance, rollback registrasi |
 | `api/reset-password.js` | 68 | SELESAI | 0 | bersih; gateway routing saja |
 | `api/review-access.js` | 117 | SELESAI | 1 | BUG-013: token default + hash password akun review ada di sumber, repo publik |
