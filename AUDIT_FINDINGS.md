@@ -1645,3 +1645,130 @@ asli, memastikan hanya yang asli yang cocok — dan satu test yang memastikan ka
 
 **Status** : DITEMUKAN — belum diperbaiki (laten; digabung ke PR pembersihan bersama
 BUG-021 kalau Anda setuju)
+
+---
+
+## BUG-025 — `includesAny()` memotong teksnya di 300 karakter, sehingga gate keselamatan gagal-terbuka
+
+- **Severity** : **HIGH** (menyentuh seluruh keluarga gate keselamatan publik)
+- **Area** : semua gate berbasis teks — Telegram publik, Top 5, Top 5 Watchlist, Day Trade, radar fallback
+- **Lokasi** : `api/sector-hot.js:12856` (`includesAny`), berpasangan dengan `api/sector-hot.js:12862` (`joinTelegramTexts`) dan `api/sector-hot.js:12808` (`safeTelegramText`)
+
+**Kode asli.**
+
+```js
+// api/sector-hot.js:12856
+function includesAny(text, words) {
+  var t = safeTelegramText(text, 300, '').toLowerCase();
+  for (var i = 0; i < words.length; i++) if (t.indexOf(words[i]) >= 0) return true;
+  return false;
+}
+```
+
+```js
+// api/sector-hot.js:12862
+function joinTelegramTexts(parts) {
+  return parts.map(function(p) { return safeTelegramText(p, 120, ''); }).filter(Boolean).join(' | ');
+}
+```
+
+```js
+// api/sector-hot.js:12808 — safeTelegramText memotong, bukan sekadar merapikan
+if (text.length > maxLen) text = text.slice(0, Math.max(0, maxLen - 1)).trim() + '…';
+```
+
+**Root cause.** `includesAny` adalah **pencocok**, bukan pemformat tampilan. Tetapi ia
+melewatkan masukannya melalui `safeTelegramText(..., 300, ...)`, yang **memotong di
+300 karakter**. Semua yang berada setelah karakter ke-300 tidak pernah diperiksa.
+
+Pasangannya memperburuk: `joinTelegramTexts` menyatukan **banyak** field, masing-masing
+sampai 120 karakter, dipisah `' | '`. Tiga field penuh saja sudah 366 karakter — sudah
+melewati batas.
+
+**Dibuktikan, bukan diduga.** Saya jalankan ketiga fungsi itu apa adanya atas kandidat
+berbentuk persis seperti yang dibangun `candidatePassesPublicTelegramSafetyGate`, dengan
+kata kunci pemblokir diletakkan di field yang lebih belakang:
+
+```
+joined length          : 392
+contains keyword?      : true          <- teksnya JELAS mengandung 'very high risk'
+includesAny() says     : false         <- tapi gate-nya bilang tidak ada
+```
+
+Yang benar-benar dilihat `includesAny` berakhir di
+`"... Consolidation - harga dekat resistance dengan trend/volume membaik |…"` —
+field terakhir tidak pernah sampai.
+
+**Seberapa luas.** Diukur, bukan dikira:
+
+| | jumlah |
+|---|---:|
+| pemanggilan `includesAny` di `api/sector-hot.js` | **101** |
+| di antaranya yang disuapi teks gabungan | **53** |
+| pemanggilan `joinTelegramTexts` | 56 |
+| yang menggabung ≥ 6 field | **33** |
+| field terbanyak dalam satu panggilan | **40** |
+
+Panggilan 40-field bisa menghasilkan ~4.800 karakter, dan `includesAny` hanya memeriksa
+300 pertama — sekitar **6%** dari teks yang dimaksudkan diperiksa.
+
+**Dampak.** Yang paling langsung adalah pemeriksaan yang **hanya** berupa teks, tanpa
+padanan terstruktur:
+
+- `hasFatalDayTradeRadarBlock` (`api/sector-hot.js:12277`) menggabung **26 field** ke
+  `allText`, lalu mencari `'invalid candle'`, `'below sl'`, `'sl kena'`,
+  `'invalidation hit'`, `'impossible execution'`, `'data rusak'`. Ini blok **fatal**.
+- `publicTelegramSafetyTextHasReject(guardText)` di
+  `candidatePassesPublicTelegramSafetyGate`.
+- Daftar kata kunci breakout (`'false breakout'`, `'needs close confirmation'`, …) dan
+  freshness (`'stale'`, `'expired'`, `'needs revalidation'`, …).
+
+**Peredam yang jujur harus saya sebut:** banyak gate memeriksa **field terstruktur lebih
+dulu** — misalnya `risk === 'very high risk'` dari `normalizeTelegramRiskLabel(...)`,
+`candidate.trading_plan_valid === false`, `entryStatus === 'INVALID_BELOW_SL'`. Untuk
+kondisi-kondisi itu, cek teks hanyalah lapis kedua, dan lapis pertamanya tetap bekerja.
+Jadi ini **bukan** berarti setiap gate bocor. Yang bocor adalah kondisi yang tidak punya
+lapis terstruktur.
+
+**Yang belum bisa saya ukur.** Berapa banyak kandidat nyata yang teks gabungannya benar-benar
+melewati 300 karakter — itu butuh data produksi. Yang bisa saya tunjukkan: `status_reason`
+Non-Konglo saja dirakit sebagai `metricLine + '.' + entryNote + ' ' + statusReason`
+(`api/sector-hot.js:10850`) dan rutin melebihi 120 karakter, sehingga hanya butuh dua
+sampai tiga field terisi lagi untuk melewati batas.
+
+**Perbaikan yang diusulkan.** Jangan memotong di dalam pencocok:
+
+```js
+function includesAny(text, words) {
+  if (text == null || typeof text === 'object') return false;
+  var t = String(text).toLowerCase();
+  for (var i = 0; i < words.length; i++) if (t.indexOf(words[i]) >= 0) return true;
+  return false;
+}
+```
+
+(Batas 120 per field di `joinTelegramTexts` sebaiknya juga ditinjau, tetapi memperbaiki
+`includesAny` saja sudah menghapus pemotongan tingkat kedua yang paling merusak.)
+
+**KENAPA SAYA BELUM MENGERJAKANNYA — ini yang perlu keputusan Anda.**
+
+Perbaikannya membuat gate **lebih ketat**: kandidat yang selama ini lolos karena kata
+kunci pemblokirnya terpotong akan mulai diblokir. Arahnya lebih aman, dan memang itu
+maksud kode aslinya. Tapi **besarnya tidak saya ketahui** — bisa jadi beberapa kandidat
+per hari, bisa jadi banyak. Itu langsung memengaruhi berapa sinyal yang terbit ke
+Telegram dan ke web.
+
+Menurut aturan No. 8 Anda, perubahan sebesar itu bukan keputusan saya.
+
+**Yang saya sarankan:** jalankan dulu pengukurannya tanpa mengubah perilaku. Saya bisa
+menambahkan diagnostik dry-run yang menghitung, untuk setiap kandidat, apakah teks
+gabungannya melewati 300 karakter dan apakah ada kata kunci pemblokir yang hilang karena
+terpotong. Itu murni observasi — tidak ada gate yang berubah — dan hasilnya memberi tahu
+kita persis berapa besar dampak perbaikannya sebelum diterapkan.
+
+**Verifikasi (kalau disetujui).** Test yang membangun teks gabungan >300 karakter dengan
+kata kunci pemblokir di ujung, memastikan gate menolaknya; plus test bahwa teks pendek
+berperilaku persis sama seperti sebelumnya.
+
+**Status** : DITEMUKAN — **menunggu keputusan Anda**. Saya sarankan langkah pengukuran
+dulu, bukan langsung perbaikan.
