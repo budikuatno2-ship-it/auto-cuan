@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 17 SELESAI, 3 SEDANG, 758 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 20 SELESAI, 3 SEDANG, 755 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -62,7 +62,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `_disabled_api_backup/lib/response-mode.js` | 102 | BELUM | 0 | |
 | `_disabled_api_backup/seed-review.js` | 95 | BELUM | 0 | |
 | `api/admin-logs.js` | 106 | BELUM | 0 | |
-| `api/admin-users.js` | 474 | BELUM | 0 | |
+| `api/admin-users.js` | 474 | SELESAI | 0 | bersih; setiap aksi privileged lewat requireBudiAdmin (same-origin + sesi admin + cek username) |
 | `api/analyze.js` | 129 | SELESAI | 0 | bersih; premium gate + routing chat_mode->legacy, followup->v7 |
 | `api/candles.js` | 306 | BELUM | 0 | |
 | `api/log.js` | 194 | BELUM | 0 | |
@@ -71,7 +71,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `api/quote.js` | 2747 | BELUM | 0 | |
 | `api/register-user.js` | 206 | SELESAI | 0 | bersih; rate limit, validasi hash, terms acceptance, rollback registrasi |
 | `api/reset-password.js` | 68 | SELESAI | 0 | bersih; gateway routing saja |
-| `api/review-access.js` | 117 | BELUM | 0 | |
+| `api/review-access.js` | 117 | SELESAI | 1 | BUG-013: token default + hash password akun review ada di sumber, repo publik |
 | `api/sector-hot.js` | 13902 | BELUM | 0 | |
 | `deploy/ai-eval-once.env.example` | 23 | BELUM | 0 | |
 | `deploy/vps/run-daily-market-context-collector.sh` | 100 | BELUM | 0 | |
@@ -152,7 +152,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/daytrade-screener-constants.js` | 29 | BELUM | 0 | |
 | `lib/daytrade-screener-engine-v7.js` | 202 | BELUM | 0 | |
 | `lib/daytrade-screener-engine.js` | 2908 | BELUM | 0 | |
-| `lib/entitlements.js` | 68 | BELUM | 0 | |
+| `lib/entitlements.js` | 68 | SELESAI | 0 | bersih; review TIDAK premium, budi admin, error penyimpanan tidak pernah jadi premium |
 | `lib/fast-watcher-daily-context-shadow.js` | 53 | BELUM | 0 | |
 | `lib/fibonacci-confluence.js` | 317 | BELUM | 0 | |
 | `lib/foreign-flow-store.js` | 73 | BELUM | 0 | |

@@ -407,6 +407,53 @@ Brief meminta ini diperiksa. Hasil sapuan seluruh repo dan riwayat git:
 
 ---
 
+## BUG-013
+
+- **Severity** : MEDIUM (lihat batasan dampaknya di bawah — saya sengaja tidak menaikkannya ke HIGH tanpa bisa memverifikasi kondisi database produksi)
+- **Area** : Auth / Keamanan
+- **Lokasi** : `api/review-access.js:39` (token default) dan `api/review-access.js:62` (hash password), plus `public/index.html:2161` dan `:2169`
+- **Gejala** : Pengguna internet tanpa autentikasi berpotensi memperoleh **sesi login yang sah sebagai akun `review`**.
+- **Root cause** : Dua rahasia berada di dalam kode sumber, dan **repositori ini publik** (dikonfirmasi lewat GitHub API: `"private": false`, `"visibility": "public"`).
+
+  1. Token gerbang punya default yang tertulis di sumber:
+
+     ```js
+     const EXPECTED_TOKEN = process.env.REVIEW_ACCESS_TOKEN || 'autocuan-review-2026';
+     ```
+
+     Nilai yang sama juga tertulis dua kali di `public/index.html`, jadi bahkan tanpa membaca repo, siapa pun yang membuka halaman bisa membacanya.
+
+  2. Hash password akun `review` ditulis langsung di sumber:
+
+     ```js
+     const REVIEW_PASSWORD_HASH = '42f38b0fcf1e35d9d2f82c462376f33145d1f450aeb216900db3356338686f2b';
+     ```
+
+     Komentar di atasnya menyatakan plaintext-nya sengaja tidak dicatat. Masalahnya, **peramban melakukan hashing di sisi klien** (`public/index.html:1872` `hashPassword()`), dan `/api/login-user` menerima `passwordHash` itu apa adanya. Untuk baris berformat lama, `lib/password-credential.js:69-72` membandingkan hash tersimpan dengan hash yang dikirim klien secara langsung. Jadi untuk baris format lama, **hash itu sendiri adalah kredensialnya** — plaintext tidak diperlukan.
+
+- **Rantai eksploitasi** :
+  1. `POST /api/review-access` dengan `{"token":"autocuan-review-2026"}` — menyemai baris `app_users` bernama `review` dengan `password_hash` format lama di atas.
+  2. `POST /api/login-user` dengan `{"username":"review","passwordHash":"42f38b0f…","deviceId":"apa saja"}`. Klien non-peramban (mis. curl) tidak mengirim header `Origin` maupun `Referer`, dan `lib/admin-session.js:169` memang mengembalikan `true` bila tidak ada sinyal lintas-origin — jadi gerbang same-origin terlewati.
+  3. `api/login-user.js:455` melewati gerbang approval khusus untuk `review`, lalu cabang di `:485` menerbitkan cookie sesi.
+  4. Penyerang memegang `ac_sess` yang sah sebagai `review`.
+
+- **Yang MEMBATASI dampaknya — saya sebutkan supaya tidak berlebihan** :
+  - `lib/entitlements.js` **tidak** memberi `review` status premium. Tanpa baris `user_entitlements` aktif, ia `free`. Jadi `/api/analyze` (butuh premium) dan state portofolio tetap tertutup.
+  - Ini bukan akses admin: `requireBudiAdmin` mensyaratkan username `budi`.
+  - Ini tidak membuka data pengguna lain.
+  - Yang terbuka adalah endpoint yang hanya butuh sesi terautentikasi, misalnya `api/quote.js:78`.
+  - **Mitigasi penting**: login legacy yang berhasil memicu migrasi kredensial (`api/login-user.js:426-438`) ke format scrypt `k1…`. Setelah itu hash yang dipublikasikan **tidak lagi bisa dipakai** — penyerang butuh plaintext-nya. Jadi jendela serangan hanya terbuka selama baris `review` masih berformat lama.
+
+- **Yang TIDAK bisa saya verifikasi** : kondisi baris `review` di database produksi saat ini (sudah bermigrasi atau belum), dan apakah `REVIEW_ACCESS_TOKEN` sudah diset di Vercel sehingga default di sumber tidak terpakai. Keduanya butuh akses yang tidak saya miliki. Karena itu saya tidak menaikkan severity ke HIGH, dan tidak menyatakan ini "pasti bisa dieksploitasi sekarang".
+- **Perbaikan yang diusulkan** (belum dieksekusi — mengubah perilaku auth, jadi menunggu keputusan pemilik):
+  1. Hapus hash password dari sumber; ambil dari environment, gagal-tertutup bila tidak diset.
+  2. Hapus default `'autocuan-review-2026'`; wajibkan `REVIEW_ACCESS_TOKEN`, gagal-tertutup bila kosong.
+  3. Rotasi password akun `review` terlepas dari apa pun, karena nilai setara-kredensialnya sudah publik.
+- **Risiko perbaikan** : membuat gerbang gagal-tertutup akan **mematikan mode review** sampai variabel environment diset di Vercel. Itu bisa memutus alur peninjauan app-store, jadi bukan keputusan yang boleh saya ambil sendiri.
+- **Status** : DITEMUKAN — menunggu keputusan
+
+---
+
 ## Modul Bersih (sudah diperiksa, tidak ditemukan bug)
 
 ### Hipotesis "import yatim ke modul AI yang dihapus" — TIDAK TERBUKTI
