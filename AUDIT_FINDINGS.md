@@ -1253,3 +1253,156 @@ jadi jawaban yang benar, bukan "langsung perbaiki".
 memastikan hasilnya `NEEDS_REVALIDATION` dan bukan `TP1_HIT`.
 
 **Status** : DITEMUKAN — menunggu keputusan Anda (dan idealnya hasil kueri di atas)
+
+---
+
+## BUG-022 — Sesi Yahoo tanpa high/low membuat `support` runtuh jadi 0 (Swing Non-Konglo)
+
+- **Severity** : MEDIUM
+- **Area** : Screener Swing Non-Konglo — penurunan level entry/SL/TP
+- **Lokasi** : `api/sector-hot.js:10061-10065` (`fetchNkQuoteData`)
+
+**Kode asli.**
+
+```js
+// Filter out null days
+const validDays = [];
+for (let i = 0; i < timestamps.length; i++) {
+  if (closes[i] != null && volumes[i] != null) {
+    validDays.push({ ts: timestamps[i], open: opens[i], high: highs[i], low: lows[i], close: closes[i], volume: volumes[i] });
+  }
+}
+```
+
+**Root cause.** Yahoo mengirim tiap deret OHLCV **secara terpisah**, jadi satu sesi
+bisa punya `close` dan `volume` sementara `high`/`low`-nya `null` (suspend, atau
+lubang di feed vendor). Predikat di atas hanya memeriksa `close` dan `volume`,
+sehingga hari seperti itu tetap masuk dengan `high: null, low: null`.
+
+Lalu:
+
+```js
+const support = Math.min(...last20Lows);
+```
+
+JavaScript mengubah `null` menjadi `0` di dalam `Math.min`. **Satu** low `null`
+sudah cukup untuk membuat `support` runtuh jadi 0.
+
+**Dampak — direproduksi, bukan diduga.** Deret 25 sesi untuk saham di harga 1024,
+satu sesi suspend:
+
+| | hari suspend disimpan | seharusnya |
+|---|---:|---:|
+| `support` | **0** | 1002 |
+| `pullbackEntryHigh` (Fib 0.382) | **395** | 1014 |
+
+Selisih 61% pada zona entry. `support` menggerakkan `pullbackEntryHigh`,
+`priceInEntryZone`, klasifikasi `setupType`, lalu `entry_low` dan `stop_loss`.
+Pada cabang `rebound` hasilnya `entry_low = Math.round(support) = 0` dan
+`stop_loss = Math.round(support * 0.96) = 0`.
+
+**Kenapa tidak pernah terlihat.** Asimetri antara `Math.min` dan `Math.max`:
+
+```
+Math.min(990, null, 995) === 0      // null menang
+Math.max(1010, null, 1015) === 1015 // null tidak pernah menang
+```
+
+Jadi `resistance` tetap tampak wajar sementara `support` diam-diam 0. Tidak ada
+nilai yang terbaca janggal sampai level yang dipublikasikan sendiri yang janggal.
+
+`applyNkHardFilters` (`api/sector-hot.js:10487`) juga tidak menangkapnya — ia
+memeriksa `lastPrice`, `tradedDays20d`, `avgTxValue20d`, `riskReward`, dan
+`volumeRatioAvg20`; tidak satu pun menyentuh integritas OHLC. Dan `riskReward`
+sendiri dihitung **dari** level yang sudah rusak, jadi ia bisa saja tetap >= 1.5.
+
+**Bukti bahwa ini kekhilafan, bukan pilihan sengaja.** Tiga parser Yahoo lain di
+file yang sama sudah bertahan terhadap bentuk ini:
+
+| parser | baris | yang diperiksa |
+|---|---|---|
+| `fetchScreenerCandles` | `2332` | close, open, high, low, volume |
+| `fetchChartOhlcRows` | `5468` | o/h/l/c + `isFinite` |
+| **`fetchNkQuoteData`** | `10062` | **hanya close + volume** |
+
+`fetchNkQuoteData` satu-satunya yang berbeda.
+
+**Perbaikan.** Wajibkan setiap kaki OHLCV ada dan finite; kalau tidak, harinya
+dibuang — persis seperti parser sejenis. Diekstrak jadi `parseNkValidDays()` agar
+predikatnya bisa diuji langsung.
+
+**Ini bukan perubahan perilaku bisnis.** Tidak ada formula entry/SL/TP, gate, atau
+aturan ranking yang disentuh. Formulanya identik; ia hanya berhenti disuapi `null`.
+Karena itu saya kerjakan langsung, berbeda dari BUG-014/015/020 yang memang
+mengubah keluaran indikator atau ambang.
+
+**Risiko.** Ticker yang feed-nya berlubang menghasilkan candle lebih sedikit; yang
+jatuh di bawah ambang 20 sesi yang **sudah ada** akan dilewati pada run itu alih-alih
+diberi skor dari level rusak. Itu hasil yang diinginkan.
+
+**Verifikasi.** `test/nk-quote-null-ohlc.test.js` — 14 test. Termasuk satu test yang
+menerapkan **predikat lama** ke input yang sama dan memastikan `support` runtuh jadi
+0, sehingga berkasnya merekam cacatnya sendiri dan bukan sekadar keberadaan helper
+baru. Batasnya juga dipatok: volume 0 tetap disimpan (nol adalah data nyata, berbeda
+dari `null`), `undefined`/`NaN`/`Infinity` ditolak, input kosong/pendek tidak
+melempar. Suite penuh 320/320 lolos.
+
+**Yang belum pasti dan saya sebut apa adanya:** saya tidak bisa membuktikan seberapa
+sering Yahoo mengembalikan bentuk ini untuk ticker IDX — tidak ada akses log
+produksi. Yang bisa saya tunjukkan hanya (a) efeknya kalau terjadi, direproduksi di
+atas, dan (b) tiga parser lain di repo ini sudah bertahan terhadapnya.
+
+**Status** : DIPERBAIKI — PR #504 (`fix/nk-quote-null-ohlc`), draft
+
+---
+
+## Catatan tambahan pada BUG-015 (RSI 0/0) — salinan di `nkCalcRSI`
+
+```js
+// api/sector-hot.js:10919-10921
+if (avgLoss === 0) return 100;
+const rs = avgGain / avgLoss;
+return 100 - (100 / (1 + rs));
+```
+
+Salinan ke-8 dari pola BUG-015. Seri harga yang benar-benar datar dilaporkan
+sebagai RSI 100. Menunggu keputusan yang sama.
+
+---
+
+## Hipotesis yang saya periksa dan TIDAK terbukti — `verifyHighConvictionTelegramSignal`
+
+Saya catat ini karena sempat tampak seperti bug serius di jalur publish, dan
+pembaca berikutnya kemungkinan akan mencurigainya juga.
+
+Ada dua pola pemanggilan yang berbeda di repo:
+
+```js
+// api/sector-hot.js:5144-5146 — normalizeCombinedCandidate: MERGE dulu
+var verified = verifyTelegramSignal(r, ...);
+if (verified) r = Object.assign(r, verified);
+var high = verified ? verifyHighConvictionTelegramSignal(r, ...) : null;
+```
+
+```js
+// api/sector-hot.js:12417 (publish Day Trade), :13438 dan :13640 (publish Swing
+// Konglo), :9613 (diagnostik NK) — oper `verified` LANGSUNG
+var high = verifyHighConvictionTelegramSignal(verified, 'daytrade');
+```
+
+Kalau `verifyTelegramSignal` mengembalikan objek **parsial**, tiga jalur publish itu
+akan menyuapi pemeriksa high-conviction dengan baris yang kurang field — dan itu
+menentukan kandidat mana yang dipublikasikan.
+
+Saya baca fungsinya (`api/sector-hot.js:12898`) dan **hipotesisnya gugur**:
+
+```js
+var r = Object.assign({}, row);
+r.verified_risk_label = verifiedRisk;
+...
+return r;
+```
+
+Ia mengembalikan **klon utuh** dari baris masukan plus field tambahan. Jadi mengoper
+`verified` langsung setara dengan mengoper hasil merge-nya. Kedua pola sama benar;
+tidak ada bug, dan tidak ada yang perlu diubah.
