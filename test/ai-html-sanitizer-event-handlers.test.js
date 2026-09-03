@@ -109,19 +109,28 @@ test('no inline event handler survives, whatever separator precedes it', () => {
   });
 });
 
-test('the whitespace-only rules alone would not have caught these', () => {
-  // Guards the test itself: if someone reverts the fix, these payloads must
-  // still be recognised as dangerous by survivingHandlers().
-  const legacyStrip = (value) => String(value)
-    .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .replace(/\s+on\w+\s*=\s*[^\s>]*/gi, '');
+test('the payload set covers separators the removed rules could not match', () => {
+  // Guards the test itself: if the payload set ever narrowed to only
+  // whitespace-separated handlers, this file would pass while proving nothing
+  // about the bug that was fixed.
+  //
+  // Both removed rules began with \s+, so they could only ever strip a handler
+  // preceded by whitespace. That property is asserted directly here rather than
+  // by re-implementing the broken rules — a second, deliberately incomplete
+  // sanitiser in the tree is worth neither the confusion nor the static-analysis
+  // alert it earns.
+  const nonWhitespaceSeparated = HANDLER_PAYLOADS.filter(([, payload]) => {
+    const pattern = /(.)on[a-zA-Z0-9_:.-]*\s*=/gi;
+    let match;
+    while ((match = pattern.exec(payload)) !== null) {
+      if (!/\s/.test(match[1])) return true;
+    }
+    return false;
+  }).map(([name]) => name);
 
-  const missedByLegacy = HANDLER_PAYLOADS
-    .filter(([, payload]) => survivingHandlers(legacyStrip(payload)).length > 0)
-    .map(([name]) => name);
-
-  assert.ok(missedByLegacy.length > 0,
-    'the payload set must contain cases the old whitespace-only rules missed, or this test proves nothing');
+  assert.ok(nonWhitespaceSeparated.length >= 3,
+    'the payload set must contain handlers preceded by something other than whitespace ' +
+    '(found: ' + (nonWhitespaceSeparated.join(', ') || 'none') + ')');
 });
 
 test('dangerous elements and URL schemes stay blocked', () => {
