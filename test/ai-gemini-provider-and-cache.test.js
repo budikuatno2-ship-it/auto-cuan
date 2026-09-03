@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -244,6 +244,7 @@ test('PR 6: handleContextAIV7 uses cache hit when available and does not call ex
     ttlSeconds: 7200
   });
   const req = {
+    method: 'POST',
     body: {
       source: 'portfolio_chat',
       chatMessage: prompt,
@@ -276,6 +277,7 @@ test('PR 6: handleContextAIV7 calls direct Gemini API and caches response on suc
 
   try {
     const req = {
+      method: 'POST',
       body: {
         source: 'stock_analysis_followup',
         chatMessage: 'Prospek breakout?',
@@ -308,6 +310,7 @@ test('PR 6: handleContextAIV7 degrades gracefully to local deterministic respons
   };
   try {
     const req = {
+      method: 'POST',
       body: {
         source: 'stock_analysis_followup',
         chatMessage: 'Validasi level support?',
@@ -337,6 +340,7 @@ test('PR 6: handleContextAIV7 respects GEMINI_AI_DISABLED toggle', async () => {
   process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = 'valid-key';
   try {
     const req = {
+      method: 'POST',
       body: {
         source: 'portfolio_chat',
         chatMessage: 'Rekomendasi alokasi dana?',
