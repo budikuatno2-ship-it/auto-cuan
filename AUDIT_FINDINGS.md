@@ -3893,3 +3893,151 @@ Yang tersisa hanyalah kekerasan defensif yang kurang, dan itu baru berbahaya
 bila suatu saat ada klien yang menurunkan kunci secara deterministik. Saya catat
 di sini supaya tidak terlewat kalau itu terjadi, bukan untuk menggemukkan daftar
 temuan.
+
+---
+
+## BUG-036 — Timeout AI dimatikan sebelum body dibaca; permintaan bisa menggantung selamanya
+
+**Severity:** HIGH
+**Area:** AI — Analisis Saham (P1) dan Portofolio (P2)
+**Status:** SUDAH DIPERBAIKI — PR #512
+
+### Lokasi
+
+`lib/ai-gemini-provider.js:260` (jalur streaming) dan `:82` (non-streaming),
+kode asli:
+
+```js
+const res = await fetchFn(endpoint, { ..., signal: controller.signal });
+
+clearTimeout(timer);
+
+...
+let accumulatedText = '';
+if (res.body) {
+  accumulatedText = await parseSseStream(res.body, options.onChunk);
+}
+```
+
+### Gejala
+
+Permintaan AI yang tidak pernah selesai dan tidak pernah memberi galat. Di jalur
+streaming, browser memegang koneksi SSE terbuka yang berhenti mengirim chunk dan
+tidak pernah menutup.
+
+### Root cause
+
+`AbortController` dipasang untuk membatasi keseluruhan operasi, tetapi timernya
+dimatikan tepat setelah promise `fetch` selesai. `fetch` selesai begitu **header**
+tiba, bukan setelah body habis dibaca — jadi seluruh pembacaan body berjalan
+tanpa batas waktu.
+
+Tidak ada lapisan di atasnya yang menutup celah ini.
+`lib/context-ai-router-v7.js:393` dan `:449` menyerahkan seluruh pembatasan waktu
+ke provider dan tidak memasang timeout sendiri.
+
+### Dampak
+
+1. Invokasi serverless menggantung tanpa batas.
+2. **Fallback lokal tidak pernah jalan.** Blok `catch` di
+   `lib/context-ai-router-v7.js:428-441` hanya berjalan bila ada yang dilempar.
+   Di sini tidak ada yang dilempar — tidak ada yang gagal, semuanya hanya
+   menunggu. Jadi jaring pengaman yang sudah ditulis dengan benar itu justru
+   tidak pernah terpasang untuk mode kegagalan ini.
+3. Pengguna melihat Analisis Saham atau Portofolio menggantung tanpa pesan galat
+   dan tanpa jawaban cadangan.
+
+Bentuknya cocok dengan keluhan P1/P2 Anda. Saya **tidak** mengklaim ini penyebab
+persis dari yang Anda alami — saya belum melihat gejalanya langsung, jadi
+**belum pasti**. Yang terbukti: kondisi menggantungnya nyata dan reprodusibel.
+
+### Perbaikan
+
+Jalur streaming memakai **timer diam**, bukan tenggat total: dipasang untuk
+respons awal, lalu dipasang ulang setiap ada byte masuk. Yang dibatasi adalah
+keheningan, bukan durasi total — tenggat total akan memotong jawaban panjang
+yang sehat. Jalur non-streaming: timer kini menutupi fetch **dan** pembacaan
+body, yang memang sudah menjadi arti dari satu `timeoutMs` yang dikirim
+pemanggil. Keduanya dibersihkan di `finally`.
+
+### Risiko
+
+Rendah, **tetapi bukan nol, dan ini bagiannya.** Sebelum perbaikan, stream yang
+diam tidak pernah dibatalkan. Sesudahnya, diam lebih dari `timeoutMs` (9 detik di
+produksi) dibatalkan dan jatuh ke jawaban deterministik lokal. Bila Gemini pernah
+berhenti lebih dari 9 detik **di tengah** jawaban yang sehat, permintaan itu kini
+memakai fallback padahal dulu akhirnya berhasil.
+
+Penilaian saya: jeda 9 detik di tengah stream `gemini-2.5-flash` sudah patologis,
+dan fallback jauh lebih baik daripada menggantung. Kalau Anda ingin lebih
+longgar, jendela diam bisa dipisahkan dari timeout koneksi — saya tidak menambah
+parameter baru tanpa Anda minta.
+
+### Verifikasi
+
+`test/ai-gemini-stream-stall-timeout.test.js`, **10 uji**, 3 gagal sebelum
+perbaikan. Ketiganya adalah kasus menggantung dan pada kode lama **menggantung
+selamanya**; harness membungkusnya dengan penjaga `settlesWithin()` supaya
+kegagalannya terlihat sebagai "tidak pernah selesai" alih-alih menggantungkan
+seluruh suite.
+
+Empat uji yang sudah lulus sebelum perbaikan sengaja mengunci perilaku yang
+tidak boleh berubah. Yang terpenting: **"a slow but steadily progressing stream
+is NOT aborted"** — sepuluh chunk, masing-masing di dalam jendela diam, totalnya
+jauh melampauinya. Uji itu akan gagal kalau saya memilih tenggat total, dan
+itulah sebabnya ia ada.
+
+Suite: **320 berkas lolos**. Delta +1 berkas, +10 uji.
+
+---
+
+## Catatan proses — skrip patch saya sempat salah, dan hasilnya tidak saya pakai
+
+Percobaan pertama menerapkan perbaikan BUG-036 memakai `str.replace` Python,
+yang **mengganti semua kemunculan**, bukan yang pertama saja seperti di
+JavaScript. `generateGeminiContent` dan `streamGeminiAnalysis` punya blok
+`try { const res = await fetchFn(...) ... clearTimeout(timer);` yang identik
+persis, sehingga satu penggantian menyentuh keduanya sekaligus dan penggantian
+berikutnya tidak lagi cocok.
+
+Skripnya berhenti di `assert` sebelum menulis apa pun, jadi berkasnya tidak
+pernah rusak. Saya tulis ulang dengan memisahkan berkas menjadi dua bagian di
+`function validateGeminiEndpoint` dan menuntut `count(old) == 1` di setiap
+penggantian, supaya kesalahan seperti ini gagal keras alih-alih diam-diam
+mengedit tempat yang salah.
+
+Saya catat karena ini kedua kalinya dalam audit ini sebuah *tooling* saya sendiri
+hampir menghasilkan laporan yang keliru (yang pertama: harness uji
+`daytrade-ohlcv-cache`). Keduanya ketahuan karena hasilnya diperiksa, bukan
+dipercaya.
+
+---
+
+## Ringkasan CI — kegagalan `security-gate` di PR #510 sudah pulih
+
+Bentuknya **berbeda** dari REKOMENDASI-02. Yang dulu: HTTP 503 dari
+registry.npmjs.org. Yang ini: HTTP **400** dengan pesan
+`Invalid package tree, run npm install to rebuild your package-lock.json`,
+muncul setelah langkah itu menggantung ~5 menit 15 detik.
+
+Bukan milik PR #510, dan ini buktinya:
+
+1. Diff PR #510 tidak menyentuh `package.json` maupun `package-lock.json` sama
+   sekali — hanya `lib/daytrade-ohlcv-cache.js`, dua berkas uji, dan
+   `tools/curated-build-tests.json`.
+2. Dalam **job yang sama**, lima menit sebelumnya, `npm ci` sudah memeriksa
+   pohon paket yang sama tanpa keberatan: *"added 9 packages, and audited 10
+   packages in 2s / found 0 vulnerabilities"*. Jadi pohonnya tidak invalid;
+   endpoint audit-nya yang menolak.
+3. `tools/repo-security-audit.js` — pemindai rahasia milik repo sendiri — lulus
+   di run yang sama.
+4. Langkah yang persis sama lulus di PR #511 beberapa menit kemudian (2 menit 40
+   detik, hijau).
+
+Saya pakai satu kali jalan ulang yang diizinkan, dan hasilnya **hijau**. Tidak
+ada komentar berdiri-mundur yang saya pasang di #510, karena tidak ada yang perlu
+dimundurkan — kegagalannya pulih sendiri. Komentar untuk kasus ini sudah ada
+satu di #496 dan tidak saya duplikasi.
+
+Ini kejadian ketiga di dua PR. Usulan penanganannya tetap seperti di
+REKOMENDASI-02, dan tetap menunggu keputusan Anda.

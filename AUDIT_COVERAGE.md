@@ -95,7 +95,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/ai-answer-contract.js` | 253 | BELUM | 0 | |
 | `lib/ai-context-snapshot-store.js` | 230 | SELESAI | 1 | BUG-010 DIPERBAIKI; cap plans 50 sisi server dicatat |
 | `lib/ai-eval-derived-facts.js` | 257 | BELUM | 0 | |
-| `lib/ai-gemini-provider.js` | 309 | BELUM | 0 | |
+| `lib/ai-gemini-provider.js` | 309 | SELESAI | 1 | BUG-036 timer abort dimatikan sebelum body dibaca, permintaan AI bisa menggantung selamanya dan fallback lokal tidak pernah jalan. PR #512. |
 | `lib/ai-narration-cache.js` | 119 | BELUM | 0 | |
 | `lib/ai-narration-prompts.js` | 195 | BELUM | 0 | |
 | `lib/ai-narration-validator.js` | 197 | BELUM | 0 | |
