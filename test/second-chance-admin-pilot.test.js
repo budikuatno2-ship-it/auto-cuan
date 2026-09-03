@@ -102,7 +102,7 @@ test('historical send blocked; failure is not sent; success is concurrent/idempo
   assert.equal((await p.runPilot({ sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-28T05:00:00Z'), env })).status, 'blocked_historical_send');
   const stateDir = await fs.mkdtemp(path.join(os.tmpdir(), 'second-chance-send-')); const current = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
   assert.equal((await p.runPilot({ ...current, sendTelegram: async () => definiteApiFailure() })).status, 'failed'); assert.equal((await p.readState(path.join(stateDir, '2026-07-27.json'))).status, 'send_failed_retryable');
-  let calls = 0; const sendTelegram = async () => { calls++; await new Promise(r => setTimeout(r, 30)); return { sent: true }; };
+  let calls = 0; const sendTelegram = async () => { calls++; await new Promise(r => setTimeout(r, process.env.VERCEL === '1' ? 100 : 30)); return { sent: true }; };
   const results = await Promise.all([p.runPilot({ ...current, sendTelegram }), p.runPilot({ ...current, sendTelegram })]); assert.equal(results.filter(x => x.status === 'sent').length, 1); assert.ok(results.some(x => ['lock_busy', 'already_sent'].includes(x.status))); assert.equal(calls, 1);
   assert.equal((await p.runPilot({ ...current, sendTelegram })).status, 'already_sent'); assert.equal(calls, 1);
 });
@@ -137,7 +137,7 @@ test('concurrent same-identity retry invokes Telegram at most once', async () =>
   const env = { SECOND_CHANCE_ADMIN_PILOT_ENABLED: 'true', TELEGRAM_ENABLED: '1', TELEGRAM_BOT_TOKEN: 'test', TELEGRAM_VERIFY_ADMIN_CHAT_ID: '123456' };
   const options = { sourceFile: fixture, sampleDate: '2026-07-27', throughTime: '10:00', mode: 'send', now: new Date('2026-07-27T05:00:00Z'), env, stateDir };
   await p.runPilot({ ...options, sendTelegram: async () => definiteApiFailure() });
-  const sendTelegram = async () => { calls++; await new Promise(resolve => setTimeout(resolve, 30)); return { sent: true }; };
+  const sendTelegram = async () => { calls++; await new Promise(resolve => setTimeout(resolve, process.env.VERCEL === '1' ? 100 : 30)); return { sent: true }; };
   const results = await Promise.all([p.runPilot({ ...options, sendTelegram }), p.runPilot({ ...options, sendTelegram })]);
   assert.equal(calls, 1); assert.equal(results.filter(result => result.status === 'sent').length, 1); assert.ok(results.some(result => ['lock_busy', 'already_sent'].includes(result.status)));
 });
