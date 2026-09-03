@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 37 SELESAI, 4 SEDANG, 737 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 38 SELESAI, 4 SEDANG, 736 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -109,7 +109,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/candle-pattern-engine.js` | 379 | BELUM | 0 | |
 | `lib/chart-t1-policy.js` | 76 | BELUM | 0 | |
 | `lib/classic-chart-patterns.js` | 345 | BELUM | 0 | |
-| `lib/context-ai-router-v4.js` | 1161 | BELUM | 0 | |
+| `lib/context-ai-router-v4.js` | 1161 | SELESAI | 0 | **Bersih** — modul paling disiplin kedua setelah `idx-tick-normalization`. Kunci cache-nya memuat `userId` + seluruh konteks (`:855-859`), yaitu obat BUG-028 yang sudah ada di repo ini sendiri. Diperiksa: rate limit per-user, `verify()` (same-origin + sesi + akun tidak diblokir/sudah approve), timeout per-model & total dengan `attemptSlice`, latch outage provider, probe direktori model, klasifikasi kegagalan, redaksi log. Satu hipotesis dibantah: `timed_out` vs `timedOut` diterjemahkan benar di `:879`. |
 | `lib/context-ai-router-v5.js` | 551 | BELUM | 0 | |
 | `lib/context-ai-router-v6.js` | 226 | BELUM | 0 | |
 | `lib/context-ai-router-v7.js` | 535 | SELESAI | 2 | BUG-010 DIPERBAIKI; BUG-028 (CRITICAL) DIPERBAIKI PR #505. Dibaca ulang penuh: validasi sumber, guard SSRF `normalizeSecondaryBaseUrl` (tolak non-https, kredensial di URL, host privat/loopback), budget waktu failover sekunder, jalur SSE, fallback deterministik lokal — bersih. |

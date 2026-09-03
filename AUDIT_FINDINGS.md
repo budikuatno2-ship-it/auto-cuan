@@ -2394,6 +2394,127 @@ dengan kunci tanpa konteks (`test/ai-gemini-provider-and-cache.test.js`,
 menyemai memakai kunci yang benar-benar dibentuk router, sehingga maksud aslinya
 utuh.
 
+### Tambahan setelah membaca `lib/context-ai-router-v4.js` sampai tuntas
+
+Dua hal yang mempertajam temuan ini, keduanya saya periksa sesudah PR #505 dibuka.
+
+**Pertama — batas jangkauannya.** Kebocoran ini terjadi **antar pengguna premium
+yang sudah login**, bukan terbuka untuk anonim. Pintu masuknya dijaga lebih dulu:
+
+```js
+// api/analyze.js:106-115
+if (req && req.method === 'POST') {
+  const allowed = await requireAnalyzeAccess(req, res);
+  if (!allowed) return;
+}
+...
+return await handleContextAI(await prepareContextRequest(req), res);
+```
+
+`requireAnalyzeAccess` → `requirePremiumEntitlement` → `resolvePremiumAccess` →
+`requireNonBlockedUser` → `requireAuthenticatedSession`. Jadi penyerang harus
+punya akun premium yang aktif dan tidak diblokir. Itu **tidak** menurunkan
+tingkat keparahannya — data yang bocor tetap holding finansial pengguna lain —
+tetapi batasnya perlu disebut apa adanya.
+
+**Kedua — dan ini yang paling menentukan: repo ini sudah punya obatnya, di
+modul yang sama, di rantai yang sama.** `lib/context-ai-router-v4.js` — yang
+dipanggil v7 lewat v6 dan v5 — menyusun kunci cache-nya begitu:
+
+```js
+// lib/context-ai-router-v4.js:855-859 — requestKey
+function requestKey(userId, source, task, message, context, historyRows) {
+  return crypto.createHash('sha256').update(JSON.stringify({
+    userId, source, task, message: message.toLowerCase(), context: cacheKeyContext(context), historyRows
+  })).digest('hex');
+}
+```
+
+`userId` **dan** seluruh konteks ikut di kunci. Penulisnya bahkan sudah
+memikirkan bagian yang halus — field mana yang harus dikeluarkan supaya cache
+tetap bisa mengena:
+
+```js
+// lib/context-ai-router-v4.js:830-836 — komentar aslinya
+// The cache key must describe WHAT was asked about, not WHEN. `captured_at` is
+// stamped fresh on every hydration and `age_minutes` ticks every minute, so
+// hashing them verbatim gave every request a unique key: the positive cache
+// never hit ...
+// The freshness CLASSIFICATION is semantic and stays in the key, because an
+// answer built on a stale price is not interchangeable with one built on a
+// fresh price.
+```
+
+Jadi cache v7 bukan keputusan desain yang berbeda — ia **regresi** terhadap
+implementasi yang sudah benar dan sudah ada di berkas yang diimpornya sendiri.
+Ini pola yang sama yang sudah empat kali muncul di audit ini: **mesin intinya
+ditulis benar; bug-nya ada di lapisan yang memakai atau meniru mesin itu.**
+
+---
+
+## Catatan (bukan bug) — `isSameOrigin` ada di jalur v4, tidak ada di jalur v7
+
+- **Sifat** : pertahanan berlapis yang hilang, **tidak** dapat dieksploitasi hari ini
+- **Lokasi** : `lib/context-ai-router-v4.js:558` vs rantai `api/analyze.js:109`
+
+`verify()` di v4 memeriksa asal permintaan sebelum apa pun:
+
+```js
+// lib/context-ai-router-v4.js:558-560
+async function verify(req) {
+  if (!isSameOrigin(req)) return { ok: false, status: 403, error: 'Permintaan ditolak.' };
+  const auth = requireAuthenticatedSession(req);
+```
+
+Jalur v7 tidak lewat `verify()`. Ia dijaga `requireAnalyzeAccess`, dan seluruh
+rantainya (`requirePremiumEntitlement` → `resolvePremiumAccess` →
+`requireNonBlockedUser` → `requireUserSession` → `requireAuthenticatedSession`,
+`lib/subscription-auth.js:9-100`) **tidak memanggil `isSameOrigin` sama sekali**.
+
+**Kenapa saya tidak menyebutnya bug.** Cookie sesinya `SameSite=Strict`:
+
+```js
+// lib/admin-session.js:178-182
+function cookieFlags() {
+  const flags = ['Path=/', 'HttpOnly', 'SameSite=Strict'];
+  if (isProduction()) flags.push('Secure');
+  return flags;
+}
+```
+
+Permintaan lintas-situs tidak akan pernah membawa cookie itu, jadi CSRF-nya
+mustahil terlepas dari ada atau tidaknya pemeriksaan `isSameOrigin`. Komentar di
+`isSameOrigin` sendiri (`lib/admin-session.js:163`) menyatakan hal yang sama:
+ketika header asal tidak tersedia ia sengaja tidak memblokir, "rely on SameSite
+cookie". Lapisan kedua ini juga membutuhkan content-type JSON, yang tidak bisa
+dikirim `<form>` lintas-situs tanpa preflight CORS.
+
+**Kenapa tetap saya catat.** Kalau suatu saat `SameSite` dilonggarkan menjadi
+`Lax` — misalnya untuk mendukung alur pembayaran atau OAuth yang kembali dari
+domain lain — jalur v4 masih terlindung dan jalur v7 tidak. Menambahkan satu
+baris `isSameOrigin` di `requireAnalyzeAccess` akan menyamakan keduanya. Saya
+**tidak** mengerjakannya: tidak ada bug yang sedang berjalan, dan menambah
+pemeriksaan asal pada endpoint produksi bisa memutus klien yang sah kalau ada
+pemakaian yang belum saya lihat. Kalau Anda mau, saya kerjakan sebagai PR
+terpisah.
+
+### Hipotesis yang dibantah di sini
+
+`timedOutCount` di `lib/context-ai-router-v4.js:1047` membaca `x.timed_out`
+(snake_case), sementara `callModel` mengembalikan `timedOut` (camelCase).
+Sekilas seperti selalu bernilai 0, yang akan membuat `AI_ALL_MODELS_TIMED_OUT`
+tidak pernah muncul. **Tidak benar** — `runModels` menerjemahkannya saat
+mendorong ke `attempts`:
+
+```js
+// lib/context-ai-router-v4.js:877-882
+attempts.push({
+  model, status: result.status, ok: result.ok, latency_ms: result.latency,
+  reason: result.reason || null, timed_out: Boolean(result.timedOut),
+```
+
+Saya catat supaya pembaca berikutnya tidak menelusuri ulang jalur yang sama.
+
 ### Yang perlu saya tanyakan
 
 Saya **tidak** menghapus baris `ai_analysis_cache` bertipe `portfolio_chat` yang
