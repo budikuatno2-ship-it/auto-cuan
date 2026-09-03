@@ -3025,3 +3025,133 @@ mengikuti kartu sinyal (bukan sebaliknya), karena kartu sinyal yang dikunci uji
 dan yang paling sering dilihat. Itu perubahan kecil di dua tempat, plus
 memperbarui satu uji. Saya tidak mengerjakannya tanpa kata Anda karena ini
 mengubah teks yang dikirim ke pengguna.
+
+---
+
+## BUG-031 — Alert watchlist bisa diarahkan ke chat Telegram siapa pun
+
+- **Severity** : **HIGH** (keamanan; penyalahgunaan bot resmi untuk mengirim pesan ke pengguna lain)
+- **Area** : watchlist pengguna → alert Telegram
+- **Lokasi** : `lib/user-watchlist-service.js:308` (`createAlert`), dikirim di `:471-479` (`evaluateActiveUserAlerts`), dipanggil dari `api/sector-hot.js:8098`
+- **Status** : **SUDAH DIPERBAIKI** — PR #508 (`fix/watchlist-alert-arbitrary-chat-id`), draft
+
+### Gejala
+
+Pengguna Auto-Cuan bisa menerima pesan alert dari bot resmi untuk ticker yang
+tidak pernah ia pasang — dikirim atas perintah pengguna lain, berulang sesuai
+jadwal cron.
+
+### Root cause
+
+Handler HTTP meneruskan body permintaan **apa adanya**:
+
+```js
+// api/sector-hot.js:8097-8099 — handleUserWatchlistAlert
+var payload = req.body || {};
+var createRes = await userWatchlistService.createAlert(supabase, userId, payload);
+```
+
+Dan `createAlert` mempercayai `notification_chat_id` dari body itu:
+
+```js
+// lib/user-watchlist-service.js:308-318 (sebelum perbaikan)
+let chatId = payload.notification_chat_id ? Number(payload.notification_chat_id) : null;
+if (!chatId) {
+  const tg = await supabase
+    .from('app_user_telegram_verifications')
+    .select('telegram_private_chat_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  ...
+}
+```
+
+Binding milik pengguna hanya dicari **kalau body tidak menyebutkan tujuan**.
+Nilai yang tersimpan itulah yang dipakai pengirimnya:
+
+```js
+// lib/user-watchlist-service.js:471-479 — evaluateActiveUserAlerts
+if (alert.notification_chat_id) {
+  ...
+  const sendRes = await telegramNotifier.sendTelegramMessage(msg, {
+    chat_id: alert.notification_chat_id,
+    timeout_ms: 3000
+  });
+```
+
+`telegramNotifier` di sini adalah **bot Auto-Cuan utama** (`./telegram-notifier`),
+bukan bot verifikasi.
+
+### Dampak, dengan batasnya dinyatakan jujur
+
+Satu pengguna yang sudah login bisa membuat bot resmi produk ini mengirim pesan
+ke chat pribadi pengguna lain, terjadwal dan berulang, dengan isi yang sebagian
+ia tentukan (ticker dan level harga muncul di dalam pesan).
+
+Dua batas yang harus disebut supaya tidak melebih-lebihkan:
+
+- Butuh akun yang **sudah login dan tidak diblokir** (`requireNonBlockedUser`,
+  `api/sector-hot.js:8090`). Ini bukan lubang anonim.
+- Bot Telegram hanya bisa mengirim ke chat yang **pernah memulai percakapan
+  dengannya**. Jadi sasaran praktisnya sesama pengguna bot Auto-Cuan, atau grup
+  tempat bot itu anggota — bukan sembarang nomor Telegram.
+
+Justru batas kedua itu yang membuatnya relevan: sasaran yang bisa dijangkau
+persis adalah **pengguna lain produk ini**.
+
+### Masalah sekelas, satu baris di bawahnya
+
+```js
+// lib/user-watchlist-service.js:328 (sebelum perbaikan)
+watchlist_id: payload.watchlist_id || null,
+```
+
+Kunci asing lain yang diterima dari body tanpa pemeriksaan kepemilikan.
+
+### Perbaikan
+
+Tujuan pengiriman adalah properti **akun**, bukan properti **permintaan**.
+`notification_chat_id` dari body tidak dibaca sama sekali lagi; chat id selalu
+di-resolve dari binding Telegram terverifikasi milik pengguna. Kalau akun belum
+punya binding, alert memang tidak punya tujuan — itu jawaban yang benar, bukan
+alasan memakai nilai dari permintaan. `watchlist_id` hanya disimpan setelah
+terbukti milik pengguna itu.
+
+### Kenapa ini no-op untuk pemakaian normal
+
+Klien sungguhan hanya mengirim tiga field:
+
+```js
+// public/watchlist-runtime.js:275-279
+body: JSON.stringify({
+  ticker: ticker,
+  condition_type: cond,
+  target_price: price
+})
+```
+
+Tidak ada pemanggil sah yang mengirim kedua field itu. Uji 4, 6 dan 7 lolos di
+**kedua sisi** perbaikan.
+
+### Verifikasi
+
+`test/watchlist-alert-notification-target.test.js`, **7 uji**. Sebelum perbaikan
+4 gagal. Suite: **320 berkas uji lolos**, sebelum dan sesudah. Delta +1 berkas,
++7 uji.
+
+### Yang perlu Anda putuskan
+
+Baris `app_user_alerts` yang terlanjur menyimpan `notification_chat_id` bukan
+milik pemiliknya **tidak** diperbaiki oleh PR #508 — saya tidak menyentuh data
+produksi. Query **baca-saja** untuk memeriksa apakah ini pernah dimanfaatkan:
+
+```sql
+select a.id, a.user_id, a.ticker, a.created_at
+from app_user_alerts a
+left join app_user_telegram_verifications v on v.user_id = a.user_id
+where a.notification_chat_id is not null
+  and (v.telegram_private_chat_id is null
+       or a.notification_chat_id <> v.telegram_private_chat_id);
+```
+
+Kalau hasilnya kosong, tidak ada yang pernah memakainya.

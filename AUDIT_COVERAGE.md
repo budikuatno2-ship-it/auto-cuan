@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 50 SELESAI, 8 SEDANG, 720 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 51 SELESAI, 8 SEDANG, 719 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -229,7 +229,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/trade-plan-v2-source-adapters.js` | 498 | SELESAI | 1 | BUG-021 (situs baru `:129-130`, `:209-210`, `:338-339`). Konsekuensinya lebih berat di sini karena nilai dipakai memilih struktur sebelum penjaga tukar mesin bekerja — tapi tetap laten: tabel sumber punya kolom `entry_low`/`entry_high`. |
 | `lib/trade-plan-v2-sweep-diagnostic.js` | 475 | BELUM | 0 | |
 | `lib/trade-plan-v2.js` | 1319 | SELESAI | 0 | Bersih sebagai mesin. Seluruh modul hanya aktif di belakang `TRADE_PLAN_V2_SHADOW_ENABLED`/`TRADE_PLAN_V2_PUBLIC_ENABLED` (default mati). Alias entry di `:743-744` **dijaga** penukar `:745-747`. Diperiksa: profil per-screener, hierarki support/resistance, buffer volatilitas, TP1 cap, gate TP2 (butuh breakout terkonfirmasi), trailing ratchet, resolusi status/RR. |
-| `lib/user-watchlist-service.js` | 550 | BELUM | 0 | |
+| `lib/user-watchlist-service.js` | 550 | SELESAI | 1 | **BUG-031 (HIGH) DIPERBAIKI PR #508** — `notification_chat_id` dan `watchlist_id` diterima dari body permintaan tanpa pemeriksaan; alert bisa diarahkan ke chat Telegram pengguna lain. Sisanya diperiksa: `normalizeTicker`, resolusi harga multi-sumber berjenjang, `deleteAlert` difilter `user_id`, `getUserWatchlist` difilter `user_id`. |
 | `lib/voucher-admin-bot.js` | 333 | BELUM | 0 | |
 | `lib/voucher-admin-sender.js` | 28 | BELUM | 0 | |
 | `lib/vouchers.js` | 12 | BELUM | 0 | |
