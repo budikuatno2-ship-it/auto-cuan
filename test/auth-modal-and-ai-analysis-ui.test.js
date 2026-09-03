@@ -74,7 +74,7 @@ test('UI Fix 1: public/index.html closes dashboardScreen before modals', () => {
 
 test('UI Fix 1: All inline scripts in public/index.html are syntactically valid', () => {
   const html = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
-  const scriptRegex = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  const scriptRegex = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
   let m, count = 0;
   while ((m = scriptRegex.exec(html)) !== null) {
     const attrs = m[1];
