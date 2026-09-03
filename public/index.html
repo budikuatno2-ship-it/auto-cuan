@@ -3280,21 +3280,68 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
 
         var response = await fetch('/api/analyze', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream, application/json'
+            },
             body: JSON.stringify({
                 chatMessage: enrichedMsg,
                 source: 'chat_mode',
                 isInitialAnalysis: true,
+                stream: true,
                 username: localStorage.getItem('autocuan_user') || '',
                 isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
                 context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
             })
         });
-        var data = await response.json();
+
         clearInterval(stageTimer);
 
-        if (data.html) {
-            var html = data.html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
+        var contentType = (response.headers && response.headers.get('content-type')) || '';
+        var isStreamResponse = contentType.includes('text/event-stream') && response.body && typeof response.body.getReader === 'function';
+        var rawOutput = '';
+
+        if (isStreamResponse) {
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder('utf-8');
+            var streamBuffer = '';
+            var confluenceHtml = isIndex ? '' : buildManualConfluenceHtml(ticker);
+            resultArea.innerHTML = confluenceHtml +
+                '<div class="ai-stream-container"><div class="flex items-center gap-2 text-xs text-emerald-400 mb-3"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span id="aiStreamIndicator">Menganalisis teknikal real-time...</span></div>' +
+                '<div id="aiStreamBody" class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up whitespace-pre-wrap text-sm text-gray-200"></div></div>';
+            var streamBodyEl = document.getElementById('aiStreamBody');
+            var indicatorEl = document.getElementById('aiStreamIndicator');
+
+            while (true) {
+                var streamChunk = await reader.read();
+                if (streamChunk.done) break;
+                streamBuffer += decoder.decode(streamChunk.value, { stream: true });
+                var lines = streamBuffer.split('\n');
+                streamBuffer = lines.pop();
+
+                for (var li = 0; li < lines.length; li++) {
+                    var sLine = lines[li].trim();
+                    if (!sLine || !sLine.startsWith('data:')) continue;
+                    var sPayload = sLine.slice(5).trim();
+                    if (sPayload === '[DONE]') continue;
+                    try {
+                        var parsed = JSON.parse(sPayload);
+                        if (parsed && parsed.chunk) {
+                            rawOutput += parsed.chunk;
+                            if (streamBodyEl) streamBodyEl.textContent = rawOutput;
+                            if (rawOutput.length > 80 && indicatorEl) indicatorEl.textContent = 'Menulis ringkasan & level kunci...';
+                            if (rawOutput.length > 200 && indicatorEl) indicatorEl.textContent = 'Finalisasi analisa emiten...';
+                        }
+                    } catch (_) {}
+                }
+            }
+        } else {
+            var data = await response.json();
+            rawOutput = data.html || data.reply || '';
+        }
+
+        if (rawOutput) {
+            var html = rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
             // Apply client-side sanitizers if available
             if (typeof clientSanitizeFCA === 'function') html = clientSanitizeFCA(html);
             if (typeof sanitizeAIHtml === 'function') html = sanitizeAIHtml(html);
