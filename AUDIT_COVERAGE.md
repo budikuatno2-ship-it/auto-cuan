@@ -208,7 +208,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/telegram-daily-recap.js` | 209 | BELUM | 0 | |
 | `lib/telegram-delivery.js` | 931 | SELESAI | 2 | **BUG-030 (HIGH) DIPERBAIKI PR #507** — satu pesan gagal meracuni seluruh batch Top 5, sehingga sinyal terkirim berhenti dipantau. Plus satu catatan ketahanan (pemasangan baris INSERT berdasarkan indeks, `:611`, tidak terjangkau). Sisanya diperiksa: klasifikasi hasil kirim, klaim baris `DELIVERY_IN_PROGRESS` dengan penjaga konflik, gerbang `monitorRowIsTrackable`/`rowBlocksRetry`, telemetri. |
 | `lib/telegram-lifecycle.js` | 317 | BELUM | 0 | |
-| `lib/telegram-notifier.js` | 326 | BELUM | 0 | |
+| `lib/telegram-notifier.js` | 326 | SELESAI | 0 | **Bersih**. Tidak pernah melempar, setiap `fetch` dibatasi `AbortController`, token tidak pernah masuk log, body error dipotong <200 karakter, 429 ditangani dengan `retry_after`. `splitTelegramMessage` diperiksa terhadap infinite loop: `cut` selalu ≥ floor(maxLen/2) atau = maxLen, jadi selalu maju. |
 | `lib/telegram-templates.js` | 760 | SELESAI | 0 | **Bersih**. Satu catatan konsistensi tampilan (rentang entry dirender tiga cara: `:414` tinggi-dulu, `:281` rendah-dulu, `:691` hanya batas atas) — format kartu sinyal sengaja dikunci `test/telegram-templates.test.js:162,169`, jadi tidak saya ubah. Diperiksa: `getWibTimeStr` (`:216`) memakai pola geser-lalu-baca-UTC yang benar, tidak ada offset ganda; `safe()` melucuti tag dan baris baru; seluruh blok Trade Plan V2 di belakang flag mati. |
 | `lib/telegram-transient-message.js` | 69 | BELUM | 0 | |
 | `lib/telegram-unified-general.js` | 216 | BELUM | 0 | |

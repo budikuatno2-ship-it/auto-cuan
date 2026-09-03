@@ -3321,3 +3321,75 @@ diperiksa" tidak diam-diam terbaca sebagai "aman". Saya tidak mengerjakannya:
 ini menyentuh workflow CI dan keenam check wajib Anda, dan aturan 7 Anda
 menyuruh saya mencatat utang seperti ini sebagai rekomendasi, bukan
 menjalankannya.
+
+---
+
+## REKOMENDASI-03 — Fitur "Top 5 chart image" seluruhnya kode mati
+
+- **Sifat** : utang teknis (kode mati). **Bukan** bug — tidak terjangkau, jadi tidak ada perilaku yang salah hari ini.
+- **Lokasi** : `api/sector-hot.js:5177`, `:5599-5612`, `:5614-5626`, `:5628-5641`, `:5643-5680`
+
+### Apa yang saya temukan
+
+Pengirimnya tidak pernah dipanggil dari mana pun:
+
+```js
+// api/sector-hot.js:5643
+async function sendTop5ChartAttachments(req, picks) {
+```
+
+Dan handler yang ia tuju tidak pernah dipasang di router:
+
+```js
+// api/sector-hot.js:5658 — satu-satunya penyebutan action ini di seluruh repo
+var photoUrl = baseUrl + '/api/sector-hot?action=telegram-top5-chart-image&ticker=' + ...
+```
+
+```js
+// api/sector-hot.js:5628
+async function handleTelegramTop5ChartImage(req, res, supabase) {
+```
+
+Routernya rantai `if (action === '...')` eksplisit (`api/sector-hot.js:109-208`),
+dan `telegram-top5-chart-image` tidak ada di dalamnya. Saya sapu seluruh repo di
+luar `test/`: `sendTop5ChartAttachments`, `handleTelegramTop5ChartImage`,
+`makeTop5ChartToken`, `verifyTop5ChartToken`, `buildTop5PhotoCaption` dan
+`getRequestBaseUrl` **hanya** muncul di dalam kelompok fungsi ini sendiri.
+
+Jadi: pengirim yang tidak dipanggil siapa pun, menunjuk ke handler yang tidak
+dirutekan siapa pun.
+
+### Kenapa saya catat, padahal tidak berbahaya
+
+Dua alasan.
+
+**Pertama, supaya pembaca berikutnya tidak salah alarm.** Kelompok ini
+mengandung pola yang secara sekilas terlihat seperti SSRF:
+
+```js
+// api/sector-hot.js:5599-5603
+function getRequestBaseUrl(req) {
+  var proto = req.headers['x-forwarded-proto'] || 'https';
+  var host = req.headers['x-forwarded-host'] || req.headers.host;
+  return proto + '://' + host;
+}
+```
+
+URL yang dibangun dari header permintaan itu diserahkan ke Telegram, yang akan
+mengambilnya dari sisi server lalu memposting hasilnya sebagai foto. Kalau kode
+ini hidup, saya akan mengangkatnya sebagai temuan. Karena mati, tidak. Saya
+tuliskan supaya tidak perlu ditelusuri ulang.
+
+**Kedua, kalau fitur ini suatu saat dihidupkan lagi**, `getRequestBaseUrl` harus
+diperbaiki lebih dulu: `x-forwarded-host` dan `host` sama-sama berasal dari
+permintaan. Base URL sebaiknya diambil dari environment (`APP_BASE_URL`), bukan
+dari header. Token HMAC-nya (`makeTop5ChartToken`) sendiri sudah benar — ada
+kedaluwarsa dan diverifikasi terhadap ticker.
+
+### Yang saya sarankan (tidak saya kerjakan)
+
+Hapus kelima fungsi itu, atau hidupkan fiturnya dengan `getRequestBaseUrl`
+diperbaiki lebih dulu. Aturan 7 Anda menyuruh saya mencatat utang seperti ini
+sebagai rekomendasi, bukan mengeksekusinya — dan menghapus kode dari
+`api/sector-hot.js` bukan keputusan yang pantas saya ambil sendiri. Bilang saja
+kalau Anda mau salah satunya dikerjakan.
