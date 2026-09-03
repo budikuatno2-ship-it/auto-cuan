@@ -561,7 +561,7 @@
     <div class="py-3 border-b border-dark-600/30 flex-shrink-0">
         <div class="flex items-center gap-2">
             <input id="analisisInput" type="text" placeholder="Ketik ticker: BBCA, IHSG, TLKM..." class="flex-1 px-4 py-2.5 rounded-xl bg-dark-700/80 border border-dark-600/40 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50 text-sm" onkeydown="if(event.key==='Enter')handleAnalisisSubmit()">
-            <button onclick="handleAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Analisis</button>
+            <button id="analisisSubmitBtn" onclick="handleAnalisisSubmit()" class="px-4 py-2.5 rounded-xl bg-emerald-500 text-black font-semibold text-sm hover:bg-emerald-400 transition-all">Analisis</button>
         </div>
         <div class="mt-2 flex flex-wrap gap-2">
             <button onclick="quickAnalisis('IHSG')" class="px-2.5 py-1 rounded-lg text-[11px] text-gray-400 bg-dark-600/50 border border-dark-600/40 hover:border-emerald-500/30 hover:text-emerald-400 transition">IHSG</button>
@@ -1447,6 +1447,7 @@
         <p class="text-[10px] text-gray-600">Auto-Cuan &copy; 2024–2026 &bull; Bukan merupakan saran investasi.</p>
     </div>
 </footer>
+</div> <!-- /#dashboardScreen -->
 
 <!-- Day Trade Detail Modal -->
 <div id="scrDetailModal" class="hidden fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="scrDetailTitle" onclick="if(event.target===this)closeScrDetail()">
@@ -3250,6 +3251,10 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
     var ticker = tickerOrQuery.replace(/[^A-Z0-9]/g, '');
     var isIndex = isIndexTicker(ticker);
 
+    // Set button loading state
+    var submitBtn = document.getElementById('analisisSubmitBtn');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
+
     // Highlight this ticker's row in the (separately fetched) Ranking Harian
     // table below, if it's currently rendered. Purely visual — never touches
     // rankingState.searchQuery/sortKey, and never re-fetches the table.
@@ -3274,70 +3279,103 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
 
         // Fetch quote context (forceFresh=true so initial analysis matches the live card, not stale cache)
         if (typeof fetchQuoteContext === 'function') {
-            var quoteCtx = await fetchQuoteContext(ticker, true);
-            if (quoteCtx) enrichedMsg += quoteCtx;
+            try {
+                var quoteCtx = await fetchQuoteContext(ticker, true);
+                if (quoteCtx) enrichedMsg += quoteCtx;
+            } catch (qErr) {
+                console.warn('fetchQuoteContext failed, proceeding with ticker only:', qErr);
+            }
         }
+
+        var reqHeaders = Object.assign({
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream, application/json'
+        }, (typeof getDashboardAuthHeaders === 'function' ? getDashboardAuthHeaders() : (typeof getAuthHeaders === 'function' ? getAuthHeaders() : {})));
 
         var response = await fetch('/api/analyze', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'text/event-stream, application/json'
-            },
+            credentials: 'same-origin',
+            headers: reqHeaders,
             body: JSON.stringify({
+                ticker: ticker,
                 chatMessage: enrichedMsg,
                 source: 'chat_mode',
                 isInitialAnalysis: true,
                 stream: true,
                 username: localStorage.getItem('autocuan_user') || '',
                 isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
-                context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
+                context: Object.assign({ ticker: ticker }, (typeof buildContextForApi === 'function') ? (buildContextForApi() || {}) : {})
             })
         });
 
         clearInterval(stageTimer);
 
+        if (!response.ok) {
+            var errData = null;
+            try { errData = await response.json(); } catch (_) {}
+            var serverErrMsg = (errData && (errData.error || errData.message)) || ('Gagal memproses analisis (Status ' + response.status + ')');
+            throw new Error(serverErrMsg);
+        }
+
         var contentType = (response.headers && response.headers.get('content-type')) || '';
-        var isStreamResponse = contentType.includes('text/event-stream') && response.body && typeof response.body.getReader === 'function';
+        var isStreamResponse = response.ok && contentType.includes('text/event-stream') && response.body && typeof response.body.getReader === 'function';
         var rawOutput = '';
 
         if (isStreamResponse) {
-            var reader = response.body.getReader();
-            var decoder = new TextDecoder('utf-8');
-            var streamBuffer = '';
-            var confluenceHtml = isIndex ? '' : buildManualConfluenceHtml(ticker);
-            resultArea.innerHTML = confluenceHtml +
-                '<div class="ai-stream-container"><div class="flex items-center gap-2 text-xs text-emerald-400 mb-3"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span id="aiStreamIndicator">Menganalisis teknikal real-time...</span></div>' +
-                '<div id="aiStreamBody" class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up whitespace-pre-wrap text-sm text-gray-200"></div></div>';
-            var streamBodyEl = document.getElementById('aiStreamBody');
-            var indicatorEl = document.getElementById('aiStreamIndicator');
+            try {
+                var reader = response.body.getReader();
+                var decoder = new TextDecoder('utf-8');
+                var streamBuffer = '';
+                var confluenceHtml = isIndex ? '' : buildManualConfluenceHtml(ticker);
+                resultArea.innerHTML = confluenceHtml +
+                    '<div class="ai-stream-container"><div class="flex items-center gap-2 text-xs text-emerald-400 mb-3"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span id="aiStreamIndicator">Menganalisis teknikal real-time...</span></div>' +
+                    '<div id="aiStreamBody" class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up whitespace-pre-wrap text-sm text-gray-200"></div></div>';
+                var streamBodyEl = document.getElementById('aiStreamBody');
+                var indicatorEl = document.getElementById('aiStreamIndicator');
 
-            while (true) {
-                var streamChunk = await reader.read();
-                if (streamChunk.done) break;
-                streamBuffer += decoder.decode(streamChunk.value, { stream: true });
-                var lines = streamBuffer.split('\n');
-                streamBuffer = lines.pop();
+                while (true) {
+                    var streamChunk = await reader.read();
+                    if (streamChunk.done) break;
+                    streamBuffer += decoder.decode(streamChunk.value, { stream: true });
+                    var lines = streamBuffer.split('\n');
+                    streamBuffer = lines.pop();
 
-                for (var li = 0; li < lines.length; li++) {
-                    var sLine = lines[li].trim();
-                    if (!sLine || !sLine.startsWith('data:')) continue;
-                    var sPayload = sLine.slice(5).trim();
-                    if (sPayload === '[DONE]') continue;
-                    try {
-                        var parsed = JSON.parse(sPayload);
-                        if (parsed && parsed.chunk) {
-                            rawOutput += parsed.chunk;
-                            if (streamBodyEl) streamBodyEl.textContent = rawOutput;
-                            if (rawOutput.length > 80 && indicatorEl) indicatorEl.textContent = 'Menulis ringkasan & level kunci...';
-                            if (rawOutput.length > 200 && indicatorEl) indicatorEl.textContent = 'Finalisasi analisa emiten...';
-                        }
-                    } catch (_) {}
+                    for (var li = 0; li < lines.length; li++) {
+                        var sLine = lines[li].trim();
+                        if (!sLine || !sLine.startsWith('data:')) continue;
+                        var sPayload = sLine.slice(5).trim();
+                        if (sPayload === '[DONE]') continue;
+                        try {
+                            var parsed = JSON.parse(sPayload);
+                            if (parsed && parsed.chunk) {
+                                rawOutput += parsed.chunk;
+                                if (streamBodyEl) streamBodyEl.textContent = rawOutput;
+                                if (rawOutput.length > 80 && indicatorEl) indicatorEl.textContent = 'Menulis ringkasan & level kunci...';
+                                if (rawOutput.length > 200 && indicatorEl) indicatorEl.textContent = 'Finalisasi analisa emiten...';
+                            }
+                        } catch (_) {}
+                    }
+                }
+            } catch (streamErr) {
+                console.warn('SSE stream reading encountered an issue:', streamErr);
+            }
+        }
+
+        if (!rawOutput) {
+            var data = null;
+            try {
+                data = await response.json();
+            } catch (_) {}
+            if (data) {
+                rawOutput = data.html || data.reply || data.text || '';
+                if (!rawOutput && data.error) {
+                    throw new Error(data.error);
                 }
             }
-        } else {
-            var data = await response.json();
-            rawOutput = data.html || data.reply || '';
+        }
+
+        if (!rawOutput) {
+            throw new Error('Tidak ada hasil analisis yang diterima dari server.');
         }
 
         if (rawOutput) {
@@ -3351,7 +3389,7 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
 
             // Render result
             var confluenceHtml = isIndex ? '' : buildManualConfluenceHtml(ticker);
-            resultArea.innerHTML = confluenceHtml + '<div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up">' + html + '</div>' +
+            resultArea.innerHTML = confluenceHtml + '<div class="ai-content bg-dark-700/40 border border-dark-600/20 rounded-2xl p-4 sm:p-5 fade-in-up whitespace-pre-wrap">' + html + '</div>' +
                 '<div class="mt-3 flex flex-wrap gap-2">' +
                 '<button onclick="openChartFromAnalisis(\'' + ticker + '\')" class="px-3 py-1.5 rounded-lg text-xs text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>Lihat Chart ' + ticker + '</button>' +
                 '<button onclick="openNewsFromAnalisis(\'' + ticker + '\')" class="px-3 py-1.5 rounded-lg text-xs text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/10 transition inline-flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>Lihat News ' + ticker + '</button>' +
@@ -3367,13 +3405,19 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             if (typeof updateAnalysisContext === 'function') updateAnalysisContext(ticker, html);
             incrementAnalysisUsage();
             if (typeof logUsage === 'function') logUsage(ticker, 'ai_success');
-        } else {
-            throw new Error('Tidak ada hasil.');
         }
     } catch(e) {
         clearInterval(stageTimer);
-        var errMsg = (typeof isNetworkError === 'function' && isNetworkError(e)) ? 'Koneksi ke server sedang bermasalah.' : 'Analisis belum berhasil. Coba lagi.';
-        resultArea.innerHTML = '<div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center"><p class="text-sm text-red-400">' + errMsg + '</p></div>';
+        var isNetErr = (typeof isNetworkError === 'function' && isNetworkError(e));
+        var errMsg = isNetErr ? 'Koneksi ke server sedang bermasalah.' : (e.message || 'Analisis belum berhasil. Coba lagi.');
+        resultArea.innerHTML = '<div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">' +
+            '<p class="text-sm text-red-400">' + (typeof escapeHtml === 'function' ? escapeHtml(errMsg) : errMsg) + '</p>' +
+            '<button onclick="runAnalisisFromDashboard(\'' + (typeof escapeHtml === 'function' ? escapeHtml(ticker) : ticker) + '\')" class="mt-2 text-xs text-red-300 underline hover:text-red-200">Coba lagi</button>' +
+            '</div>';
+    } finally {
+        clearInterval(stageTimer);
+        var btn = document.getElementById('analisisSubmitBtn');
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
     }
 }
 
@@ -3800,16 +3844,22 @@ async function handleAnalisisFollowUp(msg) {
                 if (quoteCtx) enrichedMsg += quoteCtx;
             }
         }
+        var reqHeaders = Object.assign({
+            'Content-Type': 'application/json'
+        }, (typeof getDashboardAuthHeaders === 'function' ? getDashboardAuthHeaders() : (typeof getAuthHeaders === 'function' ? getAuthHeaders() : {})));
+
         var response = await fetch('/api/analyze', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            headers: reqHeaders,
             body: JSON.stringify({
+                ticker: activeTicker || undefined,
                 chatMessage: enrichedMsg,
                 source: 'chat_mode',
                 isFollowUp: true,
                 username: localStorage.getItem('autocuan_user') || '',
                 isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
-                context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
+                context: Object.assign(activeTicker ? { ticker: activeTicker } : {}, (typeof buildContextForApi === 'function') ? (buildContextForApi() || {}) : {})
             })
         });
         var data = await response.json();
