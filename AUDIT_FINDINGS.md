@@ -3769,3 +3769,127 @@ sebenarnya pada branch ini sebelum putaran ini adalah **52 SELESAI / 7 SEDANG /
 719 BELUM** (total 778). Setelah putaran ini: **57 SELESAI / 7 SEDANG / 714
 BELUM**. Angka yang benar adalah yang dihitung langsung dari `AUDIT_COVERAGE.md`
 di atas.
+
+---
+
+## Putaran lanjutan — klaster entitlement dan akses admin: bersih
+
+Sepuluh berkas dibaca baris pertama sampai terakhir, 1.241 baris. **Tidak ada
+temuan.** Yang saya periksa, per berkas:
+
+### `lib/entitlements.js` (68 baris)
+
+Modul kecil yang menentukan siapa dapat Premium. Fail-closed di setiap cabang:
+
+- `resolveEntitlements:61` — bila `account.id` bukan UUID, langsung kembali
+  tanpa membaca database sama sekali, hasilnya free-only.
+- `:65` — bila query gagal, yang diteruskan adalah `[]`, bukan error. Komentar di
+  `:57-58` menyatakan niat itu secara eksplisit: *"Never turn a storage error
+  into premium access."* Kodenya benar-benar melakukan itu.
+- `isActive:17-22` — baris lifetime **wajib** ber-`expires_at` null; baris
+  non-lifetime **wajib** punya `expires_at` yang finite dan belum lewat. Baris
+  dengan bentuk campuran (misalnya plan_code tak dikenal yang di
+  `subscription-phase-2-migration.sql:233` menghasilkan `expiry` NULL dan
+  `lifetime` false) jatuh ke tidak-aktif, bukan ke aktif-selamanya. Ini persis
+  arah kegagalan yang benar.
+- Urutan prioritas `:46-51` lifetime → berbayar → trial sudah benar; trial tidak
+  pernah menutupi paket berbayar.
+
+Satu catatan, bukan bug: cabang `username === 'budi'` di `:37` dievaluasi
+**sebelum** cek `is_blocked` di `:41`, jadi admin tidak bisa mengunci dirinya
+sendiri lewat pemblokiran akun. Itu tampak disengaja untuk mencegah lockout.
+
+### `lib/subscription-auth.js` (135 baris)
+
+`requireNonBlockedUser:36-40` membandingkan username dari sesi bertanda tangan
+dengan username tersimpan dan menolak bila tidak cocok — sesi lama yang
+username-nya sudah berganti ikut tertolak. `requirePremiumEntitlement:96`
+memakai `access.premium !== true`, bukan `access_level`, sehingga admin (yang
+`access_level`-nya `'admin'`, bukan `'premium'`) tetap lolos. Saya cek seluruh
+repo: satu-satunya perbandingan `access_level` di luar modul ini ada di
+`public/subscription-access-gate-v1.js:30`, dan itu hanya untuk label tampilan.
+
+### `lib/admin-access-legacy.js` (500 baris)
+
+Sebelumnya berstatus SEDANG; kini dibaca penuh. Klaim utamanya benar:
+
+- `requestAccess:151-177` memang **tidak pernah** memanggil `bot.sendMessage`.
+  Pemanggil anonim hanya bisa membuat baris dorman.
+- Pesan Telegram baru terkirim di `activateFromDeepLink:198-253`, dan hanya
+  setelah `activate_admin_access_request` mencocokkan id Telegram pengirim
+  dengan binding admin terverifikasi. Bila tidak cocok, balasan generik masuk ke
+  chat **pengirim**, bukan chat admin.
+- Approve/deny (`:318-383`) menyerahkan cek identitas ke SQL memakai
+  `callback.from.id`, bukan sesuatu dari isi pesan.
+- Dedupe webhook dijalankan di kedua jalur, dengan `completeWebhookUpdate` di
+  blok `finally` sehingga status update selalu tercatat.
+- `consumeAccess:257-270` menuntut ref berentropi tinggi **dan** cookie binding
+  browser; keduanya di-hash sebelum menyentuh SQL.
+- Sisi SQL (`supabase/admin-telegram-access-migration.sql:309-332`) menambah
+  throttle per-IP (5 per 5 menit) dan batas global (100 per 5 menit).
+
+**Yang paling menarik dari berkas ini bukan temuan, melainkan pembanding.**
+`lib/reset-password-legacy-handler.js:297-306` menolak memakai `x-forwarded-for`
+generik justru karena tidak terbukti tepercaya di luar Vercel, dan memilih
+**tidak** menerapkan lapisan per-IP daripada membatasi berdasarkan nilai yang
+bisa dipalsukan:
+
+```js
+function trustedRateLimitIp(req) {
+  const header = req && req.headers && req.headers['x-vercel-forwarded-for'];
+  const first = String(header || '').split(',')[0];
+  return securityGuard.normalizeIp(first);
+}
+```
+
+Itu penalaran yang tepat — dan persis penalaran yang tidak diterapkan di
+`lib/subscription-manual-handler.js` (BUG-034). Jadi BUG-034 bukan celah yang
+luput dari pengetahuan tim; repo ini **sudah** memiliki disiplinnya, hanya tidak
+diterapkan di satu tempat. Ini kemunculan **kedelapan** dari pola struktural yang
+sama dalam audit ini: satu lapisan benar, lapisan lain menirunya keliru.
+
+### Enam berkas kecil, semuanya fail-closed
+
+- `lib/subscription-identity.js` (18) — token 32 byte CSPRNG, hanya HMAC yang
+  tersimpan, pepper wajib ≥16 karakter, metadata event dibatasi allowlist.
+- `lib/voucher-admin-sender.js` (28) — mati bila token <16 karakter, timeout 8
+  detik dengan `AbortController`, semua galat Telegram diseragamkan.
+- `lib/subscription-capability.js` (57) — hanya string `"true"` persis yang
+  mengaktifkan; `getVoucherAdminCapability` menuntut marker skema
+  `phase5c-complete-v4` yang persis, sehingga migrasi lama tetap tertutup meski
+  tabelnya kebetulan sudah ada.
+- `lib/subscription-catalog.js` (45) — validasi harga dan jendela promo ketat.
+- `lib/subscription-voucher-claim.js` (177) — lihat catatan di bawah.
+- `lib/telegram-voucher-admin-continuation.js` (145) — backstop fail-closed;
+  bentuk perintah admin tersembunyi dari non-admin ditelan diam-diam (`:78-80`).
+
+### Satu catatan defensif yang sengaja saya turunkan dari "temuan"
+
+`lib/subscription-voucher-handler.js:47-55` meneruskan kunci idempotensi milik
+klien ke `redeem_subscription_voucher`, dan pencarian di
+`supabase/subscription-phase-2-migration.sql:224` **tidak dibatasi `user_id`**:
+
+```sql
+SELECT * INTO r FROM public.subscription_voucher_redemptions WHERE redemption_idempotency_key=p_redemption_idempotency_key;
+IF FOUND THEN RETURN jsonb_build_object('redeemed',true,'entitlement_id',r.entitlement_id); END IF;
+```
+
+Secara teori, mengirim ulang kunci milik orang lain menghasilkan
+`redeemed: true` tanpa entitlement apa pun diberikan — sukses palsu.
+
+Saya **tidak** melaporkannya sebagai bug, dan ini alasannya:
+
+1. Tidak ada eskalasi hak: tidak ada entitlement yang dibuat untuk penyerang.
+2. Tidak ada kebocoran data: `activationFacts` di
+   `lib/subscription-voucher-claim.js:75-76` sudah membatasi pencarian dengan
+   `id` **dan** `user_id`, jadi fakta milik korban tidak pernah ikut terkirim.
+3. Tidak terjangkau dalam praktik: saya periksa seluruh frontend
+   (`public/account-center-v1.js:318,337`,
+   `public/subscription-manual-payment-v1.js:151,188`,
+   `public/subscription-voucher-claim-v1.js:33`) — setiap panggilan memakai
+   `randomUUID()` baru, dan UUID tidak bisa ditebak.
+
+Yang tersisa hanyalah kekerasan defensif yang kurang, dan itu baru berbahaya
+bila suatu saat ada klien yang menurunkan kunci secara deterministik. Saya catat
+di sini supaya tidak terlewat kalau itu terjadi, bukan untuk menggemukkan daftar
+temuan.

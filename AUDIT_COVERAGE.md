@@ -79,7 +79,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `intraday-sample.sh` | 52 | BELUM | 0 | |
 | `lib/account-profile-handler.js` | 151 | BELUM | 0 | |
 | `lib/account-terms.js` | 32 | SELESAI | 0 | bersih; versi terms cocok dengan REGISTRATION_TERMS_VERSION di index.html:2909 |
-| `lib/admin-access-legacy.js` | 500 | SEDANG | 0 | Dibaca sebagian: `requestAccess` (`:151-177`), `consumeAccess` (`:262-274`), `cleanupMessage` (`:280-289`). Akun dikunci ke 'budi' di sisi Node, binding browser di-hash sebelum ke SQL. Sisanya belum. |
+| `lib/admin-access-legacy.js` | 500 | SELESAI | 0 | **Bersih**. Dibaca penuh. Challenge dorman: `requestAccess` (`:151-177`) tidak pernah mengirim Telegram, jadi pemanggil anonim tidak bisa memicu notifikasi. Pesan hanya terkirim lewat `activateFromDeepLink` (`:198-253`) setelah id Telegram pengirim cocok dengan binding admin terverifikasi. Approve/deny (`:318-383`) menyerahkan cek identitas ke SQL. Dedupe webhook di kedua jalur, dengan `completeWebhookUpdate` di `finally`. `consumeAccess` menuntut ref berentropi tinggi **dan** binding browser. |
 | `lib/admin-access.js` | 70 | SELESAI | 0 | **Bersih**. Hanya dispatcher: perintah umum → langganan → kode maintenance (butuh `SESSION_SECRET`) → pairing/legacy → lanjutan voucher → legacy. Urutannya berkomentar dan masuk akal (namespace `sub_`/`v:` didahulukan agar deep link langganan tidak tertukar dengan `/start <requestRef>`). |
 | `lib/admin-command-login-browser.js` | 176 | BELUM | 0 | |
 | `lib/admin-command-login.js` | 278 | BELUM | 0 | |
@@ -197,12 +197,12 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/smart-setup-labels.js` | 238 | BELUM | 0 | |
 | `lib/stock-daily-history-store.js` | 248 | BELUM | 0 | |
 | `lib/subscription-auth.js` | 135 | SELESAI | 0 | bersih; batas identitas server-only |
-| `lib/subscription-capability.js` | 57 | BELUM | 0 | |
-| `lib/subscription-catalog.js` | 45 | BELUM | 0 | |
-| `lib/subscription-identity.js` | 18 | BELUM | 0 | |
+| `lib/subscription-capability.js` | 57 | SELESAI | 0 | **Bersih**. Fail-closed di setiap cabang: hanya string `"true"` persis yang mengaktifkan, konfigurasi wajib lengkap, dan `getVoucherAdminCapability` menuntut marker skema `phase5c-complete-v4` yang persis — versi lebih lama tetap tertutup meski tabelnya ada. |
+| `lib/subscription-catalog.js` | 45 | SELESAI | 0 | **Bersih**. Harga wajib bilangan bulat positif, promo wajib punya harga dan waktu mulai, akhir promo wajib setelah mulai. Metadata event dibatasi allowlist field dan tipe. |
+| `lib/subscription-identity.js` | 18 | SELESAI | 0 | **Bersih**. Token 32 byte CSPRNG, hanya HMAC-nya yang tersimpan, pepper wajib >=16 karakter (fail-closed). Metadata event dibatasi allowlist per jenis, newline/tab dibersihkan, dipotong 80 karakter. |
 | `lib/subscription-manual-handler.js` | 337 | SELESAI | 2 | BUG-034 host header injection ke tombol review admin, BUG-035 notifikasi admin tak terbatas pada submit ulang. PR #511. |
-| `lib/subscription-voucher-claim.js` | 177 | BELUM | 0 | |
-| `lib/subscription-voucher-handler.js` | 68 | BELUM | 0 | |
+| `lib/subscription-voucher-claim.js` | 177 | SELESAI | 0 | **Bersih**. `activationFacts` (`:63-86`) membatasi pencarian entitlement dengan `id` **dan** `user_id` **dan** `status=active`, sehingga id entitlement milik orang lain tidak pernah dipakai jadi fakta. Semua teks di-escape HTML. |
+| `lib/subscription-voucher-handler.js` | 68 | SELESAI | 0 | **Bersih**. Satu catatan defensif: kunci idempotensi berasal dari klien dan pencarian di `subscription-phase-2-migration.sql:224` tidak dibatasi `user_id`. Tidak dapat dieksploitasi hari ini (frontend selalu `randomUUID()` baru, UUID tidak bisa ditebak, dan `activationFacts` sudah dibatasi user). |
 | `lib/swing-nk-rr-warning.js` | 140 | BELUM | 0 | |
 | `lib/telegram-analytics.js` | 155 | BELUM | 0 | |
 | `lib/telegram-daily-recap.js` | 209 | BELUM | 0 | |
@@ -215,7 +215,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/telegram-unified-subscription.js` | 332 | SELESAI | 0 | Gate admin Telegram, chat privat, chat.id===from.id. Kunci idempotensi deterministik per update_id. Bersih; satu catatan asimetri tipe voucher. |
 | `lib/telegram-verification.js` | 1527 | SELESAI | 0 | **Bersih** — modul paling sadar-keamanan yang saya baca setelah `idx-tick-normalization`. Diperiksa baris demi baris: entropi kode (`crypto.randomInt` tanpa bias, 40 bit), HMAC fail-closed tanpa secret, kode mentah tidak pernah disimpan/di-log, rate limit pengirim sebelum hashing, klaim/complete webhook bertoken (idempoten), gerbang `chat_join_request` gagal-tertutup pada identitas + kecocokan link + revoked + kedaluwarsa, pesan penolakan netral tanpa membocorkan keberadaan akun, outbox notifikasi at-least-once, dan pembersihan tombol yang sudah dipakai. |
 | `lib/telegram-verify-bot.js` | 186 | SELESAI | 0 | **Bersih**. Isolasi token benar (`TELEGRAM_VERIFY_BOT_TOKEN` saja, tanpa fallback), `AbortSignal.timeout(5000)` membatasi SETIAP panggilan, error hanya kode kasar — token dan body Telegram tidak pernah bocor. Satu hipotesis dibantah: `creates_join_request: true` memang dikirim (`:131`), jadi tombol undangan tidak menambahkan anggota langsung dan gerbang join-request tetap berlaku. |
-| `lib/telegram-voucher-admin-continuation.js` | 145 | BELUM | 0 | |
+| `lib/telegram-voucher-admin-continuation.js` | 145 | SELESAI | 0 | **Bersih**. Backstop fail-closed: bentuk perintah admin tersembunyi dari non-admin ditelan (`:78-80`), dan input angka hanya dimiliki saat sesi kuantitas admin benar-benar aktif dan belum kedaluwarsa. |
 | `lib/top5-progress-monitor.js` | 172 | BELUM | 0 | |
 | `lib/track-record-service.js` | 265 | SELESAI | 0 | Dibaca baris 1-265. Bersih. Diperiksa: `classifyOutcome` menghormati kronologi TP-sebelum-SL (`lib/report-helpers.js:68-80`), `resolved_win_rate` tidak menghitung ganda TP2 di dalam TP1, baris terarsip dilewati (:99), `calculateGainPct` memakai entry konservatif (entry1=batas atas). Meneruskan `entry1`/`entry2` apa adanya — benar; kekeliruan urutan ada di sisi render (BUG-016) |
 | `lib/trade-plan-v2-candle-structure.js` | 397 | BELUM | 0 | |
@@ -231,7 +231,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/trade-plan-v2.js` | 1319 | SELESAI | 0 | Bersih sebagai mesin. Seluruh modul hanya aktif di belakang `TRADE_PLAN_V2_SHADOW_ENABLED`/`TRADE_PLAN_V2_PUBLIC_ENABLED` (default mati). Alias entry di `:743-744` **dijaga** penukar `:745-747`. Diperiksa: profil per-screener, hierarki support/resistance, buffer volatilitas, TP1 cap, gate TP2 (butuh breakout terkonfirmasi), trailing ratchet, resolusi status/RR. |
 | `lib/user-watchlist-service.js` | 550 | SELESAI | 1 | **BUG-031 (HIGH) DIPERBAIKI PR #508** — `notification_chat_id` dan `watchlist_id` diterima dari body permintaan tanpa pemeriksaan; alert bisa diarahkan ke chat Telegram pengguna lain. Sisanya diperiksa: `normalizeTicker`, resolusi harga multi-sumber berjenjang, `deleteAlert` difilter `user_id`, `getUserWatchlist` difilter `user_id`. |
 | `lib/voucher-admin-bot.js` | 333 | SELESAI | 0 | Gate admin ketat, dedupe update, klaim/prepare/deliver/finalize per chunk dengan jalur uncertain. Bersih; DOCUMENT_BYTES konstanta mati. |
-| `lib/voucher-admin-sender.js` | 28 | BELUM | 0 | |
+| `lib/voucher-admin-sender.js` | 28 | SELESAI | 0 | **Bersih**. Fail-closed bila fitur mati atau token <16 karakter, timeout 8 detik dengan `AbortController`, dan semua galat Telegram diseragamkan jadi satu pesan tanpa membocorkan detail. |
 | `lib/vouchers.js` | 12 | SELESAI | 0 | Kode 12 karakter dari alfabet 31 simbol (~59 bit), HMAC ber-pepper, fail-closed bila pepper <16 karakter. Bersih. |
 | `lib/weekly-timeframe.js` | 170 | BELUM | 0 | |
 | `package-lock.json` | 117 | BELUM | 0 | |
