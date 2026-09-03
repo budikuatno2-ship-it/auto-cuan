@@ -3240,6 +3240,51 @@ function quickAnalisis(ticker) {
     input.value = ticker;
     runAnalisisFromDashboard(ticker);
 }
+// ===== ANALISIS SAHAM: REQUEST GENERATION GUARD =====
+// Every run of runAnalisisFromDashboard() claims the next sequence number. A
+// response may only touch the DOM or the follow-up context while it still holds
+// the newest one. Without this, switching ticker quickly let an older, slower
+// response land last and repaint the panel with the WRONG emiten — including
+// its Chart/News buttons and the follow-up chat context.
+var _analisisRequestSeq = 0;
+var ANALISIS_REQUEST_TIMEOUT_MS = 70000;
+
+// Mirrors describeFailure() in public/stock-analysis-ai.js. A non-2xx from
+// /api/analyze carries a real, actionable reason (no session, no subscription,
+// rate limited, AI not configured); collapsing all of them into one generic
+// "coba lagi" hid that reason and told the user to retry even when retrying
+// can never work.
+function describeAnalisisFailure(response, data, error) {
+    var code = data && data.code;
+    var status = response ? response.status : 0;
+    if (error && error.name === 'AbortError') return { retryable: true, text: 'Analisis dihentikan karena terlalu lama. Coba lagi ya.' };
+    if (!response) return { retryable: true, text: 'Koneksi ke server AI gagal. Cek jaringan lalu coba lagi.' };
+    if (status === 401) return { retryable: false, text: 'Sesi kamu sudah berakhir. Muat ulang halaman dan login lagi.' };
+    if (status === 403) return { retryable: false, text: (data && data.error) || 'Akses AI ditolak untuk akun ini.' };
+    if (status === 402 || code === 'SUBSCRIPTION_REQUIRED') return { retryable: false, text: (data && data.error) || 'Subscription aktif diperlukan untuk menggunakan fitur ini.' };
+    if (status === 429 || code === 'AI_RATE_LIMITED') {
+        var wait = Number(data && data.retry_after_seconds);
+        return { retryable: false, text: 'Terlalu banyak permintaan analisis dalam waktu singkat.' + (Number.isFinite(wait) && wait > 0 ? ' Coba lagi sekitar ' + wait + ' detik lagi.' : ' Tunggu sebentar lalu coba lagi.') };
+    }
+    if (code === 'AI_NOT_CONFIGURED') return { retryable: false, text: 'Asisten AI belum diaktifkan di server. Hubungi admin.' };
+    if (code === 'AI_KEY_OR_BALANCE_ERROR') return { retryable: false, text: 'Konfigurasi akses AI di server bermasalah (API key atau saldo). Hubungi admin.' };
+    if (code === 'PREMIUM_ACCESS_UNAVAILABLE') return { retryable: true, text: (data && data.error) || 'Status langganan belum bisa dibaca. Coba lagi sebentar.' };
+    if (status >= 500) return { retryable: true, text: (data && data.error) || 'Server AI sedang bermasalah. Coba lagi sebentar.' };
+    return { retryable: true, text: (data && data.error) || 'Analisis belum berhasil. Coba lagi.' };
+}
+
+function renderAnalisisFailure(resultArea, failure) {
+    if (!resultArea) return;
+    resultArea.innerHTML = '<div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center space-y-2" role="alert">' +
+        '<p class="text-sm text-red-400"></p>' +
+        (failure.retryable ? '<p class="text-xs text-gray-500">Kamu bisa mencoba lagi.</p>' : '') +
+        '</div>';
+    // textContent, never innerHTML: failure.text can carry a server-supplied
+    // message and must never be parsed as markup.
+    var messageEl = resultArea.querySelector('p');
+    if (messageEl) messageEl.textContent = failure.text;
+}
+
 async function runAnalisisFromDashboard(tickerOrQuery) {
     var resultArea = document.getElementById('analisisResult');
     var followUp = document.getElementById('analisisFollowUp');
@@ -3250,6 +3295,12 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
         resultArea.innerHTML = '<div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center"><p class="text-sm text-yellow-400">' + getAnalysisLimitMsg() + '</p></div>';
         return;
     }
+
+    // Claim this run's sequence number BEFORE any await. Anything this run does
+    // to the DOM or the follow-up context afterwards is conditional on still
+    // holding the newest number (see isStaleAnalisisRun below).
+    var analisisRequestId = ++_analisisRequestSeq;
+    function isStaleAnalisisRun() { return analisisRequestId !== _analisisRequestSeq; }
 
     // Show loading
     resultArea.innerHTML = '<div class="flex flex-col items-center justify-center py-12"><div class="spinner"></div><p class="text-sm text-gray-500 mt-4 loading-stage-text">Mengambil data teknikal...</p></div>';
@@ -3285,24 +3336,55 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             if (quoteCtx) enrichedMsg += quoteCtx;
         }
 
-        var response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'text/event-stream, application/json'
-            },
-            body: JSON.stringify({
-                chatMessage: enrichedMsg,
-                source: 'chat_mode',
-                isInitialAnalysis: true,
-                stream: true,
-                username: localStorage.getItem('autocuan_user') || '',
-                isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
-                context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
-            })
-        });
+        // Bounded, like the follow-up chat in public/stock-analysis-ai.js. Without
+        // this the spinner ran forever whenever the platform or an upstream
+        // provider stalled; api/analyze.js itself is capped at 60s (vercel.json).
+        var analisisAbort = (typeof AbortController === 'function') ? new AbortController() : null;
+        var analisisAbortTimer = analisisAbort
+            ? setTimeout(function () { try { analisisAbort.abort(); } catch (_) {} }, ANALISIS_REQUEST_TIMEOUT_MS)
+            : null;
+
+        var response;
+        try {
+            response = await fetch('/api/analyze', {
+                method: 'POST',
+                credentials: 'same-origin',
+                signal: analisisAbort ? analisisAbort.signal : undefined,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream, application/json'
+                },
+                body: JSON.stringify({
+                    chatMessage: enrichedMsg,
+                    source: 'chat_mode',
+                    isInitialAnalysis: true,
+                    stream: true,
+                    username: localStorage.getItem('autocuan_user') || '',
+                    isAdmin: localStorage.getItem('autocuan_is_admin') === 'true',
+                    context: (typeof buildContextForApi === 'function') ? buildContextForApi() : {}
+                })
+            });
+        } finally {
+            if (analisisAbortTimer) clearTimeout(analisisAbortTimer);
+        }
 
         clearInterval(stageTimer);
+
+        // A newer analysis was started while this one was in flight. Drop this
+        // response entirely: repainting here would show the previous emiten.
+        if (isStaleAnalisisRun()) return;
+
+        // /api/analyze answers a rejected request with a real reason: 401 no
+        // session, 403/402 no premium entitlement, 429 rate limited,
+        // AI_NOT_CONFIGURED, and so on. This used to be ignored, so every one of
+        // them fell through to `rawOutput === ''` and surfaced as the single
+        // generic "Analisis belum berhasil. Coba lagi." — which is not only
+        // uninformative but actively wrong advice for the non-retryable ones.
+        if (!response.ok) {
+            var failureData = await response.json().catch(function () { return {}; });
+            renderAnalisisFailure(resultArea, describeAnalisisFailure(response, failureData, null));
+            return;
+        }
 
         var contentType = (response.headers && response.headers.get('content-type')) || '';
         var isStreamResponse = contentType.includes('text/event-stream') && response.body && typeof response.body.getReader === 'function';
@@ -3322,6 +3404,8 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
             while (true) {
                 var streamChunk = await reader.read();
                 if (streamChunk.done) break;
+                // A newer analysis started mid-stream: stop consuming and paint nothing.
+                if (isStaleAnalisisRun()) { try { await reader.cancel(); } catch (_) {} return; }
                 streamBuffer += decoder.decode(streamChunk.value, { stream: true });
                 var lines = streamBuffer.split('\n');
                 streamBuffer = lines.pop();
@@ -3343,9 +3427,12 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
                 }
             }
         } else {
-            var data = await response.json();
+            var data = await response.json().catch(function () { return {}; });
+            if (isStaleAnalisisRun()) return;
             rawOutput = data.html || data.reply || '';
         }
+
+        if (isStaleAnalisisRun()) return;
 
         if (rawOutput) {
             var html = rawOutput.replace(/^```html\s*/i, '').replace(/```\s*$/i, '');
@@ -3379,8 +3466,11 @@ async function runAnalisisFromDashboard(tickerOrQuery) {
         }
     } catch(e) {
         clearInterval(stageTimer);
-        var errMsg = (typeof isNetworkError === 'function' && isNetworkError(e)) ? 'Koneksi ke server sedang bermasalah.' : 'Analisis belum berhasil. Coba lagi.';
-        resultArea.innerHTML = '<div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center"><p class="text-sm text-red-400">' + errMsg + '</p></div>';
+        // Never repaint over a newer analysis that is already on screen.
+        if (isStaleAnalisisRun()) return;
+        // No response object here: the request never completed. describeAnalisisFailure
+        // separates the client abort (our own 70s cap) from a transport failure.
+        renderAnalisisFailure(resultArea, describeAnalisisFailure(null, {}, e));
     }
 }
 
