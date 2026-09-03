@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 48 SELESAI, 6 SEDANG, 724 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 50 SELESAI, 8 SEDANG, 720 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -79,8 +79,8 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `intraday-sample.sh` | 52 | BELUM | 0 | |
 | `lib/account-profile-handler.js` | 151 | BELUM | 0 | |
 | `lib/account-terms.js` | 32 | SELESAI | 0 | bersih; versi terms cocok dengan REGISTRATION_TERMS_VERSION di index.html:2909 |
-| `lib/admin-access-legacy.js` | 500 | BELUM | 0 | |
-| `lib/admin-access.js` | 70 | BELUM | 0 | |
+| `lib/admin-access-legacy.js` | 500 | SEDANG | 0 | Dibaca sebagian: `requestAccess` (`:151-177`), `consumeAccess` (`:262-274`), `cleanupMessage` (`:280-289`). Akun dikunci ke 'budi' di sisi Node, binding browser di-hash sebelum ke SQL. Sisanya belum. |
+| `lib/admin-access.js` | 70 | SELESAI | 0 | **Bersih**. Hanya dispatcher: perintah umum → langganan → kode maintenance (butuh `SESSION_SECRET`) → pairing/legacy → lanjutan voucher → legacy. Urutannya berkomentar dan masuk akal (namespace `sub_`/`v:` didahulukan agar deep link langganan tidak tertukar dengan `/start <requestRef>`). |
 | `lib/admin-command-login-browser.js` | 176 | BELUM | 0 | |
 | `lib/admin-command-login.js` | 278 | BELUM | 0 | |
 | `lib/admin-command-zero-link-browser.js` | 221 | BELUM | 0 | |
@@ -187,7 +187,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/recent-failure-cooldown.js` | 120 | BELUM | 0 | |
 | `lib/report-helpers.js` | 280 | BELUM | 0 | |
 | `lib/request-rate-limit.js` | 67 | BELUM | 0 | |
-| `lib/reset-password-legacy-handler.js` | 431 | BELUM | 0 | |
+| `lib/reset-password-legacy-handler.js` | 431 | SELESAI | 0 | **Bersih**. Webhook: secret dibandingkan timing-safe, body dibatasi 32 KiB, `update_id` divalidasi, dan sengaja melewati `isSameOrigin` (Telegram memang lintas-origin) — diautentikasi header rahasia. `requestPasswordReset` mengembalikan pesan generik yang sama untuk rate-limited, username tidak valid, dan sukses sehingga tidak membocorkan keberadaan akun. `trustedRateLimitIp` hanya mempercayai `x-vercel-forwarded-for`. Satu hipotesis dibantah: `adminAccessPoll` mencetak `ac_sess` dengan `isAdmin: true` tanpa mengecek username sendiri — tapi akunnya dikunci di DUA lapisan (`lib/admin-access-legacy.js:152` `const username = 'budi'`, dan SQL `create_admin_access_request` menolak kalau `username <> 'budi'`), dan `consume_admin_access_request` memverifikasi ulang binding browser, kedaluwarsa, state, akun tidak diblokir/masih approved, serta identitas Telegram yang menyetujui. |
 | `lib/reversal-breakout-lifecycle.js` | 268 | BELUM | 0 | |
 | `lib/screener-evaluation-contract.js` | 99 | BELUM | 0 | |
 | `lib/screener-evaluation-logger.js` | 85 | BELUM | 0 | |
@@ -310,7 +310,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `supabase/account-profile-terms-migration.sql` | 25 | BELUM | 0 | |
 | `supabase/add-timeframe-context-columns.sql` | 51 | BELUM | 0 | |
 | `supabase/admin-maintenance-code-readonly-status-migration.sql` | 55 | BELUM | 0 | |
-| `supabase/admin-telegram-access-migration.sql` | 885 | BELUM | 0 | |
+| `supabase/admin-telegram-access-migration.sql` | 885 | SEDANG | 0 | Dibaca sebagian: `create_admin_access_request` (`:251-290`) dan `consume_admin_access_request` (`:781-866`) diperiksa penuh — keduanya menolak akun selain 'budi', mengunci baris `FOR UPDATE`, memeriksa kedaluwarsa/state, dan memverifikasi ulang kelayakan akun serta binding Telegram sebelum `ac_sess` pernah dicetak. Sisanya belum. |
 | `supabase/admin-telegram-command-login-migration.sql` | 445 | BELUM | 0 | |
 | `supabase/admin-telegram-maintenance-code-migration.sql` | 335 | BELUM | 0 | |
 | `supabase/admin-telegram-zero-link-pairing-migration.sql` | 409 | BELUM | 0 | |
