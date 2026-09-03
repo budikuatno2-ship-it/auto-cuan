@@ -116,6 +116,32 @@
     var notice = byId('stockAiNotice');
     if (notice) notice.remove();
   }
+  function appendStreamingBubble() {
+    var root = byId('analisisResult'); if (!root) return null;
+    root.insertAdjacentHTML('beforeend', '<div id="stockAiStreamWrap" class="mt-3 flex gap-3 fade-in-up stock-ai-followup"><div class="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0"><svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div><div id="stockAiStreamBody" class="ai-content ai-followup bg-dark-700/60 border border-dark-600/30 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[92%] whitespace-pre-wrap text-sm text-gray-200"></div></div>');
+    scrollBottom();
+    return byId('stockAiStreamBody');
+  }
+  function removeStreamingBubble() {
+    var el = byId('stockAiStreamWrap');
+    if (el) el.remove();
+  }
+  // Parses one or more "data: {...}\n\n" SSE frames out of a decoded text
+  // buffer, same wire format lib/context-ai-router-v7.js writes
+  // (sendSSEChunk/sendSSEDone). Returns the unconsumed remainder so partial
+  // frames split across reader.read() calls are carried into the next chunk.
+  function consumeSSELines(buffer, onChunkPayload) {
+    var lines = buffer.split('\n');
+    var remainder = lines.pop();
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line || line.indexOf('data:') !== 0) continue;
+      var payload = line.slice(5).trim();
+      if (payload === '[DONE]') continue;
+      try { onChunkPayload(JSON.parse(payload)); } catch (_) {}
+    }
+    return remainder;
+  }
   function setBusy(active) {
     sending = active;
     var input = byId('analysisChatInput'); var button = byId('analysisSendBtn');
@@ -135,6 +161,7 @@
     if (!response) return { retryable: true, text: 'Koneksi ke server AI gagal. Cek jaringan lalu coba lagi.' };
     if (status === 401) return { retryable: false, text: 'Sesi kamu sudah berakhir. Muat ulang halaman dan login lagi.' };
     if (status === 403) return { retryable: false, text: (data && data.error) || 'Akses AI ditolak untuk akun ini.' };
+    if (status === 402 || code === 'SUBSCRIPTION_REQUIRED') return { retryable: false, text: (data && data.error) || 'Subscription aktif diperlukan untuk menggunakan fitur ini.' };
     if (status === 429 || code === 'AI_RATE_LIMITED') {
       var wait = Number(data && data.retry_after_seconds);
       return { retryable: false, text: 'Terlalu banyak pertanyaan dalam waktu singkat.' + (Number.isFinite(wait) && wait > 0 ? ' Coba lagi sekitar ' + wait + ' detik lagi.' : ' Tunggu sebentar lalu coba lagi.') };
@@ -187,16 +214,81 @@
 
     try {
       response = await fetch('/api/analyze', {
-        method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'},
+        method:'POST', credentials:'same-origin',
+        headers:{'Content-Type':'application/json', 'Accept':'text/event-stream, application/json'},
         signal: abortController ? abortController.signal : undefined,
         body:JSON.stringify({
           source:'stock_analysis_followup',
           chatMessage:message,
           context:{ ticker:ticker, analysis_text:snapshot, captured_at:new Date().toISOString() },
           history:history,
-          retry:isRetry
+          retry:isRetry,
+          stream:true
         })
       });
+
+      // lib/context-ai-router-v7.js honors stream:true by responding with
+      // text/event-stream (cache hit, live Gemini call, and local-fallback all
+      // stream); every rejection path (auth/session/validation errors from
+      // api/analyze.js or the router's own 400s) still replies with plain JSON,
+      // so only a text/event-stream + ok response is read as a stream.
+      var contentType = (response.headers && response.headers.get('content-type')) || '';
+      var isStream = response.ok && contentType.indexOf('text/event-stream') !== -1 &&
+        response.body && typeof response.body.getReader === 'function';
+
+      if (isStream) {
+        removeLoading();
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder('utf-8');
+        var streamBuffer = '';
+        var replyText = '';
+        var localFallback = false;
+        var bubble = appendStreamingBubble();
+        var streamError = null;
+        try {
+          while (true) {
+            var chunkResult = await reader.read();
+            if (chunkResult.done) break;
+            streamBuffer += decoder.decode(chunkResult.value, { stream: true });
+            streamBuffer = consumeSSELines(streamBuffer, function (parsed) {
+              if (parsed && typeof parsed.chunk === 'string') {
+                replyText += parsed.chunk;
+                if (bubble) bubble.textContent = replyText;
+              }
+              if (parsed && parsed.local_fallback === true) localFallback = true;
+            });
+          }
+        } catch (err) {
+          // A dropped connection or the client-side abort timeout rejects
+          // reader.read() mid-stream. The partial, unverified text already
+          // shown in the bubble must never be presented as the final answer,
+          // and the bubble itself must not be left stuck on screen — both are
+          // handled by the finally below and the early return here.
+          streamError = err;
+        } finally {
+          removeStreamingBubble();
+        }
+        if (streamError) {
+          var midStreamFailure = describeFailure(response, {}, streamError);
+          appendNotice(midStreamFailure.text, midStreamFailure.retryable);
+          return;
+        }
+        if (!replyText) {
+          var streamFailure = describeFailure(response, {}, null);
+          appendNotice(streamFailure.text, streamFailure.retryable);
+          return;
+        }
+        if (localFallback) {
+          appendNotice('Provider AI sedang mengalami gangguan sementara. Analisis lokal ditampilkan sementara.', true);
+        }
+        appendAssistant(replyText, { local: localFallback });
+        if (!localFallback) {
+          history.push({ role:'user', content:message }, { role:'assistant', content:replyText });
+          writeHistory(ticker, history);
+        }
+        return;
+      }
+
       // An HTML error page from the platform used to reach the user as a raw
       // "Unexpected token '<'" SyntaxError rendered in the assistant bubble.
       data = await response.json().catch(function () { return {}; });
