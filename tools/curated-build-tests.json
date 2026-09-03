@@ -312,5 +312,6 @@
   "test/desktop-screener-dashboard-overhaul.test.js",
   "test/mobile-ux-performance.test.js",
   "test/ai-gemini-provider-and-cache.test.js",
-  "test/ai-cache-telemetry.test.js"
+  "test/ai-cache-telemetry.test.js",
+  "test/ai-streaming-response.test.js"
 ]
