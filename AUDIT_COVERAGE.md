@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 38 SELESAI, 4 SEDANG, 736 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 41 SELESAI, 4 SEDANG, 733 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -110,8 +110,8 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/chart-t1-policy.js` | 76 | BELUM | 0 | |
 | `lib/classic-chart-patterns.js` | 345 | BELUM | 0 | |
 | `lib/context-ai-router-v4.js` | 1161 | SELESAI | 0 | **Bersih** — modul paling disiplin kedua setelah `idx-tick-normalization`. Kunci cache-nya memuat `userId` + seluruh konteks (`:855-859`), yaitu obat BUG-028 yang sudah ada di repo ini sendiri. Diperiksa: rate limit per-user, `verify()` (same-origin + sesi + akun tidak diblokir/sudah approve), timeout per-model & total dengan `attemptSlice`, latch outage provider, probe direktori model, klasifikasi kegagalan, redaksi log. Satu hipotesis dibantah: `timed_out` vs `timedOut` diterjemahkan benar di `:879`. |
-| `lib/context-ai-router-v5.js` | 551 | BELUM | 0 | |
-| `lib/context-ai-router-v6.js` | 226 | BELUM | 0 | |
+| `lib/context-ai-router-v5.js` | 551 | SELESAI | 0 | **Bersih**. `requestKey` (`:301-305`) juga memuat `userId` + konteks — konfirmasi kedua bahwa obat BUG-028 sudah ada di repo. Diperiksa: redaksi diagnostik (`redactDiagnostic` menutup Bearer, kunci wz/sk, JWT, query token), spillover outage berbatas waktu, pembukuan health untuk rute darurat, koreksi `attempted_count`. Catatan: `installWeizeCompatibilityFetch` menambal `globalThis.fetch` saat modul dimuat — idempoten lewat penanda, dan hanya mengubah body untuk URL chat weizerouter; overhead pada fetch lain hanya satu parse URL. |
+| `lib/context-ai-router-v6.js` | 226 | SELESAI | 0 | **Bersih**. Fallback deterministik untuk follow-up saham; hanya mengutip angka yang sudah ada di snapshot. Satu catatan gaya: `escapeHtml` (`:37`) dideklarasikan tapi tidak dipakai — kode mati, bukan bug. `normalizeText` mendekode entitas SETELAH melucuti tag, tapi hasilnya selalu di-escape lagi oleh `inlineFormat` di klien, jadi bukan jalur XSS (lihat baris `public/ai-chat-renderer.js`). |
 | `lib/context-ai-router-v7.js` | 535 | SELESAI | 2 | BUG-010 DIPERBAIKI; BUG-028 (CRITICAL) DIPERBAIKI PR #505. Dibaca ulang penuh: validasi sumber, guard SSRF `normalizeSecondaryBaseUrl` (tolak non-https, kredensial di URL, host privat/loopback), budget waktu failover sekunder, jalur SSE, fallback deterministik lokal — bersih. |
 | `lib/corporate-action-price-scale-guard.js` | 88 | BELUM | 0 | |
 | `lib/daily-foreign-context.js` | 101 | BELUM | 0 | |
@@ -246,7 +246,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `public/admin-tools-runtime.js` | 142 | BELUM | 0 | |
 | `public/admin-user-delete-enhancement.js` | 110 | BELUM | 0 | |
 | `public/admin-zero-link-pairing.js` | 195 | BELUM | 0 | |
-| `public/ai-chat-renderer.js` | 296 | BELUM | 0 | |
+| `public/ai-chat-renderer.js` | 296 | SELESAI | 0 | **Bersih**. Setiap jalur `renderMarkdown` melewatkan teks lewat `inlineFormat` → `escapeHtml` LEBIH DULU, baru menerapkan markdown — urutan yang benar. `polishNode` membaca `textContent`/`data-ai-raw` lalu merender ulang lewat pipeline yang sama. Tidak ada titik yang memancarkan konten tak-ter-escape. |
 | `public/assets/fca-stocks.js` | 64 | BELUM | 0 | |
 | `public/assets/idx-tickers.js` | 997 | BELUM | 0 | |
 | `public/auth-v2.js` | 434 | BELUM | 0 | |
