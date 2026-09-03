@@ -10,7 +10,7 @@ Arti status:
 - `SEDANG`  — sebagian dibaca (catatan menyebut rentang barisnya).
 - `SELESAI` — dibaca dari baris 1 sampai baris terakhir. **Bukan** hasil grep.
 
-Ringkasan saat commit ini: 778 file terdaftar — 41 SELESAI, 4 SEDANG, 733 BELUM.
+Ringkasan saat commit ini: 778 file terdaftar — 43 SELESAI, 4 SEDANG, 731 BELUM.
 
 Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 
@@ -213,8 +213,8 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/telegram-transient-message.js` | 69 | BELUM | 0 | |
 | `lib/telegram-unified-general.js` | 216 | BELUM | 0 | |
 | `lib/telegram-unified-subscription.js` | 332 | BELUM | 0 | |
-| `lib/telegram-verification.js` | 1527 | SEDANG | 0 | baris 1-440 dibaca; sisanya berjalan |
-| `lib/telegram-verify-bot.js` | 186 | BELUM | 0 | |
+| `lib/telegram-verification.js` | 1527 | SELESAI | 0 | **Bersih** — modul paling sadar-keamanan yang saya baca setelah `idx-tick-normalization`. Diperiksa baris demi baris: entropi kode (`crypto.randomInt` tanpa bias, 40 bit), HMAC fail-closed tanpa secret, kode mentah tidak pernah disimpan/di-log, rate limit pengirim sebelum hashing, klaim/complete webhook bertoken (idempoten), gerbang `chat_join_request` gagal-tertutup pada identitas + kecocokan link + revoked + kedaluwarsa, pesan penolakan netral tanpa membocorkan keberadaan akun, outbox notifikasi at-least-once, dan pembersihan tombol yang sudah dipakai. |
+| `lib/telegram-verify-bot.js` | 186 | SELESAI | 0 | **Bersih**. Isolasi token benar (`TELEGRAM_VERIFY_BOT_TOKEN` saja, tanpa fallback), `AbortSignal.timeout(5000)` membatasi SETIAP panggilan, error hanya kode kasar — token dan body Telegram tidak pernah bocor. Satu hipotesis dibantah: `creates_join_request: true` memang dikirim (`:131`), jadi tombol undangan tidak menambahkan anggota langsung dan gerbang join-request tetap berlaku. |
 | `lib/telegram-voucher-admin-continuation.js` | 145 | BELUM | 0 | |
 | `lib/top5-progress-monitor.js` | 172 | BELUM | 0 | |
 | `lib/track-record-service.js` | 265 | SELESAI | 0 | Dibaca baris 1-265. Bersih. Diperiksa: `classifyOutcome` menghormati kronologi TP-sebelum-SL (`lib/report-helpers.js:68-80`), `resolved_win_rate` tidak menghitung ganda TP2 di dalam TP1, baris terarsip dilewati (:99), `calculateGainPct` memakai entry konservatif (entry1=batas atas). Meneruskan `entry1`/`entry2` apa adanya — benar; kekeliruan urutan ada di sisi render (BUG-016) |
