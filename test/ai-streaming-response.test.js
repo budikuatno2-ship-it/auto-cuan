@@ -192,6 +192,9 @@ test('PR 8: handleContextAIV7 streams immediate cache hit when stream: true', as
   const origLegacy = process.env.PORTFOLIO_AI_API_KEY;
   const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   const origGemini = process.env.GEMINI_API_KEY;
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error('No live network in unit test'); };
+
   delete process.env.PORTFOLIO_AI_API_KEY;
   delete process.env.GEMINI_API_KEY;
   delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
@@ -228,6 +231,7 @@ test('PR 8: handleContextAIV7 streams immediate cache hit when stream: true', as
     assert.equal(stats.total_requests, 1);
     assert.equal(stats.cache_hits, 1);
   } finally {
+    globalThis.fetch = origFetch;
     if (origKey !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origKey;
     else delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
     if (origGemini !== undefined) process.env.GEMINI_API_KEY = origGemini;
@@ -241,9 +245,14 @@ test('PR 8: handleContextAIV7 falls back to standard JSON when stream is false',
   resetAiTelemetryStats();
   clearMemoryCache();
 
+  const origDisabled = process.env.GEMINI_AI_DISABLED;
   const origKey = process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   const origGemini = process.env.GEMINI_API_KEY;
   const origLegacy = process.env.PORTFOLIO_AI_API_KEY;
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error('No live network in unit test'); };
+
+  process.env.GEMINI_AI_DISABLED = 'true';
   delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
   delete process.env.GEMINI_API_KEY;
   delete process.env.PORTFOLIO_AI_API_KEY;
@@ -267,6 +276,9 @@ test('PR 8: handleContextAIV7 falls back to standard JSON when stream is false',
     assert.equal(state.payload.success, true);
     assert.equal(state.payload.local_fallback, true);
   } finally {
+    globalThis.fetch = origFetch;
+    if (origDisabled !== undefined) process.env.GEMINI_AI_DISABLED = origDisabled;
+    else delete process.env.GEMINI_AI_DISABLED;
     if (origKey !== undefined) process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO = origKey;
     else delete process.env.API_KEY_ANALISA_SAHAM_PORTOFOLIO;
     if (origGemini !== undefined) process.env.GEMINI_API_KEY = origGemini;
