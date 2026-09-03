@@ -1894,3 +1894,109 @@ kandidat yang memenuhi syarat `PRE_SPIKE_WATCH`, memastikan hasilnya `PRE_SPIKE_
 plus test bahwa skor 62–69 tetap `EARLY_RADAR` (tidak ada promosi yang tidak diinginkan).
 
 **Status** : DITEMUKAN — menunggu keputusan Anda
+
+---
+
+## Catatan tambahan pada BUG-018 (fetch tanpa timeout) — inventaris menyeluruh seluruh repo
+
+Setelah BUG-018 diperbaiki di `api/sector-hot.js` (PR #502), saya sapu **seluruh repo**
+untuk pola yang sama: setiap pemanggilan `fetch(` yang tidak membawa `signal` dari
+`AbortController` maupun `AbortSignal.timeout` dalam 14 baris berikutnya.
+
+**Hasil: 62 lokasi di luar `test/`.** Dipilah menurut kepentingannya:
+
+### Sisi server, BELUM diperbaiki, dan yang paling penting
+
+| lokasi | fungsi | kenapa penting |
+|---|---|---|
+| `lib/daytrade-screener-engine.js:160` | `fetchDayTradeCandles` | **Volume tertinggi di seluruh sistem.** Dipanggil per-ticker di sepanjang universe Day Trade (~760 ticker pada full scan). Satu upstream menggantung menghabiskan anggaran batch. |
+| `lib/daytrade-intraday-observe.js:253` | pengamat intraday | jalur observasi VPS |
+| `api/quote.js:109, 666, 1067, 1115` | Supabase REST | sudah dicatat sebelumnya sebagai catatan BUG-005 |
+| `scripts/refresh-sector-hot.js:45` | refresh operasional | dijalankan manual/cron |
+| `tools/*` (11 lokasi) | skrip operasional | dijalankan operator, dampak terbatas |
+
+### Sudah diperbaiki (jangan dihitung dua kali)
+
+Sapuan ini dijalankan dari branch `fix/nk-quote-null-ohlc`, yang bercabang dari
+`feat/daytrade-screener-v1` dan **belum memuat** PR #497 maupun #502. Karena itu
+scan-nya masih menampilkan:
+
+- `lib/analyze-legacy.js:547, 594, 711, 1518, 1599` — **sudah diperbaiki di PR #497**
+- `api/sector-hot.js:2088, 2310, 2348` — **sudah diperbaiki di PR #502**
+
+Saya sebutkan supaya angkanya tidak salah dibaca sebagai regresi. Delapan lokasi itu
+sudah tertutup; yang tersisa adalah daftar di atas.
+
+### Sisi frontend (`public/`, 26 lokasi)
+
+Profil risikonya berbeda: ini `fetch` di browser, tidak memakan anggaran fungsi
+serverless. Akibat terburuknya adalah spinner yang berputar selamanya kalau permintaan
+menggantung. Dua file sudah punya pembungkus timeout sendiri
+(`public/portfolio-supabase-sync.js:115`, `public/portfolio-command-center.js:103`),
+yang menunjukkan polanya sudah dikenal di repo ini — hanya belum merata.
+
+### Yang diabaikan
+
+`_disabled_api_backup/analyze.real.js` (5 lokasi) — direktori nonaktif, tidak dimuat
+runtime.
+
+**Rekomendasi.** Satu PR lanjutan "timeout upstream — sisa `lib/`" yang memakai
+`fetchWithTimeout` persis seperti di PR #502, mencakup
+`lib/daytrade-screener-engine.js:160` dan `lib/daytrade-intraday-observe.js:253`.
+Keduanya sisi server dan keduanya di jalur produksi. Belum saya kerjakan karena sudah
+ada 11 PR terbuka dan saya tidak mau melebarkan #502 yang sudah hijau — katakan saja
+kalau Anda mau PR itu dibuat.
+
+---
+
+## Catatan tambahan pada BUG-015 (RSI 0/0) — salinan ke-9
+
+```js
+// lib/daytrade-screener-engine.js:2010-2015
+var avgGain = gains / period;
+var avgLoss = losses / period;
+if (!Number.isFinite(avgGain) || !Number.isFinite(avgLoss)) return null;
+if (avgLoss === 0) return 100;
+```
+
+Salinan ke-9. Penjagaan `Number.isFinite`-nya lebih baik dari salinan lain, tetapi
+kasus 0/0 (seri benar-benar datar) tetap mengembalikan 100.
+
+---
+
+## Catatan laten — `calcMA` membagi dengan `period`, bukan dengan jumlah nilai yang benar-benar dijumlahkan
+
+- **Lokasi** : `lib/daytrade-screener-engine.js:1995-2004`
+
+```js
+function calcMA(arr, period) {
+  if (!arr || arr.length < period || !period || period <= 0) return null;
+  var slice = arr.slice(arr.length - period);
+  var sum = 0;
+  for (var i = 0; i < slice.length; i++) {
+    var val = Number(slice[i]);
+    if (Number.isFinite(val)) sum += val;   // <- melewati nilai non-finite
+  }
+  var ma = sum / period;                     // <- tetap dibagi period penuh
+  return Number.isFinite(ma) ? ma : null;
+}
+```
+
+Kalau ada nilai non-finite, ia dilewati **tanpa mengurangi pembagi**. Dua nilai buruk
+dari 20 menghasilkan MA sekitar 10% terlalu rendah. MA20 yang terlalu rendah membuat
+`_aboveMA20` lebih mudah bernilai true, yang menaikkan `scoreMomentum` dan `scoreTrend`
+— jadi ini akan menyentuh skor, bukan sekadar tampilan.
+
+**Tidak terjangkau lewat jalur produksi.** `fetchDayTradeCandles`
+(`lib/daytrade-screener-engine.js:181`) memeriksa kelima kaki OHLCV sebelum memasukkan
+sebuah candle — **justru pemeriksaan yang tidak ada di parser NK (BUG-022)** — jadi
+`closes`/`volumes` yang sampai ke `calcMA` dijamin finite dan loop-nya tidak pernah
+melewati apa pun.
+
+Yang membuatnya layak dicatat: `runDayTradeBatch` menerima `options.fetchCandles`
+(`:1706`), pengambil candle yang bisa disuntikkan. Pemanggil yang menyuntikkan
+pengambil tanpa validasi akan mendapat MA yang diam-diam terlalu rendah, bukan `NaN`
+yang kentara. Perbaikannya sepele: hitung pembaginya (`count`) dan bagi dengan itu,
+atau kembalikan `null` begitu ada nilai non-finite.
+
+**Status** : DITEMUKAN — laten, tidak diperbaiki
