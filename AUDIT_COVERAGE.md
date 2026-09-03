@@ -151,7 +151,7 @@ Temuan lengkap ada di `AUDIT_FINDINGS.md`.
 | `lib/daytrade-scan-comparison.js` | 291 | BELUM | 0 | |
 | `lib/daytrade-screener-constants.js` | 29 | BELUM | 0 | |
 | `lib/daytrade-screener-engine-v7.js` | 202 | BELUM | 0 | |
-| `lib/daytrade-screener-engine.js` | 2908 | BELUM | 0 | |
+| `lib/daytrade-screener-engine.js` | 2908 | SEDANG | 1 | baris 1-1200 dari 2908 dibaca. BUG-026 (urutan klasifikasi terbalik: PRE_SPIKE_WATCH hanya tercapai kandidat yang lebih buruk, :880 vs :887). Verifikasi bersih: deriveDataQualityStatus :47 memvalidasi integritas OHLC dengan benar (close>high, close<low, open>high, open<low, high<low, volume<0) - jauh lebih ketat dari parser di api/sector-hot.js; range_position :279 memakai Number.isFinite, bukan `||`, jadi nilai 0 dipertahankan (kontras dengan BUG-014 di api/sector-hot.js:11125); calculateLevels :600 menjaga pembagian nol di setiap perhitungan RR |
 | `lib/entitlements.js` | 68 | SELESAI | 0 | bersih; review TIDAK premium, budi admin, error penyimpanan tidak pernah jadi premium |
 | `lib/fast-watcher-daily-context-shadow.js` | 53 | BELUM | 0 | |
 | `lib/fibonacci-confluence.js` | 317 | BELUM | 0 | |

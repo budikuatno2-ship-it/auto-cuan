@@ -1804,3 +1804,93 @@ berperilaku persis sama seperti sebelumnya.
 
 **Status** : DITEMUKAN — **menunggu keputusan Anda**. Saya sarankan langkah pengukuran
 dulu, bukan langsung perbaikan.
+
+---
+
+## BUG-026 — `PRE_SPIKE_WATCH` hanya bisa dicapai kandidat yang LEBIH BURUK (urutan klasifikasi terbalik)
+
+- **Severity** : MEDIUM
+- **Area** : Day Trade — klasifikasi status dan hitungan "priority opportunity"
+- **Lokasi** : `lib/daytrade-screener-engine.js:880-884` (cabang `EARLY_RADAR`) vs `:887` (cabang `PRE_SPIKE_WATCH`)
+
+**Root cause.** Cabang berambang **lebih rendah** dievaluasi lebih dulu:
+
+```js
+// :880 — EARLY_RADAR, ambang 62
+else if (compositeScore >= DT_INITIAL.early_radar_score && hardFails.length === 0 && !isAfternoon &&
+         data.change_pct >= -0.5 && data.change_pct <= 5.0 &&
+         data.distance_to_breakout_pct <= 5.0 && !hasDistribution) {
+  status = 'EARLY_RADAR';
+```
+
+```js
+// :887 — PRE_SPIKE_WATCH, ambang 70 (tidak pernah tercapai kalau yang di atas cocok)
+else if (compositeScore >= DT_INITIAL.prespike_score && hardFails.length === 0 && !hasLowVolume && !isAfternoon) {
+```
+
+Ambangnya (`lib/daytrade-screener-constants.js:9-11`): `early_radar_score: 62`, `prespike_score: 70`.
+
+**Dibuktikan.** Saya panggil `classifyStatus` yang diekspor, dengan kandidat yang memenuhi **setiap** syarat `PRE_SPIKE_WATCH` (volume 1,5 ≥ 1,2; tanpa hard fail; bukan sesi sore; `change_pct` 2% ≤ 5%):
+
+```
+score 62  -> EARLY_RADAR
+score 68  -> EARLY_RADAR
+score 70  -> EARLY_RADAR      <- ambang PRE_SPIKE terlampaui, tetap kalah
+score 72  -> EARLY_RADAR
+score 74  -> EARLY_RADAR
+score 75  -> READY_BREAKOUT
+```
+
+**Dan inilah bagian yang membalik maknanya.** Saya telusuri kapan `PRE_SPIKE_WATCH` *bisa* muncul:
+
+```
+EARLY_RADAR       | chg  2%, dist 3%   <- kandidat lebih baik
+PRE_SPIKE_WATCH   | chg -1%, dist 3%   <- harga TURUN
+PRE_SPIKE_WATCH   | chg  2%, dist 6%   <- JAUH dari breakout
+```
+
+Jadi `PRE_SPIKE_WATCH` — label yang berarti *"volume mulai masuk, tunggu breakout"* — hanya
+tercapai kalau kandidatnya **turun** atau **jauh dari breakout**. Kandidat yang justru
+*naik* dan *dekat* breakout malah mendapat label yang lebih lemah.
+
+Cabang `PRE_SPIKE_WATCH` kedua (lewat `near_breakout_score` 65, `:911`) terbayangi dengan
+cara yang sama:
+
+```
+EARLY_RADAR       | score 66, dist 2%
+PRE_SPIKE_WATCH   | score 66, dist 2%, chg -1%
+```
+
+**Dampak.** Bukan soal keselamatan — `EARLY_RADAR` justru lebih konservatif, jadi tidak
+ada sinyal berbahaya yang terbit. Yang rusak adalah pelaporan dan pemeringkatan:
+
+1. **`top_count` sistematis terlalu rendah.** Di `api/sector-hot.js:11760-11768`,
+   `priorityRadarCount` hanya menghitung `PRE_SPIKE_WATCH`; `EARLY_RADAR` tidak. Angka
+   "PRIORITY OPPORTUNITY" yang dilaporkan karena itu kehilangan kandidat skor 70–74 yang
+   paling menjanjikan.
+2. **Peringkat Telegram lebih rendah.** `setupPriority` (`api/sector-hot.js:12406`) memberi
+   `PRE_SPIKE_WATCH` = 3 dan `EARLY_RADAR` = 4, jadi setup yang lebih baik diurutkan di
+   bawah setup yang lebih lemah.
+3. **Labelnya menyesatkan.** Untuk rentang skor 62–74, kedua label berarti kebalikan dari
+   yang tertulis.
+
+**Perbaikan yang diusulkan.** Dua pilihan, saya rekomendasikan yang pertama:
+
+- **(a)** Pindahkan cabang `EARLY_RADAR` ke **bawah** kedua cabang `PRE_SPIKE_WATCH`.
+  Paling kecil perubahannya dan mengembalikan urutan ambang yang wajar (75 → 70 → 65 → 62).
+- **(b)** Tambahkan `compositeScore < DT_INITIAL.prespike_score` ke syarat `EARLY_RADAR`.
+  Eksplisit, tetapi menyisakan cabang `near_breakout` (65) yang masih terbayangi.
+
+**Kenapa belum saya kerjakan.** Ini mengubah klasifikasi status, yang langsung mengubah
+`top_count`, urutan seleksi Telegram, dan kandidat mana yang masuk digest. Itu perilaku
+bisnis — aturan No. 8 Anda meminta saya bertanya lebih dulu.
+
+**Belum pasti:** saya tidak bisa memastikan urutan ini kekhilafan atau sengaja. Yang bisa
+saya tunjukkan adalah akibatnya — label yang lebih kuat hanya diberikan kepada kandidat
+yang lebih lemah — dan itu sulit dibaca sebagai maksud yang disengaja.
+
+**Verifikasi (kalau disetujui).** Test atas `classifyStatus` dengan skor 70/72/74 pada
+kandidat yang memenuhi syarat `PRE_SPIKE_WATCH`, memastikan hasilnya `PRE_SPIKE_WATCH`;
+plus test bahwa skor 62–69 tetap `EARLY_RADAR` (tidak ada promosi yang tidak diinginkan).
+
+**Status** : DITEMUKAN — menunggu keputusan Anda
